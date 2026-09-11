@@ -119,9 +119,6 @@ export function KBLIConsultationCTA({
 
           {/* Trust + CTA */}
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-[var(--kbli-text-muted)]">
-              5,000+ companies registered since 2020
-            </p>
             <WhatsAppLeadButton
               source="kbli_navigator"
               resultHash={code}

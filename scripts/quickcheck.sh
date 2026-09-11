@@ -10,7 +10,8 @@
 # it NEVER blocks — see the bottom of this file and the call site in
 # `.husky/pre-push`).
 #
-# SCOPE (four checks, each scoped to what actually changed vs origin/main):
+# SCOPE (six checks; 1-3 are scoped to what changed vs origin/main, 3b/3c are
+# deliberately unconditional — each says why at its own definition):
 #   1. impact-scoped pytest, via `scripts/ci/impact_map.py` (the SAME engine
 #      the PR lane's test-selection uses) — only the backend test modules
 #      the diff can actually reach, never the full 17k-test suite.
@@ -18,6 +19,12 @@
 #      package.json's own `format`/`format:check` scripts).
 #   3. `actionlint` — only when `.github/workflows/` is touched, run with no
 #      file args (same auto-discovery scope as `.github/workflows/actionlint.yml`).
+#   3b. skills-canon: untracked drift between `.claude/skills` and
+#      `.agents/skills` — unconditional, because the drift it catches is by
+#      definition untracked and never appears in a diff.
+#   3c. scripts-coupling: `scripts/ci/scripts_coupling_census.py --check`,
+#      unconditional — a stale SCRIPTS_COUPLING block landing on main makes
+#      every later PR re-buy all six heavy suites.
 #   4. R1 heading presence: if the current branch has an open PR, check its
 #      body for the LITERAL line `## Adversarial review` — exact string,
 #      anchored, case-sensitive. NOT a substring match on "adversarial":
@@ -150,7 +157,7 @@ PYEOF
             echo "   [pytest] impact map could not safely scope this diff (reason=$reason)."
             echo "            The full backend suite is heavy (11-32min) — this script never runs it"
             echo "            and never auto-dispatches it. If you need it, run it yourself:"
-            echo "              ssh mini 'cd ~/nuzantara/apps/backend-rag && source .venv/bin/activate && PYTHONPATH=.:../crm-cell python -m pytest backend/tests --ignore=backend/tests/e2e -q'"
+            echo "              ssh mini 'cd ~/nuzantara/apps/backend-rag && source .venv/bin/activate && PYTHONPATH=.:../crm-cell python -m pytest backend/tests --ignore=backend/tests/e2e'"
         fi
         return 0
     fi
@@ -190,7 +197,7 @@ PYEOF
                PYTHONPATH=.:../crm-cell \
                JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
                API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
-               python -m pytest "${rel_tests[@]}" --tb=short -q 2>&1
+               python -m pytest "${rel_tests[@]}" --tb=short 2>&1
     )"
     rc=$?
     printf '%s\n' "$out" | sed 's/^/            /'
@@ -285,6 +292,140 @@ run_actionlint_if_touched() {
 }
 
 # ---------------------------------------------------------------------------
+# 3b. skills-canon — untracked drift between .claude/skills and .agents/skills
+#
+# Added 2026-08-27 (Q0 correction, team-lead finding): CI can only ever see
+# COMMITTED state, so scripts/tests/test_skills_canonical.py's own
+# check-skills-canonical.yml workflow can never catch untracked cruft sitting
+# in a local checkout. Measured live on the Pro MAIN checkout: 11 Tier-B
+# skills (modus, workflow, ...) existed as UNTRACKED real directories under
+# `.agents/skills/` — `git status --porcelain` never showed them to anyone
+# who only reads diffs — one of them (a stale `.agents/skills/modus/SKILL.md`)
+# still routed the Gear-3 gate to "Fable 5 first", contradicting the current
+# ruling. Deliberately UNCONDITIONAL (not gated on the diff touching
+# .claude/skills or .agents/skills): the failure mode this exists to catch is
+# BY DEFINITION untracked, so it never shows up in `changed_all` — gating on
+# the diff would exempt exactly the case that matters. Cheap regardless (a
+# stat/iterdir pass over ~20 directories).
+# ---------------------------------------------------------------------------
+run_skills_canonical_check() {
+    if [ ! -f scripts/tests/test_skills_canonical.py ]; then
+        echo "   [skills-canon] scripts/tests/test_skills_canonical.py not on this branch yet — skipping."
+        return 0
+    fi
+    local py=""
+    if command -v python3 >/dev/null 2>&1; then
+        py="$(command -v python3)"
+    else
+        echo "   [skills-canon] no python3 on PATH — skipping."
+        return 0
+    fi
+
+    local out rc
+    out="$(NUZ_SKILLS_ROOT="$(pwd)" "$py" - <<'PYEOF' 2>&1
+import importlib.util
+import sys
+
+spec = importlib.util.spec_from_file_location(
+    "quickcheck_skills_canonical", "scripts/tests/test_skills_canonical.py"
+)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+violations = mod.find_canonicity_violations(mod.CLAUDE_SKILLS, mod.AGENTS_SKILLS)
+for v in violations:
+    print(v)
+sys.exit(1 if violations else 0)
+PYEOF
+)"
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+        echo "   [skills-canon] OK — no untracked drift between .claude/skills and .agents/skills."
+    else
+        echo "   [skills-canon] local tree has drift NO CI CHECK CAN SEE (untracked files never travel with a commit):"
+        printf '%s\n' "$out" | sed 's/^/            /'
+        echo "            (advisory — fix: remove the stray .agents/skills/<name> copy, or make .claude/skills/<name> a symlink to it)"
+    fi
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# 3c. scripts-coupling — SCRIPTS_COUPLING staleness, caught while it is free
+#
+# Added 2026-09-05 after the SAME breakage landed on main three times inside
+# 24h (#5707 -> cured by #5711 -> re-broken by #5709 -> cured by #5724).
+# `scripts/ci/scripts_coupling_census.py --check` exiting 1 fails
+# `scripts/ci/test_change_map.py::test_scripts_coupling_census_is_not_stale`
+# inside the trusted FLAT extraction; the `changes` job then treats the
+# classifier as untrustworthy and degrades to `run_all=true`, so EVERY
+# subsequent PR re-buys all six heavy suites until someone runs `--write`.
+#
+# WHY HERE and not as a required CI check. The signal is not missing — it
+# already exists at every layer: `Classifier corpus trust (visibility only)`
+# goes red on the PR that causes it, and a scheduled tests.yml run on main
+# plus main-push-failure-watch.yml alerts afterwards. What failed three
+# times was READING it, not detecting it. Arming the existing job as a
+# REQUIRED context was considered and REJECTED: that job also fires when
+# the trusted extraction itself breaks, which is exactly what #5679 did on
+# every PR until #5692 — requiring it converts a cost degradation into a
+# repo-wide outage. So the fix belongs at the only moment the cure is free:
+# the push that introduces the coupling, in the PR that owns it.
+#
+# WHY the census is NOT narrowed to ignore comments. A mention inside a
+# COMMENT couples exactly like an import here (#5709's case). Narrowing it
+# moves toward the UNDER-match direction — superscar #3, the one that SKIPS
+# a suite that should have run — and it would not have prevented #5707,
+# whose coupling was a genuine runtime `exec_module`. Over-match costs CI
+# minutes on edits to one script; under-match costs a missed regression.
+#
+# UNCONDITIONAL, like skills-canon above: the census reads the whole TREES
+# corpus, so a diff that touches nothing under apps/ can still be the one
+# that goes stale via a lockfile-ish indirect path, and the run is ~2s.
+# ---------------------------------------------------------------------------
+run_scripts_coupling_census_check() {
+    if [ ! -f scripts/ci/scripts_coupling_census.py ]; then
+        echo "   [scripts-coupling] scripts/ci/scripts_coupling_census.py not on this branch yet — skipping."
+        return 0
+    fi
+    local py=""
+    if command -v python3 >/dev/null 2>&1; then
+        py="$(command -v python3)"
+    else
+        echo "   [scripts-coupling] python3 not found — skipping."
+        return 0
+    fi
+
+    local out rc
+    out="$("$py" scripts/ci/scripts_coupling_census.py --check 2>&1)"
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+        echo "   [scripts-coupling] SCRIPTS_COUPLING is up to date."
+        return 0
+    fi
+
+    printf '%s\n' "$out" | sed 's/^/            /'
+    if [ "$rc" -ne 1 ]; then
+        # rc=2 is the census tool failing on itself, not a stale block: it
+        # exits 2 when `git grep -P` breaks (an old git without PCRE, most
+        # likely). Telling the user to run --write there would be WRONG advice
+        # — `main()` calls `_census()` before it dispatches to either mode, so
+        # --write walks the identical `_run_git_grep()` path and dies the same
+        # way. One remedy printed for two different faults is how an advisory
+        # becomes noise.
+        echo "   [scripts-coupling] the census TOOL failed (rc=$rc) — this is NOT a staleness"
+        echo "                      result and --write will not fix it: it runs the same"
+        echo "                      \`git grep -P\` first. See the output above."
+        return 0
+    fi
+    echo "   [scripts-coupling] STALE (rc=1) — fix: python3 scripts/ci/scripts_coupling_census.py --write"
+    echo "                      then commit scripts/ci/change_map.py in THIS PR."
+    echo "                      A mention of a repo-root scripts/ path anywhere under apps/,"
+    echo "                      packages/core or tests.yml counts — a COMMENT counts too."
+    echo "                      Landed unfixed, every later PR re-buys all six heavy suites."
+    echo "                      (advisory — the real gate is the changes job's corpus step)"
+    return 0
+}
+
+# ---------------------------------------------------------------------------
 # 4. R1 — literal '## Adversarial review' heading on the branch's open PR
 # ---------------------------------------------------------------------------
 run_r1_check() {
@@ -346,6 +487,8 @@ main() {
     run_impact_scoped_pytest "$changed_all"
     run_prettier_changed "$changed_existing"
     run_actionlint_if_touched "$changed_all"
+    run_skills_canonical_check
+    run_scripts_coupling_census_check
     run_r1_check
 
     echo "🩺 quickcheck done (advisory — see .husky/pre-push for the real gates)."

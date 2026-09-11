@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from scripts.pricelist_2026 import generate
+from scripts.pricelist_2026.schema import CANONICAL_CONTACT
 
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal_prices.json"
 
@@ -58,7 +59,11 @@ def test_generate_html_smoke(fixture_data, stub_assets, tmp_path):
     assert "2.000.000 IDR" in html
     # Contact rendered
     assert "zero@balizero.com" in html
-    assert "+62 821 3465 159" in html
+    # Derived from CANONICAL_CONTACT, never a second literal: a hard-coded
+    # number here goes on asserting the old one after a ruling changes it,
+    # which is how the bot's inbound number reached the client-facing sheet
+    # on 2026-08-31 (see schema.py's _CANONICAL_WHATSAPP_DIGITS).
+    assert CANONICAL_CONTACT["whatsapp"] in html
     # Logo embedded as base64 data URI
     assert 'src="data:image/png;base64,' in html
 
@@ -74,7 +79,7 @@ def test_generate_markdown_smoke(fixture_data, tmp_path):
     assert "# Bali Zero — Price List 2026" in md
     assert "C1 Tourism" in md
     assert "1.800.000 IDR – 2.000.000 IDR" in md
-    assert "wa.me/628213454721" in md
+    assert CANONICAL_CONTACT["wa_link"].removeprefix("https://") in md
 
 
 def test_generate_rejects_invalid_json(stub_assets, tmp_path):
@@ -102,3 +107,15 @@ def test_generate_html_contains_qr_link(fixture_data, stub_assets, tmp_path):
     assert html.count('src="data:image/png;base64,') >= 3
     # Closing section text
     assert "Get in touch" in html
+
+    # The original 2026-08-31 defect was that the DISPLAY text and the SCANNED
+    # link named different numbers. This page carries no anchor -- it is a
+    # print document, and the QR IS the link (generate.py:188 feeds it
+    # contact["wa_link"]). Asserting only that the display string appears
+    # somewhere would still pass a page whose QR sends the reader elsewhere,
+    # so pin the QR image itself to the validated wa_link.
+    qr_source = generate._make_qr_data_uri(CANONICAL_CONTACT["wa_link"])
+    assert qr_source in html, (
+        "the embedded QR was not built from contact.wa_link -- it encodes some "
+        "other value, which is exactly the shape of the original defect"
+    )

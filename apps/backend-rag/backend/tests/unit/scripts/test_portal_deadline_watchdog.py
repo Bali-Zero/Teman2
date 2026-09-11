@@ -10,6 +10,49 @@ import pytest
 from scripts.portal_deadline_watchdog import _format_message, _iter_due, _log_sent, run
 
 
+class _RecordingConnection:
+    """Captures every SQL string the watchdog sends, without hitting a real DB."""
+
+    def __init__(self) -> None:
+        self.statements: list[str] = []
+
+    async def fetch(self, sql, *args):
+        self.statements.append(sql)
+        return []
+
+
+class TestDueQueryTargetsARealTable:
+    """Pins the sibling defect to PR #5202's ``NotificationService`` fix.
+
+    That PR cured ``_get_team_leader_email``, which queried ``users`` — a
+    relation that does not exist in this database — and left a note that
+    this file carries three more identical ``JOIN users u`` occurrences.
+    Portal-login accounts are rows in ``team_members`` with
+    ``role='client'`` (``migration_031_client_portal.py`` extends
+    ``team_members`` with ``linked_client_id``/``portal_access`` for exactly
+    this purpose), never a separate ``users`` table.
+    """
+
+    @pytest.mark.asyncio
+    async def test_queries_team_members_and_never_the_absent_users_table(self) -> None:
+        conn = _RecordingConnection()
+
+        await _iter_due(conn)
+
+        assert len(conn.statements) == 1
+        sql = conn.statements[0].lower()
+        assert "team_members" in sql, "client portal accounts live in team_members"
+        assert "from users" not in sql, (
+            'relation "users" does not exist in this database — the sibling query in '
+            "notifications/service.py raised UndefinedTableError 362 times in 14 days "
+            "before PR #5202"
+        )
+        assert "join users" not in sql, (
+            "this file carried three JOIN users occurrences against the same "
+            "non-existent relation, called out by PR #5202 as unfixed"
+        )
+
+
 def test_format_message_mentions_label_and_date() -> None:
     due = date(2026, 6, 15)
     msg = _format_message("Visa expiry", due)

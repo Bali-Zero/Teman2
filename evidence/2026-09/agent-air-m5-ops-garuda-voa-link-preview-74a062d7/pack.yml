@@ -1,0 +1,313 @@
+# The STAGING path, not this PR's real per-PR path: harness-floor.yml copies THIS PR's own brief to
+# /tmp/evidence-check/evidence/brief.yml and lints with --repo-root /tmp/evidence-check, so the
+# canonical name resolves to this brief there — never to the root evidence/brief.yml this branch
+# inherited from an unrelated prior Gear-3 merge (#5400, price-review-0831).
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5559 (agent/air-m5/ops/garuda-voa-link-preview) — GARUDA VOA magic-link preview endpoint.
+  This dispatch's own mandate: diagnose and fix the two red CI gates on that PR (the mutating-routes
+  security registry, and the harness floor recompute), without arming or opening a new PR.
+
+lanes:
+  - lane: ci-gate-fix-dispatch
+    role: build
+    seat: >-
+      claude-sonnet-5 (dispatched sub-task session -- diagnosed both gates, added the
+      INTENTIONALLY_PUBLIC_MUTATIONS registry entry, corrected the preview handler's non-enumeration
+      docstring after the council finding, authored this brief/pack/journal. This is the ONLY build
+      lane this pack declares -- PR #5559's own magic-link preview feature was authored earlier by a
+      separate claude-opus-5 interactive session, outside this dispatch's own reviewed unit of work,
+      named in plan_ref/objective for context but not declared as a second build lane here, since
+      D3's seat-diversity rule fires on >=2 declared build lanes and this dispatch's own delta is one
+      coherent unit of work, not two.)
+  - lane: gear3-council-review-codex
+    role: review
+    seat:
+      codex-gpt-5.6-sol (ChatGPT Pro, `codex exec --sandbox read-only`, non-Anthropic cross-family --
+      adversarial review of the full PR diff on five named axes; found the 422-vs-401 non-enumeration
+      overclaim and the masking-collision weakness, both independently re-verified before acting)
+  - lane: gear3-council-review-tp1
+    role: review
+    seat:
+      tp1-qwen3.8-max (Alibaba TP1/DashScope gateway, flat token plan, `qwen -m opus` via
+      scripts/qwen-cloud-code.sh, non-Anthropic cross-family -- second seat, fresh context, identical
+      prompt to the codex lane; returned a clean verdict that missed both findings above)
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  D3 fires only at >=2 declared build lanes (this pack declares one); the diversity signal here comes
+  from the review side instead -- both review lanes are non-Anthropic cross-family
+  (codex-gpt-5.6-sol, tp1-qwen3.8-max). kimi-code/k3 was attempted first and answered 403 (weekly
+  Moonshot quota exhausted) before any review ran against it -- verified live, not assumed; the
+  cascade fell through to the next roster seat per CLAUDE.md's cascade doctrine.
+
+seat_override: >-
+  R8 ground_truth: this diff touches apps/mouth/src/app/visa/voa/auth/continue/page.tsx, which
+  GROUND_TRUTH_PATH_PATTERNS' apps/mouth/src/app/visa/* entry matches -- but the page carries zero
+  visa/tax/KBLI regulatory claims to check against NotebookLM. It is a magic-link Continue control
+  (session/auth flow): the only new displayed content is a masked email string read live from the
+  backend token store at request time, not a static or authored regulatory fact. No NB query applies,
+  so no {role: ground_truth, seat, nb, query_hash} lane is declared. Scoped to R8 only -- R9's council
+  quorum is independently satisfied for real (council-journal.jsonl, 2 distinct seats), not by this
+  override.
+
+council_run: council-journal.jsonl
+
+diff:
+  net_lines: >-
+    15 files changed (git diff --numstat against merge-base d35b178534ddb5a7e7d6be586bc9b76c2feab78a):
+    PR #5559's own pre-existing diff (the magic-link preview feature and its tests, authored by an
+    earlier claude-opus-5 session) PLUS this dispatch's own delta -- the registry entry and docstring
+    correction in two already-touched files, and this evidence pack's own three new files (brief.yml,
+    council-journal.jsonl, pack.yml). Self-counting: this field is only ever true at the instant of
+    measurement, since the pack is part of what it counts (same discipline the reference pack this one
+    was modeled on documents for itself). CI supplies the authoritative --numstat-file at merge time
+    and prefers it over this self-declared value.
+  measured_at: >-
+    Merge-base d35b178534ddb5a7e7d6be586bc9b76c2feab78a (origin/main at time of this dispatch),
+    HEAD 9f00f9f417 plus this dispatch's uncommitted-then-committed working-tree changes.
+  behaviour_change: >-
+    PR #5559 itself: adds POST /api/visa/voa/auth/magic-links/preview (non-consuming magic-link
+    lookup) plus the Continue page change that calls it. THIS DISPATCH'S OWN behaviour change is
+    narrower: one new CI-registry entry (no runtime effect), one docstring correction (no runtime
+    effect -- the 422-vs-401 split was already the real behavior before and after), and this evidence
+    pack (no runtime effect). Zero production code paths altered by this dispatch.
+  note: >-
+    FLOOR is 3 by PATH, not by size -- apps/backend-rag/backend/app/auth/* is a HOTZONE_PATTERNS
+    entry and public_endpoints.py sits under it. `Harness floor recompute` reported floor=3,
+    source=path on this branch before this pack existed.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      GATE 1 was genuinely red before the fix, naming exactly the route this pack's diff registers.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/security/test_mutating_routes_are_gated.py::test_every_public_mutating_route_is_accounted_for
+      -p no:randomly (run BEFORE the INTENTIONALLY_PUBLIC_MUTATIONS entry was added)
+    result: >-
+      FAILED -- AssertionError: 1 mutating route(s) bypass HybridAuthMiddleware ... assert not
+      ['POST /api/visa/voa/auth/magic-links/preview']
+    exit: 1
+    ts: "2026-09-01T22:20:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: The gate is GREEN after the registry entry is added.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/security/test_mutating_routes_are_gated.py -p no:randomly
+    result: "11 passed"
+    exit: 0
+    ts: "2026-09-01T22:35:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: >-
+      MUTATION-VERIFIED, not merely present: removing the new entry turns the gate red again with the
+      identical failure shape, proving the entry (not something else) is what makes it pass.
+    cmd: >-
+      python3 -c "<remove the IntentionalPublicMutation(...) block for
+      /api/visa/voa/auth/magic-links/preview>" then re-run the gate test, then restore from a backup
+      copy and re-run again
+    result: >-
+      Removed: FAILED, same AssertionError naming the same route. Restored: 11 passed (identical to
+      the receipt above).
+    exit: 0
+    ts: "2026-09-01T22:50:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: >-
+      The docstring correction (422-vs-401 scoping) breaks nothing in the router's own test suite.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/app/routers/test_garuda_portal_auth.py -p no:randomly
+    result: "38 passed"
+    exit: 0
+    ts: "2026-09-01T22:55:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: The masking and public-endpoints-registry suites are unaffected (read-only verification).
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/services/garuda_portal/test_masking.py
+      backend/tests/unit/middleware/test_public_endpoints_registry.py -p no:randomly
+    result: "32 passed"
+    exit: 0
+    ts: "2026-09-01T23:00:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: >-
+      peek() is genuinely a single non-mutating SELECT -- verified by reading the method source, not
+      asserted from the PR's own commit message.
+    cmd: >-
+      sed -n '474,510p' apps/backend-rag/backend/services/garuda_portal/magic_link_store.py
+    result: >-
+      One `SELECT email FROM garuda_magic_link_tokens WHERE token_hash = $1 AND used_at IS NULL AND
+      expires_at > statement_timestamp()`. No UPDATE/INSERT/DELETE, no lock, no counter in this
+      method.
+    exit: 0
+    ts: "2026-09-01T21:40:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: >-
+      The 422-vs-401 split is real: a token failing MagicLinkExchange's min_length/max_length
+      constraint is caught by _ContractErrorRoute as RequestValidationError -> INVALID_REQUEST (422),
+      never reaching store.peek at all.
+    cmd: >-
+      grep -n "RequestValidationError\|min_length\|_ContractErrorRoute"
+      apps/backend-rag/backend/app/routers/garuda_portal_auth.py
+    result: >-
+      Confirms `MagicLinkExchange.token: str = Field(min_length=32, max_length=2048)` and
+      `_ContractErrorRoute.get_route_handler`'s handler catching `RequestValidationError` ->
+      `_error("INVALID_REQUEST")` (422) before any router body executes.
+    exit: 0
+    ts: "2026-09-01T22:05:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: >-
+      The masking-collision finding is real: mask_email() reveals only the first 2 local-part
+      characters, letting two different real emails mask identically.
+    cmd: >-
+      cat apps/backend-rag/backend/services/garuda_portal/masking.py, then manually trace
+      mask_email("john@gmail.com") and mask_email("jo-attacker@gmail.com")
+    result: >-
+      Both local parts have len()>2, so both take `local[:2]` -> "jo" -> both produce
+      "jo***@gmail.com". Confirmed collision, not a hypothetical.
+    exit: 0
+    ts: "2026-09-01T22:10:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: >-
+      The environment-column finding is REFUTED as a NEW defect: exchange()'s own atomic UPDATE has
+      the identical no-environment-predicate shape, so peek() correctly mirrors an existing property
+      of the store rather than introducing a new one.
+    cmd: >-
+      grep -n "async def exchange" -A 60 apps/backend-rag/backend/services/garuda_portal/magic_link_store.py
+    result: >-
+      `UPDATE garuda_magic_link_tokens SET used_at = statement_timestamp() WHERE token_hash = $1 AND
+      used_at IS NULL AND expires_at > statement_timestamp()` -- no `environment` predicate, same as
+      peek()'s SELECT.
+    exit: 0
+    ts: "2026-09-01T22:15:00Z"
+    seat: session (dispatched sub-task)
+
+  - claim: kimi-code/k3 is genuinely unreachable this week, not skipped by choice.
+    cmd: >-
+      kimi -p "<review prompt>" -m kimi-code/k3
+    result: >-
+      "error: failed to run prompt: provider.auth_error: 403 You've reached your weekly (7-day) usage
+      limit."
+    exit: 1
+    ts: "2026-09-01T22:58:00Z"
+    seat: session (dispatched sub-task)
+
+dissent:
+  - seat: codex-gpt-5.6-sol (cross-family council reviewer)
+    objection: >-
+      FAIL -- the non-enumeration claim in the preview handler's docstring (and this dispatch's first
+      draft of the registry entry, copied from it) is false for absent/malformed tokens: those fail
+      Pydantic's min_length=32 constraint on MagicLinkExchange.token before store.peek ever runs, and
+      answer 422 INVALID_REQUEST via _ContractErrorRoute, not the claimed 401 MAGIC_LINK_INVALID.
+    status: CONFIRMED
+    note: >-
+      Verified independently before acting: read _ContractErrorRoute.get_route_handler and the
+      MagicLinkExchange field definition directly (receipt above). FIXED in both the router docstring
+      and the registry entry -- both now scope the non-enumeration claim to well-formed-but-invalid
+      tokens only, matching how exchange_magic_link's own docstring already scopes itself. This was a
+      documentation-accuracy defect, not a behavior change: the 422-vs-401 split was already the real
+      runtime behavior before this correction.
+
+  - seat: codex-gpt-5.6-sol (cross-family council reviewer)
+    objection: >-
+      FAIL (blocking) -- the login-CSRF mitigation this endpoint exists to provide is spoofable:
+      mask_email() reveals only the local part's first 2 characters with a fixed "***" mask, so an
+      attacker who mints their own magic link under a self-chosen email colliding on those 2
+      characters + domain (e.g. "jo-attacker@gmail.com" vs victim "john@gmail.com", both masking to
+      "jo***@gmail.com") produces a preview the victim cannot distinguish from their own account,
+      defeating the whole point of showing the preview before Continue.
+    status: CONFIRMED
+    note: >-
+      Verified independently by tracing mask_email() against both example emails directly (receipt
+      above) -- the collision is real, not hypothetical. NOT FIXED in this dispatch: redesigning
+      masking.py's reveal width is a security/UX tradeoff for the feature owner (how much of a
+      customer's own email is safe to show back to an anonymous caller holding any plausible-looking
+      link), and this dispatch's mandate was scoped to the two named CI gates plus the smallest
+      correct fix -- not a unilateral redesign of the shipped mitigation. Reported prominently to the
+      dispatching session in this pack's brief.risks and in the final report, per the same "say so and
+      STOP, I want to hear it before anything is registered" standard the dispatching brief applied to
+      a related class of registry finding.
+
+  - seat: codex-gpt-5.6-sol (cross-family council reviewer)
+    objection: >-
+      The rate-limit posture claimed in the registry entry and docstring (generic per-IP 120 req/min
+      bucket) may not hold for THIS specific route, because the actual caller is a Next.js Server
+      Component making a server-to-server call -- the backend would see the hosting platform's egress
+      IP, not the end visitor's IP, for every caller alike.
+    status: PLAUSIBLE
+    note: >-
+      Not independently verified this session -- would require tracing exactly which IP
+      RateLimitMiddleware extracts (raw socket vs a forwarded-for header) and whether the two frozen
+      sibling routes (request/exchange) are called the same server-to-server way or directly from the
+      browser. If true, this is a PRE-EXISTING property of the whole GARUDA VOA auth flow (this PR's
+      registry entry states the same posture "its two frozen siblings already share," not a stronger
+      claim specific to this route), not a new gap this PR introduces -- but it was not re-derived
+      from the middleware source before this pack was written, unlike the two CONFIRMED findings
+      above, so it is recorded as PLAUSIBLE rather than either confirmed or refuted.
+
+  - seat: codex-gpt-5.6-sol (cross-family council reviewer)
+    objection: >-
+      peek()'s SELECT does not filter by the `environment` column the table carries, so a token
+      minted in one environment could validate in another.
+    status: RETRACTED
+    note: >-
+      Refuted by reading exchange()'s own atomic UPDATE (receipt above): it has the IDENTICAL
+      no-environment-predicate WHERE clause. peek()'s own docstring says it deliberately mirrors
+      exchange()'s WHERE clause exactly, so this is a pre-existing property of the whole store that
+      predates this PR, not a new hole introduced by the preview endpoint -- and token_hash is already
+      a globally-unique 256-bit primary key across the whole table regardless of environment, so
+      environment appears to be descriptive/audit metadata rather than a security boundary this store
+      relies on.
+
+  - seat: tp1-qwen3.8-max (cross-family council reviewer, second seat)
+    objection: >-
+      OK (no defect found) -- reviewed the identical diff and five-question prompt given to
+      codex-gpt-5.6-sol and concluded all five questions "check out against the actual code," finding
+      no overclaim in the registry entry and no other defect.
+    status: RETRACTED
+    note: >-
+      This verdict MISSED both of codex-gpt-5.6-sol's CONFIRMED findings above (it explicitly asserted
+      "Masking: ... No PII escape" and "Registry justification is honest ... No overclaim," both now
+      known false) when given the same code to look at. Kept in this journal rather than dropped,
+      because a clean verdict that missed real defects is itself useful evidence about this reviewer's
+      blind spots on this diff shape -- not treated as a second confirming opinion that outweighs the
+      seat that looked closer, per the repo's own "never blind agreement" convention (cicatrix-
+      superscar.md family #6, W100).
+
+tests:
+  - "backend/tests/security/test_mutating_routes_are_gated.py -- 11 passed (1 failed before the fix)."
+  - "backend/tests/app/routers/test_garuda_portal_auth.py -- 38 passed."
+  - "backend/tests/services/garuda_portal/test_masking.py -- 20 passed (unmodified; documents current
+    behavior, does not assert the masking-collision finding either way)."
+  - "backend/tests/unit/middleware/test_public_endpoints_registry.py -- 12 passed."
+  - "Mutation-verify: entry removed -> 1 failed (same AssertionError, same route named); entry
+    restored -> 11 passed."
+
+static:
+  - "No new lint/type-check run beyond the pytest suites above -- this dispatch's own edits are a
+    test-registry entry (Python literal) and a docstring (Python comment text), neither exercised by
+    a separate static-analysis gate in this repo."
+
+notes:
+  - >-
+    Scope discipline: this dispatch's OWN diff (beyond PR #5559's pre-existing content) is exactly
+    two things -- the INTENTIONALLY_PUBLIC_MUTATIONS registry entry, and the docstring correction in
+    garuda_portal_auth.py (plus this evidence pack). No production behavior changed by this dispatch;
+    the 422-vs-401 split, the masking width, and the rate-limit posture were all already true of
+    PR #5559's diff before this dispatch touched anything.
+  - >-
+    Auto-merge is deliberately NOT armed and no PR was opened by this dispatch -- PR #5559 already
+    exists and both actions were explicitly out of scope for this mandate.
+  - >-
+    The masking-collision finding (dissent[1] above) is the one piece of unfinished business this pack
+    exists to surface loudly rather than bury in a clean-looking gate fix: GATE 1 passing means the
+    registry accounting is correct, not that the underlying feature's anti-CSRF mitigation is airtight.

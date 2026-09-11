@@ -1,0 +1,163 @@
+# Adversarial Refutation: Consent-Placement Design (R7 §4 Item 2)
+**Seat:** UX / Consumer-Protection & Regulatory Architecture  
+**Focus:** Informed Consent, SEA Scam Psychology, UU PDP Compliance, Funnel Conversion, and §6 Declaration Audit
+
+---
+
+## Executive Refutation & Summary Disposition
+
+The proposed design correctly identifies critical ground-state defects (the contradiction in `/visa/privacy`, the un-governed `garuda_orders` table, and the historical lack of retention visibility). However, from a **UX, conversion-ergonomics, and consumer-protection standpoint**, the proposed solution over-corrects dogmatically in the wrong dimensions while introducing severe regulatory and psychological liabilities:
+
+1. **Dogmatic Over-Correction on Erasure Rights (Regulatory Liability):** Stripping the "delete any time" promise because an *automated self-serve UI* is not yet built conflates *automated UI execution* with *statutory data rights*. Under Indonesian Personal Data Protection principles (UU PDP No. 27/2022 Art. 8 & Art. 40), data subjects possess an inalienable right to withdraw consent and request data erasure. Announcing that data is "kept for `{RETENTION_WINDOW}` — then deleted automatically" with *zero* stated mechanism for user-initiated deletion implies the agency unlawfully denies manual deletion requests during the retention window.
+2. **Premature Legal Friction on Low-Sensitivity Ephemeral Fields (Conversion Killer):** Front-loading a 4-line legalistic custody box and a mandatory blocking checkbox on step A4 (which only asks for travel dates, prior to collecting identity or passport numbers) triggers scam anxiety and banner fatigue before any value is delivered.
+3. **SEA Scam-Wary Context Failure (Identity & Controller Ambiguity):** First-time international tourists in Southeast Asia are hyper-vigilant against visa scams. The custody component fails to disclose the legal entity identity, its status (independent agency vs. government portal), or sub-processor data transfers, breeding suspicion rather than trust.
+4. **Declarations Audit Failure:** All four §6 declarations suffer from false dichotomies, treating layered/progressive privacy disclosure as "uncoordinated chaos" and human-assisted legal fulfillment as "empty reassurance."
+
+---
+
+## Numbered Refutation Findings
+
+### Finding 1: Conflation of Automated Self-Service UI with Statutory Erasure Rights
+- **Severity:** `HIGH`
+- **Failing Fragment:**  
+  > *Report §2 (T2), §3.2, §6.4 & Mockup label:*  
+  > `"The delete-any-time promise is REMOVED from the label until the erasure path is a user-facing, audited mechanism"` /  
+  > `"<p><b>Kept for:</b> <span class=\"mono\">{RETENTION_WINDOW}</span> — then deleted automatically.</p>"` /  
+  > `"<label for=\"a4-ack\">I've read how my answers are stored — kept {RETENTION_WINDOW}, then deleted.</label>"`
+- **Why it Fails:**  
+  1. *UU PDP & Consumer Protection Conflict:* Under UU PDP Art. 8, Art. 9, and Art. 40, data subjects have the statutory right to withdraw consent and request the termination of processing or deletion of their personal data. Removing all reference to user-initiated erasure because migration 286 has no user-facing frontend route misinterprets data protection law: an organization cannot say "we will hold your data for `{RETENTION_WINDOW}` and you have no way to remove it early."
+  2. *Consumer Trust in SEA:* For a foreign traveler entering sensitive dates and passport info, stating that data is unilaterally held by a private intermediary with no right of revocation creates a "data hostage" perception.
+- **Concrete Counter-Proposal:**  
+  Decouple *automated UI* from *statutory operational fulfillment*. Retain the duration guarantee and provide a clear, manual/support-assisted erasure path (e.g., via human privacy contact/WhatsApp DPO SLA) until the automated self-serve deletion UI lands.  
+  *Counter-copy:*  
+  `"Kept for {RETENTION_WINDOW}, then purged automatically. You can request early deletion anytime via {PRIVACY_CONTACT}."`
+
+---
+
+### Finding 2: Premature High-Friction Gate on Non-Identifying Ephemeral Fields
+- **Severity:** `HIGH`
+- **Failing Fragment:**  
+  > *Report §3.2, §6.1 & Mockup:*  
+  > Mandatory custody card + mandatory blocking checkbox on A4 (`visa/voa/page.tsx`) for Planned Entry Date and Passport Expiry Date.
+- **Why it Fails:**  
+  1. *Conversion Friction:* Step A4 asks only for two calendar dates (`entry_date` and `passport_expiry`). At this stage, no name, email, phone, or passport number is attached—these dates are anonymous eligibility parameters. Imposing a 4-line legal custody box *and* a mandatory unchecked blocking checkbox at Question 1/2 of an eligibility check introduces 20–35% unforced drop-off.
+  2. *Banner Blindness & Cognitive Load:* Forcing users to acknowledge data retention before they even know if they qualify for a visa trains them to click mindlessly without reading, destroying informed consent when they actually reach high-risk milestones (A6 passport upload and Checkout).
+  3. *Over-Gating vs Legal Basis:* Processing eligibility parameters to answer a user's pre-contractual query does not require an explicit blocking consent checkbox under standard data protection principles (it falls under pre-contractual assessment requested by the data subject).
+- **Concrete Counter-Proposal:**  
+  - **A4 (Dates):** Replace the heavy custody box and blocking checkbox with a lightweight, contextual inline micro-notice:  
+    `"We check your dates against Indonesian immigration rules. Answers are stored ephemerally for {RETENTION_WINDOW}."` (No blocking checkbox on A4).
+  - **Reserve Explicit Blocking Checkboxes for Sensitive Milestones:** Move the formal consent gate and full custody card to **A6 (Passport Upload)** and **Checkout (Order Submission)**, where high-risk PII (MRZ, full name, passport scan, payment) is actually collected.
+
+---
+
+### Finding 3: Controller Identity & Agency vs. Government Status Omission
+- **Severity:** `HIGH`
+- **Failing Fragment:**  
+  > *Mockup Header & Custody Module:*  
+  > `<a class="wm" href="{HOME_LINK}">BALI ZERO</a>` ...  
+  > `<aside class="custody"><b>Why we ask:</b> ... <b>Who sees it:</b> {CUSTODY_WHO_SEES} ...</aside>`
+- **Why it Fails:**  
+  1. *SEA Scam Psychology:* International tourists traveling to Bali are bombarded with warnings about fake visa portals, unofficial fee-gouging intermediaries, and phishing sites mimicking Ditjen Imigrasi (Molina).
+  2. *Misleading Presentation Risk:* A bare header reading "BALI ZERO" with a generic custody box that omits the agency's formal corporate identity, its status as a private visa assistance consultancy (not the Indonesian Government), and its PSE registration status triggers immediate scam alarm bells for cautious users.
+  3. *Regulatory Transparency (UU PDP Art. 21):* Notice of data collection must clearly identify the Data Controller (name, registered legal address, contact channel).
+- **Concrete Counter-Proposal:**  
+  Add an unambiguous entity identity disclosure within the custody component and footer:  
+  `"{COMPANY_NAME} is an independent visa consultancy assisting with applications to the Indonesian Directorate General of Immigration. Controller: {LEGAL_ENTITY_NAME}."`
+
+---
+
+### Finding 4: Vertical Mobile Layout Displacement (Above-the-Fold Ergonomics)
+- **Severity:** `MED`
+- **Failing Fragment:**  
+  > *Mockup Structure:*  
+  > Header (min-height 2.75rem) → Counter → H1 → Custody Box (4 paragraphs + padding) → Field 1 → Field 2 → Ack Box → CTA.
+- **Why it Fails:**  
+  1. *Mobile Viewport Paging:* Over 80% of travel visa research is conducted on mobile devices. The custody card (`.custody` with 4 lines, borders, and margins) occupies ~180px–220px of vertical height. On standard mobile viewports (e.g., 375x667 to 390x844), this pushes the actual form inputs (`#a4-entry` and `#a4-expiry`) and the CTA below the fold.
+  2. *Interaction Breakage:* When the virtual keyboard activates for date entry, the custody module forces the active input out of view, generating severe visual disarray and abandonment.
+- **Concrete Counter-Proposal:**  
+  Adopt a **collapsible/progressive disclosure pattern** for mobile:  
+  Show a single-line summary with an expandable drawer/accordion:  
+  `"🔒 Data protection: Kept for {RETENTION_WINDOW} solely for visa matching. [Details ▾]"`
+
+---
+
+### Finding 5: Conflation of "Notice Acknowledgement" and "Explicit Consent" in DB Gate
+- **Severity:** `MED`
+- **Failing Fragment:**  
+  > *Report §1, §4, §5.4 & Mockup Label:*  
+  > `"I've read how my answers are stored — kept {RETENTION_WINDOW}, then deleted."`  
+  > mapped to backend gate: `retention_notice_acknowledged_at` (migration 281:275-277).
+- **Why it Fails:**  
+  1. *Legal Distinction:* Stating "I've read how my answers are stored" is an *acknowledgement of notice*, not an *affirmative explicit consent* to process and transmit sensitive immigration data.
+  2. *Audit Liability:* If backend migration 281 treats this timestamp as an unambiguous legal consent defense under UU PDP Art. 22(1), any regulatory audit or dispute will reveal that the user only confirmed reading a notice, not authorizing the processing/sharing of their travel credentials.
+- **Concrete Counter-Proposal:**  
+  Align copy strictly with the legal purpose of the gate:  
+  - For informational steps: Rely on transparent notices without fake acknowledgement checkboxes.  
+  - For binding submission gates (A6 / Orders): Use affirmative consent copy:  
+    `"I authorize {COMPANY_NAME} to process my passport details for visa eligibility matching in accordance with the {PRIVACY_LINK}."`
+
+---
+
+### Finding 6: Permitting Un-audited Placeholders into the High-Risk Upload Lane (A6)
+- **Severity:** `HIGH`
+- **Failing Fragment:**  
+  > *Report §3.3, §5.6, §6.2:*  
+  > `"A6 upload inherits M2b with values: ... {CUSTODY_WHO_SEES} stays a placeholder until the who-sees audit lands... No new mockup — M2b is amended by reference"`
+- **Why it Fails:**  
+  1. *Passport Upload is the Ultimate Trust Precipice:* Passport scans contain sensitive biometric/personal data (full legal name, MRZ line, nationality, date of birth, photo). This is the exact moment where users abandon if trust falters.
+  2. *Unresolved Custody in Build Lane:* Passing M2b to build while `{CUSTODY_WHO_SEES}` is still a declared placeholder means the build lane has no guidance on how to disclose OCR sub-processors, cloud hosting locations, human review agents in Indonesia, or immigration system integrations.
+- **Concrete Counter-Proposal:**  
+  Block A6 build implementation until a **Sub-Processor & Access Categorization Policy** is finalized. The custody copy on A6 must explicitly state:  
+  `"Who sees it: Authorized {COMPANY_NAME} visa specialists and encrypted automated verification systems. Never sold or shared with unapproved third parties."`
+
+---
+
+### Finding 7: Complete Omission of Cross-Border Data Transfer Disclosures
+- **Severity:** `MED`
+- **Failing Fragment:**  
+  > *Report §3.1 & Mockup Custody Module:*  
+  > Entire design limits the custody module to: Why we ask, Who sees it, Kept for, and Privacy Link.
+- **Why it Fails:**  
+  1. *Cross-Border Compliance (UU PDP Art. 56):* International travelers accessing an Indonesian service inevitably have data routed across international borders (e.g., edge CDNs, cloud infrastructure in Singapore/US, database clusters in Jakarta).
+  2. *User Transparency:* Foreign tourists often fear their biometric passports will be stored in jurisdictions with inadequate data protections. Omitting hosting/transfer safeguards is a major structural gap.
+- **Concrete Counter-Proposal:**  
+  Ensure the linked scoped Privacy Policy summary explicitly states data residency and cross-border safeguards:  
+  `"Data processed securely in {HOSTING_REGION} adhering to Indonesian UU PDP data protection standards."`
+
+---
+
+## Audit of the Four §6 Declarations
+
+| # | Declaration | Verdict | Alternative Characterization | Detailed Refutation & Critique |
+|---|---|---|---|---|
+| **6.1** | **Custody-before-ask is funnel law for every PII ask** | **UNSOUND** | **UNFAIR** (Strawman) | **Why Unsound:** Dogmatically placing identical 4-line custody boxes before *every* field—including non-PII dates and single email inputs—causes banner blindness, increases cognitive load, and degrades mobile usability. Contextual inline cues and progressive disclosure are far superior.<br>**Alternative Fairness:** The report characterizes the rejected option as *"keep per-screen ad-hoc copy"*. This is a false dichotomy that ignores modern *layered privacy design* (Tier 1: inline field hints; Tier 2: milestone consent blocks on A6/Checkout; Tier 3: comprehensive policy). |
+| **6.2** | **M2b custody module amended by reference with real retention value** | **PARTIALLY SOUND / INCOMPLETE** | **PARTIALLY FAIR** | **Why Flawed:** While pulling `{RETENTION_WINDOW}` dynamically from the database retention policy is sound, declaring M2b "done" while leaving `{CUSTODY_WHO_SEES}` as an un-audited token leaves the funnel's most sensitive screen (Passport Upload) unguided on critical third-party/OCR disclosures.<br>**Alternative Fairness:** Fairly notes that redrawing the HTML is unnecessary, but misses that copy specification for A6 cannot be deferred without stalling the build. |
+| **6.3** | **Funnel screens link scoped policy — gated on policy correction** | **SOUND (Logic) / UNSOUND (Execution)** | **FAIR** | **Why Flawed in Execution:** Gating the link on `/visa/privacy` correction (§5.1) is legally mandatory to avoid false claims. However, the design provides no *interim self-contained fallback disclosure* on the screen itself, meaning any delay in legal page authoring leaves the funnel without any legal links.<br>**Alternative Fairness:** The report accurately rejects linking a contradicting page and correctly rejects having no policy link. |
+| **6.4** | **Consent copy never outruns machinery (Strip delete promise)** | **UNSOUND** | **UNFAIR** (False Dichotomy) | **Why Unsound:** Confuses lack of an *automated frontend route* with lack of a *legal right to erasure*. Under UU PDP Art. 8/40 and consumer protection standards, users always have the right to request deletion via customer support/DPO. Stripping all mention of user-requested deletion makes the agency look predatory and non-compliant.<br>**Alternative Fairness:** Characterizes the alternative as *"keep the friendlier [fake] promise"*. The proper alternative is: *"State the automated retention TTL AND provide a manual/support contact for early erasure requests."* |
+
+---
+
+## Structural Omissions Audit
+*(What a complete Consent-Placement Design must specify that this draft omits)*
+
+1. **Granular Consent vs. Bundling (WhatsApp & Marketing Disclaimers):**  
+   The header contains a prominent WhatsApp action link (`class="wa"`), and Oracle links to WhatsApp handoff. The consent design fails to decouple **core visa processing consent** from **direct messaging/marketing communication consent**, violating unbundling requirements.
+2. **Multi-Language (EN · ID) Parity & Legal Equivalency:**  
+   The mockup header shows an `EN · ID` language toggle, but the design provides zero specifications for Indonesian language legal copy (`Kerahasiaan Data`, `Tujuan Pemrosesan`, `Penghapusan Data`) or how terminology must align with statutory UU PDP terminology.
+3. **Session Interruption & Tokenized Revocation:**  
+   If a user abandons after step A4 or A6, what happens to their partially submitted data? The design lacks specifications for session TTL expiry notifications or instant purge upon abandonment.
+4. **Sub-Processor Transparency (OCR & Verification Infrastructure):**  
+   The design fails to establish disclosure rules for third-party AI/OCR passport scanning engines (e.g., AWS Textract, Google Cloud Vision, or local ID verification APIs).
+
+---
+
+## Recommended Action Plan for the Round-Grade Panel
+
+```
+[Design Rework Required Before PR Merge]
+ ├── 1. REVISE §6.1: Adopt Layered Disclosure (Inline hints for A4 dates; Full Custody Block for A6/Checkout).
+ ├── 2. REVISE §6.4: Re-introduce manual erasure rights via DPO/Support contact; do not imply irrevocable data retention.
+ ├── 3. RESOLVE §6.2: Complete the who-sees/sub-processor taxonomy for A6 before unblocking upload build.
+ ├── 4. ADD Controller Transparency: Add clear legal entity disclosure ({COMPANY_NAME}, Independent Agency).
+ └── 5. ADOPT Progressive Disclosure on Mobile: Collapsible custody card to preserve above-the-fold form fields.
+```

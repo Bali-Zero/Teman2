@@ -37,11 +37,22 @@ SAFE_ACTUATORS = frozenset({
     "notify_telegram",
     "quarantine",
     "adopt_module",            # W3.A
-    "consolidate_redundancy",  # W3.C — L3 (gated by consiglio_gate IRREVERSIBLE_ACTUATORS)
+    # W3.C — L3 irreversible (shared-infra PR). NOT gated: ConsiglioGate
+    # (supervisor/consiglio_gate.py) is fully built and tested, and its own
+    # IRREVERSIBLE_ACTUATORS set names this actuator, but nothing on this
+    # dispatch path ever imports or calls it — the two previous lines here
+    # claimed otherwise and were false. Only the separate human merge step
+    # (the actuator opens a draft PR, does not merge it) bounds the risk.
+    "consolidate_redundancy",
     "cleanup_cache",           # W3.B
     "cleanup_branches",        # W3.B
     "cleanup_zombie_plist",    # W3.B
-    "propose_yaml_rule",       # W4.A — L3 (gated by consiglio_gate IRREVERSIBLE_ACTUATORS)
+    # W4.A — L3 irreversible (long-lived repo effect). NOT gated, same as
+    # above: ConsiglioGate exists but is never called from this path. Step
+    # 10 of this actuator's own flow self-arms `gh pr merge --auto --squash`
+    # on CI-green ALONE — no human, no deliberation — and the resulting
+    # rule feeds back into the RuleMatcher that decides future dispatches.
+    "propose_yaml_rule",
     # W27 Path A (2026-05-23): auto-restart Fly api machines on Cell-detected
     # sustained-red. Wired through cell_pulse_sustained_red → yaml rule
     # cell_sustained_red_restart → FlyMachinesStart actuator. Idempotent on

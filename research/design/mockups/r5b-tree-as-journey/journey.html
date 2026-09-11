@@ -1,0 +1,513 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R5b · Tree-as-journey prototype — Merah Putih</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============ R4/R5 Merah Putih tokens (light) ============ */
+:root{
+  --carta:#f7f6f2; --ink:#16213a; --ink-soft:#475372;
+  --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+  --state-error:#a83a44; --state-eligible:#16683f; --state-conditional:#7a5209;
+  --hairline:#e4e2da; --border-input:#7a8093;
+  --font-display:'Cormorant Garamond',Georgia,serif; --font-ui:Inter,-apple-system,system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --radius-card:12px; --radius-ctl:6px; --radius-nested:8px;
+  --ground:var(--carta); --panel:#ffffff; --text:var(--ink); --soft:var(--ink-soft);
+  --line:var(--hairline); --line-input:var(--border-input);
+  --action-fill:var(--merah-action); --action-pressed:var(--merah-pressed); --action-border:transparent;
+  --link:var(--merah-action); --shadow:0 1px 2px rgba(22,33,58,.06),0 2px 8px rgba(22,33,58,.05);
+}
+/* ============ Dark component set (R4 dark primitives applied) ============
+   Pattern is the live VO's own: a data attribute on the prototype root
+   (data-oracle-theme, ThemeToggle.tsx:45, localStorage 'visa-oracle-theme',
+   anti-FOUC bootstrap in layout.tsx:6-8).
+   D4 discipline is STRUCTURAL here (kimi F1, codex 10): the action FILL token
+   never becomes #ff2d4c — fills stay in the #D01033 class in both themes;
+   #ff2d4c-family values live only in text tokens (--link) and in the one
+   declared graphical exception (progress fill, D4 amendment in the report). */
+.jr{color-scheme:light}
+.jr[data-oracle-theme="dark"]{
+  color-scheme:dark;
+  --ground:#10141f; --panel:#182032; --text:#ecebe6; --soft:#aab3c7;
+  --line:#2a3348; --line-input:#8b93a8;
+  --action-fill:#D01033; --action-pressed:#c40020; --action-border:#ff5f74;
+  --link:#ff5f74; /* 5.53 on panel, 6.25 on ground — measured this round */
+  --state-error:#e08790; --state-eligible:#7fd3a5; --state-conditional:#e0b45c;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 2px 10px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+button,input,select{font-family:inherit;font-size:inherit}
+.jr{font-family:var(--font-ui);background:var(--ground);color:var(--text);min-height:100vh;display:flex;flex-direction:column;font-size:16px;line-height:1.45}
+.jr a{color:var(--link)}
+@media (prefers-reduced-motion:reduce){.jr *{transition:none !important;animation:none !important}}
+
+/* focus — text outline + single accent ring (kimi F6: the old ground-color
+   "gap" ring was invisible on panel surfaces; the offset provides the gap) */
+.jr .cta:focus-visible,.jr .option:focus-visible,.jr .wa-entry:focus-visible,.jr .lang-toggle span:focus-visible,
+.jr a:focus-visible,.jr button:focus-visible,.jr input:focus-visible,.jr select:focus-visible{
+  outline:2px solid var(--text);outline-offset:2px;box-shadow:0 0 0 4px var(--link)}
+
+/* identity header (R4 contract: wordmark + EN/ID + WhatsApp entry) */
+.jr .id-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.jr .wordmark{font-family:var(--font-display);font-weight:600;font-size:20px;letter-spacing:.05em;color:var(--text);text-decoration:none;white-space:nowrap}
+.jr .wordmark b{color:var(--merah);font-weight:600}
+.jr[data-oracle-theme="dark"] .wordmark b{color:#ff5f74}
+.jr .hdr-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.jr .lang-toggle{display:inline-flex;border:1px solid var(--line-input);border-radius:var(--radius-ctl);overflow:hidden}
+.jr .lang-toggle span{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:40px;padding:0 8px;font-size:13px;font-weight:600;cursor:default}
+.jr .lang-toggle .on{background:var(--text);color:var(--ground)}
+.jr .lang-toggle .off{color:var(--soft);opacity:.55}
+.jr .wa-entry{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--radius-ctl);border:1px solid var(--line-input);background:var(--panel)}
+.jr .wa-ic svg{width:20px;height:20px;fill:#1faa59}
+.jr .theme-toggle{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border-radius:var(--radius-ctl);border:1px solid var(--line-input);background:var(--panel);color:var(--text);cursor:pointer;font-size:15px}
+@media (max-width:380px){
+  .jr .id-header{padding:10px 10px}
+  .jr .wordmark{font-size:17px;letter-spacing:.03em}
+  .jr .hdr-right{gap:4px}
+  .jr .lang-toggle span{min-width:36px;padding:0 6px}
+}
+
+/* layout */
+.jr main{flex:1;width:100%;max-width:480px;margin:0 auto;padding:16px 18px 28px}
+.jr .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow)}
+.jr h1{font-family:var(--font-display);font-weight:600;font-size:28px;line-height:1.2}
+.jr h2{font-family:var(--font-display);font-weight:600;font-size:24px;line-height:1.25}
+.jr h3{font-family:var(--font-ui);font-weight:600;font-size:16px}
+.jr .soft{color:var(--soft)}
+.jr .mono{font-family:var(--font-mono);white-space:nowrap}
+
+/* counter + progress (counter law: recompute AND announce — one atomic
+   announcement per transition, codex 2) */
+.jr .counter{font-size:13px;font-weight:600;color:var(--soft);letter-spacing:.02em}
+.jr .progress-track{height:6px;border-radius:3px;background:var(--panel);border:1px solid var(--line-input);margin-top:6px;overflow:hidden}
+.jr .progress-fill{height:100%;background:var(--merah);transition:width .25s ease}
+.jr[data-oracle-theme="dark"] .progress-fill{background:#ff2d4c} /* D4 amendment: graphical fill, 4.44 vs 1.4.11's 3.0 — declared in the report */
+.jr .announce{margin-top:8px;font-size:13px;color:var(--soft);min-height:18px}
+.jr .subprogress{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;color:var(--soft);border:1px solid var(--line-input);border-radius:var(--radius-ctl);padding:3px 8px;background:var(--panel)}
+
+/* branch note (pattern M3: announce the section the question belongs to) */
+.jr .branch-note{margin:14px 0 4px;font-size:13px;font-weight:600;color:var(--soft)}
+
+/* why-we-ask BEFORE the field (D-V6 cure carried over) */
+.jr .why{margin-top:10px;border-left:3px solid var(--line-input);padding:8px 12px;font-size:14px;color:var(--soft);background:var(--panel);border-radius:0 var(--radius-nested) var(--radius-nested) 0}
+
+/* options — selection is NEVER red (D-G2): ink outline + check */
+.jr .options{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.jr .option{display:flex;align-items:center;gap:10px;min-height:44px;padding:14px 16px;border:1px solid var(--line-input);border-radius:var(--radius-ctl);background:var(--panel);cursor:pointer;text-align:left;width:100%;color:var(--text);box-shadow:var(--shadow)}
+.jr .option[aria-checked="true"]{border:2px solid var(--text);padding:13px 15px}
+.jr .option .tick{visibility:hidden;font-weight:700}
+.jr .option[aria-checked="true"] .tick{visibility:visible}
+.jr .option:active{transform:scale(.99)}
+
+/* fields */
+.jr .field{margin-top:14px}
+.jr .field label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
+.jr .field input,.jr .field select{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line-input);border-radius:var(--radius-ctl);background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.jr ::placeholder{color:var(--soft);opacity:1}
+.jr .hint{margin-top:6px;font-size:13px;color:var(--soft)}
+.jr .country-list{margin-top:8px;border:1px solid var(--line);border-radius:var(--radius-ctl);max-height:180px;overflow:auto;background:var(--panel)}
+.jr .country-list button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;background:none;color:var(--text);min-height:44px;cursor:pointer}
+.jr .country-list button:hover{background:var(--ground)}
+
+/* CTAs — fill token stays #D01033-class in BOTH themes (D4 structural) */
+.jr .cta{display:flex;align-items:center;justify-content:center;min-height:48px;width:100%;margin-top:18px;border:1px solid var(--action-border);border-radius:var(--radius-ctl);background:var(--action-fill);color:#fff;font-weight:600;font-size:16px;cursor:pointer}
+.jr .cta:active{background:var(--action-pressed);transform:scale(.99)}
+.jr .cta[disabled]{opacity:.45;cursor:not-allowed}
+.jr .cta-secondary{display:flex;align-items:center;justify-content:center;min-height:44px;width:100%;margin-top:8px;border:1px solid var(--line-input);border-radius:var(--radius-ctl);background:var(--panel);color:var(--text);font-weight:600;cursor:pointer}
+.jr .linkline{margin-top:12px;font-size:14px;text-align:center}
+.jr .linkline button,.jr .notsure button{border:0;background:none;color:var(--link);text-decoration:underline;cursor:pointer;min-height:44px;padding:0 6px;font-size:inherit}
+
+/* delegate banner */
+.jr .delegate-banner{margin-bottom:12px;padding:10px 12px;border:1px solid var(--line-input);border-radius:var(--radius-nested);background:var(--panel);font-size:13px;color:var(--soft)}
+.jr .delegate-banner b{color:var(--text)}
+
+/* study disclosure (visible, not a comment — codex 7) */
+.jr .study-note{margin-bottom:12px;padding:10px 12px;border:1px dashed var(--state-conditional);border-radius:var(--radius-nested);font-size:12.5px;color:var(--soft)}
+
+/* not-sure + review + wa-card */
+.jr .notsure{margin-top:12px;font-size:14px;color:var(--soft)}
+.jr .wa-card{display:flex;gap:10px;align-items:center;margin-top:12px;padding:12px;border:1px solid var(--line-input);border-radius:var(--radius-ctl);background:var(--panel);color:var(--text);text-decoration:none;box-shadow:var(--shadow)}
+.jr .wa-sub{display:block;font-size:12px;color:var(--soft)}
+.jr .review-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.jr .review-row{display:flex;justify-content:space-between;gap:10px;font-size:14px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.jr .review-row .rq{color:var(--soft)}
+.jr .ph{border:1px dashed var(--state-conditional);border-radius:4px;padding:0 4px;color:var(--state-conditional);font-family:var(--font-mono);font-size:.92em;white-space:nowrap}
+.jr .footer{padding:16px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--soft)}
+.jr .footer .idline{margin-top:4px}
+.jr .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style></head><body>
+<div class="jr" id="jr" data-oracle-theme="light">
+  <header class="id-header">
+    <a class="wordmark" href="#home">BALI <b>ZERO</b></a>
+    <div class="hdr-right">
+      <span class="lang-toggle" role="group" aria-label="Language — study prototype is EN-only, ID is not wired here"><span class="on" tabindex="0">EN</span><span class="off" aria-disabled="true">ID</span></span>
+      <button class="theme-toggle" id="themeToggle" aria-pressed="false" aria-label="Switch to dark theme">◐</button>
+      <a class="wa-entry" href="#wa" aria-label="Ask us on WhatsApp"><span class="wa-ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.4-.7-2.9-1.1-4.7-4-4.9-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5s.7 1.8.8 1.9c.1.2.1.3 0 .5-.1.2-.2.4-.3.5l-.5.6c-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.3.1.2.1.7-.1 1.2z"/></svg></span></a>
+    </div>
+  </header>
+
+  <main>
+    <div class="study-note" id="studyNote">Study prototype — a reduced journey: 17 of the 53 live questions, 2 of 10 categories, 5 of 29 permit options, a 22-country study list. The live product also orders some questions differently (onshore asks permit expiry first). Question wording is study copy; nothing here files or decides anything.</div>
+    <div id="progressZone" hidden>
+      <p class="counter" id="counterText">Question 1 of 8</p>
+      <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <p class="announce" id="counterAnnounce"></p>
+    </div>
+    <div id="delegateBanner" class="delegate-banner" hidden>
+      <b>You're answering for someone else.</b> Their case, their facts — answer as the traveller would. Who sees what: <span class="ph">{CUSTODY_WHO_SEES}</span>.
+    </div>
+    <div id="screen"></div>
+  </main>
+
+  <div aria-live="polite" class="visually-hidden" id="liveRegion"></div>
+
+  <footer class="footer">
+    <p>Study prototype (R5b). Question ids come from the live tree; the sequence shown is a declared reduction, not the product's order. This prototype decides nothing — and today the product's engine runs in shadow: its verdict has not yet been shown to visitors.</p>
+    <p>Rules current as of <span class="mono">27 Aug 2026</span>. We prepare applications; Ditjen Imigrasi decides and issues.</p>
+    <p class="idline">PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> · <span class="ph">{REGISTRY_LINK}</span></p>
+  </footer>
+</div>
+
+<script id="engine">
+/* ================= R5b journey engine =================
+   Pure functions first (node-testable, no DOM). The checker extracts this
+   <script> and runs SELFTEST under node. DOM wiring is guarded below.
+
+   AUDIT TRAIL (verified this round against the r5b worktree @ origin/main):
+   ids/groups from tree.ts (in_indonesia:112, holds_stay_permit:194,
+   stay_permit_code:215 — 29 options, the five shown below are real keys with
+   their real EN i18n labels; overstay_days:287, nationalities:349,
+   birth_date:368, category:380 — 10 categories live, trip_scope:398,
+   entry_pattern:412, stay_days:1231, family_relation:742, marital_status:763,
+   family_sponsor_nationalities:780, family_sponsor_status_code:799,
+   family_marriage_registered:815, family_sponsor_confirmed:837,
+   review_gate:1249). QUESTIONS holds 53 definitions (counted, not estimated).
+   ORDER CAVEAT (codex 4): the live traversal is flow.ts's computeNextNode —
+   onshore asks permit_expiry BEFORE holds_stay_permit; offshore asks the
+   holds_stay_permit gate first (a measured product decision, flow.ts ~471).
+   The sequence here matches the OFFSHORE gate-first shape and omits
+   permit_expiry/current_status_code/renewal_paid — a declared reduction.
+   VALUE CAVEAT (codex 5): several live facts take other value shapes
+   (overstay_days: integer; nationalities: up to 4 codes; entry_pattern:
+   SINGLE/MULTIPLE; stay_days: integer; family_sponsor_status_code: status
+   codes; review_gate: none/flagged). The study options below are
+   BEHAVIOR-SHAPED, not engine-shaped: nothing from this prototype may ever
+   reach a fact mapper. who_answers/delegate_confirm are study-only ids. */
+"use strict";
+const SPONSOR_IDS = ["family_relation","marital_status","family_sponsor_nationalities","family_sponsor_status_code","family_marriage_registered","family_sponsor_confirmed"];
+const TREE = [
+  {id:"who_answers", group:"meta", kind:"branch", label:"Who is filling this in?", why:"If someone is helping — a sponsor, a family member, an assistant — we adapt the wording. The answers must still be the traveller's facts.", options:[["self","I'm the traveller"],["delegate","I'm helping someone else"]], meta:true},
+  {id:"delegate_confirm", group:"meta", kind:"branch", label:"Answering for the traveller", why:"Their immigration history is theirs to share. Confirm they asked you to do this — and if you don't know an answer, say so instead of guessing.", options:[["confirmed","The traveller asked me to fill this in, and I'll check with them when unsure"],["back","Actually, I'll let the traveller do it"]], meta:true, delegateOnly:true},
+  {id:"in_indonesia", group:"location", kind:"branch", label:"@Are you@ in Indonesia right now?", why:"Being onshore or offshore changes which permits and channels are open to @you@.", options:[["yes","Yes, in Indonesia"],["no","No, outside Indonesia"]]},
+  {id:"holds_stay_permit", group:"location", kind:"branch", label:"@Do you@ currently hold an Indonesian stay permit?", why:"A current permit changes @your@ legal position — several rules read it. Asking doesn't decide @your@ case.", options:[["yes","Yes"],["no","No"]], notSure:true},
+  {id:"stay_permit_code", group:"location", kind:"select", label:"Which permit @do you@ hold?", why:"The exact permit type sets what @you@ can convert or renew.", options:[["E23","E23 — Working Visa"],["E28A","E28A — Investor Visa"],["E31A","E31A — Spouse of an Indonesian citizen"],["E33","E33 — Second Home Visa"],["E33G","E33G — Second Home Visa — Remote Worker"]], hint:"5 of the 29 live options, real keys and labels — study reduction.", notSure:true, gatedBy:f=>f.holds_stay_permit==="yes"},
+  {id:"overstay_days", group:"location", kind:"select", label:"@Have you@ ever overstayed in Indonesia?", why:"Immigration weighs history. An honest answer here is safer than a surprise later — and @you@ can hand this to a person instead.", branchNote:"Immigration history — 2 questions", options:[["never","Never"],["under60","Yes, under 60 days"],["over60","Yes, 60 days or more"]], notSure:true, gatedBy:f=>f.in_indonesia==="yes"},
+  {id:"nationalities", group:"identity", kind:"country", label:"@Your@ nationality (the passport for this trip)", why:"Visa rules are set per nationality — this is the single most decisive fact.", search:true},
+  {id:"birth_date", group:"identity", kind:"date", label:"Age check", why:"Some visas carry age rules — retirement floors, dependant ceilings. Today the rules read the full date of birth; that is why the exact date is asked.", dv12:true},
+  {id:"category", group:"intent", kind:"branch", label:"What brings @you@ to Indonesia?", why:"This opens @your@ path — the questions that follow depend on it.", options:[["tourism","Tourism or a short visit"],["family","Joining family"]], hint:"2 of the 10 live categories — study reduction.", fork:true},
+  {id:"trip_scope", group:"intent", kind:"branch", label:"Is this one trip, or @do you@ plan to come and go?", why:"Single-entry and multiple-entry visas are different products.", options:[["single","One trip"],["multiple","Come and go"]]},
+  {id:"entry_pattern", group:"details", kind:"branch", label:"How @do you@ plan to enter?", why:"Some visas are issued on arrival, others before travel.", options:[["arrival","On arrival"],["before","Before travel"]], cat:"tourism"},
+  {id:"stay_days", group:"details", kind:"select", label:"How long @do you@ plan to stay?", why:"Length of stay separates the short-visit products.", options:[["under30","Under 30 days"],["30to60","30-60 days"],["over60","More than 60 days"]], cat:"tourism"},
+  {id:"family_relation", group:"details", kind:"branch", label:"Who @are you@ joining?", why:"The relationship decides which family permit applies.", branchNote:"@Your@ sponsor — 6 questions", subFlow:"sponsor", options:[["spouse","Spouse"],["parent","Parent"],["child","Child"]], hint:"3 of the 6 live relations — study reduction.", cat:"family"},
+  {id:"marital_status", group:"details", kind:"branch", label:"@Your@ marital status", why:"Spouse permits require a valid marriage.", subFlow:"sponsor", options:[["married","Married"],["single","Single"],["other","Other"]], hint:"3 of the 5 live options — study reduction.", cat:"family"},
+  {id:"family_sponsor_nationalities", group:"details", kind:"country", label:"@Your@ sponsor's nationality", why:"An Indonesian sponsor and a foreign sponsor open different permits.", subFlow:"sponsor", search:true, cat:"family"},
+  {id:"family_sponsor_status_code", group:"details", kind:"select", label:"@Your@ sponsor's status in Indonesia", why:"The sponsor's own position anchors @yours@ — and sponsoring carries formal obligations, usually a signed guarantee letter. The sponsor often holds the documents this asks about.", subFlow:"sponsor", options:[["citizen","Indonesian citizen"],["kitas","KITAS holder"],["kitap","KITAP holder"],["unknown","I don't know"]], notSure:true, cat:"family"},
+  {id:"family_marriage_registered", group:"details", kind:"branch", label:"Is the marriage registered?", why:"Immigration checks the registration, not the ceremony.", subFlow:"sponsor", options:[["yes","Yes"],["no","No"],["na","Doesn't apply"]], cat:"family"},
+  {id:"family_sponsor_confirmed", group:"details", kind:"branch", label:"Has @your@ sponsor agreed to sponsor this application?", why:"Sponsorship is a formal commitment the sponsor signs — not a courtesy. Their yes matters.", subFlow:"sponsor", options:[["yes","Yes"],["notyet","Not yet"]], cat:"family"},
+  {id:"review_gate", group:"review", kind:"review", label:"Check @your@ answers", why:""}
+];
+
+function visiblePath(facts, delegate){
+  return TREE.filter(q=>{
+    if(q.meta) return false;
+    if(q.gatedBy && !q.gatedBy(facts)) return false;
+    if(q.cat){ if(!facts.category) return false; if(facts.category!==q.cat) return false; }
+    return true;
+  });
+}
+function metaPath(delegate){
+  return TREE.filter(q=>q.meta && (!q.delegateOnly || delegate));
+}
+function expectedTotal(facts){
+  const p = visiblePath(facts);
+  if(!facts.category){
+    const trunk = p.length;
+    const branchMin = Math.min(...["tourism","family"].map(c=>TREE.filter(q=>q.cat===c).length));
+    return {n: trunk + branchMin, exact:false};
+  }
+  return {n: p.length, exact:true};
+}
+function counterState(facts, answered){
+  // ONE shape everywhere ({x, n, exact}) — the smoke run caught the DOM path
+  // feeding a {y}-shaped object into an {n}-reading announcer ("undefined
+  // questions" on screen) while the selftest passed on hand-built objects.
+  const t = expectedTotal(facts);
+  const x = Math.min(answered+1, t.n);
+  return {x, n:t.n, exact:t.exact};
+}
+/* One announcement covering BOTH a Y change and the inexact→exact
+   confirmation (codex 1). Voice de-penalized (agy 3): no "+N" arithmetic —
+   the number is stated, the reason framed as scoping, never as a cost. */
+function counterAnnouncement(prev, next, reasonLabel){
+  if(prev && !prev.exact && next.exact){
+    return `Your path is confirmed: ${next.n} questions${reasonLabel?` — ${reasonLabel}`:""}.`;
+  }
+  if(prev && prev.n!==next.n){
+    return `Your path is now ${next.n} questions${reasonLabel?` — ${reasonLabel}`:""}.`;
+  }
+  return null;
+}
+function pruneOrphans(facts){
+  // codex 12: switching branches must not keep hidden facts alive
+  const visible = new Set(visiblePath(facts).map(q=>q.id));
+  const out = {};
+  for(const k of Object.keys(facts)){
+    if(visible.has(k) || TREE.find(t=>t.id===k && t.meta)) out[k]=facts[k];
+  }
+  return out;
+}
+function subProgress(q, facts){
+  if(!q.subFlow) return null;
+  const flowQs = TREE.filter(t=>t.subFlow===q.subFlow && (!t.cat || t.cat===facts.category));
+  const idx = flowQs.findIndex(t=>t.id===q.id);
+  return {i:idx+1, n:flowQs.length};
+}
+const SELFTEST = () => {
+  const t=[]; const eq=(a,b,m)=>t.push([JSON.stringify(a)===JSON.stringify(b),m,a,b]);
+  // 1. trunk before fork: 7 shared + min(branch)=2 (tourism) => n=9, not exact
+  eq(counterState({},0), {x:1,n:9,exact:false}, "pre-fork Y = trunk+shortest, inexact");
+  // 1b. INTEGRATION: the announcer consumes counterState's REAL output (the
+  // smoke-caught contract — never hand-built shapes again)
+  eq(counterAnnouncement(counterState({},0), counterState({in_indonesia:"yes"},1), "one more about immigration history"),
+     "Your path is now 10 questions — one more about immigration history.", "announcer reads counterState output verbatim");
+  // 2. answering in_indonesia=yes opens overstay_days: Y grows by 1
+  const y0=expectedTotal({}).n, y1=expectedTotal({in_indonesia:"yes"}).n;
+  eq(y1-y0, 1, "onshore answer adds overstay question");
+  // 3. holds_stay_permit=yes opens stay_permit_code
+  eq(expectedTotal({holds_stay_permit:"yes"}).n - y0, 1, "permit-yes adds permit-code");
+  // 4. fork tourism => exact Y AND the inexact→exact transition is announced (codex 1)
+  eq(expectedTotal({category:"tourism"}), {n:9,exact:true}, "tourism path exact");
+  eq(counterAnnouncement({n:9,exact:false},{n:9,exact:true},"the tourism path is the shortest"),
+     "Your path is confirmed: 9 questions — the tourism path is the shortest.", "inexact→exact IS announced even when Y is unchanged");
+  // 5. D-V11: the sponsor sub-flow is EXACTLY these six ids in this order (codex 3)
+  eq(TREE.filter(q=>q.subFlow==="sponsor").map(q=>q.id), SPONSOR_IDS, "sponsor sub-flow: exact ordered ids");
+  eq(expectedTotal({category:"family"}), {n:13,exact:true}, "family path exact");
+  // 6. announcement wording carries no +N arithmetic (agy 3)
+  const a = counterAnnouncement({n:9,exact:false},{n:10,exact:false},"one more about immigration history");
+  eq(a, "Your path is now 10 questions — one more about immigration history.", "delta announce, de-penalized voice");
+  eq(/\+\d/.test(a||""), false, "no plus-N arithmetic in the announcement");
+  eq(counterAnnouncement({n:9,exact:true},{n:9,exact:true},"x"), null, "no change, no announce");
+  // 7. sub-progress inside sponsor flow, full traversal 1..6 (codex 3)
+  eq(SPONSOR_IDS.map(id=>subProgress(TREE.find(q=>q.id===id),{category:"family"}).i), [1,2,3,4,5,6], "sponsor sub-progress traverses 1..6");
+  // 8. prune: switching family→tourism drops sponsor facts (codex 12)
+  const dirty={category:"tourism", family_relation:"spouse", marital_status:"married", stay_days:"under30", who_answers:"self"};
+  const pruned=pruneOrphans(dirty);
+  eq(Object.keys(pruned).sort(), ["category","stay_days","who_answers"], "branch switch prunes hidden facts, keeps meta");
+  // 9. delegate meta path includes the confirmation step only in delegate mode (agy 6)
+  eq(metaPath(false).map(q=>q.id), ["who_answers"], "self mode: no confirm step");
+  eq(metaPath(true).map(q=>q.id), ["who_answers","delegate_confirm"], "delegate mode: confirm step present");
+  const fails=t.filter(r=>!r[0]);
+  return {total:t.length, fails:fails.map(f=>({msg:f[1],got:f[2],want:f[3]}))};
+};
+if (typeof window === "undefined") {
+  const r = SELFTEST();
+  console.log(JSON.stringify(r));
+  if (r.fails.length) process.exit(1);
+} else {
+/* ================= DOM wiring (browser only) ================= */
+const $ = id=>document.getElementById(id);
+const root=$("jr"), screen=$("screen"), live=$("liveRegion");
+let facts={}, order=[], idx=-1, delegate=false, lastState=null;
+
+/* dark toggle — live VO pattern (data attr + storage, try/catch mandatory) */
+const THEME_KEY="r5b-proto-theme";
+function applyTheme(t){ root.setAttribute("data-oracle-theme", t);
+  const b=$("themeToggle"); b.setAttribute("aria-pressed", String(t==="dark"));
+  b.setAttribute("aria-label", t==="dark"?"Switch to light theme":"Switch to dark theme"); }
+(function initTheme(){ let t=null; try{ t=localStorage.getItem(THEME_KEY); }catch(e){}
+  if(!t){ try{ t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"; }catch(e){ t="light"; } }
+  applyTheme(t); })();
+$("themeToggle").addEventListener("click",()=>{ const t=root.getAttribute("data-oracle-theme")==="dark"?"light":"dark";
+  applyTheme(t); try{ localStorage.setItem(THEME_KEY,t); }catch(e){} });
+
+const COUNTRIES=["Australia","Austria","Belgium","Brazil","Canada","China","Denmark","France","Germany","India","Indonesia","Italy","Japan","Malaysia","Netherlands","Russia","Singapore","South Korea","Spain","Ukraine","United Kingdom","United States"];
+
+function say(msg){ live.textContent=""; setTimeout(()=>{ live.textContent=msg; },50); }
+function pron(s){ return delegate
+  ? s.replace(/@Are you@/g,"Is the traveller").replace(/@Do you@/g,"Does the traveller")
+     .replace(/@Have you@/g,"Has the traveller").replace(/@are you@/g,"is the traveller")
+     .replace(/@do you@/g,"does the traveller").replace(/@you@/g,"the traveller")
+     .replace(/@Your@/g,"The traveller's").replace(/@your@/g,"the traveller's")
+     .replace(/@yours@/g,"theirs").replace(/@You@/g,"The traveller")
+  : s.replace(/@([^@]+)@/g,"$1"); }
+
+function currentQ(){ return order[idx]; }
+function rebuildOrder(){
+  const cur = order[idx] ? order[idx].id : null;
+  order=[...metaPath(delegate),...visiblePath(facts)];
+  idx = cur ? order.findIndex(q=>q.id===cur) : -1;
+  if(idx<0) idx=0;
+}
+function updateCounter(reasonLabel){
+  const metaN = metaPath(delegate).length;
+  const answered = Math.max(0, idx - metaN);
+  const inMeta = idx < metaN;
+  const st = counterState(facts, answered);
+  $("progressZone").hidden = inMeta;
+  if(!inMeta){
+    $("counterText").textContent = st.exact ? `Question ${st.x} of ${st.n}` : `Question ${st.x} of ${st.n} or more`;
+    $("progressFill").style.width = `${Math.round(100*st.x/st.n)}%`;
+  }
+  const a = counterAnnouncement(lastState, st, reasonLabel||"");
+  $("counterAnnounce").textContent = a || "";
+  lastState = st;
+  return a;
+}
+function render(){
+  const q=currentQ(); if(!q) return;
+  screen.innerHTML="";
+  const card=document.createElement("div"); card.className="card";
+  if(q.branchNote){ const bn=document.createElement("p"); bn.className="branch-note"; bn.textContent=pron(q.branchNote); screen.appendChild(bn); }
+  const sp=subProgress(q,facts);
+  const h=document.createElement("h2"); h.id="qTitle"; h.tabIndex=-1; h.textContent=pron(q.label); card.appendChild(h);
+  if(sp){ const s=document.createElement("span"); s.className="subprogress"; s.textContent=`Sponsor ${sp.i} of ${sp.n}`; card.appendChild(s); }
+  if(q.why){ const w=document.createElement("div"); w.className="why"; w.textContent=pron(q.why); card.appendChild(w); }
+  if(q.hint){ const hi=document.createElement("p"); hi.className="hint"; hi.textContent=q.hint; card.appendChild(hi); }
+
+  if(q.kind==="branch"||q.kind==="select"){
+    const wrap=document.createElement("div"); wrap.className="options"; wrap.setAttribute("role","radiogroup"); wrap.setAttribute("aria-labelledby","qTitle");
+    const sel = facts[q.id];
+    q.options.forEach(([val,lab],i)=>{
+      const b=document.createElement("button"); b.type="button"; b.className="option"; b.setAttribute("role","radio");
+      b.setAttribute("aria-checked", String(sel===val));
+      // roving tabindex (radio pattern): selected — or first when none — is the tab stop
+      b.tabIndex = (sel===val || (!sel && i===0)) ? 0 : -1;
+      const tick=document.createElement("span"); tick.className="tick"; tick.setAttribute("aria-hidden","true"); tick.textContent="✓";
+      const txt=document.createElement("span"); txt.textContent=pron(lab);
+      b.append(tick,txt);
+      b.addEventListener("click",()=>answer(q,val));
+      b.addEventListener("keydown",e=>{ const opts=[...wrap.children];
+        if(e.key==="ArrowDown"||e.key==="ArrowRight"){ e.preventDefault(); (opts[i+1]||opts[0]).focus(); }
+        if(e.key==="ArrowUp"||e.key==="ArrowLeft"){ e.preventDefault(); (opts[i-1]||opts[opts.length-1]).focus(); } });
+      wrap.appendChild(b); });
+    card.appendChild(wrap);
+    if(q.notSure){ const ns=document.createElement("p"); ns.className="notsure";
+      const lead=document.createTextNode("Not sure? Asking doesn't decide the case — ");
+      const btn=document.createElement("button"); btn.type="button"; btn.textContent= delegate?"check with the traveller, or hand this to a person":"a person can pick this up";
+      btn.addEventListener("click",()=>renderHuman(q));
+      ns.append(lead,btn,document.createTextNode(".")); card.appendChild(ns); }
+  }
+  if(q.kind==="country"){
+    const f=document.createElement("div"); f.className="field";
+    f.innerHTML=`<label for="cs">Search the passport country</label>
+      <input id="cs" type="text" placeholder="Start typing a country…" autocomplete="off">
+      <div class="country-list" id="cl"></div>`;
+    card.appendChild(f);
+    setTimeout(()=>{ const inp=$("cs"), cl=$("cl");
+      const paint=t=>{ cl.innerHTML=""; COUNTRIES.filter(c=>c.toLowerCase().includes(t.toLowerCase())).forEach(c=>{
+        const b=document.createElement("button"); b.type="button"; b.textContent=c; b.addEventListener("click",()=>answer(q,c)); cl.appendChild(b); });
+        if(!cl.children.length){ const b=document.createElement("button"); b.type="button"; b.textContent="Other / not listed"; b.addEventListener("click",()=>answer(q,"OTHER")); cl.appendChild(b); } };
+      paint(""); inp.addEventListener("input",()=>paint(inp.value)); });
+  }
+  if(q.kind==="date"){
+    const f=document.createElement("div"); f.className="field";
+    f.innerHTML=`<label for="dob">Date of birth</label><input id="dob" type="date" max="2026-08-27">
+      <p class="hint">The exact-date requirement comes from the rules engine, not this screen. Whether an age band could satisfy every age rule is an engine question this study raises in its report — the honest screen, until then, asks the real question and says why.</p>`;
+    card.appendChild(f);
+    const cta=document.createElement("button"); cta.className="cta"; cta.textContent="Continue";
+    cta.addEventListener("click",()=>{ const v=$("dob").value; if(v) answer(q,v); });
+    card.appendChild(cta);
+  }
+  if(q.kind==="review"){
+    const list=document.createElement("div"); list.className="review-list";
+    order.slice(metaPath(delegate).length, idx).forEach(pq=>{ if(facts[pq.id]===undefined) return;
+      const row=document.createElement("div"); row.className="review-row";
+      const rq=document.createElement("span"); rq.className="rq"; rq.textContent=pron(pq.label);
+      const rv=document.createElement("b"); rv.textContent=String(facts[pq.id]); // textContent — never innerHTML for stored facts (codex 14)
+      row.append(rq,rv); list.appendChild(row); });
+    card.appendChild(list);
+    const note=document.createElement("p"); note.className="hint";
+    note.textContent="This prototype decides nothing. In the product, the engine's verdict would follow this screen — today that engine runs in shadow, so no visitor has seen one yet. The R5 mockups (M4a/M4b/M5) show what each verdict state is designed to look like.";
+    card.appendChild(note);
+    const cta=document.createElement("button"); cta.className="cta"; cta.textContent="See where the verdict would appear";
+    cta.addEventListener("click",renderEnd); card.appendChild(cta);
+  }
+  screen.appendChild(card);
+
+  if(idx>0){ const back=document.createElement("button"); back.className="cta-secondary"; back.textContent="Back";
+    back.addEventListener("click",()=>{ idx=Math.max(0,idx-1); render(); updateCounter(); focusTitle(); }); screen.appendChild(back);
+    const saveLine=document.createElement("p"); saveLine.className="linkline";
+    saveLine.innerHTML=`<button type="button" id="saveBtn">Save & continue later</button> · case <span class="mono">BZ-7Q4K</span> (study example code)`;
+    screen.appendChild(saveLine);
+    setTimeout(()=>{ $("saveBtn")?.addEventListener("click",saveState); });
+  }
+  $("delegateBanner").hidden = !(delegate && facts.delegate_confirm==="confirmed");
+}
+function focusTitle(){ const t=$("qTitle"); if(t) t.focus(); }
+
+function answer(q,val){
+  facts[q.id]=val;
+  if(q.id==="who_answers"){ delegate = (val==="delegate"); }
+  if(q.id==="delegate_confirm" && val==="back"){ delegate=false; facts={}; }
+  if(q.fork) facts = pruneOrphans(facts);
+  rebuildOrder();
+  idx += 1;
+  const nq=currentQ();
+  let reason="";
+  if(q.id==="in_indonesia"&&val==="yes") reason="one more about immigration history";
+  if(q.id==="holds_stay_permit"&&val==="yes") reason="one more about the permit itself";
+  if(q.id==="category") reason= val==="family"?"the family path asks about the sponsor":"the tourism path is the shortest";
+  render(); focusTitle();
+  const delta = updateCounter(pron(reason));
+  // ONE atomic announcement per transition (codex 2): answer + path change + next question
+  const parts=[`${pron(q.label)} — answered.`];
+  if(delta) parts.push(delta);
+  if(nq) parts.push(`Next: ${pron(nq.label)}`);
+  say(parts.join(" "));
+}
+
+function renderHuman(q){
+  screen.innerHTML="";
+  const card=document.createElement("div"); card.className="card";
+  card.innerHTML=`<h2 id="qTitle" tabindex="-1">A person picks this up</h2>
+    <p style="margin-top:8px">Asking doesn't decide the case. In the product this would route it to <span class="ph">{NAMED_AGENT}</span>, answering within <span class="ph">{SLA}</span> (<span class="ph">{OFFICE_HOURS}</span> WITA).</p>
+    <a class="wa-card" href="#wa?case=BZ-7Q4K&step=${q?q.id:""}"><span class="wa-ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z"/></svg></span>
+    <span>Continue on WhatsApp<span class="wa-sub">The case travels as its code plus the step id — no personal facts in the link</span></span></a>
+    <button class="cta-secondary" id="backQ" style="margin-top:12px">Back to the question</button>`;
+  screen.appendChild(card);
+  $("backQ").addEventListener("click",()=>{ render(); focusTitle(); });
+  focusTitle();
+}
+function renderEnd(){
+  screen.innerHTML="";
+  const card=document.createElement("div"); card.className="card";
+  card.innerHTML=`<h2 id="qTitle" tabindex="-1">— verdict boundary —</h2>
+    <p style="margin-top:8px">Past this line the engine would decide — today it runs in shadow, and its verdict has not yet been shown to a visitor. The study stops here on purpose: mock verdicts train false expectations. See mockups M4a/M4b/M5 (R5) for the designed verdict states.</p>
+    <button class="cta-secondary" id="restart" style="margin-top:12px">Start over</button>`;
+  screen.appendChild(card);
+  $("restart").addEventListener("click",()=>{ facts={}; delegate=false; lastState=null;
+    try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+    idx=0; rebuildOrder(); idx=0; render(); focusTitle(); });
+  focusTitle();
+}
+const SAVE_KEY="r5b-proto-state", SAVE_VERSION=2;
+function saveState(){
+  const q=currentQ();
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({v:SAVE_VERSION,facts,qid:q?q.id:null,delegate}));
+    say("Saved. Case BZ-7Q4K resumes where you left it."); }
+  catch(e){ say("Saved for this visit only — this browser blocks storage."); }
+}
+(function boot(){
+  let s=null; try{ s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null"); }catch(e){}
+  if(s && s.v===SAVE_VERSION && s.facts && typeof s.facts==="object"){
+    facts=pruneOrphans(s.facts); delegate=!!s.delegate;
+    order=[...metaPath(delegate),...visiblePath(facts)];
+    const at=order.findIndex(q=>q.id===s.qid);
+    idx = at>=0 ? at : 0;
+    say("Resumed from your saved answers — case BZ-7Q4K.");
+  } else { delegate=false; order=[...metaPath(false),...visiblePath(facts)]; idx=0; }
+  render(); updateCounter();
+})();
+}
+</script>
+</body></html>

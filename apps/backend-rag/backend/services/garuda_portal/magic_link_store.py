@@ -84,6 +84,7 @@ from backend.services.garuda_portal.magic_link import (
     MAGIC_LINK_TTL_MINUTES,
     ExchangeOutcome,
     IssueOutcome,
+    PeekOutcome,
     PersistencePolicyUnavailable,
     RateLimited,
 )
@@ -127,11 +128,21 @@ async def _default_send_magic_link_email(*, email: str, result_id: str, raw_toke
     never raise into the request path -- a send failure is logged, never
     surfaced to the enumeration-safe 202.
 
-    `GARUDA_MAGIC_LINK_BASE_URL` default is a placeholder pending frontend
-    confirmation (ARCHITECTURE.md does not yet name a canonical result-page
-    URL) -- this is a call made explicit here, not asserted as final.
+    `GARUDA_MAGIC_LINK_BASE_URL` now defaults to the page that actually
+    REDEEMS the token, `/visa/voa/auth` (`apps/mouth/src/app/visa/voa/auth/`).
+    The previous default, `/visa/voa`, was a placeholder chosen before any
+    frontend consumed the token, and it pointed at the funnel's FIRST page --
+    which reads neither query parameter. So every link this function has ever
+    sent delivered its recipient to a form asking the questions they had
+    already answered, with an unread credential trailing in the URL.
+
+    It is deliberately NOT the result page `/visa/voa/{hash}`: that surface
+    authenticates with `garuda_result_session`, a different cookie, and would
+    not accept the account session this token mints.
     """
-    base = os.getenv("GARUDA_MAGIC_LINK_BASE_URL", "https://balizero.com/visa/voa").rstrip("/")
+    base = os.getenv(
+        "GARUDA_MAGIC_LINK_BASE_URL", "https://balizero.com/visa/voa/auth"
+    ).rstrip("/")
     link_url = f"{base}?result_id={result_id}&magic_token={raw_token}"
     api_url = os.getenv(
         "INTERNAL_EMAIL_API_URL",
@@ -140,9 +151,9 @@ async def _default_send_magic_link_email(*, email: str, result_id: str, raw_toke
     api_key = os.getenv("NUZANTARA_API_KEY", "")
     html_body = (
         "Hello,<br><br>"
-        "Use the secure link below to view your GARUDA VOA eligibility result. "
+        "Use the secure link below to continue your GARUDA VOA application. "
         f"This link works once and expires in {MAGIC_LINK_TTL_MINUTES} minutes.<br><br>"
-        f'<a href="{link_url}">View my VOA result</a><br><br>'
+        f'<a href="{link_url}">Continue my application</a><br><br>'
         "If you didn't request this, you can safely ignore this email.<br><br>"
         "— Bali Zero"
     )
@@ -151,7 +162,20 @@ async def _default_send_magic_link_email(*, email: str, result_id: str, raw_toke
             resp = await client.post(
                 api_url,
                 headers={"X-API-Key": api_key},
-                json={"to": email, "subject": "Your Bali Zero VOA result link", "body": html_body},
+                json={
+                    "to": email,
+                    "subject": "Your Bali Zero VOA result link",
+                    "body": html_body,
+                    # DECLARED, not incidental. Without this the send
+                    # choke-point classifies the mail as ordinary client
+                    # correspondence and copies a Bali Zero address in --
+                    # which on THIS message means handing a staff member a
+                    # working login for the customer's own application.
+                    # `garuda_magic_link` is in the notifications router's
+                    # `_CREDENTIAL_DELIVERY_EMAIL_TYPES`, the set that gets
+                    # cc AND bcc stripped.
+                    "email_type": "garuda_magic_link",
+                },
             )
             resp.raise_for_status()
         logger.info("garuda_magic_link: email dispatched via Brevo")
@@ -164,13 +188,20 @@ class PostgresMagicLinkStore:
 
     `verify_session` (below) is wired onto `app.state.garuda_magic_
     session_verifier` in `service_initializer.py` -- that is the seam
-    `garuda_orders_router._require_magic_session_actor` reads. `issue`/
-    `exchange` themselves are NOT yet wired via
-    `app.dependency_overrides[get_garuda_magic_link_store]` in
-    `garuda_portal_auth.py` -- until that lands, the mounted magic-link
-    router keeps answering fail-closed via `UnconfiguredMagicLinkStore`,
-    exactly as it does today; only the session-verification read path is
-    live.
+    `garuda_orders_router._require_magic_session_actor` reads.
+
+    CORRECTED 2026-08-28: this docstring used to say `issue`/`exchange` were
+    "NOT yet wired" and that the mounted router "keeps answering fail-closed
+    via `UnconfiguredMagicLinkStore`". Both statements are false and had
+    become the kind of note a later reader builds a wrong plan on.
+    `service_initializer.py:1331` sets `app.state.garuda_magic_link_store` to
+    THIS store, and `garuda_portal_auth.get_garuda_magic_link_store` reads
+    exactly that slot (falling back to unconfigured only when it is absent) --
+    so minting is live. Probed against production the same day: the exchange
+    answers `401 MAGIC_LINK_INVALID` to a fabricated token, which is the real
+    store rejecting it. The stale wording also described
+    `app.dependency_overrides` as the wiring mechanism; that was deliberately
+    abandoned on 2026-08-25 for the reason both sites now document at length.
     """
 
     def __init__(
@@ -202,7 +233,18 @@ class PostgresMagicLinkStore:
         email: str,
         result_session_secret: str,
     ) -> IssueOutcome:
-        del result_session_secret  # not persisted -- see magic_link.py Protocol docstring
+        # Not persisted -- see magic_link.py Protocol docstring. Ownership of
+        # `result_id` by the caller's `garuda_result_session` cookie is now
+        # verified by the ROUTER (`garuda_portal_auth.request_magic_link`,
+        # security fix 2026-08-30) against `garuda_flow.public_api.CheckStore`
+        # BEFORE `issue` is ever called -- this parameter therefore arrives
+        # here only for an already-verified owner, but this method still has
+        # no ownership check of its own to perform: `result_session_secret`
+        # is not this store's hash target (the check-result's OWN session
+        # secret hash lives in `garuda_voa_check_results`, a different table
+        # this adapter does not own) and nothing here would gain security by
+        # holding onto the value.
+        del result_session_secret
 
         if not await self._active_policy_available():
             raise PersistencePolicyUnavailable("no active GARUDA_MAGIC_LINK retention policy")
@@ -428,6 +470,44 @@ class PostgresMagicLinkStore:
             account_session_secret=raw_secret,
             idempotency_replayed=False,
         )
+
+    async def peek(self, *, token: str) -> PeekOutcome:
+        """Non-consuming lookup for `previewMagicLink` -- a SELECT, never an
+        UPDATE. `exchange`'s atomic UPDATE is what makes the token single-
+        use; this method must never touch `used_at`, or a preview would
+        spend the very credential it exists to describe without spending.
+
+        Mirrors `exchange`'s WHERE clause exactly (`used_at IS NULL AND
+        expires_at > statement_timestamp()`) so a token this method calls
+        valid is one `exchange` would also currently accept -- an unknown,
+        expired, or already-consumed token all fall through the same "0
+        rows" branch and produce the identical `PeekOutcome(valid=False)`,
+        matching `exchange`'s own non-enumeration posture (DECISIONS.md Q1)
+        rather than inventing a second one for this new read path.
+
+        Deliberately no idempotency reservation and no rate-limit check
+        here, for the identical reasons `exchange` documents for itself:
+        this performs no mutation (nothing to make idempotent) and the
+        anonymous-token-guessing threat this shares with `exchange` is an
+        IP-scoped concern this Protocol's signature carries no IP to key
+        on -- both routes answer under the same generic per-IP `/api/`
+        `RateLimitMiddleware` bucket instead (see the router handler's own
+        docstring).
+        """
+        token_hash = _hash_hex(token)
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT email FROM garuda_magic_link_tokens
+                 WHERE token_hash = $1
+                   AND used_at IS NULL
+                   AND expires_at > statement_timestamp()
+                """,
+                token_hash,
+            )
+        if row is None:
+            return PeekOutcome(valid=False)
+        return PeekOutcome(valid=True, email=row["email"])
 
 
 __all__ = ["PostgresMagicLinkStore"]

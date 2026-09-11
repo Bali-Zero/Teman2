@@ -221,7 +221,10 @@ describe("AuthApi", () => {
 
       const result = await authApi.getProfile();
 
-      expect(mockRequest).toHaveBeenCalledWith("/api/auth/profile");
+      // auth-gates-cookie-primary round 2: getProfile() always forwards a
+      // (possibly empty) options object to request() — see the
+      // "forwards options" test below for why the second argument exists.
+      expect(mockRequest).toHaveBeenCalledWith("/api/auth/profile", {});
       expect(mockClient.setUserProfile).toHaveBeenCalledWith(profile);
       expect(result).toEqual(profile);
     });
@@ -230,6 +233,32 @@ describe("AuthApi", () => {
       mockRequest.mockRejectedValueOnce(new Error("Unauthorized"));
 
       await expect(authApi.getProfile()).rejects.toThrow("Unauthorized");
+    });
+
+    // auth-gates-cookie-primary round 2: `/api/auth/profile` is bearer-only
+    // (FastAPI 0.141.1's HTTPBearer answers 401 to a request with no
+    // Authorization header, even one carrying a VALID cookie session). A
+    // caller that already plans to classify that failure itself (the
+    // workspace layout, useChatPage) must be able to opt out of
+    // request()'s own auto-redirect-on-401 — this proves the option
+    // reaches request() unchanged, not swallowed or defaulted away.
+    it("forwards options through to request() unchanged (redirectOnUnauthorized opt-out)", async () => {
+      const profile = {
+        id: "1",
+        email: "cookie-only@example.com",
+        name: "Cookie Only",
+        role: "user",
+      };
+      mockRequest.mockResolvedValueOnce(profile);
+
+      const result = await authApi.getProfile({
+        redirectOnUnauthorized: false,
+      });
+
+      expect(mockRequest).toHaveBeenCalledWith("/api/auth/profile", {
+        redirectOnUnauthorized: false,
+      });
+      expect(result).toEqual(profile);
     });
   });
 

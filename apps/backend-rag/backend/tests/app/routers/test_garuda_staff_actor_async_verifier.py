@@ -92,7 +92,7 @@ class TestStaffActorAsyncVerifierIsAwaited:
                 json={"resolution": "honoured", "staff_reference": "ref-1"},
             )
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"
 
     async def test_no_verifier_wired_is_still_401(self) -> None:
         """Baseline: today's actual production state (nothing wired) must
@@ -110,7 +110,7 @@ class TestStaffActorAsyncVerifierIsAwaited:
                 json={"resolution": "honoured", "staff_reference": "ref-1"},
             )
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"
 
     async def test_missing_authorization_header_is_401(self) -> None:
         app = _make_app(verifier=_async_verifier_returns_none)
@@ -122,4 +122,4 @@ class TestStaffActorAsyncVerifierIsAwaited:
                 json={"resolution": "honoured", "staff_reference": "ref-1"},
             )
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"

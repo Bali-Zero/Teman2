@@ -1,0 +1,6 @@
+{
+  "apps/backend-rag/backend/db/migration_base.py": "c5c11b04ac44563b5e19c7730e061a10041f79c1fc08dd9ad1a47b350da23d3f",
+  "apps/backend-rag/backend/db/migration_manager.py": "b97878d6bdf1b824de9a7506c5dfa72e3fdc901f98707d42bf737081f644d79a",
+  "apps/backend-rag/backend/tests/db/test_migration_runner_dedicated_role.py": "9a9a6463bba334333a4b4dc90a9b92ea41419435e4d15848f2f749e0179ee451",
+  "apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql": "a38964ad761c140eb6d614900c967d6bc952c4f6a59947f6ad2a59d0fbd1ffad"
+}

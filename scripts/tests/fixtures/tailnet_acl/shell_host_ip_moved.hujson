@@ -1,0 +1,13 @@
+// GUILT (round-3 gate F3): the shell anchor resolved through the literal alias key "pro", so
+// re-pointing that alias at a decoy address moved the anchor and left the REAL Pro's 443
+// unguarded while every other check stayed green.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.64.0.99", "real-pro": "100.107.22.111", "mini": "100.93.236.6"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "acls": [
+    {"action": "accept", "proto": "tcp", "src": ["mini"], "dst": ["real-pro:443"]}
+  ],
+  "ssh": [],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

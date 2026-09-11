@@ -13,7 +13,6 @@ export default function PropertyPage() {
       funnel="property"
       sessionId="SSR"
       trust={{
-        clientCount: 5000,
         rating: GOOGLE_RATING,
         reviewCount: GOOGLE_REVIEW_COUNT,
       }}

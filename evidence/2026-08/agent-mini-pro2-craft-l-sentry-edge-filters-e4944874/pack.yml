@@ -1,0 +1,127 @@
+# STAGING PATH, NOT THE REAL ONE — harness-floor.yml copies both files to
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their canonical names and
+# the lint resolves brief_ref against THAT root, so this must read the literal
+# evidence/brief.yml even though the real brief lives beside this file.
+brief_ref: evidence/brief.yml
+plan_ref: "docs/plans/2026-08-29-beyond-sota-craft-wave/L08-observability-immune-self-healing.md — PR-2 (credential-free half); squad ledger issue #5319"
+lanes:
+  - lane: sentry-edge
+    role: build
+    seat: "claude-opus-5 (this session)"
+  - lane: sentry-refute
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only — DO-NOT-SHIP, 2 blockers, 3 majors"
+  - lane: final-gate
+    role: review
+    seat: "claude-opus-5 (this orchestrator — every receipt re-run here)"
+seat_diversity: degraded
+seat_diversity_note: >-
+  One build lane, so the D3 floor (>=2 build lanes) does not fire and this field
+  stays "degraded" on that basis. The review side is not: a cross-family seat
+  gated the diff and returned two BLOCKERS the build lane had missed, one of
+  them found by reading the sentry_sdk source rather than the diff. That is the
+  argument for cross-family review stated as a measurement rather than a
+  principle.
+diff:
+  net_lines: >-
+    AS OF 023ab4df5c (pinned — an unqualified count inside a file that later
+    commits rewrite decays by construction): 9 files, +916/-2 against the merge base, INCLUDING this
+    evidence pack. Roughly half is the two corpora. Deterministic gear
+    floor recomputed from the diff = 2. NOT 1: `--print-floor` over the code
+    files alone answers 1, and the floor rises to 2 once this evidence pack is
+    part of the changed set — the blast-radius half of the computation counts
+    the files a PR actually carries, and the pack is one of them. Declaring the
+    number measured before the pack existed would have been a floor computed
+    from a diff that no longer exists.
+  behaviour_change: >-
+    Events reaching Sentry change. Backend: health-check TRANSACTIONS are
+    dropped (errors on the same paths are not). Frontend: the client drops
+    browser-only noise, the server and edge drop only universal noise. Nothing
+    else in either app changes; no producer, no route, no handler is touched.
+receipts:
+  - claim: "The transaction filter is registered on the hook the SDK actually calls — it was not, and its tests were green anyway"
+    cmd: "pytest apps/backend-rag/backend/tests/unit/app/setup/test_sentry_health_transaction_drop.py -k WIRED"
+    result: >-
+      2 passed. The installed sentry_sdk guards before_send with
+      `event.get("type") != "transaction"` and routes transactions to
+      before_send_transaction — read out of inspect.getsource in the test rather
+      than remembered. Mutation: removing the registration line turns the corpus
+      red, where before the fix it turned nothing red at all.
+    exit: 0
+    ts: "2026-08-31T05:20Z"
+    seat: "session (mini, final gate)"
+  - claim: "A health-check TRANSACTION is dropped and an ERROR on the same path is kept"
+    cmd: "pytest apps/backend-rag/backend/tests/unit/app/setup/test_sentry_health_transaction_drop.py"
+    result: >-
+      9 passed. /health, /healthz, /readyz, /livez, /api/health and "GET /health"
+      drop as transactions; the same paths as ERRORS are kept; and
+      /healthcheck-audit, /api/health-report, /healthy-clients are kept because
+      the match is a path segment, never a substring.
+    exit: 0
+    ts: "2026-08-31T05:20Z"
+    seat: "session (mini, final gate)"
+  - claim: "An actionable ROOT survives a benign linked CAUSE, and the same abort means opposite things in the two runtimes"
+    cmd: "vitest run src/lib/__tests__/sentry-noise.test.ts"
+    result: >-
+      21 passed, including every shape the reviewer executed against the first
+      version: a linked error whose cause is an abort and whose root is
+      "Failed to persist completed payment" is KEPT; a frameless root beside a
+      foreign-framed cause is KEPT; a root with frames: [] is KEPT; ResizeObserver
+      via logentry is DROPPED; and "AbortError: The operation was aborted" drops
+      in the browser while the same event is kept with browser: false.
+    exit: 0
+    ts: "2026-08-31T05:22Z"
+    seat: "session (mini, final gate)"
+  - claim: "Nothing adjacent regressed"
+    cmd: "vitest run src/lib ; pytest apps/backend-rag/backend/tests/unit/app/setup/ ; tsc --noEmit ; prettier --check"
+    result: "1876 passed (132 files); 188 passed; tsc rc 0; prettier clean"
+    exit: 0
+    ts: "2026-08-31T05:22Z"
+    seat: "session (mini, final gate)"
+  - claim: "Every cure is defended — reverting it turns a corpus red"
+    cmd: "vitest / pytest with the cure reverted, one mutation at a time"
+    result: >-
+      8 mutants, 8 killed: the hook unregistered, root taken as the FIRST value,
+      the empty-frames guard removed, logentry ignored, the server given browser
+      needles, a needle un-anchored to the bare English phrase, any-foreign
+      instead of all-foreign frames, and the backend filter disabled. The
+      empty-frames mutant survived the first battery — the root-only change had
+      made Array.isArray do the work, so an event Sentry ships with frames: []
+      had no test.
+    exit: 0
+    ts: "2026-08-31T05:25Z"
+    seat: "session (mini, final gate)"
+  - claim: "RE-GROUND: no committed probe references either Sentry org, so the spec's probe-repoint half is void as written"
+    cmd: "grep -rn 'bali-zero-cf|bali-zero-7p' --include=*.py --include=*.sh --include=*.yml --include=*.ts ."
+    result: "hits only in research/2026-08-28-beyond-sota-observability-immune-self-healing.md and .claude/skills/modus/PENDING-ARMS.md — prose, not code. No probe exists to repoint."
+    exit: 0
+    ts: "2026-08-31T04:55Z"
+    seat: "session (mini, final gate)"
+pii_scan: clean
+dissent:
+  - seat: "gpt-5.6-sol (xhigh, read-only) — on the diff, with an attack list"
+    objection: >-
+      DO-NOT-SHIP, two blockers and three majors. (1) The transaction filter was
+      DEAD CODE: sentry_sdk guards before_send with type != "transaction" and
+      dispatches transactions to before_send_transaction, so the health-check
+      drop never ran in production while its tests — which called the inner
+      function directly — stayed green. (2) The noise filter deleted real
+      errors: it read EVERY exception value, so a linked error with a benign
+      cause and an actionable root was dropped entirely; it flattened frames
+      across values, so a frameless root vanished and a foreign-framed cause
+      decided the verdict; and "The operation was aborted" matched as a bare
+      substring, in a runtime where an abort is a real timeout rather than a
+      cancelled navigation. Plus: parameterised captureMessage lands in
+      event.logentry, which neither the predicate nor Sentry's own ignoreErrors
+      matcher reads, so that noise reached Sentry through both surfaces.
+    status: CONFIRMED
+    disposition: >-
+      All accepted, all reproduced before being fixed, none rejected. The hook is
+      registered and the corpus now asserts the WIRING rather than the function;
+      the predicate judges the ROOT exception; the frame rule needs at least one
+      frame on that root; logentry is read; and the needle list is split into
+      universal and browser-only with each string anchored to the exact
+      engine-emitted form. The previous commit's claim that ignoreErrors and
+      beforeSend are "in step" is RETRACTED — they are different surfaces with
+      different matchers, and the test that "proved" parity did so by feeding
+      the list back into the predicate.

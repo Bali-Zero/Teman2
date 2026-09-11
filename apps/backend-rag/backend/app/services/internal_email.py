@@ -38,6 +38,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
+from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.notifications.email_audit import (
     format_send_error,
     is_critical,
@@ -131,9 +132,9 @@ async def send_internal_email(
         response.raise_for_status()
 
         logger.info(
-            "Internal email sent: to=%s cc=%s context=%s",
-            to,
-            payload.get("cc", ""),
+            "Internal email sent: to=%s cc_count=%d context=%s",
+            redact_identifier_for_log(to),
+            len(cc or []),
             log_context or "",
         )
         if audit_enabled:

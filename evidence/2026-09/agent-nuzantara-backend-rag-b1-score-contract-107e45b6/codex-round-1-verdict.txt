@@ -1,0 +1,44 @@
+Riferimenti relativi a `apps/backend-rag/backend/`. Revisione del HEAD `4675f04bca`; nessuna modifica.
+
+1. **NOT-A-DEFECT — R1 distingue correttamente i ritorni Qdrant.**  
+   `core/qdrant_db.py:518,596,608,647,1282,1331,1362,1366,1408`; `services/search/search_service.py:1163`.  
+   Tutti i ritorni dense omettono `search_type`; successo ed errore vuoto hybrid lo includono. I tre fallback hybrid delegano a `search()` senza aggiungerlo: non ho trovato controesempi in nessuna direzione.
+
+2. **NOT-A-DEFECT — I nuovi metadati non modificano il calcolo numerico.**  
+   `services/rag/agentic/reasoning_utils.py:214,610,662`; `_reasoning_evidence.py:366`.  
+   Lo scorer accetta dizionari e legge esclusivamente `score`; aggiungere chiavi non cambia soglie o risultato. I lettori di `score_kind`/`score_raw` propagano metadati; il bypass conserva `0.85`. Le modifiche ai byte sigillati restano quelle autorizzate da R2.
+
+3. **NOT-A-DEFECT — Nessun chiamante attuale passa un kind fuori vocabolario.**  
+   `core/score_provenance.py:99,130`; `services/misc/result_formatter.py:145`; `core/reranker.py:183`; `services/rag/reranker.py:355`; `services/search/search_service.py:1112`; `services/rag/agentic/wa_package_builder.py:293,537`.  
+   I chiamanti usano costanti ammesse, il default `UNKNOWN`, oppure `kind_of()`. Non ho trovato un percorso runtime che raggiunga il `ValueError` di `stamp()` con un kind sconosciuto.
+
+4. **NOT-A-DEFECT — `0.0` viene conservato.**  
+   `services/misc/result_formatter.py:134`; `core/score_provenance.py:115,135`; `core/reranker.py:186`; `services/rag/reranker.py:358`.  
+   I controlli usano tipo numerico e `is not None`, non verità/falsità. Una sonda sul codice reale ha confermato `score_raw=0.0`.
+
+5. **NOT-A-DEFECT — L’alias nella cache esiste, ma UNKNOWN non diventa provenienza nota.**  
+   `core/cache.py:83,92,108,229,232`; `services/search/search_service.py:1107`.  
+   Redis restituisce un oggetto deserializzato nuovo; il fallback LRU restituisce lo stesso riferimento, quindi un lettore successivo vede effettivamente `unknown` senza un ulteriore `cache.set()`: riprodotto. Tuttavia `UNKNOWN` significa esplicitamente “nessuna dichiarazione del produttore”, quindi questa mutazione non inventa un’origine né cambia un punteggio.
+
+6. **NOT-A-DEFECT — R2 non introduce il confronto incompatibile ipotizzato.**  
+   `services/integrations/wa_broker.py:679,885`; `app/routers/wa_broker.py:278`; `app/routers/wa_package.py:160`; `services/integrations/wa_codex_daemon.py:341,495`.  
+   Il broker conserva e restituisce il pacchetto come TEXT; il daemon inoltra quella stringa, senza ricostruirla con il nuovo builder. Nei consumer indicati non esiste il confronto fra hash vecchio e pacchetto rigenerato nuovo; una sonda con hash prodotto dal codice base e `ContextPackage` nuovo ha inoltre verificato la compatibilità.
+
+7. **NOT-A-DEFECT — Il doppio reranking esiste, ma `score_raw` conserva il valore appena sostituito.**  
+   `services/search/search_service.py:1272,1300,1303`; `services/rag/reranker.py:349`; `core/score_provenance.py:43`.  
+   Con cache in memoria, due chiamate possono rerankare lo stesso risultato: riprodotto `score=0.8`, `score_raw=0.7`, `vector_score=0.6`. È conforme alla definizione di `score_raw` come input dell’ultimo passaggio; è invece troppo generale il commento a `core/score_provenance.py:59` che lo equipara a `vector_score`, da circoscrivere al primo reranking.
+
+8. **MEDIUM — CONFIRMED-DEFECT: il test di retrocompatibilità non congela l’oracolo vecchio.**  
+   `tests/unit/services/rag/agentic/test_score_contract_crossing.py:460,488,499`.  
+   `test_a_package_sealed_before_score_kind_existed_still_verifies` calcola il presunto hash vecchio con `_package_hash` nuovo e lo verifica con il serializer nuovo: una modifica coerente di entrambi può rompere i vecchi pacchetti lasciandolo verde. Ho eseguito esattamente quel test con l’implementazione base: passa anche senza la feature. **Fix:** usare wire e digest congelati dal base, verificando anche il rifiuto di byte alterati.  
+   I valori numerici dei casi 1–4 sono corretti: `0.6667`, `1.0`, `0.5455` e `0.5/0.6667/0.9091`. La generalizzazione del floor `1/31` richiede però `prefetch_limit≤30`: `search_service.py:1271,1150` può superarlo tramite overfetch.
+
+9. **BLOCKER — CONFIRMED-DEFECT: i writer ordinari continuano a produrre UNKNOWN.**  
+   `services/misc/result_formatter.py:19`; `services/search/search_service.py:705,886`; `services/rag/agentic/tools.py:197,289`.  
+   Solo il chiamante a `search_service.py:1184` dichiara il kind: `search()` e `_single_query_search()` lasciano il default `UNKNOWN` anche su risultati nuovi di origine nota. Con reranker disabilitato o early exit, questi risultati attraversano `VectorSearchTool`, `_reasoning_loop_helpers.py:302` e `reasoning.py:1375` fino allo scorer: la promessa “ogni writer dichiara l’origine” è falsa. **Fix:** cablare tutti i chiamanti pertinenti del formatter e aggiungere test sui percorsi ordinari, incluso reranking saltato.
+
+10. **MEDIUM — CONFIRMED-DEFECT: la proiezione WA perde `score_raw` prima dello scorer.**  
+    `services/rag/agentic/wa_package_builder.py:603`; `tests/unit/services/rag/agentic/test_score_contract_crossing.py:403`.  
+    I chunk conservano il raw, ma la lista passata a `calculate_evidence_score` contiene soltanto `score` e `score_kind`. Il test verifica esclusivamente il kind, quindi non rileva questa interruzione della provenienza. **Fix:** propagare anche `score_raw` e verificarne il valore esatto all’ingresso dello scorer.
+
+VERDICT: REWORK.

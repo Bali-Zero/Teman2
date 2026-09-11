@@ -454,6 +454,170 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "of the public signed seq-13 RulePack payload, triple-derived at "
         "run time; exact value pinned, never a credential",
     ),
+    # fold_pack_seq17.py: SEQ16_PAYLOAD_SHA256 is the chain anchor for the
+    # active seq-16 RulePack payload. The fold recomputes sha256 over the
+    # canonical seq-16 payload and aborts unless it equals this database-
+    # recorded digest before producing seq-17.
+    #
+    # Content-keyed and pinned to the exact assignment and exact digest:
+    # this production file remains closed to every other value or line, and
+    # a ride-along statement cannot match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq17\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ16_PAYLOAD_SHA256\s*=\s*'
+            r'"ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100"\s*$'
+        ),
+        "fold_pack_seq17.py: seq-16 chain anchor — content-derived sha256 "
+        "of the active seq-16 RulePack payload, recomputed before folding; "
+        "exact assignment and value pinned, never a credential",
+    ),
+    # fold_pack_seq18.py: SEQ17_PAYLOAD_SHA256 is the chain anchor for the
+    # seq-17 RulePack payload — the digest activated in production on
+    # 2026-08-30T15:35:49Z. The fold recomputes sha256 over the canonical
+    # seq-17 payload under RFC 8785 and aborts unless it equals this value
+    # before producing seq-18, so the anchor is verified, never asserted.
+    #
+    # Content-keyed and pinned to the exact assignment and exact digest, for
+    # the same reason as every fold above it: this production file stays
+    # closed to any other value or line, and a ride-along statement cannot
+    # match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq18\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ17_PAYLOAD_SHA256\s*=\s*'
+            r'"97cb964780b114a2fa936230055327102a5af59efb010b6bf04090bb7321890b"\s*$'
+        ),
+        "fold_pack_seq18.py: seq-17 chain anchor — content-derived sha256 "
+        "of the active seq-17 RulePack payload, recomputed before folding; "
+        "exact assignment and value pinned, never a credential",
+    ),
+    # fold_pack_seq19.py: three chain-of-custody digests. SEQ18_PAYLOAD_SHA256
+    # is the chain anchor — the digest of the SIGNED seq-18 payload production
+    # actually serves. SEQ13_PAYLOAD_SHA256 is the drift-check base seq-15's
+    # repair was originally authored against. SEQ15_PAYLOAD_SHA256 is the
+    # repair DONOR's own digest — seq-15 was never itself signed, so this
+    # pinned value is the only chain-of-custody check available for it. The
+    # fold recomputes sha256 over each canonical payload and aborts unless it
+    # equals the matching pinned value before transplanting anything.
+    #
+    # Content-keyed and pinned to the exact assignment AND exact digest, one
+    # alternative per constant name so a name cannot match another
+    # constant's value: this production file stays closed to any other value
+    # or line, and a ride-along statement cannot match because the pattern
+    # is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq19\.py$"
+        ),
+        re.compile(
+            r'^\s*(?:'
+            r'SEQ18_PAYLOAD_SHA256\s*=\s*"5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849"'
+            r'|SEQ13_PAYLOAD_SHA256\s*=\s*"b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"'
+            r'|SEQ15_PAYLOAD_SHA256\s*=\s*"876100fbce41b1ae2b717ad446d6b359e15c43dc326ef849fb800850632d4153"'
+            r')\s*$'
+        ),
+        "fold_pack_seq19.py: seq-18/seq-13/seq-15 chain-of-custody digests — "
+        "content-derived sha256 of the signed seq-18 anchor, the seq-13 "
+        "drift-check base, and the unsigned seq-15 repair donor, each "
+        "recomputed and checked before the transplant; exact assignment and "
+        "value pinned per constant, never a credential",
+    ),
+    # fold_pack_seq20.py: one chain-of-custody digest. SEQ19_PAYLOAD_SHA256 is
+    # the chain anchor — the digest of the SIGNED seq-19 payload production
+    # actually serves today, cross-checked this session against both
+    # `rulepack-prod-019.signed.json`'s own `payload_sha256` field and a
+    # recomputation over `rulepack-prod-019.source.json`. The fold recomputes
+    # sha256 over the canonical payload and aborts unless it equals this value
+    # before editing anything, then verifies the SIGNATURE on the same payload.
+    #
+    # Content-keyed and pinned to the exact assignment AND exact digest, so
+    # this production file stays closed to any other value or line, and a
+    # ride-along statement cannot match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq20\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ19_PAYLOAD_SHA256\s*=\s*'
+            r'"bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea"\s*$'
+        ),
+        "fold_pack_seq20.py: seq-19 chain anchor — content-derived sha256 of "
+        "the signed seq-19 RulePack payload, recomputed and signature-verified "
+        "before folding; exact assignment and value pinned, never a credential",
+    ),
+    # test_seq19_signed_bundle.py: pins the SIGNED seq-19 production bundle's
+    # trust anchors — the same pinned Ed25519 PUBLIC verification key already
+    # covered for gold_replay_driver.py above (private key stays off-repo,
+    # offline key ceremony per docs/runbooks/visa-engine-key-ceremony.md),
+    # the seq-18 chain anchor already pinned in fold_pack_seq19.py above, and
+    # the seq-19 payload_sha256 itself — a content-derived digest the test
+    # recomputes independently via bundle.canonicalize_json and cross-checks
+    # against `verify_rule_pack`'s own return value, never trusted from the
+    # signer's print output. Content-keyed (not path-only) to the exact
+    # value per constant, one alternative each, so a real credential typed
+    # onto any other line of this test stays unaudited for human review.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/tests/services/visa_engine/"
+            r"test_seq19_signed_bundle\.py$"
+        ),
+        re.compile(
+            r'^\s*(?:'
+            r'"public_key"\s*:\s*"gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA"\s*,?'
+            r'|SEQ18_PAYLOAD_SHA256\s*=\s*"5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849"'
+            r'|==\s*"bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea"'
+            r')\s*$'
+        ),
+        "test_seq19_signed_bundle.py: seq-19 signed-bundle trust anchors — "
+        "the pinned production Ed25519 public verification key (private key "
+        "off-repo), the seq-18 chain-anchor digest, and the seq-19 "
+        "payload_sha256 recomputed and cross-checked in the test itself; "
+        "exact assignment/comparison and value pinned per constant, never a "
+        "credential",
+    ),
+    # test_seq20_signed_bundle.py: the seq-19 rule's twin, one sequence on.
+    # Same two entity classes: the pinned Ed25519 PUBLIC verification key
+    # already covered for gold_replay_driver.py above (private key stays
+    # off-repo, offline key ceremony per docs/runbooks/visa-engine-key-
+    # ceremony.md), and the seq-20 payload_sha256 — a content-derived digest
+    # the test recomputes independently via bundle.canonicalize_json and
+    # cross-checks against `verify_rule_pack`'s own return value, never
+    # trusted from the signer's print output.
+    #
+    # TWO alternatives here where the seq-19 rule has three: that module
+    # RETYPED its predecessor's chain anchor as a local SEQ18_PAYLOAD_SHA256
+    # literal, while this one IMPORTS `SEQ19_PAYLOAD_SHA256` from
+    # fold_pack_seq20 instead — so the seq-19 anchor is not a literal in this
+    # file and is already covered by fold_pack_seq20.py's own rule above. A
+    # third alternative would be regex that can never match, which is exactly
+    # the pre-authorisation of an unwritten line this list must not carry.
+    # Content-keyed (not path-only) to the exact value per constant, one
+    # alternative each, so a real credential typed onto any other line of
+    # this test stays unaudited for human review.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/tests/services/visa_engine/"
+            r"test_seq20_signed_bundle\.py$"
+        ),
+        re.compile(
+            r'^\s*(?:'
+            r'"public_key"\s*:\s*"gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA"\s*,?'
+            r'|SEQ20_PAYLOAD_SHA256\s*=\s*"df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d"'
+            r')\s*$'
+        ),
+        "test_seq20_signed_bundle.py: seq-20 signed-bundle trust anchors — "
+        "the pinned production Ed25519 public verification key (private key "
+        "off-repo) and the seq-20 payload_sha256 recomputed and cross-checked "
+        "in the test itself; the seq-19 chain anchor is imported from "
+        "fold_pack_seq20, not retyped, so it is covered by that module's own "
+        "rule; exact assignment and value pinned per constant, never a "
+        "credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
@@ -475,10 +639,18 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "quoted verbatim in the run's own research report — an integrity "
         "anchor, never a credential",
     ),
-    # APPEND-ONLY from here: scripts/tests/test_detect_secrets_auto_triage.py
-    # indexes this list POSITIONALLY — inserting a rule mid-list shifts every
-    # later index and breaks the per-rule registration tests (measured the
-    # hard way 2026-08-21: 8 red from one mid-list insert).
+    # Not append-only any more (2026-08-23, PRs #4663 + follow-up): this
+    # comment used to require every new rule be appended last, because
+    # scripts/tests/test_detect_secrets_auto_triage.py indexed this list
+    # POSITIONALLY — inserting a rule mid-list shifted every later index
+    # and broke the per-rule registration tests (measured the hard way
+    # 2026-08-21: 8 red from one mid-list insert). Every index-based test
+    # in that file now looks its rule up by a substring of its own reason
+    # string instead (_find_content_keyed_rule()), so this constraint no
+    # longer holds — verified by inserting a dummy rule at the front of
+    # this list (the maximal-shift case) and confirming nothing in that
+    # test file breaks except its own deliberate rule-count guard. A new
+    # rule may be added anywhere below that reads naturally, not only here.
     #
     # lint_google_oauth_credentials.py: KNOWN_COMPROMISED maps 16-hex
     # truncated sha256 fingerprints of the published 2026-08-21 Google OAuth
@@ -527,6 +699,24 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "D12 active-stay-permit source record: content_sha256 is the "
         "content-derived sha256 of a public Bali Zero policy source, "
         "not a credential",
+    ),
+    # Evidence Pack `diff.measured_at` field (harness-v2 evidence packs,
+    # scripts/evidence_pack_lint.py) — a short or full git commit SHA the
+    # pack author recorded as "which merge-base this diff was measured
+    # against". A 7-40 char lowercase-hex commit hash reads as a "Hex High
+    # Entropy String" to detect-secrets on every single evidence pack this
+    # repo produces (found 2026-08-27, PR #5054's own pack tripped it).
+    # Path-keyed to per-task pack.yml files under evidence/<month>/<slug>/
+    # (never the whole evidence/ tree — that also holds brief.yml, which
+    # this rule does not scope, and other pack fields that DO need human
+    # eyes), content-keyed to the exact `measured_at:` assignment so an
+    # unrelated real secret added to the SAME file on a different line is
+    # still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(r"^\s*measured_at:\s*[0-9a-f]{7,40}\s*$"),
+        "Evidence Pack diff.measured_at: a git commit SHA (merge-base "
+        "the diff was measured against), not a credential",
     ),
 ]
 
@@ -661,6 +851,18 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"(^|/)\.claude/rules/.*\.md$"),
         ".claude/rules markdown: operator scar notes and guardrail docs, not secrets",
+    ),
+    # The same corpus, at the address it moved to. L02-PR1 took the two scar
+    # BODIES out of `.claude/rules/` (everything in that directory is injected
+    # into every session and every subagent, and the bodies were 693 KB of it);
+    # the bridge stayed. Without this rule the move alone turns `Detect Secrets`
+    # red — the rule above stops matching, and ~700 KB of scar text quoting
+    # rotated credentials reads as newly unaudited. Worth naming how it was
+    # nearly missed: the rule is a REGEX over the DIRECTORY, so it contains no
+    # occurrence of the moved filenames and no grep for them could find it.
+    (
+        re.compile(r"(^|/)docs/scars/.*\.md$"),
+        "docs/scars markdown: the cicatrix corpus relocated from .claude/rules, same nature",
     ),
     # Claude skills markdown (modus PENDING-ARMS ledger, skill docs): proof
     # lines quote curl commands with rotated/revoked key literals and

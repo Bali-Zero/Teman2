@@ -94,7 +94,7 @@ def _judge(
 def test_concordance_ratio_all_agree():
     p = [
         CouncilProposal(author=a, register="ironico", rationale="", risk="", example_headline="")
-        for a in ("claude", "gemini", "deepseek")
+        for a in ("claude", "gemini", "kimi")
     ]
     assert _concordance_ratio(p) == 1.0
 
@@ -108,7 +108,7 @@ def test_concordance_ratio_majority():
             author="gemini", register="ironico", rationale="", risk="", example_headline=""
         ),
         CouncilProposal(
-            author="deepseek", register="analitico", rationale="", risk="", example_headline=""
+            author="kimi", register="analitico", rationale="", risk="", example_headline=""
         ),
     ]
     assert _concordance_ratio(p) == pytest.approx(2 / 3)
@@ -173,12 +173,12 @@ async def test_full_cycle_happy_path():
         proposals={
             "claude": "analitico",
             "gemini": "pedagogico",
-            "deepseek": "ironico",
+            "kimi": "ironico",
         },
         challenges={
-            "claude": ("gemini", "deepseek"),
-            "gemini": ("claude", "deepseek"),
-            "deepseek": ("claude", "gemini"),
+            "claude": ("gemini", "kimi"),
+            "gemini": ("claude", "kimi"),
+            "kimi": ("claude", "gemini"),
         },
         judge_register="analitico",
     )
@@ -199,14 +199,14 @@ async def test_degraded_when_one_proponent_fails():
     proponents: dict[str, CLIRunner] = {
         "claude": MockCLIRunner(
             name="claude",
-            scripted_outputs=[_propose("analitico"), _challenge("gemini", "deepseek")],
+            scripted_outputs=[_propose("analitico"), _challenge("gemini", "kimi")],
         ),
         "gemini": MockCLIRunner(
             name="gemini",
             fail_next=True,
         ),
-        "deepseek": MockCLIRunner(
-            name="deepseek",
+        "kimi": MockCLIRunner(
+            name="kimi",
             scripted_outputs=[_propose("ironico"), _challenge("claude", "gemini")],
         ),
     }
@@ -234,12 +234,12 @@ async def test_hard_rule_same_register_7d_swaps():
         proposals={
             "claude": "analitico",
             "gemini": "pedagogico",
-            "deepseek": "tecnico",
+            "kimi": "tecnico",
         },
         challenges={
-            "claude": ("gemini", "deepseek"),
-            "gemini": ("claude", "deepseek"),
-            "deepseek": ("claude", "gemini"),
+            "claude": ("gemini", "kimi"),
+            "gemini": ("claude", "kimi"),
+            "kimi": ("claude", "gemini"),
         },
         judge_register="analitico",
     )
@@ -260,12 +260,12 @@ async def test_hard_rule_ironic_militant_cap():
         proposals={
             "claude": "ironico",
             "gemini": "militante",
-            "deepseek": "analitico",
+            "kimi": "analitico",
         },
         challenges={
-            "claude": ("gemini", "deepseek"),
-            "gemini": ("claude", "deepseek"),
-            "deepseek": ("claude", "gemini"),
+            "claude": ("gemini", "kimi"),
+            "gemini": ("claude", "kimi"),
+            "kimi": ("claude", "gemini"),
         },
         judge_register="ironico",
     )
@@ -286,12 +286,12 @@ async def test_groupthink_detection_swaps():
         proposals={
             "claude": "ironico",
             "gemini": "ironico",
-            "deepseek": "ironico",
+            "kimi": "ironico",
         },
         challenges={
-            "claude": ("gemini", "deepseek"),
-            "gemini": ("claude", "deepseek"),
-            "deepseek": ("claude", "gemini"),
+            "claude": ("gemini", "kimi"),
+            "gemini": ("claude", "kimi"),
+            "kimi": ("claude", "gemini"),
         },
         judge_register="ironico",
     )
@@ -313,14 +313,14 @@ async def test_judge_failure_falls_back_to_majority():
     proponents: dict[str, CLIRunner] = {
         "claude": MockCLIRunner(
             name="claude",
-            scripted_outputs=[_propose("analitico"), _challenge("gemini", "deepseek")],
+            scripted_outputs=[_propose("analitico"), _challenge("gemini", "kimi")],
         ),
         "gemini": MockCLIRunner(
             name="gemini",
-            scripted_outputs=[_propose("analitico"), _challenge("claude", "deepseek")],
+            scripted_outputs=[_propose("analitico"), _challenge("claude", "kimi")],
         ),
-        "deepseek": MockCLIRunner(
-            name="deepseek",
+        "kimi": MockCLIRunner(
+            name="kimi",
             scripted_outputs=[_propose("ironico"), _challenge("claude", "gemini")],
         ),
     }
@@ -336,14 +336,14 @@ async def test_judge_returns_invalid_register_falls_back():
     proponents: dict[str, CLIRunner] = {
         "claude": MockCLIRunner(
             name="claude",
-            scripted_outputs=[_propose("pedagogico"), _challenge("gemini", "deepseek")],
+            scripted_outputs=[_propose("pedagogico"), _challenge("gemini", "kimi")],
         ),
         "gemini": MockCLIRunner(
             name="gemini",
-            scripted_outputs=[_propose("pedagogico"), _challenge("claude", "deepseek")],
+            scripted_outputs=[_propose("pedagogico"), _challenge("claude", "kimi")],
         ),
-        "deepseek": MockCLIRunner(
-            name="deepseek",
+        "kimi": MockCLIRunner(
+            name="kimi",
             scripted_outputs=[_propose("tecnico"), _challenge("claude", "gemini")],
         ),
     }
@@ -365,12 +365,12 @@ async def test_result_to_dict_serializable():
         proposals={
             "claude": "analitico",
             "gemini": "pedagogico",
-            "deepseek": "tecnico",
+            "kimi": "tecnico",
         },
         challenges={
-            "claude": ("gemini", "deepseek"),
-            "gemini": ("claude", "deepseek"),
-            "deepseek": ("claude", "gemini"),
+            "claude": ("gemini", "kimi"),
+            "gemini": ("claude", "kimi"),
+            "kimi": ("claude", "gemini"),
         },
         judge_register="analitico",
     )

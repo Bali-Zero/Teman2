@@ -1,0 +1,87 @@
+task_id: e31-failopen-repair-0829
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  PR #5184 (agent/air-m5/backend-rag/e31-failopen-0829 -> main): seq-15 —
+  repair the E31B/E31D fail-open predicates in the Visa Oracle rule pack,
+  on Zero's explicit GO ("ottimo implementa in /visaoracle", 2026-08-29)
+  over the BLOCK-DEFECT rows of
+  research/visa/2026-08-15-gold-divergence-disposition.md, with the
+  behavior re-measured and probe-confirmed in
+  research/visa/2026-08-28-visa-oracle-gold-coverage-and-divergence-adjudication.md §5.
+
+  The defect class: nine sponsor rules (E31B/E31E/E31H/E31J families)
+  carried a terminal `op:known` on family.sponsor_status_code — any
+  ANSWERED value passed, "NONE" (sponsor holds no permit at all) included —
+  and the three el.e31d-* SUPPORT rules fired on FAMILY intent alone.
+  Byte-identical from seq-6 through the seq-14 draft.
+
+  Gear 3 by SIZE, deterministically: the diff is 4 files +9963 (the seq-15
+  pack source alone is 9152 lines). Honored, not argued with.
+constraints:
+  - "Proposed repair only where the rule's own name already declares the
+    semantic: the E31B closed sponsor set is DERIVED at fold time from the
+    catalog's own E-prefix stay-permit codes (never hand-authored); the
+    E31D conjunction uses only registered FactPaths. Legal decisions the
+    2026-08-15 refuter package reserves for the owner (Q1 KITAP
+    representation + dependent-sponsoring-dependent narrowing; Q2 WHO may
+    sponsor an E31D stepchild) are explicitly NOT taken."
+  - "seq-15 chains from the SIGNED seq-13 payload (the active production
+    bundle) — never from the unsigned seq-14 candidate, which would be
+    unactivatable under the anti-rollback gate. seq-14's two retirements
+    are carried forward verbatim; the parked D12/inc8 fold re-targets
+    seq-16 (ledger row)."
+  - "Everything outside the declared 3+7 edited rules and 4 removals must
+    be byte-identical to seq-13 — enforced by the fold's own invariance
+    sweep AND re-asserted by the witness suite."
+  - "Not in this PR by design: signing (generator != grader — the ceremony
+    follows this gate verdict and green CI), activation, gold expectation
+    edits, the p7/p8 written dispositions (owner acts)."
+acceptance:
+  - "Guilt: sponsor status NONE / C1 / B1 never yields E31B; FAMILY intent
+    alone never yields E31D; unknown stepchild evidence or unconfirmed
+    sponsor never supports; no `op:known` on family.sponsor_status_code
+    survives ANYWHERE in the pack (pack-wide witness)."
+  - "Innocence: a spouse of a real ITAS holder (E23) keeps E31B; a
+    confirmed, evidenced stepchild keeps E31D; gold persona 7 keeps the
+    genuine E31A spouse-of-WNI path; the 18-persona gold-coverage corpus
+    (PR #5182) replays 18/18 SUPPORTED against seq-15."
+  - "Fold determinism: assemble_payload() == the on-disk pack, byte-equal."
+consumer_map:
+  - "backend/services/visa_engine/contracts/packs/ — the pack store every
+    offline tool reads; runtime replay selects highest SIGNED pack, so
+    seq-15 changes NO runtime behavior until it is signed and activated
+    (deliberate: those are post-merge, post-verdict steps in the ledger row)."
+  - "scripts/visa_engine/gold_replay_driver.py + the (in-flight #5182)
+    gold_coverage_eval/replay harness — will pick seq-15 up as highest
+    signed only after the signing ceremony."
+  - "test_seq14_pack.py / test_seq13_source_pack.py — untouched and
+    re-verified green (56/56): seq-15's presence breaks no sequence-pinned
+    suite."
+  - "The parked D12/inc8 lane (Pro) — informed via the PENDING-ARMS row:
+    its seq-14 fold target is superseded, re-target seq-16."
+risks:
+  - "The catalog-derived sponsor set includes the E31A-J dependent codes
+    (a dependent sponsoring a dependent) — flagged by the round-2 grader,
+    deliberately left to owner Q1: narrowing it is a legal call."
+  - "KITAP sponsors are inexpressible today (no KITAP product code in the
+    catalog) — part of Zero's already-pending KITAP-widening ruling."
+  - "A signed successor pack resets the offline gold divergence matrix
+    shape (p7/p8 move); the 2026-08-28 report's matrix stays correct for
+    seq-13 and says so."
+grader: |
+  generator != grader, three adversarial rounds, two non-Anthropic
+  families: round 1 codex gpt-5.6-sol xhigh REJECT (proved `neq NONE`
+  still admitted C1/B1 tourist-visa sponsors, and E31D required no sponsor
+  fact) -> both blockers fixed; round 2 Kimi K3 SHIP-WITH-FIXES
+  (independently re-verified both fixes by running the witnesses and
+  diffing the packs; found the op:known class surviving on E31E/H/J) ->
+  round 3 swept pack-wide with the swapped-set asserted exactly. The
+  Gear-3 verdict itself is posted by an independent gate agent that did
+  not author this diff.
+budget: |
+  Flat-subscription seats only: this session (build), codex gpt-5.6-sol
+  (round-1 grader, ChatGPT Pro), Kimi K3 (round-2 grader, Allegro flat).
+  No metered API spend.
+pii: none

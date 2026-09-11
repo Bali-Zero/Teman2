@@ -19,6 +19,7 @@ import requests
 # Load .env
 script_dir = Path(__file__).parent
 backend_rag_root = script_dir.parent
+sys.path.insert(0, str(backend_rag_root))  # `backend.*`: the government-fee detector
 sys.path.insert(0, str(backend_rag_root / "backend"))
 
 from dotenv import load_dotenv
@@ -154,8 +155,17 @@ def ingest_file(file_path: str):
     chunks = chunk_text(content)
     logger.info(f"  Created {len(chunks)} chunks")
 
+    # Government-fee gate (RULED Zero 2026-09-11), the same detector as
+    # reingest_training_data.py: a refused chunk is never embedded or upserted.
+    from backend.services.misc.curated_qa_government_fee_detector import text_is_refused
+
     total_ok = 0
     for idx, chunk_text_str in enumerate(chunks):
+        reason = text_is_refused(chunk_text_str)
+        if reason:
+            logger.error(f"  REFUSED chunk {idx}: {reason}")
+            continue
+
         # Dense embedding (OpenAI)
         dense = get_openai_embedding(chunk_text_str)
 

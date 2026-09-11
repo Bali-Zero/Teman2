@@ -13,7 +13,7 @@ These tests are not about the exact number of rows returned — they guard the
 SQL SHAPE. Specifically: both methods MUST join via `r.company_id IN (SELECT
 ccl.company_id ...)`, not `r.client_id IN (...)`.
 
-See `.claude/rules/cicatrix-scars.md` for the full scar and antibody.
+See `docs/scars/cicatrix-scars.md` for the full scar and antibody.
 """
 
 from __future__ import annotations

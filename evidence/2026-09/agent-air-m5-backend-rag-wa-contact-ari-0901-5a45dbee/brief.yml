@@ -1,0 +1,128 @@
+task_id: wa-contact-ari-0901
+gear: 3
+l_level: L2
+gate_class: opus
+objective:
+  "Put the CLIENT-FACING WhatsApp number back on the price list, and make it structurally\nimpossible\
+  \ for the bot's inbound number to take its place again.\n\nOrdered by Zero on 2026-09-01, two words:\
+  \ \"1 lascia ari\" — leave Ari's line. It reverses a\ndecision made the day before by this same organism,\
+  \ not by him.\n\nWhat happened on 2026-08-31: two external seats (codex-gpt-5.6-sol and kimi-code/k3,\
+  \ independently)\nfound a real defect — the generated price list displayed one number and linked its\
+  \ `wa.me` href,\nand the QR code built from that href, to a DIFFERENT one. `CANONICAL_CONTACT` carried\
+  \ `whatsapp`\nand `wa_link` as two hand-typed literals and they had drifted apart. PR #5418 cured it\
+  \ correctly,\nby deriving both from a single digit string. Then it had to pick which of the two numbers\
+  \ won,\nand it picked `settings.SUPPORT_WHATSAPP` — because a tripwire in this repo said the sheet's\n\
+  contact MUST equal `settings.SUPPORT_WHATSAPP`.\n\nThat tripwire was wrong, and it caused the harm rather\
+  \ than preventing it. The two numbers are\nnot two spellings of one thing:\n  - `SUPPORT_WHATSAPP` (+62\
+  \ 821 3465 159) is the Meta-verified line the BOT RECEIVES on. It is\n    an inbound routing identity.\
+  \ No human answers it.\n  - Ari's line (+62 821 3454 721) is where a client is invited to write, and\
+  \ a person replies.\nEvery other client-facing surface in the repo already used Ari's line — the IT\
+  \ and ID notification\ntemplates, the lead-capture deeplink, the welcome-practice and welcome-email\
+  \ services, the Canva\nrenderer, the whole `apps/mouth` frontend, `packages/core`'s shared deeplink\
+  \ canon. The price list\nwas the ONE surface that disagreed, and #5418 made it disagree in the other\
+  \ direction.\n\nSo the reversal is the small half. The load-bearing half is that nothing in the repo\
+  \ said which\nnumber was which, and the one artefact that spoke on the question said the wrong thing\
+  \ with the\nauthority of a test. This diff gives the distinction a name in code (`settings.CLIENT_CONTACT_WHATSAPP`),\n\
+  pins the two halves of the system to each other rather than to the bot, and adds a guard that goes\n\
+  red if they ever collapse back into one.\n\nGear 3 by PATH, deterministically: `apps/backend-rag/backend/app/core/config.py`\
+  \ is a hot zone,\nso `--print-floor` returns 3 regardless of size. 13 files, +245/-52 measured from\
+  \ the merge-base.\n"
+constraints:
+  - "The reversal must not undo the cure. #5418's real finding — that `whatsapp` and `wa_link` were two
+    hand-typed literals free to drift — stands. Both still derive from one digit string; this diff only
+    changes which digits, and adds the reason to the source."
+  - "`settings.SUPPORT_WHATSAPP` is NOT touched. It is the bot's inbound identity and is consumed by live
+    webhook routing (`whatsapp_chat.py::_is_meta_inbox_public_number`, the 2026-08-25 double-reply defense).
+    Changing it would break message delivery; the ruling is about outbound invitations only."
+  - A literal in a test is how the last ruling outlived its own reversal. Every assertion about a number
+    is derived from the source of truth it is validating against, never restated — including the negative
+    mutation in `test_contact_wa_link_must_match_canonical`, whose hard-coded 'wrong' value had silently
+    become the RIGHT one on 2026-09-01 and stopped being a mutation at all.
+  - Scope is the price list, because that is what was ruled on. Eleven other client-facing surfaces (email
+    footers, the chat sanitizer, the website-widget prompt) carry the same defect and are deliberately NOT
+    changed here — who answers a client's invoice reply is a business decision, and quietly rewriting eleven
+    surfaces on two words is the over-reach being reversed.
+acceptance:
+  - text:
+      "WHEN the price sheet's contact block drifts from its generator in EITHER direction, the tripwire
+      SHALL go red — measured under two mutations: half-drift of the sheet (`whatsapp` back to the bot number,
+      `wa_link` left on Ari) and a generator-only change."
+    probe: test_authoritative_pricing_json_never_reintroduces_retired_contact
+  - text: WHEN `CLIENT_CONTACT_WHATSAPP` collapses onto `SUPPORT_WHATSAPP`, the suite SHALL go red.
+    probe: test_client_contact_whatsapp_matches_the_price_list_generator
+  - text:
+      WHEN either pricing fallback binds `whatsapp` to anything other than the setting — a literal,
+      a join, an f-string, even one holding today's correct number — the suite SHALL go red, and WHERE those
+      files merely MENTION a number in prose it SHALL stay green.
+    probe: test_pricing_fallback_contacts_read_the_setting_and_never_a_literal
+  - text:
+      WHEN any repo-side copy of the client number goes stale — the price-list generator, the Qdrant
+      patch script's CANONICAL_WHATSAPP, or the Visa Oracle's WHATSAPP_BASE_URL — the suite SHALL go red,
+      because a setting is not a single source of truth while four other files spell the same digits out.
+    probe: test_every_repo_side_copy_of_the_client_number_agrees
+  - text:
+      "WHEN a historically-canonical number is dropped from the Qdrant patch script's stale list, the
+      suite SHALL go red. This is separate from the parametrised guilt tests ON PURPOSE: those iterate over
+      the list, so deleting an entry deletes its own test case and the suite stays green — measured."
+    probe: test_every_historically_wrong_number_is_still_listed_as_stale
+  - text:
+      WHEN a Qdrant contact trailer carries BOTH retired numbers it SHALL come out fully canonical and
+      stable, and WHERE a line merely quotes a trailer it SHALL be left untouched.
+    probe: test_a_line_carrying_both_stale_numbers_is_fully_replaced
+  - text:
+      IF the rendered price list's QR encodes anything other than the validated `contact.wa_link`, the
+      suite SHALL go red — the display text and the scanned link naming different numbers is the original
+      defect.
+    probe: test_generate_html_contains_qr_link
+  - text:
+      WHILE this machine's local Postgres carries pre-existing state, the backend suite SHALL be no
+      worse on this branch than on origin/main — compared count-for-count against a detached origin/main
+      worktree sharing the same database, never against zero.
+    probe: pytest backend/tests -p no:cacheprovider (this branch vs a detached origin/main worktree)
+consumer_map:
+  - "`apps/backend-rag/backend/data/bali_zero_official_prices_2026.json` — the sheet the running PricingService
+    loads. Its `metadata.contact` is what a client is told."
+  - "`scripts/pricelist_2026/schema.py` — `CANONICAL_CONTACT`, and the validator that refuses to render
+    a sheet whose contact differs from it. `generate.py` reads the contact from the JSON, but only after
+    `schema.validate()` has proven the JSON matches CANONICAL_CONTACT, so the two cannot diverge in a rendered
+    document."
+  - "`docs/pricing/Bali_Zero_Price_List_2026.md` — the rendered public price list. Already carries Ari's
+    line at lines 7 and 263; unchanged by this diff, and now consistent with its generator again."
+  - "`apps/mouth/data/bali-zero-prices.json` — the frontend mirror; `sync_frontend_prices.py --check` reports
+    in sync, so no frontend change is needed."
+  - "`apps/backend-rag/backend/app/core/config.py` — gains `CLIENT_CONTACT_WHATSAPP`. `SUPPORT_WHATSAPP`
+    untouched."
+  - "`backend/plugins/bali_zero/pricing_plugin.py` and `backend/services/misc/zantara_tools.py` — the two
+    pricing entry points' `fallback_contact`, returned to a client when the sheet fails to load. Both now
+    read the setting."
+  - "`scripts/patch_pricing_contact_block.py` — rewrites the contact trailer inside the LIVE `bali_zero_pricing_hybrid`
+    Qdrant payloads. NOT run by this PR; its stale list is widened so that when it IS run it can heal a
+    collection carrying either wrong number."
+  - "`backend/services/visa_oracle/visa_oracle_service.py` — a dead `WHATSAPP_NUMBER` constant carrying
+    the bot's number, referenced nowhere in the repo, removed."
+  - "`.claude/skills/modus/PENDING-ARMS.md` — the 2026-08-31 row closed with why its cure was reversed,
+    and one new row for the eleven out-of-scope surfaces."
+risks:
+  - MERGING THIS DEPLOYS. `fly-deploy.yml` fires on push to main under `apps/backend-rag/**`, and this diff
+    touches `config.py`, two services and the price sheet. The WhatsApp deploy window (outside 08:00-20:00
+    WITA, one `api` machine, Meta retries 36h) is honoured at the MERGE.
+  - The Qdrant collection may currently carry the bot's number in its payload trailer, put there by a run
+    of `patch_pricing_contact_block.py` between 2026-08-31 and today. Whether such a run happened is NOT
+    established here — I did not query the live collection. The script is now able to heal either number,
+    but it has not been run, so a stale trailer in RAG-retrieved pricing text is an OPEN possibility, not
+    a cured one.
+  - Eleven other client-facing surfaces still emit the bot's inbound number to clients — invoice, birthday,
+    welcome (5 languages), practice-status, completion and CRM-automation email footers, the shared notification
+    footer, the chat sanitizer's CTA, and the website-widget prompt. Measured, listed by file:line in the
+    new PENDING-ARMS row, and left for Zero because the answer is a business decision about who answers,
+    not a code cleanup.
+  - "`docs/WHATSAPP_STRATEGY_2026.md` still diagrams the RETIRED +62 813 3805 1876 as the main number and
+    names SUPPORT_WHATSAPP as the single SSOT. Stale doc, ledgered, not rewritten here."
+  - "`CLIENT_CONTACT_WHATSAPP` is a pydantic Settings field, so it is env-overridable like every other.
+    The new tripwire pins the DEFAULT against the generator; it cannot see a production override. That is
+    the same exposure `SUPPORT_WHATSAPP` has always had and is not made worse here."
+grader:
+  Opus 5 at xhigh — the final on-disk gate (CLAUDE.md §5, 2026-08-20 ruling). The build lane is
+  this session; the adversarial review lane was dispatched on the DIFF, without the conclusions, and told
+  to attack the tripwire rewrite specifically — the artefact most likely to be wrong here, since a tripwire
+  is exactly what caused the defect being reversed.

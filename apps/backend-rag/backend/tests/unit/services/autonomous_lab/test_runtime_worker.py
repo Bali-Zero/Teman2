@@ -282,7 +282,7 @@ async def test_real_store_accepts_worker_success_summary_without_raw_output() ->
                 VerificationCommandResult(
                     command=(
                         "cd apps/backend-rag && PYTHONPATH=. "
-                        "pytest backend/tests/unit/services/autonomous_lab -q"
+                        "pytest backend/tests/unit/services/autonomous_lab"
                     ),
                     allowed=True,
                     executed=True,

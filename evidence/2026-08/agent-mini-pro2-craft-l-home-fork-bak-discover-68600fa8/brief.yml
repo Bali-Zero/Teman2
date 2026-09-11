@@ -1,0 +1,143 @@
+task_id: home-fork-bak-discover
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  L08-PR3 of the beyond-SOTA craft wave 2 (squad L, issue #5319): close the
+  blind spot in superscar #1's own executable antidote.
+
+  `scripts/lint_home_fork.py --check` sha256-compares exactly the paths the
+  registry names. A backup taken BESIDE one of them is outside its field of
+  view by construction — and a backup is not inert:
+
+    - W65: the 2026-05-31 sweep chmod'd the live skills-bridge plist to 0400
+      and left the backup it had just made world-readable, 64-hex key inside.
+      The hardening hardened the file and not the copy of the file.
+    - The WR2 canva-renderer scar says in those words that preserving on disk
+      under ~/Library/LaunchAgents/ IS the attack surface for sibling-agent
+      resurrection. Two .plist.bak-* are sitting there right now.
+    - A .bak of a script is a frozen fork nothing in this repo compares, which
+      is the entire disease the lint exists for. Measured while auditing
+      callers: ~/.claude/hooks/ holds SIX .bak copies of worktree_isolation.py
+      — six stale forks of the hook that keeps agents off the main checkout.
+
+  Measured live on Mini 2026-08-31: 83 shadows across 9 directories, 35 of them
+  in ~/.claude/hooks alone.
+constraints:
+  - "Read-only. The lint stays a pure signaler: it enumerates and reports, and
+    writes nothing, ever."
+  - "REPORTED by default; the exit code moves only under --strict-bak (bit 8).
+    83 pre-existing files would redden every run from day one, and a check that
+    is always red is a check somebody turns off — the disarm generator this
+    squad exists to remove, not to install."
+  - "Deletion is NOT in this diff and was not performed. ~/.claude/hooks/ is
+    live control-plane state, so the purge is operator[control-plane]; the
+    session's deliverable is the instrument and the number, not the removal."
+  - "The machine filter is deliberately NOT applied to the directory set, and
+    the contrast with the divergence check is written at the site. The reported
+    thing is a file on THIS disk; a pair's machine label says nothing about
+    whether that file is here."
+  - "Additive to the existing surface. The 73 tests across the four existing
+    home-fork corpora were green before and after every revision."
+acceptance:
+  - text: >-
+      WHEN a `.bak` file sits in a directory that holds a declared live payload,
+      `--discover` SHALL name it; and WHERE a directory holds no backup, the run
+      SHALL say so rather than stay silent.
+    probe: "pytest scripts/tests/test_home_fork_bak_shadows.py"
+  - text: >-
+      WHILE `--strict-bak` is absent the exit code SHALL be unchanged, and WHEN
+      it is present bit 8 SHALL be ADDED to the existing verdict rather than
+      replace it — bit 1 in particular SHALL survive beside it.
+    probe: "pytest scripts/tests/test_home_fork_bak_shadows.py -k strict_bak"
+  - text: >-
+      IF a scanned directory cannot be read — a permission denial or a symlink
+      loop — the run SHALL raise the error bit AND SHALL NOT print the word
+      clean, because a scan that could not look is not a clean scan.
+    probe: "pytest scripts/tests/test_home_fork_bak_shadows.py -k UNREADABLE or SYMLINK_LOOP"
+  - text: >-
+      WHERE a declared pair resolves outside HOME, the directory SHALL NOT be
+      scanned without --system, including when `..` makes it merely LOOK
+      contained; and a payload at the HOME root SHALL still be scanned.
+    probe: "pytest scripts/tests/test_home_fork_bak_shadows.py -k DOTDOT or home_itself"
+  - text: >-
+      IF `--strict-bak` is passed where it cannot take effect, the CLI SHALL
+      refuse rather than accept it and do nothing.
+    probe: "pytest scripts/tests/test_home_fork_bak_shadows.py -k REFUSES"
+  - text: >-
+      WHEN any cure in this diff is reverted, the corpus SHALL turn red — or the
+      surviving mutant SHALL be declared at the site rather than reported green.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_home_fork_bak_shadows.py"
+consumer_map:
+  - "immune-enforcement.yml — the executor, and the only reason the corpus runs
+    at all. The new file is added to BOTH lists it needs: the in-job paths
+    detector and the unit-test runner. A corpus in neither is the W81 disease
+    this squad exists to cure, so the workflow edit is not incidental to this
+    PR, it is what arms it."
+  - "scripts/lint_home_fork.py --discover on Mini — the live consumer, run this
+    session read-only. 9 directories, 83 files, 35 in ~/.claude/hooks; the 35
+    cross-checked against an independent `ls` census that never touches the
+    lint."
+  - "infra/launchagents/wrappers/pro-healer.sh — the one executable consumer of
+    this lint's exit code. Audited: it reads the code with a BITMASK (`& 1`,
+    `& 4`) and calls --check only, so bit 8 cannot disturb it. Verified rather
+    than assumed."
+  - "The operator's purge sequence — the number is the deliverable. 83 is a
+    figure that can shrink; a boolean would not have been."
+risks:
+  - "DECLARED, NOT CURED: --discover has no automated caller anywhere in this
+    repo. pro-healer.sh runs --check only, so the .bak count is watched by the
+    CI corpus and by a human running the command, not by a job over time.
+    Wiring it into the healer changes healer behaviour and belongs to its own
+    PR, not to a rider on this one. Carried as a ledger row."
+  - "DECLARED, NOT CURED: the workflow's unit-test loop is `if [ -f $t ]; then
+    pytest; else ::notice::skip`, so DELETING a listed corpus passes CI. Both
+    refuters found it independently. It is pre-existing, affects all 40+ listed
+    corpora, and has a stated rationale (the window before a lane's PR merges);
+    changing it would redden every lane whose corpus has not landed. Reported
+    here rather than fixed under cover of a .bak lint."
+  - "RETRACTED, and the retraction is the point. This brief previously declared
+    the iterdir TOCTOU branch untestable and shipped a surviving mutant on that
+    basis. Round 3 showed it is deterministically testable by monkeypatching
+    `Path.iterdir`, and the same round showed the branch itself was WRONG: a
+    directory that vanishes after a successful stat is lost verification, not
+    absence. Both the claim and the code it excused are gone. Recorded rather
+    than deleted, because 'we proved it could not be tested' is exactly the kind
+    of sentence that should cost something when it turns out to be false."
+  - "DECLARED FALSE-POSITIVE CLASS: with IGNORECASE and `-` in the separator,
+    `routes.BAK-DPS.csv` is flagged — `BAK` is the UN/LOCODE for Baku. The trade
+    is deliberate: dropping IGNORECASE loses `com.x.plist.BAK`, a real backup on
+    the case-insensitive filesystem this lint exists for. The finding is
+    advisory, so a false positive costs one line of output and never a red
+    build, while the miss it trades for costs a leaked key nobody sees."
+  - "DECLARED, NOT CURED: `_is_within` validates one pathname state and `stat`
+    then follows it again, so swapping a directory for an out-of-HOME symlink in
+    that window defeats the containment check. Inherent to any path-based guard
+    short of open-then-fstat, out of proportion to an advisory finding, and
+    named rather than left for the next reader to discover."
+  - "DECLARED SCOPE: only the `.bak` family is reported. `~`, `.orig`, `.old`,
+    `.save`, `.swp` are not. Widening is a measurement question — which of them
+    actually occur beside a declared payload — and claiming coverage never
+    measured is worse than a narrow rule that says so."
+  - "A `.bak` DIRECTORY is reported and its contents are not walked, so
+    `attic.bak/old.sh` is one finding rather than the files inside it. Named at
+    the site; the operator's next step for a directory is to look in it."
+grader: |
+  TWO cross-family adversarial refutations on the DIFF, never on a narrative,
+  each given an explicit attack list. Codex GPT-5.6 sol at xhigh (read-only
+  sandbox): DO-NOT-SHIP, 9 findings. Kimi K3 (second family, independent):
+  DO-NOT-SHIP, 9 findings, with five the first round did not reach.
+
+  Generator != grader holds strictly: neither reviewer wrote any of this code.
+  Final on-disk gate is this orchestrator session (Opus 5, xhigh), empirical —
+  every command in the receipts was re-run here rather than taken from a
+  summary, and every refuter claim was checked against the real files before it
+  was acted on, because a refuter allucinates too (W65). Two of the eighteen
+  findings were downgraded on that check and are declared rather than fixed.
+budget: >-
+  1 build lane (this session) + 2 cross-family review lanes (Codex sol xhigh,
+  Kimi K3) + 1 read-only Sonnet subagent used for an unrelated lane's grounding.
+  The council is real: this is a Gear-3 floor by path, and two distinct
+  non-Anthropic seats reviewed the same diff and disagreed usefully about what
+  mattered.
+pii: none

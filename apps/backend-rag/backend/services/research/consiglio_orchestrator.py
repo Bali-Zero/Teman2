@@ -7,7 +7,12 @@ Current members:
   claude     — Claude Opus 4.7 via OAuth CLI (primary analyst)
   gemini     — Gemini 3.1 Pro (1M ctx) via CLI — gracefully degrades
                on 429 rate limit; result simply omits gemini votes
-  deepseek   — DeepSeek V4 Pro Think Max ($0.01/query, audited exception)
+  kimi       — Kimi K3 via CLI (Moonshot, flat-sub OAuth device-code, no
+               API key). Replaces the retired DeepSeek direct-API member
+               (`deepseek-ask`, called `api.deepseek.com` with
+               `DEEPSEEK_API_KEY` — retired 2026-07-19, pre-auth revoked)
+               — CLAUDE.md §5 names Kimi K3 as the sanctioned replacement
+               refuter/second-opinion seat.
   notebooklm — NotebookLM MCP query — grounded authority validator
 
 If a member fails (network error, rate limit, no binary), the orchestrator
@@ -65,9 +70,9 @@ class ConsiglioResult:
 
 
 class ConsiglioV1:
-    """Runs deliberation across Claude/Gemini/DeepSeek/NotebookLM."""
+    """Runs deliberation across Claude/Gemini/Kimi/NotebookLM."""
 
-    LLMS = ("claude", "gemini", "deepseek", "notebooklm")
+    LLMS = ("claude", "gemini", "kimi", "notebooklm")
 
     def __init__(self, timeout_sec: int = CLAIM_QUERY_TIMEOUT_SEC) -> None:
         self.timeout = timeout_sec
@@ -183,8 +188,8 @@ class ConsiglioV1:
             return ["claude", "-p", full_prompt]
         if llm == "gemini":
             return ["gemini", "-m", "gemini-3.1-pro-preview", "-p", full_prompt]
-        if llm == "deepseek":
-            return ["deepseek-ask", full_prompt]
+        if llm == "kimi":
+            return ["kimi", "-p", full_prompt, "-m", "kimi-code/k3"]
         if llm == "notebooklm":
             return ["nlm-query", full_prompt]
         return None

@@ -4,6 +4,7 @@ Intel Staging Service
 Handles staging area operations for Intel articles.
 """
 
+import fcntl
 import hashlib
 import json
 import logging
@@ -220,6 +221,45 @@ class IntelStagingService:
             raise
 
         return staging_file
+
+    def compare_and_set_status(
+        self,
+        intel_type: Literal["visa", "news"],
+        item_id: str,
+        *,
+        expected: set[str],
+        new_status: str,
+        updates: dict[str, Any] | None = None,
+        expected_values: dict[str, Any] | None = None,
+    ) -> tuple[bool, dict[str, Any] | None]:
+        """Atomically transition one staging item across worker processes."""
+
+        assert_valid_item_id(item_id)
+        staging_dir = self.get_staging_dir(intel_type)
+        lock_dir = staging_dir / ".locks"
+        lock_dir.mkdir(parents=True, exist_ok=True)
+        lock_path = lock_dir / f"{item_id}.lock"
+        with lock_path.open("a+", encoding="utf-8") as lock_handle:
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+            try:
+                current = self.load_staging_item(intel_type, item_id)
+                if current is None:
+                    return False, None
+                status = str(current.get("status", "pending"))
+                if status not in expected:
+                    return False, current
+                if expected_values and any(
+                    current.get(field) != expected_value
+                    for field, expected_value in expected_values.items()
+                ):
+                    return False, current
+                current["status"] = new_status
+                if updates:
+                    current.update(updates)
+                self.save_staging_item(intel_type, item_id, current)
+                return True, current
+            finally:
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
 
     def load_staging_item(
         self,

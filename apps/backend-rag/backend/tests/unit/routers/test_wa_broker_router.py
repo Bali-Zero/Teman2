@@ -260,6 +260,20 @@ def test_complete_accepts_error_class_inside_allowed_vocabulary(
     assert resp.status_code == 200
 
 
+def test_complete_accepts_quota_exhausted_error_class(
+    client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B2b: the daemon now reports `quota_exhausted` as its own wire value
+    (instead of folding it into `cli_failure`) — the router must accept it,
+    not 422 it, or the daemon's typed report never reaches a terminal row."""
+    monkeypatch.setattr(
+        wa_broker_router.wa_broker, "complete_job", AsyncMock(return_value=CompleteStatus.ACCEPTED)
+    )
+    body = _complete_body(result_text=None, error_class="quota_exhausted")
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
+    assert resp.status_code == 200
+
+
 # ── complete: exec_ms Postgres int ceiling (finding 10) ─────────────────────
 
 

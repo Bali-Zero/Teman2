@@ -1,0 +1,108 @@
+{
+  "run_at": "2026-08-31T07:11:35+08:00",
+  "today": "2026-08-31",
+  "yesterday_seen_count": 23,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare challenge (HTTP 403), persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but body is \"Artikel tidak ditemukan\" (soft-404 path); root https://ortax.org/ and /berita checked separately"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "http_404",
+      "note": "Cloudflare 404 confirmed via header check, persisted after 1 retry"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Search-form landing page, no dated peraturan list rendered in static HTML (requires dynamic JS/query submit)"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Next.js client-side SPA shell with no pre-rendered regulation entries in static HTML"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://ortax.org/",
+      "reason": "outside_window",
+      "note": "Latest entries dated 28 Agustus 2026 (predates 48h window); no qualifying PMK/PP/Perpres/UU/BKPM regulations"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Only SE-6/PJ/2026 (Surat Edaran, out of scope reg-type) and general tax news; no new in-scope regulation types"
+    },
+    {
+      "url": "https://muc.co.id/id/article",
+      "reason": "outside_window",
+      "note": "Latest regulation article cites PMK 108/2025, predating the 48h window"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Latest promulgated items dated 18 August 2026 or earlier, predating the 48h window"
+    },
+    {
+      "url": "https://jdih.kemenkum.go.id/",
+      "reason": "outside_window",
+      "note": "Latest indexed regulations predate the 48h freshness window; no new Permenkumham/Permenkum in window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "Permenaker 12/2026 already captured in seen_citations; no new in-window Permenaker promulgated"
+    },
+    {
+      "url": "https://jdih.kemkes.go.id/",
+      "reason": "checked_no_new",
+      "note": "Only Kepmen/Kepdirjen dated 13 Aug 2026 or earlier; no promulgated Permenkes in 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Only enforcement/operational news; no new visa/immigration regulation citations"
+    },
+    {
+      "url": "https://jdih.bkpm.go.id/",
+      "reason": "outside_window",
+      "note": "Latest regulation is Peraturan Menteri Investasi/Kepala BKPM No. 6 Tahun 2026 (promulgated 2026-07-16), predating 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK Nomor 28 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026"
+  ]
+}

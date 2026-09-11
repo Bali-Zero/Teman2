@@ -1,0 +1,204 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  2026-08-26-PIANO-SPEC-receptor-live.md §8 (Regole di utilizzo dei livelli LLM),
+  enforcer E3, rules R8+R10 of R8-R11 (this PR — R9/R11 follow in PR-B). Dispatched as
+  an implementer-lane teammate-message from team-lead, task-id
+  pack-lint-seat-rules-0826, worktree .worktrees/infra-pack-lint-seat-rules-0826 per
+  scripts/agent_start.py.
+
+lanes:
+  - lane: seat-rules-implementation
+    role: build
+    seat: claude-sonnet-5
+  - lane: seat-rules-adversarial-review
+    role: review
+    seat: kimi-code/k3
+
+diff:
+  files: 3
+  net_lines: 525
+  measured_at: 63bfa19ec
+  note: >-
+    git diff --numstat origin/main -- scripts/evidence_pack_lint.py
+    scripts/tests/test_evidence_pack_lint.py infra/guard-conformance/registry.json
+    = 237+2, 265+1, 26+0 (insertions+deletions per file) = 528 insertions / 3
+    deletions = 525 net. Measured against merge-base 63bfa19ec (== origin/main at
+    measurement time, no fetch performed mid-task). This file (pack.yml) and its
+    sibling brief.yml are new files under evidence/2026-08/, counted separately by
+    CI's own --numstat-file, not folded into this self-declared figure.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      None of this PR's 3 changed files are HOTZONE by path, so the deterministic
+      floor for this diff is 1 — the Gear-3 declaration is a scope choice above the
+      floor (monotonic, allowed), not floor-forced.
+    cmd: >-
+      git diff --name-only origin/main -- scripts/evidence_pack_lint.py
+      scripts/tests/test_evidence_pack_lint.py infra/guard-conformance/registry.json
+      > .scratchpad/L8-changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file .scratchpad/L8-changed.txt
+    result: "floor=1 (confirmed: none of the 3 paths match any HOTZONE_PATTERNS entry)."
+    exit: 0
+    ts: 2026-08-26T16:46Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The new code parses, the linter's own self-test still passes, and the
+      guard-conformance meta-gate reports zero violations with the two new checks
+      censused and their guilt+innocence proofs resolved (no phantom test-name
+      references).
+    cmd: >-
+      python3 -c "import ast; ast.parse(open('scripts/evidence_pack_lint.py').read())";
+      python3 scripts/evidence_pack_lint.py --selftest;
+      python3 -c "import json; json.load(open('infra/guard-conformance/registry.json'))";
+      python3 infra/guard-conformance/check_guard_conformance.py
+    result: >-
+      SYNTAX_OK; SELFTEST PASS; VALID JSON; "10 bridge guards, 13 hook entries, 7
+      wr2-pregate checks, 9 evidence-pack-lint checks, 4 required-workflow-conformance
+      checks, 0 violation(s) — every censused guard has guilt+innocence proofs, no
+      phantoms, all armed in CI."
+    exit: 0
+    ts: 2026-08-26T16:50Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The full guilt+innocence corpus for check_ground_truth_lane and
+      check_pii_local_seat passes, and ruff is clean on both touched Python files.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 -m pytest
+      scripts/tests/test_evidence_pack_lint.py -q;
+      apps/backend-rag/.venv/bin/python3 -m ruff check scripts/evidence_pack_lint.py
+      scripts/tests/test_evidence_pack_lint.py
+    result: "130 passed; ruff — All checks passed."
+    exit: 0
+    ts: 2026-08-26T16:53Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The guilt tests for both new rules are load-bearing on real trigger logic, not
+      vacuously true — mutating the shared path-match helper to always report "no
+      match" turns every R8/R10 guilt test red, and restoring it returns the suite to
+      fully green with zero residual diff.
+    cmd: >-
+      Edit _any_path_matches to `return False`;
+      pytest -k "ground_truth_guilt or pii_local_guilt" -q;
+      Edit _any_path_matches back to the real fnmatchcase body;
+      pytest scripts/tests/test_evidence_pack_lint.py -q;
+      git diff --numstat origin/main -- scripts/evidence_pack_lint.py
+    result: >-
+      mutated: "25 failed, 105 deselected" (every R8/R10 guilt case, and only those,
+      went red). restored: "130 passed"; numstat back to 237/2 (byte-identical to
+      pre-mutation, zero MUTATION-TEST-TEMP residue via `grep -c` = 0).
+    exit: 0
+    ts: 2026-08-26T16:56Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Every hardcoded path in GROUND_TRUTH_PATH_PATTERNS and PII_PATH_PATTERNS
+      resolves to a real file/directory on disk in this worktree — no phantom paths.
+    cmd: >-
+      find . -type d -iname visa_engine; find data/source_documents apps/mouth/data
+      -maxdepth 1 -iname "KBLI*.json"; ls apps/backend-rag/backend/data/bali_zero_official_prices_*.json
+      apps/mouth/data/bali-zero-prices.json; ls -d apps/backend-rag/backend/services/{intake,crm,crm_guardian}
+      apps/backend-rag/backend/channels/whatsapp; ls scripts/yield_optimizer_pitch_gate.py;
+      ls -d apps/mouth/src/app/{visa,kbli,kbli-explorer,taxes,zoning,property}
+    result: >-
+      All paths present. visa_engine exists at 4 depths (services/, scripts/, and
+      their tests/ mirrors — the */visa_engine/* glob intentionally matches all 4,
+      see brief.yml risks). 3 KBLI json files under data/source_documents, 5 under
+      apps/mouth/data (both KBLI*.json and kbli*.json case variants hit real files).
+      Both pricing-table years present. All 4 PII service dirs present. Yield-optimizer
+      script present. All 6 sampled mouth claim-page dirs present.
+    exit: 0
+    ts: 2026-08-26T16:59Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The new lint does not newly fail any pre-existing evidence pack in the repo —
+      the one pack that fails is a PRE-EXISTING failure on an unrelated rule, not
+      something R8/R10 caused.
+    cmd: >-
+      for pack in evidence/pack.yml evidence/*/*/pack.yml; do python3
+      scripts/evidence_pack_lint.py "$pack" --json; done  # (run via a small
+      collecting script, no --changed-files-file, so R8/R10 print NOTICE-only and
+      never contribute a violation on this invocation — see brief.yml re: rules 6/7/9b-c
+      needing --changed-files-file)
+    result: >-
+      27 packs scanned: 26 rc=0, 1 rc=1
+      (evidence/2026-08/agent-nuzantara-backend-rag-ros-v1-p04-d3-correc-7cfde7fc/pack.yml,
+      failing on "dissent: consenso sospetto — zero dissent entries on a Gear-3 pack" —
+      a pre-existing D-series rule, unrelated to R8/R10, and reproduces identically
+      against the unmodified origin/main copy of this linter).
+    exit: 0
+    ts: 2026-08-26T16:47Z
+    seat: session (Pro, implementer lane)
+
+dissent:
+  - seat: session self-refutation (recorded because nothing external caught it)
+    objection: >-
+      The mandate suggested a new test file, scripts/tests/test_evidence_pack_lint_seat_rules.py,
+      for the R8-R11 corpus. This PR instead appends all new tests into the EXISTING
+      scripts/tests/test_evidence_pack_lint.py — a deviation from the literal instruction.
+    status: CONFIRMED
+    note: >-
+      Verified by reading infra/guard-conformance/check_guard_conformance.py's
+      check_bridge(): the registry's test_file field is a single string per surface, and
+      its AST census scans the ENTIRE declared source file for check_* defs regardless
+      of which surface references it. A second surface pointing at the same
+      scripts/evidence_pack_lint.py would double-census its check_* functions, and any
+      guilt/innocence test-name reference would fail the anti-phantom check (C3) unless
+      the actual test functions live in the ONE file the pre-existing evidence_pack_lint
+      surface already names as test_file. Confirmed empirically: check_guard_conformance.py
+      passes with 0 violations only with the tests appended to the existing file, not a
+      new one.
+
+  - seat: session self-refutation (recorded because nothing external caught it)
+    objection: >-
+      The mandate described one PR implementing all 4 rules (R8 ground_truth, R9
+      council_run, R10 pii_local, R11 seat_floor). The full 4-rule implementation
+      measured 958 net lines against origin/main — well over the Agent PR Contract's
+      "aim ~400 net lines" target.
+    status: CONFIRMED
+    note: >-
+      The mandate itself named the exact fallback for this case ("if the diff passes
+      400 split ground_truth+PII from seat_floor+council into two PRs, this lane opens
+      both sequentially"). Executed that split: this PR ships R8+R10 (525 net lines —
+      still over the 400 aim, but the smallest coherent unit that lands the shared
+      _seat_rule_verdict/SEAT_RULES_ENFORCEMENT_DATE infra together with its first two
+      real consumers, rather than shipping infra with zero call sites or fragmenting
+      the two rules from their common plumbing). R9 (council_run) + R11 (seat_floor)
+      follow in PR-B once this merges, reusing the same shared infra without re-deriving
+      or re-reviewing it.
+
+tests:
+  - "scripts/tests/test_evidence_pack_lint.py — 130 passed, rc=0 (venv python)."
+  - "infra/guard-conformance/check_guard_conformance.py — 0 violation(s), 9 evidence-pack-lint checks."
+
+static:
+  - "ruff check scripts/evidence_pack_lint.py scripts/tests/test_evidence_pack_lint.py — All checks passed (rc=0)."
+  - 'python3 -c "import ast; ast.parse(...)" — SYNTAX_OK on scripts/evidence_pack_lint.py.'
+  - 'python3 -c "import json; json.load(...)" — VALID JSON on infra/guard-conformance/registry.json.'
+  - "scripts/evidence_pack_lint.py --selftest — SELFTEST PASS, no regressions to the pre-existing blind-scan guards."
+
+notes:
+  - >-
+    NOTICE-ONLY, not yet enforced: both R8 and R10 are phased behind
+    SEAT_RULES_ENFORCEMENT_DATE = 2026-09-02. Today (2026-08-26/27) every hit prints a
+    stderr NOTICE and lints rc=0; the day-0 measurement in the receipts above (27 packs,
+    26 rc=0 already, 1 pre-existing unrelated failure) is the baseline this PR's own PR
+    body quotes — nothing in the existing evidence/ tree needs to change before the flip
+    date, but authors of new ground-truth/PII-path packs should start declaring the
+    required lane/seat shape now.
+  - >-
+    PR-B (R9 council_run + R11 seat_floor) is intentionally not started yet — it awaits
+    this PR merging to origin/main first, per the mandate's "opens both sequentially"
+    instruction, so PR-B's worktree starts from a fresh origin/main that already has
+    this PR's shared infra.
+  - >-
+    The mandatory post-open cross-family refuter round (codex exec -m gpt-5.6-sol,
+    fallback kimi-code/k3) runs AFTER `gh pr create`, per the mandate's discipline
+    section — its findings (if any) are recorded in the PR body and, if they change
+    code, as a third dissent entry added in a single follow-up commit (the mandate's
+    "≤1 commit" fix allowance), not by rewriting this initial pack.

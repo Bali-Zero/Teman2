@@ -100,6 +100,18 @@ _DOCX_FORBIDDEN_NAMES: Final = frozenset(
 )
 
 
+class DuplicateDocumentError(ValueError):
+    """The client already has a live document with this file name, uploaded
+    within the duplicate window.
+
+    A ``ValueError`` subclass so every existing ``except ValueError`` around
+    ``upload_document`` keeps working; the router catches THIS type first and
+    answers 409 with the reason, instead of the 404 "Client not found" that
+    the generic ``ValueError`` branch produces for every other ``ValueError``
+    (the client is very much found).
+    """
+
+
 class AsyncUploadReader(Protocol):
     """Minimal async interface required by the bounded upload reader."""
 

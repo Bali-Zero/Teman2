@@ -30,6 +30,7 @@ import {
 import { trackTaxDashboardViewed } from "@/lib/analytics";
 import { formatIDR } from "@balizero/core/utils";
 import { Button } from "@/components/ui/button";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 // Day card surface (GARUDA Day concept .panel): white card on warm paper,
 // hairline warm border, soft navy shadow (near-invisible on dark).
@@ -83,6 +84,7 @@ function TaxesMasthead() {
 
 export default function TaxesPage() {
   const { error } = useToast();
+  const { formatDate } = usePortalDateFormat();
   const [taxData, setTaxData] = useState<TaxOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialLoadFailed, setInitialLoadFailed] = useState(false);
@@ -200,7 +202,10 @@ export default function TaxesPage() {
             />
             <h2 className="text-lg font-semibold">Tax Status</h2>
           </div>
-          <StatusBadge status={taxData.summary.status} />
+          {(taxData.summary.status === "attention" ||
+            taxData.summary.status === "overdue") && (
+            <StatusBadge status={taxData.summary.status} />
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -208,11 +213,21 @@ export default function TaxesPage() {
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Total Due
             </p>
-            <p className="text-lg font-bold">
-              {taxData.summary.totalDue > 0
-                ? formatIDR(taxData.summary.totalDue)
-                : "Rp 0"}
-            </p>
+            {/* null means the backend tracks no payment amounts at all —
+                it used to send 0 and this tile rendered a confident
+                "Rp 0" (ux F2). A measured zero still prints Rp 0. */}
+            {taxData.summary.totalDue === null ? (
+              <p
+                className="text-lg font-bold"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                Not tracked
+              </p>
+            ) : (
+              <p className="text-lg font-bold">
+                {formatIDR(taxData.summary.totalDue)}
+              </p>
+            )}
           </div>
 
           <div className="p-4 rounded-lg" style={TILE_STYLE}>
@@ -222,14 +237,11 @@ export default function TaxesPage() {
             {taxData.summary.nextDeadline ? (
               <div className="flex items-baseline gap-2 flex-wrap">
                 <p className="text-lg font-bold">
-                  {new Date(taxData.summary.nextDeadline).toLocaleDateString(
-                    "en-US",
-                    {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    },
-                  )}
+                  {formatDate(taxData.summary.nextDeadline, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </p>
                 <CountdownChip date={taxData.summary.nextDeadline} />
               </div>
@@ -338,6 +350,7 @@ function ObligationCard({
   obligation: TaxObligation;
   formatCurrency: (amount: number) => string;
 }) {
+  const { formatDate } = usePortalDateFormat();
   return (
     <div
       className="rounded-lg border p-4 transition-colors"
@@ -366,7 +379,7 @@ function ObligationCard({
         >
           <Calendar className="w-3.5 h-3.5" />
           Due:{" "}
-          {new Date(obligation.dueDate).toLocaleDateString("en-US", {
+          {formatDate(obligation.dueDate, {
             month: "short",
             day: "numeric",
             year: "numeric",

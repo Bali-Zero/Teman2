@@ -1,0 +1,18 @@
+{
+ "codex": {
+  "PAGE-1": "M4a-named",
+  "PAGE-2": "M4b-control"
+ },
+ "kimi": {
+  "PAGE-1": "M4b-control",
+  "PAGE-2": "M4a-named"
+ },
+ "agy": {
+  "PAGE-1": "M4b-control",
+  "PAGE-2": "M4a-named"
+ },
+ "qwen": {
+  "P1": "M4a-named",
+  "P2": "M4b-control"
+ }
+}

@@ -13,7 +13,12 @@ vi.mock("../_lib/telemetry", async (importOriginal) => {
   return { ...original, emitVisaOracleTelemetry, nonReversibleHash };
 });
 
-import { ConsentHandoff } from "./ConsentHandoff";
+import { ConsentHandoff, type ConsentHandoffProps } from "./ConsentHandoff";
+
+const HANDOFF_CONTEXTS = [
+  { state: "HUMAN_REVIEW_REQUIRED" },
+  { context: "CONSULTATION" },
+] as const;
 
 describe("ConsentHandoff", () => {
   beforeEach(() => {
@@ -45,81 +50,195 @@ describe("ConsentHandoff", () => {
     expect(screen.getByRole("img")).toBeVisible();
   });
 
-  it("requires separate guardian confirmation before a minor handoff", () => {
-    render(
-      <ConsentHandoff
-        language="en"
-        state="HUMAN_REVIEW_REQUIRED"
-        whatsappNumber="628123456789"
-        guardianConsentRequired
-      />,
-    );
-
-    const [guardian, whatsapp] = screen.getAllByRole("checkbox");
-    expect(guardian).not.toBeChecked();
-    expect(whatsapp).toBeDisabled();
-    expect(
-      screen.getByText(
-        "Confirm parent or guardian authority before WhatsApp consent.",
-      ),
-    ).toBeInTheDocument();
-
-    fireEvent.click(guardian);
-    expect(whatsapp).toBeEnabled();
-    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
-
-    fireEvent.click(whatsapp);
-    expect(screen.getByRole("link", { name: "Open WhatsApp" })).toBeVisible();
-
-    fireEvent.click(guardian);
-    expect(whatsapp).toBeDisabled();
-    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
-  });
-
-  it("revokes active consent at its wall-clock expiry without a remount", () => {
-    vi.useFakeTimers();
-    const grantedAt = new Date("2026-08-03T12:00:00.000Z");
-    vi.setSystemTime(grantedAt);
-    const values = new Map<string, string>();
-    const storage = {
-      getItem: (key: string) => values.get(key) ?? null,
-      setItem: (key: string, value: string) => values.set(key, value),
-      removeItem: (key: string) => values.delete(key),
-    };
-    render(
-      <StrictMode>
+  it.each(HANDOFF_CONTEXTS)(
+    "requires guardian confirmation for %j",
+    (context) => {
+      render(
         <ConsentHandoff
           language="en"
-          state="SUPPORTED_CANDIDATES"
+          {...context}
           whatsappNumber="628123456789"
-          storage={storage}
-          createReceiptId={() => "receipt-expiring"}
-        />
-      </StrictMode>,
+          guardianConsentRequired
+        />,
+      );
+
+      const [guardian, whatsapp] = screen.getAllByRole("checkbox");
+      expect(guardian).not.toBeChecked();
+      expect(whatsapp).toBeDisabled();
+      expect(
+        screen.getByText(
+          "Confirm parent or guardian authority before WhatsApp consent.",
+        ),
+      ).toBeInTheDocument();
+
+      fireEvent.click(guardian);
+      expect(whatsapp).toBeEnabled();
+      expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+
+      fireEvent.click(whatsapp);
+      expect(screen.getByRole("link", { name: "Open WhatsApp" })).toBeVisible();
+
+      fireEvent.click(guardian);
+      expect(whatsapp).toBeDisabled();
+      expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+    },
+  );
+
+  it.each(HANDOFF_CONTEXTS)(
+    "revokes %j at its wall-clock expiry without a remount",
+    (context) => {
+      vi.useFakeTimers();
+      const grantedAt = new Date("2026-08-03T12:00:00.000Z");
+      vi.setSystemTime(grantedAt);
+      const values = new Map<string, string>();
+      const storage = {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      };
+      render(
+        <StrictMode>
+          <ConsentHandoff
+            language="en"
+            {...context}
+            whatsappNumber="628123456789"
+            storage={storage}
+            createReceiptId={() => "receipt-expiring"}
+          />
+        </StrictMode>,
+      );
+
+      const checkbox = screen.getByRole("checkbox");
+      fireEvent.click(checkbox);
+      expect(checkbox).toBeChecked();
+      expect(screen.getByRole("link", { name: "Open WhatsApp" })).toBeVisible();
+      expect(screen.getByRole("img")).toBeVisible();
+      expect(values.has(VISA_ORACLE_CONSENT_KEY)).toBe(true);
+
+      act(() => {
+        vi.advanceTimersByTime(VISA_ORACLE_CONSENT_TTL_MS - 1);
+      });
+      expect(checkbox).toBeChecked();
+      expect(values.has(VISA_ORACLE_CONSENT_KEY)).toBe(true);
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+
+      expect(checkbox).not.toBeChecked();
+      expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+      expect(screen.queryByRole("img")).toBeNull();
+      expect(values.has(VISA_ORACLE_CONSENT_KEY)).toBe(false);
+    },
+  );
+
+  it.each([
+    [
+      "en",
+      "Open WhatsApp",
+      "Hello Bali Zero. I would like to speak with a consultant about Visa Oracle.\nNo interview answers are included in this message.",
+    ],
+    [
+      "id",
+      "Buka WhatsApp",
+      "Halo Bali Zero. Saya ingin berbicara dengan konsultan tentang Visa Oracle.\nPesan ini tidak menyertakan jawaban wawancara.",
+    ],
+  ] as const)(
+    "opens a generic %s consultation without a result or interview data",
+    async (language, linkName, expectedMessage) => {
+      // Even an untyped caller cannot smuggle assessment data into this context.
+      const input = {
+        language,
+        context: "CONSULTATION",
+        state: "HUMAN_REVIEW_REQUIRED",
+        assessmentReference: "abcdef1234567890",
+        answers: { fixture: "SYNTHETIC_ONLY" },
+        whatsappNumber: "628123456789",
+        createReceiptId: () => "receipt-consultation",
+      } as unknown as ConsentHandoffProps;
+      render(<ConsentHandoff {...input} />);
+
+      expect(screen.queryByRole("link")).toBeNull();
+      expect(screen.queryByRole("img")).toBeNull();
+      fireEvent.click(screen.getByRole("checkbox"));
+      const link = screen.getByRole("link", { name: linkName });
+      const href = link.getAttribute("href")!;
+      expect(new URL(href).searchParams.get("text")).toBe(expectedMessage);
+      expect(screen.getByRole("img")).toHaveAttribute("data-qr-value", href);
+      const receipt = JSON.parse(
+        window.sessionStorage.getItem(VISA_ORACLE_CONSENT_KEY)!,
+      );
+      expect(receipt.scope).toEqual({ context: "CONSULTATION" });
+      expect(JSON.stringify(receipt)).not.toMatch(
+        /SYNTHETIC_ONLY|abcdef1234567890|HUMAN_REVIEW_REQUIRED/,
+      );
+
+      fireEvent.click(link);
+      await act(async () => Promise.resolve());
+      expect(emitVisaOracleTelemetry.mock.calls).toEqual([
+        [
+          {
+            event: "visa_oracle_v2_consent_granted",
+            correlationHash: "a".repeat(64),
+          },
+        ],
+        [
+          {
+            event: "visa_oracle_v2_handoff_opened",
+            correlationHash: "a".repeat(64),
+          },
+        ],
+      ]);
+      fireEvent.click(screen.getByRole("checkbox"));
+      expect(screen.queryByRole("link")).toBeNull();
+      expect(window.sessionStorage.getItem(VISA_ORACLE_CONSENT_KEY)).toBeNull();
+    },
+  );
+
+  it("requires fresh consent in both directions between result and generic consultation", () => {
+    const shared = { language: "en" as const, whatsappNumber: "628123456789" };
+    const view = render(
+      <ConsentHandoff
+        {...shared}
+        state="NEEDS_INPUT"
+        assessmentReference="abcdef1234567890"
+      />,
     );
+    fireEvent.click(screen.getByRole("checkbox"));
 
-    const checkbox = screen.getByRole("checkbox");
-    fireEvent.click(checkbox);
-    expect(checkbox).toBeChecked();
-    expect(screen.getByRole("link", { name: "Open WhatsApp" })).toBeVisible();
-    expect(screen.getByRole("img")).toBeVisible();
-    expect(values.has(VISA_ORACLE_CONSENT_KEY)).toBe(true);
+    view.rerender(<ConsentHandoff {...shared} context="CONSULTATION" />);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox"));
 
-    act(() => {
-      vi.advanceTimersByTime(VISA_ORACLE_CONSENT_TTL_MS - 1);
-    });
-    expect(checkbox).toBeChecked();
-    expect(values.has(VISA_ORACLE_CONSENT_KEY)).toBe(true);
-
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-
-    expect(checkbox).not.toBeChecked();
-    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
-    expect(screen.queryByRole("img")).toBeNull();
-    expect(values.has(VISA_ORACLE_CONSENT_KEY)).toBe(false);
+    view.rerender(
+      <ConsentHandoff
+        {...shared}
+        state="NEEDS_INPUT"
+        assessmentReference="abcdef1234567890"
+      />,
+    );
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
   });
+
+  it.each([
+    ["en", "WhatsApp contact is not configured."],
+    ["id", "Kontak WhatsApp belum dikonfigurasi."],
+  ] as const)(
+    "does not promise a nonexistent result when %s consultation is unavailable",
+    (language, message) => {
+      render(
+        <ConsentHandoff
+          language={language}
+          context="CONSULTATION"
+          whatsappNumber=""
+        />,
+      );
+      expect(screen.getByRole("status")).toHaveTextContent(message);
+      expect(screen.queryByRole("checkbox")).toBeNull();
+    },
+  );
 
   it("uses a minimal receipt and never serializes interview facts into WhatsApp", () => {
     const values = new Map<string, string>();
@@ -152,12 +271,13 @@ describe("ConsentHandoff", () => {
 
     const receipt = JSON.parse(Array.from(values.values())[0]);
     expect(receipt).toEqual({
-      schemaVersion: 2,
+      schemaVersion: 3,
       receiptId: "receipt-1",
-      policyVersion: "visa-oracle-whatsapp-v2",
+      policyVersion: "visa-oracle-whatsapp-v3",
       purpose: "WHATSAPP_HANDOFF",
       channel: "WHATSAPP",
       scope: {
+        context: "ASSESSMENT",
         state: "NEEDS_INPUT",
         assessmentReference: "abcdef1234567890",
       },

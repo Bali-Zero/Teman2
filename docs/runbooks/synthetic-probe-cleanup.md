@@ -90,7 +90,7 @@ Dopo il rollback, registra in `schema_migrations` come rolled-back.
 
 ## Postmortem
 
-Dopo ogni cleanup, scrivi 2 righe in `.claude/rules/cicatrix-scars.md`:
+Dopo ogni cleanup, scrivi 2 righe in `docs/scars/cicatrix-scars.md`:
 
 - data
 - cosa è andato storto (crash di Python? rete? NB ban?)

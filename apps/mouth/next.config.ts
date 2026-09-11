@@ -231,6 +231,366 @@ const nextConfig: NextConfig = {
   // Redirect legacy /kbli-navigator to new Next.js /kbli app
   async redirects() {
     return [
+      // Legacy article URLs (audit 2026-09-09, PR pair with #6133): renamed slugs, category-less
+      // /insights/<slug> links (the platform 301 lands them on /<slug>) and /articles/<slug> — all
+      // soft-404 today. Specific entries must precede the category catch-alls below.
+      {
+        source: "/business/pt-pma-setup-guide",
+        destination: "/business/pt-pma-registration-guide",
+        permanent: true,
+      }, // 79 refs
+      {
+        source: "/immigration/kitas-work-permit-guide",
+        destination:
+          "/visas/working-kitas-e23-indonesias-revised-legal-framework-explained",
+        permanent: true,
+      }, // 41 refs
+      {
+        source: "/tax-legal/personal-income-tax-guide",
+        destination: "/taxes/pph-21-expat-guide",
+        permanent: true,
+      }, // 23 refs
+      {
+        source: "/immigration/digital-nomad-visa-indonesia",
+        destination: "/visas/e33g-remote-worker-visa-guide",
+        permanent: true,
+      }, // 22 refs
+      {
+        source: "/immigration/second-home-visa",
+        destination: "/visas/second-home-visa-indonesia",
+        permanent: true,
+      }, // 13 refs
+      {
+        source: "/immigration/overstay-penalties",
+        destination: "/visas/visa-overstay-penalties-indonesia-guide",
+        permanent: true,
+      }, // 10 refs
+      {
+        source: "/immigration/entry-requirements",
+        destination: "/visas/visa-free-vs-evoa-indonesia-comparison",
+        permanent: true,
+      }, // 10 refs
+      {
+        source: "/immigration/work-permit-mistakes",
+        destination:
+          "/visas/indonesias-work-permit-maze-what-expats-must-know-before-taking-the-job",
+        permanent: true,
+      }, // 10 refs
+      {
+        source: "/business/kbli-codes-explained",
+        destination: "/kbli",
+        permanent: true,
+      }, // 10 refs
+      {
+        source: "/tax-legal/corporate-tax-indonesia",
+        destination: "/taxes/corporate-income-tax",
+        permanent: true,
+      }, // 8 refs
+      {
+        source: "/property/property-due-diligence",
+        destination: "/property/property-due-diligence-bali",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/property/leasehold-property-bali",
+        destination: "/property/leasehold-vs-freehold",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/property/pt-pma-property-investment",
+        destination: "/property/rental-property-investment",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/property/hak-pakai-vs-hak-milik",
+        destination: "/property/leasehold-vs-freehold",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/property/buying-property-foreigner-bali",
+        destination: "/property/buying-property-bali-foreigners-guide",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/lifestyle/healthcare-indonesia",
+        destination: "/living/healthcare-system-indonesia",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/lifestyle/best-areas-bali",
+        destination: "/living/best-areas-bali-2026",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/lifestyle/moving-to-bali-checklist",
+        destination: "/living/living-in-bali-honest-guide",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/lifestyle/international-schools-bali",
+        destination:
+          "/visas/navigating-indonesian-schools-what-expat-families-need-to-know",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/business/hiring-employees-indonesia",
+        destination: "/business/hiring-indonesian-employees",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/immigration/visa-comparison-chart",
+        destination: "/visas/indonesia-visa-timeline-comparison",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/immigration/voa-extension-guide",
+        destination: "/visas/e-voa-electronic-visa-on-arrival-guide",
+        permanent: true,
+      }, // 5 refs
+      {
+        source: "/lifestyle/best-coworking-bali",
+        destination: "/living/coworking-spaces-bali",
+        permanent: true,
+      }, // 4 refs
+      {
+        source: "/business/retail-business-guide",
+        destination: "/business/kbli-2025-retail-sector-bali-investment-guide",
+        permanent: true,
+      }, // 4 refs
+      {
+        source: "/business/starting-business-indonesia-roadmap",
+        destination:
+          "/business/starting-a-business-in-indonesia-complete-guide",
+        permanent: true,
+      }, // 4 refs
+      {
+        source: "/tax-legal/freelancer-taxes-indonesia",
+        destination: "/taxes/freelancer-tax-guide",
+        permanent: true,
+      }, // 3 refs
+      {
+        source: "/tax-legal/npwp-registration-foreigners",
+        destination: "/taxes/npwp-foreigners-guide",
+        permanent: true,
+      }, // 3 refs
+      {
+        source: "/immigration/digital-nomad-kitas",
+        destination: "/visas/e33g-remote-worker-visa-guide",
+        permanent: true,
+      }, // 3 refs
+      {
+        source: "/immigration/family-dependent-visa",
+        destination:
+          "/visas/indonesia-family-kitas-2026-what-spouses-and-dependents-must-know",
+        permanent: true,
+      }, // 3 refs
+      { source: "/navigator/kbli", destination: "/kbli", permanent: true }, // 3 refs
+      {
+        source: "/lifestyle/cost-living-bali-2025",
+        destination: "/living/cost-of-living-bali",
+        permanent: true,
+      }, // 2 refs
+      {
+        source: "/immigration/visa-overstay-consequences",
+        destination: "/visas/visa-overstay-penalties-indonesia-guide",
+        permanent: true,
+      }, // 2 refs
+      {
+        source: "/immigration/e31-family-dependent-visa-guide",
+        destination:
+          "/visas/indonesia-family-kitas-2026-what-spouses-and-dependents-must-know",
+        permanent: true,
+      }, // 2 refs
+      {
+        source: "/tax-legal/panduan-pajak-penghasilan-pribadi",
+        destination: "/taxes/pph-21-expat-guide",
+        permanent: true,
+      }, // 1 refs
+      {
+        source: "/tax-legal/pajak-penghasilan-badan",
+        destination: "/taxes/corporate-income-tax",
+        permanent: true,
+      }, // 1 refs
+      {
+        source: "/lifestyle/driving-license-for-foreigners",
+        destination: "/living/driving-license-foreigners",
+        permanent: true,
+      }, // 1 refs
+      {
+        source: "/lifestyle/health-insurance-for-foreigners",
+        destination: "/living/health-insurance-foreigners",
+        permanent: true,
+      }, // 1 refs
+      {
+        source: "/immigration/visa-extension-step-by-step",
+        destination: "/visas/tourist-visa-extension-indonesia-guide",
+        permanent: true,
+      }, // 1 refs
+      {
+        source: "/tax-legal/panduan-ppn",
+        destination: "/taxes/vat-ppn-guide",
+        permanent: true,
+      }, // 1 refs
+      {
+        source: "/kbli-2025-bali-transformation",
+        destination: "/business/kbli-2025-bali-transformation",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-hospitality-accommodation",
+        destination: "/business/kbli-2025-hospitality-accommodation",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-real-estate-property",
+        destination: "/business/kbli-2025-real-estate-property",
+        permanent: true,
+      },
+      {
+        source: "/oss-registration-guide",
+        destination: "/business/oss-registration-guide",
+        permanent: true,
+      },
+      {
+        source: "/beginners-guide-kbli-2025",
+        destination: "/business/beginners-guide-kbli-2025",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-food-beverage-fnb",
+        destination: "/business/kbli-2025-food-beverage-fnb",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-construction-building",
+        destination: "/business/kbli-2025-construction-building",
+        permanent: true,
+      },
+      {
+        source: "/environmental-permits",
+        destination: "/business/environmental-permits",
+        permanent: true,
+      },
+      {
+        source: "/pt-pma-closure-dissolution",
+        destination: "/business/pt-pma-closure-dissolution",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-foreign-ownership-pma-guide",
+        destination: "/business/kbli-2025-foreign-ownership-pma-guide",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-new-codes-spotlight",
+        destination: "/business/kbli-2025-new-codes-spotlight",
+        permanent: true,
+      },
+      {
+        source: "/kbli-klu-fiscal-control-2025",
+        destination: "/business/kbli-klu-fiscal-control-2025",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-gold-rush-migration",
+        destination: "/business/kbli-2025-gold-rush-migration",
+        permanent: true,
+      },
+      {
+        source: "/bpjs-kesehatan-employer-guide",
+        destination: "/business/bpjs-kesehatan-employer-guide",
+        permanent: true,
+      },
+      {
+        source: "/bpjs-ketenagakerjaan-employer-guide",
+        destination: "/business/bpjs-ketenagakerjaan-employer-guide",
+        permanent: true,
+      },
+      {
+        source: "/audit-requirements-indonesia",
+        destination: "/business/audit-requirements-indonesia",
+        permanent: true,
+      },
+      {
+        source: "/monthly-bookkeeping-indonesia",
+        destination: "/business/monthly-bookkeeping-indonesia",
+        permanent: true,
+      },
+      {
+        source: "/bphtb-property-transfer-tax",
+        destination: "/taxes/bphtb-property-transfer-tax",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2020-to-2025-migration-guide",
+        destination: "/business/kbli-2020-to-2025-migration-guide",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-it-services-software",
+        destination: "/business/kbli-2025-it-services-software",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-consulting-professional-services",
+        destination: "/business/kbli-2025-consulting-professional-services",
+        permanent: true,
+      },
+      {
+        source: "/kbli-2025-retail-ecommerce",
+        destination: "/business/kbli-2025-retail-ecommerce",
+        permanent: true,
+      },
+      {
+        source: "/indonesia-zero-tax-foreign-income-2026",
+        destination: "/taxes/indonesia-zero-tax-foreign-income-2026",
+        permanent: true,
+      },
+      {
+        source: "/double-taxation-treaties",
+        destination: "/taxes/double-taxation-treaties",
+        permanent: true,
+      },
+      {
+        source: "/crypto-tax-indonesia-2026",
+        destination: "/taxes/crypto-tax-indonesia-2026",
+        permanent: true,
+      },
+      {
+        source: "/capital-gains-tax-indonesia",
+        destination: "/taxes/capital-gains-tax-indonesia",
+        permanent: true,
+      },
+      {
+        source: "/pbb-property-tax-indonesia",
+        destination: "/taxes/pbb-property-tax-indonesia",
+        permanent: true,
+      },
+      {
+        source: "/remote-work-tax",
+        destination: "/living/remote-work-tax",
+        permanent: true,
+      },
+      {
+        source: "/articles/e25b-director-kitas-guide",
+        destination: "/visas/e25b-director-kitas-guide",
+        permanent: true,
+      },
+      {
+        source: "/articles/e23-employee-kitas-guide",
+        destination: "/visas/e23-employee-kitas-guide",
+        permanent: true,
+      },
+      {
+        source: "/articles/e33g-remote-worker-visa-guide",
+        destination: "/visas/e33g-remote-worker-visa-guide",
+        permanent: true,
+      },
+      {
+        source: "/articles/kbli-2025-capital-investment-requirements",
+        destination: "/business/kbli-2025-capital-investment-requirements",
+        permanent: true,
+      },
       // Category renames (2026-03-23) — keep for 12+ months
       { source: "/immigration", destination: "/visas", permanent: true },
       // SEO redirect: freelancer tax guide (2026-05-28)
@@ -363,10 +723,21 @@ const nextConfig: NextConfig = {
   // and can cause Mixed Content issues in production.
 };
 
-// Sentry configuration options
-const sentryWebpackPluginOptions = {
-  // Suppresses source map uploading logs during build
-  silent: true,
+// Sentry configuration options.
+//
+// `silent` is deliberately NOT set. Its own type says it "suppresses all build
+// logs (ALL log levels, INCLUDING errors)" — not just the upload chatter the
+// comment here used to claim. That matters because the plugin's default on a
+// failed release/source-map upload is to THROW and stop the build: with
+// `silent: true` the deploy still failed, but with no line saying why. An
+// expired or revoked SENTRY_AUTH_TOKEN is exactly that failure, and it was
+// costing a blind red instead of a named one.
+//
+// `errorHandler` is deliberately NOT set either: providing one makes
+// compilation CONTINUE past an upload failure, which would turn a loud broken
+// deploy into a silent release with no source maps. The default throw is the
+// behaviour we want.
+export const sentryWebpackPluginOptions = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   // Only upload source maps in production

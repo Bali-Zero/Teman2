@@ -1,0 +1,59 @@
+task_id: craft-s-required-context-wiring-1
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wave-2 Squad S, lane 1 (of 6), PR 1 of 3. Make two workflows SAFE TO REQUIRE
+  so `main`'s branch protection can adopt their contexts without stalling the
+  merge queue: `voa-probe-tests.yml` (`VOA probe organ tests`) and
+  `restore-drill-wiring-tests.yml` (`Restore drill wiring tests`).
+
+  Both shipped with a top-level `on.pull_request.paths:` filter and no
+  `merge_group:` trigger. Measured, not recalled, against origin/main a66c76ab6:
+  a required status check is satisfied only by a run of the workflow that
+  REPORTS it, so a paths-filtered required context never starts a run on a
+  path-miss PR — GitHub shows "Expected — waiting for status" forever and the
+  PR is hard-blocked with nothing red to fix (cicatrix W69). A required context
+  with no `merge_group:` trigger cannot be satisfied by a merge-queue run at
+  all. `scripts/ci/check_required_workflow_conformance.py` rules 2 and 4 name
+  exactly these two defects.
+
+  This PR does NOT promote anything. Branch protection is operator-tier
+  (CLAUDE.md §13); the conductor performs the promotion on the gates-green
+  evidence posted to issue #5316. What ships here is the wiring plus the
+  removal of the one thing that would have made promotion actively dangerous.
+constraints:
+  - "Zero's binding constraint for this lane, verbatim: «non voglio regressioni»
+    on merge-queue latency. Discharged by measurement of the QUEUE CRITICAL
+    PATH, not by per-job wall time — see the receipts."
+  - "`on.push.paths` is NOT touched in either file. A push to main happens after
+    a PR has already merged and gates no PR; the conformance guard's own
+    declared scope limit excludes it, and removing it would re-run both jobs on
+    every unrelated push to main for nothing."
+  - "No `paths:` under any `merge_group:` block — GitHub Actions does not
+    support the key there at all."
+  - "Job names are the required-context identifiers and are UNCHANGED, so
+    branch protection keeps matching after promotion."
+  - "No behaviour change to what either corpus asserts. Both still run exactly
+    the checks they ran before; only WHEN they run changes."
+acceptance:
+  - text:
+      "WHEN check_required_workflow_conformance.py is run against a candidate
+      contexts file that includes both contexts, it SHALL report zero violations
+      for them (innocence)."
+    probe: "python3 scripts/ci/check_required_workflow_conformance.py --contexts"
+  - text: "WHEN a `paths:` filter is reintroduced under on.pull_request, or the
+      merge_group trigger removed, the same guard SHALL name that file (guilt).
+      Innocence alone proves nothing — superscar #3."
+    probe: "re-run the guard, restore"
+  - text:
+      "WHEN the merge-queue critical path is measured over recent merge_group
+      entries, both jobs SHALL be well under it, so adding them adds nothing to
+      queue latency."
+    probe: "Actions API, last 8 completed merge_group entries: for each, the slowest REQUIRED check"
+  - text: "The apt step in voa-probe-tests SHALL NOT be able to consume the job
+      budget and report `cancelled` — a cancelled REQUIRED check ejects the
+      merge-queue entry with nothing red to attribute it to (cicatrix W118)."
+    probe: "read scripts/ci/apt_install.sh; bash -n it"
+  - text: "Both corpora SHALL still pass unchanged."
+    probe: "bash scripts/tests/test_voa_probe_wrapper.sh"

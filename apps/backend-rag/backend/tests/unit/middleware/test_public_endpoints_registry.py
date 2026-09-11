@@ -93,9 +93,7 @@ class TestB1_NoUndocumentedPublicRoutes:
         so prod returned 401 to unauthenticated clients requesting a link —
         the feature was dead-on-arrival until added here."""
         # Request: exact match, must not open sibling paths.
-        assert middleware.is_public_endpoint(
-            self._mock_request("/api/auth/request-magic-link")
-        )
+        assert middleware.is_public_endpoint(self._mock_request("/api/auth/request-magic-link"))
         assert not middleware.is_public_endpoint(
             self._mock_request("/api/auth/request-magic-link/extra")
         )
@@ -104,9 +102,7 @@ class TestB1_NoUndocumentedPublicRoutes:
             self._mock_request("/api/auth/verify-magic/some-raw-token")
         )
 
-    def test_crm_internal_document_upload_is_public_only_for_service_key_path(
-        self, middleware
-    ):
+    def test_crm_internal_document_upload_is_public_only_for_service_key_path(self, middleware):
         """The WA Mirror headless delivery path bypasses JWT middleware but still
         enforces X-CRM-Write-Key in-router. Do not open sibling internal paths."""
         assert middleware.is_public_endpoint(
@@ -227,13 +223,17 @@ class TestHelperFunctions:
 
     def test_workspace_marketing_template_matches_exactly_one_segment(self):
         route_auth_prefixes = {
-            endpoint.prefix
-            for endpoint in PUBLIC_ENDPOINTS
-            if endpoint.requires_route_auth
+            endpoint.prefix for endpoint in PUBLIC_ENDPOINTS if endpoint.requires_route_auth
         }
         assert route_auth_prefixes == {
+            "/api/workspace-marketing/capabilities",
             "/api/workspace-marketing/news/pending",
             "/api/workspace-marketing/news/{item_id}",
+            "/api/workspace-marketing/news/{item_id}/editorial",
+            "/api/workspace-marketing/news/{item_id}/cover",
+            "/api/workspace-marketing/news/{item_id}/publish",
+            "/api/workspace-marketing/news/{item_id}/publication-status",
+            "/api/workspace-marketing/news/{item_id}/confirm-live",
         }
         pending_entry = next(
             endpoint
@@ -245,6 +245,11 @@ class TestHelperFunctions:
             for endpoint in PUBLIC_ENDPOINTS
             if endpoint.prefix == "/api/workspace-marketing/news/{item_id}"
         )
+        publish_entry = next(
+            endpoint
+            for endpoint in PUBLIC_ENDPOINTS
+            if endpoint.prefix == "/api/workspace-marketing/news/{item_id}/publish"
+        )
         assert pending_entry.requires_route_auth
         assert entry.requires_route_auth
         assert entry.match == "template"
@@ -252,6 +257,10 @@ class TestHelperFunctions:
         assert not entry.matches("/api/workspace-marketing/news/")
         assert not entry.matches("/api/workspace-marketing/news/news_123/extra")
         assert not entry.matches("/api/workspace-marketing/news/news_123/delete")
+        assert publish_entry.requires_route_auth
+        assert publish_entry.match == "template"
+        assert publish_entry.matches("/api/workspace-marketing/news/news_123/publish")
+        assert not publish_entry.matches("/api/workspace-marketing/news/news_123/publish/extra")
 
 
 class TestVisaCheckPublicRegistration:
@@ -370,6 +379,14 @@ class TestGarudaVoaAuthAllowlistIsExactNotPrefix:
     def test_the_two_real_auth_routes_are_public(self):
         assert is_public_path("/api/visa/voa/auth/magic-links")
         assert is_public_path("/api/visa/voa/auth/sessions")
+
+    def test_the_preview_lookup_route_is_public(self):
+        """previewMagicLink (not in the frozen contract, see
+        garuda_portal_auth.py's module docstring) must be reachable by an
+        anonymous caller exactly like its two frozen siblings — it is the
+        route that lets the continue page show the recipient before the
+        customer spends the token."""
+        assert is_public_path("/api/visa/voa/auth/magic-links/preview")
 
     def test_an_unrelated_future_path_under_the_same_root_is_not_public(self):
         """The literal repro from the finding -- this must be False now."""

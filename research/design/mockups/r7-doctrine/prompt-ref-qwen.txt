@@ -1,0 +1,7 @@
+Claim-set consistency audit on a design-doctrine file. Find CONTRADICTIONS or unsupported leaps. Number findings, severity, compact EN.
+C1: The doctrine says no proxy result may set the production state of a human-gate question; the same doctrine's amendment register flips the production default (named→control) based on the LLM-proxy round's outcome.
+C2: The doctrine binds future rounds to a 4-seat cross-family panel with a filesystem refuter, while admitting one seat failed in 2 of 5 rounds and recovered only on minimal payloads.
+C3: The register claims its 5 amendment payloads are 'verbatim' from earlier rounds while at least one (rem) is a consequence the source round stated as a declaration, not as amendment text.
+C4: The loop closes with no R8, while the register §5 lists 5 open questions and §4 lists 6 unbuilt items.
+C5: The evidence ladder ranks cited memory lowest and demands cite-time re-verification, yet the doctrine's own §1 narrative and §6 counts partly rest on the loop's memory blocks.
+C6: The doctrine forbids silent edits to R4 while itself declaring amendments binding NOW before they physically land in R4's text.

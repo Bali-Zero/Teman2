@@ -12,6 +12,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.drive_folder_service import DriveFolderService
@@ -275,7 +276,7 @@ Zantara — Bali Zero Team
 P.S. Save our contact info for future needs—we're always here to help! 😊
 
 ---
-📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 821 3465 159
+📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: {settings.CLIENT_CONTACT_WHATSAPP}
 """
 
         await self._send_with_brevo_fallback(

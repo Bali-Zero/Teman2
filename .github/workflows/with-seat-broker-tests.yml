@@ -1,0 +1,179 @@
+name: Seat broker env-minimization tests
+
+# Executor for the corpus that proves `scripts/with_seat.sh` — the broker that gives an
+# external LLM child EXACTLY its seat's declared environment names and nothing else.
+#
+# WHY THIS FILE EXISTS, and why it ships in the same PR as the broker
+# ------------------------------------------------------------------
+# `scripts-tests-sweep.yml` collects only `test_*.py` through pytest (a `.sh` file is
+# invisible to pytest collection) and its sweep step is `continue-on-error: true`, so a
+# shell corpus landed alone has no executor that can ever go red — superscar #2
+# (exists != armed). Wave-2 rule 3: "a future job will run it" is not a consumer; the
+# job ships in the same PR. Same shape as `fleet-burst-tests.yml`,
+# `vercel-autopromote-tests.yml` and `intake-review-reader-liveness.yml`.
+#
+# WHAT IS ACTUALLY AT STAKE HERE, measured on Mini 2026-08-31: a wrapper that sources
+# `~/.nuzantara-secrets.env` and then runs `codex`/`agy`/`kimi` hands that child 49
+# environment names, 16 of them secret-shaped, spanning 11 credential families — every
+# Claude OAuth seat token plus Telegram, Brevo, OpenRouter, MiniMax, Jules, LangSmith,
+# IG Graph, Observatory and a Google service-account path. One vendor's child could read
+# every other vendor's key. Through the broker the same child gets 6 declared names and
+# ZERO secret-shaped ones.
+#
+# The corpus's guilt case is therefore load-bearing in an unusual way: it asserts that an
+# UNWRAPPED child DOES see a planted fake token name. If that check ever silently stops
+# firing, the innocence case ("the planted name is absent") proves nothing at all — it
+# would pass just as well against a child that sees nothing because the fixture broke.
+#
+# Deliberately NOT a branch-protection required context (repo-settings action, operator-
+# gated; a permanently-red required check blocks the whole merge queue). It starts on a PR
+# that touches the broker, its registry, its corpus, or `.gitattributes` (a checkout-
+# semantics change such as `eol=crlf` breaks these shell scripts without appearing in any
+# of the other paths).
+#
+# BEING ADVISORY IS WHY THERE IS NO `merge_group:` TRIGGER (corrected 2026-08-31)
+# ------------------------------------------------------------------------------
+# This file shipped on 2026-08-30 19:15 with a bare `merge_group:` alongside the
+# `pull_request.paths` filter below. That pair is broken twice over:
+#
+#   1. `merge_group` accepts no `paths:` sub-key at all, so the queue run ALWAYS
+#      executed while the PR run fired only when a guarded file changed. Measured over
+#      the whole window: **57** `merge_group` runs and NOT ONE `pull_request` run —
+#      between this file landing (2026-08-30T19:15:44Z) and, exclusive, the first run
+#      its own fix triggered, which is itself the next `pull_request` run this
+#      workflow ever had. (Figure corrected 2026-08-31: an earlier draft said
+#      "EIGHT", a `--limit 8` display cap read as a total — W97.) The author
+#      never saw the job; the queue did. That is the head-green/queue-red split the
+#      L06-PR1 trigger-symmetry lint exists to forbid, and this file was its first live
+#      violation — red in every merge group, which is what kept ejecting that lint's own
+#      PR (#5340).
+#   2. Independently of the lint: Zero's 2026-08-27 queue-slim cure says advisory
+#      workflows stop triggering on `merge_group`, because each queue entry was spawning
+#      ~50 runs and the 11 gating contexts starved behind the ~40 that gate nothing. That
+#      policy is stated in the docstring of
+#      `scripts/tests/test_advisory_workflows_no_merge_group.py`. Read what that test
+#      actually asserts before citing it: it guards only the OPPOSITE direction — a
+#      REQUIRED workflow must never LOSE `merge_group` (the queue-deadlock tripwire). So
+#      the cure is UNENFORCED in the advisory direction. Measured on origin/main
+#      2026-08-31 by parsing every `on:` block (not by grep — a textual match hits
+#      comments and conditionals): 13 workflows carry a real `merge_group` trigger, 8 of
+#      them back one of the 11 required contexts, leaving 5 advisory ones — this file
+#      plus `voa-probe-tests.yml`, `pr-collision-check.yml`,
+#      `restore-drill-wiring-tests.yml` and `p1s2-mutation-incremental.yml`.
+#
+#      What separates them from this file is not the trigger, it is the ARGUMENT.
+#      Walking the comment block directly above each trigger: voa-probe (4 lines),
+#      pr-collision (9) and p1s2 (10) each state why they want the queue run;
+#      restore-drill states its case elsewhere in the file rather than adjacent to the
+#      trigger. p1s2 is the sharpest illustration and was nearly mis-cited here: its
+#      trigger was PRESENT on 2026-07-27, REMOVED by the 2026-08-27 cure, and
+#      deliberately RE-ADDED on 2026-08-30T18:14Z (#5329) behind an argued cost control.
+#      The cure works when someone applies it; it just cannot enforce itself.
+#
+#      This workflow is advisory on three independent measurements — absent from
+#      `infra/required.d/contexts.json` (11 contexts), absent from branch protection's
+#      12 required contexts, and its own header below says so. And it argued NOTHING: it
+#      acquired the trigger silently, paired with a filter that makes the pair
+#      incoherent. That is the difference. An advisory workflow CAN keep `merge_group`
+#      — the way its four peers do, by saying why, next to the trigger.
+#
+# So the `merge_group:` line goes and the `paths:` filter stays. Removing the FILTER
+# instead would also have satisfied the lint, but it would have kept an advisory job in
+# the queue against a standing repo-wide ruling and paid ~40s on every PR to do it. The
+# three workflows this file's own header names as its shape-siblings —
+# `fleet-burst-tests.yml`, `vercel-autopromote-tests.yml`, `intake-review-reader-liveness.yml`
+# — all carry `pull_request.paths` and no `merge_group`. This file was the outlier
+# against its own declared family; it now matches it.
+#
+# What is genuinely given up: a `merge_group` run tests the SYNTHETIC MERGE revision, so
+# it could catch two individually-green PRs whose combination breaks the broker. That is
+# the trade the 2026-08-27 cure asks advisory workflows to make — PR-time coverage is
+# unchanged and the post-merge `push` run below still detects it, one step later. Stated
+# rather than quietly dropped, because it IS a real loss and this file guards a
+# credential-isolation boundary. Two cross-family reviewers (kimi-code/k3,
+# tp1-qwen3.8-max) each argued that side and neither could refute the change; both
+# landed on it being a judgment call, not an error. If a future reader concludes the
+# prevention is worth the queue slot, the way to take it back is an argued exception
+# header — not a bare trigger, and not while a `paths:` filter sits beside it.
+#
+# "Starts on", not "runs on every PR that touches them": GitHub evaluates path filters
+# against at most the first 3,000 files of a diff, so a large enough PR can touch a guarded
+# file and still not trigger this workflow. That is a platform limit, not something this
+# file can close, and it is stated rather than papered over.
+#
+# `scripts/fleet_burst.sh` is in the filter FORWARD-LOOKINGLY and does not exist on this
+# branch yet: it arrives with L09-PR2 (PR #5322), where it names this broker as its
+# `FLEET_BURST_SEAT_BROKER` and depends on the `<broker> <seat> <command...>` contract.
+# Until that lands, this entry simply never matches — a filter naming an absent file is
+# inert, not broken. Stating it because the honest reading today is that the broker's only
+# proven consumer is its own corpus; the fleet dispatch becomes a real consumer when #5322
+# merges, and the entry is here so that a later change to the contract starts this job
+# rather than being remembered.
+
+on:
+  pull_request:
+    paths: &guarded_paths
+      - "scripts/with_seat.sh"
+      - "scripts/tests/test_with_seat_env_minimization.sh"
+      - "infra/llm-credentials/seat-env.json"
+      - "scripts/fleet_burst.sh"
+      - ".gitattributes"
+      - ".github/workflows/with-seat-broker-tests.yml"
+  # NO `merge_group:` — see the header block. This workflow is advisory, and
+  # advisory workflows deliberately do not run in the merge queue (Zero's
+  # 2026-08-27 queue-slim cure). It carried one from 2026-08-30 19:15 until
+  # PR #5378: it ran 57 times in the queue and not once on a pull request, the
+  # next PR run being the one that triggered the fix. (Corrected 2026-08-31;
+  # this line said "8 times ... until this commit" — the figure the header
+  # block above already named as wrong.)
+  push:
+    branches:
+      - main
+    # Identical set, the workflow file included: a PR that changes ONLY this file
+    # runs on the PR but would produce no main-push run after merge, leaving
+    # main-push-failure-watch.yml with nothing to observe.
+    paths: *guarded_paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: with-seat-broker-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  with-seat-broker-tests:
+    name: Seat broker env-minimization tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # A syntax error in a credential broker is not a broken feature, it is an
+      # unbrokered dispatch: callers fall back to running the CLI directly.
+      - name: The broker still parses
+        run: bash -n scripts/with_seat.sh
+
+      # The registry is data the broker trusts (it decides which names and which
+      # executables a seat may have), so malformed JSON must be caught here rather than
+      # at 03:00 on a cron.
+      - name: The seat registry is well-formed JSON
+        run: python3 -m json.tool infra/llm-credentials/seat-env.json > /dev/null
+
+      # The corpus proper. Three things it carries are worth naming, because each is a
+      # way this job could otherwise report green over a real problem:
+      #
+      #  - Its GUILT case first proves an UNWRAPPED child still sees a planted fake
+      #    token. Without that, "the planted name is absent" would pass just as well
+      #    against a fixture that broke and shows nothing at all.
+      #  - It asserts the child's names EQUAL the declaration intersected with the
+      #    parent — not a subset. A subset assertion is satisfied by a child with no
+      #    environment, which is the failure mode, not the goal.
+      #  - It validates the REAL registry, not only its own synthetic seat. That is what
+      #    caught two of four shipped seats being unable to resolve their own binary,
+      #    and it rejects a token pasted into an `env` array or a 64-char hex string
+      #    wearing a valid identifier's syntax. An earlier version of this workflow
+      #    grepped for value-shaped `key: "value"` pairs instead — measured, that missed
+      #    BOTH of those pastes, because the registry is arrays of strings.
+      - name: A child gets exactly its seat's declared names, and nothing else
+        run: bash scripts/tests/test_with_seat_env_minimization.sh

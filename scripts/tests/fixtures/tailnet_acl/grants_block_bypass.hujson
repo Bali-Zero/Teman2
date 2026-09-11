@@ -1,0 +1,13 @@
+// GUILT (grader round 1, HIGH): the same access expressed in the newer `grants` block instead
+// of `acls`. Both are valid and ADDITIVE; an auditor that reads only `acls` waves this through.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111", "m5": "100.110.186.116", "mini": "100.93.236.6"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "acls": [],
+  "grants": [
+    {"src": ["autogroup:tagged"], "dst": ["mini"], "ip": ["tcp:4317"]}
+  ],
+  "ssh": [],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

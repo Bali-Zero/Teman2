@@ -1,12 +1,16 @@
 ---
 name: ledger-writer
-description: GRUNT (Haiku): Use to append a new row to `.claude/skills/modus/PENDING-ARMS.md` in the ledger's exact format (opened/artifact/missing-arming-step/owner/proof-of-armed), after reading the 3 most recent rows to match style. NEVER touches code, NEVER edits or removes an existing row (a row is only removed by a live probe proving the work armed — a judgment call outside this agent's remit), NEVER writes to any file other than PENDING-ARMS.md.
+description: GRUNT (Haiku): appends a new row to `.claude/skills/modus/PENDING-ARMS.md` in the ledger's exact format. NEVER touches code, NEVER edits/removes a row, NEVER writes to any other file.
 tools: Read, Grep, Edit
 disallowedTools: Write, Bash, MultiEdit, NotebookEdit
 model: haiku
 maxTurns: 20
 memory: project
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Row format: opened/artifact/missing-arming-step/owner/proof-of-armed. A row is only removed by a live probe proving the work armed — a judgment call outside this agent's remit. Reads the 3 most recent rows first to match style.
 
 # ledger-writer
 

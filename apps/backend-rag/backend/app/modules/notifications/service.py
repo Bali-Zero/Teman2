@@ -303,10 +303,20 @@ class NotificationService:
                 AlertType.VISA_CRITICAL,
                 AlertType.VISA_EXPIRED,
             ]:
-                # Get team leader email from database
-                team_leader = await self._get_team_leader_email(alert.client_id)
-                if team_leader:
-                    bcc.append(team_leader)
+                # Get team leader email from database. This address is a BCC:
+                # it is a courtesy copy, never the reason a client goes unwarned.
+                # Until 2026-08-29 this ran unguarded, so a database error here
+                # aborted the whole send and the alert never left the building.
+                try:
+                    team_leader = await self._get_team_leader_email(alert.client_id)
+                except Exception as bcc_error:  # best effort by design: a BCC never blocks the alert
+                    logger.warning(
+                        "Team leader lookup failed; sending alert without BCC",
+                        extra={"client_id": alert.client_id, "error": str(bcc_error)},
+                    )
+                else:
+                    if team_leader:
+                        bcc.append(team_leader)
 
             # Send email
             success = await self.email_provider.send_email(
@@ -328,12 +338,44 @@ class NotificationService:
 
         except Exception as e:
             logger.error(f"Failed to process alert {alert.id}", exc_info=e)
-            await self._update_alert_status(alert, AlertStatus.FAILED, str(e))
+            # Recording the failure must never mask the failure itself: until
+            # 2026-08-29 a broken UPDATE here replaced the real cause in Sentry
+            # and left the row 'pending' forever, so it was re-selected as the
+            # head of the queue on every subsequent run.
+            try:
+                await self._update_alert_status(alert, AlertStatus.FAILED, str(e))
+            except Exception as status_error:
+                logger.error(
+                    "Could not record alert failure; the row stays pending",
+                    extra={"alert_id": alert.id, "error": str(status_error)},
+                )
             return NotificationResult(
                 success=False,
                 alert_id=alert.id,
                 error_message=str(e),
             )
+
+    async def _process_one(
+        self,
+        alert: ClientAlert,
+        get_client_email_func,
+    ) -> NotificationResult:
+        """Resolve the recipient and process a single alert."""
+        client_email = await get_client_email_func(alert.client_id)
+        if not client_email:
+            logger.warning(f"No email found for client {alert.client_id}")
+            await self._update_alert_status(
+                alert,
+                AlertStatus.SUPPRESSED,
+                "No email address found",
+            )
+            return NotificationResult(
+                success=False,
+                alert_id=alert.id,
+                error_message="No email address found",
+            )
+
+        return await self.process_alert(alert, client_email)
 
     async def process_alerts_batch(
         self,
@@ -353,26 +395,25 @@ class NotificationService:
         results = []
 
         for alert in alerts:
-            # Get client email
-            client_email = await get_client_email_func(alert.client_id)
-            if not client_email:
-                logger.warning(f"No email found for client {alert.client_id}")
-                await self._update_alert_status(
-                    alert,
-                    AlertStatus.SUPPRESSED,
-                    "No email address found",
+            # One alert's failure must never end the run. The queue is ordered
+            # oldest-first with no LIMIT, so before 2026-08-29 an exception on
+            # the first alert meant every alert behind it was never attempted
+            # at all -- silent non-delivery, with no Sentry event to show for it.
+            try:
+                results.append(await self._process_one(alert, get_client_email_func))
+            except Exception as e:
+                logger.error(
+                    "Alert processing raised; continuing with the rest of the batch",
+                    exc_info=e,
+                    extra={"alert_id": alert.id},
                 )
                 results.append(
                     NotificationResult(
                         success=False,
                         alert_id=alert.id,
-                        error_message="No email address found",
+                        error_message=str(e),
                     ),
                 )
-                continue
-
-            result = await self.process_alert(alert, client_email)
-            results.append(result)
 
         logger.info(
             "Batch processing completed",
@@ -390,10 +431,11 @@ class NotificationService:
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT u.email
-                FROM users u
-                JOIN clients c ON c.assigned_to = u.email
+                SELECT tm.email
+                FROM team_members tm
+                JOIN clients c ON lower(c.assigned_to) = lower(tm.email)
                 WHERE c.id = $1
+                  AND tm.active IS NOT FALSE
                 """,
                 client_id,
             )
@@ -408,17 +450,42 @@ class NotificationService:
         """Update alert status in database."""
         async with self.db_pool.acquire() as conn:
             if alert.id:
+                # `$1` WITHOUT A CAST, and `$4` rather than a second `$1`.
+                #
+                # This statement used to read `status = $1` alongside
+                # `CASE WHEN $1::text = 'sent'`. Postgres deduces a parameter's
+                # type from ALL of its uses and refuses the statement when they
+                # disagree: the assignment target `status` is
+                # `character varying`, the cast says `text`, and PREPARE dies
+                # with `AmbiguousParameterError: inconsistent types deduced for
+                # parameter $1 -- text versus character varying`. It never
+                # executed once.
+                #
+                # The blast radius was not "some status updates are lost". This
+                # is the ONLY path that moves a row off `pending`, so every
+                # alert that reached it stayed pending and was re-selected on
+                # the next run, forever. Measured on production 2026-09-01:
+                # 3120 pending rows across 139 clients -- 22.4 duplicates each,
+                # accumulating daily since 2026-08-09 -- against 290 `sent`.
+                # The 290 are not a contradiction: they took the INSERT branch
+                # below, which never had the defect, so alerts sent on first
+                # sight succeeded while anything needing an UPDATE could not
+                # leave the queue.
+                #
+                # Separate parameters, so no future edit can re-couple the two
+                # uses and re-break PREPARE the same way.
                 await conn.execute(
                     """
                     UPDATE notification_alerts
                     SET status = $1,
-                        sent_at = CASE WHEN $1 = 'sent' THEN NOW() ELSE sent_at END,
+                        sent_at = CASE WHEN $4 = 'sent' THEN NOW() ELSE sent_at END,
                         error_message = $2
                     WHERE id = $3
                     """,
                     status.value,
                     error_message,
                     alert.id,
+                    status.value,
                 )
             else:
                 # Insert new alert record
@@ -443,8 +510,64 @@ class NotificationService:
                 )
                 alert.id = row["id"]
 
+    async def supersede_duplicate_pending_alerts(self) -> int:
+        """Collapse a client's repeated pending alerts of one type down to the
+        newest, and return how many were superseded.
+
+        THIS SHIPS WITH THE `_update_alert_status` FIX AND MUST NOT BE SPLIT
+        FROM IT. While that UPDATE could not execute, no row ever left
+        `pending`, so the daily sentinel re-created the same warning for the
+        same client every day and nothing consumed the pile: 3120 rows for 139
+        clients on 2026-09-01, of which 923 sat inside the 7-day selection
+        window below against only 147 distinct (client, alert_type) pairs.
+        Repairing the UPDATE alone would make all 923 deliverable and mail 129
+        real clients an average of seven copies each of the same expiry
+        warning. Curing the write path is what CREATES that outcome, so the
+        cure carries it.
+
+        `suppressed` is the existing status for "rate limited or opted out"
+        (`models.py:32`) and is the honest label here — the alert was real, it
+        is simply not the one worth sending. No migration, no new state.
+
+        Idempotent, and safe to run on every poll: it keeps exactly one row per
+        (client_id, alert_type) because the tuple comparison is a strict total
+        order, so a tie on `created_at` still leaves precisely one survivor
+        rather than suppressing both or neither.
+        """
+        async with self.db_pool.acquire() as conn:
+            superseded = await conn.fetch(
+                """
+                UPDATE notification_alerts AS a
+                   SET status = 'suppressed',
+                       error_message = 'superseded by a newer pending alert of the same type'
+                 WHERE a.status = 'pending'
+                   AND EXISTS (
+                       SELECT 1
+                         FROM notification_alerts AS b
+                        WHERE b.client_id = a.client_id
+                          AND b.alert_type = a.alert_type
+                          AND b.status = 'pending'
+                          AND (b.created_at, b.id) > (a.created_at, a.id)
+                   )
+                RETURNING a.id
+                """,
+            )
+        if superseded:
+            logger.info(
+                "Superseded duplicate pending alerts",
+                extra={"count": len(superseded)},
+            )
+        return len(superseded)
+
     async def get_pending_alerts(self) -> list[ClientAlert]:
-        """Get all pending alerts from database."""
+        """Get all pending alerts from database, one per client and type.
+
+        The de-duplication runs HERE rather than in the caller so that every
+        consumer of the queue inherits it — a second caller that forgot the
+        step would resurrect the duplicate-mail storm this method exists to
+        prevent.
+        """
+        await self.supersede_duplicate_pending_alerts()
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch(
                 """

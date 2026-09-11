@@ -1,0 +1,101 @@
+task_id: immune-contracts
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  L08-PR1 of the beyond-SOTA craft wave 2 (squad L, issue #5319): cure the
+  meta-pattern "a signal, once emitted, is information."
+
+  W120 is the shape. `pending_arms_report.py --json` emitted `"class"` while
+  `organism_digest.py` read `"classification"` — a key never emitted. `.get()`
+  returned None forever, the filter stayed empty, 262 overdue rows read as
+  silence, and nothing anywhere was red. The two files were free to drift for
+  months because no test ever put the real producer and the real consumer in
+  the same room.
+
+  This adds the room: a registry of six emitter -> consumer contracts, and a
+  lint that checks them against the real source.
+constraints:
+  - "Read-only. The lint parses; it never writes, never fixes, never touches a
+    producer or a consumer."
+  - "A registry checked only against ITSELF is a fixture, not a contract (W114).
+    At least one side must be anchored to the code, or this PR is two lists
+    agreeing with each other."
+  - "It runs on a REQUIRED job. A false positive there reddens every PR in the
+    repo, so every over-match is a wave-wide outage and the safe direction on an
+    unanchorable surface is UNCHECKED-with-a-reason, never a guess."
+  - "An unverifiable state is never a pass: exit 3 CANNOT-VERIFY exists and must
+    not collapse into 0 (W84)."
+  - "known_gaps is a debt list, not a permission list. A gap needs a reason and
+    a ledger pointer, is printed every run, dies when it stops matching, and the
+    list may only shrink."
+acceptance:
+  - text: >-
+      WHEN a consumer reads a key off the payload that the registry does not
+      declare, the lint SHALL exit 1 and name the key — including the case where
+      the producer does not declare it either, which is W120 as it actually
+      happened.
+    probe: "python3 scripts/lint_immune_contracts.py --selftest"
+  - text: >-
+      WHILE a string literal never touches the payload, the lint SHALL NOT treat
+      it as a contract read.
+    probe: "pytest scripts/tests/test_lint_immune_contracts.py -k payload"
+  - text: >-
+      WHEN the producer's code stops writing a key the registry claims —
+      top-level or nested — the lint SHALL exit 1 and name it.
+    probe: "pytest scripts/tests/test_lint_immune_contracts.py -k c4"
+  - text: >-
+      IF the registry is empty, or the linter and its corpus are deleted, the
+      REQUIRED job SHALL go red rather than green.
+    probe: "pytest scripts/tests/test_lint_immune_contracts.py -k disarmed"
+  - text: >-
+      WHERE a gap is declared, it SHALL carry a reason and a ledger pointer, be
+      printed, die when it stops matching, and the list SHALL NOT grow against
+      origin/main.
+    probe: "python3 scripts/lint_immune_contracts.py --check --no-regrowth origin/main"
+  - text: >-
+      WHEN any cure in this diff is reverted, the corpus SHALL turn red.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -q -p no:cacheprovider"
+consumer_map:
+  - "`.github/workflows/immune-enforcement.yml` — a REQUIRED job, three new steps
+    beside the two ledger gates that already run on every PR. A contract gate
+    that fires only when someone remembers to touch the registry is the family-#2
+    defect it exists to catch."
+  - "`scripts/organism_digest.py` — the consumer in four of the six contracts,
+    and the boot receptor on all three machines. Unmodified by this PR."
+  - "`scripts/pending_arms_report.py` — the producer in contract 1, and the file
+    squad L's own PR #5328 extends. No overlap: this PR does not touch it."
+risks:
+  - "REQUIRED-JOB BLAST RADIUS. Every over-match here reddens the whole repo.
+    Mitigated by making UNCHECKED a first-class, printed outcome rather than a
+    guess: 19 of the live registry's checks are unchecked with a stated reason,
+    and the lint prints how many contracts it actually anchored (4/6) instead of
+    implying it checked everything."
+  - "FOUR DECLARED LIMITS, written at the site rather than fixed, because each
+    needs a design decision this PR is not the place for: `_find_function` takes
+    the first same-named definition (a method under `if TYPE_CHECKING`, or a
+    decorated function, anchors to the wrong body); dynamic keys are invisible
+    (`.get(var)`, f-strings, concatenation); consumer-side helper calls are not
+    followed; `writer_function`/`on_disk_path` are documentation only — nothing
+    checks that the dict this lint verifies is the object that reaches disk."
+  - "`apps/cell/cell/utils/organ_emitter.py` writes into the same sidecar
+    directory as `heartbeat.sh` and has NO contract. Named in prose, unanchored.
+    Ledger row rather than a silent omission."
+  - "The `live`/`green` known-gap is a DECLARE, not a fix. The consumer accepts
+    two statuses no caller passes. Removing them is a behaviour change on three
+    boot receptors and belongs in its own PR."
+grader: |
+  Cross-family adversarial refutation by Codex GPT-5.6 sol at xhigh effort,
+  read-only sandbox, given the raw diff and an attack list — never a narrative.
+  Verdict DO-NOT-SHIP with five blockers, one of which reproduced the exact
+  W120 shape passing the proposed cure. All findings reproduced on disk before
+  being fixed. Generator != grader holds strictly: the seats that built this
+  (kimi-code/kimi-for-coding for the lint, a Sonnet 5 subagent for the registry
+  and a second for the corpus) grade nothing. Final on-disk gate is this
+  orchestrator session, empirical, every receipt command re-run here.
+budget: >-
+  3 build lanes (kimi-code/kimi-for-coding, two Sonnet 5 subagents) + 1
+  cross-family review lane (Codex sol xhigh) + this session's gate. No council:
+  a lint with 21 self-test cases, a 34-case corpus and an 8-mutant battery does
+  not meet the council gate.
+pii: none

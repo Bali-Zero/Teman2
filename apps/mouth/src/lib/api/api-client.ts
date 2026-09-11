@@ -24,6 +24,7 @@ import { BlogApi } from "./blog/blog.api";
 import { PrimeApi } from "./prime/prime.api";
 import { UserProfile, UserMemoryContext, AgentStep } from "@/types";
 import type { LoginResponse } from "./auth/auth.types";
+import type { ApiRequestOptions } from "./types/api-client.types";
 import type {
   KnowledgeSearchResponse,
   KnowledgeSearchResult,
@@ -391,8 +392,8 @@ export class ApiClient extends ApiClientBase {
     return this.authApi.logout();
   }
 
-  async getProfile(): Promise<UserProfile> {
-    return this.authApi.getProfile();
+  async getProfile(options?: ApiRequestOptions): Promise<UserProfile> {
+    return this.authApi.getProfile(options);
   }
 
   // ============================================================================

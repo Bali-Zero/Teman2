@@ -21,13 +21,16 @@ Behavior contract:
       internal-monologue leak — including inside a grounded abstain answer,
       scaffold-only output, empty after strip/format, oversized output,
       pricing veto, secret-egress hit) returns ``DEFECT`` WITHOUT serving a stub
-      and WITHOUT telling a human — the caller fails off to the Gemini leg,
-      which regenerates and re-enters this pipeline, so the client still gets
-      an answer and the silent-client alarm stays with the leg that owns it
-      (spec §2.3 TEXT_DEFECT). The abstain-label branch is the one POLICY
-      branch: its verdict derives from the frozen evidence, not from who wrote
-      the text, so it behaves identically on both providers (stub + tell a
-      human — failing off could not change the verdict, spec §2.3 POLICY).
+      and WITHOUT telling a human — the caller (``wa_codex_leg.attempt``) falls
+      off into the WORKER's retry ladder, not to a second generator (Gemini was
+      retired from this worker 2026-08-27, Zero: "spegni gemini e collega
+      chatgpt"): a LATER codex-leg attempt against a fresh claim re-enters this
+      same pipeline, so the client still gets an answer once a clean attempt
+      lands, and the silent-client alarm stays with the leg that owns it (spec
+      §2.3 TEXT_DEFECT). The abstain-label branch is the one POLICY branch:
+      its verdict derives from the frozen evidence, not from who wrote the
+      text, so it behaves identically on both providers (stub + tell a human —
+      failing off could not change the verdict, spec §2.3 POLICY).
 
 Codex-only egress vetoes (inert on the Gemini leg by construction):
     * Pricing veto — every currency-marked amount in the answer must appear in
@@ -269,35 +272,168 @@ def _starts_with_internal_monologue_leak(answer: str) -> bool:
 # * source numbers are extracted per TOKEN, never from a concatenation of the
 #   whole source ("Rp 12.345" followed by "67 days" can never authorize an
 #   invented "Rp 34.567").
+#
+# ENGLISH MAGNITUDE WORDS (added 2026-08-30): the Indonesian-only list below was
+# not merely incomplete — it was a TOTAL VETO BYPASS in both directions, measured
+# on origin/main before this change:
+#   price_tokens_outside_sources("...IDR 2.5 billion.", [])          -> []
+#   price_tokens_outside_sources("...IDR 999 billion.", [])          -> []   <- INVENTED
+#   price_tokens_outside_sources("Rp 2.500.000.000", [<curated_qa>]) -> ["IDR:2500000000"]
+# Mechanism: with "billion" unknown, the regex captures only the bare "2.5",
+# _canonical_value returns 25, and 25 < _VETO_FLOORS["IDR"] discards it BEFORE the
+# source-membership check ever runs. So an English-worded amount was never
+# validated as grounded AND never caught as hallucinated — the 999-billion control
+# proves that is the rule, not an accident of one value. Symmetrically, a source
+# stating the right figure in English prose (the live curated_qa entry for PT PMA
+# paid-up capital says "IDR 2.5 billion") could not be canonicalized either, so a
+# CORRECT digit-grouped answer was rejected against evidence that actually
+# supported it — the mechanism behind the finalize_pricing_outside_package
+# rejections measured on the live bot 2026-08-30.
+#
+# The pattern is DERIVED from the dict below, longest-alternative-first, so the two
+# can never drift apart. That coupling was live-ammunition: _canonical_value does
+# _AMOUNT_MULTIPLIERS[multiplier.lower()] with no .get(), so a token the pattern
+# matches and the dict lacks is a KeyError inside the finalize path, not a miss.
+# test_wa_finalize.py::test_pricing_veto_multiplier_pattern_is_derived_from_the_table
+# asserts the derivation holds. (The name cited here until 2026-08-30 was
+# test_wa_finalize_price_veto.py, a file that does not exist in this tree —
+# a citation pointing at nothing protects nothing.)
+#
+# NOT widened here, deliberately, and named so it is not mistaken for coverage: a
+# bare currency WORD ("2,5 miliar rupiah", with no Rp/IDR/USD marker) is still
+# invisible to this veto. Adding "rupiah" as a currency marker only ever ADDS
+# rejections, and the live bot is already over-rejecting (4 of 5 battery questions
+# blocked on 2026-08-30); widening the marker vocabulary is a separate change that
+# needs its own false-positive measurement, not a rider on this one.
 _AMOUNT_MULTIPLIERS: dict[str, float] = {
     "k": 1e3,
     "rb": 1e3,
     "ribu": 1e3,
+    "thousand": 1e3,
+    "thousands": 1e3,
     "jt": 1e6,
     "juta": 1e6,
+    "mn": 1e6,
+    "million": 1e6,
+    "millions": 1e6,
     "miliar": 1e9,
     "milyar": 1e9,
     "bn": 1e9,
+    "billion": 1e9,
+    "billions": 1e9,
     "triliun": 1e12,
+    "trillion": 1e12,
+    "trillions": 1e12,
 }
-_MULT_PATTERN = r"(?:jt|juta|rb|ribu|k|miliar|milyar|bn|triliun)"
+# Longest first so a longer token is never pre-empted by a prefix of itself
+# ("juta" by "jt" is safe only by luck of ordering; "millions" by "million" is not).
+_MULT_ALTERNATION = "|".join(
+    sorted((re.escape(k) for k in _AMOUNT_MULTIPLIERS), key=len, reverse=True)
+)
+_MULT_PATTERN = f"(?:{_MULT_ALTERNATION})"
+
+# Currency MARKERS, marker -> family. Until 2026-08-30 this vocabulary lived
+# inline in the regex as `Rp|IDR|USD|$` and everything that was not `$`/`USD`
+# was folded into the IDR family. That was a second, SIMPLER bypass of this
+# veto than the English-multiplier one fixed in #5293 — it needed no magnitude
+# word at all. Measured on the parent commit, literal return values:
+#   price_tokens_outside_sources("Costa EUR 5000 in totale.", []) -> []
+#   price_tokens_outside_sources("The fee is SGD 8000.", [])      -> []
+#   price_tokens_outside_sources("The fee is AUD 8000.", [])      -> []
+# An invented foreign-currency price was never validated as grounded and never
+# caught as hallucinated, exactly as an English-worded one was not.
+#
+# Why the marker list alone would NOT have fixed it: with every family folded
+# into IDR, "EUR 500" canonicalized to IDR:500 and fell under the IDR floor of
+# 1000 — so adding the marker without a per-family floor changes nothing. The
+# family map and the floor table are one change, not two.
+#
+# Measured false-positive surface before widening (the reason the parent PR
+# deferred this axis, re-examined rather than assumed): in
+# apps/backend-rag/backend/kb/ the markers EUR, SGD, GBP and the euro sign do
+# not occur at all; across the whole app, word-bounded, EUR appears 19 times in
+# 14 files, AUD 3, GBP 2, SGD 1 — nearly all in tests and scripts, not in
+# retrievable content. So this widening closes a hole at almost no cost in new
+# rejections. It DOES newly veto a currency conversion the model computes
+# itself ("about EUR 600"), which is intended: an unsourced computed figure is
+# precisely what this veto exists to stop, and doctrine already forbids
+# improvising a price.
+#
+# WORD BOUNDARIES ARE LOAD-BEARING HERE, and this is not theoretical: the first
+# measurement of AUD's footprint returned "135 files" because it was counting
+# the substring inside FRAUD and AUDIT. A marker without \b would read an
+# amount out of the middle of an unrelated word — cicatrix family #3, committed
+# by the probe that was measuring for this very change. The alternation below
+# is derived from this table and every alphabetic marker is \b-anchored.
+_CURRENCY_MARKERS: dict[str, str] = {
+    "RP": "IDR",
+    "IDR": "IDR",
+    "USD": "USD",
+    "$": "USD",
+    "EUR": "EUR",
+    "EURO": "EUR",
+    "€": "EUR",
+    "GBP": "GBP",
+    "£": "GBP",
+    "SGD": "SGD",
+    "AUD": "AUD",
+}
+_SYMBOL_MARKERS = frozenset({"$", "€", "£"})
+
+
+def _marker_alternation() -> str:
+    """Regex alternation over _CURRENCY_MARKERS, longest first, \b-anchored.
+
+    Alphabetic markers get a LEADING \b so "AUD" cannot match inside "FRAUD";
+    symbols get none (\b before "$" would require a preceding word char). No
+    trailing \b is needed: both branches of _CURRENCY_AMOUNT_RE require digits
+    adjacent to the marker, which already excludes "EURO" matching "EUROPE".
+    """
+    parts = []
+    for marker in sorted(_CURRENCY_MARKERS, key=len, reverse=True):
+        escaped = re.escape(marker)
+        # "Rp." is written with a trailing dot as often as without.
+        if marker == "RP":
+            escaped += r"\.?"
+        parts.append(escaped if marker in _SYMBOL_MARKERS else r"\b" + escaped)
+    return "|".join(parts)
+
+
+_MARKER_PATTERN = _marker_alternation()
 _CURRENCY_AMOUNT_RE = re.compile(
-    r"(?:(?P<cur1>\bRp\.?|\bIDR|\bUSD|\$)[ \t]*(?P<amt1>\d(?:[\d.,]*\d)?)"
+    r"(?:(?P<cur1>" + _MARKER_PATTERN + r")[ \t]*(?P<amt1>\d(?:[\d.,]*\d)?)"
     r"(?:[ \t]*(?P<mul1>" + _MULT_PATTERN + r")\b)?)"
     r"|(?:(?P<amt2>\d(?:[\d.,]*\d)?)(?:[ \t]*(?P<mul2>" + _MULT_PATTERN + r")\b)?"
-    r"[ \t]*(?P<cur2>IDR|USD)\b)",
+    r"[ \t]*(?P<cur2>" + _MARKER_PATTERN + r"))",
     re.IGNORECASE,
 )
 
 # Veto floors per currency family: IDR prices below Rp 1.000 do not exist in
-# this business (and tiny amounts would fire on noise); dollar prices are real
-# from $10 up (the review's "$999" case must be vetoable).
-_VETO_FLOORS: dict[str, int] = {"USD": 10, "IDR": 1000}
+# this business (and tiny amounts would fire on noise); hard-currency prices
+# are real from 10 up (the review's "$999" case must be vetoable). EVERY family
+# in _CURRENCY_MARKERS must have an entry — _floor_for asserts it rather than
+# defaulting, because a missing floor would silently wave a whole currency
+# through, which is the failure this table exists to prevent.
+_VETO_FLOORS: dict[str, int] = {
+    "IDR": 1000,
+    "USD": 10,
+    "EUR": 10,
+    "GBP": 10,
+    "SGD": 10,
+    "AUD": 10,
+}
 
 
 def _canonical_currency(cur: str) -> str:
+    """Currency FAMILY for a matched marker.
+
+    The regex only ever matches markers derived from _CURRENCY_MARKERS, so the
+    lookup cannot miss; the explicit fallback is a fail-CLOSED default rather
+    than a KeyError, because folding an unknown marker into IDR keeps it inside
+    the veto (with the strictest floor) instead of dropping it on the floor.
+    """
     c = cur.strip().rstrip(".").upper()
-    return "USD" if c in ("$", "USD") else "IDR"
+    return _CURRENCY_MARKERS.get(c, "IDR")
 
 
 def _canonical_value(amount: str, multiplier: str | None) -> int | None:
@@ -336,6 +472,135 @@ def _currency_amounts(text: str) -> list[tuple[str, int]]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# TWO-COMPONENT TOTALS (added 2026-08-30)
+#
+# THE DEFECT that opened this, measured rather than argued: the ONE rule this
+# bot must obey was unshippable. Zero's 2026-07-17 ruling is a single
+# all-inclusive client-facing price, which for an Investor KITAS means
+# 17,000,000 + 9,500,000 = 26,500,000 — a figure that appears in no source.
+# Against the real package notation, before this change:
+#
+#     "Total all-in ... Rp26.500.000"        -> ['IDR:26500000']   VETOED
+#     "biaya layanan Rp17.000.000.
+#      PNBP pemerintah Rp9.500.000"          -> []                 passes
+#
+# So this veto was actively PUSHING the generator toward splitting the
+# government levy out of the client price: splitting is the only shape that
+# keeps every figure verbatim-anchored. The split-price defect guarded
+# separately by `price_split_offenders` was, in part, this veto's own output.
+#
+# THE RULE: an amount is anchored if it is a source amount, or the sum of
+# exactly TWO DISTINCT source amounts that are each price-sized. Nothing else.
+# The generator may add up two things the sources state; it may not invent, and
+# it may not multiply.
+#
+# WHAT WAS TRIED AND REJECTED, kept because the wider shape is the tempting one
+# and this is the record of why it fails. The first version also admitted an
+# integer multiple of a source amount, on the reasoning that a per-day rate
+# times a day count is honest arithmetic. It is — but the code cannot see the
+# count. It divided the GENERATED figure by a source figure and accepted any
+# whole quotient. A cross-family adversarial reviewer returned BLOCK, and all
+# seven of its concrete cases reproduced verbatim against the code:
+#
+#     Rp250.000.000  passed (250x the daily rate; the client asked about 5 days)
+#     Rp88.000.000   passed (as did every whole million up to 366 million)
+#     Rp1.002.069    passed (1,000,000 + 2024 + 45 — a year and an article no.)
+#     Rp26.500.002   passed (the bare "2" from "2 years" used as an operand)
+#     Rp43.500.000   passed (one 17,000,000 service fee charged twice)
+#     Rp20.500.000   passed (KITAS fee + tax penalty + overstay fine, laundered)
+#     Rp3.000.000    passed (a USD source authorizing an IDR multiple)
+#
+# With one Rp1,000,000/day source the guard admitted the entire round-million
+# grid — precisely the numbers a generator emits. Divisibility is not
+# derivation. Each of those seven is now a test.
+#
+# WHAT THIS STILL COSTS, stated rather than buried:
+# * An honest multiplication is still vetoed. "5 hari x Rp1.000.000" is a
+#   correct answer to a real question, and `wa_outbox` row 387 — fired alone
+#   into a quiet thread — failed 5 of 5 attempts on exactly that and the client
+#   got an apology. Admitting it safely requires binding the multiplier to a
+#   count present in the CUSTOMER'S QUESTION, which this function never
+#   receives. That is a signature change; it will be specified, not guessed.
+# * Two REAL price amounts from unrelated chunks can still sum to a total no
+#   source authorizes, because `price_sources` is a flat sequence of strings
+#   carrying no provenance, no currency family and no semantic role. Closing
+#   that is a data-contract change, not a predicate change.
+def _summable_operands(price_sources: Sequence[str], cur: str) -> set[int]:
+    """Source amounts eligible to be COMPONENTS of a two-part total.
+
+    Deliberately much narrower than the membership set the veto uses. Two
+    restrictions, each of which a cross-family reviewer demonstrated is
+    load-bearing with a concrete case:
+
+    * CURRENCY-MARKED ONLY. The membership set is harvested from every numeric
+      token in every chunk, which is right for membership (a pricing block may
+      state an amount without repeating its marker) and catastrophic for
+      addition: years, article numbers, KBLI codes, quantities and even
+      statistics are not money. `USD 59` passed as `45 + 14` from "Pasal 45"
+      and "14 hari kerja"; `Rp7.275.000` passed as a tourist count plus a real
+      fee. An earlier draft tried to exclude those with a magnitude floor,
+      which is the wrong instrument -- a number's ROLE is not recoverable from
+      its size, and the floor was simultaneously too low for a 7-digit
+      non-money token and too high for a real Rp10.000 stamp duty.
+    * SAME CURRENCY FAMILY as the answer. The membership set is untyped, so a
+      USD figure could authorize an IDR one: `USD 100,000` (a capital minimum)
+      plus `Rp500.000` (notary) authorized `Rp600.000`. Family is available
+      here at no cost -- `_currency_amounts` already returns it -- so the pair
+      rule keeps it even though membership, by its own documented residual,
+      does not.
+
+    Dropping the magnitude floor is what lets a genuine small line item (stamp
+    duty, admin fee) still be a component; being currency-marked is the test
+    that does the work the floor was failing to do.
+    """
+    operands: set[int] = set()
+    for src in price_sources:
+        for family, value in _currency_amounts(src):
+            if family == cur and value > 0:
+                operands.add(value)
+    return operands
+
+
+def _is_two_component_total(value: int, operands: set[int]) -> bool:
+    """True when ``value`` is the sum of two DISTINCT same-currency amounts.
+
+    Two terms, not three: three let unrelated chunks be laundered into a
+    plausible package total (a KITAS fee + a tax penalty + an overstay fine
+    summing to a "PT PMA setup price" no source states). Distinct VALUES, not
+    occurrences: with replacement, one 17,000,000 service fee authorized
+    43,500,000 by being charged twice.
+
+    NO MULTIPLES, and that exclusion is the important one. An earlier version
+    allowed an integer multiple of a source amount, reasoning that a per-day
+    rate times a day count is honest arithmetic. It is -- but this function
+    cannot see the count. It divided the GENERATED figure by a source figure
+    and accepted any whole quotient, so a single `IDR 1,000,000/day` source
+    authorized every whole million to 366 million, and `Rp250.000.000` passed
+    a five-day question. Divisibility is not derivation.
+
+    DECLARED FALSE POSITIVES, named so they are not mistaken for coverage.
+    Each costs a retry and then an apology to a client whose answer was right:
+    * an honest multiplication (5 days x Rp1.000.000) -- needs the multiplier
+      bound to a count in the customer's question, which this function never
+      receives;
+    * a percentage of a base (PPh final 5% of Rp100.000.000) -- same shape,
+      same missing input;
+    * a legitimate three-component total (PNBP + telex + service fee).
+    All three want the same thing: typed operands carrying a role, not a
+    predicate guessing arithmetic backwards. That is a data-contract change.
+
+    DECLARED FALSE NEGATIVE: two REAL same-currency amounts from UNRELATED
+    chunks still sum to a total no source authorizes, because `price_sources`
+    carries no provenance and no semantic role.
+    """
+    for a in operands:
+        b = value - a
+        if b > a and b in operands:
+            return True
+    return False
+
+
 def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> list[str]:
     """Canonical amounts in ``text`` that no source contains, as "CUR:value" strings.
 
@@ -349,6 +614,18 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
     in a chunk could semantically launder a wrong "service fee" — accepted
     because the Gemini leg has the identical exposure today with NO veto at
     all, and the label gate + PricingTool grounding remain the primary control.
+
+    Second declared residual, made visible by the 2026-08-30 currency-family
+    change and deliberately NOT closed here: membership is tested on the VALUE
+    alone, not on (family, value), so a "USD 5000" in a source authorizes an
+    "EUR 5000" in the answer. Closing it would require dropping the bare-token
+    pass below — the one that lets a pricing block state an amount without
+    repeating its currency marker — and that pass is what keeps this veto from
+    failing off correct answers. Trading a certain false-positive regression
+    for a speculative laundering path is the wrong side of the exchange for a
+    guard that already over-rejects. Pinned by
+    test_pricing_veto_does_not_distinguish_currency_families so it cannot rot
+    into an unexamined assumption.
     """
     source_values: set[int] = set()
     for src in price_sources:
@@ -362,10 +639,18 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
             if value is not None:
                 source_values.add(value)
     offenders: list[str] = []
+    operands_by_family: dict[str, set[int]] = {}
     for cur, value in _currency_amounts(text):
         if value < _VETO_FLOORS[cur]:
             continue
-        if value not in source_values:
+        if value in source_values:
+            continue
+        # Parsed once per CURRENCY FAMILY, not once per amount: an answer
+        # quoting four figures re-parsed every chunk four times, and the retry
+        # ladder repeated that up to five times per turn.
+        if cur not in operands_by_family:
+            operands_by_family[cur] = _summable_operands(price_sources, cur)
+        if not _is_two_component_total(value, operands_by_family[cur]):
             offenders.append(f"{cur}:{value}")
     return offenders
 
@@ -488,8 +773,10 @@ async def finalize_wa_answer(
         tell_a_human: REQUIRED one-argument async callable ``(reason)``. The
             pipeline calls it exactly where the pre-extraction code called
             ``_tell_a_human`` — stub paths on both providers, defect paths on
-            the Gemini provider only (a codex defect fails off to the Gemini
-            leg, which still owes the client an answer and re-enters here).
+            the Gemini provider only (a codex defect falls off into the
+            WORKER's retry ladder instead — see the module docstring's
+            2026-08-27 correction — so the client still owes an answer from a
+            LATER attempt, not from Gemini re-entering here).
             Required rather than defaulted (review MAJOR-9): an optional
             notifier makes "forgot to wire it" indistinguishable from "chose
             silence", which is the exact contract inversion the 2026-08-12
@@ -654,7 +941,8 @@ async def finalize_wa_answer(
             # retry ladder below cannot rescue this — it only spends attempts
             # and ends in silence. Tell a human BEFORE the raise, because the
             # raise is precisely what makes this silent. (Gemini leg only: a
-            # codex defect fails off to the Gemini leg, which still answers.)
+            # codex defect falls off into the worker's OWN retry ladder
+            # instead — see the module docstring's 2026-08-27 correction.)
             if provider is FinalizeProvider.GEMINI:
                 await _tell("empty_rag_answer")
             return FinalizeResult(
@@ -665,9 +953,11 @@ async def finalize_wa_answer(
 
         if _starts_with_internal_monologue_leak(answer):
             if provider is FinalizeProvider.CODEX:
-                # TEXT_DEFECT (spec §2.3): a different generator can
-                # legitimately cure a defective text — fail off instead of
-                # serving the stub the Gemini leg would serve.
+                # TEXT_DEFECT (spec §2.3): fail off into the worker's
+                # retry ladder instead of serving the stub the Gemini
+                # branch below would serve — a LATER codex-leg attempt can
+                # legitimately cure a defective text (no second generator
+                # to hand this off to since the 2026-08-27 Gemini cut).
                 return FinalizeResult(
                     outcome=FinalizeOutcome.DEFECT,
                     defect_reason="internal_monologue_leak",
@@ -728,8 +1018,9 @@ async def finalize_wa_answer(
         answer = _strip_kg_workflow_scaffold(answer)
         if not answer:
             if provider is FinalizeProvider.CODEX:
-                # TEXT_DEFECT: scaffold-only output is a broken text, and the
-                # Gemini leg can produce a real answer — fail off.
+                # TEXT_DEFECT: scaffold-only output is a broken text — fail
+                # off into the worker's retry ladder so a LATER codex-leg
+                # attempt can produce a real answer.
                 return FinalizeResult(
                     outcome=FinalizeOutcome.DEFECT,
                     defect_reason="workflow_only_output",
@@ -791,10 +1082,10 @@ async def finalize_wa_answer(
 
     if provider is FinalizeProvider.CODEX and post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
         # TEXT_DEFECT (spec §2.3 "malformed/oversized output"): on the codex
-        # leg an oversized answer fails off to the Gemini leg instead of
-        # being cut mid-content by the sender's hard limit — a truncated
-        # answer can lose its disclaimer or conclusion, and a different
-        # generator can legitimately produce one that fits.
+        # leg an oversized answer falls off into the worker's retry ladder
+        # instead of being cut mid-content by the sender's hard limit — a
+        # truncated answer can lose its disclaimer or conclusion, and a
+        # LATER codex-leg attempt can legitimately produce one that fits.
         return FinalizeResult(
             outcome=FinalizeOutcome.DEFECT,
             defect_reason="oversized_output",

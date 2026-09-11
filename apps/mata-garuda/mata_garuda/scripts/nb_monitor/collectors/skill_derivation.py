@@ -4,7 +4,7 @@ Returns None until FASE 1 ships `bali_zero_skills_local` Qdrant collection
 on Pro. When ready, this module will query
 `point.payload.source_cell` for matches against the NB UUID and return the count.
 
-Spec §3.3, §7.3. ADR-006.
+Spec §3.3, §7.3. ADR-012.
 """
 from __future__ import annotations
 

@@ -21,7 +21,9 @@ export default function AnalyticsLayout({
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        const profile = await api.getProfile();
+        const profile = await api.getProfile({
+          redirectOnUnauthorized: false,
+        });
         if (!profile?.email) {
           router.push("/login");
           return;
@@ -34,9 +36,24 @@ export default function AnalyticsLayout({
           setIsAuthorized(false);
         }
       } catch {
-        // Not authenticated - redirect to login
-        router.push("/login");
-        return;
+        // `/api/auth/profile` is bearer-only (FastAPI 0.141.1's HTTPBearer
+        // answers 401 to any request with no Authorization header, even one
+        // carrying a VALID cookie session) — so a getProfile() failure here
+        // is never proof the founder is anonymous. Ask the session probe
+        // (auth-gates-cookie-primary) before ejecting a genuinely logged-in
+        // cookie-only founder.
+        const session = await api.hasSession();
+        if (session === "anonymous") {
+          router.push("/login");
+        } else {
+          // Cookie-only session confirmed (or the probe was inconclusive —
+          // fail toward the safer non-founder state rather than granting
+          // access). The founder's email is unrecoverable client-side either
+          // way (the JWT is httpOnly) — a declared residual (spec §7.9), not
+          // a bug this cure introduces.
+          setIsAuthorized(false);
+          setUserEmail("");
+        }
       } finally {
         setIsLoading(false);
       }

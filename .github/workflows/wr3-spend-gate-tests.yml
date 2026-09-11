@@ -79,7 +79,6 @@ on:
       - "scripts/tests/test_wr3_render_episode_zero_spend.py"
       - "scripts/tests/conftest.py"
       - ".github/workflows/wr3-spend-gate-tests.yml"
-  merge_group:
   push:
     branches:
       - main

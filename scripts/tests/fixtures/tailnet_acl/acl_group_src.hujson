@@ -1,0 +1,14 @@
+// GUILT (round-3 gates, condition 2 / F2): a `group:` as an acls src. Redis, Ollama and sshd on
+// Mini handed to a non-tagged teammate identity. 443 was already fenced, so this is second-order
+// — but the policy's design has NO user or group sources at all, so it should never appear.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111", "mini": "100.93.236.6", "m5": "100.110.186.116"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "groups": {"group:team": ["teammate@balizero.com"]},
+  "acls": [
+    {"action": "accept", "proto": "tcp", "src": ["group:team"], "dst": ["mini:22", "mini:6379"]}
+  ],
+  "ssh": [],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

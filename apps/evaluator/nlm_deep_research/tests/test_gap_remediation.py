@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 from apps.evaluator.nlm_deep_research.gap_scanner import (
     MAX_REMEDIATIONS_PER_RUN,
     _add_source_to_notebook,
-    _run_gemini_search,
+    _run_web_search,
     run_remediation,
 )
 
@@ -47,48 +47,48 @@ SAMPLE_MATRIX = {
 
 
 # ---------------------------------------------------------------------------
-# Unit tests: _run_gemini_search
+# Unit tests: _run_web_search
 # ---------------------------------------------------------------------------
 
 
-class TestRunGeminiSearch:
+class TestRunWebSearch:
     def test_returns_content_on_success(self):
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0, stdout="Immigration regulation update 2025...", stderr=""
             )
-            result = _run_gemini_search("KITAS requirements 2025")
+            result = _run_web_search("KITAS requirements 2025")
         assert result is not None
         assert "Immigration" in result
 
     def test_returns_none_on_no_result_marker(self):
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="NO_RESULT", stderr="")
-            result = _run_gemini_search("obscure topic")
+            result = _run_web_search("obscure topic")
         assert result is None
 
     def test_returns_none_on_nonzero_exit(self):
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error")
-            result = _run_gemini_search("something")
+            result = _run_web_search("something")
         assert result is None
 
-    def test_returns_none_if_gemini_not_found(self):
+    def test_returns_none_if_the_cli_is_not_found(self):
         with patch("subprocess.run", side_effect=FileNotFoundError):
-            result = _run_gemini_search("something")
+            result = _run_web_search("something")
         assert result is None
 
     def test_returns_none_on_timeout(self):
         import subprocess
 
         with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("gemini", 120)):
-            result = _run_gemini_search("something")
+            result = _run_web_search("something")
         assert result is None
 
     def test_returns_none_on_empty_output(self):
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-            result = _run_gemini_search("something")
+            result = _run_web_search("something")
         assert result is None
 
 
@@ -188,7 +188,7 @@ class TestRunRemediation:
                 matrix_file,
             ),
             patch(
-                "apps.evaluator.nlm_deep_research.gap_scanner._run_gemini_search",
+                "apps.evaluator.nlm_deep_research.gap_scanner._run_web_search",
                 side_effect=fake_gemini,
             ),
             patch(
@@ -236,7 +236,7 @@ class TestRunRemediation:
                 matrix_file,
             ),
             patch(
-                "apps.evaluator.nlm_deep_research.gap_scanner._run_gemini_search",
+                "apps.evaluator.nlm_deep_research.gap_scanner._run_web_search",
                 side_effect=fake_gemini,
             ),
             patch(
@@ -252,7 +252,7 @@ class TestRunRemediation:
         assert result["sources_added"] == MAX_REMEDIATIONS_PER_RUN
 
     def test_handles_gemini_failure_gracefully(self, tmp_path):
-        """If Gemini returns nothing, record error but continue with next topic."""
+        """If the search CLI returns nothing, record it and continue — and say BLIND."""
         matrix_file = tmp_path / "coverage_matrix.json"
         matrix_file.write_text(json.dumps(SAMPLE_MATRIX))
 
@@ -262,7 +262,7 @@ class TestRunRemediation:
                 matrix_file,
             ),
             patch(
-                "apps.evaluator.nlm_deep_research.gap_scanner._run_gemini_search",
+                "apps.evaluator.nlm_deep_research.gap_scanner._run_web_search",
                 return_value=None,
             ),
             patch("time.sleep"),
@@ -271,7 +271,10 @@ class TestRunRemediation:
 
         assert result["sources_added"] == 0
         assert result["search_failed"] == MAX_REMEDIATIONS_PER_RUN
-        assert result["status"] == "partial"
+        assert result["searches_attempted"] == MAX_REMEDIATIONS_PER_RUN
+        assert result["searches_answered"] == 0
+        # BLIND, not partial: nothing was added because nothing could be seen.
+        assert result["status"] == "blind"
 
     def test_marks_remediated_topics_as_fresh_in_matrix(self, tmp_path):
         """After adding a source, the topic should be marked FRESH in the matrix."""
@@ -291,7 +294,7 @@ class TestRunRemediation:
                 matrix_file,
             ),
             patch(
-                "apps.evaluator.nlm_deep_research.gap_scanner._run_gemini_search",
+                "apps.evaluator.nlm_deep_research.gap_scanner._run_web_search",
                 return_value="Updated KITAS information 2025...",
             ),
             patch(
@@ -322,7 +325,7 @@ class TestRunRemediation:
                 matrix_file,
             ),
             patch(
-                "apps.evaluator.nlm_deep_research.gap_scanner._run_gemini_search",
+                "apps.evaluator.nlm_deep_research.gap_scanner._run_web_search",
                 return_value="Some content",
             ),
             patch(
@@ -341,8 +344,10 @@ class TestRunRemediation:
         assert "Remediation" in call_text
         assert "Fonti aggiunte" in call_text
 
-    def test_no_telegram_when_nothing_added(self, tmp_path):
-        """If no sources were added, no Telegram notification."""
+    def test_a_fully_blind_run_still_speaks(self, tmp_path):
+        """The "sources added" Telegram block only fires when something WAS
+        added, so a run that could not search at all used to be perfectly
+        silent — the loudest failure mode there is."""
         matrix_file = tmp_path / "coverage_matrix.json"
         matrix_file.write_text(json.dumps(SAMPLE_MATRIX))
 
@@ -352,7 +357,7 @@ class TestRunRemediation:
                 matrix_file,
             ),
             patch(
-                "apps.evaluator.nlm_deep_research.gap_scanner._run_gemini_search",
+                "apps.evaluator.nlm_deep_research.gap_scanner._run_web_search",
                 return_value=None,
             ),
             patch(
@@ -360,9 +365,11 @@ class TestRunRemediation:
             ) as mock_tg,
             patch("time.sleep"),
         ):
-            run_remediation(dry_run=False)
+            result = run_remediation(dry_run=False)
 
-        mock_tg.assert_not_called()
+        assert result["status"] == "blind"
+        mock_tg.assert_called_once()
+        assert "BLIND" in mock_tg.call_args[0][0]
 
     def test_empty_matrix_returns_ok_with_zero_counts(self, tmp_path):
         matrix_file = tmp_path / "coverage_matrix.json"
@@ -392,7 +399,7 @@ class TestRunRemediation:
                 matrix_file,
             ),
             patch(
-                "apps.evaluator.nlm_deep_research.gap_scanner._run_gemini_search",
+                "apps.evaluator.nlm_deep_research.gap_scanner._run_web_search",
                 return_value="Content found",
             ),
             patch(
@@ -430,3 +437,29 @@ class TestRemediationCLI:
 
         # Should exit 0 (empty matrix = ok)
         mock_exit.assert_called_once_with(0)
+
+
+from apps.evaluator.nlm_deep_research import gap_scanner  # noqa: E402
+
+
+class TestTheDoorIsTheAntigravityCli:
+    """The prompt MUST travel in argv. `agy` silently drops a piped prompt —
+    it returns 0 with generic output, so a stdin regression would look like a
+    working search forever. And the binary must not drift back to `gemini`,
+    whose individual tier is retired."""
+
+    def test_prompt_goes_in_argv_never_stdin(self):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="content", stderr="")
+            _run_web_search("KITAS requirements 2025")
+        argv, kwargs = mock_run.call_args[0][0], mock_run.call_args[1]
+        assert argv[0] == gap_scanner.WEB_SEARCH_CLI == "agy"
+        assert argv[1] == "-p"
+        assert "KITAS" in argv[2], "the prompt must be argv[2], not piped"
+        assert "input" not in kwargs and "stdin" not in kwargs
+
+    def test_the_retired_gemini_binary_is_never_invoked(self):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="content", stderr="")
+            _run_web_search("KITAS requirements 2025")
+        assert mock_run.call_args[0][0][0] != "gemini"

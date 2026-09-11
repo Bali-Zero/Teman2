@@ -3,17 +3,21 @@ NUZANTARA PRIME - Migration Manager
 Centralized migration management system
 """
 
+import asyncio
 import logging
+import ssl
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import asyncpg
 
-from backend.app.core.config import settings
 from backend.db.migration_base import (
     ROLLBACK_MARKER_RE,
     BaseMigration,
     MigrationError,
+    assume_runtime_role,
+    migration_dsn_is_dedicated,
+    resolve_migration_dsn,
     split_migration_sql,
 )
 
@@ -74,6 +78,14 @@ def _extract_rollback_sql(sql_text: str) -> str | None:
     return rollback
 
 
+def _dsn_has_sslmode(url: str) -> bool:
+    """True when `url`'s query string carries an explicit `sslmode`."""
+    try:
+        return "sslmode" in parse_qs(urlparse(url).query)
+    except ValueError:
+        return False
+
+
 class MigrationManager:
     """
     Centralized migration manager.
@@ -91,27 +103,113 @@ class MigrationManager:
         Initialize migration manager.
 
         Args:
-            database_url: Database URL (defaults to settings.database_url)
+            database_url: Database URL (defaults to `resolve_migration_dsn()`:
+                MIGRATION_DATABASE_URL, else DATABASE_URL)
         """
-        self.database_url = database_url or settings.database_url
+        # Option D (RULED 2026-09-11): `MIGRATION_DATABASE_URL` wins over
+        # `DATABASE_URL` for the RUNNER only; see `resolve_migration_dsn`.
+        self.database_url = database_url or resolve_migration_dsn()
         if not self.database_url:
             raise MigrationError("DATABASE_URL not configured")
         self.pool: asyncpg.Pool | None = None
 
+    # Transport-level failures while the pool is being created. Each of these
+    # means "the socket died before Postgres said anything", which is what a
+    # cold release_command machine sees when the private network resets the
+    # TLS handshake. Postgres-level refusals (bad password, no such database,
+    # role missing) are NOT in this set and still fail on the first attempt.
+    CONNECT_RETRY_EXCEPTIONS: tuple[type[BaseException], ...] = (
+        ConnectionError,  # ConnectionResetError, ConnectionRefusedError, ...
+        OSError,
+        asyncio.TimeoutError,
+        asyncpg.exceptions.InterfaceError,
+        asyncpg.exceptions.TargetServerAttributeNotMatched,
+    )
+    CONNECT_ATTEMPTS = 5
+    CONNECT_BACKOFF_BASE_SECONDS = 2.0
+
     async def connect(self) -> None:
         """
-        Create connection pool.
+        Create connection pool, retrying transport-level failures.
 
         Should be called before using the manager.
+
+        Born 2026-09-10 19:13Z-19:57Z: four consecutive Fly release_commands
+        died in this call with ``ConnectionResetError`` inside asyncpg's TLS
+        ``start_tls`` (plus ``TargetServerAttributeNotMatched`` from its
+        multi-host fallback) while the Postgres cluster reported 3/3 checks
+        passing and ~36/300 connections. A single bare ``create_pool`` turned
+        every such reset into a hard deploy failure; this is the bounded
+        retry that was missing (superscar #8, network flap).
         """
         if self.pool is None:
-            self.pool = await asyncpg.create_pool(
-                self.database_url,
-                min_size=1,
-                max_size=5,
-                command_timeout=60,
-            )
+            self.pool = await self._create_pool()
             logger.info("Migration manager connection pool created")
+
+    async def _create_pool(self) -> asyncpg.Pool:
+        """Create the asyncpg pool, retrying transport-level failures, or
+        raise a `MigrationError` that names which DSN source was used and
+        hints at `sslmode` when relevant.
+
+        2026-09-10 incident: four consecutive Fly release_command failures
+        surfaced only a bare `ConnectionResetError` from inside asyncpg's TLS
+        handshake, with no hint which DSN was even in play. Name the source
+        (already known, not re-derived from env) and the exception, so the
+        next operator does not lose an hour reading a stack trace. Only
+        transport-level failures (`CONNECT_RETRY_EXCEPTIONS`) are retried
+        with bounded backoff; Postgres-level refusals (bad password, no such
+        database, role missing) still fail on the first attempt.
+        """
+        last_error: BaseException | None = None
+        for attempt in range(1, self.CONNECT_ATTEMPTS + 1):
+            try:
+                return await asyncpg.create_pool(
+                    self.database_url,
+                    min_size=1,
+                    max_size=5,
+                    command_timeout=60,
+                    # Every ACQUIRE assumes the runtime role (not just connection
+                    # creation): the ledger tables (`_ensure_migration_log`) and the
+                    # advisory lock go through this pool, a `CREATE TABLE IF NOT
+                    # EXISTS` here must not mint a migrator-owned table, and
+                    # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
+                    # `init`-only hook would hold for the first acquire and silently
+                    # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
+                    setup=assume_runtime_role,
+                )
+            except self.CONNECT_RETRY_EXCEPTIONS as exc:
+                last_error = exc
+                if attempt == self.CONNECT_ATTEMPTS:
+                    break
+                delay = self.CONNECT_BACKOFF_BASE_SECONDS * (2 ** (attempt - 1))
+                logger.warning(
+                    "Migration manager connect attempt %d/%d failed (%s: %s); retrying in %.0fs",
+                    attempt,
+                    self.CONNECT_ATTEMPTS,
+                    type(exc).__name__,
+                    exc,
+                    delay,
+                )
+                await asyncio.sleep(delay)
+            except Exception as exc:
+                last_error = exc
+                break
+
+        assert last_error is not None
+        source = "MIGRATION_DATABASE_URL" if migration_dsn_is_dedicated() else "DATABASE_URL"
+        safe_url = self._sanitize_db_url(self.database_url)
+        message = (
+            f"Migration runner cannot connect via {source} ({safe_url}): "
+            f"{type(last_error).__name__}: {last_error}"
+        )
+        if isinstance(last_error, (ConnectionResetError, OSError, ssl.SSLError)) and not _dsn_has_sslmode(
+            self.database_url
+        ):
+            message += (
+                "\nhint: DATABASE_URL uses sslmode=disable; add "
+                "?sslmode=disable to this DSN if the server does not speak TLS"
+            )
+        raise MigrationError(message) from last_error
 
     async def close(self) -> None:
         """Close connection pool"""
@@ -221,6 +319,32 @@ class MigrationManager:
         """
         Rollback a specific migration.
 
+        Clears the migration from BOTH ledgers. Until 2026-09-01 it cleared only
+        `_schema_versions`, and the consequence was not merely untidy — it made
+        the rollback silently ineffective AND self-concealing:
+
+          1. `BaseMigration._is_applied` reads `schema_migrations`, by NAME
+             (migration_base.py). With that row still present, the next
+             `apply-all` takes the "already applied" early-return branch, so the
+             forward SQL NEVER re-runs — whatever the rollback tore down stays
+             torn down.
+          2. That same branch calls `_log_migration`, which re-INSERTs the
+             missing `_schema_versions` row. So the two ledgers re-converge and
+             `schema_audit`'s `tracking_divergence_canonical_only` check goes
+             green again — the one signal that could have reported the problem
+             is erased by the very run that should have fixed it.
+
+        Migrations 277 and 278 already carry a hand-written
+        `DELETE FROM schema_migrations` inside their own rollback SQL, added
+        2026-08-21 after a refuter found this by reading `_is_applied`. Those
+        stay: a second DELETE here matches zero rows and is harmless, and the
+        per-migration line documents the defect at the place someone will read
+        it. What was missing is the GENERIC fix, so migration 279 onwards does
+        not each have to remember.
+
+        Both DELETEs run inside the transaction that executes the rollback SQL,
+        so a failure leaves both ledgers untouched rather than half-cleared.
+
         Args:
             migration_name: Name of migration to rollback
 
@@ -251,10 +375,21 @@ class MigrationManager:
                 # Execute rollback
                 await conn.execute(row["rollback_sql"])
 
-                # Remove from log
+                # Remove from BOTH ledgers. `_schema_versions` is what
+                # `get_applied_migrations` reads when computing pending work;
+                # `schema_migrations` is what `BaseMigration._is_applied` reads
+                # when deciding to skip. Clearing only the first re-queues the
+                # migration and then has it skipped — see the docstring.
                 await conn.execute(
                     """
                     DELETE FROM _schema_versions
+                    WHERE migration_name = $1
+                """,
+                    migration_name,
+                )
+                await conn.execute(
+                    """
+                    DELETE FROM schema_migrations
                     WHERE migration_name = $1
                 """,
                     migration_name,
@@ -323,7 +458,7 @@ class MigrationManager:
         Raises:
             MigrationError: If migration fails
         """
-        return await migration.apply()
+        return await migration.apply(database_url=self.database_url)
 
     # Process-wide advisory lock id used to serialise concurrent migration
     # runs. `pg_advisory_lock` / `pg_advisory_unlock` are *session-scoped* —

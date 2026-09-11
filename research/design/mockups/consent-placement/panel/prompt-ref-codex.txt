@@ -1,0 +1,11 @@
+[REFUTER — filesystem seat] You are refereeing a DESIGN report + mockup before commit. Your job: REFUTE — find claims that fail against the actual tree. You have read-only filesystem access.
+
+FILES UNDER REVIEW (drafts, not yet committed):
+- /private/tmp/claude-501/-Users-nuzantara-nuzantara/b0b4cfee-0d97-475c-b63f-36f99027cf5c/scratchpad/lane-consent/2026-08-27-consent-placement-design.md
+- /private/tmp/claude-501/-Users-nuzantara-nuzantara/b0b4cfee-0d97-475c-b63f-36f99027cf5c/scratchpad/lane-consent/a4-dates-consent.body.html
+
+GROUND TRUTH TREE: /Users/nuzantara/nuzantara/.worktrees/docs-checkout-design (repo at origin/main + one docs commit).
+
+Verify EVERY file:line citation and every factual claim in §1/§2/§5 against the tree: visa/voa/page.tsx (A4 checkbox), upload/UploadFlow.tsx + messages.ts (custody absence), [hash]/page.tsx (magic link), CheckoutFlow.tsx, visa-oracle ConsentHandoff.tsx + WhyWeAsk.tsx, visa/privacy/page.tsx (the do-not-collect list), visa/match/page.tsx, migrations 281/284/285/286 (retention gates, consent-column absence, the 275-277 trigger), R1 rows A4/A6, R4:108/118/146, R5 M2b mockup, SYMBIOSIS.md Law 2 consent ruling. Also check: does the mockup contradict the report anywhere? Do the §6 declarations cover every surface-behavior decision the design makes? Any invented reassurance or unauthored fact rendered as real?
+
+OUTPUT: numbered findings, each with SEVERITY (HIGH/MED/LOW), the FAILING FRAGMENT (verbatim from the draft), WHY it fails with file:line evidence from the tree. No praise, no summary of what is fine. If a §1 claim is TRUE but weaker/stronger than stated, say so with the exact quote.

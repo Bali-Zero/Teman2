@@ -65,21 +65,21 @@ global LLM budget is a hard ceiling.
 
 ## Failure Mode Table
 
-| Failure | Detection | Recovery |
-|---|---|---|
-| Decompose LLM returns invalid JSON | `json.JSONDecodeError` / type check | Fall back to single sub-question = original query |
-| Decompose LLM unavailable (no API key) | `ValueError` from `LLMGateway` | Same fallback |
-| Decompose returns cyclic deps | `topo_sort` detects via idx ordering | Drop back-edge, log warning, continue |
-| Decompose returns depth > max_depth | depth counter in `topo_sort` | Collapse to shallowest ancestor; re-root if needed |
-| Decompose returns > max_sub_questions | length check | Truncate to first 5 |
-| Vector store returns empty | `len(chunks) == 0` | Node evidence empty; composer emits fallback |
-| Vector store raises | try/except in `_retrieve_chunks` | Empty chunks, log warning, continue |
-| `contradiction_score > 0.4` | `ContradictionGrader.score()` | Re-plan that one sub-q once (if budget allows) |
-| All nodes produce empty evidence | `compose()` sees no chunks | Returns `_SYSTEM_FALLBACK` |
-| Composer LLM returns uncitable answer | `enforce_citations` linter | Drop uncitable sentences; fall back if all drop |
-| LLM budget exhausted mid-execute | `llm_call_count >= max_llm_calls` | Skip remaining LLM calls, proceed with current evidence |
-| B211 pre-filter matches | regex match | Rewrite query + inject system note chunk |
-| LangGraph compile / ainvoke exception | try/except in `make_visa_subgraph` wrapper | Log error, return empty contract dict |
+| Failure                                | Detection                                  | Recovery                                                |
+| -------------------------------------- | ------------------------------------------ | ------------------------------------------------------- |
+| Decompose LLM returns invalid JSON     | `json.JSONDecodeError` / type check        | Fall back to single sub-question = original query       |
+| Decompose LLM unavailable (no API key) | `ValueError` from `LLMGateway`             | Same fallback                                           |
+| Decompose returns cyclic deps          | `topo_sort` detects via idx ordering       | Drop back-edge, log warning, continue                   |
+| Decompose returns depth > max_depth    | depth counter in `topo_sort`               | Collapse to shallowest ancestor; re-root if needed      |
+| Decompose returns > max_sub_questions  | length check                               | Truncate to first 5                                     |
+| Vector store returns empty             | `len(chunks) == 0`                         | Node evidence empty; composer emits fallback            |
+| Vector store raises                    | try/except in `_retrieve_chunks`           | Empty chunks, log warning, continue                     |
+| `contradiction_score > 0.4`            | `ContradictionGrader.score()`              | Re-plan that one sub-q once (if budget allows)          |
+| All nodes produce empty evidence       | `compose()` sees no chunks                 | Returns `_SYSTEM_FALLBACK`                              |
+| Composer LLM returns uncitable answer  | `enforce_citations` linter                 | Drop uncitable sentences; fall back if all drop         |
+| LLM budget exhausted mid-execute       | `llm_call_count >= max_llm_calls`          | Skip remaining LLM calls, proceed with current evidence |
+| B211 pre-filter matches                | regex match                                | Rewrite query + inject system note chunk                |
+| LangGraph compile / ainvoke exception  | try/except in `make_visa_subgraph` wrapper | Log error, return empty contract dict                   |
 
 ## Citation Enforcement Rationale
 
@@ -87,7 +87,7 @@ Every factual claim in a visa answer must be traceable to a document or a
 system note. Otherwise:
 
 1. **Hallucination risk.** Zantara has historically fabricated legal
-   requirements (see `.claude/rules/cicatrix-scars.md`). Prompt
+   requirements (see `docs/scars/cicatrix-scars.md`). Prompt
    instructions are unreliable; a deterministic post-processor is the only
    guarantee.
 2. **User verification.** Users cannot verify claims against primary
@@ -106,7 +106,7 @@ The enforcer:
    `(unable to cite this claim; refer to the documents below)`.
 5. If **every** sentence fails, returns
    `I cannot produce a fully-cited answer for this query. Please rephrase
-   or contact support for visa assistance.`
+or contact support for visa assistance.`
 
 ## B211 Handling
 

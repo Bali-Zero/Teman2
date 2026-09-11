@@ -381,10 +381,9 @@
 - **source**: `packages/core/components/TrustBand.tsx`
 - **use when**: trust, social proof
 - **props**:
-  - `clientCount`: `number`
   - `rating`: `string`
   - `reviewCount`: `number`
-- **example**: `<TrustBand clientCount={/* number */} rating={/* string */} reviewCount={/* number */} />`
+- **example**: `<TrustBand rating={/* string */} reviewCount={/* number */} />`
 
 ## `WhatsAppFAB`
 

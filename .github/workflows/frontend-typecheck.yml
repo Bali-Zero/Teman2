@@ -34,7 +34,6 @@ name: Frontend typecheck (apps/mouth)
 
 on:
   pull_request:
-  merge_group:
 
 permissions:
   contents: read

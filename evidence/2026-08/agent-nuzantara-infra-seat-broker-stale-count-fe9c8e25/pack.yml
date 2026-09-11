@@ -1,0 +1,187 @@
+# The literal STAGING path, never this PR's real per-PR path. harness-floor.yml copies THIS
+# PR's own brief to /tmp/evidence-check/evidence/brief.yml and lints with --repo-root pointing
+# there, so the canonical name resolves to MY brief inside that synthetic tree.
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Cure a file on main that contradicts itself about its own measurement, where the wrong half is
+  the one next to the trigger. Comment-only. Align every statement of the figure, replace a
+  deictic commit reference with a stable one, and — after a refuter attacked the boundary
+  convention — stop counting the window-closing run out and name it instead.
+
+lanes:
+  - lane: stale-count-build
+    role: build
+    seat: >-
+      claude-opus-5 (interactive session, xhigh — independent re-verification of the reported
+      contradiction, the fix, the boundary arithmetic, all lints)
+  - lane: stale-count-review-kimi
+    role: review
+    seat: >-
+      kimi-code/k3 (kimi CLI, Moonshot Allegro flat subscription, non-Anthropic cross-family)
+  - lane: stale-count-review-second-seat
+    role: review
+    seat: >-
+      tp1-qwen3.8-max via the Alibaba TP1/DashScope gateway (flat token plan, non-Anthropic
+      cross-family, fresh context). SUBSTITUTED and recorded: the seat first dispatched for this
+      lane was codex-gpt-5.6-sol at xhigh, which died on a workspace SPEND CAP
+      ("You hit your spend cap set in your workspace") — a seat failure, not an answer, and it is
+      written here rather than quietly replaced. Also relevant to budget doctrine: the ChatGPT
+      Pro door is NOT currently answering, so anything routing to it tonight must expect a
+      non-answer.
+
+council_run: council-journal.jsonl
+
+diff:
+  files: 4
+  net_lines: 282
+  measured_at: cadf67158
+  note: >-
+    Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`, measured
+    with this exact pack STAGED. Placeholder values are replaced by a DIGIT-ONLY edit immediately
+    before the commit, so the final substitution cannot change the line count and therefore cannot
+    change the number it reports. FLOOR is 3 by PATH: `.github/workflows/` is a hot zone and the
+    ceiling cannot override a floor — correct here even though the CODE change is comment-only,
+    because the file governs merge-queue behaviour.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The contradiction is real, and was verified independently before being acted on.
+    cmd: >-
+      `git show origin/main:.github/workflows/with-seat-broker-tests.yml | grep -nE "8 times|57"`
+    result: >-
+      Line 41 asserts "**57** `merge_group` runs, ZERO `pull_request` runs" AND names "EIGHT" as
+      a W97 error. Line 124 asserts "in that window it ran 8 times in the queue and 0 times on a
+      PR". Both shipped in PR #5378 and sat on the default branch together for a day.
+    exit: 0
+    ts: "2026-08-31T01:19:00Z"
+    seat: session (Pro)
+    note: >-
+      The defect was SURFACED by a delegated read of the merged file, not by me re-reading my own
+      work — and the report was treated as a lead, re-grepped on origin/main in the same turn
+      before a line was written. Generator != grader applies to my own corrections too.
+
+  - claim: >-
+      57 is NOT sensitive to the boundary convention — the refuter's off-by-one attack lands on
+      the pull_request count only.
+    cmd: >-
+      Recount merge_group runs inside the declared window under BOTH conventions, plus the gap
+      between the window's opening instant and the earliest run.
+    result: >-
+      Half-open [19:15:44Z, first-fix-run) -> 57. Closed [19:15:44Z, first-fix-run] -> 57.
+      Identical, because the earliest merge_group run is at 19:16:02Z, 18s after the file landed,
+      so no run sits ON the left edge. The pull_request count IS boundary-sensitive: exactly one
+      pull_request run falls in the window and it is the run that closes it. That is why the
+      wording changed from counting it out ("ZERO") to naming it.
+    exit: 0
+    ts: "2026-08-31T01:24:00Z"
+    seat: session (Pro)
+
+  - claim: The change cannot alter workflow behaviour.
+    cmd: >-
+      `git diff -U0 -- <file> | grep -E "^[+-]" | grep -vE "^(\+\+\+|---)" | grep -vE "^[+-]\s*#"`
+      — i.e. list every changed line that is NOT a comment. Then actionlint.
+    result: >-
+      Empty: every added and removed line begins with `#`. actionlint rc=0. `on:`, `paths:`,
+      `jobs:` and the trigger shape #5378 landed are untouched.
+    exit: 0
+    ts: "2026-08-31T01:26:00Z"
+    seat: session (Pro)
+
+  - claim: Every statement of the measurement in the file now agrees.
+    cmd: >-
+      `grep -nE "57|pull_request run|8 times" .github/workflows/with-seat-broker-tests.yml`
+    result: >-
+      Two live statements (header :41, inline :128) and both now read "57 ... the only
+      pull_request run is the one that ends the window". The only surviving "8 times" is inside
+      the sentence that quotes it as the superseded value — a quotation, not an assertion.
+    exit: 0
+    ts: "2026-08-31T01:27:00Z"
+    seat: session (Pro)
+
+  - claim: The watcher-coverage contract stays green.
+    cmd: "`python3 scripts/check_watcher_coverage.py`"
+    result: >-
+      rc=0, "all live workflow(s) covered". (It also warns about a pre-existing stale entry,
+      `AI PR review (advisory)`, from that workflow being disabled 2026-08-20 — untouched here,
+      a different lane's cleanup.)
+    exit: 0
+    ts: "2026-08-31T01:28:00Z"
+    seat: session (Pro)
+
+dissent:
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    round: 1
+    objection: >-
+      "'0 times on a PR' is false: the measurement itself admits 1 pull_request run exists
+      inside the window — the very run that closes it ... off-by-one in exactly the way this
+      diff claims to fix." Plus: "13 lines of meta-narrative in the trigger hot-zone is a
+      defect ... that belongs in a commit message or the header, not beside `on:`", and a PR
+      number is a weaker anchor than a commit SHA. VERDICT: DO-NOT-SHIP.
+    disposition: >-
+      ACTED ON, on two of three points. The boundary ambiguity was real and the wording changed.
+      The prose-length objection was real too — and it was the risk this PR's own brief had
+      already named against itself; the comment went from 13 added lines to 9/5, with the draft
+      archaeology cut to one clause. The SHA-vs-PR point is DECLINED with reason: this repo
+      squash-merges and carries "(#NNNN)" in the commit subject, so the PR number resolves while
+      the branch SHA does not survive the squash — the second seat independently reached the same
+      conclusion ("acceptable in a squash-merge repo").
+
+  - seat: tp1-qwen3.8-max
+    status: CONFIRMED
+    round: 2
+    objection: >-
+      "a half-open-right window cannot contain 'the only pull_request run' as its endpoint; the
+      endpoint is excluded ... either the PR boundary run is outside the window, so PR count is 0,
+      or the window is right-inclusive, so 'half-open' is false." Also: "The EIGHT/ZERO correction
+      history is cruft; commit messages should hold draft archaeology, not a hot-zone workflow
+      comment." VERDICT: DO-NOT-SHIP.
+    disposition: >-
+      ACTED ON, and this is the sharper of the two catches. My first repair to kimi's finding
+      introduced a NEW contradiction: I declared the window half-open and then described the
+      excluded endpoint as a run inside it. The cure was to stop placing that run in the window at
+      all — the text now reads "57 merge_group runs and NOT ONE pull_request run — between this
+      file landing and, exclusive, the first run its own fix triggered, which is itself the next
+      pull_request run this workflow ever had", which is true under either convention because it
+      never asserts membership. The cruft objection is the same one kimi raised and was cut in the
+      same edit.
+    note: >-
+      TWO cross-family seats, dispatched on fresh context, independently returned DO-NOT-SHIP on
+      the same surface for two DIFFERENT reasons, the second of which only existed because of my
+      fix for the first. That is the fix-of-a-fix shape the depth-1 rule warns about, and it is
+      declared: this is round 2 on the wording of one sentence. A third red on the same cause
+      would SUSPEND rather than earn a fourth attempt — the surface would be under-specified, not
+      unlucky.
+
+  - seat: codex-gpt-5.6-sol (xhigh)
+    status: RETRACTED
+    round: 2
+    objection: >-
+      NONE — the seat never answered. Recorded as a dissent entry with status RETRACTED because
+      the alternative is leaving an invited-but-silent seat invisible.
+    disposition: >-
+      The process died with "ERROR: You hit your spend cap set in your workspace. Increase your
+      spend cap to continue." — a workspace-level cap on the ChatGPT Pro door, not a prompt or
+      transport fault. A seat that does not answer is a seat that did not review; it is NOT
+      written into `council-journal.jsonl`, and tp1-qwen3.8-max was dispatched in its place with
+      the same adversarial brief. Worth carrying beyond this PR: the codex door is currently
+      returning this error, so any lane routing to it tonight should expect a non-answer rather
+      than a review.
+
+tests:
+  - "actionlint on the edited workflow — rc=0."
+  - "check_watcher_coverage.py — rc=0."
+  - "comment-only proof: zero non-`#` lines in the diff."
+
+static:
+  - "actionlint: clean."
+  - "Diff restricted to comment lines, verified mechanically rather than by eye."
+
+notes: >-
+  WHAT THIS DOES NOT DO. It adds no machine check for the class it cures — "a file names a value
+  as wrong while still asserting that value elsewhere" is a plausible lint and is deliberately not
+  invented here, because that is a second concern and this PR is already a correction of a
+  correction. It also does not touch PR #5378's body, which still carries the superseded 8: a
+  merged PR's body is a record, and annotating it is a separate gesture from changing the file.

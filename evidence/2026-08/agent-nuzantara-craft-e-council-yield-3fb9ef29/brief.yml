@@ -1,0 +1,99 @@
+task_id: craft-e-council-yield
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  L03-PR-3 of the beyond-SOTA craft wave: instrument COUNCIL YIELD. Every
+  evidence pack already carries a `dissent:` block — 53 of 54 packs, 267
+  findings measured 2026-08-29 — and nothing has ever read them in aggregate.
+  So the organism has run a cross-family adversarial gate on every PR for
+  weeks without ever being able to answer the one question that justifies the
+  cost: which seats actually change designs, and which are ceremony.
+
+  `scripts/council_yield_report.py` reads them and reports family x role x
+  disposition. It is a REPORT, exit 0 always, never a gate.
+
+  The spec asked for a `council:` block in pack.yml and called it "a NEW
+  top-level key, additive only". That premise is FALSE on disk, and the
+  consequence was measured rather than argued: evidence_pack_lint.py:851
+  already reads `bool(pack.get("council"))` as the R11-CEILING rule's truthy
+  "a council was convened" signal, and a sibling key `council_run:` is a path.
+  Probed on a Gear-1-shaped, non-hot-zone, declared-Gear-3 pack: no key ->
+  clean; `council: {findings:0, applied:0}` -> HARD `ceiling:` violation;
+  `council: {}` -> clean. So adopting the instrumentation would have CONVICTED
+  the pack recording a council that found nothing — precisely the case this
+  PR's AMENDMENTS antidote exists to instrument — while an EMPTY block passed.
+  Instrumentation that costs a squad its merge is instrumentation nobody
+  adopts. The key here is therefore `council_yield:`, confirmed free.
+constraints:
+  - "evidence_pack_lint.py is NOT touched. The `council_yield:` key is disjoint
+    from `council:`/`council_run:`, so no new check_* rule is needed and
+    guard-conformance stays at 16 checks with nothing to register."
+  - "Exit 0 always. A report that can fail CI is a gate, and a gate on this
+    surface would cost another squad its merge for a defect in a third
+    party's pack."
+  - "Never fabricate. A pack or fallback doc that cannot be parsed is NAMED as
+    unparseable; a prose-only tally is never synthesized into structured data."
+  - "No single 'council yield' scalar. The tool cannot know the AUTHOR's family
+    from a pack, so a headline number would quietly assume it — the 'report
+    that flatters the process it measures' failure this exists to prevent."
+  - "Self-refutations and CI gates are reported SEPARATELY from cross-family
+    review. Pooling them inflates the exact number the report makes honest."
+acceptance:
+  - text: "WHEN run over the live corpus it SHALL aggregate >=5 historical packs
+      (the spec's floor). Measured: 54 packs, 53 with dissent, 267 findings, 0 unparseable."
+    probe: "council_yield_report.py over the live 54-pack corpus"
+  - text:
+      "WHEN run twice on identical input it SHALL emit byte-identical output,
+      human AND --json — the spec names reproducibility as this PR's arming probe."
+    probe: "run twice and cmp both human and --json output"
+  - text: "IF a council recorded findings>0 with applied==0 it SHALL emit an
+      AMENDMENTS candidate naming its source; WHERE findings==0 it SHALL NOT."
+    probe: "pytest scripts/tests/test_council_yield_report.py"
+  - text:
+      "WHILE this PR is in flight the lane baseline SHALL stay at 288 passing
+      and guard-conformance SHALL stay RC0 with 16 evidence-pack-lint checks."
+    probe: "pytest scripts/tests/test_evidence_pack_lint.py -q"
+  - text: "WHEN a seat string is normalised it SHALL bind on word boundaries:
+      `gpt` inside prose and `session` inside a cross-family seat SHALL NOT bind."
+    probe: "pytest scripts/tests/test_council_yield_report.py"
+assumptions:
+  - text: "`council_yield:` is free as a pack key across the whole repo."
+    status: verified
+    probe: "git grep council_yield -> 5 hits, ALL the script NAME
+      council_yield_report.py inside the L03 spec. Zero as a pack key."
+  - text: "The corpus measurement (54 packs / 53 with dissent / 267 findings /
+      126 raw seats) is current, not carried from a previous session."
+    status: verified
+    probe: "Re-measured this turn with a fresh yaml walk. It read 51 packs two
+      sessions ago and 54 now, which is exactly why it was re-taken."
+  - text: "The three 2026-08-28 fallback dossiers are where the spec says."
+    status: verified
+    probe: "FALSE as written, and corrected: research/operations/2026-08-28-*.md
+      has NO matches; the three live under research/design/. The spec's prose
+      was wrong and the code follows the disk."
+  - text: "A council-yield report can name a per-seat number honestly."
+    status: unverified
+    probe: "Only partly, and the limit is printed in the tool's own output every
+      run: family is word-matched from a free-text seat string, so an
+      independent-CONTEXT same-FAMILY gate (opus grading an opus diff) is not
+      cross-family review. Settling it would need the author's family recorded
+      in the pack, which no pack does today; the tool refuses to guess."
+risks:
+  - "The normaliser is the whole PR: 126 raw seat strings collapse to a handful
+    of families, and grouping by raw string would split one seat into dozens,
+    making every conclusion an artifact of punctuation (superscar #3's
+    under-match applied to aggregation). Its over-match twin is equally real —
+    a substring matcher binds `gpt` inside prose. Both directions are pinned."
+  - "The markdown fallback path has zero live consumers today (1 of 3 dossiers
+    parses; 2 are prose-only). Its defects were latent, not live — and were
+    cured anyway, because fabricated findings are the worst outcome for a tool
+    whose only product is a number people will trust."
+grader: "Kimi K3 (non-Anthropic, blind — payload was the module code only, no
+  tests, no PR framing, no author intent). Final on-disk gate: Opus 5 xhigh,
+  every number re-run this turn, never taken from the implementer's report."
+budget:
+  wall_clock_hours: 1
+appetite:
+  adversarial_rounds: 2
+pii: "none — the corpus is seat names and dispositions, no client data anywhere."

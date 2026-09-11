@@ -539,8 +539,21 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         organ_id="infra.syncthing_pro",
         daemon=True,
     ),
+    # infra.ollama_pro REPOINTED 2026-08-31: "homebrew.mxcl.ollama" is not
+    # loaded on Pro (verified: `launchctl list "homebrew.mxcl.ollama"` ->
+    # "Could not find service"). The live daemon runs under a different
+    # label, "com.nuzantara.ollama" (ProgramArguments:
+    # /Users/nuzantara/scripts/ollama-single-manager.sh), which exists to own
+    # the port-collision/two-program-paths problem the 2026-06-28 triage in
+    # organism_stale_detector.py:220-222 describes ("the real `ollama serve`
+    # already owns :11434 ... two program paths"). Bridging the retired
+    # Homebrew label made this organ report "failed" forever (false alarm)
+    # while the actual serving daemon had zero organism coverage under any
+    # name — pro.ollama_warm_pin tracks a different job
+    # (com.nuzantara.ollama-warm-pin, keeps a model warm) and does not cover
+    # this one. This changes the alarm's TARGET, not the daemon.
     BridgedLaunchAgent(
-        label="homebrew.mxcl.ollama",
+        label="com.nuzantara.ollama",
         organ_id="infra.ollama_pro",
         daemon=True,
     ),

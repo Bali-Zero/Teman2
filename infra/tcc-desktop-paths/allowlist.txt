@@ -132,8 +132,8 @@
 # Format: one repo-relative path per line. Blank lines and #-comments ignored.
 
 .github/workflows/immune-enforcement.yml
-.claude/rules/cicatrix-scars-archive.md
-.claude/rules/cicatrix-scars.md
+docs/scars/cicatrix-scars-archive.md
+docs/scars/cicatrix-scars.md
 .claude/rules/cicatrix-superscar.md
 apps/backend-rag/backend/tests/api/app/routers/WAVE3_NOTES.md
 apps/backend-rag/tests/unit/routers/TEST_CRM_PRACTICES_COVERAGE_REPORT.md

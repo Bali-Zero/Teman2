@@ -1,0 +1,12 @@
+task_id: codex-trailer-note
+gear: 1
+objective: Correct the interpretation of five verified legacy Codex co-author trailers without rewriting Git history.
+constraints:
+  - Evidence only; preserve historical commits and lane packs.
+  - Distinguish observed Git text from declared session attribution.
+acceptance:
+  - text: All five PR mappings, main ancestry checks, legacy trailers and historical build-seat declarations reproduce at the named merge commits.
+    probe: evidence/2026-09/agent-air-m5-ops-codex-trailer-note/attribution.md
+consumer_map:
+  - An independent reviewer can replay the named Git and GitHub reads before interpreting the historical builder attribution.
+pii: none

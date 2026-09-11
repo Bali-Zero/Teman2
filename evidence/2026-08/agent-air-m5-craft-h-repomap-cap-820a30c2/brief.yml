@@ -1,0 +1,101 @@
+task_id: craft-h-l02-pr2-repomap-hard-cap
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Make the repo map's size a thing the generator ENFORCES rather than a thing it
+  complains about.
+
+  `scripts/build_repomap.sh` produces `~/.nuzantara-repomap.txt`, which the
+  SessionStart hook injects into every session on that machine. Its own header
+  says "Target: 4-20kB". Above 30,720 bytes it printed a WARN to stderr and wrote
+  the file anyway. Measured on Pro on 2026-08-31: the live map is 42,779 bytes —
+  past its own warn band, in every session's turn-1 context, for weeks. The only
+  reader of that stderr was a log nobody opens.
+
+  This is the same disease as this lane's PR-1, one layer down: a control that
+  exists, runs, reports, and changes nothing (superscar #2; W55 — a signal
+  emitted is not a signal seen). W76 is this exact file's earlier relapse, where
+  a silent strategy fallback filled the map with minified webpack chunks.
+constraints:
+  - "Truncate by RANK, at BLOCK boundaries, never mid-block. Both strategies
+    already emit best-first (ctags by symbol count, aider by its PageRank), so a
+    whole-block prefix keeps the highest-signal part of the ordering THEY chose
+    — this code must not invent a ranking of its own. A half-written symbol list
+    is worse than an absent one: a reader cannot tell it from a short one."
+  - "The truncation must ANNOUNCE itself in the output. A map that quietly stops
+    early is indistinguishable from a small repository, and that confusion is
+    precisely what this lane exists to remove."
+  - "Fail OPEN and loudly if the filter breaks: an unbounded map is bad, an empty
+    one silently replacing a real one is worse."
+  - "Keep the <1kB warning. It is an unrelated failure mode (a strategy that
+    produced almost nothing) and, unlike the >30kB one, it is not something this
+    script can fix by itself — there is nothing to truncate."
+  - "No PII. The map is source-file paths and symbol names."
+acceptance:
+  - text: >-
+      WHEN the generator produces a map larger than the cap, it SHALL write a
+      shortened file rather than a warning, and the file SHALL say that it was
+      shortened and by how much.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_repomap_cap.py -p no:cacheprovider"
+  - text: >-
+      WHERE the real oversized map on Pro is passed through the cap, the result
+      SHALL be under 20,480 bytes with its provenance header intact.
+    probe: "python3 scripts/repomap_cap.py ~/.nuzantara-repomap.txt /tmp/capped.txt 20480"
+  - text: >-
+      IF a guard here cannot be made to fail by mutating the code it guards, it
+      SHALL NOT count as a guard.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_repomap_cap.py -p no:cacheprovider"
+  - text: >-
+      WHILE this diff touches .github/workflows/, the new test SHALL actually run
+      on a PR that changes its subjects, and SHALL NOT run on unrelated ones.
+    probe: "actionlint .github/workflows/immune-enforcement.yml"
+  - text: >-
+      WHEN a future overrun happens anyway, it SHALL surface as a boundary-report
+      line rather than as stderr again.
+    probe: "python3 scripts/proprioception.py --no-fetch"
+consumer_map:
+  - "`~/.nuzantara-repomap.txt` — read by the SessionStart hook and injected into
+    every session on the machine that generates it. Measured 2026-08-31: Pro has
+    it (42,779 B, written 01:27), Mini and M5 do not. Pro is therefore the only
+    machine where the bite is observable, and its LaunchAgent
+    `com.nuzantara.repomap.15min` invokes the REPO copy by absolute path
+    (`/Users/nuzantara/nuzantara/scripts/build_repomap.sh`) — verified, so the
+    cure travels by ordinary merge+pull and this is NOT a HOME-fork (family #1)."
+  - "`scripts/repomap_cap.py` — NEW, the truncator. Split out of the shell rather
+    than left as a heredoc because M5 has neither a working aider nor
+    universal-ctags and cannot run the generator end-to-end at all; a cap
+    testable only on the machines that already run it is a cap nobody can test
+    while writing it."
+  - "`scripts/proprioception.py` — the `repomap_size` boundary probe, so a future
+    overrun reaches a reader instead of a log."
+  - "`.github/workflows/immune-enforcement.yml` — path filter AND executor list,
+    at anchors deliberately distinct from the ones this squad's scar-cold-storage
+    PR touches, so the two merge without conflicting."
+risks:
+  - "The cap number (20,480) is the value this file's own header has claimed as
+    its target band since it was written; it is NOT the open context-budget
+    ruling, which is about the injected surface as a whole. It is
+    env-overridable (`REPOMAP_HARD_CAP_BYTES`) so a machine with different needs
+    does not have to patch code."
+  - "Block detection is format-derived, not format-declared: a block starts on a
+    non-indented non-empty line, which is what BOTH strategies emit today. A
+    future strategy with a different shape would collapse the map into one block
+    and the cap would then keep zero blocks — which the code handles by emitting
+    the header plus an explicit note, so the failure is visible rather than
+    silent, but it IS a degradation."
+  - "The generator fails open when the filter is missing or errors, with a WARN.
+    That is the same shape as the warning being replaced — the difference is that
+    it now has a reader: the `repomap_size` probe reports the resulting over-cap
+    file as DIVERGED in the boundary report."
+grader: |
+  generator != grader. Two cross-family council seats on the diff — Codex
+  GPT-5.6 sol at xhigh and Kimi K3 — both handed the diff and instructed to
+  refute, including the specific question of whether each of the eight tests can
+  be made to fail by a mutation it claims to catch. The conducting session wrote
+  the code and did not grade it.
+budget: |
+  One Claude seat (M5, orchestrator + gate), two cross-family refuters. Flat
+  subscription only; no metered API spend. Gear 3 by the deterministic floor
+  (the diff touches .github/workflows/) -> xhigh effort.
+pii: none

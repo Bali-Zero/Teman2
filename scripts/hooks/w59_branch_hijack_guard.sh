@@ -1,7 +1,7 @@
 #!/bin/bash
 # W59 branch-hijack guard — opt-in pre-commit assertion.
 #
-# Reference: .claude/rules/cicatrix-scars.md ### W59 (2026-05-27).
+# Reference: docs/scars/cicatrix-scars.md ### W59 (2026-05-27).
 # Symptom: with N parallel Claude/Codex sessions on the same worktree, a
 # sibling `git checkout -b ...` between your `git add` and `git commit` can
 # silently retarget your commit to THEIR branch. `git push origin <BRANCH>`

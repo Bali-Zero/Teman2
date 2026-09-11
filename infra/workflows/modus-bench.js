@@ -87,10 +87,12 @@ const VERDICT = {
 };
 
 phase("Sweep");
+// model pinned on every agent() call per .claude/skills/workflow/SKILL.md §1.1
+// (Zero 2026-07-14, corrected 2026-08-20) — enforced by model_routing_gate.py.
 const SWEEPS = [
   {
     key: "scars",
-    prompt: `Read .claude/rules/cicatrix-superscar.md and the tail of .claude/rules/cicatrix-scars.md (last ~${days} days of entries), then read .claude/skills/modus/SKILL.md. Question: which recent scars would the CURRENT modus loop NOT have prevented — which stage or probe was missing or too weak? Propose only changes anchored to a specific scar.`,
+    prompt: `Read .claude/rules/cicatrix-superscar.md and the tail of docs/scars/cicatrix-scars.md (last ~${days} days of entries), then read .claude/skills/modus/SKILL.md. Question: which recent scars would the CURRENT modus loop NOT have prevented — which stage or probe was missing or too weak? Propose only changes anchored to a specific scar.`,
   },
   {
     key: "loop-misfires",
@@ -111,7 +113,12 @@ const raw = (
       (s) => () =>
         agent(
           `${s.prompt}\nReturn ONLY proposals with concrete, verifiable evidence. No speculation, no style preferences.`,
-          { label: `sweep:${s.key}`, phase: "Sweep", schema: PROPOSALS },
+          {
+            label: `sweep:${s.key}`,
+            phase: "Sweep",
+            schema: PROPOSALS,
+            model: "sonnet",
+          },
         ),
     ),
   )
@@ -137,6 +144,7 @@ const judged = await parallel(
           label: `refute:${(p.title || "?").slice(0, 40)}`,
           phase: "Refute",
           schema: VERDICT,
+          model: "opus", // adversarial refuter/gate lane
         },
       ).then((v) => ({ ...p, verdict: v })),
   ),
@@ -149,7 +157,7 @@ log(`${survived.length}/${raw.length} proposals survived refutation`);
 phase("Synthesize");
 const amendments_block = await agent(
   `Synthesize OPERATOR-GATED amendment proposals for the modus master loop. Date: ${today}. These proposals survived adversarial refutation:\n${JSON.stringify(survived, null, 2)}\n\nProduce a markdown section ready to APPEND to .claude/skills/modus/AMENDMENTS.md:\n- header line: "## bench ${today}"\n- one checkbox line per proposal: "- [ ] <title> — <evidence, 1 line> — CHANGE: <exact edit>"\n- close with the reminder line that nothing merges without Zero's GO.\nDo NOT edit any file. Return the markdown only.`,
-  { label: "synthesize", phase: "Synthesize" },
+  { label: "synthesize", phase: "Synthesize", model: "sonnet" },
 );
 return {
   date: today,

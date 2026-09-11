@@ -555,15 +555,22 @@ def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
 # Max remediation targets per run (NLM rate limiting)
 MAX_REMEDIATIONS_PER_RUN = 3
 
-# Gemini search timeout
-GEMINI_TIMEOUT = 120
+# Web-search CLI. NOT `gemini`: that binary's individual tier was retired
+# ("IneligibleTierError: ... migrate to the Antigravity suite"), and because
+# _run_web_search swallows a non-zero return code into None, every remediation
+# run since then reported "no content found" instead of "I cannot search".
+# `agy` IS the Antigravity CLI the error names. Its prompt must go in argv —
+# a piped prompt is silently dropped.
+WEB_SEARCH_CLI = "agy"
+WEB_SEARCH_TIMEOUT = 120
+GEMINI_TIMEOUT = WEB_SEARCH_TIMEOUT  # kept as an alias for older importers
 
 # Delay between NLM source_add calls
 REMEDIATION_DELAY = 15  # seconds
 
 
-def _run_gemini_search(query: str) -> str | None:
-    """Use Gemini CLI (built-in web search) to find content for a gap topic."""
+def _run_web_search(query: str) -> str | None:
+    """Use the web-search CLI to find content for a gap topic."""
     prompt = (
         f"Search the web for: {query}\n\n"
         "Provide a comprehensive 300-500 word summary of the most recent and authoritative "
@@ -572,24 +579,24 @@ def _run_gemini_search(query: str) -> str | None:
     )
     try:
         result = subprocess.run(
-            ["gemini", "-p", prompt, "--model", "gemini-3-flash-preview"],
-            capture_output=True, text=True, timeout=GEMINI_TIMEOUT,
+            [WEB_SEARCH_CLI, "-p", prompt, "--print-timeout", f"{WEB_SEARCH_TIMEOUT}s"],
+            capture_output=True, text=True, timeout=WEB_SEARCH_TIMEOUT + 30,
         )
         if result.returncode != 0:
-            logger.warning("Gemini CLI error: %s", result.stderr.strip()[:200])
+            logger.warning("Web-search CLI error: %s", result.stderr.strip()[:200])
             return None
         output = result.stdout.strip()
         if not output or "NO_RESULT" in output.upper():
             return None
         return output
     except subprocess.TimeoutExpired:
-        logger.warning("Gemini search timeout for: %s", query[:60])
+        logger.warning("Web search timeout for: %s", query[:60])
         return None
     except FileNotFoundError:
-        logger.error("gemini CLI not found in PATH")
+        logger.error("%s CLI not found in PATH", WEB_SEARCH_CLI)
         return None
     except Exception as exc:
-        logger.error("Gemini search error: %s", exc)
+        logger.error("Web search error: %s", exc)
         return None
 
 
@@ -630,6 +637,10 @@ def run_remediation(dry_run: bool = False) -> dict[str, Any]:
         "stale_topics_found": 0,
         "sources_added": 0,
         "search_failed": 0,
+        # searches_attempted vs searches_answered: search_failed alone cannot
+        # tell "found nothing" from "could not look", because both land here.
+        "searches_attempted": 0,
+        "searches_answered": 0,
         "dry_run": dry_run,
         "errors": [],
         "remediated": [],
@@ -676,12 +687,15 @@ def run_remediation(dry_run: bool = False) -> dict[str, Any]:
             result["remediated"].append({"domain": domain, "topic": topic, "status": "dry_run"})
             continue
 
-        content = _run_gemini_search(search_query)
+        result["searches_attempted"] += 1
+        content = _run_web_search(search_query)
         if not content:
             logger.warning("  No content found for: %s", topic[:60])
             result["search_failed"] += 1
             result["errors"].append(f"{domain}/{topic[:40]}: no search result")
             continue
+
+        result["searches_answered"] += 1
 
         # Title includes domain label and topic for easy identification
         source_title = f"[{label}] {topic[:80]} — {_now_iso()[:10]}"
@@ -717,8 +731,24 @@ def run_remediation(dry_run: bool = False) -> dict[str, Any]:
                 msg_lines.append(f"  • {item['domain']}: {item['topic'][:50]}")
         _send_telegram("\n".join(msg_lines))
 
+    # A run where every search failed added nothing AND saw nothing — and the
+    # Telegram block above only fires when sources_added > 0, so before this
+    # branch existed a fully blind remediation was completely silent.
+    blind = (
+        not dry_run
+        and result["searches_attempted"] > 0
+        and result["searches_answered"] == 0
+    )
     if result["errors"]:
         result["status"] = "partial"
+    if blind:
+        result["status"] = "blind"
+        _send_telegram(
+            "🕳️ <b>Gap Remediation BLIND</b>\n"
+            f"{result['searches_attempted']} ricerche tentate, 0 risposte.\n"
+            "Nessuna fonte aggiunta perché la ricerca web non vede — "
+            "non perché non ci fosse nulla da trovare."
+        )
 
     return result
 
@@ -826,7 +856,11 @@ def main() -> None:
         print(f"  GAP topics found: {result['gap_topics_found']}")
         print(f"  STALE topics found: {result['stale_topics_found']}")
         print(f"  Sources added: {result['sources_added']}")
+        print(f"  Searches attempted: {result['searches_attempted']}")
+        print(f"  Searches answered: {result['searches_answered']}")
         print(f"  Search failed: {result['search_failed']}")
+        if result["status"] == "blind":
+            print("  BLIND — no search answered; this run observed nothing")
         if result["errors"]:
             print(f"  Errors: {result['errors']}")
         sys.exit(0 if result["status"] in ("ok", "partial") else 1)

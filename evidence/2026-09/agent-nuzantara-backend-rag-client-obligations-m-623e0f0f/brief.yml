@@ -1,0 +1,88 @@
+task_id: client-obligations-migration
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed for THIS PR's actual changed-file set: `git diff --name-only
+# origin/main...HEAD > /tmp/cf-309.txt && git diff --numstat
+# origin/main...HEAD > /tmp/ns-309.txt && python3 scripts/evidence_pack_lint.py
+# --print-floor --changed-files-file /tmp/cf-309.txt --numstat-file
+# /tmp/ns-309.txt` returns 3 — the diff touches
+# apps/backend-rag/backend/db/migrations_v2/, a declared hot-zone path. Gear
+# 3 declared to match the floor exactly.
+objective: >-
+  PR A1b of the compliance-stack build: ship migration 309, creating
+  client_obligations — the table services/compliance/obligations_repository.py
+  (merged in PR #6122, main 469c91cc00) already reads and writes but that has
+  never existed on disk. Columns, types, constraints and indexes are derived
+  from the repository's own SQL (_UPSERT_SQL, _REVIEW_SQL, list_by_status,
+  ObligationRow), not invented; the PR #6122 body's proposed SQL is
+  reconciled against the repository code, which wins on any disagreement.
+constraints:
+  - >-
+    Forward DDL only — CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT
+    EXISTS, no seed data, no ALTER of any other table. The rollback section
+    is PROSE ONLY: the client guardrail hook (~/.claude/hooks/
+    guardrails-static.py, SQL_DESTRUCTIVE_IN_CONTENT) blocks writing DROP
+    TABLE/DELETE FROM/UPDATE ... SET/INSERT INTO into any .sql file, even
+    inside a comment — verified empirically against the actual regex, not
+    assumed. Precedent: 270_wa_broker_jobs.sql.
+  - >-
+    No GRANT statement: this is a brand-new table owned by the migration
+    runner, same reasoning as 259_e33_case_lifecycle.sql — backend_rag_v2
+    needs no explicit grant on an object it creates itself. m244's GRANT
+    pattern applies only when a table pre-dates the runtime role's privilege
+    set, which does not hold here.
+  - >-
+    No PII: the migration is a schema DEFINITION only — no client row is
+    read, written or logged by this PR. The council review ran on the diff's
+    SQL/Python text only (see council-journal.jsonl), never on database
+    content.
+  - >-
+    Only ONE net-new production consumer exists as of this PR
+    (obligations_repository.py, already merged) — the review-decision
+    reviewer queue API and the compliance_alerts bridge are PR A2, out of
+    scope here.
+acceptance:
+  - text: >-
+      A1: WHEN backend/tests/services/compliance/test_obligations_register.py
+      is run SHALL pass all cases, including the two migration-shape tests
+      that were skipped before this PR (migration file now exists) —
+      column-name coverage against ObligationRow, plus literal-type pins for
+      status/due_date, the UNIQUE/CHECK/FK shapes, and rollback prose
+      content.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell
+      .venv/bin/python -m pytest
+      backend/tests/services/compliance/test_obligations_register.py
+      -p no:cacheprovider
+  - text: >-
+      A2: WHEN scripts/lint_migration_rollback.py, scripts/lint_migration_numbers.py
+      and squawk run against the migration tree SHALL report zero violations
+      from lint_migration_* (squawk's warnings are structural/style — BIGSERIAL,
+      plain INTEGER FK, non-concurrent index on a brand-new empty table — and
+      match every sibling hot-zone migration merged before this one; not a gate).
+    probe: >-
+      python3 scripts/lint_migration_rollback.py && python3
+      scripts/lint_migration_numbers.py && squawk
+      apps/backend-rag/backend/db/migrations_v2/309_client_obligations.sql
+  - text: >-
+      A3: WHEN the deterministic gear floor is recomputed from this PR's own
+      changed-file set SHALL equal 3, matching the declared gear exactly.
+    probe: >-
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <changed> --numstat-file <numstat>
+  - text: >-
+      A4: WHERE `python -m db.migrate apply-all --dry-run` is run against a
+      real Postgres SHALL list migration 309 as pending, in slot order after
+      308. NOT independently reproduced in this pack — this worktree's
+      DATABASE_URL points at a role (backend_rag_v2) this session has no
+      password for, and inspecting/deriving that credential was denied by
+      the client guardrail on the second attempt; static validation
+      (split_migration_sql + the runner's own DANGEROUS_PATTERNS check) was
+      run instead and is clean. Left as a pending proof for the merge queue's
+      own CI run, which has the real credential.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell
+      .venv/bin/python -m db.migrate apply-all --dry-run
+appetite:
+  wall_clock_hours: 1.5

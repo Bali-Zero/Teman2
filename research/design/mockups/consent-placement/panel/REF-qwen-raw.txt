@@ -1,0 +1,6 @@
+1. C1 — Sound — Low — The stated rule is satisfied because the custody statement precedes the fields, and a trailing acknowledgement checkbox only becomes contradictory if the rule also requires the acknowledgement itself to precede data entry.
+2. C2 — Sound — Low — The conditional render is a redundant-but-coherent UI defense-in-depth mirror of the database trigger’s active-policy invariant.
+3. C3 — In tension with itself — High — Removing an unfulfillable deletion promise improves truthfulness, but under a UU PDP informed-consent frame it can weaken notice if a legally available erasure right or escalation route is not disclosed elsewhere.
+4. C4 — In tension with itself — High — A dormant link avoids showing an incorrect policy but still withholds any current policy while data is collected, so it cannot function as honest transparency until it renders.
+5. C5 — Sound — Low — No live user harm exists while the product is dark-flagged, but an incorrect privacy policy is appropriately an arm/launch blocker because public arming would expose users to false notice.
+6. C6 — Unsupported — High — A static design cannot honestly certify that nothing else on the page is used for the check without backend evidence, so the statement should be placeholder or audited copy.

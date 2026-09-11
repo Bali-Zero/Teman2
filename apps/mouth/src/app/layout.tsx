@@ -9,6 +9,7 @@ import {
   DynamicJsonLd,
 } from "@/components/seo";
 import { RouteChangeTracker } from "@/components/analytics/RouteChangeTracker";
+import { analyticsUrlRedactScript } from "@/lib/analytics-url";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ErrorBoundary } from "@/components/optimization";
 import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
@@ -20,13 +21,26 @@ import "./globals.css";
 
 // Pre-paint theme script — persona-aware, sets data-theme before React hydrates
 // to prevent FOUC. Design 2026-04-17-v2-subdomain-rollout §3 (L1/L2/L3 persona).
-// Precedence: localStorage('bz-theme') > hostname persona > editorial default.
+// Precedence: localStorage('bz-theme') > PATH persona > hostname persona > editorial.
+//   /portal/**                    → operative-light (client portal, ANY host)
 //   kita.                         → operative-light (workspace day mode)
 //   prime.                        → operative-dark (3D workspace)
 //   my., zantara.                 → operative-light (client self-service)
 //   balizero, visa., tax., /kbli  → editorial (public funnel)
+//
+// WHY THE PATH IS CHECKED BEFORE THE HOST (measured 2026-09-10, Zero ruling):
+// persona used to be derived from the hostname ALONE, so every environment that
+// is not literally `my.` served the client portal with the editorial NIGHT
+// palette — the login screen at /portal/login-upgraded rendered dark on
+// 127.0.0.1 while production rendered it cream, and the authenticated area
+// rendered light in both because its own CSS pins operative-light. That is a
+// persona the deploy target decides, which is exactly the class of drift that
+// makes local QA disagree with production. `/portal` IS the client persona
+// wherever it is served, so the path is now the stronger signal. The client's
+// own ThemeToggle (components/ui/ThemeToggle, mounted in PortalHeader) still
+// wins over both — this fixes the DEFAULT, it does not remove the choice.
 // Must be inline; next/script strategy="beforeInteractive" is insufficient in App Router.
-const themeInitScript = `(function(){try{var stored=localStorage.getItem('bz-theme');var host=location.hostname;var isKita=host.indexOf('kita.')===0;var isPrime=host.indexOf('prime.')===0;var isMy=host.indexOf('my.')===0||host.indexOf('zantara.')===0;var product=(isKita||isPrime)?'kita':isMy?'my':'editorial';var t=stored;if(product!=='editorial'){if(t==='light')t='operative-light';if(t==='dark')t='operative-dark';}if(!t){if(isKita||isMy)t='operative-light';else if(isPrime)t='operative-dark';else t='editorial';}document.documentElement.dataset.product=product;document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.product='editorial';document.documentElement.dataset.theme='editorial';}})();`;
+const themeInitScript = `(function(){try{var stored=localStorage.getItem('bz-theme');var host=location.hostname;var path=location.pathname;var isKita=host.indexOf('kita.')===0;var isPrime=host.indexOf('prime.')===0;var isPortalPath=path==='/portal'||path.lastIndexOf('/portal/',0)===0;var isMy=isPortalPath||host.indexOf('my.')===0||host.indexOf('zantara.')===0;var product=isPortalPath?'my':(isKita||isPrime)?'kita':isMy?'my':'editorial';var t=stored;if(product!=='editorial'){if(t==='light')t='operative-light';if(t==='dark')t='operative-dark';}if(!t){if(isKita||isMy)t='operative-light';else if(isPrime)t='operative-dark';else t='editorial';}document.documentElement.dataset.product=product;document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.product='editorial';document.documentElement.dataset.theme='editorial';}})();`;
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -198,6 +212,17 @@ export default function RootLayout({
             __html:
               "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{'analytics_storage':'denied','ad_storage':'denied','ad_user_data':'denied','ad_personalization':'denied','wait_for_update':500});gtag('consent','update',{'analytics_storage':'granted'});",
           }}
+        />
+
+        {/* Redact credential-bearing query params from page_location BEFORE
+            gtag.js loads. Measured 2026-09-11: /portal/register?token=… and
+            /portal/magic?token=… shipped the raw single-use token to
+            google-analytics.com/g/collect as `dl=` (HTTP 204 — accepted).
+            GA's automatic page_view reads document.location.href, so this has
+            to be queued in dataLayer ahead of gtag('config'); see
+            src/lib/analytics-url.ts. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: analyticsUrlRedactScript }}
         />
 
         {/* ⚡ Performance: Preconnect to critical domains */}

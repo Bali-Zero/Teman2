@@ -19,8 +19,14 @@ import httpx
 BACKEND_URL = os.getenv("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
 TIMEOUT_SECONDS = int(os.getenv("NUZANTARA_WORKSPACE_MARKETING_TIMEOUT", "30"))
 _client: httpx.AsyncClient | None = None
-_ALLOWED_ENDPOINT_RE = re.compile(
-    r"^/api/workspace-marketing/news/(?:pending|[A-Za-z0-9][A-Za-z0-9._-]{0,159})$"
+_ALLOWED_READ_ENDPOINT_RE = re.compile(
+    r"^/api/workspace-marketing/(?:capabilities|news/(?:pending|[A-Za-z0-9][A-Za-z0-9._-]{0,159}(?:/publication-status)?))$"
+)
+_ALLOWED_PUBLISH_ENDPOINT_RE = re.compile(
+    r"^/api/workspace-marketing/news/[A-Za-z0-9][A-Za-z0-9._-]{0,159}/(?:publish|confirm-live)$"
+)
+_ALLOWED_UPDATE_ENDPOINT_RE = re.compile(
+    r"^/api/workspace-marketing/news/[A-Za-z0-9][A-Za-z0-9._-]{0,159}/(?:editorial|cover)$"
 )
 
 
@@ -91,10 +97,28 @@ async def call(
     """Call one wrapper-selected backend endpoint without leaking response bodies."""
 
     global _client
-    if method.upper() != "GET" or not _ALLOWED_ENDPOINT_RE.fullmatch(endpoint):
+    normalized_method = method.upper()
+    allowed = (
+        (normalized_method == "GET" and _ALLOWED_READ_ENDPOINT_RE.fullmatch(endpoint))
+        or (
+            normalized_method == "POST"
+            and _ALLOWED_PUBLISH_ENDPOINT_RE.fullmatch(endpoint)
+        )
+        or (
+            normalized_method == "PUT"
+            and _ALLOWED_UPDATE_ENDPOINT_RE.fullmatch(endpoint)
+            and endpoint.endswith("/editorial")
+        )
+        or (
+            normalized_method == "POST"
+            and endpoint.endswith("/cover")
+            and _ALLOWED_UPDATE_ENDPOINT_RE.fullmatch(endpoint)
+        )
+    )
+    if not allowed:
         raise RuntimeError("Nuzantara marketing backend endpoint is not allowed")
     request = {
-        "method": "GET",
+        "method": normalized_method,
         "url": endpoint,
         "json": json,
         "params": params,
@@ -124,9 +148,7 @@ async def call(
     try:
         payload = response.json()
     except ValueError as exc:
-        raise RuntimeError(
-            "Nuzantara marketing backend returned invalid JSON"
-        ) from exc
+        raise RuntimeError("Nuzantara marketing backend returned invalid JSON") from exc
     if not isinstance(payload, dict):
         raise RuntimeError("Nuzantara marketing backend returned an unsupported shape")
     return payload

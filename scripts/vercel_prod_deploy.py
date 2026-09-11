@@ -18,10 +18,10 @@ the whole reason this script can exist. What does NOT work:
   * Deploy Hooks — refused outright: "This project is not connected to a Git repository,
     so it cannot have deploy hooks."
 
-ONE PROJECT, EIGHT DOMAINS
---------------------------
-balizero.com and every subdomain (www, kita, my, prime, visa, tax, zantara) are served by
-the single `mouth` project. A stale frontend is stale everywhere, never on one page.
+PRODUCTION PROOF SOURCE
+-----------------------
+The canonical frontend commit probe is https://kita.balizero.com/api/health. Other
+domains and Vercel deployment records do not prove which build the kita domain serves.
 
 THE ALIAS IS NOT AUTOMATIC HERE
 -------------------------------
@@ -104,7 +104,7 @@ TEAM_ID = "team_jX3mEbUemBs0Zy4i8aFYZsjS"  # nuzantara-2026
 PROJECT_ID = "prj_LcXb9ZgeUvWpxaIM9K47tQYPeuee"  # mouth
 REPO_ORG = "Bali-Zero"
 REPO_NAME = "Teman2"
-HEALTH_URL = "https://balizero.com/api/health"
+HEALTH_URL = "https://kita.balizero.com/api/health"
 AUTH_JSON = "~/Library/Application Support/com.vercel.cli/auth.json"
 
 BUILD_TIMEOUT_S = 600
@@ -117,17 +117,8 @@ POLL_S = 20
 # scripts/tests/test_vercel_prod_deploy_target_rule.py, which reads the list back out of the
 # workflow — so editing one without the other fails CI rather than drifting quietly.
 #
-# apps/mouth/e2e is excluded: those specs run in CI and never reach the bundle, so demanding
-# a deploy for them manufactures work with no user-visible referent.
-#
-# A THIRD file also decides what reaches the bundle — scripts/ci/vercel_should_build.sh, the
-# Vercel Ignored Build Step — and it deliberately does NOT exclude e2e. That asymmetry is
-# correct and must not be "tidied": that script is fail-open by construction (a build we did
-# not need costs minutes; a build we needed and skipped freezes eight domains), so it errs
-# toward building. This pair errs toward not nagging. Same paths, opposite safe directions —
-# they are not the same question and must not be merged into one constant.
 BUNDLE_PATHS = ("apps/mouth", "packages", "package.json", "package-lock.json", "vercel.json")
-BUNDLE_EXCLUDE = (":(exclude)apps/mouth/e2e",)
+BUNDLE_EXCLUDE: tuple[str, ...] = ()
 
 
 def _read_auth() -> dict:
@@ -252,7 +243,7 @@ def _api(method: str, path: str, body: dict | None = None) -> tuple[int, dict]:
 def _main_head() -> str:
     out = subprocess.run(
         ["gh", "api", f"/repos/{REPO_ORG}/{REPO_NAME}/commits/main", "--jq", ".sha"],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, check=True, timeout=FETCH_TIMEOUT_S,
     )
     return out.stdout.strip()
 
@@ -261,39 +252,51 @@ def _git(*args: str) -> str | None:
     """stdout on success, None on ANY failure. Never conflate the two: `git fetch` succeeds
     with empty stdout, so an empty string is a result and None is 'could not look'."""
     try:
-        # A TIMEOUT, because this is now called unattended every 900s. Without one, a fetch
-        # that half-opens against the network hangs forever; the wrapper's pidfile then sees a
-        # live pid on every later tick and skips, and the organ is wedged with no upper bound.
-        # 120s is far above a normal fetch here and far below the 900s cadence.
+        # A TIMEOUT, because this is called unattended every 120s. Without one, a git that
+        # hangs (a stuck lock, a wedged filesystem) hangs forever; the wrapper's pidfile then
+        # sees a live pid on every later tick and skips, and the organ is wedged with no upper
+        # bound. Only LOCAL reads come through here (rev-parse, log, merge-base) — the network
+        # fetch has its own, tighter ceiling in _fetch_main — so 60s is far above normal and
+        # still inside the cadence.
         out = subprocess.run(
-            ["git", *args], capture_output=True, text=True, check=True, timeout=120
+            ["git", *args], capture_output=True, text=True, check=True, timeout=60
         )
     except Exception:  # noqa: BLE001 — missing git, not a repo, network, timeout: all "unknown"
         return None
     return out.stdout.strip()
 
 
-# Three attempts at a 120s timeout plus 3s+9s backoff worst-case at 372s — comfortably inside
-# 900s cadence, so a genuinely dead network degrades on THIS tick instead of wedging the organ
-# into the next one.
-FETCH_ATTEMPTS = 3
-FETCH_BACKOFF_S = (3.0, 9.0)
+# Two attempts at a 45s timeout plus 5s backoff, worst case 95s — inside the 120s cadence, so
+# a genuinely dead network degrades on THIS tick instead of wedging the organ into the next one.
+# The whole retry (attempts x timeout + backoff) must end INSIDE one tick of the organ's plist,
+# and test_vercel_prod_deploy_fetch_retry.py reads all three numbers to hold it there.
+#
+# Why 45s and not less: the slowest fetch ever measured here took 39s (under a Wi-Fi flap, see
+# _fetch_main). A ceiling below that turns a persistently slow network into PERMANENT blindness
+# — every attempt of every tick times out — where the old 120s ceiling recovered; a cross-family
+# refuter caught exactly this in the first cut (30s). Two attempts rather than three is the
+# price of a ceiling that clears the measured case.
+FETCH_ATTEMPTS = 2
+FETCH_BACKOFF_S = (5.0,)
+FETCH_TIMEOUT_S = 45
 
 
 def _fetch_main() -> tuple[bool, str]:
     """Refresh origin/main, riding out a TRANSIENT failure instead of degrading on it.
 
-    This is the only network step on the unattended path, and it runs every 900s on a machine
+    This is the one network step EVERY tick takes (the health probe, the Vercel listing and
+    the promote only run while a build is pending), and it runs every 120s on a machine
     whose network measurably flaps. Measured on Mini the day the organ was armed: of the first
     five runs one could not fetch, the system log showed three network-configuration changes
     and a Wi-Fi change in the five minutes before it, and the good run that followed took 39s
-    against a usual 4s. Degrading on a lone blip is correct but expensive — it costs 15 minutes
-    of blindness — so the one-shot network action is wrapped in a bounded retry (superscar #8).
+    against a usual 4s. Degrading on a lone blip is correct but expensive — it cost 15 minutes
+    of blindness at the 900s cadence, 2 at 120s — so the one-shot network action is wrapped in
+    a bounded retry (superscar #8).
 
     Returns (ok, detail). On failure `detail` is what git actually SAID. `_git` deliberately
     collapses every cause into `None`, which is right for a caller that only needs "could not
     look" — but it left the operator-facing message unable to name the cause, and a refused
-    connection, DNS, a dead credential and a 120s timeout call for four different answers. The
+    connection, DNS, a dead credential and a timeout call for four different answers. The
     discriminator that was available that day and invisible in the log: `gh api` answered over
     HTTPS in the same second the SSH fetch failed. A message that does not name its cause sends
     the reader away from it (W106).
@@ -303,10 +306,10 @@ def _fetch_main() -> tuple[bool, str]:
         try:
             subprocess.run(
                 ["git", "fetch", "--no-tags", "--quiet", "origin", "main"],
-                capture_output=True, text=True, check=True, timeout=120,
+                capture_output=True, text=True, check=True, timeout=FETCH_TIMEOUT_S,
             )
         except subprocess.TimeoutExpired:
-            detail = "timed out after 120s"
+            detail = f"timed out after {FETCH_TIMEOUT_S}s"
         except subprocess.CalledProcessError as exc:
             said = ((exc.stderr or "") + " " + (exc.output or "")).strip()
             detail = (" ".join(said.split())[:200]) or f"git exited {exc.returncode}"
@@ -360,9 +363,14 @@ def _production_includes(target: str, live: str | None) -> bool:
         return False
     if live == target:
         return True
-    rc = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", target, live], capture_output=True, text=True
-    )
+    try:
+        rc = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", target, live],
+            capture_output=True, text=True, timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        # A local read that hangs is a wedged repo, not an answer; closed, like the 128 case.
+        return False
     # 0 = ancestor, 1 = not, 128 = an object we do not have. Only 0 is currency.
     return rc.returncode == 0
 
@@ -442,6 +450,50 @@ def _ready_deployment_for(sha: str) -> tuple[str, str] | None:
     return None
 
 
+# How many recent production deployments to scan for a build that INCLUDES the target. Merge
+# queue batches land 2-3 PRs per push; 20 covers a whole busy night (~7 builds/hour).
+DESCENDANT_SCAN_LIMIT = 20
+
+
+def _ready_deployment_including(sha: str) -> tuple[str, str, str] | None:
+    """A READY production build of a main commit that INCLUDES the target — the merge-queue case.
+
+    Measured 2026-09-11 (03:13-03:45 WITA): the GitHub merge queue BATCHES PRs, so one push moved
+    main by three commits (#6136, #6134, #6139) and Vercel built only the batch HEAD — a docs
+    commit. The newest bundle-relevant commit (8a2c49cfb) never got a build of its own, so
+    `_ready_deployment_for` found nothing, the --promote-only fallback (which walks OLDER
+    bundle-relevant commits) found nothing either, and Mini's autopromote organ exited 3 every
+    120s for half an hour while four READY builds that all contained the cure sat STAGED.
+
+    The rule is the sentinel's rule: production must INCLUDE the target, not EQUAL it. So any
+    READY production build whose commit is on main and descends from the target is promotable.
+    Guilt: finds the newest such build. Innocence: never a build of a commit that is not on
+    origin/main (a preview, a fork, a rebased branch), never one that does not contain the
+    target, never a non-READY one. Returns (deployment_id, substate, build_sha) or None; any
+    failure returns None so the rebuild path still runs.
+    """
+    status, body = _api(
+        "GET", f"/v6/deployments?projectId={PROJECT_ID}&target=production&limit={DESCENDANT_SCAN_LIMIT}"
+    )
+    if status != 200:
+        return None
+    for dep in body.get("deployments", []):  # newest first
+        if dep.get("state") != "READY":
+            continue
+        build_sha = (dep.get("meta") or {}).get("githubCommitSha")
+        uid = dep.get("uid")
+        if not build_sha or not uid or build_sha == sha:
+            continue
+        # `_git` is None on rc!=0: `merge-base --is-ancestor` answers with the exit code alone,
+        # so "" (rc 0, empty stdout) is YES and None is NO-or-could-not-look. Both must be yes.
+        if _git("merge-base", "--is-ancestor", build_sha, "origin/main") is None:
+            continue
+        if _git("merge-base", "--is-ancestor", sha, build_sha) is None:
+            continue
+        return str(uid), str(dep.get("readySubstate")), str(build_sha)
+    return None
+
+
 def _promote(deployment_id: str, sha: str) -> bool:
     status, body = _api("POST", f"/v10/projects/{PROJECT_ID}/promote/{deployment_id}", {})
     print(f"promote HTTP {status}: {json.dumps(body)[:300]}")
@@ -512,10 +564,27 @@ def main() -> int:
         print("production already includes this commit — nothing to do")
         return 0
     # Prefer promoting an existing READY build for this exact commit over rebuilding it.
+    # The sha the probe must see AFTER a promote: the target itself, or — when the build that
+    # carries it is a descendant — that build's commit (production serves the descendant, which
+    # includes the target; `_probe_until` compares by equality, so it must be told which).
+    probe_sha = sha
     existing = _ready_deployment_for(sha)
     if existing:
         dpl, substate = existing
         print(f"already built     : {dpl} (readySubstate={substate}) — promote, do not rebuild")
+    # No build of this exact commit: the merge queue may have batched it, so the build that
+    # carries it is a DESCENDANT on main. Promoting that one serves the target too (the verdict
+    # is inclusion, never equality) and costs ~3s where a rebuild costs ~6 minutes.
+    if not existing:
+        descendant = _ready_deployment_including(sha)
+        if descendant:
+            dpl, substate, build_sha = descendant
+            print(
+                f"no build of {sha[:9]} itself (merge-queue batch?) — a READY build of "
+                f"{build_sha[:9]}, which includes it, is unpromoted: {dpl} (readySubstate={substate})"
+            )
+            existing = (dpl, substate)
+            probe_sha = build_sha
     # No READY build for the newest bundle-relevant commit yet — before giving up (dry-run's
     # verdict and --promote-only's real behaviour must agree), look for an older bundle-relevant
     # commit that IS already built. Only relevant to the two restricted paths below; the
@@ -540,7 +609,7 @@ def main() -> int:
         return 0
 
     # --promote-only is the CRON contract, and it is a restriction, not an optimisation.
-    # Unattended, "no READY build exists" must never buy a rebuild: at a 15-minute cadence
+    # Unattended, "no READY build exists" must never buy a rebuild: at a 2-minute cadence
     # that is a build loop nobody asked for, and the condition itself is an anomaly worth a
     # human's eyes (Vercel skipped the commit, or the build failed). Exit 2 says exactly that
     # and is deliberately NOT 1 — a wrapper reading one failure bit cannot tell "the promote
@@ -550,11 +619,11 @@ def main() -> int:
             fb_sha, fb_dpl, _ = fallback
             if _promote(fb_dpl, fb_sha):
                 print(
-                    f"OK — balizero.com serves {fb_sha[:9]} (promoted {fb_dpl}, no rebuild; "
+                    f"OK — kita.balizero.com serves {fb_sha[:9]} (promoted {fb_dpl}, no rebuild; "
                     f"newest bundle-relevant commit {sha[:9]} still awaits its own build)"
                 )
                 return 0
-            print(f"::error::promote of {fb_dpl} did not move the domains to {fb_sha[:9]}")
+            print(f"::error::promote of {fb_dpl} did not prove kita.balizero.com serves {fb_sha[:9]}")
             return 1
         if not existing:
             print(f"no READY production build for {sha[:9]} — --promote-only will not create one")
@@ -564,19 +633,19 @@ def main() -> int:
             # was nothing to promote" and report a healthy-ish heartbeat forever. Measured,
             # not imagined: running --promote-only against the pre-merge copy on Mini exits 2.
             return 3
-        if _promote(existing[0], sha):
-            print(f"OK — balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
+        if _promote(existing[0], probe_sha):
+            print(f"OK — kita.balizero.com serves {probe_sha[:9]} (promoted {existing[0]}, no rebuild)")
             return 0
-        print(f"::error::promote of {existing[0]} did not move the domains to {sha[:9]}")
+        print(f"::error::promote of {existing[0]} did not prove kita.balizero.com serves {probe_sha[:9]}")
         return 1
 
     if existing:
-        if _promote(existing[0], sha):
-            print(f"OK — balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
+        if _promote(existing[0], probe_sha):
+            print(f"OK — kita.balizero.com serves {probe_sha[:9]} (promoted {existing[0]}, no rebuild)")
             return 0
         # Fall through rather than fail: the build may be genuinely unusable (an alias
         # conflict, a deployment deleted mid-flight). A rebuild is slower, never wrong.
-        print("promote did not move the domains — falling back to a rebuild")
+        print("promote did not prove kita.balizero.com current — falling back to a rebuild")
 
     status, deployment = _api("POST", "/v13/deployments", {
         "name": "mouth",
@@ -596,17 +665,17 @@ def main() -> int:
         return 1
 
     if _probe_until(sha, attempts=8):
-        print(f"OK — balizero.com serves {sha[:9]} (deployment {deployment_id})")
+        print(f"OK — kita.balizero.com serves {sha[:9]} (deployment {deployment_id})")
         return 0
 
     # READY but the domains never moved: the alias did not follow. This is the documented
     # fallback, not the normal path — and it is the observed path for a sha-ref deployment.
     print("production still on the old build at terminal READY → promote")
     if _promote(deployment_id, sha):
-        print(f"OK after promote — balizero.com serves {sha[:9]}")
+        print(f"OK after promote — kita.balizero.com serves {sha[:9]}")
         return 0
 
-    print(f"::error::deployment {deployment_id} is READY but the domains still do not serve {sha[:9]}")
+    print(f"::error::deployment {deployment_id} is READY but kita.balizero.com did not prove it serves {sha[:9]}")
     return 1
 
 

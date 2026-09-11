@@ -1,0 +1,235 @@
+# NOTE: brief_ref is the CANONICAL name, not this pack's own directory — the
+# harness-floor.yml CI workflow copies both discovered per-PR files into
+# /tmp/evidence-check/evidence/{brief,pack}.yml under these exact names
+# before validating, so brief_ref must always read "evidence/brief.yml".
+brief_ref: evidence/brief.yml
+plan_ref: PR #5093 — agent/air-m5/backend-rag/codex-leg-retry-budget
+# Diff stats below are the LITERAL output of the command in the matching
+# receipt (git diff --numstat origin/main...HEAD), summed by hand ONLY as
+# 80+216+53+195+383+117=1044 / 0+28+9+11+36+3=87 -- the per-file rows are the
+# transcription of the command's own stdout, not a re-estimate.
+diff:
+  files: 6
+  insertions: 1044
+  deletions: 87
+  hotzone_hits:
+    - apps/backend-rag/backend/db/migrations_v2/296_wa_broker_jobs_live_only_unique.sql
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: review
+    role: review
+    seat: kimi-code/k3
+
+receipts:
+  - claim: "Deterministic floor for this diff is 3 (hot-zone migration path: apps/backend-rag/backend/db/migrations_v2/296_wa_broker_jobs_live_only_unique.sql)."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed_files_296.txt"
+    exit: 0
+    ts: "2026-08-27T03:51:32Z"
+    seat: sonnet-5
+  - claim: "Migration 296 is squawk-clean under the repo's standard exclusion set."
+    cmd: "squawk --pg-version=15.0 --exclude=require-concurrent-index-creation --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid --exclude=prefer-bigint-over-int --exclude=prefer-identity --exclude=disallowed-unique-constraint apps/backend-rag/backend/db/migrations_v2/296_wa_broker_jobs_live_only_unique.sql"
+    exit: 0
+    ts: "2026-08-27T03:51:37Z"
+    seat: sonnet-5
+  - claim: "The migration carries exactly one ROLLBACK marker."
+    cmd: "grep -c '^-- === ROLLBACK ===$' apps/backend-rag/backend/db/migrations_v2/296_wa_broker_jobs_live_only_unique.sql"
+    exit: 0
+    ts: "2026-08-27T03:51:40Z"
+    seat: sonnet-5
+  - claim: "Queried the FULL open-PR set (not just main + one named PR) for migration-number claims: no open PR claims 296. #5072 claims 289_practice_status_log.sql and #5059 independently claims 289_visa_retention_binders_scope_to_visa_decision.sql — a real collision between those two PRs, not introduced or touched by this one. #5037 claims 293/294/295, one below this PR's 296 — no overlap."
+    cmd: "gh pr list --state open --limit 300 --json number,files -q '.[] | .number as $n | .files[]?.path | select(test(\"migrations_v2/[0-9]+_\")) | \"\\($n): \\(.)\"'"
+    exit: 0
+    ts: "2026-08-27T03:51:56Z"
+    seat: sonnet-5
+  - claim: "origin/main's real migration tip is 288_practices_source_idempotency_key.sql (171 files under migrations_v2/) -- NOT 278 as a refuter transcript claimed; that claim was not propagated into this PR's cure."
+    cmd: "git ls-tree origin/main -- apps/backend-rag/backend/db/migrations_v2/ | grep -oE '[0-9]{3}_[a-z_0-9]+\\.sql' | sort -t_ -k1 -n | tail -5"
+    exit: 0
+    ts: "2026-08-27T03:52:01Z"
+    seat: sonnet-5
+  - claim: "ruff is clean on all 5 touched Python files."
+    cmd: "ruff check backend/services/integrations/wa_broker.py backend/services/integrations/wa_codex_leg.py backend/tests/unit/services/test_wa_broker.py backend/tests/unit/services/test_wa_codex_leg.py backend/tests/integration/test_wa_broker_pg.py"
+    exit: 0
+    ts: "2026-08-27T03:52:05Z"
+    seat: sonnet-5
+  - claim: "Literal git diff --numstat origin/main...HEAD, transcribed verbatim: 296_wa_broker_jobs_live_only_unique.sql 80/0, wa_broker.py 216/28, wa_codex_leg.py 53/9, test_wa_broker_pg.py 195/11, test_wa_broker.py 383/36, test_wa_codex_leg.py 117/3. Totals: 6 files, 1044 insertions, 87 deletions."
+    cmd: "git diff --numstat origin/main...HEAD"
+    exit: 0
+    ts: "2026-08-27T04:03:58Z"
+    seat: sonnet-5
+  - claim: "Full test_wa_broker.py + test_wa_codex_leg.py unit suite is green: 93 passed, 0 failed."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/services/test_wa_broker.py backend/tests/unit/services/test_wa_codex_leg.py"
+    exit: 0
+    ts: "2026-08-27T04:03:34Z"
+    seat: sonnet-5
+  - claim: "Full test_wa_broker_pg.py integration suite against a real local PostgreSQL is green: 34 passed, 0 failed."
+    cmd: "TEST_DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_test PYTHONPATH=. python -m pytest backend/tests/integration/test_wa_broker_pg.py"
+    exit: 0
+    ts: "2026-08-27T04:03:45Z"
+    seat: sonnet-5
+  - claim: "Unaffected sibling suite test_wa_outbox_worker.py stays green after this change: 27 passed, 0 failed."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/services/test_wa_outbox_worker.py"
+    exit: 0
+    ts: "2026-08-27T04:03:54Z"
+    seat: sonnet-5
+  - claim: "Mutation M1 (disable the REATTACHED branch, `if False and (...)`) turns exactly test_offer_job_retry_reattaches_to_still_alive_prior_leg red (KeyError: 'broker_last_seen_at' -- falls through into the ambiguity-gate block whose mock gauge this test does not populate, which is itself evidence the branch was skipped): 92 passed, 1 failed. File cleanly reverted afterward, re-confirmed green."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/services/test_wa_broker.py backend/tests/unit/services/test_wa_codex_leg.py"
+    exit: 1
+    ts: "2026-08-27T03:54:07Z"
+    seat: sonnet-5
+  - claim: "Mutation M2 (drop the depth query's `outbox_id != $1` exclusion) turns exactly test_offer_job_depth_check_excludes_this_outbox_ids_own_live_job red: 43 passed, 1 failed. File cleanly reverted afterward."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/services/test_wa_broker.py -v"
+    exit: 1
+    ts: "2026-08-27T03:54:54Z"
+    seat: sonnet-5
+  - claim: "Mutation M3 (off-by-one on the legs cap, `>` instead of `>=`) turns exactly test_offer_job_retry_legs_exhausted_when_prior_terminal_and_budget_spent red on BOTH suites: unit 43 passed/1 failed, integration 0 passed/1 failed (single targeted test run). File cleanly reverted afterward."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/services/test_wa_broker.py -v ; TEST_DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_test PYTHONPATH=. python -m pytest backend/tests/integration/test_wa_broker_pg.py::test_retry_budget_exhausts_after_max_codex_legs -v"
+    exit: 1
+    ts: "2026-08-27T03:56:00Z"
+    seat: sonnet-5
+  - claim: "Mutation M4 (round-2 budget-drain fix: force the broker_last_seen_at ambiguity-gate condition to `False and ... and False`, disabling it) turns exactly test_offer_job_retry_blocked_when_daemon_not_proven_free_after_expiry and test_offer_job_retry_blocked_when_gauge_has_no_broker_last_seen_at red on unit (42 passed, 2 failed), and exactly test_retry_blocked_while_daemon_not_proven_free_after_expiry red on the real-Postgres integration suite (33 passed, 1 failed) -- confirmed on BOTH unit and a real DB. File cleanly reverted afterward, re-confirmed green on unit."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/services/test_wa_broker.py -v ; TEST_DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_test PYTHONPATH=. python -m pytest backend/tests/integration/test_wa_broker_pg.py -v"
+    exit: 1
+    ts: "2026-08-27T03:57:08Z"
+    seat: sonnet-5
+  - claim: 'Mutation M5 (round-2 reattach-deadline fix: drop `and prior["deadline_open"]` from the REATTACHED condition) turns exactly test_offer_job_retry_live_but_deadline_passed_does_not_reattach red on unit (43 passed, 1 failed). NOT independently caught by the real-Postgres integration suite (34 passed, 0 failed under the same mutation) -- the integration fixtures do not happen to isolate this specific edge; recorded honestly in residual_risks, not hidden. File cleanly reverted afterward, re-confirmed green on both suites plus the sibling suite and ruff.'
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/services/test_wa_broker.py -v ; TEST_DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_test PYTHONPATH=. python -m pytest backend/tests/integration/test_wa_broker_pg.py -v"
+    exit: 0
+    ts: "2026-08-27T04:01:32Z"
+    seat: sonnet-5
+  - claim: "After reverting every mutant, the full unit + integration + sibling suites and ruff are all green again, and git status shows only the four intended files carrying diffs (no stray .bak)."
+    cmd: "git status --porcelain"
+    exit: 0
+    ts: "2026-08-27T04:02:02Z"
+    seat: sonnet-5
+
+tests:
+  cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_broker.py backend/tests/unit/services/test_wa_codex_leg.py"
+  passed: 93
+  failed: 0
+static:
+  lint: ok
+  typecheck: n/a-python-uses-mypy-elsewhere-not-in-touched-files
+  build: n/a
+
+runtime_proof: []
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >
+      "Budget drain" MAJOR: a slow-but-healthy codex exec can legitimately
+      outlive wait_for_job's deadline_at for a single leg (pre-existing,
+      documented behavior). The round-1 retry mechanism could let a caller
+      whose reattach fails admit a SECOND leg while the single-flight daemon
+      is still stuck finishing the first -- and a third, fourth, fifth,
+      burning the entire 5-leg budget on one slow exec instead of one
+      genuine retry, with a breaker-failure fold on each.
+    status: CONFIRMED
+    repro: >
+      Both premises verified by reading code, not docstrings: (a)
+      wa_codex_daemon.py's run_forever is genuinely single-flight sequential
+      (claim -> exec -> complete -> claim again, never concurrent polling
+      mid-exec); (b) compute_budget_s derives the exec budget from
+      deadline_at - now() - net_margin_s with nothing bounding real exec
+      latency below that, so the wait deadline really can be shorter than a
+      slow-but-healthy exec. Cured: a leg past its own deadline no longer
+      frees retry budget until wa_broker_gauge.broker_last_seen_at (updated
+      on every /claim poll, including idle ones) is provably AFTER that
+      leg's deadline_at -- proof the daemon completed a full idle cycle
+      since. Otherwise QUEUE_FULL (reused outcome). The coordinator's
+      stated-preferred fix (reuse the gauge's in_flight field) was tried
+      first and found NOT viable: in_flight is dead code, hardcoded to 0 on
+      every /claim, never set to 1 anywhere in the codebase. Mutation M4
+      (receipts above) proves the cure: 2/2 unit tests + 1/1 integration
+      test targeting exactly this gate turn red when it is disabled, and
+      nothing else does.
+  - seat: kimi-code/k3
+    objection: >
+      Once Gemini is removed from the WA channel, LEGS_EXHAUSTED has no
+      safety net of its own -- no leg is offered, no message is sent,
+      silence toward the customer.
+    status: CONFIRMED
+    repro: >
+      The finding is real, but the coordinator explicitly weighted it as
+      OUT OF SCOPE for this PR and no code change was made for it: this
+      PR's job (gradino 2/5 of the Gemini-retirement plan) is only to make
+      the retry budget real and countable, not to build what happens after
+      the budget is spent -- that is gradino 4/5's job (Gemini removal +
+      final-fallback design) by construction, and it must land before
+      gradino 5 removes Gemini or this branch goes silent for real
+      customers. Recorded here and in the PR body as an explicit
+      dependency, not a bug in the current diff.
+  - seat: kimi-code/k3
+    objection: >
+      Possible TypeError on int(prior["thread_epoch"]) if the column is
+      NULL on a pre-existing row.
+    status: RETRACTED
+    repro: >
+      Checked the schema directly: thread_epoch is NOT NULL since migration
+      270's original DDL. No broker_jobs row, pre- or post-296, can ever
+      exist without it -- the finding does not hold. No guard added; a
+      one-line inline comment documents the NOT NULL fact instead of adding
+      unreachable defensive code.
+  - seat: kimi-code/k3
+    objection: >
+      A reattach can hand back a leg whose deadline_at has already passed
+      but was not yet reaped -- wasting a round trip on a wait_for_job call
+      that resolves into an immediate deadline-CAS, plus a false
+      breaker-failure fold.
+    status: CONFIRMED
+    repro: >
+      Cured by adding a DB-computed `deadline_at > now() AS deadline_open`
+      to the prior-leg query and requiring it on the REATTACHED branch; a
+      live-but-past-deadline row now falls through to the ambiguity/budget
+      path exactly like a formally 'expired' row would. Mutation M5
+      (receipts above) proves the cure on unit (1/1 target test turns red
+      when the guard is dropped) but NOT on the integration suite (0/34
+      turn red under the same mutation) -- the integration fixtures did not
+      happen to construct a live-but-expired prior-leg scenario isolating
+      just this guard. Recorded honestly as a residual risk, not hidden.
+  - seat: kimi-code/k3
+    objection: >
+      The migration head is 278, so migration 296 may collide with an
+      in-flight number.
+    status: RETRACTED
+    repro: >
+      Verified false and NOT propagated into this PR: origin/main's real
+      migration tip is 288 (git ls-tree, receipt above), and no open PR
+      claims 296 (full gh pr list scan, receipt above). Separately, and
+      unrelated to this claim: #5072 and #5059 independently both claim
+      migration 289 -- a real collision, between two other PRs, not
+      introduced or touched here.
+
+residual_risks:
+  - "Real-world timing/frequency of the budget-drain race in production was
+    not empirically measured this round -- the fix is logically sound and
+    mutation-tested (M4), but its actual trigger rate was reasoned from code
+    (daemon single-flight + budget-derivation formula), not observed against
+    live traffic. WA_GENERATION_PROVIDER is unset in every environment
+    today, so there is no live traffic to measure against yet."
+  - "Mutation M5 (the deadline_open guard on REATTACHED) is caught by the
+    unit suite but NOT independently by the integration suite against a
+    real Postgres -- the integration fixtures did not happen to construct a
+    live-but-expired prior-leg scenario that isolates just this guard. The
+    same code path is exercised end-to-end by the surrounding integration
+    tests, but no single integration test pins this specific edge the way
+    the unit test does."
+  - "Behavior under the live Fly Postgres role/permission set was not
+    checked -- only a local Postgres was available this session. Same role
+    that owns wa_outbox/broker_jobs per the mandate, so a DDL-abort on
+    deploy is not expected, but this is reasoned, not observed."
+  - "Interaction with #5088 (still open, unmerged) was checked only as a
+    non-overlapping-diff review (it touches the same file,
+    ALLOWED_ERROR_CLASSES gains quota_exhausted, a small addition with no
+    apparent overlap) -- not tested together."
+  - "Migration 296's rollback is irreversible once any outbox_id has
+    accumulated 2+ broker_jobs rows (mode=serve) -- the entire point of this
+    migration. Declared explicitly in the migration file's own ROLLBACK
+    section and in the PR body: a rollback that fails loudly there is
+    intended behavior, not a bug to fix."
+
+sources: []
+pii_scan: clean
+size_tokens: 5400

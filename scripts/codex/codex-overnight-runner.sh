@@ -178,7 +178,7 @@ OPERATING RUNBOOK:
    e. Run \`git push -u origin ${BRANCH_NAME}\` after EVERY commit (push-frequently policy from cicatrix scar 2026-04-29)
 
 3. VERIFY — After all milestones:
-   a. Run full test suite for the affected app: \`cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py -q\`
+   a. Run full test suite for the affected app: \`cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py\`
    b. Run import-chain check: \`python -c "from backend.app.dependencies import get_current_user; print('OK')"\`
    c. If everything passes, write final status to /tmp/codex-overnight-${TIMESTAMP}-status.md
 

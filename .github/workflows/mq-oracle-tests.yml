@@ -1,0 +1,111 @@
+name: mq state oracle tests
+
+# Executor for `scripts/tests/test_mq_state_oracle.sh` — 113 assertions over the
+# read-only queue-state oracle that `scripts/mq.sh state` and
+# `scripts/mq_state_verdict.py` implement.
+#
+# WHY THIS FILE EXISTS. Measured 2026-08-31: `grep -rln 'mq_state_verdict'` over
+# the whole tree returns three files — `scripts/mq.sh`, the module itself, and
+# its corpus — and NOTHING under `.github/workflows/`. So the corpus was green
+# and had no executor that could go red: superscar #2, on the tool a session
+# consults to decide whether a PR is armed, in a repo that merges through a
+# queue. A wrong verdict there is a PR mis-armed or a PR left un-armed, and
+# neither shows up as a red anywhere.
+#
+# It is NOT added to branch protection here — that is a repo-settings action and
+# operator-gated (CLAUDE.md §13). This file makes the corpus capable of going
+# red; whether a red stops a merge lives in branch protection, not here.
+#
+# NO `merge_group:` TRIGGER, and therefore a `paths:` filter is safe here.
+# `merge_group` supports no `paths:` key at all, so declaring one ALONGSIDE a
+# pull_request filter creates a head-green/queue-red split: the PR run may be
+# skipped while the queue run always executes. A workflow with a filter and NO
+# queue trigger has nothing to diverge from — which is exactly this shape.
+#
+# Stated here so the next reader does not "helpfully" add the trigger and leave
+# the filter. A lint for precisely this pairing is IN FLIGHT, not on main
+# (`scripts/ci/lint_trigger_symmetry.py`, PR #5340) — said as in-flight rather
+# than as fact, because a comment that asserts a state which does not yet exist
+# is a comment that is already lying (W106).
+#
+# The suite is pure offline bash: measured, it needs no network, no zsh, and no
+# GitHub token — it drives the verdict module against fixtures.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/mq.sh"
+      - "scripts/mq_state_verdict.py"
+      - "scripts/tests/test_mq_state_oracle.sh"
+      - ".github/workflows/mq-oracle-tests.yml"
+  push:
+    branches:
+      - main
+    # Symmetric with the pull_request list above, this file included: an
+    # asymmetric filter means a direct push to main editing only this workflow
+    # runs nothing.
+    paths:
+      - "scripts/mq.sh"
+      - "scripts/mq_state_verdict.py"
+      - "scripts/tests/test_mq_state_oracle.sh"
+      - ".github/workflows/mq-oracle-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mq-oracle-tests-${{ github.ref }}
+  # Superseded pushes on a PR branch may be cancelled freely; a main run may
+  # not, because the group is keyed on `github.ref` and cancelling an in-flight
+  # main run is a suppressed alarm rather than a saving.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  oracle-tests:
+    name: mq state oracle tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: The queue-state oracle still answers what it claims to answer
+        run: bash scripts/tests/test_mq_state_oracle.sh
+
+      # The exit code above cannot see the corpus SHRINK: assertions can vanish
+      # while the survivors pass and the run stays green. The count is asserted
+      # IN ADDITION, as a floor — adding assertions must never turn this red —
+      # and an aborted run that never prints its TOTAL line is reported as an
+      # unknown count rather than quietly accepted as zero. Same shape and
+      # reasoning as voa-probe-tests.yml's floor.
+      - name: The oracle corpus did not shrink (a vanished assertion is a green that cannot fail)
+        run: |
+          set -euo pipefail
+          FLOOR=113
+          # THE BRACES ARE LOAD-BEARING and the `|| true` is too, and both were
+          # arrived at by RUNNING the line rather than reading it.
+          #
+          # `|| true`: under `set -euo pipefail` a suite that ABORTS kills the
+          # step at this assignment, so the "printed no TOTAL line" branch below
+          # is unreachable dead code on the only path it exists for (W101/W108).
+          #
+          # Braces: without them `||` binds looser than `|`, so
+          # `bash suite || true | sed ...` parses as `bash suite || (true | sed ...)`
+          # — on SUCCESS sed never runs and TOTAL captures the suite's ENTIRE
+          # output, which the `-lt` comparison below then tries to read as a
+          # number. Measured: the unbraced form set TOTAL to the whole 113-line
+          # transcript; the braced form sets it to `113`, and to empty on a
+          # failing suite, which is what makes the branch below reachable.
+          TOTAL="$({ bash scripts/tests/test_mq_state_oracle.sh 2>/dev/null || true; } | sed -n 's/^TOTAL \([0-9][0-9]*\) FAILED .*/\1/p' | tail -1)"
+          if [ -z "$TOTAL" ]; then
+            echo "::error::the oracle corpus printed no TOTAL line — it aborted before reporting, so its assertion count is unknown"
+            exit 1
+          fi
+          if [ "$TOTAL" -lt "$FLOOR" ]; then
+            echo "::error::the oracle corpus ran $TOTAL assertions, below the floor of $FLOOR — assertions were removed or silently skipped"
+            exit 1
+          fi
+          echo "mq state oracle: $TOTAL assertions (floor $FLOOR)"

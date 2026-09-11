@@ -1,0 +1,47 @@
+name: PR size taxonomy (advisory)
+
+# L04-PR3 — report-only, prints to the job summary. NEVER gates a merge: the
+# script has no `--check` flag, this name is not in required-checks, and no
+# job may `needs:` it. Do not add either.
+#
+# No `pull_request_target` trigger, on purpose — do not "restore" it. On
+# `types: [closed]` with `merged == true`, the default branch already
+# contains the merging PR's own edit to this workflow's script by the time
+# the job runs, and the job would then execute exactly that file with a
+# `pull-requests: read` GH_TOKEN. Sparse-checkout narrows which files
+# MATERIALIZE in the working tree; it does not stop the one file this
+# workflow deliberately runs from being whatever a fork's just-merged PR
+# wrote. The daily `schedule` recompute below is where this tool's value is;
+# a per-merge `--explain` was a nice-to-have not worth that surface.
+#
+# `--probe-generated` is not passed to the recompute below either: it shells
+# out to `git show <historical-merge-sha>:<path>`, which needs the local git
+# object for that commit — the checkout below is both sparse (one file
+# materialized) and shallow (actions/checkout's default fetch-depth), so the
+# probe would silently degrade-to-never-firing here regardless (see the
+# script's own docstring: no such marker is in live use on this repo's code
+# today). Widening the checkout to arm a currently-inert class is not worth
+# it yet.
+on:
+  schedule:
+    - cron: "0 20 * * *" # daily full-window recompute, 04:00 WITA
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  taxonomy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: scripts/pr_size_taxonomy.py
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Recompute the full advisory window
+        run: python3 scripts/pr_size_taxonomy.py --limit 100 >> "$GITHUB_STEP_SUMMARY"

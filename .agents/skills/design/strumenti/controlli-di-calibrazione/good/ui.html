@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Good</title>
+<style>
+:root{--ground:#FFFFFF;--ink:#141414;--muted:#4A4A4A;--line:#6B6B6B;--accent:#0B4F9E}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ground:#111315;--ink:#F2F2F2;--muted:#C9C9C9;--line:#8A8A8A;--accent:#8FC0FF}}
+:root[data-theme="dark"]{--ground:#111315;--ink:#F2F2F2;--muted:#C9C9C9;--line:#8A8A8A;--accent:#8FC0FF}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--ground);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+h1{font-size:32px;margin:0 0 16px}
+p{color:var(--muted);max-width:60ch}
+a.btn{display:inline-flex;align-items:center;min-height:48px;min-width:48px;padding:0 20px;
+  border:1px solid var(--line);color:var(--accent);text-decoration:none}
+a.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+</style></head><body>
+<h1>A perfectly ordinary heading</h1>
+<p>Body copy that sits comfortably above the four and a half to one threshold in both themes.</p>
+<a class="btn" href="#x">Do the thing</a>
+</body></html>

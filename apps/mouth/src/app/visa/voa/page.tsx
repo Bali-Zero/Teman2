@@ -6,6 +6,7 @@ import {
   AppFrame,
   AppTrustStrip,
   AppWizard,
+  useFunnelApp,
   type WizardStep,
 } from "@balizero/core";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
@@ -102,6 +103,7 @@ interface WizardAnswers {
 
 export default function VoaEligibilityPage() {
   const router = useRouter();
+  const tracker = useFunnelApp("visa_voa");
   const [submitError, setSubmitError] = useState<React.ReactNode>(null);
   const [submitting, setSubmitting] = useState(false);
   // AppWizard's per-step render only sees that step's own value, never the
@@ -430,6 +432,11 @@ export default function VoaEligibilityPage() {
         dates.retention_notice_acknowledged ?? false,
     };
 
+    tracker.formSubmitted(Object.keys(body));
+    // Captured OUTSIDE the catch, mirroring visa/match's W0b fix: the
+    // failure event must carry the real HTTP status, never a swallowed
+    // "network error" default — see funnel-app.ts's Law 2 payload note.
+    let status: number | null = null;
     try {
       const res = await fetch("/api/visa/voa/eligibility-checks", {
         method: "POST",
@@ -441,6 +448,7 @@ export default function VoaEligibilityPage() {
         },
         body: JSON.stringify(body),
       });
+      status = res.status;
       if (res.status === 201) {
         const location = res.headers.get("Location");
         const resultId = location?.split("/").pop();
@@ -451,6 +459,7 @@ export default function VoaEligibilityPage() {
       }
       throw new Error(`unexpected status ${res.status}`);
     } catch {
+      tracker.formSubmitFailed("/api/visa/voa/eligibility-checks", status);
       setSubmitError(
         <>
           We couldn&apos;t check eligibility right now. Please try again, or{" "}
@@ -491,6 +500,8 @@ export default function VoaEligibilityPage() {
       <AppWizard
         steps={steps}
         persistKey="bz.garuda_voa.wizard"
+        onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
+        onAbandon={(step) => tracker.wizardAbandoned(step)}
         onComplete={onComplete}
       />
       {submitting ? (

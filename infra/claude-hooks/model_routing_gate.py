@@ -127,6 +127,21 @@ regex-extracts the `HOTZONE_PATTERNS` tuple literal as TEXT, never as code.
 If the file cannot be found, read, or parsed, hot-zone exemption is
 UNVERIFIABLE and the whole floor rule is skipped for that call (fail open)
 rather than risk denying legitimate hot-zone work it failed to recognize.
+
+WORKFLOW COVERAGE (added 2026-09-08): Rule 1's doctrine — no subagent spawn without an
+explicit `model` — was only ever inspected on the `Agent` tool. A multi-agent orchestration
+script run via the `Workflow` tool calls `agent(prompt, {model: ...})` internally, and those
+calls were invisible to this hook: measured 2026-09-05, a Workflow run spawned 35 agents that
+all inherited the session model (claude-fable-5-1, 3.5M tokens), the exact defect Rule 1 exists
+to catch on the `Agent` tool. `.claude/skills/workflow/SKILL.md` §1.1 already states the same
+rule for `agent()` calls inside a script ("PIN model: ON EVERY agent() CALL — never let a lane
+inherit the session model"); this hook now enforces it. When `tool_name == "Workflow"`, the
+script text (inline `script`, or read from `scriptPath`, or — for a name-only saved/builtin
+workflow this hook cannot read — allowed unconditionally) is scanned with a tolerant,
+non-parser state machine (`_find_unpinned_agent_calls`) for `agent(` call sites whose second
+argument does not carry a `model` key; any offender denies (exit 2) naming the offending
+line(s). This is Rule 1 only — the Rule 2 routing floor does not apply to Workflow scripts.
+The `Agent` tool's own path below is untouched.
 """
 
 import json
@@ -135,6 +150,13 @@ import re
 import shlex
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from gate_coverage import record as _gc_record
+except Exception:
+    def _gc_record(hook_name, decision, payload=None):
+        pass
 
 USER_AGENTS = Path.home() / ".claude" / "agents"
 FRONTMATTER_MODEL_RE = re.compile(r"^model\s*:\s*\S", re.MULTILINE)
@@ -219,6 +241,161 @@ ENV_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # set scripts/seat_build.sh --seat accepts (codex|kimi|qwen) — kept in sync
 # by NAME here so the wrapper and raw-call paths cannot silently diverge.
 SEAT_BINARY_NAMES = {"seat_build.sh", "codex", "kimi", "qwen"}
+
+
+# ---------------------------------------------------------------------------
+# Workflow-tool coverage (2026-09-08) — see module docstring's WORKFLOW
+# COVERAGE paragraph. `.claude/skills/workflow/SKILL.md` §1.1: every
+# `agent()` call inside a Workflow script must carry an explicit `model` key
+# in its options object (the second argument).
+# ---------------------------------------------------------------------------
+WORKFLOW_AGENT_CALL_RE = re.compile(r"\bagent\s*\(")
+WORKFLOW_MODEL_KEY_RE = re.compile(r"(?:^|[{,])\s*['\"]?model['\"]?\s*:", re.MULTILINE)
+
+
+def _scrub_workflow_script(text: str) -> str:
+    """Best-effort strip of `//` line comments and quoted string literals
+    (', ", `), replacing their contents with spaces so every line/column
+    position is preserved and a later `agent(` scan never fires on one
+    that only appears inside a comment or a string. Not a real JS lexer —
+    does not understand template-literal `${...}` interpolation or regex
+    literals containing `//` — accepted per the tolerant-scan discipline
+    already used elsewhere in this file (see BUILD_VERB_RE's HONESTY NOTE):
+    a false DENY here costs one rewrite, a false ALLOW costs nothing this
+    hook can see from static text alone."""
+    out = []
+    i = 0
+    n = len(text)
+    in_string = None  # the quote char currently open, or None
+    while i < n:
+        c = text[i]
+        if in_string:
+            if c == "\\" and i + 1 < n:
+                out.append(" ")
+                out.append(" " if text[i + 1] != "\n" else "\n")
+                i += 2
+                continue
+            out.append(" " if c != "\n" else "\n")
+            if c == in_string:
+                in_string = None
+            i += 1
+            continue
+        if c in ("'", '"', "`"):
+            in_string = c
+            out.append(" ")
+            i += 1
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            while i < n and text[i] != "\n":
+                out.append(" ")
+                i += 1
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def _find_unpinned_agent_calls(script: str):
+    """Return the sorted list of 1-based line numbers where an `agent(...)`
+    call site in a Workflow script has no top-level `model` key in its
+    second argument (the options object).
+
+    Tolerant scan, not a real JS parser: `_scrub_workflow_script` strips
+    comments/string literals first, then for each remaining `agent(` this
+    walks forward tracking bracket depth (any of `([{` opens, any of `)]}`
+    closes — a simplification that does not distinguish bracket TYPES, good
+    enough for well-formed JS) to find the call's own top-level commas
+    (depth == 1, i.e. inside the call but not inside a nested object/array)
+    and its own closing paren (depth reaches 0). The text between the first
+    top-level comma and the close is the second argument; a call with fewer
+    than two top-level arguments has no options object at all and is itself
+    an offender. Does not understand a model value supplied via spread
+    (`...DEFAULTS`) or a variable rather than a literal `model:` key —
+    accepted, same asymmetry as `_scrub_workflow_script`."""
+    scrubbed = _scrub_workflow_script(script)
+    offenders = []
+    for m in WORKFLOW_AGENT_CALL_RE.finditer(scrubbed):
+        start = m.end()
+        n = len(scrubbed)
+        depth = 1
+        i = start
+        arg_starts = [start]
+        while i < n and depth > 0:
+            c = scrubbed[i]
+            if c in "([{":
+                depth += 1
+            elif c in ")]}":
+                depth -= 1
+                if depth == 0:
+                    break
+            elif c == "," and depth == 1:
+                arg_starts.append(i + 1)
+            i += 1
+        call_end = i
+        bounds = arg_starts + [call_end]
+        args = [scrubbed[a:b] for a, b in zip(bounds, bounds[1:])]
+        line_no = script[: m.start()].count("\n") + 1
+        if len(args) < 2 or not WORKFLOW_MODEL_KEY_RE.search(args[1]):
+            offenders.append(line_no)
+    return offenders
+
+
+def _resolve_workflow_script(tool_input: dict, cwd: str):
+    """Return (script_text_or_None, allow_unconditionally: bool, note: str).
+
+    `allow_unconditionally` is True for a name-only saved/builtin workflow
+    (nothing to inspect) and for an unreadable `scriptPath` (fail open —
+    this hook must never crash or falsely deny on an IO error it cannot
+    attribute to the script's own content)."""
+    script = tool_input.get("script")
+    if isinstance(script, str) and script:
+        return script, False, ""
+
+    script_path = tool_input.get("scriptPath")
+    if isinstance(script_path, str) and script_path:
+        path = Path(script_path)
+        if not path.is_absolute() and cwd:
+            path = Path(cwd) / script_path
+        try:
+            return path.read_text(encoding="utf-8", errors="replace"), False, ""
+        except OSError as exc:
+            return None, True, (
+                f"scriptPath {script_path!r} unreadable ({exc}) — cannot inspect "
+                "agent() calls, allowing (fail-open)."
+            )
+
+    return None, True, "no `script`/`scriptPath` on the payload (name-only workflow) — allowed."
+
+
+def _handle_workflow(payload: dict, tool_input: dict) -> int:
+    cwd = payload.get("cwd") or ""
+    script, allow_unconditionally, note = _resolve_workflow_script(tool_input, cwd)
+    if allow_unconditionally:
+        if note:
+            sys.stderr.write("[MODEL-ROUTING-GATE][Workflow] %s\n" % note)
+        _gc_record("model_routing_gate", "allow", payload)
+        return 0
+
+    offenders = _find_unpinned_agent_calls(script or "")
+    if not offenders:
+        _gc_record("model_routing_gate", "allow", payload)
+        return 0
+
+    lines = ", ".join(f"L{n}" for n in offenders)
+    print(
+        "BLOCKED by model_routing_gate — Workflow script has agent() call(s) with no "
+        f"explicit `model` ({lines}). .claude/skills/workflow/SKILL.md §1.1 (Zero "
+        "2026-07-14, corretta 2026-08-20): \"PIN model: ON EVERY agent() CALL — never "
+        "let a lane inherit the session model.\" Un agent() senza model erediterebbe il "
+        "modello della sessione orchestratrice — misurato 2026-09-05: 35 agent, 3.5M "
+        "token, tutti ereditati su claude-fable-5-1. Aggiungi model:\"sonnet\" per lane "
+        "reader/implementer/analisi, model:\"haiku\" per grunt, model:\"opus\" solo per "
+        "una lane genuinamente orchestrator-tier/adversarial-gate, a ogni agent() elencata "
+        "sopra.",
+        file=sys.stderr,
+    )
+    _gc_record("model_routing_gate", "deny", payload)
+    return 2
 
 
 def agent_def_pins_model(subagent_type: str, cwd: str) -> bool:
@@ -573,17 +750,33 @@ def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
+        _gc_record("model_routing_gate", "exempt", None)
         return 0
 
     # Fix (2026-08-22): valid JSON that isn't a dict (`[]`, `"text"`, `null`,
     # `42`) used to crash on the next line's `.get` — genuine unhandled
     # AttributeError, before any try/except in this function. Fail open.
     if not isinstance(payload, dict):
+        _gc_record("model_routing_gate", "exempt", payload)
         return 0
 
     tool_input = payload.get("tool_input") or {}
     if not isinstance(tool_input, dict):
+        _gc_record("model_routing_gate", "exempt", payload)
         return 0
+
+    # Workflow-tool coverage (2026-09-08, see module docstring's WORKFLOW
+    # COVERAGE paragraph) — a fully separate branch, entered ONLY when
+    # tool_name is exactly "Workflow". Everything below this block, and the
+    # Agent-tool behaviour it implements, is unchanged.
+    if payload.get("tool_name") == "Workflow":
+        try:
+            return _handle_workflow(payload, tool_input)
+        except Exception:
+            # Same fail-open discipline as Rule 2 below: a bug in this scan
+            # must never paralyze the harness.
+            _gc_record("model_routing_gate", "exempt", payload)
+            return 0
 
     # Field-CLASS fix (2026-08-22, final round). Every externally-supplied
     # field this hook reads as a string is coerced to one HERE, ONCE — not
@@ -636,20 +829,25 @@ def main() -> int:
             "dal workflow (RULED 2026-08-20).",
             file=sys.stderr,
         )
+        _gc_record("model_routing_gate", "deny", payload)
         return 2
 
     if not model:
         # Allowed via "fork" or a frontmatter pin, not via an explicit model
         # string on this call — Rule 2 classifies strictly on tool_input.model
         # (see module docstring), so there is nothing for it to count here.
+        _gc_record("model_routing_gate", "allow", payload)
         return 0
 
     try:
-        return _apply_routing_floor(payload, tool_input, model, cwd)
+        verdict = _apply_routing_floor(payload, tool_input, model, cwd)
+        _gc_record("model_routing_gate", "deny" if verdict == 2 else "allow", payload)
+        return verdict
     except Exception:
         # Rule 2 is a routing/economy guard, not a safety boundary — a bug in
         # it must never paralyze the harness. Rule 1's verdict above already
         # stands regardless of what happens here.
+        _gc_record("model_routing_gate", "exempt", payload)
         return 0
 
 

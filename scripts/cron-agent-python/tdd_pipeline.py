@@ -269,7 +269,6 @@ class TddPipelineJob(AgentJob):
                 pytest_bin,
                 str(test_file),
                 "--collect-only",
-                "-q",
                 "--no-header",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,

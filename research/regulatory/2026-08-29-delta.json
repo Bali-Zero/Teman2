@@ -1,0 +1,92 @@
+{
+  "run_at": "2026-08-29T07:14:50+08:00",
+  "today": "2026-08-29",
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare block (HTTP 403), persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "http_404",
+      "note": "HTTP 404 Not Found, persisted after 1 retry"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://ortax.org/",
+      "reason": "checked_no_new",
+      "note": "No in-window permitted regulation type (PMK, PP, Perpres, UU) found in news/updates."
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "No in-window permitted regulation type found; KMK 39/2026 (kurs) and PENG-4/PJ/2026 (pengumuman) fall outside scoped reg-types."
+    },
+    {
+      "url": "https://muc.co.id/id/article",
+      "reason": "checked_no_new",
+      "note": "Latest update discusses DJP Pengumuman No. PENG-4/PJ/2026 on CRS self-certification, which is outside the scoped regulation types."
+    },
+    {
+      "url": "https://jdih.kemenkum.go.id/",
+      "reason": "checked_no_new",
+      "note": "No in-window Permenkumham found (latest listed entries are Permenkum No. 10/2026, 7/2026, 6/2026)."
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/",
+      "reason": "checked_no_new",
+      "note": "No new PMK found within the 48h window (latest listed are PMK 62/2026 and PMK 63/2026 from 21 August 2026)."
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/",
+      "reason": "checked_no_new",
+      "note": "No additional qualifying instrument found beyond Permenaker No. 12 Tahun 2026 already captured in previous run."
+    },
+    {
+      "url": "https://peraturan.go.id/",
+      "reason": "outside_window",
+      "note": "Latest national regulations listed (PP No. 30/2026, PP No. 31/2026, PP No. 27/2026) predate the 48-hour window."
+    },
+    {
+      "url": "https://www.pajak.go.id/",
+      "reason": "outside_window",
+      "note": "Latest regulatory entry in catalogue remains PER-8/PJ/2026 dated 2026-07-28; no in-window PMK, PP, Perpres, or UU found."
+    },
+    {
+      "url": "https://jdih.kemkes.go.id/",
+      "reason": "checked_no_new",
+      "note": "No in-window Permenkes found (latest listed is Permenkes No. 6 Tahun 2026)."
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK Nomor 28 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026"
+  ]
+}

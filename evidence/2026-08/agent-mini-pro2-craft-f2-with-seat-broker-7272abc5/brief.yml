@@ -1,0 +1,78 @@
+task_id: craft-f2-l13-pr1-with-seat-broker
+gear: 3
+l_level: L2
+gate_class: opus
+council_run: journal.jsonl
+acceptance:
+  - text: "WHEN a child is dispatched through the broker, its environment name set SHALL equal the seat's declared names intersected with the parent — not a subset, not a superset."
+    probe: "bash scripts/tests/test_with_seat_env_minimization.sh"
+  - text: "WHILE an unwrapped child still sees a planted fake token name, the guilt fixture SHALL prove it — an innocence result is meaningless without it."
+    probe: "bash scripts/tests/test_with_seat_env_minimization.sh"
+  - text: "IF a caller supplies a PATH whose basename is allowlisted, the broker SHALL refuse rather than execute it."
+    probe: "bash scripts/tests/test_with_seat_env_minimization.sh"
+  - text: "IF the registry is group- or world-writable, or declares a malformed/duplicate name, an empty allowlist, or a bare-relative search path, the broker SHALL refuse."
+    probe: "bash scripts/tests/test_with_seat_env_minimization.sh"
+  - text: "WHERE a real seat's executable exists on this machine, that seat SHALL resolve it through its own declared search path."
+    probe: "bash scripts/tests/test_with_seat_env_minimization.sh"
+  - text: "WHEN the child exits N or dies on signal N, the broker SHALL exit N or 128+N respectively; and a TERM to the BROKER SHALL kill the broker rather than be swallowed."
+    probe: "bash scripts/tests/test_with_seat_env_minimization.sh"
+  - text: "IF anything is wrong, the broker SHALL refuse — it SHALL NEVER fall back to an unwrapped invocation."
+    probe: "bash scripts/tests/test_with_seat_env_minimization.sh"
+
+objective: |
+  L13-PR1 of the beyond-SOTA craft wave (squad F', fleet & security): a broker that
+  gives an external LLM child exactly its seat's declared environment names.
+
+  Measured on Mini 2026-08-31: a wrapper that sources ~/.nuzantara-secrets.env and
+  then runs codex/agy/kimi hands that child 49 environment names, 16 of them
+  secret-shaped, across 11 credential families — every Claude OAuth seat token
+  plus Telegram, Brevo, OpenRouter, MiniMax, Jules, LangSmith, IG Graph,
+  Observatory and a Google service-account path. One vendor's child can read every
+  other vendor's key. Through the broker the same child gets 6 declared names and
+  ZERO secret-shaped ones.
+
+  The existing partial mitigation (claude-cascade.sh::build_isolated_provider_env)
+  SUBTRACTS a blacklist with `env -u`, so any name nobody thought to list is
+  inherited, and it exists only inside that one wrapper. This builds from `env -i`
+  instead, so the child's name set EQUALS a declaration.
+
+  Ships with its own CI executor: a .sh corpus has no consumer in this repo
+  otherwise (scripts-tests-sweep.yml collects only test_*.py and is
+  continue-on-error), and the executor is registered with the main-push failure
+  watcher in the same diff.
+constraints:
+  - "Names only, never values. The registry holds names; values are resolved at
+    exec time from the parent and travel NUL-framed over STDIN, never argv — so
+    they are not visible in `ps` to other local users, the exposure this repo
+    already documented for agy at claude-cascade.sh:441-451. A CI step greps the
+    registry for value-shaped strings so a well-meaning paste fails there."
+  - "No unwrapped fallback, ever. Every failure path refuses. A broker that
+    silently degrades to the inherited environment is worse than no broker,
+    because callers would believe they are isolated."
+  - "A caller names WHAT to run, never WHERE. Resolution happens only through a
+    search path the REGISTRY supplies — the registry is the trusted input here
+    (the broker refuses to read it if group- or world-writable), whereas argv and
+    the environment are attacker-reachable by construction."
+  - "The three external seats declare NO credential name at all: codex, agy and
+    kimi authenticate through config directories under $HOME. That is measured,
+    not assumed, and is stated in each seat's note because a reader will otherwise
+    think something is missing."
+  - "No external CLI was ever asked to print its environment (L13 forbids it). The
+    boundary is proven with a benign local child; the codex figure is --dry-run,
+    which executes nothing."
+grader: |
+  generator != grader with family exclusion, both directions. The broker, registry
+  and corpus were BUILT by Codex GPT-5.6 terra (non-Anthropic, effort high) and
+  refuted blind by Kimi K3 (non-Anthropic, a different family from its builder).
+  The workflow was written by this Anthropic orchestrator and refuted blind by
+  Codex GPT-5.6 sol at xhigh, the security/workflow-class refuter. Each refuter
+  received the DIFF, never a narrative. GLM-5.2 via TP1 was dispatched as a third
+  security opinion. The final on-disk gate is this orchestrator, empirical, this
+  turn: every claimed guard mutation-tested at a real code site, and every refuter
+  finding reproduced before being fixed.
+budget: |
+  Flat-subscription seats only: this session (orchestrator + gate), Codex GPT-5.6
+  terra (build) and sol (workflow refutation) on ChatGPT Pro, Kimi K3 (refutation)
+  on the Allegro flat plan, GLM-5.2 through the already-provisioned TP1 gateway.
+  No metered API spend.
+pii: none

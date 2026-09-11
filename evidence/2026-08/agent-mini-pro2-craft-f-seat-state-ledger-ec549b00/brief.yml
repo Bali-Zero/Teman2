@@ -1,0 +1,55 @@
+task_id: craft-f-l09-pr1-seat-state-ledger
+gear: 3
+l_level: L2
+gate_class: opus
+council_run: journal.jsonl
+acceptance:
+  - text: "WHEN the seat ledger reports a seat EXHAUSTED, the cascade SHALL skip it with return 98 and spend no live dispatch."
+    probe: "bash scripts/tests/test_seat_state.sh"
+  - text: "WHEN the seat state is UNKNOWN for any reason (stale, missing, unparseable, non-strict JSON, no usage figures, unresolvable slot), the cascade SHALL dispatch normally and SHALL NOT skip."
+    probe: "bash scripts/tests/test_seat_state.sh"
+  - text: "WHERE the library is sourced by zsh under set -uo pipefail, it SHALL resolve a seat without an unset-variable failure."
+    probe: "bash scripts/tests/test_seat_state.sh"
+  - text: "IF a report timestamp is in the future beyond 300s, or carries no timezone, the library SHALL answer UNKNOWN rather than treat it as fresh."
+    probe: "bash scripts/tests/test_seat_state.sh"
+  - text: "WHILE this branch is open, the dispatch loop line owned by PR #4644 SHALL remain byte-identical to origin/main."
+    probe: "bash scripts/tests/test_seat_state.sh"
+
+objective: |
+  L09-PR1 of the beyond-SOTA craft wave (squad F, fleet & security): a seat-state
+  ledger so the Claude OAuth cascade stops spending a live dispatch on a seat it
+  already knows is quota-exhausted.
+
+  scripts/lib/seat_state.sh reads the two state reports this fleet already writes
+  and answers LIVE / EXHAUSTED / UNKNOWN for a seat; claude-cascade.sh consults it
+  inside try_claude() and skips on EXHAUSTED with return 98, the wrapper's own
+  "retryable quota failure" code, so the caller advances exactly as it would after
+  a live rejection.
+constraints:
+  - "UNKNOWN must NEVER skip. Stale, missing, unparseable, non-strict-JSON,
+    no-usage-figures and unresolvable-slot all resolve UNKNOWN and dispatch
+    normally. Skipping a seat we cannot identify would disarm the cascade --
+    strictly worse than the status quo. Fail-open on the skip decision, always."
+  - "No slot->account table is hardcoded. seat-quota.json is keyed by account
+    e-mail and arsenal/last.json carries ONE 'claude' row for the whole family,
+    so no machine-readable slot->account key exists on this fleet; CLAUDE.md
+    states that map is documental, per-machine divergent and not derivable from
+    a token. The caller supplies CLAUDE_SEAT_ACCOUNT_<N>."
+  - "The dispatch loop is untouched. Open PR #4644 owns renumbering
+    'for index in 1 2 3 4 5' and fixing the slot->account mapping. This diff
+    lives entirely inside try_claude() plus one sourcing block, so the two are
+    conflict-free in either merge order; a test pins the loop line byte-identical
+    to origin/main."
+  - "Never reads, prints or logs a credential value. Every account in the corpus
+    is an example.invalid placeholder."
+grader: |
+  generator != grader with family exclusion: the diff was built by an Anthropic
+  seat (Sonnet 5 implementer under this Opus 5 orchestrator) and refuted blind by
+  Kimi K3 (non-Anthropic). The refutation returned 6 actionable defects, all
+  reproduced on this machine before being fixed -- two of them in the dangerous
+  polarity (they made the library SKIP a seat). The final on-disk gate is this
+  orchestrator, empirical, this turn.
+budget: |
+  Flat-subscription seats only: this session (orchestrator + gate), a Sonnet 5
+  subagent (build), Kimi K3 (refuter, Allegro flat). No metered API spend.
+pii: none

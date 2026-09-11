@@ -1,0 +1,462 @@
+brief_ref: evidence/2026-08/agent-nuzantara-craft-d-codec-jsonb-default-str-c9e5b351/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L12-data-schema-migrations.md
+  (PR-1), driven by SQUAD D' wave-2 issue #5317. This is PR 1 of the L12-PR1
+  split: codec + callers + shared fixture + the STRUCTURAL and LIVE halves of
+  the parity test. The REAL-CALL-SITE half and the lint/baseline/executor are
+  the two PRs that follow.
+
+lanes:
+  - lane: codec-build
+    role: build
+    seat: claude-sonnet-5 (rescued build, commits 655bcd5a6 + 2bce7031d) then
+      claude-opus-5 xhigh (this session — split, A/B, the two pool conversions
+      the A/B exposed, final on-disk gate)
+  - lane: codec-counterbuild
+    role: build
+    seat: glm-5.2 via Alibaba TP1 (NON-ANTHROPIC — D3 satisfied by a real
+      build lane, never seat_override). Dispatched BLIND on the problem
+      statement, never shown the diff.
+  - lane: codec-refuter
+    role: review
+    seat: codex gpt-5.6-sol, model_reasoning_effort=xhigh, --sandbox read-only
+      (NON-ANTHROPIC, cross-family, never the seat that built the diff)
+
+diff:
+  files: 18
+  net_lines: 1301
+  measured_at: 073da4a47
+  note: >-
+    RE-MEASURED 2026-08-31 by the rescue session (orphaned-PR pickup after
+    squad D' orchestrator exited), immediately before this commit (a wording
+    fix to this same pack's own text, see below -- its own trivial self-diff
+    at the actual final HEAD is not separately chased, the same accepted
+    convention used to close out PR#5327's pack), because the figures this
+    block previously declared (measured @6f9611022, and this note's own
+    prior revision @a1c710fbf) predate later commits on this branch (the
+    guarded init_asyncpg_connection close, the canonical-files AST test, the
+    five-pool docstring correction, this rescue's own CodeQL fix, and this
+    rescue's own first re-measurement commit). `git diff --no-renames
+    --numstat $(git merge-base origin/main HEAD) HEAD` at 073da4a47 ->
+    `evidence_pack_lint.py --print-measured` reports "18 files, +1192/-146, 7
+    commits" (raw, unexcluded git-diff totals -- this is the figure the
+    countable-claims rule checks against). `net_lines: 1301` above is a
+    DIFFERENT number on purpose: CHURN (added+deleted) with the floor's own
+    fixtures/generated/vendor exclusion applied (`_size_term_net_lines()`),
+    which is 37 lower than the raw 1192+146=1338 because it excludes
+    tests/fixtures/prod_shaped_pool.py's 20+17 lines -- not a plain
+    add-minus-delete net, and not the raw countable-claims total either.
+    The deterministic floor recomputed from this PR's own final changed-file
+    set is now 2, source "size" (churn 1247 >= SIZE_GEAR2_THRESHOLD 400 but
+    below SIZE_GEAR3_THRESHOLD 1828; `evidence_pack_lint.py --print-floor` /
+    `--print-floor-source`) -- UP from the 1 this pack previously declared.
+    The brief already declares gear 2, so gear >= floor still holds; no gear
+    change needed, but a pack whose floor moved out from under it without a
+    note would have been exactly the kind of stale figure this rule exists
+    to catch.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      INNOCENCE. With the diff, the parity test is fully green and the
+      pre-existing double-encoding class guard still passes alongside it.
+    cmd: >-
+      PYTHONPATH=apps/backend-rag .venv/bin/python -m pytest
+      backend/tests/db/test_jsonb_codec_parity.py
+      backend/tests/db/test_jsonb_double_encoding_class_guard.py
+      -p no:cacheprovider   test id:
+      test_pre_serialized_string_still_becomes_jsonb_string_scalar   (TEST_DATABASE_URL -> local docker craftd-pg,
+      postgres:15, 127.0.0.1:55432)
+    result: "20 passed in 2.29s"
+    exit: 0
+    ts: 2026-08-31T00:20Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      GUILT. Reverting only `JSONB_ENCODER` to a bare `json.dumps` turns the
+      parity test 3 red, naming the encoder shape, the datetime widening, and
+      the live round-trip. The revert was then restored byte-exactly, so the
+      shipped tree is unaffected by the experiment.
+    cmd: >-
+      sed -i '' 's/^JSONB_ENCODER = functools.partial(json.dumps,
+      default=str)$/JSONB_ENCODER = json.dumps/'
+      apps/backend-rag/backend/app/core/database.py && pytest
+      backend/tests/db/test_jsonb_codec_parity.py ; restore ; git diff
+      --exit-code apps/backend-rag/backend/app/core/database.py
+    result: >-
+      "3 failed, 6 passed in 0.34s", rc=1. FAILED
+      test_jsonb_encoder_is_json_dumps_with_default_str (AssertionError);
+      FAILED test_jsonb_encoder_widens_bare_json_dumps (TypeError: Object of
+      type datetime is not JSON serializable); FAILED
+      test_native_dict_with_datetime_and_decimal_succeeds_via_default_str
+      (asyncpg.exceptions.DataError, argument $1). Restore: `git diff
+      --exit-code` clean, rc=0.
+    exit: 1
+    ts: 2026-08-31T00:35Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      REGRESSION FOUND, then closed. The rescued build, run against the four
+      GARUDA suite directories, introduced SIX failures that origin/main does
+      not have -- all in services/garuda_portal/test_practice.py, whose pool
+      is bare. The caller fix binds a native dict to
+      `garuda_order_journal.detail`; a pool with no codec cannot.
+    cmd: >-
+      pytest backend/tests/services/garuda_orders backend/tests/services/garuda_portal
+      backend/tests/services/garuda_documents backend/tests/services/garuda_ops
+      -p no:cacheprovider, run once with the diff (A) and once with
+      `git checkout origin/main -- apps/backend-rag/` (B); FAILED name sets
+      compared with comm(1).
+    result: >-
+      A = "7 failed, 377 passed, 2 skipped, 40 errors". B = "1 failed, 383
+      passed, 2 skipped, 40 errors". comm -23 (A-only) = the six
+      test_practice.py tests, each `DataError: invalid input for query
+      argument $9 ... expected str, got dict`. comm -13 (B-only) = empty.
+    exit: 1
+    ts: 2026-08-31T00:45Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      A SECOND latent break existed that the first A/B could not reach,
+      because that A/B only covers four directories. Widening the A/B to all
+      21 collectible baselined bare-pool files found
+      app/routers/test_garuda_orders_ownership.py -- same class, different
+      directory.
+    cmd: >-
+      pytest $(the 21 non-conftest files enumerated in the lint's
+      infra/test-pool-parity/baseline.json) -p no:cacheprovider, A vs B as
+      above.
+    result: >-
+      A = "27 failed, 189 passed, 46 skipped, 99 errors". B = "26 failed, 190
+      passed, 46 skipped, 99 errors". comm -23 (A-only) = exactly
+      test_garuda_orders_ownership.py::TestCreateOrderOwnership::
+      test_a_session_can_create_an_order_matching_its_own_result_id.
+    exit: 1
+    ts: 2026-08-31T01:05Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      After converting BOTH exposed pools to `init=init_asyncpg_connection`,
+      both A/B scopes are identical to origin/main -- compared as sorted
+      FAILED/ERROR NAME SETS, not merely as counts. The residual failures are
+      pre-existing and environmental (`relation "practices" does not exist`
+      -- craftd-pg carries the GARUDA migrations but not all others) and are
+      byte-identical on both sides, so they are not this diff's.
+    cmd: >-
+      re-ran both scopes as A2; `diff /tmp/fail_A2.txt /tmp/fail_B.txt` and
+      `diff /tmp/basefail_A2.txt /tmp/basefail_B.txt`
+    result: >-
+      GARUDA suites A2 = "1 failed, 383 passed, 2 skipped, 40 errors",
+      diff vs B empty. 21 baselined files A2 = "26 failed, 190 passed, 46
+      skipped, 99 errors", diff vs B empty. Both IDENTICAL FAILURE SET.
+    exit: 0
+    ts: 2026-08-31T01:15Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      The guard has a real executor and can go red on a real PR:
+      `backend/tests/db/` is inside shard_tests.py's DEFAULT_TARGETS and the
+      only carve-out is `backend/tests/e2e`, so the parity file runs inside
+      the already-required backend shard. This is NOT a new workflow that
+      needs arming.
+    cmd: >-
+      grep -n 'DEFAULT_TARGETS\|EXCLUDED_DIRS' scripts/ci/shard_tests.py
+    result: >-
+      DEFAULT_TARGETS includes `backend/tests/`; EXCLUDED_DIRS carves out
+      `backend/tests/e2e` only. `backend/tests/db/` is therefore collected.
+    exit: 0
+    ts: 2026-08-31T01:20Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      D3: a real non-Anthropic BUILD lane ran, blind, and converged on the
+      shipped design's two load-bearing traps without being shown the diff.
+    cmd: >-
+      POST token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+      /chat/completions, model glm-5.2, key via
+      scripts/arsenal_probe.py::load_tp1_settings_key, prompt = problem
+      statement only (6 questions, diff withheld)
+    result: >-
+      4100 bytes. Q1 encoder: `functools.partial(json.dumps, default=str)`
+      with the same superset argument. Q3: "unconditional removal of the
+      pre-serialization". Q5 (the miss): "the implementer fixes the codec but
+      leaves the four json.dumps call sites untouched ... CI stays green if no
+      test asserts on the *shape* ... misdiagnoses it as 'codec change didn't
+      deploy'". Q6: "No, definitively false" on `::jsonb` as a bypass, with
+      the correct bind-phase mechanism. Divergences at Q2 and Q4 recorded in
+      dissent.
+    exit: 0
+    ts: 2026-08-31T01:30Z
+    seat: glm-5.2 (TP1, non-Anthropic build lane)
+
+  - claim: >-
+      A blind cross-family refutation (Codex GPT-5.6 sol, xhigh, read-only)
+      returned NO-DEFECT on the superset claim, the caller call-graph, the
+      ::jsonb scar test and the bare-pool sweep, and TWO CONFIRMED-DEFECTs:
+      the centralisation claim was false (a FOURTH pool registering its own
+      bare-json.dumps codec), and the identity assertions could not tell an
+      import from a call.
+    cmd: >-
+      codex --search exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh
+      --sandbox read-only --skip-git-repo-check -o /tmp/codex_refute_out.txt
+      "<six-category attack prompt>" < /dev/null
+    result: >-
+      11340 bytes. "A. VERDICT: NO-DEFECT ... 21 input supportati, inclusi NaN,
+      infinities, -0.0, Unicode, interi arbitrariamente grandi, tuple e chiavi
+      non-stringa: zero differenze." "F. VERDICT: CONFIRMED-DEFECT. La
+      centralizzazione 'un codec per ogni pool del repo' e falsa ...
+      kg_staging_promotion.py:396-404". Process exit was 1 ONLY because the
+      read-only sandbox had no writable tmpdir for pytest -- the analysis
+      completed; judged by output, never by rc (W97).
+    exit: 1
+    ts: 2026-08-31T02:05Z
+    seat: codex gpt-5.6-sol (non-Anthropic refuter)
+
+  - claim: >-
+      Both CONFIRMED-DEFECTs re-verified on disk before being acted on, and
+      the fix for each is mutation-proven in both directions.
+    cmd: >-
+      sed -n '392,420p' apps/backend-rag/backend/scripts/kg_staging_promotion.py ;
+      grep -rn 'encoder=json.dumps' --include='*.py' apps/backend-rag/backend/ |
+      grep -v /tests/ ; then two mutations: replace both
+      `await init_asyncpg_connection(conn)` in service_initializer.py with
+      `pass`, and restore the bare set_type_codec in kg_staging_promotion.py
+    result: >-
+      F1 confirmed: kg_staging_promotion.py:400,403 were the only non-test
+      `encoder=json.dumps` in a real set_type_codec call. Mutation A (calls ->
+      pass): "1 failed, 9 passed", the failure being
+      test_production_pool_wrappers_actually_call_the_initializer. Mutation B
+      (bare codec restored): "2 failed, 8 passed". Unmutated: 10 passed. Both
+      restores verified byte-exact by `git diff --exit-code`.
+    exit: 0
+    ts: 2026-08-31T02:30Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      The refuter's D finding exposed a gap in this session's OWN verification:
+      routers/test_bridge_wa_media.py, routers/test_intake_review.py and
+      garuda_orders/test_outbox_consumer.py were in NEITHER A/B scope. A/B-ed
+      explicitly; they are clean.
+    cmd: >-
+      pytest the three files, A vs B (B = `git checkout origin/main --
+      apps/backend-rag/` with the new parity file removed), FAILED+ERROR name
+      sets compared with comm(1)
+    result: >-
+      A = "68 passed, 1 warning, 41 errors". B = "68 passed, 1 warning, 41
+      errors". comm both directions empty. FIRST ATTEMPT WAS VACUOUS AND WAS
+      CAUGHT: zsh does not word-split an unquoted parameter, so the file list
+      went to pytest as ONE path and BOTH sides reported "collected 0 items" --
+      an "identical" that measured nothing. Re-run with the paths listed
+      literally.
+    exit: 0
+    ts: 2026-08-31T02:50Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      RESCUE (2026-08-31): squad D''s orchestrator exited rc=0 and this PR
+      sat RED and unowned (CodeQL) until a rescue session picked it up.
+      CodeQL's own annotation (not the diff, per anti-hallucination
+      discipline) named a real py/uninitialized-local-variable-shaped gap
+      this diff introduced in _connect(): `conn` is assigned inside a try,
+      and CodeQL has no NoReturn model for pytest.fail/pytest.skip, so it
+      treats the except block as a possible fallthrough into a read of an
+      unset `conn`. Closed with an explicit terminal `raise` at the end of
+      BOTH except blocks (the second, guarding `init_asyncpg_connection`,
+      has the identical shape but was not itself flagged) rather than a
+      suppression comment, so the control flow is provably terminal to any
+      analyzer, not merely correct by pytest's actual unmodeled behavior.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/check-runs/99294325113/annotations ;
+      then, after the fix, from apps/backend-rag: ruff check
+      backend/tests/services/garuda_orders/test_outbox_consumer.py ;
+      INTAKE_TEST_DSN set to the local craftd-pg container's connection
+      string (postgresql host localhost, port 55432, db nuzantara_test,
+      credentials matching the container's own POSTGRES_USER and
+      POSTGRES_PASSWORD env vars -- not written out as one joined string
+      here, because a scheme-colon-slash-slash-user-colon-pass-at-host
+      literal is exactly what detect-secrets' Basic Auth Credentials plugin
+      flags, even for a disposable local placeholder) PYTHONPATH=. .venv/bin/python -m
+      pytest backend/tests/services/garuda_orders/test_outbox_consumer.py
+    result: >-
+      Annotation: path test_outbox_consumer.py, line 81, "Local variable
+      'conn' may be used before it is initialized." ruff: "All checks
+      passed!". pytest: "23 passed in 1.43s" against local docker
+      craftd-pg (127.0.0.1:55432, container `craftd-pg`) -- unchanged
+      behavior, as expected from dead-code-by-construction lines. Pushed at
+      a1c710fbf.
+    exit: 0
+    ts: 2026-08-31T03:20Z
+    seat: session (rescue, Opus 5)
+
+  - claim: >-
+      RESCUE, second finding: pushing a1c710fbf+073da4a47 turned the
+      required-adjacent "Detect Secrets" job red -- this pack's OWN receipt
+      text above had written the local test DSN as one joined
+      scheme-colon-slash-slash-user-colon-pass-at-host literal, which
+      detect-secrets' Basic Auth Credentials plugin flags regardless of the
+      credentials being a disposable local placeholder. Confirmed via the
+      real CI run's own triage summary (not guessed): 18 findings in this
+      PR's diff-scoped file set, 17 auto-approved by path-pattern rules
+      (pre-existing findings in test files, none this rescue's doing), 1
+      residue -- this pack.yml, line ~265, type "Basic Auth Credentials".
+      Reworded to describe the connection string's parts in prose instead
+      of as one joined literal; re-scanned locally with a disposable
+      baseline copy (never touching the real committed .secrets.baseline)
+      and confirmed zero findings for this file afterward.
+    cmd: >-
+      gh run view <run-id> --job <job-id> --log | grep -n 'Total findings|
+      Auto-approved|Residue|=== Residue by'; then, locally, a throwaway
+      `cp .secrets.baseline /tmp/... ; detect-secrets scan --baseline
+      /tmp/... <the 18 diff-scoped files>` before and after the wording fix
+    result: >-
+      Real CI run: "Total findings: 18. Auto-approved: 17. No rule matched:
+      1. Residue (unaudited): 1." with "Residue by file: 1
+      evidence/.../pack.yml" and "Residue by type: 1 Basic Auth
+      Credentials." Local re-scan after the wording fix: zero findings for
+      this file. The real committed .secrets.baseline was never touched --
+      every scan ran against a /tmp copy.
+    exit: 0
+    ts: 2026-08-31T05:10Z
+    seat: session (rescue, Opus 5)
+
+dissent:
+  - seat: glm-5.2 (Alibaba TP1, non-Anthropic counter-build lane)
+    objection: >-
+      Q2 -- the shared `init` hook SHOULD also set connection-scoped GUCs
+      (`SET statement_timeout`, `application_name`,
+      `idle_in_transaction_session_timeout`): "the `init` callback is
+      precisely where per-connection state belongs and it executes once per
+      real connection, not per checkout". The shipped diff keeps the hook
+      narrow to codec registration only. GLM also proposed (Q4) a single
+      `make_pool()` factory that every pool, test and production, must route
+      through, plus a runtime codec-introspection probe (`SELECT $1::jsonb ->
+      'a'` asserting `1`) instead of a static lint.
+    status: CONFIRMED
+    note: >-
+      Q2 REJECTED with reason, and the reason is written at the definition
+      site rather than left implicit. The three pools do NOT agree on
+      timeouts: both production pools and the test fixture set
+      statement_timeout='30s', `get_db_pool()` (standalone script pool) sets
+      none, and the full pool additionally runs a `SELECT 1`. Folding GUCs
+      into the shared hook would silently change behaviour for a caller that
+      never asked for it and would make one function do two unrelated jobs.
+      Codec parity is the invariant that must not drift; timeouts are a
+      per-pool concern that prod_shaped_pool.py already documents as
+      deliberately NOT mirrored. Q4 is convergent by a different mechanism,
+      not a defect: GLM's probe assertion is CORRECT (under double-encoding
+      the cast yields a string scalar and `-> 'a'` returns NULL), and the
+      shipped parity test reaches the same coverage via `jsonb_typeof`. The
+      `make_pool()` factory is a genuine alternative and is NOT adopted here
+      only because it would rewrite every pool call site in the repo -- a far
+      larger blast radius than this lane's mandate. Recorded rather than
+      silently dropped.
+
+  - seat: codex gpt-5.6-sol (xhigh, read-only sandbox, non-Anthropic refuter)
+    objection: >-
+      D (CONFIRMED, tests only) -- converting three previously-bare test pools
+      to `create_prod_shaped_pool` applies more than the codec: it also brings
+      `SET statement_timeout='30s'`, `statement_cache_size=0` and
+      `max_inactive_connection_lifetime=30.0` to test_bridge_wa_media.py,
+      test_intake_review.py and test_magic_link_store_integration.py. And in
+      test_outbox_consumer.py::_connect the new codec registration sits OUTSIDE
+      the try, so a failure there escapes the skip/fail policy and leaks the
+      connection. F (CONFIRMED) -- the centralisation claim is false
+      (kg_staging_promotion.py registers its own bare-json.dumps codecs, and
+      _CANONICAL_CODEC_FILES lists only three paths); and the identity tests
+      would still pass if the two production `init_asyncpg_connection` calls
+      were deleted, because they compare module attributes.
+    status: CONFIRMED
+    note: >-
+      F FIXED AT THE SOURCE, not footnoted: kg_staging_promotion's wrapper now
+      awaits the canonical hook and joins _CANONICAL_CODEC_FILES; a new
+      AST test asserts the production wrappers CALL the hook, mutation-proven
+      red when the calls become `pass`. Searching past the refuter's single hit
+      found five FURTHER codec-less non-test pools; the docstring now NAMES
+      them instead of overclaiming, with the measurement that none references
+      garuda_orders/garuda_portal/journal/idempotency and therefore none can
+      reach the changed writers. D's error-handling half FIXED (guarded, closes
+      on failure). D's semantics half ACCEPTED WITH REASON: the fixture is
+      called prod_shaped precisely because a test pool should match
+      production's shape, and production HAS those settings -- a test pool that
+      differs is the very divergence that produced the 2026-08-27 incident.
+      The three files were then A/B-ed (none had been in any A/B before, which
+      the finding is what exposed): 68 passed / 41 errors on both sides,
+      identical name sets.
+    note_plausible: >-
+      Codex also raised, as PLAUSIBLE not confirmed: `default=str` silently
+      accepts ANY object, so `{"bytes": b"\xff", "opaque": object()}` now
+      persists Python reprs including a memory address, turning former type
+      errors into unusable data. NOT changed, deliberately. A stricter
+      `default` (datetime/Decimal/UUID only, raise otherwise) would NOT be a
+      superset of what the four callers already did -- every one of them passed
+      `default=str` themselves -- so it would narrow behaviour the callers
+      relied on while claiming to widen it. The widening is real and is the
+      one the spec chose; recording it rather than silently dropping it.
+
+  - seat: kimi-code/k3 (non-Anthropic, second refuter)
+    objection: >-
+      Independently reached NO-DEFECT on the superset claim (A) by the same
+      mechanism. Flagged two candidates: that
+      test_funnel_end_to_end_http.py's pool fixture was left bare while its
+      assertions were edited, and that production pools such as
+      app/intake_review_reader.py:129 could reach the four writers without a
+      codec.
+    status: RETRACTED
+    note: >-
+      Both checked on disk and neither holds. The funnel fixture already uses
+      `create_prod_shaped_pool` (test_funnel_end_to_end_http.py:268) -- Kimi
+      wrote "let me check" and never did; this session did. And the codec-less
+      production pools cannot reach the writers: measured by grep, none of the
+      five references garuda_orders, garuda_portal, journal or idempotency,
+      which matches Codex's independent B verdict. Recorded rather than
+      dropped because the SECOND half of Kimi's flag was the thread that led
+      to enumerating all five and correcting the docstring -- a retracted
+      objection that still moved the diff.
+
+tests:
+  - "backend/tests/db/test_jsonb_codec_parity.py -- 9 tests (STRUCTURAL: encoder
+    shape, widening, identity of the initializer imported by prod_shaped_pool
+    and service_initializer, an AST scan proving no set_type_codec anywhere in
+    the three canonical files still names a bare json.dumps, plus a
+    self-test that the scanner can still detect one. LIVE: native list ->
+    jsonb_typeof 'array' with structural equality; dict holding datetime and
+    Decimal succeeds via default=str; a PRE-serialized string still lands as a
+    jsonb string scalar bound bare AND through an explicit ::jsonb cast)."
+  - "backend/tests/db/test_jsonb_double_encoding_class_guard.py -- pre-existing,
+    still green alongside (20 passed together)."
+  - "A/B against origin/main on two scopes, compared as failure NAME SETS:
+    four GARUDA suite directories, and all 21 collectible baselined bare-pool
+    files. Both identical."
+
+static:
+  - "ruff check on every file this diff touches -- All checks passed."
+  - "The pytest verbosity guard (scripts/pytest_guards/pytest_verbosity_guard.py,
+    new on main) rejects `-q` under apps/backend-rag/pytest.ini with rc=4 and
+    the message 'effective verbosity is -2: pytest would print no pass/fail
+    tally, so this run cannot be read as evidence that anything ran'. Every
+    acceptance command in the L12 lane file passes `-q` and is therefore
+    unrunnable as written; the lane file is corrected inside this PR per
+    wave-2 rule 5.1.4 (spec corrections ride in the lane PR, never a separate
+    docs PR)."
+
+notes:
+  - "This PR does NOT close the PENDING-ARMS row at PENDING-ARMS.md:1511. That
+    row's proof-of-armed is specifically an integration test asserting
+    jsonb_typeof on the FOUR REAL columns, which is the next PR's content.
+    Closing it here would be a claim the diff does not support."
+  - "Ordering consequence: the lint's shrink-only baseline enumerates both
+    files converted here. It must be REGENERATED after this PR lands, or it
+    ships two stale entries -- and a stale baseline is how a registry rots
+    (the baseline's own header says exactly that)."
+  - "No production deploy and no production probe are performed or implied
+    here. The GARUDA writers this diff touches have never executed in
+    production (measured 2026-08-27: garuda_order_journal and
+    garuda_order_outbox both hold 0 rows) because they need a Xendit key
+    nobody has provisioned -- so this is a fix-before-first-write, not a data
+    repair."
+  - "RESCUE 2026-08-31: squad D''s orchestrator (craft2_launch.sh D2) exited
+    rc=0 at 02:09 and this PR was found red (CodeQL) and unowned. A rescue
+    session fixed the CodeQL finding (see the last receipt) and pushed
+    a1c710fbf to this same branch -- no other content changed. #5327, which
+    stacks on this branch, is a separate PR handled by the same rescue pass."

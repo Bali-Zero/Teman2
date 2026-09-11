@@ -1,0 +1,32 @@
+• # TASK A — PAGE-1 vs PAGE-2
+
+  **PAGE-1 (team, no face)**
+  1. T = 4 — Institutional identity block (PT name, NPWP, registry link, "Ditjen Imigrasi decides") does the trust work; "Our visa team in Bali" is credible but faceless.
+  2. S = 2 (low risk) — WhatsApp CTA is the only scam-adjacent pattern; mitigated hard by case-code framing, "no personal facts in the link," and no price shown.
+  3. C = 5 — Best possible status copy: why (past overstay), what it's not ("not a no"), who acts next (specialist checks settled-fine record), when ({SLA}).
+  4. A = 4 — One dominant action (WhatsApp with case attached) plus an escape hatch ("review or change answers — nothing is submitted yet"). Clear, single-path.
+
+  **PAGE-2 (named agent + photo)**
+  5. T = 4 at best, 3 for the skeptical — a named human + photo raises warmth but for a *first-contact* applicant with an overstay it can read as salesmanship; unverifiable stock-photo risk. The institutional footer carries the same weight as PAGE-1.
+  6. S = 3 — Personal-agent + photo + "continue on WhatsApp" is closer to the SEA scam/agent-broker template (a friendly "person" moving you to chat). The named individual is the classic romance/agent-scam trust prop.
+  7. C = 5 — Identical state copy to PAGE-1; nothing lost.
+  8. A = 4 — Same single CTA; arguably slightly stronger pull ("a person answers") but same structure.
+
+  **FORCED CHOICE**
+  9. PAGE-1. For an applicant with a past overstay — someone already anxious about authority and being judged — the strongest trust signal is institutional verifiability, not a friendly face. PAGE-1's single strongest asset: the handoff is framed as a *case file* (BZ-7Q4K) moving to a *team bound by an SLA*, with the state line "Ditjen Imigrasi decides and issues" anchoring it to the state, not to a person. PAGE-2's named agent makes the outcome feel dependent on one individual's goodwill — exactly the dynamic overstay applicants have often been burned by (calo/broker culture).
+
+  **Dark patterns**
+  10. None on either page. Notably absent: no countdown, no fake scarcity, no price-anchor pressure, the no-price disclosure is anti-dark-pattern, and "nothing is submitted yet" is explicit reversibility. Minor watch-item (not a dark pattern): PAGE-2's {FOTO} + {NAMED_AGENT} would become deceptive *if* the photo were stock or the agent fictional — it's only clean if real.
+
+  # TASK B — RED PERCEPTION (LAND-1, LAND-2)
+
+  11. Verdict: reads INSTITUTIONAL, not scam-adjacent — for both pages. The palette discipline is doing the work: red is reserved for wordmark, structure lines, and one CTA fill; the ground is warm off-white (#f7f6f2), ink is navy, and *errors/state are wine, never bright red*. That inversion — red as structure, not as alarm — is the Merah Putih / state-document register, not the urgency-scam register (which floods backgrounds, banners, and countdowns with red). Dark, slightly desaturated reds (#C8102E, #a83a44) on a paper ground read like a government form or a notary's letterhead.
+
+  12. Strongest mitigating mark #1 (present): the role-separated copy line "We prepare your application; Ditjen Imigrasi decides and issues" — it explicitly disclaims the power scammers claim (guaranteed outcomes), which is the single loudest anti-scam signal available in this category.
+
+  13. Strongest mitigating mark #2 (present): the legal identity line — PT legal name + NPWP + registry link. A verifiable tax/entity ID is precisely what scam landing pages omit; LAND-2 adds external review links (Google/Trustpilot), strengthening it further.
+
+  14. Weakest points (where scam-perception could still creep in): the icon-only WhatsApp entry in the header combined with a red CTA is the one structural overlap with scam-page anatomy — mitigated on the results pages by the case-code framing, but on LAND-2 the "Prefer to talk first? Ask us on WhatsApp" card sits near the price and is the most scam-adjacent block on either landing. Second: the masked price "IDR 1.5XX.XXX" reads slightly like a teaser; the "same number again at payment, to the rupiah" line largely neutralizes it on LAND-1.
+
+  15. Net: with this palette and copy, a SEA audience sees a red-and-white official-adjacent service, not a scam page — provided green is never used as a text/CTA color (correctly banned) and the NPWP/registry link is real and clickable in production.
+

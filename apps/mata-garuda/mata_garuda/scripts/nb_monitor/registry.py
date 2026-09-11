@@ -1,7 +1,7 @@
 """NB registry loader.
 
 Reads the bootstrap JSON file at ~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json
-and returns a list of NotebookEntry dataclasses. ADR-006 documents the
+and returns a list of NotebookEntry dataclasses. ADR-012 documents the
 migration plan to apps/mata-garuda/mata_garuda/notebook_registry.py post-FASE-2 merge.
 """
 from __future__ import annotations

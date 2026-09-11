@@ -36,6 +36,18 @@ logger = logging.getLogger("portal_deadline_watchdog")
 
 # ── Query selects users with WA opt-in who have a deadline within 30 days
 #    that hasn't already been WA-notified in the last 7 days.
+#
+# Portal-login accounts are NOT a separate `users` table — that relation does
+# not exist in this database (same defect PR #5202 cured on the sibling query
+# in notifications/service.py). Client portal accounts are rows in
+# `team_members` with `role='client'`: migration_031_client_portal.py extends
+# team_members with `linked_client_id`/`portal_access` for exactly this
+# purpose ("Extends team_members for client authentication"). The predicate
+# below mirrors the one live path that resolves this same entity —
+# magic_link_service.py's `role='client' AND active=true AND
+# portal_access=true AND linked_client_id IS NOT NULL` — rather than the
+# email-matching shape used for staff lookups, which does not apply here:
+# this join is by FK (`linked_client_id`), not by email string.
 _SELECT_DUE = """
 SELECT
     np.user_id,
@@ -51,7 +63,11 @@ JOIN (
            'Visa expiry'   AS label,
            c.visa_expiry   AS due_date
     FROM clients c
-    JOIN users u ON u.linked_client_id = c.id
+    JOIN team_members u
+        ON u.linked_client_id = c.id
+       AND u.role = 'client'
+       AND u.active = TRUE
+       AND u.portal_access = TRUE
     WHERE c.visa_expiry IS NOT NULL
       AND c.visa_expiry BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
 
@@ -62,7 +78,11 @@ JOIN (
            'Passport expiry' AS label,
            c.passport_expiry AS due_date
     FROM clients c
-    JOIN users u ON u.linked_client_id = c.id
+    JOIN team_members u
+        ON u.linked_client_id = c.id
+       AND u.role = 'client'
+       AND u.active = TRUE
+       AND u.portal_access = TRUE
     WHERE c.passport_expiry IS NOT NULL
       AND c.passport_expiry BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
 
@@ -74,7 +94,11 @@ JOIN (
            p.expiry_date::date AS due_date
     FROM practices p
     JOIN practice_types pt ON pt.id = p.practice_type_id
-    JOIN users u ON u.linked_client_id = p.client_id
+    JOIN team_members u
+        ON u.linked_client_id = p.client_id
+       AND u.role = 'client'
+       AND u.active = TRUE
+       AND u.portal_access = TRUE
     WHERE p.expiry_date IS NOT NULL
       AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
       AND p.status NOT IN ('cancelled', 'rejected')

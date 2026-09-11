@@ -41,6 +41,25 @@ class Persona:
     expected_notice_codes: tuple[str, ...] = field(default_factory=tuple)
 
 
+@dataclass(frozen=True)
+class ProductionReplayExpectation:
+    """Legally re-derived expectation for the signed production-pack replay.
+
+    The canonical persona assertions below intentionally exercise a synthetic
+    five-product engine fixture.  Production replay must not reuse those
+    synthetic product codes or thresholds as Indonesian legal assertions.
+    """
+
+    state: DecisionState
+    candidates: tuple[str, ...] = ()
+    missing: tuple[str, ...] = ()
+    review_codes: tuple[str, ...] = ()
+    no_path_codes: tuple[str, ...] = ()
+    notice_codes: tuple[str, ...] = ()
+    legal_citations: tuple[str, ...] = ()
+    rationale: str = ""
+
+
 PERSONAS: tuple[Persona, ...] = (
     Persona(
         id=1,
@@ -295,6 +314,181 @@ PERSONAS: tuple[Persona, ...] = (
 
 assert len(PERSONAS) == 20, "gold harness must carry exactly the 20 personas from spec §7"
 assert [p.id for p in PERSONAS] == list(range(1, 21)), "persona ids must be 1..20 in order"
+
+
+# Independently re-derived from each persona's complete facts and the named
+# legal sources below.  This table is deliberately NOT generated from a
+# production evaluator run: a changed engine output remains a divergence
+# unless the cited legal reading is changed here by an independent reviewer.
+PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
+    1: ProductionReplayExpectation(
+        state=DecisionState.NO_SUPPORTED_PATH,
+        no_path_codes=("APPLICANT_IS_INDONESIAN_CITIZEN",),
+        legal_citations=("UU 6/2011 jo. UU 63/2024 tentang Keimigrasian",),
+        rationale="An Indonesian citizen is outside the foreign-national visa product set.",
+    ),
+    2: ProductionReplayExpectation(
+        state=DecisionState.HUMAN_REVIEW_REQUIRED,
+        review_codes=("CALLING_VISA_REVIEW", "CITIZENSHIP_LIST_DIVERGENCE"),
+        legal_citations=(
+            "Daftar Negara Calling Visa - Ditjen Imigrasi",
+            "Daftar Negara Subjek Visa on Arrival - Ditjen Imigrasi",
+        ),
+        rationale="Conflicting nationality evidence cannot safely resolve either country list.",
+    ),
+    3: ProductionReplayExpectation(
+        state=DecisionState.HUMAN_REVIEW_REQUIRED,
+        review_codes=("CALLING_VISA_REVIEW",),
+        legal_citations=("Daftar Negara Calling Visa - Ditjen Imigrasi",),
+        rationale="Afghan nationality is on the Calling Visa list and requires review.",
+    ),
+    4: ProductionReplayExpectation(
+        state=DecisionState.HUMAN_REVIEW_REQUIRED,
+        review_codes=("ACTIVE_OVERSTAY",),
+        legal_citations=("UU 6/2011 jo. UU 63/2024 tentang Keimigrasian",),
+        rationale="A disclosed active overstay must be reviewed before recommending a route.",
+    ),
+    5: ProductionReplayExpectation(
+        state=DecisionState.HUMAN_REVIEW_REQUIRED,
+        review_codes=("MINOR_WITHOUT_CONFIRMED_GUARDIAN", "MINOR_GUARDIAN_PRIVACY_REVIEW"),
+        legal_citations=(
+            "Kepmen M.IP-08.GR.01.01/2025 - family visa classifications",
+        ),
+        rationale="A minor without a confirmed guardian cannot receive a public recommendation.",
+    ),
+    6: ProductionReplayExpectation(
+        state=DecisionState.HUMAN_REVIEW_REQUIRED,
+        review_codes=("MINOR_GUARDIAN_PRIVACY_REVIEW",),
+        legal_citations=(
+            "Kepmen M.IP-08.GR.01.01/2025 - family visa classifications",
+        ),
+        rationale="The family route is plausible, but the public boundary holds every minor for review.",
+    ),
+    7: ProductionReplayExpectation(
+        state=DecisionState.SUPPORTED_CANDIDATES,
+        candidates=("C1", "E31A"),
+        legal_citations=(
+            "Visa Keluarga Suami/Istri WNI (E31A) - Ditjen Imigrasi",
+            "Kepmen M.IP-08.GR.01.01/2025 - C1 classification",
+        ),
+        rationale="A registered WNI marriage supports E31A; a 30-day family visit also supports C1.",
+    ),
+    8: ProductionReplayExpectation(
+        state=DecisionState.SUPPORTED_CANDIDATES,
+        candidates=("C1",),
+        legal_citations=(
+            "Visa Keluarga Suami/Istri WNI (E31A) - Ditjen Imigrasi",
+            "Kepmen M.IP-08.GR.01.01/2025 - C1 classification",
+        ),
+        rationale="Unverified marriage blocks E31A, but does not block the complete 30-day C1 visit facts.",
+    ),
+    9: ProductionReplayExpectation(
+        state=DecisionState.NO_SUPPORTED_PATH,
+        no_path_codes=("DIRECT_ONSHORE_CONVERSION_UNSUPPORTED",),
+        legal_citations=(
+            "Permenkumham 22/2023 jo. Permenkumham 11/2024 - alih status",
+        ),
+        rationale="The described direct C1-to-E28A onshore conversion is not a supported route.",
+    ),
+    10: ProductionReplayExpectation(
+        state=DecisionState.HUMAN_REVIEW_REQUIRED,
+        review_codes=("STATUS_BRIDGING_REVIEW",),
+        legal_citations=(
+            "Permenkumham 22/2023 jo. Permenkumham 11/2024 - ITK peralihan",
+        ),
+        rationale="The same investor facts through status bridging require an adviser review.",
+    ),
+    11: ProductionReplayExpectation(
+        state=DecisionState.SUPPORTED_CANDIDATES,
+        candidates=("E33G",),
+        legal_citations=(
+            "Permenkumham 22/2023 jo. Permenkumham 11/2024 Pasal 33(2)(j)",
+        ),
+        rationale="Remote work with a foreign employer and no Indonesian clients or pay supports E33G.",
+    ),
+    12: ProductionReplayExpectation(
+        state=DecisionState.HUMAN_REVIEW_REQUIRED,
+        review_codes=("LOCAL_MARKET_ACTIVITY_REVIEW",),
+        legal_citations=(
+            "Permenkumham 22/2023 jo. Permenkumham 11/2024 Pasal 33(2)(j)",
+        ),
+        rationale="Serving Indonesian clients crosses the clean E33G activity boundary.",
+    ),
+    13: ProductionReplayExpectation(
+        state=DecisionState.NEEDS_INPUT,
+        missing=("work.serves_indonesian_clients",),
+        legal_citations=(
+            "Permenkumham 22/2023 jo. Permenkumham 11/2024 Pasal 33(2)(j)",
+        ),
+        rationale="Local-client activity is a necessary E33G boundary fact and is unprovided.",
+    ),
+    14: ProductionReplayExpectation(
+        state=DecisionState.SUPPORTED_CANDIDATES,
+        candidates=("E33G",),
+        legal_citations=(
+            "Permenkumham 22/2023 jo. Permenkumham 11/2024 Pasal 33(2)(j)",
+        ),
+        rationale="E33G covers the declared remote-work and tourism purposes together.",
+    ),
+    15: ProductionReplayExpectation(
+        state=DecisionState.SUPPORTED_CANDIDATES,
+        candidates=("E23",),
+        legal_citations=("Kepmen M.IP-08.GR.01.01/2025 - E23 classification",),
+        rationale="Confirmed Indonesian employment sponsorship supports E23, not a C1 work route.",
+    ),
+    16: ProductionReplayExpectation(
+        state=DecisionState.SUPPORTED_CANDIDATES,
+        candidates=("D12",),
+        legal_citations=(
+            "Visa Kunjungan Pra-Investasi (D12) - Ditjen Imigrasi",
+            "Kepmen M.IP-08.GR.01.01/2025 - E28A capital thresholds",
+        ),
+        rationale="Capital below E28A's threshold still supports the described pre-investment D12 visit.",
+    ),
+    17: ProductionReplayExpectation(
+        state=DecisionState.SUPPORTED_CANDIDATES,
+        candidates=("D12",),
+        legal_citations=(
+            "Visa Kunjungan Pra-Investasi (D12) - Ditjen Imigrasi",
+            "Kepmen M.IP-08.GR.01.01/2025 - E28A paid-up capital threshold",
+        ),
+        rationale="Total capital alone does not establish E28A; the complete facts support D12 instead.",
+    ),
+    18: ProductionReplayExpectation(
+        state=DecisionState.NEEDS_INPUT,
+        missing=("intent.purposes",),
+        notice_codes=("OBSOLETE_PRODUCT_CODE",),
+        legal_citations=("Kepmen M.IP-08.GR.01.01/2025 - current visa classifications",),
+        rationale="The obsolete B211A label cannot select a route without a declared purpose.",
+    ),
+    19: ProductionReplayExpectation(
+        state=DecisionState.SUPPORTED_CANDIDATES,
+        candidates=("B1", "C1"),
+        notice_codes=("OBSOLETE_PRODUCT_CODE",),
+        legal_citations=(
+            "Daftar Negara Subjek Visa on Arrival - Ditjen Imigrasi",
+            "Kepmen M.IP-08.GR.01.01/2025 - B1 and C1 classifications",
+        ),
+        rationale="A French national's complete 30-day tourism facts support both B1 and C1 alternatives.",
+    ),
+    20: ProductionReplayExpectation(
+        state=DecisionState.HUMAN_REVIEW_REQUIRED,
+        review_codes=(
+            "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+            "BRIDGING_TO_BRIDGING_PROHIBITED",
+        ),
+        legal_citations=(
+            "Permenkumham 22/2023 jo. Permenkumham 11/2024 - ITK peralihan",
+        ),
+        rationale="Unknown source status cannot rule out either prohibited bridging origin.",
+    ),
+}
+
+assert set(PRODUCTION_REPLAY_EXPECTATIONS) == set(range(1, 21))
+assert all(
+    expectation.legal_citations and expectation.rationale
+    for expectation in PRODUCTION_REPLAY_EXPECTATIONS.values()
+), "every production replay expectation needs a named legal citation and rationale"
 
 
 @pytest.fixture(scope="module")

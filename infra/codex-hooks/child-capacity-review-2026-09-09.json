@@ -1,0 +1,24 @@
+{
+  "reviewer_model": "claude-fable-5-1",
+  "effort": "xhigh",
+  "session_id": "2b41810f-7b8d-4815-b817-a619188ad034",
+  "initial_verdict": "FAIL",
+  "followup_verdict": "PASS for bounded Air-M5 canary",
+  "corrections": [
+    "Handle missing child transcript without denying all tools.",
+    "Restrict settings fingerprint to model/env and deduplicate resolved paths.",
+    "Exclude idle time after Stop while retaining cumulative active-time and tool budgets."
+  ],
+  "required_before_remote_install": [
+    "Two native probes after M5 installation, second calibrated at 200000 window / 80000 limit.",
+    "A native child with repository worktree cwd using calibrated measurement."
+  ],
+  "nonblocking_limits": [
+    "Recovery switches that bypass Stop also bypass active-time pausing.",
+    "Capture-side fingerprint must be confirmed by native execution evidence."
+  ],
+  "review_trace_sha256": {
+    "fable-child-capacity-review.jsonl": "5b3c1af57d7ce394a26802e01dbda25db30c0b2fc80d23148e88f8cd1755a3eb",
+    "fable-child-capacity-review-2.jsonl": "26f72f5f65e6b623f74e02b5ab7eea305941b0062da019669da619b788aa4f39"
+  }
+}

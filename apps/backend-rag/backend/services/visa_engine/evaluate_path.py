@@ -50,6 +50,38 @@ Mode discipline (mirrors ``shadow.resolve_match_shadow_enabled``):
   when BOTH the class is allowlisted AND the presented token matches this
   secret (constant-time compare). Unset: synthetic is always rejected
   (fail-closed). This token IS the W4 driver credential.
+- ``VISA_ENGINE_EVALUATE_CANARY_TOKEN`` — the shared secret backing the
+  per-request CANARY mode override (``X-Visa-Canary-Mode`` +
+  ``X-Visa-Canary-Token``, wired by the router). It is the rollout lever
+  the ASSEMBLY-LINE dark -> 5% -> 100% ruling requires and that this
+  surface did not have: before it, the ONLY way to try ENFORCE was to flip
+  the deployment-wide env, taking every live visitor from 0% to 100% in one
+  gesture. Three properties are load-bearing and each has a guilt AND an
+  innocence test:
+
+  1. **Absent by default means byte-identical behaviour.** The override
+     lives in a ``ContextVar`` whose default is ``None``;
+     ``resolve_evaluate_mode`` falls through to the env exactly as before.
+     Provisioning the secret alone changes NOTHING — a request must also
+     carry the header. (Arming a lever and arming a request are different
+     acts: the allowlist bullet above is the scar that taught this.)
+  2. **Not reachable from a guessable public parameter.** It is a header
+     bearing a shared secret compared in constant time, never a query
+     param, cookie, or body field, and it fails closed on an unset env —
+     the same posture as the driver credential, for the same reason.
+  3. **The row says it was a canary.** A canary request is forced to
+     ``traffic_source='synthetic_driver'`` server-side (the router
+     overwrites whatever the caller asked for), so a decision born under
+     the canary can never be counted as real production traffic.
+
+  DECLARED LIMIT of property 3: ``visa_decisions`` has no column that
+  separates a canary row from a W4 replay-driver row, and adding one is a
+  migration this PR deliberately does not carry. Today the pair
+  (``synthetic_driver``, ``engine_mode='ENFORCE'``) is unique to the canary
+  because the deployment is globally SHADOW; the moment ENFORCE is armed
+  deployment-wide, a driver row is also ENFORCE and the pair stops
+  identifying anything. A dedicated column must land BEFORE global ENFORCE
+  — tracked in ``.claude/skills/modus/PENDING-ARMS.md``.
 
 PII boundary (SYMBIOSIS Law 2 / UU PDP): applicant facts are NEVER logged
 and never persisted — the audit row carries only engine identifiers, reason
@@ -70,7 +102,9 @@ import logging
 import os
 import secrets
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import TypeAlias
@@ -112,7 +146,7 @@ from backend.services.visa_engine.errors import (
     RulePackCompilationError,
     RulePackVerificationError,
 )
-from backend.services.visa_engine.evaluator import evaluate_with_trace
+from backend.services.visa_engine.evaluator import evaluate_with_trace, merge_reasons_by_code
 from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
 from backend.services.visa_engine.idempotency import (
     IdempotencyConflictError,
@@ -181,6 +215,39 @@ ALLOW_SYNTHETIC_SOURCES_ENV = "VISA_ENGINE_EVALUATE_ALLOW_SYNTHETIC_SOURCES"
 #: the W4 gold-corpus replay driver credential (see module docstring).
 DRIVER_TOKEN_ENV = "VISA_ENGINE_DRIVER_TOKEN"
 
+#: The shared secret backing the per-request CANARY mode override (see the
+#: module docstring). Unset: the canary can never engage, for any caller.
+CANARY_TOKEN_ENV = "VISA_ENGINE_EVALUATE_CANARY_TOKEN"
+
+#: The modes a canary request may ask for. ``OFF`` is deliberately absent:
+#: the canary exists to try an authority a deployment has NOT yet armed,
+#: and a request that disables its own surface is indistinguishable from
+#: sending no request at all.
+_CANARY_SELECTABLE_MODES: frozenset[str] = frozenset(
+    {EngineMode.SHADOW.value, EngineMode.ENFORCE.value}
+)
+
+#: Per-request authority override, set by the router ONLY after the canary
+#: credential verifies. Default ``None`` — and that default is the whole
+#: safety argument: with nothing set, ``resolve_evaluate_mode`` reads the
+#: env exactly as it did before this lever existed.
+#:
+#: A ContextVar (rather than threading a parameter through six call sites)
+#: is what makes the override TOTAL: ``resolve_evaluate_mode`` is consulted
+#: independently by ``run_evaluation``, ``run_public_evaluation``,
+#: ``_replay_authority_matches`` and ``resolve_response_mode``, and a lever
+#: that reached only some of them would produce a request whose response
+#: envelope and whose persisted row disagreed about who decided.
+#:
+#: Isolation: asyncio gives every request task its own context, and a task
+#: spawned during the request inherits a COPY taken at creation — so the
+#: override covers the evaluation it belongs to and cannot reach a
+#: concurrent request. ``test_canary_override_does_not_leak_to_a_concurrent_request``
+#: is the guilt test for exactly that claim.
+_CANARY_MODE_OVERRIDE: ContextVar[EngineMode | None] = ContextVar(
+    "visa_engine_evaluate_canary_mode", default=None
+)
+
 #: The engine surface every persisted row and every log line of this module
 #: belongs to (migration 252's ``engine_surface`` CHECK admits it verbatim).
 _SURFACE = EngineSurface.RECOMMEND
@@ -210,13 +277,76 @@ _VISA_PURPOSE_TO_REQUEST_CATEGORY: MappingProxyType[VisaPurpose, str] = MappingP
 
 
 def resolve_evaluate_mode() -> EngineMode:
-    """Resolve the public authority lever; unknown values fail closed to OFF."""
+    """Resolve the public authority lever; unknown values fail closed to OFF.
 
+    A per-request canary override (set only by the router, only after the
+    canary credential verified — see ``canary_mode_override``) wins over the
+    deployment env for the duration of that one request. With no override in
+    context this is byte-for-byte the pre-canary behaviour.
+    """
+
+    override = _CANARY_MODE_OVERRIDE.get()
+    if override is not None:
+        return override
     raw = os.environ.get(EVALUATE_MODE_ENV, EngineMode.OFF.value).strip().upper()
     try:
         return EngineMode(raw)
     except ValueError:
         return EngineMode.OFF
+
+
+def parse_canary_mode(raw: str | None) -> EngineMode | None:
+    """The ``EngineMode`` a canary header asks for, or ``None`` if it asks
+    for nothing this lever may grant.
+
+    Closed vocabulary (``SHADOW``/``ENFORCE``, case-insensitive after
+    strip). ``None``, empty, ``OFF``, and anything unrecognised all return
+    ``None`` — the caller treats that as "not a valid canary request" and
+    rejects, rather than silently evaluating under the deployment default.
+    """
+
+    if raw is None:
+        return None
+    candidate = raw.strip().upper()
+    if candidate not in _CANARY_SELECTABLE_MODES:
+        return None
+    return EngineMode(candidate)
+
+
+def verify_canary_token(presented: str | None) -> bool:
+    """Constant-time check of the canary credential.
+
+    True iff ``CANARY_TOKEN_ENV`` is provisioned (non-empty after strip)
+    AND ``presented`` matches it under ``secrets.compare_digest``. Every
+    other shape — unset/empty env, missing header, mismatched token, a
+    non-ASCII header value — is False. Deliberately a verbatim twin of
+    ``verify_driver_token``: same fail-closed posture, same
+    re-read-never-cache convention, and a separate secret so holding the
+    replay-driver credential does NOT confer the authority to change mode.
+    """
+
+    expected = os.environ.get(CANARY_TOKEN_ENV, "").strip()
+    if not expected or not presented:
+        return False
+    try:
+        return secrets.compare_digest(presented, expected)
+    except TypeError:
+        return False
+
+
+@contextmanager
+def canary_mode_override(mode: EngineMode) -> Iterator[None]:
+    """Bind ``mode`` as this request's authority, restoring on exit.
+
+    Restores via the ``ContextVar`` token rather than resetting to ``None``,
+    so a nested use cannot silently clear an outer binding.
+    """
+
+    token = _CANARY_MODE_OVERRIDE.set(mode)
+    try:
+        yield
+    finally:
+        _CANARY_MODE_OVERRIDE.reset(token)
 
 
 def resolve_evaluate_shadow_enabled() -> bool:
@@ -1277,6 +1407,68 @@ PUBLIC_POLICY_ADAPTER_NAMES: tuple[str, ...] = tuple(
 )
 
 
+def _collapse_reader_reasons(decision: Decision) -> Decision:
+    """One entry per reason CODE on the applicant-facing lists, citations
+    UNIONED — the public-shaping half of the 2026-09-06 decisiveness reorder.
+
+    The reorder made ``NO_SUPPORTED_PATH`` reachable (0 of the 43 interview
+    walks before it, 10 after), and with it a defect that had never been
+    visible: two DIFFERENT rules on two different products can carry the same
+    reason code, and ``engine-adapter.ts`` maps the list 1:1 through copy keyed
+    by CODE ALONE, so the applicant is told the same thing twice. Measured on
+    seq-20: six walks rendered ``['AGE_BELOW_55', 'AGE_BELOW_55']``, one entry
+    for ``hf.e33e.age-below-55`` and one for ``hf.e33f.age-below-55``.
+
+    This is the PUBLIC boundary and not the engine on purpose. ``evaluate``
+    keeps one proof per rule, so the trace, the gold harness and anything
+    reading the raw engine output still see that two distinct rules fired; only
+    the payload a person reads is collapsed. The merge UNIONS ``rule_ids`` and
+    ``source_refs``, so the underlying provenance survives the collapse and
+    ``requireDecisiveRefs`` validates more refs, never fewer.
+
+    Applied to both reader-facing lists, but the two halves have DIFFERENT
+    standing and the difference is stated rather than blurred:
+
+    * ``no_path_reasons`` — a MEASURED cure. Six real walks rendered
+      ``AGE_BELOW_55`` twice.
+    * ``review_reasons`` — DEFENSIVE only, on seq-20. No duplicate is reachable
+      on this surface today, and the reason is structural, not incidental.
+
+    Scanning ``rulepack-prod-020.source.json``: nine reason codes are emitted
+    by more than one rule, so the shape is a general property of the pack and
+    not an ``AGE_BELOW_55`` quirk. Seven are ``SUPPORT`` codes, which feed no
+    reader-facing list. The only ``REQUIRE_REVIEW`` one is
+    ``GOVT_INVITATION_REQUIRED``, from ``review.e33a`` (E33A) and
+    ``review.e33c`` (E33C) — and those two CANNOT CO-FIRE. Each conjoins
+    ``{"op": "eq", "fact": "intent.requested_product_code"}`` against its own
+    product code, and that fact is a ``StringFact`` (scalar), so it cannot be
+    both ``"E33A"`` and ``"E33C"`` for one applicant. They also cite the SAME
+    source record, so even hypothetically the union would merge rule ids and
+    rescue no citation.
+
+    The review half therefore ships as a symmetry guard: it costs one call,
+    it cannot change today's output, and it means a future pack that puts two
+    co-firable rules on one review code does not reintroduce the defect. It is
+    pinned by a hand-built-pack test and must NOT be described as a cure for
+    anything users are hitting.
+
+    State, candidates and missing facts are untouched by construction: only the
+    two reason tuples are rebuilt, and a merge cannot empty a non-empty list,
+    so ``Decision``'s per-state non-empty invariants still hold.
+    """
+
+    merged_no_path = merge_reasons_by_code(decision.no_path_reasons)
+    merged_review = merge_reasons_by_code(decision.review_reasons)
+    if (
+        merged_no_path == decision.no_path_reasons
+        and merged_review == decision.review_reasons
+    ):
+        return decision
+    payload = decision.model_dump(mode="python")
+    payload.update({"no_path_reasons": merged_no_path, "review_reasons": merged_review})
+    return Decision.model_validate(payload)
+
+
 def apply_public_policy_adapters(
     decision: Decision,
     facts: ApplicantFacts,
@@ -1290,11 +1482,19 @@ def apply_public_policy_adapters(
     from silently drifting away from the endpoint. Runtime-only operations
     such as binding resolution, retention, pricing, sealing, and persistence
     remain outside this helper.
+
+    After the abstention chain, one presentation collapse runs: reasons that
+    render as the same SENTENCE are merged. See ``_collapse_reader_reasons``.
+    It is deliberately NOT a member of ``_PUBLIC_POLICY_ADAPTERS`` — that
+    registry means "deterministic ABSTENTION adapter" and doubles as the
+    offline evidence manifest's ``policy_adapters`` list, and this changes no
+    state, creates no hold and retires no candidate. Running it after the loop
+    also means it sees whatever reasons an abstention adapter itself produced.
     """
 
     for _name, adapter in _PUBLIC_POLICY_ADAPTERS:
         decision = adapter(decision, facts, compiled, disclosed_review_flags)
-    return decision
+    return _collapse_reader_reasons(decision)
 
 
 async def _save_evaluate_decision(
@@ -1849,18 +2049,22 @@ async def run_public_evaluation(
 
 __all__ = [
     "ALLOW_SYNTHETIC_SOURCES_ENV",
+    "CANARY_TOKEN_ENV",
     "DRIVER_TOKEN_ENV",
     "EVALUATE_ENVIRONMENT_ENV",
     "EVALUATE_MODE_ENV",
     "PUBLIC_POLICY_ADAPTER_NAMES",
     "apply_public_policy_adapters",
     "build_temp_unavailable_body",
+    "canary_mode_override",
     "derive_request_category",
+    "parse_canary_mode",
     "resolve_allowed_synthetic_sources",
     "resolve_evaluate_mode",
     "resolve_evaluate_shadow_enabled",
     "resolve_response_mode",
     "run_evaluation",
     "run_public_evaluation",
+    "verify_canary_token",
     "verify_driver_token",
 ]

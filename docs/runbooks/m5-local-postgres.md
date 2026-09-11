@@ -32,7 +32,7 @@ export API_KEYS="test_api_key_1,test_api_key_2"
 PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py
 PYTHONPATH=.:../crm-cell python -m backend.db.migrate apply-all   # NB: drop CI's `timeout` — macOS has none
 # then:
-PYTHONPATH=.:../crm-cell pytest backend/tests/ -q
+PYTHONPATH=.:../crm-cell pytest backend/tests/
 ```
 
 **Refresh the dev snapshot from prod** (pull-only, never writes to Fly):

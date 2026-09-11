@@ -1,0 +1,102 @@
+1. **SEVERITY: HIGH**
+
+   **FAILING FRAGMENT:** “Kept for: `{RETENTION_WINDOW}` — then deleted automatically.” / “kept `{RETENTION_WINDOW}`, then deleted.”
+
+   **WHY:** il mockup presenta la cancellazione automatica come fatto operativo, ma il tree contiene soltanto una funzione di purge; il commento DDL dice esplicitamente che richiede ancora grant e scheduler ([286:338](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql:338), [286:391](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql:391)). Il registro operativo conferma: “the purge has no caller” e “No scheduler, cron or service invokes it” ([PENDING-ARMS:1399](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/.claude/skills/modus/PENDING-ARMS.md:1399)). È rassicurazione inventata e contraddice direttamente §6.4, “Consent copy never outruns machinery”.
+
+2. **SEVERITY: HIGH**
+
+   **FAILING FRAGMENT:** “the ONE thing the backend actually guarantees — a Zero-approved retention interval, policy row per scope” / “the value exists in `visa_decision_retention_policies`” / “`{CUSTODY_RETENTION}` is fillable TODAY from the policy table — the data exists”
+
+   **WHY:** il tree garantisce il contrario: fail-closed finché Zero non approva una riga. Migration 281 non inserisce alcuna policy `GARUDA_CHECK` ([281:15](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/281_garuda_voa_retention.sql:15)); migration 286 ribadisce che non viene seminata alcuna riga ([286:43](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql:43)); persino i 14 giorni di `GARUDA_MAGIC_LINK` sono dichiarati “proposed, not asserted as final” ([285:145](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/285_garuda_magic_link.sql:145), [285:152](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/285_garuda_magic_link.sql:152)). Senza audit del DB runtime, il report non può affermare che durata e riga “esistono”.
+
+3. **SEVERITY: HIGH**
+
+   **FAILING FRAGMENT:** “`garuda_voa_checks`/`_check_results`/`_magic_link_tokens` fail-closed at INSERT on both the acknowledgement timestamp and an active policy.”
+
+   **WHY:** `garuda_magic_link_tokens` non ha alcuna colonna di acknowledgement ([285:158](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/285_garuda_magic_link.sql:158)); il suo trigger controlla soltanto l’esistenza della policy attiva ([285:228](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/285_garuda_magic_link.sql:228), [285:268](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/285_garuda_magic_link.sql:268)). La frase è vera per i check, falsa per i magic link.
+
+4. **SEVERITY: HIGH**
+
+   **FAILING FRAGMENT:** “No user-facing erasure path exists”
+
+   **WHY:** è troppo assoluto. Esiste un endpoint pubblico `DELETE /eligibility-checks/{result_id}`, con operation ID `deleteEligibilityResult` ([garuda_voa_public.py:569](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/app/routers/garuda_voa_public.py:569)); il router invoca realmente `store.delete()` ([garuda_voa_public.py:590](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/app/routers/garuda_voa_public.py:590)). Migration 286 lo definisce esplicitamente “customer-initiated” e “direct, customer-facing” ([286:78](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql:78), [286:85](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql:85)). La formulazione sostenibile è quella più stretta già usata altrove nel draft: “no screen exposes it”.
+
+5. **SEVERITY: HIGH**
+
+   **FAILING FRAGMENT:** “No consent LEDGER exists”
+
+   **WHY:** falso a livello di repository. `migration_091_client_consent_log.py` dichiara una tabella append-only per grant e revoche per finalità ([migration 091:2](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/migrations/migration_091_client_consent_log.py:2)); lo schema contiene `purpose_key`, `action`, `legal_basis`, `policy_version`, canale e timestamp ([migration 091:27](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/migrations/migration_091_client_consent_log.py:27)). La migration è registrata nel runner ([migration_base.py:149](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migration_base.py:149)). È difendibile solo la versione circoscritta: nessun ledger/receipt GARUDA è collegato a questi funnel e alle relative righe.
+
+6. **SEVERITY: MED**
+
+   **FAILING FRAGMENT:** “SYMBIOSIS Law 2’s own 2026-08-09 ruling names this gap unarmed; a consent ledger is its cure”
+
+   **WHY:** SYMBIOSIS nomina clausola contrattuale, prova per cliente, revoca ed enforcement mancanti ([SYMBIOSIS.md:212](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/SYMBIOSIS.md:212)), ma nel contesto della base Art. 56 prima di trasferire PII a un provider cloud ([SYMBIOSIS.md:201](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/SYMBIOSIS.md:201), [SYMBIOSIS.md:215](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/SYMBIOSIS.md:215)). Non prescrive un “consent ledger” come cura del funnel GARUDA. Il draft trasforma una regola cloud/per-transfer in una decisione architetturale non adottata.
+
+7. **SEVERITY: MED**
+
+   **FAILING FRAGMENT:** “Four privacy pages, no owner”
+
+   **WHY:** letteralmente falso per almeno `/visa/privacy`: CODEOWNERS assegna tutto `/apps/mouth/src/app/visa/` a `@SubBZ2026` e `@Balizero1987` ([CODEOWNERS:183](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/.github/CODEOWNERS:183)). Se “owner” significa invece responsabile legale/editoriale o autorità canonica, il tree non dimostra la sua assenza: il draft deve qualificare quale ownership è stata auditata.
+
+8. **SEVERITY: MED**
+
+   **FAILING FRAGMENT:** “R4:118’s own constraint” / “R4:118’s prerequisite for M2b’s `{CUSTODY_WHO_SEES}`”
+
+   **WHY:** tutte queste citazioni puntano alla riga sbagliata. R4:118 disciplina il payload opaco del WhatsApp handoff ([R4:118](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/research/design/2026-08-27-r4-cross-funnel-design-system.md:118)). Il requisito di audit su chi vede il passaporto e sulla retention è a R4:120 ([R4:120](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/research/design/2026-08-27-r4-cross-funnel-design-system.md:120)).
+
+9. **SEVERITY: MED**
+
+   **FAILING FRAGMENT:** “the wizard step renders entry date → passport expiry → THEN a bare acknowledgement checkbox” / “nothing else on this page is used for the check.”
+
+   **WHY:** è vero soltanto nel percorso issuance. Nel percorso extension, tra passport expiry e acknowledgement compaiono anche `voa_expiry_date` e `extension_already_used` ([page.tsx:306](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/visa/voa/page.tsx:306)); entrambi entrano nella richiesta ([page.tsx:423](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/visa/voa/page.tsx:423)). Il mockup omette tali campi e rende come fatto una spiegazione falsa per metà dei case type.
+
+10. **SEVERITY: MED**
+
+    **FAILING FRAGMENT:** “the DB gate at 281:275-277 stays the backstop.”
+
+    **WHY:** quella è la guardia della tabella legacy `garuda_voa_checks`. Migration 286 dichiara tale tabella ritirata, senza writer o traffico produttivo ([286:14](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql:14)). Il percorso prodotto usa `garuda_voa_check_results`, dove l’acknowledgement è imposto da `NOT NULL` ([286:121](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql:121)) e il trigger corrente comincia a 286:161 ([286:161](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql:161)). Il riferimento 281 non è il backstop del live write path.
+
+11. **SEVERITY: MED**
+
+    **FAILING FRAGMENT:** “The privacy link renders on every funnel screen ONLY when it targets the corrected, surface-scoped policy.”
+
+    **WHY:** il mockup contraddice la decisione: contiene sempre un `<a href="{PRIVACY_LINK}">` senza condizione, feature gate o annotazione che ne impedisca il rendering ([mockup:81](/private/tmp/claude-501/-Users-nuzantara-nuzantara/b0b4cfee-0d97-475c-b63f-36f99027cf5c/scratchpad/lane-consent/a4-dates-consent.body.html:81)). Un placeholder dell’URL non implementa il gate “policy corrected first”.
+
+12. **SEVERITY: MED**
+
+    **FAILING FRAGMENT:** “four §6 declarations spanning five funnel surfaces”
+
+    **WHY:** §6 non dichiara tutte le decisioni comportamentali prese in §3. Restano fuori:
+
+    - la copy esatta e il posizionamento del magic link: “gains one line under the field” (§3.4);
+    - l’aggiunta del modulo prima della domanda 1 e la decisione di lasciare `ConsentHandoff` intatto (§3.5);
+    - “Checkout: no changes” e l’eredità dall’altra lane (§3.7);
+    - header, counter, formato data e ordine preciso dei componenti A4 (§3.2).
+
+    Le quattro dichiarazioni coprono il principio generico custody, il token retention, il privacy gate e la promessa di cancellazione; non adottano queste ulteriori decisioni surface-specific.
+
+13. **SEVERITY: MED**
+
+    **FAILING FRAGMENT:** “`ConsentHandoff.tsx:39-58` (scope, 2h TTL, no-CRM-record, guardian gate, schema-versioned expiring receipt)”
+
+    **WHY:** la citazione 39–58 contiene soltanto copy, inclusi 2 ore e no-CRM ([ConsentHandoff.tsx:39](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx:39)). Il guardian gate è implementato a 238–253 e 296–330 ([ConsentHandoff.tsx:238](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx:238)); schema version, policy version e scadenza vivono in `consent-store.ts` ([consent-store.ts:3](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.ts:3), [consent-store.ts:130](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.ts:130)). La funzionalità esiste, ma la citation dichiarata non la prova.
+
+14. **SEVERITY: LOW**
+
+    **FAILING FRAGMENT:** “`WhyWeAsk.tsx` explains PROVENANCE per question”
+
+    **WHY:** il componente dichiara esplicitamente che il claim-level source ledger non è ancora congelato e, in sua assenza, mostra il confine dei fact path del motore o contesto human-only ([WhyWeAsk.tsx:16](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/WhyWeAsk.tsx:16), [WhyWeAsk.tsx:57](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/WhyWeAsk.tsx:57)). È una spiegazione decisionale/fact-boundary, non provenance documentale.
+
+15. **SEVERITY: LOW**
+
+    **FAILING FRAGMENT:** “R1-A4’s measured trigger (‘storage consent after the fields’, R1:105) confirmed byte-for-byte.”
+
+    **WHY:** R1:105 contiene la sintesi “passport expiry + storage consent after the fields” ([R1:105](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/research/design/2026-08-27-r1-journey-emotion-map.md:105)); la UI contiene invece “I understand how my answers are stored and that I can delete this check any time” ([page.tsx:367](/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design/apps/mouth/src/app/visa/voa/page.tsx:367)). La semantica/posizione è confermata; “byte-for-byte” è falso.
+
+16. **SEVERITY: LOW**
+
+    **FAILING FRAGMENT:** “the explanation comes after the ask, everywhere except the Oracle handoff” / “magic-link and checkout say nothing”
+
+    **WHY:** è più forte di quanto §1 stesso abbia verificato. Il magic link contiene una spiegazione del meccanismo — one-time link, no password — come il report riconosce poche righe prima. La conclusione sostenibile è “nessuna spiegazione di custody/data handling”, non “nessuna spiegazione”.

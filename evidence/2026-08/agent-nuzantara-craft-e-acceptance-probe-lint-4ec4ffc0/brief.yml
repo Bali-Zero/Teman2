@@ -1,0 +1,95 @@
+task_id: craft-e-acceptance-probe-lint
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  L01/PR-1 of the beyond-SOTA craft wave: make the gap between a declared acceptance
+  criterion and the thing that would falsify it VISIBLE, at the one door that already
+  exists (`scripts/evidence_pack_lint.py`), adding no new ceremony.
+
+  Rule 12: an `acceptance:` bullet in evidence/brief.yml may now be a mapping
+  {text, probe} instead of a bare string, where `probe:` names the command, test id, or
+  check that would prove the criterion true. The lint emits up to three AGGREGATE
+  NOTICEs — bullets with no probe (N1), declared probes bound to no receipt (N2), bullet
+  text with no EARS keyword (N3) — and can never return a violation.
+
+  Gear 2 is the DETERMINISTIC FLOOR recomputed from this PR's own changed-file list
+  (`--print-floor` -> 2, `--print-floor-source` -> size). Receipt below. Not a choice.
+constraints:
+  - "NOTICE-only, unconditionally. This rule has no phased flip date and no violation
+    path at all — a `violations` list that is always empty would be dead code on the only
+    path it exists for (W116), so the function returns notices and nothing else."
+  - "Aggregate, never per-bullet. The corpus holds 209 acceptance bullets across 49
+    Gear>=2 packs; one notice per bullet would make CI output unreadable and would be the
+    'new ceremony' the 2026-08-26 lesson forbids. At most 3 lines per pack."
+  - "No change to compute_floor, compute_ceiling, or any existing check_*. Rule 12 is a
+    new function with a single new call site inside lint(), appended after
+    check_gear_floor."
+  - "The honest limit is stated in the code, not just the PR body: this lints FIELD
+    PRESENCE only. A receipt is self-reported prose, forgeable until a CI step actually
+    executes the probe. The lane spec forbids claiming 'mechanically bound acceptance'
+    and this PR does not claim it."
+  - "SPEC DELTA, declared not hidden: L01/PR-1 names as its innocence fixture 'the live
+    visa-retention-scope pack's acceptance shape (must stay silent)'. Measured this
+    session, that pack's 5 bullets are bare strings carrying 0 probes, so it cannot stay
+    silent under the spec's own Build text ('require EVERY Gear>=2 acceptance bullet to
+    pair with a probe'). A rule satisfying the fixture would have to fire only on
+    opt-in mapping bullets — of which zero exist anywhere — i.e. a guard that cannot
+    fire, superscar #2. The normative Build text wins; innocence is re-derived below."
+acceptance:
+  - text:
+      "WHEN the rule ships, the linter's own hermetic corpus SHALL pass with the new
+      guilt+innocence fixtures included."
+    probe: "scripts/evidence_pack_lint.py --selftest"
+  - text:
+      "WHEN the full pytest wrapper runs, every test in the evidence-pack suite SHALL
+      pass, the 14 new rule-12 proofs included."
+    probe: "pytest scripts/tests/test_evidence_pack_lint.py"
+  - text:
+      "WHERE a new check_* function is censused, guard-conformance SHALL report zero
+      violations — no phantom test references."
+    probe: "infra/guard-conformance/check_guard_conformance.py"
+  - text:
+      "IF any of the nine mutations of rule 12 and its four adversarial fixes is
+      applied, the corpus SHALL turn red — proving the tests are not vacuous."
+    probe: "pytest scripts/tests/test_evidence_pack_lint.py"
+  - text:
+      "WHILE the rule is live, no evidence pack in the repo SHALL acquire a NEW
+      non-zero exit: the two that fail must fail identically under origin/main's linter."
+    probe: 'scripts/evidence_pack_lint.py "$p"'
+consumer_map:
+  - "`scripts/evidence_pack_lint.py` — one new check_ function, one new call site in
+    lint(), two new private helpers, module docstring rule 12."
+  - "`scripts/tests/test_evidence_pack_lint.py` — the sole guilt+innocence corpus rule 12
+    is graded against, and the file guard-conformance resolves its test names in."
+  - "`infra/guard-conformance/registry.json` — one new guards entry, keeping census
+    parity with the one new check_* def (census.method = ast-def-prefix, prefix check_)."
+  - "`.github/workflows/harness-floor.yml` — unchanged, but it is the live consumer: it
+    resolves this PR's pack via evidence_paths.py and runs the lint against it."
+  - "Every future Gear>=2 pack under evidence/**/pack.yml — rule 12 now grades it, in
+    notice mode, from the moment this lands on origin/main."
+risks:
+  - "N2 binds a declared probe to a receipt by LITERAL whole-token match. A probe naming
+    flags the receipt lacks stays unbound (strict), and matching by meaning is refused
+    outright — fuzzy matching here would be the over-match direction of superscar #3."
+  - "N1 counts legacy string bullets as uncovered, so every existing pack emits one N1
+    line until its author opts into the mapping form. That is the intended signal, not
+    noise: the measured coverage is 0/209 and the notice is what makes it visible.
+    Rejected as a finding in the refuter round, with the reasoning recorded in dissent."
+  - "Notice-only means nothing is blocked. The lane spec's own Out-of-scope forbids
+    flipping NOTICE to FAIL in this wave; until real CI execution is wired, stderr is the
+    only channel this rule speaks through."
+grader: |
+  Blind cross-family refutation by Kimi K3 (kimi-code/k3), which did not build this diff.
+  Three dispatches: two truncated mid-list on a 27KB payload and one completed on a
+  compact payload with 10 findings. Codex GPT-5.6 was attempted twice and echoed the
+  prompt without answering in this environment (matches this session's own arsenal probe,
+  codex = timeout). Every finding was REPRODUCED by this session before being accepted
+  or refuted — two were refuted with a measurement, not an opinion. Final on-disk gate:
+  the orchestrating Opus 5 session, empirically, in the same turn as this pack.
+budget: |
+  1 Sonnet 5 implementer dispatch, 3 refuter dispatches (Kimi K3), 2 failed Codex
+  dispatches, 1 orchestrator gate. Wall clock ~2h.
+pii:
+  none — this PR touches a CI lint script, its test corpus, the guard-conformance
+  registry, and one doctrine paragraph. No client data anywhere in the diff.

@@ -1,0 +1,76 @@
+task_id: arm-admin-dashboard-local-ci
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Arm the existing apps/admin-dashboard-local vitest suite inside the already-required
+  frontend-tests job. The change adds one step to the (mouth, true) matrix leg and one
+  PENDING-ARMS ledger row for the single test file that cannot yet run in that job.
+
+  The gap is measured: apps/admin-dashboard-local has 13 vitest files / 130 tests, while
+  `grep -rln "admin-dashboard-local" .github/workflows/` returned no matches. The existing
+  `admin-dashboard` matrix leg is a different application. The full local suite completed in
+  about 810ms.
+
+  This is the third built-never-armed cure documented in tests.yml itself. The same job already
+  carries steps for packages/core (33 files / 123 tests previously absent from every workflow)
+  and wa-mirror (8 files, previously zero CI gates).
+constraints:
+  - >-
+    Keep the suite inside the already-required `Frontend Tests (Next.js) (mouth, true)` context.
+    Branch protection pins required contexts by name; a new matrix leg would be born unrequired
+    and would reproduce W69 instead of curing it.
+  - >-
+    Reuse the existing root `npm install`. apps/admin-dashboard-local is in the root package.json
+    workspaces array, so no additional install step is required.
+  - >-
+    Exclude only `**/garuda-preview-process-integration.test.ts`, explicitly on the command line.
+    The full suite is 13 files / 130 tests; the armed command is 12 files / 129 tests.
+  - >-
+    Do not add an apps/admin-dashboard-local prefix to scripts/ci/change_map.py in this PR. The
+    existing `apps/admin-dashboard/` rule has a trailing slash and does not match the local app;
+    the unknown path currently fails open with `run_all: true`. Adding a rule without a separate
+    routing decision could turn the current run-all behavior into a real skip.
+acceptance:
+  - >-
+    The deterministic gear floor recomputed from the diff is 3 and the PR carries its own
+    per-PR evidence pack.
+  - "The new step appears by name in CI output on this PR and is green."
+  - "The excluded file does not appear in that step's run list."
+  - "The required actionlint check passes."
+consumer_map:
+  - >-
+    GitHub Actions frontend-tests job, specifically the already-required (mouth, true) matrix
+    leg. It runs the new admin-dashboard-local step after the root workspace install.
+  - >-
+    Branch protection on main, which already requires the named frontend context and therefore
+    receives this suite without a separate settings change.
+  - >-
+    Internal GARUDA preview dashboard. Its adapter validates exact response keys, so backend
+    response additions can break the dashboard even when both components work in isolation.
+risks:
+  - >-
+    The real-process integration test remains outside this frontend step. It symlinks the real
+    backend `.venv` into a synthetic repo root (test lines 43-46), while
+    resolveGarudaProcessConfig requires `.venv/bin/python` (adapter lines 137 and 146). This job
+    has neither that venv nor the backend dependencies: tests.yml sets up Python at line 529 and
+    installs packages system-wide at lines 548-551 only in the backend job.
+  - >-
+    PR #4796's backend preview-adapter parity test covers the contract-drift class that caused
+    the observed break by pinning nine hand-maintained TypeScript constants against their Python
+    definitions. It does not cover the excluded test's unique process boundary: the child must
+    not read backend `.env` or inherit unrelated application secrets. The ledger row in this PR
+    tracks that remaining arm.
+  - >-
+    actionlint was not run locally because its binary is not installed on this machine. The
+    workflow downloads it pinned by SHA on the runner; the required actionlint check is the
+    remaining syntax gate.
+grader: |
+  The workflow step was written by the build seat. The conductor, in an independent session,
+  re-ran the exact armed command and the full suite, opened and confirmed all four cited source
+  locations, parsed the workflow YAML and compared the new step with both sibling steps, ran the
+  workflow timeout-floor linter, and confirmed the root-workspace membership. Generator !=
+  grader holds. The conductor did not run actionlint locally, and this brief does not claim it did.
+budget: >-
+  One build lane plus one independent conductor review. No council and no additional graders.
+pii: none

@@ -1,0 +1,169 @@
+task_id: wal-continuity-probe-0829
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Build the nightly WAL-continuity probe the Beyond-SOTA B7/X2 reports asked
+  for — or prove it already exists and report NO-OP.
+
+  It does not exist. Measured on origin/main before writing anything:
+  `pg_stat_archiver` has ZERO occurrences in the tree, and so do
+  `archive_mode`, `archive_command` and `last_archived_wal`. No PENDING-ARMS
+  row covers it. The `W101-recidiva-fly-backup` scar that looked adjacent is
+  the QDRANT phase of `infra/scripts/fly-backup.sh` being dead code under a
+  bare pipeline — nothing to do with WAL.
+
+  The scar this exists to prevent: on 2026-08-09 WAL archiving on
+  `nuzantara-postgres` was found DISABLED by a legacy override. Nothing was
+  red. The nightly backup reported DONE every night and the monthly restore
+  drill passed — because both measure a LOGICAL DUMP, and a logical dump
+  neither needs nor observes the WAL chain. The fleet held snapshots and
+  believed it held point-in-time recovery.
+
+  The three existing signals each assert something true and none of them
+  assert continuity: `fly-pg-backup.sh` that an object landed in Tigris,
+  `restore-drill.yml` that the newest `.sql.gz` restores with >=50 tables,
+  `backup_sensor.py` that the off-site receipt is fresh. A script that checks
+  a backup EXISTS is not a script that checks the WAL chain is CONTINUOUS,
+  and that distinction is the whole mandate.
+
+  Gear 3 by PATH and blast radius, not by choice: the diff touches
+  `.github/workflows/` and `infra/launchagents/`, both hot zones for
+  `scripts/evidence_pack_lint.py::compute_floor()`. Recomputed from the diff
+  in CI, never selected by the lane.
+constraints:
+  - "NO production database connection, NO `fly`, NO `launchctl` from this
+    lane. The probe's reader is pluggable (`--from-json`) and every test
+    drives a fixture. Arming it on Pro is a ledger row, not something this
+    lane executes."
+  - "No credential file is opened and no secret value is printed. Alerts route
+    through `scripts/tg_notify.py`, which reads TELEGRAM_BOT_TOKEN and
+    TELEGRAM_OWNER_CHAT_ID from the environment BY NAME — this repo already
+    carries 119 hardcoded fallbacks pointing at a mailbox nobody can open, and
+    this must not be the 120th."
+  - "`archive_command` routinely embeds credentials (an S3 URL, a wal-g line).
+    Its VALUE must never be persisted, printed or sent — only the boolean
+    'is it set' (superscar #4)."
+  - "Compare against the PREVIOUS observation, not an absolute value.
+    'archived_count is 5000' means nothing."
+  - "The probe must be able to report RED, and that must be PROVEN, not
+    asserted. A probe that cannot go red has not gone green."
+  - "Every test writes only to tmp_path — never `~/.agent/decisions/state`
+    (W96: tests that mutate production state)."
+  - "Work only in `.worktrees/ops-wal-probe`, `git -C` on every git command.
+    The main checkout stays untouched."
+# Rewritten 2026-08-29 to satisfy the acceptance-probe rule that landed on main the
+# same day (#5208, notice mode). Each bullet now names the PROBE that decides it and is
+# EARS-shaped, because an acceptance criterion with no runnable probe is an assertion
+# nobody runs — the same sentence this lane put in its own pack about numbers in prose.
+# Every probe named here also appears in a pack receipt, which is what makes the pairing
+# a binding rather than a second place to write a wish.
+acceptance:
+  - text:
+      "WHEN any declared RED condition holds, the probe SHALL exit RED through the
+      same entry point cron uses — `classify` being right while `main()` never reaches
+      it is W116/W120 exactly: dead code on the only path it exists for."
+    probe: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q"
+  - text:
+      "WHERE a naive check would cry wolf — a quiet database that archives nothing,
+      a timeline bump, a counter reset, a `.backup` filename, a brand-new cluster
+      inside its first WAL segment — the probe SHALL stay green."
+    probe: "python3 scripts/wal_continuity_probe.py --selftest"
+  - text: "IF any RED branch is disabled by mutation, the suite SHALL go red."
+    probe: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q"
+  - text:
+      "WHEN a verdict or note exists in the contract, a test SHALL prove a path
+      produces it — reachability, not documentation."
+    probe: "test_guilt_every_declared_red_code_is_reachable"
+  - text:
+      "WHILE a check could not run, the run SHALL NOT be indistinguishable from one
+      where it passed: it alerts, and where the evidence itself was erased it exits
+      CANNOT_VERIFY rather than clean."
+    probe: "test_a_stats_reset_is_CANNOT_VERIFY_not_a_stall_and_not_a_clean_run"
+  - text:
+      "WHEN the probe computes a RED, it SHALL report whether the gateway actually
+      delivered it — a correct verdict that reaches nobody is the disease this artifact
+      exists to catch, wearing its own uniform."
+    probe: "test_a_RED_the_gateway_REFUSED_to_send_is_reported_as_unreported"
+risks:
+  - "IRREDUCIBLE, and the reason for the residual ledger row: a LYING
+    `archive_command` (`/bin/true`, or an uploader exiting 0 before
+    durability) makes Postgres increment `archived_count` and advance
+    `last_archived_wal` with nothing recoverable. Every check would be green
+    and every one would be CORRECT about what it measured. `pg_stat_archiver`
+    records what Postgres BELIEVES it shipped, never that the object exists.
+    This is the 2026-08-09 scar one level up — there a dump stood in for the
+    WAL chain, here Postgres's belief stands in for the archive. Only a
+    bucket-side listing closes it, and that is a separate PR."
+  - "SEQUENCE_GAP is bounded, not complete: `.backup` and `.history` files also
+    increment `archived_count`, so a hole smaller than the non-segment archives
+    in the same window hides in that slack. It catches the large gap; it does
+    not prove the set is complete."
+  - "Primary-only by contract. An answer from a server in recovery is
+    CANNOT_VERIFY — correct for this cluster (5432 is a proxy and archiver
+    state on a standby describes the wrong server) but wrong for a standby
+    legitimately running `archive_mode = always`. That would need a second
+    mode, not a loosened check."
+  - "`read_archiver_state_via_fly()` has never been executed against
+    production — forbidden by the mandate. Its contract is pinned by fixtures;
+    the live path is proven by the first scheduled run, which is why the
+    install ledger row refuses `launchctl list` as proof."
+grader: |
+  NOT WRITTEN BY THIS LANE, and deliberately left open. The mandate that
+  commissioned this work says, verbatim: "Do not post your own gate verdict.
+  Report to me when green and I dispatch an adjudicator." So this field
+  records what the BUILD lane put the diff through and stops there — it is a
+  statement of process, not a verdict, and it must not be read as one.
+
+  Two cross-family refuter seats reviewed the probe on fresh context BEFORE
+  the PR was opened, both asked only for false-negatives and false-positives:
+
+    codex gpt-5.6-sol (xhigh, --sandbox read-only)  — 7 ranked findings
+    kimi-code/k3                                    — 6 ranked findings
+
+  They agreed on four. TWO WERE REAL DEFECTS that would have shipped:
+
+  1. FALSE RED — `archive_library`. Since PG 15 an archive MODULE replaces
+     `archive_command` entirely, so a healthy server using one reports an
+     EMPTY archive_command. The first draft declared that server
+     ARCHIVING_DISABLED: a false p0 on a configuration Fly's postgres-flex
+     17.x can be running. Cured — disabled now requires NEITHER to be set —
+     and pinned by an innocence test plus mutant M8.
+  2. FALSE RED — recovered failures. A rise in `failed_count` paged even when
+     the archiver had succeeded afterwards. The archiver retries the same
+     segment until it succeeds, so a transient error is not a break in the
+     chain, and paging on it is how a probe teaches people to ignore it. Now
+     a FAILURES_RECOVERED note. Mutant M9.
+
+  Three further findings were SILENT SKIPS — green having compared nothing,
+  which is the disease this probe exists to fight, found inside the probe:
+  counters falling with `stats_reset` UNCHANGED (a crash loses the stats file,
+  it is not a reset); a missing WAL position on either side; a
+  `.backup`/`.history` filename on the PREVIOUS side, where the first cure had
+  covered only the current side (W107 in miniature — curing the half that bit
+  you). All three now emit notes, and the structural fix that covers the whole
+  class is that ANY voiding note raises a digest alert instead of exiting 0 in
+  silence.
+
+  Both seats independently raised the lying-`archive_command` limit. It is not
+  cured — it CANNOT be from this data source — so it is written into the
+  module docstring under its own heading and ledgered with its own arming step
+  rather than assumed away.
+
+  A THIRD adversarial layer arrived from CI itself and found the worst of the
+  four: `Gateway callers must read the VERDICT, not the exit code` caught
+  `send_alert` returning `proc.returncode == 0`, while `tg_notify.py`
+  deliberately never fails its caller and exits 0 on three outcomes that mean
+  NOT SENT. A WAL-continuity probe whose alarm silently does not arrive is the
+  same disease wearing this probe's uniform. Neither refuter saw it; the gate
+  did. Recorded because it is the argument for keeping machine gates in front
+  of model review, not behind it.
+budget: |
+  Four rounds, all before any adjudicator was dispatched.
+  R1 build: probe + 43 tests + workflow + plist + wrapper + ledger row; 7
+  mutants killed. R2: the two cross-family refuters' findings — 2 false REDs
+  and 3 silent skips cured, suite to 55, mutants to 15. R3: four required CI
+  gates red, all four legitimate — the gateway-verdict defect, the anti-regrowth
+  lint (the test's own literal), organ registry G1, watcher coverage. R4: the
+  organs_registry checksum, then this evidence set.
+pii: none

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from cell_core.types import CellConfig, PulseResult, SafetyCheckResult
-from conftest import (
+from tests.conftest import (
     FakeActor,
     FakeEpisodic,
     FakeLTM,

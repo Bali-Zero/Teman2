@@ -1,0 +1,178 @@
+You are judging FULL PAGES of a visa-eligibility result screen ("your case needs a human review") for an Indonesian visa agency. You read MARKUP + COPY, not pixels — judge copy, structure, information order, and the declared palette. {ph} spans are placeholders (real value injected at runtime), not missing content.
+
+TASK A — Compare PAGE-1 vs PAGE-2 (they differ deliberately). For EACH page give 1-5 + one-line rationale on:
+  T fiducia/istituzionalità percepita da un richiedente al primo contatto
+  S rischio che la pagina scatti un segnale-scam (SEA context: red-heavy + WhatsApp + "continue on WhatsApp" patterns are ALSO scam patterns)
+  C chiarezza dello stato (perché serve un umano, cosa succede ora)
+  A azionabilità del prossimo passo
+Then: FORCED CHOICE — which page would a first-time applicant with a past overstay TRUST more, and the single strongest reason. Then: name any element on either page that could read as a dark pattern, or state none.
+
+TASK B — RED PERCEPTION on two landing pages (LAND-1, LAND-2 below): with the declared palette, does the red-dominant scheme read INSTITUTIONAL (state-adjacent, Merah Putih) or SCAM-ADJACENT to a SEA audience? Name the 2 strongest mitigating marks present (or missing). Do NOT cite laws or statistics unless you are certain; uncited judgment is fine, invented citations are not.
+
+Answer in compact EN. Number every finding.
+
+=== PAGE-1 ===
+<div class="page">
+  <header class="id-header">
+    <a class="wordmark" href="#home">BALI ZERO</a>
+    <div class="hdr-right">
+      <span class="lang-toggle" role="group" aria-label="Language"><span class="on" tabindex="0">EN</span><span class="off" tabindex="0">ID</span></span>
+      <a class="wa-entry" href="#wa" aria-label="Ask us on WhatsApp"><span class="wa-ic"><svg><!--WhatsApp icon--></svg></span></a>
+    </div>
+  </header>
+
+  <main class="main">
+    <p class="mono" style="font-size:13px;color:var(--ink-soft)">Case <strong>BZ-7Q4K</strong></p>
+
+    <div class="card" style="margin-top:10px;border-left:4px solid var(--state-conditional)">
+      <h2 style="color:var(--state-conditional)">Your case needs a human look</h2>
+      <p style="margin-top:8px;font-size:15px">Because of your past overstay, we can't give an automatic answer. That's not a no — a specialist checks the settled-fine record and replies with your real options.</p>
+      <p class="soft" style="margin-top:8px;font-size:13px">No price is shown for this outcome — you only see a number when your exact case has one.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="avatar" style="width:44px;height:44px"><span class="ph" style="border:0;padding:0">{FOTO}</span></span>
+        <div>
+          <p style="font-weight:600"><span class="ph">{NAMED_AGENT}</span></p>
+          <p class="soft" style="font-size:13px">Visa specialist, Bali office · answers within <span class="ph">{SLA}</span> · <span class="ph">{OFFICE_HOURS}</span> WITA</p>
+        </div>
+      </div>
+      <a class="wa-card" href="#wa?case=BZ-7Q4K" style="margin-top:12px">
+        <span class="wa-ic"><svg><!--WhatsApp icon--></svg></span>
+        <span>Continue on WhatsApp<span class="wa-sub">Your case travels as code BZ-7Q4K — no personal facts in the link</span></span>
+      </a>
+    </div>
+
+    <p style="margin-top:14px;font-size:14px"><a href="#review">Review or change your answers</a> — nothing is submitted yet.</p>
+  </main>
+
+  <footer class="footer">
+    <p>Assessment based on rules current as of <span class="mono">27 Aug 2026</span>. We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p class="idline">PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> · <span class="ph">{REGISTRY_LINK}</span></p>
+  </footer>
+</div>
+
+=== PAGE-2 ===
+<div class="page">
+  <header class="id-header">
+    <a class="wordmark" href="#home">BALI ZERO</a>
+    <div class="hdr-right">
+      <span class="lang-toggle" role="group" aria-label="Language"><span class="on" tabindex="0">EN</span><span class="off" tabindex="0">ID</span></span>
+      <a class="wa-entry" href="#wa" aria-label="Ask us on WhatsApp"><span class="wa-ic"><svg><!--WhatsApp icon--></svg></span></a>
+    </div>
+  </header>
+
+  <main class="main">
+    <p class="mono" style="font-size:13px;color:var(--ink-soft)">Case <strong>BZ-7Q4K</strong></p>
+
+    <div class="card" style="margin-top:10px;border-left:4px solid var(--state-conditional)">
+      <h2 style="color:var(--state-conditional)">Your case needs a human look</h2>
+      <p style="margin-top:8px;font-size:15px">Because of your past overstay, we can't give an automatic answer. That's not a no — a specialist checks the settled-fine record and replies with your real options.</p>
+      <p class="soft" style="margin-top:8px;font-size:13px">No price is shown for this outcome — you only see a number when your exact case has one.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <p style="font-weight:600">Our visa team in Bali</p>
+      <p class="soft" style="font-size:13px;margin-top:2px">answers within <span class="ph">{SLA}</span> · <span class="ph">{OFFICE_HOURS}</span> WITA</p>
+      <a class="wa-card" href="#wa?case=BZ-7Q4K" style="margin-top:12px">
+        <span class="wa-ic"><svg><!--WhatsApp icon--></svg></span>
+        <span>Continue on WhatsApp<span class="wa-sub">Your case travels as code BZ-7Q4K — no personal facts in the link</span></span>
+      </a>
+    </div>
+
+    <p style="margin-top:14px;font-size:14px"><a href="#review">Review or change your answers</a> — nothing is submitted yet.</p>
+  </main>
+
+  <footer class="footer">
+    <p>Assessment based on rules current as of <span class="mono">27 Aug 2026</span>. We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p class="idline">PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> · <span class="ph">{REGISTRY_LINK}</span></p>
+  </footer>
+</div>
+
+PALETTE (computed tokens the pages use — light theme):
+--carta (page ground) #f7f6f2 · --ink (text) #16213a · --ink-soft #5a6274
+red family: --structure #C8102E · --action-fill #D01033 (white text, AA 5.52) · --pressed #c40020
+--state-conditional (wine, used for "needs a human look") #a83a44 · links #C8102E underlined
+Font: system sans; wordmark caps. Red is used for: wordmark, primary CTA fill, section structure lines. Errors are wine, never bright red. WhatsApp entry is icon-only (green fill banned for text).
+
+=== LAND-1 (visa-check landing) ===
+<div class="page">
+  <header class="id-header">
+    <a class="wordmark" href="#home">BALI ZERO</a>
+    <div class="hdr-right">
+      <span class="lang-toggle" role="group" aria-label="Language"><span class="on" tabindex="0">EN</span><span class="off" tabindex="0">ID</span></span>
+      <a class="wa-entry" href="#wa" aria-label="Ask us on WhatsApp"><span class="wa-ic"><svg><!--WhatsApp icon--></svg></span></a>
+    </div>
+  </header>
+
+  <main class="main">
+    <h1 style="margin-top:12px">Which visa fits your case? Find out before you pay anything</h1>
+    <p class="soft" style="margin-top:10px">Answer a few questions — about 10, more only if your case branches, and we tell you when it does. You see your realistic options, then decide.</p>
+
+    <div class="card" style="margin-top:16px">
+      <p style="font-size:15px">If we can handle your case, the whole service is <strong>from <span class="mono ph" style="font-size:16px">IDR 1.5XX.XXX</span> all-inclusive</strong> <span class="ph">{FLOOR_IDR}</span></p>
+      <p class="soft" style="font-size:13px;margin-top:6px">Your exact price appears with your result — the same number again at payment, to the rupiah.</p>
+    </div>
+
+    <a class="cta" href="#start" style="margin-top:16px">Check my options</a>
+    <a class="cta-secondary" href="#how">What we'll ask, and why</a>
+
+    <p class="notsure" style="margin-top:8px">Every question shows «Why we ask» — and «Not sure?» always routes to a person.</p>
+  </main>
+
+  <section class="trust">
+    <p class="official">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p class="idline">PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> · <span class="ph">{REGISTRY_LINK}</span></p>
+  </section>
+
+  <footer class="footer">
+    <p>Rules current as of <span class="mono">27 Aug 2026</span>. Immigration policy can change; we tell you when it does.</p>
+  </footer>
+</div>
+
+=== LAND-2 (voa-application landing) ===
+<div class="page">
+  <header class="id-header">
+    <a class="wordmark" href="#home">BALI ZERO</a>
+    <div class="hdr-right">
+      <span class="lang-toggle" role="group" aria-label="Language"><span class="on" tabindex="0">EN</span><span class="off" tabindex="0">ID</span></span>
+      <a class="wa-entry" href="#wa" aria-label="Ask us on WhatsApp"><span class="wa-ic"><svg><!--WhatsApp icon--></svg></span></a>
+    </div>
+  </header>
+
+  <main class="main">
+    <h1 style="margin-top:12px">Visa on Arrival extension, done properly</h1>
+    <p class="soft" style="margin-top:10px">Apply in about <span class="ph">{APPLY_MINUTES}</span> minutes. We prepare and follow your application at the immigration office in Bali — you track every step.</p>
+
+    <p style="margin-top:16px;font-size:18px">from <span class="mono ph" style="font-size:18px">IDR 1.5XX.XXX</span> — all-inclusive</p>
+    <p class="soft" style="font-size:13px;margin-top:4px">One price. No surprises at checkout. <span class="ph">{FLOOR_IDR}</span></p>
+
+    <a class="cta" href="#start" style="margin-top:16px">Start your application</a>
+    <a class="cta-secondary" href="#how">How it works</a>
+
+    <div class="card" style="margin-top:20px">
+      <h3>What you get</h3>
+      <ul style="margin:10px 0 0 18px;font-size:15px">
+        <li>Eligibility checked before you pay</li>
+        <li>Documents reviewed by our team in Bali</li>
+        <li>Status tracking until the decision</li>
+      </ul>
+    </div>
+
+    <a class="wa-card" href="#wa" style="margin-top:12px">
+      <span class="wa-ic"><svg><!--WhatsApp icon--></svg></span>
+      <span>Prefer to talk first?<span class="wa-sub">Ask us on WhatsApp — a person answers</span></span>
+    </a>
+  </main>
+
+  <section class="trust">
+    <p class="official">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p class="idline">PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> · <span class="ph">{REGISTRY_LINK}</span></p>
+    <p style="margin-top:8px">Read our reviews on <a href="#ext">Google</a> · <a href="#ext">Trustpilot</a> <span class="soft" style="font-size:12px">(external links — stubbed in this mockup)</span></p>
+  </section>
+
+  <footer class="footer">
+    <p>Rules current as of <span class="mono">27 Aug 2026</span>. Immigration policy can change; we tell you when it does.</p>
+  </footer>
+</div>

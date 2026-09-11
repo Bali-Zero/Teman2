@@ -58,7 +58,7 @@ def _isolate(monkeypatch, tmp_path):
     """Every test: fresh verdict cache, tmp ledger root, no real key needed."""
     monkeypatch.setattr(dc, "_verdict_cache", {"ts": 0.0, "decision": None})
     monkeypatch.setenv("LLM_COST_JSONL_ROOT", str(tmp_path / "ledger"))
-    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("BAILIAN_TOKEN_PLAN_API_KEY", "test-key-not-real")
     monkeypatch.delenv("DEEPSEEK_MODEL", raising=False)
 
 
@@ -194,12 +194,12 @@ def test_fresh_machine_bootstraps_known_zero_not_degrade(tmp_path):
 
 
 def test_default_model_is_flash_env_overridable(monkeypatch):
-    assert dc.resolve_model() == "deepseek-v4-flash"
+    assert dc.resolve_model() == "deepseek-v4-flash-0731"
     assert dc.resolve_model("deepseek-v4-pro") == "deepseek-v4-pro"
     monkeypatch.setenv("DEEPSEEK_MODEL", "deepseek-v4-pro")
     assert dc.resolve_model() == "deepseek-v4-pro"
     # explicit arg still wins over env
-    assert dc.resolve_model("deepseek-v4-flash") == "deepseek-v4-flash"
+    assert dc.resolve_model("deepseek-v4-flash-0731") == "deepseek-v4-flash-0731"
 
 
 def test_pricing_math_cache_hit_aware():
@@ -225,6 +225,35 @@ def test_402_maps_to_balance_dead(monkeypatch):
     monkeypatch.setattr(dc.urllib.request, "urlopen", _raise_402)
     with pytest.raises(dc.DeepSeekBalanceDead):
         dc.complete("ping")
+
+
+def test_api_key_env_wins_without_touching_qwen_settings_file(monkeypatch):
+    """Innocence: BAILIAN_TOKEN_PLAN_API_KEY set -> load_tp1_settings_key is
+    never consulted (W96 — a test must never depend on ~/.qwen/settings.json
+    existing or not on the machine that runs it)."""
+
+    def _tripwire():
+        raise AssertionError("env var present — load_tp1_settings_key must not run")
+
+    monkeypatch.setattr(dc, "load_tp1_settings_key", _tripwire)
+    assert dc.api_key() == "test-key-not-real"  # set by the _isolate fixture
+
+
+def test_api_key_falls_back_to_qwen_settings_when_env_absent(monkeypatch):
+    """Innocence: no env var -> the TP1 settings-file loader is consulted
+    (mirrors scripts/tp1_call.py's own precedence, not re-derived here)."""
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    monkeypatch.setattr(dc, "load_tp1_settings_key", lambda: ("from-settings-file", None))
+    assert dc.api_key() == "from-settings-file"
+
+
+def test_api_key_raises_when_both_sources_absent(monkeypatch):
+    """Guilt: neither env nor settings file -> DeepSeekError, not a silent
+    empty-string Authorization header."""
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    monkeypatch.setattr(dc, "load_tp1_settings_key", lambda: (None, "settings.json not found"))
+    with pytest.raises(dc.DeepSeekError, match="BAILIAN_TOKEN_PLAN_API_KEY"):
+        dc.api_key()
 
 
 def test_verdict_cache_ttl(monkeypatch):

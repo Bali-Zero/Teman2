@@ -1,0 +1,576 @@
+{
+  "tool_used": "playwright-python (chromium) \u2014 system python3, no dedicated venv found (matches r5b/smoke_runtime.py's own stack)",
+  "target": "/private/tmp/claude-501/-Users-nuzantara-nuzantara/b0b4cfee-0d97-475c-b63f-36f99027cf5c/scratchpad/r5b/journey.html",
+  "summary": {
+    "PASS": 6,
+    "FAIL": 1,
+    "PARTIAL": 1,
+    "unmeasurable_headless": 0
+  },
+  "results": [
+    {
+      "n": 1,
+      "name": "KEYBOARD-ONLY FULL TRAVERSAL (boot -> tourism verdict boundary, no mouse)",
+      "verdict": "PASS",
+      "would_fail_if": "any step required a click, tab_to() never found the target within 25 presses, date-input keyboard typing failed to produce a real value, or the final screen wasn't the verdict-boundary card",
+      "evidence": {
+        "steps": [
+          {
+            "label": "who_answers -> self (Tab..Tab, Enter)",
+            "ok": true,
+            "tabs_to_reach_group": 5,
+            "reason": null,
+            "arrow_presses": 0,
+            "activation_key": "Enter"
+          },
+          {
+            "label": "in_indonesia -> outside (Tab, ArrowDown, Space)",
+            "ok": true,
+            "tabs_to_reach_group": 1,
+            "reason": null,
+            "arrow_presses": 1,
+            "activation_key": "Space"
+          },
+          {
+            "label": "holds_stay_permit -> No (Tab, Enter)",
+            "ok": true,
+            "tabs_to_reach_group": 1,
+            "reason": null,
+            "arrow_presses": 1,
+            "activation_key": "Enter"
+          },
+          {
+            "label": "nationalities -> type Italy, Tab to button, Enter",
+            "ok": true,
+            "tabs_to_input": 1,
+            "list_after_typing": [
+              "Italy"
+            ],
+            "tabs_to_italy": 1
+          },
+          {
+            "label": "birth_date -> type 01011990 keyboard-only, Tab to Continue, Enter",
+            "ok": true,
+            "dob_value_after_keyboard_typing": "1990-01-01",
+            "tabs_to_dob": 1,
+            "tabs_to_continue": 2,
+            "title_after": "What brings you to Indonesia?"
+          },
+          {
+            "label": "category -> tourism (Tab, Enter)",
+            "ok": true,
+            "tabs_to_reach_group": 1,
+            "reason": null,
+            "arrow_presses": 0,
+            "activation_key": "Enter"
+          },
+          {
+            "label": "trip_scope -> one trip (Tab, Space)",
+            "ok": true,
+            "tabs_to_reach_group": 1,
+            "reason": null,
+            "arrow_presses": 0,
+            "activation_key": "Space"
+          },
+          {
+            "label": "entry_pattern -> on arrival (Tab, Enter)",
+            "ok": true,
+            "tabs_to_reach_group": 1,
+            "reason": null,
+            "arrow_presses": 0,
+            "activation_key": "Enter"
+          },
+          {
+            "label": "stay_days -> under 30 days (Tab, Space)",
+            "ok": true,
+            "tabs_to_reach_group": 1,
+            "reason": null,
+            "arrow_presses": 0,
+            "activation_key": "Space"
+          },
+          {
+            "label": "review_gate -> Tab to CTA, Enter -> verdict boundary",
+            "ok": true,
+            "review_title": "Check your answers",
+            "tabs_to_cta": 1,
+            "final_title": "\u2014 verdict boundary \u2014"
+          }
+        ],
+        "failed_steps": []
+      },
+      "notes": ""
+    },
+    {
+      "n": 2,
+      "name": "LIVE-REGION SEQUENCE (family+sponsor path, every mutation captured)",
+      "verdict": "FAIL",
+      "would_fail_if": "an announcement text contains 'undefined'/'null'/'NaN', two DISTINCT non-empty announcements land <100ms apart (one would be spoken over/skipped by a screen reader before the user can hear it), or a transition produces zero announcements",
+      "evidence": {
+        "total_mutations": 21,
+        "total_announcements(non_empty)": 13,
+        "expected_transitions": 13,
+        "no_announce_gap_detected": false,
+        "full_announcement_sequence": [
+          "Who is filling this in? \u2014 answered. Next: Are you in Indonesia right now?",
+          "Are you in Indonesia right now? \u2014 answered. Next: Do you currently hold an Indonesian stay permit?",
+          "Do you currently hold an Indonesian stay permit? \u2014 answered. Next: Your nationality (the passport for this trip)",
+          "Your nationality (the passport for this trip) \u2014 answered. Next: Age check",
+          "Age check \u2014 answered. Next: What brings you to Indonesia?",
+          "What brings you to Indonesia? \u2014 answered. Your path is confirmed: 13 questions \u2014 the family path asks about the sponsor. Next: Is this one trip, or do you plan to come and go?",
+          "Is this one trip, or do you plan to come and go? \u2014 answered. Next: Who are you joining?",
+          "Who are you joining? \u2014 answered. Next: Your marital status",
+          "Your marital status \u2014 answered. Next: Your sponsor's nationality",
+          "Your sponsor's nationality \u2014 answered. Next: Your sponsor's status in Indonesia",
+          "Your sponsor's status in Indonesia \u2014 answered. Next: Is the marriage registered?",
+          "Is the marriage registered? \u2014 answered. Next: Has your sponsor agreed to sponsor this application?",
+          "Has your sponsor agreed to sponsor this application? \u2014 answered. Next: Check your answers"
+        ],
+        "bad_content(undefined/null/NaN)": [],
+        "raw_squash_pairs(<100ms, includes intentional clear+set idiom)": [
+          {
+            "i": 1,
+            "dt_ms": 27.6,
+            "prev": "Who is filling this in? \u2014 answered. Next: Are you in Indones",
+            "cur": "Are you in Indonesia right now? \u2014 answered. Next: Do you cur"
+          },
+          {
+            "i": 2,
+            "dt_ms": 15.5,
+            "prev": "Are you in Indonesia right now? \u2014 answered. Next: Do you cur",
+            "cur": "Do you currently hold an Indonesian stay permit? \u2014 answered."
+          },
+          {
+            "i": 3,
+            "dt_ms": 60.2,
+            "prev": "Do you currently hold an Indonesian stay permit? \u2014 answered.",
+            "cur": ""
+          },
+          {
+            "i": 4,
+            "dt_ms": 50.7,
+            "prev": "",
+            "cur": "Your nationality (the passport for this trip) \u2014 answered. Ne"
+          },
+          {
+            "i": 5,
+            "dt_ms": 14.0,
+            "prev": "Your nationality (the passport for this trip) \u2014 answered. Ne",
+            "cur": ""
+          },
+          {
+            "i": 6,
+            "dt_ms": 50.3,
+            "prev": "",
+            "cur": "Age check \u2014 answered. Next: What brings you to Indonesia?"
+          },
+          {
+            "i": 7,
+            "dt_ms": 7.7,
+            "prev": "Age check \u2014 answered. Next: What brings you to Indonesia?",
+            "cur": ""
+          },
+          {
+            "i": 8,
+            "dt_ms": 51.0,
+            "prev": "",
+            "cur": "What brings you to Indonesia? \u2014 answered. Your path is confi"
+          },
+          {
+            "i": 9,
+            "dt_ms": 8.0,
+            "prev": "What brings you to Indonesia? \u2014 answered. Your path is confi",
+            "cur": ""
+          },
+          {
+            "i": 10,
+            "dt_ms": 9.1,
+            "prev": "",
+            "cur": "Is this one trip, or do you plan to come and go? \u2014 answered."
+          },
+          {
+            "i": 11,
+            "dt_ms": 7.4,
+            "prev": "Is this one trip, or do you plan to come and go? \u2014 answered.",
+            "cur": ""
+          },
+          {
+            "i": 12,
+            "dt_ms": 34.5,
+            "prev": "",
+            "cur": "Who are you joining? \u2014 answered. Next: Your marital status"
+          },
+          {
+            "i": 13,
+            "dt_ms": 15.7,
+            "prev": "Who are you joining? \u2014 answered. Next: Your marital status",
+            "cur": "Your marital status \u2014 answered. Next: Your sponsor's nationa"
+          },
+          {
+            "i": 14,
+            "dt_ms": 59.0,
+            "prev": "Your marital status \u2014 answered. Next: Your sponsor's nationa",
+            "cur": ""
+          },
+          {
+            "i": 15,
+            "dt_ms": 50.4,
+            "prev": "",
+            "cur": "Your sponsor's nationality \u2014 answered. Next: Your sponsor's "
+          },
+          {
+            "i": 16,
+            "dt_ms": 7.9,
+            "prev": "Your sponsor's nationality \u2014 answered. Next: Your sponsor's ",
+            "cur": ""
+          },
+          {
+            "i": 17,
+            "dt_ms": 35.1,
+            "prev": "",
+            "cur": "Your sponsor's status in Indonesia \u2014 answered. Next: Is the "
+          },
+          {
+            "i": 18,
+            "dt_ms": 7.5,
+            "prev": "Your sponsor's status in Indonesia \u2014 answered. Next: Is the ",
+            "cur": ""
+          },
+          {
+            "i": 19,
+            "dt_ms": 8.2,
+            "prev": "",
+            "cur": "Is the marriage registered? \u2014 answered. Next: Has your spons"
+          },
+          {
+            "i": 20,
+            "dt_ms": 42.6,
+            "prev": "Is the marriage registered? \u2014 answered. Next: Has your spons",
+            "cur": "Has your sponsor agreed to sponsor this application? \u2014 answe"
+          }
+        ],
+        "announcement_squash_pairs(<100ms between two DISTINCT spoken messages)": [
+          {
+            "i": 1,
+            "dt_ms": 27.6,
+            "prev": "Who is filling this in? \u2014 answered. Next: Are you in Indonesia right now?",
+            "cur": "Are you in Indonesia right now? \u2014 answered. Next: Do you currently hold an Indon"
+          },
+          {
+            "i": 2,
+            "dt_ms": 15.5,
+            "prev": "Are you in Indonesia right now? \u2014 answered. Next: Do you currently hold an Indon",
+            "cur": "Do you currently hold an Indonesian stay permit? \u2014 answered. Next: Your national"
+          },
+          {
+            "i": 4,
+            "dt_ms": 64.3,
+            "prev": "Your nationality (the passport for this trip) \u2014 answered. Next: Age check",
+            "cur": "Age check \u2014 answered. Next: What brings you to Indonesia?"
+          },
+          {
+            "i": 5,
+            "dt_ms": 58.7,
+            "prev": "Age check \u2014 answered. Next: What brings you to Indonesia?",
+            "cur": "What brings you to Indonesia? \u2014 answered. Your path is confirmed: 13 questions \u2014"
+          },
+          {
+            "i": 6,
+            "dt_ms": 17.1,
+            "prev": "What brings you to Indonesia? \u2014 answered. Your path is confirmed: 13 questions \u2014",
+            "cur": "Is this one trip, or do you plan to come and go? \u2014 answered. Next: Who are you j"
+          },
+          {
+            "i": 7,
+            "dt_ms": 41.9,
+            "prev": "Is this one trip, or do you plan to come and go? \u2014 answered. Next: Who are you j",
+            "cur": "Who are you joining? \u2014 answered. Next: Your marital status"
+          },
+          {
+            "i": 8,
+            "dt_ms": 15.7,
+            "prev": "Who are you joining? \u2014 answered. Next: Your marital status",
+            "cur": "Your marital status \u2014 answered. Next: Your sponsor's nationality"
+          },
+          {
+            "i": 10,
+            "dt_ms": 43.0,
+            "prev": "Your sponsor's nationality \u2014 answered. Next: Your sponsor's status in Indonesia",
+            "cur": "Your sponsor's status in Indonesia \u2014 answered. Next: Is the marriage registered?"
+          },
+          {
+            "i": 11,
+            "dt_ms": 15.7,
+            "prev": "Your sponsor's status in Indonesia \u2014 answered. Next: Is the marriage registered?",
+            "cur": "Is the marriage registered? \u2014 answered. Next: Has your sponsor agreed to sponsor"
+          },
+          {
+            "i": 12,
+            "dt_ms": 42.6,
+            "prev": "Is the marriage registered? \u2014 answered. Next: Has your sponsor agreed to sponsor",
+            "cur": "Has your sponsor agreed to sponsor this application? \u2014 answered. Next: Check you"
+          }
+        ],
+        "final_review_title": "Check your answers"
+      },
+      "notes": "raw_squash_pairs includes journey.html's own intentional say() idiom (textContent='' then setTimeout(50)->real text, to force SR re-announcement of repeated strings) \u2014 that is by design, not a defect, so the verdict is driven by announcement_squash_pairs (distinct message vs distinct message) instead."
+    },
+    {
+      "n": 3,
+      "name": "STORAGE CORRUPTION (4 malformed localStorage payloads before load)",
+      "verdict": "PASS",
+      "would_fail_if": "reload() throws/hangs, the rendered page shows a literal 'undefined'/'NaN', a console error/pageerror fires during recovery, or (orphaned_facts case) a pruned fact resurfaces as a phantom row on the review screen",
+      "evidence": {
+        "cases": [
+          {
+            "case": "malformed_json",
+            "payload": "{\"v\":2, this is not json,,,",
+            "reload_crashed_or_hung": false,
+            "title_after_reload": "Who is filling this in?",
+            "body_contains_undefined_or_NaN": false,
+            "console_errors_during_this_case": []
+          },
+          {
+            "case": "wrong_version",
+            "payload": "{\"v\": 1, \"facts\": {\"category\": \"tourism\", \"who_answers\": \"self\"}, \"qid\": \"category\", \"delegate\": false}",
+            "reload_crashed_or_hung": false,
+            "title_after_reload": "Who is filling this in?",
+            "body_contains_undefined_or_NaN": false,
+            "console_errors_during_this_case": []
+          },
+          {
+            "case": "nonexistent_qid",
+            "payload": "{\"v\": 2, \"facts\": {\"who_answers\": \"self\", \"in_indonesia\": \"no\"}, \"qid\": \"totally_bogus_qid_xyz\", \"delegate\": false}",
+            "reload_crashed_or_hung": false,
+            "title_after_reload": "Who is filling this in?",
+            "body_contains_undefined_or_NaN": false,
+            "console_errors_during_this_case": []
+          },
+          {
+            "case": "orphaned_facts",
+            "payload": "{\"v\": 2, \"facts\": {\"who_answers\": \"self\", \"category\": \"family\", \"family_relation\": \"spouse\", \"overstay_days\": \"never\", \"stay_days\": \"under30\"}, \"qid\": \"marital_status\", \"delegate\": false}",
+            "reload_crashed_or_hung": false,
+            "title_after_reload": "Your marital status",
+            "body_contains_undefined_or_NaN": false,
+            "reached_marital_status_then_walked_to_review": true,
+            "review_rows": [
+              "What brings you to Indonesia?family",
+              "Who are you joining?spouse",
+              "Your marital statusmarried",
+              "Your sponsor's nationalityIndonesia",
+              "Your sponsor's status in Indonesiacitizen",
+              "Is the marriage registered?yes",
+              "Has your sponsor agreed to sponsor this application?yes"
+            ],
+            "phantom_orphan_rows": [],
+            "console_errors_during_this_case": []
+          }
+        ],
+        "per_case_ok": {
+          "malformed_json": true,
+          "wrong_version": true,
+          "nonexistent_qid": true,
+          "orphaned_facts": true
+        }
+      },
+      "notes": ""
+    },
+    {
+      "n": 4,
+      "name": "REDUCED MOTION (prefers-reduced-motion computed-style check)",
+      "verdict": "PASS",
+      "would_fail_if": "transitionDuration on #progressFill stays non-zero under emulated prefers-reduced-motion:reduce, OR the no-preference control shows no transition at all (meaning the comparison is meaningless), OR the stylesheet declares an `animation` outside the reduced-motion reset rule that this probe never exercised",
+      "evidence": {
+        "progressFill.transitionDuration under reduced-motion": "0s",
+        "progressFill.animationDuration under reduced-motion": "0s",
+        "progressFill.transitionDuration under no-preference (control)": "0.25s",
+        "css_transition_declarations_found": [
+          ".progress-fill{height:100%;background:var(--merah);transition:"
+        ],
+        "css_animation_keyword_occurrences": 1,
+        "extra_animation_declarations_beyond_the_reduce_reset": 0
+      },
+      "notes": "grep-confirmed the stylesheet declares exactly one `transition` property (.progress-fill) and zero @keyframes/animation rules besides the reduce-motion reset itself \u2014 so this single element's check is exhaustive coverage, not a sample."
+    },
+    {
+      "n": 5,
+      "name": "ZOOM/REFLOW 400% (viewport 360, text-only zoom via CSS font-size 200% + supplementary real-zoom proxy)",
+      "verdict": "PARTIAL",
+      "would_fail_if": "[5a] document.documentElement.scrollWidth > 360 after root font-size:200%, or any tap target's rendered height drops below 44px; [5b, supplementary] scrollWidth > clientWidth under CSS zoom:4, or a zoom-normalized tap target drops below 44px",
+      "evidence": {
+        "5a_text_only_zoom(font-size:200%_on_documentElement)": {
+          "qTitle_font_size_before": "24px",
+          "qTitle_font_size_after": "24px",
+          "font_size_actually_changed": false,
+          "scrollWidth_before": 360,
+          "scrollWidth_after": 360,
+          "overflow": false,
+          "tap_targets": [
+            {
+              "text": "\u25d0",
+              "h": 44,
+              "w": 44
+            },
+            {
+              "text": "\u2713I'm the traveller",
+              "h": 50,
+              "w": 290
+            },
+            {
+              "text": "\u2713I'm helping someone else",
+              "h": 50,
+              "w": 290
+            }
+          ],
+          "min_tap_target_height": 44,
+          "shrunk_below_44px": false
+        },
+        "5b_supplementary_real_zoom_proxy(CSS_zoom:4_on_documentElement)": {
+          "scrollWidth": 1108,
+          "clientWidth": 360,
+          "overflow": true,
+          "computed_zoom_readback": "1",
+          "tap_targets_normalized": [
+            {
+              "text": "\u25d0",
+              "h_raw": 176,
+              "h_normalized": 176.0
+            },
+            {
+              "text": "\u2713I'm the traveller",
+              "h_raw": 274,
+              "h_normalized": 274.0
+            },
+            {
+              "text": "\u2713I'm helping someone else",
+              "h_raw": 428,
+              "h_normalized": 428.0
+            }
+          ],
+          "min_tap_target_height_normalized": 176.0,
+          "shrunk_below_44px": false
+        }
+      },
+      "notes": "The literally-instructed technique (root font-size:200%) produced ZERO visual change here (qTitle font-size before/after identical) \u2014 verified in the source: .jr{font-size:16px} is an explicit reset that islands the whole prototype subtree from documentElement's font-size, and no rule in the stylesheet uses a font-size in em/rem (only .ph's border/padding use .92em, itself rooted at .jr's fixed 16px, not at html). So [5a]'s literal PASS is methodologically hollow: it proves nothing actually zoomed, not that zoomed content reflows safely \u2014 hence verdict PARTIAL rather than a shallow PASS. [5b] is the real reflow signal: it DOES scale the fixed-px layout (Chromium's non-standard `zoom` CSS property, the closest headless proxy for real browser Ctrl/Cmd+ zoom) and is reported as supplementary evidence for the conductor to weigh. A genuine finding either way: browser 'text-only zoom' (distinct from full-page zoom) would not enlarge any text in this prototype at all."
+    },
+    {
+      "n": 6,
+      "name": "DELEGATE KEYBOARD (checkpoint reachable+completable keyboard-only, banner perceivable)",
+      "verdict": "PASS",
+      "would_fail_if": "any step required a click, the delegate banner stayed hidden after confirmation, the banner conveyed its meaning through styling alone (no real text), or the reworded question after the checkpoint wasn't keyboard-reachable",
+      "evidence": {
+        "steps": [
+          {
+            "label": "who_answers -> delegate (Tab, ArrowDown, Enter)",
+            "ok": true,
+            "tabs": 5,
+            "reason": null,
+            "arrow_presses": 1,
+            "activation_key": "Enter"
+          },
+          {
+            "label": "delegate_confirm -> confirmed (Tab, Space)",
+            "ok": true,
+            "delegate_confirm_title": "Answering for the traveller",
+            "tabs": 1,
+            "reason": null,
+            "arrow_presses": 0,
+            "activation_key": "Space"
+          },
+          {
+            "label": "post-checkpoint hop stays keyboard-reachable (in_indonesia, delegate wording)",
+            "ok": true,
+            "tabs": 1,
+            "reason": null,
+            "arrow_presses": 1,
+            "activation_key": "Enter"
+          }
+        ],
+        "banner_hidden_after_confirm": false,
+        "banner_text": "You're answering for someone else. Their case, their facts \u2014 answer as the traveller would. Who sees what: {CUSTODY_WHO_SEES}.",
+        "banner_text_perceivable(not_color_only)": true,
+        "in_indonesia_title_after_delegate": "Is the traveller in Indonesia right now?",
+        "wording_rewritten_for_delegate": true
+      },
+      "notes": ""
+    },
+    {
+      "n": 7,
+      "name": "FOCUS TRAP CHECK (18x Tab and 18x Shift+Tab, no stuck repeat / no invisible landing)",
+      "verdict": "PASS",
+      "would_fail_if": "two consecutive Tab presses land on the exact same element (focus not advancing = trapped), or focus lands on an element with zero rendered size (invisible target a keyboard user can't perceive)",
+      "evidence": {
+        "forward": {
+          "direction": "forward(Tab)",
+          "sequence": [
+            "BUTTON#.radio[Yes]",
+            "BUTTON#.None[a person can pick this up]",
+            "BUTTON#.None[Back]",
+            "BUTTON#saveBtn.None[Save & continue later]",
+            "BODY#.None[BALI ZERO\n    \n      ENID\n    ]",
+            "A#.None[BALI ZERO]",
+            "SPAN#.None[EN]",
+            "BUTTON#themeToggle.None[\u25d0]",
+            "A#.None[]",
+            "BUTTON#.radio[Yes]",
+            "BUTTON#.None[a person can pick this up]",
+            "BUTTON#.None[Back]",
+            "BUTTON#saveBtn.None[Save & continue later]",
+            "BODY#.None[BALI ZERO\n    \n      ENID\n    ]",
+            "A#.None[BALI ZERO]",
+            "SPAN#.None[EN]",
+            "BUTTON#themeToggle.None[\u25d0]",
+            "A#.None[]"
+          ],
+          "landed_on_body_at": [
+            4,
+            13
+          ],
+          "invisible_focus_at": [],
+          "stuck_repeat_at(consecutive_identical_focus)": []
+        },
+        "backward": {
+          "direction": "backward(Shift+Tab)",
+          "sequence": [
+            "BUTTON#themeToggle.None[\u25d0]",
+            "SPAN#.None[EN]",
+            "A#.None[BALI ZERO]",
+            "BODY#.None[BALI ZERO\n    \n      ENID\n    ]",
+            "BUTTON#saveBtn.None[Save & continue later]",
+            "BUTTON#.None[Back]",
+            "BUTTON#.None[a person can pick this up]",
+            "BUTTON#.radio[Yes]",
+            "A#.None[]",
+            "BUTTON#themeToggle.None[\u25d0]",
+            "SPAN#.None[EN]",
+            "A#.None[BALI ZERO]",
+            "BODY#.None[BALI ZERO\n    \n      ENID\n    ]",
+            "BUTTON#saveBtn.None[Save & continue later]",
+            "BUTTON#.None[Back]",
+            "BUTTON#.None[a person can pick this up]",
+            "BUTTON#.radio[Yes]",
+            "A#.None[]"
+          ],
+          "landed_on_body_at": [
+            3,
+            12
+          ],
+          "invisible_focus_at": [],
+          "stuck_repeat_at(consecutive_identical_focus)": []
+        },
+        "landed_on_body_note": "landing on BODY at the natural end of the page's tab order is normal browser behavior (no more focusable siblings), not itself a trap \u2014 tracked separately from the trapped/invisible signals that drive the verdict"
+      },
+      "notes": ""
+    },
+    {
+      "n": 8,
+      "name": "CONSOLE HYGIENE (zero console.error/pageerror across every probe's pages, probes 1-7)",
+      "verdict": "PASS",
+      "would_fail_if": "any page created by probes 1-7 emitted a console.error or an uncaught pageerror at any point during this suite's run",
+      "evidence": {
+        "total_errors": 0,
+        "errors_by_probe": []
+      },
+      "notes": ""
+    }
+  ]
+}

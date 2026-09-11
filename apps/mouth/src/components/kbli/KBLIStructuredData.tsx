@@ -8,6 +8,7 @@ import {
   formatPmaOwnership,
   hasPublishablePmaCap,
 } from "@/lib/kbli-pma-disclosure";
+import { riskLabelEn } from "@/lib/kbli-derive";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
 import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
 
@@ -100,7 +101,14 @@ export function KBLICodeJsonLd({
         }`
   }${pmaAttribution}`;
 
-  const riskLevel: string = code.licensing[0]?.riskCategory ?? "Unknown";
+  // The rendered page translates this tier (PR #4776); the JSON-LD did not, so a
+  // block that declares `"inLanguage": "en"` was emitting `Risk: Menengah Rendah`
+  // into the description, keywords and GovernmentService that search engines read.
+  // `riskLabelEn` returns null for a tier it does not recognise, so the raw value is
+  // kept as the fallback -- this translates what it knows and never drops information.
+  const rawRiskCategory = code.licensing[0]?.riskCategory;
+  const riskLevel: string =
+    riskLabelEn(rawRiskCategory) ?? rawRiskCategory ?? "Unknown";
   const licenseType = code.licensing[0]?.licenseType ?? "NIB";
   // Rows not verified against a KBLI-2025-native OSS source must not reach
   // Google/AI answers as unqualified fact (Codex gate round 4).

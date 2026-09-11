@@ -115,6 +115,7 @@ case "\$STUB_CODEX_MODE" in
     success) echo "STUB REPORT BODY"; exit 0 ;;
     success_quota_text) echo "Analysis: this queue documents a usage limit and 429 backoff policy."; exit 0 ;;
     quota) echo "error: out of extra usage on this weekly bucket"; exit 1 ;;
+    quota_with_reset) echo "ERROR: You've hit your usage limit for GPT-5.3-Codex-Spark. Switch to another model now, or try again at Jan 1st, 2030 8:06 PM."; exit 1 ;;
     fail) echo "boom: synthetic codex crash"; exit 3 ;;
     *) echo "unset STUB_CODEX_MODE"; exit 9 ;;
 esac
@@ -293,6 +294,91 @@ if grep -q '"status":"quota"' "$WORK/world/state/attempts.jsonl" 2>/dev/null \
     note_pass "quota innocence: attempt recorded as quota, NOT ok (stays eligible for retry)"
 else
     note_fail "quota: attempts.jsonl did not record the expected quota-not-ok shape"
+fi
+if grep -q "out of extra usage on this weekly bucket" "$WORK/world/logs/run.log" 2>/dev/null; then
+    note_pass "quota: run.log carries codex's own quota-message text (2026-08-27 diagnosability fix)"
+else
+    note_fail "quota: run.log did not carry codex's raw quota-message text"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 5b (guilt, 2026-08-27 repair): quota output that names a REALISTIC
+# reset time (~3 days out — comfortably between the fixed 12h floor and the
+# 7-day safety cap) sets the backoff to that parsed time, not the fixed
+# ${BACKOFF_HOURS}h default. This is the fix for the measured 2026-08-19..27
+# deadlock where the lane blind-retried every 12h against a bucket whose own
+# reply said "try again at Aug 31st, 2026 8:06 PM" for 8 straight days.
+#
+# The fixture date string is built by adding 3 days + the WITA (UTC+8)
+# offset to now, then formatting THAT instant in UTC — because the
+# implementation reads codex's digits as WITA wall-clock and subtracts 8h,
+# round-tripping through UTC-formatted digits of (target + 8h) is what
+# makes the parser land back on `target` (epoch math, not a wall-clock
+# label a human would write for a specific zone).
+# ---------------------------------------------------------------------------
+setup_world
+now_epoch="$(date +%s)"
+target_epoch=$((now_epoch + 3 * 86400))
+label_epoch=$((target_epoch + 8 * 3600))
+future_str="$(date -u -r "$label_epoch" '+%b %e, %Y %I:%M %p' 2>/dev/null || date -u -d "@$label_epoch" '+%b %e, %Y %I:%M %p' 2>/dev/null)"
+cat > "$WORK/world/bin/codex" <<SH
+#!/bin/sh
+echo "invoked \$*" >> "$WORK/world/codex-invocations.log"
+echo "ERROR: You've hit your usage limit for GPT-5.3-Codex-Spark. Switch to another model now, or try again at $future_str."
+exit 1
+SH
+chmod +x "$WORK/world/bin/codex"
+rc="$(run_wrapper STUB_CODEX_MODE=irrelevant-custom-stub-above)"
+backoff_val="$(cat "$WORK/world/state/backoff-until.txt" 2>/dev/null || echo 0)"
+lo=$((now_epoch + 2 * 86400))
+hi=$((now_epoch + 5 * 86400))
+if [ "$rc" = "0" ] && [ "$backoff_val" -ge "$lo" ] && [ "$backoff_val" -le "$hi" ]; then
+    note_pass "quota with a realistic parseable reset ('$future_str'): backoff set near the parsed time, not the fixed 12h"
+else
+    note_fail "quota with realistic reset: rc=$rc backoff_val=$backoff_val expected within [$lo,$hi] (fixture: '$future_str')"
+fi
+if grep -q "parsed reset time" "$WORK/world/logs/run.log" 2>/dev/null; then
+    note_pass "quota with realistic reset: log names the parsed-reset code path"
+else
+    note_fail "quota with realistic reset: log did not name the parsed-reset path"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 5c (guilt, safety cap): a quota message naming an ABSURD reset time
+# (years out) must NOT wedge the lane open-endedly on a parser misfire or a
+# provider quoting a nonsensical future date — falls back to the fixed
+# ${BACKOFF_HOURS}h default instead, same as no reset time at all.
+# ---------------------------------------------------------------------------
+setup_world
+write_codex_stub quota_with_reset
+now_epoch="$(date +%s)"
+rc="$(run_wrapper STUB_CODEX_MODE=quota_with_reset)"
+backoff_val="$(cat "$WORK/world/state/backoff-until.txt" 2>/dev/null || echo 0)"
+lower=$((now_epoch + 11 * 3600))
+upper=$((now_epoch + 13 * 3600))
+if [ "$rc" = "0" ] && [ "$backoff_val" -ge "$lower" ] && [ "$backoff_val" -le "$upper" ]; then
+    note_pass "quota with an absurd (years-out) reset time: capped back to the fixed ~12h default"
+else
+    note_fail "quota with absurd reset time: backoff_val=$backoff_val expected within [$lower,$upper]"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 5d (innocence, 2026-08-27 repair): quota output WITHOUT a parseable
+# reset time still falls back to the fixed ${BACKOFF_HOURS}h default,
+# unchanged from before this repair — the parser must only ever EXTEND the
+# wait on real evidence, never invent one from silence.
+# ---------------------------------------------------------------------------
+setup_world
+write_codex_stub quota
+now_epoch="$(date +%s)"
+rc="$(run_wrapper STUB_CODEX_MODE=quota)"
+backoff_val="$(cat "$WORK/world/state/backoff-until.txt" 2>/dev/null || echo 0)"
+lower=$((now_epoch + 11 * 3600))
+upper=$((now_epoch + 13 * 3600))
+if [ "$rc" = "0" ] && [ "$backoff_val" -ge "$lower" ] && [ "$backoff_val" -le "$upper" ]; then
+    note_pass "quota without a parseable reset: backoff stays at the fixed ~12h default"
+else
+    note_fail "quota without a parseable reset: backoff_val=$backoff_val expected within [$lower,$upper]"
 fi
 
 # ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 #!/bin/bash
 # pro.tg_digest_flush — Telegram digest flusher — ONE grouped message per slot for everything tg_notify spooled (notification economy, PR #2067)
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
-# Canon: infra/launchagents/wrappers/pro-tg_digest_flush.sh
-# Live:  ~/scripts/pro-tg_digest_flush.sh (declared pair, node=pro)
+# Canon: infra/launchagents/wrappers/pro-tg-digest-flush.sh
+# Live:  ~/scripts/pro-tg-digest-flush.sh (declared pair, node=pro)
 
 set -u   # G9_fail_visible: unset vars crash, they do not expand empty
 

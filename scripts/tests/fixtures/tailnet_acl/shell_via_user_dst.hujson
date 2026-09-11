@@ -1,0 +1,14 @@
+// GUILT (round-2 gate, finding B): THE HISTORICAL DEFECT, MERELY DE-WILDCARDED. This is the
+// minimal edit a maintainer would make to "narrow" the old
+// `antonellosiano@gmail.com -> antonellosiano@gmail.com:*` blanket — and it still hands every
+// owned device the writable shell.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "acls": [
+    {"action": "accept", "proto": "tcp", "src": ["antonellosiano@gmail.com"], "dst": ["antonellosiano@gmail.com:443"]}
+  ],
+  "ssh": [],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

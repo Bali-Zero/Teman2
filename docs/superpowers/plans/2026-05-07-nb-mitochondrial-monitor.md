@@ -46,7 +46,7 @@
 - `scripts/nb-monitor/show.py` (CLI dashboard)
 - `infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist`
 - `docs/operations/nb-mitochondrial-monitor.md`
-- `docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`
+- `docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md`
 - `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json` (NOT git-tracked)
 
 **Modified:** none (read-only on existing pipeline per spec §7.1).
@@ -269,7 +269,7 @@ Write to `apps/mata-garuda/mata_garuda/scripts/nb_monitor/registry.py`:
 """NB registry loader.
 
 Reads the bootstrap JSON file at ~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json
-and returns a list of NotebookEntry dataclasses. ADR-006 documents the
+and returns a list of NotebookEntry dataclasses. ADR-012 documents the
 migration plan to apps/mata-garuda/mata_garuda/notebook_registry.py post-FASE-2 merge.
 """
 from __future__ import annotations
@@ -785,7 +785,7 @@ Write to `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json`:
 {
   "schema_version": 1,
   "generated_at": "2026-05-07",
-  "source": "config.py NLM_NOTEBOOKS + Round 2 memory + manual curation. ADR-006: migrate to mata_garuda.notebook_registry on FASE 2 merge.",
+  "source": "config.py NLM_NOTEBOOKS + Round 2 memory + manual curation. ADR-012: migrate to mata_garuda.notebook_registry on FASE 2 merge.",
   "notebooks": [
     {
       "uuid": "1ed02e54-542f-426a-94f8-53c5ffde4b7d",
@@ -861,7 +861,7 @@ Write to `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json`:
 }
 ```
 
-**Note:** Initial seed with 7 confirmed UUIDs. The remaining 17 (KILL/EXPORT placeholders for FASE-2 work) are NOT included — better to start with verified entries. The cron will warn if the registry has fewer than 24 entries; that warning is documented in Task 18 as informational, not blocking. ADR-006 (Task 30) describes the FASE-2 migration that will populate the rest.
+**Note:** Initial seed with 7 confirmed UUIDs. The remaining 17 (KILL/EXPORT placeholders for FASE-2 work) are NOT included — better to start with verified entries. The cron will warn if the registry has fewer than 24 entries; that warning is documented in Task 18 as informational, not blocking. ADR-012 (Task 30) describes the FASE-2 migration that will populate the rest.
 
 - [ ] **Step 3: Verify file is valid JSON and loadable**
 
@@ -1429,7 +1429,7 @@ sum alerts+enriched (or read stats if present) to compute push_success_rate.
 
 GLOBAL ONLY: this log has no per-UUID breakdown. The same rate is applied
 to every UUID with active_routing=True. Per-UUID per-message logging is
-out of scope for this PR (see ADR-006).
+out of scope for this PR (see ADR-012).
 """
 from __future__ import annotations
 
@@ -1750,7 +1750,7 @@ Returns None until FASE 1 ships `bali_zero_skills_local` Qdrant collection
 on Pro. When ready, this module will query
 `point.payload.source_cell` for matches against the NB UUID and return the count.
 
-Spec §3.3, §7.3. ADR-006.
+Spec §3.3, §7.3. ADR-012.
 """
 from __future__ import annotations
 
@@ -1774,7 +1774,7 @@ apps/backend-rag/backend/services/oracle/. When ready, this module will
 read the citation log and compute the rate of Zantara responses citing
 source URLs that map to the NB UUID.
 
-Spec §3.3, §7.3. ADR-006.
+Spec §3.3, §7.3. ADR-012.
 """
 from __future__ import annotations
 
@@ -3752,7 +3752,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 
 **Files:**
 
-- Create: `docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`
+- Create: `docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md`
 
 - [ ] **Step 1: Verify ADR dir exists**
 
@@ -3764,10 +3764,10 @@ If missing: `mkdir -p docs/adr`.
 
 - [ ] **Step 2: Write the ADR**
 
-Write to `docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`:
+Write to `docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md`:
 
 ````markdown
-# ADR-006: nb_monitor bootstrap JSON registry, migrate to notebook_registry post-FASE-2
+# ADR-012: nb_monitor bootstrap JSON registry, migrate to notebook_registry post-FASE-2
 
 **Status:** Accepted (2026-05-07)
 **Authors:** Antonello Siano (Zero), Claude Opus 4.7
@@ -3822,8 +3822,8 @@ JSON instead of YAML to avoid adding `pyyaml` to `apps/mata-garuda/pyproject.tom
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md
-git commit -m "docs(adr): ADR-006 bootstrap JSON registry, migrate post-FASE-2"
+git add docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md
+git commit -m "docs(adr): ADR-012 bootstrap JSON registry, migrate post-FASE-2"
 git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ````
 
@@ -3870,7 +3870,7 @@ python ../../scripts/nb-monitor/show.py
 - Spec: [`docs/superpowers/specs/2026-05-07-nb-mitochondrial-monitor-design.md`](../../../../../docs/superpowers/specs/2026-05-07-nb-mitochondrial-monitor-design.md)
 - Plan: [`docs/superpowers/plans/2026-05-07-nb-mitochondrial-monitor.md`](../../../../../docs/superpowers/plans/2026-05-07-nb-mitochondrial-monitor.md)
 - Runbook: [`docs/operations/nb-mitochondrial-monitor.md`](../../../../../docs/operations/nb-mitochondrial-monitor.md)
-- ADR: [`docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`](../../../../../docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md)
+- ADR: [`docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md`](../../../../../docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md)
 - Round 2 memo: `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round2_2026_05_04.md`
 
 ````
@@ -3938,7 +3938,7 @@ Implements FASE 5 of NB Lifecycle Round 2 ("mitochondrial value monitor": measur
 
 - Spec: `docs/superpowers/specs/2026-05-07-nb-mitochondrial-monitor-design.md`
 - Plan: `docs/superpowers/plans/2026-05-07-nb-mitochondrial-monitor.md`
-- ADR: `docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`
+- ADR: `docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md`
 - Runbook: `docs/operations/nb-mitochondrial-monitor.md`
 
 ## Architecture
@@ -4014,7 +4014,7 @@ CREATE TABLE alerts_sent (
 ## Limitations documented
 
 - `push_success_rate` is GLOBAL (no per-UUID breakdown in feeder log today). Same value applied per `active_routing=True` UUID. Per-UUID logging is a follow-up PR.
-- 7 of planned 24 bootstrap entries shipped; remaining ~17 await FASE 2 SSOT classification per ADR-006.
+- 7 of planned 24 bootstrap entries shipped; remaining ~17 await FASE 2 SSOT classification per ADR-012.
 
 ## Cicatrix awareness
 

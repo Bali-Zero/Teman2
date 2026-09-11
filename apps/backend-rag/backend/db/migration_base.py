@@ -5,7 +5,9 @@ Provides base classes and utilities for database migrations
 
 import hashlib
 import logging
+import os
 import re
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -14,6 +16,287 @@ import asyncpg
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Provenance (migration 299)
+# ---------------------------------------------------------------------------
+# `_schema_versions` records WHAT and WHEN. Migration 299 added WHO, THROUGH
+# WHAT and WITH WHICH RUNNER. These helpers fill them, and the rule that makes
+# them worth anything is: `applied_as` is asked of POSTGRES, never taken from
+# something the caller can set. A provenance field a caller can spoof records
+# a claim, not a fact.
+
+_APPLIED_VIA_VALUES = ("release_command", "manual", "ci")
+
+# ---------------------------------------------------------------------------
+# The dedicated migration role (RULED 2026-09-11, option D)
+# ---------------------------------------------------------------------------
+# Production runs every migration as the RUNTIME role, `backend_rag_v2`,
+# through the one `DATABASE_URL`. That role owns every table but is NOT a
+# member of `visa_ledger_owner`, which owns the SECURITY DEFINER retention
+# binders -- so any migration that must `ALTER FUNCTION ... OWNER TO
+# visa_ledger_owner` (six so far: 253, 268, 281, 286, 300, 301; 304 is the
+# seventh) either failed the deploy (2026-08-26, five migrations) or was
+# applied by hand under a superuser. The measured decision is in
+# docs/plans/2026-08-24-garuda-voa-live/STEP5-PRIVILEGE-DECISION.md.
+#
+# The cure is a second DSN, `MIGRATION_DATABASE_URL`, authenticating as a
+# dedicated LOGIN role that is a member of both. The runner connects as it and
+# IMMEDIATELY assumes the runtime role, so every object a migration creates is
+# owned by `backend_rag_v2` exactly as today; a migration that needs the ledger
+# owner wraps that one block in `RESET ROLE` / `SET ROLE backend_rag_v2`.
+# Under the single-DSN runtime (CI, a laptop, Fly before the secret exists)
+# those two statements are no-ops for `backend_rag_v2` and the file stays
+# valid. Provenance stays honest for free: `resolve_applied_as` records
+# `backend_rag_v2 (session_user=backend_rag_migrator)`.
+
+RUNTIME_ROLE = "backend_rag_v2"
+LEDGER_ROLE = "visa_ledger_owner"
+
+
+def resolve_migration_dsn() -> str | None:
+    """The DSN the migration runner connects with.
+
+    `MIGRATION_DATABASE_URL` when set, else `DATABASE_URL`. Only the
+    migration runner resolves through here (`MigrationManager`, `apply()`,
+    `migrate.py`; `services/misc/migration_runner.py` builds a manager and so
+    inherits it). `schema_audit` and the runtime keep reading
+    `settings.database_url` directly and never see the migrator DSN.
+    """
+    return settings.migration_database_url or settings.database_url
+
+
+def migration_dsn_is_dedicated() -> bool:
+    """True when the runner is on its own DSN rather than the runtime's."""
+    return bool(settings.migration_database_url)
+
+
+async def assume_runtime_role(
+    conn: asyncpg.Connection,
+    *,
+    runtime_role: str = RUNTIME_ROLE,
+    ledger_role: str = LEDGER_ROLE,
+    dedicated: bool | None = None,
+) -> str | None:
+    """Make the session's EFFECTIVE role the runtime role, right after connect.
+
+    Returns the role assumed, or None when nothing had to change. Asked of the
+    server, never of the DSN string: the DSN says who AUTHENTICATED, the
+    catalogue says whether that principal may become the runtime role.
+
+    SINGLE DSN (`MIGRATION_DATABASE_URL` unset -- CI, laptops, Fly until the
+    secret exists): an unconditional no-op, not even a catalogue read. The
+    2026-09-11 change must be invisible there, and "invisible" is a property
+    that has to be enforced rather than argued: a superuser is a member of
+    every role by `pg_has_role`'s definition, so a member-based rule would
+    have made CI's `test` superuser silently `SET ROLE` the moment any test
+    created a role literally named `backend_rag_v2` (codex, finding 3).
+
+    DEDICATED DSN, the migrator session -- every one of these refuses BEFORE
+    any statement runs, because each is option D in name only:
+      * a SUPERUSER: the point of the role is that no superuser credential
+        sits in the deploy loop.
+      * a session that IS the runtime role: that is the old single DSN under
+        the new variable, and would fail on the first ledger-owned object.
+      * `current_user <> session_user` at connect: a connection-time role
+        setting (`ALTER ROLE ... SET role`), which `RESET ROLE` would restore
+        instead of the migrator, silently defeating the bracket.
+      * the runtime role absent, or the migrator unable to `SET ROLE` to it
+        (PG16+ `SET` option; `MEMBER` on older servers).
+      * the ledger role present but the migrator not a member of it: the
+        one privilege the whole role exists to carry.
+    Then `SET ROLE <runtime_role>`, re-read `current_user`, and refuse if the
+    server disagrees.
+
+    `dedicated=None` reads the setting; tests pass it explicitly so the guilt
+    and innocence cases do not depend on the process environment.
+    """
+    if dedicated is None:
+        dedicated = migration_dsn_is_dedicated()
+    if not dedicated:
+        return None
+
+    row = await conn.fetchrow(
+        """
+        SELECT current_user AS cu,
+               session_user AS su,
+               COALESCE((SELECT rolsuper FROM pg_roles WHERE rolname = session_user), false)
+                   AS is_super,
+               EXISTS (SELECT 1 FROM pg_roles r
+                       WHERE r.rolsuper AND pg_has_role(session_user, r.oid, 'MEMBER'))
+                   AS reaches_super,
+               EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) AS runtime_exists,
+               CASE
+                   WHEN NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) THEN false
+                   WHEN current_setting('server_version_num')::int >= 160000
+                       THEN pg_has_role(session_user, $1, 'SET')
+                   ELSE pg_has_role(session_user, $1, 'MEMBER')
+               END AS can_set_runtime,
+               EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $2) AS ledger_exists,
+               CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $2)
+                    THEN pg_has_role(session_user, $2, 'MEMBER') ELSE false END
+                   AS ledger_member
+        """,
+        runtime_role,
+        ledger_role,
+    )
+
+    def _refuse(reason: str) -> MigrationError:
+        return MigrationError(
+            f"MIGRATION_DATABASE_URL refused (session_user={row['su']!r}): {reason} "
+            "-- option D needs a non-superuser migrator that is a member of "
+            f"{runtime_role!r} and {ledger_role!r} (RULED 2026-09-11)"
+        )
+
+    if row["is_super"]:
+        raise _refuse("it authenticates as a SUPERUSER")
+    if row["reaches_super"]:
+        # A non-superuser that is a member of a superuser role could SET ROLE
+        # up to it from inside a migration file (kimi finding 5): the same
+        # credential-in-the-loop, one hop away.
+        raise _refuse("it is a member of a SUPERUSER role")
+    if row["su"] == runtime_role:
+        raise _refuse("it authenticates AS the runtime role, i.e. it is the old single DSN")
+    if not row["runtime_exists"]:
+        raise _refuse(f"runtime role {runtime_role!r} does not exist")
+    if not row["can_set_runtime"]:
+        raise _refuse(f"it cannot SET ROLE to {runtime_role!r}")
+    if row["ledger_exists"] and not row["ledger_member"]:
+        raise _refuse(f"it is not a member of {ledger_role!r}")
+    if row["cu"] == runtime_role:
+        # Already assumed on this physical connection (a pool re-acquire whose
+        # release did not reset the role). Idempotent by design: the pool's
+        # `setup` hook runs on EVERY acquire, because asyncpg's release-time
+        # `RESET ALL` undoes `SET ROLE` (kimi, 2026-09-11) -- so the hook must
+        # be safe both when the reset happened and when it did not.
+        return runtime_role
+    if row["cu"] != row["su"]:
+        raise _refuse(
+            f"current_user={row['cu']!r} differs from session_user at connect "
+            "(a connection-time role setting would defeat RESET ROLE)"
+        )
+
+    # asyncpg has no parameter binding for utility statements; the role name is
+    # a module constant (or a test's own uuid-suffixed role), quoted defensively.
+    await conn.execute(f'SET ROLE "{runtime_role}"')
+    effective = await conn.fetchval("SELECT current_user")
+    if effective != runtime_role:
+        raise _refuse(f"after SET ROLE the server reports current_user={effective!r}")
+    logger.info("migration session %s assumed runtime role %s", row["su"], runtime_role)
+    return runtime_role
+
+
+def resolve_applied_via() -> str:
+    """Which invocation path is running: release_command | manual | ci.
+
+    Deterministic and derived from the ENVIRONMENT THE PLATFORM SETS, not from
+    a flag a human passes:
+
+    * Fly sets `FLY_APP_NAME` in the machine that runs `release_command`.
+    * GitHub Actions sets `CI=true` (and `GITHUB_ACTIONS`).
+    * Anything else is a human at a shell -- `manual`.
+
+    CI IS CHECKED FIRST, and that ordering is a correction (2026-08-31, blind
+    refuter). The first version checked Fly first, reasoning that a Fly machine
+    is the more specific fact. It is not: this repository's CI runs
+    `flyctl ssh console` against a Fly machine, so a CI-driven apply executes
+    WITH `FLY_APP_NAME` set and would have been recorded as `release_command` --
+    the single label most likely to be trusted in an incident. `GITHUB_ACTIONS`
+    is the narrower signal and is what actually distinguishes the two.
+
+    Declared limit: this is SELF-REPORTED from the environment and a
+    determined caller can set these variables. It is a provenance HINT, unlike
+    `applied_as`, which the server answers. The CHECK constraint in migration
+    299 bounds the vocabulary so an unexpected string is rejected by the
+    database rather than silently stored, but it cannot make an environment
+    honest.
+    """
+    if os.environ.get("GITHUB_ACTIONS") or os.environ.get("CI"):
+        return "ci"
+    if os.environ.get("FLY_APP_NAME"):
+        return "release_command"
+    return "manual"
+
+
+def resolve_runner_version() -> str:
+    """A NON-SECRET identifier of the runner that applied a row.
+
+    Deliberately boring: the module path plus the Python version. It must never
+    carry a token, a DSN, a hostname or a username -- this string is written to
+    a table that survives, and a provenance column is exactly the kind of place
+    a secret gets parked "temporarily". Kept short because it is stored per
+    row.
+    """
+    return f"migration_base/py{sys.version_info.major}.{sys.version_info.minor}"
+
+
+async def resolve_applied_as(conn: asyncpg.Connection) -> str | None:
+    """The effective PostgreSQL role, asked of the server.
+
+    Records `current_user`, and `session_user` TOO when they differ -- as
+    `current_user (session_user)`. Both, because neither alone is the answer:
+    `current_user` is the EFFECTIVE role and moves under `SET ROLE`;
+    `session_user` is the role that authenticated and does not.
+
+    CORRECTED 2026-08-31 by a blind refuter, because the first version of this
+    docstring overclaimed: it said `current_user` makes W130's temporary
+    `GRANT visa_ledger_owner TO backend_rag_v2` visible. It does NOT. A role
+    MEMBERSHIP does not change `current_user` unless someone also issues
+    `SET ROLE`; the grant merely makes the privilege reachable. What this
+    column honestly gives is the effective role at apply time plus the
+    authenticated one when they diverge -- which catches `SET ROLE`, and does
+    not catch a bare membership. Said plainly rather than left as a claim the
+    mechanism cannot support.
+
+    Returns None rather than raising if the query fails: provenance is
+    valuable, but refusing to record a migration that APPLIED CLEANLY because
+    a metadata read failed would turn a nice-to-have into an outage.
+    """
+    try:
+        row = await conn.fetchrow("SELECT current_user AS cu, session_user AS su")
+        if row is None:
+            return None
+        if row["cu"] == row["su"]:
+            return str(row["cu"])
+        return f"{row['cu']} (session_user={row['su']})"
+    except Exception:  # provenance must never block an apply that succeeded
+        logger.warning("could not resolve current_user for provenance; recording NULL")
+        return None
+
+
+async def _schema_versions_has_provenance(conn: asyncpg.Connection) -> bool:
+    """True when migration 299 has been applied to THIS database.
+
+    Necessary because the runner must work against a database that predates
+    299 -- including while 299 itself is the migration being applied. Asked of
+    the catalogue, not assumed from the file tree.
+    """
+    fetchval = getattr(conn, "fetchval", None)
+    if fetchval is None:
+        # A connection object that cannot answer a catalogue question cannot
+        # prove provenance columns exist. FAIL SAFE to the legacy INSERT rather
+        # than raising: this probe exists to ADD a metadata column, and it must
+        # never be the reason a migration that would otherwise apply cleanly
+        # does not. (Found by an existing test whose FakeConnection implements
+        # only `execute` -- the probe turned a passing test into an
+        # AttributeError, which is the probe breaking the thing it observes.)
+        return False
+    try:
+        return bool(
+            await fetchval(
+                # table_schema scoped: an unrelated `_schema_versions` in another
+                # schema would otherwise make this claim the columns exist and
+                # send a 10-column INSERT at a table that has 9 -- aborting a
+                # migration that would have applied fine (refuter, 2026-08-31).
+                "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = '_schema_versions' "
+                "AND column_name = 'applied_as')"
+            )
+        )
+    except Exception:  # a metadata read must never abort a good apply
+        logger.warning("could not probe _schema_versions provenance columns; assuming absent")
+        return False
 
 
 class MigrationError(Exception):
@@ -414,6 +697,33 @@ class BaseMigration:
             execution_time_ms,
             rollback_sql,
         )
+        # Provenance (migration 299). Asked of the CATALOGUE, not assumed from
+        # the file tree: this runner must keep working against a database that
+        # predates 299 -- including during the apply of 299 itself, where the
+        # columns do not exist yet at the moment this row is written.
+        if await _schema_versions_has_provenance(conn):
+            await conn.execute(
+                """
+                INSERT INTO _schema_versions
+                (migration_name, migration_number, checksum, description,
+                 execution_time_ms, rollback_sql, applied_by,
+                 applied_as, applied_via, runner_version)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                ON CONFLICT (migration_name) DO NOTHING
+            """,
+                self.migration_name,
+                self.migration_number,
+                checksum,
+                self.description,
+                execution_time_ms,
+                rollback_sql,
+                "migration-base",
+                await resolve_applied_as(conn),
+                resolve_applied_via(),
+                resolve_runner_version(),
+            )
+            return
+
         await conn.execute(
             """
             INSERT INTO _schema_versions
@@ -459,9 +769,16 @@ class BaseMigration:
         """
         return True
 
-    async def apply(self) -> bool:
+    async def apply(self, database_url: str | None = None) -> bool:
         """
         Apply migration with transaction and automatic rollback.
+
+        Args:
+            database_url: the DSN to apply through. `MigrationManager` passes
+                its own, so the ledger, the advisory lock and the SQL all hit
+                ONE database (codex finding 1, 2026-09-11 -- before this the
+                manager's pool and this connect could resolve differently).
+                Defaults to `resolve_migration_dsn()`.
 
         Returns:
             True if migration applied successfully, False otherwise
@@ -469,7 +786,8 @@ class BaseMigration:
         Raises:
             MigrationError: If migration fails or validation fails
         """
-        if not settings.database_url:
+        dsn = database_url or resolve_migration_dsn()
+        if not dsn:
             raise MigrationError("DATABASE_URL not configured")
 
         # Read SQL file
@@ -493,14 +811,26 @@ class BaseMigration:
             raise
 
         # Sanitize URL for logging
-        safe_url = self._sanitize_db_url(settings.database_url)
+        safe_url = self._sanitize_db_url(dsn)
         logger.info(f"Applying migration {self.migration_name} to {safe_url}")
 
         # Connect to database
         try:
-            conn = await asyncpg.connect(settings.database_url)
+            conn = await asyncpg.connect(dsn)
         except Exception as e:
             raise MigrationError(f"Cannot connect to database: {e}") from e
+
+        # Option D: the migrator session becomes the runtime role BEFORE the
+        # transaction opens, so the file's own `RESET ROLE`/`SET ROLE` pair
+        # (if any) brackets exactly the block that needs the ledger owner.
+        try:
+            await assume_runtime_role(conn)
+        except MigrationError:
+            await conn.close()
+            raise
+        except Exception as e:  # a catalogue/network failure must not leak the connection
+            await conn.close()
+            raise MigrationError(f"Cannot assume the runtime role: {e}") from e
 
         import time
 

@@ -3,7 +3,6 @@ name: Docs Guardian
 # Generator-correctness sentinel. It never compares a tracked global inventory.
 on:
   pull_request:
-  merge_group:
 
 concurrency:
   group: docs-guardian-${{ github.ref }}

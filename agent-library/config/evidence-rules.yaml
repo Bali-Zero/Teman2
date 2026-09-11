@@ -9,7 +9,7 @@
 #   - external_url       → HTTP HEAD 2s timeout, status 2xx/3xx
 #   - memory_file_ref    → ~/.claude/projects/.../memory/<name>.md exists
 #   - cicatrix_scar_ref  → header line matches in
-#                          .claude/rules/cicatrix-scars.md
+#                          docs/scars/cicatrix-scars.md
 #
 # Spec: docs/superpowers/specs/2026-05-17-agent-library-evoskill-design.md
 #       §"Architecture" step 3a (existence linter, deterministic).

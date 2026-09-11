@@ -28,7 +28,16 @@ WRAPPER="$HOME_DIR/.openclaw/bin/wr2/wr2-ig-metrics-scrape.sh"
 if [ "${WR2_IG_METRICS_CRON_ENABLED:-true}" = "false" ]; then
     echo "WR2_IG_METRICS_CRON_ENABLED=false — skipping install"; exit 0
 fi
-[ -f "$SRC" ] || { echo "FATAL: template not found at $SRC"; exit 1; }
+[ -f "$SRC" ] || {
+    echo "FATAL: template not found at $SRC"
+    echo "WR2 runs only on command (Zero, 2026-09-01) — its canon plists were renamed"
+    echo "to '*.plist.disabled-2026-09-01-wr2-runs-only-on-command' so this installer,"
+    echo "the watchdog, and launchd itself all skip them by construction. This is NOT"
+    echo "a missing file — it is a deliberate retirement. Re-installing this cron"
+    echo "requires an explicit operator decision to re-arm WR2, not a re-run of this"
+    echo "script: rename the canon plist back to '$LABEL.plist' first."
+    exit 1
+}
 
 mkdir -p "$HOME_DIR/Library/LaunchAgents" "$HOME_DIR/logs" "$(dirname "$WRAPPER")"
 

@@ -1,18 +1,41 @@
 ---
 name: sota-architecture-loop
-description: Use BEFORE architecting code, designing a feature, or making a structural/architectural decision. Evidence-backed 8-step loop (frame → ground → reason → council → decision-gate → execute → verify → capture) that improves on a naive 'reason → council → research → brainstorm' loop. Decides WHEN to invoke the multi-LLM council vs single-orchestrator, and runs review as asymmetric-adversarial (never consensus). Orchestrator-agnostic: works whether Claude, Codex, or Gemini drives.
+description: "Use BEFORE architecting code, designing a feature, or a structural decision. 8-step loop (frame→ground→reason→council→execute→verify→capture); review is asymmetric-adversarial, never consensus."
 allowed-tools: Read, Write, Edit, Bash, Skill, Agent, WebFetch
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Full loop: frame → ground → reason → council → decision-gate → execute → verify → capture. Improves on a naive 'reason → council → research → brainstorm' loop. Decides WHEN to invoke the multi-LLM council vs single-orchestrator. Orchestrator-agnostic: works whether Claude, Codex, or Gemini drives.
 
 > **CANON**: repo `.claude/` (vendored 2026-07-17, PR process-toolkit SSOT) — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`. Pro/Mini shadow it on `git pull`.
 
 # SOTA Architecture Loop
 
 Procedura per architettura codice + feature design con orchestrazione multi-LLM.
-Evidence-backed (paper 2024-2026), non opinione. Fonti + verifica in
-`research/operations/2026-05-30-sota-ai-architecture-methodology.md`.
 
-**Tre regole da cui tutto deriva** (verificate, vedi research file):
+**Provenienza delle tre regole qui sotto — corretta 2026-08-31.** Questo file
+citava un research file e diceva che le regole erano "verificate, vedi research
+file". Quel file non è mai esistito nel repository, e nessun altro file del
+corpus fonda quelle tre affermazioni: la ricerca è stata rifatta questa
+sessione, non ricordata. La citazione ritirata:
+
+RITIRATA — `research/operations/2026-05-30-sota-ai-architecture-methodology.md`, mai esistita.
+
+(La riga qui sopra porta il marcatore `RITIRATA` **e** il percorso, sulla stessa
+riga: `scripts/lint_doctrine_citations.py` lo legge come "questo percorso è
+citato come letterale morto, non come fonte". Il marcatore vale per la sua riga
+soltanto — un marcatore che esentasse tutto il paragrafo esenterebbe anche le
+citazioni VIVE che gli stanno accanto.)
+
+Le regole restano: sono la pratica istituzionale di questo organismo e reggono
+sulle proprie cicatrici, che sono verificabili. Ma reggono **senza** un backing
+paper in questo repo, e il modo onesto di scriverlo è così — una citazione
+fantasma è peggio di nessuna citazione, perché il lettore le concede la fiducia
+che darebbe a una fonte vera. `scripts/lint_doctrine_citations.py` impedisce
+alla prossima di atterrare.
+
+**Tre regole da cui tutto deriva** (pratica istituzionale, non un paper):
 
 > Eterogeneità batte numerosità · Adversarialità calibrata batte consenso · Verifica esterna batte autodichiarazione.
 

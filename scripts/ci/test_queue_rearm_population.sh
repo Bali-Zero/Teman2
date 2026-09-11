@@ -75,6 +75,36 @@ check "an ARMED PR that is UNKNOWN is not undecidable-orphaned" \
   --undecidable '[{"number":6,"mergeable":"UNKNOWN","autoMergeRequest":{"enabledAt":"x"},"title":"armed+unknown"}]' "0" 0
 
 echo
+echo "=== GUILT: a live mergeQueueEntry means armed, whatever mergeable/autoMergeRequest say ==="
+echo "    (the #5422 shape — scripts/lint_arm_probe.py; autoMergeRequest reads null both"
+echo "    when never armed AND when the queue just consumed the request on entry)"
+
+# The exact shape measured live on PR #5422: arming had SUCCEEDED
+# (`mergeQueueEntry {position: 1, state: AWAITING_CHECKS}`) while
+# `autoMergeRequest` simultaneously read null and `mergeable` read MERGEABLE.
+# The selectors before this fix (mergeable + autoMergeRequest alone) called
+# this an "unarmed candidate" — a correctly-armed PR reported as needing
+# re-arming. This is the RED case: it fails against the pre-fix selector and
+# must pass here.
+QUEUED='{"number":7,"mergeable":"MERGEABLE","autoMergeRequest":null,"mergeQueueEntry":{"state":"AWAITING_CHECKS","position":1},"title":"queued-null-automerge"}'
+# Same disease, met from the --undecidable side: a queue entry proves armed
+# even while `mergeable` is still UNKNOWN mid-recomputation — it must not be
+# double-counted as an undecided orphan on top of being wrongly excluded from
+# --candidates.
+QUEUED_UNKNOWN='{"number":8,"mergeable":"UNKNOWN","autoMergeRequest":null,"mergeQueueEntry":{"state":"QUEUED","position":2},"title":"queued-recomputing"}'
+
+check "a PR with a live mergeQueueEntry is never a candidate, even with autoMergeRequest:null + mergeable:MERGEABLE" \
+  --candidates "[$QUEUED]" "" 0
+check "a PR with a live mergeQueueEntry is never undecidable-orphaned, even with mergeable:UNKNOWN" \
+  --undecidable "[$QUEUED_UNKNOWN]" "0" 0
+# INNOCENCE half of the same fix: excluding the queued PR must not swallow a
+# real orphan sitting right beside it in the same population.
+check "a queued PR does not hide a real orphan sitting beside it" \
+  --candidates "[$QUEUED,$ORPHAN]" "$(printf '2\torphan')" 0
+check "a queued PR (UNKNOWN) does not inflate undecidable when a real UNKNOWN orphan is also present" \
+  --undecidable "[$QUEUED_UNKNOWN,$UNKNOWN]" "1" 0
+
+echo
 echo "=== FAIL-CLOSED: an unreadable set is never an empty one ==="
 
 check "non-array input -> rc 3" --undecidable '{"not":"an array"}' "" 3

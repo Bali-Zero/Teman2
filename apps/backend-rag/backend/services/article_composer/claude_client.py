@@ -1,15 +1,19 @@
-"""LLM client for article_composer — now DeepSeek, previously Claude.
+"""LLM client for article_composer — now DeepSeek via TP1, previously Claude.
 
 History:
 - v1: wrapped ``anthropic.Anthropic`` (pay-as-you-go API key).
 - v2: switched to Claude Max OAuth via ``claude -p`` subprocess
   (``backend.llm.claude_oauth_client``) per project policy
   ``memory/feedback_claude_oauth_only.md``.
-- v3 (this file): migrated to DeepSeek (``deepseek-chat``) because the
+- v3: migrated to DeepSeek (``deepseek-chat``) because the
   ``claude`` CLI hangs inside the Fly container on Linux non-TTY
   (``memory/feedback_claude_cli_linux_hang.md``). DeepSeek is ~100x
   cheaper than Claude Sonnet for structured JSON output and returns
   clean usage counters.
+- v4 (this file, 2026-08-29): the v3 door (direct ``api.deepseek.com`` +
+  ``DEEPSEEK_API_KEY``) was retired 2026-07-19 — this is a re-point to
+  the still-live TP1 gateway door for the same model family, not a
+  provider swap. See ``backend.llm.deepseek_client`` module docstring.
 
 Public symbols preserved for router/backward-compat:
 - ``call_claude_with_retry`` — same signature, internally calls DeepSeek.
@@ -182,17 +186,18 @@ def get_anthropic_client() -> None:
 )
 async def call_claude_with_retry(
     prompt: str,
-    model: str = "deepseek-v4-flash",
+    model: str = "deepseek-v4-flash-0731",
     max_tokens: int = 4096,
 ) -> ClaudeOAuthMessage:
-    """Call DeepSeek with automatic retry on transient errors.
+    """Call DeepSeek (via TP1) with automatic retry on transient errors.
 
     Signature kept for drop-in compatibility with the router that still
     imports this symbol. The ``model`` default changed from
-    ``claude-sonnet-4-6`` to ``deepseek-chat`` (v3) and then to the
-    explicit ``deepseek-v4-flash`` (2026-07-18): the legacy ``deepseek-chat``
-    alias already silently routed to V4-Flash and RETIRES 2026-07-24 as a
-    hard-fail, so this pins today's behavior instead of dying next week.
+    ``claude-sonnet-4-6`` to ``deepseek-chat`` (v3), then to the explicit
+    ``deepseek-v4-flash`` (2026-07-18, pinning against the legacy alias's
+    2026-07-24 retirement), and now to ``deepseek-v4-flash-0731`` — TP1's
+    confirmed-live slug for the same tier (2026-08-29 re-point; the bare
+    ``deepseek-v4-flash`` string was never verified against this gateway).
     The return object still exposes ``content[0].text`` and
     ``usage.{input,output}_tokens`` so the router needs no changes to its
     happy path.

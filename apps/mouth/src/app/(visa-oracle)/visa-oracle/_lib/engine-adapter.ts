@@ -3,6 +3,8 @@ import {
   VisaOracleResponseError,
 } from "./engine-response";
 import { QUESTIONS, type OracleFacts } from "./tree";
+import { followUpPrerequisitesMet } from "./flow";
+import { translate, type I18nKey } from "./i18n";
 import { trustedPrimarySourceUrl } from "./trusted-source-url";
 import type {
   InterviewAssumption,
@@ -209,9 +211,16 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // the Article 61-specific key below.
   SPOUSAL_WORK_KEMENAKER_CAVEAT: SPOUSAL_WORK_ARTICLE_61_COPY,
   SPOUSAL_WORK_ARTICLE_61_CONTEXT: SPOUSAL_WORK_ARTICLE_61_COPY,
+  // The second sentence is the compliance caveat the adversarial review of
+  // 2026-09-06 (finding 2) required alongside the removal of `work_role`.
+  // That question's five options could not identify a restricted position
+  // and no rule in the pack read the fact, so it was a blanket hold rather
+  // than a check — position eligibility is decided at the employer's RPTKA
+  // step, and the result copy now says so instead of implying the
+  // interview settled it.
   REQUIRED_RPTKA_APPROVAL: text(
-    "Your employer must obtain RPTKA approval before this permit can be issued.",
-    "Pemberi kerja Anda harus memperoleh persetujuan RPTKA sebelum izin ini dapat diterbitkan.",
+    "Your employer must obtain RPTKA approval before this permit can be issued. Some positions are closed to foreign nationals; your employer's RPTKA determines which roles qualify.",
+    "Pemberi kerja Anda harus memperoleh persetujuan RPTKA sebelum izin ini dapat diterbitkan. Beberapa jabatan tertutup bagi warga negara asing; RPTKA pemberi kerja Anda menentukan jabatan yang memenuhi syarat.",
   ),
   REQUIRED_DIPLOMAT_SPONSOR: text(
     "This permit requires a diplomatic mission as sponsor.",
@@ -338,6 +347,15 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "This route requires official proof of the parents' legally registered marriage. Without a registered marriage, this visa is not available.",
     "Jalur ini memerlukan bukti resmi perkawinan orang tua yang tercatat secara sah. Tanpa perkawinan tercatat, visa ini tidak tersedia.",
   ),
+  // EXCLUDE code (hf.d2.indonesia-source-compensation, seq-20). The seq-20
+  // fold compiles CL-D2-01's local-compensation prohibition for the first
+  // time, so this code reaches the NO_SUPPORTED_PATH sheet through the same
+  // `reasonMessage` fallback as every other reason — without this entry the
+  // raw code would render at a real reader.
+  BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED: text(
+    "A business visit visa does not allow payment from an Indonesian source. Paid activity in Indonesia needs a work route.",
+    "Visa kunjungan bisnis tidak mengizinkan pembayaran dari sumber di Indonesia. Aktivitas berbayar di Indonesia memerlukan jalur kerja.",
+  ),
   D12_CUMULATIVE_STAY_ADVISOR_CHECK: text(
     "Long or repeated stays are counted cumulatively. We check your total against the limit with one of our advisors.",
     "Masa tinggal panjang atau berulang dihitung secara kumulatif. Kami memeriksa total Anda terhadap batasnya bersama konsultan kami.",
@@ -345,6 +363,19 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   BRIDGING_T3_WINDOW_ADVISOR_CHECK: text(
     "The filing window for this bridging route is tight. We check your dates with one of our advisors.",
     "Jendela pengajuan jalur peralihan ini sempit. Kami memeriksa tanggal Anda bersama konsultan kami.",
+  ),
+  // The engine's own OPERATIONAL fallback, emitted when NO_SUPPORTED_PATH is
+  // reached with no named exclusion reason that belongs to this applicant
+  // (evaluator.py `_fallback_no_path_reason`). It used to be unreachable in
+  // practice — before the 2026-09-06 decisiveness reorder no interview walk
+  // ended in NO_SUPPORTED_PATH at all — and would have rendered as the raw
+  // `Verified reason: OPERATIONAL_...` code dump. It is now reachable, so it
+  // gets a sentence. Deliberately NOT phrased as a legal conclusion: it says
+  // no product COVERS the declared purposes, which is what the engine
+  // actually established.
+  OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES: text(
+    "No visa in our verified catalogue covers the purpose you described. Bali Zero can review your case and suggest what to do next.",
+    "Tidak ada visa dalam katalog terverifikasi kami yang mencakup tujuan yang Anda sebutkan. Bali Zero dapat meninjau kasus Anda dan menyarankan langkah selanjutnya.",
   ),
 };
 
@@ -402,6 +433,20 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   MINOR_WITHOUT_CONFIRMED_GUARDIAN: text(
     "This case involves a minor without a confirmed guardian on file and needs a person to review it.",
     "Kasus ini melibatkan anak di bawah umur tanpa wali yang terkonfirmasi dan memerlukan peninjauan oleh seseorang.",
+  ),
+  // Wording follows the pack's own product names verbatim — "Foreign Diplomat
+  // House Assistant (E23U)" / "Asisten Rumah Tangga Diplomat Asing" and "Trade
+  // and Economic Office (E23V)" / "Kantor Dagang dan Ekonomi". An adversarial
+  // review of the first draft caught it narrowing E23V to "trade representative
+  // office", dropping "and Economic": the applicant would then be told about a
+  // category that is not the one the rule actually names.
+  E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW: text(
+    "This case involves a house assistant employed by a foreign diplomat and needs a person to review it.",
+    "Kasus ini melibatkan asisten rumah tangga yang dipekerjakan oleh diplomat asing dan memerlukan peninjauan oleh seseorang.",
+  ),
+  E23V_TRADE_OFFICE_STAFF_REVIEW: text(
+    "This case involves staff of a trade and economic office and needs a person to review it.",
+    "Kasus ini melibatkan staf kantor dagang dan ekonomi dan memerlukan peninjauan oleh seseorang.",
   ),
   // Renamed from STATUS_BRIDGING_REVIEW (QW-4a, 2026-08-17): same stale
   // situation — BRIDGING_ADVERSE_HISTORY is the current name for this rule
@@ -624,16 +669,54 @@ function price(
   };
 }
 
-function questionForFact(path: string): string | undefined {
-  for (const question of Object.values(QUESTIONS)) {
-    if (
+/**
+ * The one question that collects `path`, plus whether this interview has
+ * already asked it.
+ *
+ * Two-layer lookup, strictly additive (2026-09-06). Layer 1 is the
+ * pre-existing rule verbatim: exactly one question IN THIS INTERVIEW'S
+ * HISTORY collects the fact → reopen it (`followUp: false`); more than one
+ * → ambiguous, fall back to the human handoff. Layer 2 only runs when
+ * history holds NONE of them: if the whole registry has exactly one
+ * question for the fact AND this interview's answers satisfy that
+ * question's prerequisites, the interview can simply ASK it
+ * (`followUp: true`) instead of rendering a row the user cannot act on.
+ * Three fact paths are collected by two questions each
+ * (`immigration.current_status_code`, `work.indonesia_source_compensation`,
+ * `investment.pt_pma_committed`) and are therefore never followed up —
+ * guessing which branch's question to splice in would be exactly the kind
+ * of inference this adapter is forbidden to make.
+ *
+ * The prerequisite conjunct is the narrowing the adversarial review of
+ * 2026-09-06 (finding 1) imposed: a question whose branch condition the
+ * applicant's own answers contradict is never appended, because asking it
+ * would bypass the tree's ordering. Such a fact keeps the handoff row.
+ * `facts` absent is treated as prerequisites unmet — fail-closed, so a
+ * caller that forgets to pass the interview state gets the pre-existing
+ * behaviour rather than an unguarded push.
+ */
+function questionForFact(
+  path: string,
+  editableQuestionIds: readonly string[] = [],
+  facts?: OracleFacts,
+): { questionId: string; followUp: boolean } | undefined {
+  const collecting = Object.values(QUESTIONS).filter(
+    (question) =>
       question.decisionMapping.kind !== "HUMAN_CONTEXT" &&
-      question.decisionMapping.factPaths.includes(path)
-    ) {
-      return question.id;
-    }
+      question.decisionMapping.factPaths.includes(path),
+  );
+  const asked = collecting.filter((question) =>
+    editableQuestionIds.includes(question.id),
+  );
+  if (asked.length === 1) {
+    return { questionId: asked[0].id, followUp: false };
   }
-  return undefined;
+  if (asked.length > 1) return undefined;
+  if (collecting.length !== 1) return undefined;
+  if (!facts) return undefined;
+  return followUpPrerequisitesMet(collecting[0].id, facts)
+    ? { questionId: collecting[0].id, followUp: true }
+    : undefined;
 }
 
 function nonEmpty<T>(values: T[]): [T, ...T[]] {
@@ -647,6 +730,8 @@ export interface BuildEngineOutcomeOptions {
   assumptions?: readonly InterviewAssumption[];
   facts?: OracleFacts;
   interviewBranchesRemaining?: number;
+  /** Question nodes in the current, pruning-aware interview history. */
+  editableQuestionIds?: readonly string[];
 }
 
 /**
@@ -778,17 +863,29 @@ function buildValidatedOutcome(
         candidates: [],
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         missingInputs: nonEmpty(
-          response.decision.missing_facts.map((path) => ({
-            code: path,
-            message: text(
-              `Verified evaluation needs: ${path}`,
-              `Evaluasi terverifikasi memerlukan: ${path}`,
-            ),
-            sourceIds: [],
-            ...(questionForFact(path)
-              ? { questionId: questionForFact(path) }
-              : {}),
-          })),
+          response.decision.missing_facts.map((path) => {
+            const match = questionForFact(
+              path,
+              options.editableQuestionIds,
+              options.facts,
+            );
+            const question = match ? QUESTIONS[match.questionId] : undefined;
+            return {
+              code: path,
+              message: question
+                ? text(
+                    translate("en", question.i18nKey as I18nKey),
+                    translate("id", question.i18nKey as I18nKey),
+                  )
+                : text(
+                    "Bali Zero can help clarify an additional detail needed for this assessment.",
+                    "Bali Zero dapat membantu memperjelas detail tambahan yang diperlukan untuk penilaian ini.",
+                  ),
+              sourceIds: [],
+              ...(match ? { questionId: match.questionId } : {}),
+              ...(match?.followUp ? { followUp: true as const } : {}),
+            };
+          }),
         ),
       };
     case "HUMAN_REVIEW_REQUIRED":

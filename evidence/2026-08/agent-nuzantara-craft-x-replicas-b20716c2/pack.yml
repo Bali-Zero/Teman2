@@ -1,0 +1,249 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "issue #5321 (Bali-Zero/Teman2, craft wave 2, squad X) — teammate mandate: close the 6 deferred
+  TP1 cells named in research/operations/2026-08-28-beyond-sota-panel-INDEX.md §I."
+lanes:
+  - lane: xfamily-replica-lane-07-qwen
+    role: build
+    seat: tp1-qwen3.8-max (Alibaba TP1 gateway, enable_thinking, max_tokens=24000, stream)
+  - lane: xfamily-replica-lane-10-qwen
+    role: build
+    seat: tp1-qwen3.8-max (Alibaba TP1 gateway, enable_thinking, max_tokens=24000, stream)
+  - lane: xfamily-replica-lane-11-qwen
+    role: build
+    seat: tp1-qwen3.8-max (Alibaba TP1 gateway, enable_thinking, max_tokens=24000, stream)
+  - lane: xfamily-replica-lane-12-qwen
+    role: build
+    seat: tp1-qwen3.8-max (Alibaba TP1 gateway, enable_thinking, max_tokens=24000, stream)
+  - lane: xfamily-replica-lane-13-qwen
+    role: build
+    seat: tp1-qwen3.8-max (Alibaba TP1 gateway, enable_thinking, max_tokens=24000, stream)
+  - lane: xfamily-replica-lane-13-deepseek
+    role: build
+    seat: tp1-deepseek-v4-pro (Alibaba TP1 gateway, reasoning_effort=max, max_tokens=24000, stream)
+  - lane: refute-diff
+    role: review
+    seat:
+      kimi-code/k3 (Kimi CLI, given the full staged diff — INDEX edit + all 6 new file headers
+      plus first 60 lines of body each — asked for arithmetic errors, header-format deviations,
+      unsupported claims)
+seat_diversity: satisfied
+seat_diversity_note:
+  "All 6 BUILD lanes are non-Anthropic (Alibaba TP1: qwen3.8-max x5, deepseek-v4-pro x1) — D3 is
+  trivially satisfied, no seat_override needed. No Claude seat generated any of the 6 files' body
+  content; each lane's own run-header records the generating seat, and receipt #1c below quotes the
+  runner's own run_summary.json (model/attempts/HTTP-status/duration per lane) as the receipt for
+  that claim, per instruction. The one REVIEW lane (kimi-k3) is a third non-Anthropic family,
+  independent of the two families that generated the content under review (generator != grader
+  across families, not just across seats)."
+diff:
+  net_lines:
+    "10 files, +2648/-23 (churn 2671) vs origin/main 08ea5fb2f — measured via
+    evidence_pack_lint.py --print-measured."
+  behaviour_change:
+    "None. Six research files (raw TP1 seat output under a run-header this PR controls) plus one
+    coverage-matrix/prose edit to an existing INDEX file. Nothing executes, deploys, routes, or
+    changes doctrine — this is data landing, not architecture."
+pii_scan: clean
+pii_scan_note:
+  "All 6 new files scanned for email-shaped and Indonesian-phone-shaped strings: 0/6 files with any
+  hit (receipt #4). The DeepSeek/Qwen ground-pack inputs were themselves scrubbed by this PR's own
+  runner (email/IPv4/intl-phone/credential-prefix regexes) before being sent to the TP1 API — see
+  receipt #7 for the redaction-fix history."
+receipts:
+  - claim:
+      "Deterministic gear floor recomputed from THIS diff's FULL changed-file list + numstat
+      (all 10 files, base 08ea5fb2f) is 3 (source: size — churn=2671, over
+      SIZE_GEAR3_THRESHOLD=1828; zero hot-zone path hits). Docs-only shape
+      (compute_ceiling()'s DOCS_LEDGER_EXTENSIONS rule) caps the CEILING, not the floor —
+      the two are independent mechanisms and floor wins. No `gear_override` is declared or
+      needed: compute_ceiling() only flags a gear-3 declaration on a docs-shaped diff when
+      the pack ALSO carries a convened `council` or `grader_dispatches>=3` (neither true
+      here), so gear=3 simply matches the floor with nothing for the ceiling rule to object
+      to. SUPERSEDES an earlier version of this receipt scoped to only 7 of the 10 files."
+    cmd: "git fetch origin main --quiet; git diff origin/main...HEAD --numstat >
+      /tmp/ns.txt; git diff origin/main...HEAD --name-only > /tmp/cf.txt; python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf.txt
+      --numstat-file /tmp/ns.txt; python3 scripts/evidence_pack_lint.py
+      --print-floor-source --changed-files-file /tmp/cf.txt --numstat-file /tmp/ns.txt"
+    result: "3 / size"
+    exit: 0
+    ts: "2026-08-31T03:20:00Z"
+    seat:
+      claude-sonnet-5 (squad X, direct measurement — no subagent, per team-lead instruction to
+      run this myself rather than delegate a 30-second check; base sha and full 10-file scope
+      re-verified after team-lead flagged the earlier 7-file scope as not what CI measures)
+  - claim:
+      "receipt #1b — the pack's self-reported `diff.net_lines` scalar (above) is not hand-narrated:
+      it is the literal, unedited string `evidence_pack_lint.py --print-measured` prints for the
+      FULL diff (origin/main...HEAD, base 08ea5fb2f), re-run in the same turn this pack was
+      finalized — closing the exact trap named 'a stale scalar there is a hard FAIL that no
+      override covers'. Honest limit: pack.yml is part of the diff being measured, so this
+      number necessarily drifts by pack.yml's own remaining edit size; the truly final figure is
+      re-measured once more immediately before push (receipt below / SHIP comment)."
+    cmd:
+      "python3 scripts/evidence_pack_lint.py --print-measured --changed-files-file /tmp/x-cf.txt
+      --numstat-file /tmp/x-numstat.txt"
+    result: "10 files, +2648/-23, commit count unmeasured (no --commit-count, no pull_request payload)"
+    exit: 0
+    ts: "2026-08-31T03:20:00Z"
+    seat: claude-sonnet-5 (squad X)
+  - claim:
+      "INDEX §I's coverage matrix carries zero remaining 'deferred — TP1 quota' cells after this
+      PR's edit — the six deferral markers the coverage matrix carried before this PR were all
+      replaced by real §I numbers when the corresponding cells landed."
+    cmd: 'grep -c "deferred — TP1 quota" research/operations/2026-08-28-beyond-sota-panel-INDEX.md'
+    result: "0"
+    exit: 1
+    ts: "2026-08-31T02:52:10Z"
+    seat:
+      "claude-sonnet-5 (squad X — grep's own exit code is 1 on zero matches, an EXPECTED-NONZERO
+      per superscar #2's own antidote framing, not a command failure; the exit field above records
+      grep's real code rather than laundering it to 0)"
+  - claim:
+      "receipt #1c — D3 non-Anthropic build-lane claim, sourced from the runner's own
+      run_summary.json (not hand-typed): all 6 attempts array entries record HTTP 200 on the first
+      try (no retry, no deepseek-v4-pro-to-flash fallback needed) against the seat named in each
+      lane's own `model_used` field. Lane 7=qwen3.8-max/506s, lane 10=qwen3.8-max/668s,
+      lane 11=qwen3.8-max/550s, lane 12=qwen3.8-max/626s, lane 13=qwen3.8-max/877s,
+      lane 13=deepseek-v4-pro/343s — six build lanes, two non-Anthropic model families, zero
+      Claude-seat involvement in body generation."
+    cmd: "cat run_summary.json"
+    result:
+      "6 entries, each {lane_no, slug, seat, model_used, started, finished, duration_s,
+      prompt_sha256_16, prompt_chars, attempts:[[model,error,http_status]], blocked:false, words} —
+      every `attempts` array has exactly 1 tuple, third element (http_status) = 200, `blocked` =
+      false on all 6"
+    exit: 0
+    ts: "2026-08-31T02:52:15Z"
+    seat:
+      claude-sonnet-5 (squad X, quoting the runner's own artifact rather than re-typing numbers
+      by hand)
+  - claim:
+      "receipt #1d — blind-replica contract (protocol §7): the ground-pack ancestor commit
+      `11a3c89a2` (11a3c89a2e411cb2e2d73144780022241e9b1ae2, 2026-08-28 13:43:23 +0000, #5175)
+      IS an ancestor of this branch's HEAD, and contains ZERO `beyond-sota-*` panel files under
+      `research/operations/` — i.e. the 6 new cells' ground-pack content came from a tree with no
+      possible visibility into any panel report or existing xfamily cell, same as the original 59
+      runs (protocol §7 'Run 2')."
+    cmd:
+      "git merge-base --is-ancestor 11a3c89a2 HEAD && echo ANCESTOR; git ls-tree -r --name-only
+      11a3c89a2 -- research/operations/ | grep -c 'beyond-sota'"
+    result: "ANCESTOR; 0 (grep exit 1, expected-zero — no beyond-sota-* files at that commit)"
+    exit: 0
+    ts: "2026-08-30T19:10:59Z"
+    seat:
+      claude-sonnet-5 (squad X, re-verified in this same turn per team-lead's request so the
+      independent reader can check the command rather than re-derive it)
+  - claim:
+      "All 65 planned xfamily cells now on disk (13 lanes x 5 seats); the 6 that were missing before
+      this PR (qwen lanes 07/10/11/12/13, deepseek lane 13) now exist, matching the exact set
+      predicted from the file-naming matrix before any generation started."
+    cmd: "ls research/operations/2026-08-28-beyond-sota-xfamily/ | wc -l"
+    result: "65"
+    exit: 0
+    ts: "2026-08-30T18:45:10Z"
+    seat: claude-sonnet-5 (squad X)
+  - claim: "Every one of the 6 new files carries all 10 mandated section headings (## 0 through ## 9)."
+    cmd: 'for f in <the 6 new files>; do grep -c ''^## [0-9]'' "$f"; done'
+    result: "10, 10, 10, 10, 10, 10"
+    exit: 0
+    ts: "2026-08-30T18:45:20Z"
+    seat: claude-sonnet-5 (squad X)
+  - claim: "Zero email-shaped or Indonesian-phone-shaped strings across the 6 new files."
+    cmd: "for f in <the 6 new files>; do grep -E -c '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}|\\+62[0-9 -]{8,}' \"$f\"; done"
+    result: "0, 0, 0, 0, 0, 0"
+    exit: 0
+    ts: "2026-08-30T18:45:25Z"
+    seat: claude-sonnet-5 (squad X)
+  - claim:
+      "Every one of the 6 new files carries the `adversarial_review:` header field required by the
+      R1 generator!=grader gate, matching the same exemption literal the other 59 siblings use."
+    cmd: "grep -l '^adversarial_review:' <the 6 new files> | wc -l"
+    result: "6"
+    exit: 0
+    ts: "2026-08-30T18:45:30Z"
+    seat: claude-sonnet-5 (squad X)
+  - claim:
+      "New grand total word count across all 65 cells (243,408 + the 6 new files' measured word
+      counts) is 271,497, matching INDEX §I's updated prose exactly."
+    cmd: 'python3 -c "print(243408 + sum([4588,4816,4398,5460,4879,3948]))"'
+    result: "271497"
+    exit: 0
+    ts: "2026-08-30T18:35:00Z"
+    seat: claude-sonnet-5 (squad X)
+  - claim:
+      "The 12-gram-overlap/exact-heading-count method used for INDEX §I's contamination paragraph
+      was validated BEFORE being trusted on new data: run against the untouched 59 existing cells
+      first, it reproduces the documented '31 cells + 1 cell = 32' mandated-heading/table-header
+      hit count exactly."
+    cmd:
+      "self-check script (session scratchpad): strip each cell's own run-header, take the
+      >=40-char stripped lines shared with that lane's Fable panel report, count files where the
+      mandated heading `## 2. Scars & ledger evidence in this area` or the one known table-header
+      line appears verbatim"
+    result: "32 total hits across 59 cells (31 + 1) — exact match to the documented figure"
+    exit: 0
+    ts: "2026-08-30T18:20:00Z"
+    seat: claude-sonnet-5 (squad X)
+  - claim:
+      "Ground-pack redaction bug caught and fixed before any TP1 spend was wasted: the first
+      generation attempt's redaction regex (a blanket 28+-char catch-all) was mangling legitimate
+      filenames/function-names/dates in the hot-file pack; killed the in-flight call (had not yet
+      returned), replaced with shape-anchored regexes (email/IPv4/intl-phone/credential-prefix
+      only), re-verified clean output on the same lane-12 sample, relaunched."
+    cmd: 'python3 -c "...build_ground_pack(12)..." (before and after the fix, visual diff)'
+    result:
+      "before: filenames/function calls/dates replaced with <redacted-run>; after: legitimate
+      content preserved, only real email/IP/phone/token shapes redacted"
+    exit: 0
+    ts: "2026-08-30T18:05:00Z"
+    seat: claude-sonnet-5 (squad X)
+  - claim:
+      "kimi-k3 cross-family adversarial review of the full staged diff ran to completion and found
+      no arithmetic errors in the INDEX table/prose beyond the two items now in `dissent` below."
+    cmd:
+      'kimi -p "<review packet: INDEX diff + 6 new files'' headers + first 60 body lines each>" -m
+      kimi-code/k3'
+    result:
+      "18-point walkthrough verifying word counts, durations, source counts, overlap values, prompt
+      hashes, timestamp chaining and arithmetic (243408+28089=271497) all cross-checked against the
+      files' own frontmatter and found consistent; 2 items escalated to dissent"
+    exit: 0
+    ts: "2026-08-30T18:41:00Z"
+    seat: kimi-code/k3
+dissent:
+  - seat: kimi-code/k3 (cross-family refuter, given the full diff)
+    file: research/operations/2026-08-28-beyond-sota-xfamily/13-security-secrets-pii--tp1-deepseek-v4-pro.md
+    severity: MEDIUM
+    objection:
+      'The file''s own inner frontmatter declares `model: Claude (Anthropic) (pinned lane)` while
+      the seat that generated it is tp1-deepseek-v4-pro — either (a) genuine DeepSeek
+      self-identification confusion ("actually happens with DeepSeek models trained on synthetic
+      data"), or (b) a fabrication artifact suggesting the file wasn''t really generated by that
+      seat. INDEX did not mention this anomaly anywhere.'
+    status: CONFIRMED
+    disposition:
+      "accepted (visibility, not a body edit) — this is a real, verified anomaly (squad X had
+      already caught and disclosed it in the PR body and issue comments before this refuter pass
+      independently confirmed it); left uncorrected in the file body per protocol §7's
+      body-never-edited contract, but INDEX §I's Honest-limits paragraph now names it explicitly
+      so it is not only in the PR description. Hypothesis (b) is not supported: the run-header
+      squad X wrote (which the seat cannot influence) independently records duration_s=343,
+      words=3948, prompt_sha256_16 matching the sibling qwen-13 cell's identical prompt hash — all
+      consistent with a genuine TP1 API round-trip, not a fabricated file."
+  - seat: kimi-code/k3 (cross-family refuter, given the full diff)
+    file: research/operations/2026-08-28-beyond-sota-xfamily/10-organizational-learning-loop--tp1-qwen3.8-max.md
+    severity: LOW
+    objection:
+      "Computing the gap between the file's own `started`/`finished` ISO timestamps
+      (17:35:59Z..17:47:08Z) gives 669 seconds, but the file's `duration_s` field says 668 — a
+      1-second discrepancy."
+    status: PLAUSIBLE
+    disposition:
+      "survives as a non-issue, not fixed — `duration_s` is measured independently via
+      `time.monotonic()` deltas inside the runner (sub-second precision), while `started`/
+      `finished` are formatted to whole-second ISO strings; a run whose true wall-clock span was
+      e.g. 668.4s prints started/finished timestamps that, naively subtracted as whole seconds, can
+      read 1s higher due to rounding on each end independently. Both fields are accurate to their
+      own precision; there is nothing to reconcile."

@@ -24,7 +24,7 @@ many routers in the manifest are mounted via app_factory or other paths
 not visible to a simple grep, so a strict "every entry must appear in
 include_routers" test produces false positives.
 
-Cicatrix ref: .claude/rules/cicatrix-scars.md "Test infrastructure mock
+Cicatrix ref: docs/scars/cicatrix-scars.md "Test infrastructure mock
 != production stack (Sprint 1.B 2026-05-02)".
 """
 

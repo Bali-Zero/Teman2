@@ -225,6 +225,15 @@ JOB_SCENARIOS = [
         "INNOCENCE 3 — deploy itself skipped (pre-deploy run-migrations blocked it)",
         "skipped", "skipped", "skipped", False,
     ),
+    (
+        "INNOCENCE 4 — deploy itself cancelled (its own timeout-minutes kill, or "
+        "the workflow run was cancelled): no new image shipped, nothing to "
+        "health-check or roll back, same as INNOCENCE 2's deploy=failure sibling "
+        "(deploy-failure-alert's widened if:, PR #5434, owns this case instead — "
+        "job_runs() already returns False here by construction, since it checks "
+        "only deploy_result == 'success'; this scenario was previously unmodeled)",
+        "cancelled", "skipped", "skipped", False,
+    ),
 ]
 
 # (label, job_ran, health_check_passed, expect_rollback_and_alert)

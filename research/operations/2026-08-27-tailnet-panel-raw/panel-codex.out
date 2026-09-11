@@ -1,0 +1,180 @@
+Reading additional input from stdin...
+OpenAI Codex v0.149.1
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/ops-tailnet-team-research-0827
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 01a0414a-0b49-7000-80e5-405e34921cfc
+--------
+user
+You are one seat of a 4-LLM advisory panel. Answer directly, in English, max ~900 words. No preamble.
+
+# Context: Bali Zero "digital campus" on Tailscale
+
+Bali Zero is a 14-person Indonesian business-services agency (visas/KITAS, PT PMA company setup, tax, property) run by a solo technical owner. Infrastructure: 3 Macs (dev workstation; a 48GB workhorse running ~170 automation daemons; a 24GB always-on server with local Ollama LLMs) + a FastAPI/Postgres backend on Fly.io + Next.js frontends on Vercel. Strict constraints: Indonesian data-protection law (UU PDP) — client documents/PII are processed ONLY on our own machines (local OCR/LLM), never sent to cloud LLMs; flat-rate subscriptions preferred over per-token APIs; the owner is the only technical person.
+
+Today the Tailscale tailnet contains only the owner's 7 devices (free plan). Plan: every team member gets a SEPARATE COMPANY USER ACCOUNT on their personal computer (signed consent/liberatoria already collected), and that account joins the tailnet. Non-negotiable precondition already identified: replace the factory default allow-all ACL with deny-by-default grants per role BEFORE any invite (today one node even serves an unauthenticated writable shell tailnet-wide — will be fixed first).
+
+## The current draft design ("the campus" — internal-only services over the tailnet)
+
+- Zantara Desk: internal web UI for the company AI assistant (per-assignment CRM visibility; the bot brain exists but has no channel today)
+- Intake Drop: drag&drop + phone-photo page feeding the existing local OCR document-intake pipeline (client docs stop travelling via WhatsApp)
+- Coda Review: human review queue UI for the intake refinery
+- Bacheca: read-only ops dashboards (practice states, compliance deadlines)
+- Cassaforte: self-hosted Vaultwarden for shared government-portal credentials
+- Officina AI: Open WebUI + Ollama on the server Mac = internal "ChatGPT" on our metal for PII-safe translation/drafting/OCR
+- Biblioteca: internal handbook/procedures wiki + golinks
+- Ufficio: office printer/scanner via subnet router; exit node on the office Mac so staff working from home hit Indonesian gov portals (tax/immigration) from one stable office IP
+- Plus: Time Machine backups of the company user to the server Mac; screen-sharing support; 10-minute onboarding / 1-click offboarding via ACL groups per department (tax, visa, marketing, ops)
+- Team phones also enrolled: field capture at immigration offices/notaries → photo goes straight into intake OCR
+
+Rollout: harden ACL → zero-dev rooms (Vaultwarden, Open WebUI) → standard workstation setup script → 3-person pilot → intake surfaces → Zantara Desk → full team (Tailscale Standard $8/user/mo beyond 6 free users).
+
+# Your task (answer all 4, numbered)
+
+1. CRITIQUE: what is weak, naive, or missing in this design? Where will it actually fail in daily operations with non-technical staff?
+2. FIVE IDEAS we have NOT listed: concrete, high-leverage things a 14-person compliance/immigration agency can build on a private mesh network with local LLMs. Prioritize ideas exploiting OUR specifics (field work at government offices, document-heavy workflows, per-role data segregation, local AI). No generic VPN benefits.
+3. SEQUENCE: would you change the build order? What single room delivers the most value in week 1?
+4. PITFALLS: the 3 most likely failure modes of this whole program in year 1 (technical, human, or legal) and the cheapest countermeasure for each.
+
+Be opinionated. If an idea is bad, say so and why.
+warning: Exceeded skills context budget. All skill descriptions were removed and 7 additional skills were not included in the model-visible skills list.
+hook: SessionStart
+hook: SessionStart Failed
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+codex
+[Air-M5] I’m checking the required machine context, then I’ll give the four numbered recommendations directly.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc 'echo "Machine: $(whoami)@$(hostname)" && case "$(hostname)" in Nuzantara) OTHER=mini ;; Mini-Pro2) OTHER=pro ;; Air-M5) OTHER=pro ;; *) OTHER=pro ;; esac && ssh -o ConnectTimeout=3 $OTHER '"'echo \"Peer: "'$(whoami)@$(hostname)"'"' 2>/dev/null || echo \"Peer: UNREACHABLE\" && LOCAL_HEAD="'$(git log --oneline -1 2>/dev/null) && REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER '"'cd ~/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && if [ \""'$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi' in /Users/balizero/nuzantara/.worktrees/ops-tailnet-team-research-0827
+ exited 255 in 0ms:
+Machine: balizero@Air-M5
+Peer: UNREACHABLE
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+[Air-M5]
+
+1. **Critique**
+
+- A separate company OS account on a personal computer is not a sufficient security boundary. The device owner, malware, browser downloads, cloud-photo sync, and local administrators may still reach company data. Require device management, disk encryption, patching, auto-lock, malware protection, and device-compliance checks. Where that is impossible, provide browser-only access with downloads disabled—or issue company devices.
+- Tailscale grants control network reachability, not data authorization. Every room still needs SSO, MFA, application-level RBAC, session revocation, and audit logs. Per-assignment CRM visibility belongs inside Zantara Desk, not in ACL groups.
+- “One-click offboarding” is currently fiction. Offboarding must revoke the identity provider account, Tailscale device, application sessions, Vaultwarden membership, API tokens, backup access, and cached/downloaded documents.
+- Do not merely ACL the writable shell. Remove it, inspect its host for compromise, rotate exposed credentials, and reintroduce administrative access only with strong authentication and logging.
+- Seven new rooms are too much operational surface for one technical owner already running roughly 170 daemons. Each service needs an owner, recovery procedure, monitoring, retention policy, and tested backup. Otherwise the campus becomes a museum of half-working tools.
+- Open WebUI first is a mistake. Generic chat encourages staff to upload everything and trust plausible hallucinations. Disable cloud providers, plugins, outbound tools, and indefinite chat retention. Prefer narrow workflows with locked prompts and source citations.
+- Vaultwarden protects passwords but does not make shared government accounts good practice. Shared credentials destroy attribution and complicate MFA. Use individual portal accounts where available; otherwise implement credential checkout, named approvals, and access logs.
+- Network Time Machine from personal Macs is a bad design: it may capture personal data and is not cleanly limited to one employee profile. Back up only managed company folders, encrypted under company-controlled recovery keys.
+- Remote printing risks confidential papers sitting unattended. Require secure/PIN release. Screen sharing should be attended, time-limited, visibly approved, and logged.
+- Intake is missing the unglamorous essentials: assignment-scoped upload links, direct camera capture without camera-roll storage, resumable/offline uploads, malware and file-type checks, duplicate detection, hashes, chain of custody, retention/deletion rules, and an unequivocal upload receipt.
+
+2. **Five additional ideas**
+
+1. **Cross-document Consistency Gate:** Local OCR compares passport, KITAS, NPWP, akta, NIB, addresses, names, dates, shareholders, and directors. It flags mismatches before filing and shows the exact conflicting fields—not an opaque AI score.
+
+2. **Field Mission Pack:** Before a government-office visit, generate an encrypted, offline-capable case pack containing the appointment, checklist, document order, contact escalation, and expected receipts. The phone captures queue numbers, stamped receipts, and dictated notes directly into the case without touching the photo gallery.
+
+3. **Submission Control Room:** A four-eyes queue for tax, immigration, and OSS submissions. One person prepares; another verifies identifiers, attachments, deadline, and payment amount; only then is the credential released or submission authorized.
+
+4. **Privacy Export Gateway:** Any file leaving the mesh passes through local PII detection, optional redaction, watermarking, recipient labeling, expiry controls, and an export ledger. This addresses the dangerous moment when an internal document becomes an email or client download.
+
+5. **Regulatory Decision Ledger:** Local, citation-bound RAG records which regulation, version, official source, and internal interpretation supported each material recommendation. When a source changes, it identifies affected procedures and open cases. The LLM assists retrieval; it never silently rewrites the legal basis.
+
+3. **Sequence**
+
+Change the order:
+
+1. Remove the shell, rotate credentials, inspect exposure.
+2. Establish company identity, MFA, device baseline, app-level authorization, audit retention, and break-glass recovery.
+3. Pilot one complete workflow with three staff.
+4. Build Intake Drop and the minimum Coda Review acceptance screen as one product.
+5. Add Bacheca, then narrow task-specific local AI workflows.
+6. Introduce Vaultwarden only after backup, recovery, and credential-governance drills.
+7. Build Zantara Desk after assignment permissions are proven.
+8. Add subnet routing, exit nodes, printers, and broad phone enrollment last.
+
+The highest-value week-one room is **Intake Drop**. It immediately removes documents from WhatsApp, reduces manual transcription, and creates measurable chain-of-custody improvement. Do not launch it without a minimal review/error path.
+
+4. **Three likely year-one failures**
+
+1. **A compromised or lost BYOD endpoint leaks data.** Cheapest countermeasure: mandatory device compliance plus browser-only/no-download access for unmanaged devices. No compliant device, no PII access.
+
+2. **Staff continue using WhatsApp and spreadsheets because the campus adds steps.** Countermeasure: launch one workflow that removes work rather than adding reporting, appoint one operational champion, measure usage weekly, and retire the duplicate path after the pilot stabilizes.
+
+3. **The solo owner becomes permanent helpdesk and single point of failure.** Countermeasure: minimize service count, train one non-technical continuity custodian, maintain a one-page recovery runbook, use a UPS and automated health alerts, and perform quarterly restore/offboarding drills.
+tokens used
+49.990
+[Air-M5]
+
+1. **Critique**
+
+- A separate company OS account on a personal computer is not a sufficient security boundary. The device owner, malware, browser downloads, cloud-photo sync, and local administrators may still reach company data. Require device management, disk encryption, patching, auto-lock, malware protection, and device-compliance checks. Where that is impossible, provide browser-only access with downloads disabled—or issue company devices.
+- Tailscale grants control network reachability, not data authorization. Every room still needs SSO, MFA, application-level RBAC, session revocation, and audit logs. Per-assignment CRM visibility belongs inside Zantara Desk, not in ACL groups.
+- “One-click offboarding” is currently fiction. Offboarding must revoke the identity provider account, Tailscale device, application sessions, Vaultwarden membership, API tokens, backup access, and cached/downloaded documents.
+- Do not merely ACL the writable shell. Remove it, inspect its host for compromise, rotate exposed credentials, and reintroduce administrative access only with strong authentication and logging.
+- Seven new rooms are too much operational surface for one technical owner already running roughly 170 daemons. Each service needs an owner, recovery procedure, monitoring, retention policy, and tested backup. Otherwise the campus becomes a museum of half-working tools.
+- Open WebUI first is a mistake. Generic chat encourages staff to upload everything and trust plausible hallucinations. Disable cloud providers, plugins, outbound tools, and indefinite chat retention. Prefer narrow workflows with locked prompts and source citations.
+- Vaultwarden protects passwords but does not make shared government accounts good practice. Shared credentials destroy attribution and complicate MFA. Use individual portal accounts where available; otherwise implement credential checkout, named approvals, and access logs.
+- Network Time Machine from personal Macs is a bad design: it may capture personal data and is not cleanly limited to one employee profile. Back up only managed company folders, encrypted under company-controlled recovery keys.
+- Remote printing risks confidential papers sitting unattended. Require secure/PIN release. Screen sharing should be attended, time-limited, visibly approved, and logged.
+- Intake is missing the unglamorous essentials: assignment-scoped upload links, direct camera capture without camera-roll storage, resumable/offline uploads, malware and file-type checks, duplicate detection, hashes, chain of custody, retention/deletion rules, and an unequivocal upload receipt.
+
+2. **Five additional ideas**
+
+1. **Cross-document Consistency Gate:** Local OCR compares passport, KITAS, NPWP, akta, NIB, addresses, names, dates, shareholders, and directors. It flags mismatches before filing and shows the exact conflicting fields—not an opaque AI score.
+
+2. **Field Mission Pack:** Before a government-office visit, generate an encrypted, offline-capable case pack containing the appointment, checklist, document order, contact escalation, and expected receipts. The phone captures queue numbers, stamped receipts, and dictated notes directly into the case without touching the photo gallery.
+
+3. **Submission Control Room:** A four-eyes queue for tax, immigration, and OSS submissions. One person prepares; another verifies identifiers, attachments, deadline, and payment amount; only then is the credential released or submission authorized.
+
+4. **Privacy Export Gateway:** Any file leaving the mesh passes through local PII detection, optional redaction, watermarking, recipient labeling, expiry controls, and an export ledger. This addresses the dangerous moment when an internal document becomes an email or client download.
+
+5. **Regulatory Decision Ledger:** Local, citation-bound RAG records which regulation, version, official source, and internal interpretation supported each material recommendation. When a source changes, it identifies affected procedures and open cases. The LLM assists retrieval; it never silently rewrites the legal basis.
+
+3. **Sequence**
+
+Change the order:
+
+1. Remove the shell, rotate credentials, inspect exposure.
+2. Establish company identity, MFA, device baseline, app-level authorization, audit retention, and break-glass recovery.
+3. Pilot one complete workflow with three staff.
+4. Build Intake Drop and the minimum Coda Review acceptance screen as one product.
+5. Add Bacheca, then narrow task-specific local AI workflows.
+6. Introduce Vaultwarden only after backup, recovery, and credential-governance drills.
+7. Build Zantara Desk after assignment permissions are proven.
+8. Add subnet routing, exit nodes, printers, and broad phone enrollment last.
+
+The highest-value week-one room is **Intake Drop**. It immediately removes documents from WhatsApp, reduces manual transcription, and creates measurable chain-of-custody improvement. Do not launch it without a minimal review/error path.
+
+4. **Three likely year-one failures**
+
+1. **A compromised or lost BYOD endpoint leaks data.** Cheapest countermeasure: mandatory device compliance plus browser-only/no-download access for unmanaged devices. No compliant device, no PII access.
+
+2. **Staff continue using WhatsApp and spreadsheets because the campus adds steps.** Countermeasure: launch one workflow that removes work rather than adding reporting, appoint one operational champion, measure usage weekly, and retire the duplicate path after the pilot stabilizes.
+
+3. **The solo owner becomes permanent helpdesk and single point of failure.** Countermeasure: minimize service count, train one non-technical continuity custodian, maintain a one-page recovery runbook, use a UPS and automated health alerts, and perform quarterly restore/offboarding drills.

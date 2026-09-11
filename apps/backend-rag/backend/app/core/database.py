@@ -1,9 +1,14 @@
-import json
 import logging
 
 import asyncpg
 
 from backend.app.core.config import settings
+from backend.core.pg_json_codec import (
+    JSONB_ENCODER as JSONB_ENCODER,
+)
+from backend.core.pg_json_codec import (
+    init_asyncpg_connection as init_asyncpg_connection,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,27 +31,13 @@ async def get_db_pool() -> asyncpg.Pool:
     - statement_cache_size=0: required for PgBouncer transaction mode
     """
 
-    async def init_db_connection(conn: asyncpg.Connection) -> None:
-        await conn.set_type_codec(
-            "jsonb",
-            encoder=json.dumps,
-            decoder=json.loads,
-            schema="pg_catalog",
-        )
-        await conn.set_type_codec(
-            "json",
-            encoder=json.dumps,
-            decoder=json.loads,
-            schema="pg_catalog",
-        )
-
     pool = await asyncpg.create_pool(
         dsn=settings.database_url,
         min_size=_POOL_MIN_SIZE,
         max_size=_POOL_MAX_SIZE,
         command_timeout=_COMMAND_TIMEOUT,
         max_inactive_connection_lifetime=_MAX_INACTIVE_CONN_LIFETIME,
-        init=init_db_connection,
+        init=init_asyncpg_connection,
         # Required for PgBouncer transaction mode — prevents prepared statement leak
         statement_cache_size=0,
     )

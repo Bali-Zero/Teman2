@@ -13,10 +13,12 @@ Tests cover:
 import base64
 import json
 from datetime import datetime, timezone
+from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from backend.app.routers.article_composer import (
     BaliZeroTake,
@@ -25,6 +27,7 @@ from backend.app.routers.article_composer import (
     NextSteps,
     PublishRequest,
     TLDRSection,
+    _plain_text_snippet,
     build_enrichment_prompt,
     generate_mdx_content,
     generate_slug,
@@ -35,8 +38,34 @@ from backend.services.article_composer.claude_client import (
     _TextBlock,
     _Usage,
 )
+from backend.services.cover_images import _cover_as_jpeg, cover_card_as_jpeg
 
 # --- FIXTURES ---
+
+
+def _png_bytes(width: int = 64, height: int = 40) -> bytes:
+    """Create a valid RGB PNG for cover publication tests."""
+    output = BytesIO()
+    Image.new("RGB", (width, height), color="navy").save(output, format="PNG")
+    return output.getvalue()
+
+
+def test_cover_helper_converts_png_to_jpeg_and_crops_card_to_16_10() -> None:
+    """Covers stay full-size while cards are cropped, never stretched or padded."""
+    hero = _cover_as_jpeg(_png_bytes(width=2100, height=900))
+    card = cover_card_as_jpeg(hero)
+
+    with Image.open(BytesIO(hero)) as hero_image:
+        assert hero_image.format == "JPEG"
+        assert hero_image.mode == "RGB"
+        assert hero_image.size == (2100, 900)
+
+    with Image.open(BytesIO(card)) as card_image:
+        assert card_image.format == "JPEG"
+        assert card_image.mode == "RGB"
+        assert abs((card_image.width / card_image.height) - 1.6) < 0.01
+        assert card_image.width <= 2100
+        assert card_image.height <= 900
 
 
 @pytest.fixture
@@ -124,7 +153,7 @@ def _make_llm_message(payload: dict) -> ClaudeOAuthMessage:
     return ClaudeOAuthMessage(
         content=[_TextBlock(text=json.dumps(payload))],
         usage=_Usage(input_tokens=1000, output_tokens=1500),
-        model="deepseek-v4-flash",
+        model="deepseek-v4-flash-0731",
         token_label="deepseek_cache_hit=0",
     )
 
@@ -165,7 +194,7 @@ def mock_llm_response():
 # --- COMPOSE ENDPOINT TESTS ---
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_success(
     mock_call,
@@ -190,10 +219,10 @@ def test_compose_article_success(
     assert data["api_cost_cents"] >= 0
     assert "image_prompt" not in data["article"]
     mock_call.assert_called_once()
-    assert mock_call.call_args.kwargs.get("model") == "deepseek-v4-flash"
+    assert mock_call.call_args.kwargs.get("model") == "deepseek-v4-flash-0731"
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_priority_word_count(mock_call, test_client):
     """Test that facts section length varies by priority (high=600, medium=500, low=400 words)."""
@@ -244,7 +273,7 @@ def test_compose_article_priority_word_count(mock_call, test_client):
         assert word_count >= expected_words - 50
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_json_cleanup(mock_call, test_client, sample_compose_request):
     """Test that markdown JSON blocks are cleaned correctly."""
@@ -277,7 +306,7 @@ def test_compose_article_json_cleanup(mock_call, test_client, sample_compose_req
         mock_call.return_value = ClaudeOAuthMessage(
             content=[_TextBlock(text=wrapper)],
             usage=_Usage(input_tokens=500, output_tokens=800),
-            model="deepseek-v4-flash",
+            model="deepseek-v4-flash-0731",
             token_label="deepseek_cache_hit=0",
         )
 
@@ -302,10 +331,10 @@ def test_compose_article_missing_api_key(test_client, sample_compose_request):
     assert response.status_code == 500
     detail = response.json()["detail"]
     assert detail["code"] == "API_KEY_NOT_CONFIGURED"
-    assert "DEEPSEEK_API_KEY" in detail["message"]
+    assert "BAILIAN_TOKEN_PLAN_API_KEY" in detail["message"]
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_json_parse_error(
     mock_call,
@@ -316,7 +345,7 @@ def test_compose_article_json_parse_error(
     mock_call.return_value = ClaudeOAuthMessage(
         content=[_TextBlock(text="Invalid JSON {{{")],
         usage=_Usage(input_tokens=500, output_tokens=100),
-        model="deepseek-v4-flash",
+        model="deepseek-v4-flash-0731",
         token_label="deepseek_cache_hit=0",
     )
 
@@ -331,7 +360,7 @@ def test_compose_article_json_parse_error(
     assert data["error"]["code"] in {"INVALID_JSON_RESPONSE", "JSON_PARSE_ERROR"}
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_api_error(mock_call, test_client, sample_compose_request):
     """Test compose handles DeepSeek API errors."""
@@ -352,14 +381,14 @@ def test_compose_article_api_error(mock_call, test_client, sample_compose_reques
 
 def test_compose_status_configured(test_client):
     """Test compose status endpoint when configured"""
-    with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}):
+    with patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"}):
         response = test_client.get("/api/articles/compose/status")
 
         assert response.status_code == 200
         data = response.json()
         assert data["configured"] is True
         assert data["api_key_set"] is True
-        assert data["model"] == "deepseek-v4-flash"
+        assert data["model"] == "deepseek-v4-flash-0731"
         assert data["provider"] == "deepseek"
 
 
@@ -387,6 +416,7 @@ async def test_publish_article_with_cover_image(
     """Test publishing article with cover image (base64)"""
     # Setup mock — publish goes via PR + auto-merge (protected branch path)
     mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
     mock_publisher.create_commit_with_files = AsyncMock(
         return_value={
             "success": True,
@@ -400,7 +430,7 @@ async def test_publish_article_with_cover_image(
     )
 
     # Create base64 image
-    image_data = b"fake-image-data"
+    image_data = _png_bytes()
     image_base64 = base64.b64encode(image_data).decode("utf-8")
 
     # Call endpoint
@@ -423,8 +453,18 @@ async def test_publish_article_with_cover_image(
     # Verify atomic commit was called via the pull-request path
     mock_publisher.create_commit_with_files.assert_called_once()
     call_args = mock_publisher.create_commit_with_files.call_args
-    assert len(call_args[1]["files"]) == 2  # MDX + image
+    files = call_args[1]["files"]
+    assert {entry["path"] for entry in files} == {
+        "apps/mouth/public/static/news/test-article.jpg",
+        "apps/mouth/public/static/news/test-article_card.jpg",
+        "apps/mouth/src/content/articles/immigration/indonesia-tightens-visa-rules-what-expats-need-to-know.mdx",
+    }
+    mdx = next(entry["content"] for entry in files if entry["path"].endswith(".mdx"))
+    assert 'cardImage: "/static/news/test-article_card.jpg"' in mdx
     assert call_args[1]["pull_request"] is True
+    assert call_args[1]["must_not_exist_paths"] == [
+        "apps/mouth/src/content/articles/immigration/indonesia-tightens-visa-rules-what-expats-need-to-know.mdx"
+    ]
 
 
 @pytest.mark.asyncio
@@ -437,6 +477,7 @@ async def test_publish_article_without_cover_image(
     """Test publishing article without cover image (single MDX file, PR path)"""
     # Setup mock — even a single file goes via the PR path now
     mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
     mock_publisher.create_commit_with_files = AsyncMock(
         return_value={
             "success": True,
@@ -464,6 +505,126 @@ async def test_publish_article_without_cover_image(
     call_args = mock_publisher.create_commit_with_files.call_args
     assert len(call_args[1]["files"]) == 1  # MDX only
     assert call_args[1]["pull_request"] is True
+    assert call_args[1]["must_not_exist_paths"] == [call_args[1]["files"][0]["path"]]
+
+    # The returned article_url uses the SERVED category ("visas"), not the
+    # content folder the MDX was written to ("immigration" — see
+    # category_map above). Regression guard for the folder-vs-served-category
+    # bug: see backend/services/article_routes.py.
+    assert call_args[1]["files"][0]["path"].startswith(
+        "apps/mouth/src/content/articles/immigration/"
+    )
+    assert data["article_url"].startswith("https://balizero.com/visas/")
+
+
+@pytest.mark.asyncio
+@patch("backend.services.integrations.github_publisher.github_publisher")
+async def test_publish_article_url_uses_served_category_not_content_folder(
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
+):
+    """A ``business_regulations`` article is written to the
+    ``business_regulations`` content folder (unmapped in ``category_map`` so
+    it passes through as its own folder name) but MUST be served at
+    ``/business/`` — the site only routes served categories, not folder
+    names. Measured live 2026-09-05: the folder-named URL 404s.
+    """
+    mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
+    mock_publisher.create_commit_with_files = AsyncMock(
+        return_value={
+            "success": True,
+            "commit_sha": "regcat1",
+            "files_count": 1,
+            "branch": "auto-publish/regcat1",
+            "pull_request_number": 91,
+            "auto_merge_enabled": True,
+        },
+    )
+
+    article = sample_enriched_article.model_copy(update={"category": "business_regulations"})
+    request = PublishRequest(article=article, position="normal", slug="new-kbli-rules")
+    response = test_client.post("/api/articles/publish", json=request.model_dump())
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+
+    call_args = mock_publisher.create_commit_with_files.call_args
+    mdx_path = call_args[1]["files"][0]["path"]
+    assert mdx_path == "apps/mouth/src/content/articles/business_regulations/new-kbli-rules.mdx"
+    assert data["article_url"] == "https://balizero.com/business/new-kbli-rules"
+
+
+@pytest.mark.asyncio
+@patch("backend.services.integrations.github_publisher.github_publisher")
+async def test_hero_publication_commits_article_cover_and_layout_atomically(
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
+):
+    mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
+    mock_publisher.create_commit_with_files = AsyncMock(
+        return_value={
+            "commit_sha": "hero123",
+            "pull_request_number": 88,
+            "auto_merge_enabled": True,
+        }
+    )
+    image_base64 = base64.b64encode(_png_bytes()).decode("utf-8")
+    request = PublishRequest(
+        article=sample_enriched_article,
+        cover_image_base64=image_base64,
+        cover_image_filename="hero.jpg",
+        position="hero_main",
+        slug="new-hero-story",
+    )
+
+    response = test_client.post("/api/articles/publish", json=request.model_dump())
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    files = mock_publisher.create_commit_with_files.await_args.kwargs["files"]
+    paths = {entry["path"] for entry in files}
+    assert paths == {
+        "apps/mouth/public/static/news/hero.jpg",
+        "apps/mouth/public/static/news/hero_card.jpg",
+        "apps/mouth/src/content/articles/immigration/new-hero-story.mdx",
+    }
+    assert mock_publisher.create_commit_with_files.await_args.kwargs[
+        "json_object_updates"
+    ] == {
+        "apps/mouth/src/content/homepage-layout.json": {
+            "hero_main": "new-hero-story"
+        }
+    }
+
+
+@pytest.mark.asyncio
+@patch("backend.services.integrations.github_publisher.github_publisher")
+async def test_existing_public_slug_is_never_overwritten(
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
+):
+    mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=True)
+    mock_publisher.create_commit_with_files = AsyncMock()
+
+    response = test_client.post(
+        "/api/articles/publish",
+        json=PublishRequest(
+            article=sample_enriched_article,
+            slug="existing-story",
+        ).model_dump(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is False
+    assert "already exists" in response.json()["message"].lower()
+    mock_publisher.create_commit_with_files.assert_not_awaited()
 
 
 @patch("backend.services.integrations.github_publisher.github_publisher")
@@ -491,6 +652,7 @@ async def test_publish_article_github_error(mock_publisher, test_client, sample_
     from backend.services.integrations.github_publisher import GitHubPublisherError
 
     mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
     mock_publisher.create_commit_with_files = AsyncMock(
         side_effect=GitHubPublisherError("GitHub API error"),
     )
@@ -582,6 +744,40 @@ def test_generate_mdx_content_json_serialization(sample_enriched_article):
     assert "## Next Steps" in mdx
 
 
+def test_generate_mdx_content_yaml_escapes_untrusted_tags(sample_enriched_article):
+    """Title-derived quotes must not corrupt the publication frontmatter."""
+    import yaml
+
+    sample_enriched_article.ai_tags = ["business", '"golden', "rule: update"]
+    mdx = generate_mdx_content(sample_enriched_article, "safe-tags", None)
+    frontmatter = mdx.split("---", 2)[1]
+
+    parsed = yaml.safe_load(frontmatter)
+    assert parsed["tags"] == ["business", '"golden', "rule: update"]
+
+
+def test_generate_mdx_content_neutralizes_executable_mdx(sample_enriched_article):
+    """Public editorial copy must remain text, never executable MDX/JSX."""
+    attack = (
+        '<script dangerouslySetInnerHTML={{__html:"window.__DAMAR_PROBE__=1"}} />\n'
+        "export const injected = true\n"
+        "[unsafe](javascript:alert(1))"
+    )
+    sample_enriched_article.facts = attack
+    sample_enriched_article.tldr.what = attack
+    sample_enriched_article.bali_zero_take.our_analysis = attack
+
+    mdx = generate_mdx_content(sample_enriched_article, "safe-mdx", None)
+
+    assert "<script" not in mdx
+    assert "{{__html" not in mdx
+    assert "\nexport const injected" not in mdx
+    assert "javascript:alert" not in mdx
+    assert "&lt;script" in mdx
+    assert "e&#120;port const injected" in mdx
+    assert "](#blocked-protocol-alert(1))" in mdx
+
+
 def test_generate_mdx_content_cover_image_path(sample_enriched_article):
     """Test MDX content uses provided cover image path"""
     slug = "test-article"
@@ -589,6 +785,21 @@ def test_generate_mdx_content_cover_image_path(sample_enriched_article):
     mdx = generate_mdx_content(sample_enriched_article, slug, cover_path)
 
     assert f'coverImage: "{cover_path}"' in mdx
+
+
+def test_generate_mdx_content_includes_canonical_primary_source(
+    sample_enriched_article,
+):
+    sample_enriched_article.source = "Official Indonesian source"
+    sample_enriched_article.source_url = (
+        "https://example.go.id/regulation?access_token=private#internal"
+    )
+
+    mdx = generate_mdx_content(sample_enriched_article, "source-citation", None)
+
+    assert "## Primary Source" in mdx
+    assert "[Official Indonesian source](https://example.go.id/regulation)" in mdx
+    assert "access_token" not in mdx
 
 
 def test_generate_mdx_content_card_image_derived(sample_enriched_article):
@@ -622,6 +833,101 @@ def test_generate_mdx_content_reading_time(sample_enriched_article):
     assert reading_time >= 3
 
 
+def test_plain_text_snippet_strips_heading_markdown():
+    """A '## Facts' heading and inline markdown must render as plain prose."""
+    raw = "## Facts\n\nIndonesia is **moving forward** with a [sweeping reform](https://x.io)."
+    snippet = _plain_text_snippet(raw, 280)
+
+    assert "#" not in snippet
+    assert "**" not in snippet
+    assert "[" not in snippet and "](" not in snippet
+    assert snippet.startswith("Indonesia is moving forward")
+
+
+def test_plain_text_snippet_truncates_at_word_boundary():
+    """Truncation never splits a word and only appends an ellipsis when cut."""
+    raw = "Indonesia is moving forward with a sweeping set of Usaha Menengah reforms today"
+    snippet = _plain_text_snippet(raw, 40)
+
+    assert len(snippet) <= 41  # 40 chars + the ellipsis character
+    assert snippet.endswith("…")
+    body = snippet[:-1].rstrip()
+    assert raw.startswith(body)
+    # The character right after the kept text in the source is a word
+    # boundary (space), proving no word was cut mid-way.
+    assert raw[len(body) : len(body) + 1] in (" ", "")
+
+
+def test_plain_text_snippet_no_ellipsis_when_untruncated():
+    """Short input is returned as-is — no trailing ellipsis added."""
+    snippet = _plain_text_snippet("Short headline", 70)
+    assert snippet == "Short headline"
+    assert not snippet.endswith("…")
+
+
+def test_generate_mdx_content_excerpt_and_seo_description_strip_markdown_fallback(
+    sample_enriched_article,
+):
+    """excerpt/seoDescription must be plain prose even when the only
+
+    available source is raw markdown content (e.g. the intel staging
+    conversion falling back to ``content[:280]`` when no '## Summary'
+    section exists — see backend/app/routers/intel_scraper.py
+    ``convert_staging_to_enriched_article``).
+    """
+    sample_enriched_article.ai_summary = (
+        "## Facts\n\nIndonesia is moving forward with a sweeping set of Usaha "
+        "Menengah reforms that will change how small and medium businesses "
+        "register for a KBLI code across the archipelago starting in Ma"
+    )
+    sample_enriched_article.seo_title = None
+    sample_enriched_article.seo_description = None
+
+    mdx = generate_mdx_content(sample_enriched_article, "seo-fallback-plain", None)
+
+    import yaml
+
+    frontmatter = yaml.safe_load(mdx.split("---", 2)[1])
+
+    expected_excerpt = _plain_text_snippet(sample_enriched_article.ai_summary, 280)
+    expected_seo_desc = _plain_text_snippet(sample_enriched_article.ai_summary, 155)
+    expected_seo_title = _plain_text_snippet(sample_enriched_article.headline, 70)
+
+    assert frontmatter["excerpt"] == expected_excerpt
+    assert frontmatter["seoDescription"] == expected_seo_desc
+    assert frontmatter["seoTitle"] == expected_seo_title
+
+    for field, value in (
+        ("excerpt", frontmatter["excerpt"]),
+        ("seoDescription", frontmatter["seoDescription"]),
+        ("seoTitle", frontmatter["seoTitle"]),
+    ):
+        assert "#" not in value, f"{field} still carries a markdown heading: {value!r}"
+        assert "\n" not in value
+        if value.endswith("…"):
+            # Whatever precedes the ellipsis must end at a real word — in
+            # the fully markdown-stripped source, the character right after
+            # the kept text is a space (or the kept text runs to the end),
+            # never mid-word.
+            body = value[:-1].rstrip()
+            plain_source = _plain_text_snippet(
+                sample_enriched_article.ai_summary, len(sample_enriched_article.ai_summary) + 10
+            )
+            assert plain_source[len(body) : len(body) + 1] in (" ", "")
+
+
+def test_generate_mdx_content_seo_title_prefers_short_headline_untruncated(
+    sample_enriched_article,
+):
+    """A headline at or under 70 chars is used verbatim — no ellipsis added."""
+    sample_enriched_article.headline = "Indonesia Tightens Visa Rules for Expats"
+    sample_enriched_article.seo_title = None
+
+    mdx = generate_mdx_content(sample_enriched_article, "seo-title-short", None)
+
+    assert 'seoTitle: "Indonesia Tightens Visa Rules for Expats"' in mdx
+
+
 def test_build_enrichment_prompt_truncates_content():
     """Test enrichment prompt truncates content to 8000 chars"""
     title = "Test"
@@ -652,7 +958,7 @@ def test_build_enrichment_prompt_priority_instructions():
 # --- INTEGRATION TEST ---
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 @patch("backend.services.integrations.github_publisher.github_publisher")
 def test_full_compose_and_publish_flow(
@@ -664,6 +970,7 @@ def test_full_compose_and_publish_flow(
     """Integration test: compose article then publish it (DeepSeek-backed)."""
     mock_call.return_value = mock_llm_response
     mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
     mock_publisher.create_commit_with_files = AsyncMock(
         return_value={
             "success": True,

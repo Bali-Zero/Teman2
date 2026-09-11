@@ -251,10 +251,29 @@ export function DocumentsTab({
                                 {badge.label}
                               </span>
                             )}
-                            {doc.status === "verified" && (
-                              <span className="text-xs text-green-500">
-                                ✓ Verified
+                            {doc.deleted_at ? (
+                              /* The client removed this from their vault.
+                                 It used to render identically to a live
+                                 document — status "received", alert_color
+                                 "green" — so the team could chase a file the
+                                 client had deliberately taken down, or count
+                                 it as still on file (portal audit F-02).
+                                 Flagged rather than hidden: it is restorable
+                                 for 30 days and the file is still in Drive,
+                                 so the team removing it from view would lose
+                                 information they may need. */
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
+                                title={`Removed by the client on ${formatDate(doc.deleted_at)} — restorable by them for 30 days`}
+                              >
+                                Removed by client
                               </span>
+                            ) : (
+                              doc.status === "verified" && (
+                                <span className="text-xs text-green-500">
+                                  ✓ Verified
+                                </span>
+                              )
                             )}
                           </div>
                         </div>

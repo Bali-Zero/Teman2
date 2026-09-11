@@ -10,14 +10,14 @@ echo "🔍 Running pre-commit hooks..."
 # manual cleanup). Decision 2026-06-16. Self-healing, not a wall.
 # Kill switch: CICATRIX_ARCHIVE_ENFORCEMENT=false
 if [ "${CICATRIX_ARCHIVE_ENFORCEMENT:-true}" != "false" ]; then
-    CICATRIX_FILE=".claude/rules/cicatrix-scars.md"
+    CICATRIX_FILE="docs/scars/cicatrix-scars.md"
     if git diff --cached --name-only --diff-filter=ACMR | grep -Fxq "$CICATRIX_FILE"; then
         # Size of the STAGED blob (what would actually be committed).
         STAGED_SIZE=$(git show ":$CICATRIX_FILE" 2>/dev/null | LC_ALL=C wc -c | tr -d '[:space:]')
         if [ -n "$STAGED_SIZE" ] && [ "$STAGED_SIZE" -gt "${CICATRIX_SIZE_LIMIT_CHARS:-10000000}" ]; then
             echo "🗄️  [cicatrix] staged scars file is ${STAGED_SIZE} chars (> 10M) — auto-archiving..."
             if python3 scripts/archive_cicatrix_scars.py; then
-                git add "$CICATRIX_FILE" .claude/rules/cicatrix-scars-archive.md
+                git add "$CICATRIX_FILE" docs/scars/cicatrix-scars-archive.md
                 echo "✅ [cicatrix] archived old scars and re-staged (now under 10M)."
             else
                 echo "❌ [cicatrix] auto-archive could not bring the file under 10M."

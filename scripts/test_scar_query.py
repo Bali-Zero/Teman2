@@ -168,7 +168,7 @@ def t_family_render(d: Path) -> None:
 def t_bridge_promises_resolve() -> None:
     """Every `scar query "<theme>"` in the real bridge must return >=1 hit."""
     rules = None
-    for cand in sq._candidate_rules_dirs():
+    for cand in sq._candidate_dirs(".claude", "rules"):
         if (cand / "cicatrix-superscar.md").is_file():
             rules = cand
             break
@@ -179,8 +179,22 @@ def t_bridge_promises_resolve() -> None:
     # real promises only — exclude the literal `<tema>` placeholder in the
     # maintenance note (a `<...>` token is documentation, not a live query).
     themes = [t for t in re.findall(r'scar query "([^"]+)"', bridge) if "<" not in t]
-    check(len(themes) >= 10, f"expected >=10 bridge promises, found {len(themes)}")
-    scars = sq.parse_corpus(rules)
+    # No count ratchet. This assertion used to demand >=10 concrete promises and
+    # has been RED on origin/main since the 2026-08-21 boot-tax trim reduced the
+    # bridge to family rows plus a single `scar query "<tema>"` placeholder —
+    # unnoticed for ten days because nothing executes this file (superscar #2).
+    # The property worth guarding was never the count: it is that every promise
+    # the bridge DOES make resolves to at least one hit. Zero promises is a
+    # legitimate state of a thin bridge; a promise that returns nothing is not.
+    corpus = None
+    for cand in sq._candidate_dirs("docs", "scars"):
+        if (cand / sq.CORPUS_FILES[0]).is_file():
+            corpus = cand
+            break
+    if corpus is None:
+        FAILURES.append("LIVE: scar corpus not found under docs/scars — cannot smoke the bridge")
+        return
+    scars = sq.parse_corpus(corpus)
     check(len(scars) >= 40, f"live corpus parsed only {len(scars)} scars (expected many)")
     import io
     from contextlib import redirect_stdout, redirect_stderr

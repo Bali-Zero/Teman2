@@ -1,0 +1,642 @@
+"""Tests for scripts/pr_size_taxonomy.py (L04-PR3, beyond-SOTA craft wave).
+
+Guilt AND innocence for every taxonomy decision: the GUILT case (pure-code
+overage -> split-required), the INNOCENCE case (mandated-artifact overage ->
+exempt, never split-required), the COMPOSITION TRAP (a huge exempt payload
+sitting next to over-contract code must still read split-required — an
+exemption never excuses code), the boundary at exactly/one-past the contract,
+exact per-class attribution (not a vacuous ">=1 file landed somewhere" probe),
+the `generated` class staying content-marker-only (never path-inferred), the
+two-phase gh fetch (files are only pulled for PRs already over contract by
+PR-level net), and an honest-recompute pin: a synthetic fixture whose correct
+answer is NOT the real repo's measured 31/11, proving the tool computes from
+its input rather than a frozen constant.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+REPO = Path(__file__).resolve().parents[2]
+SCRIPTS = REPO / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+
+import pr_size_taxonomy as pst  # noqa: E402
+
+
+def _pr(n: int, files: list[tuple[str, int, int]], title: str = "synthetic", merge_sha=None) -> dict:
+    return {"n": n, "t": title, "mergeSha": merge_sha,
+            "files": [{"p": p, "a": a, "d": d} for p, a, d in files]}
+
+
+# ---------------------------------------------------------------------------
+# classify_path — path-only classification, `generated` deliberately absent.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "path,expected",
+    [
+        ("evidence/2026-08/agent-x/pack.yml", "evidence"),
+        ("scripts/tests/test_foo.py", "tests"),
+        ("apps/backend-rag/backend/tests/unit/test_bar.py", "tests"),
+        ("apps/mouth/e2e/book-pricing.spec.ts", "tests"),
+        ("apps/x/foo.test.tsx", "tests"),
+        ("docs/runbooks/foo.md", "docs"),
+        ("research/operations/2026-01-01-foo.md", "docs"),
+        (".claude/skills/modus/SKILL.md", "docs"),
+        ("package-lock.json", "lockfile"),
+        ("apps/backend-rag/poetry.lock", "lockfile"),
+        ("uv.lock", "lockfile"),
+        ("scripts/foo.py", "code"),
+        (".github/workflows/foo.yml", "code"),  # workflows are real code, never exempt
+    ],
+)
+def test_classify_path(path, expected):
+    assert pst.classify_path(path) == expected
+
+
+def test_classify_path_never_infers_generated_from_a_path_substring():
+    # INNOCENCE: a path merely containing the word "generated" is not enough —
+    # the class is content-marker-only (see module docstring), never a glob.
+    assert pst.classify_path("scripts/auto_generated_helper.py") == "code"
+    assert pst.classify_path("apps/x/generated/schema.py") == "code"
+
+
+def test_classify_path_ordering_evidence_beats_a_nested_tests_looklike():
+    # evidence/** is root-anchored and checked first; a file that lives under
+    # the mandated evidence pack is `evidence` even if its own name looks
+    # test-shaped (it is data ABOUT the PR, not a guard).
+    assert pst.classify_path("evidence/2026-08/agent-x/test_notes.yml") == "evidence"
+
+
+@pytest.mark.parametrize(
+    "path,expected",
+    [
+        # F-B GUILT: a root-level `.md` is docs at ANY location, not only
+        # under a docs/research/.claude prefix — a live example on this repo
+        # (CLAUDE.md, AGENTS.md sit at repo root, no prefix matches them).
+        ("CLAUDE.md", "docs"),
+        ("AGENTS.md", "docs"),
+        # F-B INNOCENCE: a plain docs/**/*.md stays docs — the extension rule
+        # and the prefix rule agree here, this pins that agreement.
+        ("docs/runbooks/foo.md", "docs"),
+        # F-C GUILT: a code extension under a docs/research/.claude PREFIX
+        # wins over the prefix — a live guard/hook script filed under a docs
+        # directory is code, not documentation. All four are real repo paths.
+        (".claude/hooks/codex-spalla-trigger.sh", "code"),
+        (".claude/hooks/memory_budget_gate.py", "code"),
+        (".claude/scripts/codex-spalla.sh", "code"),
+        ("docs/mata-garuda/poc/dummy_agent.py", "code"),
+        # F-C INNOCENCE: the code-extension override never reaches `tests`
+        # or `evidence` — both are checked, and win, before the docs/code
+        # precedence is even consulted.
+        ("apps/x/tests/helper.py", "tests"),
+        ("evidence/2026-08/x/helper.py", "evidence"),
+    ],
+)
+def test_classify_path_docs_vs_code_extension_precedence(path, expected):
+    assert pst.classify_path(path) == expected
+
+
+# ---------------------------------------------------------------------------
+# generated — content-marker only.
+# ---------------------------------------------------------------------------
+
+def test_has_generated_marker_true_on_header_comment_multiple_leaders():
+    assert pst._has_generated_marker("#!/usr/bin/env python3\n# @generated by codemod\nprint(1)\n")
+    assert pst._has_generated_marker("// generated automatically, do not edit\nconsole.log(1);\n")
+    assert pst._has_generated_marker("<!-- @generated -->\n<html></html>\n")
+
+
+def test_has_generated_marker_false_on_midsentence_mention():
+    # INNOCENCE: the word appearing mid-sentence, not as a line-start comment
+    # leader, must not fire.
+    assert not pst._has_generated_marker("# this file is not generated by hand\nprint(1)\n")
+
+
+def test_has_generated_marker_false_beyond_first_20_lines():
+    body = "\n".join(f"line {i}" for i in range(25)) + "\n# @generated\n"
+    assert not pst._has_generated_marker(body)
+
+
+def test_probe_generated_via_git_never_crashes_without_sha():
+    assert pst._probe_generated_via_git(None, "some/path.py") is False
+
+
+def test_probe_generated_via_git_never_crashes_on_bad_sha():
+    assert pst._probe_generated_via_git("0" * 40, "some/path.py") is False
+
+
+def test_probe_generated_via_git_real_plumbing_positive_and_negative(tmp_path):
+    # End-to-end through the real `git show` call (not a mock), against a
+    # throwaway repo — proves the marker plumbing itself, not just the pure
+    # string check.
+    repo = tmp_path / "throwaway"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True)
+    (repo / "marked.py").write_text("# @generated by codemod\nprint(1)\n")
+    (repo / "plain.py").write_text("print(1)\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True)
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+    import os
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(repo)
+        assert pst._probe_generated_via_git(sha, "marked.py") is True
+        assert pst._probe_generated_via_git(sha, "plain.py") is False
+    finally:
+        os.chdir(old_cwd)
+
+
+# ---------------------------------------------------------------------------
+# pr_verdict — GUILT, INNOCENCE, the composition trap, boundaries.
+# ---------------------------------------------------------------------------
+
+def test_guilt_pure_code_overage_is_split_required():
+    v = pst.pr_verdict(_pr(1, [("scripts/foo.py", 500, 0)]))
+    assert v["verdict"] == "split-required"
+    assert v["label"] == "split-required"
+    assert v["code_residual_net"] == 500
+
+
+def test_innocence_evidence_and_tests_overage_with_small_code_residual_is_exempt():
+    v = pst.pr_verdict(_pr(2, [
+        ("evidence/2026-08/x/pack.yml", 300, 0),
+        ("scripts/tests/test_foo.py", 200, 0),
+        ("scripts/foo.py", 50, 0),
+    ]))
+    assert v["verdict"] == "exempt"
+    assert v["label"] != "split-required"
+    assert v["code_residual_net"] == 50
+
+
+def test_composition_trap_huge_exempt_payload_never_excuses_over_contract_code():
+    # A PR with 10,000 lines of evidence+tests but 401 lines of real code
+    # must STILL read split-required. If this test is missing, the tool is
+    # an excuse generator.
+    v = pst.pr_verdict(_pr(3, [
+        ("evidence/2026-08/x/pack.yml", 5000, 0),
+        ("scripts/tests/test_foo.py", 5000, 0),
+        ("scripts/foo.py", 401, 0),
+    ]))
+    assert v["verdict"] == "split-required"
+    assert v["code_residual_net"] == 401
+
+
+def test_boundary_code_residual_exactly_400_is_exempt():
+    v = pst.pr_verdict(_pr(4, [
+        ("evidence/2026-08/x/pack.yml", 100, 0),
+        ("scripts/foo.py", 400, 0),
+    ]))
+    assert v["code_residual_net"] == 400
+    assert v["verdict"] == "exempt"
+
+
+def test_boundary_code_residual_401_is_split_required():
+    v = pst.pr_verdict(_pr(5, [
+        ("evidence/2026-08/x/pack.yml", 100, 0),
+        ("scripts/foo.py", 401, 0),
+    ]))
+    assert v["code_residual_net"] == 401
+    assert v["verdict"] == "split-required"
+
+
+def test_boundary_total_net_exactly_at_contract_needs_no_classification():
+    v = pst.pr_verdict(_pr(6, [("scripts/foo.py", 400, 0)]))
+    assert v["verdict"] == "within-contract"
+    assert v["label"] is None
+    assert v["code_residual_net"] is None
+
+
+def test_within_contract_pr_falls_back_to_pr_level_net_without_files():
+    pr = {"n": 7, "t": "no files fetched", "net": 50, "files": []}
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "within-contract"
+    assert v["total_net"] == 50
+
+
+# ---------------------------------------------------------------------------
+# DATA COMPLETENESS — unknown(<reason>) when the tool cannot vouch for its
+# own input. A missing measurement must never read as a measured zero.
+# ---------------------------------------------------------------------------
+
+def test_unknown_no_file_detail_when_over_contract_pr_has_no_files():
+    # GUILT: an over-contract PR whose file list was never fetched must read
+    # unknown(no-file-detail), never exempt(code) or within-contract — "could
+    # not measure" must never collapse into "measured zero".
+    pr = {"n": 40, "t": "no file detail", "net": 500, "files": []}
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "unknown"
+    assert v["label"] == "unknown(no-file-detail)"
+    assert v["code_residual_net"] is None
+    assert v["code_residual_churn"] is None
+    assert v["verdict"] not in ("exempt", "within-contract")
+
+
+def test_unknown_no_file_detail_also_fires_when_pr_level_net_is_missing():
+    # Same guard, the other trigger: no `net` at all and no files means there
+    # is nothing to fall back on — unknown, not a silent zero.
+    pr = {"n": 41, "t": "nothing to go on", "files": []}
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "unknown"
+    assert v["label"] == "unknown(no-file-detail)"
+
+
+def test_within_contract_fast_path_survives_with_no_files_at_the_boundary():
+    # INNOCENCE: the two-phase fetch's real fast path — a PR whose file list
+    # was never fetched but whose PR-level net alone already proves
+    # within-contract — must NOT regress into unknown.
+    pr = {"n": 42, "t": "no files, within contract", "net": 400, "files": []}
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "within-contract"
+    assert v["label"] is None
+    assert v["total_net"] == 400
+
+
+def _pr_with_totals(n: int, add: int, dele: int, files: list[tuple[str, int, int]], title: str = "synthetic") -> dict:
+    return {"n": n, "t": title, "add": add, "del": dele, "net": add - dele,
+            "files": [{"p": p, "a": a, "d": d} for p, a, d in files]}
+
+
+def test_unknown_reconciliation_mismatch_when_file_sums_disagree_with_pr_totals():
+    # GUILT: PR-level totals claim 1000 additions but the fetched file list
+    # only sums to 500 — a truncated `--paginate` page that still exits 0.
+    # The tool must not trust the file list it cannot reconcile.
+    pr = _pr_with_totals(43, add=1000, dele=0, files=[("scripts/foo.py", 500, 0)])
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "unknown"
+    assert v["label"] == "unknown(reconciliation-mismatch)"
+    assert v["code_residual_net"] is None
+    assert v["total_net"] == 1000  # falls back to the PR-level net it DOES trust
+
+
+def test_reconciliation_agreement_never_reads_unknown():
+    # INNOCENCE: when the file list's own sums agree with the PR-level
+    # totals, classification proceeds normally — never unknown.
+    pr = _pr_with_totals(44, add=500, dele=0, files=[("scripts/foo.py", 500, 0)])
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "split-required"
+    assert v["verdict"] != "unknown"
+    assert v["code_residual_net"] == 500
+
+
+def test_reconciliation_check_skipped_when_pr_lacks_add_del_totals():
+    # INNOCENCE: a PR carrying files but no PR-level `add`/`del` at all has
+    # nothing to reconcile against — the check is skipped, not forced red.
+    pr = _pr(45, [("scripts/foo.py", 500, 0)])
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] != "unknown"
+    assert v["verdict"] == "split-required"
+    assert v["code_residual_net"] == 500
+
+
+# ---------------------------------------------------------------------------
+# Exact per-class attribution — a `>= 1 file landed somewhere` probe is
+# vacuous even if every file were credited to every class; this pins the
+# EXACT net dict, and the dominant-class (largest positive contributor,
+# NOT simply "the first exempt class present") selection for the label.
+# ---------------------------------------------------------------------------
+
+def test_exact_per_class_net_attribution_and_dominant_label():
+    v = pst.pr_verdict(_pr(8, [
+        ("evidence/2026-08/x/pack.yml", 100, 0),
+        ("evidence/2026-08/x/brief.yml", 50, 10),  # net 40 -> evidence totals 140
+        ("scripts/tests/test_foo.py", 300, 0),
+        ("docs/runbooks/foo.md", 40, 0),
+        ("scripts/foo.py", 20, 0),
+    ]))
+    assert v["by_class_net"] == {"evidence": 140, "tests": 300, "docs": 40, "code": 20}
+    assert v["total_net"] == 500
+    assert v["code_residual_net"] == 20
+    assert v["verdict"] == "exempt"
+    assert v["label"] == "exempt(tests)"  # 300 is the largest exempt contributor, not evidence
+
+
+def test_by_class_churn_differs_from_net_when_deletions_present():
+    v = pst.pr_verdict(_pr(9, [("scripts/foo.py", 300, 200)]))  # net 100 <= 400 -> within-contract
+    assert v["verdict"] == "within-contract"
+    v2 = pst.pr_verdict(_pr(10, [("scripts/foo.py", 300, 200), ("scripts/bar.py", 150, 0)]))
+    assert v2["total_net"] == 250  # (300-200)+(150-0)
+    assert v2["verdict"] == "within-contract"
+
+
+# ---------------------------------------------------------------------------
+# EXEMPT_CLASSES completeness — each class must, alone, be able to carry an
+# over-contract PR to `exempt(<class>)`. A tuple missing a member silently
+# falls back to `exempt(code)` for that class (see `pr_verdict`'s `dominant`
+# fallback) — a subtle mislabel, not a crash, so each member needs its own
+# defense, not just a shared "the tuple exists" smoke test.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "path,label",
+    [
+        ("evidence/2026-08/x/pack.yml", "exempt(evidence)"),
+        ("scripts/tests/test_bulk.py", "exempt(tests)"),
+        ("docs/runbooks/bulk.md", "exempt(docs)"),
+        ("package-lock.json", "exempt(lockfile)"),
+    ],
+)
+def test_each_path_derived_exempt_class_alone_carries_the_overage(path, label):
+    v = pst.pr_verdict(_pr(50, [(path, 401, 0)]))
+    assert v["verdict"] == "exempt"
+    assert v["label"] == label
+    assert v["code_residual_net"] == 0
+
+
+def test_generated_class_alone_carries_the_overage_when_probed(tmp_path):
+    # `generated` is content-marker-only, gated on --probe-generated, and the
+    # probe shells out to a real `git show <sha>:<path>` — it cannot be
+    # exercised through pr_verdict with a mock. Reuses the same
+    # throwaway-repo + os.chdir seam as
+    # test_probe_generated_via_git_real_plumbing_positive_and_negative
+    # rather than inventing a new one.
+    repo = tmp_path / "throwaway"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True)
+    (repo / "gen.py").write_text("# @generated by codemod\nprint(1)\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True)
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+    import os
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(repo)
+        pr = _pr(51, [("gen.py", 401, 0)], merge_sha=sha)
+        v = pst.pr_verdict(pr, probe_generated=True)
+        v_unprobed = pst.pr_verdict(pr, probe_generated=False)
+    finally:
+        os.chdir(old_cwd)
+
+    assert v["verdict"] == "exempt"
+    assert v["label"] == "exempt(generated)"
+    assert v["code_residual_net"] == 0
+
+    # INNOCENCE half of the same probe: without --probe-generated the same
+    # file, same marker, same overage classifies as plain code — the class
+    # never fires from a path glob, only from an explicit content probe.
+    assert v_unprobed["verdict"] == "split-required"
+    assert v_unprobed["code_residual_net"] == 401
+
+
+# ---------------------------------------------------------------------------
+# build_report — aggregation, and the honest-recompute pin.
+# ---------------------------------------------------------------------------
+
+def test_honest_recompute_differs_from_the_real_repos_measured_31_and_11():
+    prs = [
+        _pr(20, [("scripts/foo.py", 100, 0)]),  # within-contract
+        _pr(21, [("scripts/foo.py", 500, 0)]),  # split-required
+        _pr(22, [("evidence/x/pack.yml", 450, 0), ("scripts/foo.py", 10, 0)]),  # exempt
+    ]
+    report = pst.build_report(prs)
+    assert report["examined"] == 3
+    assert report["over_contract_total"] == 2
+    assert report["over_contract_nonexempt"] == 1
+    assert report["exempt_count"] == 1
+    # The pin: this tool computed a DIFFERENT answer than the real repo's
+    # measured 31/11 — proof it recomputes from input, not from a constant.
+    assert (report["over_contract_total"], report["over_contract_nonexempt"]) != (31, 11)
+
+
+def test_build_report_counts_unknown_separately_from_over_contract():
+    # An unknown PR must never be silently folded into "over" or "within" —
+    # counting it as within-contract would understate the over-contract
+    # population this report exists to surface.
+    prs = [
+        _pr(60, [("scripts/foo.py", 100, 0)]),                    # within-contract
+        _pr(61, [("scripts/foo.py", 500, 0)]),                    # split-required
+        {"n": 62, "t": "unmeasurable", "net": 500, "files": []},  # unknown(no-file-detail)
+    ]
+    report = pst.build_report(prs)
+    assert report["examined"] == 3
+    assert report["unknown_count"] == 1
+    assert report["over_contract_total"] == 1  # the unknown PR is NOT counted here
+    assert report["over_contract_nonexempt"] == 1
+    assert report["exempt_count"] == 0
+
+
+def test_build_report_churn_share_sums_to_one():
+    prs = [
+        _pr(23, [("evidence/x/pack.yml", 300, 0), ("scripts/foo.py", 401, 0)]),
+        _pr(24, [("scripts/tests/test_foo.py", 700, 0)]),
+    ]
+    report = pst.build_report(prs)
+    assert report["over_contract_total"] == 2
+    assert abs(sum(report["churn_share"].values()) - 1.0) < 1e-9
+
+
+def test_render_markdown_never_lists_within_contract_prs():
+    prs = [_pr(25, [("scripts/foo.py", 50, 0)]), _pr(26, [("scripts/foo.py", 500, 0)])]
+    md = pst.render_markdown(pst.build_report(prs))
+    assert "#25" not in md
+    assert "#26" in md
+
+
+def test_render_explain_lists_every_file_with_its_class():
+    v = pst.pr_verdict(_pr(27, [
+        ("evidence/x/pack.yml", 401, 0),
+        ("scripts/foo.py", 5, 0),
+    ]))
+    explain = pst.render_explain(v)
+    assert "evidence/x/pack.yml" in explain
+    assert "| evidence |" in explain
+    assert "scripts/foo.py" in explain
+    assert "| code |" in explain
+
+
+# ---------------------------------------------------------------------------
+# _pr_from_fixture — edge case.
+# ---------------------------------------------------------------------------
+
+def test_pr_from_fixture_raises_on_missing_number():
+    with pytest.raises(KeyError):
+        pst._pr_from_fixture({"prs": [{"n": 1}]}, 999)
+
+
+# ---------------------------------------------------------------------------
+# gh I/O — mocked subprocess, no network. Pins the two-phase fetch: file
+# detail is fetched ONLY for PRs whose PR-level net already exceeds contract.
+# ---------------------------------------------------------------------------
+
+def test_gh_json_raises_on_nonzero_exit():
+    with patch("subprocess.run") as m:
+        m.return_value = MagicMock(returncode=1, stdout="", stderr="boom")
+        with pytest.raises(RuntimeError, match="boom"):
+            pst._gh_json(["pr", "list"])
+
+
+def test_gh_json_parses_stdout():
+    with patch("subprocess.run") as m:
+        m.return_value = MagicMock(returncode=0, stdout='{"a": 1}', stderr="")
+        assert pst._gh_json(["x"]) == {"a": 1}
+
+
+def test_fetch_pr_files_parses_ndjson_lines():
+    with patch("subprocess.run") as m:
+        m.return_value = MagicMock(returncode=0, stdout='{"p":"a.py","a":1,"d":0}\n{"p":"b.py","a":2,"d":1}\n', stderr="")
+        files = pst.fetch_pr_files(1)
+        assert files == [{"p": "a.py", "a": 1, "d": 0}, {"p": "b.py", "a": 2, "d": 1}]
+
+
+def test_fetch_merged_prs_only_fetches_files_for_over_contract_prs():
+    list_call = MagicMock(returncode=0, stderr="", stdout=json.dumps([
+        {"number": 1, "title": "small", "additions": 10, "deletions": 0,
+         "mergedAt": "x", "mergeCommit": {"oid": "s1"}},
+        {"number": 2, "title": "big", "additions": 500, "deletions": 0,
+         "mergedAt": "x", "mergeCommit": {"oid": "s2"}},
+    ]))
+    files_call = MagicMock(returncode=0, stderr="", stdout='{"p":"z.py","a":500,"d":0}\n')
+    with patch("subprocess.run", side_effect=[list_call, files_call]) as m:
+        prs = pst.fetch_merged_prs(limit=2, contract=400)
+        assert m.call_count == 2  # ONE list call + files fetched for PR #2 ONLY, never PR #1
+        assert prs[0]["files"] == []
+        assert prs[1]["files"] == [{"p": "z.py", "a": 500, "d": 0}]
+
+
+# ---------------------------------------------------------------------------
+# CLI end-to-end via --fixture (real argparse + main() wiring, no network).
+# ---------------------------------------------------------------------------
+
+def _run_cli(*args: str) -> str:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "pr_size_taxonomy.py"), *args],
+        capture_output=True, text=True, timeout=30, env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin:/opt/homebrew/bin"},
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout
+
+
+def _md_row_for(out: str, n: int) -> str:
+    # The row for PR #n, not any substring of the whole document — the
+    # static header line already contains the literal "split-required"
+    # (see render_markdown), so `"split-required" in out` is satisfiable by
+    # an implementation that classifies every PR exempt. Tie the assertion
+    # to the verdict CELL of PR #n's own row instead (F-A).
+    for line in out.splitlines():
+        if line.startswith(f"| #{n} |"):
+            return line
+    raise AssertionError(f"no markdown row found for #{n} in:\n{out}")
+
+
+def test_cli_end_to_end_guilt_and_innocence_via_fixture(tmp_path):
+    fixture = {"prs": [
+        {"n": 100, "t": "guilty", "files": [{"p": "scripts/foo.py", "a": 500, "d": 0}]},
+        {"n": 101, "t": "innocent", "files": [
+            {"p": "evidence/x/pack.yml", "a": 450, "d": 0},
+            {"p": "scripts/foo.py", "a": 10, "d": 0},
+        ]},
+    ]}
+    fpath = tmp_path / "fixture.json"
+    fpath.write_text(json.dumps(fixture))
+    out = _run_cli("--fixture", str(fpath))
+    assert "#100" in out
+    assert _md_row_for(out, 100).rstrip().endswith("| split-required |")
+    assert "#101" in out
+    assert _md_row_for(out, 101).rstrip().endswith("| exempt(evidence) |")
+
+
+def test_cli_explain_mode_via_fixture(tmp_path):
+    fixture = {"prs": [{"n": 200, "t": "x", "files": [{"p": "scripts/foo.py", "a": 500, "d": 0}]}]}
+    fpath = tmp_path / "fixture.json"
+    fpath.write_text(json.dumps(fixture))
+    out = _run_cli("--fixture", str(fpath), "--explain", "200")
+    assert "scripts/foo.py" in out
+    assert "split-required" in out
+
+
+def test_cli_writes_json_and_md_reports(tmp_path):
+    fixture = {"prs": [{"n": 300, "t": "x", "files": [{"p": "scripts/foo.py", "a": 500, "d": 0}]}]}
+    fpath = tmp_path / "fixture.json"
+    fpath.write_text(json.dumps(fixture))
+    json_out = tmp_path / "report.json"
+    md_out = tmp_path / "report.md"
+    _run_cli("--fixture", str(fpath), "--json", str(json_out), "--md", str(md_out))
+    report = json.loads(json_out.read_text())
+    assert report["over_contract_total"] == 1
+    assert "split-required" in md_out.read_text()
+
+
+def test_cli_has_no_check_flag():
+    # The contract: report-only, no gating flag exists at all.
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "pr_size_taxonomy.py"), "--help"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert "--check" not in proc.stdout
+
+
+# ---------------------------------------------------------------------------
+# The advisory workflow itself: never a required check, never a dependency
+# of another job.
+# ---------------------------------------------------------------------------
+
+def test_workflow_is_never_a_needs_dependency_of_another_workflow():
+    workflow = REPO / ".github" / "workflows" / "pr-size-taxonomy.yml"
+    assert workflow.exists()
+    job_ids = set()
+    lines = workflow.read_text().splitlines()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("taxonomy:"):
+            job_ids.add("taxonomy")
+    assert job_ids  # sanity: the job id this test greps for actually exists
+    for other in (REPO / ".github" / "workflows").glob("*.yml"):
+        if other.name == "pr-size-taxonomy.yml":
+            continue
+        text = other.read_text()
+        assert "pr-size-taxonomy" not in text, f"{other} references the advisory workflow"
+
+
+def test_workflow_script_invocation_never_passes_check():
+    # Entity check, not a bare substring scan: the comment ABOVE the trigger
+    # legitimately explains "no --check flag exists" — that mention must not
+    # trip this test. Only lines that actually invoke the script count.
+    workflow_text = (REPO / ".github" / "workflows" / "pr-size-taxonomy.yml").read_text()
+    invocation_lines = [ln for ln in workflow_text.splitlines() if "pr_size_taxonomy.py" in ln]
+    assert invocation_lines, "workflow never invokes the script at all"
+    for ln in invocation_lines:
+        assert "--check" not in ln, f"script invocation passes --check: {ln}"
+
+
+def test_the_over_contract_test_is_on_signed_net_not_magnitude():
+    """The over-contract gate compares SIGNED net, so a large pure DELETION reads
+    within-contract while the same magnitude of addition reads split-required.
+
+    This is pinned, not merely documented, because it is a definitional choice
+    that is invisible at every call site and agrees with a magnitude-based
+    reading on any window whose over-contract PRs all happen to be net-positive
+    — which is exactly the window this tool was built against. Someone
+    "tidying" the comparison to `abs(total_net)` would change what the tool
+    counts without changing a single number on today's data, and would be told
+    so only by this test.
+    """
+    deletion = _pr(1, [("backend/dead.py", 0, 5000)], "remove a dead module")
+    addition = _pr(2, [("backend/new.py", 5000, 0)], "add a module")
+
+    del_v = pst.pr_verdict(deletion, 400, False)
+    add_v = pst.pr_verdict(addition, 400, False)
+
+    assert del_v["total_net"] == -5000
+    assert del_v["verdict"] == "within-contract", (
+        "a net-negative PR must read within-contract under the signed reading; "
+        "if this now fails, the comparison was switched to magnitude — that is a "
+        "change of definition and belongs in the docstring, not in a refactor"
+    )
+    assert add_v["verdict"] == "split-required"

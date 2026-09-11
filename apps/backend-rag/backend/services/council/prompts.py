@@ -214,11 +214,11 @@ Rispondi SOLO con JSON:
 
 {{
   "best_not_mine": {{
-    "author": "claude|gemini|deepseek",
+    "author": "claude|gemini|kimi",
     "motivation": "2-3 righe"
   }},
   "worst": {{
-    "author": "claude|gemini|deepseek",
+    "author": "claude|gemini|kimi",
     "critique": "2-3 righe, niente insulti"
   }}
 }}
@@ -268,7 +268,7 @@ Rispondi SOLO con JSON:
 PROPONENT_PERSONAS: dict[str, str] = {
     "claude": "critico editoriale, economista comportamentale, stile Wired Italia",
     "gemini": "linguista pragmatico, studio retorica politica italiana contemporanea",
-    "deepseek": "narratologo, studioso di mitopoiesi ed escatologia",
+    "kimi": "narratologo, studioso di mitopoiesi ed escatologia",
 }
 
 

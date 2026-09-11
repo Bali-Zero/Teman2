@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppFrame } from "@balizero/core";
+import { AppFrame, useFunnelApp } from "@balizero/core";
 import { readCheckoutHandoff } from "../../checkoutHandoff";
 import { useCheckout } from "./useCheckout";
 import type { Applicant } from "../../orders/types";
@@ -20,12 +20,22 @@ import type { Applicant } from "../../orders/types";
  */
 export function CheckoutFlow({ resultId }: { resultId: string }) {
   const router = useRouter();
+  const tracker = useFunnelApp("visa_voa");
   const { state, submit } = useCheckout(resultId);
   const [fullName, setFullName] = useState("");
   const [passportNumber, setPassportNumber] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [missingHandoff, setMissingHandoff] = useState(false);
+
+  // Checkout attempt: the funnel's money step. Never the applicant's own
+  // values — field names only, matching the wizard/visa-match pattern.
+  useEffect(() => {
+    if (state.step === "error") {
+      tracker.formSubmitFailed("/api/visa/voa/orders", state.httpStatus);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   useEffect(() => {
     const handoff = readCheckoutHandoff(resultId);
@@ -96,7 +106,10 @@ export function CheckoutFlow({ resultId }: { resultId: string }) {
         }}
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSubmit) void submit(applicant);
+          if (canSubmit) {
+            tracker.formSubmitted(Object.keys(applicant));
+            void submit(applicant);
+          }
         }}
       >
         <ReadOnlyField label="Full name" value={fullName} />

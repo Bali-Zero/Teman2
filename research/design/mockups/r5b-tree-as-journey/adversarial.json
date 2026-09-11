@@ -1,0 +1,68 @@
+{
+ "refuters": [
+  {
+   "seat": "codex gpt-5.6-sol xhigh",
+   "scope": "contract fidelity + testability — read the LIVE repo (flow.ts, tree.ts, i18n.ts, layout.tsx) and falsified three of the prototype's 'audited' claims",
+   "findings_total": 15,
+   "applied": 14,
+   "rejected": 0,
+   "open": 1,
+   "note": "the heaviest round of the loop: invented permit codes (C312/C313/C317 do not exist — the 29 live options are all E-codes), a stale question count (53, not ~47 — the ground map was wrong and the conductor verified 53 directly), and the live order caveat (onshore asks permit_expiry FIRST, flow.ts). 1 open: the full runtime a11y suite (focus/live-region/VoiceOver) is R6's mandate — a smoke subset ran this round"
+  },
+  {
+   "seat": "kimi-k3",
+   "scope": "recomputed every dark-mode contrast pair; line-by-line dark-block completeness review",
+   "findings_total": 10,
+   "applied": 9,
+   "rejected": 0,
+   "open": 1,
+   "note": "caught the prototype violating its OWN D4 twice (CTA fill and progress fill in #ff2d4c) plus the unstyled not-sure button and the missing color-scheme. The cure is structural: --action-fill never leaves the #D01033 class, #ff2d4c-family lives only in text tokens; --link dark is #ff5f74 (5.53 on panel, measured). 1 open: the progress fill keeps #ff2d4c as a DECLARED D4 amendment (graphical fill, 4.44 vs the 3.0 bar of SC 1.4.11) — carried as a declaration"
+  },
+  {
+   "seat": "agy gemini-3.1-pro",
+   "scope": "UX width: 360px Android, counter psychology, Indonesian sponsor/delegate realism, SEA color perception",
+   "findings_total": 11,
+   "applied": 9,
+   "rejected": 2,
+   "open": 0,
+   "note": "rejected (both against standing rulings): #8 re-coloring CTAs/progress to navy/green contradicts Zero's Q2 Merah Putih ruling — the institutional-perception clause of R4 is the governed mitigation, and R6's walkthrough can test it; #9 removing the theme toggle contradicts the live product, which ships one (ThemeToggle.tsx). His legal-reality findings (sponsor guarantee letter, delegate authorization) were applied WITHOUT his statute citations — those were not audited, and the prototype does not transcribe unverified law"
+  },
+  {
+   "seat": "qwen3.8-max (TP1)",
+   "scope": "claim-set consistency audit (small payload by design after two seat failures) — SEAT RECOVERED this round",
+   "findings_total": 6,
+   "applied": 6,
+   "rejected": 0,
+   "open": 0,
+   "note": "4 of 6 contradictions were independently the same state bugs codex found (orphan facts across the fork / on restore) — cross-family confirmation that the prune cure was the right one; 2 were criterion-wording fixes (Y recomputes on EVERY answer in BOTH directions; the fixed '6 questions' sponsor badge is a declared invariant, not a recomputed one)"
+  }
+ ],
+ "dispositions": [
+  {"severity": "high", "claim": "Three 'audited facts' were invented or stale: permit codes C312/C313/C317 (not among the 29 live E-codes), '17 of ~47' (live count is 53), and the claim that the shown order is the tree's order (the live traversal is flow.ts's, onshore permit_expiry-first)", "verdict": "applied", "note": "options replaced with 5 REAL keys + REAL i18n labels (E23/E28A/E31A/E33/E33G); every count re-verified by the conductor against the worktree (53 counted, not estimated); the order caveat is now VISIBLE in the study disclosure, not buried in a comment (codex 4, 6, 7)"},
+  {"severity": "high", "claim": "Live fact ids reused with engine-incompatible value shapes (overstay integer→enum, nationalities max-4→single, entry_pattern SINGLE/MULTIPLE→arrival/before...)", "verdict": "applied", "note": "declared as BEHAVIOR-SHAPED study values in the source audit trail with the explicit rule that nothing from this prototype may reach a fact mapper; study-only ids (who_answers/delegate_confirm) named as such (codex 5)"},
+  {"severity": "high", "claim": "The tourism fork is never announced: Y stays 9 but flips from 'at least' to exact, and the code announced nothing", "verdict": "applied", "note": "counterAnnouncement() now announces the inexact→exact transition ('Your path is confirmed: 9 questions') — selftest asserts it (codex 1)"},
+  {"severity": "high", "claim": "Two say() calls 50ms apart overwrite each other — the delta announcement dies under a polite live region", "verdict": "applied", "note": "one atomic announcement per transition: answer + path change + next question composed into a single utterance (codex 2)"},
+  {"severity": "high", "claim": "Branch switching and resume produce inconsistent state: orphan sponsor facts survive family→tourism, resume trusts an unversioned numeric index, Start over never clears storage", "verdict": "applied", "note": "pruneOrphans() at the fork AND on restore; save schema v2 keyed by questionId; removeItem on restart. qwen independently derived 4 of these as claim contradictions (codex 12, qwen 1-4)"},
+  {"severity": "high", "claim": "Stored-DOM injection: localStorage facts interpolated via innerHTML in the review", "verdict": "applied", "note": "review rows build with textContent only (codex 14)"},
+  {"severity": "high", "claim": "The dark CTA violates D4 (a #ff2d4c FILL) and fails AA (white on #ff2d4c = 3.66); the wordmark red on panel misses 4.5 (4.44)", "verdict": "applied", "note": "structural token split: --action-fill stays #D01033 in dark (white text 5.52) with a #ff5f74 border carrying the 1.4.11 boundary (5.53); --link dark = #ff5f74; the checker now PARSES the dark block and rejects #ff2d4c outside text properties (kimi F1+F2, codex 10)"},
+  {"severity": "high", "claim": "The progress fill is a second D4 violation (graphical #ff2d4c fill)", "verdict": "open", "note": "kept deliberately as a DECLARED D4 amendment: D4's risk is text legibility; a graphical fill at 4.44 vs SC 1.4.11's 3.0 is not that risk. The amendment text goes to R4-at-next-touch alongside the nesting-law one (kimi F3)"},
+  {"severity": "high", "claim": "Header math exceeds 360px (≈362-370px with all four header items)", "verdict": "applied", "note": "≤380px media query: tighter padding/gaps/wordmark; 44px tap targets preserved (agy 1)"},
+  {"severity": "high", "claim": "Counter deltas (+1/+4 in amber) read as penalties for honest answers — incentivizing lies", "verdict": "applied", "note": "voice de-penalized: no plus-N arithmetic, reason framed as scoping ('one more about immigration history'), announce color moved from conditional-amber to soft; the selftest asserts the absence of +N. The counter LAW (recompute+announce, ruling Q8) stands — agy's step-chunk alternative would contradict it and was not adopted (agy 3, kimi F7)"},
+  {"severity": "high", "claim": "Delegate mode collects legal history with no authorization checkpoint", "verdict": "applied", "note": "delegate_confirm meta-step added (delegate path only, selftest-asserted): explicit confirmation the traveller asked, plus the not-sure copy becomes 'check with the traveller'; agy's statute citations NOT transcribed — unaudited (agy 6)"},
+  {"severity": "high", "claim": "overstay_days — the scariest question — had no human escape; the WhatsApp handoff loses the step context", "verdict": "applied", "note": "notSure on overstay_days and stay_permit_code (the live tree has human-review notSure on both — verified); the wa link carries case code + step id, zero PII (agy 7)"},
+  {"severity": "high", "claim": "Dev telemetry leaked into user-facing labels (PR numbers, file:line paths)", "verdict": "applied", "note": "user copy cleaned; the audit trail lives in the source comment block and the checker asserts the UI body carries none of it (agy 11, codex 9)"},
+  {"severity": "high", "claim": "'The engine does/decides' contradicts the product: the engine runs in SHADOW and has never shown a verdict", "verdict": "applied", "note": "every engine mention now says would decide + shadow status — consistent with the loop's own discovery memory (codex 8)"},
+  {"severity": "med", "claim": "'Changes nothing about the case' is guarantee-class language; BZ-7Q4K presented as a real case code", "verdict": "applied", "note": "reworded to the approved R5 phrasing ('asking doesn't decide the case'); the case code is labeled 'study example code'; the scan regex extended — and then FIXED for its own over-match ('guarantee letter' is a document name, not a promise: family-#3 innocence case) (codex 11)"},
+  {"severity": "med", "claim": "D-V11 proven only for one sub-progress case; five wrong ids would still pass", "verdict": "applied", "note": "selftest asserts the exact ordered 6-id array and the full 1..6 traversal (codex 3)"},
+  {"severity": "med", "claim": "Delegate pronoun layer misses branchNote and transition reasons", "verdict": "applied", "note": "branchNote tokenized (@Your@ sponsor), reasons routed through pron() (codex 13)"},
+  {"severity": "med", "claim": "Radio pattern half-wrong: every option tabbable, arrows only move focus", "verdict": "applied", "note": "roving tabindex (selected — or first — is the single tab stop); full runtime traversal remains R6's (codex 15 partial)"},
+  {"severity": "med", "claim": "'Of at least Y' confuses non-native readers", "verdict": "applied", "note": "simplified to 'Question X of Y or more'; agy's section-only alternative would drop the ruled X-of-Y and was not adopted (agy 4)"},
+  {"severity": "med", "claim": "Sponsor questions ignore document custody and the guarantee letter's weight; ID language toggle is a dead affordance", "verdict": "applied", "note": "why-texts now name the signed guarantee letter and that the sponsor usually holds these documents (no statute numbers — unaudited); the ID toggle is visibly aria-disabled with an honest label. The custody-split QUESTION (new tree content) goes to §5 of the report as an ENG proposal, not into the prototype (agy 5, 10)"},
+  {"severity": "med", "claim": "not-sure button unstyled (UA chrome in dark); no color-scheme; announce always amber; subprogress/card boundaries ghost in dark", "verdict": "applied", "note": ".notsure button joins the link styling; color-scheme light/dark declared; announce moved to soft; subprogress border on line-input. Card separation stays shadow-carried — consistent with R4's hairline-is-not-a-boundary rule (kimi F4, F5, F7, F8)"},
+  {"severity": "med", "claim": "Focus double-ring's middle ring is invisible on panel (1.13) — dead weight", "verdict": "applied", "note": "redesigned: text outline + offset gap + single accent ring on --link (measured: 5.53 panel / 6.25 ground dark; 5.1 carta light) (kimi F6)"},
+  {"severity": "med", "claim": "Runtime gaps a static checker cannot prove (focus after render, live-region timing, keyboard traversal, dark persistence, storage corruption)", "verdict": "applied", "note": "named as R6 handoff in the report §6; a runtime smoke subset ran THIS round via a browser subagent (results in §3) (codex 15, agy 2 keyboard-occlusion noted for R6 device testing)"},
+  {"severity": "low", "claim": "Counter criterion wording: Y recomputes on every answer in both directions, not only 'when a branch opens'; the fixed sponsor badge is an invariant, not a recomputation", "verdict": "applied", "note": "criteria table wording corrected; the sponsor-badge invariant declared (qwen 5, 6)"},
+  {"severity": "low", "claim": "Re-color CTAs/progress to navy/green for SEA institutional perception; remove the dark toggle", "verdict": "rejected", "note": "both contradict standing rulings: Q2 (Zero, verbatim carta+rosso) with R4's institutional-perception clause as the governed mitigation — R6 can TEST the perception; and the live product ships a user-facing theme toggle (ThemeToggle.tsx) — the prototype mirrors the product (agy 8, 9)"},
+  {"severity": "high", "claim": "RUNTIME SMOKE (browser subagent, post-panel): every on-screen path announcement said 'undefined questions' — counterState returned {y} while the announcer read {n}, and the selftest passed on hand-built objects, never exercising the real contract", "verdict": "applied", "note": "one shape {x,n,exact} everywhere + an INTEGRATION selftest that feeds counterState's real output to the announcer (now 15 node tests); re-verified live by the same smoke agent on probes 2-3. This is the exact vacuous-test class codex 1 warned about, caught by the runtime layer static checks cannot reach — the reason §3 exists"}
+ ]
+}

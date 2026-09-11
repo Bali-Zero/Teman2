@@ -747,4 +747,57 @@ describe("Middleware - Multi-domain Routing", () => {
       });
     }
   });
+
+  // =======================================================================
+  // nuzantara.co.id → (nuzantara) route group at /nuzantara/*, same rewrite
+  // shape as tax.balizero.com → /tax-calendar/*.
+  // =======================================================================
+  describe("Nuzantara Domain (nuzantara.co.id)", () => {
+    const rewrittenPath = (res: Response) => {
+      const target = res.headers.get("x-middleware-rewrite");
+      return target ? new URL(target).pathname : null;
+    };
+
+    const cases: Array<[string, string, string]> = [
+      ["nuzantara.co.id", "/", "/nuzantara"],
+      ["www.nuzantara.co.id", "/", "/nuzantara"],
+      ["nuzantara.co.id", "/privasi", "/nuzantara/privasi"],
+      ["www.nuzantara.co.id", "/privasi", "/nuzantara/privasi"],
+      ["nuzantara.co.id", "/nuzantara", "/nuzantara"],
+      ["nuzantara.co.id", "/nuzantara/metode", "/nuzantara/metode"],
+      ["nuzantara.co.id", "/nuzantarax", "/nuzantara/nuzantarax"],
+    ];
+
+    for (const [host, from, to] of cases) {
+      it(`rewrites ${host}${from} → ${to} with noindex`, () => {
+        const res = proxy(createRequest(`https://${host}${from}`));
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get("location")).toBeNull();
+        expect(rewrittenPath(res)).toBe(to);
+        expect(res.headers.get("x-pathname")).toBe(from);
+        expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+      });
+    }
+
+    it.each(["NUZANTARA.CO.ID:443", "nuzantara.co.id."])(
+      "normalizes host %s before matching",
+      (host) => {
+        const res = proxy(
+          new NextRequest("https://nuzantara.co.id/", { headers: { host } }),
+        );
+
+        expect(rewrittenPath(res)).toBe("/nuzantara");
+      },
+    );
+
+    it.each(["evilnuzantara.co.id", "nuzantara.co.id.evil.test"])(
+      "does not rewrite lookalike host %s",
+      (host) => {
+        const res = proxy(createRequest(`https://${host}/`));
+
+        expect(rewrittenPath(res)).toBeNull();
+      },
+    );
+  });
 });

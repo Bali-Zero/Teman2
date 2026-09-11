@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { QUESTIONS } from "../_lib/tree";
@@ -94,5 +94,64 @@ describe("QuestionScreen country picker", () => {
     expect(
       screen.getByRole("button", { name: "Remove Italy" }),
     ).toBeInTheDocument();
+  });
+
+  it("filters the country <select> by name/code via the predictive search input, without blocking a normal selection (R3 D-V5)", async () => {
+    const user = userEvent.setup();
+    const { onAnswer } = renderNationalities();
+    const picker = screen.getByLabelText("Passport countries");
+    const search = screen.getByLabelText("Search countries");
+
+    const unfilteredCount = within(picker).getAllByRole("option").length;
+
+    await user.type(search, "Ital");
+    const filtered = within(picker).getAllByRole(
+      "option",
+    ) as HTMLOptionElement[];
+    expect(filtered.length).toBeLessThan(unfilteredCount);
+    expect(
+      filtered.some((option) => option.textContent?.includes("Italy (IT)")),
+    ).toBe(true);
+    // The "not listed" escape hatch must survive every filter — a typo
+    // should never trap the applicant with zero usable options.
+    expect(filtered.some((option) => option.value === "not-listed")).toBe(true);
+
+    await user.selectOptions(picker, "IT");
+    await user.click(screen.getByRole("button", { name: "Add country" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(onAnswer).toHaveBeenCalledWith("IT");
+  });
+
+  it("clears the search filter when the question changes, so a stale query never hides options on the next country field", () => {
+    const { rerender } = render(
+      <QuestionScreen
+        language="en"
+        question={QUESTIONS.nationalities}
+        onAnswer={vi.fn()}
+        onSkip={vi.fn()}
+        onBack={vi.fn()}
+        canGoBack
+      />,
+    );
+    const search = screen.getByLabelText(
+      "Search countries",
+    ) as HTMLInputElement;
+    fireEvent.change(search, { target: { value: "Ital" } });
+    expect(search.value).toBe("Ital");
+
+    rerender(
+      <QuestionScreen
+        language="en"
+        question={QUESTIONS.family_sponsor_nationalities}
+        onAnswer={vi.fn()}
+        onSkip={vi.fn()}
+        onBack={vi.fn()}
+        canGoBack
+      />,
+    );
+    expect(
+      (screen.getByLabelText("Search countries") as HTMLInputElement).value,
+    ).toBe("");
   });
 });

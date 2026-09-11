@@ -24,6 +24,7 @@ import pytest
 
 asyncpg = pytest.importorskip("asyncpg")
 
+from backend.app.core.database import init_asyncpg_connection
 from backend.services.garuda_flow.intake import CaseType
 from backend.services.garuda_orders.idempotency import canonical_payload_sha256, scoped_key_sha256
 from backend.services.garuda_orders.models import Applicant
@@ -122,7 +123,20 @@ async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_versi
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=2)
+        # `init=` is NOT optional here (2026-08-30). This fixture's rows are
+        # written through the production writers -- `GarudaOrderRepository` and
+        # `PracticeRepository` reach `garuda_orders/journal.py::append_event`,
+        # whose `detail` argument is now a NATIVE Python dict rather than a
+        # pre-serialized string. A pool without the canonical jsonb codec cannot
+        # bind a dict to a jsonb parameter and raises
+        # `DataError: invalid input for query argument $9 ... expected str, got dict`.
+        # Measured, not predicted: with a bare pool this file's six tests fail
+        # against a real Postgres while the same run on origin/main passes -- the
+        # test/production codec-parity gap this lane exists to close, caught by an
+        # A/B of the GARUDA suites rather than by argument.
+        p = await asyncpg.create_pool(
+            dsn=_DSN, min_size=1, max_size=2, init=init_asyncpg_connection
+        )
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(

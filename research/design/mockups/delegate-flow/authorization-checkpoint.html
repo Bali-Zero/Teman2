@@ -1,0 +1,228 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Delegate flow — Delegate declaration (design mockup)</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;600&display=swap" rel="stylesheet"><style>body{margin:0;background:#f7f6f2}</style></head><body>
+<!-- Delegate flow — the DELEGATE DECLARATION screen (delegate-flow lane, R7 §4 item 4;
+     §3.2/§3.3 declarations). Filename unchanged from "authorization-checkpoint" per the joint
+     panel's own instruction (a rename is not this round's disposition) — the SCREEN is now
+     called a delegate declaration throughout the dossier and this file's own text (panel R10):
+     "authorization checkpoint" overstates what an unwitnessed self-declaration can attest — no
+     witness, no verified identity, no ledger (client_consent_log requires a client_id FK no
+     anonymous funnel visitor has). This is the SECOND meta screen — it renders after the
+     who-answers gate's middle option, now reworded per panel R3/R5 to state the fact it routes
+     on rather than a label: "I'm filling this in for one traveller, who will pay for themselves
+     with their own card" (delegate-ANSWERS mode — the delegate is the declarant, third person
+     downstream — not a "helper operates, traveller stays addressed" mode, which this design does
+     not build, §5.9 of the dossier). The gate's own branch-choice screen stays NOT DRAWN (§3.1).
+
+     Modeled on the LIVE guardian-consent shape (ConsentHandoff.tsx:32,44-45,46,245,296,317,
+     328-329 — guardianConsentRequired/guardianFirst: a gate that renders and blocks BEFORE the
+     general consent line, not folded into it). The statement copy is R5b's own, carried over
+     verbatim (journey.html:200) because it already passed that round's panel.
+
+     SCOPE-LIMIT line corrected per panel R8: the original wording ("payment still has to come
+     from the traveller's own card") overclaimed an enforcement that does not exist — no
+     cardholder-name check anywhere in checkout, self_pay is self-declared, xendit.py restricts
+     payment METHOD only. The corrected line states scope, not a promise the system checks.
+
+     No numeric counter on this screen — R5b's own convention hides the progress zone during the
+     meta path (journey.html: $("progressZone").hidden = inMeta); this is a meta step, not
+     question N of Y.
+
+     The PREVIEW panel at the bottom is NOT a second screen — it is a labeled inset. It no longer
+     shows a "rewrite" (panel R1 killed the pron()/tag mechanism for this design: Indonesian has
+     no closed pronoun set a regex can substitute over — the joint panel ruled for AUTHORED,
+     mode-variant copy keys instead, one hand-written string per mode, never derived from the
+     other). The inset now shows the two AUTHORED variants, and the delegate-mode one is REPORTED
+     SPEECH (panel R10) — "The traveller has confirmed to me that they will pay themselves," not
+     a bare claim the delegate cannot actually attest to. {CUSTODY_WHO_SEES} stays an HONEST
+     placeholder — it resolves only through the consent-placement lane's §3.8 audit, never
+     invented here (R4 §5). Density rule (panel R18, stated once in the dossier §3.4): this
+     screen's own custody hint is COMPACT because no PII is collected here; the persistent banner
+     that follows onto PII-collecting screens does not duplicate a full module — it supplements
+     whatever tier that screen's own custody component already carries.
+
+     ESCAPE line (panel R23): a DECLARED VARIANT of R5b's notSure escape (journey.html:396:
+     "check with the traveller, or hand this to a person") — this trigger is consent-to-share,
+     not answer-uncertainty, so the wording is adapted, not a verbatim port; stated here so the
+     difference is never silent.
+
+     CTA (panel R24): this is a STATIC, compositional mockup — no live JS. The primary CTA
+     carries aria-disabled to represent the default (unchecked) state that §4's acceptance bar
+     requires: the declaration "blocks all progress until confirmed" — a live build wires this to
+     the checkbox's real state, this mockup only composes the visual.
+
+     Identity header (R4:108), trust footer (R7 §2 am. 4 — funnel-wide law), rem type tokens,
+     44px tap targets — same law the checkout/consent-placement mockups already carry. Per panel
+     R17, the EN·ID toggle here inherits the sponsor-i18n lane's own finding that the toggle has
+     no dictionary behind it yet on this class of surface — a live build renders it live only
+     where reachable locale logic exists, honest-disabled otherwise; this static mockup shows the
+     control as if reachable, since drawing a disabled toggle state is that build's job, not this
+     screen's. -->
+<style>
+  :root{
+    --carta:#f7f6f2; --elevated:#ffffff; --ink:#16213a; --ink-soft:#475372;
+    --border-input:#7a8093; --hairline:#e3e1da;
+    --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+    --radius:12px; --radius-nested:8px; --motion:220ms;
+    --font-display:"Cormorant Garamond",Georgia,serif;
+    --font-ui:"Inter",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    --t-body:1rem; --t-small:.8125rem; --t-label:.875rem; --t-h1:1.5rem; --t-h2:1.125rem;
+    --t-eyebrow:.75rem;
+  }
+  .dg{background:var(--carta);color:var(--ink);font-family:var(--font-ui);font-size:var(--t-body);
+      line-height:1.55;max-width:26rem;margin:0 auto;padding:1rem 1rem 2rem}
+  .dg .idh{display:flex;justify-content:space-between;align-items:center;min-height:2.75rem;margin-bottom:.25rem}
+  .dg .idh .wm{font-family:var(--font-display);font-weight:600;font-size:var(--t-h2);
+      letter-spacing:.08em;color:var(--ink);text-decoration:none;display:inline-flex;
+      align-items:center;min-height:2.75rem}
+  .dg .idh .idh-right{display:flex;gap:.5rem}
+  .dg .idh .idh-right a{display:inline-flex;align-items:center;min-height:2.75rem;
+      padding:0 .5rem;font-size:var(--t-small);color:var(--ink);text-decoration:none}
+  .dg .idh .idh-right a.wa{color:var(--merah-action);text-decoration:underline}
+  .dg .eyebrow{font-size:var(--t-eyebrow);text-transform:uppercase;letter-spacing:.08em;
+      color:var(--ink-soft);margin:0 0 .375rem}
+  .dg .mirror{font-size:var(--t-small);color:var(--ink-soft);margin:0 0 .75rem;
+      display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;flex-wrap:wrap}
+  .dg .mirror a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem -.25rem;color:var(--merah-action);white-space:nowrap}
+  .dg h1{font-family:var(--font-display);font-size:var(--t-h1);font-weight:600;margin:.125rem 0 .75rem}
+  /* ══ Compact custody hint — density rule (panel R18): compact because no PII is collected on
+        this screen; the persistent banner downstream rides PII-collecting screens' own FULL
+        custody module rather than duplicating it. ══ */
+  .dg .custody{border-left:3px solid var(--ink);padding:.375rem .75rem;margin-bottom:1rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .dg .custody .mono{font-family:var(--font-mono);color:var(--ink)}
+  .dg .custody a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  /* ══ Delegate declaration — the checkpoint itself, renamed per panel R10. Modeled on
+        ConsentHandoff.tsx's guardianConsentRequired/guardianFirst shape: a gate that renders
+        and blocks BEFORE anything downstream can proceed. ══ */
+  .dg .authblock{border:1px solid var(--hairline);border-radius:var(--radius);
+      background:var(--elevated);padding:1rem;margin:0 0 .875rem}
+  .dg .authblock .seclabel{font-size:var(--t-eyebrow);text-transform:uppercase;
+      letter-spacing:.08em;color:var(--ink-soft);margin:0 0 .625rem;font-weight:600}
+  .dg .authblock .stmt{display:flex;gap:.625rem;align-items:flex-start;min-height:2.75rem}
+  .dg .authblock input[type=checkbox]{width:1.25rem;height:1.25rem;flex:0 0 auto;margin-top:.2rem}
+  .dg .authblock label{font-weight:600;font-size:var(--t-label);line-height:1.5;cursor:pointer}
+  /* Scope-limit line — corrected per panel R8: states SCOPE, never an enforcement the system
+     does not perform. */
+  .dg .scopelimit{margin:.75rem 0 0;padding:.625rem .75rem;border-radius:var(--radius-nested);
+      background:#fbeceF;border:1px solid #f0c9ce;font-size:var(--t-small);color:var(--ink)}
+  .dg .scopelimit b{color:var(--merah)}
+  /* CTA default state (panel R24): this static mockup shows the pre-check DISABLED state — a
+     live build wires aria-disabled to the checkbox's real value. */
+  .dg .cta{display:flex;justify-content:center;width:100%;min-height:2.75rem;
+      background:var(--merah-action);color:#fff;border:0;border-radius:var(--radius);
+      font:600 var(--t-body) var(--font-ui);padding:.75rem 1rem;cursor:not-allowed;
+      transition:background var(--motion);margin-top:.25rem;opacity:.55}
+  .dg .cta:active{background:var(--merah-pressed)}
+  .dg .cta-secondary{display:flex;justify-content:center;width:100%;min-height:2.75rem;
+      background:transparent;color:var(--ink-soft);border:1px solid var(--hairline);
+      border-radius:var(--radius);font:600 var(--t-label) var(--font-ui);padding:.625rem 1rem;
+      cursor:pointer;margin-top:.5rem}
+  .dg .escape{margin:.75rem 0 0;font-size:var(--t-small);color:var(--ink-soft);text-align:center}
+  .dg .escape a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      color:var(--merah-action)}
+  /* ══ Preview inset — NOT a second screen. Dashed border marks it explicitly as a labeled
+        preview of persistent/downstream behavior, never live content on this screen. ══ */
+  .dg .preview{margin-top:1.5rem;border:1px dashed var(--border-input);border-radius:var(--radius);
+      padding:.875rem .875rem .75rem;background:var(--carta)}
+  .dg .preview .plabel{font-size:var(--t-eyebrow);text-transform:uppercase;letter-spacing:.08em;
+      color:var(--ink-soft);margin:0 0 .5rem;font-weight:600}
+  .dg .preview .banner{border:1px solid var(--hairline);border-radius:var(--radius-nested);
+      background:var(--elevated);padding:.625rem .75rem;font-size:var(--t-small);
+      color:var(--ink-soft);margin-bottom:.625rem}
+  .dg .preview .banner b{color:var(--ink)}
+  .dg .preview .rewrite{font-size:var(--t-small);color:var(--ink-soft)}
+  .dg .preview .rewrite .keylabel{font-size:var(--t-eyebrow);text-transform:uppercase;
+      letter-spacing:.05em;color:var(--ink-soft);display:block;margin-top:.5rem}
+  .dg .preview .rewrite .keylabel:first-child{margin-top:0}
+  .dg .preview .rewrite .keyval{color:var(--ink);font-weight:600;display:block}
+  .dg .trust{border-top:2px solid var(--ink);margin-top:1.25rem;padding-top:.75rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .dg .trust .role{color:var(--ink);font-weight:600}
+  .dg .trust a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  @media (prefers-reduced-motion: reduce){ .dg .cta{transition:none} }
+</style>
+
+<div class="dg">
+  <header class="idh">
+    <a class="wm" href="{HOME_LINK}">BALI ZERO</a>
+    <span class="idh-right"><a href="{LANG_TOGGLE}" aria-label="Ganti bahasa">EN · ID</a><a class="wa" href="{WA_HEADER_LINK}">WhatsApp</a></span>
+  </header>
+
+  <p class="eyebrow">Before we start</p>
+
+  <!-- Mirror line — updated per panel R3/R5: reflects the corrected gate's explicit-facts
+       option B wording (delegate-answers mode), not the earlier vague label. -->
+  <p class="mirror">You said: you're filling this in for one traveller, who will pay for
+    themselves with their own card.
+    <a href="{BACK_TO_GATE}">Change →</a></p>
+
+  <h1>Answering for the traveller</h1>
+
+  <!-- ══ Compact custody hint — before ANY PII is asked (this screen only confirms a role).
+       {CUSTODY_WHO_SEES} is an HONEST placeholder: it resolves only through the
+       consent-placement lane's audit, never invented here (R4 §5). The second line states what
+       is ALREADY true today (session-bound access, dossier §5.2 finding) — not a future promise
+       (panel R27: no unverified fallback is added). ══ -->
+  <aside class="custody" aria-label="How this is handled">
+    This confirms who's operating the form — it doesn't collect the traveller's answers yet.
+    Who sees what: <span class="mono">{CUSTODY_WHO_SEES}</span>.
+    This browser controls this result — viewing or deleting it later needs this same device
+    and session, not a login. <a href="{PRIVACY_LINK}">How we handle data →</a>
+  </aside>
+
+  <!-- ══ Delegate declaration — modeled on ConsentHandoff.tsx's guardianConsentRequired shape,
+       renamed from "authorization checkpoint" per panel R10. Statement copy is R5b's own
+       (journey.html:200), carried verbatim. ══ -->
+  <div class="authblock">
+    <p class="seclabel">Delegate declaration</p>
+    <div class="stmt">
+      <input id="dg-auth" type="checkbox">
+      <label for="dg-auth">The traveller asked me to fill this in, and I'll check with them
+        when unsure.</label>
+    </div>
+    <!-- Scope-limit — corrected per panel R8: states SCOPE, not an enforcement that does not
+         exist (no cardholder-name check anywhere in checkout; self_pay is self-declared). -->
+    <p class="scopelimit"><b>The online checkout is for travellers paying for themselves.</b>
+      If someone else is paying, a consultant handles it on WhatsApp.</p>
+  </div>
+
+  <!-- CTA default state = disabled (panel R24): this static mockup composes the pre-check
+       state §4's acceptance bar requires ("blocks all progress until confirmed"); a live build
+       wires this to the checkbox. -->
+  <button class="cta" type="button" aria-disabled="true" disabled>Continue as delegate →</button>
+  <button class="cta-secondary" type="button">Actually, I'll let the traveller do this themselves</button>
+
+  <!-- Check-with-the-traveller escape — a DECLARED VARIANT of R5b's phrasing (journey.html:396),
+       not a verbatim port (panel R23): this trigger is consent-to-share, not
+       answer-uncertainty. -->
+  <p class="escape">Not sure the traveller wants this shared?
+    <a href="{WA_CHECK_WITH_TRAVELLER}">Check with them first, or hand this to a person →</a></p>
+
+  <!-- ══ Preview inset — labeled, dashed, NOT a live screen. Shows what persists once
+       confirmed: the delegate banner (journey.html:156-158,444) and the AUTHORED delegate-mode
+       key (panel R1 — not a runtime rewrite) for page.tsx's real "I am paying myself" checkbox,
+       phrased as reported speech (panel R10). ══ -->
+  <div class="preview">
+    <p class="plabel">Preview — appears on every screen from here</p>
+    <p class="banner"><b>You're answering for someone else.</b> Their case, their facts —
+      answer as the traveller would. Who sees what: <span class="mono">{CUSTODY_WHO_SEES}</span>.</p>
+    <p class="rewrite">The "About you" step's payer question — two AUTHORED variants, not a
+      runtime rewrite:
+      <span class="keylabel">self-mode key</span>
+      <span class="keyval">"I am paying for this application myself"</span>
+      <span class="keylabel">delegate-mode key (reported speech)</span>
+      <span class="keyval">"The traveller has confirmed to me that they will pay themselves"</span>
+    </p>
+  </div>
+
+  <!-- ══ Trust footer — R7 §2 am. 4 funnel-wide law, unchanged from checkout/consent-placement. ══ -->
+  <footer class="trust">
+    <p class="role">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p>Controller: PT {PT_LEGAL_NAME} · NPWP {NPWP} · <a href="{REGISTRY_LINK}">registry entry</a><br>
+    {OFFICE_STREET_ADDRESS}, Bali — {OFFICE_HOURS}</p>
+  </footer>
+</div>
+</body></html>

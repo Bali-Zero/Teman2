@@ -1,0 +1,80 @@
+task_id: craft-p-l11-pr1-journey-sentinels
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Cure the "verify at the surface I control, and call it the experience" belief.
+  The falsifying number from the source report: the 53 existing Playwright specs
+  across 158 routes caught **0 of 6** measured 2026-08-28 production defects —
+  because they run against a LOCAL build with mocked auth and assert on
+  elements, not on where an anonymous visitor actually ends up in production.
+
+  This ships four sentinels that run against REAL production in an anonymous
+  context, plus the cron wrapper that runs them and routes failures through the
+  EXISTING Telegram gateway under its existing P0 budget.
+
+  The spec's first instruction is to REPLAY the 6 defect fixtures against
+  current prod and drop what is already cured. That ran first, with a real
+  browser, and it changed the shape of the PR:
+
+  - dream ejection, magic-link and visa-clock overstay are all CURED
+    (#5181/#5189, and #5170). They ship as permanent REGRESSION GUARDS —
+    guilt+innocence needs both states, and a cure with no guard is a cure
+    waiting to be undone.
+  - `/prime` is STILL RED on production: `ExpiredKeyMapError`, reproduced on
+    every run. Its spec fails today and that is the correct outcome.
+  - `/exclusive` renders 30 visible characters even after hydration, but it is
+    needs-ruling item 3 (unowned: intended minimalism, or unfinished?), so per
+    the spec it gets no sentinel until Zero rules.
+
+  Gear 3 by PATH: the diff touches `infra/launchagents/`, hot-zone for the floor
+  calculator. Recomputed from the diff, never chosen by the author.
+constraints:
+  - "Anonymous context, real production, no mocked auth — that asymmetry IS the
+    defect this lane exists to cure. A sentinel that logs in with a fixture
+    would reproduce the blindness of the 53 specs it is meant to complement."
+  - "The magic-link spec must target the REDIRECT TARGET (my.balizero.com), not
+    balizero.com. Measured: the entry point 301s across hosts, and a sentinel
+    that only knows the first host would follow the redirect and never notice
+    the real one break."
+  - "The magic-link form is NEVER submitted — submitting sends a real email."
+  - "visa-clock must not POST. `visa_checks` (migration 124) has no
+    probe-tenancy column and no public DELETE, so an hourly cron would leave a
+    durable, unattributable row every run, forever."
+  - "A seeded-failure self-test must fail on EVERY run. A sentinel that greens
+    while blind is worse than none (superscar #2), so the wrapper treats a
+    self-test that stops failing as its own CRITICAL."
+  - "No new alert channel — reuse the existing gateway and its P0 budget."
+  - "The `/prime` failure message must name the operator[GUI] credential action,
+    never imply a code bug. A red that misdirects the reader is a red that gets
+    muted."
+acceptance: |
+  Guilt — the seeded self-test fails on demand, every run, and the wrapper
+    reports a real failure (currently /prime) separately from it.
+  Guilt-of-the-guard — neutering the self-test so it PASSES must produce
+    CRITICAL `selftest-malfunction`, not a quiet green.
+  Innocence — the three cured journeys pass against current production.
+  The default e2e suite must be untouched: 1064 tests / 52 files, and zero
+  production specs leaking into the default config.
+risks: |
+  - The suite drives a real browser against production hourly. Chosen cadence is
+    far below the 15-minute VOA probe for exactly that reason.
+  - Three of four sentinels currently guard already-cured defects, so their
+    value is future regressions, not present detection. Only /prime is
+    detecting something today. That is stated rather than dressed up.
+  - visa-clock intercepts rather than POSTs, so it exercises the client-side
+    surface (#5170 was a Math.max bug) but NOT the server leg.
+  - Screenshots of production pages are written on failure; they are of
+    anonymous, unauthenticated pages, so no client PII is expected — but this is
+    an assumption about page content, not an enforced invariant.
+grader: |
+  Blind cross-family refutation (Kimi K3 per the lane spec — journey-test PR, no
+  prod-flag surface — plus a second seat for the Gear-3 council). Final on-disk
+  gate held by the Opus 5 squad orchestrator, empirically, in-session: the
+  production suite, the wrapper's normal branch AND its neutered-self-test
+  branch were all run by the orchestrator itself, not accepted from the
+  implementer's report.
+budget: |
+  One Sonnet 5 implementer pass; two cross-family refutations; orchestrator gate.
+  Runtime: one browser suite per hour against our own public surface.
+pii: none

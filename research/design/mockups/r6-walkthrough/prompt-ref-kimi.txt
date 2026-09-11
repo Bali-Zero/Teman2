@@ -1,0 +1,417 @@
+You are an ADVERSARIAL REFUTER on a design-study report (round R6 of a study loop; you did not write it — refute it). Your job: FALSIFY claims. Hunt: invented or misquoted facts, tabulation errors, method holes, internal contradictions, claims the cited evidence does not support, missing declarations. Number every finding, give severity (high/med/low), and for each name the exact claim (quote a fragment) and WHY it fails. If a claim survives your attack, do not pad — only report findings. Compact EN.
+
+Your scope: TABULATION EXACTNESS and quantitative claims. Below you get the report, then the tabulation JSON. Check: every score/choice/quote in §3-§4 against the tabulation; the 3-1 split arithmetic and the order-bias argument; whether §4's claims match what the seats actually said; §5's numbers (7/0/1, 13/13, 0.25s→0s, zoom evidence) for internal coherence; any contrast ratio or token value cited anywhere. NOTE: one of the four panel seats was kimi-k3 — likely you. Judge the report's REPRESENTATION of that seat's output like any other data; do not re-litigate the position itself.
+
+=== REPORT ===
+---
+date: 2026-08-27
+domain: design
+client_case: none
+round: R6 — walkthrough, blind perception panel, runtime floor (Design Study Loop, Zero mandate 2026-08-27)
+sources:
+  - R5 mockups (the 10 walked pages) — research/design/2026-08-27-r5-merah-putih-mockups-worst-screens.md (PR #5079)
+  - R5b interactive prototype + its declared R6 handoff (§3/§6) — research/design/2026-08-27-r5b-tree-as-journey-interactive-prototype.md (PR #5087)
+  - R1 personas, Fogg×commitment table, emotion map (the OLD-surface baseline this round walks AGAINST) — research/design/2026-08-27-r1-psicologia-utente-personas-mappa-emotiva.md (PR #5064)
+  - R4 identity contract (tokens, D4, institutional-perception clause) — research/design/2026-08-27-r4-identity-merah-putih-token-spec.md (PR #5078)
+  - blind perception panel raw outputs + tabulation — scratchpad r6/PERC-*-raw.txt, r6/perception.json, r6/blind-mapping.json (archived with this round's mockup dir)
+  - GARUDA→CRM weld absence — kita↔my handoff audit, 2026-08-26 (memory project_crm_portal_handoff_audit_open_state_2026_08_20): zero references from garuda services/routers to clients/ensure_portal_profile/client_id
+adversarial_review: codex
+adversarial_review_detail: PENDING-PANEL
+---
+
+# R6 — Walking the redesigned journey: three personas, a blind perception panel, and the runtime floor
+
+**Deliverable**: this report + `research/design/mockups/r6-walkthrough/` (perception panel prompts,
+raw seat outputs, `perception.json` tabulation, `blind-mapping.json`, runtime a11y suite +
+results). Study only: no product code, nothing here files, prices, or decides anything.
+
+## §1 Method — three instruments, honestly bounded
+
+R1 mapped the LIVE surfaces (its emotion map and Fogg table are the baseline). R6 walks the
+REDESIGNED surfaces — the 10 R5 mockups plus the R5b interactive prototype — and asks whether
+the redesign answers R1's fragile moments and R3's defects, with three instruments:
+
+1. **Cognitive walkthrough** (conductor, §2): the four Wharton questions per step (right goal?
+   action visible? action↔intent? feedback?) along three persona journeys. Evidence class:
+   expert walkthrough, hypothesis-grade — the same class R1's emotion map declared.
+2. **Blind perception panel** (§3-§4): 4 cross-family seats judged FULL pages — M4a (named
+   human) vs M4b (team control), then the red palette on both landings. Blinded (study comments
+   stripped, pages relabeled PAGE-1/PAGE-2), counterbalanced (2 seats saw named first, 2 saw
+   control first). **This is LLM-proxy judgment, NOT user data** — four model families reading
+   markup, copy and declared tokens, not pixels and not humans. It can find convergent
+   structure; it cannot license a production commitment. R7 must gate that on real users.
+3. **Runtime a11y suite** (§5): Playwright probes on the R5b prototype covering what R5b's
+   static checker declared unreachable. Headless limits stay declared: real VoiceOver timing,
+   soft-keyboard occlusion and device folds are `unmeasurable_headless` and remain open.
+
+## §2 Cognitive walkthrough — the redesign against R1's fragile moments
+
+### P1 · First-time tourist — GARUDA VOA: M1 → M2a → M2b → (checkout) → M8
+
+- **M1 landing.** R1-A1 asked for the all-inclusive promise to be a named guarantee repeated at
+  price and pay; M1 leads with `from IDR 1.5XX.XXX — all-inclusive · One price. No surprises at
+  checkout`, and M5's payment contract repeats the number to the rupiah. Wharton Q1-Q3 pass: one
+  primary CTA (`Start your application`), the "How it works" secondary, the what-you-get list
+  with `Eligibility checked before you pay`. The trust block carries both convergent mitigators
+  (§4). Residual: the panel's most scam-adjacent block on either landing is M1's own
+  "Prefer to talk first?" WhatsApp card sitting near the price (kimi) — kept, but it belongs
+  BELOW the trust block, not above it; and a visible physical address is missing (codex).
+- **M2a question.** Cures R1-A2/A3-class doubt structurally: prior answer visible with `edit`,
+  `Why we ask` with the rule date, `Not sure? Ask a person — asking doesn't decide your case`.
+  Counter `Question 4 of 9` + progress fill = Wharton Q4 feedback on every step.
+- **M2b upload — R1's fragile A6 answered.** The old screen asked for a passport photo with
+  a near-invisible heading and zero custody information; M2b shows custody (`Who sees this
+  photo · Kept for`), retake-any-time, a real error contract (`aria-invalid` +
+  `aria-describedby`, message with a next action, never color alone), and the counter keeps
+  running. This is the walkthrough's clearest fragile-moment cure.
+- **⚠️ GARUDA checkout — the A7 gap is still open.** R1 rated A7 the highest-risk moment in
+  either funnel (level-4 commitment, 5 = quits) and the live screen is a guard dead-end. Among
+  the ten R5 mockups there is NO GARUDA checkout page — M5 is the VISA-ORACLE payment verdict.
+  The redesign therefore has a payment CONTRACT (M5: price verbatim in three renderings, local
+  rails, named follow-up, review-before-pay) but no GARUDA page that carries it. Declared as
+  R6's largest open surface; the contract inheritance goes to the product lane, the missing
+  mockup to R7's backlog.
+- **M8 recovery.** R1-A8's dead-end (error + red retry + anonymous WhatsApp) is answered with
+  saved-state under the case code, `Try again`, a named person who `can pick your case up where
+  it stopped`, system status and back-to-answers. Wharton Q4 passes in the failure path — the
+  only place R1 found it absent.
+- **Not mocked, still open from R1:** the consent placement (A4 asked for "why and who sees
+  it" BEFORE the fields) has no R5 mockup; it rides the product lane with the M2b custody
+  pattern as its template.
+
+### P3 · Spouse/family — Visa Oracle: M7 → R5b prototype → M4a/M4b
+
+- **M7 landing.** R1-B1's "who is behind this?" is answered by the identity header + trust
+  block; the pre-form floor (`from IDR 1.5XX.XXX all-inclusive` + "your exact price appears
+  with your result — the same number again at payment") answers D-V8. The interview promise
+  ("about 10, more only if your case branches, and we tell you when it does") is the counter
+  law stated as landing copy — the same law the prototype proves.
+- **R5b family branch.** R1's fragile moment for P3 was the sponsor branch itself. The
+  prototype answers it mechanically: the fork announces scope before entry ("Your sponsor —
+  6 questions"), the sub-progress badges 1..6, `Not sure` on marriage registration routes to a
+  person, and the delegate flow (who-answers gate → authorization checkpoint → pronoun layer)
+  is the first surface that even ACKNOWLEDGES the sponsor operating the screen. Wharton Q3
+  (action↔intent) passes where the live tree fails it: the applicant knows why the branch
+  exists and how long it is before entering.
+- **M4a/M4b verdict.** The walkthrough hands this pair to the perception panel (§3): copy
+  clarity scored 5/5 by all four seats on both variants — the Wharton questions pass on either;
+  what splits them is trust anatomy, which is §3's subject.
+
+### P2 · Long-stayer — M7 → R5b (declared reduction) → M5 → M6
+
+- **R5b onshore caveat, restated.** The prototype models the offshore gate-first order; the
+  live tree asks onshore `permit_expiry` first. P2's walkthrough is therefore
+  representative-not-literal on question order — declared in the prototype UI itself.
+- **M5 supported+payment.** Wharton passes: verdict, price, rails, named follow-up, and
+  review-before-pay in one page, price verbatim three times. **One real tension found:** R1's
+  P2 trust trigger is "professional fee separate from the government fee (PNBP ≠ Bali Zero
+  fee)"; ruling Q7 made pricing bundle-only. M5 says "one bundle covers everything: our
+  service, government charges, and follow-up" — which names the components but not the split.
+  The walkthrough proposes the reconciliation in §8.2: the bundle stays THE price, one
+  disclosure line names what is inside, and the receipt itemizes — the trigger is answered
+  without breaking Q7.
+- **M6 tracker.** P2's "passport held hostage" fear is met with the four-step timeline
+  (current step = red dot + ink label, `Typical wait here: {IMMIGRATION_WAIT}`, "We chase it —
+  you don't have to"), a named agent, and the case-code-only WhatsApp link. Document custody
+  during the immigration-office step (where the passport physically IS) is not stated — one
+  line ("your passport is at the office / with us / with you") would close P2's exact fear;
+  raised to the product lane.
+- **⚠️ Wayfinding blocker inherited from the live system (§6):** a P1/P2 who pays on GARUDA
+  today cannot reach M6 at all — the 2026-08-26 audit found ZERO welds from garuda
+  services/routers to portal account creation. The tracker page presumes an account that no
+  payment currently creates. Product-lane blocker, declared here because a walkthrough that
+  ends at a page nobody can reach would otherwise be theater.
+
+## §3 People vs seals — the blind panel on M4a/M4b (LLM-proxy, declared)
+
+Full tabulation in `perception.json`; mapping in `blind-mapping.json`; raw outputs archived.
+Design: pages stripped of study comments, relabeled, counterbalanced 2+2. All four seats scored
+status CLARITY 5/5 on both variants — the honest-human copy survives either anatomy.
+
+**Split verdict: 3-1 for the NAMED variant** (codex, agy, qwen vs kimi), and the dissent is not
+order-explainable — agy saw the same order as kimi (control first) and still chose named.
+
+- **codex** (named first): named T5/S-risk-2 vs control T4/S-risk-3 — "the sensitive exception
+  is visibly assigned to an accountable human rather than an anonymous team". Dark-pattern
+  flag: **WhatsApp as the only prominent FORWARD action** pressures toward off-page chat; the
+  review link only partially offsets.
+- **agy** (control first): named T4.5 vs control T3.5 — naming "removes the fear of sending
+  immigration infractions into an anonymous WhatsApp inbox"; explicitly found ZERO dark
+  patterns (price withheld honestly, editable answers, PII-free links).
+- **qwen** (named first, copy-only minimal payload): named, "a named human taking
+  responsibility reassures the anxious applicant" — with the same caveat as everyone.
+- **kimi — the dissent** (control first): for the overstay population specifically, burned by
+  calo/broker culture, "the strongest trust signal is institutional verifiability, not a
+  friendly face": a named person + photo + continue-on-WhatsApp IS the SEA agent-scam trust
+  prop, and the control's case-file framing (code + SLA-bound team + the state line) anchors
+  the case "to the state, not to one individual's goodwill". Watch-item: `{FOTO}` +
+  `{NAMED_AGENT}` "becomes deceptive IF the photo is stock or the agent fictional — only clean
+  if real".
+
+**The unanimous finding is the condition, not the winner:** all four seats — including the
+three who chose named — condition the named variant on the VERIFIABILITY of the person. An
+unverifiable name/photo scores below the control for every seat. That turns R5's "variant A
+default" declaration into a contract (§8.1). The second unanimous residual: the
+WhatsApp-only forward action is the one scam-anatomy overlap every seat flagged on every page
+that carries it.
+
+## §4 The red, tested against R4's institutional-perception clause
+
+TASK B (codex, kimi, agy on the two full landings): **3/3 INSTITUTIONAL, none scam-adjacent.**
+kimi's mechanism is the round's best sentence: red used as STRUCTURE (wordmark, rules,
+one CTA fill) on warm paper with wine-not-scarlet states is the state-document register; the
+urgency-scam register floods backgrounds, banners and countdowns with red — this palette does
+the opposite. agy: "official administrative stationery". codex ranks M1 more transactional
+than M7 (price promise + CTA + WA in closer proximity) but still institutional.
+
+Convergent mitigators — the two lines that carry the perception, on every page:
+1. the role-separation line "We prepare your application; Ditjen Imigrasi decides and issues"
+   (kimi: "explicitly disclaims the power scammers claim — the loudest anti-scam signal
+   available in this category");
+2. the identity line PT + NPWP + registry link ("precisely what scam pages omit").
+
+Residuals, all actionable: a visible physical office address near the first CTA is missing
+(codex — goes to the identity contract, §8.3); M1's "Prefer to talk first?" card is the most
+scam-adjacent block on either landing and sits near the price (kimi — move below the trust
+block); the masked study price `IDR 1.5XX.XXX` "reads slightly teaser" (kimi) — a study-only
+artifact that dies in production where real PricingTool numbers render, noted so nobody ships
+a masked numeral.
+
+The Q2 ruling (carta+rosso) therefore survives its first structured perception test — with the
+institutional-perception clause of R4 doing exactly the work it was written for: the
+mitigating marks are not decoration, they are the license for the red.
+
+## §5 Runtime floor — the a11y suite on the R5b prototype
+
+Eight Playwright/chromium probes at 360×640 (suite + results ship in the mockup dir;
+`a11y-runtime.pre-rerun.json` preserves the pre-rerun state). **Final: 7 PASS · 0 FAIL ·
+1 PARTIAL.**
+
+- **Keyboard-only full traversal — PASS.** Boot → tourism verdict boundary with Tab/arrows/
+  Enter/Space only, all 10 steps, including the country search input and the date field.
+- **Live-region sequence — PASS at human pace.** 13 non-empty announcements for 13 transitions
+  on the family+sponsor path, zero `undefined`/`null`/`NaN`, zero silent transitions, zero
+  distinct-message collisions <100ms once answers arrive ≥800ms apart. (The prototype's
+  intentional clear+set idiom — empty then text at ~50ms, forcing re-announcement of repeated
+  strings — is documented as by-design.)
+- **Storage corruption — PASS.** Malformed JSON, wrong version, nonexistent question id and
+  orphaned-facts payloads all degrade to a clean state: no crash, no phantom review rows, zero
+  console errors.
+- **Reduced motion — PASS, exhaustively.** The stylesheet declares exactly one `transition`
+  (progress fill) and no keyframes, so the single computed-style check (0.25s → 0s under
+  `prefers-reduced-motion`) is full coverage, not a sample.
+- **Delegate keyboard — PASS.** The who-answers gate, authorization checkpoint and
+  post-checkpoint hop complete keyboard-only; the banner carries real perceivable text
+  ("You're answering for someone else. Their case, their facts…"), and the question wording is
+  actually rewritten ("Is the traveller in Indonesia right now?").
+- **Focus traps — PASS** (18×Tab + 18×Shift+Tab, no stuck repeats, no invisible landings).
+  **Console hygiene — PASS** (zero errors across every probe).
+- **⚠️ Zoom/reflow — PARTIAL, and the PARTIAL is the round's real runtime finding:** text-only
+  zoom does NOTHING to this prototype. Root font-size 200% produces zero visual change because
+  `.jr{font-size:16px}` islands the subtree in fixed pixels and no rule uses rem/em from the
+  root. A browser text-only-zoom user gets no larger text at all; full-page zoom works but the
+  headless proxy (CSS zoom:4) shows horizontal overflow — proxy-grade evidence, declared as
+  such. Consequence: the R4 token spec's type scale should be expressed in rem (§8.4).
+
+Still outside headless reach and still open (the R5b §3 list stands): real VoiceOver/SR timing
+of the live region, soft-keyboard occlusion, device folds. Those need a device pass — R7
+doctrine's real-user gate is the natural home.
+
+## §6 Wayfinding across surfaces
+
+- **The case code is the spine.** BZ-code continuity (M4a/M8: BZ-7Q4K · M5/M6: BZ-3M8A) is the
+  redesign's strongest wayfinding invention: it survives verdicts, failures, WhatsApp handoffs
+  (code-only links, no PII) and the tracker. Product lane: the code must also appear on the
+  payment receipt and in the first WhatsApp message, or the spine breaks exactly at the
+  channel switch it was built for.
+- **The broken weld.** The my-tracker walkthrough (§2-P2) dead-ends against the live system:
+  no GARUDA payment creates a portal account (2026-08-26 audit, zero references). Until that
+  weld exists, M6 is a page with no road to it — every funnel journey ends at WhatsApp or
+  nowhere. This is the single biggest gap between the designed journey and the shippable one.
+- **Cross-funnel identity is now coherent.** One header contract (wordmark, EN/ID toggle,
+  WA entry), one trust block, one palette across GARUDA, VO and my — R3's cross-surface
+  identity defect is answered in the mockups; the live my portal migration is ruled (Q-R3.1)
+  and rides its own lane.
+- **Language reality check stands.** The EN/ID toggle is present on every mocked header; the
+  R5b prototype's ID toggle is honestly disabled (study); agy's R5b point holds — an
+  Indonesian sponsor cannot read an EN-only delegate flow — and stays with the product i18n
+  lane.
+
+## Adversarial review (§7)
+
+PENDING-PANEL — four seats (codex gpt-5.6-sol xhigh · kimi-k3 · agy gemini-3.1-pro ·
+qwen3.8-max TP1 minimal payload) refute this report after §5 lands; row-by-row dispositions in
+`adversarial.json` beside the mockup dir.
+
+## §8 Ruling declarations (adopted under the standing pre-confirmation, async veto open)
+
+1. **The named-human module becomes a verifiability CONTRACT.** Named stays the default (3-1
+   panel + R5's declaration) — but only under: a real, employed person; a consistent identity
+   (the same name a client can find on the team page / registry surface); a real photo or no
+   photo, never stock; if staffing cannot honor this, ship the team control — a fictional name
+   is worse than no name (unanimous panel condition + kimi's dissent as the burned-population
+   base case). Production A/B with real users goes to R7 doctrine.
+   Alternative kept alive: control-by-default (kimi's position).
+2. **Bundle price, disclosed composition.** The bundle stays THE price (ruling Q7 untouched);
+   one line names what is inside (our service + government charges + follow-up) and the receipt
+   itemizes. Reconciles R1-P2's PNBP≠fee trust trigger without splitting the price.
+   Alternative: visible PNBP split at quote (rejected: breaks Q7 and invites price-part
+   comparison shopping the bundle exists to prevent).
+3. **The funnel identity contract gains two marks.** No funnel page ships without the
+   role-separation line + the PT/NPWP/registry line (already law), PLUS a visible physical
+   office address in the trust block (codex's missing mark), and M1's talk-first card moves
+   below the trust block (kimi's most-scam-adjacent block).
+   Alternative: address only in footer legal page (rejected: the mark must sit where the scam
+   comparison happens — near the first CTA).
+4. **Type tokens move to rem (amendment to R4 at next touch,** alongside the D4 and
+   nesting-law amendments). The runtime floor proved px-fixed type is invisible to text-only
+   zoom (§5). The px VALUES stay identical at default zoom; only the unit changes.
+   Alternative: keep px and declare full-page zoom the only supported path (rejected: it
+   silently excludes the text-only-zoom population for zero benefit).
+
+## §Meta
+
+The round's lesson: the panel is most valuable where it can DISSENT from the author's frame —
+kimi's minority report reframed "which variant wins" into "what condition makes either variant
+safe", and that condition (verifiability) is the round's most durable output. The blind
+counterbalance earned its cost: without it, the 3-1 split would be confounded with
+presentation order and worth little.
+
+A second lesson from the runtime lane: the conductor read a live subagent's results file
+MID-FLIGHT and diagnosed a "matcher bug" that the agent's own final version had already fixed
+— the pre-rerun backup proved the file changed between the read and the diagnosis. Two real
+instrument bugs did exist (an earlier raw-textContent matcher iteration, and a robot-pace
+squash criterion that flagged 28ms-apart ANSWERS as screen-reader collisions), and both were
+cured in the instrument, never in the prototype: every probe that failed was re-run, and the
+untouched entries were verified byte-identical against the backup. A sibling's file is not
+ground truth until the sibling is done writing it.
+
+## §Solo-operatore
+
+One person reviews this loop asynchronously. Everything load-bearing is executable or
+archived: the panel raw outputs and the unblinding map ship beside the report, the tabulation
+is one JSON, the a11y suite runs headless with no browser UI, and every §8 declaration names
+its alternative for the veto.
+
+
+=== TABULATION (perception.json) ===
+{
+ "method": {
+  "design": "blind counterbalanced LLM-proxy panel \u2014 NOT user data. 4 seats judged FULL pages M4a (named human) vs M4b (team control) relabeled PAGE-1/PAGE-2; study comments stripped; order counterbalanced 2+2 (codex,qwen: P1=M4a \u00b7 kimi,agy: P1=M4b). Seats read markup+copy+declared palette, not pixels. qwen: copy-only minimal payload, TASK A only.",
+  "rubric": "T trust/institutional 1-5 \u00b7 S scam-signal risk \u00b7 C status clarity \u00b7 A actionability \u00b7 forced choice + dark-pattern audit; TASK B red perception on M7/M1 landings (codex,kimi,agy only)",
+  "scale_note": "agy self-inverted the S scale (5=low risk, declared in his output); normalized in the table below to RISK direction (5=highest risk)."
+ },
+ "mapping": {
+  "codex": {
+   "PAGE-1": "M4a-named",
+   "PAGE-2": "M4b-control"
+  },
+  "kimi": {
+   "PAGE-1": "M4b-control",
+   "PAGE-2": "M4a-named"
+  },
+  "agy": {
+   "PAGE-1": "M4b-control",
+   "PAGE-2": "M4a-named"
+  },
+  "qwen": {
+   "P1": "M4a-named",
+   "P2": "M4b-control"
+  }
+ },
+ "task_a": {
+  "codex": {
+   "order": "P1=M4a",
+   "named": {
+    "T": 5,
+    "S_risk": 2,
+    "C": 5,
+    "A": 5
+   },
+   "control": {
+    "T": 4,
+    "S_risk": 3,
+    "C": 5,
+    "A": 4
+   },
+   "choice": "named",
+   "reason": "sensitive exception visibly assigned to an accountable human, not an anonymous team",
+   "dark_pattern": "WhatsApp as the only prominent forward action pressures toward off-page chat; review link only partially offsets"
+  },
+  "kimi": {
+   "order": "P1=M4b",
+   "named": {
+    "T": "4 (3 for the skeptical)",
+    "S_risk": 3,
+    "C": 5,
+    "A": 4
+   },
+   "control": {
+    "T": 4,
+    "S_risk": 2,
+    "C": 5,
+    "A": 4
+   },
+   "choice": "control",
+   "reason": "DISSENT: overstay applicants burned by calo/broker culture trust institutional verifiability over a face; named person+photo+WhatsApp is the SEA agent-scam trust prop; case-file framing (code + SLA-bound team + state line) anchors to the state, not to one individual's goodwill",
+   "dark_pattern": "none; watch-item: {FOTO}+{NAMED_AGENT} becomes deceptive IF stock/fictional \u2014 only clean if real"
+  },
+  "agy": {
+   "order": "P1=M4b",
+   "named": {
+    "T": 4.5,
+    "S_risk": 1.5,
+    "C": 5,
+    "A": 4.5
+   },
+   "control": {
+    "T": 3.5,
+    "S_risk": 3,
+    "C": 5,
+    "A": 4.5
+   },
+   "choice": "named",
+   "reason": "a named, pictured specialist removes the fear of sending immigration infractions into an anonymous WhatsApp inbox",
+   "dark_pattern": "none; pages actively reject dark patterns (price withheld honestly, editable answers, PII-free links)"
+  },
+  "qwen": {
+   "order": "P1=M4a",
+   "named": {
+    "T": 4.5,
+    "S_risk": 2
+   },
+   "control": {
+    "T": 4.0,
+    "S_risk": 1
+   },
+   "choice": "named",
+   "reason": "a named human taking responsibility reassures the anxious applicant",
+   "dark_pattern": "none overt; risk = fake/stock agent authority or unclear WA handoff"
+  }
+ },
+ "task_a_verdict": {
+  "split": "3-1 for M4a named (codex, agy, qwen vs kimi)",
+  "order_bias_check": "the dissent is not order-explainable: agy had the SAME order as kimi (P1=M4b) and chose named",
+  "unanimous_condition": "ALL FOUR seats condition the named variant on VERIFIABILITY of the person (real photo, real name, consistent identity); if unverifiable it backfires BELOW the control (kimi's dissent is this condition taken as the base case for the burned-by-calo population)",
+  "unanimous_residual": "the WhatsApp-only forward action is the one scam-anatomy overlap every seat flagged"
+ },
+ "task_b": {
+  "verdict": "3/3 INSTITUTIONAL (codex, kimi, agy; qwen not asked)",
+  "codex": {
+   "m7": "institutional-leaning",
+   "m1": "institutional but more transactional/scam-adjacent than M7 (red CTA + price promise + WA)",
+   "missing": "visible physical office address / directly verifiable contact identity near the first CTA"
+  },
+  "kimi": {
+   "core": "red as STRUCTURE not alarm = state-document register; urgency-scam register floods backgrounds/banners/countdowns with red \u2014 this palette does the opposite; errors wine never bright red",
+   "weak_points": "icon-only WA entry + red CTA = one structural overlap with scam anatomy; M1's 'prefer to talk first' card near the price = most scam-adjacent block; masked price IDR 1.5XX.XXX reads slightly teaser (neutralized by the to-the-rupiah line)"
+  },
+  "agy": {
+   "core": "Merah Putih red on warm archival paper with navy ink evokes official administrative stationery; wine for conditional notices avoids high-alarm scarlet"
+  },
+  "convergent_mitigators": [
+   "role-separation line 'We prepare your application; Ditjen Imigrasi decides and issues' \u2014 disclaims the power scammers claim",
+   "PT legal name + NPWP + registry link (what scam pages omit)"
+  ]
+ }
+}

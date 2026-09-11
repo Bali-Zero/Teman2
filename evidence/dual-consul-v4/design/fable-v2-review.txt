@@ -1,0 +1,59 @@
+Design-only review per packet DC-20260906-v2. No tools were run, no files read or written, and I rely only on the supplied evidence.
+
+**A. Verdict and corrections**
+
+The hybrid shape is acceptable. Reusing the Lab queue, Research OS records, and conductor registry is the right call, and the "no second scheduler" constraint should be treated as binding. The plan overstates three things and underspecifies two.
+
+- **Proven from supplied evidence: Astra is validated only on M5.** The plan makes Pro the authoritative broker, but Pro and Mini only have a configured model, not a validated one. Correction: the broker schedules missions by capability state, and Astra execution is placed only on hosts whose registry entry is in the tested state. Configured and validated must be distinct enum values in the host card, never inferred from config.toml.
+- **Proven gap: no fencing exists anywhere today.** The Lab lacks epochs and stale-claim reclaim, and the Redis lease is advisory with fail-open paths. Correction: the fencing token is issued by the PG lease row and copied into every ExecutionAttempt extension. The local executor rejects any effectful action whose token is older than the current epoch. Until that check has a passing test, no record may claim exclusive ownership.
+- **Proven gap: SECURITY.md describes enforcement that has no implementation.** Correction: every enforcement claim carries a state of documented, implemented, or tested. Documented-only items cannot be cited as controls in a mission or review receipt.
+- **Proposal, unverified: sandbox claims for both runtimes are policy, not confinement.** The Codex profile inherits global env.set, and the Lab sandbox_runner is argv and cwd policy. Correction: managed launch with an explicit env allowlist, plus an effective-audit receipt holding a hash of the actual env keys and cwd seen by the child. Neither native sandbox may be described as OS confinement until a test proves the boundary.
+- **Proposal: Fable automation is asymmetric today and the spec should say so.** Interactive Fable on Max is observed. Headless is unvalidated and may bill credits. Until the guard in section B passes, Fable participates through operator-launched sessions only. The harness_fable_gate script publishes a caller verdict and must never be cited as a Fable review.
+- **MIR repair** stays a projection fix. Rebuild the index from cards, keep fail-closed on mismatch, and fix stale counts in tests without promoting any card.
+
+**B. Claude-native candidate spec**
+
+- **Entrypoint and session lifecycle.** One mission per session. Stage one is the interactive CLI, launched by an operator on the host account, with the mission packet supplied by paste or a single file. Stage two is headless print mode, activated only after the credit guard passes. Each session emits a ConductorHandoff at start and a VerificationReceipt or OperationalReceipt at end, both carrying the session URL, CLI version, model id, and effort actual. Sessions do not resume across missions. Long missions checkpoint through the Lab, not through CLI resume.
+- **Auth and credit guard.** The observed picker shows Fable on Max without a credits requirement for interactive use. Official docs warn that headless mode may consume usage credits. Guard: headless is off by default in the registry. Activation requires Zero to confirm entitlement in the native UI, a single trivial headless invocation with a hard turn limit, and an operator check that no credit charge appeared. The result is written to the host card as a capability state keyed by CLI version, account, and host. Any change to those keys invalidates the state. Failure or ambiguity falls back to interactive only.
+- **Permissions enforcement boundary.** Claude permission modes are enforced by the CLI harness, not by the OS. Interactive mode gives a human prompt per action. Headless mode relies on tool allow and deny lists, which are policy. The company boundary therefore lives in a PreToolUse hook, which is a documented interception point. The hook checks the fencing token, the mission tool allowlist, and the workspace path, denies on any mismatch, and appends a receipt before the action runs. Effectful missions run in a dedicated git worktree on a mission branch. Review missions get read-only tools. Design missions get no tools, as in this session.
+- **Effort, context, cache, tools.** Effort is chosen from a policy table keyed by mission class, not by name matching to Codex ultra. Default is medium for reviews and high for lead work. The top two levels are reserved for the difficult class and require a stated reason in the Mission record. Reviewer context is a frozen packet: diff, evidence hashes, and questions, with an explicit token ceiling. Stable content such as the contract and mission header goes first so provider caching can apply, and variable content goes last. Fast mode runs Opus, not Fable, so it may not be used for a consul verdict. Repeated file reads are counted as retry waste.
+- **Handoff and review identity.** Identity is attested by the session URL, the commit trailer format observed in this session, the host account, and the launching operator. The CLI provides no cryptographic signature. The contract records identity assurance as operator-rooted, not model-rooted. A review receipt binds the hash of the diff, the packet, and the toolchain versions. Any material change invalidates it and requires a new narrow packet.
+- **Cancellation.** Interactive: operator interrupt, then a cancellation record. Headless: revoke in PG first, then kill the process group of the CLI child. Because the hook writes a receipt before each action, the set of unknown in-flight effects is bounded to actions between the last receipt and the kill. Reconciliation compares receipts to the worktree state.
+- **Tests needed.** Capture the exact flag set from the installed CLI help output before any flag is pinned. Hook-deny test with a stale fencing token. Hook receipt ordering test. Headless credit guard test with a one-turn limit. Env allowlist test proving no inherited secrets. Process-group kill test with reconciliation. Review receipt invalidation test on a one-line diff change. Token accounting test that reads usage from the native output and matches the mission ledger.
+
+**C. Common-contract amendments and staged protocol**
+
+Amendments to the shared contract:
+
+- **Capability state** enum on every host and model card: configured, validated, tested. Only tested entries are schedulable.
+- **Enforcement state** enum on every control: documented, implemented, tested.
+- **Namespaces** by reverse DNS, one per runtime, with core fields identical. Adapters write only under their own namespace.
+- **Evidence key** is the tested tree hash plus test, config, tool, and runtime versions. A PR SHA alone does not satisfy it.
+- **Identity assurance** field with values operator-rooted or runtime-signed. All current runtimes are operator-rooted.
+- **Ceilings** recorded in the Mission record with the phrase "ceiling, not target".
+
+Staged protocol for Kimi, Qwen, DeepSeek, Gemini, and GLM:
+
+1. **Freeze contract v1** between Astra and Fable, with disagreements closed in at most two cycles.
+2. **One bounded consultation per model.** Identical packet, capped at fifteen hundred words, asking for its real entrypoint, auth and billing behavior, permission boundary, effort and cache controls, cancellation behavior, identity attestation, and an explicit list of what it cannot claim. Each response is stored verbatim with a hash. No response is paraphrased into the adapter without the hash reference.
+3. **Adapter draft** per model by one lead consul, reviewed by the other with a narrow packet.
+4. **Delta-only follow-up** only where the response contradicts the contract or leaves a required field empty.
+5. **One smoke per adapter** on a host with existing credentials, moving the card to validated. No new account or paid activation without a Zero decision.
+
+Order follows credential availability. Any model without existing access stays at stage two.
+
+**D. Amendment decision**
+
+Accepted in full. Two clarifications. Test deletion requires impact-map evidence that no unique coverage is lost, recorded in the PR. The capability cache invalidation keys must include the account and auth state, since the credit guard depends on them.
+
+Still unvalidated:
+
+- Astra availability on Pro and Mini.
+- Fable headless entitlement and billing behavior.
+- Hook-based fencing enforcement, which does not exist yet.
+- Env isolation of both native launchers.
+- The exact CLI flag set on version 2.1.261.
+- Whether the broker under a separate UID can run on Pro alongside its dirty work without interference.
+- All five external model consultations, which have not happened.
+
+END_FABLE_DC_V2

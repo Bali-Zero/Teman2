@@ -242,9 +242,15 @@ export function MemoPreview({ plan }: MemoPreviewProps) {
         aria-hidden={isDesktopStatic ? true : undefined}
         style={{
           cursor: "pointer",
-          fontFamily: "var(--font-serif, Georgia, serif)",
+          // R4 §3 24px floor: --text-sm resolves to 0.875rem (14px,
+          // packages/core/tokens/primitives.css) — well below the
+          // display-only floor either way (0.9rem fallback is 14.4px) — so
+          // this disclosure summary uses the UI/body face at Inter 600
+          // instead, per R4 §3's own remedy ("smaller headings are Inter
+          // 600"). Size/hierarchy unchanged — only the face and weight move.
+          fontFamily: "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
           fontSize: "var(--text-sm, 0.9rem)",
-          fontWeight: 500,
+          fontWeight: 600,
           color: "var(--text-primary)",
         }}
       >

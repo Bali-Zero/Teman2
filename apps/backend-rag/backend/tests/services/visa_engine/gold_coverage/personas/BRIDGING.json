@@ -1,0 +1,44 @@
+{
+  "expected_candidates": ["BRIDGING"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "French graphic designer, 36, onshore in Bali on an E23 work KITAS expiring mid-September; her new employer's E23 application is still in process, so she needs a transitional stay permit to remain lawful in the gap",
+  "overrides": {
+    "immigration.current_status_code": {
+      "status": "KNOWN",
+      "value": "E23"
+    },
+    "immigration.current_status_expiry": {
+      "status": "KNOWN",
+      "value": "2026-09-15"
+    },
+    "immigration.currently_in_indonesia": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "immigration.last_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-02-10"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["OTHER"]
+    },
+    "intent.requested_product_code": {
+      "status": "KNOWN",
+      "value": "E23"
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 60
+    },
+    "process.application_channel": {
+      "status": "KNOWN",
+      "value": "STATUS_BRIDGING"
+    },
+    "process.wants_onshore_conversion": {
+      "status": "KNOWN",
+      "value": true
+    }
+  },
+  "product_code": "BRIDGING"
+}

@@ -58,6 +58,7 @@ import { CompanyTab } from "./components/CompanyTab";
 import { TaxTab } from "./components/TaxTab";
 import { TimelineTab } from "./components/TimelineTab";
 import { WaTimelineTab } from "./components/WaTimelineTab";
+import { PortalAccess } from "./components/PortalAccess";
 import { PortalMessages } from "./components/PortalMessages";
 import { BusinessStoryPanel } from "./components/BusinessStoryPanel";
 import { EditClientModal } from "./components/modals/EditClientModal";
@@ -893,6 +894,11 @@ export default function ClientDetailPage() {
             maps={businessStoryQuery.data ?? []}
             isLoading={businessStoryQuery.isLoading}
             error={businessStoryError}
+          />
+          <PortalAccess
+            clientId={clientId}
+            clientName={client.full_name}
+            clientEmail={client.email}
           />
           <PortalMessages clientId={clientId} clientName={client.full_name} />
         </>

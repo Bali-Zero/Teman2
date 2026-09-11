@@ -1,0 +1,93 @@
+task_id: craft-p-l07-pr2-voa-journey-probe
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Arm the first receptor on the GARUDA VOA public funnel. Today the
+  time-to-detect a dead public funnel is UNBOUNDED — a human notices. This
+  ships an anonymous-visitor probe that drives the pre-payment leg of the
+  eligibility journey against production every 15 minutes and writes one
+  heartbeat row per run; the next PR's dead-man reads that heartbeat.
+
+  The design is driven by three things MEASURED on production 2026-08-29
+  before a line was written, each of which changed the build:
+
+  1. `GET /visa/voa` answers HTTP 200, with the page's CORRECT
+     `<title>Visa on Arrival — Bali Zero</title>`, while serving Next's 404
+     template — because `apps/mouth/src/app/visa/voa/flag.ts` fails closed on
+     anything but the literal "true" and calls `notFound()`. A status-only
+     probe passes. A status+title probe ALSO passes. Only the body literal
+     `NEXT_HTTP_ERROR_FALLBACK` tells the truth.
+
+  2. The funnel's POST sets an HttpOnly `garuda_result_session` cookie. The
+     same result id, in the same minute, reads 200 + verdict WITH a jar and
+     404 RESULT_NOT_FOUND WITHOUT one. The backend does this deliberately —
+     `get_eligibility_result` takes `garuda_result_session: Cookie() = None`
+     and collapses malformed-id / absent-cookie / real-but-unbound-id into
+     one non-enumerating answer. A jar-less probe reads a HEALTHY funnel as
+     a dead one.
+
+  3. `DELETE` through balizero.com returns HTTP 500 `{"error":"Proxy error"}`
+     — Vercel's proxy shape, not the backend's — while the row is GENUINELY
+     deleted (the same DELETE direct to nuzantara-rag.fly.dev returns 204;
+     a controlled GET 200 -> DELETE 500 -> GET 404 proves the deletion took).
+     W122 class: the red lies, the work was done.
+
+  Gear 3 by PATH, not by ambition: the diff touches `infra/launchagents/`,
+  hot-zone for the floor calculator. The floor is recomputed from the diff
+  and is never the author's choice (ruling 2026-08-19); the lane spec's
+  advisory "Gear 2" is superseded by the measured 3.
+constraints:
+  - "Order/payment routes are NEVER requested. They 503 BY DESIGN today
+    (missing GARUDA_XENDIT_SECRET_KEY, gated in service_initializer 5.7).
+    The probe stops at the pre-payment leg — a 503 there is not a failure
+    signal, so the probe must not be in a position to read one."
+  - "The probe may only ever make the funnel MORE off. It flips no flag,
+    holds no credential, and its heartbeat is the only thing it writes."
+  - "The eligibility RESULT row is deleted and its deletion verified BY
+    CONSEQUENCE (a follow-up GET must read 404 AND carry the error code
+    RESULT_NOT_FOUND), never by DELETE's status code — that endpoint is
+    measured to mangle its own 204 into a 500. CORRECTED after refutation:
+    this constraint originally read 'zero rows left in production', which is
+    FALSE. check_store.py inserts an anti-replay row into
+    garuda_voa_check_idempotency on BOTH the create and the delete path, with
+    expires_at defaulting to +30 days. Those two rows persist by design and
+    deleting them would be wrong. See residual_risks in pack.yml."
+  - "No PII: the payload is synthetic (USA / tourism / future-dated) and the
+    frozen contract has additionalProperties:false with no free-text field,
+    so no client data can enter. The cookie VALUE is never logged."
+  - "KeepAlive false. A one-shot under KeepAlive is superscar #7 (restart
+    storm, W67/W60)."
+acceptance: |
+  Guilt A (page broken)  -> verdict fail, exit 1, reason names the page status.
+  Guilt B (dark page AND broken API) -> verdict fail, exit 1 — darkness on one
+    platform must never mask a break on the other. This is the crux semantic.
+  Innocence (production as it stands: dark page, healthy API) -> verdict dark,
+    exit 0, cleanup verified_gone=1 leaked=0.
+  Corpus test asserts exit code AND heartbeat CONTENT, never exit alone (#2).
+risks: |
+  - Probe and dead-man will be colocated on Mini: a single failure domain.
+    Worst-case actuation is ~30 min (15-min probe interval + 15-min silence
+    threshold). Recorded as the honest target, not the report's optimistic
+    "<20 min".
+  - CORRECTED after refutation: this risk originally said a synthetic ACCEPT
+    that starts DECLINING would read as `fail`, and called that deliberate.
+    The refuter was right that it is a false red on a service working exactly
+    as designed (fail-closed). A contract-shaped DECLINE is now HEALTHY; the
+    observed verdict is recorded in the heartbeat so a human can watch the
+    trend. Only a malformed or contract-incomplete answer fails.
+  - The probe writes a real row to production on every run. Cleanup is
+    verified per run; a partition between DELETE and verify counts as
+    `unverified` (verdict `unknown`, never a silent pass), and a row still
+    readable afterwards counts as `leaked` and fails loudly.
+grader: |
+  Blind cross-family refutation by Codex GPT-5.6 sol at xhigh effort
+  (mandatory for this PR per the lane spec: it builds the sensor the dead-man
+  trusts, so a false-green here silently disarms that dead-man). Final on-disk
+  gate held by the Opus 5 squad orchestrator, empirically, in-session:
+  every command in pack.yml's receipts was re-run by the orchestrator itself,
+  not accepted from the implementer's report.
+budget: |
+  One Sonnet 5 implementer pass; one Codex sol refutation; orchestrator gate.
+  Probe cost at runtime: 4 HTTP requests per 15 min against our own surface.
+pii: none

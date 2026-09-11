@@ -1,0 +1,109 @@
+{
+  "apps": {
+    "nuzantara-postgres": {
+      "ips": [
+        {
+          "type": "private_v6"
+        }
+      ],
+      "machines": [
+        {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "group": "app",
+          "id": "78113d4f67d938",
+          "memory_mb": 2048,
+          "state": "started"
+        },
+        {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "group": "app",
+          "id": "5683e090f3d228",
+          "memory_mb": 2048,
+          "state": "started"
+        },
+        {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "group": "app",
+          "id": "0801696b541568",
+          "memory_mb": 2048,
+          "state": "started"
+        }
+      ],
+      "volumes": [
+        {
+          "id": "vol_r1lzm7pg3k1e7794",
+          "size_gb": 25
+        },
+        {
+          "id": "vol_vgnl9ynmq05plnj4",
+          "size_gb": 25
+        },
+        {
+          "id": "vol_vgnx72gmld9k0zz4",
+          "size_gb": 25
+        }
+      ]
+    },
+    "nuzantara-rag": {
+      "ips": [
+        {
+          "type": "v6"
+        },
+        {
+          "type": "v6"
+        },
+        {
+          "type": "shared_v4"
+        }
+      ],
+      "machines": [
+        {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "group": "api",
+          "id": "7817d92c4117d8",
+          "memory_mb": 3072,
+          "state": "started"
+        },
+        {
+          "cpu_kind": "shared",
+          "cpus": 1,
+          "group": "drive",
+          "id": "48ee717b736948",
+          "memory_mb": 1024,
+          "state": "stopped"
+        },
+        {
+          "cpu_kind": "shared",
+          "cpus": 1,
+          "group": "drive",
+          "id": "2874974fe6e158",
+          "memory_mb": 1024,
+          "state": "started"
+        },
+        {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "group": "rag",
+          "id": "1781e5eda03438",
+          "memory_mb": 2048,
+          "state": "started"
+        }
+      ],
+      "volumes": [
+        {
+          "id": "vol_vde56p7dnjwwew34",
+          "size_gb": 1
+        },
+        {
+          "id": "vol_rnzwkm1m8leey98r",
+          "size_gb": 1
+        }
+      ]
+    }
+  },
+  "errors": []
+}

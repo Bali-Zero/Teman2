@@ -131,10 +131,17 @@ _INFRA = (
         "Asset upload service health probe (Tigris config check, no creds exposed)",
         match="exact",
     ),
-    # Public-endpoint matching is deliberately method-agnostic. These two
+    # Public-endpoint matching is deliberately method-agnostic. These paths
     # paths bypass HybridAuthMiddleware only so their dedicated route key can
     # run; the router exposes GET only, therefore POST/PUT/PATCH/DELETE still
     # terminate at FastAPI with 405 and never reach a mutating handler.
+    PublicEndpoint(
+        "/api/workspace-marketing/capabilities",
+        Category.BRIDGE,
+        "Marketing bridge capability contract - dedicated route key enforced in-router",
+        match="exact",
+        requires_route_auth=True,
+    ),
     PublicEndpoint(
         "/api/workspace-marketing/news/pending",
         Category.BRIDGE,
@@ -146,6 +153,41 @@ _INFRA = (
         "/api/workspace-marketing/news/{item_id}",
         Category.BRIDGE,
         "ChatGPT Business single-news projection - dedicated route key enforced in-router",
+        match="template",
+        requires_route_auth=True,
+    ),
+    PublicEndpoint(
+        "/api/workspace-marketing/news/{item_id}/publish",
+        Category.BRIDGE,
+        "Damar workspace agent News Room publish - dedicated route key enforced in-router",
+        match="template",
+        requires_route_auth=True,
+    ),
+    PublicEndpoint(
+        "/api/workspace-marketing/news/{item_id}/editorial",
+        Category.BRIDGE,
+        "Damar workspace article editing - dedicated route key enforced in-router",
+        match="template",
+        requires_route_auth=True,
+    ),
+    PublicEndpoint(
+        "/api/workspace-marketing/news/{item_id}/cover",
+        Category.BRIDGE,
+        "Damar workspace cover attachment - dedicated route key enforced in-router",
+        match="template",
+        requires_route_auth=True,
+    ),
+    PublicEndpoint(
+        "/api/workspace-marketing/news/{item_id}/publication-status",
+        Category.BRIDGE,
+        "Damar workspace publication proof - dedicated route key enforced in-router",
+        match="template",
+        requires_route_auth=True,
+    ),
+    PublicEndpoint(
+        "/api/workspace-marketing/news/{item_id}/confirm-live",
+        Category.BRIDGE,
+        "Damar workspace durable live confirmation - dedicated route key enforced in-router",
         match="template",
         requires_route_auth=True,
     ),
@@ -744,6 +786,18 @@ _VISA_ORACLE = (
         "GARUDA VOA exchangeMagicLink (L4, garuda_portal_auth.py) — anonymous by "
         "design, contract-frozen (products/garuda-voa/contracts/openapi.yaml), "
         "GARUDA_PUBLIC_ENABLED re-checked per-request by the handler itself",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/auth/magic-links/preview",
+        Category.AUTH,
+        "GARUDA VOA previewMagicLink (L4, garuda_portal_auth.py) — anonymous, "
+        "non-consuming lookup so the continue page can show whose application "
+        "a link opens before the customer spends it (2026-08-28 council "
+        "residual login-CSRF finding). NOT part of the frozen contract "
+        "(products/garuda-voa/contracts/openapi.yaml — LANES.md reserves that "
+        "file to the orchestrator); GARUDA_PUBLIC_ENABLED re-checked "
+        "per-request by the handler itself, same as its two frozen siblings",
         match="exact",
     ),
 )

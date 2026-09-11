@@ -13,6 +13,7 @@ This creates the "intradinamici" connection between Team and Portal.
 Created: 2025-12-30
 """
 
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 import asyncpg
@@ -25,12 +26,31 @@ from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.portal._rbac import ClientContext
+from backend.services.portal.portal_profile_service import PLACEHOLDER_PIN_HASH
 
 if TYPE_CHECKING:
     from backend.services.portal import InviteService, PortalService
 else:
     InviteService = Any
     PortalService = Any
+
+
+def _utc_iso(value: datetime | None) -> str | None:
+    """ISO-8601 with an explicit UTC offset, even for a naive datetime.
+
+    `team_members.last_login` is `timestamp WITHOUT time zone` and is written
+    by `NOW()` on a database whose session timezone is UTC — so the value IS
+    UTC, but `.isoformat()` emitted it bare ("2026-09-10T21:54:37"), and
+    `new Date(...)` in the browser reads a bare timestamp as LOCAL time. On a
+    WITA screen that shifted a login made at 05:54 today to "Sep 10" —
+    yesterday (portal audit finding F-07). Attaching the offset the value
+    already has costs nothing and lets every reader localise it correctly.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()
 
 
 def _team_impersonation_ctx(client_id: int, current_user: dict) -> ClientContext:
@@ -163,17 +183,38 @@ async def get_portal_status(
     async with db_pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
-        # Check for portal user
+        # Check for portal user.
+        #
+        # `portal_access = true` alone is NOT portal access — superscar #2,
+        # Esiste != Armato. `PortalProfileService.ensure_portal_profile()` runs
+        # as a background task on every client creation that carries an email
+        # and inserts the row with `portal_access = true` and
+        # PLACEHOLDER_PIN_HASH, a hash that no PIN can ever match. Measured on
+        # production 2026-09-10: of 532 active client rows with
+        # `portal_access = true`, **448 carry that placeholder and can never log
+        # in** — 84% — and only 9 have ever logged in at all. Without the
+        # pin_hash predicate this endpoint answers "has portal access" for all
+        # 448, so the workspace shows "Portal active" for a client who was never
+        # invited and hides the control that would invite them.
+        #
+        # Compared by EQUALITY against the constant, not by a substring of it
+        # (superscar #3): a guard on an entity is an entity test.
+        #
+        # `last_login` is also read from the real column here. It used to be
+        # `tm.created_at as last_login`, so every "last signed in" the CRM
+        # displayed was in fact the date the record was created.
         portal_user = await conn.fetchrow(
             """
-            SELECT tm.id, tm.email, tm.created_at as last_login
+            SELECT tm.id, tm.email, tm.last_login
             FROM team_members tm
             WHERE tm.linked_client_id = $1
               AND tm.role = 'client'
               AND tm.active = true
               AND tm.portal_access = true
+              AND tm.pin_hash IS DISTINCT FROM $2
             """,
             client_id,
+            PLACEHOLDER_PIN_HASH,
         )
 
         # Check for pending invitation
@@ -197,9 +238,7 @@ async def get_portal_status(
                     "has_portal_access": True,
                     "portal_user_id": portal_user["id"],
                     "portal_email": portal_user["email"],
-                    "last_login": portal_user["last_login"].isoformat()
-                    if portal_user["last_login"]
-                    else None,
+                    "last_login": _utc_iso(portal_user["last_login"]),
                     "pending_invite": False,
                     "invite_expires_at": None,
                 },

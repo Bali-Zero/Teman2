@@ -170,6 +170,55 @@ async def test_build_env_strips_alternate_provider_credentials(
 
 
 @pytest.mark.asyncio
+async def test_build_env_pins_sterile_headless_config_dir(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    """W132 guilt case: an inherited interactive CLAUDE_CONFIG_DIR must never
+    leak into the child. The interactive config dirs carry the control-plane
+    hooks (Stop-time cross-machine mailbox delivery) that extend a one-shot
+    ``-p`` past its answer — the CLI then prints the LAST turn, so the caller
+    receives fleet chatter instead of its completion."""
+    import os
+
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "/Users/someone/.claude-kaiser")
+    monkeypatch.delenv(mod.HEADLESS_CONFIG_DIR_ENV, raising=False)
+
+    env = mod._build_env("tok_xyz")
+
+    assert env["CLAUDE_CONFIG_DIR"] == os.path.expanduser(mod.DEFAULT_HEADLESS_CONFIG_DIR)
+    assert env["CLAUDE_CONFIG_DIR"] != "/Users/someone/.claude-kaiser"
+    # Innocence: the pin is present even with no inherited value at all.
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    env2 = mod._build_env("tok_xyz")
+    assert env2["CLAUDE_CONFIG_DIR"] == os.path.expanduser(mod.DEFAULT_HEADLESS_CONFIG_DIR)
+
+
+@pytest.mark.asyncio
+async def test_build_env_headless_config_dir_env_override(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+    tmp_path: Any,
+) -> None:
+    """The escape hatch (CLAUDE_OAUTH_HEADLESS_CONFIG_DIR) wins over the
+    default, and a blank value falls back instead of pinning an empty path."""
+    import os
+
+    from backend.llm import claude_oauth_client as mod
+
+    custom = str(tmp_path / "headless-cfg")
+    monkeypatch.setenv(mod.HEADLESS_CONFIG_DIR_ENV, custom)
+    env = mod._build_env("tok_xyz")
+    assert env["CLAUDE_CONFIG_DIR"] == custom
+
+    monkeypatch.setenv(mod.HEADLESS_CONFIG_DIR_ENV, "   ")
+    env2 = mod._build_env("tok_xyz")
+    assert env2["CLAUDE_CONFIG_DIR"] == os.path.expanduser(mod.DEFAULT_HEADLESS_CONFIG_DIR)
+
+
+@pytest.mark.asyncio
 async def test_complete_async_happy_path(
     monkeypatch: pytest.MonkeyPatch,
     clear_oauth_env: None,
@@ -182,7 +231,8 @@ async def test_complete_async_happy_path(
 
     async def fake_create(*args: Any, **kwargs: Any) -> Any:
         calls.append(
-            {"args": args, "env_has_api_key": "ANTHROPIC_API_KEY" in kwargs.get("env", {})}
+            {"args": args, "env_has_api_key": "ANTHROPIC_API_KEY" in kwargs.get("env", {}),
+             "env_config_dir": kwargs.get("env", {}).get("CLAUDE_CONFIG_DIR")}
         )
         return _fake_proc(stdout=b"hello world", returncode=0)
 
@@ -195,6 +245,13 @@ async def test_complete_async_happy_path(
     assert resp.attempts == 1
     assert len(calls) == 1
     assert calls[0]["env_has_api_key"] is False
+    # W132 wiring: the sterile config-dir pin must reach the actual subprocess,
+    # and the one-shot must not persist a session (the transcript-tail is what
+    # let fleet mail extend the session past its answer).
+    import os as _os
+
+    assert calls[0]["env_config_dir"] == _os.path.expanduser(mod.DEFAULT_HEADLESS_CONFIG_DIR)
+    assert "--no-session-persistence" in calls[0]["args"]
 
 
 @pytest.mark.asyncio

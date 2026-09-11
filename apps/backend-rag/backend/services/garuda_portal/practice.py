@@ -18,12 +18,42 @@ family #2 warns against; `garuda_practices` (migration 287) is schemed to
 hold the full state machine so a later PR adds transition logic without a
 second migration, but this file only ever writes `Received`.
 
-**Why PR-01 is lazily materialized on READ rather than by an async worker.**
-L3's `handle_paid_event` (repository.py) already enqueues a
-`practice_release` job onto `garuda_order_outbox` at OP-02 -- but no
-production code anywhere in this repository consumes `garuda_order_outbox`
-for ANY job_type yet (checked: `payment_paid_email` and
-`staff_page_duplicate_charge` are equally unconsumed). Building a
+**PR-01 is materialized EAGERLY in the paid transaction; this lazy read is
+the fallback, not the primary path.**
+
+CORRECTED 2026-08-27, twice — the second correction matters more than the
+first, because the first replacement text was itself wrong.
+
+What this block used to say: that PR-01 is "lazily materialized on READ
+rather than by an async worker" *because* "no production code anywhere in
+this repository consumes `garuda_order_outbox` for ANY job_type yet
+(checked: `payment_paid_email` and `staff_page_duplicate_charge` are equally
+unconsumed)". Two things have changed under it. `outbox_handlers.py` now
+registers real handlers for `practice_release` and `payment_paid_email`
+(only the `staff_page_*` half of that parenthetical still holds — those nine
+job types remain unhandled). And more importantly, `GarudaOrderRepository.
+handle_paid_event` (repository.py) now calls `mint_received_practice`
+EAGERLY, in the same transaction as the `payment.paid` event, on a team-lead
+directive its own comment states: a paid order must never depend on the
+customer opening their tracker to get a work item.
+
+So `garuda_practices` has TWO call sites that can mint a `Received` row —
+the eager one above and `_create_received_practice` here — but **one minting
+function**, `mint_received_practice`, which is what makes them agree by
+construction rather than by coincidence. Since the eager path commits the
+practice row in the SAME transaction that sets `state='paid'`, this lazy
+branch is unreachable on the happy path: it fires only if a practice row for
+an already-paid order went missing, which is precisely the condition
+`PracticeReleaseHandler` treats as fatal (it SELECTs the row and raises
+`PracticeNotMinted` rather than proceeding).
+
+**What the first correction got wrong, recorded so the mistake is not
+repeated:** it named `PracticeReleaseHandler` as the second producer of a
+`garuda_practices` row. It is not a producer at all. It only SELECTs that
+row, and its own write target is the CRM `practices` table — a different
+schema entirely. Comparing the two would have compared unrelated tables.
+
+The original reasoning, kept because it still explains the shape: building a
 dedicated outbox dispatcher is cross-cutting infrastructure that belongs to
 whoever owns the outbox contract as a whole, not a decision this lane
 should make unilaterally by building one worker for one job_type. Instead,

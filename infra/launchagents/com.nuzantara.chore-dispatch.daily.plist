@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.chore-dispatch.daily — receptor-live PART B, chore queue for
+  cheap seats (2026-08-27).
+
+  Daily 05:30 WITA tick on Mini (the standing-lane host, matching
+  com.nuzantara.army-jules-dispatch/-harvest and com.nuzantara.army-spark):
+  scripts/chore_dispatch.py dispatch_next picks the oldest status=pending
+  chore from infra/army/chore-queue/*.md and dispatches it to its own
+  declared seat. Never lands anything — same contract as the two Armata H24
+  lanes this file reuses (infra/army/chore-queue/README.md).
+
+  Install (operator[control-plane], same class as the Jules-lane plists):
+    cp infra/launchagents/com.nuzantara.chore-dispatch.daily.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.nuzantara.chore-dispatch.daily.plist
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.chore-dispatch.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/cron-runner.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/army/chore_dispatch_wrapper.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>CRON_RUNNER_JOB_NAME</key>
+        <string>chore_dispatch_daily</string>
+    </dict>
+
+    <!-- 05:30 WITA daily. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>5</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/army-chore-dispatch/dispatch.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/army-chore-dispatch/dispatch.launchd.err.log</string>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>ThrottleInterval</key>
+    <integer>120</integer>
+</dict>
+</plist>

@@ -27,5 +27,5 @@ python ../../scripts/nb-monitor/show.py
 - Spec: [`docs/superpowers/specs/2026-05-07-nb-mitochondrial-monitor-design.md`](../../../../../docs/superpowers/specs/2026-05-07-nb-mitochondrial-monitor-design.md)
 - Plan: [`docs/superpowers/plans/2026-05-07-nb-mitochondrial-monitor.md`](../../../../../docs/superpowers/plans/2026-05-07-nb-mitochondrial-monitor.md)
 - Runbook: [`docs/operations/nb-mitochondrial-monitor.md`](../../../../../docs/operations/nb-mitochondrial-monitor.md)
-- ADR: [`docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`](../../../../../docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md)
+- ADR: [`docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md`](../../../../../docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md)
 - Round 2 memo: `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round2_2026_05_04.md`

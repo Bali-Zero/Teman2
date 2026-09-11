@@ -1,0 +1,39 @@
+task_id: craft-f-l09-pr3-effort-from-floor
+gear: 2
+l_level: L2
+gate_class: opus
+acceptance:
+  - text: "WHEN --effort is omitted and --gear 1 is given, seat_build SHALL resolve effort to medium by derivation, not by the pre-existing hardcoded default."
+    probe: "bash scripts/tests/test_seat_build_effort.sh"
+  - text: "WHEN --effort is omitted and --gear 3 is given, seat_build SHALL resolve effort to xhigh, and SHALL never derive max."
+    probe: "bash scripts/tests/test_seat_build_effort.sh"
+  - text: "IF --effort is given explicitly, it SHALL override any floor-derived value and be labelled explicit."
+    probe: "bash scripts/tests/test_seat_build_effort.sh"
+  - text: "WHERE --gear 2 is given, seat_build SHALL NOT change effort and SHALL print an advisory notice, pending Zero's ruling."
+    probe: "bash scripts/tests/test_seat_build_effort.sh"
+  - text: "WHILE a derived effort exceeds a per-tier ceiling, enforce_effort_cap SHALL refuse it exactly as it refuses an explicit one."
+    probe: "bash scripts/tests/test_seat_build_effort.sh"
+objective: |
+  L09-PR3: bind seat_build.sh's DEFAULT dispatch effort to the CI-recomputed
+  compute_floor. Before this, EFFORT was the hardcoded literal "medium"
+  regardless of --gear, so a Gear-3 diff dispatched at medium unless a human
+  remembered the flag. floor-1 -> medium, floor-3 -> xhigh. Explicit always wins.
+constraints:
+  - "floor-2 is NOT decided here. Neither the source report nor existing doctrine
+    names a floor-2 default, so this ships ADVISORY-ONLY: it logs high as a
+    proposal, carries the literal <ruled value - Zero> placeholder, enforces
+    nothing, and prints one notice. Whoever rules it flips the advisory branch."
+  - "Extends scripts/seat_build.sh; does not rebuild it. enforce_effort_cap is
+    byte-unchanged and a derived xhigh is refused by it exactly as an explicit
+    one is."
+  - "The derivation can never produce max (Gear-3-adjudication-only doctrine)."
+grader: |
+  generator != grader with family exclusion: built by an Anthropic seat (Sonnet 5
+  implementer under an Opus 5 orchestrator), refuted blind by codex gpt-5.6-sol
+  (non-Anthropic, xhigh) as the L09 spec prescribes for this cost/effort-policy
+  diff. Both actionable findings were reproduced on this machine before being
+  fixed. Final on-disk gate is the orchestrator, empirical, this turn.
+budget: |
+  Flat-subscription seats only: this session, a Sonnet 5 subagent, codex
+  gpt-5.6-sol. No metered API spend.
+pii: none

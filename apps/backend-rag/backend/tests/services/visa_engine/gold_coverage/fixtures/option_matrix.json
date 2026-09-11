@@ -1,0 +1,99 @@
+{
+  "branches": [
+    {
+      "axes": [
+        {
+          "fact": "work.employer_is_indonesian_entity",
+          "values": [false, true]
+        },
+        { "fact": "work.serves_indonesian_clients", "values": [false, true] }
+      ],
+      "base_overrides": {
+        "intent.purposes": ["REMOTE_WORK"],
+        "intent.stay_days": 180,
+        "process.application_channel": "OFFSHORE",
+        "work.employer_country_code": "FR",
+        "work.indonesia_source_compensation": false
+      },
+      "expectations": {
+        "false|false": {
+          "candidates": ["E33G"],
+          "state": "SUPPORTED_CANDIDATES"
+        },
+        "false|true": { "candidates": [], "state": "HUMAN_REVIEW_REQUIRED" },
+        "true|false": { "candidates": [], "state": "NO_SUPPORTED_PATH" },
+        "true|true": { "candidates": [], "state": "NO_SUPPORTED_PATH" }
+      },
+      "id": "remote_work",
+      "legal_citations": [
+        "Permenkumham 22/2023 jo. Permenkumham 11/2024",
+        "Kepmen M.IP-08.GR.01.01/2025"
+      ]
+    },
+    {
+      "axes": [
+        { "fact": "intent.stay_days", "values": [45, 121] },
+        {
+          "fact": "work.indonesia_source_compensation",
+          "values": [false, true]
+        }
+      ],
+      "base_overrides": {
+        "family.sponsor_confirmed": true,
+        "intent.entry_pattern": "MULTIPLE",
+        "intent.purposes": ["BUSINESS_MEETINGS"],
+        "process.application_channel": "OFFSHORE",
+        "work.employer_is_indonesian_entity": false,
+        "work.serves_indonesian_clients": false
+      },
+      "expectations": {
+        "45|false": {
+          "candidates": ["C2", "D1", "D2"],
+          "state": "SUPPORTED_CANDIDATES"
+        },
+        "45|true": { "candidates": [], "state": "NO_SUPPORTED_PATH" },
+        "121|false": {
+          "candidates": ["C2", "D1", "D2"],
+          "state": "SUPPORTED_CANDIDATES"
+        },
+        "121|true": { "candidates": [], "state": "NO_SUPPORTED_PATH" }
+      },
+      "id": "business_multi_entry",
+      "legal_citations": [
+        "Permenkumham 22/2023 jo. Permenkumham 11/2024",
+        "Official Immigration D2 multiple-entry business-visa page"
+      ]
+    },
+    {
+      "axes": [
+        { "fact": "family.marriage_registered", "values": [false, true] },
+        { "fact": "family.sponsor_nationalities", "values": [["ID"], ["IT"]] }
+      ],
+      "base_overrides": {
+        "family.relation_to_sponsor": "SPOUSE",
+        "family.sponsor_confirmed": true,
+        "intent.purposes": ["FAMILY"],
+        "intent.stay_days": 365,
+        "person.marital_status": "MARRIED",
+        "process.application_channel": "OFFSHORE",
+        "sponsor.type": "INDIVIDUAL"
+      },
+      "expectations": {
+        "false|[\"ID\"]": { "candidates": [], "state": "NO_SUPPORTED_PATH" },
+        "false|[\"IT\"]": { "candidates": [], "state": "NO_SUPPORTED_PATH" },
+        "true|[\"ID\"]": {
+          "candidates": ["E31A"],
+          "state": "SUPPORTED_CANDIDATES"
+        },
+        "true|[\"IT\"]": { "candidates": [], "state": "NO_SUPPORTED_PATH" }
+      },
+      "id": "family_spouse",
+      "legal_citations": [
+        "UU 6/2011 jo. UU 63/2024",
+        "Official Immigration E31A family-reunification page"
+      ]
+    }
+  ],
+  "schema_version": "1.0.0",
+  "seed": 9062026
+}

@@ -1,0 +1,170 @@
+name: queue doctor tests
+
+# Executor for `scripts/tests/test_queue_doctor.py` — the corpus of the
+# three-queue snapshot a session reads (`scripts/mq.sh status|handoff` wraps it)
+# before deciding whether a PR is armed, whether the pre-push suite lock is held,
+# and whether the P0 alert spool is draining.
+#
+# WHY THIS FILE EXISTS. Measured 2026-08-31: `grep -rln 'test_queue_doctor'`
+# over `.github/` returns NOTHING, so the corpus had no executor that could go
+# red — it ran only inside the `scripts/tests/` sweep, which is
+# `continue-on-error: true` and therefore green by construction. Superscar #2,
+# on the tool that reports whether the alert queue is delivering. Positive
+# control used to prove the search was not the thing that was broken:
+# `test_organism_stale_detector.py` returns three hits in
+# `organ-conformance.yml` (lines 50, 59, 135).
+#
+# Same shape, same reasoning and same file layout as `mq-oracle-tests.yml`,
+# written earlier today for the sibling tool (`mq_state_verdict`) after the
+# identical measurement. Kept as its own file rather than folded into that one
+# so each check name still says which corpus went red.
+#
+# It is NOT added to branch protection here — that is a repo-settings action and
+# operator-gated (CLAUDE.md §13). This file makes the corpus capable of going
+# red; whether a red stops a merge lives in branch protection, not here.
+#
+# NO `merge_group:` TRIGGER, and therefore a `paths:` filter is safe here.
+# `merge_group` supports no `paths:` key at all, so declaring one ALONGSIDE a
+# pull_request filter creates a head-green/queue-red split: the PR run may be
+# skipped while the queue run always executes. A workflow with a filter and NO
+# queue trigger has nothing to diverge from — which is exactly this shape.
+# Stated here so the next reader does not "helpfully" add the trigger and leave
+# the filter.
+#
+# THE PATH LIST IS THE CORPUS'S READ-SET, not just the two obvious files. The
+# tests drive `scripts/queue_doctor.py` end to end as a subprocess, so a change
+# to the script alone — the edit most able to break what the corpus pins — must
+# trigger this workflow, and it is listed for that reason rather than as a
+# courtesy. `scripts/tests/conftest.py` is listed for the same reason and was
+# MISSED in the first draft (found by the cross-family review seat): its
+# fixtures are `autouse=True`, so they run for this corpus whether it asks for
+# them or not — a change there can break these tests while touching none of the
+# other listed paths. `scripts/mq.sh` is deliberately NOT listed: it wraps
+# queue_doctor.py in production but the corpus never invokes it (measured, zero
+# references), so listing it would arm this workflow on edits it cannot judge.
+#
+# IF THIS EVER BECOMES A REQUIRED CHECK, THE `paths:` FILTER MUST GO FIRST.
+# A required check that a PR never triggers hangs that PR forever on "Expected —
+# Waiting for status to be reported". `organ-conformance.yml` solves this by
+# taking NO pull_request paths at all and gating the work on an in-job sentinel
+# step instead; that is the shape to copy on the day this is promoted, and it is
+# written here because the promotion happens in repo settings, where this
+# comment is not visible.
+#
+# The suite is pure offline pytest: it fakes `gh` and `ssh` as executables on
+# PATH and needs no network and no GitHub token. It does need real `pgrep` (the
+# lock probe counts processes with it) and a real `/bin/sh`; both are present on
+# ubuntu-latest.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/queue_doctor.py"
+      - "scripts/tests/test_queue_doctor.py"
+      - "scripts/tests/conftest.py"
+      - ".github/workflows/queue-doctor-tests.yml"
+  push:
+    branches:
+      - main
+    # Symmetric with the pull_request list above, this file included: an
+    # asymmetric filter means a direct push to main editing only this workflow
+    # runs nothing.
+    paths:
+      - "scripts/queue_doctor.py"
+      - "scripts/tests/test_queue_doctor.py"
+      - "scripts/tests/conftest.py"
+      - ".github/workflows/queue-doctor-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queue-doctor-tests-${{ github.ref }}
+  # Superseded pushes on a PR branch may be cancelled freely; a main run may
+  # not, because the group is keyed on `github.ref` and cancelling an in-flight
+  # main run is a suppressed alarm rather than a saving.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  queue-doctor-tests:
+    name: queue doctor tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # setup-python provisions a CLEAN interpreter: pip/setuptools/wheel only.
+      # Without this the corpus dies on `No module named pytest`, which the
+      # cross-family review seat caught in the first draft. Same line as
+      # organ-conformance.yml:155, minus pyyaml — this corpus is stdlib-only.
+      - name: Install test deps
+        run: pip install --quiet pytest
+
+      # ONE run, and the assertion is on tests that PASSED — not on tests
+      # collected, and not on the exit code alone. Each of those three is a
+      # green that can hide an empty run:
+      #   * exit code alone: pytest exits 0 when every case is SKIPPED.
+      #   * collected count: `--collect-only` counts skipped cases too, so a
+      #     corpus that runs nothing still clears a collection floor.
+      #   * a floor with no upper discipline: adding cases must never turn this
+      #     red, so the comparison is `-lt`, and the floor only ratchets UP when
+      #     someone raises it deliberately. It is NOT auto-derived: a floor that
+      #     recomputes itself from the tree it guards cannot notice that tree
+      #     shrinking.
+      # `|| RC=$?` IS LOAD-BEARING, NOT STYLE. A `run:` block with no `shell:`
+      # key runs under GitHub's default `bash -e {0}`, and the `set -uo pipefail`
+      # below does NOT clear that `-e`. A BARE capture — `OUT="$(… pytest …)"` —
+      # therefore aborts the step on that very line the moment pytest exits
+      # non-zero, which is the only case anyone ever reads this log for: the
+      # `printf` never runs, the `::error::` never runs, and the step goes red
+      # with a COMPLETELY EMPTY log. This file was first written the bare way and
+      # the gate caught it. Measured 2026-08-31, same corpus, both shells:
+      #   corpus green      exit 0 + verdict line, identically under either shell
+      #   a test fails      bare: exit 1, ZERO lines · `|| RC=$?`: exit 1, traceback + ::error::
+      #   `-k` matches none bare: exit 5, ZERO lines · `|| RC=$?`: exit 1, "14 deselected" + ::error::
+      # Read the bare column carefully: it still goes RED, so the guard does
+      # DETECT — it just cannot say why, and it leaks pytest's own exit status in
+      # place of its own. A mute alarm is the one that gets rerun blindly. This
+      # is scar W101/W107's antidote verbatim (`|| EXIT_CODE=$?` is the only
+      # capture form immune to errexit).
+      #
+      # HOW IT GOT IN, because that is the part worth copying: the sibling
+      # `mq-oracle-tests.yml`, written a few hours EARLIER the same day by the
+      # same hand, already carries the identical diagnosis in its own comment —
+      # "`|| true`: under `set -euo pipefail` a suite that ABORTS kills the step
+      # at this assignment, so the [...] branch below is unreachable dead code on
+      # the only path it exists for (W101/W108)". The knowledge was not missing.
+      # It failed to transfer because the two files LOOK different: that one says
+      # `set -euo pipefail` and visibly owns its `-e`, this one says `set -uo` —
+      # and the `-e` this file appears to have "left out" was never this file's
+      # to leave out, because GitHub supplies it. An opt-out that reads as
+      # absence is the trap; the fix is to make the guard visible at the capture
+      # itself, which `|| RC=$?` does. The intent the
+      # bare form was reaching for — print pytest's output BEFORE any verdict, so
+      # a failure is diagnosable here rather than merely announced — is what the
+      # `|| RC=$?` actually delivers.
+      - name: The queue doctor still refuses to fabricate a measurement
+        run: |
+          set -uo pipefail
+          FLOOR=14   # the corpus size on main when this file was written
+          RC=0
+          OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_queue_doctor.py -q 2>&1)" || RC=$?
+          printf '%s\n' "$OUT"
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::the queue-doctor corpus did not pass (pytest exit $RC) — output above"
+            exit 1
+          fi
+          PASSED="$(printf '%s\n' "$OUT" | sed -n 's/^\([0-9][0-9]*\) passed.*/\1/p' | tail -1)"
+          if [ -z "$PASSED" ]; then
+            echo "::error::pytest exited 0 but printed no 'N passed' line — the corpus may have been skipped in its entirety, which is not a pass"
+            exit 1
+          fi
+          if [ "$PASSED" -lt "$FLOOR" ]; then
+            echo "::error::the queue-doctor corpus had $PASSED passing cases, below the floor of $FLOOR — cases were removed, or skipped (a skip is not a pass)"
+            exit 1
+          fi
+          echo "queue doctor corpus: $PASSED passing cases (floor $FLOOR)"

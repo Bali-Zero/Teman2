@@ -317,6 +317,35 @@ async def test_get_invoice_pdf_url():
     assert result == {"download_url": "/api/portal/billing/1/pdf"}
 
 
+class _DriveHttpError(Exception):
+    """The shape of googleapiclient.errors.HttpError that matters here."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__(f"drive returned {status}")
+        self.resp = MagicMock(status=status)
+
+
+def _sa_drive_mock(*, metadata: object, content: object = b"PDF_INVOICE") -> MagicMock:
+    """Mock the Service Account Drive client.
+
+    The download proxies used to ask GoogleDriveService for the SYSTEM OAuth
+    token; `_refresh_token` returns None for SYSTEM BY DESIGN since
+    2026-05-10, so those calls could only ever 500 in production. The tests
+    that guarded them mocked the token to a value production cannot obtain
+    (superscar #2, esiste≠armato — inside the suite). Audit finding F-01.
+    """
+
+    def _mock(value: object) -> AsyncMock:
+        if isinstance(value, Exception):
+            return AsyncMock(side_effect=value)
+        return AsyncMock(return_value=value)
+
+    sa = MagicMock()
+    sa.get_file_metadata = _mock(metadata)
+    sa.download_file_content = _mock(content)
+    return sa
+
+
 @pytest.mark.asyncio
 async def test_download_invoice_pdf_streams_owned_invoice_drive_file():
     """download_invoice_pdf streams an invoice PDF through the portal proxy."""
@@ -331,26 +360,16 @@ async def test_download_invoice_pdf_streams_owned_invoice_drive_file():
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
-    meta_response = MagicMock(status_code=200)
-    meta_response.json.return_value = {
-        "name": "invoice.pdf",
-        "mimeType": "application/pdf",
-    }
-    download_response = MagicMock(status_code=200, content=b"PDF_INVOICE")
-
-    async_http = MagicMock()
-    async_http.get = AsyncMock(side_effect=[meta_response, download_response])
+    sa = _sa_drive_mock(
+        metadata={"name": "invoice.pdf", "mimeType": "application/pdf"},
+        content=b"PDF_INVOICE",
+    )
 
     service = PortalService(mock_pool)
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
         result = await service.download_invoice_pdf(
             client_id=1,
             invoice_id=1,
@@ -500,18 +519,28 @@ async def test_download_invoice_pdf_raises_when_drive_not_connected() -> None:
         }
     )
 
-    with patch(
-        "backend.services.integrations.google_drive_service.GoogleDriveService"
-    ) as drive_cls:
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value=None)
+    sa = _sa_drive_mock(metadata={"name": "invoice.pdf", "mimeType": "application/pdf"})
 
-        with pytest.raises(RuntimeError, match="Google Drive is not connected"):
-            await service.download_invoice_pdf(
-                client_id=1,
-                invoice_id=1,
-                current_user={"client_id": 1, "email": "c1@example.com"},
-            )
+    with (
+        patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            return_value=sa,
+        ),
+        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as oauth_cls,
+    ):
+        oauth_cls.SYSTEM_USER_ID = "SYSTEM"
+        oauth_cls.return_value.get_valid_token = AsyncMock(return_value=None)
+
+        result = await service.download_invoice_pdf(
+            client_id=1,
+            invoice_id=1,
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
+
+    # Guilt-proof: put `get_valid_token(SYSTEM)` back in the credential path
+    # and this fails — that token is always None, which was the 500.
+    assert result is not None
+    oauth_cls.return_value.get_valid_token.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -524,18 +553,12 @@ async def test_download_invoice_pdf_returns_none_when_metadata_is_404() -> None:
             "drive_file_id": "invoice_drive_123",
         }
     )
-    meta_response = MagicMock(status_code=404)
-    async_http = MagicMock()
-    async_http.get = AsyncMock(return_value=meta_response)
+    sa = _sa_drive_mock(metadata=_DriveHttpError(404))
 
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
         result = await service.download_invoice_pdf(
             client_id=1,
@@ -556,18 +579,12 @@ async def test_download_invoice_pdf_raises_when_metadata_fetch_fails() -> None:
             "drive_file_id": "invoice_drive_123",
         }
     )
-    meta_response = MagicMock(status_code=503)
-    async_http = MagicMock()
-    async_http.get = AsyncMock(return_value=meta_response)
+    sa = _sa_drive_mock(metadata=_DriveHttpError(503))
 
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
         with pytest.raises(RuntimeError, match="Failed to fetch invoice metadata"):
             await service.download_invoice_pdf(
@@ -587,20 +604,15 @@ async def test_download_invoice_pdf_returns_none_when_download_is_404() -> None:
             "drive_file_id": "invoice_drive_123",
         }
     )
-    meta_response = MagicMock(status_code=200)
-    meta_response.json.return_value = {"name": "invoice.pdf", "mimeType": "application/pdf"}
-    download_response = MagicMock(status_code=404)
-    async_http = MagicMock()
-    async_http.get = AsyncMock(side_effect=[meta_response, download_response])
+    sa = _sa_drive_mock(
+        metadata={"name": "invoice.pdf", "mimeType": "application/pdf"},
+        content=_DriveHttpError(404),
+    )
 
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
         result = await service.download_invoice_pdf(
             client_id=1,
@@ -621,20 +633,15 @@ async def test_download_invoice_pdf_raises_when_download_fails() -> None:
             "drive_file_id": "invoice_drive_123",
         }
     )
-    meta_response = MagicMock(status_code=200)
-    meta_response.json.return_value = {"name": "invoice.pdf", "mimeType": "application/pdf"}
-    download_response = MagicMock(status_code=500)
-    async_http = MagicMock()
-    async_http.get = AsyncMock(side_effect=[meta_response, download_response])
+    sa = _sa_drive_mock(
+        metadata={"name": "invoice.pdf", "mimeType": "application/pdf"},
+        content=_DriveHttpError(500),
+    )
 
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
         with pytest.raises(RuntimeError, match="Failed to download invoice"):
             await service.download_invoice_pdf(

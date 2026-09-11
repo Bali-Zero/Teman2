@@ -1,0 +1,9 @@
+Claim-set consistency audit. Find CONTRADICTIONS or unsupported leaps among these claims from one report. Number findings, severity, compact EN.
+C1: The blind panel split 3-1 for the named-human variant; the dissent is called "not order-explainable" because one same-order seat chose the other way (n=4 total).
+C2: ALL four seats condition the named variant on verifiability; an unverifiable name scores below the control for every seat.
+C3: The report declares named-by-default as a CONTRACT (real person, consistent identity, real photo or none) based on C1+C2.
+C4: Red palette judged institutional 3/3; the two mitigating marks are the role-separation line and the PT/NPWP/registry line; a physical address is missing.
+C5: a11y suite final 7 PASS / 0 FAIL / 1 PARTIAL; the PARTIAL is text-only zoom doing nothing because type is px-fixed; the fix declared is rem units with identical default rendering.
+C6: Keyboard-only traversal PASSED end-to-end, yet the report also says real screen-reader timing remains untested and open.
+C7: The walkthrough found the GARUDA checkout page does not exist among the mockups, and calls it the largest open surface, while also claiming the redesign "answers" R1's fragile moments.
+C8: The case code is called the wayfinding spine although the report admits no GARUDA payment currently creates a portal account.

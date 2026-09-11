@@ -1,0 +1,99 @@
+task_id: voa-price-790-0831
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Carry the owner's price ruling into the store that was contradicting it.
+
+  Ordered by Zero on 2026-08-31, verbatim: "aggiorna ovunque il prezzo e-voa 790.000 IDR e
+  estensione 850.000". This is a business decision (Legge 5), not an inference — the figures are
+  not derived, weighed or rounded here, they are transcribed.
+
+  "Ovunque" turned out to mean one place. Bali Zero holds prices in two stores and nothing
+  reconciles them: the JSON sheet the live PricingService loads, which already carried 790.000 and
+  850.000 stamped `verified_on: 2026-08-25`, and `practice_types.base_price` in Postgres, which
+  did not. The Postgres row is not a display value — when a practice is opened without an explicit
+  price, `crm_practices.py:491` quotes `practice_type_row["base_price"]` and the invoice service
+  bills it. So `visa_b1_voa` was a live 40.000 IDR under-quote on every VOA practice opened without
+  a manual price, while GARUDA VOA quoted 790.000 for the same service through the sheet.
+
+  Measured, not assumed, against the production catalogue on 2026-08-31: exactly two rows match any
+  VOA-ish code or name — `visa_b1_voa` at 750.000 and `ext_b1_voa` at 850.000, both active. So the
+  extension needs nothing and the issuance needs one column of one row. Migration 302 writes it.
+
+  Gear 3 by PATH, deterministically: the diff touches `migrations_v2/*.sql`, which the harness
+  floors at 3 regardless of size (`--print-floor-source` returns `path`).
+
+constraints:
+  - "The figures are the owner's, transcribed. A price is never derived, adjusted or reconciled by
+    a session — if the sheet and the ruling ever disagree, the session surfaces it and stops."
+  - "One PR, one concern. An earlier revision of this branch also regenerated
+    docs/pricing/Bali_Zero_Price_List_2026.md; it is removed. Two external seats and the gate all
+    found defects inside that regeneration, and none of them were about the price."
+  - "The migration touches one column of one row: no schema change, no ownership transfer, no
+    grant, and no row whose price merely looks implausible."
+  - "No client PII anywhere. The diff carries service codes, prices and a business contact block
+    that is already public on balizero.com; the production query behind the receipts is read-only
+    through scripts/pg.sh and returns catalogue rows, never a client."
+
+acceptance:
+  - text: >-
+      WHEN the JSON sheet's VOA figures are edited away from the ruling the suite SHALL go red. The
+      sheet's filename is imported from `pricing_service._PRICING_FILENAME`, never typed here, so
+      the tripwire cannot end up watching a path the service has stopped reading.
+    probe: pytest backend/tests/test_data_invariant_tripwires.py
+  - text: >-
+      WHEN the DATABASE half of the ruling is reverted the suite SHALL go red. This is the half the
+      first revision missed while its docstring claimed to guard both. Mutation A: rewriting
+      migration 302's forward section to 750000 turns it red.
+    probe: pytest backend/tests/test_data_invariant_tripwires.py
+  - text: >-
+      WHEN a future migration moves either price without updating the ruled figure the suite SHALL
+      go red. Mutation B: adding a migration that sets base_price for visa_b1_voa turns it red,
+      because the frozen set of setters stops matching.
+    probe: pytest backend/tests/test_data_invariant_tripwires.py
+  - text: >-
+      WHERE migration 302 is re-applied after the value is already 790000 it SHALL update zero rows
+      rather than churn updated_at.
+    probe: "base_price IS DISTINCT FROM 790000"
+  - text: >-
+      IF the production catalogue did not hold exactly the two rows this migration assumes, the
+      whole premise SHALL be visible as wrong before shipping — the figures are measured, not
+      assumed.
+    probe: bash scripts/pg.sh -c "SELECT code, name, base_price, is_active FROM practice_types
+
+consumer_map:
+  - "`practice_types.base_price` -> `crm_practices.py:491` quotes it as the default when a practice
+    carries no explicit price, and the invoice service bills that amount. This is the surface the
+    ruling was being contradicted on."
+  - "`bali_zero_official_prices_2026.json` -> PricingService -> GARUDA VOA and the visa_engine
+    pricing adapter, resolved per request. Already correct before this diff; pinned by the tripwire
+    so it stays that way."
+  - "`crm_handoff.py` maps a GARUDA issuance to practice type `visa_b1_voa` and an extension to
+    `ext_b1_voa`, so the GARUDA flow reaches exactly the row this migration corrects. Its comment
+    (and its test's) still quoted the pre-ruling 750.000 and now quote 790.000, keeping migration
+    221's original visible as history."
+  - "NOT a consumer, checked and ruled out: the legacy Python migrations 066 and 123 seed a
+    different code, `visa_voa`, at 750.000. Nothing executes them — migration_base.py:42-45 says
+    the pre-2026-04-18 Python migrations are applied manually and the automated loader reads only
+    db/migrations_v2/*.sql — and the row does not exist in production."
+
+risks:
+  - "The structural gap stays open: nothing reconciles the two stores at runtime, there is no sync
+    job, and the tripwire added here is a ratchet over migration files rather than a live
+    comparison. A price can still diverge between a deploy and the next migration. Tracked in
+    PENDING-ARMS, not closed here."
+  - "One acceptance bullet has a probe with no executed outcome, and the lint says so rather than
+    being talked out of it: nothing in this repo EXECUTES a migrations_v2 file, so 302's
+    idempotency, its absent-row path, its rollback and its SQL postcondition are all read rather
+    than run. That is the codex seat's finding 6, it is a property of the whole migration tier and
+    not of 302, and it is ledgered rather than built here — an execution harness is a lane of its
+    own, not a rider on a price fix."
+  - "The database arm of the tripwire reads migration TEXT, not a database. It cannot see a value
+    changed by hand in production, only one changed by a migration. That is the honest limit of a
+    unit test with no database, and it is stated rather than papered over."
+  - "The removed document regeneration leaves docs/pricing/Bali_Zero_Price_List_2026.md without any
+    VOA row at all — which is what the merge-base already said. The document is separately stale
+    (its header claims 2026-05-06) and its contact block carries a wa.me href pointing at a
+    different number from its own display text. Both are inherited defects, both ledgered, neither
+    introduced here."

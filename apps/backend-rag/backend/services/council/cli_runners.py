@@ -1,7 +1,11 @@
 """Async CLI runners for Council proponents.
 
-Legge 1 compliance: LLM chiamati via subprocess `claude -p`, `gemini -p`.
-Eccezione esplicita: DeepSeek V4 Pro Think Max via HTTP (SYMBIOSIS.md:176).
+Legge 1 compliance: LLM chiamati via subprocess `claude -p`, `gemini -p`,
+`kimi -p`. No HTTP exception is wired here anymore — the DeepSeek V4 Pro
+HTTP runner (SYMBIOSIS.md:176's "unica eccezione") was retired 2026-07-19
+(Zero: pre-authorization REVOKED, key balance dead, HTTP-402). Its voting
+seat is replaced by KimiCLIRunner (Moonshot Kimi K3, OAuth device-code,
+no API key) per CLAUDE.md §5 "replacement refuter seat is Kimi K3".
 
 Each runner:
 - is async (asyncio.create_subprocess_exec) to run 3 proponents in parallel
@@ -23,31 +27,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-import httpx
-
-from backend.services.observability import llm_cost_tracked, set_usage
-
 logger = logging.getLogger(__name__)
-
-
-# Golden Rule #10: module-level lazy singleton AsyncClient for the
-# DeepSeek HTTP runner. Lifespan-closed via close_council_runner_client().
-_module_client: httpx.AsyncClient | None = None
-
-
-def _get_module_client(timeout: float) -> httpx.AsyncClient:
-    global _module_client
-    if _module_client is None or _module_client.is_closed:
-        _module_client = httpx.AsyncClient(timeout=timeout)
-    return _module_client
-
-
-async def close_council_runner_client() -> None:
-    """Release the module-level AsyncClient (lifespan shutdown hook)."""
-    global _module_client
-    if _module_client is not None and not _module_client.is_closed:
-        await _module_client.aclose()
-    _module_client = None
 
 
 class CLIRunnerError(RuntimeError):
@@ -158,97 +138,50 @@ class GeminiCLIRunner(CLIRunner):
         )
 
 
-class DeepSeekHTTPRunner(CLIRunner):
-    """DeepSeek via HTTP API — Legge 1 explicit exception (SYMBIOSIS.md:176).
+class KimiCLIRunner(CLIRunner):
+    """Runs `kimi -p <prompt> -m kimi-code/k3`. No API key — Moonshot Kimi
+    OAuth device-code login (Allegro flat subscription).
 
-    Originally prototyped in the WR1 image_brainstorm agent (removed
-    2026-04-22). This implementation uses httpx (async, Golden Rule 4);
-    API key required.
+    Replaces DeepSeekHTTPRunner as the third council voice. DeepSeek V4 Pro
+    was RETIRED 2026-07-19 (Zero: pre-authorization revoked, key balance
+    dead — HTTP-402); CLAUDE.md §5 names Kimi K3 as the sanctioned
+    replacement refuter/second-opinion seat. Uses the subprocess pattern
+    (Legge 1 CLI-only), not HTTP — no cost-tracking decorator needed, same
+    as ClaudeCLIRunner/GeminiCLIRunner (flat-subscription, no per-token
+    billing to record).
     """
 
-    name = "deepseek"
-    default_timeout = 120
+    name = "kimi"
+    default_timeout = 240
 
-    API_URL = "https://api.deepseek.com/v1/chat/completions"
-    DEFAULT_MODEL = "deepseek-v4-pro"  # V4 Pro, Think Max recommended
+    DEFAULT_MODEL = "kimi-code/k3"
 
     def __init__(
         self,
-        api_key: str,
+        binary_path: str | None = None,
         model: str | None = None,
-        http_client: httpx.AsyncClient | None = None,
-        reasoning_effort: str | None = "max",
     ) -> None:
-        if not api_key:
-            raise CLIRunnerError("DeepSeekHTTPRunner requires api_key")
-        self.api_key = api_key
+        self.binary_path = (
+            binary_path
+            or shutil.which("kimi")
+            or os.path.expanduser("~/.kimi-code/bin/kimi")
+        )
         self.model = model or self.DEFAULT_MODEL
-        self._client = http_client
-        # Default to "max" for Consiglio gate-6 deliberation; callers can
-        # override with "low"/"high" or pass None to let the API pick.
-        self.reasoning_effort = reasoning_effort
 
-    @llm_cost_tracked(provider="deepseek", model_attr="model")
     async def run(
         self,
         prompt: str,
         timeout: int | None = None,
     ) -> RunnerResult:
         eff_timeout = timeout or self.default_timeout
-        start = time.perf_counter()
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-        payload: dict[str, Any] = {
-            "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
-        }
-        if self.reasoning_effort is not None:
-            payload["reasoning_effort"] = self.reasoning_effort
-
-        client = self._client or _get_module_client(eff_timeout)
-
-        try:
-            resp = await client.post(
-                self.API_URL,
-                headers=headers,
-                json=payload,
-                timeout=eff_timeout,
-            )
-            duration_ms = (time.perf_counter() - start) * 1000
-            if resp.status_code != 200:
-                return RunnerResult(
-                    runner_name=self.name,
-                    prompt_chars=len(prompt),
-                    ok=False,
-                    error=f"HTTP {resp.status_code}: {resp.text[:300]}",
-                    duration_ms=duration_ms,
-                )
-            body = resp.json()
-            usage = body.get("usage", {})
-            set_usage(
-                input_tokens=int(usage.get("prompt_tokens", 0)),
-                output_tokens=int(usage.get("completion_tokens", 0)),
-            )
-            content = body["choices"][0]["message"]["content"]
-            return RunnerResult(
-                runner_name=self.name,
-                prompt_chars=len(prompt),
-                ok=True,
-                output=content.strip(),
-                duration_ms=duration_ms,
-                meta={"model": self.model},
-            )
-        except Exception as exc:
-            return RunnerResult(
-                runner_name=self.name,
-                prompt_chars=len(prompt),
-                ok=False,
-                error=str(exc),
-                duration_ms=(time.perf_counter() - start) * 1000,
-            )
+        cmd = [self.binary_path, "-p", prompt, "-m", self.model]
+        return await _run_subprocess(
+            name=self.name,
+            cmd=cmd,
+            prompt=prompt,
+            env=dict(os.environ),
+            timeout=eff_timeout,
+        )
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────

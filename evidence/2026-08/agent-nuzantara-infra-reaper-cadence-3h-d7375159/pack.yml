@@ -1,0 +1,432 @@
+# NOTE: brief_ref is the CANONICAL name, not this pack's own directory — the
+# harness-floor.yml CI workflow copies both discovered per-PR files into
+# /tmp/evidence-check/evidence/{brief,pack}.yml under these exact names
+# before validating, so brief_ref must always read "evidence/brief.yml".
+brief_ref: evidence/brief.yml
+plan_ref: PR #5424 — agent/nuzantara/infra/reaper-cadence-3h
+# DIFF STATS — corrected 2026-08-31 after the independent grader caught them false.
+# They said 4 / 70 / 17. They were the true figures for the FIRST commit of this
+# branch and were never re-taken as the branch grew; by the time the grader ran
+# `git diff --shortstat origin/main...HEAD` the real answer was 7 files / 561
+# insertions. That is the THIRD instance in this one PR of a receipt that was
+# honest when captured and false for the artifact shipped — see the two entries
+# in residual_risks. The other two were caught by a cross-family seat; this one
+# lives in the pack's own headline, which no reviewer had thought to re-measure.
+#
+# WHY CI DID NOT CATCH IT, verified by the grader: evidence_pack_lint's
+# countable-claims walker has COUNTABLE_SUBTREES = ("diff", "lanes") but inspects
+# only `str` nodes, so these very integers are structurally invisible to it. The
+# lint returns clean on a pack whose headline diff block is wrong by an order of
+# magnitude. Arming that is a separate mandate, named in residual_risks.
+#
+# Measured against aa8038dd4 (the commit these numbers describe). The successor
+# commit adds only this correction to pack.yml itself, so it necessarily grows
+# them again — a self-describing field cannot close over its own edit. Stating
+# the SHA is what makes the claim checkable instead of merely fresh.
+diff:
+  files: 7
+  insertions: 632
+  deletions: 17
+  hotzone_hits:
+    - infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example
+
+lanes:
+  - lane: build
+    role: build
+    seat: opus-5
+  - lane: review
+    role: review
+    seat: spalla-review/sonnet-5
+  - lane: review-crossfamily
+    role: review
+    seat: kimi-code/k3
+  - lane: review-crossfamily-2
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: receipts
+    role: read
+    seat: general-purpose/sonnet-5
+
+receipts:
+  - claim: "Il pavimento deterministico di questo diff è 3, e la sorgente è il PATH (non la dimensione)."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf-5424.txt   # stdout: 3"
+    exit: 0
+    ts: "2026-08-31T04:00:00Z"
+    seat: general-purpose/sonnet-5
+  - claim: "Sorgente del pavimento = path, confermata separatamente dal numero."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/cf-5424.txt   # stdout: path"
+    exit: 0
+    ts: "2026-08-31T04:00:03Z"
+    seat: general-purpose/sonnet-5
+  - claim: "Il pattern hot-zone colpito è `infra/launchagents/*` (HOTZONE_PATTERNS, scripts/evidence_pack_lint.py)."
+    cmd: "grep -n 'infra/launchagents' scripts/evidence_pack_lint.py"
+    exit: 0
+    ts: "2026-08-31T04:00:03Z"
+    seat: general-purpose/sonnet-5
+  - claim: "RITIRATA E RIPRESA. La versione originale di questa ricevuta diceva «4 file, 70 inserzioni, 17 cancellazioni» ed era vera al primo commit del branch; il giudice indipendente l'ha rieseguita e ha trovato 7 file / 561 inserzioni. Ripresa qui contro uno SHA nominato: a aa8038dd4 il diff è 7 file, 632 inserzioni, 17 cancellazioni."
+    cmd: "git diff --shortstat origin/main...aa8038dd4   # stdout: 7 files changed, 632 insertions(+), 17 deletions(-)"
+    exit: 0
+    ts: "2026-08-31T04:49:06Z"
+    seat: opus-5
+  - claim: "Il plist è sintatticamente valido dopo la modifica."
+    cmd: "plutil -lint infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example   # stdout: ...: OK"
+    exit: 0
+    ts: "2026-08-31T04:00:06Z"
+    seat: general-purpose/sonnet-5
+  - claim: "Lo schedule che launchd leggerà è otto voci, tutte a Minute 15, alle ore 0/3/6/9/12/15/18/21 — letto il VALORE, non fermandosi a 'lint OK'."
+    cmd: 'plutil -extract StartCalendarInterval json -o - infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example   # stdout: [{"Hour":0,"Minute":15},{"Hour":3,"Minute":15},{"Hour":6,"Minute":15},{"Hour":9,"Minute":15},{"Hour":12,"Minute":15},{"Hour":15,"Minute":15},{"Hour":18,"Minute":15},{"Hour":21,"Minute":15}]'
+    exit: 0
+    ts: "2026-08-31T04:00:09Z"
+    seat: general-purpose/sonnet-5
+  - claim: "plistlib.load() parsa il file — cosa che PRIMA di questa PR falliva con ExpatError sul doppio trattino dentro il commento XML — e vede 8 voci con la label invariata. RI-ESEGUITO sul contenuto finale: la prima cattura di questa ricevuta era vera quando fu presa e FALSA per il commit che ne è seguito (vedi residual_risks, RECIDIVA)."
+    cmd: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(len(d[''StartCalendarInterval'']), d[''Label''])"   # stdout: 8 com.nuzantara.agent-worktree-cleanup.daily'
+    exit: 0
+    ts: "2026-08-31T04:41:29Z"
+    seat: opus-5
+  - claim: "Nessun doppio trattino letterale sopravvive in NESSUN commento XML del file — controllato su tutti i commenti, non solo sul primo errore che il parser riporta."
+    cmd: 'python3 -c "import pathlib,re;t=pathlib.Path(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'').read_text();print([l for m in re.finditer(r''<!--(.*?)-->'',t,re.S) for l in m.group(1).splitlines() if ''-''+''-'' in l])"   # stdout: []'
+    exit: 0
+    ts: "2026-08-31T04:41:29Z"
+    seat: opus-5
+  - claim: "L'intervallo derivato dal numero di voci è 10800 s (86400//8), che è il valore che audit_launchd_crons.py calcola dallo stesso campo."
+    cmd: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(86400//len(d[''StartCalendarInterval'']))"   # stdout: 10800'
+    exit: 0
+    ts: "2026-08-31T04:05:10Z"
+    seat: opus-5
+  - claim: "La label è rimasta invariata attraverso il cambio di cadenza — è ciò da cui dipendono le sonde che la grepano alla lettera."
+    cmd: 'python3 -c "import plistlib;print(plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''))[''Label''])"   # stdout: com.nuzantara.agent-worktree-cleanup.daily'
+    exit: 0
+    ts: "2026-08-31T04:05:10Z"
+    seat: opus-5
+  - claim: "Il YAML del connettoma si carica ancora dopo la modifica alla riga `consumer`."
+    cmd: 'python3 -c "import yaml;yaml.safe_load(open(''docs/connectome/edges/launchd-pro.yaml''));print(''yaml-ok'')"   # stdout: yaml-ok'
+    exit: 0
+    ts: "2026-08-31T04:00:15Z"
+    seat: general-purpose/sonnet-5
+  - claim: "La suite broker-hygiene (i test che il workflow omonimo esegue su questi path) resta verde."
+    cmd: "python -m pytest scripts/tests/test_agent_worktree_cleanup_cron.py scripts/tests/test_agent_start.py -q   # 86 passed, 1 skipped in 32.74s"
+    exit: 0
+    ts: "2026-08-31T04:00:52Z"
+    seat: general-purpose/sonnet-5
+
+tests:
+  cmd: "python -m pytest scripts/tests/test_agent_worktree_cleanup_cron.py scripts/tests/test_agent_start.py -q"
+  passed: 86
+  failed: 0
+static:
+  lint: ok
+  typecheck: n/a-no-typed-source-touched
+  build: n/a
+
+runtime_proof:
+  - claim:
+      "LA COPIA VIVA INSTALLATA SU QUESTA MACCHINA PORTA IL DIFETTO, adesso.
+      Non è un problema del solo template: il plist realmente caricato in
+      ~/Library/LaunchAgents/ viene rifiutato da plistlib alla riga 6, che è il
+      `--cleanup` del commit W62 ORIGINALE. Il difetto è quindi VIVO da sempre,
+      non introdotto da questa PR, e per tutta la sua vita `audit_launchd_crons.py`
+      — che legge proprio quella directory — non ha mai potuto controllare questo
+      cron. Installare il template curato cura anche la copia viva: è la ragione
+      operativa per cui il passo di install conta, oltre alla cadenza."
+    cmd: 'python3 -c "import plistlib;plistlib.load(open(''~/Library/LaunchAgents/com.nuzantara.agent-worktree-cleanup.daily.plist''.replace(''~'',__import__(''os'').path.expanduser(''~'')),''rb''))"   # ExpatError: not well-formed (invalid token): line 6, column 33'
+    exit: 1
+    ts: "2026-08-31T04:49:06Z"
+    seat: opus-5
+
+dissent:
+  - seat: spalla-review/sonnet-5
+    objection: >
+      Nessun blocco sollevato. Tre rilievi non bloccanti, tutti recepiti nel
+      diff prima del commit: (1) `docs/connectome/edges/launchd-pro.yaml:109`
+      restava a `consumer: "... (00:15)"`, stantio per effetto di questa stessa
+      PR — corretto; (2) i numeri dell'incidente erano asseriti senza puntatore
+      di provenienza, e il grader ha potuto corroborare la FORMA della tesi ma
+      non le cifre esatte di 753 MB / ~80 GB — la provenienza è ora dichiarata
+      esplicitamente nel plist; (3) difetto EREDITATO: il `--` letterale nel
+      commento XML rendeva il file illeggibile a plistlib, curato qui perché
+      giace nelle righe riscritte.
+    status: CONFIRMED
+    resolution: >
+      Tutti e tre applicati nel diff prima del commit. Nessuna obiezione
+      respinta, quindi nessun disaccordo residuo fra generatore e giudice su
+      questo diff. Marcati CONFIRMED e non PLAUSIBLE perché ciascuno è stato
+      ri-verificato con un comando in sessione, non accettato sulla parola:
+      la riga stantia del connettoma è stata riletta, e il difetto XML è stato
+      riprodotto (ExpatError) e poi provato risolto (plistlib parsa).
+
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >
+      Verdetto CONCERNS, quattro rilievi. DUE ERRORI DI FATTO nel testo della
+      PR, entrambi verificati e corretti: (1) "`find -ctime -1`" non misura il
+      tempo di CREAZIONE — `-ctime` è l'inode change time, su macOS la birth
+      time è `-Btime` — quindi la provenienza descriveva una misura diversa da
+      quella dichiarata; (2) il diff trattava i due GC come se condividessero il
+      quadrante orario del reaper mentre il vecchio commento li dava a "00:00
+      UTC", cambiando frame senza dirlo. Più un rilievo NON richiesto: i
+      documenti asserivano la nuova cadenza al presente mentre la copia viva
+      resta giornaliera fino al reload. Infine, un rischio strutturale: nessun
+      `flock` serializza il reaper contro `--release` o contro un GC che sfora,
+      e 1→8 passate moltiplica per otto l'esposizione a quella corsa.
+    resolution: >
+      (1) ACCETTATO e corretto: la provenienza ora dichiara che `-ctime` è un
+      limite superiore, corroborato dalla colonna AGE_MIN del broker, invece di
+      ri-etichettare furtivamente il comando. (2) ACCETTATO e RISOLTO A FAVORE
+      DELLA PR dopo misura diretta: `wr2.worktree-gc` è {Hour 0, Minute 0} e
+      `worktree-gc-universal` {Hour 0, Minute 30}, entrambi
+      StartCalendarInterval e quindi LOCALI — lo scarto di :15 è un margine
+      reale nello stesso quadrante, ed era il vecchio "00:00 UTC" a sbagliare
+      anche su di loro. (3) ACCETTATO: runbook e connettoma ora dicono
+      esplicitamente che la cadenza vale dopo il reload. (4) ACCETTATO come
+      rischio residuo dichiarato, non curato qui: `flock` è una PR separata,
+      una preoccupazione per PR.
+
+  - seat: tp1-qwen3.8-max
+    status: CONFIRMED
+    objection: >
+      Verdetto CONCERNS, indipendente da Kimi e convergente con esso sui due
+      rilievi sostanziali (nessuna mutua esclusione; `-ctime` non è tempo di
+      creazione). TRE sovra-affermazioni ulteriori, tutte nel mio testo:
+      (1) «lo scarto fa sì che una passata NON corra MAI contro i GC» è falso —
+      uno scarto è pianificazione, non mutua esclusione, e non fa nulla se un GC
+      sfora, se una passata parte tardi o se qualcuno lancia --cleanup a mano;
+      (2) «otto passate LIMITANO il caso peggiore a ~3h» vale solo a macchina
+      sveglia e passate puntuali e brevi — launchd FONDE le esecuzioni saltate
+      durante il sonno, quindi otto voci sono otto occasioni nominali, non otto
+      passate garantite; (3) L'ARITMETICA NON CHIUDE — ~40 checkout a ~1,2 GB
+      fanno ~48 GB, non i ~79 GB impliciti nel salto da ~80 GB a 753 MB.
+      Sul punto (c) diverge da Kimi: giudica la label `.daily` sostenibile solo
+      nel breve, e chiede che sia documentata come scialuppa di compatibilità
+      con un piano di rientro, non come scelta definitiva.
+    resolution: >
+      (1) e (2) ACCETTATE e riscritte nel plist: «tenere fuori dalle fasce»
+      invece di «non corre mai», con l'annotazione esplicita che nulla prende un
+      lock; e «porta verso ~3h» invece di «limita a ~3h», con il caveat sulla
+      fusione delle esecuzioni durante il sonno. (3) ACCETTATA ed è il rilievo
+      più importante del giro: la provenienza ora dichiara che i worktree sono
+      il contributore più grande IDENTIFICATO e non l'intera caduta, elenca i
+      candidati rimanenti come ipotesi per dimensione, ed esclude positivamente
+      sleepimage per mtime. Sulla divergenza (c): registrata senza scioglierla —
+      la scialuppa di compatibilità È documentata (plist, runbook, brief), il
+      piano di rientro no, e resta una domanda aperta per il proprietario, non
+      una cosa che questa PR decide.
+
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >
+      SECONDO GIRO, convocato sul solo delta 1b70763..7a0bce0 perché quel commit
+      era nato DOPO il council di primo giro e nessun giudice l'aveva visto. Due
+      rilievi, entrambi verificati e accolti. (1) TIMESTAMP FABBRICATI: due
+      ricevute di questo pacchetto dichiaravano le 05:12Z mentre l'ora reale era
+      le 04:41Z, ~31 minuti nel futuro — non catturate ma scritte a mano. (2) LA
+      GUIDA NUOVA NELL'HEADER ERA SBAGLIATA in entrambe le direzioni: vietava di
+      nominare i flag, mentre XML vieta la COPPIA di trattini — un flag a
+      trattino singolo è legale, e la coppia è illegale anche come punteggiatura;
+      la guida inoltre taceva che un commento non può terminare su un trattino.
+      Il seggio ha anche RIPRODOTTO in proprio, su un plist sintetico, la
+      divergenza plutil/plistlib che questa PR asserisce, invece di crederle.
+    resolution: >
+      Entrambe accolte e curate nel diff prima di ri-pubblicare: i due comandi
+      ri-eseguiti con timestamp catturato da `date -u`, e il paragrafo di guida
+      riscritto sui CARATTERI anziché sui flag, con la clausola del trattino
+      finale. Nessuna respinta.
+      ONESTÀ SUL GIRO STESSO: la sessione kimi è morta a metà su quota
+      settimanale (403) prima di emettere una riga di verdetto, quindi ha coperto
+      i primi due angoli e parte del quarto, e gli altri NON sono stati
+      esaminati. I rilievi sopra sono quelli che ha fatto in tempo a produrre, ed
+      erano già corredati dalle sue verifiche empiriche; il giro non è una
+      copertura completa del delta e non va contato come tale.
+  - seat: spalla-review/sonnet-5 (secondo giro, sul delta)
+    status: CONFIRMED
+    objection: >
+      Verdetto CONCERNS. Il rilievo di livello BLOCCANTE è sulle STATISTICHE DI
+      DIFF DI QUESTO STESSO PACCHETTO: dichiaravano 4 file / 70 / 17, e
+      rieseguendo `git diff --shortstat origin/main...HEAD` il giudice ha
+      ottenuto 7 file / 561 inserzioni. Erano vere al PRIMO commit del branch e
+      non sono mai state riprese mentre il branch cresceva — la terza istanza,
+      in questa sola PR, di una ricevuta onesta alla cattura e falsa alla
+      consegna. Il giudice ha inoltre stabilito PERCHÉ il lint non se ne
+      accorge: COUNTABLE_SUBTREES vale ("diff","lanes") ma il walker ispeziona
+      solo nodi str, quindi proprio quegli interi gli sono strutturalmente
+      invisibili — ha eseguito il lint col numstat reale e ha ottenuto clean,
+      exit 0. Ha poi ricostruito la storia del difetto XML: era presente già nel
+      commit W62 ORIGINALE (2cf3b14a9), curato in 0b2aa121c, reintrodotto in
+      7bd68e81f, ereditato da 1b707630f — quindi «è tornato» è esatto, ed è la
+      terza occorrenza contando l'originale. Scope pulito: il diff tocca solo il
+      blocco di commento, Label/StartCalendarInterval/ProgramArguments e i path
+      di log restano intatti.
+    resolution: >
+      BLOCCANTE ACCOLTO e curato: il blocco diff e la ricevuta corrispondente
+      sono stati ripresi contro uno SHA NOMINATO (aa8038dd4), con la ricevuta
+      vecchia dichiarata RITIRATA invece che sovrascritta in silenzio. Il buco
+      del lint è registrato in residual_risks come mandato separato: tocca
+      evidence_pack_lint.py, cioè lo strumento che giudica OGNI PR, e non si
+      allarga questa PR per farlo. La storia del difetto è recepita nel testo.
+
+  - seat: general-purpose/sonnet-5 (copertura CI, sonda indipendente)
+    status: CONFIRMED
+    objection: >
+      Non un'obiezione al diff ma la misura che mancava, e che trasforma una
+      congettura di questa PR in un fatto. Sweep di plistlib su TUTTI i 169 file
+      infra/launchagents/*.plist*: 168 parsano, ne fallisce ESATTAMENTE UNO,
+      questo. E nessuno strumento in CI lo vedrebbe: lint_plist_keepalive.py
+      scopre i file con endswith(".plist"), quindi un .plist.example è escluso
+      PRIMA di qualunque parse; check_organ_conformance.py (che invece
+      fallirebbe davvero, exit_code |= 4) usa pathspec git *.plist, stessa
+      esclusione; audit_launchd_crons.py non legge affatto il repo, punta a
+      ~/Library/LaunchAgents — forma HOME-fork, famiglia #1.
+    resolution: >
+      ACCOLTA e usata per correggere questa PR in due punti. (1) Ha reso
+      falsificabile la tesi sulla portata: ho poi verificato la copia VIVA su
+      questa macchina e porta il difetto alla riga 6, ereditato dal commit W62
+      originale — vedi runtime_proof. Il consumatore che si ceca è reale, e si
+      cecava da sempre. (2) Conferma che la cura qui è un testo senza guardia:
+      il buco di copertura è ora nominato con precisione in residual_risks, col
+      punto esatto in cui andrebbe chiuso.
+
+# council_run is a PATH to a journal.jsonl relative to THIS pack's own
+# directory (not an inline list — the earlier draft got the shape wrong and
+# the lint's council_run NOTICE was correctly reporting it as absent). The
+# per-seat narrative lives in `dissent` above; the journal is the machine-
+# readable half.
+council_run: journal.jsonl
+
+residual_risks:
+  - "IL LINT DEGLI EVIDENCE PACK NON LEGGE I PROPRI NUMERI DI TESTATA, ed è il
+    buco che ha lasciato passare la ricevuta falsa qui sopra. Il giudice l'ha
+    stabilito eseguendo il lint col numstat reale: torna clean, exit 0, su un
+    pacchetto il cui blocco `diff` sbaglia di un ordine di grandezza. La causa è
+    strutturale, non una svista di taratura: il walker delle affermazioni
+    numerabili ha COUNTABLE_SUBTREES = (diff, lanes) ma ispeziona soltanto nodi
+    str, e `files`/`insertions`/`deletions` sono INTERI — invisibili per
+    costruzione. Vale per OGNI pacchetto di OGNI PR, non solo per questo.
+    NON CURATO QUI DI PROPOSITO: toccherebbe evidence_pack_lint.py, cioè lo
+    strumento che giudica ogni PR del repo, ed è esattamente il genere di
+    modifica che non si infila di straforo in una PR sulla cadenza di un cron.
+    È un mandato a sé, con un test di colpevolezza ovvio (un pacchetto con
+    `diff.files` palesemente falso deve diventare rosso)."
+  - "IL DIFETTO XML NON È COPERTO DA NULLA IN CI, misurato e non supposto. Sweep
+    indipendente su tutti i 169 `infra/launchagents/*.plist*`: 168 parsano, uno
+    solo fallisce ed è questo. Tre strumenti avrebbero potuto vederlo e nessuno
+    lo fa: lint_plist_keepalive.py filtra con endswith('.plist') e quindi scarta
+    un `.plist.example` PRIMA di tentare il parse; check_organ_conformance.py —
+    l'unico che fallirebbe davvero, exit_code |= 4 — usa pathspec git `*.plist`,
+    stessa esclusione; audit_launchd_crons.py non guarda affatto il repo, legge
+    ~/Library/LaunchAgents (forma HOME-fork, famiglia #1).
+    Conseguenza da tenere in conto quando si legge la cura: dopo questa PR il
+    file è corretto, ma nulla impedisce alla prossima mano di rimetterci la
+    coppia di trattini, e nessun rosso comparirà. La chiusura naturale è una
+    riga sola — estendere la scoperta di quei lint a `*.plist*` invece che
+    `*.plist` — e resta fuori da questa PR per la stessa ragione del punto
+    precedente."
+  - "RECIDIVA DEL DIFETTO CHE QUESTA PR CURA, trovata sul commit già pubblicato.
+    Il difetto ereditato è un doppio trattino letterale dentro il commento XML,
+    che rende il file illeggibile a plistlib. L'ho curato, ho preso la ricevuta,
+    e poi ho scritto DUE volte nello stesso header un nome di flag nella sua
+    forma trattata — una recependo un rilievo di kimi-code/k3, una nel paragrafo
+    di provenienza. Il commit 1b70763, quello che è stato pubblicato e su cui la
+    PR è rimasta aperta, NON parsava. La ricevuta che dichiarava il contrario era
+    vera quando fu presa e falsa per l'artefatto spedito.
+    PERCHÉ È SFUGGITA, ed è la parte che vale: `plutil -lint` risponde OK su un
+    file che plistlib rifiuta. Le due sonde non concordano, e quella permissiva è
+    quella che un autore usa per prima.
+    PORTATA REALE, misurata e non presunta (2026-08-31): sul file rotto `plutil`
+    risponde OK **e** la sua modalità extract stampa lo schedule corretto. Il
+    parser Apple — quello che usa launchd — non se ne cura, quindi il cron
+    avrebbe continuato a girare. A cecarsi è lo STRATO DI AUDIT in Python
+    (audit_launchd_crons.py e chiunque faccia plistlib.load), non il job. La
+    prima stesura di questa voce lasciava intendere una severità maggiore.
+    CURA APPLICATA QUI: entrambe le occorrenze rimosse, ri-verificato con
+    plistlib sul contenuto finale, più un controllo che scandisce TUTTI i
+    commenti invece di fermarsi al primo errore riportato dal parser; e una nota
+    nell'header. La nota è stata RISCRITTA dopo il rilievo di kimi-code/k3: la
+    prima versione diceva di non nominare i flag, che è insieme troppo largo (un
+    flag a trattino singolo è legale, e questo commento ne nomina diversi) e
+    troppo stretto (la coppia di trattini è illegale anche come pura
+    punteggiatura, e un commento non può nemmeno terminare su un trattino). Ora
+    la regola è enunciata sui CARATTERI, che è ciò che XML vieta davvero.
+    La cura è un TESTO, non una guardia: nulla in questa PR impedisce a un
+    contributore di ricommettere la stessa forma. Se la copertura CI risultasse
+    assente, la guardia è un mandato separato — non si allarga questa PR per
+    costruirla."
+  - "TIMESTAMP FABBRICATI IN QUESTO STESSO PACCHETTO, trovati da kimi-code/k3 al
+    secondo giro e la scoperta più grave delle due. Due ricevute portavano
+    `ts: 2026-08-31T05:12:00Z` mentre l'ora reale era 04:41Z: ~31 minuti NEL
+    FUTURO. Non le avevo catturate, le avevo DIGITATE perché sembravano
+    plausibili — dentro un pacchetto di evidenze, il cui unico scopo è essere
+    verificabile. È la stessa malattia della recidiva qui sopra (una ricevuta
+    scritta invece che presa) applicata a un campo diverso, ed è esattamente ciò
+    che un refuter di famiglia diversa serve a trovare.
+    CURA: entrambi i comandi RI-ESEGUITI, timestamp catturato da `date -u` e
+    scritto quello. Regola operativa che ne discende: un campo `ts` si cattura
+    nello stesso comando che produce la ricevuta, mai a mano dopo."
+  - "COUNCIL COMPLETO A DUE SEGGI, con un terzo irraggiungibile. kimi-code/k3 e
+    tp1-qwen3.8-max hanno entrambi risposto CONCERNS in modo indipendente e
+    convergente sui due rilievi sostanziali (nessuna mutua esclusione; `-ctime`
+    non è tempo di creazione). Il terzo, codex-gpt-5.6-sol, resta irraggiungibile:
+    `--full-auto` rimosso in codex-cli 0.149.1, il wrapper esce 2 che il suo
+    stesso header documenta come 'diff vuoto'. Nessuna copertura è stata
+    rivendicata per quel seggio."
+  - "L'ARITMETICA NON CHIUDE, ed è il rilievo più importante dell'intero giro.
+    ~40 checkout a ~1,2 GB fanno ~48 GB; il salto da ~80 GB liberi a 753 MB ne
+    implica ~79. I worktree sono il contributore PIÙ GRANDE IDENTIFICATO e
+    l'unico che questa PR cura, non l'intera caduta: restano ~30 GB non
+    attribuiti. Ri-misurato dopo il recupero, come STATO ATTUALE e mai come
+    delta notturno (nessuno aveva fotografato quei path prima): .worktrees
+    41 GB su 36 directory (media 1,14 GB), ~/.ollama 49 GB, e la cartella
+    autonomy di OSINT-Nexus 18 GB con uno scrittore autonomo vivo al momento
+    della misura. Questi ultimi due sono il resto plausibile PER DIMENSIONE, in
+    ipotesi. Un sospetto è invece ESCLUSO positivamente: /private/var/vm/sleepimage
+    pesa 26 GB ma ha mtime 2026-08-18, tredici giorni prima — occupante fisso,
+    non partecipante. Cura per la prossima volta, dato che la risposta onesta
+    qui è 'non esisteva una linea di base': catturare un `du -sh` datato di
+    questi path, così la domanda successiva si risolve per sottrazione."
+  - "NESSUNA MUTUA ESCLUSIONE, ed è questa PR a moltiplicarne l'esposizione.
+    Verificato: nessun `flock` in `agent_worktree_cleanup_cron.sh` né sul
+    percorso `--cleanup` di `agent_start.py`. `launchd` non esegue due istanze
+    della stessa label, quindi l'auto-sovrapposizione non è il pericolo; il
+    pericolo è l'incrocio con un `--release` di un orchestratore o con un GC che
+    sfora la fascia. La corsa PREESISTE, ma passare da 1 a 8 passate la espone
+    otto volte tanto. Non curata qui (una preoccupazione per PR); cura proposta:
+    `flock` sulla stessa risorsa che `--release` acquisisce."
+  - "LA CADENZA NON È VIVA FINCHÉ NON SI RICARICA. Questa PR cambia il repo; la
+    copia sotto ~/Library/LaunchAgents/ resta giornaliera finché non gira
+    `install_agent_worktree_cleanup.sh`. Il reload è deliberatamente DOPO il
+    merge, perché installarlo prima sarebbe la deriva HOME-fork (famiglia #1)
+    creata mentre si cura l'igiene. Nella finestra fra i due, runbook e
+    connettoma descrivono il repo e non la macchina: entrambi lo dicono ora
+    esplicitamente."
+  - "PROVENIENZA DEI NUMERI, dichiarata invece che asserita. MISURATI in
+    sessione: il conteggio dei worktree (40 su 41 creati entro 24h, via `find
+    -ctime -1`), la dimensione per checkout (`du -sh`, ~1,2 GB), e il minimo di
+    753 MB liberi letto immediatamente prima della passata di recupero. NON
+    misurato: gli '~80 GB liberi la sera prima' sono REPORT DEL PROPRIETARIO —
+    nessun log di questa flotta registra lo spazio libero in quel momento.
+    Traccia indipendente che invece esiste: ~/logs/disk_watchdog.out.log mostra
+    il volume Data passare dall'85% al 97% fra il 2026-08-30 09:00 e il
+    2026-08-31 09:00."
+  - "IL SEGGIO CODEX È ROTTO, e il modo in cui è rotto è la cosa da ricordare.
+    `.claude/scripts/codex-spalla.sh` passa ancora `--full-auto`, che codex-cli
+    0.149.1 ha rimosso; il fallimento esce con codice 2, che l'header dello
+    script stesso documenta come 'diff vuoto'. Una review MAI PARTITA si legge
+    quindi come 'girata, nulla da segnalare' — il fallimento indossa la faccia
+    del successo. Ogni second-opinion 'pulita' raccolta da quando il CLI è
+    driftato oltre 0.142.0 va trattata come NON GIUDICATA, non come
+    giudicata-pulita. Memoria:
+    discovery_codex_spalla_exit_2_means_codex_never_ran_2026_08_31.
+    Riparazione: PR separata, non questa."
+  - "La cadenza non è una garanzia. Fra due passate una raffica può ancora
+    riempire il disco: tre ore portano il caso peggiore da ~24h a ~3h. Misurato
+    mentre questa PR era aperta: i worktree sono risaliti da 34 a 36 in pochi
+    minuti. Le protezioni skip-recent e WIP non sono state ri-tarate per la
+    frequenza maggiore."
+  - "Il tetto (`compute_ceiling`) non è stato attivato e nessun `gear_override`
+    è dichiarato, perché il diff non ricade nella forma che il tetto punisce:
+    4 file superano CEILING_SMALL_DIFF_MAX_FILES=2, l'insieme non è
+    docs/ledger-only (contiene .plist.example e .sh oltre a .md/.yaml), e i
+    dispatch di grader sono 1 (più un raccoglitore di misure), sotto
+    CEILING_HEAVY_GRADER_DISPATCH_MIN=3. Nessun council è stato convocato."
+
+sources: []
+pii_scan: clean
+size_tokens: 3100

@@ -42,7 +42,8 @@ def test_handle_anthropic_error_maps_deepseek_auth_to_401() -> None:
     assert exc.detail["code"] == ErrorCode.API_KEY_NOT_CONFIGURED
     assert exc.detail["request_id"] == "req-1"
     assert exc.detail["details"]["article_title"] == "Title"
-    assert "DEEPSEEK_API_KEY" in exc.detail["details"]["suggestion"]
+    assert "BAILIAN_TOKEN_PLAN_API_KEY" in exc.detail["message"]
+    assert "BAILIAN_TOKEN_PLAN_API_KEY" in exc.detail["details"]["suggestion"]
 
 
 def test_handle_anthropic_error_maps_timeout_connect_and_rate_limit() -> None:

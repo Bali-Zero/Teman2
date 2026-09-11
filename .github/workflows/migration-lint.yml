@@ -32,7 +32,6 @@ name: Migration Lint (Squawk)
 # detection); on a path-miss PR the job ends success (skip = success).
 on:
   pull_request: # NO top-level paths: — always trigger (job decides relevance)
-  merge_group:
   workflow_dispatch: {}
 
 concurrency:

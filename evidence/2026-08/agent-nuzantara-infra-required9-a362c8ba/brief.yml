@@ -1,0 +1,87 @@
+task_id: required9-0827
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  PR #5063 (agent/nuzantara/infra/required9 -> main) landed a queue-unblock
+  ruling: cut main's required status checks and reconcile
+  infra/required.d/contexts.json + scripts/ci/snapshot_required_contexts.py +
+  scripts/probe_merge_gate_integrity.py against the new live set, plus the
+  docs/runbooks/merge-queue-discipline.md narrative.
+
+  This evidence pack covers a SEPARATE, later mechanical step on the SAME
+  branch: PR #5049 (floor-size-term) landed on main after #5063 was opened
+  and added a diff-SIZE term to the deterministic harness floor
+  (churn >= threshold -> floor 3), so `Harness floor recompute` started
+  failing on this and every other PR armed before that rule existed — no
+  evidence/brief.yml existed yet for those diffs. The task here: (1) bring
+  #5063 current with origin/main (it had also gone CONFLICTING against
+  #5069's edits to the same two probe-merge-gate files), (2) resolve the
+  conflict, (3) write the evidence pack the new floor now demands, so the
+  PR can re-arm.
+
+  Gear 3 by PATH, deterministic: `python3 scripts/evidence_pack_lint.py
+  --print-floor --changed-files-file <enumeration>` -> 3, because the diff
+  touches `.github/workflows/tests.yml`, `.github/workflows/
+  runbook-section-numbers.yml`, and `.github/workflows/harness-floor.yml`.
+  Honored, not argued with.
+constraints:
+  - "Conflict resolution on scripts/probe_merge_gate_integrity.py and
+    scripts/tests/test_probe_merge_gate_integrity.py must KEEP MAIN's side
+    verbatim, not hand-merge: both landed via #5069 (already-merged,
+    later-authored) and this branch's copies are the stale pre-#5069
+    wording of the same comment/docstring history. Verified below (receipt
+    1) that the only delta between the two sides is comment/docstring text
+    describing the same 27->9/11 required-checks history — zero executable
+    logic differs — so `--theirs` is safe and does not silently drop a
+    behavior change."
+  - "No PII/OSINT in any artifact — this is pure CI-plumbing (workflow YAML,
+    Python, a JSON contexts snapshot, a runbook doc). Nothing here touches
+    client data."
+  - "No new merge markers, no partial hunk resolution left in place — full
+    working tree must be conflict-free before commit (verified via
+    `git status --short | grep -E '^(UU|AA|DD)'`, empty)."
+acceptance:
+  - "git merge origin/main resolves cleanly (0 remaining conflict markers)
+    and the pre-commit hook suite (secrets/lint/import-chain/off-limits)
+    passes on the merge commit."
+  - "The deterministic floor recomputed from this PR's own changed-file
+    enumeration is 3, and this brief declares gear 3 — never below it."
+  - "`Harness floor recompute` transitions from FAIL (no evidence/brief.yml)
+    to PASS on the new head commit once this pack lands."
+  - "scripts/probe_merge_gate_integrity.py and its test file are
+    byte-identical to origin/main's versions post-resolution (git diff
+    against origin/main on those two paths is empty)."
+consumer_map:
+  - "`.github/workflows/harness-floor.yml` — reads this brief+pack to gate
+    the PR (the check that was failing before this pack existed)."
+  - "`scripts/probe_merge_gate_integrity.py` / its test — now byte-identical
+    to main, consumed by the merge-queue-discipline probe tooling."
+  - "`infra/required.d/contexts.json` / `scripts/ci/snapshot_required_contexts.py`
+    — the queue-unblock ruling's SSOT for main's live required contexts,
+    reconciled by this PR's own (pre-existing) diff."
+risks:
+  - "This PR's substantive content (the required-checks cut + snapshot
+    reconciliation) was authored before #5049's size-term floor rule
+    existed; this pack documents the CATCH-UP evidence for the merge and
+    conflict-resolution work only, not a re-review of the original
+    required-checks-cut design decision (that ruling is Zero's, already
+    referenced in the diff's own comments)."
+  - "A further push to origin/main between this pack's authoring and merge
+    could reopen the same DIRTY state on the same two files if another PR
+    touching scripts/probe_merge_gate_integrity.py lands first; if so this
+    pack's `diff.measured_at` head SHA will no longer match and the pack
+    must be re-authored against the new head, not reused as-is."
+grader: |
+  generator != grader: cross-family refuter (Gemini 3.1 Pro via `agy`,
+  non-Anthropic, per tonight's queue-shepherd mandate) reviewed the conflict-
+  resolution decision (keep-main's-side on the two probe-merge-gate files)
+  before this pack was finalized. This session independently diffed both
+  sides of the conflict (receipt 1) rather than trusting `--theirs` on
+  assertion.
+budget: |
+  Single-lane CI-plumbing mechanical sweep task. Flat-subscription seats
+  only (Claude Sonnet 5 build via this session, agy/Gemini 3.1 Pro
+  cross-family refuter). No metered API spend, no cloud LLM touching PII
+  (there is none in this diff).
+pii: none

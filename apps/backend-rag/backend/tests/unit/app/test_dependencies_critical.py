@@ -178,12 +178,19 @@ class TestAuthDependencies:
         result = require_team_member(user)
         assert result == user
 
-    def test_require_team_member_allows_agent(self):
+    @pytest.mark.parametrize("role", ["agent", "user", "unknown", "", None, "internal", "public"])
+    def test_require_team_member_rejects_roles_outside_the_allow_list(self, role):
+        """Row 88 of PENDING-ARMS: the gate used to be a denylist, so any role
+        it had not heard of — including the ``user`` default a role-less token
+        gets — walked through. It is an allow-list now and fails closed."""
+        from fastapi import HTTPException
+
         from backend.app.dependencies import require_team_member
 
-        user = {"email": "agent@balizero.com", "role": "agent"}
-        result = require_team_member(user)
-        assert result == user
+        user = {"email": "someone@balizero.com", "role": role}
+        with pytest.raises(HTTPException) as exc_info:
+            require_team_member(user)
+        assert exc_info.value.status_code == 403
 
     def test_require_team_member_rejects_client(self):
         from fastapi import HTTPException
@@ -205,6 +212,21 @@ class TestAuthDependencies:
         from backend.app.dependencies import require_team_member
 
         user = {"email": "probe@balizero.com", "role": "monitoring"}
+        with pytest.raises(HTTPException) as exc_info:
+            require_team_member(user)
+        assert exc_info.value.status_code == 403
+
+    def test_require_team_member_rejects_partner(self):
+        """Guilt (ledger L88, 2026-08-19): ``partner`` is a role the platform
+        itself issues to external partners (routers/auth.py::_redirect_for_role
+        sends it to /portal/partner; partners.py::_is_partner_role defines it
+        as "not internal team"). A person, but not a colleague — team-level
+        authority on e33_cases.py and crm_intelligence.py must be refused."""
+        from fastapi import HTTPException
+
+        from backend.app.dependencies import require_team_member
+
+        user = {"email": "partner@example.com", "role": "partner"}
         with pytest.raises(HTTPException) as exc_info:
             require_team_member(user)
         assert exc_info.value.status_code == 403

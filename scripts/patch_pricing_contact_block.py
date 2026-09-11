@@ -3,10 +3,9 @@
 ``bali_zero_pricing_hybrid`` Qdrant collection's payload ``text`` field.
 
 WHY payload-only (no re-embed): the collection's generator
-(``scripts/prepare_payloads.py``) already reads the CURRENT, correct contact
-info from ``apps/backend-rag/backend/data/bali_zero_official_prices_2026.json``
-(``metadata.contact.whatsapp`` = the Meta-verified number, ``+62 821 3465
-159``) — the JSON source-of-truth was never stale. What IS stale is the
+(``scripts/prepare_payloads.py``) already reads the CURRENT contact info from
+``apps/backend-rag/backend/data/bali_zero_official_prices_2026.json``
+(``metadata.contact.whatsapp``). What IS stale is the
 collection itself: ``bali_zero_pricing_hybrid`` was built once via
 ``migration_031b_hybrid_collections.py`` by copying/re-embedding whatever
 points existed in the OLD ``bali_zero_pricing`` collection at the time, and
@@ -51,8 +50,27 @@ logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "bali_zero_pricing_hybrid"
 
-STALE_WHATSAPP = "+62 813 3805 1876"
-CANONICAL_WHATSAPP = "+62 821 3465 159"  # Meta-verified BALI ZERO number
+# Ari's line — the CLIENT-facing number, deliberately NOT the bot's inbound
+# `settings.SUPPORT_WHATSAPP` (owner ruling 2026-09-01). Kept in sync with
+# `settings.CLIENT_CONTACT_WHATSAPP` and the price-list generator's
+# `_CANONICAL_WHATSAPP_DIGITS` by the tripwires in
+# apps/backend-rag/backend/tests/test_data_invariant_tripwires.py.
+CANONICAL_WHATSAPP = "+62 821 3454 721"
+
+# EVERY number this collection is known to have carried, not just the oldest.
+# A single stale marker could only ever heal one generation of drift: if the
+# collection were patched while a different number was canonical, the guard
+# below would see no stale marker, return the text byte-identical, and the
+# script would report a clean idempotent no-op over a payload it had itself
+# made wrong. The second entry WAS canonical between 2026-08-31 and
+# 2026-09-01 — not a hypothetical. Append here, never replace.
+STALE_WHATSAPP_NUMBERS = (
+    "+62 813 3805 1876",  # retired personal line, the original drift
+    "+62 821 3465 159",  # the bot's INBOUND number, canonical 2026-08-31..09-01
+)
+_WHATSAPP_LABEL = "**WhatsApp**:"
+_LOCATION_LABEL = "**Location**:"
+
 STALE_LOCATION = "Canggu, Bali, Indonesia"
 CANONICAL_LOCATION = "Kerobokan, Bali, Indonesia"
 
@@ -61,24 +79,53 @@ _SAMPLE_TAIL_CHARS = 200
 
 
 def rewrite_contact_block(text: str) -> str:
-    """Rewrite ONLY the WhatsApp/Location trailer lines of a pricing chunk's
+    """Rewrite ONLY the WhatsApp/Location trailer LINES of a pricing chunk's
     embedded text. Never touches the name/category/price/duration/validity/
     notes lines above the ``---`` separator.
 
-    Guilt: a text carrying the stale WhatsApp and/or Location line gets that
-    line rewritten to the canonical value.
-    Innocence: a text without either stale marker is returned byte-identical
-    (including a text that already has the canonical values — idempotent).
+    Line-anchored, not substring-replace. The substring form was wrong in two
+    ways an adversarial review demonstrated on 2026-09-01:
+
+      - `**WhatsApp**: +62 813 3805 1876 / +62 821 3465 159` — a line carrying
+        BOTH stale numbers. The first replacement rewrote the prefix and left
+        the second number sitting after it, and a second pass could no longer
+        match because the label was no longer adjacent to it. The result was
+        wrong AND stable, which is the worst combination: it looked idempotent.
+      - `**Notes**: previous payload contained **WhatsApp**: <stale>` — a line
+        that merely QUOTES a contact trailer was rewritten too, because
+        `str.replace` has no notion of where a line begins.
+
+    Rewriting the whole line, only when the line IS the trailer, answers both.
+
+    Guilt: a line beginning `**WhatsApp**:` whose value contains ANY known
+    stale number is replaced in full by the canonical trailer; likewise the
+    stale Location line.
+    Innocence: every other line is returned byte-identical, including a line
+    that merely mentions a trailer, and including an already-canonical trailer
+    (so a second run is a true no-op).
     """
-    if STALE_WHATSAPP not in text and STALE_LOCATION not in text:
-        return text
-    new_text = text.replace(
-        f"**WhatsApp**: {STALE_WHATSAPP}", f"**WhatsApp**: {CANONICAL_WHATSAPP}"
-    )
-    new_text = new_text.replace(
-        f"**Location**: {STALE_LOCATION}", f"**Location**: {CANONICAL_LOCATION}"
-    )
-    return new_text
+    out: list[str] = []
+    changed = False
+    for line in text.split("\n"):
+        # Preserve the line's own indentation and its CR, if the payload uses
+        # CRLF. Rebuilding the line from the label alone silently normalised
+        # both away, leaving ONE rewritten line with a bare LF among CRLF
+        # neighbours — a corruption the rewrite has no business introducing.
+        body = line.rstrip("\r")
+        carriage = line[len(body) :]
+        indent = body[: len(body) - len(body.lstrip())]
+        stripped = body.strip()
+        if stripped.startswith(_WHATSAPP_LABEL) and any(
+            stale in stripped for stale in STALE_WHATSAPP_NUMBERS
+        ):
+            out.append(f"{indent}{_WHATSAPP_LABEL} {CANONICAL_WHATSAPP}{carriage}")
+            changed = True
+        elif stripped.startswith(_LOCATION_LABEL) and STALE_LOCATION in stripped:
+            out.append(f"{indent}{_LOCATION_LABEL} {CANONICAL_LOCATION}{carriage}")
+            changed = True
+        else:
+            out.append(line)
+    return "\n".join(out) if changed else text
 
 
 async def _scroll_all_points(

@@ -1,0 +1,254 @@
+council_run: journal.jsonl
+# The literal `evidence/brief.yml`, NEVER this pack's real per-PR path -- and the
+# per-PR path is the trap, not the fix. harness-floor.yml stages BOTH files under
+# canonical names into a synthetic tree (/tmp/evidence-check) and resolves brief_ref
+# against THAT, so the per-PR value fails with "does not resolve to a file on disk".
+# Documented at .github/workflows/harness-floor.yml (THE brief_ref CONTRACT) and in
+# scripts/ci/evidence_paths.py's module docstring.
+#
+# Recorded because I got this wrong in the first push of this PR: running the lint
+# LOCALLY there is no staging, so brief_ref resolves against the real repo root and
+# lands on the root evidence/brief.yml of whatever task last wrote it -- which emits
+# an acceptance-probe NOTICE naming probes this pack never declared. That NOTICE
+# looks exactly like evidence of a bug and is really just the absence of staging.
+# I "fixed" it to the per-PR path, which is precisely what the contract forbids, and
+# CI failed. The local lint and the CI lint do not see the same tree; when they
+# disagree, CI is the one that decides.
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L09-multi-agent-orchestration-fleet-routing.md
+  section "PR-2: feat(fleet): fleet_burst — account-sharded headless fan-out".
+
+lanes:
+  - lane: fleet-burst-build
+    role: build
+    seat: codex-gpt-5.6-terra (non-Anthropic, effort high) -- D3 build lane, never the grader
+  - lane: fleet-burst-refute
+    role: review
+    seat: kimi-code/k3 (non-Anthropic) -- blind adversarial refutation of the shell diff
+  - lane: fleet-burst-workflow-refute
+    role: review
+    seat: codex-gpt-5.6-sol xhigh -- blind adversarial refutation of the workflow diff
+  - lane: fleet-burst-gate
+    role: review
+    seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
+
+diff:
+  files: 7
+  net_lines: 988
+  measured_at: HEAD-of-branch (staged tree + the one committed cherry-pick)
+  note: >-
+    Measured with git diff --numstat over merge-base..HEAD plus the staged tree.
+    Over the <=400 net-line target of rules-of-engagement #2, declared rather
+    than hidden, and the split is the argument: 283 of these lines are this
+    branch's OWN evidence pack (brief 74 + pack 207 + journal 2), which is
+    overhead every PR in this wave carries. Of the 705 that are code, 277 are the
+    guilt+innocence corpus the spec's acceptance criteria require and 116 are the
+    CI executor without which that corpus has no consumer able to go red
+    (scripts-tests-sweep.yml collects only test_*.py and is continue-on-error).
+    Splitting either out would ship a dispatcher whose guards nothing runs --
+    exactly the inert-artefact outcome this wave exists to stop. The dispatcher
+    itself is 303 lines, and it grew during review: 7 of the 9 defects found by
+    the two blind refuters were fixed in it. The 16/7 in seat_state.sh is the
+    held commit c246e4405b, a comment-only correction carried per the squad
+    mandate.
+
+pii_scan: clean
+
+receipts:
+  - claim: "15/15 corpus green, and it bites: 8 mutants killed at real code sites (refusal moved after the mapping loop; dedup block deleted; broker guard dropped; control-char validator neutered; throttle disabled; whitespace normalisation removed; exit-status half of the liveness condition dropped; the seat-binding guard moved back behind the claude-availability check)."
+    cmd: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+    exit: 0
+    ts: "2026-08-31T00:38:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The seat-state corpus this workflow newly arms is green: 26 checks, and until this PR no workflow in the repo named it at all."
+    cmd: "bash scripts/tests/test_seat_state.sh"
+    exit: 0
+    ts: "2026-08-31T00:38:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The workflow passes the same pinned actionlint version the required CI gate runs (1.7.12)."
+    cmd: "actionlint .github/workflows/fleet-burst-tests.yml"
+    exit: 0
+    ts: "2026-08-31T00:38:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The workflow clears the required per-job checkout-budget floor; 148 jobs scanned including this one."
+    cmd: "python3 scripts/lint_workflow_timeout_floor.py"
+    exit: 0
+    ts: "2026-08-31T00:38:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The throttle is measured, not asserted: under a shimmed claude and a stub broker, 5 lanes at --max-concurrency 2 peak at 2 live children; disabling the throttle makes the same probe read peak=5."
+    cmd: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+    exit: 0
+    ts: "2026-08-31T00:38:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+
+dissent:
+  - seat: CI (Fleet burst dispatcher tests, run 33323160057 — the executor this PR adds)
+    objection: >-
+      REAL_BURST_REFUSES_BEFORE_TOUCHING_THE_FILESYSTEM failed on the runner while
+      passing 14/14 locally. Cause: the seat-binding guard sat AFTER
+      `command -v claude`, so a machine without claude on PATH refused with
+      "claude command is unavailable" and never evaluated the security guard --
+      the same misconfiguration producing two different verdicts depending on the
+      machine.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced locally by restricting PATH (the runner's shape), then fixed by
+      moving the security guard ahead of the availability check: a refusal that
+      protects a credential boundary must not sit behind an unrelated
+      availability probe. Pinned by a new case that restricts PATH itself, so the
+      ordering cannot regress on a box where claude happens to be installed.
+      Worth recording as the reason the executor exists at all -- this defect was
+      structurally unreachable from the dev machine, and the workflow shipped in
+      this same PR is what found it.
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      Raised against this pack: `brief_ref: evidence/brief.yml` resolves to the
+      REPO-ROOT brief of an unrelated task, so the pack appeared to validate its
+      acceptance probes against a stranger's brief. Reported to the squad ledger
+      as a likely repo-wide defect.
+    status: RETRACTED
+    resolution: >-
+      Wrong, and the correction matters more than the finding. harness-floor.yml
+      stages pack AND brief under canonical names into a synthetic tree and
+      resolves brief_ref against THAT; the literal `evidence/brief.yml` is the
+      contract, and the per-PR path is named in the workflow as "exactly the trap
+      this migration exists to remove". The NOTICE I read as evidence was an
+      artifact of running the lint locally, where no staging happens. Reverted,
+      corrected in the ledger, and the pack now carries a local reproduction of
+      CI's staging layout so the two are checked the same way.
+  - seat: kimi-code/k3 (blind refutation of the shell diff)
+    objection: >-
+      Seat identifiers are validated for tab/newline/CR because they are
+      interpolated into tab-separated plan rows, but --model and --run-dir are
+      interpolated into the same rows unvalidated. A --run-dir carrying a tab
+      makes a reader parse a TRUNCATED config_dir, so the plan reads correct
+      while describing something else.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced before fixing: --run-dir $'/tmp/x\ty' made the field parser
+      return "/tmp/x". Fixed with ONE shared reject_control_chars validator used
+      by all three TSV-bound values, rather than a second copy of the check --
+      the defect was the guard's own reasoning applied to one of its three call
+      sites (W107 shape), so a per-site fix would only relocate it. Two new cases
+      pin it and go red when the validator is neutered.
+  - seat: kimi-code/k3 (blind refutation of the shell diff)
+    objection: >-
+      DEFAULT_CONCURRENCY_REPORTED_AS_3 only greps the PLAN row. Break the
+      throttle so every lane spawns at once and that check stays green, because
+      the plan would still SAY 3.
+    status: CONFIRMED
+    resolution: >-
+      Accepted and closed with a new case that measures the real thing: a shimmed
+      `claude` earlier on PATH logs its own start and end, a stub broker execs the
+      command, and max concurrency is recovered by walking the log. 5 lanes at
+      --max-concurrency 2 peak at 2; disabling the throttle makes the same probe
+      read peak=5. This is also the only case that exercises the real dispatch
+      path, including the broker invocation and the claude argv order.
+  - seat: kimi-code/k3 (blind refutation of the shell diff)
+    objection: >-
+      Dedup compares byte-identical strings, so two spellings of one seat fill two
+      lanes. `--seats live-a,'live-a '` counts both as live, nothing refuses, and
+      lane 1 and lane 2 plan onto one real seat while PLAN and every count read
+      correct -- the exact double-map the tool exists to prevent.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced before fixing (live_seats=2, exit 0, two LANE rows on one seat).
+      Fixed by normalising surrounding whitespace BEFORE the dedup compares.
+      Trimming rather than rejecting is deliberate and stated in the file:
+      `--seats "a, b"` is an ordinary way to write a list, and erroring on it
+      would push callers toward a form this tool handles worse. The refusal check
+      could never have caught this -- with both spellings counted there ARE enough
+      live seats to proceed, so a separate case pins it.
+  - seat: kimi-code/k3 (blind refutation of the shell diff)
+    objection: >-
+      The library's exit status is discarded behind a dead if/else that exists
+      only to suppress errexit, under a comment calling it "useful metadata". A
+      library answering `LIVE<TAB>stale-cache` while returning 1 -- the shape an
+      exhausted seat with a cached label produces -- is counted live and the burst
+      proceeds onto it. The contract makes the return code authoritative.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced with a stub that prints LIVE and returns 1: the seat was planned.
+      Fixed to require BOTH halves to agree (exit 0 AND state LIVE); disagreement
+      is treated as not-live, never as live. The dead if/else is replaced by
+      `|| lookup_rc=$?`, which suppresses errexit while keeping the value, and the
+      false comment about unused "metadata" is gone rather than reworded.
+  - seat: kimi-code/k3 (blind refutation of the shell diff)
+    objection: >-
+      The default run directory is `${TMPDIR:-/tmp}/fleet-burst-$$`, a PID-derived
+      and therefore guessable path. In a shared /tmp another local user can
+      pre-plant `fleet-burst-<pid>/lane-1` as a symlink; `mkdir -p` and the output
+      redirection follow it, steering lane output into a file they chose.
+    status: CONFIRMED
+    resolution: >-
+      Fixed with `mktemp -d` on the dispatch path (unguessable, 0700, ours).
+      --dry-run keeps a clearly-labelled placeholder because it creates nothing,
+      so no stray directory is left behind and the plan still prints the path that
+      mode would really use. Noted in the file that the corpus already used mktemp
+      for its own scratch -- the tool had been held to a lower standard than its
+      test.
+  - seat: kimi-code/k3 (blind refutation of the shell diff)
+    objection: >-
+      The no-broker case asserts only that lane-1/output.txt is absent, which is
+      created by the spawn redirection -- so it proves "did not spawn" while its
+      comment claims "no side effects". Moving the broker guard to after
+      `mkdir -p` leaves it green with the filesystem already mutated.
+    status: CONFIRMED
+    resolution: >-
+      Tightened to assert the run directory does not exist AT ALL, and the comment
+      now states what is actually pinned. Renamed to
+      REAL_BURST_REFUSES_BEFORE_TOUCHING_THE_FILESYSTEM so the name cannot drift
+      from the assertion again.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      zsh is absent on ubuntu-latest and the seat-state corpus has two cases that
+      `return 0` with a printed SKIP when zsh is missing. Those are the
+      production-shell cases -- the cascade IS a zsh script. The Bash cases pass,
+      the zsh cases skip, the corpus exits 0, and the job reports SUCCESS over a
+      real zsh-only regression.
+    status: CONFIRMED
+    resolution: >-
+      Fixed with the cure three sibling workflows already use
+      (scripts/ci/apt_install.sh zsh zsh) plus an explicit `command -v zsh` that
+      fails the job if the install silently did nothing -- without that second
+      half a failed install puts us straight back to skipping.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      The paths filter omits infra/launchagents/wrappers/claude-cascade.sh and
+      scripts/tests/test_seat_state.sh, both of which the job's own steps bind. A
+      PR that reverses the cascade's kill-switch polarity, or that breaks the
+      corpus directly, leaves this job unscheduled -- red when run, never run.
+    status: CONFIRMED
+    resolution: >-
+      Both added to both triggers. The header now states the rule that produced
+      the omission (the filter is the arming surface and must list every file the
+      steps bind) instead of the earlier claim that it already covered "exactly
+      the diffs that can break it" -- that claim was false and is not restated.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      actions/checkout fetches a single commit by default and a PR build checks
+      out the merge ref, so origin/main is not resolvable; the seat-state corpus
+      runs `git show origin/main:...` and fails after three retries. The job goes
+      red for a missing baseline, not for the change under test.
+    status: CONFIRMED
+    resolution: >-
+      Fixed with an explicit `git fetch --no-tags --depth=1 origin
+      main:refs/remotes/origin/main` before the corpus runs. depth=1 suffices
+      because `git show <ref>:<path>` needs only that commit's tree. Deliberately
+      not solved with fetch-depth: 0, whose effect on remote-tracking refs for a
+      PR merge-ref checkout is an assumption rather than a measurement.
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      Raised against the builder's diff: `claude -p --model X "$prompt"` looked
+      like the argv-binding trap documented at claude-cascade.sh:441-445, where
+      -p swallows the next flag as its value.
+    status: RETRACTED
+    resolution: >-
+      Refuted by measurement rather than argued: that note is about agy, whose -p
+      DOES take a value. `claude --help` shows `-p, --print` with no <value>
+      placeholder, unlike `--input-format <format>`, so it is boolean and the
+      builder's line was already correct. Recorded because the near-miss is the
+      lesson -- a measured note about one tool was one step from being applied to
+      another and "correcting" correct code. The distinction now lives in the
+      file so the next reader does not repeat it.

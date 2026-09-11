@@ -1,0 +1,12 @@
+**Verdict: PASS** for the generated SCRIPTS_COUPLING delta only.
+
+**What I verified by reading, not by execution.**
+- The delta is exactly 10 additions and 0 removals. I checked every entry on the removed lines against the added lines; all pre-existing paths survive. The additions are the nine conductor and broker paths plus scripts/pg.sh.
+- Ordering matches the generator's `sorted()` output. The conductor entries sit between codex_visual_orchestrator and consul_broker.py, and pg.sh sits after pg-to-organism-bridge.py because a hyphen sorts before a dot. The line reflow is the expected result of the generator's greedy line packing after insertions, not hand editing.
+- The current file in the broker worktree contains the post-delta block verbatim between the BEGIN and END markers, with no other edits visible in the surrounding code I read.
+- Effect direction is fail-safe. Membership in this set routes a changed scripts/ path to backend_python instead of fleet_ops, so it widens test selection for these files. It changes no workflow, no PREFIX_RULES, and no suite definition.
+- The pg.sh reference is a docstring comment in service_accounts.py at line 72. The generator greps without stripping comments, so this is a known over-match, and it is harmless: edits to pg.sh now pay the backend suite, which is wasteful but never unsafe.
+
+**Non-blocking note.** The generator is one hop and grep-based. It does not capture transitive imports, so scripts/conductor/contracts.py, which is in the eleven-file native manifest but not referenced directly by a backend test, is absent from the set. That is a pre-existing generator limitation already acknowledged in test_change_map.py, not a defect of this delta.
+
+**Not verified by me.** The 71-test guard result, the census `--check`, Ruff, and the 39 broker review hashes are root-observed claims. I ran nothing, computed no hashes, and published nothing.

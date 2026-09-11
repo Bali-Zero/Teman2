@@ -1,0 +1,347 @@
+task_id: ci-worker-plane-review-panel-anchor
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-06
+machine: M5
+lanes:
+  - lane: re-anchor the seat-conformance guard + close the trigger blindness
+    role: build
+    seat: claude-opus-5 (this worktree session on M5, branch agent/air-m5/ci/worker-plane-review-panel-anchor)
+    note: >-
+      Diagnosed the red `worker-plane review panel — test suite` on main (run
+      33994100645), re-pointed `test_gate_seat_conformance.py`'s DOCTRINE constant
+      from the root `CLAUDE.md` to `docs/rules/RULINGS.md` where the 2026-09-04
+      context diet moved §5, added `docs/rules/RULINGS.md` to both of
+      `worker-plane-review-tests.yml`'s trigger surfaces, and wrote
+      `test_workflow_triggers_on_the_doctrine_file_this_guard_reads` to pin that
+      symmetry. This revision then closed the two objections the council raised:
+      the sentinel's `git diff --name-only` now passes `--no-renames`, and the
+      pin strips comments before matching.
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only`, non-Anthropic, agentic file access, fresh context)
+    note: >-
+      BLOCK on head 5fe5316c12, one mechanical objection and it was right: with
+      rename detection on, `git diff --name-only` prints only a rename's
+      DESTINATION path, so renaming the doctrine file away from
+      docs/rules/RULINGS.md would show a name the sentinel regex does not know
+      and the guard would run nowhere on that PR — the same hole one indirection
+      out. Also ran actionlint and `git diff --check` clean, and corrected the
+      archaeology claim: the -S search returns two commits, only one of them a move.
+    verdict: BLOCK (objection cured in this revision)
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3`, non-Anthropic, agentic file access, fresh context, no shared prompt with the codex lane)
+    note: >-
+      OK with one objection that was worth acting on: the new pin matched the
+      SPELLING of the trigger entries anywhere in the file, so deleting the
+      trigger and leaving a comment naming the path would have kept it green —
+      a guard that cannot tell a documented trigger from an armed one. Ran the
+      suite itself in a scratch venv and matched the extracted sentinel regex
+      against the real path and three near-miss paths.
+    verdict: OK
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (claude-opus-5) and two review lanes, BOTH non-Anthropic and
+  cross-family from each other: codex-gpt-5.6-sol and kimi-code/k3, each given
+  the same brief with no shared prompt and no sight of the other's answer. They
+  converged on the re-point being correct and diverged on the strongest
+  objection — rename-blindness versus spelling-blindness — which is why both
+  were worth running and why both objections are cured here rather than
+  recorded as follow-ups.
+outcome: >-
+  The check that is red on main is green on this head, and the reason it went
+  red unseen is closed. The guard reads the ruling from the file that carries
+  it, the workflow now fires on that file in both trigger surfaces, a rename of
+  it is visible to the sentinel, and a trigger demoted to a comment no longer
+  reads as a trigger. `CLAUDE.md` is untouched, so the byte-parity BUILDER
+  CONTRACT block is untouched. One known leftover is declared rather than
+  hidden: `launch_worker_plane_review_panel.py`'s docstring still points at
+  "CLAUDE.md §5" for the ruling's home, and correcting it moves the
+  line-number-pinned code-signing identity lines that
+  `test_detect_secrets_auto_triage.py` reads, which is a different change.
+diff:
+  files: 5
+  net_lines: >-
+    Measured, not estimated. Review surface: 17/2
+    .github/workflows/worker-plane-review-tests.yml and 93/11
+    scripts/tests/test_gate_seat_conformance.py — 110 added, 13 removed, +97 net
+    across the two files a reader has to read. Evidence, measured after staging
+    final content per its own self-reference: 127/0 brief.yml, 2/0
+    council-journal.jsonl, 347/0 this pack.yml. Whole diff 586/13, +573 net. The
+    Gear-3 floor is NOT the size: `--print-floor-source` returns `path`, because
+    .github/workflows/** is a hot zone and the second half of this cure IS a
+    trigger change. A CI-trigger fix cannot be moved out of the hot zone by
+    making it smaller.
+  measured_at: >-
+    `git diff --numstat --cached <merge-base>` in this worktree, merge-base
+    6d0afdb8755be5c5f435c67e1c9d4e80792a2dbf — the commit this branch was cut
+    from. origin/main has already advanced past it with unrelated PRs, and
+    anchoring on the moving tip would have counted their additions as this
+    branch's deletions.
+  shape: >-
+    One constant re-pointed at the file that carries the ruling, four assertion
+    messages and one docstring updated to name it, one new test, one new
+    workflow trigger entry in two surfaces, one `--no-renames` flag. No
+    production code path is touched: this diff moves a guard and its executor,
+    nothing the guard guards.
+behaviour_change: >-
+  YES, and it is CI-visible in three places. (1) The seat-conformance guard now
+  resolves `claude-fable-5` from docs/rules/RULINGS.md instead of failing its
+  premise check against CLAUDE.md, so the three tests that read doctrine go from
+  red to green. (2) The worker-plane suite now RUNS on any PR or main push that
+  touches docs/rules/RULINGS.md, where before it sentinel-skipped — a deliberate
+  over-trigger, costing roughly two minutes of suite time on doctrine PRs, taken
+  in exchange for the guard firing in the PR that breaks it. (3) The sentinel's
+  file list now includes both sides of a rename. No runtime, product or client
+  surface changes: `launch_final_gate()` still raises unconditionally and
+  `V3_FINAL_GATE_READY` is still False.
+pii_scan: clean
+bites:
+  consumer: >-
+    The `worker-plane review panel — test suite` check itself — the one that is
+    red on main. It is not a future job: it runs on THIS PR because the diff
+    touches both the workflow and the test file it collects, and it exercises
+    the re-anchored guard against the real docs/rules/RULINGS.md on the runner.
+  where: ci
+  observe: gh pr checks 5862 --json name,state --jq '.[] | select(.name|test("worker-plane"))'
+  expect: SUCCESS
+bites_note: >-
+  Observed on head 5fe5316c12 before this evidence commit: "worker-plane review
+  panel — test suite: SUCCESS", against the same check reading FAILURE on main's
+  run 33994100645. The second observation, the same check green on main after
+  merge, is what closes the loop and is not claimed here.
+receipts:
+  - claim: >-
+      the check was red on main for the anchor reason, on the exact assertion
+      this cure addresses
+    cmd: >-
+      gh run list --workflow worker-plane-review-tests.yml --branch main --limit 5
+      --json databaseId,conclusion,headSha; gh run view 33994100645 --log-failed
+    result: >-
+      runs 33994100645 (headSha 4b06438363) and 33991068877 (headSha f187acea1a)
+      both `failure`; the three preceding runs `success`. Log: three FAILED lines,
+      all reading "CLAUDE.md no longer carries the retirement sentence this test
+      reads ('… is simply not routed to by any doctrine …')" —
+      test_doctrine_actually_names_a_retired_model,
+      test_launcher_docstring_does_not_name_the_retired_model_as_the_gate,
+      test_arming_flag_is_false_while_the_gate_seat_is_the_retired_model
+    ts: "2026-09-06T12:05:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the sentence was MOVED, not deleted or reworded — so the cure is to read
+      the canonical file, not to restore prose in an index
+    cmd: >-
+      git log --oneline -S"is simply not routed to by any doctrine" -- CLAUDE.md
+      docs/rules/RULINGS.md; git show --stat ed06cba9e6
+    result: >-
+      two commits: 23b7098061 (2026-08-20) wrote the sentence into CLAUDE.md, and
+      ed06cba9e6 (2026-09-04, #5631) is the only one that MOVED it — its stat shows
+      CLAUDE.md -247 lines and docs/rules/RULINGS.md +68 in the same change. Within
+      the guard's lifetime (born 2026-08-29) exactly one commit touched the
+      sentence, and it is the move. The wording "exactly one commit" was corrected
+      in the brief after both review seats caught it overstated.
+    ts: "2026-09-06T12:08:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: the three previously red tests, and the two workflow pins, pass at this head
+    cmd: >-
+      python3 -m pytest -p no:cacheprovider -q
+      scripts/tests/test_gate_seat_conformance.py; and the trigger pin alone
+      with -k test_workflow_triggers_on_the_doctrine_file_this_guard_reads
+    result: "5 passed; the trigger pin alone 1 passed, 4 deselected"
+    ts: "2026-09-06T14:05:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the re-anchored guard still goes RED when the ruling sentence is reworded —
+      it did not merely stop reading a file that could fail
+    cmd: >-
+      on a scratch tree holding copies of the four files this guard reads,
+      replaced "is simply not routed to by any doctrine" with "is not reached by
+      any automated route" in docs/rules/RULINGS.md and re-ran the file
+    result: >-
+      unmutated 5 passed; mutated "3 failed, 2 passed" — the same three tests that
+      were red on main, failing on the same premise check
+    ts: "2026-09-06T12:31:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      the trigger-symmetry pin goes RED when the doctrine file is dropped from a
+      trigger surface
+    cmd: >-
+      on the same scratch tree, restored the ruling sentence and deleted the
+      `- "docs/rules/RULINGS.md"` entry from push.paths, then re-ran the file
+    result: >-
+      "1 failed, 4 passed" —
+      test_workflow_triggers_on_the_doctrine_file_this_guard_reads, naming
+      push.paths as the missing surface
+    ts: "2026-09-06T12:33:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      kimi-code/k3's objection was real: BEFORE this revision the pin would have
+      passed on a workflow whose trigger was deleted and left behind as a comment.
+      After it, that mutation goes red
+    cmd: >-
+      on the scratch tree, replaced the push.paths entry with
+      `# - "docs/rules/RULINGS.md"  (documented but not armed)` and re-ran the file
+    result: >-
+      "1 failed, 4 passed" with the comment-stripping in place; restoring the real
+      entry returns 5 passed
+    ts: "2026-09-06T14:02:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      codex-gpt-5.6-sol's objection was real and measured, not reasoned: a rename
+      prints ONE path by default and BOTH with --no-renames
+    cmd: >-
+      scratch git repo, commit docs/rules/RULINGS.md then `git mv` it to
+      docs/rules/ROUTING.md, then `git diff --name-only HEAD~1...HEAD` and the same
+      with --no-renames
+    result: >-
+      default prints only docs/rules/ROUTING.md; --no-renames prints
+      docs/rules/ROUTING.md AND docs/rules/RULINGS.md. The sentinel now uses the
+      flag, and the pin asserts it
+    ts: "2026-09-06T13:58:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      dropping --no-renames from the sentinel makes the pin go red — the flag is
+      guarded, not merely present
+    cmd: >-
+      on the scratch tree, rewrote `git diff --name-only --no-renames` back to
+      `git diff --name-only` and re-ran the file
+    result: >-
+      "1 failed, 4 passed" —
+      test_workflow_triggers_on_the_doctrine_file_this_guard_reads
+    ts: "2026-09-06T14:00:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      the whole six-file suite this workflow executes is green at the head being
+      shipped — the re-anchor moves no neighbouring test
+    cmd: >-
+      python3 -m pytest -p no:cacheprovider -q
+      scripts/tests/test_check_worker_plane_review.py
+      scripts/tests/test_launch_worker_plane_review_panel.py
+      scripts/tests/test_worker_plane_review_packet.py
+      scripts/tests/test_v3_final_gate_parity.py
+      scripts/tests/test_detect_secrets_auto_triage.py
+      scripts/tests/test_gate_seat_conformance.py
+    result: >-
+      "315 passed in 383.61s" on the first head, re-run at the revised head after
+      the council fixes. Python 3.11.15 with pytest 9.1.1, the versions the
+      workflow pins
+    ts: "2026-09-06T14:15:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the stale-doctrine-pointer fix in the launcher docstring is NOT free, which
+      is why it is left out and declared
+    cmd: >-
+      edited the "CLAUDE.md §5" pointer in
+      scripts/launch_worker_plane_review_panel.py's docstring, then ran the suite;
+      reverted with `git checkout --` and re-ran test_detect_secrets_auto_triage.py
+    result: >-
+      with the two added docstring lines "3 failed, 312 passed" — the three
+      line-number-pinned identity-pin tests in test_detect_secrets_auto_triage.py;
+      after the revert "107 passed"
+    ts: "2026-09-06T13:05:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: the Gear floor for this PR's changed-file list is 3, and its source is the PATH
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed>
+      --numstat-file <numstat>; the same with --print-floor-source;
+      the same with --print-measured
+    result: '"3"; floor source "path"; "2 files, +76/-12" on the first head'
+    ts: "2026-09-06T13:20:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the bites consumer was OBSERVED green on this PR before the work was
+      reported — the check that is red on main is green here
+    cmd: >-
+      gh pr checks 5862 --json name,state --jq '.[] | select(.name|test("worker-plane"))'
+    result: '"worker-plane review panel — test suite: SUCCESS" on head 5fe5316c12'
+    ts: "2026-09-06T13:15:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      codex-gpt-5.6-sol's cross-family review ran for real, with file access, and
+      returned a BLOCK naming the rename hole
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only
+      --cd <worktree> "<review brief + full diff>"
+    result: >-
+      "VERDICT: BLOCK — strongest objection: a pure rename of the doctrine file
+      remains invisible to the PR sentinel because it uses `git diff --name-only`,
+      so the claimed protection against another doctrine move is false."
+      142,208 tokens used; actionlint and `git diff --check` reported clean
+    ts: "2026-09-06T13:45:00Z"
+    seat: codex-gpt-5.6-sol
+    exit: 0
+  - claim: >-
+      kimi-code/k3's independent cross-family review ran for real, ran the suite
+      itself, and returned OK naming the spelling hole
+    cmd: 'kimi -m kimi-code/k3 -p "<the same review brief + full diff>"'
+    result: >-
+      "VERDICT: OK" — ran the suite in its own scratch venv (5 passed),
+      matched the extracted sentinel regex against docs/rules/RULINGS.md (True) and
+      rejected docs/rules/RULINGS.md.bak, docs/rules/RULINGSXmd and
+      docs/rules/operations.md; strongest objection the comment/spelling gap
+    ts: "2026-09-06T13:47:00Z"
+    seat: kimi-code/k3
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol (cross-family, on head 5fe5316c12)
+    status: CONFIRMED
+    objection: >-
+      BLOCK, one objection, correct and cured. The PR claimed to protect against
+      another doctrine move, but the pull_request sentinel used `git diff
+      --name-only`, which with rename detection on prints only a rename's
+      DESTINATION path. Renaming docs/rules/RULINGS.md to any other name would
+      therefore show the sentinel a path its regex does not know, the suite would
+      not run, and the PR that moved the ruling would be green exactly as the diet
+      PR was. CURED: the sentinel passes --no-renames, the flag is asserted by the
+      pin, and both halves are proven by mutation. The seat also raised two things
+      NOT cured here and recorded instead: push.paths' own rename behaviour is
+      GitHub's to define and was not measured (the local measurement covers the
+      sentinel only), and it proposed dropping the push paths filter entirely,
+      which is a larger workflow decision than this PR's concern.
+  - seat: kimi-code/k3 (cross-family, on head 5fe5316c12)
+    status: CONFIRMED
+    objection: >-
+      OK overall, one objection worth acting on: the new pin matched the SPELLING
+      of the trigger entries anywhere in the YAML, so it false-greens when the
+      entry is deleted and left as a comment, and false-reds on a semantically
+      inert re-quoting. The false-green half is CURED — comments are stripped
+      before matching, proven by a mutation that would have passed before. The
+      false-red half is ACCEPTED and documented in the test itself: a behavioural
+      check would want to parse the YAML, the runner installs only pytest, and
+      adding a PyYAML dependency to a workflow whose whole point is to be cheap is
+      a worse trade than a five-second fix on a re-quoting nobody is planning.
+  - seat: claude-opus-5 (this worktree session — the builder's own standing objection)
+    status: PLAUSIBLE
+    objection: >-
+      The way this cure could be wrong, stated plainly: it makes the guard depend
+      on a FILE LOCATION, and file locations in this repo move — that is the whole
+      story of this PR. If §5 is split or renamed again, the same class of failure
+      returns; what this PR buys is that it would then go red in the PR that does
+      it rather than on main hours later. The alternative designs were considered
+      and rejected: searching several candidate files would let doctrine live in
+      two places and diverge silently, and restoring the sentence in CLAUDE.md
+      would undo the diet deliberately taken on 2026-09-04. The deeper fix both
+      review seats independently pointed at is a generic lint — for every test a
+      workflow executes, every file that test reads must appear in that workflow's
+      triggers — which would catch this class at the next guard's birth instead of
+      at its first break. That is a separate PR and is not claimed here. Second
+      open item: the launcher docstring's stale "CLAUDE.md §5" pointer stays
+      stale, because correcting it moves line numbers that
+      test_detect_secrets_auto_triage.py pins.
+spend:
+  wall_clock_hours: 2.5

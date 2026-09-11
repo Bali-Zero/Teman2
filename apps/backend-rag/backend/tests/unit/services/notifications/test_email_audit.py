@@ -9,10 +9,12 @@ Covers:
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.notifications.email_audit import (
     CRITICAL_EMAIL_TYPES,
     format_send_error,
@@ -360,3 +362,70 @@ def test_format_send_error_never_returns_empty_string():
         TimeoutError(),
     ]:
         assert format_send_error(exc) != ""
+
+
+# ----------------------------------------------------------------------
+# Recipient address never reaches a shared surface (SYMBIOSIS Law 2)
+# ----------------------------------------------------------------------
+
+
+def test_telegram_alert_never_transcribes_the_recipient_address(monkeypatch):
+    """The alert body carries a stand-in, never the address itself.
+
+    A Telegram alert is a shared surface in the sense CLAUDE.md §14 means:
+    "nessun output, memoria, skill, report, log, alert o artefatto condiviso
+    trascriva PII in chiaro". The operator keeps what triage needs — the
+    email_type, the practice, and a stable token — and resolves the actual
+    address in ``email_send_log``, which is where processing it is legitimate.
+
+    Both halves are asserted on purpose: absence alone would still pass if
+    someone deleted the *To:* line outright, which is not the fix.
+    """
+    from urllib.parse import quote_plus
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
+    address = "chiara.rossi@studio-legale-milano.it"
+
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email=address,
+            subject="Benvenuta",
+            practice_id=7,
+            error="brevo: 500",
+        )
+
+    body = mock_open.call_args[0][1].decode()
+    # Neither the local part nor the domain, in any encoding urlencode uses.
+    assert "chiara.rossi" not in body
+    assert "studio-legale-milano" not in body
+    assert quote_plus(address) not in body
+    # …and the stand-in is present, so the line still says something.
+    assert quote_plus(redact_identifier_for_log(address)) in body
+    # Triage keys survive.
+    assert "welcome" in body
+    assert "7" in body
+
+
+def test_missing_token_warning_does_not_log_the_recipient_address(monkeypatch, caplog):
+    """The no-token early return logs a warning; it must be address-free too.
+
+    This is the branch that fires in any environment where TELEGRAM_BOT_TOKEN
+    was never provisioned — i.e. exactly where nobody is watching the log.
+    """
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    address = "marco.bianchi@example.org"
+
+    with caplog.at_level(logging.WARNING, logger="backend.services.notifications.email_audit"):
+        notify_email_failure_critical(
+            email_type="hr_bonus",
+            to_email=address,
+            subject="Bonus",
+            practice_id=1,
+            error="anything",
+        )
+
+    joined = " ".join(record.getMessage() for record in caplog.records)
+    assert "marco.bianchi" not in joined
+    assert "example.org" not in joined
+    assert redact_identifier_for_log(address) in joined

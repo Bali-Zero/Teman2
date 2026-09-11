@@ -16,6 +16,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import quote
 
 import httpx
 
@@ -487,6 +488,45 @@ async def _download_video_media(
     )
 
 
+async def action_media_info(args: argparse.Namespace) -> JsonDict:
+    """Return bounded media readiness metadata without encoded media bytes."""
+
+    async with httpx.AsyncClient(
+        base_url=args.base_url.rstrip("/"),
+        timeout=args.timeout,
+    ) as client:
+        data = await _request_json(
+            client,
+            "GET",
+            f"/api/flow/media/{quote(args.media_id, safe='')}",
+            timeout_s=args.timeout,
+        )
+    video = data.get("video") if isinstance(data.get("video"), dict) else {}
+    image = data.get("image") if isinstance(data.get("image"), dict) else {}
+    generated_image = (
+        image.get("generatedImage")
+        if isinstance(image.get("generatedImage"), dict)
+        else {}
+    )
+    fife_url = (
+        video.get("fifeUrl")
+        or video.get("url")
+        or generated_image.get("fifeUrl")
+        or data.get("fifeUrl")
+        or data.get("url")
+    )
+    status = data.get("status") or video.get("status") or image.get("status") or ""
+    result: JsonDict = {
+        "ok": True,
+        "media_id": args.media_id,
+        "status": status or ("ready" if fife_url else "processing"),
+        "ready": bool(fife_url),
+    }
+    if isinstance(fife_url, str) and fife_url:
+        result["fife_url"] = fife_url
+    return result
+
+
 def _is_transient_media_error(payload: JsonDict) -> bool:
     detail = payload.get("detail")
     if not isinstance(detail, dict):
@@ -805,6 +845,12 @@ def build_parser() -> argparse.ArgumentParser:
     video.add_argument("--video-timeout", type=float, default=DEFAULT_VIDEO_TIMEOUT_S)
     video.add_argument("--poll-interval", type=float, default=10.0)
 
+    media = subparsers.add_parser(
+        "media-info", help="Read Flow media readiness and delivery metadata"
+    )
+    _add_common_http(media)
+    media.add_argument("--media-id", required=True)
+
     return parser
 
 
@@ -817,6 +863,8 @@ async def run(args: argparse.Namespace) -> JsonDict:
         return await action_generate_image(args)
     if args.action == "generate-video":
         return await action_generate_video(args)
+    if args.action == "media-info":
+        return await action_media_info(args)
     raise FlowKitBridgeError(
         kind="flowkit_error", message=f"Unknown action: {args.action}"
     )

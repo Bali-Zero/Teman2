@@ -6,7 +6,7 @@ All external calls (gemini CLI, nlm CLI, Telegram) are mocked.
 from __future__ import annotations
 
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from apps.evaluator.nlm_deep_research.freshness_monitor import (
     MAX_REMEDIATIONS_PER_RUN,
@@ -79,7 +79,7 @@ class TestRegulatoryDomains:
 # ---------------------------------------------------------------------------
 
 class TestRunScan:
-    def test_dry_run_skips_gemini(self):
+    def test_dry_run_skips_the_web_search(self):
         result = run_scan(dry_run=True)
         assert result["status"] == "ok"
         assert result["dry_run"] is True
@@ -87,10 +87,13 @@ class TestRunScan:
         assert result["changes_detected"] == 0
         assert result["research_triggered"] == 0
 
-    def test_no_change_detected(self, tmp_path, monkeypatch):
+    def test_every_domain_silent_is_blind_not_partial(self, tmp_path, monkeypatch):
+        """No domain answered -> BLIND. This test used to assert `partial`, and
+        that assertion is why the organ ran green through 13 consecutive runs in
+        which every single call failed authentication."""
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
         monkeypatch.setattr(
-            "apps.evaluator.nlm_deep_research.freshness_monitor._run_gemini_search",
+            "apps.evaluator.nlm_deep_research.freshness_monitor._run_web_search",
             lambda query: None,
         )
         monkeypatch.setattr(
@@ -98,15 +101,47 @@ class TestRunScan:
             tmp_path / "state.json",
         )
         result = run_scan(dry_run=False)
-        assert result["status"] == "partial"  # errors for missing Gemini responses
-        assert result["changes_detected"] == 0
+        assert result["status"] == "blind"
+        assert result["domains_scanned"] == len(REGULATORY_DOMAINS)
+        assert result["domains_answered"] == 0
         assert result["research_triggered"] == 0
+
+    def test_one_domain_answering_is_partial_not_blind(self, tmp_path, monkeypatch):
+        """Innocence: blindness must mean NOTHING was seen, not "something failed".
+        A single answering domain keeps the run at `partial`, which exits 0."""
+        seen: list[str] = []
+
+        def one_answers(query: str) -> str | None:
+            seen.append(query)
+            return "NO_CHANGE" if len(seen) == 1 else None
+
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
+        monkeypatch.setattr(
+            "apps.evaluator.nlm_deep_research.freshness_monitor._run_web_search",
+            one_answers,
+        )
+        monkeypatch.setattr(
+            "apps.evaluator.nlm_deep_research.freshness_monitor.FRESHNESS_STATE_FILE",
+            tmp_path / "state.json",
+        )
+        with patch("apps.evaluator.nlm_deep_research.freshness_monitor.time") as mock_time:
+            mock_time.sleep = lambda s: None
+            result = run_scan(dry_run=False)
+        assert result["status"] == "partial"
+        assert result["domains_answered"] == 1
+
+    def test_dry_run_is_never_blind(self):
+        """dry_run makes no calls by design; calling that blindness would turn
+        every rehearsal into a false alarm."""
+        result = run_scan(dry_run=True)
+        assert result["status"] == "ok"
+        assert result["domains_answered"] == 0
 
     def test_no_change_string_not_detected(self, tmp_path, monkeypatch):
         """Response containing NO_CHANGE should not count as a change."""
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
         monkeypatch.setattr(
-            "apps.evaluator.nlm_deep_research.freshness_monitor._run_gemini_search",
+            "apps.evaluator.nlm_deep_research.freshness_monitor._run_web_search",
             lambda query: "NO_CHANGE",
         )
         monkeypatch.setattr(
@@ -124,7 +159,7 @@ class TestRunScan:
         call_log = []
 
         monkeypatch.setattr(
-            "apps.evaluator.nlm_deep_research.freshness_monitor._run_gemini_search",
+            "apps.evaluator.nlm_deep_research.freshness_monitor._run_web_search",
             lambda query: "NUOVA NORMATIVA: aggiornamento recente",
         )
 
@@ -153,7 +188,7 @@ class TestRunScan:
         call_log = []
 
         monkeypatch.setattr(
-            "apps.evaluator.nlm_deep_research.freshness_monitor._run_gemini_search",
+            "apps.evaluator.nlm_deep_research.freshness_monitor._run_web_search",
             lambda query: "cambio normativo rilevato",
         )
 
@@ -174,12 +209,12 @@ class TestRunScan:
             run_scan(dry_run=False)
         assert len(call_log) <= MAX_REMEDIATIONS_PER_RUN
 
-    def test_gemini_none_does_not_crash(self, tmp_path, monkeypatch):
-        """None response from Gemini should record error but not crash."""
+    def test_a_silent_search_cli_does_not_crash_the_scan(self, tmp_path, monkeypatch):
+        """A None from the web-search CLI must be recorded, never raised."""
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
 
         monkeypatch.setattr(
-            "apps.evaluator.nlm_deep_research.freshness_monitor._run_gemini_search",
+            "apps.evaluator.nlm_deep_research.freshness_monitor._run_web_search",
             lambda query: None,
         )
         monkeypatch.setattr(
@@ -189,7 +224,7 @@ class TestRunScan:
         with patch("apps.evaluator.nlm_deep_research.freshness_monitor.time") as mock_time:
             mock_time.sleep = lambda s: None
             result = run_scan(dry_run=False)
-        assert result["status"] in ("ok", "partial")
+        assert result["status"] == "blind"
         assert result["changes_detected"] == 0
 
 
@@ -380,3 +415,29 @@ class TestGetStatus:
         # Should return defaults without crashing
         assert status["last_scan"] is None
         assert status["scan_count"] == 0
+
+
+from apps.evaluator.nlm_deep_research import freshness_monitor  # noqa: E402
+
+
+class TestTheDoorIsTheAntigravityCli:
+    """The prompt MUST travel in argv. `agy` silently drops a piped prompt —
+    it returns 0 with generic output, so a stdin regression would look like a
+    working search forever. And the binary must not drift back to `gemini`,
+    whose individual tier is retired."""
+
+    def test_prompt_goes_in_argv_never_stdin(self):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="content", stderr="")
+            freshness_monitor._run_web_search("KITAS requirements 2025")
+        argv, kwargs = mock_run.call_args[0][0], mock_run.call_args[1]
+        assert argv[0] == freshness_monitor.WEB_SEARCH_CLI == "agy"
+        assert argv[1] == "-p"
+        assert "KITAS" in argv[2], "the prompt must be argv[2], not piped"
+        assert "input" not in kwargs and "stdin" not in kwargs
+
+    def test_the_retired_gemini_binary_is_never_invoked(self):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="content", stderr="")
+            freshness_monitor._run_web_search("KITAS requirements 2025")
+        assert mock_run.call_args[0][0][0] != "gemini"

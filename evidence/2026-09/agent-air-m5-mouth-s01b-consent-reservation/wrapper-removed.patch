@@ -1,0 +1,14 @@
+--- a/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
++++ b/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
+@@ -827,10 +827 @@
+-        <div
+-          ref={consentSpaceRef}
+-          className="bz-shs-consent-space"
+-          style={{
+-            height: consentHeight,
+-            display: consentHeight > 0 ? "block" : "contents",
+-          }}
+-        >
+-          <ConsentBanner />
+-        </div>
++        <ConsentBanner />

@@ -1,0 +1,73 @@
+• I'll check what reference material is on disk before refuting, since verbatim-payload checks need the source rounds.
+
+• Reading the repo AGENTS.md per the reminder, and locating the R4–R6 round reports.
+
+• R4–R6 reports aren't in `research/design/` on this checkout. Searching wider, including worktrees.
+
+• Round reports live in per-round worktrees. I'm read-only here — locating the exact files to verify against.
+
+• [Pro] All three verification passes are back. Findings below — exactness scope only.
+
+  ---
+
+  **1. HIGH — §2.1 "verbatim" payload is a splice of two R5b sections, presented as one quote.**
+  R7: «#ff2d4c in dark = text, plus graphical NON-ACTION fills that clear SC 1.4.11 (the progress bar); action FILLS stay in the #D01033 class in both themes.»
+  R5b §8 item 3 actually reads: "…plus graphical **non-action** fills that clear SC 1.4.11; action FILLS stay…" — lowercase "non-action", and **"(the progress bar)" does not exist in §8.3**; it and the 4.44/3.0 values come from R5b §4. R7 labels these "Verbatim payloads" and §7 orders the filesystem seat to verify them verbatim — the register's first row fails its own check, and this is the text R4 will absorb as law. (The "(R5b §8.3)" cite is also invented notation: R5b has no numbered §8.x headings, only §8 list items.)
+
+  **2. HIGH — §8.3 closes the loop while R7 itself has no adversarial record.**
+  §1 defines a shipped round as carrying "an adversarial record with row-by-row dispositions"; §7 is `PENDING-PANEL`; §8.3 declares "The loop CLOSES with this round" *now*, under pre-confirmation — so the terminal round's claims (including the §2 register R4 absorbs) take effect before the file passes its own §3 protocol. The pending state is declared, not hidden — but the closure clause makes the panel's verdict moot unless Zero vetoes. Closure-before-verification contradicts the doctrine the file exists to impose.
+
+  **3. MED — §3.2's instrument-bug tally contradicts R6's record.**
+  R7: "two R6 'instrument bugs' were one real bug and one mid-flight read of a sibling's file."
+  R6 §Meta records **two real instrument bugs** (raw-textContent matcher; robot-pace squash criterion) **plus** the false mid-flight diagnosis — a third, non-bug. R7 undercounts and silently re-attributes: R6 assigns the mid-flight misdiagnosis to the *conductor*; R7 files the episode under "the refuter also under-claims".
+
+  **4. MED — §3.4 cites probe 5 for a lesson probe 5 doesn't instantiate.**
+  R7: "a **pass** whose technique demonstrably did nothing is a FAIL of the instrument, not a PARTIAL of the world (R6 probe 5)."
+  Probe 5 was never a pass: the suite reported **PARTIAL** while its own declared `would_fail_if` [5b] had already triggered — the documented sin is short-circuited verdict logic, which §3.4's *next* clause states correctly. The cited case fits the second rule, not the first; "did nothing" belongs to the prototype defect, not the instrument.
+
+  **5. MED — §5.1's guillemet quote alters R6 §8.2.**
+  R7: «government charges: IDR X (PNBP)». R6 §8.2: "government charges: IDR X (PNBP**, set by the state**)". The dropped clause is the legally load-bearing one (state-set, not a fee breakdown) in a question addressed to Zero. Quotation marks, truncated quote.
+
+  **6. MED — §2.4 strengthens its source while claiming to register it.**
+  R6 §8.3: M1's talk-first card "moves **below the trust block**" and sits "**near** the price". R7: "sits below the trust block, **never beside the price**" — and drops R6's M1 scoping, generalizing to all funnel pages. A binding amendment that is stricter than the declaration it registers is a new declaration by §2's own closing rule.
+
+  **7. MED — §4.5 misattributes the delegate flow's fourth element.**
+  R7: "who-answers gate, authorization checkpoint, pronoun layer, custody split" citing R5b §5. R5b's delegate-flow shape is who-answers gate + authorization checkpoint + pronoun layer + **check-with-the-traveller escapes** (§5 bullet 3, restated in §8.2); "custody split" is a *separate* §5 proposal (tree content, ENG lane). Build backlog item #5 specifies the wrong component set.
+
+  **8. MED — "three author claims killed in R6" (§8.2, §Meta) is a count the record doesn't support.**
+  R6's frontmatter credits the filesystem seat with falsifying "the zero-welds premise, the probe-5 verdict **and three tabulation claims**" (= 5 by that seat alone); codex's adversarial note enumerates ~9 falsified/caught items; kimi independently killed more. "Three" is a curated triad presented as an exact count — in the exactness register of a doctrine file, and it is §8.2's stated reason for rejecting improvisation.
+
+  **9. MED — §6's citability claim is half false from disk.**
+  "citable in the round reports and their adversarial.json files" — `adversarial.json` exists in-repo only for R5b and R6. R3/R4/R5 point to an external artifact URL; R3's worktree is deleted. The per-round counts themselves check out (79/63/63/42+1/36; sums and per-seat splits all match, qwen failure/recovery pattern confirmed) — but the dual-source claim doesn't survive the filesystem test §7 prescribes.
+
+  **10. MED — §1 "Seven rounds" contradicts the file's own enumeration.**
+  §1 lists eight round-reports (R0–R6 **plus R5b**, each with its own PR — §Solo-operatore's "8 PRs" is correct on that basis). "Seven rounds" only works if R5b is folded into R5, which §1's own sentence-by-sentence roster refuses to do. Pick one.
+
+  **11. MED — §3.1's ladder has the expiry hole its own lesson exposes.**
+  Rung (e) "expires… stale in HOURS"; rung (a) MEASURED has no expiry and no demotion rule — yet the zero-welds episode (the file's own example) was exactly a stale measured-tier fact falsified in ~24h. As written, a two-week-old (a) citation outranks a fresh (b) probe, which the loop's record says is backwards. Minor adjacent sloppiness: "lower-numbered rung" for lettered rungs (a)–(e).
+
+  **12. MED — §3.1's core rule is unenforceable as stated.**
+  "Every claim carries its class" prescribes no label, no format, no violation condition — a claim without a class is not detectably in breach. Meanwhile §6 asserts "a doctrine file practices its own §3.1 rule" while the register's own sentences carry no class ("no visitor has ever seen a verdict" is an unfalsifiable absolute presented bare). A rule that cannot be violated is not a rule — by your own brief.
+
+  **13. LOW — §1 "harshest refuter round of the loop" is R6's self-declaration, repeated as census fact.**
+  R6 §7: "This was the loop's harshest round on the AUTHOR". By volume R6 was the *smallest* round (36 vs 79/63/63/42). Qualitatively defensible, but it belongs in the claim-class system, not the factual opening paragraph.
+
+  **14. LOW — §4.4 "the P3 persona's single hardest block" appears nowhere in R6.**
+  R6 establishes the i18n scope limit (confirmed, incl. the Wharton Q1-Q3 phrasing) but names no hardest-block ranking for P3; the superlative is R7's addition riding on a parenthetical citation.
+
+  **15. LOW — §1 "behind the R1 gate" is a naming collision.**
+  The "R1 gate" is the harness CI workflow `adversarial-review-gate.yml` (job "R1 gate", PR #2032, rules-as-harness doctrine) — not anything design-loop R1 established. In a file where "R1" everywhere else means the psychology round, the phrase misleads.
+
+  **16. LOW — §3.2's roster citation overreaches.**
+  "(roster per the 2026-08-20 ruling)" — that ruling (repo AGENTS.md §17) governs gear gating and Fable's removal from the workflow; it does not define a four-cross-family-seat panel roster. Right ruling family, wrong content.
+
+  **17. LOW — §3.2's filesystem-seat clause has an undefined trigger.**
+  "at least one refuter seat gets FILESYSTEM ACCESS on **ground-heavy** reports" — "ground-heavy" is nowhere defined, so the clause cannot be breached detectably. R6's lesson deserved a testable predicate (e.g., "any report whose claims cite live tree/DB state").
+
+  **18. LOW — frontmatter vs §7 mismatch.**
+  `adversarial_review: codex` names a single reviewer; §7 declares a four-seat panel under §3 protocol. If codex is lead seat, say so; as written the metadata contradicts the body's own protocol statement.
+
+  ---
+
+  Checked and clean (explicitly requested, so noted once): all §6 arithmetic (32+23+14+10=79, 30+18+15+0=63, 25+18+20+0=63, 15+10+11+6=42, 11+7+10+8=36) matches both its own sums and the on-disk/declared records; §5.2's "five amendments" matches §2's five items; §2.2's nesting-law payload and §2.5's honest-human gate are verbatim-faithful; all nine PR number↔round mappings are correct; all three §8 declarations do carry live, argued alternatives; R3's 27-defect count, R1's 5-quits/A4 rows, and the §4 weld-on-main claim verify against source.
+

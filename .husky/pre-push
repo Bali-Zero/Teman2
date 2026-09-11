@@ -697,7 +697,7 @@ else
                OLLAMA_URL="http://127.0.0.1:9" \
                PYTHONPATH=.:../crm-cell \
                "$PREPUSH_SUITE_LOCK_SCRIPT" "$PREPUSH_SUITE_LOCKFILE" \
-               python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q ) || TEST_RC=$?
+               python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short ) || TEST_RC=$?
         if [ "$TEST_RC" -eq 0 ]; then
             # The ONLY place the suite genuinely ran to a pass. Every other
             # path out of this block either exits 1 or leaves a skip reason.

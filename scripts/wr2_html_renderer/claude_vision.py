@@ -326,11 +326,13 @@ _CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 def _vision_token_chain(env: dict[str, str]) -> list[tuple[str, str]]:
     """Return OAuth seats in a stable order without duplicating credentials.
 
-    The universal fleet order is numbered seats 1→2→3→4→5, then the legacy
-    bare token for backward compatibility, followed by the CLI keychain login.
+    The universal fleet order is numbered seats 1→2→3→4→5, then seat 6
+    (Claude Team, zero@balizero.com, weekly-capped, last-resort by position —
+    never reorder ahead of 1-5), then the legacy bare token for backward
+    compatibility, followed by the CLI keychain login.
     """
     chain: list[tuple[str, str]] = []
-    for index in (1, 2, 3, 4, 5):
+    for index in (1, 2, 3, 4, 5, 6):
         token = env.get(f"CLAUDE_CODE_OAUTH_TOKEN_{index}", "").strip()
         if token and not any(existing == token for _, existing in chain):
             chain.append((f"token_{index}", token))

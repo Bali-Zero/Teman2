@@ -6,11 +6,17 @@ on:
     # attempts that slip past pre-commit (e.g. someone commits with --no-verify).
     # The JOB is not: see the timeout note below — the script's runtime is not
     # the job's floor, and reading it as one is what set the budget too low.
-  merge_group:
   push:
     branches: [main]
 
 concurrency:
+  # Per-PR/per-ref for every author. A shared per-workflow group keyed on
+  # github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+  # group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+  # started — no check-run object is created, so a required context sits at
+  # "Expected — waiting for status" with nothing red to see. Concurrency is now
+  # bounded only by the account-level ceiling, which QUEUES past it rather than
+  # dropping: lateness is visible, an absent check-run is not.
   group: root-guard-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 

@@ -24,7 +24,6 @@ name: prepush-guards
 
 on:
   pull_request: # NO paths: — always trigger, always report
-  merge_group:
   push:
     branches: [main]
     # One entry per corpus this job actually runs, plus the surfaces they read.
@@ -47,6 +46,13 @@ on:
       - ".github/workflows/prepush-guards.yml"
 
 concurrency:
+  # Per-PR/per-ref for every author. A shared per-workflow group keyed on
+  # github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+  # group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+  # started — no check-run object is created, so a required context sits at
+  # "Expected — waiting for status" with nothing red to see. Concurrency is now
+  # bounded only by the account-level ceiling, which QUEUES past it rather than
+  # dropping: lateness is visible, an absent check-run is not.
   group: prepush-guards-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 

@@ -1,0 +1,69 @@
+{
+ "refuters": [
+  {
+   "seat": "codex gpt-5.6-sol xhigh",
+   "scope": "contract fidelity + testability: tried to falsify every §3 'pass' — and did, repeatedly",
+   "findings_total": 25,
+   "applied": 25,
+   "rejected": 0,
+   "open": 0,
+   "note": "13 HIGH. The price finding was applied as width-realistic masked numerals rather than live prices (PricingTool stays the sole price source); everything else applied as found"
+  },
+  {
+   "seat": "kimi-k3",
+   "scope": "recomputed every NEW contrast pair the mockups introduce (calibration anchors matched R4 exactly); line-by-line CSS review",
+   "findings_total": 18,
+   "applied": 17,
+   "rejected": 0,
+   "open": 1,
+   "note": "1 partial: the .ph marker's 4px radius stays — declared meta-markup of the mockup, exempt from the product shape law. His ::placeholder measurement (UA default 2.35 on white) forced the AA placeholder rule"
+  },
+  {
+   "seat": "agy gemini-3.1-pro",
+   "scope": "UX width: tired traveler, 360px Android, bad light; local realism; payment rails; WhatsApp handoff",
+   "findings_total": 20,
+   "applied": 19,
+   "rejected": 1,
+   "open": 0,
+   "note": "rejected: «Visa on Arrival» title-case — a proper noun keeps its capitals under sentence case. His PT-name typo catch was applied as placeholder-ization, NOT as his proposed spelling: that string too was unverified"
+  },
+  {
+   "seat": "qwen3.8-max (TP1)",
+   "scope": "consistency audit — SEAT FAILED twice",
+   "findings_total": 0,
+   "applied": 0,
+   "rejected": 0,
+   "open": 0,
+   "note": "connection reset, then a read timeout on a SMALL payload at retry — the door itself was degraded today (the arsenal probe showed codex/kimi seat timeouts in the same cycle). Recorded honestly: zero findings ingested"
+  }
+ ],
+ "dispositions": [
+  {"severity": "high", "claim": "Bare {FLOOR_IDR}/{BUNDLE_EXACT} markers prove neither typography nor 360px fit; the report invented a derogation R4 does not contain", "verdict": "applied", "note": "prices became width-realistic masked numerals (IDR 1.5XX.XXX / 1.7XX.XXX) inside dashed markers — true width, honestly fake; live prices stay out (PricingTool sole source, golden rule 11) (codex 1)"},
+  {"severity": "high", "claim": "D-V8/Q9 is about the price BEFORE the form — M5 is a post-form verdict; the VO landing mockup was missing", "verdict": "applied", "note": "M7 (VO landing with the floor + honest counter expectation) added; the §1 table no longer credits M5 with D-V8's pre-form half (codex 2, kimi 6)"},
+  {"severity": "high", "claim": "The identity header contract (wordmark + EN/ID + WhatsApp ENTRY) was violated on every screen — the entry was missing or a dead span", "verdict": "applied", "note": "wa-entry is a real 44×44 link on all ten screens (codex 3, kimi 2, agy 1)"},
+  {"severity": "high", "claim": "The trust strip printed an INVENTED company name — the exact invented-fact pattern the placeholder system exists to prevent", "verdict": "applied", "note": "PT {PT_LEGAL_NAME} · NPWP {NPWP} placeholders on every screen; agy's proposed 'corrected' spelling equally unverified — not adopted; the audit owns the string (kimi 5, agy 12, codex 4)"},
+  {"severity": "high", "claim": "The static checker produced presence-only passes — idr_nowrap true with no IDR, WhatsApp true with no WhatsApp", "verdict": "applied", "note": "checker rewritten: every check can go red, explicit n/a instead of vacuous true, and two parser bugs were caught BY the rewrite during development (codex 5, kimi 4)"},
+  {"severity": "high", "claim": "Reproducibility was claimed but assemble.py/checks.json were not shipped with the mockups", "verdict": "applied", "note": "assemble.py, checks.json and the .body.html sources ship in the mockups directory; the check run was re-executed there (codex 6, kimi 8)"},
+  {"severity": "high", "claim": "Double-ring focus existed only on inputs — CTAs, options, cards, toggle had none", "verdict": "applied", "note": "one :focus-visible block covers every interactive class; the CSS check names each selector (codex 7, kimi 16, agy 8)"},
+  {"severity": "high", "claim": "One thing per page violated: question + passport upload crammed into one 807px screen", "verdict": "applied", "note": "M2 split into M2a (question) and M2b (upload) (agy 4, codex — fold)"},
+  {"severity": "high", "claim": "Both honest-human variants stacked on one screen: two competing primary CTAs, fold blown", "verdict": "applied", "note": "M4 split into M4a (named) / M4b (control) — the R6 test now compares whole pages (agy 5)"},
+  {"severity": "high", "claim": "Sponsor-section branch announcement pasted above an overstay question — context collision", "verdict": "applied", "note": "the note announces the section the question belongs to: «Immigration history — 2 questions» (agy 2)"},
+  {"severity": "high", "claim": "M6 used merah as TEXT on the active label — a token-duty violation; the budget check only counted backgrounds", "verdict": "applied", "note": "label is ink, only the 22px dot stays red; the checker now counts color: uses too (codex 10, agy 11)"},
+  {"severity": "high", "claim": "«never blocks your application» is guarantee language the voice law bans", "verdict": "applied", "note": "rewritten («asking doesn't decide your case — you stay in control»); a guarantee-language scan joined the checker (codex 18)"},
+  {"severity": "high", "claim": "The SUPPORTED verdict lacked the honest-human module R4 mandates on every verdict screen", "verdict": "applied", "note": "M5 gains the named module (compact) (codex 21)"},
+  {"severity": "high", "claim": "D-G4 (checkout dead-end) and D-G7's error half — sev-3 defects routed to R5 — were silently dropped", "verdict": "applied", "note": "M8 (GARUDA error/recovery: retry + person + saved-state scoped to the case code); D-V5/D-V12 declared to R5b with reasons in §6 (codex 24, agy 14, kimi 6)"},
+  {"severity": "med", "claim": "Payment rails were inert spans — no selection mechanics", "verdict": "applied", "note": "radio pills with selected state (QRIS first) (agy 3)"},
+  {"severity": "med", "claim": "Language toggle 26px and header WhatsApp 28px sat under the 44px house floor; stacked CTAs had 0px clearance", "verdict": "applied", "note": "44px shell targets + 8px clearance, both now CSS-checked (agy 6, kimi 3, codex 8)"},
+  {"severity": "med", "claim": "Progress track at 1.22:1 vanishes in glare — a floating red bar with no track", "verdict": "applied", "note": "track carries a border-input boundary (agy 7)"},
+  {"severity": "med", "claim": "::placeholder left to UA default — measured 2.35 on white, an AA failure", "verdict": "applied", "note": "ink-soft placeholder, opacity 1 (7.64) (kimi 1, agy 19)"},
+  {"severity": "med", "claim": "Unaudited time promises: «Apply in 10 minutes», «3-5 working days»; FX «we add nothing» asserted a policy nobody audited", "verdict": "applied", "note": "{APPLY_MINUTES}, {IMMIGRATION_WAIT}, {FX_POLICY} — all registered markers now (codex 19+20, agy 13)"},
+  {"severity": "med", "claim": "M6's WhatsApp card was stripped to a borderless link — the component demolished inline", "verdict": "applied", "note": "full card restored (agy 9, kimi 4, codex 13)"},
+  {"severity": "med", "claim": "Selection/error states carried no programmatic semantics (no aria-checked, no aria-invalid/describedby)", "verdict": "applied", "note": "radiogroup/radio + aria-checked on options and rails; aria-invalid + aria-describedby on the error field (codex 16+17)"},
+  {"severity": "med", "claim": "APCA advisory annex required by R4 §8 was entirely missing", "verdict": "applied", "note": "computed (APCA-W3 0.1.9 constants) for the ten key text pairs; weakest links Lc 69.8 (codex 23, kimi 7)"},
+  {"severity": "med", "claim": "Nesting law (inner = outer − padding) yields negative radii and was silently ignored", "verdict": "applied", "note": "declared floor --radius-nested: 8px + amendment proposed to R4 in §6 (codex 15, kimi 10)"},
+  {"severity": "med", "claim": "Dark tokens absent though R4 assigned the full dark system to R5", "verdict": "applied", "note": "dark primitives ship in the CSS; dark component mockups deferred to R5b as a DECLARED DEVIATION with a veto point (codex 11, kimi 14)"},
+  {"severity": "low", "claim": "«Visa on Arrival» violates Cormorant sentence case", "verdict": "rejected", "note": "a proper noun keeps its capitals; sentence case governs the sentence, not the noun (agy 18)"},
+  {"severity": "low", "claim": "The .ph marker radius (4px) is outside the shape law's two legal radii", "verdict": "open", "note": "declared exempt: .ph is meta-markup of the mockup (the honesty flag), not a product component — carried as a declaration, not a fix (kimi 10 partial)"},
+  {"severity": "low", "claim": "Fold arithmetic was wrong (~180px claimed; ~195-200px real once the branch note wraps)", "verdict": "applied", "note": "report corrected; the conclusion (question above the fold at 360px) survives the honest number (kimi 17)"}
+ ]
+}

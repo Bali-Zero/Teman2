@@ -83,6 +83,17 @@
           "observed_at": "2026-08-14"
         }
       ]
+    },
+    {
+      "id": "eligible_for_quorum",
+      "value": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
+        }
+      ]
     }
   ],
   "task_scores": [],
@@ -96,6 +107,11 @@
       "level": "declared",
       "ref": "https://help.aliyun.com/en/model-studio/qwen3-7-max | qwen3.7-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.7-max has text input/output, a 1,000,000-token context, a 131,072-token output limit, documents Structured Outputs, and has region-dependent documented feature support.",
       "observed_at": "2026-08-21"
+    },
+    {
+      "level": "production",
+      "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+      "observed_at": "2026-08-27"
     }
   ]
 }

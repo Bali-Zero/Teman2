@@ -1,0 +1,147 @@
+# CI stages every per-PR pair under /tmp/evidence-check/evidence/{brief,pack}.yml.
+# evidence_paths.py and harness-floor.yml therefore require this canonical staging reference.
+brief_ref: evidence/brief.yml
+plan_ref: "Arm apps/admin-dashboard-local vitest in the required frontend context (2026-08-24)"
+lanes:
+  - lane: admin-dashboard-local-ci-build
+    role: build
+    seat: "build seat (workflow step author; dispatched build lane, no seat-build-*.log in this commit's time window — the inherited model is not provable on disk)"
+  - lane: admin-dashboard-local-ci-independent-review
+    role: review
+    seat: "conductor (independent verification session; model not asserted in this field)"
+diff:
+  net_lines: >-
+    Measured with git diff --numstat against the merge-base, over the whole diff:
+    245 net lines. The workflow hot-zone fixes the deterministic floor at Gear 3.
+  behaviour_change: >-
+    The already-required frontend-tests (mouth, true) leg gains one named step. It changes into
+    apps/admin-dashboard-local and runs `npx vitest run` with one explicit exclusion. No job,
+    matrix leg, required-context name, dependency setup, or change-map rule is added.
+receipts:
+  - claim: >-
+      The exact command armed in the workflow passes 12 test files / 129 tests, and the explicit
+      exclusion removes exactly the intended one test from the 13-file / 130-test full suite.
+    cmd: >-
+      cd apps/admin-dashboard-local && npx vitest run
+      --exclude='**/garuda-preview-process-integration.test.ts'; then npx vitest run
+    exit: 0
+    ts: "2026-08-24 (conductor verification; exact time not recorded)"
+    seat: "conductor (independent Opus 5 session)"
+  - claim: >-
+      apps/admin-dashboard-local had no workflow caller before this change; the similarly named
+      existing matrix leg is apps/admin-dashboard, a different app.
+    cmd: >-
+      grep -rln "admin-dashboard-local" .github/workflows/; inspect the frontend-tests matrix in
+      .github/workflows/tests.yml
+    exit: 1
+    ts: "2026-08-24 (measurement supplied by conductor; exact time not recorded)"
+    seat: "conductor (independent Opus 5 session)"
+  - claim: >-
+      The new step has the same placement and guard shape as the packages/core and wa-mirror
+      sibling steps in the already-required (mouth, true) leg.
+    cmd: >-
+      Parse .github/workflows/tests.yml as YAML and print the packages/core,
+      admin-dashboard-local, and wa-mirror steps side by side
+    exit: 0
+    ts: "2026-08-24 (conductor verification; exact time not recorded)"
+    seat: "conductor (independent Opus 5 session)"
+  - claim: >-
+      The existing root install covers the new step because apps/admin-dashboard-local is a root
+      npm workspace; no app-local dependency install is needed.
+    cmd: "Open root package.json and confirm apps/admin-dashboard-local in workspaces"
+    exit: 0
+    ts: "2026-08-24 (conductor verification; exact time not recorded)"
+    seat: "conductor (independent Opus 5 session)"
+  - claim: >-
+      The declared exclusion is caused by two confirmed setup blockers in this job: the test
+      symlinks a real backend .venv, and the adapter requires .venv/bin/python, while Python setup
+      and system-wide backend dependency installation occur only in the backend job.
+    cmd: >-
+      Open apps/admin-dashboard-local/__tests__/garuda-preview-process-integration.test.ts:43-46,
+      apps/admin-dashboard-local/lib/garuda-preview-adapter.ts:137 and :146, and
+      .github/workflows/tests.yml:529 and :548-551
+    exit: 0
+    ts: "2026-08-24 (conductor verification; exact time not recorded)"
+    seat: "conductor (independent Opus 5 session)"
+  - claim: >-
+      Yesterday's concrete contract drift was detectable by the excluded real-process test: a
+      20-key engine response met an 18-key exact allowlist and produced the adapter's invalid
+      response error, resolving to preview_unavailable.
+    cmd: >-
+      Run __tests__/garuda-preview-process-integration.test.ts by hand against the un-extended
+      adapter and inspect hasExactKeys at lib/garuda-preview-adapter.ts:196 and parseEngineSuccess
+      at :358
+    exit: 1
+    ts: "2026-08-23 (measurement supplied by conductor; exact time not recorded)"
+    seat: "conductor (independent Opus 5 session)"
+  - claim: >-
+      The workflow timeout floor remains clean after adding the step.
+    cmd: "python3 scripts/lint_workflow_timeout_floor.py"
+    exit: 0
+    ts: "2026-08-24 (conductor verification; exact time not recorded)"
+    seat: "conductor (independent Opus 5 session)"
+    result: "clean; 135 jobs scanned; timeout floor 10m"
+  - claim: >-
+      Leaving change_map.py untouched makes the new step run today: the only nearby prefix is
+      apps/admin-dashboard/ with a trailing slash, so the local app path is unknown and routing
+      fails open with run_all true.
+    cmd: >-
+      Call scripts.ci.change_map._domains_for_path() and classify() for an
+      apps/admin-dashboard-local path
+    exit: 0
+    ts: "2026-08-24 (measurement supplied by conductor; exact time not recorded)"
+    seat: "conductor (independent Opus 5 session)"
+    result: "_domains_for_path=[]; unknown_paths populated; run_all=true"
+tests:
+  - >-
+    Exact workflow command: 12 files / 129 tests, exit 0. Full comparison suite: 13 files / 130
+    tests, exit 0. Exactly one test is excluded.
+static:
+  - "scripts/lint_workflow_timeout_floor.py: clean, 135 jobs scanned, 10m floor."
+  - >-
+    Workflow YAML parsed and the three sibling steps were compared side by side by the conductor.
+  - >-
+    actionlint was not run locally; the binary is absent. The required CI actionlint check remains
+    the gate and is an acceptance criterion, not a receipt in this pack.
+runtime_proof:
+  - >-
+    No deployed runtime is changed by this PR. The relevant execution proof is the exact command
+    that the required frontend job will run: 12 files / 129 tests locally, measured independently.
+dissent:
+  - seat: "conductor (independent Opus 5 verification session)"
+    objection: >-
+      The real-process integration test cannot honestly be claimed as armed by this step. It
+      requires a backend .venv and imported backend dependencies that this frontend job does not
+      construct, and it uniquely checks that the spawned child cannot read backend .env or inherit
+      unrelated application secrets.
+    status: CONFIRMED
+    note: >-
+      The exclusion is explicit and surgical: 13/130 becomes 12/129. Backend parity coverage from
+      PR #4796 covers the contract-drift class but not the child-process secret boundary. The
+      PENDING-ARMS row tracks closing the remaining gap.
+  - seat: "conductor (independent Opus 5 verification session)"
+    objection: >-
+      Workflow syntax has not been checked by a local actionlint binary on this machine, so the
+      evidence pack cannot declare actionlint clean before GitHub Actions runs the required check.
+    status: PLAUSIBLE
+    note: >-
+      The conductor parsed the YAML and the timeout-floor linter passed, but neither substitutes
+      for actionlint. The required actionlint CI result is a residual gate and an acceptance item.
+residual_risks:
+  - >-
+    The excluded real-process test remains unarmed in this frontend context; its closure is
+    recorded in PENDING-ARMS.md.
+  - >-
+    actionlint is unmeasured locally and must pass as a required CI check.
+  - >-
+    apps/admin-dashboard-local remains deliberately absent from the change-map. Unknown paths
+    fail open today; any explicit mapping needs a separate routing decision so it cannot silently
+    convert this required suite into a skip.
+sources:
+  - ".github/workflows/tests.yml"
+  - ".claude/skills/modus/PENDING-ARMS.md"
+  - "apps/admin-dashboard-local/lib/garuda-preview-adapter.ts"
+  - "apps/admin-dashboard-local/__tests__/garuda-preview-process-integration.test.ts"
+  - "apps/backend-rag/backend/tests/services/garuda_flow/test_preview_adapter_parity.py"
+  - "scripts/ci/change_map.py"
+pii_scan: clean

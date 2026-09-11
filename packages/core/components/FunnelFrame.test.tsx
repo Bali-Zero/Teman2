@@ -9,13 +9,13 @@ describe("FunnelFrame", () => {
         funnel="visa"
         sessionId="abc"
         step={{ current: 2, total: 5 }}
-        trust={{ clientCount: 5000, rating: "4.9", reviewCount: 693 }}
+        trust={{ rating: "4.9", reviewCount: 1234 }}
       >
         <div>QUIZ_BODY</div>
       </FunnelFrame>,
     );
     expect(getByText("QUIZ_BODY")).toBeTruthy();
-    expect(getByText(/5k\+/)).toBeTruthy();
+    expect(getByText(/4\.9/)).toBeTruthy();
     expect(getByRole("group", { name: /next actions/i })).toBeTruthy();
   });
 

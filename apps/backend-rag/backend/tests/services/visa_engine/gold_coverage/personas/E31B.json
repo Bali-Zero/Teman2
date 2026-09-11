@@ -1,0 +1,60 @@
+{
+  "expected_candidates": ["E31B"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "German graphic designer, 34, married to a foreign national on an E23 work KITAS in Jakarta; applying offshore for a 1-year dependent stay permit",
+  "overrides": {
+    "family.marriage_registered": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "family.relation_to_sponsor": {
+      "status": "KNOWN",
+      "value": "SPOUSE"
+    },
+    "family.sponsor_confirmed": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "family.sponsor_nationalities": {
+      "status": "KNOWN",
+      "value": ["DE"]
+    },
+    "family.sponsor_status_code": {
+      "status": "KNOWN",
+      "value": "E23"
+    },
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-10-05"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["FAMILY"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 365
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1992-03-14"
+    },
+    "person.marital_status": {
+      "status": "KNOWN",
+      "value": "MARRIED"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["DE"]
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "INDIVIDUAL"
+    }
+  },
+  "product_code": "E31B"
+}

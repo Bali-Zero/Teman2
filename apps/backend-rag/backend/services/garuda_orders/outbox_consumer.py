@@ -1,12 +1,49 @@
-"""Drains `garuda_order_outbox` — the queue that has never had a consumer.
+"""Drains `garuda_order_outbox`. This module IS the queue's consumer.
 
-`journal.enqueue_outbox` has ten callers in `repository.py` (checkout_ready_email,
-payment_paid_email, payment_failed_email, refund_email, practice_release and the
-five staff_page_* jobs). Nothing anywhere in this repository has ever SELECTed
-that table outside a test. Every row written since the table shipped is still
-sitting there with `dispatched_at IS NULL`: a customer who pays today receives no
-confirmation, because there is no code that could send one. This module is the
-missing half.
+CORRECTED 2026-08-27: this docstring used to open "the queue that has never had
+a consumer" and assert that "nothing anywhere in this repository has ever
+SELECTed that table outside a test". Both described the world in which this file
+was being WRITTEN, and both stopped being true the moment it shipped — it is
+wired in `app/main_api.py` (see `drain_once`'s import there) behind
+`GARUDA_OUTBOX_CONSUMER_ENABLED`, which is set to `true` in production. A
+docstring that denies its own module's existence is precisely the shape that
+misleads the next repo-wide ground pass, so it is stated positively now.
+
+**FOURTEEN distinct `job_type` values are enqueued by production code, and as of
+2026-08-28 `outbox_handlers.build_handlers` registers a handler for all
+fourteen.** Thirteen come from `repository.py`; the fourteenth,
+`practice_received_email`, is enqueued by
+`garuda_portal/practice.py::mint_received_practice`.
+
+THIS NUMBER WAS WRONG THREE TIMES, and how it was wrong matters more than the
+number. Successive versions of this paragraph said twelve, then thirteen. Every
+one of those counts came from grepping ``job_type="`` — a LITERAL — and
+`repository.py:799-805` passes a VARIABLE:
+
+    job_type = ("practice_release" if resolution == "honoured"
+                else "late_refund_confirmation_email")
+
+so `late_refund_confirmation_email` was invisible to all of them. The correction
+prescribed after the second miss was "grep across ALL of `backend/services`,
+not just the repository module" — and that antidote carried the same defect it
+was curing: widening the DIRECTORY finds nothing when the shape being matched is
+the wrong one. Widening from TEXT to SYNTAX is the fix (superscar #3,
+under-match).
+
+So: do NOT re-derive this count with a grep, and do not trust this paragraph over
+the test. `test_every_enqueued_job_type_has_a_handler` walks the AST of every
+`enqueue_outbox` call under `backend/services`, reads the `job_type=` argument,
+and FAILS LOUDLY on a non-literal rather than skipping it. That test is the only
+thing entitled to assert the count; this prose is a convenience that has now
+misled three readers.
+
+ROUTED IS NOT ARMED, AND NOT OBSERVABLE. `_run_garuda_outbox_scheduler` spawns
+only when `GARUDA_OUTBOX_CONSUMER_ENABLED` is exactly `"true"`, and it spawns
+via `asyncio.create_task` — a failure inside it kills that task alone while
+`/health` keeps answering 200. Nothing pages on a non-empty `unroutable` set,
+and `count_undrained` below has no non-test caller, so the queue's state is not
+visible from outside the process at all. Both gaps are ledgered, neither is
+fixed here.
 
 WHY THE LOCK IS HELD ACROSS THE HANDLER (the one design decision that matters).
 `UNIQUE (journal_event_id, job_type)` makes "email once" structural on the WRITE

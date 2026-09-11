@@ -1,0 +1,93 @@
+{
+  "run_at": "2026-08-27T07:08:26+08:00",
+  "today": "2026-08-27",
+  "yesterday_seen_count": 22,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare block (HTTP 403), persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "HTTP 403, persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but 'Artikel tidak ditemukan' SPA shell, no extractable content (same as recent prior runs)"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed (curl exit, HTTP 000) after 30s, persisted after 1 retry"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but only filter/region dropdown boilerplate returned (59.9K chars), zero search-result entries extractable — JS-rendered SPA shell"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Freshest items dated 26 Agustus 2026 (DPR fiscal balance, tax-gap multidoor approach, tax-center recruitment, customs carnet explainer); PP 20/2026 mention already in seen_citations; no new numbered regulation"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "Freshest items 26-27/08/2026: two articles report a Ditjen AHU seminar on Permenkum Nomor 49 Tahun 2025 (pre-existing, not newly published) covering PT-data-change/beneficial-owner verification; a third cites Surat Edaran Bersama ATR/BPN-Kemendagri Nomor 16/SE-HR.01/VIII/2026 dan Nomor 900.1.13.1/5782/SJ on BPHTB data exchange, but set 10 Agustus 2026 - outside the 48h window. No genuinely new in-window regulation."
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entries (PP Nomor 30/31/27 Tahun 2026) dated 'diundangkan 2 bulan yang lalu' (~2 Jul 2026), outside 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Freshest Siaran Pers still 25 Agu 2026 (same WN Rusia/KNPB filming enforcement item as prior run, no new press release since), citing existing UU Nomor 6 Tahun 2011 tentang Keimigrasian Pasal 122 huruf a - no new regulation"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest regulatory entry still PER-8/PJ/2026 dated 2026-07-28 (already in seen_citations); no entries within 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "2,567 results, default sort is hierarchy not date; no Permenaker/Permenkes item dated within 48h window found in the visible listing"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ],
+  "note": "All 4 NB-INTEL queries succeeded, all returned 'nessuna novita' (Tax NB added an unrelated PMK 44/2026 Kuasa Wajib Pajak webinar promo, already in seen_citations, not a new delta). Web cross-check ran across all 11 sources (5 primary + 6 backup; jdih.kemenkeu unreachable). Two IKPI articles surfaced verbatim citations (Permenkum 49/2025, Surat Edaran Bersama 16/SE-HR.01/VIII/2026) but neither qualifies as an in-window new delta - see sources_checked_no_delta detail. Zero deltas matching the Step-4 service-line filter found within the 48h window."
+}

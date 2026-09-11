@@ -1,0 +1,341 @@
+brief_ref: evidence/brief.yml
+
+lanes:
+  - lane: healer-memo-build
+    role: build
+    seat: >-
+      claude-sonnet-5 (this worktree session, Pro, branch
+      agent/nuzantara/infra/healer-memo). Wrote scripts/healer_memo.py
+      (fingerprint/check/record/verdict-from-escalations), its 19-case
+      test suite, and the surgical wiring in
+      infra/launchagents/wrappers/pro-healer.sh. Single build lane.
+  - lane: healer-memo-review
+    role: review
+    seat: >-
+      claude-sonnet-5 subagent (spalla-review), fresh context, dispatched
+      to construct real adversarial inputs and run them (not to read the
+      diff and agree). It first attempted the repo's own cross-family
+      `codex-spalla.sh` second-opinion path and found it currently broken
+      (installed codex-cli 0.149.1 dropped the `--full-auto` flag the
+      script hardcodes) — reported honestly rather than silently
+      substituted; its own findings below are its direct hands-on testing,
+      not a second model's opinion. Full report in this repo's
+      `.claude/agent-memory/spalla-review/` per its own note.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane, so D3's non-Anthropic BUILD-seat requirement does not
+  bind by its own terms (">= 2 build lanes"); no second build lane was
+  invented to satisfy a rule that does not apply. Adversarial pressure was
+  placed on REVIEW instead, on genuinely fresh context.
+
+diff:
+  files: 3
+  net_lines: 776
+  measured_at: >-
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` (before
+    this evidence pack's own files were added) — 89+372+315 insertions, 0
+    deletions, across infra/launchagents/wrappers/pro-healer.sh,
+    scripts/healer_memo.py, scripts/tests/test_healer_memo.py. Describes
+    the code change under independent review, not this pack's own files.
+
+pii_scan: clean
+
+receipts:
+  - claim: "New unit suite, this evidence pack's own subject"
+    cmd: "python -m pytest scripts/tests/test_healer_memo.py -q"
+    result: "19 passed"
+    exit: 0
+    ts: "2026-09-01T12:30:01Z"
+    seat: session (Pro)
+  - claim: "Pre-existing consumer/receptor suites unaffected by the wiring diff"
+    cmd: >-
+      python -m pytest scripts/tests/test_healer_receptor_parse_ts.py
+      scripts/tests/test_healer_receptor_running_status.py
+      scripts/tests/test_healer_receptor_yaml_fallback.py
+      scripts/tests/test_healer_run_checks.py
+      scripts/tests/test_claude_cascade_shell.py
+      scripts/tests/test_lint_plist_keepalive.py -q
+    result: "109 passed"
+    exit: 0
+    ts: "2026-09-01T12:30:07Z"
+    seat: session (Pro)
+  - claim: "Wrapper syntax and shellcheck, whole file, clean"
+    cmd: >-
+      bash -n infra/launchagents/wrappers/pro-healer.sh &&
+      shellcheck -S warning infra/launchagents/wrappers/pro-healer.sh
+    result: "both exit 0, shellcheck printed zero findings"
+    exit: 0
+    ts: "2026-09-01T12:31:00Z"
+    seat: session (Pro)
+  - claim: >-
+      Real dry run of the acceptance shape: no state -> SPAWN, record
+      incurable, identical fingerprint -> SKIP (exit 3), kill switch ->
+      SPAWN even with a matching incurable state
+    cmd: >-
+      python scripts/healer_memo.py check --state s.json --fingerprint FP;
+      python scripts/healer_memo.py record --state s.json --fingerprint FP
+      --verdict incurable --spawned-at <now>; python scripts/healer_memo.py
+      check --state s.json --fingerprint FP; PRO_HEALER_MEMO=0 python
+      scripts/healer_memo.py check --state s.json --fingerprint FP
+    result: >-
+      "SPAWN: no usable prior state" exit=0 -> recorded -> "SKIP: memoized
+      (... skip 1/3)" exit=3 -> "SPAWN: memo disabled" exit=0
+    exit: 0
+    ts: "2026-09-01T12:31:07Z"
+    seat: session (Pro)
+  - claim: >-
+      Real diffstat used for this pack's own diff.net_lines/files fields
+      — never hand-typed
+    cmd: "git diff --numstat $(git merge-base origin/main HEAD)..HEAD"
+    result: "89/0 pro-healer.sh, 372/0 healer_memo.py, 315/0 test_healer_memo.py"
+    exit: 0
+    ts: "2026-09-01T12:24:xx (session)"
+    seat: session (Pro)
+  - claim: >-
+      Self-caught, pre-dating the dispatched review: on an EXACT `ts` tie
+      between two escalation lines, verdict-from-escalations returns
+      whichever line appears FIRST in the file, not the later-appended one
+      — reproduced both orderings
+    cmd: >-
+      two synthetic healer_pro_tick lines, identical `ts`, one "0/1
+      curable" one "1/1 curable, cured this tick", fed in each order to
+      `verdict-from-escalations --since <5min ago>`
+    result: >-
+      order A (incurable first): prints "incurable". Order B (cured
+      first): prints "cured" — confirms first-in-file wins a tie, in
+      either direction.
+    exit: 0
+    ts: "2026-09-01T12:31:22Z"
+    seat: session (Pro)
+  - claim: >-
+      Self-probed edge cases before dispatching independent review: non-dict
+      state file, non-numeric `ts` in an escalation line, negative
+      `--max-age-h`, `--max-skips 0` — none produced a false SKIP
+    cmd: >-
+      state=[1,2,3] -> check; ts:"not-a-number" -> verdict-from-escalations;
+      check --max-age-h -1 on a fresh record; check --max-skips 0 on a
+      fresh record
+    result: >-
+      all four correctly resolve to SPAWN-shaped outcomes: "no usable prior
+      state" exit=0; "unknown" exit=0; "exceeds max-age" exit=0; "skip
+      streak 0 reached max-skips 0" exit=0
+    exit: 0
+    ts: "2026-09-01T12:31:38Z"
+    seat: session (Pro)
+  - claim: >-
+      Independent adversarial pass: fingerprint() crashes on a scalar
+      (non-list) dead_organs/diverged_probes value instead of degrading —
+      real, reproduced
+    cmd: >-
+      printf '{"dead_organs": 42}' | python scripts/healer_memo.py
+      fingerprint ; printf '{"diverged_probes": 7}' | python
+      scripts/healer_memo.py fingerprint
+    result: >-
+      both raise TypeError: 'int' object is not iterable. NOT reachable as
+      a false SKIP in the wrapper: a crash prints nothing, so $FINGERPRINT
+      is empty, which never matches a stored 64-hex value (forces SPAWN),
+      and pro-healer.sh's record-time guard (`if [ -n "${FINGERPRINT:-}" ]`)
+      refuses to persist an empty fingerprint either. Not fixed in this PR
+      (evidence-pack-only scope, per task-lead constraint) — see dissent.
+    exit: 1
+    ts: "2026-09-01T12:36:00Z"
+    seat: claude-sonnet-5 subagent (spalla-review), fresh context
+  - claim: >-
+      Independent adversarial pass: _age_bucket() crashes on
+      age_s:Infinity/NaN, which real JSON can carry (Python's json.loads
+      accepts these tokens by default) — contradicts the function's own
+      docstring promise that a malformed age never crashes it
+    cmd: >-
+      printf '{"dead_organs":[{"id":"a","status":"fail","age_s": Infinity}]}'
+      | python scripts/healer_memo.py fingerprint ; same with NaN
+    result: >-
+      both raise ValueError (inf // 3600 is nan, int(nan) raises). Same
+      fail-open mitigation chain as the scalar-crash finding above. Not
+      fixed in this PR — see dissent.
+    exit: 1
+    ts: "2026-09-01T12:38:00Z"
+    seat: claude-sonnet-5 subagent (spalla-review), fresh context
+  - claim: >-
+      Independent adversarial pass: UnicodeDecodeError (a ValueError
+      subclass, not OSError) is uncaught in _load_state and
+      verdict-from-escalations's file read, given invalid UTF-8 bytes
+    cmd: >-
+      append raw invalid-UTF-8 bytes to an escalations file, then run
+      verdict-from-escalations against it; same for a memo state file fed
+      to check
+    result: >-
+      both raise UnicodeDecodeError uncaught by the surrounding `except
+      OSError`. check exits 1 (not the sentinel 3), correctly falling
+      through pro-healer.sh's `[ "$MEMO_RC" -eq 3 ]` gate to spawn;
+      verdict-from-escalations's crash yields empty stdout, and
+      pro-healer.sh's `[ -n "$MEMO_VERDICT" ] || MEMO_VERDICT="unknown"`
+      safely defaults away from "incurable". Not fixed in this PR — see
+      dissent.
+    exit: 1
+    ts: "2026-09-01T12:40:00Z"
+    seat: claude-sonnet-5 subagent (spalla-review), fresh context
+  - claim: >-
+      Independent adversarial pass: empirically reproduced a TOCTOU race
+      on the skip counter — 6 concurrent `check` calls against one fresh
+      state file all read stale skips=0 and all SKIP, instead of the
+      serialized 3-SKIP-then-SPAWN a single-writer sequence would produce
+    cmd: "6 backgrounded `healer_memo.py check` invocations against one state.json, then wait"
+    result: >-
+      6/6 SKIP, persisted skips ended at 2 (not >=3 as serialized execution
+      would reach). Does not threaten the primary fingerprint-mismatch
+      safety property (that comparison is a fresh, non-racy read each
+      call); defeats only the secondary "forced re-check after N skips"
+      bound. In the real deployment this needs pro-healer.sh's own
+      G10_single_instance pidfile guard to hold (only one cron tick runs
+      the memo block at a time) — a manual/debug invocation racing a live
+      tick is the actual reachable path. Not fixed in this PR — see
+      dissent.
+    exit: 0
+    ts: "2026-09-01T12:44:00Z"
+    seat: claude-sonnet-5 subagent (spalla-review), fresh context
+  - claim: >-
+      Independent adversarial pass, RETRACTED after checking: no unbound-
+      variable crash path exists in pro-healer.sh's new lines under `set
+      -u`, and no race between the heredoc receptor-state build and the
+      script's later `&` backgrounding
+    cmd: >-
+      read pro-healer.sh lines 135/138/154/180/239/241-287/330+ directly;
+      confirmed REG_OUT/PROP_JSON/LHF_CHECK_OUT/REASONS are unconditional
+      top-level assignments, NEW_DEAD is `${NEW_DEAD:-}`-defaulted, and the
+      heredoc's `$(...)` fully completes before the only `&` in the script
+    result: >-
+      no defect — the two suspected issues were checked and do not exist.
+      Reported as a retraction, not silently dropped.
+    exit: 0
+    ts: "2026-09-01T12:46:00Z"
+    seat: claude-sonnet-5 subagent (spalla-review), fresh context
+  - claim: "Determinism claim re-verified independently via two real subprocess calls"
+    cmd: >-
+      fingerprint on a JSON object with reordered top-level keys, reordered
+      diverged_probes, reordered+duplicated dead_organs, reordered reasons
+      tokens, vs the canonical ordering
+    result: "identical sha256 both times — CONFIRMED true, not merely asserted."
+    exit: 0
+    ts: "2026-09-01T12:47:00Z"
+    seat: claude-sonnet-5 subagent (spalla-review), fresh context
+
+residual_risks:
+  - >-
+    THREE real crash-shaped defects (scalar-vs-list fields, non-finite
+    age_s, invalid-UTF-8 file reads) and one real concurrency defect
+    (unlocked skip-counter read-modify-write) were found by independent
+    adversarial testing and are NOT fixed in this PR — by explicit
+    task-lead scope constraint (evidence-pack files only, no other file
+    modified). None of the four currently produces a false SKIP: every
+    crash path degrades, through pro-healer.sh's own fail-open wiring
+    (empty $FINGERPRINT never collides with a stored hash; check's exit
+    code outside {0,3} falls through to spawning; an empty
+    $MEMO_VERDICT defaults to "unknown", never "incurable"), to SPAWN —
+    and the concurrency defect is bounded in the real deployment by
+    pro-healer.sh's pre-existing G10_single_instance pidfile guard. This is
+    a declared, real residual risk, not a hidden one: recommended
+    follow-up (not this PR) is `isinstance(x, list)` guards in
+    fingerprint(), `math.isfinite()` in _age_bucket(), catching
+    `(OSError, UnicodeDecodeError)` in both file reads, clamping `skips`
+    to `>= 0`, and a `flock` around the state-file critical section if
+    `healer_memo.py check` is ever invoked outside the wrapper's own
+    single-instance serialization.
+  - >-
+    A minor, non-safety tie-break quirk: on an EXACT `ts` collision between
+    two escalation lines (implausible from a single healer's own 6h-spaced
+    ticks, but possible if the log is hand-edited or fixture-generated),
+    `verdict-from-escalations` returns whichever line appears earlier in
+    the file, not the later-appended one — confirmed independently by both
+    the session and the dispatched reviewer, in both orderings. Recommended
+    (not urgent) fix: `ts >= newest_ts` so last-in-file wins.
+  - >-
+    The wrapper wiring itself (infra/launchagents/wrappers/pro-healer.sh)
+    was not exercised end-to-end via a real launchd tick in this session —
+    verified via bash -n, shellcheck, and reproduced JSON-shape probes of
+    the heredoc, not a live cron run. First real tick after merge is the
+    actual proof, per PR #5502's own Bites: line.
+  - >-
+    No independent cross-family (non-Anthropic) review seat was reachable:
+    the repo's own `.claude/scripts/codex-spalla.sh` second-opinion path is
+    currently broken (codex-cli 0.149.1 removed the `--full-auto` flag it
+    hardcodes at lines 266/269) — discovered and reported by the dispatched
+    reviewer, saved to its own agent memory, unrelated to and not fixed by
+    this PR. Flagged to the task-lead separately; not this diff's scope.
+
+dissent:
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      fingerprint() raises TypeError on a scalar (non-list) dead_organs or
+      diverged_probes value — `x or []` only degrades safely when x is
+      falsy; a nonzero int/str survives the `or` and reaches the `for`.
+      Reproduced: `{"dead_organs": 42}` and `{"diverged_probes": 7}` both
+      crash. Not exploitable into a false SKIP given the wrapper's own
+      fail-open plumbing (see residual_risks), but a real, docstring-
+      violating defect. NOT CURED HERE — evidence-pack-only scope this PR;
+      recommend `isinstance(x, list)` guards as a fast follow-up.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      _age_bucket() raises ValueError on age_s:Infinity or age_s:NaN
+      (both valid JSON per Python's json.loads default extension) —
+      `int(age // 3600)` on an infinite/NaN float raises. This directly
+      contradicts the function's own docstring: "A malformed/missing age
+      must never crash the fingerprint." Same fail-open mitigation as
+      above applies at the wrapper level. NOT CURED HERE; recommend
+      `math.isfinite()` guard as a fast follow-up.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      UnicodeDecodeError (a ValueError subclass, not OSError) is not
+      caught by the `except OSError:` around `read_text()` in either
+      `_load_state` (used by `check`) or `verdict-from-escalations`'s file
+      read — reproduced by appending invalid UTF-8 bytes to a state file
+      and to an escalations file. `check` correctly falls through to
+      SPAWN via its non-{0,3} exit path; `verdict-from-escalations`
+      correctly degrades to "unknown" via the wrapper's own empty-output
+      default. NOT CURED HERE; recommend catching `(OSError,
+      UnicodeDecodeError)` as a fast follow-up (one-line change, both
+      sites).
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      Empirically reproduced TOCTOU on the skip counter: 6 concurrent
+      `check` calls against one freshly-recorded state file all read the
+      same stale skips=0 before any wrote back, so all 6 SKIP where a
+      serialized sequence would SKIP 3 times then force SPAWN. Does not
+      threaten the primary fingerprint-mismatch safety gate (a fresh,
+      non-racy comparison each call); defeats only the secondary
+      bounded-staleness guarantee `--max-skips` exists to provide. Bounded
+      in the real deployment by pro-healer.sh's own G10_single_instance
+      pidfile guard — reachable only via a manual/debug invocation racing
+      a live tick, or a pre-existing gap in that pidfile guard itself
+      (out of this diff's scope). NOT CURED HERE; recommend a `flock`
+      around the state-file critical section as a fast follow-up if this
+      tool is ever invoked outside the wrapper's own serialization.
+  - seat: session (Pro), self-caught before independent review
+    status: CONFIRMED
+    objection: >-
+      On an exact `ts` tie between two escalation lines,
+      verdict-from-escalations's strict `ts > newest_ts` comparison keeps
+      whichever line was read FIRST, not the later-appended one —
+      reproduced in both orderings by the session, then independently
+      reproduced again by the dispatched reviewer. Not a safety issue (the
+      independent organ-fingerprint gate still forces SPAWN on any real
+      state change); a real, minor correctness quirk on an implausible
+      input (two real healer ticks 6h apart cannot collide on a
+      sub-millisecond wall-clock `ts`). NOT CURED HERE; recommend `ts >=
+      newest_ts` (last-in-file wins) as a low-priority follow-up.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: PLAUSIBLE
+    objection: >-
+      A negative `skips` value hand-planted in the state file extends the
+      effective skip budget beyond `--max-skips` (`int(state.get("skips",
+      0) or 0)` is never clamped to >=0) — reproduced (skips=-5 took 8
+      SKIPs to reach SPAWN instead of 3). Only reachable via direct
+      tampering with the state file; `healer_memo.py` itself never writes
+      a negative value (`record` hardcodes 0). Low real-world likelihood,
+      recorded as PLAUSIBLE rather than CONFIRMED-as-exploitable. NOT
+      CURED HERE; a one-line `max(0, skips)` clamp would close it if ever
+      judged worth the diff.

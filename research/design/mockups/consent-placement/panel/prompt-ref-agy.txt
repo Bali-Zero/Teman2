@@ -1,0 +1,314 @@
+[REFUTER — UX / consumer-protection seat] Refute this consent-placement design (report + mockup embedded below) for an Indonesian visa-agency funnel serving international tourists. Lenses: (1) informed-consent UX for scam-wary first-time visitors (SEA context); (2) UU PDP-style consumer expectations — what a consent surface must say vs must not overclaim; (3) conversion impact of consent friction placement; (4) audit the four §6 declarations — for each: sound/unsound, and is the rejected alternative fairly characterized?; (5) structural omissions — what should a consent-placement design cover that this one does not. Do NOT propose real retention durations, real company facts, or real figures — placeholders are policy. Output: numbered findings with SEVERITY (HIGH/MED/LOW), the failing fragment, why, and a concrete counter-proposal where you have one.
+
+=== REPORT DRAFT ===
+---
+date: 2026-08-27
+domain: design
+client_case: none
+round: build-lane design deliverable (post-loop) — consent placement, R7 §4 item 2
+sources:
+  - R7 doctrine + backlog — research/design/2026-08-27-r7-doctrine-loop-closure.md
+  - R1 fragile moments A4/A6 — research/design/2026-08-27-r1-psicologia-utente-personas-mappa-emotiva.md
+  - R4 identity law (question protocol, custody line, tokens) — research/design/2026-08-27-r4-identity-merah-putih-token-spec.md
+  - R5 M2b custody template — research/design/mockups/r5-merah-putih/m2b-garuda-upload.body.html
+  - checkout lane (§3.1 why-we-ask, §5.4/§5.7 findings) — research/design/2026-08-27-checkout-garuda-design.md (PR #5099)
+  - live surfaces read this round — apps/mouth/src/app/visa/voa/page.tsx, upload/UploadFlow.tsx + messages.ts, [hash]/page.tsx, checkout/[resultId]/CheckoutFlow.tsx, (visa-oracle)/visa-oracle/_components/{ConsentHandoff,WhyWeAsk}.tsx, visa/privacy/page.tsx, visa/match/page.tsx
+  - backend reality — apps/backend-rag/backend/db/migrations_v2/{281_garuda_voa_retention,284_garuda_orders,285_garuda_magic_link,286_garuda_voa_check_results}.sql
+  - internal doctrine — SYMBIOSIS.md Law 2 (2026-08-09 consent ruling), CLAUDE.md §14
+adversarial_review: codex
+adversarial_review_detail: PENDING-PANEL
+---
+
+# Consent placement — say why, who sees it, and for how long, BEFORE the ask
+
+**What this file is.** Second build-lane design deliverable of the R7 §4 backlog (item 2:
+"the consent placement — A4 asked for 'why and who sees it' BEFORE the fields — has no R5
+mockup; it rides the product lane with the M2b custody pattern as its template"). Executed
+under the loop's doctrine: evidence classes, declarations through the round-grade process,
+async veto open. Study only: no product code, `GARUDA_PUBLIC_ENABLED` untouched.
+
+## §1 Ground — every consent and PII-ask surface, as it exists (class a; ground pass by a
+dispatched reader, the load-bearing claims re-verified by the conductor against the tree)
+
+**A4 (GARUDA dates + consent), `visa/voa/page.tsx`:** the wizard step renders entry date →
+passport expiry → THEN a bare acknowledgement checkbox (`retention_notice_acknowledged`,
+page.tsx:356-369): "I understand how my answers are stored and that I can delete this check
+any time." It names no duration, no who-sees, links no policy — R1-A4's measured trigger
+("storage consent after the fields", R1:105) confirmed byte-for-byte.
+
+**A6 (passport upload), `upload/UploadFlow.tsx` + `messages.ts`:** ZERO custody language.
+The four-bullet checklist is photo-quality only; grep for consent/privacy/retention across
+the upload dir returns nothing. The funnel's most sensitive ask carries the least copy —
+R1-A6's finding, still true. M2b (R5) designed the cure but its custody module is
+placeholder tokens (`{CUSTODY_WHO_SEES}` · `{CUSTODY_RETENTION}`), never filled.
+
+**Magic-link email, `[hash]/page.tsx:343-345`:** mechanism explainer only ("we'll send a
+one-time link, no password") — no data-handling line.
+
+**Checkout email+phone, `CheckoutFlow.tsx:105-135`:** bare labels, no consent surface; the
+why lives in a code comment the user never sees. (The checkout LANE's design already cures
+this surface — §3.1 of that report; this lane inherits it.)
+
+**Visa Oracle:** the one REAL consent block in the ecosystem is `ConsentHandoff.tsx:39-58`
+(scope, 2h TTL, no-CRM-record, guardian gate, schema-versioned expiring receipt) — but it
+gates the WhatsApp handoff at the END; the 15-question interview, overstay and minors
+included, has no upfront data-collection statement. `WhyWeAsk.tsx` explains PROVENANCE per
+question (the closest live analogue to say-why-before-the-field), not custody. `visa/match`
+has zero consent language.
+
+**Backend reality (migrations 281/284/285/286):** the machinery that EXISTS is real —
+`visa_decision_retention_policies` is a Zero-signed retention authority
+(scopes VISA_DECISION / GARUDA_CHECK / GARUDA_ORDER / GARUDA_MAGIC_LINK), and
+`garuda_voa_checks`/`_check_results`/`_magic_link_tokens` fail-closed at INSERT on both the
+acknowledgement timestamp and an active policy. What does NOT exist: any consent RECORD
+(no policy-text version, no per-client proof, no revocation event — grep `consent` across
+migrations_v2 DDL: zero columns); and `garuda_orders` — the table holding
+`applicant_full_name/email/phone/passport_number` (284:52-55) — has NO consent column and
+NO retention-binding trigger (verified: zero `consent` occurrences in 284). The
+PII-heaviest table has the least governance.
+
+**The privacy-policy contradiction (verified verbatim by the conductor):**
+`visa/privacy/page.tsx:60-71` states "We do not collect, and have no interest in
+collecting:" — name, email, passport number, phone number, photographs. GARUDA VOA collects
+ALL FIVE. Today GARUDA is dark, so the page misleads no live VOA customer — but it becomes
+false THE MOMENT the flag arms. And neither GARUDA VOA nor Visa Match links ANY privacy
+policy from any screen (grep zero matches); four separate privacy pages exist
+(root, /v2, /visa, /visa-oracle), only the Oracle shell links its own.
+
+## §2 The two tensions this design resolves
+
+**T1 — the explanation comes after the ask, everywhere except the Oracle handoff.** A4 puts
+the storage notice after the fields; A6 says nothing at all; magic-link and checkout say
+nothing; the interview front-loads no custody. R1's fix hypothesis ("say why and who sees
+it, before the fields", A4/A6 rows) + R4's question protocol ("Why we ask" on every
+question) + M2b's custody template all point one way: the custody statement is a COMPONENT
+that precedes or accompanies every PII ask — never trails it.
+
+**T2 — the live copy promises what no machinery keeps, while real machinery goes unnamed.**
+A4's checkbox promises "delete any time" with no user-facing delete path audited; the
+2026-08-09 consent ruling itself warns "deciding to collect consent is not having it"
+(SYMBIOSIS Law 2: no clause, no per-client proof, no revocation mechanism yet). Meanwhile
+the ONE thing the backend actually guarantees — a Zero-approved retention interval, policy
+row per scope — is exactly what the copy never states. The design inverts both: state the
+REAL duration (the value exists in `visa_decision_retention_policies`), and stop promising
+the delete path until its mechanism is audited (placeholder-constrained, R4 §5 "never
+invented reassurance" — the upload custody line's own law, R4:118).
+
+## §3 Design decisions (mockup: `mockups/consent-placement/a4-dates-consent.html` — the
+A4 screen redesigned as the pattern's reference implementation)
+
+1. **The custody module is ONE reusable component** — three lines + one link, rendered
+   BEFORE the fields it governs: "Why we ask" (per R4 question protocol) · "Who sees it:
+   {CUSTODY_WHO_SEES}" · "Kept for {RETENTION_WINDOW} — the retention interval is the
+   POLICY TABLE's value, never authored in copy" · "How we handle your data →
+   {PRIVACY_LINK}". Placeholder-constrained where no audited fact exists (who-sees needs
+   the same audit M2b's law already demands, R4:118); real where the backend already
+   guarantees it (the duration).
+2. **A4 reference implementation**: identity header (R4:108) → counter ("Question {X} of
+   {Y}") → custody module → date fields (unambiguous form, "27 Aug 2026") → the
+   acknowledgement checkbox LAST but now pointing at copy the user has already read, with
+   the real duration in its label: "I've read how my answers are stored (kept
+   {RETENTION_WINDOW})." The delete-any-time promise is REMOVED from the label until the
+   erasure path is a user-facing, audited mechanism (§5.3) — migration 286 designed
+   erasure capability, no screen exposes it.
+3. **A6 upload inherits M2b with values**: the module's `{CUSTODY_RETENTION}` is fillable
+   TODAY from the policy table — the data exists; `{CUSTODY_WHO_SEES}` stays a placeholder
+   until the who-sees audit lands (R4:118's own constraint). No new mockup — M2b is
+   amended by reference, not redrawn (§6.2).
+4. **Magic-link email gains one line** under the field: "Used once, to send this link.
+   {PRIVACY_LINK}." — mechanism + custody in nine words.
+5. **Oracle interview start gains the custody module** (before question 1, same component);
+   `ConsentHandoff` is NOT touched — it is the ecosystem's best consent surface and stays
+   the end-gate for the WhatsApp handoff. `WhyWeAsk` stays per-question provenance.
+6. **Every funnel screen links the scoped privacy policy** in the trust strip — GATED
+   (§6.3) on the policy itself being corrected first: linking today's `/visa/privacy` from
+   GARUDA would wire a page that denies collecting what the funnel collects (§1). The
+   arm-order is: fix policy → link policy → arm flag. Never the reverse.
+7. **Checkout**: no changes — the checkout lane's §3.1 (why-we-ask before email/phone) and
+   consent line ARE this pattern's instances; this lane only names them as such.
+
+## §4 Behavioral acceptance (what a build must prove)
+
+- On every screen that asks for PII (A4 dates, A6 upload, magic-link email, checkout,
+  Oracle interview start), a custody module renders BEFORE or WITH the ask — a PII input
+  whose screen lacks the module is a failed build.
+- `{RETENTION_WINDOW}` renders the ACTIVE policy row's interval for the surface's scope;
+  no active policy, no rendered duration (and the INSERT gate would refuse the write
+  anyway — the copy and the gate read the same row).
+- No rendered copy promises deletion/revocation unless a user-facing erasure path exists
+  and is audited (would_fail_if: "delete" appears in consent copy while no route serves
+  it).
+- The acknowledgement checkbox cannot be pre-checked, and the step cannot advance without
+  it (the DB gate at 281:275-277 stays the backstop).
+- The privacy link renders on every funnel screen ONLY when it targets the corrected,
+  surface-scoped policy (§6.3's gate).
+- Text-only zoom, 44px targets, rem type scale — inherited from the checkout lane's
+  acceptance, same instruments.
+
+## §5 Findings handed to product lanes (not design's to fix)
+
+1. **The `/visa/privacy` policy is an arm-time trap.** It affirmatively denies collecting
+   the five things GARUDA VOA collects (verified verbatim, page.tsx:60-71). GARUDA's
+   arm-order MUST sequence: correct/scope the policy → link it from the funnel → arm the
+   flag. This belongs in the GARUDA mandate's pre-5% checklist as a BLOCKER. (class a)
+2. **`garuda_orders` has no retention binding and no consent column** while holding the
+   funnel's heaviest PII — contrast the three sibling tables that fail closed at INSERT.
+   Bind it to the GARUDA_ORDER policy scope like its siblings. (class a)
+3. **No user-facing erasure path exists** while A4's live label promises "delete any
+   time". Either build+audit the path (286 designed the capability) or the copy overclaims
+   today. (class a)
+4. **No consent LEDGER exists** — `retention_notice_acknowledged_at` is a timestamp gate,
+   not a record of what was shown (policy text version, per-client proof, revocation
+   event). SYMBIOSIS Law 2's own 2026-08-09 ruling names this gap unarmed; a consent
+   ledger is its cure and predates any "we recorded your consent" copy. (class a)
+5. **Four privacy pages, no owner**: root, /v2, /visa, /visa-oracle — which is canonical
+   per surface, who maintains them, and the /visa one is wrong (finding 1). Consolidation
+   is a product/legal decision. (business decision)
+6. **The who-sees audit** (R4:118's prerequisite for M2b's `{CUSTODY_WHO_SEES}`) still
+   does not exist — until it lands, every custody module ships that field as a declared
+   placeholder. (ops prerequisite)
+
+## §6 Declarations (adopted under the standing pre-confirmation, async veto open)
+
+1. **Custody-before-ask is funnel law for every PII ask**: a screen that asks for personal
+   data renders the custody module (why · who sees · kept-for · policy link) before or
+   with the ask — A4's after-the-fields checkbox pattern is superseded. Alternative: keep
+   per-screen ad-hoc copy (rejected: five surfaces, four different behaviors today, three
+   with nothing at all — the component is the cure for the inconsistency itself).
+2. **M2b's custody module is amended by reference to carry the REAL retention value** from
+   `visa_decision_retention_policies` ({CUSTODY_RETENTION} → {RETENTION_WINDOW}, same
+   semantics), keeping {CUSTODY_WHO_SEES} placeholder-constrained until the audit (R4:118
+   unchanged). Alternative: redraw M2b (rejected: the mockup is right; only its token
+   needed grounding).
+3. **Funnel screens link the scoped privacy policy — gated on the policy correction**
+   (§5.1): the link ships in the design now, renders only when its target stops
+   contradicting the funnel. Alternative: link immediately (rejected: wiring a page that
+   denies the collection it describes would be the exact anti-pattern this lane exists to
+   kill); no link (rejected: two funnels currently orphan every policy — that is the
+   status quo being cured).
+4. **Consent copy never outruns machinery**: the design states the duration the backend
+   enforces, and strips the delete-any-time promise until an audited erasure path exists
+   (§5.3). This is R4 §5's "never invented reassurance" applied to legal copy.
+   Alternative: keep the friendlier promise (rejected: the doctrine's own words — deciding
+   to collect consent is not having it; promising deletion is not serving it).
+
+## Adversarial review (§7)
+
+PENDING-PANEL — risk-tier: four §6 declarations spanning five funnel surfaces and legal
+copy → round-grade panel (four cross-family seats, filesystem seat verifying §1 against
+the live tree, dispositions row-by-row), same protocol as the checkout lane.
+
+## §Meta
+
+The ground pass found the ecosystem's consent story inverted twice: the best consent block
+(Oracle handoff) sits where nothing is being collected anymore, and the heaviest
+collection (upload, orders) sits where nothing is said. The design's one idea is symmetry:
+one custody component, everywhere the funnel asks, stating exactly what the backend
+already guarantees — and refusing to say one word more than that.
+
+=== MOCKUP DRAFT (a4-dates-consent.body.html) ===
+<!-- GARUDA A4 — dates + consent, redesigned as the CUSTODY-BEFORE-ASK reference
+     implementation (consent-placement lane, R7 §4 item 2; §6.1 declaration).
+     The custody module (why · who sees · kept-for · policy link) renders BEFORE the
+     fields it governs — inverting the live screen, which renders the acknowledgement
+     checkbox after every field with no duration, no who-sees, no link.
+     {RETENTION_WINDOW} is the ACTIVE policy row's interval (visa_decision_retention_policies,
+     scope GARUDA_CHECK) — never authored in copy. {CUSTODY_WHO_SEES} stays a declared
+     placeholder until the who-sees audit lands (R4:118). The delete-any-time promise is
+     ABSENT by design until a user-facing erasure path exists (§6.4).
+     Rem type tokens (R7 §2 am. 3 scope), 44px targets, identity header (R4:108). -->
+<style>
+  :root{
+    --carta:#f7f6f2; --elevated:#ffffff; --ink:#16213a; --ink-soft:#475372;
+    --border-input:#7a8093; --hairline:#e3e1da;
+    --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+    --radius:12px; --radius-nested:8px; --motion:220ms;
+    --font-display:"Cormorant Garamond",Georgia,serif;
+    --font-ui:"Inter",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    --t-body:1rem; --t-small:.8125rem; --t-label:.875rem; --t-h1:1.5rem; --t-h2:1.125rem;
+  }
+  .a4{background:var(--carta);color:var(--ink);font-family:var(--font-ui);font-size:var(--t-body);
+      line-height:1.55;max-width:26rem;margin:0 auto;padding:1rem 1rem 2rem}
+  .a4 .idh{display:flex;justify-content:space-between;align-items:center;min-height:2.75rem;margin-bottom:.25rem}
+  .a4 .idh .wm{font-family:var(--font-display);font-weight:600;font-size:var(--t-h2);
+      letter-spacing:.08em;color:var(--ink);text-decoration:none;display:inline-flex;
+      align-items:center;min-height:2.75rem}
+  .a4 .idh .idh-right{display:flex;gap:.5rem}
+  .a4 .idh .idh-right a{display:inline-flex;align-items:center;min-height:2.75rem;
+      padding:0 .5rem;font-size:var(--t-small);color:var(--ink);text-decoration:none}
+  .a4 .idh .idh-right a.wa{color:var(--merah-action);text-decoration:underline}
+  .a4 .counter{font-size:var(--t-small);color:var(--ink-soft);margin-bottom:.75rem}
+  .a4 h1{font-family:var(--font-display);font-size:var(--t-h1);font-weight:600;margin:.25rem 0 .75rem}
+  /* ══ THE CUSTODY MODULE — the reusable component this lane declares (§6.1).
+        Renders BEFORE the fields, on every screen that asks for personal data. ══ */
+  .a4 .custody{border:1px solid var(--hairline);border-left:3px solid var(--ink);
+      border-radius:var(--radius-nested);background:var(--elevated);
+      padding:.75rem 1rem;margin-bottom:1rem;font-size:var(--t-small);color:var(--ink-soft)}
+  .a4 .custody p{margin:.25rem 0}
+  .a4 .custody b{color:var(--ink);font-weight:600}
+  .a4 .custody .mono{font-family:var(--font-mono);color:var(--ink)}
+  .a4 .custody a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  .a4 .field{margin-bottom:.75rem}
+  .a4 label{display:block;font-size:var(--t-label);font-weight:600;margin-bottom:.25rem}
+  .a4 .hint{font-size:var(--t-small);color:var(--ink-soft);margin:.125rem 0 .25rem}
+  .a4 input[type=text]{width:100%;min-height:2.75rem;font:inherit;color:var(--ink);
+      background:var(--elevated);border:1px solid var(--border-input);
+      border-radius:var(--radius-nested);padding:.5rem .75rem}
+  .a4 input:focus{outline:2px solid var(--ink);outline-offset:1px}
+  .a4 .ack{display:flex;gap:.625rem;align-items:flex-start;border:1px solid var(--hairline);
+      border-radius:var(--radius-nested);background:var(--elevated);padding:.75rem 1rem;
+      margin:1rem 0;font-size:var(--t-label)}
+  .a4 .ack input[type=checkbox]{width:1.25rem;height:1.25rem;margin:.125rem 0 0;flex:0 0 auto}
+  .a4 .ack label{font-weight:400;margin:0;font-size:var(--t-label)}
+  .a4 .cta{display:flex;justify-content:center;width:100%;min-height:2.75rem;
+      background:var(--merah-action);color:#fff;border:0;border-radius:var(--radius);
+      font:600 var(--t-body) var(--font-ui);padding:.75rem 1rem;cursor:pointer;
+      transition:background var(--motion)}
+  .a4 .cta:active{background:var(--merah-pressed)}
+  @media (prefers-reduced-motion: reduce){ .a4 .cta{transition:none} }
+</style>
+
+<div class="a4">
+  <header class="idh">
+    <a class="wm" href="{HOME_LINK}">BALI ZERO</a>
+    <span class="idh-right"><a href="{LANG_TOGGLE}" aria-label="Ganti bahasa">EN · ID</a><a class="wa" href="{WA_HEADER_LINK}">WhatsApp</a></span>
+  </header>
+
+  <p class="counter">Question {X} of {Y}</p>
+  <h1>Your dates</h1>
+
+  <!-- ══ Custody module — BEFORE the fields (§6.1). Real duration, placeholder who-sees,
+       no delete promise until the erasure path is audited (§6.4). ══ -->
+  <aside class="custody" aria-label="How your answers are handled">
+    <p><b>Why we ask:</b> your entry date and passport expiry decide which visa paths are
+    open to you — nothing else on this page is used for the check.</p>
+    <p><b>Who sees it:</b> {CUSTODY_WHO_SEES}</p>
+    <p><b>Kept for:</b> <span class="mono">{RETENTION_WINDOW}</span> — then deleted
+    automatically.</p>
+    <p><a href="{PRIVACY_LINK}">How we handle your data →</a></p>
+  </aside>
+
+  <div class="field">
+    <label for="a4-entry">Planned entry date</label>
+    <p class="hint">Example: 27 Aug 2026</p>
+    <input id="a4-entry" type="text" inputmode="numeric" autocomplete="off" value="{ENTRY_DATE}">
+  </div>
+  <div class="field">
+    <label for="a4-expiry">Passport expiry date</label>
+    <p class="hint">Example: 27 Aug 2026</p>
+    <input id="a4-expiry" type="text" inputmode="numeric" autocomplete="off" value="{PASSPORT_EXPIRY}">
+  </div>
+
+  <!-- Acknowledgement LAST — but it now points at copy already read, and states the real
+       duration. The live "I can delete this check any time" promise is gone until §5.3's
+       erasure path exists. The DB gate (281:275-277) stays the backstop. -->
+  <div class="ack">
+    <input id="a4-ack" type="checkbox">
+    <label for="a4-ack">I've read how my answers are stored — kept
+    <span style="font-family:var(--font-mono)">{RETENTION_WINDOW}</span>, then deleted.</label>
+  </div>
+
+  <button class="cta" type="button">Continue →</button>
+</div>

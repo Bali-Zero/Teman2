@@ -10,6 +10,7 @@ import {
 } from "@/lib/kbli-bali-block";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
 import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
+import { riskLabelEn } from "@/lib/kbli-derive";
 import { pmaSourceNoteFaq } from "@/lib/kbli-pma-source";
 
 export interface KbliFaqEntry {
@@ -321,7 +322,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const licenseAnswer = code.riskDispute
     ? `The licensing rows on this record list ${code.riskDispute.recordTiers.join(" / ")} across its scopes and business scales.${licenseQualifier}${riskDisputeQualifier}`
     : code.licensing.length > 0
-      ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}${licenseQualifier}`
+      ? `KBLI ${code.code} has a ${riskLabelEn(code.licensing[0].riskCategory) ?? code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}${licenseQualifier}`
       : // No OSS-RBA scale rows. Discriminated by the structured provenance
         // state (TRACK-P), never by prose:
         code.provenance?.state === "not_classifiable"

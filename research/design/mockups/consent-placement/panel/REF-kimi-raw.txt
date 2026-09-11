@@ -1,0 +1,64 @@
+• I'll verify this systematically: read the doctrine sources myself, and dispatch parallel verification of the live-surface and migration claims.
+
+• Live-tree claims mostly check out, with one big problem (automatic deletion). Now I'll verify the doctrine citations myself.
+
+• Now the checkout-lane precedent file, which the report cites for §3.1/§5.4/§5.7 and PR #5099.
+
+• REFUTATION — consent-placement report + mockup. All evidence read at `/Users/nuzantara/nuzantara/.worktrees/docs-checkout-design` this session (HEAD `25f5cffcf`; checkout lane = PR #5099, confirmed OPEN — that citation is accurate).
+
+  ---
+
+  **F1 — CRITICAL — The mockup promises automatic deletion; no such machinery exists, and the report's own law forbids the sentence.**
+  Failing fragments (verbatim, mockup): `Kept for: <span class="mono">{RETENTION_WINDOW}</span> — then deleted automatically.` and the ack label `kept <span …>{RETENTION_WINDOW}</span>, then deleted.`
+  Why: the report's own §6.4 declares "Consent copy never outruns machinery" and §4 sets `would_fail_if: "delete" appears in consent copy while no route serves it`. The migrations disown automation explicitly: zero `pg_cron`/scheduler hits in `migrations_v2/`; purge is operator-invoked only — `281:809-810` "requires an explicit operator grant and scheduler", `264:11-12` "no scheduler cadence is invented here", `286:390-391` same wording; DELETE on `garuda_voa_checks` is actively forbidden outside the bounded purge (`281:432-452`). "Deleted automatically" is therefore invented reassurance — the exact defect §6.4 claims to cure — and it appears twice. Compounding it: the mockup's own header comment states "The delete-any-time promise is ABSENT by design until a user-facing erasure path exists (§6.4)" while the body renders a deletion promise; and report §3.2 quotes the ack label as "I've read how my answers are stored (kept {RETENTION_WINDOW})." — the report and its mockup diverge on the very string the report quotes itself. The "then deleted" clause is declared nowhere in §6.
+
+  **F2 — CRITICAL — "The data exists" is false: the policy table is empty by design; there is no real duration to render today.**
+  Failing fragments: §3.3 "the module's `{CUSTODY_RETENTION}` is fillable TODAY from the policy table — the data exists"; §2 "the ONE thing the backend actually guarantees — a Zero-approved retention interval, policy row per scope"; §3.1 "the retention interval is the POLICY TABLE's value, never authored in copy".
+  Why: `264_visa_decision_retention_policy.sql:5-7` — "This migration deliberately seeds NO duration and NO policy row"; repo-wide grep for `INSERT INTO public.visa_decision_retention_policies` returns zero; `281:15-20` confirms inserts fail closed "until Zero records an explicit duration/anchor/effective-period/approver". The COLUMN exists (`retention_interval`, 264:26-27); no VALUE does. §4's "no active policy, no rendered duration" is the honest position — but it contradicts §2/§3's present-tense claims, and if applied today the mockup's `{RETENTION_WINDOW}` renders nothing, making the mockup's central copy unshippable as drawn.
+
+  **F3 — HIGH — Silent violation of the trust-block funnel law: the mockup has no trust footer at all, and no §6 declaration covers the omission.**
+  Why: R7 §2 amendment 4 (verbatim, R7:72-76): "No funnel page ships without the role-separation line + the PT/NPWP/registry line (already law), PLUS a visible physical office address in the trust block." The declared template M2b carries the PT/NPWP footer (`m2b-garuda-upload.body.html:42-44`); the checkout-lane mockup carries the full trust block (`checkout.body.html:162-168`). The A4 mockup ends at the CTA — no role-separation line, no PT/NPWP, no registry link, no address. R7 §8.1: a deviation is "a declared amendment through a round-grade process — never a silent edit". This is a silent edit against funnel law on the lane's reference implementation.
+
+  **F4 — HIGH — The report drops both findings the checkout lane explicitly handed to this lane, while citing them as sources.**
+  Failing fragments: frontmatter "checkout lane (§3.1 why-we-ask, §5.4/§5.7 findings)"; §3.7 "Checkout: no changes".
+  Why: checkout §5.4 (checkout-garuda-design.md:176-179): "The consent-lane question (backlog item 2) is therefore placement AND deduplication — checkout must prefill the session email, and the consent copy must cover both asks." Checkout §5.7 (:186-187): "Consent form (checkbox vs by-paying-you-agree) and its UU PDP adequacy belong to the consent lane." The consent report addresses neither: §3.4 adds a magic-link line without acknowledging email is collected twice (checkout §1:47 — checkout is "its SECOND ask for email"), §3.7 waves checkout off, and UU PDP adequacy appears nowhere. Two explicit handoffs, silently dropped — §5.4/§5.7 are cited as inputs and never consumed.
+
+  **F5 — MEDIUM — The mandate is misquoted, and the misquote amputates half of it.**
+  Failing fragment ("What this file is"): `item 2: "the consent placement — A4 asked for 'why and who sees it' BEFORE the fields — has no R5 mockup; it rides the product lane with the M2b custody pattern as its template"`.
+  Why: the actual text (R7:177-179) is: "Consent placement (R1-A4, unmocked): why-and-who-sees-it BEFORE the fields, M2b's custody pattern as template — plus the custody-line AUDIT that unlocks M2b's own placeholders (R4 §5's honesty constraint stands: no audited facts, no reassurance copy)." The quoted sentence does not exist; the omitted second half — the custody audit as part of item 2 — is precisely what §5.6 later downgrades to an "ops prerequisite". The lane re-scoped its own mandate inside quotation marks.
+
+  **F6 — MEDIUM — "R4:118" is cited six times for the custody law; the custody law is R4:120. R4:118 is the WhatsApp-handoff law.**
+  Failing fragments: §2 "the upload custody line's own law, R4:118"; §3.1, §3.3, §5.6, §6.2, and the mockup header comment, all "R4:118".
+  Why: `2026-08-27-r4-identity-merah-putih-token-spec.md:118` = "WhatsApp handoff (D-V9 cure, privacy-constrained)…"; line 120 = "Upload custody line (D-G5 cure, honesty-constrained): the line states only AUDITED facts about who sees the passport and retention; that audit does not exist yet (R1) … never invented reassurance." Doctrine content correctly paraphrased, pointer wrong by two lines, propagated to six locations including the mockup.
+
+  **F7 — MEDIUM — §1 overgeneralizes the fail-closed claim onto the magic-link table.**
+  Failing fragment: "`garuda_voa_checks`/`_check_results`/`_magic_link_tokens` fail-closed at INSERT on both the acknowledgement timestamp and an active policy".
+  Why: `garuda_magic_link_tokens` (`285:158-178`) has no `retention_notice_acknowledged_at` column at all — only the policy half fails closed (`285:236-241`). The omission is legitimate design (15-minute auth artifact, 285:51-56), but the report's sentence is false as written, and §4's "the DB gate at 281:275-277 stays the backstop" inherits the overgeneralization for the magic-link surface. (281:275-277 itself verified verbatim — that pointer is exact.)
+
+  **F8 — MEDIUM — An English translation is presented, in quotes, as the ruling's own words; the source is Italian.**
+  Failing fragments: §2 `the 2026-08-09 consent ruling itself warns "deciding to collect consent is not having it"`; §6.4 "the doctrine's own words — deciding to collect consent is not having it".
+  Why: SYMBIOSIS.md:212-214, verbatim: "Decidere di raccogliere il consenso non è averlo: mancano la clausola a contratto, la registrazione della prova per-cliente, il meccanismo di **revoca** e l'enforcement…". The loop's own convention marks Italian with «»; a double-quoted English sentence attributed to an Italian ruling is a fabricated verbatim, however faithful the translation.
+
+  **F9 — MEDIUM — A4's fix hypothesis is attributed to "A4/A6 rows"; it exists only in A4's row.**
+  Failing fragment: §2 "R1's fix hypothesis ('say why and who sees it, before the fields', A4/A6 rows)".
+  Why: R1:105 (A4) fix hypothesis = "say why and who sees it, before the fields" (verified, line exact). R1:108 (A6) fix hypothesis = "who sees it, how long, retake; live feedback on the photo" — the quoted string does not appear in A6's row.
+
+  **F10 — LOW — §1's "Backend reality (migrations 281/284/285/286)" attributes the policy table to a set that does not create it, and "Zero-signed" skips the source's own caveat.**
+  Why: `visa_decision_retention_policies` is created in `264_visa_decision_retention_policy.sql:20-49` (comment: "Zero-approved retention authority"), a file absent from the report's source list; 281/285 only extend its scopes. `281:11-13` explicitly demystifies "signed": "NOT a cryptographic signature". The report's phrasing invites the stronger reading its source forbids.
+
+  **F11 — LOW — `ConsentHandoff.tsx:39-58` covers four of the five claimed properties; the fifth lives in another file.**
+  Failing fragment: §1 "ConsentHandoff.tsx:39-58 (scope, 2h TTL, no-CRM-record, guardian gate, schema-versioned expiring receipt)".
+  Why: the copy block is lines 40–58 and carries scope/TTL/no-CRM/guardian; `CONSENT_SCHEMA_VERSION = 2`, the receipt interface and the fail-closed expiry validation are in `_lib/consent-store.ts:3,18-27,99-128`, uncited.
+
+  **F12 — LOW — The mockup's header claims outrun its CSS: "44px targets" vs a 20px checkbox; counter without `aria-live`; the "EN/ID toggle" is a single link.**
+  Why: mockup comment claims "44px targets"; `.a4 .ack input[type=checkbox]{width:1.25rem;height:1.25rem}` = 20px against R4:146's 44px floor and the checkout lane's §3.9 ("every interactive element … carries the 44px floor"). M2b's counter carries `aria-live="polite"` (m2b:13); A4's `<p class="counter">` drops it. R4:108 law specifies an "EN/ID toggle"; the mockup ships one anchor reading "EN · ID". None declared in §6; the third also contradicts §6.1's claim that the module is "the reference implementation" of the header law.
+
+  **F13 — LOW — §3.4's "mechanism + custody in nine words" miscounts itself.**
+  "Used once, to send this link." is six words; the claim only reaches nine by silently including the unwritten link text. Trivial, but this lane's currency is exactness.
+
+  ---
+
+  Verified accurate (for the panel's disposal, not mitigation): A4 checkbox label and lines 356–369 exact; upload-dir zero-custody grep exact (one unrelated dev-comment hit in `types.ts:9`); magic-link lines 343–345 verbatim; CheckoutFlow 105–135 and the header-comment "why" (lines 16–19) exact; `/visa/privacy` 60–71 verbatim with all five items; zero privacy links in VOA/Match and four privacy pages confirmed; `281:275-277` verbatim; `garuda_orders` 52–55 confirmed (columns are uniformly `applicant_*`, incl. `applicant_passport_number` — the report's "`passport_number`" shorthand is imprecise but the line pointer is right); zero `consent` columns in migrations confirmed (five comment hits, all disclosed here); 286's erasure capability confirmed (`286:78-86`); R1:105, R4:108, R7 §4 item 2's existence, R7 §2 am. 3, and PR #5099 all confirmed.
+
+  Disposition summary: F1–F2 are disqualifying as drafted — the deliverable's reference mockup violates the report's own §6.4/§4 law and asserts a data availability the migrations explicitly negate; F3–F5 are declaration-discipline breaches against the checkout lane's own precedent (which declared its trust block, its inherited-handoff consumption, and quoted its mandate verbatim).
+

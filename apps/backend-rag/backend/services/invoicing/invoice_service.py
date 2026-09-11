@@ -19,6 +19,7 @@ import asyncpg
 import httpx
 from googleapiclient.errors import HttpError as GoogleHttpError
 
+from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_crm_stats
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
@@ -311,7 +312,7 @@ class InvoiceAutomationService:
             f"<p>Payment can be made via bank transfer to the details provided on the invoice.</p>"
             f"<p>We look forward to serving you!</p>"
             f"<p>Best regards,<br>Zantara — Bali Zero Team</p>"
-            f"<hr><small>For support: asya@balizero.com | WhatsApp: +62 821 3465 159</small>"
+            f"<hr><small>For support: asya@balizero.com | WhatsApp: {settings.CLIENT_CONTACT_WHATSAPP}</small>"
         )
 
         cc_emails = list(INVOICE_CC_EMAILS)

@@ -1,0 +1,129 @@
+task_id: reaper-cadence-3h-0831
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Portare il reaper dei worktree da una passata al giorno a otto, perché la
+  cadenza giornaliera non sopravvive a una raffica.
+
+  Stato di partenza, misurato il 2026-08-31: nella notte 30→31/8 un'ondata di
+  agent ha creato 40 worktree DOPO che la passata delle 00:15 era già scattata.
+  A ~1,2 GB di checkout l'uno hanno riempito il volume Data fino a 753 MB
+  liberi, e la passata successiva era a 24 ore di distanza.
+
+  Il punto che rende questa PR diversa da come si presenta il sintomo: il
+  reaper NON era morto e NON era mis-schedulato. Il suo log porta rimozioni
+  vere, e sulla raffica ha protetto correttamente ogni worktree con commit non
+  ancora su origin/main, un processo vivo o lavoro non committato. Ha solo
+  girato una volta al giorno. Il riflesso davanti a un disco pieno è dare per
+  rotto il pulitore; qui sarebbe stata la diagnosi sbagliata, e l'avrebbe
+  portata a "riavvia/reinstalla" invece che a "cambia la cadenza".
+
+  Gear 3 per PATH, non per raggio d'azione: il diff tocca
+  `infra/launchagents/*`, che è hot-zone in `scripts/evidence_pack_lint.py`
+  (HOTZONE_PATTERNS). Il pavimento è un limite inferiore deterministico
+  calcolato dal diff, mai una scelta di chi scrive: floor=3, source=path,
+  misurati con `--print-floor` e `--print-floor-source`.
+constraints:
+  - "Lo scarto al minuto :15 non si tocca su NESSUNA delle otto voci. È ciò
+    che impedisce a una passata di correre contro `wr2.worktree-gc` (:00) e
+    `worktree-gc-universal` (:30) sulla stessa `.worktrees/`. Sette firing in
+    più non devono introdurre una superficie di collisione nuova."
+  - "La label resta `com.nuzantara.agent-worktree-cleanup.daily` anche se ora
+    mente sulla cadenza. È un identificatore che le sonde del connettoma
+    grepano alla lettera — esplicitamente in launchd-m5-mini.yaml, implicitamente
+    su Pro via il kind-default `launchctl list | grep -F <label>` di
+    verify_connectome.py. Rinominarla per inseguire la cadenza spegnerebbe due
+    sonde in silenzio: la forma W120. La verità sulla cadenza va nel testo, non
+    nell'identificatore."
+  - "Nessuna modifica al comportamento del reaper stesso: le garanzie 2-AND
+    (nessun processo vivo AND già su origin/main), WIP-safe e skip-recent sono
+    fuori scope. Questa PR cambia QUANDO gira, mai COSA decide."
+  - "Niente installazione della copia viva prima del merge: sarebbe la deriva
+    HOME-fork (famiglia #1) creata proprio mentre si cura un problema di igiene."
+acceptance:
+  - text: >
+      WHEN launchd legge il plist, il campo StartCalendarInterval SHALL
+      contenere otto voci, tutte a Minute 15 e Hour 0/3/6/9/12/15/18/21 —
+      letto come VALORE, non dedotto da un 'lint OK'.
+    status: verified
+    probe: "plutil -extract StartCalendarInterval json -o - infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example"
+  - text: >
+      WHEN plistlib.load() apre il file, esso SHALL parsare senza ExpatError —
+      cosa che PRIMA di questa PR falliva per via del `--` nel commento XML.
+    status: verified
+    probe: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(len(d[''StartCalendarInterval'']), d[''Label''])"'
+  - text: >
+      WHERE audit_launchd_crons deriva l'intervallo dal numero di voci, il
+      valore SHALL essere 86400//8 = 10800 secondi.
+    status: verified
+    probe: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(86400//len(d[''StartCalendarInterval'']))"'
+  - text: >
+      WHEN la suite broker-hygiene gira sui path toccati, essa SHALL restare
+      verde senza fallimenti.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_agent_worktree_cleanup_cron.py scripts/tests/test_agent_start.py -q"
+  - text: >
+      IF la riga `consumer` del connettoma viene modificata, il file YAML
+      SHALL continuare a caricarsi.
+    status: verified
+    probe: 'python3 -c "import yaml;yaml.safe_load(open(''docs/connectome/edges/launchd-pro.yaml''));print(''yaml-ok'')"'
+  - text: >
+      WHILE la label resta `...daily`, ogni sonda che la grepa alla lettera
+      SHALL continuare a trovarla — l'identificatore non cambia, cambia solo
+      la cadenza che il testo dichiara.
+    status: verified
+    probe: 'python3 -c "import plistlib;print(plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''))[''Label''])"'
+risks:
+  - "La cadenza è una CADENZA, non una garanzia: fra due passate una raffica
+    può ancora riempire il disco. Tre ore riducono il caso peggiore da ~24h a
+    ~3h, non lo azzerano. Misurato durante questa stessa sessione: i worktree
+    sono risaliti da 34 a 36 in pochi minuti mentre la PR era aperta. Se una
+    lane conia checkout a ritmo sostenuto, la cura resta il `--release`
+    esplicito, non l'attesa del reaper. Dichiarato nel runbook."
+  - "Sette esecuzioni in più al giorno significano sette occasioni in più che
+    il reaper trovi un worktree in una finestra ambigua (appena creato, non
+    ancora toccato). Le protezioni skip-recent e WIP restano quelle di prima e
+    non sono state ri-tarate per la frequenza maggiore: se emergesse un reap
+    prematuro, il sospetto va lì, non sullo schedule."
+  - "La cura al commento XML cambia ciò che audit_launchd_crons.py RIPORTA per
+    questo cron: prima una riga d'errore di parsing, ora una riga vera. Se
+    qualcosa a valle si era tarato sull'assenza di quel dato, ora vedrà un
+    valore dove prima vedeva un buco. Direzione dell'errore: più informazione,
+    mai meno."
+grader: |
+  Verifica indipendente della sessione conduttrice (generator != grader: chi ha
+  scritto il diff non lo giudica). Dispatch `spalla-review` su contesto fresco,
+  con sei domande di refutazione mirate: validità dell'array per launchd,
+  esistenza di codice che fissi la vecchia forma a dizionario, verità della
+  tesi sulle sonde che grepano la label, solidità della correzione UTC/locale,
+  sovra-affermazioni, e riferimenti mancati.
+
+  Verdetto: NESSUN BLOCCO. Tre esiti utili, tutti recepiti:
+  (1) `docs/connectome/edges/launchd-pro.yaml:109` portava `consumer:
+  "... (00:15)"`, reso stantio da questa PR — corretto.
+  (2) I numeri dell'incidente erano asseriti senza provenienza — ora la
+  provenienza è dichiarata nel plist, separando ciò che è stato MISURATO da ciò
+  che è REPORT DEL PROPRIETARIO (vedi `residual_risks` nel pack).
+  (3) Difetto EREDITATO trovato di passaggio: il commento XML conteneva una
+  coppia di trattini letterale, che XML vieta, per cui `plistlib.load()`
+  sollevava ExpatError. Curato qui perché vive nelle righe che questa PR
+  riscrive; dichiarato come ereditato, non come introdotto.
+  PRECISATO DOPO VERIFICA (2026-08-31), perché la prima stesura saltava un
+  passaggio: `audit_launchd_crons.py` non legge affatto questo file: legge
+  `~/Library/LaunchAgents`. La catena vera è che il difetto viaggia dal template
+  alla COPIA VIVA quando si esegue l'install, ed è stato poi misurato proprio
+  lì — il plist installato su questa macchina viene rifiutato da plistlib alla
+  riga 6, sulla forma trattata del commit W62 ORIGINALE (vedi `runtime_proof`
+  nel pack). Quindi l'affermazione «l'audit non riesce a controllare questo
+  cron» è vera, ed è vera da sempre, ma per via della copia installata, non del
+  file di repo. Corollario operativo: installare il template curato non cambia
+  solo la cadenza, ripara anche la cecità dell'audit.
+
+  Il grader ha inoltre RAFFORZATO una tesi della PR invece di limitarsi ad
+  accettarla: la dipendenza dalla label letterale non è solo esplicita su
+  M5/Mini, ma anche implicita su Pro per derivazione del probe di default.
+budget: |
+  Un round. Costruzione, review avversariale, recepimento dei tre esiti, questo
+  pacchetto di evidenze. Nessun secondo round: il grader non ha aperto blocchi.
+pii: none

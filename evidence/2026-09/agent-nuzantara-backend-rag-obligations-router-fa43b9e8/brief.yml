@@ -1,0 +1,60 @@
+task: >-
+  Obligations reviewer API, PR A2 of the compliance-stack build (lane A): a router at
+  /api/compliance/obligations (list/get/generate/approve/reject), CRM-admin gated, that lets
+  the tax team review the rows PR A1's propose() proposes and bridges an approved obligation
+  into compliance_alerts (one row, category "obligation") through the existing AlertRepository,
+  in the same transaction as the proposed->approved->alerted state change. Also closes PR A1
+  gate #6122's C4 follow-up (catalog-side FOREIGN_PLATFORM exclusion + API-side
+  needs_manual_classification flag on POST /generate for OTHER company_type profiles).
+lane: backend-rag/obligations-router
+machine: Pro
+date: 2026-09-11
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --numstat` against origin/main is 1021 added
+  lines / 7 removed, above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828).
+  No hot-zone path: no db/migrations_v2, no .env*, no fly.toml, no lockfile, no core/config.py,
+  no app/auth touched (migration 309 belongs to the sibling PR A1b, a separate worktree), so the
+  path term is 1. Computed exactly as CI: `git diff --name-only origin/main...HEAD` +
+  `git diff --numstat origin/main...HEAD` piped into
+  `scripts/evidence_pack_lint.py --print-floor`, which printed `2`. No pack.yml at gear 2.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Every mutating route (generate, approve, reject) 403s a non-admin caller; the read routes
+    (list, get) are gated the same way (DESIGN-lane-A.md specifies is_crm_admin for the whole
+    router; intake_review's broader own-chat read access does not apply here — there is no
+    per-user ownership axis on obligations).
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/unit/app/routers/test_compliance_obligations.py -k 403_for_non_admin
+  A2: >-
+    POST /generate persists new proposals and is idempotent: a second call over the same
+    (client, horizon) makes no new inserts and returns the same proposed rows.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/unit/app/routers/test_compliance_obligations.py -k generate_persists_and_is_idempotent
+  A3: >-
+    POST /{id}/approve writes exactly one compliance_alerts row and transitions
+    approved->alerted atomically; a second approve or a reject on an already-decided row is 409,
+    never a second alert.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/unit/app/routers/test_compliance_obligations.py -k "approve_writes_exactly_one_alert or approve_twice_is_409 or reject_after_approve_is_409"
+  A4: >-
+    POST /{id}/reject requires and records a non-empty reason (422 without one), is terminal, and
+    never writes compliance_alerts.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/unit/app/routers/test_compliance_obligations.py -k reject
+  A5: >-
+    The router is registered in both include_routers()/include_light_routers() and declared in
+    router_manifest.py (mirrors compliance_alerts — light process, no RAG deps); the whole
+    registration/manifest parity suite stays green.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/setup/test_manifest_registration_parity.py backend/tests/setup/test_router_registration_parity.py backend/tests/setup/test_router_manifest.py
+
+out_of_scope: >-
+  Migration 309 (client_obligations) — owned by the sibling PR A1b in another worktree; this PR
+  must merge AFTER it and is not deployed by this session. Sending obligation reminders
+  (compliance_alerts' own dispatcher does that, unchanged). National holidays in the due-date
+  roll (declared out of scope in PR A1). A dedicated real-DB test for ObligationsRepository (none
+  existed before this PR; this router is covered at the HTTP layer with fake repositories,
+  matching the intake_review unit-test template — DB-level coverage of upsert_proposals'
+  ON CONFLICT DO NOTHING is PR A1's contract, already gated in #6122).

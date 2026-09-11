@@ -1,0 +1,89 @@
+task_id: evidence-pertask-0827
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  PR #5092 (agent/nuzantara/ops/evidence-pertask -> main): ships a new rule 9
+  in `scripts/evidence_pack_lint.py` — "evidence root path deprecation" —
+  that flags (NOTICE before 2026-09-05, violation on/after) a Gear>=2 pack
+  still living at the fixed root path `evidence/pack.yml` instead of a
+  per-task directory under `evidence/<YYYY-MM>/<slug>-<8hex>/`, per
+  `scripts/ci/evidence_paths.py` (S12/C6, 2026-08-23). Motivation quoted
+  verbatim in this PR's own commit message: "root-level pack was a
+  structural conflict generator (4 PRs DIRTY in 1h)" — measured 2026-08-27
+  on #5069/#4640/#5037/#5059, all four going DIRTY on the same file pair
+  within one hour of a single merge, because two Gear>=2 PRs writing the
+  same root path can never coexist cleanly in the merge queue by
+  construction. Also wires a `--source-path` flag through
+  `.github/workflows/harness-floor.yml`'s Gear-3 pack-validation step, since
+  CI stages the real per-task pack under a canonical
+  `/tmp/evidence-check/evidence/pack.yml` name before linting it — rule 9
+  must judge the PR's own real (pre-staging) path, not the staged one, or
+  every PR (migrated or not) would misjudge as still-at-root.
+
+  Gear 3 by PATH, deterministic: touches `.github/workflows/harness-floor.yml`
+  and `scripts/evidence_pack_lint.py` is not itself in HOTZONE_PATTERNS by
+  name, but the workflow-file touch alone floors this at 3
+  (`.github/workflows/*` pattern). Honored, not argued with — and this pack
+  is itself the first real exercise of the very migration it ships: this PR
+  lands as a per-task-directory pack, not a root one, closing rule 9 against
+  its own diff on day one.
+constraints:
+  - "No PII/OSINT — pure CI-plumbing (Python linter rule, workflow YAML flag
+    plumbing, a scar-file doc entry, a registry entry, tests). Nothing here
+    touches client data."
+  - "Rule 9 must be a NOTICE-then-violation phased rollout identical in
+    shape to rule 8 (lanes seat diversity) — a hard cutover on landing would
+    retroactively fail every in-flight Gear>=2 PR still on the fixed root
+    path with zero warning window."
+  - "`--source-path` must default to the PACK_PATH positional argument
+    itself when omitted (so a bare local/manual invocation is still judged,
+    never silently skipped) — only a Python caller of
+    check_pack_not_at_deprecated_root() with no source_path info at all gets
+    a skip, mirroring rules 6/7's own no-changed-files-file skip shape."
+acceptance:
+  - "scripts/tests/test_evidence_pack_lint.py's rule-9 guilt+innocence cases
+    pass: a root-path pack pre-deprecation-date NOTICEs (rc=0); a root-path
+    pack post-deprecation-date is a violation (rc=1); a per-task-path pack
+    is clean at any date; a Python-caller invocation with no source_path
+    supplied is skipped (no claim), never silently treated as compliant."
+  - "The deterministic floor recomputed from this PR's own real changed-file
+    set is 3, and this brief declares gear 3 — never below it."
+  - "This PR's OWN evidence pack lives under
+    evidence/2026-08/agent-nuzantara-ops-evidence-pertask-99c496f7/, not at
+    the deprecated root path — dogfooding the migration it ships."
+consumer_map:
+  - '`.github/workflows/harness-floor.yml` — Gear-3 pack-validation step now
+    passes `--source-path "$PACK_PATH"` (the pre-staging real path).'
+  - "`scripts/evidence_pack_lint.py` — new rule 9
+    (`check_pack_not_at_deprecated_root` / `_pack_source_relpath`), consumed
+    by every Gear>=2 PR's own CI run from this PR forward."
+  - "`infra/guard-conformance/registry.json` — rule 9 is a new censused
+    `check_*` guard function; registered with guilt+innocence proof
+    pointers per this repo's guard-conformance mandate (superscar #3)."
+  - "`.claude/skills/modus/PENDING-ARMS.md` / `.claude/rules/cicatrix-scars.md`
+    — doc/ledger updates recording this fix's shipped state."
+risks:
+  - "The 2026-09-05 grace window means a Gear>=2 PR still writing the root
+    path today is NOTICE-only, not blocked — this PR does not retroactively
+    fix any currently-open PR still on the old convention; each must migrate
+    on its own before the cutover date (tonight's queue-shepherd sweep is
+    itself doing exactly that migration PR-by-PR as it re-evidences reds)."
+  - "`--source-path`'s default-to-PACK_PATH behavior means a caller who
+    forgets to pass it under CI staging conditions would silently judge the
+    wrong (always-compliant, staged-canonical) path — this is a real
+    footgun for any FUTURE CI integration point that stages the pack under a
+    different name and doesn't thread the flag through; today's only such
+    integration point (harness-floor.yml) is fixed in this same diff."
+grader: |
+  generator != grader: cross-family refuter (agy / Gemini 3.1 Pro,
+  non-Anthropic) reviewed the phased-rollout design and the --source-path
+  default-skip semantics before this pack was finalized. This session
+  independently re-derived the deterministic floor from the real changed-file
+  enumeration rather than trusting the brief's own stated gear.
+budget: |
+  Single-lane CI-plumbing mechanical sweep task. Flat-subscription seats
+  only (Claude Sonnet 5 build via this session, agy cross-family refuter).
+  No metered API spend, no cloud LLM touching PII (there is none in this
+  diff).
+pii: none

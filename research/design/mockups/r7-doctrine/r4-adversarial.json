@@ -1,0 +1,144 @@
+{
+ "refuters": [
+  {
+   "seat": "codex gpt-5.6-sol xhigh",
+   "scope": "red-team full spec: ruling fidelity, token-system completeness, contrast arithmetic, contract collisions (C1), PII surfaces, acceptance testability",
+   "findings_total": 30,
+   "applied": 27,
+   "rejected": 3,
+   "open": 0,
+   "note": "counts verified by an independent disposition-completeness check on a fresh subagent (generator≠grader twice over)"
+  },
+  {
+   "seat": "kimi-k3",
+   "scope": "refutation with R0-R3 cross-checks; independently recomputed all 37 cited contrast ratios — all exact",
+   "findings_total": 18,
+   "applied": 18,
+   "rejected": 0,
+   "open": 0,
+   "note": ""
+  },
+  {
+   "seat": "agy gemini-3.1-pro",
+   "scope": "constructive width: dark mode, local payments, institutional perception, WhatsApp component",
+   "findings_total": 15,
+   "applied": 14,
+   "rejected": 1,
+   "open": 0,
+   "note": "2 initially-untreated findings (QRIS/VA rails; institutional perception) were caught by the independent completeness check and then applied — the check earned its seat"
+  },
+  {
+   "seat": "qwen3.8-max (TP1)",
+   "scope": "consistency audit — SEAT FAILED",
+   "findings_total": 0,
+   "applied": 0,
+   "rejected": 0,
+   "open": 0,
+   "note": "read timeout on the full spec AND on a reduced §3-§5 excerpt retry; the door was alive at the last arsenal probe, so this is payload latency, not a dead seat. Recorded honestly: zero findings ingested"
+  }
+ ],
+ "dispositions": [
+  {
+   "severity": "high",
+   "claim": "Assigning #ff2d4c a dark-mode TEXT duty silently amends ruling Q-R3.2 («mai per testo, al più segnali»)",
+   "verdict": "applied",
+   "note": "became declared deviation D4 (§9.4): the overridden ruling is quoted, the deviation goes to veto — a measured 5.02 is never allowed to amend a ruling silently (codex 1, kimi concurring)"
+  },
+  {
+   "severity": "high",
+   "claim": "R3 required the error signal to LEAVE red; the spec keeps field errors red",
+   "verdict": "rejected",
+   "note": "declaration §9.2: the platform convention «errors are red» is itself an H4 asset; the CVD-safe signal is the icon+outline channel, and D-G2's third red meaning dies instead (selection is never red). Deviation declared for veto, not absorbed (codex 2)"
+  },
+  {
+   "severity": "high",
+   "claim": "The §4.1 application law forbade the spec's own state tokens (state-colored verdict text was illegal)",
+   "verdict": "applied",
+   "note": "law reworded to admit the five state tokens as measured foreground duties on carta/white (codex 3)"
+  },
+  {
+   "severity": "high",
+   "claim": "Dark mode was two ratios pretending to be a token system",
+   "verdict": "rejected",
+   "note": "rejected FOR SCOPE, not coverage: the spec adds the computed floor (ground/panel/text/soft/hairline-dark) but declines to build the full dark component system (border/focus/disabled/shadow, VO dark-theme migration map) in R4 — UNKNOWN 3 + §4.3 explicitly scope that to R5 under the same contrast law (codex 5, agy concurring on the floor)"
+  },
+  {
+   "severity": "high",
+   "claim": "hairline #e3e1da (1.21 on carta) as a component boundary fails WCAG SC 1.4.11",
+   "verdict": "applied",
+   "note": "duty narrowed to decorative dividers; border-input #7a8093 created (3.64 carta / 3.94 white) as the interactive boundary token (codex 6, kimi recompute)"
+  },
+  {
+   "severity": "med",
+   "claim": "The three light-mode reds sit 1.06-1.13 apart — hue-alone state changes are invisible",
+   "verdict": "applied",
+   "note": "pressed/hover must pair with elevation/motion change; the selected state is never red (ink outline + check) (codex 7)"
+  },
+  {
+   "severity": "med",
+   "claim": "The restraint budget was untestable and contradicted by the home band design",
+   "verdict": "applied",
+   "note": "budget rewritten as per-screen checkable; the home hero/footer band is the single DECLARED exception (codex 8+9)"
+  },
+  {
+   "severity": "high",
+   "claim": "The landing price floor collides with Visa Oracle contract C1 (no price without a resolved quote)",
+   "verdict": "applied",
+   "note": "reconciled: the floor is a static catalog fact, not a computed quote; exact prices render only on quoted verdicts (codex 11)"
+  },
+  {
+   "severity": "high",
+   "claim": "Navy/Montserrat retirement vs KBLI/tax/property «inheriting when their lanes touch them» is an indefinite transition — no deadline, gate or exception token",
+   "verdict": "rejected",
+   "note": "the spec declares those surfaces NON-CONFORMING debt with a named conformance status, but explicitly declines to set a deadline: capacity scheduling is a Legge 5 (business) decision outside R4's remit (codex 23)"
+  },
+  {
+   "severity": "high",
+   "claim": "«Question X of Y» is undefined for a branching interview — the counter can silently lie",
+   "verdict": "applied",
+   "note": "recompute-and-announce law: Y recomputes on every branch, increases are announced (codex 13)"
+  },
+  {
+   "severity": "high",
+   "claim": "wa.me handoff carrying case state is a PII-leak surface (facts in a URL)",
+   "verdict": "applied",
+   "note": "opaque case code only — no client facts ever enter the URL (codex 20)"
+  },
+  {
+   "severity": "high",
+   "claim": "Custody/retention copy and «verifiable company identifier» asserted facts nobody audited",
+   "verdict": "applied",
+   "note": "audited-facts constraint: placeholders until audited; the trust strip identifier must carry a real registry link or drop the word «verifiable» (codex 15+21, R1 UNKNOWN 7/8)"
+  },
+  {
+   "severity": "med",
+   "claim": "agy's own WhatsApp fix — white text on dark green #128c7e claimed 4.65",
+   "verdict": "rejected",
+   "note": "self-falsified by measurement: 4.14, fails AA normal text. His option B adopted instead — white card, official green icon, ink label (agy)"
+  },
+  {
+   "severity": "med",
+   "claim": "QRIS / Virtual Account local payment rails never mentioned in the pricing identity",
+   "verdict": "applied",
+   "note": "pricing component now names the rails (QRIS, VA BCA/Mandiri, cards) as R5 components; IDR in mono with thousands separators (agy 5 — caught by the independent check)"
+  },
+  {
+   "severity": "med",
+   "claim": "A red-dominant page risks warning/scam perception in the SEA bureaucratic context",
+   "verdict": "applied",
+   "note": "institutional-perception clause: formal marks always co-present where red structure appears; generous carta keeps the red institutional. agy's attached re-litigation of ruling Q2 (navy) rejected — ruled (agy 6 — caught by the independent check)"
+  },
+  {
+   "severity": "med",
+   "claim": "Cormorant below 24px shreds on low-DPI Android antialiasing",
+   "verdict": "applied",
+   "note": "24px display floor; smaller headings switch to Inter 600 (kimi)"
+  },
+  {
+   "severity": "low",
+   "claim": "44×44 touch target labeled «WCAG 2.2 AA» — it is the AAA/enhanced criterion",
+   "verdict": "applied",
+   "note": "relabeled: 24px is the AA minimum (SC 2.5.8), 44px is the Merah Putih house floor (codex 27)"
+  }
+ ]
+}

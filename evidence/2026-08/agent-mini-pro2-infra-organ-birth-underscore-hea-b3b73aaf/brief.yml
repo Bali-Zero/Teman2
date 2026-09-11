@@ -1,0 +1,125 @@
+task_id: organ-birth-underscore-header
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  `scripts/organ_birth.py::wrapper_template()`'s `Canon:`/`Live:` self-reference
+  header f-string only converted `.` to `-` when building the wrapper's own
+  filename, never `_`, while the ACTUAL computed wrapper filename (`main()`'s
+  `dash = args.id.replace(".", "-").replace("_", "-")`, line 331) converts both.
+  Any `organ_id` whose descriptive segment is underscore_case — the house style
+  (`visa_freshness_sentinel`, `git_pull_main`, `llm_burn_alarm`, `tg_digest_flush`)
+  — got a header that lied about its own filename. Trauma: PENDING-ARMS row
+  `ops-visaoracle-wrapper-header-0823`; a 4th instance (`visa_freshness_sentinel`)
+  had already been hand-cured by prior PR #4599, which fixed only that one wrapper
+  and explicitly declined to fix the generator itself.
+
+  PR #5237 (`agent/mini-pro2/infra/organ-birth-underscore-header`) fixes the
+  generator for all future organ births (one new `dash_name =
+  organ_id.replace(".", "-").replace("_", "-")` local, scoped to the header
+  f-string only), hand-corrects the 3 remaining live wrapper headers still
+  mismatched, and adds a 5-test regression suite
+  (`scripts/tests/test_organ_birth.py`) — 2 guilt (the exact underscore trigger,
+  and a multi-underscore stack), 1 innocence (no underscore -> unaffected), 1
+  scope-pin (LOG_DIR/PIDFILE stay dot-only by design — they name runtime
+  artifacts the generator creates itself, not a claim about a pre-existing file,
+  so widening their scope would be an undocumented behavior change), and 1
+  permanent repo-wide regression guard scanning every wrapper's own header
+  against its actual filename.
+
+  Gear 3 by PATH, not by blast radius: `infra/launchagents/*` is a literal
+  `HOTZONE_PATTERNS` entry in `scripts/evidence_pack_lint.py` — floor is a
+  deterministic lower bound computed from the changed-file set, never the
+  author's choice, regardless of how small or mechanical the diff reads
+  (three of the changed wrapper files carry only a two-line header-comment
+  edit each, plus one new test file). Diff size in files/lines is
+  deliberately NOT stated as a number here — see `diff.net_lines` in
+  `pack.yml` for why a self-referential count is not a stable claim to make.
+  The PR's own author (a Mini-Pro2 healer tick — autonomous cure session, Claude
+  Sonnet 5 per its own commit's co-author line) sized this as routine content;
+  it is the PATH, not the content, that trips the floor. This evidence pack is
+  supplied after the fact, on the orchestrating session's explicit dispatch, to
+  satisfy `Harness floor recompute` — the PR's code+test diff was not
+  independently re-reviewed by this authoring session as part of writing the
+  pack (see `grader:` below for the exact division of responsibility).
+constraints:
+  - 'Fix is scoped to ONE local variable (`dash_name`) inside `wrapper_template()`,
+    consumed only by the `Canon:`/`Live:` comment lines of the generated header —
+    verified by reading the full function body: `LOG_DIR`/`PIDFILE` still use the
+    pre-existing dot-only `organ_id.replace(".", "-")` (unchanged), and the
+    heartbeat sidecar path (`$SIDECAR_DIR/$ORGAN_ID.json`, `ORGAN_ID="{organ_id}"`
+    verbatim) and `registry_entry()`''s declared `path:` field both use the RAW,
+    unconverted `organ_id` — a third, separate naming convention this PR does not
+    touch and does not need to (see dissent below).'
+  - "The 3 hand-fixed wrapper files (`pro-git-pull-main.sh`, `pro-llm-burn-alarm.sh`,
+    `pro-tg-digest-flush.sh`) each change exactly 2 lines — the `# Canon:` and
+    `# Live:` comment lines — nothing else in any of the 3 files is touched
+    (verified: `git diff --stat` on each shows +2/-2, matching exactly the 2
+    replaced comment lines)."
+  - "No runtime behavior change to any of the 3 live wrappers beyond the comment
+    text itself — the lines are `#`-prefixed, never executed by bash."
+acceptance:
+  - text: "WHEN `pytest scripts/tests/test_organ_birth.py -v` is run against the
+      post-fix branch, SHALL report 5/5 tests green (2 guilt, 1 innocence, 1
+      scope-pin, 1 permanent repo-wide regression guard)."
+    probe: "pytest scripts/tests/test_organ_birth.py -v"
+  - text:
+      "WHEN `organ_birth.py` is reverted to its pre-fix form (this PR's parent
+      commit) WHILE the new test file stays at its post-fix form, SHALL exactly the
+      2 guilt tests fail (the innocence, scope-pin, and repo-wide-scan tests stay
+      green) — proving the tests actually exercise the bug, not merely echo the
+      fix."
+    probe: "pytest scripts/tests/test_organ_birth.py -v"
+  - text: "WHEN every `# Canon:` line actually present under
+      `infra/launchagents/wrappers/*.sh` is scanned against its own file's actual
+      filename, SHALL find zero mismatches — measured coverage: 15 of the 50
+      wrapper files carry a `# Canon:` line at all (the other 35 predate
+      organ_birth.py or were hand-authored without one, and are outside this
+      check's scope — silent on them, not passing on them); 0 of those 15 are
+      mismatched after the fix."
+    probe: "repo-wide scan of every wrapper's own # Canon: self-reference against its actual filename"
+  - text: "WHEN shellcheck runs against the 3 hand-edited wrapper files, SHALL
+      introduce zero NEW findings relative to their pre-fix versions (the diff is
+      comment-only)."
+    probe: "shellcheck infra/launchagents/wrappers/pro-git-pull-main.sh"
+consumer_map:
+  - "The `# Canon:`/`# Live:` header is READ-ONLY prose for a human operator
+    debugging a wrapper file — no script in this repo parses it. Verified: `grep
+    -n \"Canon:\\|Live:\" scripts/lint_home_fork.py` returns zero matches — the
+    actual home-fork drift detector (`scripts/lint_home_fork.py`, cicatrix family
+    #1's own antidote) does its own independent sha256 pair-comparison and never
+    reads this comment. This matches the new test suite's own docstring framing
+    (\"reader-misdirection, not a real home-fork DRIFT\") — verified independently
+    here, not merely taken on the test file's word."
+  - "`scripts/organ_birth.py` itself is the only writer of this header (via
+    `wrapper_template()`, called from one site, `main()` line 348) — confirmed by
+    grepping every call site of `wrapper_template(` in the file (exactly one)."
+risks:
+  - "None to running systems: the header is a comment, executed by nothing.
+    The only risk class is a FUTURE reader trusting a wrong self-reference
+    while debugging — the defect class this PR closes."
+  - "Scope creep risk (checked, not found): the fix could have been over-applied
+    to LOG_DIR/PIDFILE or the sidecar path too, silently changing runtime
+    artifact locations for every already-deployed organ. It was not — see
+    constraints above and the scope-pin test."
+grader: |
+  Generator != grader, both for the CODE diff and for this evidence pack. This
+  session authored ONLY the evidence pack (brief.yml + pack.yml), on the
+  orchestrating (team-lead) session's explicit dispatch, after the code+test
+  diff already existed and had already been reviewed/diagnosed as a genuine
+  case-1 (missing Evidence Pack, not a code defect) by a separate PR-status
+  investigation this same session performed earlier in its own session history.
+  The code+test diff itself was authored by a different session entirely (a
+  Mini-Pro2 healer tick, per the PR's own commit co-author line, Claude Sonnet
+  5) — this authoring session did not write scripts/organ_birth.py's fix or its
+  test file, only verified them (receipts below) while building this pack. This
+  session does NOT post the `harness/fable-gate` commit status and does NOT
+  adjudicate its own pack — the orchestrating session dispatches an independent
+  gate separately (CLAUDE.md §Agent PR Contract / §13 Team perimeter rule — the
+  diff's author, and this pack's author, never gates its own diff).
+budget: >-
+  1 evidence-authoring lane (this session), no council, no cross-family dispatch
+  — a small, path-hot-zoned diff whose own verification (pytest run, an
+  independent mutation/revert check, a repo-wide header scan, shellcheck) is
+  fully reproducible locally with no network access and no credential.
+pii: none

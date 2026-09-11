@@ -16,7 +16,7 @@
     ]
   },
   "routing": {
-    "status": "eligible",
+    "status": "probation",
     "automated_routing": false,
     "evidence": [
       {
@@ -88,6 +88,17 @@
           "observed_at": "2026-08-14"
         }
       ]
+    },
+    {
+      "id": "eligible_for_quorum",
+      "value": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
+        }
+      ]
     }
   ],
   "task_scores": [],
@@ -101,6 +112,11 @@
       "level": "declared",
       "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3.7-plus has a 1,000,000-token context length.",
       "observed_at": "2026-08-21"
+    },
+    {
+      "level": "production",
+      "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+      "observed_at": "2026-08-27"
     }
   ]
 }

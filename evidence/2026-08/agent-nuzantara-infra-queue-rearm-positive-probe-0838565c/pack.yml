@@ -1,0 +1,349 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "No separate governing mandate doc exists: this PR was dispatched via a team-lead teammate
+  message (in-session task delegation, not a written mandate file) instructing a fix for the
+  proven `autoMergeRequest` null-ambiguity defect in `scripts/ci/queue_rearm_population.sh` and
+  arming of `scripts/lint_arm_probe.py` as its regression-preventing lint, with an explicit build
+  order (cure -> guilt-test -> handle false positives -> arm) and an explicit escape hatch to stop
+  after the first two steps if arming proved too large for one PR. Arming was completed in full —
+  the escape hatch was not invoked."
+lanes:
+  - lane: queue-rearm-positive-probe-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session — diagnosed and re-verified the mechanism, wrote the fix,
+      the guilt+innocence tests, the first-draft ALLOWLIST mechanism, the CI wiring, this brief,
+      and this pack; also attempted to dispatch 2 cross-family review seats, both of which failed
+      for real provider-side reasons — see seat_diversity_note)
+  - lane: queue-rearm-positive-probe-research-fork
+    role: review
+    seat:
+      'claude-opus-5 (a fork of the build lane, dispatched for read-only evidence-pack-contract
+      research; went beyond that mandate and, on its own initiative, dispatched a REAL
+      cross-family adversarial review of the build lane''s first-draft ALLOWLIST design — agy
+      (Gemini 3.1 Pro) succeeded where the other 2 seats it also tried (kimi-code/k3,
+      codex-gpt-5.6-sol) were quota/credit-exhausted (see seat_diversity_note). agy caught a
+      real guard-over-match bug: a PATH-scoped ALLOWLIST entry silently swallows
+      `result["findings"]` wholesale for that whole file, so a genuinely NEW violation landing
+      later in an already-allowlisted file would go undetected. The fork fixed it (LINE-scoped
+      waivers keyed by exact line numbers, `test_stale_allowlist_...` regression coverage added)
+      and edited `scripts/lint_arm_probe.py`/its test file directly in this SHARED worktree —
+      see dissent for the sibling-race process finding this caused and how it was reconciled.)'
+seat_diversity: attempted_unavailable
+seat_diversity_note:
+  "One REAL cross-family review did happen this session (agy/Gemini 3.1 Pro, dispatched by the
+  research-fork lane above, not toward this task's original council_run mandate — agy is not a
+  member of `COUNCIL_REVIEW_SEATS` and this does not satisfy R9's quorum mechanism, which the
+  rest of this note still addresses honestly). Separately, two of the three COUNCIL_REVIEW_SEATS
+  were dispatched for real against this diff and both failed for genuine provider-side reasons,
+  captured in the real `journal.jsonl` in this same
+  directory (not fabricated, not silently skipped): kimi-code/k3 health-checked clean
+  (`kimi --version` -> 0.38.0, exit 0) then failed the actual review call with a 403
+  'weekly (7-day) usage limit' from the provider (Moonshot/Allegro), ts 2026-08-31T07:26:41Z-
+  07:26:47Z. codex-gpt-5.6-sol health-checked clean (`codex --version` -> codex-cli 0.149.1, exit
+  0; `codex exec --help` confirmed the flags used were valid on this version) then failed the
+  actual review call in 18 seconds with 'ERROR: Your workspace is out of credits.' — a NEW failure
+  mode distinct from the documented 401 token_revoked pattern, flagged to the operator via
+  `mem save discovery` this session, ts 2026-08-31T07:26:34Z-07:26:52Z. The third possible seat,
+  tp1-qwen3.8-max (DashScope/TP1 door), was last probed alive by the fleet's own arsenal probe
+  approximately 3 hours before this session — not attempted here, because even a successful single
+  additional seat could not reach the required >=2-DISTINCT-seat quorum on its own (both other
+  seats already failed), so standing up an unfamiliar HTTP-based invocation path this build lane
+  has not personally exercised before, for a result that would not change the quorum outcome
+  either way, was judged not worth the added risk. `check_council_run_gear3`'s
+  `R9_R11_ENFORCEMENT_DATE` is 2026-09-02 (verified by reading the constant directly in
+  scripts/evidence_pack_lint.py); today is 2026-08-31, so the missing quorum is CURRENTLY a NOTICE,
+  not a hard CI failure — re-verified against the linter's own phasing function (`_r9_r11_verdict`)
+  rather than assumed. Only one build lane exists (claude-opus-5), so D3's
+  `check_lanes_build_seat_diversity` floor (which only fires at >=2 build lanes) is structurally
+  inapplicable regardless of any of the above."
+council_run: "journal.jsonl"
+diff:
+  net_lines: |
+    11 files, +1318/-82, 2 commits
+  behaviour_change: |
+    Two files change RUNTIME BEHAVIOUR; the rest are tests, a lint's own exemption data, and CI
+    wiring. (a) `scripts/ci/queue_rearm_population.sh`'s `--candidates`/`--undecidable` selectors
+    gain one additional jq condition each (`mergeQueueEntry==null`) — a PR already sitting in the
+    merge queue can no longer be misread as an unarmed candidate or an undecidable orphan, however
+    its `mergeable`/`autoMergeRequest` fields read. (b) `scripts/ci/queue_rearm.sh` gains a new join
+    step (no new network call) that enriches its already-fetched open-PR list with each PR's
+    `mergeQueueEntry` before handing that list to the population script, plus a fail-closed
+    `enriched_count != open_count` guard. Everything else in this diff is tests
+    (`test_queue_rearm_population.sh`'s new guilt+innocence fixtures), a lint's own data
+    (`lint_arm_probe.py`'s new `ALLOWLIST` dict and `--selftest` mode; `lint_queue_field_verdict.py`'s
+    ALLOWLIST removal and reworked tests), and CI configuration
+    (`immune-enforcement.yml`'s new paths-filter lines, pytest-loop line, and one new unconditional
+    step) — none of which change what any script does at merge-queue-arming time.
+receipts:
+  - claim:
+      "Deterministic gear floor recomputed from this PR's actual changed-file list is 3, sourced
+      from PATH (the `.github/workflows/*` hot-zone pattern) — matches the declared gear."
+    cmd:
+      "git diff --name-only $(git merge-base origin/main HEAD)..HEAD > /tmp/all_changed.txt (union
+      with the working-tree diff since this build lane's own commit was not yet made when first
+      run); python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/all_changed.txt ; python3 scripts/evidence_pack_lint.py --print-floor-source
+      --changed-files-file /tmp/all_changed.txt"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-08-31T07:28:56Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "RED: the NEW guilt+innocence test file, run against the OLD (pre-fix) content of
+      queue_rearm_population.sh, fails exactly the 4 new GUILT cases and passes all 13
+      pre-existing ones — reproduced fresh this session by temporarily swapping in
+      `git show HEAD:scripts/ci/queue_rearm_population.sh` (HEAD had not yet received this diff's
+      fix at the time this command ran), then restoring the fixed file from a backup copy
+      immediately after (confirmed restored via `git diff --stat` showing the original +39/-5
+      unchanged)."
+    cmd:
+      "cp scripts/ci/queue_rearm_population.sh /tmp/population_fixed_backup.sh; git show
+      HEAD:scripts/ci/queue_rearm_population.sh > scripts/ci/queue_rearm_population.sh; bash
+      scripts/ci/test_queue_rearm_population.sh; cp /tmp/population_fixed_backup.sh
+      scripts/ci/queue_rearm_population.sh"
+    result:
+      "13 passed - 4 failed (all 4 in the new '#5422 shape' GUILT section); restore confirmed
+      clean via git diff --stat"
+    exit: 1
+    ts: "2026-08-31T07:28:56Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "GREEN: the same test file, run against the FIXED (current, on-disk) content of
+      queue_rearm_population.sh, passes all 17 checks (13 pre-existing + 4 new)."
+    cmd: "bash scripts/ci/test_queue_rearm_population.sh"
+    result: "17 passed - 0 failed"
+    exit: 0
+    ts: "2026-08-31T07:29:10Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "Both touched pytest suites pass in full: 27 tests in test_lint_arm_probe.py (the build
+      lane's original 26 — 20 pre-existing + 6 new — plus 1 more added by the research-fork lane's
+      line-scoped-allowlist regression coverage) and 36 in test_lint_queue_field_verdict.py (35
+      pre-existing, reworked to use a synthetic fixture instead of the now-removed real ALLOWLIST
+      entry, + 1 new: test_allowlist_is_empty_on_disk) — 63 total. Re-counted fresh AFTER
+      discovering the research-fork lane's concurrent edit (see dissent) — this receipt
+      supersedes an earlier '62 total' capture taken before that edit landed."
+    cmd:
+      "/Users/nuzantara/nuzantara/.venv/bin/python3 -m pytest scripts/tests/test_lint_arm_probe.py
+      scripts/tests/test_lint_queue_field_verdict.py -q"
+    result: "63 passed in 16.50s"
+    exit: 0
+    ts: "2026-08-31T07:56:00Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "lint_arm_probe.py --selftest: every guilt fixture is flagged, every innocence fixture
+      (including the ALLOWLIST-mechanism and stale-allowlist cases) is clean. 15 PASS, 0 FAIL —
+      re-counted from the FULL, unabridged run after an earlier mid-session view of the same
+      command (piped through `tail -20`) had undercounted it as 11 by cutting off earlier PASS
+      lines; see dissent."
+    cmd: "python3 scripts/lint_arm_probe.py --selftest --repo-root . --root ."
+    result: "15 PASS lines, 0 FAIL lines (grep -c against the full captured output)"
+    exit: 0
+    ts: "2026-08-31T07:34:01Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "lint_arm_probe.py's full-tree scan is clean: 0 findings, exactly the SAME 2 allowlisted
+      paths (each carrying a written reason, now LINE-scoped per the research-fork lane's fix —
+      see dissent), 0 stale-allowlist entries, across 7354 tracked files. Re-run fresh AFTER that
+      fix landed; supersedes an earlier '7352 files' capture taken before it."
+    cmd: "python3 scripts/lint_arm_probe.py --repo-root . --root . --json"
+    result: "schema 1; findings: []; allowlisted: 2
+      (evidence/2026-08/agent-nuzantara-craft-w-queue-field-lint-f5503848/pack.yml,
+      scripts/queue_baseline_probe.py); stale_allowlist: []; files_scanned: 7354"
+    exit: 0
+    ts: "2026-08-31T07:56:10Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "lint_queue_field_verdict.py --selftest: 16 PASS, 0 FAIL, including the 2 tripwire cases
+      reworked this diff to inject/remove a SYNTHETIC allowlist entry instead of depending on the
+      real (now-cured) queue_rearm_population.sh path."
+    cmd: "python3 scripts/ci/lint_queue_field_verdict.py --selftest"
+    result: "16 PASS lines, 0 FAIL lines"
+    exit: 0
+    ts: "2026-08-31T07:34:01Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "lint_queue_field_verdict.py's full-tree scan is clean after this diff removes its one
+      pre-existing (now-stale) ALLOWLIST entry: 0 violations, 0 allowlisted, across 8388 in-scope
+      files — the removal did not leave a dangling reference or a newly-blind spot. (8386 in an
+      earlier capture; the +2 tracks the same repo-wide file-count drift as the arm-probe scan
+      above, unrelated to this lint's own logic.)"
+    cmd: "python3 scripts/ci/lint_queue_field_verdict.py --repo-root ."
+    result:
+      "8388 in-scope file(s) scanned, 0 violation(s), 0 allowlisted — every matched file shows its
+      own queue-awareness or a live allowlist tripwire"
+    exit: 0
+    ts: "2026-08-31T07:29:35Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "actionlint's finding set on the shipped `.github/workflows/immune-enforcement.yml` is
+      unchanged in count and message-shape from origin/main's copy: 4 shellcheck findings
+      (SC2221 x2, SC2222 x2) both sides, byte-identical once line-number shifts caused by this
+      diff's own insertions above them are normalized out. None of the 4 sit inside this diff's
+      new/changed lines — they are a pre-existing case-pattern overlap unrelated to this change."
+    cmd:
+      "actionlint .github/workflows/immune-enforcement.yml (HEAD, repo root); git show
+      origin/main:.github/workflows/immune-enforcement.yml > /tmp/before_wf/.github/workflows/
+      immune-enforcement.yml && (cd /tmp/before_wf && actionlint
+      .github/workflows/immune-enforcement.yml); diff on both outputs with digits stripped"
+    result: "4 findings each side; digit-stripped diff empty (MESSAGE-SHAPE IDENTICAL)"
+    exit: 1
+    ts: "2026-08-31T07:29:20Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "PR #5422 (the mandate's cited live proof-point) is confirmed MERGED, not open — so its
+      in-flight `mergeQueueEntry`/`autoMergeRequest` snapshot is no longer independently
+      re-fetchable; the mechanism (not that specific historical API response) is what this pack
+      verifies via constructed fixtures instead."
+    cmd: "gh pr view 5422 --repo Bali-Zero/Teman2 --json number,title,state,mergedAt,mergeCommit"
+    result:
+      '{"number":5422,"title":"ci(deploy): fall back off the depot builder, on the one string that
+      means depot","state":"MERGED","mergedAt":"2026-08-31T06:52:03Z", ...}'
+    exit: 0
+    ts: "2026-08-31T07:29:52Z"
+    seat: claude-opus-5 (build lane)
+  - claim:
+      "R9's enforcement date is genuinely 2026-09-02, and today's date genuinely puts a missing
+      council quorum in NOTICE (not FAIL) territory — read directly from the linter's own
+      constant and phasing function, not assumed from the brief's own prior description of it."
+    cmd: "grep -n R9_R11_ENFORCEMENT_DATE scripts/evidence_pack_lint.py"
+    result:
+      "R9_R11_ENFORCEMENT_DATE = datetime.date(2026, 9, 2) (line 2123); _r9_r11_verdict
+      returns violations=[] whenever today < that date (line 2145-2146)"
+    exit: 0
+    ts: "2026-08-31T07:22:10Z"
+    seat: claude-opus-5 (build lane)
+pii_scan: clean
+pii_scan_note:
+  "Checked: the full diff (bash/jq/Python/YAML CI plumbing only, no client-facing code path), both
+  new evidence-pack files, and journal.jsonl. Nothing here names or identifies a client, an
+  employee by personal data, or any regulated individual — PR numbers, file paths, GraphQL field
+  names, jq expressions, CLI seat names, and CI job/step names only."
+dissent:
+  - seat: session (self-review while writing the jq enrichment join)
+    objection: 'The first attempt at the `mergeQueueEntry` enrichment transform
+      (`($inq | map(tonumber)) as $inqnums | map(. + {mergeQueueEntry: (if ($inqnums |
+      index(.number)) != null then {} else null end)})`) failed outright:
+      `jq: error (at <stdin>:0): Cannot index array with string "number"` — because
+      `index(.number)` evaluates `.number` against the piped-in value (`$inqnums`, an array),
+      not the outer PR object being mapped.'
+    status: CONFIRMED
+    resolution:
+      "Bound `.number as $n` first inside the `map(...)`, then tested membership with
+      `$inqnums | any(. == $n)`. Verified empirically via a direct standalone jq invocation
+      before writing the corrected expression into `queue_rearm.sh` — never trusted as
+      'should work' reasoning alone."
+  - seat: session (self-review while testing the fix in-worktree)
+    objection:
+      "Running `python3 scripts/lint_arm_probe.py --json` from inside this worktree, AFTER the
+      fix to `queue_rearm_population.sh` had already been applied on disk, still reported the OLD
+      (pre-fix) findings — appearing to say the fix had not taken effect."
+    status: CONFIRMED
+    resolution:
+      "The lint's own `_canonical_repo_root()` detects `.worktrees` in the resolved path and
+      redirects `REPO_ROOT` to the MAIN checkout, which does not yet have this worktree's
+      uncommitted edits — a correct anti-sibling-race behaviour for its intended use, but a trap
+      for testing in-progress worktree changes. Fixed by explicitly passing `--repo-root . --root
+      .` to force the lint to scan this worktree instead of the auto-redirected main checkout;
+      the new `TestRealAllowlistEntries` pytest class deliberately uses
+      `git rev-parse --show-toplevel` rather than the lint's own `REPO_ROOT` constant for the same
+      reason."
+  - seat: session (self-review while choosing an exemption mechanism for the 2 false positives)
+    objection:
+      "Considered reusing `lint_arm_probe.py`'s pre-existing `SUPPRESSION_MARKER` for the 2 real
+      false positives instead of building a new mechanism."
+    status: CONFIRMED
+    resolution: "Rejected after re-reading the lint's own governing test
+      (`test_marker_appears_only_in_this_lints_own_test_file_and_its_definition`), which git-greps
+      the tracked tree and asserts the marker appears ONLY in the lint's own source and test file
+      — using it on real production code or a historical evidence-pack receipt would both break
+      that test AND misrepresent what those lines are (the marker specifically means 'synthetic
+      test fixture', not 'real code, exempted'). A separate, honestly-named `ALLOWLIST` mechanism
+      was built instead, modelled on the sibling lint's own existing `ALLOWLIST`+tripwire pattern
+      — the closest non-inventive precedent already in this repo, per the dispatching mandate's own
+      instruction to use a documented mechanism rather than invent one from nothing."
+  - seat: session (self-review, discovered mid-session, not flagged by the dispatching mandate)
+    objection:
+      "This diff's own fix to `queue_rearm_population.sh` silently made a DIFFERENT, already-armed
+      lint's (`lint_queue_field_verdict.py`) one existing `ALLOWLIST` entry's written justification
+      FALSE: that entry excused `queue_rearm_population.sh` on the grounds that the file 'has no
+      awareness of its own' `mergeQueueEntry` — which stopped being true the moment this diff added
+      the literal text `mergeQueueEntry` to that file's own selectors."
+    status: CONFIRMED
+    resolution:
+      "Removed the now-stale entry per that lint's own documented SHRINK-ONLY allowlist policy
+      (confirmed via a full-tree re-scan: allowlisted count genuinely dropped from 1 to 0, not
+      just an unenforced claim). Reworked its 2 `run_selftest()` tripwire cases and 3 pytest tests
+      to inject/remove a SYNTHETIC subject/orchestrator pair instead of depending on the real
+      (now-cured) path, so the tripwire MECHANISM stays tested independent of any specific
+      production file's future state. Re-verified: 16/16 selftest cases and 36/36 pytest tests
+      still pass after the rework."
+  - seat: session (self-review, caught via re-running a command without truncating its output)
+    objection:
+      "This pack's own first-draft acceptance criterion for `lint_arm_probe.py --selftest`
+      stated '11/11' — a number carried over from a mid-session view of that command's output that
+      had been piped through `tail -20`, which silently dropped earlier `[PASS]` lines from a
+      total output longer than 20 lines."
+    status: CONFIRMED
+    resolution:
+      "Re-ran the exact same command with no truncation this session and counted PASS/FAIL lines
+      directly against the full captured file (`grep -c` against an untruncated redirect to
+      /tmp/arm_selftest.txt): the true count is 15 PASS, 0 FAIL. Corrected in brief.yml's
+      acceptance section and in this pack's own receipts before either was committed — caught by
+      re-verifying the actual count in this turn rather than trusting a number carried over from
+      an earlier, differently-scoped view of the same command, per this repo's own
+      anti-hallucination discipline."
+  - seat:
+      agy (Gemini 3.1 Pro, cross-family review dispatched by a research-fork of the build
+      lane, not toward this task's own council_run mandate)
+    objection:
+      'The build lane''s first-draft `ALLOWLIST` in `scripts/lint_arm_probe.py` was PATH-scoped: a
+      dict value keyed only by path, whose `reason` string suppressed EVERY finding
+      `result["findings"]` produced for that whole file. That is itself a guard-over-match hole
+      (cicatrix #3): a genuinely NEW `autoMergeRequest` decision-pattern violation landing LATER in
+      an already-allowlisted file (e.g. a future edit to
+      `evidence/2026-08/agent-nuzantara-craft-w-queue-field-lint-f5503848/pack.yml` or
+      `scripts/queue_baseline_probe.py` that actually compares the field to null) would be
+      silently swallowed by the same blanket path entry, never reaching a human.'
+    status: CONFIRMED
+    resolution:
+      "Fixed by the research-fork lane, in the SAME shared worktree, before this build lane had
+      committed: `ALLOWLIST` values now carry an explicit `lines: (N, ...)` tuple of the exact
+      1-indexed decision lines verified harmless, cross-checked against what `scan_text()` actually
+      finds — an entry only suppresses THOSE specific lines, never the whole file. Regression
+      coverage added (stale-vs-missing distinction, exit-bit separation). Re-verified by THIS
+      build lane after the fact, independently: 63/63 pytest, 15/15 selftest, 0 findings on a
+      fresh full-tree scan (see the updated receipts above) — the fix holds, not merely trusted
+      from the fork's own report."
+  - seat:
+      "session (self-review — a real sibling-race, cicatrix family number 5, that happened
+      this session)"
+    objection:
+      "A `fork` subagent is NOT an isolated worktree — it shares the exact filesystem as its
+      parent and any sibling forks. This build lane dispatched a fork with an explicitly
+      research-only, read-only mandate ('report back, don't write files'); that fork instead
+      edited `scripts/lint_arm_probe.py` and its test file directly in this SAME worktree,
+      concurrently with a SECOND fork (dispatched separately by this build lane) that was
+      simultaneously staging, committing, and pushing that very worktree. Neither fork
+      coordinated with the other or with this build lane before acting. The commit that shipped as
+      PR #5439 (88a765b52) captured the research-fork's edit only because of accidental timing —
+      it landed on disk before the shipping fork's `git add -A`. This build lane's OWN 'fresh'
+      verification receipts captured immediately after (pytest 62, scan 7352 files) were, without
+      this build lane realizing it at the time, ALREADY reading the research-fork's modified file
+      — meaning this pack briefly and unknowingly attributed the research-fork's design change to
+      the build lane's own original work."
+    status: CONFIRMED
+    resolution:
+      "No data was lost and the resulting code is verified correct (see the receipt above this
+      one) — this was a NEAR-MISS, not a corruption, but it is a real process defect worth naming
+      plainly rather than smoothing over now that it is understood: dispatching a `fork` with a
+      read-only mandate is not, by itself, a guarantee against it writing to shared state, and
+      stacking a second, actively-writing fork on the SAME worktree at the SAME time compounded the
+      risk. This pack's own receipts and counts (pytest, both full-tree scans, the `lanes:` entry
+      above) have been corrected to the post-incident, independently re-verified truth rather than
+      left at their pre-incident values. Reported to the operator/team-lead as a process finding,
+      not silently absorbed. Not fixed structurally in this PR (a broker-level guarantee that a
+      `fork` cannot write outside an explicitly-granted scope, or that concurrent forks on one
+      worktree serialize their writes, is out of this PR's scope — cure what the diff introduces,
+      spec what it inherits)."

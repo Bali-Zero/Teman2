@@ -1,0 +1,108 @@
+{
+  "run_at": "2026-08-30T07:10:06+08:00",
+  "today": "2026-08-30",
+  "yesterday_seen_count": 23,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare block (HTTP 403), persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but body is 'Artikel tidak ditemukan' (soft-404 path); root https://ortax.org/ has real content, checked separately"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "HTTP 403 on both /article and /id/article paths, persisted after retry (yesterday's working /id/article path now also blocked)"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "http_404",
+      "note": "Cloudflare 404 confirmed via header check, persisted after 1 retry"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Search-form landing page, no rendered peraturan list in static HTML (needs JS/query submit)"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "TLS handshake timeout after 30s on /peraturan and on domain root, persisted after 1 retry"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Search-facet landing page (2,568 docs indexed) with no dated list items in static HTML"
+    },
+    {
+      "url": "https://jdih.kemenkum.go.id/",
+      "reason": "empty_shell",
+      "note": "Search-landing-container page only, no listing rendered in static HTML"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://ortax.org/",
+      "reason": "outside_window",
+      "note": "Newest dated entry 27 Agustus 2026; no PMK/PP/Perpres/UU headline present either way"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Only SE-6/PJ/2026 (out-of-scope reg-type) and general tax news; no new PMK/PP/Perpres/UU/Permenaker/Permenkes/BKPM"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Latest listed items Perpres 120/2025 and PP 44/2025 - dated 2025, predate the 48h window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "outside_window",
+      "note": "Same recurring PP 27/30/31 Tahun 2026 and UU 3/4/5 Tahun 2026 as prior runs, no visible fresh publish date"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Only enforcement/deportation case news dated within window; no regulation citations"
+    },
+    {
+      "url": "https://jdih.kemkes.go.id/",
+      "reason": "checked_no_new",
+      "note": "Only an RPermenkes draft-harmonization meeting item (09 Feb 2026, still a draft); no promulgated Permenkes in window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK Nomor 28 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026"
+  ]
+}

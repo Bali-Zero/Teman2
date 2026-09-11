@@ -1,7 +1,11 @@
 ---
 name: bot
-description: "Zantara WA bot corner — the live shared context for ALL work on the Zantara WhatsApp Meta bot (+62 821-3465-159): outbox/inbox pipeline, agentic RAG brain, answer cache, model routing, prompt chain, team check-in program. Load BEFORE touching any WA-bot code or data, or when Zero says /bot, 'zantara wa', 'il bot', 'meta inbox', 'cache risposte'. Holds: established truths (verified, with method), Zero's rulings, LIVE STATE of the ship chain, blood-bought operating rules."
+description: "Zantara WA bot corner — shared context for the Zantara WhatsApp bot. Load before touching WA-bot code/data, or when Zero says /bot, 'zantara wa', 'il bot', 'meta inbox', 'cache risposte'."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+The Zantara WhatsApp Meta bot number: +62 821-3465-159. Covers: outbox/inbox pipeline, agentic RAG brain, answer cache, model routing, prompt chain, team check-in program. Holds: established truths (verified, with method), Zero's rulings, LIVE STATE of the ship chain, blood-bought operating rules.
 
 # /bot — Zantara WA Meta bot corner
 
@@ -20,7 +24,233 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-23 — keep current)
+## 1. LIVE STATE (last update 2026-09-03 — keep current)
+
+- **🧭 CYCLE 359's FOUR ROOT CAUSES: TWO CURED, ONE DRAFTED FOR ZERO, ONE STILL OPEN — AND THE
+  CORNER'S OWN "GEMINI" BULLETS ARE CONFIRMED STALE (2026-09-03, lane E on Pro).** Re-measured
+  before anything else, exactly as the mandate required: `SELECT generation_route, count(*) FROM
+wa_outbox` returns **`codex` on all 58 rows since 2026-08-27** and NULL only on the older ones.
+  The codex route is the live one; every S4-cutover bullet below describes a state that is gone.
+  - **✅ ROOT CAUSE 4 (greeting) — CURED, PR #5613.** A bare `halo` cost **7m45s** and answered an
+    English error stub. Nothing in the chain was broken: `QueryDomain.GREETING` maps to `[]`
+    collections by design, so `build_context_package` raises `PackageUnbuildable("greeting_domain")`
+    and — with the Gemini leg cut — there is no second generator, so the row takes the full
+    five-attempt ladder. `wa_greeting.match_greeting` (pure, no I/O) now answers it from a script
+    **before the package build**, in the greeting's own language. **The expensive half is
+    innocence**: `halo, berapa harga PT PMA?` is a pricing question wearing a polite hat and must
+    reach the normal route — 24 innocence cases against 30 guilt.
+    - **The cross-family refuter earned its seat.** Codex GPT-5.6 Sol returned **BLOCK** with a real
+      blocker the author had not seen: `"Halo admin?"` matched, so a client asking for a **person**
+      got a capability list — this module's own defect pointed the other way. `admin`/`team`/
+      `everyone` are no longer vocatives. It also found `"Assalamu'alaikum"` (apostrophe → two
+      unknown tokens) and `"Selamat pagi, Kak"` (phrases were keyed on the WHOLE message) still
+      costing 7m45s, and `"Hi kak"` answered in English. All cured; the placement objection was
+      answered in prose, not code — see the module docstring.
+    - **Declared gap:** `generation_route` stays NULL on a scripted greeting (that column is one
+      half of the codex OFFER's CAS fence, and the row is never offered), so a greeting is not yet
+      countable in SQL. `CodexLegResult.served_by` is its only marker. Same ledger family as "an
+      abstain leaves no record".
+  - **✅ ROOT CAUSE 2 (the corpus teaches the split) — GATE SHIPPED (PR #5615), DATA HALF EXECUTED,
+    AND IT IS BIGGER THAN THIS CORNER RECORDED.** The two named orphans are **deleted from prod**
+    (`points_count 808 → 806`, snapshot **with vectors** at
+    `~/.nuzantara-lane-e-backups/curated_qa_2026-09-03_five_points.json`, 0600 — fully restorable),
+    and a re-scan of all 806 finds **zero** Investor-KITAS answers still carrying a PNBP figure.
+    - **⚠️ The second id in this corner was WRONG.** It reads `59da08d9-…-5373-…`; the live point is
+      **`59da08d9-39c5-5373-8928-fbcf6833b319`**. The DB is the authority — retrieve by content,
+      not by a remembered id.
+    - **The gate, measured on all 808 before deletion:** 758 name no government fee (untouched);
+      **27 name one with NO figure and PASS** — and those are the model answers (_"rather than quote
+      a figure that may age, ask our team"_); **26 name one WITH a figure and are refused** unless
+      the row carries an explicit flag **and** a written note. Recall on the known offenders: **9/9**.
+    - **A proximity rule was built and REJECTED on its numbers** — at every window from 40 to 160
+      characters it caught at most 8 of 9 while blocking 11-13 compliant rows. **No lexical rule
+      separates "the government charges X, we charge Y" from "our X already includes it"; that
+      difference is semantic.** Do not re-derive it — the gate is deliberately high-recall and
+      refuse-by-default, and the escape hatch is a human's written note.
+    - **🔴 SEVEN MORE `curated_qa` OFFENDERS ARE STILL LIVE**, snapshotted and ready: the three the
+      mandate asked to review — `8b520434` (E33E#Q13, _"which we quote separately"_), `eacec21f`
+      (FINAL#Q11), `8ebf681f` (FINAL#Q13) — **plus four the FACT-scan found that nobody had named**:
+      `11b7e26d`, `12d804e9`, `1b53de60`, `e407d532`. Deleting them applies a standing ruling, but it
+      more than triples an explicit two-row order on production client-facing data, so it was
+      surfaced rather than taken. **One decision, seven rows.**
+    - **🔴 THE WORSE CARRIER IS IN A DIFFERENT COLLECTION, AND IT IS A WORKED EXAMPLE, NOT A
+      MENTION.** `training_conversations_hybrid` (3,638 points) holds **8** teaching the split, and
+      **6 of them model a consultant giving an ITEMISED PT PMA quote** — _"Jasa Pendirian: IDR
+      20.000.000 / Biaya PNBP (Negara): IDR 5.000.000"_ — in Indonesian, Javanese **and** English,
+      duplicated, on the single most common pricing question. The bot is not merely reading the
+      split; it has been shown how to perform it.
+    - **The training-data file has FOUR occurrences, not the one this corner named.**
+      `visa_011_notebooklm_session2.md:123` is fixed (backed up first); lines **315, 547 and 711**
+      carry it too, and `grep -rc PNBP training-data/` returns **36 lines across 5 files**
+      (`legal_058` 14, `visa_016` 12, `visa_011` 4, `visa_010` 3, `realestate_046` 3). That whole
+      directory is **gitignored** — it is local staging, unreviewable in a PR — and
+      `scripts/reingest_training_data.py` is the ingest path where the same detector belongs.
+  - **📝 ROOT CAUSE 3 (the citation rule) — DRAFTED FOR ZERO, MERGED (PR #5611).** The exact
+    replacement paragraph is in `docs/plans/2026-09-03-relaunch-lanes/ZERO-DECISIONS.md` §Item 3.
+    **Where it bites, verified by grep:** `MANDATORY LAW CITATION` appears in `zantara_core.py` and
+    nowhere else, and `CITATION_RULES` is read by `zantara_core_v4.py:517`, `zantara_core_v5.py:259`
+    **and `wa_package_builder.py:41-45` — the live codex-leg persona**. One bullet governs every
+    prompt version and the WhatsApp product. `zantara_core.py` was not touched.
+  - **🔴 ROOT CAUSE 1 + THE BIGGEST FINDING (the cross-language abstain gate) — NOT STARTED.** Spec
+    `research/operations/2026-09-01-wa-evidence-relevance-cross-language-spec.md` is complete and
+    panel-blocked-into-shape; nothing is built. **Do not tune a third threshold.** The direction is
+    fixed by the spec: retrieval similarity becomes the PRIMARY relevance signal (the embeddings are
+    multilingual by construction), lexical overlap is corroborating at most, the `len(w) > 3` filter
+    goes or becomes vocabulary-aware so `PT`/`PMA`/`NIB`/`OSS` survive, and the golden set reports
+    the abstain rate **separately** for the Indonesian and English subsets — a blended rate hides
+    exactly this defect.
+  - **🟡 PR #5337 (split-fee veto) — STILL SUSPENDED, not reopened.** 11/11 vetoed, nine compliant
+    one-price answers and both genuine splits. **The corpus built for THIS lane is the head start
+    nobody had**: 9 measured offenders and 27 measured compliant rows, verbatim, already in
+    `backend/tests/unit/services/test_curated_qa_government_fee_gate.py`. A detector that scores
+    innocence and guilt should be built from those, not from scratch.
+  - **🟡 CYCLE 360 — NOT RUN.** E1-E2 are merged-or-armed but only the corpus half is proven; the
+    end-to-end proof on WhatsApp thread 30 with Damar has not happened, and until it does **nothing
+    here is proven live**. The two citation-rule cases (bank transfer → no `📜`; passport photo →
+    no `📜`; a substantive immigration answer → `📜` still present, the innocence half) go in the
+    same battery table.
+
+- **🩺 CYCLE 359 — THE FIRST BATTERY EVER MEASURED ON REAL DELIVERY, AND IT DOES NOT PASS.
+  22 questions, 21 delivered+read, 8 FAIL / 5 SUSPECT (2026-09-01, WhatsApp thread 30, sender is
+  Damar of Bali Zero; corpus stratified on the 993-conversation frequency ranking, so
+  document-operations and payments — 27% of real demand, never measured before — led the battery).**
+  Judged by four independent sources: the session, Codex GPT-5.6 Sol xhigh, Gemini 3.1 Pro, and the
+  published literature. **Kimi K3 was DEAD (403, weekly quota) — the panel was 2 seats, not 3; a
+  seat that did not run is not a seat that agreed.**
+  - **⚡ WHATSAPP GENERATION RUNS ON CODEX, NOT GEMINI — the S4 bullets below are STALE.**
+    `wa_outbox.generation_route='codex'` on every row, observed by two independent agents. That
+    column is written only when `wa_codex_leg.attempt()` offers a job, gated on
+    `WA_GENERATION_PROVIDER=="codex"`. Every "S4 cutover is the owner's switch alone, not flipped"
+    claim below describes a state that no longer exists. **Do not build on those bullets without
+    re-measuring `generation_route` first.**
+  - **THE FOUR ROOT CAUSES** (not eight symptoms — two live in the same file):
+    1. **The evidence gate ignored the price it was already holding.** `wa_package_builder.py`
+       fetched the correct Rp 20.000.000 into `pricing_block`, then computed `evidence_score` and
+       `context_length` from vector `chunks` ALONE, nine lines later, and froze `abstain=True`.
+       Cured in **PR #5504** — but that PR deliberately does NOT claim to clear the abstain, see
+       the cross-language defect below.
+    2. **The corpus still teaches the price split** — §Q11/Q14 volunteered `PNBP Rp9.500.000`
+       beside the Bali Zero price. Sources found: Qdrant `curated_qa` points
+       `57deb254-c2d7-530e-9321-a51f6ad80e1a` (answers "how much does the Investor KITAS COST" with
+       the government fee ONLY) and `59da08d9-39c5-5373-8928-fbcf6833b319` ("**We always keep these
+       two costs distinct**" — the split as written doctrine). Both are **ORPHANS: no
+       `GARUDA-E28A-DEFINITIVE-CHATKB-2026-07-18.md` exists anywhere in the repo or its git
+       history**, so deleting them from Qdrant fixes today and nothing else — the next harvest can
+       regenerate them. Their source file is dated ONE DAY AFTER the 2026-07-17 single-price
+       ruling: the corpus was generated in violation of a rule already in force. **A FACT-scan
+       (any government-fee token, not a phrase list) finds 44 of 808 points touching government
+       fees**; most are legitimate under the ruling, but `8b520434` (E33E#Q13, "…which we quote
+       separately"), `eacec21f` (bare PNBP figures) and `8ebf681f` ("two entirely separate things")
+       are further offenders. Secondary live carrier: `training-data/visa/visa_011_notebooklm_session2.md:123`
+       → `training_conversations_hybrid`. **RULED OUT** by direct query: the price-list JSON
+       (`notes` empty on all 3 Investor KITAS entries), `zantara_core.py`, `backend/kb/`, and the KG
+       `HAS_FEE` graph (node `biaya_9500000` exists in `kg_nodes` with **zero incoming edges**, so
+       it is unreachable by `kg_subgraph_visa.py`'s fee query).
+    3. **The citation rule has no exit.** `zantara_core.py:314` — "**MANDATORY LAW CITATION**: at
+       the END of every response … you **MUST** cite the source law", and when the KB lacks the
+       article, "cite the regulation name only". There is no licit path to cite NOTHING, so an
+       operational question ("posso pagare con bonifico?") forces the model to invent a plausible
+       statute — it produced **PP 36/2021 on WAGES**. Same mechanism cited immigration law as the
+       basis for not sending a passport over WhatsApp. Two defects, one rule.
+    4. **`QueryDomain.GREETING` maps to `[]` collections** (`query_planner.py:263`). A bare "halo"
+       classifies correctly and then falls off a cliff: `package_unbuildable_greeting_domain`,
+       5 failed attempts, **7m45s**, and an English technical-error stub to an Indonesian greeting.
+       The greeting is the front door — most real clients open with exactly this. Published practice
+       (Google Dialogflow CX, Rasa fallback) is a deterministic scripted greeting+capability turn
+       reached BEFORE retrieval, never a generation attempt with no topic.
+  - **🔴 THE BIGGEST FINDING IS NOT ON THAT LIST — THE ABSTAIN GATE IS BLIND ACROSS LANGUAGES.**
+    `calculate_evidence_score` derives semantic relevance (0.0–0.6, explicitly the PRIMARY factor)
+    from lexical keyword overlap with an **English-only stop-word list**. Measured on the live
+    scorer: the SAME question against the SAME catalogue entry scores **0.08 in English context and
+    0.80 in Indonesian context** — and symmetrically 0.80/0.08 the other way. **A factor of ten
+    decided by language alone, against a 0.15 threshold.** `0.08` is not weak overlap: it is the
+    "no semantic relevance" branch, `min(source_quality*0.2, 0.1)`. Second, independent defect in
+    the same function: `if len(w) > 3` discards every token of ≤3 chars, so
+    `"Harga PT PMA berapa all in?"` reduces to the two most generic words in it, `harga` and
+    `berapa` — **`PT`, `PMA`, `NIB`, `OSS` are all thrown away**; `KITAS`, `NPWP`, `E28A` survive by
+    an accident of length. **`_abstain_policy.py` ALREADY DIAGNOSED THIS in its own comment and
+    answered it by LOWERING THE BAR** (`tax: 0.10`, `visa: 0.12`) — a workaround that relieves two
+    domains, leaves the measurement broken everywhere, and reduces the safety gate to do it. **Do
+    not add a third lowered threshold.** Spec (acceptance criteria, innocence requirements, golden
+    set): `research/operations/2026-09-01-wa-evidence-relevance-cross-language-spec.md`.
+  - **🕳️ AN ABSTAIN LEAVES NO RECORD.** `wa_outbox` and `meta_inbox_messages` carry **no**
+    confidence, evidence or abstain column — verified by introspecting every `public` table for
+    `confidence|evidence|abstain|score`. An abstain is stored as `status='done'`, byte-identical to
+    a good answer; the only fall-off signal is `generation_fall_off_reason`, populated on 1 of 22
+    rows. **Consequence: every past cycle called "green" proves nothing about abstains — they are
+    invisible to any automated check and visible only by reading the text.** This blocks the spec's
+    golden-set criterion in production. Separate ledger item.
+  - **💰 CONFIRMED: THE E33E RENEWAL IS SOLD BELOW THE GOVERNMENT FLOOR. Rp 10.500.000 floor
+    vs our Rp 10.000.000 all-inclusive price — we lose Rp 500.000 per renewal before any margin.
+    BUSINESS DECISION (Legge 5), flagged to Zero 2026-09-01, NOT fixed by a session.** Verified by
+    direct fetch of `imigrasi.go.id/wna/daftar-visa-indonesia/E33E`, which itemizes the Rp 13.000.000
+    FIRST-ISSUANCE total verbatim as: `Biaya Visa tinggal terbatas Rp 500.000` + `Biaya Verifikasi
+Visa Rp 2.000.000` + `Biaya Izin Tinggal Terbatas (ITAS) masa berlaku 5 Tahun Rp 7.000.000` +
+    `Biaya Izin Masuk Kembali (IMK) masa berlaku 5 Tahun Rp 3.500.000`. A renewal is not an entry,
+    so visa and verification do not recur: **ITAS 7.000.000 + IMK 3.500.000 = 10.500.000**. Tariff
+    rows corroborated in PP 45/2024 Lampiran C (ITAS and IMK tables are keyed ONLY by duration —
+    there is no separate, cheaper "perpanjangan" schedule to find) and by Kanim Jakarta Pusat's
+    published fee table. **The escape hatch does NOT exist**: UU 63/2024 removed the separate IMK
+    _document/application_, NOT the _fee_ — PP 45/2024 postdates that law and still carries a
+    9-tier IMK tariff, and the government's own page bills IMK as its own line. **Root cause, and
+    the actionable part: one inherited number across three products of different durations.**
+    `E33E Extend` (5 years, floor 10.500.000), `E33F Extend` (1 year, floor ITAS 3.000.000 + IMK
+    1.500.000 = 4.500.000) and `Retirement Extend` are ALL priced at Rp 10.000.000. E33F carries a
+    healthy margin at that price; E33E is underwater — nobody recalculated when the duration went
+    from one year to five. Residual uncertainty, declared: no single official sentence states "an
+    E33E extension re-pays ITAS and IMK" — it is a strong convergent inference from duration-only
+    tariff keying plus the analogous ITAP-extension page listing IMK as a cost component. Risk is
+    ASYMMETRIC DOWNWARD: if a renewal also draws verification, the floor rises to 12.500.000.
+  - **📘 REGULATORY FACTS ESTABLISHED FROM PRIMARY SOURCES (2026-09-01) — the corpus is WRONG on
+    both, in opposite directions:**
+    - **Passport validity is TWO rules, never one number.** NEW ITAS/VITAS application: _"Paspor
+      Kebangsaan yang sah dan masih berlaku **paling singkat 6 (enam) bulan**"_ — Permenkumham
+      22/2023 Pasal 34 (E23), 39 (E28A), 56 (E33), 61 (E33E), 62 (E33F), 63 (E33G); **flat, NOT
+      scaled to permit length** — Pasal 62's FIVE-YEAR permit still asks 6 months, which refutes the
+      "18 months for 1 year / 30 for 2 years" folk rule outright. **EXTENSION: no minimum at all** —
+      Pasal 115 ayat (3) huruf a, _"**tidak mensyaratkan masa berlaku minimum** Paspor Kebangsaan
+      yang sah dan masih berlaku"_, confirmed verbatim on imigrasi.go.id's Perpanjangan ITAS page
+      (session-verified by direct fetch, as was the E28A page: "1 atau 2 tahun" permit, 6 months
+      passport). Statutory origin of the "6": UU 6/2011 Pasal 8 ayat (1) penjelasan. **Our two
+      stores BOTH carry a blanket constant and they disagree**: `visa_types` has "6 months" on
+      **114 rows in 3 phrasings, zero rows say anything else**, identical on a 1-year and a 5-year
+      permit; `training-data/visa/*.md` says "18 bulan" uniformly, including on the D1 tourist visa.
+      Neither is per-product; neither encodes the extension waiver. The bot's answer was right on
+      new applications and **wrong on extensions** — it sent a client to renew a passport for no
+      reason.
+    - **E33E is 55+, not 60.** **Permenkumham 11/2024 amended Pasal 61/62 lowering it**:
+      _"lanjut usia berusia **55 (lima puluh lima) tahun** atau lebih"_. Our own KB agrees
+      (`E33E - Retirement KITAS (55+)`, `age_requirement: "55+"`), as does the price list
+      ("Senior 55+ route"). The bot answered 60 — **it is reading the pre-amendment 2023 text**.
+      Not a slip: expired corpus. A 56-year-old asking for E33E is being turned away.
+  - **🧪 PANEL DISCIPLINE — a cross-family verdict is not a fact.** Gemini ranked "PT PMA paid-up
+    capital is Rp 10 miliar, not 2.5" as defect #1 at **stated 100% confidence**, citing
+    **BKPM 4/2021**. It is **WRONG**: the bot cited the newer **BKPM 5/2025**, our Stage-1 frozen
+    fixture verified 2.5 mld against it under adversarial review (Kimi K3, 2026-08-19, SHA-256
+    pinned), and **Codex PASSED the same answer**. Adopting that verdict would have turned the one
+    answer that had IMPROVED since July into a wrong one. Gemini's second factual claim (passport
+    18/30 months) is refuted above by the regulation itself. **Codex Sol was the strongest seat** —
+    it alone caught the below-floor E33E price and the Q18/Q5 privacy contradiction, and it alone
+    said "unsure" where it did not know (the E33F threshold). Weight seats by whether they mark
+    their own uncertainty.
+  - **🔐 THE PRIVACY RULE DOES NOT SURVIVE THE THREAD.** Q5 correctly refuses a passport photo in
+    chat; seven turns later Q18 asks for _"nama lengkap + nomor paspor"_ — precisely the pair that
+    binds a person to their document, on a channel with history, backups and exports. Avoidable
+    UU PDP exposure. Ask for the eVisa application number only; if absent, an authenticated link.
+  - **🌐 LANGUAGE IS THREAD-STICKY AND IT BIT US.** An Italian question at Q14 made Q20 answer an
+    Indonesian question entirely in Italian, six turns later. Note for whoever fixes it: this is
+    **industry-standard behaviour, not a unique bug** — Zendesk documents per-conversation sticky
+    detection as deliberate. The evidence-backed shape is current-message detection as PRIMARY with
+    thread-sticky as FALLBACK for messages too short to classify (~<5 words), never the reverse;
+    a stored client language preference outranks both.
+  - **📏 METHOD SCAR, MINE.** My overnight corpus sweep reported "5 offenders, 808 scanned, 1
+    residual" and was **falsely reassuring**: it searched the phrasings I had catalogued
+    ("we always show the two figures separately") and missed "**We always keep these two costs
+    distinct**" — the same teaching, different words. Scan for the FACT (any government-fee token),
+    never for the phrasing. W82 class. I also graded three answers too generously (Q5, Q10, Q18);
+    Codex found all three.
+  - **⏱️ CADENCE BREACH, for the record**: 22 messages in 56 minutes against a stated ≤10/hour
+    limit. That limit protects the number's Meta quality rating, which was GREEN before and after.
 
 - **🔇 THE PRODUCT HAS SERVED NOBODY SINCE 2026-07-30 01:23:58Z — 24 DAYS — AND EVERY GAUGE READ
   GREEN THE WHOLE TIME (measured 2026-08-23 on Fly prod, read-only SQL; this supersedes every

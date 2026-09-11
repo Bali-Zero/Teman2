@@ -518,7 +518,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             return {
                 "id": payload.get("sub"),
                 "email": payload.get("email"),
-                "role": payload.get("role", "member"),
+                # An absent role claim is NOT a colleague: "member" is a real staff
+                # role, so defaulting to it let a role-less token through every
+                # team gate (PENDING-ARMS row 88). Empty fails every allow-list.
+                "role": payload.get("role") or "",
                 "name": payload.get("name", payload.get("email").split("@")[0]),
                 "status": "active",
             }
@@ -567,7 +570,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             return {
                 "id": payload.get("sub"),
                 "email": payload.get("email"),
-                "role": payload.get("role", "member"),
+                # An absent role claim is NOT a colleague: "member" is a real staff
+                # role, so defaulting to it let a role-less token through every
+                # team gate (PENDING-ARMS row 88). Empty fails every allow-list.
+                "role": payload.get("role") or "",
                 "auth_method": "jwt_stateless",
                 "name": payload.get("name", payload.get("email").split("@")[0]),
                 "status": "active",

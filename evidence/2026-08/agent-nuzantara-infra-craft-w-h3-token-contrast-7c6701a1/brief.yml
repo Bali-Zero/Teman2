@@ -1,0 +1,81 @@
+task_id: craft-w-h3-token-contrast-ci
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  `scripts/check_token_contrast.py` and its 38-test corpus exist on main and are executed by
+  NOTHING. The design-token contrast tripwire — the guard that catches a brand colour drifting
+  below its WCAG duty floor — has been a shipped script with no runner: the exact "esiste ≠ armato"
+  shape (superscar #2) that this repo names as its most common disease.
+
+  Give it an executor. A workflow that runs the checker against the shipped token file, runs the
+  checker's own guilt+innocence corpus, and — the part that matters most — mechanically forbids
+  its own invocation from ever passing `--tolerance`, the flag that would turn every drift claim
+  into a pass regardless of how far a hex has actually moved.
+constraints:
+  - "ADVISORY (`continue-on-error: true`), not blocking. The artifact this lane implements says the
+    contrast checker must not gate merges until a 6-item follow-up spec lands; shipping it blocking
+    would be the session overruling the spec it is executing."
+  - "The watcher registration in this diff is FUTURE-ARMING, not present coverage, and this
+    sentence replaces one that claimed otherwise. Measured: this workflow's triggers are exactly
+    ['pull_request', 'push'] — there is NO `schedule:` — and main-push-failure-watch.yml:396 gates
+    its alert on `workflow_run.conclusion == 'failure' || 'timed_out'`, which job-level
+    `continue-on-error: true` keeps at `success`. So a contrast failure on main notifies nobody
+    until the advisory flag is removed. The registration is still correct to make now (the entry
+    matches the workflow name exactly and the push paths cover every file that can break it); it
+    simply does not do anything yet."
+
+  - "`--tolerance` must never appear in this workflow's own invocation. It is the checker's
+    off-switch: `--tolerance 99` makes every claim recompute clean. Its absence must be enforced
+    MECHANICALLY, not promised in a comment — a comment is not a guard."
+  - "The self-guard must not be able to flag ITSELF. Its own error message necessarily contains the
+    string it hunts for, so exclusion must be by the step's `id:`, never by matching its own prose."
+acceptance:
+  - text: |
+      WHEN any `run:` step in this workflow other than the guard itself passes `--tolerance`, the
+      guard SHALL exit non-zero and name the offending job AND step.
+    probe: "inject `--tolerance 99` into the checker-invoking step; require rc=1 naming it"
+  - text: |
+      WHILE no step passes `--tolerance`, the guard SHALL exit 0 — including when the word
+      `--tolerance` appears in the file's COMMENTS, which it does, at the line explaining the danger.
+    probe: "run the guard unmodified on a file that mentions `--tolerance 99` in prose; require rc=0"
+  - text: |
+      IF the shipped token file's claims drift or a required-claim path loses its last claim, the
+      checker SHALL say so; WHERE a claim's duty is decorative or icon-only it SHALL emit a NOTICE
+      and no floor violation.
+    probe: "scripts/check_token_contrast.py against the live design/tokens/merah-putih.tokens.json"
+  - text: |
+      EVERY live workflow SHALL be covered by main-push-failure-watch.yml, this one included.
+    probe: "scripts/check_watcher_coverage.py"
+consumer_map:
+  - "`.github/workflows/token-contrast-tests.yml` — the new executor. schedule + PR-path triggers.
+    `continue-on-error: true` at job level; nothing `needs:` it; not a required check."
+  - "`scripts/check_token_contrast.py` + `scripts/tests/test_check_token_contrast.py` — until this
+    merges, both are unreachable from any automation. This PR is their first and only runner."
+  - "`.github/workflows/main-push-failure-watch.yml` — so a scheduled failure on main is not silent."
+  - "`.claude/skills/modus/PENDING-ARMS.md` — carries the row for the deferred 6-item follow-up that
+    must land before this job may be flipped to blocking. The row is the reason the flip is not in
+    this diff."
+risks:
+  - "ADVISORY IS A REAL LIMIT, NOT A FORMALITY. Until the follow-up spec lands and this flips to
+    blocking, a genuine contrast regression produces a red job that blocks nothing. The value
+    shipped here is VISIBILITY, and the PENDING-ARMS row is what stops that from being mistaken for
+    enforcement."
+  - "`continue-on-error: true` at JOB level does not make the job's own steps tolerant of each
+    other; a failing step still ends the job. The workflow's header spends 50 lines on this because
+    the difference is narrower than the flag's name suggests."
+  - "The checker's floor comparison rounds to 2dp before comparing (check_token_contrast.py:524:
+    `floor_check_value = round(computed, 2)`), so a raw 4.4951 passes a 4.50 floor. That is the
+    checker's pre-existing behaviour, not this PR's, and this PR's header now says so instead of
+    claiming green proves no duty-floor violation."
+  - "The self-guard walks other steps' `run:` bodies via YAML. A future edit that moves the checker
+    invocation into a composite action or a script file takes it out of the guard's view — the
+    guard would stay green while the off-switch became reachable. Declared, not cured: curing it
+    means following invocations across files, which this diff's budget does not carry."
+grader: |
+  Opus 5, effort xhigh, on-disk, this turn, re-run on the POST-`update-branch` head — the tree
+  moved after the previous session's verdict, so that verdict did not carry.
+budget: |
+  3 files, +300/-0. Two workflows plus one PENDING-ARMS row. No production code changes: the
+  checker and its corpus already exist on main and are untouched here.
+pii: none

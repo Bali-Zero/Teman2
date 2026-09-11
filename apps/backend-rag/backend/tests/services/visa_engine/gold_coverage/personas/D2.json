@@ -1,0 +1,60 @@
+{
+  "expected_candidates": ["D2"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "Dutch procurement manager, 41, repeated supplier meetings in Jakarta and Surabaya over a 45-day trip, self-funded, no Indonesian employer",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-09-15"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["BUSINESS_MEETINGS"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 45
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1985-03-12"
+    },
+    "person.marital_status": {
+      "status": "KNOWN",
+      "value": "MARRIED"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["NL"]
+    },
+    "process.application_channel": {
+      "status": "KNOWN",
+      "value": "OFFSHORE"
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "NONE"
+    },
+    "work.employer_country_code": {
+      "status": "KNOWN",
+      "value": "NL"
+    },
+    "work.employer_is_indonesian_entity": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "work.indonesia_source_compensation": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "work.serves_indonesian_clients": {
+      "status": "KNOWN",
+      "value": false
+    }
+  },
+  "product_code": "D2"
+}

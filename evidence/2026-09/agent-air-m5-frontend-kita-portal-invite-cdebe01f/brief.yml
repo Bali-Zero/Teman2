@@ -1,0 +1,78 @@
+task_id: kita-portal-invite
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Give a consultant in kita.balizero.com a control that invites a client to
+  my.balizero.com, and make the portal status that control reads TRUE — the
+  status endpoint answered "has portal access" for 448 active clients whose
+  PIN hash is the placeholder no PIN can match, and aliased created_at onto
+  last_login. Both defects would have hidden the invite button from exactly
+  the clients that need it, so they are cured in the same diff as the caller.
+constraints:
+  - >-
+    Scope is the CRM client page (PortalAccess panel + its wiring) and the
+    portal-status/last-login lookup in crm_portal_integration.py. No change to
+    the invitation minting service or to the portal app itself.
+  - >-
+    The placeholder hash is matched by EQUALITY against the constant, never as
+    a substring (superscar #3, guard-over-match).
+  - >-
+    Local verification only against a database carrying the production schema;
+    the local backend's internal-email endpoint is pointed at a dead address so
+    no real mail can leave a dev machine.
+  - No client PII in the diff, the tests, the PR body or this brief.
+acceptance:
+  - text: >-
+      WHEN a client's portal profile carries the placeholder PIN hash, the
+      status endpoint SHALL report has_portal_access=false so the panel offers
+      the invitation; WHEN the client holds real credentials it SHALL still
+      report true.
+    probe: >-
+      backend/tests/unit/app/routers/test_crm_portal_status_placeholder.py
+  - text: >-
+      The status endpoint SHALL return the real last_login column, never
+      created_at wearing its name.
+    probe: >-
+      backend/tests/unit/app/routers/test_crm_portal_status_placeholder.py
+  - text: >-
+      The panel SHALL render four distinct branches (active / pending / not
+      invited / status-read failed), SHALL surface a minted-but-not-emailed
+      result as a failure rather than a success, and SHALL never place the
+      invitation token in the DOM.
+    probe: >-
+      npx vitest run "src/app/(workspace)/clients/[id]/components/PortalAccess.test.tsx"
+consumer_map:
+  - >-
+    A consultant opening a client in kita.balizero.com consumes the new
+    "Client Portal Access" panel and sends the invitation from it — observed
+    live in a browser as an Executive Consultant: the panel offered "Invite to
+    portal", the click returned email_sent=false with the mail endpoint
+    deliberately dead, the UI showed the NOT-sent state, a client_invitations
+    row appeared and a reload flipped the panel to "Invitation pending".
+  - >-
+    The CRM client page's existing "Last signed in" line consumes the corrected
+    last_login and stops displaying the record's creation date.
+risks:
+  - >-
+    ~448 clients will stop claiming "Portal active" in the CRM. That is the
+    correction, not a regression, but it is visible to the whole team at once.
+  - >-
+    The panel calls /api/portal/invite/send rather than its namespace-matching
+    CRM twin, because only that endpoint reports email_sent/email_error. One
+    namespace inconsistency, taken deliberately.
+  - >-
+    Email delivery itself is unproven on production — it was verified only in
+    its failure branch locally. First real send is a pilot observation.
+assumptions:
+  - text: >-
+      PLACEHOLDER_PIN_HASH remains the single sentinel written by
+      ensure_portal_profile; a second sentinel shape would escape the equality
+      check.
+    status: verified
+    probe: grep for PLACEHOLDER_PIN_HASH assignments in the portal profile service
+grader: >-
+  Independent verification by the session, generator != grader; CI gates plus a
+  live browser round on the assigned-consultant role.
+budget: Existing subscription only; no paid per-token API calls.
+pii: none

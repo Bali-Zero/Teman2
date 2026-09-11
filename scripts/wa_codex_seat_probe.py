@@ -21,11 +21,18 @@ This organ manufactures a signal independent of job traffic: `codex login
 status` plus a 1-token synthetic `codex exec`, on the plist's own
 StartInterval, regardless of whether the broker has anything to claim.
 
-CLASSIFICATION — declared limit: quota exhaustion (CodexQuotaError-shaped
-failures in backend/llm/codex_exec_client.py) is NOT distinguished from any
-other non-auth, non-invocation failure here — both land in `other_failure`.
-S1.5 owns sharpening that bucket further. This probe answers exactly one
-question: is the seat's LOGIN dead, yes or no.
+CLASSIFICATION (B2b, closes the S1.5 gap this docstring used to declare
+open): quota exhaustion (`CodexExecQuotaError`-shaped failures in
+backend/llm/codex_exec_client.py, detected via that module's `_QUOTA_RE`)
+is now its own verdict, `quota_exhausted` — the same name
+`wa_codex_seat_sentinel.py` already anticipated in its own
+forward-compatibility comment, and the same wire value the daemon reports
+as `error_class`. Distinct from `auth_death` (a re-login fixes auth death;
+nothing but the usage window resetting fixes quota exhaustion) and from
+`other_failure` (a genuine crash, still undifferentiated). Priority when a
+failure matches BOTH word classes is auth first, same as the daemon's own
+scan order — no measured overlap is known between the two vocabularies, so
+this is a tie-break, not an observed collision.
 
 LEAK SURFACE (Law 2 / scar family #4 — secret/PII in the clear): the status
 file carries ONLY the verdict enum, the two raw exit codes, and a UTC
@@ -76,6 +83,7 @@ logger = logging.getLogger("wa_codex_seat_probe")
 # a degraded fallback, never the source of truth.
 try:
     from backend.llm.codex_exec_client import _AUTH_DEATH_RE as AUTH_DEATH_RE
+    from backend.llm.codex_exec_client import _QUOTA_RE as QUOTA_RE
 
     _AUTH_DEATH_SOURCE: Final[str] = "import"
 except ImportError:  # pragma: no cover — exercised only when the runtime
@@ -97,6 +105,16 @@ except ImportError:  # pragma: no cover — exercised only when the runtime
         r"session\s+invalidated|"
         r"auth(?:entication)?\s+(?:failed|error|required|expired)|"
         r"run\s+`?codex\s+login`?"
+        r")(?!\w)",
+        re.IGNORECASE,
+    )
+    # Byte-identical to `_QUOTA_RE` in `backend/llm/codex_exec_client.py` —
+    # same drift discipline as AUTH_DEATH_RE above (superscar #1).
+    QUOTA_RE = re.compile(
+        r"\b(?:"
+        r"usage\s+limit|"
+        r"weekly\s+limit|"
+        r"quota\s+(?:exceeded|exhausted)"
         r")(?!\w)",
         re.IGNORECASE,
     )
@@ -122,6 +140,7 @@ _UNRUN_RC: Final[int] = -1
 
 VERDICT_OK: Final[str] = "ok"
 VERDICT_AUTH_DEATH: Final[str] = "auth_death"
+VERDICT_QUOTA_EXHAUSTED: Final[str] = "quota_exhausted"
 VERDICT_OTHER_FAILURE: Final[str] = "other_failure"
 VERDICT_PROBE_ERROR: Final[str] = "probe_error"
 
@@ -244,10 +263,16 @@ def classify(
     and exec stdout may carry a partial model answer discussing a CLIENT's
     login/credential).
 
+    Auth outranks quota when a failure text (implausibly) matches both — no
+    measured case is known, but the priority mirrors the daemon's own scan
+    order (auth checked before quota in `codex_exec_client.py::generate`).
+
     Only if NEITHER command produced a real exit code at all is this a
     probe_error (we could not observe anything, auth-dead or otherwise).
-    Any other nonzero combination is other_failure (declared limit: not
-    further distinguished from quota exhaustion — see module docstring)."""
+    Any other nonzero combination that matches neither word class is
+    other_failure — a genuine crash, still undifferentiated (B2b closed the
+    quota half of this gap; a future refinement could still narrow
+    other_failure further)."""
     guilty_texts: list[str] = []
     if login_rc not in (0, _UNRUN_RC):
         guilty_texts.extend((login_out, login_err))
@@ -255,6 +280,8 @@ def classify(
         guilty_texts.append(exec_err)
     if any(AUTH_DEATH_RE.search(t) for t in guilty_texts if t):
         return VERDICT_AUTH_DEATH
+    if any(QUOTA_RE.search(t) for t in guilty_texts if t):
+        return VERDICT_QUOTA_EXHAUSTED
     if login_rc == _UNRUN_RC and exec_rc == _UNRUN_RC:
         return VERDICT_PROBE_ERROR
     if login_rc != 0 or exec_rc != 0:

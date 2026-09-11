@@ -1,0 +1,172 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L05-verification-adversarial-gate.md PR-3
+  ("fix the launcher docstring that still names Fable 5 as the final gate"). The spec's own
+  precondition — "verify no runtime code path actually routes to Fable before touching anything
+  beyond the string" — was executed and FAILED in an unanticipated direction, which is what turned
+  a one-line docstring fix into this diff.
+lanes:
+  - lane: craft-w-gate-seat-conformance
+    role: build
+    seat: |
+      claude-opus-5 (this session, xhigh) — measured the precondition, wrote the corrected
+      docstring and the guard, dispositioned the refuter round, re-shaped the guard from
+      match-a-phrase to gate-on-intent, wired it into its workflow, and re-derived the
+      detect-secrets pins from the classifier
+  - lane: craft-w-gate-seat-conformance-refute-kimi
+    role: review
+    seat: |
+      kimi-code/k3 — adversarial review on the finished merge-base-anchored diff with its own file
+      access; reproduced every evasion it reported rather than arguing it, generator != grader
+seat_diversity: satisfied
+seat_diversity_note: |
+  One build lane, so D3's >=2-build-lane non-Anthropic requirement does not bind. The review seat
+  is cross-family and non-Anthropic (Moonshot kimi-code/k3), dispatched on the finished diff.
+diff: |
+  Three scripts and one workflow. No file or line count is narrated here: CI recomputes it from the
+  payload, and a figure written in the pack goes stale on the next push (this session already
+  tripped the countable-claims rule that way on its sibling PR).
+
+  BEHAVIOUR CHANGE: none at runtime. The launcher's phase two still raises unconditionally; the
+  docstring, one function docstring and one error string stop naming a retired seat as the gate.
+  The new guard is a test. The workflow change makes that test actually execute.
+receipts:
+  - claim: |
+      THE SPEC'S PRECONDITION FAILED, AND NOT AS EXPECTED. The docstring was false in a way the
+      task did not anticipate: not merely naming a retired seat, but claiming a capability the file
+      does not have. `launch_final_gate()` raises unconditionally, `V3_FINAL_GATE_READY` is False,
+      and the parity tripwire reads `not V3_FINAL_GATE_READY or <parity>` so it passes VACUOUSLY.
+      Rewriting the sentence to say "Opus 5" would have replaced one false claim with another.
+    cmd: "grep -n 'launch_final_gate' scripts/launch_worker_plane_review_panel.py ; grep -n V3_FINAL_GATE_READY scripts/check_worker_plane_review.py"
+    result: "launch_final_gate: one hit, its own def, raising unconditionally; V3_FINAL_GATE_READY = False"
+    exit: 0
+    ts: "2026-08-29T09:20:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      THE REFUTER'S BLOCKER, CONFIRMED BY GREP BEFORE BEING BELIEVED. The new guard was named in
+      ZERO workflows. worker-plane-review-tests.yml — whose own header exists because "NO CI job
+      anywhere referenced any of these files by name" — lists five test files and not this one. So
+      the guard ran nowhere while the launcher docstring claimed it made a retired-seat flip
+      "impossible".
+    cmd: "grep -n test_gate_seat_conformance .github/workflows/*.yml"
+    result: "no matches — the guard was decorative in CI"
+    exit: 1
+    ts: "2026-08-29T12:05:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      ALL FOUR CLAIM EVASIONS THE REFUTER REPRODUCED ARE NOW CAUGHT, and the file's own explanation
+      of the correction still passes. The guard was re-shaped from positive-matching one phrasing
+      to negative-gating on intent: a sentence containing "final gate" and the retired model — by
+      prose name OR model ID — is a violation unless it also carries a retirement marker.
+    cmd: "paste each evasion into the launcher docstring in turn, then pytest scripts/tests/test_gate_seat_conformance.py"
+    result: "model-ID form CAUGHT; reordered CAUGHT; appositive CAUGHT; 'only' dropped CAUGHT; unmutated tree 3 passed; both files restored byte-identical"
+    exit: 1
+    ts: "2026-08-29T12:12:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      BOTH ARMING-FLAG EVASIONS ARE NOW CAUGHT. `V3_FINAL_GATE_READY: bool = True` and
+      `= bool(True)` both slipped a `^...=\s*True` pattern. Adding a type annotation while flipping
+      a flag is an ordinary edit, so a pattern that misses it is not a guard on the flag.
+    cmd: "rewrite the flag in each form, then pytest scripts/tests/test_gate_seat_conformance.py"
+    result: "annotated CAUGHT; bool(True) CAUGHT; file restored byte-identical"
+    exit: 1
+    ts: "2026-08-29T12:14:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      THE ARMING PIN CATCHES EACH OF THE THREE NAMINGS INDEPENDENTLY. Naming the guard in two of
+      three places is worse than none, because the green looks identical while the guard runs on
+      some events and not others.
+    cmd: "remove test_gate_seat_conformance from push.paths / the sentinel regex / the pytest list in turn, then pytest"
+    result: "PATHS CAUGHT; SENTINEL CAUGHT; PYTEST CAUGHT; workflow restored byte-identical"
+    exit: 1
+    ts: "2026-08-29T12:30:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      THE DETECT-SECRETS PINS WERE RE-DERIVED FROM THE CLASSIFIER, NOT SHIFTED BY HAND — for the
+      SECOND time in this PR, because the second docstring edit moved them again. A hand-shifted
+      list is a list that was never checked.
+    cmd: "for each target file, ask classify(target, line) which lines it auto-approves"
+    result: "launcher: [234,235,246,247,262,263,272,273,284,285,297,298,308,309]; validator: [185,186,196,197,207,208]"
+    exit: 0
+    ts: "2026-08-29T12:40:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: "The full worker-plane suite is green on the finished diff, and actionlint accepts the workflow."
+    cmd: "pytest the six worker-plane test files ; actionlint .github/workflows/worker-plane-review-tests.yml"
+    result: "312 passed in 154.22s, exit 0; actionlint exit 0"
+    exit: 0
+    ts: "2026-08-29T12:47:00Z"
+    seat: "claude-opus-5 (build lane)"
+pii_scan: clean
+pii_note: |
+  Docstrings, a test, and a CI workflow. No client data, no credentials, no PII.
+dissent:
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      BLOCKER — the new guard is not wired into the gating workflow, so CI never runs it.
+      test_gate_seat_conformance.py is absent from worker-plane-review-tests.yml's push.paths, its
+      PR sentinel regex, and its pytest invocation. The launcher docstring's claim that the guard
+      makes flipping V3_FINAL_GATE_READY on a retired seat "impossible" is therefore false in the
+      only sense that matters.
+    disposition: |
+      ACCEPTED and FIXED, verified by my own grep first (zero matches in any workflow). Wired into
+      all three places, plus a new pin that goes red if ANY ONE of them stops naming it — proved by
+      removing each in turn. The "impossible" claim is downgraded to "guards the flip", with the
+      reason for the downgrade written beside it. Folding the workflow edit in rather than
+      splitting it changes this PR's class to workflow (auto-merge OFF, conductor merges), which is
+      the right trade: shipping a guard separately from its arming is the W81 theater this repo has
+      a scar for.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      MEDIUM — the guard forbids one sentence, not "the CLAIM". Four evasions reproduced, each
+      pasted into the docstring and each leaving the suite green — including `claude-fable-5`, the
+      MODEL ID, which is the natural drift because FABLE_GATE_ARGV_SUFFIX in that same file
+      literally contains that string.
+    disposition: |
+      ACCEPTED and FIXED. Re-shaped from positive-match-a-phrase to negative-gate-on-intent (the
+      W115 shape). All four evasions now caught; the file's own explanation of the correction still
+      passes, which is the constraint that made the guard narrow in the first place.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      MEDIUM — the arming-flag regex misses the annotated-assignment form. `V3_FINAL_GATE_READY:
+      bool = True` and `= bool(True)` both evade, and adding a type annotation while flipping a
+      flag is a completely natural edit.
+    disposition: "ACCEPTED and FIXED. Both forms now caught, both proved."
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      LOW — the corrected docstring's "nothing calls it" is literally false (a test calls it to
+      assert the raise), and the Fable framing survives one docstring down: the function's own
+      docstring and error string still said "sequential Fable final gate", where the guard — which
+      reads only the MODULE docstring — can never fire.
+    disposition: |
+      ACCEPTED and FIXED, and it stung: on a PR whose stated ethic is "say what is TRUE rather than
+      swapping one false claim for another", this is not pedantry. Now "nothing in production calls
+      it (only the test that asserts that raise)". The function docstring and error string no
+      longer name the retired seat — which in turn required renaming
+      test_sequential_fable_gate_is_explicitly_fail_closed and its `match=`, since that test pinned
+      the retired-seat wording in its own name.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      LOW — the PR description overclaims "FABLE_GATE is defined and never used". It is used:
+      test_v3_final_gate_parity.py reads launcher.FABLE_GATE.requested_route.
+    disposition: |
+      ACCEPTED. The diff never made that claim — only the PR body did, which is exactly the surface
+      a reviewer of this pack would take on trust. Corrected in the PR body; recorded here rather
+      than quietly edited away.
+tests: |
+  Six worker-plane test files, 312 passed. The new guard is 4 tests: the claim guard, the
+  arming-flag guard, a doctrine premise check (the retired model is read from CLAUDE.md, and the
+  test fails loudly if that sentence stops matching), and the pin that proves the workflow executes
+  this file at all.
+static: |
+  actionlint on the modified workflow, exit 0. The launcher re-parsed with `ast` after every edit.
+notes: |
+  This PR changed class mid-flight. It began scripts-only (auto-merge ON per the wave's rules) and
+  became a workflow PR when the refuter showed the guard was executed by nothing. That is recorded
+  rather than smoothed over, because the class change is a consequence of the finding: a guard and
+  its arming are one concern, and discovering they had been separated is what moved the PR.

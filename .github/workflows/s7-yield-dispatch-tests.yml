@@ -23,7 +23,6 @@ on:
       - "scripts/s7_yield_draft_local.py"
       - "scripts/tests/test_s7_yield_dispatch.py"
       - ".github/workflows/s7-yield-dispatch-tests.yml"
-  merge_group:
   push:
     branches:
       - main

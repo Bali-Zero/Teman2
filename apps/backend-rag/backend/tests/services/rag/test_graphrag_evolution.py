@@ -113,6 +113,65 @@ class TestQueryPlanner:
         assert plan.collections == []
         assert plan.kg_strategy.value == "none"
 
+    def test_bare_greeting_still_classifies_as_greeting(self) -> None:
+        """A greeting with no substance behind it must still gate to
+        GREETING/skip_rag — this PR only stops GREETING from outranking a
+        substantive domain, it does not touch the bare-greeting path."""
+        plan = self.planner.plan("Halo")
+        assert plan.domain.value == "greeting"
+        assert plan.skip_rag is True
+        assert plan.collections == []
+
+    def test_greeting_prefix_does_not_outrank_visa_substance_indonesian(
+        self,
+    ) -> None:
+        """Live incident 2026-08-28 (wa_outbox id=348) fell off with
+        package_unbuildable (the specific sub-reason was not recoverable —
+        the log line naming it had already expired), retried 5x, terminal
+        apology. The real message text was never read (client data); this
+        string is SYNTHETIC, written only to reproduce the classifier
+        mechanism plausibly responsible."""
+        plan = self.planner.plan(
+            "Halo, saya butuh bantuan untuk urus visa dan pajak bisnis saya"
+        )
+        assert plan.domain.value != "greeting"
+        assert plan.domain.value == "visa"
+        assert plan.collections != []
+        assert plan.skip_rag is False
+
+    def test_greeting_prefix_does_not_outrank_property_substance_italian(
+        self,
+    ) -> None:
+        plan = self.planner.plan(
+            "Ciao, avrei bisogno di informazioni per comprare una villa a Bali"
+        )
+        assert plan.domain.value != "greeting"
+        assert plan.domain.value == "property"
+        assert plan.collections != []
+        assert plan.skip_rag is False
+
+    def test_greeting_prefix_does_not_outrank_company_substance_english(
+        self,
+    ) -> None:
+        plan = self.planner.plan(
+            "Hi, I would like some help setting up my company here"
+        )
+        assert plan.domain.value != "greeting"
+        assert plan.domain.value == "company"
+        assert plan.collections != []
+        assert plan.skip_rag is False
+
+    def test_substance_without_greeting_prefix_unchanged(self) -> None:
+        """Control case: the same substantive sentence with no greeting
+        word must classify the same way before and after this fix — proves
+        the change only touches the GREETING-vs-substance tie, nothing
+        else."""
+        plan = self.planner.plan(
+            "saya butuh bantuan untuk urus visa dan pajak bisnis saya"
+        )
+        assert plan.domain.value == "visa"
+        assert plan.collections != []
+
     def test_pricing_domain(self) -> None:
         plan = self.planner.plan("How much does PT PMA cost?")
         # PT PMA entity → company domain, but "how much" → pricing

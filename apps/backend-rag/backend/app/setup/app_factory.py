@@ -648,7 +648,6 @@ async def lifespan(app: FastAPI):
         ("backend.services.measurer.brevo_stats_client", "close_brevo_stats_client"),
         ("backend.services.measurer.ig_graph_sensor", "close_ig_graph_sensor_client"),
         ("backend.services.intel.intel_validators", "close_intel_validators_client"),
-        ("backend.services.council.cli_runners", "close_council_runner_client"),
         ("backend.self_healing.checks.http_api", "close_http_api_check_client"),
         ("backend.services.compliance.lkpm_ready_pack", "close_brevo_client"),
     )

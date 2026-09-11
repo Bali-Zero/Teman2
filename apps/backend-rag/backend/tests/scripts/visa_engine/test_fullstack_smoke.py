@@ -57,6 +57,7 @@ def test_migration_set_is_exact_and_forward_only() -> None:
         255,
         256,
         257,
+        261,
         262,
         263,
         264,
@@ -64,6 +65,9 @@ def test_migration_set_is_exact_and_forward_only() -> None:
         266,
         267,
         268,
+        276,
+        281,
+        289,
     )
     for path in paths:
         text = Path(path).read_text(encoding="utf-8")

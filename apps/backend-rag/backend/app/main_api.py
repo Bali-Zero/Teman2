@@ -11,6 +11,7 @@ Run via: uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -124,6 +125,140 @@ def _garuda_outbox_poll_seconds() -> float:
     return seconds
 
 
+#: How often the drain loop asks `count_undrained` whether anything is stuck.
+#: Five minutes: often enough that a burned job is seen the same hour it burns,
+#: rare enough that it costs one aggregate query per five minutes rather than
+#: one per 100ms pass.
+_ALARM_PERIOD_SECONDS = 300.0
+
+#: Advisory-lock name for the OP-04 checkout-expiry sweep. Exactly ONE `api`
+#: machine runs the drain loop today (measured 2026-08-28: process group `api`
+#: has one machine), which is a scaling accident and not a contract — two would
+#: select the SAME candidate rows, because that sweep's query has no
+#: `FOR UPDATE SKIP LOCKED` the way the drain's claim does.
+_OP04_SWEEP_LOCK = "garuda-op04-checkout-expiry-sweep"
+
+#: Hard bound on ONE sweep pass. It runs INLINE in the single drain coroutine,
+#: and `reconcile_expired_checkouts` walks up to `limit` (200) rows strictly
+#: sequentially, each one an HTTPS round trip to the payment provider on a
+#: client built with `timeout=30.0`. Its per-row `except Exception: continue`
+#: means a degraded provider does not cut the pass short — it GUARANTEES the
+#: worst case instead: 200 x 30s is roughly 100 minutes with `drain_once` not
+#: running, so no customer email and no staff money-anomaly page leaves the
+#: queue for that whole window. Exactly the "green log, dead queue" shape the
+#: alarm-send beside it is bounded against. A cut-off pass loses nothing: each
+#: row commits on its own and the next tick re-selects whatever is left.
+_OP04_SWEEP_TIMEOUT_SECONDS = 60.0
+
+#: Rows per sweep pass. Passed EXPLICITLY rather than left to
+#: `reconcile_expired_checkouts`'s own default, so the backlog warning below
+#: compares against the number this call actually used — comparing against a
+#: default we merely assume it kept would be an assertion about someone else's
+#: code. Its validator accepts 1..1000.
+_OP04_SWEEP_LIMIT = 200
+
+#: Hard ceiling on one alarm delivery. `send_telegram_message` makes 3 attempts
+#: with 1s/3s backoff against a 30s-timeout client, so left unbounded it can hold
+#: the drain for ~94s. Being late with a page is acceptable; stalling customer
+#: emails behind it is not.
+_ALARM_SEND_TIMEOUT_SECONDS = 20.0
+
+
+async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> bool:  # noqa: F821
+    """Best-effort page to the owner chat. NEVER raises.
+
+    RETURNS whether the page actually reached Telegram, and the caller MUST
+    gate `confirm_sent` on it. This returned `None` on every path — refused by
+    Telegram, no credentials, delivered fine — while its call site ran
+    `confirm_sent` unconditionally under a comment reading "A page that never
+    landed must not silence the next hour". The comment stated the invariant
+    the line broke. Found on the sibling inbox alarm first (kimi-code/k3,
+    cross-family council) and cured here in the same change, because the
+    concern is one — an alarm's delivery result is discarded and success
+    confirmed anyway — and the two definitions sit a dozen lines apart.
+
+    DESTINATION, and why it needs no SYMBIOSIS Law 2 derogation.
+    `TELEGRAM_OWNER_CHAT_ID` is Zero's own chat — the same destination the five
+    `staff_page_*` handlers already use. Nothing here carries applicant data:
+    the message names counts and `job_type` strings, never an order id, an
+    address or a name. That is not a promise this docstring makes on its own;
+    `test_the_page_names_only_counts_and_job_types` pins the shape.
+
+    A missing token or chat id is logged and swallowed. The caller is the drain
+    loop, and an unreachable Telegram must never stop customer emails going out.
+
+    The annotation is a STRING because `httpx` is imported inside the scheduler
+    rather than at module scope — `test_no_httpx_violators_outside_http_files`
+    only sanctions the `async with httpx.AsyncClient(...)` shape outside
+    `*_http.py`, and a module-level import here would be a new violation.
+    """
+
+    from backend.services.wa_copilot.telegram_notifier import send_telegram_message
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "")
+    if not token or not chat_id:
+        logger.error(
+            "GARUDA outbox alarm has something to report and NO WAY TO SEND IT: "
+            "TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID unset. The log line above "
+            "is the only record."
+        )
+        return False
+    ok, err = await send_telegram_message(client, token, chat_id, text)
+    if not ok:
+        logger.error("GARUDA outbox alarm could not be delivered: %s", err)
+        return False
+    return True
+
+
+async def _send_quarantine_alarm(client: "httpx.AsyncClient", text: str) -> bool:  # noqa: F821
+    """Best-effort page for a REFUSED payment callback. NEVER raises.
+
+    RETURNS whether the page actually reached Telegram, and the caller MUST
+    gate `confirm_sent` on it. Returning `None` unconditionally — which this
+    did until a cross-family council seat caught it — hands the suppression
+    hour to a page that was never delivered: exactly the failure
+    `QuarantineAlarm.confirm_sent` exists to prevent, reintroduced one layer
+    up in the wiring where the class's own tests cannot see it.
+
+    DESTINATION, and why it needs no SYMBIOSIS Law 2 derogation. Both env var
+    NAMES are read here and never their values from anywhere else — no token
+    and no chat id is written in this repository (119 hardcoded fallbacks once
+    pointed at a mailbox nobody can open; this is not the 120th).
+    `TELEGRAM_OWNER_CHAT_ID` is Zero's own chat, the same destination the five
+    `staff_page_*` handlers and the outbox alarm already use. Nothing here
+    carries applicant data: the message names counts, the closed
+    `quarantine_reason` vocabulary, provider event ids and order ids — never a
+    name, email, phone or passport, none of which exist on
+    `garuda_payment_inbox` at all. `test_the_quarantine_page_carries_no_pii`
+    pins the shape rather than trusting this paragraph.
+
+    A DELIBERATE NEAR-TWIN of `_send_outbox_alarm` rather than a shared helper
+    it was refactored into: that function is the live money-page for a
+    different queue, and rewriting it inside a PR about the payment inbox
+    would put a working alarm at risk for a dozen saved lines. The one thing
+    that MUST not drift — the re-alert discipline — is shared for real, by
+    importing `REALERT_SECONDS` in `quarantine_alarm.py`.
+    """
+
+    from backend.services.wa_copilot.telegram_notifier import send_telegram_message
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "")
+    if not token or not chat_id:
+        logger.error(
+            "GARUDA payment quarantine alarm has something to report and NO WAY "
+            "TO SEND IT: TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID unset. The "
+            "log line above is the only record."
+        )
+        return False
+    ok, err = await send_telegram_message(client, token, chat_id, text)
+    if not ok:
+        logger.error("GARUDA payment quarantine alarm could not be delivered: %s", err)
+        return False
+    return True
+
+
 async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
     """Drain `garuda_order_outbox` by calling `drain_once` in a loop.
 
@@ -168,21 +303,255 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
 
     import httpx
 
-    from backend.services.garuda_orders.outbox_consumer import drain_once
+    from backend.services.garuda_orders.outbox_alarm import OutboxAlarm
+    from backend.services.garuda_orders.outbox_consumer import count_undrained, drain_once
     from backend.services.garuda_orders.outbox_handlers import (
         BrevoEmailSender,
+        TelegramStaffPageSender,
         build_handlers,
+    )
+    from backend.services.garuda_orders.payment_inbox_watch import count_quarantined
+    from backend.services.garuda_orders.quarantine_alarm import QuarantineAlarm
+    from backend.services.garuda_orders.reconciliation import (
+        reconcile_expired_checkouts,
     )
 
     interval = _garuda_outbox_poll_seconds()
     pool = app.state.db_pool
     logger.info("✅ GARUDA outbox scheduler started (poll=%ss)", interval)
     async with httpx.AsyncClient(timeout=30.0) as client:
-        handlers = build_handlers(pool, BrevoEmailSender(client))
+        # Same injected client as the email sender (Golden Rule #10) — a
+        # Telegram POST is just another HTTPS call, no reason for a second
+        # long-lived client here.
+        #
+        # WRAPPED, because this runs OUTSIDE the per-tick try below and a failure
+        # here killed the whole drain in silence (cross-family seat, Kimi K3,
+        # 2026-08-28). `build_handlers` lazily imports `settings` and the portal
+        # router at call time, so an import drift or a renamed settings
+        # attribute raises HERE — after "scheduler started" was already logged,
+        # and before the loop whose except could have reported it. Nothing
+        # awaits this task until shutdown, where the exception is swallowed by a
+        # bare `except (CancelledError, Exception): pass`. Net effect: the entire
+        # GARUDA outbox — customer payment emails included — permanently dead
+        # behind a green startup log, which is superscar #2 exactly.
+        #
+        # The task still dies (there is no safe way to drain without handlers),
+        # but it dies LOUDLY: one CRITICAL naming the cause, then the re-raise.
+        try:
+            handlers = build_handlers(
+                pool, BrevoEmailSender(client), TelegramStaffPageSender(client)
+            )
+        except Exception:
+            logger.critical(
+                "GARUDA outbox scheduler CANNOT START — build_handlers failed; "
+                "the queue will accumulate and NOTHING will be dispatched "
+                "(customer emails and staff money-anomaly pages both)",
+                exc_info=True,
+            )
+            raise
+        # THE PROBE THAT HAD NO CALLER. `count_undrained` was written as "the
+        # numbers a probe needs to go red" and, measured 2026-08-28 on main, had
+        # ZERO non-test callers — its only two non-test mentions in the whole
+        # tree were COMMENTS promising a failure would "be visible in
+        # count_undrained". A comment is not a caller (superscar #2, one stage
+        # earlier than W120: there the sentinel read a key the reporter never
+        # emitted; here the reporter was never asked). This loop is that caller.
+        #
+        # NOT ON EVERY PASS: the loop cycles every 100ms while work is flowing,
+        # and an extra aggregate query at that rate is a self-inflicted load
+        # problem. The cadence is wall-clock from a MONOTONIC source, so a system
+        # clock adjustment cannot postpone the check indefinitely.
+        alarm = OutboxAlarm()
+        # THE THIRD WRITE-ONLY STATE IN THIS SUBSYSTEM. `count_undrained` above
+        # and `reconcile_expired_checkouts` below were both armed on 2026-08-28
+        # in the same tick; `garuda_payment_inbox.outcome = 'quarantined'` was
+        # left behind, and measured 2026-08-29 it had five writers in
+        # `repository.py` and zero non-test readers in the whole tree. A
+        # quarantined row is an authentic provider callback we refused to act
+        # on — the router answered 204, the provider will not retry, and until
+        # this line nothing told anyone. Armed on the SAME tick as its two
+        # siblings, deliberately: one cadence, one place to look.
+        quarantine_alarm = QuarantineAlarm()
+        next_alarm_check = 0.0
+        seen_unroutable: frozenset[str] = frozenset()
         while True:
             try:
                 async with pool.acquire() as conn:
                     stats = await drain_once(conn, handlers)
+
+                # `unroutable_types` is PER PASS and the alarm runs far less
+                # often, so the UNION since the last check is what it must see.
+                # Reading only the latest pass would let a type that appeared
+                # once and then had no row left to claim vanish unreported.
+                seen_unroutable |= stats.unroutable_types
+
+                now = time.monotonic()
+                if now >= next_alarm_check:
+                    next_alarm_check = now + _ALARM_PERIOD_SECONDS
+                    # EVERY failure in here is swallowed on purpose. This block
+                    # is observability; the drain is the product. An alarm that
+                    # can kill the queue it watches is worse than no alarm.
+                    try:
+                        async with pool.acquire() as conn:
+                            undrained = await count_undrained(conn)
+                        page = alarm.decide(
+                            exhausted=undrained.get("exhausted", 0),
+                            unroutable_types=seen_unroutable,
+                            now=now,
+                        )
+                        seen_unroutable = frozenset()
+                        if page is not None:
+                            # The log line goes out FIRST and unconditionally:
+                            # it is the record that survives an unreachable
+                            # Telegram.
+                            logger.error(
+                                "GARUDA outbox alarm: %s", page.replace(chr(10), " | ")
+                            )
+                            # BOUNDED, because `send_telegram_message` retries 3
+                            # times with 1s/3s backoff against a client whose
+                            # timeout is 30s — a worst case of roughly 94
+                            # seconds with the drain stopped behind it. The
+                            # alarm may be late; the queue may not be blocked.
+                            delivered = await asyncio.wait_for(
+                                _send_outbox_alarm(client, page),
+                                timeout=_ALARM_SEND_TIMEOUT_SECONDS,
+                            )
+                            # Only NOW does the suppression window start. A page
+                            # that never landed must not silence the next hour —
+                            # which is what this line did until 2026-08-29, one
+                            # line under this very comment, because the sender
+                            # returned None on success and failure alike.
+                            if delivered:
+                                alarm.confirm_sent(time.monotonic())
+                    except Exception:
+                        logger.exception(
+                            "GARUDA outbox alarm check failed; the DRAIN is unaffected"
+                        )
+
+                    # THIRD JOB THAT HAD NO CALLER, same tick — the payment
+                    # inbox's quarantine. Its own try/except for the same
+                    # reason as the block above: this is observability, the
+                    # drain is the product, and an alarm that can kill the
+                    # queue it watches is worse than no alarm. A separate
+                    # block, not a shared one, so a failure reading the inbox
+                    # cannot also suppress the outbox page.
+                    try:
+                        async with pool.acquire() as conn:
+                            snapshot = await count_quarantined(conn)
+                        page = quarantine_alarm.decide(snapshot, now=now)
+                        if page is not None:
+                            # The log line goes out FIRST and unconditionally:
+                            # it is the record that survives an unreachable
+                            # Telegram.
+                            logger.error(
+                                "GARUDA payment quarantine alarm: %s",
+                                page.replace(chr(10), " | "),
+                            )
+                            delivered = await asyncio.wait_for(
+                                _send_quarantine_alarm(client, page),
+                                timeout=_ALARM_SEND_TIMEOUT_SECONDS,
+                            )
+                            # Only a page that ACTUALLY WENT OUT starts the
+                            # suppression window. An undelivered one must page
+                            # again next tick, not buy an hour of silence.
+                            if delivered:
+                                quarantine_alarm.confirm_sent(time.monotonic())
+                    except Exception:
+                        logger.exception(
+                            "GARUDA payment quarantine check failed; the DRAIN is unaffected"
+                        )
+
+                    # SECOND JOB THAT HAD NO CALLER, same tick. On origin/main
+                    # `git grep -l reconcile_expired_checkouts` outside tests
+                    # returned exactly ONE path: its own definition. Its
+                    # docstring says "Intended cadence: a scheduled job, not a
+                    # request-path call" and no scheduler ever existed
+                    # (superscar #2 — built is not armed; a docstring naming a
+                    # cadence is not a cadence).
+                    #
+                    # Harmless TODAY only because the order lane answers 503
+                    # until GARUDA_XENDIT_SECRET_KEY is set, and a landmine the
+                    # moment it is: OP-04 commits ONLY from here, so an order
+                    # whose checkout window elapsed would sit in
+                    # `awaiting_payment` forever — no expiry mail, no terminal
+                    # state, and a customer looking at a dead tracker. Arming it
+                    # BEFORE the keys land is the whole point.
+                    repository = getattr(app.state, "garuda_order_repository", None)
+                    if repository is not None:
+                        try:
+                            async with pool.acquire() as lock_conn:
+                                # Lock and unlock on the SAME connection:
+                                # `pg_try_advisory_lock` is SESSION-scoped, so
+                                # unlocking from a DIFFERENT pooled connection
+                                # silently succeeds while releasing nothing.
+                                # CORRECTED (adversarial review): that is a
+                                # correctness bug in the unlock, not a permanent
+                                # outage — asyncpg's reset query on release
+                                # includes `SELECT pg_advisory_unlock_all()`
+                                # (verified in asyncpg 0.31.0), so the lock
+                                # cannot outlive this connection's next return
+                                # to the pool. The explicit unlock is still the
+                                # right shape: it frees the lock for the NEXT
+                                # tick instead of for whenever the pool happens
+                                # to recycle the connection.
+                                acquired = await lock_conn.fetchval(
+                                    "SELECT pg_try_advisory_lock(hashtext($1)::bigint)",
+                                    _OP04_SWEEP_LOCK,
+                                )
+                                if acquired:
+                                    summary = None
+                                    try:
+                                        summary = await asyncio.wait_for(
+                                            reconcile_expired_checkouts(
+                                                pool, repository, limit=_OP04_SWEEP_LIMIT
+                                            ),
+                                            timeout=_OP04_SWEEP_TIMEOUT_SECONDS,
+                                        )
+                                    except TimeoutError:
+                                        # Its OWN line, not the generic handler
+                                        # below: "the provider is slow" and "the
+                                        # sweep is broken" need different
+                                        # answers, and a backlog that times out
+                                        # every tick is a standing condition
+                                        # rather than an incident.
+                                        logger.warning(
+                                            "GARUDA OP-04 sweep exceeded %.0fs and was cut off; "
+                                            "the drain is free again and the next tick resumes it",
+                                            _OP04_SWEEP_TIMEOUT_SECONDS,
+                                        )
+                                    finally:
+                                        await lock_conn.fetchval(
+                                            "SELECT pg_advisory_unlock(hashtext($1)::bigint)",
+                                            _OP04_SWEEP_LOCK,
+                                        )
+                                    # Quiet when there is nothing to do: this
+                                    # fires every 300s forever, and a line per
+                                    # tick would bury the ones that matter.
+                                    if summary is not None and summary.candidates:
+                                        logger.info(
+                                            "GARUDA OP-04 sweep: %d candidate(s), %d expired, "
+                                            "%d left for the webhook",
+                                            summary.candidates,
+                                            summary.expired,
+                                            summary.left_for_webhook,
+                                        )
+                                        if summary.candidates >= _OP04_SWEEP_LIMIT:
+                                            # The pass filled its own limit, so
+                                            # there is almost certainly more
+                                            # behind it. Visible BEFORE a
+                                            # customer notices a stale tracker.
+                                            logger.warning(
+                                                "GARUDA OP-04 sweep hit its %d-row limit — "
+                                                "backlog not drained this tick",
+                                                _OP04_SWEEP_LIMIT,
+                                            )
+                        except Exception:
+                            # Same rule as the alarm above: this is upkeep, the
+                            # drain is the product.
+                            logger.exception(
+                                "GARUDA OP-04 checkout-expiry sweep failed; the DRAIN is unaffected"
+                            )
+
                 # Keep draining while the last pass did real work; back off once
                 # it did not. `dispatched` and not `claimed` is the right signal:
                 # a pass that only ever claims unroutable or failing rows has

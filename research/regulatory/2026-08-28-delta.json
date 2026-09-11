@@ -1,0 +1,81 @@
+{
+  "run_at": "2026-08-28T07:17:33+08:00",
+  "today": "2026-08-28",
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "The in-window result concerned an RUU, not an enacted instrument in the permitted regulation types."
+    },
+    {
+      "url": "https://ortax.org/",
+      "reason": "checked_no_new",
+      "note": "No in-window permitted regulation type was found."
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "No in-window permitted regulation type was found."
+    },
+    {
+      "url": "https://muc.co.id/id/article",
+      "reason": "checked_no_new",
+      "note": "The latest located regulation updates predated the 48-hour window."
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "The latest located regulation-related items predated the 48-hour window."
+    },
+    {
+      "url": "https://jdih.kemenkum.go.id/",
+      "reason": "checked_no_new",
+      "note": "No in-window Permenkumham was found."
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/",
+      "reason": "checked_no_new",
+      "note": "No in-window PMK was found."
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/",
+      "reason": "checked_no_new",
+      "note": "No additional qualifying instrument was found beyond the delta captured from this source."
+    },
+    {
+      "url": "https://peraturan.go.id/",
+      "reason": "checked_no_new",
+      "note": "No additional in-window permitted regulation type affecting the scoped service lines was found."
+    },
+    {
+      "url": "https://www.pajak.go.id/",
+      "reason": "checked_no_new",
+      "note": "The current regulation catalogue exposed no in-window PMK, PP, Perpres, or UU."
+    },
+    {
+      "url": "https://jdih.kemkes.go.id/",
+      "reason": "checked_no_new",
+      "note": "No in-window Permenkes was found."
+    }
+  ],
+  "nb_query_errors": [
+    "Telegram sendMessage failed: curl could not resolve host api.telegram.org."
+  ],
+  "deltas": [
+    {
+      "citation": "Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+      "title_id": "Peraturan Menteri Ketenagakerjaan Nomor 12 Tahun 2026 tentang Perubahan Ketiga atas Peraturan Menteri Ketenagakerjaan Nomor 8 Tahun 2025 tentang Pedoman Pemberian Bantuan Pemerintah Program Pemagangan Lulusan Perguruan Tinggi",
+      "title_en": "Peraturan Menteri Ketenagakerjaan Nomor 12 Tahun 2026 tentang Perubahan Ketiga atas Peraturan Menteri Ketenagakerjaan Nomor 8 Tahun 2025 tentang Pedoman Pemberian Bantuan Pemerintah Program Pemagangan Lulusan Perguruan Tinggi",
+      "service_line": "regulatory/HR",
+      "summary": "Subjek | BANPEM - PEMAGANGAN; Bidang Hukum | Hukum Ketenagakerjaan; Status | Berlaku",
+      "source": "https://jdih.kemnaker.go.id/peraturan/detail/3084/peraturan-menteri-ketenagakerjaan-nomor-12-tahun-2026",
+      "verbatim_excerpt": "Tanggal Penetapan | 24 Agustus 2026\nTanggal Pengundangan | 27 Agustus 2026\nSumber | BN 2026 (598): 4 hlm\nSubjek | BANPEM - PEMAGANGAN\nBidang Hukum | Hukum Ketenagakerjaan\nStatus | Berlaku"
+    }
+  ],
+  "seen_citations": [
+    "Permenaker No. 12 Tahun 2026; BN 2026 (598)"
+  ]
+}

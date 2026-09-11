@@ -413,7 +413,7 @@ TRAUMA: Unused variables
 ```
 """
         with tempfile.TemporaryDirectory() as tmp:
-            scar_file = Path(tmp) / ".claude" / "rules" / "cicatrix-scars.md"
+            scar_file = Path(tmp) / "docs" / "scars" / "cicatrix-scars.md"
             scar_file.parent.mkdir(parents=True)
             scar_file.write_text(scar_md)
 
@@ -438,7 +438,7 @@ TRAUMA: Unused variables
         """Should return empty dict when file has no SCAR blocks."""
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
-            scar_file = Path(tmp) / ".claude" / "rules" / "cicatrix-scars.md"
+            scar_file = Path(tmp) / "docs" / "scars" / "cicatrix-scars.md"
             scar_file.parent.mkdir(parents=True)
             scar_file.write_text("# Cicatrix\nNo scars found.\n")
 

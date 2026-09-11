@@ -1,0 +1,56 @@
+task_id: ci-gate-gear2-pwc-conditions
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor computed this run: `--print-floor` returns 1, source `none` — this diff
+# touches no hot-zone path (the workflow itself is NOT edited here) and is far
+# under the size threshold. Gear 2 is DECLARED, above the floor, and that is
+# deliberate: the ruling of 2026-09-10 is only observable on a PR that declares
+# gear 2 without floor 3 forcing the same path, so this PR is the first live
+# test of the rule #6100 shipped. The model may always raise the gear.
+objective: >-
+  Close the two conditions of the PASS-WITH-CONDITIONS verdict on PR #6100
+  (receipt: PR #6100 comment 5618844339). (1) The partition pin decided step
+  membership with a substring `in` against the raw `if:` text, so the mutation
+  `gear != '1' && gear != '2'` — which ADDS a clause rather than removing one —
+  left Gear 2 covered by NEITHER step while all 45 tests stayed green. That is
+  superscar #3 UNDER-match on an expression guard. The three gear pins now
+  EVALUATE the expression through `_eval_if`, and a new guilt pin holds the
+  reviewer's counterexample itself. (2) Two live surfaces still described the
+  gate as Gear-3-only: the Gate taxonomy row in the modus skill and section
+  6septies of the merge-queue runbook. Both now say Gear 2.
+constraints:
+  - >-
+    `.github/workflows/harness-floor.yml` is NOT edited here. #6100's workflow
+    change was gated and merged; re-opening it would put a hot-zone file in a
+    follow-up whose whole point is that the rule works without one.
+  - >-
+    `_eval_if` fails CLOSED on anything it does not model: an unparseable clause
+    or an unmodelled context path raises, so a condition that grows an `||`, a
+    function call or a new context reads as a broken test rather than a
+    satisfied one. It is a test-only reader of the two gear steps, never a
+    second implementation of GitHub's expression language.
+  - No --no-verify, no --amend on a pushed commit, no force-push.
+acceptance:
+  - text: >-
+      A1 (guilt, the gate's own counterexample): adding `&& gear != '2'` to
+      Step 7c on the real workflow fails the gear pins.
+    probe: python3 -m pytest scripts/tests/test_harness_gate_read.py -q
+  - text: >-
+      A2 (the condition was real): the PRE-fix test file from 05c0461de6, run
+      against that same mutated workflow, stays green.
+    probe: >-
+      git show 05c0461de6:scripts/tests/test_harness_gate_read.py > <tmp>; python3 -m pytest <tmp> -q
+  - text: >-
+      A3 (innocence) — on the unmutated file the whole corpus passes.
+    probe: python3 -m pytest scripts/tests/test_harness_gate_read.py -q
+  - text: A4 — no surface left in the repo calls the harness verdict gate Gear-3-only.
+    probe: >-
+      grep -rn "Gear-3 harness verdict gate" .claude/ docs/
+  - text: >-
+      A5 (Bites) — THIS PR declares gear 2 on a floor-1 diff, so its own
+      `Harness floor recompute` is the first live observation of a Gear-2 brief
+      being gated, which #6100 could not provide (its floor was 3).
+    probe: gh pr checks <N> --json name,state
+appetite:
+  wall_clock_hours: 1

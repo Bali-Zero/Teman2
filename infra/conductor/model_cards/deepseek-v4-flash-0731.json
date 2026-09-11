@@ -16,7 +16,7 @@
     ]
   },
   "routing": {
-    "status": "eligible",
+    "status": "probation",
     "automated_routing": false,
     "evidence": [
       {
@@ -83,6 +83,17 @@
           "observed_at": "2026-08-14"
         }
       ]
+    },
+    {
+      "id": "eligible_for_quorum",
+      "value": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
+        }
+      ]
     }
   ],
   "task_scores": [],
@@ -91,6 +102,11 @@
       "level": "production",
       "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
       "observed_at": "2026-08-14"
+    },
+    {
+      "level": "production",
+      "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+      "observed_at": "2026-08-27"
     }
   ]
 }

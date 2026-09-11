@@ -1,0 +1,176 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+pii_scan: clean
+
+lanes:
+  - lane: developer-log-access — the gate and its tests
+    role: build
+    seat: claude-opus-5 (M5 worktree agent)
+    note: >-
+      Single build lane. The first cut of this lane was rejected by the review
+      lanes below and rewritten; the rewrite is the same lane, not a new one.
+  - lane: adversarial review — rounds 1 and 2
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: REJECT in both rounds; 4 of its findings are CONFIRMED dissent above.
+  - lane: adversarial review — rounds 1 and 2
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      REJECT round 1 (and authored the adopted cure), MERGE round 2 with
+      findings that were acted on.
+
+receipts:
+  - claim: >-
+      The reworked gate and the untouched admin paths both hold: 79 tests pass
+      across the new allowlist file and the two pre-existing debug test files.
+    cmd: >-
+      python -m pytest backend/tests/unit/app/routers/test_admin_logs_developer_allowlist.py
+      backend/tests/unit/app/routers/test_debug_access_admin_jwt.py
+      backend/tests/unit/app/routers/test_debug.py
+    exit: 0
+    ts: "2026-09-10T01:15:21Z"
+    seat: claude-opus-5
+  - claim: >-
+      The allowlist tests are NOT vacuous — removing the two-line grant turns
+      exactly the four guilt cases red while every innocence case stays green.
+    cmd: >-
+      sed the cure out of admin_logs.py; python -m pytest
+      backend/tests/unit/app/routers/test_admin_logs_developer_allowlist.py
+    exit: 1
+    ts: "2026-09-10T01:05:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The revocation branch is load-bearing too — ignoring the revocation
+      result turns exactly test_revoked_session_of_a_listed_developer_is_rejected
+      red and nothing else.
+    cmd: >-
+      sed 'if revoked/else' out of admin_logs.py; python -m pytest
+      backend/tests/unit/app/routers/test_admin_logs_developer_allowlist.py
+    exit: 1
+    ts: "2026-09-10T01:12:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The round-1 defect is real and was verified on disk, not taken on the
+      reviewer's word: debug.py holds POST /api/debug/postgres/query, which
+      executes a caller-supplied SQL statement against production.
+    cmd: >-
+      grep -n '@router.post' apps/backend-rag/backend/app/routers/debug.py;
+      sed -n '955,1000p' apps/backend-rag/backend/app/routers/debug.py
+    exit: 0
+    ts: "2026-09-09T21:30:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      verify_debug_access is byte-identical to origin/main — the reworked cut
+      does not touch the admin-only perimeter at all.
+    cmd: git diff origin/main...HEAD -- apps/backend-rag/backend/app/routers/debug.py
+    exit: 0
+    ts: "2026-09-10T01:00:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The token issuer DOES emit type="access" (plus iat and jti), so the
+      stricter type check cannot silently kill the feature in production —
+      kimi's round-2 finding 12, settled by reading the minting site.
+    cmd: sed -n '105,120p' apps/backend-rag/backend/app/routers/auth.py
+    exit: 0
+    ts: "2026-09-10T01:10:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      ADMIN_API_KEY is configured on production, so the 403 environment
+      precondition is not reachable there today — which is why its handling had
+      to be decided deliberately rather than left to whichever exception was
+      caught.
+    cmd: fly secrets list -a nuzantara-rag | grep ADMIN_API_KEY
+    exit: 0
+    ts: "2026-09-10T01:02:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      /api/admin/logs/interactions returns client-identifying fields
+      (client_email, client_name, subject, message_preview) — the PII surface
+      the grant opens, verified on disk.
+    cmd: grep -n 'client_email\|message_preview' apps/backend-rag/backend/app/routers/admin_logs.py
+    exit: 0
+    ts: "2026-09-10T01:14:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The three acceptance probes the lint flagged as unrecorded were run:
+      the over-match impostors, the SQL-containment case and the two revocation
+      cases — 7 selected, 7 passed.
+    cmd: >-
+      python -m pytest backend/tests/unit/app/routers/test_admin_logs_developer_allowlist.py
+      -k "over_match or cannot_run_sql or revoked_session or store_outage"
+    exit: 0
+    ts: "2026-09-10T01:22:00Z"
+    seat: claude-opus-5
+  - claim: Ruff is clean on every changed Python file.
+    cmd: >-
+      python -m ruff check backend/app/core/config.py backend/app/routers/admin_logs.py
+      backend/app/routers/admin_conversation_cleanup.py
+      backend/tests/unit/app/routers/test_admin_logs_developer_allowlist.py
+    exit: 0
+    ts: "2026-09-10T01:15:00Z"
+    seat: claude-opus-5
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1, REJECT: attaching DEVELOPER_EMAILS to verify_debug_access grants
+      arbitrary read-only SQL over the production client book through
+      POST /api/debug/postgres/query, plus trace deletion and profiling —
+      strictly more authority than the CRM admin role the design claimed to
+      avoid.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      Round 1, REJECT: same architectural defect found independently, with the
+      cure that was adopted — "split the dependency, e.g. a read-only gate for
+      /api/admin/logs/*". Also: the containment claim in the docs and tests was
+      false as written.
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2, REJECT: the bare `except HTTPException: pass` swallowed the
+      production 403 kill-switch, so a listed developer could pass a
+      precondition meant to close the routes for everyone.
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2, REJECT: the developer branch checked only signature, type and
+      email — a revoked or logged-out session kept log access until the token
+      expired on its own.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2: test_developer_perimeter_does_not_make_a_crm_admin is vacuous —
+      is_crm_admin never reads developer_emails, so it passed under the REJECTED
+      round-1 implementation too, while reading as containment proof.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2: the exp / require_exp axis rested on python-jose's semantics
+      rather than on a red test, unlike every other axis.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2: "runtime observability" undersells the surface —
+      /api/admin/logs/interactions returns client_email, client_name, subject
+      and message_preview, so the grant is an owner decision about client data,
+      not only about logs.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2: if the issuer omitted the `type` claim, the stricter check would
+      make the feature silently dead in production.
+    status: RETRACTED
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2: the delegation performs one JWT decode for admins and two on the
+      developer path, a timing distinction.
+    status: PLAUSIBLE
+  - seat: claude-opus-5
+    objection: >-
+      Self-dissent, unresolved by design: the grant is per-address but not
+      per-endpoint-set. If a future PR adds a mutating route to admin_logs.py,
+      it inherits the developer grant silently. No test pins the CURRENT five
+      endpoints as the whole set.
+    status: PLAUSIBLE

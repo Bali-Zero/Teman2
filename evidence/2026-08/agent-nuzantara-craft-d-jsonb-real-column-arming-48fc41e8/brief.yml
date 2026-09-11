@@ -1,0 +1,58 @@
+task_id: craft-d-l12-pr1-real-column-arming
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  Prove the jsonb codec cure against the FOUR REAL production columns, driven
+  by the FOUR REAL production writers -- not against a temp table the test
+  creates for itself.
+
+  This is the arming action for `.claude/skills/modus/PENDING-ARMS.md`'s
+  2026-08-27 row, whose proof-of-armed is worded almost exactly this way: "an
+  integration test using the prod-shaped pool that asserts `jsonb_typeof` is
+  object/array -- never string -- for `garuda_order_journal.detail`,
+  `garuda_order_outbox.payload` and both `response_body` columns, and which
+  goes RED on today's code."
+
+  The temp-table tests in the previous PR prove the MECHANISM: the codec
+  encodes a dict correctly in isolation. They cannot prove the CONTRACT: that
+  the four writers actually hand the codec native containers and have stopped
+  pre-serializing. A regression in which one writer starts calling
+  `json.dumps` again leaves the codec correct, the temp-table test green, and
+  the real column holding a jsonb string scalar. These four tests are the only
+  witness to that.
+constraints:
+  - "Three of the four target tables structurally FORBID cleanup: migration
+    284's `guard_garuda_order_journal_append_only` raises on ANY UPDATE OR
+    DELETE, and both idempotency guards forbid DELETE while unexpired (+30d /
+    +1d). Rows are left in place and documented per-test, never deleted by
+    bypassing the guard a real replay-cache depends on."
+  - "A SKIP MUST NOT BE SCORED AS A PASS IN CI. pytest counts a skip as
+    success, so a stale database would give a green run in which no writer
+    executed at all."
+  - "Every claim the docstring makes about the residues must be something the
+    SCHEMA can support -- an identifier that is actually recoverable from the
+    row, not one the table never stored."
+  - "No client PII. Probe payloads are synthetic and carry a fixed literal
+    marker."
+  - "No production deploy and no production probe. The writers have never
+    executed in production (0 rows, no Xendit key) -- this is
+    fix-before-first-write, not data repair."
+acceptance:
+  - text: >-
+      WHEN `JSONB_ENCODER` is reverted to a bare `json.dumps`, all four
+      real-column tests SHALL fail, lifting the file's guilt count from 3 red
+      to 7 red.
+    probe: "pytest backend/tests/db/test_jsonb_codec_parity.py"
+  - text: >-
+      WHILE the cure is in place, the four tests SHALL run against real tables
+      and SHALL NOT skip.
+    probe: "run against REAL tables and do not skip"
+  - text: >-
+      WHERE a writer stores a well-shaped but EMPTY object, the content
+      assertion SHALL still fail -- `jsonb_typeof` alone cannot see it.
+    probe: "detail or {}"
+  - text: >-
+      IF the target table is absent AND the run is in CI, THEN the test SHALL
+      FAIL rather than skip; if not in CI it SHALL skip.
+    probe: "_require_table"

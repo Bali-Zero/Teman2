@@ -1,0 +1,90 @@
+task_id: wr2-canon-plists-disabled
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Close the last re-arming path for WR2 (the Instagram carousel editorial
+  pipeline) after Zero's 2026-09-01 ruling that WR2 runs ONLY on command. The
+  runtime side was already done by another session on Pro: 32
+  com.balizero.wr2.* LaunchAgents + com.matagaruda.wr2-bridge were
+  `launchctl bootout` + `launchctl disable` + the LIVE plists under
+  ~/Library/LaunchAgents renamed to a `.disabled` suffix. PR #5498 separately
+  marked 27 WR2 organs `enabled: false` in
+  apps/organism/organism/organs_registry.yaml.
+
+  What was still armed: the GIT CANON. scripts/wr2_plist_watchdog.sh globs
+  `infra/launchagents/com.balizero.wr2.*.plist` on a 5-min schedule and
+  restores/bootstraps whatever it finds there straight from git, with no
+  operator step in between. As long as the canon files kept the `.plist`
+  extension, a session that re-enabled that one watchdog plist would silently
+  resurrect all 27 organs from git alone -- cicatrix-superscar family #1
+  (HOME-fork / re-arming from a stale source of truth) and #2 (Esiste !=
+  Armato), on a new corpus.
+
+  Fix: `git mv` each affected canon plist to
+  `<name>.plist.disabled-2026-09-01-wr2-runs-only-on-command`, mirroring the
+  existing precedent for com.balizero.wr2.newsletter.plist (disabled
+  2026-07-15). This drops each file out of every `*.plist` glob in the
+  organism (the watchdog's own restore loop, check_organ_conformance.py's
+  scan, launchagent_reconcile.py's live-vs-canon comparison) by construction,
+  which is the mechanism, not a side effect.
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: `infra/launchagents/*` is a
+  hardcoded, unconditional entry in scripts/evidence_pack_lint.py's
+  HOTZONE_PATTERNS -- any diff touching that directory floors at Gear 3
+  regardless of size or how mechanical the change is. Reproduced against this
+  branch's own final diff (merge-base 6a78af5b2e53d63de62e6a16bcdfd8d53b9f0f5e):
+  see receipts for the exact --print-floor / --print-floor-source values.
+
+acceptance:
+  - text: >-
+      WHEN infra/launchagents/ is scanned for `com.balizero.wr2.*.plist` (the
+      watchdog's own glob, check_organ_conformance.py's git-ls-files scan, and
+      launchagent_reconcile.py's canon comparison), the 26 retired
+      com.balizero.wr2.* organs plus com.matagaruda.wr2-bridge.hourly SHALL NOT
+      match -- only com.balizero.wr2.pg-proxy.plist (deliberately left live)
+      and the already-disabled com.balizero.wr2.newsletter.plist* SHALL match.
+    probe: shopt -s nullglob; ls infra/launchagents/com.balizero.wr2.*.plist
+  - text: >-
+      WHEN scripts/consumer_map.py runs against this diff's rename set, it
+      SHALL report zero LIVE (non-docs-mention) consumers of the OLD plist
+      basenames other than the one documented, permanent, intentional
+      false-positive (a verbatim historical-commit replay fixture in
+      scripts/tests/test_prepush_classify.py that must never be rewritten).
+    probe: scripts/consumer_map.py --base origin/main
+  - text: >-
+      WHILE the rename is in force, infra/organ-conformance/check_organ_conformance.py
+      and apps/organism/organism/tools/validate_organs_registry.py SHALL both
+      stay green, and pytest infra/organ-conformance plus the launchagent/
+      plist/proprioception/canon-tagged slice of scripts/tests SHALL show 0
+      new failures versus the pre-rename baseline.
+    probe: pytest infra/organ-conformance -q; pytest scripts/tests -q -k "launchagent or plist or proprioception or canon"
+  - text: >-
+      IF an operator later re-enables scripts/wr2_plist_watchdog.sh, its copy
+      loop over the merged canon SHALL find 0 wr2 plists to restore -- only
+      pg-proxy remains `*.plist`-shaped -- the resurrection path this PR
+      exists to close SHALL stay closed post-merge, not just pre-merge.
+    probe: shopt -s nullglob; n=0; for f in infra/launchagents/com.balizero.wr2.*.plist; do n=$((n+1)); done; echo "$n"
+
+assumptions:
+  - text: >-
+      The runtime-side disable on Pro (`launchctl bootout` + `disable` +
+      `.disabled`-renaming the LIVE ~/Library/LaunchAgents copies) was already
+      completed by the orchestrating session before this PR started, so this
+      PR's own canon rename does not need to touch ~/Library/LaunchAgents or
+      ~/scripts itself (explicitly out of scope per the dispatching mandate).
+    status: verified
+    probe: infra/home-fork/declared-pairs.json's 4 removed pairs each read
+      "not on disk" for their live side via `python scripts/lint_home_fork.py
+      --check` before removal, confirming the live copies were already gone.
+  - text: >-
+      infra/launchagents/install_wr2_ig_metrics_scrape.sh is the ONLY
+      install_*.sh script under infra/launchagents/ that references a
+      com.balizero.wr2 canon path (so no other installer needed the same
+      retirement-message fix this PR applies to it).
+    status: verified
+    probe: grep -l "com.balizero.wr2" infra/launchagents/install_*.sh
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

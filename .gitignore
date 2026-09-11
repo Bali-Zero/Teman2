@@ -129,6 +129,22 @@ logs/
 
 # Reports
 reports/
+# ...but a research capture's own evidence is NOT generated output. A bare `reports/` matches
+# any directory of that name at ANY depth: on 2026-08-31 it silently swallowed the 17 lane
+# reports that a committed research INDEX.md points at, and `git add -A` exited 0 having added
+# nothing. Git cannot re-include a file whose PARENT directory is excluded, so the directory
+# itself is un-excluded here — negating only the contents would not work.
+!research/**/reports/
+# Same disease, second victim (2026-09-10): the weekly measure-only CI reports
+# (scripts/ci/change_map_coverage.py, scripts/ci/flaky_harvest.py) write their committed,
+# reviewable output to docs/reports/<name>/<date>.md — a normal deliverable, not generated
+# noise — and the bare `reports/` rule above silently ate it too, identically to the research
+# incident documented right above. Un-exclude the whole docs/reports tree rather than adding
+# a third one-off negation the next report generator would also need to discover. The
+# DIRECTORY itself is un-excluded, not just its contents: git cannot re-include files under a
+# parent directory it is still excluding.
+!docs/reports/
+!docs/reports/**
 *.md.report
 *.json.report
 sentinel-results/
@@ -586,6 +602,13 @@ openclaw
 !.claude/agents/log-triage.md
 !.claude/agents/catalog-meta.md
 !.claude/agents/docs-sync.md
+# 2026-09-04: the two agent definitions that a LIVE cron actually loads and that still
+# lived ONLY in ~/.claude/agents/ (family #1). competitor-monitor is dispatched by
+# com.balizero.competitor-monitor.monthly; nb-curator by com.balizero.nb-curator.daily.
+# Same deliberate-allowlist act as the 2026-08-08 wr2 block above: without these two
+# lines `git add -A` skips the files in silence and the vendoring is a no-op.
+!.claude/agents/competitor-monitor.md
+!.claude/agents/nb-curator.md
 # 2026-07-17: slash commands hold PER-PERSON team corners (subhi/ari/... with
 # probation dates, RBAC perimeters) that live ONLY in ~/.claude/commands and must
 # NEVER reach this PUBLIC repo (UU PDP / SYMBIOSIS Law 2). !.claude/commands/ nudo
@@ -922,3 +945,4 @@ research/commercial/*-yield-opportunities.md
 # Runtime state appended by a cron on whichever machine runs the job, same class as the
 # DLQ/heartbeat state files already excluded here — not a source artifact.
 kb/ops/probe_history.jsonl
+scripts/tests/_fixtures_doctrine/

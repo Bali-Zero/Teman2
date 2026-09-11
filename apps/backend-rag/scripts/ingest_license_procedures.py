@@ -24,7 +24,9 @@ script_dir = Path(__file__).parent
 backend_rag_root = script_dir.parent
 dotenv_path = backend_rag_root / ".env"
 
-# Add backend to path
+# Add backend to path (`core.*`), and the backend-rag root (`backend.*`: the
+# government-fee detector)
+sys.path.insert(0, str(backend_rag_root))
 sys.path.insert(0, str(backend_rag_root / "backend"))
 
 from dotenv import load_dotenv
@@ -115,6 +117,10 @@ async def ingest_files():
     from core.chunker import TextChunker
     from core.embeddings import create_embeddings_generator
 
+    # Government-fee gate (RULED Zero 2026-09-11), the same detector as
+    # reingest_training_data.py: a refused chunk is never embedded or upserted.
+    from backend.services.misc.curated_qa_government_fee_detector import text_is_refused
+
     logger.info("=" * 60)
     logger.info("LICENSE PROCEDURES INGESTION")
     logger.info(f"Collection: {COLLECTION_NAME}")
@@ -169,6 +175,11 @@ async def ingest_files():
         logger.info(f"  Created {len(chunks)} chunks")
 
         for idx, chunk_text in enumerate(chunks):
+            reason = text_is_refused(chunk_text)
+            if reason:
+                logger.error(f"  REFUSED chunk {idx}: {reason}")
+                continue
+
             # Generate embeddings
             dense_embedding = await embedder.generate_query_embedding(chunk_text)
 
@@ -205,7 +216,7 @@ async def ingest_files():
                 logger.error(f"  ❌ Failed chunk {idx}")
 
             total_chunks += 1
-            time.sleep(0.3)  # Small delay between requests
+            await asyncio.sleep(0.3)  # Small delay between requests
 
         logger.info("  ✅ File complete")
 

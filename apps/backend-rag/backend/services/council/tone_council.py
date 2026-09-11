@@ -156,7 +156,7 @@ class ToneCouncil:
     and testable without a DB). Typical wiring:
 
         council = ToneCouncil(
-            proponents={"claude": runner_c, "gemini": runner_g, "deepseek": runner_d},
+            proponents={"claude": runner_c, "gemini": runner_g, "kimi": runner_k},
             judge=runner_c_sonnet,
         )
         result = await council.run(topic=..., research_json=..., registers_last_14d=...)
@@ -195,7 +195,7 @@ class ToneCouncil:
         persona_slug: str | None = None,
     ) -> ToneCouncilResult:
         # Langfuse POC: wrap deliberation in a parent span so each LLM call
-        # (Claude / Gemini / DeepSeek / judge) shows up as a child. No-op
+        # (Claude / Gemini / Kimi / judge) shows up as a child. No-op
         # when LANGFUSE_ENABLED=false or keys missing.
         lf_span_cm = _maybe_council_span(
             topic=topic,

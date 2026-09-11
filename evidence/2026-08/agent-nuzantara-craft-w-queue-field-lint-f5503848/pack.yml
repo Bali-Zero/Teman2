@@ -1,0 +1,254 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  PR #5218 rescue mandate (conductor handoff, original author gone). The three things to fix, in
+  priority order, per the independent reader's already-verified findings: (1) the guard misses its
+  own motivating incident shape (an intermediate-variable alias, not a direct comparison) -- decide
+  honestly between a bounded non-dataflow extension or an explicit "cannot verify" declaration, and
+  prefer the extension if achievable in a modest amount of code with guilt+innocence fixtures; (2)
+  it is a GitHub draft; (3) it has no evidence pack of its own.
+lanes:
+  - lane: craft-w-queue-field-lint
+    role: build
+    seat: |
+      Claude implementer seat (this session) -- built Shape C (single-hop, bounded alias tracking
+      for the intermediate-variable verdict shape), then hardened it through a full round of
+      independent adversarial review: dispatched the review lane below, independently reproduced
+      every one of its 6 findings with a direct python invocation before trusting them, fixed all
+      six, and re-verified with the full guilt+innocence corpus and a live-tree scan.
+  - lane: craft-w-queue-field-lint-refute-kimi
+    role: review
+    seat: |
+      kimi-code/k3 -- one round of adversarial review on the finished Shape C diff, with its own
+      file access in this worktree; reproduced every claim with a real python invocation rather
+      than arguing from inspection, generator != grader. See council-journal.jsonl for the full
+      verdict.
+seat_diversity: satisfied
+seat_diversity_note: |
+  One build lane, so D3's >=2-build-lane non-Anthropic requirement does not bind (same posture as
+  the template this pack follows, agent-nuzantara-craft-w-gate-seat-conformance-0d36aef1). The
+  review seat is cross-family and non-Anthropic (Moonshot kimi-code/k3), dispatched on the finished
+  diff with its own file access.
+diff: |
+  No file or line count is narrated here, deliberately, in prose or otherwise: CI recomputes it
+  from the payload, and any number written by hand in this pack goes stale on the very next push --
+  which is not hypothetical, it is exactly the trap that made this per-task pack necessary in the
+  first place. The shared root evidence/pack.yml this branch fell back to belongs to an unrelated
+  task and narrates stale diff-stat claims that do not match this PR's real diff at all -- the
+  precise mismatch is what an independent reader flagged before this rescue began.
+
+  BEHAVIOUR CHANGE: none outside CI. scripts/ci/lint_queue_field_verdict.py gains a third detection
+  shape (an intermediate-variable alias, bounded single-hop tracking, not dataflow analysis) plus a
+  same-session hardening round (type-annotated assignments in both directions, `for`/`def`
+  rebinding, comment-line transparency, JS strict-equality, and two corrected docstring claims).
+  scripts/tests/test_lint_queue_field_verdict.py gains matching guilt+innocence tests.
+  .github/workflows/immune-enforcement.yml is untouched by this session -- its diff (case-list +
+  executor-loop registration + an unconditional --selftest step) is the original PR's own change,
+  already independently verified by the reader who handed off this rescue.
+receipts:
+  - claim: |
+      THE REPORTED GAP IS REAL, MEASURED AGAINST THE PR'S OWN SHIPPED COMMIT -- not merely quoted
+      from the guard's authoring docstring. Ran the guard exactly as submitted (commit a1799989d)
+      against the real historical incident shape reproduced through an intermediate variable.
+    cmd: |
+      python3 - <<'EOF'
+      import importlib.util, tempfile, pathlib
+      spec = importlib.util.spec_from_file_location("before", "lint_before.py")  # a1799989d checkout
+      m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+      with tempfile.TemporaryDirectory() as tmp_s:
+          tmp = pathlib.Path(tmp_s)
+          f = tmp / "guilt_trap10_real.py"
+          f.write_text('auto = pr.get("autoMergeRequest")\nif auto is None:\n    print("ARM CONSUMED, re-arm needed")\n')
+          print(m.evaluate([str(f)], tmp))
+      EOF
+    result: "{'scanned': 1, 'violations': [], 'allowlisted': []} -- the guard as shipped scans the file and finds ZERO violations on the exact incident shape"
+    exit: 0
+    ts: "2026-08-30T21:00:00Z"
+    seat: "claude (build lane)"
+  - claim: "Shape C (first cut) catches the exact incident shape without disturbing the pre-existing corpus."
+    cmd: "python3 scripts/ci/lint_queue_field_verdict.py --selftest"
+    result: "11 guilt+innocence cases, all PASS, exit 0"
+    exit: 0
+    ts: "2026-08-30T21:05:00Z"
+    seat: "claude (build lane)"
+  - claim: "The live tree stays clean with Shape C armed -- including the two real single-line alias occurrences this session found (merge-queue-watch.yml, lane_ship.sh)."
+    cmd: "python3 scripts/ci/lint_queue_field_verdict.py"
+    result: "8128 in-scope files scanned, 0 violations, 1 allowlisted (scripts/ci/queue_rearm_population.sh, unrelated pre-existing waiver), exit 0"
+    exit: 0
+    ts: "2026-08-30T21:06:00Z"
+    seat: "claude (build lane)"
+  - claim: "Full pytest suite green after Shape C's first cut: 19 original + 8 new."
+    cmd: "python3 -m pytest scripts/tests/test_lint_queue_field_verdict.py -q"
+    result: "27 passed in 9.24s"
+    exit: 0
+    ts: "2026-08-30T21:08:00Z"
+    seat: "claude (build lane)"
+  - claim: |
+      INDEPENDENT ADVERSARIAL REVIEW DISPATCHED, generator != grader. Cross-family, non-Anthropic
+      seat, given only the two files + a diff patch + the incident context -- not primed with this
+      session's own reasoning about what was already fixed.
+    cmd: 'kimi -p "<review prompt: find false negatives, false positives, and docstring overclaims in Shape C specifically>" -m kimi-code/k3'
+    result: |
+      477-line report. It ran the selftest and full scan itself first (matched this session's own
+      baseline exactly) before making any claim, then reproduced 10 concrete cases with real python
+      invocations. Verdict: "No BLOCKER... one real false-positive class, one real false-negative
+      class, and one measurably false claim in the docstring." 3 MEDIUM + 3 LOW, each with an exact
+      repro and file:line citation.
+    exit: 0
+    ts: "2026-08-30T21:41:50Z"
+    seat: "kimi-code/k3 (review lane)"
+  - claim: |
+      EVERY ONE OF THE REVIEW'S 6 FINDINGS RE-REPRODUCED INDEPENDENTLY BEFORE BEING BELIEVED --
+      a second seat's tool output does not get a pass from this repo's own anti-hallucination
+      discipline ("never cite a tool output not executed this turn").
+    cmd: |
+      python3 - <<'EOF'  # constructs the 5 core fixtures kimi named, calls find_aliased_hit on each
+      EOF
+    result: |
+      FP-for-shadow -> (3, 'if not state:', 'state'); FP-def-param-shadow -> (4, 'if not auto:',
+      'auto'); FN-annotated-assign -> None; FP-annotated-reassign -> (3, 'if not auto:', 'auto');
+      FN-comment-aborts -> None -- all 5 confirmed exactly as reported. The 6th (the docstring claim
+      about merge-queue-watch.yml/lane_ship.sh) was independently confirmed separately, see below.
+    exit: 0
+    ts: "2026-08-30T21:43:00Z"
+    seat: "claude (build lane)"
+  - claim: |
+      THE DOCSTRING'S OWN CLAIM ABOUT THE TWO REAL FILES WAS FALSE, measured directly rather than
+      trusted from the review report alone.
+    cmd: |
+      python3 -c "import importlib.util; ...; print(m.find_aliased_hit(open('.github/workflows/merge-queue-watch.yml').read())); print(m.find_aliased_hit(open('scripts/lane_ship.sh').read()))"
+    result: "None / None -- Shape C does not match either file at all; the docstring's claim that they 'match but clear via awareness' was corrected to state the true mechanism."
+    exit: 0
+    ts: "2026-08-30T21:44:00Z"
+    seat: "claude (build lane)"
+  - claim: "All 6 findings fixed: annotation-tolerant assign+stale regexes, for/def rebind detection, blank-or-comment transparency, JS ===/!== support, and two corrected docstring passages -- with 5 new guilt+innocence fixtures proving each fix in both directions (guilt AND innocence)."
+    cmd: "python3 -m py_compile scripts/ci/lint_queue_field_verdict.py scripts/tests/test_lint_queue_field_verdict.py"
+    result: "COMPILE_OK"
+    exit: 0
+    ts: "2026-08-30T21:55:00Z"
+    seat: "claude (build lane)"
+  - claim: "Selftest after the hardening round: 16/16 PASS, including every new guilt+innocence pair from the review."
+    cmd: "python3 scripts/ci/lint_queue_field_verdict.py --selftest"
+    result: "16 cases, all PASS, exit 0"
+    exit: 0
+    ts: "2026-08-30T21:56:00Z"
+    seat: "claude (build lane)"
+  - claim: "The live tree is STILL clean after the hardening round (the new for/def-rebind and annotation regexes touch every .py/.sh/.yml/.yaml/.js/.mjs/.ts file in the repo, not just the fixtures)."
+    cmd: "time python3 scripts/ci/lint_queue_field_verdict.py"
+    result: "8128 scanned, 0 violations, 1 allowlisted, exit 0, 3.58s wall (workflow comment claims ~2.7s -- same order of magnitude, no performance regression from the new per-file line-split-on-alias-match path)"
+    exit: 0
+    ts: "2026-08-30T21:57:00Z"
+    seat: "claude (build lane)"
+  - claim: "Full pytest suite green after the hardening round: 19 original + 16 new = 35."
+    cmd: "python3 -m pytest scripts/tests/test_lint_queue_field_verdict.py -q"
+    result: "35 passed in 6.58s"
+    exit: 0
+    ts: "2026-08-30T21:58:00Z"
+    seat: "claude (build lane)"
+pii_scan: clean
+pii_note: |
+  A CI lint over source-code text, its tests, and this evidence pack. No client data, no
+  credentials, no PII anywhere in the diff.
+dissent:
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      MEDIUM -- a nested function parameter or a `for` loop target rebinds a short alias name
+      (`auto`, `state`) without the stale-reassignment guard recognizing it, so an unrelated later
+      `if not auto:` inside a shadowing `def helper(auto):` or `for state in other_states:` gets
+      blamed on the field. Reproduced: `(4, 'if not auto:', 'auto')` and `(3, 'if not state:',
+      'state')`.
+    disposition: |
+      ACCEPTED and FIXED, reproduced first by this session before the fix and again after. Added
+      `for_rebind`/`param_rebind` regexes: `for_rebind` requires the name in LOOP-TARGET position
+      specifically (before `in`), verified NOT to break on `for x in auto:` (which READS the alias
+      and must still track); `param_rebind` covers `def`/`function` parameter lists (JS/TS arrow-
+      function params are a further, declared, undeclared-until-now gap -- out of this pass's
+      modest scope, stated in the docstring).
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      MEDIUM -- type annotations are invisible to Shape C in BOTH directions. `auto: dict | None =
+      pr.get("autoMergeRequest")` is not matched as an assignment (false negative, and this repo's
+      own golden rule #5 mandates type hints); `auto: str = "unrelated"` is not recognized as a
+      stale reassignment either (false positive, blames the alias past its own rebinding).
+    disposition: |
+      ACCEPTED and FIXED. Both the assign regex and the stale-reassignment regex now tolerate an
+      optional `: <type>` between the name and `=`, sharing one `_OPTIONAL_ANNOTATION` fragment so
+      the two can never drift apart again. Proved both directions: the annotated form is now
+      caught, and an annotated reassignment now correctly stales the alias.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      MEDIUM -- a column-0 comment between the assignment and its usage aborts the scan entirely:
+      the dedent check fires on the comment line (which carries no real scope semantics), missing a
+      genuine usage two lines later. Reproduced: returns None where it should flag.
+    disposition: |
+      ACCEPTED and FIXED. Blank and comment-only lines (`#`, `//`) are now fully transparent to the
+      scan -- neither a dedent/rebind boundary nor a usage signal, which also incidentally answers
+      this review's paired LOW (a comment merely DISCUSSING the null-check idiom near the alias was
+      being read as a usage, an over-match in the same family Shape B's own `_COMPACT` filler
+      already guards against for the literal-token case).
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      LOW -- this session's OWN docstring, written earlier in the same PR, claimed Shape C "matches
+      the single-line alias idiom" in .github/workflows/merge-queue-watch.yml and
+      scripts/lane_ship.sh but "clears via awareness markers". Measured false: `find_aliased_hit`
+      returns None on both -- the only later use of the alias in each is a plain truthy check,
+      never a null-comparison or negated-truthy test, so Shape C never matches either file at all.
+      The outcome (clean) was right; the stated mechanism was fabricated.
+    disposition: |
+      ACCEPTED and FIXED, and re-verified independently by the build lane before being believed
+      (this repo's anti-hallucination discipline does not exempt another seat's finding). The
+      docstring now states the true mechanism, and both real-file tests in the pytest suite now
+      assert `find_aliased_hit(...) is None` directly rather than only asserting the outcome.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      LOW -- the dedent stop's rationale comment ("left the enclosing block") overclaims real
+      Python scope semantics: leaving an `if` block does not unbind a name, so a realistic variant
+      (assigned inside an `if`, checked after it in the same function) is missed, and the stated
+      reason for the miss was not quite honest about why.
+    disposition: |
+      ACCEPTED and FIXED (docstring wording only -- the stop RULE itself was already correctly
+      documented and is unchanged). Now states this is an indentation heuristic approximating scope,
+      not real scope analysis, and names the missed variant explicitly as a known limitation rather
+      than implying a modeled boundary.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      LOW -- Shape C explicitly supports `const|let|var`, inviting JS/TS, where `=== null` /
+      `!== null` is the canonical null idiom -- the alias null-check only accepted `==`/`!=`/`is`/
+      `is not`, inherited from Shape A's operator set (Python has no `===`).
+    disposition: |
+      ACCEPTED and FIXED for the alias check specifically (Shape A/B's own operator set is
+      untouched -- out of this rescue's scope, and already independently verified). Added `===`/
+      `!==` to the alias null-check only, with a code comment explaining the deliberate asymmetry
+      from Shape A/B.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane)"
+    objection: |
+      LOW -- the alias negated-truthy check's `_COMPACT` filler lets a negated function CALL
+      wrapping the alias match (`not is_valid(state)`), which is broader than a direct truthiness
+      test on the name's own value.
+    disposition: |
+      ACCEPTED, NOT FIXED. This is the same design already accepted for Shape B's literal-token
+      case (identical `_COMPACT` filler, same broadening) -- narrowing only the alias version would
+      make the two shapes inconsistent for no principled reason, and risks reintroducing false
+      negatives on the equivalent literal-token idiom this session was told not to re-litigate.
+      Left as a stated, known broadening rather than silently accepted.
+tests: |
+  35 tests total in scripts/tests/test_lint_queue_field_verdict.py (19 original + 16 added this
+  session: 8 for Shape C's first cut, 8 for the hardening round), plus the module's own
+  --selftest (16 guilt+innocence cases, no pytest dependency) and a full live-tree scan at every
+  stage of the change.
+static: |
+  python3 -m py_compile on both changed files, clean. No new lint config or CI step added by this
+  session -- the workflow's own --selftest + full-scan step already runs both.
+notes: |
+  This is a rescue of an abandoned PR, not new work from scratch: the guard's core logic (Shape A/B,
+  the allowlist tripwire, the workflow wiring) was already independently verified by the reader who
+  handed this off, and is deliberately not re-reviewed or re-tested here beyond confirming it still
+  passes unchanged. Everything in this pack's receipts/dissent is scoped to what this session
+  actually added (Shape C) and the adversarial round it triggered on that addition alone.

@@ -1,0 +1,83 @@
+task_id: seat-mix-report-0826
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  A7/R12 -- ship a daily seat-mix telemetry report that stream-parses Claude
+  Code's own project transcripts and counts Agent tool_use (by model and
+  subagent_type), Bash tool_use (classified against a fixed non-Anthropic
+  seat vocabulary: codex/kimi/agy/seat_build/ollama/nlm/jules_dispatch/tp1),
+  and Workflow tool_use, joined best-effort to PRs via gitBranch. Replaces a
+  one-off, unpublished, unrepeatable hand parse (882 Agent dispatches/48h
+  fleet-wide, ~512 non-Anthropic calls) with a script anyone can re-run.
+
+  Gear 3 by PATH, not by blast radius: the deterministic floor recomputed
+  from this PR's own 4-file changed set is 3, because
+  infra/launchagents/com.nuzantara.seat-mix.daily.plist is hot-zone. The
+  floor is a lower bound computed from the diff, never the conductor's
+  choice, and is honored here rather than argued with.
+constraints:
+  - "PII BOUNDARY (SYMBIOSIS Law 2): the scanner must never read tool_result
+    or free-text content blocks -- only tool_use.name and narrow-charset
+    regex captures out of input.command/input.model/input.subagent_type.
+    Every emitted string passes through a 120-char safe-charset sanitizer at
+    extraction time, re-checked by a hard assert_all_strings_safe() gate
+    before anything is written."
+  - "No secrets, no ANTHROPIC_API_KEY anywhere -- this script shells out to
+    `gh` only, never to any LLM."
+  - "The cron this PR ships (infra/launchagents/com.nuzantara.seat-mix.daily.plist)
+    is NOT installed by this PR -- Agent PR Contract: an agent ships the
+    artifact, the operator/H24 node installs it. StartCalendarInterval, no
+    KeepAlive (superscar #7)."
+  - "No targets or thresholds anywhere in the report or its doc -- the
+    2026-08-26 retro's A5 proposal (impose a target ratio) was rejected;
+    this is descriptive telemetry, not a gate."
+acceptance:
+  - "scripts/tests/test_seat_mix_report.py is green: exact dispatch counts
+    on a fixture (3 Agent: 2 sonnet/1 haiku; 2 Bash seat calls: codex-sol +
+    kimi-k3; 1 Workflow), a PII-leak fixture (email/phone/sk-... inside a
+    tool_result) proven absent from both JSON and Markdown output, and an
+    oversized-file-is-skipped-and-counted case."
+  - "classify_bash_seat has a guilt case AND an innocence case for every
+    vocabulary entry (cicatrix family #3 discipline) -- including the
+    kimi-for-coding vs kimi-for-coding-highspeed longest-alternative-first
+    ordering gotcha, and 'the codex executable'/'codexy exec' must NOT
+    match 'codex exec'."
+  - "The deterministic floor recomputed from the real changed-file
+    enumeration is 3, and this brief declares gear 3 -- never below it."
+  - "infra/launchagents/com.nuzantara.seat-mix.daily.plist passes plutil
+    -lint and scripts/lint_plist_keepalive.py clean."
+  - "The script actually runs against real transcripts on Pro (--since 48)
+    and produces a plausible, PII-free day-0 baseline, pasted verbatim into
+    the PR body and docs/factory/SEAT-MIX.md."
+consumer_map:
+  - "scripts/seat_mix_report.py -- read by nobody yet except its own cron;
+    day-0 baseline is a manual run, folded into docs/factory/SEAT-MIX.md."
+  - "infra/launchagents/com.nuzantara.seat-mix.daily.plist -- BUILT, NOT
+    ARMED. Install command for Pro + Mini is in the PR body; M5 runs no
+    daemons/cron by design and is deliberately excluded."
+  - "~/logs/seat-mix/<date>.{json,md} -- new output location, consumed by
+    nothing yet (first report of its kind)."
+risks:
+  - "The PR->branch join is best-effort and, measured on the real day-0 run,
+    mostly unmapped (28/30 sessions-with-activity) -- NOT a defect: a
+    metadata-only branch tally over the same window shows the bulk of
+    activity sits on `main`, detached `HEAD`, and the long-lived
+    `feature/visa-oracle` integration branch, none of which a
+    `head:<branch>` PR search can ever match by construction. Documented in
+    docs/factory/SEAT-MIX.md rather than left as an unexplained number."
+  - "gh pr list --search is a text search, not an exact-match API guarantee
+    -- a branch name that is itself a substring of another could
+    theoretically over-match. Not observed on the real run; not fenced,
+    because gh's own head: qualifier scopes it to the head ref, which git
+    already treats as unique per open/closed/merged PR in practice."
+grader: |
+  generator != grader: build lane is this session (claude-sonnet-5, per the
+  mandate's per-agent LLM choice for implementer subagents), cross-family
+  adversarial review is Kimi K3 (kimi-code/k3) on the real PR diff, per the
+  mandate's mandatory refuter step. Single build lane -- the lanes:
+  build-seat-diversity rule does not trigger (requires >=2 build lanes).
+budget: |
+  Single-lane implementer task, flat-subscription seats only (Claude Code
+  session + Kimi K3 refuter). No metered API spend.
+pii: none

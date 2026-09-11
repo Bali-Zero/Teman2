@@ -86,4 +86,4 @@ Backend Fly rimane su (`/health` continua a rispondere). Solo producer Pro-local
 - Plist cronici: `~/nuzantara/infra/launchagents/com.balizero.intel-lake.e2e-probe.6h.plist`
 - Probe script: `~/nuzantara/scripts/probes/intel_lake_e2e_probe.py`
 - Cleanup emergency: `docs/runbooks/synthetic-probe-cleanup.md`
-- Cicatrici (cosa è andato storto in passato): `.claude/rules/cicatrix-scars.md`
+- Cicatrici (cosa è andato storto in passato): `docs/scars/cicatrix-scars.md`

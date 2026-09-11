@@ -1,0 +1,94 @@
+task_id: beyond-sota-16-lane-anatomy-panel-publication-0830
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Put the 16-lane anatomy panel into the repo, where the memory index has been claiming it
+  already was.
+
+  Two beyond-SOTA panels ran on 2026-08-28: 13 lanes cut by ENGINEERING CRAFT, and 16 lanes cut
+  by SYSTEM ANATOMY (B1-B9 backend, F1-F4 frontend, X1-X3 cross-cutting, plus a mandate and a
+  synthesis). The craft panel is fully landed — 15 files, flat under `research/operations/`,
+  measured on `origin/main`. The anatomy panel is not: `git ls-tree origin/main` returns ZERO
+  files for it. It exists only on one machine's Desktop and in an orphan git object that
+  survives until the next `gc`.
+
+  Meanwhile `MEMORY.md`'s index line states the panel is at
+  `research/operations/2026-08-28-beyond-sota/`. That directory does not exist. Every session
+  that reads the index therefore believes a body of work is available that it cannot open — the
+  precise failure the panel itself named as its shared meta-disease (the artifact treated as the
+  thing). The index line has been corrected in the same turn as this PR was written, so that the
+  correction and the cure are not separated by a session boundary.
+
+  Gear 3 by SIZE, deterministically: 3,693 churn against a 1,828 threshold. `compute_floor`
+  returns `(3, "size")` — recomputed from the real numstat, receipt in the pack. The path term
+  does not fire; nothing here is hot-zone.
+constraints:
+  - "The repo is PUBLIC. The interesting risk in this diff is not correctness, it is DISCLOSURE:
+    3,693 lines naming unfixed defects with file:line. Publication safety is the thing the
+    adversarial gate must attack, and 'the pii_scan came back clean' is NOT an answer to it."
+  - "Do not silently soften a report to make it publishable. If a passage cannot be published,
+    say which and hold it back visibly — a quietly-edited audit is worth less than no audit."
+  - "The directory is named `-anatomy-16-lanes`, NOT the bare `2026-08-28-beyond-sota/` the memory
+    index claimed: a directory by that name would sit beside 15 sibling FILES whose names begin
+    with the same string, which is a collision waiting for a reader, not for a tool."
+  - "Frontmatter stays as the lanes authored it (date/domain/part/scope/sources) — it already
+    satisfies the §15 research-capture convention. This PR moves files; it does not rewrite them
+    beyond the one redaction named below."
+acceptance:
+  - text: >-
+      WHEN this PR lands, `research/operations/2026-08-28-beyond-sota-anatomy-16-lanes/` SHALL
+      hold exactly 18 files, and the claim the memory index makes about this panel SHALL become
+      true rather than merely corrected.
+    probe: "git ls-tree -r --name-only origin/main -- research/operations/2026-08-28-beyond-sota-anatomy-16-lanes/ | wc -l"
+  - text: >-
+      WHERE a report describes an exposure that is still live, this diff SHALL add no disclosure
+      that `origin/main` does not already carry, and the comparison SHALL be made against the
+      already-published text rather than asserted.
+    probe: >-
+      git show origin/main:infra/tailscale/policy.hujson | grep -inE 'ttyd|unauthenticated|writable|/term'
+      (compare against X2-fleet-runtime-ops.md and 00-SYNTHESIS.md)
+  - text: >-
+      WHEN the 18 files are swept, no credential, client PII, or personal name SHALL be present,
+      and the one personal name that WAS present SHALL be absent rather than merely noted.
+    probe: "grep -rc '<the redacted employee name>' research/operations/2026-08-28-beyond-sota-anatomy-16-lanes/ (expect 0)"
+  - text: >-
+      IF a cross-family seat names a passage as unpublishable, that passage SHALL be held back
+      visibly in this brief rather than edited away.
+    probe: "the dissent block of the pack, read against the diff"
+consumer_map:
+  - "Sessions reading `MEMORY.md`'s beyond-SOTA index line — today they are pointed at a path that
+    does not exist; after this they can open the work. This is the only consumer that changes
+    behaviour."
+  - "The eight consolidated P0s in `00-SYNTHESIS.md` are the input to subsequent mandates; several
+    already have ledger rows that cite the reports by lane letter and would otherwise cite a
+    document nobody can read."
+  - "No runtime consumer. This diff ships no code into any deployed artifact — no Fly surface, no
+    Vercel surface, nothing to prove live."
+risks:
+  - "PUBLICATION, the real one: this is an internal defect map on a public repo. Measured
+    mitigation, not asserted — the sharpest passage (X2's unauthenticated writable ttyd on the PII
+    host) is already verbatim on `origin/main` in `infra/tailscale/policy.hujson`'s header, with
+    the same URL, so the marginal disclosure of that item is zero; and a sibling panel of 13
+    reports, one of them explicitly on security/secrets/PII, is already public. Precedent plus
+    zero marginal disclosure is the argument. It is NOT a proof that every one of the 3,693 lines
+    is safe, which is why a cross-family council was asked this exact question rather than a
+    generic review one."
+  - "SEQUENCING: one exposure these reports describe is still LIVE today (measured 200 from a
+    non-Pro node, ledgered separately). Publishing a description of a live hole is uncomfortable
+    even when the hole is already documented publicly. Accepted on the ground that withholding a
+    report that adds nothing to an existing public disclosure buys no security and costs the
+    organisation its own audit — but named here rather than left implicit."
+  - "The directory rename away from what `MEMORY.md` claimed means the memory correction and this
+    PR must agree. If this PR is abandoned, the corrected index line still reads true (it says the
+    panel is NOT on main), so the failure mode is safe in one direction only — a landed PR with an
+    uncorrected index would have been the dangerous ordering, and is not what happened."
+grader: |
+  Independent seat, generator != grader. The conductor assembled this diff and cannot gate it.
+
+  The grader should NOT spend its budget re-reading 3,693 lines of prose for style. It should
+  attack the two claims this PR actually rests on, both of which are falsifiable in one command
+  each: (1) that the panel is genuinely absent from `origin/main` today, and (2) that the
+  sharpest disclosure is already public verbatim. If (2) is false — if any passage discloses
+  something `origin/main` does not already carry — that is a BLOCK, not a rework. The grader
+  should also confirm the redaction actually took (0 residual), rather than trusting the receipt.

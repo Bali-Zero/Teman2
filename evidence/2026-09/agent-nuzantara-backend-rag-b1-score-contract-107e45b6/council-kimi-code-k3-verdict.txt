@@ -1,0 +1,16 @@
+  **Attack 1 — unbound/mis-bound `declared_kind`:** Clean. In `search()` the hybrid try binds after the await (`search_service.py:676-680`), the `except Exception` binds DENSE before its dense fallback (`search_service.py:693`), and the plain-dense else binds at `search_service.py:715` — every path reaching the one formatter call at `:718` is bound; any raise from `hybrid_search()` lands in the except, which rebinds. In `hybrid_search()` both branches bind (`:1182`, `:1195`); an exception hits the outer except and delegates to `self.search()`, which stamps its own. The multi-query-expansion early return never reaches that formatter call: its docs are stamped DENSE in `_single_query_search` (`:905`) and `_rrf_fuse_multi` (`:948-949`) only copies the doc and adds `rrf_score` without touching `score`, so the stamp remains true of the field it describes.
+
+  **Attack 2 — lies:** None found. The presence-check matches the actual producer: dense `self.search()` (`core/qdrant_db.py:462`) never sets `search_type`; all three hybrid dicts do (`qdrant_db.py:1338`, `:1373`, `:1389`) — including the pre-loop sparse fallback at `:1284` which returns the keyless dense dict → correctly DENSE. The `:1373` error dict (empty results, key present) labels zero entries — harmless. All four pure-dense call sites (`:900`, `:1468`, `:1657`, and `_single_query_search`) declare DENSE and are dense-fed.
+
+  **Attack 3 — behavior change:** None. `score_kind`/`score_raw` are referenced only in the diff's files plus the two test modules. `calculate_evidence_score` (`reasoning_utils.py:214`) reads only `s.get("score")`; `_reasoning_evidence.py:367-374` only logs the kind. No number or decision moves.
+
+  **Attack 4 — `score_raw` authenticity:** Holds. Formatter takes `scores[i]` (`result_formatter.py:132-137`); both producers emit `distances = 1 − score` in lockstep (`qdrant_db.py:511-516`, `:1334-1339`), so it is exactly the pre-transform value the formatter consumed. Rerankers capture `prior_score` before overwrite (`core/reranker.py:177`, `services/rag/reranker.py:349`), and unstamped fallback paths return documents untouched — no RERANKED label on a non-reranked score.
+
+  **Attack 5 — dead-chain tests:** Not found. Case 10 mints hits through the real formatter and captures the real `sources` list at the scorer boundary with exact-value assertions; case 13a–c drive the real `SearchService` branches; the case-12 frozen digest I recomputed independently — sha256 matches the literal. Full module + `test_wa_package_builder.py`: 47 passed locally.
+
+  **Attack 6 — minors (non-blocking):**
+  1. `score_provenance.py:62-63` — `KG_ENTITY` has no writer anywhere in the backend; dead vocabulary entry whose doc references a "KG fast path" that never stamps it.
+  2. `result_formatter.py:91-95` vs `:132-137` — `score` derives from `distances[i]`, `score_raw` from `scores[i]`; if a future producer ever emits `scores` without matching `distances`, `score_raw` would not be what the writer consumed. Unreachable with current producers.
+  3. `search_service.py:1332` — `search_with_conflict_resolution`'s `@cached` path got no legacy UNKNOWN backfill (only `hybrid_search()`'s manual cache at `:1120-1128` did); harmless because every consumer normalizes via `kind_of`/`raw_of`.
+
+  COUNCIL: OK

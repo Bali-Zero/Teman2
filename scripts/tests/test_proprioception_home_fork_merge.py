@@ -145,3 +145,170 @@ def test_probe_still_unprobeable_when_no_pairs_exist_anywhere(tmp_path: Path) ->
     status, findings, ev = prop.probe_home_fork_scripts(repo, {"pairs": []}, 10)
     assert status == prop.UNPROBEABLE
     assert findings == 0
+
+
+# ---------------------------------------------------------------- live_may_extend_repo
+
+
+def test_load_declared_fork_pairs_passes_through_extend_flag_when_true(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    write_declared_pairs(repo, [{
+        "live": "~/x.ghostty", "repo": "infra/x.ghostty", "machines": ["mini"],
+        "live_may_extend_repo": True,
+    }])
+    assert prop.load_declared_fork_pairs(repo, "mini") == [
+        {"live": "~/x.ghostty", "repo": "infra/x.ghostty", "live_may_extend_repo": True}
+    ]
+
+
+def test_load_declared_fork_pairs_omits_extend_flag_when_absent(tmp_path: Path) -> None:
+    """Guards the opt-in: a pair with no live_may_extend_repo key merges to the
+    plain 2-field dict, exactly as before this feature existed — no accidental
+    exemption for pairs that never declared it."""
+    repo = make_repo(tmp_path)
+    write_declared_pairs(repo, [{"live": "~/x.ghostty", "repo": "infra/x.ghostty", "machines": ["mini"]}])
+    assert prop.load_declared_fork_pairs(repo, "mini") == [{"live": "~/x.ghostty", "repo": "infra/x.ghostty"}]
+
+
+def test_probe_live_may_extend_repo_innocence_trailer_append_reconciled(tmp_path: Path, monkeypatch) -> None:
+    """Repo content is untouched, verbatim, inside a live copy that has grown
+    a host-local trailer at the END of the file. Declared + verified by
+    prefix/suffix split -> not a finding, not even an evidence line (matches
+    the plain live_sha == repo_sha early-continue's silence)."""
+    repo = make_repo(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+    live = home / "machine.ghostty"
+    (repo / "infra" / "ghostty").mkdir(parents=True)
+    (repo / "infra" / "ghostty" / "mini.ghostty").write_text("base = 1\nfoo = bar\n", encoding="utf-8")
+    live.write_text("base = 1\nfoo = bar\n# live-only trailer, never in repo\ncolor = red\n", encoding="utf-8")
+    write_declared_pairs(repo, [{
+        "live": str(live), "repo": "infra/ghostty/mini.ghostty", "machines": ["mini"],
+        "live_may_extend_repo": True,
+    }])
+    monkeypatch.setattr(prop, "machine_label", lambda *a, **k: "mini")
+    status, findings, ev = prop.probe_home_fork_scripts(repo, {"pairs": []}, 10)
+    assert status == prop.RECONCILED
+    assert findings == 0
+    assert ev == []
+
+
+def test_probe_live_may_extend_repo_innocence_mid_file_insertion_reconciled(tmp_path: Path, monkeypatch) -> None:
+    """The ACTUAL 2026-08-28 shape: the fleet installer places new upstream
+    sections before an existing trailing comment block, so a host-local
+    addition lands in the MIDDLE of the file, not appended at the end. A pure
+    prefix check would have missed this and kept firing DIVERGED forever."""
+    repo = make_repo(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+    live = home / "machine.ghostty"
+    (repo / "infra" / "ghostty").mkdir(parents=True)
+    (repo / "infra" / "ghostty" / "mini.ghostty").write_text(
+        "cursor-color = #a6e3a1\n\n# Measured 2026-08-18: no Nerd Font\nscrollback-limit = 16000000\n",
+        encoding="utf-8",
+    )
+    live.write_text(
+        "cursor-color = #a6e3a1\n\n# live-only colour override\nbackground = #11140F\n\n"
+        "# Measured 2026-08-18: no Nerd Font\nscrollback-limit = 16000000\n",
+        encoding="utf-8",
+    )
+    write_declared_pairs(repo, [{
+        "live": str(live), "repo": "infra/ghostty/mini.ghostty", "machines": ["mini"],
+        "live_may_extend_repo": True,
+    }])
+    monkeypatch.setattr(prop, "machine_label", lambda *a, **k: "mini")
+    status, findings, ev = prop.probe_home_fork_scripts(repo, {"pairs": []}, 10)
+    assert status == prop.RECONCILED
+    assert findings == 0
+    assert ev == []
+
+
+def test_probe_live_may_extend_repo_guilt_mid_file_drift_still_diverged(tmp_path: Path, monkeypatch) -> None:
+    """The flag exempts APPENDED content only. A live copy that differs
+    somewhere INSIDE the shared span (not a pure trailer) is real drift and
+    must still report DIVERGED — the prefix check, not just "flag present",
+    is what decides."""
+    repo = make_repo(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+    live = home / "machine.ghostty"
+    (repo / "infra" / "ghostty").mkdir(parents=True)
+    (repo / "infra" / "ghostty" / "mini.ghostty").write_text("base = 1\nfoo = bar\n", encoding="utf-8")
+    live.write_text("base = 2\nfoo = bar\n# live-only trailer\ncolor = red\n", encoding="utf-8")
+    write_declared_pairs(repo, [{
+        "live": str(live), "repo": "infra/ghostty/mini.ghostty", "machines": ["mini"],
+        "live_may_extend_repo": True,
+    }])
+    monkeypatch.setattr(prop, "machine_label", lambda *a, **k: "mini")
+    status, findings, ev = prop.probe_home_fork_scripts(repo, {"pairs": []}, 10)
+    assert status == prop.DIVERGED
+    assert findings == 1
+    assert any("DIVERGED" in e for e in ev)
+
+
+def test_probe_live_may_extend_repo_guilt_flag_absent_still_diverged(tmp_path: Path, monkeypatch) -> None:
+    """The exemption is opt-in per declared pair. The exact same verbatim-prefix
+    live content that is RECONCILED when live_may_extend_repo is declared must
+    still report DIVERGED when the pair never declared it — proves this isn't
+    an automatic prefix-tolerance applied to every pair."""
+    repo = make_repo(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+    live = home / "machine.ghostty"
+    (repo / "infra" / "ghostty").mkdir(parents=True)
+    (repo / "infra" / "ghostty" / "mini.ghostty").write_text("base = 1\nfoo = bar\n", encoding="utf-8")
+    live.write_text("base = 1\nfoo = bar\n# live-only trailer\ncolor = red\n", encoding="utf-8")
+    write_declared_pairs(repo, [{"live": str(live), "repo": "infra/ghostty/mini.ghostty", "machines": ["mini"]}])
+    monkeypatch.setattr(prop, "machine_label", lambda *a, **k: "mini")
+    status, findings, ev = prop.probe_home_fork_scripts(repo, {"pairs": []}, 10)
+    assert status == prop.DIVERGED
+    assert findings == 1
+
+
+def test_live_extends_repo_verbatim_refuses_empty_repo(tmp_path: Path) -> None:
+    """An empty repo file prefix-matches ANY live content trivially — refuse to
+    trust that as evidence of a legitimate trailer rather than a real gap."""
+    live = tmp_path / "live.txt"
+    repo = tmp_path / "repo.txt"
+    live.write_text("anything at all\n", encoding="utf-8")
+    repo.write_text("", encoding="utf-8")
+    assert prop._live_extends_repo_verbatim(live, repo) is False
+
+
+def test_live_extends_repo_verbatim_false_when_identical(tmp_path: Path) -> None:
+    """Not a prefix-extension case at all when the two files are byte-identical
+    (the caller's live_sha == repo_sha branch already handles this — the
+    helper itself must not double-count it as "live extends repo")."""
+    live = tmp_path / "live.txt"
+    repo = tmp_path / "repo.txt"
+    live.write_text("same\n", encoding="utf-8")
+    repo.write_text("same\n", encoding="utf-8")
+    assert prop._live_extends_repo_verbatim(live, repo) is False
+
+
+def test_probe_live_may_extend_repo_guilt_two_separate_insertions_still_diverged(tmp_path: Path, monkeypatch) -> None:
+    """The invariant is ONE contiguous inserted span, not 'any extra bytes
+    anywhere'. Two separate insertions break both the single-prefix and
+    single-suffix accounting (repo's middle segment is not reproduced whole
+    at either edge) and must still report DIVERGED — proves the algorithm
+    isn't secretly "live is a superset of repo's characters"."""
+    repo = make_repo(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+    live = home / "machine.ghostty"
+    (repo / "infra" / "ghostty").mkdir(parents=True)
+    (repo / "infra" / "ghostty" / "mini.ghostty").write_text(
+        "line-a = 1\nline-b = 2\nline-c = 3\n", encoding="utf-8"
+    )
+    live.write_text(
+        "line-a = 1\n# first local insertion\nline-b = 2\n# second local insertion\nline-c = 3\n",
+        encoding="utf-8",
+    )
+    write_declared_pairs(repo, [{
+        "live": str(live), "repo": "infra/ghostty/mini.ghostty", "machines": ["mini"],
+        "live_may_extend_repo": True,
+    }])
+    monkeypatch.setattr(prop, "machine_label", lambda *a, **k: "mini")
+    status, findings, ev = prop.probe_home_fork_scripts(repo, {"pairs": []}, 10)
+    assert status == prop.DIVERGED
+    assert findings == 1

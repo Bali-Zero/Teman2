@@ -1,0 +1,74 @@
+task_id: craft-w-l06pr3-collision-check
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Two open PRs that add lines to the SAME file in OVERLAPPING windows collide in the merge queue.
+  `merge=union` keeps both locally, but IN THE QUEUE no merge driver runs, so they collide and the
+  ejection is mute. Detect that at PR-open, advisory, naming both PRs and the file.
+constraints:
+  - "The discriminator is add/add in OVERLAPPING WINDOWS, merge-base-anchored — never bare 'same
+    file'. Two PRs modifying disjoint lines of one file must NOT flag; a tool that flags same-file is
+    noise and is ignored within a week."
+  - "Merge-base anchoring is mandatory: a `origin/main..branch` diff cannot distinguish 'I changed this
+    line' from 'I am behind on this line'."
+  - "Advisory. The collision verdict never fails the job. But the tool's OWN corpus must be blocking —
+    report-only is a promise about PR CONTENT, never about the tool's operational health."
+  - "'Could not measure' must never read as 'measured zero collisions'."
+acceptance:
+  - text: |
+      WHEN two open PRs add lines to the same file in overlapping windows, the tool SHALL flag,
+      naming both PR numbers and the file.
+    probe: "replay of #4673 / #4678 (both touch evidence/brief.yml AND evidence/pack.yml at the root paths)"
+  - text: |
+      WHERE two PRs modify disjoint lines of one file, or one is merely BEHIND on a line it never
+      touched, the tool SHALL NOT flag.
+    probe: "synthetic 3-branch git fixture; test_modify_modify_disjoint_lines_same_file_does_not_flag"
+  - text: |
+      IF the tool cannot reach `gh`, it SHALL return a CANNOT-VERIFY-shaped result and SHALL NOT
+      report silence as zero collisions.
+    probe: "OSError path test exercising the real _run()"
+  - text: |
+      WHILE the collision verdict is advisory, the tool's own 19-test corpus SHALL be blocking —
+      a guard whose corpus cannot go red is not armed.
+    probe: "self-test step, continue-on-error: false, run under bash --noprofile --norc -eo pipefail"
+  - text: |
+      WHERE a hunk is a PURE ADDITION — a brand-new file (`@@ -0,0 +1,N @@`) or a `-U0` insertion —
+      its old-side span SHALL be clamped nonempty. An unclamped `old_len` of 0 yields a ZERO-WIDTH
+      window that the (correct) strict `<` overlap can never report, making the canonical
+      two-PRs-both-add-the-same-new-file collision invisible while the suite stays green.
+    probe:
+      "mutate max(old_len, 1) -> old_len; require the new-file window, the -U0 window, and
+      main(--fixture) returning 1 on two PRs each adding evidence/brief.yml, all to go red"
+consumer_map:
+  - "`.github/workflows/pr-collision-check.yml` — advisory, pull_request only, posts one
+    marker-matched comment. Gates nothing; no job may `needs:` it."
+  - "`.github/workflows/main-push-failure-watch.yml` — registered, so the workflow's own death is not
+    invisible."
+  - "Anyone reading the comment to decide whether to serialize two PRs. The verdict's wording is
+    load-bearing: a false 'same file' flag trains readers to ignore it."
+risks:
+  - "The spec's own Acceptance line is WRONG about its cited pair and this PR says so rather than
+    bending the discriminator to satisfy it."
+  - "`scanned_prs` counts PRs with at least one addition-bearing hunk, not literally every open PR.
+    A pure-deletion PR is invisible to that counter — harmlessly, since it can never collide here."
+  - "Live mode fetches each open PR sequentially. Fine at current volume; batchable if the queue grows."
+  - "The acceptance's live probe (open a throwaway colliding PR, confirm the comment names the right
+    number) is post-merge and gets a PENDING-ARMS row rather than a silent skip."
+  - "THE CLAMP THAT MAKES add/add-ON-A-NEW-FILE VISIBLE SHIPPED WITH NO TEST. Found by the gate's
+    mutation round, not by review: removing `max(old_len, 1)` left all 16 original tests green while
+    the tool answered 'No add/add collisions found' on two PRs each adding `evidence/brief.yml` —
+    which is W125, the scar that created evidence_paths.py, and the single shape this tool exists
+    for. Now armed by three tests. Recorded here because a tool built to detect the collisions
+    others miss was itself blind to the canonical one."
+grader: |
+  Opus 5, effort xhigh, on-disk, this turn. Mutations re-run by the gate on the production file with
+  `cp` restore and `cmp -s`; the self-test step extracted from the PARSED yaml and executed under
+  GitHub Actions' real default shell rather than reasoned about.
+budget: |
+  437 code-class net against the spec's 350 — 87 over, accepted and declared. The +39 over the
+  earlier 398 is the three tests arming `max(old_len, 1)`; refusing them to hold a line count would
+  mean shipping the tool's own blind spot to stay inside a budget. The self-test step, the
+  errexit fix and the OSError fix are arming and correctness, not padding; removing them removes what
+  makes this a guard.
+pii: none

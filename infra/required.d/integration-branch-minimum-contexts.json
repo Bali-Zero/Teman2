@@ -1,0 +1,14 @@
+{
+  "_doc": "Minimum required-status-check contexts a non-default base branch (e.g. a refs/heads/feature/* integration branch) must be covered by, via an ACTIVE branch ruleset's `required_status_checks` rule, to be considered protected the way main is (S5 check-half, ASSEMBLY-LINE.md 'The integration branch must be protected BEFORE the first lane opens a PR'). Read by scripts/ci/check_base_protected.py (the check-half, .github/workflows/hot-zone-pr-gate.yml job 'base-branch-protected') and scripts/ci/setup_merge_queue_ruleset.sh --branch-pattern (the arm-half — print-only unless --apply, operator[control-plane]).",
+  "_corrected_premise_2026_08_27": "main's OWN required-status-checks do NOT live inside a ruleset rule — verified live: `gh api repos/Bali-Zero/Teman2/rulesets/19779175` (merge-queue-main) carries exactly one rule, type `merge_queue`, no `required_status_checks` rule at all. Main's 27 required contexts live in CLASSIC branch protection (`gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks`), a separate, older mechanism that does not support glob patterns and so cannot auto-apply to a branch that doesn't exist yet. A feature/* integration branch therefore cannot literally 'inherit main's ruleset' (main has no such rule to inherit) — it needs its OWN ruleset carrying a required_status_checks rule, seeded with this file's minimum_contexts. Do not re-derive this list from ruleset 19779175's `.rules` — it will always be empty there.",
+  "generated_at": "2026-08-27",
+  "source": "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks (27 contexts total; full list mirrored in infra/required.d/contexts.json) -- these 5 are a hand-picked subset, not a generated one",
+  "selection_rationale": "Picked as the 5 most load-bearing against the two incidents ASSEMBLY-LINE.md documents from 2026-08-25 on an unprotected integration branch: a 15-file customer-facing PR merged unreviewed, and a magic-link PR merged with two backend shards red.",
+  "minimum_contexts": [
+    "Backend Tests (Python)",
+    "Harness floor recompute",
+    "R1 gate — adversarial review present",
+    "Detect Secrets",
+    "actionlint — workflow schema + expression gate"
+  ]
+}

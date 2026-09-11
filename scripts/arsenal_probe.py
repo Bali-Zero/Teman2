@@ -278,8 +278,11 @@ _QUOTA_DEAD_PAT = re.compile(
     r"out of extra usage|usage limit|weekly limit|quota|\b429\b|rate.?limit|exhausted",
     re.IGNORECASE,
 )
-_BALANCE_DEAD_PAT = re.compile(r"\b402\b|insufficient balance", re.IGNORECASE)
-_MODEL_ERR_PAT = re.compile(r"\b1211\b|unknown model", re.IGNORECASE)
+_BALANCE_DEAD_PAT = re.compile(r"\b402\b|insufficient balance|out of credits", re.IGNORECASE)
+_MODEL_ERR_PAT = re.compile(
+    r"\b1211\b|unknown model|model is not supported|model requires a newer version",
+    re.IGNORECASE,
+)
 _SHED_PAT = re.compile(r"\b529\b|overloaded", re.IGNORECASE)
 
 
@@ -1201,6 +1204,25 @@ _SELFTEST_CANNED = [
     ("deepseek", "HTTP 402 Insufficient Balance", BALANCE_DEAD, "deepseek 402"),
     ("claude", "out of extra usage for this session", QUOTA_DEAD, "claude quota string"),
     ("codex", "rate limit exceeded, 429", QUOTA_DEAD, "codex 429 quota"),
+    (
+        "codex",
+        "ERROR: Your workspace is out of credits. Add credits to continue.",
+        BALANCE_DEAD,
+        "codex out-of-credits (real observed evidence, 2026-08-31)",
+    ),
+    (
+        "codex-spark",
+        "The 'gpt-5.3-codex-spark' model is not supported when using Codex with a ChatGPT account.",
+        MODEL_ERR,
+        "codex-spark model unsupported on ChatGPT plan (real observed evidence, 2026-08-31)",
+    ),
+    (
+        "codex",
+        ":{\"type\":\"invalid_request_error\",\"message\":\"The 'gpt-6-astra' model requires a "
+        'newer version of Codex. Please upgrade to the latest app or CLI and try again."}}',
+        MODEL_ERR,
+        "codex gpt-6-astra needs newer CLI (real observed evidence, 2026-09-07, was UNKNOWN_ERR)",
+    ),
 ]
 
 

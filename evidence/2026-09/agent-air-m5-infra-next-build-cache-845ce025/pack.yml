@@ -1,0 +1,257 @@
+task_id: infra-next-build-cache
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-09
+machine: M5
+lanes:
+  - lane: one actions/cache@v6 step on apps/mouth/.next/cache in the e2e-tests job, keyed on lockfile + source hash
+    role: build
+    seat: claude-sonnet-5 (subagent dispatched by the M5 Fable 5.1 orchestrating session, this worktree)
+    note: >-
+      Measured the disease on run 34350109029 job 102461489711 (Run E2E tests
+      step 244s, its 58 Playwright tests sum to 69s). Confirmed by grep that
+      tests.yml caches uv/node_modules/npm/ms-playwright but never
+      apps/mouth/.next/cache. Confirmed only the e2e-tests job's
+      playwright.config.ts webServer runs `next build` — the Visa Oracle
+      fullstack smoke job sets PLAYWRIGHT_EXTERNAL_SERVER=1 and starts
+      apps/mouth with `npm run dev` (fullstack_smoke.py:539-543), skipping
+      the webServer entirely; frontend-tests runs no build step. Added the
+      cache step right after "Install Node dependencies". actionlint,
+      prettier and the workflow-shape pin suite (53 tests) all pass.
+    revision_note: >-
+      POST-MERGE-ATTEMPT CORRECTION (2026-09-09, same PR): the team-lead
+      caught a real defect neither review lane had — the hashFiles glob used
+      brace expansion (`*.{js,jsx,ts,tsx,mjs,cjs,css,json}`), which
+      @actions/glob's documented pattern syntax does not support (only `*`,
+      `?`, `[...]`, `**` — verified against actions/toolkit
+      packages/glob/README.md, "Glob behavior" section, receipt below). The
+      pattern matched nothing, hashFiles returned '', and the key silently
+      collapsed to the lockfile hash alone — an exact immutable hit after
+      the first seed, never re-saved on any source change, which is the
+      SAME cache-effectiveness defect the css/json fix above was meant to
+      close, just total instead of partial. Cured: one hashFiles pattern per
+      extension, no braces.
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol --sandbox read-only`, non-Anthropic, fresh context)
+    note: >-
+      OK. Confirmed stale-restore safety via webpack/SWC content-hash
+      invalidation. Named the css/json glob gap and the fetch-cache
+      sub-directory as a theoretical (not actual, in this repo) masking
+      vector; suggested dropping the OS-only restore-key. The glob gap was
+      cured; the restore-key suggestion was a judgment call, not applied.
+      MISSED (recorded, not excused): its own reply text calls the brace
+      form's mechanics sound without checking hashFiles' actual documented
+      pattern syntax against @actions/glob's README.
+    verdict: OK
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p`, non-Anthropic, agentic file access, fresh context, no shared prompt with the codex lane)
+    note: >-
+      OK. Independently verified in-repo that the theoretical fetch-cache
+      masking vector codex named does not apply here — the only build-time
+      fetches (apps/mouth/src/lib/blog/articles.ts) use revalidate:60, so a
+      restored entry is always expired before the next CI run. MISSED
+      (recorded, not excused): explicitly asserted "Brace expansion
+      `{js,jsx,ts,tsx,mjs,cjs}` — supported by `@actions/glob`" — this was
+      wrong; @actions/glob's own README lists only `*`, `?`, `[...]`, `**`.
+      A confident, specific, and incorrect claim — exactly the shape of
+      error a fresh-context read-only review is supposed to catch, not
+      commit. Flagged the
+      same css/json glob gap as codex, convergently and independently.
+    verdict: OK
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (Claude) and two review lanes, both non-Anthropic and
+  cross-family from each other, same diff, no sight of each other's answer.
+  Both converged OK and on the identical glob-gap nit; kimi went further and
+  closed codex's one open theoretical concern (fetch-cache staleness) with an
+  in-repo check codex's read-only sandbox pass didn't perform, which is
+  exactly why two seats with different tool access run.
+outcome: >-
+  The e2e-tests job now restores apps/mouth/.next/cache before `next build`
+  runs (via playwright.config.ts's webServer), keyed on package-lock.json
+  plus a hash of every apps/mouth source file next build compiles from
+  (js/jsx/ts/tsx/mjs/cjs/css/json), with a two-level restore-keys fallback.
+  No other job in tests.yml runs `next build` for apps/mouth, so no second
+  cache step was added. Correctness is unaffected in every case: next build
+  still runs to completion regardless of cache hit/miss/stale-hit.
+diff:
+  files: 1
+  net_lines: >-
+    44 insertions, 0 deletions (.github/workflows/tests.yml only, after the
+    brace-expansion fix commit; was 35/0 before that correction)
+  measured_at: "git diff --numstat origin/main..HEAD in this worktree"
+  shape: >-
+    One new named step (comment block + actions/cache@v6 block) inserted
+    between the existing "Install Node dependencies" and "E2E specs must
+    collect with no credentials present" steps of the e2e-tests job. No
+    other step, job, or line touched.
+behaviour_change: >-
+  YES, CI-visible: the e2e-tests job now performs an extra cache
+  restore/save round-trip against apps/mouth/.next/cache. On a cache miss
+  (first run after merge) behaviour is identical to before this PR except
+  for the added restore/save I/O. On a hit or restore-keys hit, `next build`
+  reuses validated webpack/SWC module entries instead of recompiling from
+  scratch, cutting wall time; build correctness and output are unaffected in
+  every case, per both review lanes. No other job's behaviour changes.
+pii_scan: clean
+bites:
+  consumer: >-
+    The `E2E Tests (Playwright)` job on the FIRST PR after this one merges
+    to main (this PR's own run necessarily seeds the cache from empty, so
+    its own "Run E2E tests" step is not the observation that closes the
+    loop — see bites_note).
+  where: ci
+  observe: >-
+    gh api repos/{owner}/{repo}/actions/jobs/<e2e-tests job id of that PR>
+    --jq '.steps[] | "\(((.completed_at|fromdate)-(.started_at|fromdate)))s \(.name)"'
+  expect: >-
+    The new "Cache Next.js build cache (mouth)" step reports a hit (restore
+    log shows "Cache restored from key"), and "Run E2E tests" duration is
+    measurably below the pre-cure 244s baseline (run 34350109029 job
+    102461489711).
+bites_note: >-
+  Pre-merge observation on THIS PR: the acceptance probes (A1-A4) all pass
+  locally, and this PR's own e2e-tests run is expected to show "Cache not
+  found for input keys" followed by a post-job "Cache saved with key" (first
+  run seeds the cache — that is the correct shape for a seed run, not a
+  defect). That seed-run observation is recorded in receipts below once the
+  PR's checks report. The live warm-cache-hit observation on the NEXT PR
+  after merge is what closes the Bites loop and is not claimed here.
+receipts:
+  - claim: the pre-cure baseline — 244s Run E2E tests, 69s of Playwright tests, no .next cache anywhere in tests.yml
+    cmd: >-
+      gh api repos/{owner}/{repo}/actions/jobs/102461489711 --jq
+      '.steps[]|select(.name=="Run E2E tests")|((.completed_at|fromdate)-(.started_at|fromdate))';
+      grep -c '\.next' .github/workflows/tests.yml (on origin/main, before this PR)
+    result: "244 (seconds); 0 matches for .next in tests.yml pre-cure"
+    ts: "2026-09-09T20:30:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: only the e2e-tests job runs `next build` for apps/mouth
+    cmd: grep -n "npm run build\|next build" .github/workflows/tests.yml apps/mouth/playwright.config.ts; grep -n "npm\b" apps/backend-rag/backend/scripts/visa_engine/fullstack_smoke.py
+    result: >-
+      tests.yml has no literal `next build`/`npm run build`; the only
+      command is inside playwright.config.ts's webServer string (`npm run
+      build && npm run start -- --port ${E2E_PORT}`), referenced by the
+      e2e-tests job. fullstack_smoke.py:541-543 launches `npm run dev`
+      instead, with PLAYWRIGHT_EXTERNAL_SERVER=1 set (line ~412), so that
+      job's frontend never reaches the webServer's build branch.
+    ts: "2026-09-09T20:40:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: A1 — the cache step exists, targets apps/mouth/.next/cache, sits between the right two steps
+    cmd: >-
+      awk '/name: Cache Next.js build cache \(mouth\)/{f=1} f{print} f &&
+      /path: apps\/mouth\/.next\/cache/{exit}' .github/workflows/tests.yml
+    result: "step block printed, ending at `path: apps/mouth/.next/cache` — present and correctly placed"
+    ts: "2026-09-09T21:05:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: A2 — actionlint reports no error
+    cmd: /opt/homebrew/bin/actionlint .github/workflows/tests.yml
+    result: "no output, exit 0"
+    ts: "2026-09-09T21:05:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: A3 — prettier reports the file already formatted
+    cmd: npx --no-install prettier --check .github/workflows/tests.yml
+    result: "Checking formatting...\nAll matched files use Prettier code style!"
+    ts: "2026-09-09T21:05:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: A4 — the workflow-shape pin suite is unaffected by this diff
+    cmd: >-
+      python3 -m pytest -q -p no:cacheprovider
+      scripts/tests/test_unreachable_workflow_conditions.py
+      scripts/tests/test_immune_enforcement_trigger_symmetry.py
+      scripts/tests/test_required_context_map.py
+    result: "53 passed in 33.40s"
+    ts: "2026-09-09T21:05:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: both cross-family review seats returned VERDICT OK
+    cmd: >-
+      tail -3 /tmp/nbc_codex_review.txt; tail -3 /tmp/nbc_kimi_review.txt
+    result: "codex: 'VERDICT: OK'; kimi: 'VERDICT: OK'"
+    ts: "2026-09-09T21:00:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: hashFiles' underlying glob has no brace expansion — only *, ?, [...], ** are supported
+    cmd: >-
+      gh api repos/actions/toolkit/contents/packages/glob/README.md --jq
+      '.content' | base64 -d | grep -B3 -A6 "^### Glob behavior"
+    result: >-
+      "### Glob behavior\n\nPatterns `*`, `?`, `[...]`, `**` (globstar) are
+      supported." — no brace-expansion syntax listed anywhere in the file.
+      Confirms the original `*.{js,jsx,ts,tsx,mjs,cjs,css,json}` pattern
+      matched zero files, so hashFiles returned '' and the key collapsed to
+      the lockfile hash alone.
+    ts: "2026-09-09T21:20:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: post-fix, actionlint and prettier still pass on the corrected workflow
+    cmd: >-
+      /opt/homebrew/bin/actionlint .github/workflows/tests.yml;
+      npx --no-install prettier --check .github/workflows/tests.yml
+    result: "actionlint: no output, exit 0; prettier: 'All matched files use Prettier code style!'"
+    ts: "2026-09-09T21:22:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+dissent:
+  - seat: team-lead (Fable 5.1, orchestrating session — post-review catch)
+    status: CONFIRMED
+    objection: >-
+      Real defect, distinct from and worse than the css/json gap both review
+      lanes named: the hash glob used brace expansion
+      (`*.{js,jsx,ts,tsx,mjs,cjs,css,json}`), which @actions/glob's
+      documented pattern syntax does not support. hashFiles silently
+      returned '' for that pattern and the key collapsed to
+      `<os>-nextjs-mouth-<lockhash>-` — an exact immutable hit after the
+      first seed, never re-saved on ANY apps/mouth source change, forever.
+      Neither cross-family review lane caught it; kimi's transcript
+      explicitly (and wrongly) asserted brace expansion was supported by
+      @actions/glob. CURED: one hashFiles pattern per extension, no braces,
+      verified against actions/toolkit's own README (receipt above).
+      actionlint/prettier re-run clean post-fix.
+  - seat: codex-gpt-5.6-sol (cross-family)
+    status: CONFIRMED
+    objection: >-
+      OK overall; two named nits. (1) The commit's original "safe, never
+      wrong" phrasing for stale restore-keys hits is too absolute in the
+      general case — .next/cache can also hold fetch/runtime cache entries,
+      not just webpack module entries — CURED in this repo by kimi's
+      in-repo check (revalidate:60 on the only build-time fetches). (2) The
+      hash glob omitted css/json/md/assets, reducing cache effectiveness
+      via the exact-key-immutable-save-skip mechanism (not a correctness
+      bug) — CURED by adding css,json to the glob. NOT applied: dropping the
+      OS-only restore-key fallback — a judgment call, not a defect, left as
+      written since restore-keys correctness is already backstopped by
+      webpack's own content-hash invalidation regardless of which key hits.
+  - seat: kimi-code/k3 (cross-family)
+    status: CONFIRMED
+    objection: >-
+      OK overall; independently found the identical css/json glob gap
+      without seeing codex's answer (no shared prompt state between lanes)
+      — CURED. Went further than codex on the fetch-cache question by
+      actually reading apps/mouth/src/lib/blog/articles.ts and confirming
+      the only build-time-relevant cached fetches use revalidate:60,
+      closing codex's theoretical concern as a non-issue in this specific
+      repo rather than leaving it as an open caveat.
+  - seat: claude-sonnet-5 (this worktree session — the builder's own standing objection)
+    status: PLAUSIBLE
+    objection: >-
+      The way this cure could be wrong, stated plainly: the Bites
+      observation that actually closes the loop (a warm-cache hit
+      measurably below the 244s baseline) cannot be produced by this PR's
+      own run — a first run always seeds the cache from empty. If the NEXT
+      ledger PR that touches apps/mouth never lands, or lands with an
+      unrelated e2e-tests failure that masks the timing signal, the win is
+      asserted here but never actually observed. That observation is the
+      job of whoever next opens a mouth-touching PR, not this one, and is
+      recorded as an open Bites loop rather than claimed as closed.
+spend:
+  wall_clock_hours: 1

@@ -67,6 +67,41 @@ logger = logging.getLogger(__name__)
 _CHECKOUT_TTL_MINUTES = 60
 
 
+async def _quarantine(
+    conn: asyncpg.Connection, *, provider_event_id: str, reason: str
+) -> None:
+    """Refuse an authentic provider callback, ON THE RECORD and with the cause.
+
+    A quarantined row is not an error we swallowed — it is a signature-valid
+    callback we DELIBERATELY declined to act on, because it could not be tied
+    to exactly one order or it claimed a payment for the wrong amount. Money
+    moved on the provider's side and we did not move our own state to match.
+    That is a page, not a metric: `payment_inbox_watch.count_quarantined`
+    reads these rows and `quarantine_alarm.QuarantineAlarm` turns them into
+    one, wired into the GARUDA scheduler in `main_api.py`.
+
+    `reason` is one of migration 298's four CHECK-enforced values. It is
+    recorded HERE, where the branch that made the decision knows it for
+    certain, rather than re-derived later by a reader that would have to
+    guess between three causes this table used to collapse into one.
+
+    Five call sites shared this UPDATE verbatim before the reason existed;
+    they call this instead so the vocabulary has exactly one home.
+    """
+
+    await conn.execute(
+        """
+        UPDATE garuda_payment_inbox
+           SET outcome = 'quarantined',
+               quarantine_reason = $2,
+               processed_at = statement_timestamp()
+         WHERE provider = 'xendit' AND provider_event_id = $1
+        """,
+        provider_event_id,
+        reason,
+    )
+
+
 class GarudaOrderRepository:
     def __init__(
         self,
@@ -385,9 +420,10 @@ class GarudaOrderRepository:
                 event.provider_session_id,
             )
             if order is None:
-                await conn.execute(
-                    "UPDATE garuda_payment_inbox SET outcome = 'quarantined', processed_at = statement_timestamp() WHERE provider = 'xendit' AND provider_event_id = $1",
-                    event.provider_event_id,
+                await _quarantine(
+                    conn,
+                    provider_event_id=event.provider_event_id,
+                    reason="unmatched_session",
                 )
                 return "OP-F03"  # cannot reconcile to exactly one order
 
@@ -402,9 +438,10 @@ class GarudaOrderRepository:
             if state == OrderState.AWAITING_PAYMENT.value and (
                 event.amount_idr != order["price_idr"] or event.currency != "IDR"
             ):
-                await conn.execute(
-                    "UPDATE garuda_payment_inbox SET outcome = 'quarantined', processed_at = statement_timestamp() WHERE provider = 'xendit' AND provider_event_id = $1",
-                    event.provider_event_id,
+                await _quarantine(
+                    conn,
+                    provider_event_id=event.provider_event_id,
+                    reason="amount_mismatch",
                 )
                 return "OP-F03"
 
@@ -434,6 +471,15 @@ class GarudaOrderRepository:
                 )
                 await journal.enqueue_outbox(
                     conn, order_id=order_id, journal_event_id=event_id, job_type="practice_release"
+                )
+                # The customer's way IN. Enqueued in this same transaction, and
+                # deliberately NOT ordered after `practice_release`: the outbox
+                # gives no inter-job ordering (SKIP LOCKED claims whatever is
+                # free), so `PortalInviteHandler` keys on the practice row and
+                # raises until it exists. Ordering enforced by the handler, not
+                # by the enqueue sequence — see that class's docstring.
+                await journal.enqueue_outbox(
+                    conn, order_id=order_id, journal_event_id=event_id, job_type="portal_invite"
                 )
                 # PR-01, eagerly, in the SAME transaction as the payment.paid
                 # event above -- see this module's own docstring for why
@@ -527,9 +573,10 @@ class GarudaOrderRepository:
                     job_type="staff_page_late_paid_after_terminal",
                 )
             else:  # created — a paid event for a session never bound is unreconcilable
-                await conn.execute(
-                    "UPDATE garuda_payment_inbox SET outcome = 'quarantined', processed_at = statement_timestamp() WHERE provider = 'xendit' AND provider_event_id = $1",
-                    event.provider_event_id,
+                await _quarantine(
+                    conn,
+                    provider_event_id=event.provider_event_id,
+                    reason="session_not_bound",
                 )
                 return "OP-F03"
 
@@ -567,9 +614,15 @@ class GarudaOrderRepository:
                 event.provider_session_id,
             )
             if order is None or order["state"] != OrderState.AWAITING_PAYMENT.value:
-                await conn.execute(
-                    "UPDATE garuda_payment_inbox SET outcome = 'quarantined', processed_at = statement_timestamp() WHERE provider = 'xendit' AND provider_event_id = $1",
-                    event.provider_event_id,
+                # Two genuinely different incidents that this branch's single
+                # `or` used to record identically: a failure event for a
+                # checkout session we have never heard of, and one for an order
+                # whose state does not admit it. Different cures, so different
+                # recorded reasons.
+                await _quarantine(
+                    conn,
+                    provider_event_id=event.provider_event_id,
+                    reason="unmatched_session" if order is None else "unexpected_state",
                 )
                 return "OP-F03"
 
@@ -636,9 +689,10 @@ class GarudaOrderRepository:
                 OrderState.AWAITING_PAYMENT.value,
                 OrderState.PAID.value,
             ):
-                await conn.execute(
-                    "UPDATE garuda_payment_inbox SET outcome = 'quarantined', processed_at = statement_timestamp() WHERE provider = 'xendit' AND provider_event_id = $1",
-                    event.provider_event_id,
+                await _quarantine(
+                    conn,
+                    provider_event_id=event.provider_event_id,
+                    reason="unmatched_session" if order is None else "unexpected_state",
                 )
                 return "OP-F03"
 

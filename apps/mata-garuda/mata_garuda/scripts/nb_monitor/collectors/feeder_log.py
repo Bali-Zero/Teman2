@@ -12,7 +12,7 @@ sum alerts+enriched (or read stats if present) to compute push_success_rate.
 
 GLOBAL ONLY: this log has no per-UUID breakdown. The same rate is applied
 to every UUID with active_routing=True. Per-UUID per-message logging is
-out of scope for this PR (see ADR-006).
+out of scope for this PR (see ADR-012).
 """
 from __future__ import annotations
 

@@ -47,6 +47,7 @@ __all__ = [
     "IdempotencyConflict",
     "IssueOutcome",
     "MagicLinkStore",
+    "PeekOutcome",
     "PersistencePolicyUnavailable",
     "RateLimited",
     "UnconfiguredMagicLinkStore",
@@ -147,6 +148,29 @@ class ExchangeOutcome:
     idempotency_replayed: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class PeekOutcome:
+    """What `MagicLinkStore.peek` hands back -- a NON-CONSUMING lookup that
+    answers "whose application does this token open?" without touching
+    `used_at`. Deliberately as thin as `IssueOutcome`: `valid=False` covers
+    an unknown, expired, AND already-consumed token in exactly the same
+    shape as `ExchangeOutcome.authorized=False` -- DECISIONS.md Q1's
+    non-enumeration requirement applies here just as much as it does to a
+    real exchange, so this type has no reason field a router could
+    accidentally serialize.
+
+    `email` is `repr=False` for the identical reason `ExchangeOutcome.
+    account_session_secret` is (see that field's docstring): a dataclass
+    repr under an innocuous local-variable key is a leak vector neither
+    Sentry's own scrubber nor this repo's `_scrub` can close, both being
+    key-based. An email is PII (UU PDP scope) exactly as the account
+    session secret is a credential -- same mitigation, same reason.
+    """
+
+    valid: bool
+    email: str | None = field(default=None, repr=False)  # ACCEPT only
+
+
 @runtime_checkable
 class MagicLinkStore(Protocol):
     """Persistence port L4 depends on and does not implement (see module
@@ -194,6 +218,16 @@ class MagicLinkStore(Protocol):
         token: str,
     ) -> ExchangeOutcome: ...
 
+    async def peek(self, *, token: str) -> PeekOutcome:
+        """Non-consuming counterpart to `exchange` -- a read that must never
+        set `used_at` or otherwise change the token's redeemability. An
+        adapter that cannot express "look but don't touch" without the same
+        atomic UPDATE `exchange` uses has no safe implementation of this
+        method; see `PostgresMagicLinkStore.peek`'s docstring for the
+        concrete SELECT-only shape.
+        """
+        ...
+
 
 class UnconfiguredMagicLinkStore:
     """The only `MagicLinkStore` this lane ships — fails closed on every call.
@@ -218,4 +252,7 @@ class UnconfiguredMagicLinkStore:
         idempotency_key: str,
         token: str,
     ) -> ExchangeOutcome:
+        raise PersistencePolicyUnavailable("no garuda magic-link store configured")
+
+    async def peek(self, *, token: str) -> PeekOutcome:
         raise PersistencePolicyUnavailable("no garuda magic-link store configured")

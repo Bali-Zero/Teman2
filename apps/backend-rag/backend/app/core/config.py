@@ -26,6 +26,28 @@ class Settings(BaseSettings):
     # BALI ZERO, GREEN). The old personal number (+62 822 64xx, Antonello's)
     # no longer exists — replaced fleet-wide 2026-06-18.
     SUPPORT_WHATSAPP: str = "+62 821 3465 159"
+    # The number a CLIENT is invited to write to — NOT the same thing as
+    # SUPPORT_WHATSAPP above, and the two must be free to differ.
+    # SUPPORT_WHATSAPP is the bot's INBOUND identity: the line Meta delivers
+    # webhooks for, which no human answers. This is Ari's line, where a human
+    # does. On 2026-08-31 a fix for a real defect (two halves of the price
+    # list naming different numbers) resolved the tie toward SUPPORT_WHATSAPP
+    # and shipped the bot's inbound number to clients; the owner reversed it
+    # on 2026-09-01. AMENDED 2026-09-01: this comment used to end "It is NOT yet
+    # used everywhere it should be: eleven other client-facing surfaces still
+    # emit SUPPORT_WHATSAPP". That is no longer true, and leaving it would be
+    # worse than saying nothing — the next maintainer reads an authoritative
+    # comment and puts the bot's number back. Every client-facing emission in
+    # backend/ now reads THIS field; SUPPORT_WHATSAPP is read by exactly one
+    # module, whatsapp_chat.py, where it is inbound routing rather than an
+    # invitation. Both halves are enforced:
+    # test_no_backend_module_hands_a_client_the_bots_inbound_number (nobody
+    # writes the digits) and
+    # test_only_the_meta_webhook_router_reads_the_bots_inbound_number (nobody
+    # reads the setting). Kept in sync with the price-list generator's
+    # _CANONICAL_WHATSAPP_DIGITS (scripts/pricelist_2026/schema.py) by
+    # test_client_contact_whatsapp_matches_the_price_list_generator.
+    CLIENT_CONTACT_WHATSAPP: str = "+62 821 3454 721"
     API_V1_STR: str = "/api/v1"
     environment: str = "development"  # Set via ENVIRONMENT env var (production/development)
 
@@ -454,6 +476,29 @@ class Settings(BaseSettings):
     # DATABASE CONFIGURATION
     # ========================================
     database_url: str | None = None  # Set via DATABASE_URL env var
+
+    # The DSN the MIGRATION RUNNER connects with, when it differs from the
+    # runtime's. RULED 2026-09-11 (Zero, GARUDA VOA step 5, option D of
+    # docs/plans/2026-08-24-garuda-voa-live/STEP5-PRIVILEGE-DECISION.md): a
+    # dedicated LOGIN role `backend_rag_migrator` that is a member of BOTH
+    # `backend_rag_v2` (the runtime role, owner of every table) and
+    # `visa_ledger_owner` (owner of the SECURITY DEFINER retention binders).
+    # The runner connects as the migrator and immediately `SET ROLE`s to the
+    # runtime role, so ordinary DDL still produces objects owned exactly as
+    # before; a migration that needs the ledger owner does `RESET ROLE` around
+    # that one block. Unset (every environment but Fly, and Fly until the
+    # secret is set) means: single DSN, exactly the pre-2026-09-11 behaviour.
+    # Never the runtime's DSN: `backend.db.migration_base.assume_runtime_role`
+    # refuses a superuser here on purpose.
+    migration_database_url: str | None = None  # Set via MIGRATION_DATABASE_URL
+
+    @field_validator("migration_database_url", mode="before")
+    @classmethod
+    def validate_migration_database_url(cls, v: Any) -> Any:
+        """Same scheme normalisation as `database_url`; never warns (optional)."""
+        if v and v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql://", 1)
+        return v or None
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -1008,6 +1053,24 @@ class Settings(BaseSettings):
         ),
     )
 
+    developer_emails: str | None = Field(
+        default=None,
+        description=(
+            "Comma-separated allowlist of developer addresses that may read the five "
+            "read-only team-activity log endpoints under /api/admin/logs/* with their "
+            "ordinary team JWT, through admin_logs.verify_log_read_access. Set via "
+            "DEVELOPER_EMAILS env var. It grants NOTHING under /api/debug/* — that router "
+            "keeps its admin-only gate because it holds POST /api/debug/postgres/query "
+            "(caller-supplied SQL against production), DELETE /api/debug/traces and "
+            "POST /api/debug/profile; granting log access through it would have handed a "
+            "developer arbitrary SELECT over the client book. Deliberately SEPARATE from "
+            "admin_emails for the same reason: reading logs is not administering the CRM "
+            "book, and conflating them would force one to be widened to grant the other. "
+            "Empty by default — an unset var grants nobody, and revoking is removing the "
+            "address from the list."
+        ),
+    )
+
     notification_cc_emails: str | None = Field(
         default=None,
         description=(
@@ -1061,6 +1124,21 @@ class Settings(BaseSettings):
         if not emails:
             return self._ADMIN_EMAILS_FALLBACK
         return frozenset(emails)
+
+    @property
+    def developer_emails_set(self) -> frozenset[str]:
+        """Developer observability allowlist (lower-case, frozen).
+
+        NO fallback, unlike :attr:`admin_emails_set`: an unset or blank
+        DEVELOPER_EMAILS must grant NOBODY. A fallback here would mean a
+        deployment that never configured the var silently hands log access to
+        whoever the historical default named — the opposite of a grant that is
+        meant to be explicit and revocable.
+        """
+        raw = self.developer_emails
+        if not raw:
+            return frozenset()
+        return frozenset(e.strip().lower() for e in raw.split(",") if e.strip())
 
     @property
     def notification_cc_emails_list(self) -> tuple[str, ...]:
@@ -1219,9 +1297,33 @@ class Settings(BaseSettings):
         description="Backend API base URL. Set via BACKEND_URL env var (default: production Fly.io URL)",
     )
     frontend_portal_url: str = Field(
-        default="https://nuzantara-mouth.vercel.app",
-        description="Frontend portal base URL for client invitations. Set via FRONTEND_PORTAL_URL env var",
+        default="https://my.balizero.com",
+        description=(
+            "Base URL of the CLIENT PORTAL, prefixed to InviteService's "
+            "`/portal/register?token=...` to build the link mailed in every portal "
+            "invitation. Set via FRONTEND_PORTAL_URL env var. This default is load-"
+            "bearing, not a local-dev fallback: when the env var is unset in "
+            "production it IS the link the client clicks, so it must name the live "
+            "portal domain and never a Vercel deployment alias (whose lifetime is a "
+            "deploy's, not the product's) — see the PR that set it."
+        ),
     )
+    @field_validator("frontend_portal_url")
+    @classmethod
+    def _strip_portal_url_trailing_slash(cls, v: str) -> str:
+        """Normalise HERE, not at each call site — there are two call sites.
+
+        Consumers concatenate this base with a path that already starts with
+        "/", so a trailing slash (a natural thing to type into an env var)
+        yields "//portal/register?token=...". The first cure for this put an
+        `rstrip` in the invite router only, and the independent Gear-3 gate
+        pointed out that `garuda_orders/outbox_handlers.py` passes the same
+        setting as `portal_base_url` and would still have mailed the doubled
+        separator. A normalisation that has to be repeated by every consumer is
+        one a new consumer will forget, so it belongs to the value itself.
+        """
+        return v.rstrip("/")
+
     balizero_website_url: str = Field(
         default="https://balizero.com",
         description="Bali Zero public website URL for article publishing. Set via BALIZERO_WEBSITE_URL env var",

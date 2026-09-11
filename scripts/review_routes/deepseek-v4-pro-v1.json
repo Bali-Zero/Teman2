@@ -1,0 +1,10 @@
+{
+  "api_timeout_ms": "3000000",
+  "base_url": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+  "model_map": {
+    "haiku": "deepseek-v4-pro",
+    "opus": "deepseek-v4-pro",
+    "sonnet": "deepseek-v4-pro"
+  },
+  "schema_version": 1
+}

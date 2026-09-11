@@ -98,12 +98,32 @@ class LeadSource(str, Enum):
 class PublicLeadSource(str, Enum):
     """Lead sources accepted by the public capture API.
 
-    ``LeadSource.GARUDA_VOA`` intentionally remains in the persistence enum so
-    historical rows continue to decode. It is absent here because the public
-    GARUDA funnel is retired.
+    This enum — not ``LeadSource`` — is what ``POST /api/lead/capture``
+    validates against (``LeadCaptureRequest.source``). A frontend value absent
+    HERE is rejected with 422, ``AppWhatsAppCTA`` swallows that in its catch,
+    and the visitor is redirected to the bare wa.me link: no prefilled message,
+    no lead row, no error anywhere. Keep it in step with the frontend — the
+    tripwire ``test_frontend_lead_sources_are_accepted_by_the_public_capture_api``
+    is what enforces that.
+
+    ``GARUDA_VOA`` was excluded on 2026-08-21 (#4344) when the then-public
+    GARUDA routes were retired — correct at the time. The funnel was RELAUNCHED
+    four days later (#4960, 2026-08-25, "the public funnel UI, dark by flag")
+    with a result page that captures under ``garuda_voa``, and nobody re-opened
+    this enum. The exclusion therefore described a state that had stopped being
+    true, and the mine was armed for go-live day: the moment
+    ``GARUDA_PUBLIC_ENABLED`` flips, every WhatsApp handoff off the VOA result
+    page 422s — clicks tracked, leads unlogged, exactly the homepage_hero bug
+    (#2495) on the flagship launch. It is re-admitted here.
+
+    ``LeadSource.GARUDA_VOA.result_url_path`` deliberately stays ``None``: the
+    deeplink builder simply omits the "Reference:" back-link for it, the lead is
+    captured either way, and re-pointing that URL is the separate question #4344
+    closed on purpose.
     """
 
     VISA_CLOCK = LeadSource.VISA_CLOCK.value
+    GARUDA_VOA = LeadSource.GARUDA_VOA.value
     VISA_MATCH = LeadSource.VISA_MATCH.value
     KBLI_DECODER = LeadSource.KBLI_DECODER.value
     KBLI_BUILDER = LeadSource.KBLI_BUILDER.value

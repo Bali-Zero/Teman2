@@ -1,0 +1,73 @@
+task_id: voa-probe-corpus-executor-h2-0830
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Give the VOA journey probe's corpus an executor that can turn a PR red.
+
+  PR #5215 shipped the anonymous VOA journey probe — the receptor that walks the public funnel
+  on a schedule so a broken checkout is found by us and not by a traveller — together with a
+  shell corpus proving its wrapper, and NO workflow naming either. `scripts-tests-sweep.yml`
+  does collect the pytest shim, but that sweep is `continue-on-error: true` and sits in no
+  required context, so the corpus could fail forever without reddening a single PR. Superscar
+  family #2 (esiste != armato) applied to the guards of a receptor built to cure exactly that
+  class — the W108 shape, named as such in the handoff.
+
+  Squad P → Squad W handoff, issue #5251 §H2. Battle plan §2 reserves every `.github/workflows/`
+  edit to Squad W, so Squad P built everything else and handed the workflow diff over. H1 and H3
+  of that same handoff needed nothing: both were verified already landed on `origin/main`
+  (#5246 and `token-contrast-tests.yml`) before any code was written, rather than rebuilt from
+  the issue's stale text.
+
+  Gear 3 by PATH, deterministically: `.github/workflows/**` is hot-zone, so the floor is 3
+  regardless of the diff being one file. Recomputed from the actual changed-file list by CI —
+  receipt in the pack.
+constraints:
+  - "Run BOTH entrypoints, never the self-test alone. Asserted by the handoff; re-measured here
+    before being believed. A self-test-only job would read as full arming while being half of one."
+  - "Judge by exit code, not by grepping the corpus's own TOTAL/FAILED line. A mktemp failure on
+    a sandboxed runner aborts before that line ever prints, and a grep would then have to guess
+    what its absence means — the ASSENTE-suspect-the-instrument trap."
+  - "Check each script with ITS OWN interpreter. The wrapper is zsh and the installer is bash;
+    the first version of this file used bash for both and was wrong about half of it."
+  - "Do not add anything to branch protection. Required-context promotion is a repo-settings
+    action, operator-gated (CLAUDE.md §13), and is explicitly NOT requested by the handoff."
+  - "Do not weaken any check. The reds this PR drew are answered by curing the cause and by
+    supplying this pack, never by touching a gate."
+acceptance:
+  - text: >-
+      WHEN the probe's four-verdict lattice is collapsed (every "unknown" literal replaced by
+      "fail"), the corpus SHALL exit non-zero, WHILE the unmutated tree SHALL exit zero on both
+      entrypoints.
+    probe: >-
+      bash scripts/tests/test_voa_probe_wrapper.sh; echo $?  (run once on the mutated tree and
+      once on the restored tree)
+  - text: >-
+      WHEN this workflow runs on a GitHub runner, the job SHALL complete rather than abort on a
+      missing interpreter — the corpus is authored on macOS and scheduled on Linux.
+    probe: "gh run list --repo Bali-Zero/Teman2 --workflow voa-probe-tests.yml --limit 1"
+  - text: >-
+      WHERE the corpus reports fewer checks than its floor the job SHALL fail, and IF the corpus
+      prints no count at all the job SHALL fail rather than read the absence as a pass.
+    probe: "step 'The corpus did not shrink' in .github/workflows/voa-probe-tests.yml"
+  - text: "WHEN the workflow file changes, actionlint SHALL report no findings."
+    probe: "actionlint .github/workflows/voa-probe-tests.yml"
+consumer_map:
+  - "GitHub Actions on any PR or main push touching the probe, its wrapper, the plist, the
+    installer or their corpora — the only consumer; nothing imports this file."
+  - "No runtime consumer: this workflow ships no code into any deployed artifact, so there is no
+    Fly or Vercel surface to prove live."
+risks:
+  - "A genuine infra flake on the runner now reddens a PR that touches the organ. (The job is
+    NOT a required context, so it signals rather than blocks — the review's highest-severity
+    finding was that calling it blocking was untrue.) Accepted: both steps are offline and deterministic (the corpus drives runJourney
+    through an injected fake fetchImpl, the self-test makes no network calls), so the flake
+    surface is apt-get and checkout, not the assertions."
+  - "Installing zsh on the runner adds an apt step to a job that had none. Accepted over moving
+    to macos-latest: the wrapper's zsh is a fleet choice rather than a macOS dependency, and a
+    Linux runner keeps the job cheap enough that nobody will want to weaken it later."
+grader: |
+  Independent seat, generator != grader: this file's author wrote the workflow and therefore
+  cannot gate it. The grader must re-run the guilt mutation itself rather than accept the table
+  in the pack, and must confirm that the zsh install step is what makes the corpus reachable on
+  a Linux runner — not merely that CI is now green.

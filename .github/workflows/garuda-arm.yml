@@ -154,7 +154,12 @@ jobs:
           add_if_nonempty "GARUDA_PUBLIC_ENABLED" "$IN_PUBLIC_ENABLED"
           add_if_nonempty "GARUDA_ENVIRONMENT" "$IN_ENVIRONMENT"
           add_if_nonempty "GARUDA_PUBLIC_BASE_URL" "https://balizero.com"
-          add_if_nonempty "GARUDA_MAGIC_LINK_BASE_URL" "https://balizero.com/visa/voa"
+          # /visa/voa/auth, NOT /visa/voa: the emailed link carries
+          # ?result_id=&magic_token= and only the auth page reads them
+          # (apps/mouth/src/app/visa/voa/auth/). The funnel's first page
+          # ignores both, so the old value delivered every recipient to a
+          # form with an unread credential trailing in the URL.
+          add_if_nonempty "GARUDA_MAGIC_LINK_BASE_URL" "https://balizero.com/visa/voa/auth"
           add_if_nonempty "GARUDA_XENDIT_FEE_BPS" "0"
           add_if_nonempty "GARUDA_XENDIT_FEE_FIXED_IDR" "0"
 

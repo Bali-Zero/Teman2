@@ -6,6 +6,7 @@ Extracted from SearchService to improve modularity and testability.
 
 from typing import Any
 
+from backend.core import score_provenance
 from backend.services.kbli_pma_disclosure import sanitize_kbli_search_result
 
 
@@ -15,6 +16,7 @@ def format_search_results(
     primary_collection: str | None = None,
     *,
     query: str | None = None,
+    score_kind: str = score_provenance.UNKNOWN,
 ) -> list[dict[str, Any]]:
     """Format raw vector database results with score boosting and metadata enrichment.
 
@@ -43,6 +45,11 @@ def format_search_results(
             "Pricing boost" below) — omit only for callers that don't have
             the raw query in scope, which keeps the pre-gate behavior
             (boost always applied) for backwards compatibility.
+        score_kind: The `score_provenance` kind the CALLER declares for
+            every result this call formats (B1.1 — see
+            `backend/core/score_provenance.py`). Defaults to `UNKNOWN` for
+            callers that haven't been updated to declare one yet. Never
+            inferred here from the data itself.
 
     Returns:
         List of formatted result dicts:
@@ -122,13 +129,20 @@ def format_search_results(
             metadata,
         )
 
-        formatted_results.append(
-            {
-                "id": raw_results["ids"][i] if i < len(raw_results.get("ids", [])) else None,
-                "text": doc_content,
-                "metadata": metadata,
-                "score": round(score, 4),
-            },
-        )
+        scores_list = raw_results.get("scores")
+        raw_score = None
+        if scores_list is not None and i < len(scores_list):
+            candidate = scores_list[i]
+            if isinstance(candidate, (int, float)):
+                raw_score = float(candidate)
+
+        result_entry = {
+            "id": raw_results["ids"][i] if i < len(raw_results.get("ids", [])) else None,
+            "text": doc_content,
+            "metadata": metadata,
+            "score": round(score, 4),
+        }
+        score_provenance.stamp(result_entry, score_kind, raw_score)
+        formatted_results.append(result_entry)
 
     return formatted_results

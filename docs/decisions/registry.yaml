@@ -1,0 +1,193 @@
+# Decision registry — one numbered, status-tracked, supersession-linked record per decision.
+#
+# WHY THIS EXISTS. Decisions in this repo are captured abundantly and findably by nobody: 11 legacy
+# ADRs in one monolithic doc last touched 2026-02-26, a second numbering space in `docs/adr/` that
+# collided with it, four inline rulings inside CLAUDE.md, one memo in `docs/decisions/`, and 300+
+# research dossiers. Every one of those is a real record. None of them can answer "was this
+# superseded?" without a human reading prose.
+#
+# THE NUMBER IS THE POINT, and it is guarded. A reused `D-NNN` is a HARD FAIL in
+# `scripts/lint_decision_registry.py`, because a reservation that lives only in a document nobody
+# re-reads decays monotonically with the number of concurrent writers — W40 (two migrations claimed
+# 194 five minutes apart) and W128 (two PRs claimed scar W126 three minutes apart) are the same
+# disease in two other counters, and both cost a session each.
+#
+# `evidence:` is not decoration. A decision with no resolvable evidence path is prose, and the lint
+# says so. Paths resolve against `origin/main` first, then this commit — so a record whose evidence
+# lands in the same PR is legal, and a typo that exists nowhere is not.
+#
+# DATES, stated honestly: D-001..D-011 all carry 2026-02-26, which is the
+# monolithic document's own "Last Updated" stamp and NOT eleven separate decision
+# dates — the individual ADRs do not record their own. A date query over those
+# eleven therefore answers "when the doc was last touched", not "when this was
+# decided". Recorded rather than invented: guessing per-ADR dates from git
+# archaeology would put eleven fabricated facts into a registry whose whole value
+# is that its facts are true, and a known-coarse date is worth more than a
+# plausible wrong one.
+#
+# BACKFILL NOTE, and it corrects the spec that asked for it: L03-PR1 says "the 6 inline RULED blocks
+# in CLAUDE.md". `grep -n RULED CLAUDE.md` does return 6 lines — but lines 120 and 122 are prose
+# back-references to the ruling at line 130, not decisions of their own. There are FOUR distinct
+# rulings (74, 124, 128, 130). Backfilling all six would have created two duplicate records for the
+# 2026-08-20 decision, i.e. the exact collision this registry's lint exists to prevent, committed in
+# the act of building it.
+
+decisions:
+  # NOT superseded, and the spec that asked for this backfill says it is.
+  #
+  # L03-PR1 instructs: mark ADR-001 `superseded-by:` the 2026-07-25/08-20 routing
+  # rulings — and notes that its own adversarial round REJECTED an objection to
+  # doing so. Measured before complying, and the instruction is a category error:
+  #
+  #   - ADR-001 is about the PRODUCT's LLM — what answers a customer on WhatsApp.
+  #     `CLAUDE.md:261` still reads "WhatsApp ✅ Fly.io (Gemini 3 Flash + RAG)",
+  #     and the embedding half is still frozen at text-embedding-3-small (§9).
+  #   - D-014/D-015/D-016 are about the AGENT WORKFLOW's model routing — which
+  #     model writes code and gates a PR. `CLAUDE.md` §5, a different section
+  #     about a different system.
+  #
+  # Recording D-001 as superseded would have put a FALSE fact into the registry
+  # whose entire purpose is to be the trustworthy answer to "was this
+  # superseded?" — on its first commit, and about the very first record. The
+  # instruction is not followed; this comment is why, so the next reader meets
+  # the reasoning rather than rediscovering the conflict.
+  - id: D-001
+    title: "Gemini as primary LLM for the product, OpenAI only for embeddings"
+    date: 2026-02-26
+    status: accepted
+    door: two-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L9
+
+  - id: D-002
+    title: "PostgreSQL as message bus for Generals, no Kafka or RabbitMQ"
+    date: 2026-02-26
+    status: accepted
+    door: two-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L38
+
+  - id: D-003
+    title: "Lazy import architecture for Fly.io cold start"
+    date: 2026-02-26
+    status: accepted
+    door: two-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L70
+
+  - id: D-004
+    title: "Orchestrator decomposition — one class into seven managers"
+    date: 2026-02-26
+    status: accepted
+    door: one-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L109
+
+  - id: D-005
+    title: "Three-tier memory model — personal facts, collective knowledge, episodic timeline"
+    date: 2026-02-26
+    status: accepted
+    door: one-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L145
+
+  - id: D-006
+    title: "Abstract channel pattern for multi-platform chat"
+    date: 2026-02-26
+    status: accepted
+    door: two-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L179
+
+  - id: D-007
+    title: "Evidence scoring with ABSTAIN capability"
+    date: 2026-02-26
+    status: accepted
+    door: two-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L211
+
+  - id: D-008
+    title: "Fail-closed auth middleware — 503 on any internal error, never pass-through"
+    date: 2026-02-26
+    status: accepted
+    door: two-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L240
+
+  # The ADR's stated rationale has since drifted: `apps/backend-rag/fly.toml:90`
+  # now gives the api group 3gb (upgraded 2026-05-28 after the restart loop, scar
+  # W60), while the rag group is still 2gb. The DECISION (one worker) stands; its
+  # 2GB justification is no longer the whole picture. Titled for what was decided
+  # rather than for a number that moved, and flagged here so a reader does not
+  # take the rationale as current fact.
+  - id: D-009
+    title: "Single uvicorn worker on Fly.io, originally forced by a 2GB memory ceiling"
+    date: 2026-02-26
+    status: accepted
+    door: two-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L263
+
+  - id: D-010
+    title: "Database v2 migration squash — 44 legacy files into one baseline"
+    date: 2026-02-26
+    status: accepted
+    door: one-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L289
+
+  - id: D-011
+    title: "KG LangGraph behind the ENABLE_KG_LANGGRAPH feature flag"
+    date: 2026-02-26
+    status: accepted
+    door: two-way
+    evidence: docs/ARCHITECTURE_DECISION_RECORDS.md#L318
+
+  - id: D-012
+    title: "nb_monitor bootstrap JSON registry, migrating to notebook_registry after FASE-2"
+    date: 2026-05-07
+    status: accepted
+    door: two-way
+    evidence: docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md
+    # NO `contradicts:` here. The first draft claimed this contradicted D-006,
+    # and it does not: a notebook bootstrap registry and an abstract channel
+    # pattern for multi-platform chat have nothing to do with each other. What
+    # they shared was a NUMBER, and I turned a numbering collision into a
+    # semantic conflict — a fabricated fact, in a registry whose only value is
+    # that its facts are true. Caught by a cross-family reviewer. The collision
+    # is recorded where it belongs, in the renamed file's own header.
+
+  - id: D-013
+    title: "Codex spalla — a second-opinion review seat, not a second implementer"
+    date: 2026-05-03
+    status: accepted
+    door: two-way
+    evidence: docs/decisions/2026-05-03-codex-spalla-architecture.md
+
+  - id: D-014
+    title: "The interactive default is Opus 5, correcting a doctrine that described a state which never existed"
+    date: 2026-07-25
+    status: accepted
+    door: two-way
+    evidence: CLAUDE.md#L124
+
+  - id: D-015
+    title: "Final gate split by the deterministic gear floor — Gear 3 on Fable, Gear 1-2 on Opus 5"
+    date: 2026-08-19
+    status: superseded-by
+    superseded_by: D-016
+    door: two-way
+    evidence: CLAUDE.md#L128
+
+  - id: D-016
+    title: "Fable 5 is out of the workflow; the Gear-3 final on-disk gate closes on Opus 5"
+    date: 2026-08-20
+    status: accepted
+    door: two-way
+    evidence: CLAUDE.md#L130
+    contradicts: [D-015]
+
+  - id: D-017
+    title: "Product builds are governed by the assembly line, which wins over modus where they overlap"
+    date: 2026-08-24
+    status: accepted
+    door: two-way
+    evidence: CLAUDE.md#L74
+
+  - id: D-018
+    title: "Customer-visible case code BZ-26-0001 — four-digit progressive, no generator existed"
+    date: 2026-08-28
+    status: accepted
+    door: one-way
+    evidence: research/design/2026-08-28-case-code-design.md

@@ -149,6 +149,30 @@ CLAUDE_CLI_CANDIDATES: Final[tuple[Path, ...]] = (
     Path.home() / ".npm-global/bin" / "claude",
     Path("/usr/local/bin/claude"),
 )
+# W132 (2026-08-28): pin every child CLI to a STERILE config dir. The default
+# (~/.claude) is the interactive control-plane: its Stop-hook mailbox receptor
+# (mailbox_inject.py) re-opens a "finished" -p session with cross-machine fleet
+# mail, the model answers the mail turn after turn, and `-p` prints the LAST
+# turn — so the caller receives fleet chatter instead of its answer (measured:
+# transcript c68e9228 2026-08-28 — the correct DeckPlan JSON sat at turn 1,
+# discarded; the WR2 draft-generator failed 3/3 on every draft for 8 days on
+# this). A bare config dir has no hooks BY CONSTRUCTION, so for THIS client's
+# consumers the class dies here rather than hook-by-hook (sibling `claude -p`
+# spawners — zantara-gateway, intel enricher — have their own config-dir
+# handling and are tracked separately). The CLI bootstraps a missing dir on its own
+# (verified live, nested paths included) and auth is unaffected for the env
+# seats — the token arrives via CLAUDE_CODE_OAUTH_TOKEN, never from the config
+# dir. DECLARED trade-off: the trailing ("", "keychain") sentinel seat DIES
+# under the sterile dir (keychain credential lookup is config-dir-scoped —
+# measured: "Not logged in"). Accepted: that seat ran in the poisoned default
+# dir too, so its "success" was the same corrupted last-turn output; now it
+# fails fast as `authentication` and cools instead of burning minutes.
+# Escape hatch: point HEADLESS_CONFIG_DIR_ENV at any hook-free profile dir to
+# restore profile-scoped keychain auth for the sentinel seat. Concurrent -p
+# children share the one sterile dir exactly as they shared ~/.claude before
+# (same .claude.json write races, smaller blast radius — the dir is disposable).
+HEADLESS_CONFIG_DIR_ENV: Final[str] = "CLAUDE_OAUTH_HEADLESS_CONFIG_DIR"
+DEFAULT_HEADLESS_CONFIG_DIR: Final[str] = "~/.claude-oauth-headless"
 # Model slug allowlist-by-shape: the value is forwarded to ``--model``, so
 # reject anything that isn't a plain ``claude-*`` slug (blocks argv/flag
 # smuggling via the model field). All current call-site slugs pass:
@@ -225,6 +249,12 @@ def _build_env(token: str) -> dict[str, str]:
     cannot silently escape the Max OAuth path through a direct API key,
     Bedrock, or Vertex. Numbered seat tokens are also removed; the child sees
     only the selected ``CLAUDE_CODE_OAUTH_TOKEN``.
+
+    Also pins ``CLAUDE_CONFIG_DIR`` to a sterile headless dir (W132): the
+    inherited/interactive config dirs carry the control-plane hooks whose
+    Stop-time mailbox delivery extends a one-shot ``-p`` session past its
+    answer. The override is unconditional — an inherited ``CLAUDE_CONFIG_DIR``
+    (e.g. an interactive session spawning this client) must never leak through.
     """
     env = {
         key: value
@@ -237,6 +267,8 @@ def _build_env(token: str) -> dict[str, str]:
         env["CLAUDE_CODE_OAUTH_TOKEN"] = token
     else:
         env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    headless_dir = os.environ.get(HEADLESS_CONFIG_DIR_ENV, "").strip() or DEFAULT_HEADLESS_CONFIG_DIR
+    env["CLAUDE_CONFIG_DIR"] = os.path.expanduser(headless_dir)
     return env
 
 
@@ -687,6 +719,11 @@ async def complete_async(
         cmd: list[str] = [
             claude_cli,
             "-p",
+            # W132: a one-shot completion must not persist a session — the
+            # transcript trail is what a resumable session leaves behind, and
+            # it also stops unbounded projects/*.jsonl growth in the sterile
+            # config dir (same flag the zantara-gateway sibling already uses).
+            "--no-session-persistence",
             "--disallowedTools",
             *_DISALLOWED_TOOLS,
         ]

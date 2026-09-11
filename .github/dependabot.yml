@@ -4,6 +4,84 @@ updates:
   # Python backend
   - package-ecosystem: "pip"
     directory: "/apps/backend-rag"
+    # The two uv-compiled locks are OUTPUT, not input — Dependabot must not edit
+    # them.
+    #
+    # WHY IT WAS EDITING THEM: for pip, Dependabot "supports updates to any .txt
+    # file" (docs: supported-ecosystems-and-repositories, "pip and pip-compile").
+    # There is no heuristic that recognises compiled output, so
+    # requirements.lock.txt and requirements-prod.lock.txt were picked up as two
+    # more manifests purely because they end in .txt.
+    #
+    # WHAT THAT PRODUCED: this file already diagnosed the mechanism in the ignore
+    # block below ("Dependabot's pip lock updater bumps each package
+    # independently and does NOT honor sibling version pins"), but treated it as
+    # a per-package problem — hence the holds on fsspec, grpcio*, websockets,
+    # pdfplumber, pydantic*, mpmath, tokenizers. It is not per-package. Raising
+    # one == pin inside a compiled lock without re-running `uv pip compile`
+    # yields an internally unsatisfiable pin set, so the PR is born dead at
+    # `Install dependencies (uv, lock-pinned)` and its ~9 reds are ONE failure
+    # fanning out. Measured 2026-09-01, four distinct conflicts one mechanism:
+    # #5453 (openinference-semantic-conventions 0.1.32 vs >=0.1.33), #5452
+    # (portalocker 4.3.0 vs qdrant-client's <4.0), #5530 (transformers 5.16.1
+    # needs tokenizers>=0.23.1, lock has 0.22.2), #5454 (same profile). The
+    # tokenizers hold below was written for transformers 4.57 and the conflict
+    # returned at 5.16 — a per-package cure cannot outrun a mechanism.
+    #
+    # GLOB, NOT TWO FILENAMES — deliberate, and it is the npm block's lesson
+    # applied here: "scoping the fix to one dependency instead of the class is
+    # exactly why the disease came back through four other packages". A third
+    # compiled lock must be excluded by existing.
+    #
+    # WHAT THIS DOES NOT DO: a bump to a DIRECT dependency still opens a PR and
+    # still goes red — but on ONE check with a one-command fix, because the lock
+    # now lags its manifest and
+    # apps/backend-rag/backend/tests/test_lock_honors_requirements.py catches
+    # exactly that (it runs in backend-shard leg 3, feeding the REQUIRED
+    # "Backend Tests (Python)"; any requirements-file change forces the full
+    # unscoped suite, so it cannot be path-skipped). Fix: re-run the `uv pip
+    # compile` command in the lock's own header and commit the result. What
+    # disappears entirely is the lock-ONLY class — a transitive package like
+    # portalocker that appears in no source manifest — which is the class no
+    # recompile could ever have saved.
+    #
+    # THE HOLE THIS DOES NOT CLOSE — read it before trusting the block above:
+    # `exclude-paths` has NO EFFECT ON SECURITY UPDATES (dependabot-core #14408,
+    # OPEN, verbatim: "has no effect on security update PRs") — and line 1 of
+    # this file describes it as being about security updates. So the
+    # lock-editing vector stays open on exactly the path that matters most.
+    #
+    # BE PRECISE ABOUT THE RESIDUE, because an overstatement here is the kind
+    # that gets a real gap dismissed (this paragraph was corrected before merge:
+    # two cross-family reviewers, gpt-5.6-sol and qwen3.8-max, independently
+    # refuted its first draft). The second layer,
+    # apps/backend-rag/backend/tests/test_lock_honors_requirements.py, checks
+    # every manifest requirement THAT CARRIES A SPECIFIER against the lock pin.
+    # So a lock-only bump is NOT automatically invisible to it: if the new pin
+    # breaks an existing `!=`, ceiling or exact bound, that test goes red. That
+    # is precisely the MAL-2026-4750 shape — a fastapi lock bump to the 0.136.3
+    # that requirements.txt excludes with `!=`, pulling the malicious `fastar` —
+    # and it is the shape the net DOES catch.
+    #
+    # What escapes BOTH layers is narrower and still real: a lock-only change to
+    # a package that appears in NO source manifest (a transitive like
+    # portalocker — nothing declares a bound, so no bound can be violated), or
+    # one that lands on a version still satisfying every existing bound. For
+    # those there is no specifier to fail against. Combined with the
+    # auto-merge-patch posture on line 1, such a PR can be green and mergeable
+    # on its own. A Dependabot PR touching ONLY a .lock.txt therefore gets read
+    # by hand until the enforcement gate the reviewers asked for exists —
+    # tracked in .claude/skills/modus/PENDING-ARMS.md (2026-09-02, owner
+    # session[ci]).
+    #
+    # AND THIS IS BELIEVED, NOT YET OBSERVED: the option has two OPEN
+    # non-honoring bugs upstream — #15102 (`"exclude-paths": []` ignored in the
+    # graph builder) and #13526 (matched files updated anyway). What proves it
+    # works here is a Monday pip run that declines to touch these two files, not
+    # this config existing. Tracked in .claude/skills/modus/PENDING-ARMS.md
+    # (2026-09-02, condition 1 of 3 — "believed, not observed").
+    exclude-paths:
+      - "*.lock.txt"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -170,3 +248,23 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+    groups:
+      # The three github/codeql-action/* steps are ONE contract, not three
+      # dependencies: `init` writes the CodeQL config that `autobuild` reads,
+      # and `analyze` consumes what autobuild produced. Ungrouped, Dependabot
+      # opens a separate PR per step, so the refs diverge the moment one lands
+      # without the others — security.yml then runs init at one version and
+      # autobuild at another. That happened: PR #5444 carried only the
+      # `autobuild` half of 4.37.7 -> 4.37.9, and its CodeQL jobs failed for
+      # exactly that reason (cured out-of-band by PR #5517, which moved all
+      # three refs in one commit; #5444 was closed as superseded).
+      #
+      # Deliberately NARROW. A catch-all group over this whole ecosystem would
+      # be a poison-batch risk: one bad action bump would block every other
+      # action update behind it, with no way to merge the innocent ones
+      # separately. That is the same reasoning the `openai-stack` comment
+      # records for pip above, and it is why this groups a single coupled
+      # family rather than "all github-actions minor+patch".
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"

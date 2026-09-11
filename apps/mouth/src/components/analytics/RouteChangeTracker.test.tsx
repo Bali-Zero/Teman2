@@ -45,6 +45,23 @@ describe("RouteChangeTracker", () => {
     );
   });
 
+  it("never sends a credential-bearing query string as page_location", () => {
+    // Portal audit L-GA (2026-09-11): the raw href reached
+    // google-analytics.com/g/collect with the single-use token in `dl=`.
+    window.history.replaceState({}, "", "/portal/magic?token=LEAKME");
+    usePathnameMock.mockReturnValue("/portal/magic");
+    const { rerender } = render(<RouteChangeTracker />);
+
+    window.history.replaceState({}, "", "/portal/register?token=LEAKMETOO");
+    usePathnameMock.mockReturnValue("/portal/register");
+    rerender(<RouteChangeTracker />);
+
+    expect(gtag).toHaveBeenCalledTimes(1);
+    const payload = gtag.mock.calls[0][2] as { page_location: string };
+    expect(payload.page_location).not.toContain("LEAKMETOO");
+    expect(payload.page_location).toContain("/portal/register");
+  });
+
   it("is a no-op when gtag is not loaded", () => {
     delete (window as typeof window & { gtag?: unknown }).gtag;
     usePathnameMock.mockReturnValue("/a");

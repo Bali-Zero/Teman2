@@ -87,6 +87,22 @@ GATEWAY_ALLOWLIST = {
     "scripts/tests/test_lint_telegram_tokens.py",
 }
 
+# Printed under the offender list. Kept next to GATEWAY_ALLOWLIST so the two stay
+# in sync: the second remedy below is that constant, and it costs a reviewed edit
+# to this file precisely so it is not the reflex.
+HINT_FOR_PROSE = (
+    "\nlint_tg: if a file above only DESCRIBES the endpoint rather than calling it "
+    "(evidence pack, runbook, test fixture), there is no sender to migrate. Two "
+    "remedies, in order of preference:\n"
+    "  1. rephrase so the literal does not appear — e.g. \"a direct Bot API call\" "
+    "instead of the host string. Costs one sentence, keeps the guard intact.\n"
+    "  2. add the path to GATEWAY_ALLOWLIST in this file, with a comment saying why "
+    "that file legitimately carries the pattern as prose. Costs a reviewed edit to "
+    "the guard, and does not scale — prefer 1.\n"
+    "The over-match is deliberate (see the comment above GATEWAY_ALLOWLIST): keeping "
+    "the string out of non-gateway files is the point, not a side effect."
+)
+
 
 def _root() -> Path:
     return Path(os.environ.get("TG_LINT_ROOT", ".")).resolve()
@@ -240,6 +256,14 @@ def lint(root: Path, prune: bool = False) -> int:
               f"Use scripts/tg_notify.py (--tier p0|digest|log) instead:", file=sys.stderr)
         for f in sorted(offenders):
             print(f"  - {f}", file=sys.stderr)
+        # The scan is a bare substring match on purpose (see the comment above
+        # GATEWAY_ALLOWLIST), so a file that only WRITES ABOUT the endpoint —
+        # an evidence pack, a runbook, a test fixture — lands here too, and for
+        # that author "use tg_notify.py instead" is not actionable advice: there
+        # is no sender to migrate. Measured 2026-08-31: nothing anywhere else in
+        # this repo tells a pack author the literal is forbidden, so this message
+        # is the only place the remedy can reach them.
+        print(HINT_FOR_PROSE, file=sys.stderr)
         return 1
 
     mono_ok, added = check_monotone(root)

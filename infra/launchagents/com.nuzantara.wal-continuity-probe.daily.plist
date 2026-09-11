@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Nightly WAL-continuity probe (Pro).
+
+  Runs at 05:00 local — AFTER the 03:00/03:20 pg_dump pair, so a night where archiving
+  died is reported the same morning the snapshot is taken, not a cycle later.
+
+  Pure cron: StartInterval/StartCalendarInterval with NO KeepAlive (superscar #7 —
+  KeepAlive on a one-shot reads every exit as death and produces a restart storm).
+
+  Paths are Pro's (`/Users/nuzantara`): that is the host with the live fly credential and
+  the backup cron. Installing on another machine means rewriting HOME here, not copying.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.wal-continuity-probe.daily</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/.nuzantara-cron/wal-continuity-probe.sh</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>WAL_PROBE_REPO</key>
+        <!-- The repo lives directly under $HOME. It is NOT under Desktop: launchd
+             loses the TCC grant there (W84-tcc-dead) and the checkout moved off it.
+             `lint_tcc_desktop_paths.py` enforces that and caught the first draft of
+             this file — and then caught the COMMENT that explained the fix, because
+             the lint is a textual scan and spelling the forbidden path is using it.
+             11 sibling plists use the path below. -->
+        <string>/Users/nuzantara/nuzantara</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>5</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <!-- Logs OUTSIDE ~/Desktop: launchd loses the TCC grant there (W84-tcc-dead). -->
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/.local/state/wal-continuity-probe/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/.local/state/wal-continuity-probe/launchd.err.log</string>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

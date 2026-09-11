@@ -46,10 +46,19 @@ LEGACY_ERROR_REF = "legacy_error_list"
 # Context gate: patterns flagged ``requires_e33_context`` only fire when the
 # text is actually about the E33 / Second Home vertical, so unrelated answers
 # mentioning e.g. "USD 1,500" are not flagged.
-_E33_CONTEXT_RE = re.compile(
-    r"\bE33[A-Z]?\b|second[- ]home|rumah\s+kedua|silver\s+hair",
-    re.IGNORECASE,
-)
+#: Every name this product answers to — ONE vocabulary, used by the context gate
+#: below AND by any pattern that needs the product named NEAR its claim.
+#:
+#: `e33_permits_local_work` used to hardcode `\bE33[A-Z]?\b` in its own regex
+#: instead. It is the only pattern in the set that opted out of the shared gate,
+#: and it re-implemented it worse: "The Second Home visa allows you to work in
+#: Indonesia" passed in silence while the same sentence with "E33" fired. That
+#: is the name clients, marketing pages and the bot itself normally use, on the
+#: one claim in this guard that risks a client's immigration status rather than
+#: their money.
+_E33_NAME = r"(?:\bE33[A-Z]?\b|second[- ]home|rumah\s+kedua|silver\s+hair)"
+
+_E33_CONTEXT_RE = re.compile(_E33_NAME, re.IGNORECASE)
 
 E33_SAFE_FALLBACK_NOTE = (
     "Note: some details of the E33 Second Home visa are still pending written "
@@ -85,7 +94,20 @@ class ClaimViolation:
 # Negation guard: fixed-width lookbehinds so that CORRECT cautionary phrasing
 # ("does NOT authorize employment", "approval is not guaranteed", "LPS does not
 # fully cover") is not flagged. Heuristic by design — the guard is log-only.
-_NEG = r"(?<!not\s)(?<!never\s)(?<!cannot\s)(?<!can't\s)(?<!doesn't\s)"
+# Negation guard. Python's re requires FIXED-WIDTH lookbehind, so each
+# negator is its own assertion rather than one alternation.
+#
+# Italian and Indonesian negators are here because the guard scans answers in
+# whichever language the client wrote in: `wrap_query_with_language_instruction`
+# (query_helpers.py) detects the query language and instructs the model to
+# reply in the same one, with an explicit Indonesian branch. A guard that only
+# knows English negation would fire on a correct Italian sentence that says a
+# thing is NOT allowed.
+_NEG = (
+    r"(?<!not\s)(?<!never\s)(?<!cannot\s)(?<!can't\s)(?<!doesn't\s)"
+    r"(?<!non\s)(?<!mai\s)(?<!senza\s)"
+    r"(?<!tidak\s)(?<!bukan\s)(?<!jangan\s)(?<!tanpa\s)"
+)
 
 
 def _p(
@@ -109,7 +131,13 @@ E33_FORBIDDEN_PATTERNS: tuple[ForbiddenPattern, ...] = (
     ),
     _p(
         "second_home_any_bank",
-        r"\bany\s+(?:Indonesian\s+)?bank\b",
+        # IT: "qualsiasi/qualunque banca", "banca qualsiasi"
+        # ID: "bank mana saja / apa saja", "sembarang bank"
+        r"\bany\s+(?:Indonesian\s+)?bank\b"
+        r"|\b(?:qualsiasi|qualunque)\s+banca\b"
+        r"|\bbanca\s+(?:indonesiana\s+)?(?:qualsiasi|qualunque)\b"
+        r"|\bbank\s+(?:\w+\s+){0,2}?(?:mana|apa)\s+saja\b"
+        r"|\bsembarang\s+bank\b",
         "Deposit must be at a state-owned (BUMN) Indonesian bank, not 'any bank'",
         "e33_base_deposit_amount",
     ),
@@ -117,42 +145,81 @@ E33_FORBIDDEN_PATTERNS: tuple[ForbiddenPattern, ...] = (
         "e33_itap_kitap_automatic_promise",
         r"\bautomatic(?:ally)?\b(?!\s+included)[^.\n]{0,25}\b(?:KITAP|ITAP)\b"
         r"|\b(?:KITAP|ITAP)\b[^.\n]{0,40}\bautomatic(?:ally)?\b(?!\s+included)"
-        r"|\bafter\s+3\s+years\b[^.\n]{0,50}\b(?:eligible|convert\w*|automatic\w*)\b[^.\n]{0,30}\b(?:KITAP|ITAP)\b",
+        r"|\bafter\s+3\s+years\b[^.\n]{0,50}\b(?:eligible|convert\w*|automatic\w*)\b[^.\n]{0,30}\b(?:KITAP|ITAP)\b"
+        # IT: "automatico/automatica/automaticamente"
+        r"|\bautomatic(?:o|a|amente)\b[^.\n]{0,30}\b(?:KITAP|ITAP)\b"
+        r"|\b(?:KITAP|ITAP)\b[^.\n]{0,40}\bautomatic(?:o|a|amente)\b"
+        r"|\bdopo\s+3\s+anni\b[^.\n]{0,50}\b(?:KITAP|ITAP)\b"
+        # ID: "otomatis", "setelah 3 tahun"
+        r"|\botomatis\b[^.\n]{0,30}\b(?:KITAP|ITAP)\b"
+        r"|\b(?:KITAP|ITAP)\b[^.\n]{0,40}\botomatis\b"
+        r"|\bsetelah\s+3\s+tahun\b[^.\n]{0,50}\b(?:KITAP|ITAP)\b",
         "ITAP/KITAP conversion after 3 years is pending confirmation — never promise it",
         "itap_after_3y_criteria",
     ),
     _p(
         "e33_permits_local_work",
-        rf"\bE33[A-Z]?\b[^.\n]{{0,60}}\b{_NEG}(?<!residence\s)(?<!stay\s)(?:allows?|permits?|authoriz\w*|entitle\w*)\b[^.\n]{{0,40}}\b(?:work|employment)\b"
-        rf"|\b{_NEG}work(?:ing)?\s+(?:legally\s+)?(?:in\s+Indonesia\s+)?on\s+(?:the\s+|an\s+)?E33",
+        rf"{_E33_NAME}[^.\n]{{0,60}}\b{_NEG}(?<!residence\s)(?<!stay\s)(?:allows?|permits?|authoriz\w*|entitle\w*)\b[^.\n]{{0,40}}\b(?:work|employment)\b"
+        rf"|\b{_NEG}work(?:ing)?\s+(?:legally\s+)?(?:in\s+Indonesia\s+)?on\s+(?:the\s+|an\s+)?{_E33_NAME}"
+        # IT: "l'E33 permette/consente/autorizza ... lavorare/lavoro"
+        rf"|{_E33_NAME}[^.\n]{{0,60}}\b{_NEG}(?:permett\w+|consent\w+|autorizz\w+|abilit\w+)\b[^.\n]{{0,40}}\b(?:lavor\w+|impiego|occupazione)\b"
+        # ID: "E33 memungkinkan/mengizinkan/membolehkan ... bekerja/kerja"
+        rf"|{_E33_NAME}[^.\n]{{0,60}}\b{_NEG}(?:memungkinkan|mengizinkan|membolehkan|memperbolehkan)\b[^.\n]{{0,40}}\b(?:bekerja|kerja|pekerjaan)\b",
         "Base E33 is a pure residence permit — it does NOT authorize local employment",
         "e33_not_work_visa",
         ctx=False,
     ),
     _p(
         "bsi_sharia_equivalence",
-        r"\b(?:BSI|Bank\s+Syariah\s+Indonesia)\b[^.\n]{0,80}\b(?:qualif\w*|accept\w*|state[- ]owned|BUMN|equivalent|counts?\s+as)\b",
+        r"\b(?:BSI|Bank\s+Syariah\s+Indonesia)\b[^.\n]{0,80}"
+        r"\b(?:qualif\w*|accept\w*|state[- ]owned|BUMN|equivalent|counts?\s+as"
+        # IT: equivalente / accettata / statale / vale come
+        r"|equivalen\w+|accettat\w+|statale|vale\s+come|conta\s+come"
+        # ID: setara / diterima / memenuhi syarat / milik negara
+        r"|setara|diterima|memenuhi\s+syarat|milik\s+negara)\b",
         "BSI (sharia) placement as qualifying state-bank deposit is unconfirmed — forbidden to claim",
         "bsi_sharia_accepted",
     ),
     _p(
         "split_deposit_accepted",
         r"\bsplit\b[^.\n]{0,40}\bdeposit\b|\bdeposit\b(?:(?!not|never|cannot|can't)[^.\n]){0,40}\bsplit\b"
-        r"|\bmultiple\s+(?:BUMN\s+|state[- ]owned\s+)?banks\b[^.\n]{0,50}\bdeposit\b",
+        r"|\bmultiple\s+(?:BUMN\s+|state[- ]owned\s+)?banks\b[^.\n]{0,50}\bdeposit\b"
+        # IT: dividere/suddividere/frazionare/ripartire il deposito; piu' banche
+        r"|\b(?:divid\w+|suddivid\w+|frazion\w+|ripart\w+)\b[^.\n]{0,40}\bdeposit\w*\b"
+        r"|\bdeposit\w*\b(?:(?!non|mai)[^.\n]){0,40}\b(?:divis\w+|suddivis\w+|frazionat\w+)\b"
+        r"|\bpi[uù]\s+banche\b[^.\n]{0,50}\bdeposit\w*\b"
+        # ID: membagi/memecah deposito; beberapa bank
+        r"|\b(?:membagi|memecah|memisahkan|dibagi|dipecah)\b[^.\n]{0,40}\bdeposit\w*\b"
+        r"|\bbeberapa\s+bank\b[^.\n]{0,50}\bdeposit\w*\b",
         "Splitting the USD 130,000 deposit across multiple banks is unconfirmed — forbidden to claim",
         "split_deposit_accepted",
     ),
     _p(
         "lps_full_coverage",
         rf"\bLPS\b[^.\n]{{0,60}}\b{_NEG}(?:full(?:y)?|100\s*%|entire(?:ly)?|whole)\b"
-        rf"|\b{_NEG}(?:full(?:y)?|100\s*%|entire(?:ly)?)\b[^.\n]{{0,40}}\b(?:covered|guaranteed|insured)\b[^.\n]{{0,30}}\b(?:by\s+)?LPS\b",
+        rf"|\b{_NEG}(?:full(?:y)?|100\s*%|entire(?:ly)?)\b[^.\n]{{0,40}}\b(?:covered|guaranteed|insured)\b[^.\n]{{0,30}}\b(?:by\s+)?LPS\b"
+        # IT: interamente/totalmente/completamente/integralmente
+        rf"|\bLPS\b[^.\n]{{0,60}}\b{_NEG}(?:interament\w+|totalment\w+|completament\w+|integralment\w+)\b"
+        rf"|\b{_NEG}(?:interament\w+|totalment\w+|completament\w+|integralment\w+)\b[^.\n]{{0,40}}\b(?:copert\w+|garantit\w+|assicurat\w+)\b[^.\n]{{0,30}}\bLPS\b"
+        # ID: sepenuhnya/seluruhnya/penuh
+        rf"|\bLPS\b[^.\n]{{0,60}}\b{_NEG}(?:sepenuhnya|seluruhnya|penuh)\b"
+        rf"|\b{_NEG}(?:sepenuhnya|seluruhnya|penuh)\b[^.\n]{{0,40}}\b(?:dijamin|ditanggung|diasuransikan)\b[^.\n]{{0,30}}\bLPS\b"
+        # Indonesian puts the adverb AFTER the verb ("dijamin sepenuhnya"),
+        # the reverse of the English and Italian word order above.
+        rf"|\b(?:dijamin|ditanggung|diasuransikan)\s+{_NEG}(?:sepenuhnya|seluruhnya|penuh)\b[^.\n]{{0,30}}\bLPS\b",
         "LPS deposit insurance has a cap — never claim it fully covers the E33 deposit",
         "usd_deposit_rates_and_lps_cap_confirmation",
     ),
     _p(
         "approval_guaranteed",
         rf"\b(?:approval|approved|application|visa)\b[^.\n]{{0,30}}\b(?:is\s+|are\s+)?{_NEG}guaranteed\b"
-        rf"|\b{_NEG}guaranteed\s+(?:approval|visa)\b",
+        rf"|\b{_NEG}guaranteed\s+(?:approval|visa)\b"
+        # IT: "l'approvazione e' garantita", "visto garantito"
+        rf"|\b(?:approvazione|domanda|visto|esito)\b[^.\n]{{0,30}}\b(?:[eè]\s+|sono\s+)?{_NEG}garantit[oaie]\b"
+        rf"|\b{_NEG}garantit[oa]\s+(?:l[ea']\s*)?(?:approvazione|visto)\b"
+        # ID: "persetujuan dijamin", "visa terjamin"
+        rf"|\b(?:persetujuan|permohonan|visa|hasil)\b[^.\n]{{0,30}}\b{_NEG}(?:dijamin|terjamin|pasti\s+disetujui)\b"
+        rf"|\b{_NEG}(?:dijamin|terjamin)\s+(?:persetujuan|visa)\b",
         "Visa approval is never guaranteed",
         LEGACY_ERROR_REF,
     ),
@@ -171,6 +238,118 @@ E33_FORBIDDEN_PATTERNS: tuple[ForbiddenPattern, ...] = (
 )
 
 
+#: Sentence terminators. A negation only shields a claim inside its OWN
+#: sentence — "Approval is not guaranteed. You may split the deposit." must
+#: still flag the second clause.
+#: A sentence boundary. A period BETWEEN DIGITS is a thousands separator, not
+#: the end of a sentence: Italian and Indonesian write the very figures this
+#: guard exists to police as "USD 130.000" / "USD 1.500". Reading those dots as
+#: full stops moved the search window past the negator and made the verdict
+#: depend on which locale's separator the sentence happened to use.
+_SENTENCE_BOUNDARY_RE = re.compile(r"(?<!\d)\.(?!\d)|[!?;:\n]")
+
+#: Negators in the three languages this guard actually sees. The bot answers in
+#: whichever language the client wrote in (`wrap_query_with_language_instruction`),
+#: so an English-only negation guard fires on correct Italian and Indonesian
+#: sentences that say a thing is NOT allowed.
+#:
+#: PREPOSITIONAL negators are deliberately ABSENT — no "without", no "senza",
+#: no "tanpa". They open a phrase, they do not negate the claim that follows:
+#: "E33 allows you, without a separate permit, to work in Indonesia" asserts
+#: the forbidden claim while carrying a negator. Their removal costs a few
+#: false positives and closes a whole class of false negatives.
+_NEGATOR_RE = re.compile(
+    r"\b(?:not|never|cannot|can\'t|don\'t|doesn\'t|isn\'t|aren\'t|neither"
+    r"|non|mai|nessun\w*"
+    r"|tidak|bukan|jangan|belum)\b",
+    re.IGNORECASE,
+)
+
+#: "not X **but** Y" — the negator governs X, and Y is asserted. A contrast
+#: marker between a negator and the claim therefore PROVES the negator does not
+#: reach it. This is the construction that broke the previous heuristic on 27
+#: adversarial sentences, among them "the required income is not USD 3,000 but
+#: USD 1,500 per month" — the superseded figure, stated as fact, silently
+#: suppressed because a "not" appeared earlier in the clause.
+_CONTRAST_RE = re.compile(
+    r"\b(?:but|rather|instead"
+    r"|ma|bensì|bensi|invece|anzi|piuttosto"
+    r"|melainkan|tetapi|namun|justru)\b",
+    re.IGNORECASE,
+)
+
+#: "not ONLY X" scopes the negation to the quantifier, never to the predicate:
+#: "E33 does not only allow residence, it also allows you to work" asserts the
+#: forbidden claim. Same for "approval is not merely likely; it is guaranteed".
+_SCOPE_LIMITER_RE = re.compile(
+    r"\W*\b(?:only|just|merely|simply"
+    r"|solo|soltanto|solamente|semplicemente"
+    r"|hanya|sekadar|sekedar|semata)\b",
+    re.IGNORECASE,
+)
+
+#: A negator fenced inside a comma-delimited aside governs the aside, not the
+#: predicate: "BSI, not Mandiri, qualifies as a state-owned bank" ASSERTS that
+#: BSI qualifies. The closing comma must fall before the claim ends, which is
+#: what separates the aside from an ordinary "not X, only Y" correction.
+_PARENTHETICAL_OPEN_RE = re.compile(r",\s*$")
+
+#: How far back a negator may sit and still be read as negating this claim.
+#: Deliberately short. A wider window suppresses more false positives but buys
+#: it with FALSE NEGATIVES, and the two are not symmetric here: a false
+#: positive parks a correct answer for a human to glance at, while a false
+#: negative sends a forbidden claim to a client. When in doubt, flag.
+_NEGATION_WINDOW = 40
+
+
+def _is_negated(text: str, match_start: int, match_end: int) -> bool:
+    """True if a negator GOVERNS the claim spanning ``match_start:match_end``.
+
+    Presence is not government. The previous version answered "is there a
+    negator nearby", which a contrast clause turns into a silencer: an
+    adversarial matrix of 29 sentences that each state a forbidden claim after
+    negating something else was suppressed 27 times. Three tests now stand
+    between a negator and a suppression:
+
+    1. it must lie in the same sentence (``_SENTENCE_BOUNDARY_RE``, which knows
+       a thousands separator from a full stop) and within ``_NEGATION_WINDOW``;
+    2. no contrast marker may sit between it and the claim — "not X **but** Y"
+       asserts Y;
+    3. it must not be a scope limiter — "not **only** X" asserts X.
+
+    The span searched runs to ``match_end``, not ``match_start``: several
+    patterns swallow the negator themselves ("KITAP is not automatic after 3
+    years" matches from "KITAP"), and those ARE correct cautionary sentences.
+    Rules 2 and 3 are what keep that span from becoming a loophole — they are
+    applied to the text between the negator and the end of the claim, so a
+    contrast inside the match disqualifies the negator exactly as one before it
+    does.
+    """
+    window_start = max(0, match_start - _NEGATION_WINDOW)
+    sentence_start = window_start
+    for boundary in _SENTENCE_BOUNDARY_RE.finditer(text, window_start, match_start):
+        sentence_start = boundary.end()
+
+    for negator in _NEGATOR_RE.finditer(text, sentence_start, match_end):
+        tail_start = negator.end()
+        if _SCOPE_LIMITER_RE.match(text, tail_start):
+            continue  # "not only" — the predicate is asserted, not denied
+        if _CONTRAST_RE.search(text, tail_start, match_end):
+            continue  # "not X but Y" — this negator governs X, not the claim
+        if (
+            _PARENTHETICAL_OPEN_RE.search(text, sentence_start, negator.start())
+            and text.find(",", tail_start, match_end) != -1
+        ):
+            continue  # ", not X," — an aside; the predicate is still asserted
+        if _SENTENCE_BOUNDARY_RE.search(text, tail_start, match_end):
+            # The negator sits INSIDE a match that swallowed a sentence break:
+            # "LPS does not cover a fraction; it fully covers the deposit."
+            # Government stops at the break, so it does not reach the claim.
+            continue
+        return True
+    return False
+
+
 def check_e33_claims(text: str) -> list[ClaimViolation]:
     """Flag registry-forbidden E33 claims in ``text``.
 
@@ -185,6 +364,8 @@ def check_e33_claims(text: str) -> list[ClaimViolation]:
         if pattern.requires_e33_context and not has_context:
             continue
         for match in pattern.regex.finditer(text):
+            if _is_negated(text, match.start(), match.end()):
+                continue
             violations.append(
                 ClaimViolation(
                     pattern_id=pattern.pattern_id,

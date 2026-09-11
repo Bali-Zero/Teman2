@@ -12,12 +12,17 @@ client surface. These tests pin the three properties that make it safe to expose
 
 from __future__ import annotations
 
+import json
+import re
+from pathlib import Path
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS, find_entry
 from backend.app.routers import dynamic_pricing
+from backend.services.pricing import pricing_service
 from backend.services.pricing.pricing_service import get_pricing_service
 
 # A key that must exist in the shipped catalogue. Chosen deliberately: it is the
@@ -134,3 +139,58 @@ def test_lookup_returns_none_when_the_catalogue_is_not_loaded() -> None:
         assert svc.get_service_by_key(REAL_KEY) is None
     finally:
         svc.loaded = original
+
+
+# ── compliance retainers: the rows the unlisted compliance page renders ───────
+#
+# No amount is typed here. Prices live in the SSOT sheet only; these tests pin
+# that the public route hands back exactly what the sheet says, in the shape the
+# mouth snapshot helper (`getExactSnapshotPrice`, EXACT_IDR_PRICE) will render.
+
+COMPLIANCE_RETAINER_KEYS = (
+    "compliance_takeover",
+    "compliance_core_retainer_monthly",
+    "compliance_employer_retainer_monthly",
+    "pse_registration_fixed",
+    "pmse_vat_assessment",
+)
+MONTHLY_RETAINER_KEYS = frozenset(
+    {"compliance_core_retainer_monthly", "compliance_employer_retainer_monthly"}
+)
+# Same pattern as apps/mouth/src/lib/pricing-snapshot.ts EXACT_IDR_PRICE: a row
+# outside this shape renders as "Contact" on the website, never as a number.
+EXACT_IDR_PRICE = re.compile(r"^(?:\d+|\d{1,3}(?:\.\d{3})+)\s+IDR$", re.IGNORECASE)
+
+
+def _sheet_row(key: str) -> dict:
+    """Read the row straight from the file the service loads, bypassing the
+    service, so the route is compared against the sheet and not against itself."""
+    sheet = Path(pricing_service.__file__).parents[2] / "data" / pricing_service._PRICING_FILENAME
+    return json.loads(sheet.read_text(encoding="utf-8"))["services"]["compliance_retainers"][key]
+
+
+@pytest.mark.parametrize("key", COMPLIANCE_RETAINER_KEYS)
+def test_compliance_retainer_key_returns_the_sheet_row(client: TestClient, key: str) -> None:
+    resp = client.get("/api/pricing/service", params={"key": key})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    row = _sheet_row(key)
+
+    assert body["key"] == key
+    assert body["category"] == "compliance_retainers"
+    assert body["name"] == row["name"]
+    assert body["price"] == row["price"]
+    assert EXACT_IDR_PRICE.match(body["price"]), body["price"]
+
+
+@pytest.mark.parametrize("key", COMPLIANCE_RETAINER_KEYS)
+def test_compliance_retainer_cadence_and_confirmed_price_notes(client: TestClient, key: str) -> None:
+    body = client.get("/api/pricing/service", params={"key": key}).json()
+
+    expected_validity = "monthly" if key in MONTHLY_RETAINER_KEYS else None
+    assert body["validity"] == expected_validity
+    # The schema has no published/test flag; the USD reference travels in
+    # `notes`. The owner confirmed these prices on 2026-09-11, so the
+    # provisional "pending owner confirmation" marker must no longer appear.
+    assert "USD reference:" in body["notes"]
+    assert "pending owner confirmation" not in body["notes"].lower()

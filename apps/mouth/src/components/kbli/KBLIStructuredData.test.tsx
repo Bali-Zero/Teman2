@@ -141,3 +141,56 @@ describe("structured data — whole-verdict PMA gate", () => {
     );
   });
 });
+
+// =============================================================================
+// The rendered page translates the risk tier (PR #4776) and the JSON-LD did
+// not, so a block declaring `"inLanguage": "en"` shipped `Risk: Menengah
+// Rendah` into the description, keywords and GovernmentService that search
+// engines read. Measured live on 2026-08-31 at kbli/56101: 22 "Medium-Low" in
+// the rendered body, 6 "Menengah Rendah" — every one of them inside JSON-LD.
+// =============================================================================
+describe("KBLICodeJsonLd — the risk tier is translated in the JSON-LD too", () => {
+  it("guilt: a Bahasa tier reaches the JSON-LD in English, not raw", () => {
+    const code = getAllCodes().find((c) =>
+      /menengah\s+rendah/i.test(c.licensing[0]?.riskCategory ?? ""),
+    ) as KBLICode;
+    expect(code).toBeDefined();
+
+    const payload = JSON.stringify(jsonLdOf(code));
+    expect(payload).toContain("Medium-Low");
+    expect(payload).not.toMatch(/Menengah\s+Rendah/i);
+  });
+
+  it("innocence: a tier the translator does not recognise is kept verbatim, never dropped", () => {
+    const base = getAllCodes().find(
+      (c) => !!c.licensing[0]?.riskCategory,
+    ) as KBLICode;
+    expect(base).toBeDefined();
+    const exotic = {
+      ...base,
+      licensing: [
+        { ...base.licensing[0], riskCategory: "Kategori Baru 2027" },
+        ...base.licensing.slice(1),
+      ],
+    } as KBLICode;
+
+    const payload = JSON.stringify(jsonLdOf(exotic));
+    expect(payload).toContain("Kategori Baru 2027");
+    expect(payload).not.toContain("Unknown");
+  });
+
+  it("innocence: a code with no risk tier at all still falls back to Unknown", () => {
+    const base = getAllCodes().find(
+      (c) => !!c.licensing[0]?.riskCategory,
+    ) as KBLICode;
+    const bare = {
+      ...base,
+      licensing: [
+        { ...base.licensing[0], riskCategory: undefined },
+        ...base.licensing.slice(1),
+      ],
+    } as unknown as KBLICode;
+
+    expect(JSON.stringify(jsonLdOf(bare))).toContain("Unknown");
+  });
+});

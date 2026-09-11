@@ -1,0 +1,14 @@
+// GUILT (BOTH round-3 gates, independently): the ssh block never went through the acl checks, so
+// a wildcard there was clean while the SAME wildcard in an acls rule was caught. `*` is a strict
+// superset of `autogroup:tagged`, so this hands a tag:team-device laptop a Tailscale SSH session
+// on Pro — the machine with the raw PII — while the policy claims the ssh block never reaches it.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111", "mini": "100.93.236.6", "m5": "100.110.186.116"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "acls": [],
+  "ssh": [
+    {"action": "accept", "src": ["*"], "dst": ["*"], "users": ["autogroup:nonroot"]}
+  ],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

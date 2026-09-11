@@ -1,0 +1,250 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  SQUAD H lane 4 of 5 — L03-PR2 of
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L03-architecture-decision-making.md,
+  under the wave-2 rules in 01-INVENTORY-AND-WAVE-2-PLAN.md §5.1. Ledger: issue #5320.
+
+lanes:
+  - lane: craft-h-doctrine-citations
+    role: build
+    seat: claude-opus-5 (conducting session, M5 — the corpus search, the three cures, the arming, the gate)
+  - lane: craft-h-citation-lint-build
+    role: build
+    seat:
+      kimi-for-coding (non-Anthropic build lane — authored scripts/lint_doctrine_citations.py;
+      graded by the conducting session, never by itself)
+  - lane: craft-h-citation-refute-a
+    role: review
+    seat: codex gpt-5.6-sol at xhigh, --sandbox read-only
+  - lane: craft-h-citation-refute-b
+    role: review
+    seat: kimi-code/k3
+
+council_run: journal.jsonl
+
+diff:
+  files: 6
+  net_lines: 620
+  measured_at: staged tree, pre-PR
+  note: >-
+    Most of it is the lint and its 12 cases. The doctrine edits are three
+    retraction notes. CI's --numstat-file is authoritative over this figure.
+
+pii_scan: clean
+
+receipts:
+  - claim:
+      The phantom the spec named is real, and it is one of three — the corpus was
+      searched this session rather than remembered.
+    cmd: git ls-tree -r origin/main --name-only | grep -c 2026-05-30-sota-ai-architecture-methodology
+    result:
+      "0. Same for the other two cited files: a 2026-05-31 global-skills study
+      (skill-catalog) and a 2026-04-25 migrations strategy (AUTONOMOUS_OPS.md) —
+      `git ls-tree | grep -iF <basename>` returns nothing for either, anywhere in the
+      tree, so there was no renamed file to repoint to. The one keyword-plausible
+      substitute for the sota axioms, 2026-06-30-claude-code-perfect-session-doctrine.md,
+      matched only on ordinary uses of the word 'adversarial' and does not state them."
+    exit: 0
+    ts: 2026-08-31T02:41Z
+    seat: session (M5, orchestrator lane)
+
+  - claim: The lint is red on the pre-cure file and green on this branch, with no allowlist.
+    cmd: python3 scripts/lint_doctrine_citations.py
+    result:
+      "clean tree: rc=0, zero output lines. With origin/main's copy of the skill file
+      restored in place: rc=1 and exactly one line naming
+      `.claude/skills/sota-architecture-loop/SKILL.md:13` and the missing path.
+      Exit codes captured directly, not through a pipe."
+    exit: 0
+    ts: 2026-08-31T02:52Z
+    seat: session (M5, orchestrator lane)
+
+  - claim: Every guard is proven both ways and each is proven CAPABLE of failing.
+    cmd: PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_lint_doctrine_citations.py -p no:cacheprovider
+    result:
+      "12 passed. Mutation 7/7: restoring the no-op mask, dropping the extension
+      requirement, un-anchoring the path start, disabling the fence exclusion, treating
+      a command span as a citation, letting an empty corpus read clean, and adding a
+      subject the workflow filter cannot reach each turn a test red. The un-anchoring
+      mutation SURVIVED the first battery — every fixture used backticks and so took
+      the span recogniser, leaving the regex that carried the defect unexercised; a
+      bare-prose variant now kills it."
+    exit: 0
+    ts: 2026-08-31T03:02Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      The job starts on every file the lint scans, and the relation is asserted rather
+      than maintained by hand.
+    cmd: actionlint .github/workflows/immune-enforcement.yml
+    result:
+      "0 findings after narrowing a glob that shadowed an existing pattern (actionlint
+      caught `.claude/skills/*` overriding `.claude/skills/modus/PENDING-ARMS.md`).
+      Relevance gate simulated verbatim: the lint, its test, any skill SKILL.md, any
+      command, and the root doctrine files each start the job; README.md does not.
+      `test_the_workflow_filter_covers_every_file_the_lint_scans` compares the lint's
+      resolved subject set to the workflow's own case patterns."
+    exit: 0
+    ts: 2026-08-31T03:05Z
+    seat: session (M5, orchestrator lane)
+
+dissent:
+  - seat: session (M5, gating the non-Anthropic build lane's output before it ran)
+    objection: >-
+      The lint as built reported 47 findings on a clean corpus. Four were on
+      SYMBIOSIS.md — this repo's most load-bearing document — because it matched
+      `docs/` in the MIDDLE of `apps/mata-garuda/docs/X.md`, a path that exists,
+      and two more resolved paths belonging to another project entirely. It
+      counted bare directories as citations, reported findings up to four times,
+      and its region mask was a NO-OP: `ch if mask[i] else line[i]` over
+      `enumerate(line)`, where `ch` IS `line[i]`, so the mask was computed, read
+      as masking, and masked nothing.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed before the lint saw the corpus for real — paths anchored
+      at a token boundary, a file extension required, the three recognisers made
+      to cover disjoint regions, and a command span judged by its first word
+      rather than by whatever sits next to the path. Had this shipped, the lint
+      would have been red on SYMBIOSIS.md from its first run, which is precisely
+      how a guard gets disabled.
+  - seat: kimi-code/k3 (cross-family refuter)
+    objection: >-
+      The lint's subject globs reach `.claude/skills/**/*.md` while the workflow's
+      path filter listed only `*/SKILL.md`, so a phantom citation added to
+      `.claude/skills/modus/AMENDMENTS.md` would have been a finding on a PR that
+      never started the finder.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed, and writing the assertion caught a SECOND escape the
+      finding had not named: `CLAUDE.md` is itself a subject and was also absent
+      from the filter. The relation is now asserted by
+      `test_the_workflow_filter_covers_every_file_the_lint_scans` rather than kept
+      in sync by hand, and mutation-proved by adding a subject the filter cannot
+      reach. Same shape, and the same reason, as tg-gateway's trigger-symmetry test.
+  - seat: codex gpt-5.6-sol (cross-family refuter, xhigh)
+    objection: >-
+      THE RESOLVER ANSWERED A DIFFERENT QUESTION THAN IT ASKED. It resolved
+      citations against `HEAD` while the subject files were read from the working
+      tree — so deleting a cited file and running the lint before committing read
+      GREEN, because HEAD still had it. Deleting the thing being cited is the
+      single most natural way to create a phantom, and the lint was blind to
+      exactly that.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the WORKING TREE is now the default and `--ref` is an
+      explicit opt-in that fails loudly on a ref it cannot read rather than
+      quietly answering against a different tree. Proven both ways by moving a
+      real cited target off disk: rc 1 naming `INDEX.md:18`, rc 0 when restored.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      The template heuristic treated ANY capitalised segment as a placeholder, so
+      `docs/API/x.md` and `docs/RESEARCH_LANDSCAPE_2026.md` — a real filename
+      shape in this repo — were silently unscannable. An under-match that hides
+      precisely the phantoms the lint exists to find. Also: `./`-relative link
+      targets were invisible, percent-encoded targets reported real files as
+      missing, and the extension pattern capped at six characters so `.markdown`
+      slipped through.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the heuristic now fires only on named placeholder
+      tokens, `./` is normalised, link targets are percent-decoded, and the
+      extension is matched by shape rather than length. Each has its own case;
+      each case was proven to fail against the pre-fix code.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      Two tests could not do their job. One MUTATED the production lint in place
+      and restored it in a `finally`, so a SIGKILL between the two left the repo's
+      real lint corrupted and a parallel run could read the temporary version. The
+      other computed a `fenced` flag and never asserted it. And every fence
+      fixture used backticks, so deleting the `~~~` branch survived.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the empty-corpus case now runs a COPY in a temporary
+      directory and never touches the real file; the cure test asserts the two
+      properties that matter (green under the lint, carries a retraction marker)
+      instead of asserting its formatting; `~~~` has its own case.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      Only FENCED code was excluded, so the same example written as a 4-space
+      indented block was scanned as prose — and that is exactly what a reformat
+      could turn this PR's own retraction notes into.
+    status: CONFIRMED
+    resolution: >-
+      accepted, and answered by REMOVING rather than adding. An indented-block
+      rule was written and then withdrawn because it made a citation inside a
+      nested list continuation invisible — markdown gives both the same
+      indentation and no heuristic separated them. That is an UNDER-match, and
+      this guard's posture is that an under-match hides a phantom while an
+      over-match costs a finding nobody needed. The reformat worry it was meant to
+      answer is covered better and semantically by a RETRACTION MARKER
+      (`RETRACTED` / `RITIRATA`), which survives any reformat; all three cures now
+      carry it and name their dead path in plain prose rather than hiding it in a
+      fence. The absence of the indented rule is documented at the marker's
+      definition so nobody re-adds it without meeting the same case.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      The path filter covers the lint's SUBJECTS but not its TARGETS, so deleting
+      a cited file — the commonest way to create a phantom — does not start the
+      job that would catch it.
+    status: CONFIRMED
+    resolution: >-
+      DECLARED, NOT CLOSED. Closing it means triggering the heavy `antidotes` job
+      on every change under `docs/**` and `research/**`, which is a cost this lane
+      should not impose unilaterally on every other squad. The residual is stated
+      here and in the PR body rather than left for a reader to discover: a PR that
+      only DELETES a cited target can still land a phantom, and the next run on any
+      doctrine change catches it. A ledger row carries it.
+  - seat: kimi-code/k3 (cross-family refuter, second pass on the Codex-fixed tree)
+    objection: >-
+      THE RETRACTION MARKER I ADDED WAS ITSELF A HOLE, AND MY TEST LOCKED IT IN.
+      It exempted the whole PARAGRAPH after the marker, so a live citation sharing
+      that paragraph was excused too: `Old rule RETRACTED; the live source is
+      research/x.md` passed with x.md missing. The test written for it pinned only
+      the blank-line boundary, so the defect was blessed by its own guard.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the marker is LINE-scoped now, which costs one thing: a
+      retraction must NAME its dead path on the marker's own line. All three cures
+      were rewritten to do that, and a test asserts it, because a path drifting to
+      the next line would silently become a finding again. The residual cost — a
+      live citation sharing the marker's line is also excused — is asserted in the
+      test rather than left for someone to find.
+  - seat: kimi-code/k3
+    objection: >-
+      A tracked SYMLINK reddens correct doctrine. `docs/design-palettes/kbli-images`
+      is a symlink to a directory under `apps/`; `git ls-tree` lists the link, not
+      what is behind it, and `rglob` does not descend into directory symlinks — so
+      a citation to a real file under it was reported missing by BOTH resolvers.
+      Verified on two interpreters.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — a last-resort existence check that follows symlinks,
+      confined to the repo so a `..` in a citation cannot become a way to point at
+      the filesystem at large. Its test skips loudly if that symlink ever
+      disappears, saying the rule may then be removable.
+  - seat: kimi-code/k3
+    objection: >-
+      The `./` fix landed on LINKS only. Prose and backtick spans still checked
+      `_starts_a_repo_path` BEFORE normalising, so the same path was seen as a link
+      and invisible everywhere else — three recognisers disagreeing about one
+      string. Plus: a titled link `[x](path "title")` was invisible, the
+      `_PLACEHOLDER_TOKENS` branch was unreachable behind the bracket test so
+      emptying it survived the suite, and `_looks_like_template`'s docstring still
+      argued for the ALL-CAPS rule the code had stopped implementing.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed, each with its own case and each mutation-killed. The
+      docstring one matters beyond its size: prose outliving the rule it describes
+      is how the next reader re-adds a defect on purpose.
+  - seat: kimi-code/k3
+    objection: >-
+      The cured skill file still said the dead path was "riportata qui dentro un
+      blocco di codice" — the fence was gone, replaced by the RITIRATA line. The
+      note described the previous cure. Also, the test fixture directory is created
+      inside the repo and never removed, leaving committable clutter.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the prose now describes what the file actually does, and
+      the fixture directory is gitignored. The first is the same class as the
+      docstring above and the same class this whole lane is about: text that
+      outlives the thing it describes.

@@ -254,8 +254,51 @@ def _scrub(obj: Any, parent_key: str | None = None) -> Any:
     return obj
 
 
+# Transactions Sentry should not be paying for. Measured on `bali-zero-7p` over
+# 7 days (2026-08-28): 1,952 errors accepted against 753 rate_limited — 28% of
+# production errors dropped for quota, chosen by arrival order rather than by
+# importance. A dropped event is indistinguishable from one that never happened.
+#
+# ONLY TRANSACTIONS, and that distinction is the whole safety of this filter. A
+# health check that 200s every 15 seconds is a metronome; a health check that
+# 500s is one of the most important errors this system can produce (the
+# 2026-04-29 outage was exactly that, and /health answering 200 while the worker
+# was dead is its own scar). Dropping by URL would delete the second along with
+# the first. `event.get("type") == "transaction"` is what separates them.
+_HEALTH_TRANSACTIONS = (
+    "/health",
+    "/healthz",
+    "/readyz",
+    "/livez",
+    "/api/health",
+)
+
+
+def _is_health_transaction(event: dict[str, Any]) -> bool:
+    """True only for a TRANSACTION on a health path. Never for an error.
+
+    Never raises: this runs inside `before_send`, and Sentry drops an event
+    silently when that hook throws — a bug here would delete real errors rather
+    than metronome ticks.
+    """
+    try:
+        if event.get("type") != "transaction":
+            return False
+        name = event.get("transaction")
+        if not isinstance(name, str):
+            return False
+        # Exact match or a path segment, never a substring: `/healthcheck-audit`
+        # and `/api/health-report` are real endpoints, not metronomes.
+        for path in _HEALTH_TRANSACTIONS:
+            if name == path or name.startswith(path + "/") or name.endswith(" " + path):
+                return True
+        return False
+    except Exception:
+        return False
+
+
 def _before_send_impl(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
-    """Inner implementation. Scrubs PII, returns scrubbed event.
+    """Inner implementation. Drops health-check transactions, scrubs PII.
 
     NOTE: cron/deploy alert deduplication was removed from this PR's scope
     (review #168/B2). No code in the repo currently tags events with
@@ -264,6 +307,32 @@ def _before_send_impl(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, 
     `cron_notifiers.py`) in a follow-up before a dedup filter can land here.
     """
     return _scrub(event)
+
+
+def _before_send_transaction(
+    event: dict[str, Any], hint: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Transaction hook. Drops health-check metronomes, scrubs the rest.
+
+    A SEPARATE HOOK, and that is not a style choice. The SDK guards
+    `before_send` with `event.get("type") != "transaction"` and routes
+    transactions to `before_send_transaction` (sentry_sdk/client.py, verbatim in
+    the installed 3.x). The first version of this filter lived in
+    `before_send`, so it was DEAD CODE in production — while its tests stayed
+    green, because they called the inner function directly instead of going
+    through the integration. W116, shipped inside the very wave whose subject is
+    that class; found by a cross-family reviewer reading the SDK rather than
+    the diff.
+
+    Scrubbing still applies to what survives: a transaction name can carry a
+    path parameter, and a path parameter can be PII.
+    """
+    try:
+        if _is_health_transaction(event):
+            return None
+    except Exception:
+        pass  # fail OPEN: a bug here must not delete a transaction silently
+    return _before_send(event, hint)
 
 
 def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
@@ -334,6 +403,20 @@ def _init_sentry_blocking(dsn: str) -> None:
         environment=env,
         release=os.getenv("SENTRY_RELEASE", "nuzantara-backend@1.0.0"),
         before_send=_before_send,
+        # The SDK will NOT call `before_send` for transactions — it guards that
+        # hook with `type != "transaction"` and dispatches transactions here
+        # instead. Registering only the first is how a transaction filter ends
+        # up never running while its unit tests pass.
+        before_send_transaction=_before_send_transaction,
+        # `_before_send`/`_scrub` above only ever see the JSON-shaped event
+        # payload. The SDK's logging integration attaches raw frame-LOCAL
+        # values to `stacktrace.frames[].vars` at capture time, before
+        # `before_send` runs, whenever this is left at its default (`True`,
+        # historically named `with_locals`). A value that exists only as a
+        # bare local (e.g. `garuda_result_session` / `result_session_secret`
+        # in garuda_portal_auth.py) would leak regardless of how complete
+        # `_PII_KEY_SUBSTRINGS` is — key-based redaction cannot reach it.
+        include_local_variables=False,
     )
 
 

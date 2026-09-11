@@ -22,8 +22,23 @@ name: P3 Sandbox Gates
 # "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
-  merge_group:
   workflow_dispatch:
+
+# Suffixed by github.run_id, which is unique per run and therefore never
+# collides — the prior no-concurrency-block behavior (every run fully
+# independent) is preserved exactly. A shared per-workflow group keyed on
+# github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+# group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+# started — no check-run object is created at all, so a required context sits
+# at "Expected — waiting for status" with nothing red to see. Concurrency is now
+# bounded only by the account-level ceiling, which QUEUES past it rather than
+# dropping: lateness is visible, an absent check-run is not.
+# This block is VESTIGIAL: it did not exist before the removed ternary introduced it, and
+# a github.run_id group with cancel-in-progress:false is unique per run, so it cancels
+# nothing. Kept only to avoid widening this diff; safe to delete in a separate PR.
+concurrency:
+  group: ${{ format('p3-sandbox-gates-{0}-{1}', github.ref, github.run_id) }}
+  cancel-in-progress: false
 
 jobs:
   p3-static-validation:
@@ -107,7 +122,7 @@ jobs:
           # installing the whole backend test stack just to collect 5 subprocess
           # tests, and this job's pip install (pyyaml/httpx/pytest/pytest-asyncio)
           # deliberately does not include asyncpg.
-          cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/integration/test_p3_sandbox_egress.py --collect-only -q --noconftest
+          cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/integration/test_p3_sandbox_egress.py --collect-only --noconftest
 
   p3-runtime-gates:
     name: P3 runtime gates G1/G1-DLP/G4 (monitor — runs on Pro)

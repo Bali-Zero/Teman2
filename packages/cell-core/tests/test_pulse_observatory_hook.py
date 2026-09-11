@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from conftest import (
+from tests.conftest import (
     FakeActor, FakeEpisodic, FakeLTM, FakeSensor, FakeSTM, FakeThinker,
 )
 from cell_core.types import CellConfig, SafetyCheckResult

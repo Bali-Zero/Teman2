@@ -38,7 +38,7 @@ def test_banlist_includes_scar_formulas():
 
 
 def test_proponent_personas_for_three_models():
-    assert set(PROPONENT_PERSONAS) == {"claude", "gemini", "deepseek"}
+    assert set(PROPONENT_PERSONAS) == {"claude", "gemini", "kimi"}
 
 
 def test_round_0_prompt_contains_all_seven_registers():

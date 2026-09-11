@@ -1,0 +1,81 @@
+task_id: craft-w-l04pr3-pr-size-taxonomy
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  This repo's PR contract is "no more than about 400 net lines when the nature of the work permits
+  it". A flat net-line count cannot tell a 900-line PR that is 500 lines of evidence pack and
+  guilt+innocence corpus apart from one that is 900 lines of new logic — and this repo MANDATES the
+  first kind of payload, so the flat metric systematically miscounts compliance as bloat.
+
+  Ship an ADVISORY classifier that separates a PR's diff into path-derived classes (evidence, tests,
+  docs, lockfile, generated) and reports the residual attributed to `code` — the only class where
+  exceeding 400 net lines is a real signal. Report-only: no `--check` flag, never a required check,
+  nothing may `needs:` it. It measures; it never gates.
+constraints:
+  - "REPORT-ONLY is a promise about PR CONTENT, never about the tool's own health. No PR's size or
+    classification may make this exit non-zero; an operational failure (gh unauthenticated, bad
+    args) still must."
+  - "A path proves POSITION, never that a diff was mandated, authorised, or reviewed. Every class
+    label is an attribution by location, and the tool must say so rather than implying a per-file
+    finding that the lines were required."
+  - "Every number is recomputed from input on each run — never a constant frozen into the source
+    (W106: a measurement congealed into a constant is a countdown)."
+  - "A missing measurement must never read as a measured zero. Data the tool cannot vouch for gets
+    an explicit `unknown(<reason>)`, not a confident verdict."
+  - "No `pull_request_target` trigger. On a merged fork PR the default branch already contains that
+    PR's own edit to the script this job executes; sparse-checkout narrows which files materialise
+    and cannot protect the one file deliberately run."
+acceptance:
+  - text: |
+      WHEN a PR exceeds the contract on non-code classes alone, the tool SHALL label it
+      `exempt(<class>)`; WHERE the code-class signed net is itself over contract, it SHALL read
+      `split-required` REGARDLESS of how large the exempt payload is (the composition trap).
+    probe: "pr_verdict on a fixture with a huge evidence pack beside >400 code-class lines"
+  - text: |
+      WHILE the tool cannot vouch for its input — a file list never fetched against an over-contract
+      PR, or one whose add/del sums disagree with the PR-level totals — it SHALL return
+      `unknown(<reason>)` and SHALL NOT return `exempt` or `within-contract`.
+    probe: "pr_verdict with files=[] and PR-level net>contract; and with deliberately disagreeing totals"
+  - text: |
+      IF a file carries a code extension, its class SHALL NOT be decided by a docs PREFIX — a guard
+      script living under `.claude/` is code, and exempting it from the only code signal is the
+      failure this tool exists to detect, one level up.
+    probe: "classify_files on .claude/hooks/memory_budget_gate.py"
+  - text: |
+      EVERY guard in the tool SHALL be defended by a test that goes red when the guard is removed —
+      established by MUTATION on the production file, not by reading the corpus.
+    probe: "cp backup -> mutate -> pytest -> cp restore -> cmp -s, per guard"
+consumer_map:
+  - "`.github/workflows/pr-size-taxonomy.yml` — schedule + workflow_dispatch only. Prints to the job
+    summary. No `--check`, not in required-checks, no job `needs:` it."
+  - "`.github/workflows/main-push-failure-watch.yml` — the new workflow is registered there. Advisory
+    does not mean unwatched: it carries a `schedule:` trigger, so it can fail on main with nobody
+    told, which is the 'esiste != armato' disease at one more remove."
+  - "Any human reading the daily job summary to decide whether a large PR should have been split.
+    The report's wording is load-bearing: it must not let a reader conclude the exempt lines were
+    verified as necessary."
+risks:
+  - "SIGNED NET, NOT MAGNITUDE. Both gates compare the signed value, so a PR deleting 5,000 code
+    lines reads `within-contract`. Defensible and documented, but invisible at every call site.
+    The orchestrator's independent ground measurement used abs(); the tool uses signed; they agreed
+    only because every over-contract PR in that window was net-positive. Pinned by a named test so
+    a later 'tidy' to abs() is told it is changing a definition."
+  - "A code REWRITE whose additions and deletions cancel (+5000/-5000 -> net 0) reads exempt on the
+    signed gate. The gate is unchanged by design; the blindness is made visible by carrying
+    `code_residual_churn` alongside the signed net in every report row."
+  - "The window is `gh pr list --limit N`, which has no server-side sort by merged date; results are
+    re-sorted by mergedAt afterwards. A PR that sat open a long time and merged very recently can
+    fall outside the window entirely. Declared in the source rather than papered over."
+  - "The `generated` class fires only on a literal machine-authorship marker and is honestly inert on
+    this repo today — no such marker is in live use. It is armed by test, not by usage."
+grader: |
+  Opus 5, effort xhigh, on-disk, this turn. Every mutation re-run by the gate on the PRODUCTION file
+  rather than read from the implementer's report; every restore from a `cp` backup and verified
+  byte-identical with `cmp -s`; PYTHONDONTWRITEBYTECODE=1 on every mutation run (W121 — a mutation
+  that does not change the file's byte length and lands in the same second is otherwise measured
+  against stale bytecode).
+budget: |
+  Code-class net 397 against the 400 contract this PR is about — three lines of headroom, measured
+  with the tool's own class rules. Test corpus 642 lines, exempt.
+pii: none

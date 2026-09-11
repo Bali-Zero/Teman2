@@ -1,0 +1,859 @@
+<title>Il difetto con tre nomi</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ---------------------------------------------------------------
+   Palette derivata dai risultati del corpus stesso:
+   - inchiostro near-black CALDO, ~30° dal rosso di marca (gate 12)
+   - neutro con croma minima (kappa ~0.006, manopola 1)
+   - il rosso #C8102E solo come CAMPITURA, mai inchiostro su scuro (gate 10/11)
+   --------------------------------------------------------------- */
+:root {
+  --paper:      #F4F2F0;
+  --surface:    #FAF9F8;
+  --surface-2:  #EDE9E6;
+  --ink:        #17120F;
+  --ink-soft:   #6A5F58;
+  --ink-faint:  #756D66;
+  --rule:       #DCD5D0;
+  --rule-strong:#B9AFA8;
+  --red:        #C8102E;
+  --red-ink:    #9A0C23;
+  --on-red:     #FFFFFF;
+  --shade:      #E4DFDB;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:      #15110F;
+    --surface:    #1D1815;
+    --surface-2:  #262019;
+    --ink:        #EDE7E3;
+    --ink-soft:   #ADA098;
+    --ink-faint:  #857B75;
+    --rule:       #362E29;
+    --rule-strong:#4E443D;
+    --red:        #C8102E;
+    --red-ink:    #FF6B7D;
+    --on-red:     #FFFFFF;
+    --shade:      #221C18;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:      #15110F;
+  --surface:    #1D1815;
+  --surface-2:  #262019;
+  --ink:        #EDE7E3;
+  --ink-soft:   #ADA098;
+  --ink-faint:  #857B75;
+  --rule:       #362E29;
+  --rule-strong:#4E443D;
+  --red:        #C8102E;
+  --red-ink:    #FF6B7D;
+  --on-red:     #FFFFFF;
+  --shade:      #221C18;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Source Serif 4", Charter, Georgia, serif;
+  font-size: 17px;
+  line-height: 1.62;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1.5rem 8rem;
+}
+
+/* ---- ritmo: 24px dentro, 88px fra (rapporto ~3.7x) ---- */
+section { margin-top: 5.5rem; }
+section > * + * { margin-top: 1.5rem; }
+section > h2 + * { margin-top: 2rem; }
+
+/* ---------------- testata ---------------- */
+header {
+  padding: 4.5rem 0 0;
+}
+.dateline {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 2rem;
+}
+h1 {
+  font-size: clamp(2.4rem, 7vw, 3.6rem);
+  line-height: 1.06;
+  font-weight: 600;
+  letter-spacing: -0.021em;
+  margin: 0;
+  text-wrap: balance;
+}
+.standfirst {
+  font-size: 1.22rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 1.5rem 0 0;
+  max-width: 34rem;
+  text-wrap: pretty;
+}
+
+/* ---------------- scheda numeri ---------------- */
+.tally {
+  margin-top: 2.5rem;
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 40rem) { .tally { grid-template-columns: repeat(4, 1fr); } }
+.tally div {
+  padding: 1rem 1rem 1.1rem 0;
+  border-right: 1px solid var(--rule);
+}
+.tally div:last-child { border-right: 0; }
+.tally b {
+  display: block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.tally span {
+  display: block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 0.35rem;
+  line-height: 1.35;
+}
+
+/* ---------------- titolazione ---------------- */
+h2 {
+  font-size: 1.9rem;
+  line-height: 1.16;
+  font-weight: 600;
+  letter-spacing: -0.017em;
+  margin: 0;
+  text-wrap: balance;
+  padding-top: 1.6rem;
+  border-top: 2px solid var(--ink);
+}
+h2 .marker {
+  display: block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.7rem;
+}
+h3 {
+  font-size: 1.12rem;
+  font-weight: 600;
+  line-height: 1.32;
+  margin: 0;
+  letter-spacing: -0.006em;
+  text-wrap: balance;
+}
+p { margin: 0; text-wrap: pretty; }
+strong { font-weight: 600; }
+em { font-style: italic; }
+
+/* ---------------- la tesi ---------------- */
+.thesis {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 2.2rem 1.8rem;
+  margin-top: 2rem;
+}
+.thesis p { margin: 0; }
+.thesis p + p { margin-top: 1.1rem; }
+.thesis .lede {
+  font-size: 1.28rem;
+  line-height: 1.42;
+  font-weight: 500;
+  text-wrap: pretty;
+}
+.thesis .small { font-size: 0.96rem; color: var(--rule); }
+
+/* ---------------- prove A/B ---------------- */
+.tests { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+@media (min-width: 40rem) { .tests { grid-template-columns: 1fr 1fr; } }
+.test { background: var(--surface); padding: 1.5rem 1.4rem; }
+.test h4 {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--red-ink);
+  margin: 0 0 0.8rem;
+}
+.test q { font-size: 1.06rem; font-weight: 500; font-style: italic; display: block; }
+.test p { margin-top: 0.8rem; font-size: 0.95rem; color: var(--ink-soft); }
+
+/* ---------------- convergenze ---------------- */
+.conv { border-top: 1px solid var(--rule); padding-top: 1.2rem; display: grid; gap: 0.7rem; }
+.conv-head { display: flex; gap: 0.9rem; align-items: baseline; }
+.lanes {
+  flex: none;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  background: var(--red);
+  color: var(--on-red);
+  padding: 0.22rem 0.45rem;
+  white-space: nowrap;
+}
+.conv p { font-size: 0.99rem; color: var(--ink-soft); }
+.conv .ev {
+  font-size: 0.93rem;
+  border-left: 2px solid var(--rule-strong);
+  padding-left: 0.95rem;
+  color: var(--ink-soft);
+}
+.conv .ev b { color: var(--ink); font-weight: 600; }
+
+/* ---------------- contraddizioni ---------------- */
+.clash { border: 1px solid var(--rule); background: var(--surface); margin-top: 1.5rem; }
+.clash-h {
+  padding: 1.1rem 1.3rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface-2);
+}
+.clash-h .k {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+  display: block;
+  margin-bottom: 0.4rem;
+}
+.clash-b { padding: 1.3rem; display: grid; gap: 1.1rem; }
+.side { display: grid; gap: 0.35rem; }
+.side .who {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.side p { font-size: 0.97rem; }
+.ruling {
+  border-top: 2px solid var(--ink);
+  padding-top: 1rem;
+  font-size: 1rem;
+}
+.ruling .who {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--red-ink);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* ---------------- manopole ---------------- */
+.knobs { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+@media (min-width: 34rem) { .knobs { grid-template-columns: 1fr 1fr; } }
+.knob { background: var(--surface); padding: 1.15rem 1.2rem; display: grid; gap: 0.4rem; }
+.knob .n {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.knob b { font-size: 1rem; font-weight: 600; }
+.knob .rng {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--red-ink);
+  font-weight: 500;
+}
+.knob p { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.5; }
+
+/* ---------------- tabelle gate ---------------- */
+.tablewrap { overflow-x: auto; border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; min-width: 30rem; background: var(--surface); }
+caption {
+  text-align: left;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 0.9rem 1rem 0.7rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--rule);
+}
+th, td { text-align: left; padding: 0.62rem 1rem; border-bottom: 1px solid var(--rule); font-size: 0.92rem; vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 600; }
+td.num {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 500;
+}
+td.lane {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* ---------------- lista "smettere" ---------------- */
+.stop { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.stop-row { background: var(--surface); padding: 1.2rem 1.3rem; display: grid; gap: 0.5rem; }
+.stop-row .now { font-weight: 600; font-size: 1rem; }
+.stop-row .now code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.85em;
+  background: var(--shade);
+  padding: 0.08em 0.3em;
+}
+.stop-row p { font-size: 0.93rem; color: var(--ink-soft); }
+.stop-row .fix { font-size: 0.93rem; border-left: 2px solid var(--red); padding-left: 0.9rem; }
+.stop-row.keep .fix { border-left-color: var(--rule-strong); }
+.verdict-tag {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--ink);
+  padding: 0.18rem 0.42rem;
+  justify-self: start;
+}
+.verdict-tag.keepit { background: var(--surface-2); color: var(--ink-soft); border: 1px solid var(--rule-strong); }
+
+/* ---------------- decisioni ---------------- */
+.dec { border-top: 1px solid var(--rule); padding-top: 1.15rem; display: grid; gap: 0.55rem; }
+.dec .q { display: flex; gap: 0.8rem; align-items: baseline; }
+.dec .qn {
+  flex: none;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--on-red);
+  background: var(--red);
+  padding: 0.16rem 0.4rem;
+}
+.dec .qt { font-weight: 600; font-size: 1.03rem; }
+.dec .rec { font-size: 0.96rem; }
+.dec .rec b { color: var(--red-ink); }
+.dec .cost { font-size: 0.9rem; color: var(--ink-soft); }
+
+/* ---------------- non verificato ---------------- */
+.flag { border-left: 3px solid var(--red); padding: 0.2rem 0 0.2rem 1rem; display: grid; gap: 0.35rem; }
+.flag b { font-size: 0.99rem; }
+.flag p { font-size: 0.93rem; color: var(--ink-soft); }
+.prov {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+blockquote {
+  margin: 0;
+  border-left: 2px solid var(--rule-strong);
+  padding-left: 1.1rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+blockquote b { font-style: normal; color: var(--ink); }
+
+.note {
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  background: var(--surface-2);
+  padding: 1.1rem 1.2rem;
+  border-left: 3px solid var(--rule-strong);
+}
+
+footer {
+  margin-top: 6rem;
+  border-top: 2px solid var(--ink);
+  padding-top: 1.5rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--red-ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="dateline">Bali Zero &middot; Studio di design &middot; 31 agosto 2026 &middot; Sedici ricerche</p>
+  <h1>Il difetto con tre nomi</h1>
+  <p class="standfirst">Dodici ricerche con il web in mano e quattro modelli di altre famiglie, lanciati sulla stessa domanda. Lette insieme dicono una cosa che nessuna dice da sola.</p>
+
+  <div class="tally">
+    <div><b>16</b><span>ricerche<br>indipendenti</span></div>
+    <div><b>254</b><span>fonti aperte<br>e citate</span></div>
+    <div><b>11</b><span>convergenze<br>fra lane cieche</span></div>
+    <div><b>9</b><span>contraddizioni<br>&mdash; 6 mai notate</span></div>
+  </div>
+</header>
+
+<section>
+  <h2><span class="marker">La tesi</span>Tre fallimenti, un solo difetto</h2>
+
+  <div class="thesis">
+    <p class="lede">I tre problemi che ci bloccano da settimane &mdash; i mockup piatti, le quindici notti identiche, e un mercato di truffe che ci somigliano &mdash; non sono tre problemi. Sono lo stesso difetto con tre nomi.</p>
+    <p class="small">Una <b>moda</b> &egrave; un valore senza un input: un gradiente indigo&rarr;viola non <em>ha</em> un input, &egrave; una costante. Un <b>segnale di truffa</b> &egrave; un'affermazione senza un referente esterno: muore nell'istante in cui diventa gratis da falsificare. Un <b>mockup che somiglia a tutti gli altri</b> &egrave; un progetto senza un parametro variato.</p>
+    <p class="small">Tutti e tre sono artefatti che <b>non sanno dire cosa li ha prodotti</b>. E questo riscrive la diagnosi: le tre round bocciate non sono fallite per mancanza di talento dei modelli. Sono fallite perch&eacute; il brief consegnava <b>valori</b> dove doveva consegnare <b>equazioni, intervalli e un test di accettazione</b>.</p>
+  </div>
+
+  <p>Segue che la cura non &egrave; chiedere pi&ugrave; ispirazione. &Egrave; consegnare il generatore e l'intervallo, obbligare chi progetta a dichiarare <em>quale input ha variato e perch&eacute;</em>, e far passare il risultato attraverso due prove che non hanno opinioni sul gusto.</p>
+
+  <div class="tests">
+    <div class="test">
+      <h4>Prova A &mdash; derivabilit&agrave;</h4>
+      <q>Quale input ha prodotto questo, e un input diverso produrrebbe qualcosa di diverso?</q>
+      <p>Per ogni colore, effetto, spaziatura e durata del mockup. Ci&ograve; che non sa nominare il proprio input <strong>&egrave;</strong> la moda. Si verifica in revisione puntando il dito e chiedendo.</p>
+    </div>
+    <div class="test">
+      <h4>Prova B &mdash; falsificabilit&agrave;</h4>
+      <q>Quale registro esterno smentirebbe questa affermazione?</q>
+      <p>Nessun registro &rarr; &egrave; decorazione seduta dove doveva esserci un fatto verificabile. La forma operativa: <strong>chi produce l'artefatto?</strong> Il nostro server &rarr; decorazione. Un registro, un'autorit&agrave; o una piattaforma &rarr; prova.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="marker">Convergenze</span>Dove ricerche cieche l'una all'altra sono arrivate allo stesso posto</h2>
+  <p>Nessuna di queste lane poteva vedere il lavoro delle altre. L'accordo indipendente &egrave; il segnale pi&ugrave; forte che questo corpus sappia produrre. Le sette che pesano di pi&ugrave;:</p>
+
+  <div class="conv">
+    <div class="conv-head"><span class="lanes">8 lane</span><h3>Il movimento applicato a un numero gi&agrave; deciso &egrave; una bugia &mdash; ed &egrave; greppabile</h3></div>
+    <p>Otto lane che lavoravano su colore, tipografia, prezzo, verdetto, checkout, prova sociale, movimento ed estetica hanno trovato lo stesso divieto <em>e la stessa linea di demarcazione</em>: movimento legittimo = prima del primo paint, o in risposta a un gesto dell'utente. Illegittimo = accade <em>a</em> un numero che l'utente ha gi&agrave; letto.</p>
+    <div class="ev"><b>L'argomento che chiude la questione</b> non &egrave; l'effetto misurato, &egrave; l'asimmetria: una sola bugia scoperta sulla schermata del verdetto <em>riprezza ogni altra affermazione della pagina, comprese quelle vere</em>. Diventa una regola di lint: un <code>setTimeout</code> su un percorso di successo, o una durata d'animazione non legata a una promessa reale, &egrave; un difetto.</div>
+  </div>
+
+  <div class="conv">
+    <div class="conv-head"><span class="lanes">7 lane</span><h3>Un segnale di fiducia vale esattamente quanto costa falsificarlo</h3></div>
+    <p>Chrome ha ritirato il lucchetto nel 2023 con questa motivazione, verbatim: <em>&laquo;solo l'11% dei partecipanti capiva il significato preciso dell'icona&hellip; quasi tutti i siti di phishing usano HTTPS, e quindi mostrano anche il lucchetto&raquo;</em>. Lo stesso meccanismo riappare da tre direzioni scollegate che nessuno aveva connesso: gli overlay di accessibilit&agrave; sono ormai prova <em>contro</em> l'imputato; la striscia di stelle &egrave; passata da prova a rivendicazione contestata in diciotto mesi; una status page che mostra i guasti passati costruisce pi&ugrave; fiducia di una immacolata.</p>
+    <div class="ev"><b>La regola che nessuna lane scrive e che tutte implicano:</b> un segnale &egrave; una prova solo se qualcosa fuori dal tuo controllo avrebbe potuto farlo uscire diverso.</div>
+  </div>
+
+  <div class="conv">
+    <div class="conv-head"><span class="lanes">6 lane</span><h3>L'unica cosa che un imitatore non sa generare &egrave; un'identit&agrave; legale</h3></div>
+    <p>Il sito falso che l'Imigrasi ha nominato pubblicamente nel dicembre 2022 &egrave; <strong>ancora vivo oggi</strong>, sulla stessa gamma AWS CloudFront che serve il portale governativo vero. Ha adottato l'intero copione dell'intermediario onesto: disclaimer di non affiliazione, link in uscita al sito ufficiale, perfino la concessione che &laquo;si pu&ograve; anche fare domanda a costo inferiore dal sito del Governo&raquo;, dodici lingue, &laquo;oltre 50 dipendenti specializzati&raquo;.</p>
+    <div class="ev">Quello che invece <b>non</b> ha, verbatim dalla sua stessa pagina &laquo;Chi siamo&raquo;: <b>&laquo;www.indonesia-evoa.com belongs to .&raquo;</b> e <b>&laquo;Our headquarters are located at , phone ,&raquo;</b>. Tre variabili di template mai riempite. Un imitatore genera ogni segnale di fiducia esistente <em>tranne un nome, un indirizzo e un numero di registrazione che risolvono nel database di qualcun altro</em>.</div>
+  </div>
+
+  <div class="conv">
+    <div class="conv-head"><span class="lanes">6 lane</span><h3>Il prezzo dev'essere leggibile prima che si compili un solo campo</h3></div>
+    <p>Il test che ne esce &egrave; binario e lo esegue una persona in un minuto: <strong>uno sconosciuto su un telefono da 360px riesce a sapere il prezzo totale senza digitare nulla?</strong> Se no, la superficie &egrave; bocciata. Baymard, aperto indipendentemente da due lane: 70,22% di abbandono medio del carrello, con il <strong>40%</strong> che cita costi extra rivelati troppo tardi come prima causa non esplorativa, e il 33% dei siti mobile che non mostra il totale <em>in nessun momento</em> prima di chiedere la carta.</p>
+    <div class="ev">La clausola che le lane sul prezzo avevano mancato: <b>il prezzo non &egrave; un invito a pagare.</b> Un controllo di pagamento su un verdetto incerto converte l'incertezza in fatturato &mdash; che &egrave; il comportamento distintivo degli operatori da cui vogliamo distinguerci.</div>
+  </div>
+
+  <div class="conv">
+    <div class="conv-head"><span class="lanes">6 lane</span><h3>La gerarchia affidata al solo tono non sopravvive alle condizioni di questo pubblico</h3></div>
+    <p>La prova pi&ugrave; forte non &egrave; percettiva, &egrave; <em>meccanica</em>: sotto <code>forced-colors: active</code> il <code>box-shadow</code> viene azzerato incondizionatamente e i colori dell'autore sovrascritti. Non &egrave; una preferenza n&eacute; un percentile: &egrave; una garanzia di rendering. Ogni tecnica di elevazione tonale del corpus evapora per quell'utente.</p>
+    <div class="ev">La seconda prova &egrave; ambientale: a ~10.000 lux su un telefono da 400 nit, uno scalino di elevazione Material&nbsp;3 arriva a <b>1,05:1</b> e un capello scuro a <b>1,15:1</b>. Il motivo &egrave; che la formula di contrasto WCAG incorpora una costante di riflesso pari a ~1.400 lux &mdash; un ufficio luminoso, non una strada di Kerobokan.</div>
+  </div>
+
+  <div class="conv">
+    <div class="conv-head"><span class="lanes">6 lane</span><h3>Copiare il registro delle banche e del governo, non quello dei marketplace</h3></div>
+    <p>La spaccatura &egrave; <em>dentro</em> l'Indonesia, non fra Indonesia e Occidente &mdash; il che uccide la premessa &laquo;agli utenti indonesiani piace la densit&agrave;&raquo; prima che si possa applicare. Traveloka, BCA, imigrasi.go.id e oss.go.id, aperti dal vivo: navy e bianco, categorie a card, spazio generoso, dichiarazioni regolatorie <em>in frasi complete, non in badge</em>. Contro il 29,2% di utenti che, in uno studio su Shopee/Tokopedia/Lazada, nomina il disordine come lamentela esplicita.</p>
+    <div class="ev">Qwen, senza navigazione e da un'altra famiglia, produce lo stesso risultato confutando la propria tesi: <b>&laquo;La home di Gojek &egrave; densa, ma la sua schermata di prenotazione &egrave; scarna. Stessi utenti, stesso giorno, due modi. "Agli asiatici piace la densit&agrave;" &egrave; falso: gli piace la densit&agrave; che paga.&raquo;</b></div>
+  </div>
+
+  <div class="conv">
+    <div class="conv-head"><span class="lanes">5 lane</span><h3>Il verdetto &egrave; una frase in seconda persona, non un badge</h3></div>
+    <p>GOV.UK, percorso dal vivo fino a due esiti terminali: <em>&laquo;You'll need a visa to come to the UK&raquo;</em>, e sotto l'azione. Non un badge, non una card, non una celebrazione. Il limite di certezza si dichiara <strong>nominando l'attore, non annacquando l'esito</strong>: &laquo;l'Immigrazione decide&raquo; &egrave; una frase su chi tiene la penna; &laquo;*salvo approvazione&raquo; &egrave; un asterisco, e gli asterischi sono ci&ograve; che usano i siti-truffa.</p>
+    <div class="ev"><b>La prova del pronome:</b> se il testo pi&ugrave; grande dello schermo non contiene un &laquo;tu&raquo;, non &egrave; una determinazione rivolta a una persona &mdash; &egrave; un'etichetta che un sistema ha appiccicato a un record.</div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="marker">Contraddizioni</span>Dove le ricerche si sono date torto a vicenda</h2>
+  <p>Nove. Una l'avevo prevista; sei non le aveva notate nessuno. Non le ho spianate e non ne ho fatto la media: ogni posizione al suo meglio, e poi una decisione. Le quattro che cambiano il prodotto:</p>
+
+  <div class="clash">
+    <div class="clash-h">
+      <span class="k">K1 &mdash; la pi&ugrave; importante</span>
+      <h3>Mai spezzare il prezzo, oppure lo scorporo <em>&egrave;</em> l'arma anti-truffa</h3>
+    </div>
+    <div class="clash-b">
+      <div class="side">
+        <span class="who">Contro lo scorporo</span>
+        <p>La letteratura non dice che il tutto-compreso converte meglio: dice l'opposto, per chi spezza. La presentazione frazionata fa <em>sottostimare</em> il totale. Quindi il nostro numero unico verr&agrave; letto come pi&ugrave; caro di un preventivo spezzato <strong>anche quando &egrave; pi&ugrave; economico</strong> &mdash; e nessun tono lo corregge. Peggio: l'istante in cui esiste una riga &laquo;tassa 500.000 / servizio 290.000&raquo;, abbiamo fabbricato noi l'ancora che i concorrenti useranno contro di noi.</p>
+      </div>
+      <div class="side">
+        <span class="who">A favore dello scorporo</span>
+        <p>La truffa documentata a Bali ha due forme, una delle quali &egrave; l'agente che <em>ottiene davvero il visto ma fa pagare oltre il dovuto</em>. Contro <em>quel</em> concorrente il totale da solo &egrave; infalsificabile, e lo scorporo &egrave; falsificabile: &laquo;mostrare la ripartizione &egrave; l'unica mossa che non possono copiare senza esporre il proprio margine&raquo;. Uno slogan afferma; una ripartizione <em>invita a verificare</em>.</p>
+      </div>
+      <div class="ruling">
+        <span class="who">La decisione</span>
+        <p>Stampa entrambi. La regola &laquo;mai scorporare&raquo; &egrave; <strong>pi&ugrave; forte della sua stessa fonte</strong>: la frase FTC citata a suo sostegno &egrave; permissiva (&laquo;s&igrave;, ma la voce non deve sovrastare il totale&raquo;), e la tabella regolatoria della lane stessa registra che il regolamento UE sui voli impone <em>simultaneamente</em> il prezzo finale <em>e</em> la ripartizione. La legge aerea fa esattamente ci&ograve; che una lane vieta e l'altra chiede. Non &egrave; un divieto: &egrave; un <strong>rapporto tipografico</strong> &mdash; totale &ge; 2,5&times; qualsiasi riga componente.</p>
+        <p style="margin-top:.8rem">E le due lane misurano due concorrenti diversi: una parla di chi confronta <em>offerte</em>, l'altra di chi controlla se <em>tu</em> stia rubando. I due meccanismi sono entrambi reali e non si annullano.</p>
+        <p style="margin-top:.8rem"><strong>La condizione che decide se lo scorporo sia sicuro:</strong> vale solo se la cifra governativa &egrave; vera e corrente. Tre lane hanno provato a verificarla e hanno fallito; una ne ha verificata un'<em>altra</em>. L'ho fatta verificare a parte &mdash; <strong>IDR 500.000</strong>, da PP 45/2024 &sect;III.B.1.c, con la cifra citata testualmente sia da <code>evisa.imigrasi.go.id</code> sia da <code>imigrasi.go.id</code>. Quindi: scorporo s&igrave;, con la riga governativa <em>linkata</em> alla fonte, timbrata con la data di verifica, e con <strong>ricaduta automatica</strong> alla lista non-numerica se il controllo scade o l'URL muore.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="clash">
+    <div class="clash-h">
+      <span class="k">K7 &mdash; nessuno l'aveva vista</span>
+      <h3>Dove sta il confine del denaro</h3>
+    </div>
+    <div class="clash-b">
+      <div class="side">
+        <span class="who">La regola di adiacenza</span>
+        <p>Blocco prezzo e CTA primaria nella stessa card, &le;&nbsp;24px di distacco, nessun divisore, raggiungibili senza scroll dopo l'ultima domanda.</p>
+      </div>
+      <div class="side">
+        <span class="who">L'obiezione dalla macchina a stati</span>
+        <p>&laquo;Non incassare sul verdetto provvisorio&raquo;: mostra il prezzo, ispeziona il passaporto, <em>poi</em> chiedi il pagamento. Incassare prima significa incassare <strong>senza sapere se il passaporto sia utilizzabile</strong>.</p>
+      </div>
+      <div class="ruling">
+        <span class="who">La decisione</span>
+        <p>Tieni l'adiacenza, cambia il verbo. Il controllo accanto al prezzo dice <strong>&laquo;Continua &mdash; controlliamo il passaporto prima che tu paghi&raquo;</strong>, non &laquo;Paga&raquo;. Soddisfa la regola di adiacenza alla lettera, soddisfa il confine della macchina a stati, e soddisfa il divieto di mettere un controllo di pagamento su un verdetto calcolato da quattro risposte non verificate. Nessuna lane ha scritto questa frase, perch&eacute; una pensava al layout e l'altra al rischio documentale.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="clash">
+    <div class="clash-h">
+      <span class="k">K4 &mdash; la dateline</span>
+      <h3>Un rischio da cancellare, oppure il seme dell'intera direzione</h3>
+    </div>
+    <div class="clash-b">
+      <div class="side">
+        <span class="who">Due lane, indipendenti</span>
+        <p>Hanno aperto balizero.com e letto la stessa stringa: <code>Bali Zero &middot; Dispatch &middot; April 2026 &middot; Kerobokan</code>. Ferma da quattro mesi. Una dateline &egrave; una promessa di freschezza; una dateline stantia &egrave; un colpo autoinflitto sulla riga di massima autorit&agrave; della pagina.</p>
+      </div>
+      <div class="side">
+        <span class="who">Kimi, dall'altra parte</span>
+        <p><em>&laquo;Nessun modello l'ha presa alla lettera, perch&eacute; ogni brief distribuisce riferimenti di web design e i modelli restituiscono ci&ograve; che ricevono&hellip; Le gazzette sono firmate, datate e localizzate. I siti-truffa sono senza luogo e senza tempo. Una dateline e un ritmo di edizione sono provenienza, e la provenienza &egrave; la forma visiva della fiducia.&raquo;</em></p>
+      </div>
+      <div class="ruling">
+        <span class="who">La decisione</span>
+        <p>La direzione &egrave; giusta ed &egrave; condizionata a un fatto che nessuno ha controllato. La dateline &egrave; provenienza solo se &egrave; <strong>generata</strong>, non digitata. <strong>Spediscila solo se &egrave; renderizzata dalla stessa query che genera &laquo;Filed this month: 47 KITAS, 9 PT PMAs&raquo;. Se quelle due righe possono avere valori di verit&agrave; diversi, cancella la dateline e tieni il contatore.</strong> &Egrave; l'unica formulazione in cui il rischio e la direzione sono lo stesso oggetto.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="clash">
+    <div class="clash-h">
+      <span class="k">K5 &mdash; una correzione al nostro stesso brief</span>
+      <h3>&laquo;Connessioni lente&raquo; contro il dato misurato</h3>
+    </div>
+    <div class="clash-b">
+      <div class="side">
+        <span class="who">Il dato</span>
+        <p>La mediana indonesiana di download mobile &egrave; <strong>45,01 Mbps</strong>, +53,1% su base annua. Il brief che ho scritto io diceva &laquo;spesso su connessioni lente&raquo;: &egrave; una premessa che il dato non regge.</p>
+      </div>
+      <div class="ruling">
+        <span class="who">La decisione</span>
+        <p>Il numero cambia la <em>diagnosi</em>, non autorizza a mollare il <em>budget</em>. Una mediana nazionale non &egrave; il 75&deg; percentile di un turista con eSIM internazionale in un vicolo di Kerobokan a mezzanotte &mdash; e i Core Web Vitals si misurano al 75&deg; percentile, quindi la mediana &egrave; la statistica sbagliata comunque. Ma sposta il lavoro d'ingegneria: <strong>il vincolo &egrave; la CPU, non il tubo</strong>. Non &laquo;comprimi di pi&ugrave; il video&raquo;, ma riduci il lavoro sul thread principale e rimanda tutto il non-critico dopo il paint dell'elemento LCP.</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">Le altre cinque, in breve: la profondit&agrave; pu&ograve; essere codificata come colore (s&igrave;, ma smette di essere portante &mdash; sotto <code>forced-colors</code> sparisce); quanto densa la schermata di verifica (tre lane usavano &laquo;densit&agrave;&raquo; per tre assi diversi: completezza, variet&agrave; di componenti, allocazione dell'enfasi &mdash; valgono tutte e tre insieme); QRIS come marchio di fiducia contro QRIS come rotta di pagamento (il <em>marchio</em> resta, la <em>rotta</em> non &egrave; mai preselezionata); il rosso come CTA (s&igrave;, come campitura, su un near-black caldo, con un affordance non tonale in pi&ugrave; perch&eacute; l'etichetta sbianca in pieno sole); e quale registro tipografico (font di sistema sulle due superfici transazionali &mdash; c'&egrave; un bug di rendering dei variable font aperto su Chrome per Android, che &egrave; la nostra classe di dispositivo primaria).</p>
+</section>
+
+<section>
+  <h2><span class="marker">La macchina</span>Le undici manopole</h2>
+  <p>Questa &egrave; la sezione che risponde a &laquo;sono tutte uguali&raquo;. Ognuna di queste, variata da sola, produce lavoro visibilmente diverso e ugualmente difendibile. La risposta non &egrave; un prompt migliore: &egrave; una <strong>scansione di parametri</strong>.</p>
+
+  <div class="knobs">
+    <div class="knob">
+      <span class="n">01</span><b>&kappa; &mdash; la croma del neutro</b>
+      <span class="rng">0,000 &rarr; 0,018 OKLCH</span>
+      <p>Misurata su tre sistemi spediti: Carbon 0,0000; Radix 0,0041&rarr;0,0155; Material&nbsp;3 0,0124. A 0,000 il grigio &egrave; industriale; a 0,006 la superficie sussurra il colore del marchio. <strong>La manopola a resa pi&ugrave; alta del corpus, e costa un numero.</strong></p>
+    </div>
+    <div class="knob">
+      <span class="n">02</span><b>Distanza di tinta fondo&rarr;accento</b>
+      <span class="rng">26&deg; &rarr; 46&deg;</span>
+      <p>Dal nostro rosso: near-black caldo 26,1&deg;; il grigio Material 81,9&deg;; il blu-nero 112,8&deg;. Cambia l'intero carattere della modalit&agrave; scura <em>e</em> il comportamento cromostereoscopico di circa quattro volte.</p>
+    </div>
+    <div class="knob">
+      <span class="n">03</span><b>Polarit&agrave;: il rosso &egrave; inchiostro o campo?</b>
+      <span class="rng">binaria</span>
+      <p>Produce gli output pi&ugrave; radicalmente diversi di tutte. &laquo;Invertire la bandiera invece di scurirla&raquo;: di notte il rosso diventa il <em>campo</em> &mdash; fondo oxblood, bianco caldo come luce. L'unica proposta che nessun altro dei sedici ha raggiunto &mdash; e tutte e quindici le notti bocciate avevano scelto la stessa polarit&agrave;.</p>
+    </div>
+    <div class="knob">
+      <span class="n">04</span><b>Moltiplicatore di corsa nel buio</b>
+      <span class="rng">1,2&times; &rarr; 1,6&times;</span>
+      <p>Decide se una modalit&agrave; scura si legge <em>stratificata</em> o <em>piatta</em>. Material&nbsp;3 impacchetta sette livelli in 16 punti di luminosit&agrave;: &egrave; precisamente per questo che il suo scuro sembra piatto.</p>
+    </div>
+    <div class="knob">
+      <span class="n">05</span><b>Il rapporto fra le spaziature</b>
+      <span class="rng">3&times; &rarr; 4&times;</span>
+      <p>Non la spaziatura: il <em>rapporto</em> fra i vuoti interni (16-24px) e quelli fra sezioni (64-96px). <strong>&laquo;24px uniformi ovunque &egrave; ci&ograve; che crea lo scialbo.&raquo;</strong> La diagnosi migliore del corpus, in una riga.</p>
+    </div>
+    <div class="knob">
+      <span class="n">06</span><b>Il budget d'intensit&agrave;</b>
+      <span class="rng">1 elemento / viewport</span>
+      <p>Esattamente un elemento per schermata pu&ograve; stare al massimo di contrasto, dimensione e saturazione &mdash; e dev'essere la cosa che l'utente &egrave; venuto a decidere. <em>&laquo;Ogni round distribuiva l'enfasi in modo uniforme, perch&eacute; distribuire uniformemente &egrave; ci&ograve; che "pulito" significa per un modello senza una decisione di allocazione. L'occhio completa la scansione, non trova un picco, e archivia la pagina come</em> incompiuta <em>anzich&eacute;</em> serena.&raquo;</p>
+    </div>
+    <div class="knob">
+      <span class="n">07</span><b>Rapporto, base e numero di livelli tipografici</b>
+      <span class="rng">1,2 &rarr; 1,3 &middot; 16&rarr;18px</span>
+      <p>Tre sizes, due pesi, una famiglia. Tutti e tre variano indipendentemente, tutti arrotondati a multipli di 4px cos&igrave; che le stringhe indonesiane lunghe non rompano il ritmo verticale.</p>
+    </div>
+    <div class="knob">
+      <span class="n">08</span><b>Famiglia di easing: produttiva o espressiva</b>
+      <span class="rng">2 curve</span>
+      <p>Carbon spedisce due famiglie complete dallo stesso sistema, proprio per questo. Uno scambio di token, due sensazioni, entrambe difendibili.</p>
+    </div>
+    <div class="knob">
+      <span class="n">09</span><b>Grana e texture, come parametri limitati</b>
+      <span class="rng">freq 0,7-1,0 &middot; opac 0,08-0,20</span>
+      <p>Dentro quelle bande la grana si legge come <em>artigianato</em>; sopra 0,3 come <em>danno</em>. Zero richieste HTTP, tutto inline.</p>
+    </div>
+    <div class="knob">
+      <span class="n">10</span><b>Stadio di consapevolezza, per superficie</b>
+      <span class="rng">problema / certezza</span>
+      <p>Titolo-problema per il traffico freddo gi&agrave; consapevole del problema (home, +49% misurato); inquadratura di certezza per chi ha gi&agrave; auto-diagnosticato (verdetto, VOA). Stesso prodotto, macchina di copy diversa, scelta dalla posizione nel funnel.</p>
+    </div>
+    <div class="knob">
+      <span class="n">11</span><b>Il classificatore verifica / azione</b>
+      <span class="rng">un booleano per schermata</span>
+      <p>Le schermate di <em>verifica</em> mostrano tutto e non nascondono niente dietro un accordion. Quelle di <em>azione</em> hanno una sola CTA, zero moduli promozionali. Una regola che genera un'intera architettura dell'informazione da un booleano.</p>
+    </div>
+  </div>
+
+  <p>Sotto le manopole c'&egrave; l'aritmetica che le tiene difendibili: quattro equazioni pubblicate (luminosit&agrave;, parabola della croma, deriva di tinta a 5&deg; contro l'effetto Bezold-Br&uuml;cke) verificate contro i valori realmente spediti da Radix. E la regola che rende due temi <strong>fratelli anzich&eacute; inversioni</strong>: Radix tiene lo <em>step&nbsp;9, e solo quello</em>, identico byte per byte fra chiaro e scuro, ri-derivando gli altri undici contro un contratto di contrasto. L'identit&agrave; di marca &egrave; un punto fisso; tutto il resto &egrave; derivato.</p>
+
+  <div class="note"><strong>E una cosa che non &egrave; una manopola.</strong> La macchina a stati. Il funnel a cinque schermate non &egrave; il prodotto: il prodotto &egrave; il registro del caso, e il numero di schermate &egrave; un <em>output</em> dell'inventario degli stati, non un input. Trenta stati enumerati, quasi nessuno dei quali &egrave; mai stato disegnato: caricamento illeggibile &middot; il passaporto contraddice le risposte &middot; preventivo scaduto prima del pagamento &middot; pagamento in sospeso (la banca potrebbe averlo completato &mdash; non pagare di nuovo) &middot; doppio addebito &middot; pagato ma pratica non assemblabile &middot; contestazione &middot; aperto su un secondo dispositivo &middot; link condiviso aperto da un'altra persona. Ogni riga porta cosa deve dire la schermata, cosa il sistema deve all'utente, e la colonna che nessun design system ha: <strong>chi ci sta rimettendo, adesso.</strong></div>
+</section>
+
+<section>
+  <h2><span class="marker">Il pavimento</span>I numeri che nessun mockup pu&ograve; violare</h2>
+  <p>Centosedici gate verificabili a mano o da uno script. Questi vanno incollati verbatim in ogni brief futuro; qui i pi&ugrave; mordenti.</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Colore e contrasto</caption>
+      <tbody>
+      <tr><th>Testo corrente</th><td class="num">&ge; 4,5:1 <em>e</em> |Lc| &ge; 75</td><td>entrambi, non uno dei due</td></tr>
+      <tr><th>Bordo che porta significato</th><td class="num">&ge; 3:1 &middot; |Lc| &ge; 26</td><td>separatore decorativo: |Lc| &le; 14, e non pu&ograve; portare obblighi</td></tr>
+      <tr><th>Croma dei neutri</th><td class="num">C &le; 0,018</td><td>sopra, la superficie smette di essere superficie e diventa colore</td></tr>
+      <tr><th>Due stati semantici copresenti</th><td class="num">&ge; 12 punti L</td><td>pi&ugrave; un glifo, pi&ugrave; una parola &mdash; mai la sola tinta</td></tr>
+      <tr><th>Scalino di elevazione, scuro</th><td class="num">&ge; +4,2 L</td><td>derivato: 1,2&ndash;1,6&times; lo scalino chiaro (&ge; &minus;3,5 L). Il moltiplicatore &egrave; misurato; il +7 che stava qui era inventato e metteva la coppia a 2,0&times;, fuori dal proprio intervallo &mdash; corretto il 31/8 da una revisione avversariale Kimi K3</td></tr>
+      <tr><th>Rosso di marca come <em>inchiostro</em> su scuro</th><td class="num">vietato</td><td><code>#C8102E</code> su near-black misura Lc &minus;24; nessuna luminosit&agrave; di quella tinta supera Lc 60 su entrambi i fondi</td></tr>
+      <tr><th>Rosso di marca come <em>campitura</em></th><td class="num">Lc &minus;82,4</td><td>permesso: bianco su rosso pieno</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Tre prove da fare su ogni mockup, senza altri strumenti che un browser: <strong>desaturare</strong> lo screenshot e darlo a qualcuno &mdash; se non legge il verdetto, bocciato. Applicare <code>filter: contrast(0.35) brightness(1.4)</code>: se resta solo un rettangolo grigio, la gerarchia era tonale. Renderizzare sotto <code>forced-colors: active</code>: ogni affordance dev'essere ancora trovabile.</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Il momento del denaro &mdash; gate binari</caption>
+      <tbody>
+      <tr><th>La prova dello sconosciuto</th><td>Un estraneo su 360px sa il totale <em>senza digitare nulla</em>? Se no, bocciato.</td></tr>
+      <tr><th>Monotonicit&agrave;</th><td>Il numero che l'utente vede per primo non sale mai. Niente &laquo;a partire da&raquo;.</td></tr>
+      <tr><th>Asterischi</th><td class="num">zero</td></tr>
+      <tr><th>Totale contro componenti</th><td class="num">&ge; 2,5&times;</td></tr>
+      <tr><th>Accordion su una superficie con un prezzo</th><td>Vietato &mdash; il contenuto nascosto si legge come occultamento per questo pubblico.</td></tr>
+      <tr><th>Controllo di pagamento su verdetto incerto</th><td class="num">zero</td></tr>
+      <tr><th>Prova di comprensione &mdash; gate di spedizione</th><td>Cinque secondi di esposizione a 10 persone, poi due domande: <em>quanto pagherai in tutto?</em> e <em>c'&egrave; altro da pagare dopo?</em> Si spedisce a &ge; 90% di risposte corrette su entrambe.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Prezzo in cifre &mdash; misurato oggi</caption>
+      <tbody>
+      <tr><th>Superficie <code>id</code></th><td class="num">Rp790.000</td><td>punto per le migliaia, <em>nessuno spazio</em> &mdash; va tolto lo spazio unificatore che ICU inserisce da solo</td></tr>
+      <tr><th>Superficie <code>en</code></th><td class="num">IDR 790,000</td><td>il codice ISO batte &laquo;Rp&raquo; perch&eacute; un compratore diffidente lo incolla in un convertitore</td></tr>
+      <tr><th>Formattatori</th><td class="num">due, mai uno</td><td>e mai <code>notation:'compact'</code>: emette <em>Rp 790 rb</em>, che &egrave; un arrotondamento, non un prezzo</td></tr>
+      <tr><th>Parsing</th><td class="num">mai parseFloat</td><td><code>parseFloat("790.000")</code> restituisce <strong>790</strong> &mdash; errore di due ordini di grandezza che non solleva nulla</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="marker">Il sito oggi</span>Otto cose vive che una ricerca ha intercettato</h2>
+  <p class="note"><strong>Cautela sulla provenienza:</strong> due lane hanno letto balizero.com attraverso lettori che riassumono, non HTML grezzo, e lo dichiarano entrambe. Due lettori indipendenti che concordano sono una prova forte, non una certezza. Prima di agire su una qualsiasi di queste stringhe, va fatto un <code>curl</code> diretto.</p>
+
+  <div class="stop">
+    <div class="stop-row">
+      <span class="verdict-tag">Da cambiare</span>
+      <span class="now"><code>4.9 &starf; &middot; 693 Reviews &middot; 5,000+ Clients</code> &mdash; e gira due volte, come marquee</span>
+      <p>Ogni numero &egrave; infalsificabile contro un terzo. Segnale per segnale, &egrave; ci&ograve; che stampano i siti-truffa. Le recensioni false o incentivate sono pratica vietata dal DMCC Act da aprile 2025; il 27 marzo 2026 l'autorit&agrave; britannica ha aperto cinque istruttorie sui rating, con sanzioni fino al 10% del fatturato globale.</p>
+      <p class="fix"><strong>Tieni 4.9 e 693</strong> &mdash; stanno nella banda empiricamente ottimale (la probabilit&agrave; d'acquisto picca fra 4,0 e 4,7 e <em>scende</em> verso il 5,0). Ma rendi la stringa un <strong>link vivo alla scheda Google</strong>. La prova: <em>questo elemento continuerebbe a rendersi se le recensioni sparissero domani?</em> Preferisci quello che si romperebbe.</p>
+    </div>
+
+    <div class="stop-row">
+      <span class="verdict-tag">Da cambiare</span>
+      <span class="now"><code>&mdash; Marco R. &middot; Ital[y]</code></span>
+      <p>L'attribuzione con la sola iniziale &egrave; il formato canonico della testimonianza falsa. La regola FTC in vigore dal 21 ottobre 2024 tratta le testimonianze composite o fittizie non dichiarate come false, con sanzioni fino a $51.744 per violazione.</p>
+      <p class="fix">Uno <strong>screenshot di una recensione Google vera</strong>, con il nome che il recensore si &egrave; dato e la grafica di Google intorno &mdash; metadati non falsificabili che il marchio non controlla. Oppure niente.</p>
+    </div>
+
+    <div class="stop-row">
+      <span class="verdict-tag">Da cambiare</span>
+      <span class="now"><code>&lt;title&gt; Bali Zero | #1 Visa &amp; PT PMA Experts in Bali</code></span>
+      <p>Un superlativo non verificabile nella stringa di peso massimo del sito, in pieno territorio dell'art. 9(1)(j) della UU 8/1999 &mdash; <em>&laquo;kata-kata yang berlebihan&raquo;</em>, parole eccessive. Le sanzioni dell'art. 62 arrivano a Rp 2 miliardi, e l'art. 63 include la <strong>revoca della licenza</strong>.</p>
+      <p class="fix">La versione falsificabile: <em>&laquo;Bali Zero &mdash; PT PMA, KITAS and tax filing in Bali. Licensed. Kerobokan.&raquo;</em></p>
+    </div>
+
+    <div class="stop-row">
+      <span class="verdict-tag">Da cambiare</span>
+      <span class="now"><code>Licensed konsultan pajak &middot; Registered PPJK</code> &middot; <code>Office in Kerobokan</code></span>
+      <p><em>Aggettivi</em> di licenza, non <em>numeri</em> di licenza. E &laquo;ufficio a Kerobokan&raquo; ha lo stesso contenuto informativo di &laquo;uffici in Europa e negli Stati Uniti&raquo; &mdash; che &egrave; ci&ograve; che dice il sito falso.</p>
+      <p class="fix">Il numero di <em>izin praktik</em>, l'NPPPJK, il NIB, l'indirizzo completo e una mappa &mdash; pi&ugrave; i link ai registri dove chiunque pu&ograve; controllarli: <code>ahu.go.id</code>, <code>oss.go.id</code>, e la ricerca pubblica dei consulenti fiscali su <code>sikop.kemenkeu.go.id</code>, l'unico registro davvero pubblico dello stack.</p>
+    </div>
+
+    <div class="stop-row keep">
+      <span class="verdict-tag keepit">Da rafforzare</span>
+      <span class="now"><code>Filed this month: 47 KITAS, 9 PT PMAs</code> &mdash; senza data</span>
+      <p>&Egrave; l'asset pi&ugrave; forte e pi&ugrave; raro della home: prova operativa viva, il pattern delle status page e dei tempi di lavorazione pubblicati. Ma un contatore vivo <em>senza data</em> &egrave; indistinguibile dai contatori di falsa urgenza che i regolatori stanno colpendo adesso.</p>
+      <p class="fix">Tre assi lo rendono credibile: dichiara il <strong>metodo</strong>, dichiara la <strong>data</strong> (&laquo;al 31 agosto 2026&raquo;), e <strong>lascialo scendere</strong> &mdash; un mese in cui il numero cala e resta visibile vale, in credibilit&agrave;, pi&ugrave; di un mese sostituito in silenzio. E non fonderlo con i &laquo;5.000+ clienti&raquo; di sempre: mescolare un aggregato storico nell'unit&agrave; viva del mese distrugge il segnale che fa funzionare la seconda.</p>
+    </div>
+
+    <div class="stop-row keep">
+      <span class="verdict-tag keepit">Non toccare</span>
+      <span class="now">H1: <em>&laquo;Most people moving to Bali pick the wrong visa in the first month.&raquo;</em></span>
+      <p>Non &egrave; un difetto. Un test A/B su una home con apertura problema-prima ha reso <strong>+49% e +46% di conversioni a pagamento al 99% di confidenza</strong>, e il meccanismo &egrave; l'allineamento allo stadio di consapevolezza: vince con un pubblico gi&agrave; consapevole del problema, che &egrave; per definizione chi cerca un visto per la prima volta.</p>
+      <p class="fix">Elencato qui perch&eacute; nessuno lo &laquo;aggiusti&raquo; in <em>&laquo;Il tuo visto, gestito&raquo;</em>. Ma si ribalta su certezza sul verdetto e su GARUDA VOA, dove il visitatore si &egrave; gi&agrave; auto-diagnosticato.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="marker">Le tue</span>Dieci decisioni che non tocca a me prendere</h2>
+
+  <div class="dec">
+    <div class="q"><span class="qn">Q1</span><span class="qt">Stampiamo lo scorporo tassa/servizio, o solo il totale?</span></div>
+    <p class="rec"><b>Raccomando lo scorporo</b>, con la cifra governativa verificata dal vivo e ricaduta automatica alla lista non-numerica se il controllo scade.</p>
+    <p class="cost">Costo del s&igrave;: consegni a ogni visitatore un onorario da confrontare, e possiedi un numero che cambia senza preavviso. Costo del no: rinunci all'unica affermazione della pagina che uno sconosciuto pu&ograve; verificare da solo, contro un concorrente il cui comportamento documentato &egrave; far pagare oltre il dovuto.</p>
+  </div>
+
+  <div class="dec">
+    <div class="q"><span class="qn">Q2</span><span class="qt">Pubblichiamo foto e nomi completi del personale?</span></div>
+    <p class="rec"><b>Nome, ruolo, numero di licenza e un tempo di risposta misurato: s&igrave;. Fotografia solo con consenso scritto, per singola superficie, revocabile, e con una procedura di rimozione documentata.</b></p>
+    <p class="cost">Costo del s&igrave;: esposizione UU 27/2022, un obbligo di rimozione permanente, e il rischio di molestie &mdash; <em>questa stessa faccia consegna anche i rifiuti</em>. Costo del no: rinunci all'unico asset che l'imitatore non sa fabbricare, ed &egrave; esattamente dove le sue variabili di template sono vuote. Regola dura: <strong>mai pubblicare un tempo di risposta che non sai calcolare dalla tua posta in uscita.</strong></p>
+  </div>
+
+  <div class="dec">
+    <div class="q"><span class="qn">Q3</span><span class="qt">Dove sta il confine del pagamento: sul verdetto, o dopo il controllo del passaporto?</span></div>
+    <p class="rec"><b>Dopo il controllo</b>, con la CTA che dice &laquo;Continua &mdash; controlliamo il passaporto prima che tu paghi&raquo;.</p>
+    <p class="cost">Costo del s&igrave;: assorbi tempo di revisione su gente che non comprer&agrave;. Costo del no: incassi prima di sapere se puoi eseguire, il che fabbrica i rimborsi della Q4.</p>
+  </div>
+
+  <div class="dec">
+    <div class="q"><span class="qn">Q4</span><span class="qt">Qual &egrave; la matrice dei rimborsi, caso per caso?</span></div>
+    <p class="rec"><b>Nessuna raccomandazione &mdash; &egrave; una decisione commerciale e legale, e l'interfaccia non pu&ograve; essere spedita senza.</b></p>
+    <p class="cost">I sei casi che la UI deve saper mostrare: rinuncia del cliente, controllo documenti fallito, doppio addebito, errore nostro, disservizio del sistema governativo, rifiuto dell'Immigrazione. <em>&laquo;Potrebbe non essere rimborsabile&raquo; non &egrave; una copy accettabile: serve la regola verificata e l'importo esatto.</em></p>
+  </div>
+
+  <div class="dec">
+    <div class="q"><span class="qn">Q5</span><span class="qt">Rientriamo nell'esenzione microimpresa dell'European Accessibility Act?</span></div>
+    <p class="rec"><b>Progettiamo a WCAG 2.2 AA comunque, ma il fatto va stabilito.</b> &Egrave; una domanda di organico e fatturato (&lt;10 dipendenti e &le; 2 M&euro;), non di ricerca.</p>
+    <p class="cost">Costo di assumere l'esenzione: esposizione extraterritoriale su un flusso di pagamento che &egrave; senza ambiguit&agrave; e-commerce al consumatore. Costo di assumersi vincolati: nessuno, perch&eacute; 2.2 AA &egrave; comunque il livello giusto per questo prodotto.</p>
+  </div>
+
+  <div class="dec">
+    <div class="q"><span class="qn">Q6</span><span class="qt">Pubblichiamo una pagina &laquo;come verificare un agente visti a Bali &mdash; noi compresi&raquo;?</span></div>
+    <p class="rec"><b>S&igrave;</b>, datata, versionata, e legata a un controllo ricorrente reale.</p>
+    <p class="cost">Costo del s&igrave;: alza la salienza della truffa proprio al momento del pagamento e pu&ograve; deprimere la conversione &mdash; e non esiste <em>nessuno studio controllato</em> che lo misuri sull'intermediario stesso. Condizione dura: <strong>l'unica cosa peggiore di nessuna pagina d'allarme &egrave; una che punta a un dominio morto</strong>. La pagina anti-truffa del governo indica tuttora <code>molina.imigrasi.go.id</code>, che non risolve.</p>
+  </div>
+
+  <div class="dec">
+    <div class="q"><span class="qn">Q8</span><span class="qt">Un modello linguistico tocca la pagina del verdetto?</span></div>
+    <p class="rec"><b>Se s&igrave;, la riga di dichiarazione non &egrave; opzionale.</b> L'art. 50 dell'AI Act si applica dal <strong>2 agosto 2026</strong>: le persone vanno informate &laquo;in modo chiaro e distinguibile, al pi&ugrave; tardi al momento della prima interazione&raquo;.</p>
+    <p class="cost">Costo della riga: una frase. Costo di ometterla: un'esposizione regolatoria sulla schermata il cui unico scopo &egrave; essere creduta. Sanzioni fino a 15 M&euro; o il 3% del fatturato, e serviamo cittadini UE.</p>
+  </div>
+
+  <div class="dec">
+    <div class="q"><span class="qn">Q10</span><span class="qt">Polarit&agrave; della modalit&agrave; notturna: fondo neutro scuro con accento rosso, o il campo oxblood invertito?</span></div>
+    <p class="rec"><b>Non deciderla in prosa. Costruiamole entrambe dallo stesso generatore e scegli da due render.</b></p>
+    <p class="cost">&Egrave; esattamente per questo che esiste la sezione delle manopole: &egrave; una manopola binaria, entrambe le posizioni sono difendibili, e scegliere fra due <em>artefatti</em> &egrave; una decisione di marca che ti spetta a vista. Scegliere fra due <em>argomenti</em> no.</p>
+  </div>
+
+  <p class="note">Le due che ho omesso qui perch&eacute; meno urgenti: <strong>Q7</strong> &mdash; se spedire l'uscita su WhatsApp al verdetto e contare un ritorno entro 72 ore come conversione (raccomando s&igrave;: in un mercato saturo di truffe e centrato sulla chat, l'uscita <em>&egrave;</em> il rituale di fiducia; toglierla non trattiene l'utente, sposta la consulenza dove non la misuri). <strong>Q9</strong> &mdash; rosso come campitura della CTA primaria e se testarlo A/B (raccomando s&igrave; a entrambi; il caso per il rosso &egrave; l'identit&agrave; e la lettura locale, non l'incremento &mdash; nessuno studio serio mostra che i CTA rossi convertano meglio, da nessuna parte).</p>
+</section>
+
+<section>
+  <h2><span class="marker">Onest&agrave;</span>Cosa queste sedici ricerche <em>non</em> hanno verificato</h2>
+  <p>Questa &egrave; la sezione che rende usabile tutto il resto. Niente qui dentro pu&ograve; essere costruito senza essere prima ricontrollato.</p>
+
+  <div class="flag">
+    <span class="prov">Risolto stanotte</span>
+    <b>La tariffa governativa dell'e-VOA &mdash; l'elemento non verificato pi&ugrave; pericoloso del corpus, e portante per K1</b>
+    <p>Tre lane, tre stati di conoscenza: una ha aperto il portale e non ha trovato <em>nessuna cifra</em>; una aveva 500.000 solo attraverso un giornale; una ne ha verificata un'altra (1.500.000, per un visto diverso) e ha scritto &laquo;credo sia 500.000 &mdash; <em>non pubblicate sulla mia parola</em>&raquo;. L'ho fatta verificare a parte sulle fonti primarie: <strong>IDR 500.000</strong>, PP 45/2024 &sect;III.B.1.c, in vigore dal 17 dicembre 2024, stessa cifra per VOA all'aeroporto, e-VOA ed estensione. Ed &egrave; emerso perch&eacute; le lane divergevano: la radice nuda di <code>evisa.imigrasi.go.id</code> restituisce un <strong>corpo letteralmente vuoto</strong>; la cifra sta nella pagina interna. <em>Una URL che torna vuota non &egrave; prova di assenza.</em></p>
+  </div>
+
+  <div class="flag">
+    <span class="prov">Risolto stanotte</span>
+    <b>Il rosso del marchio &mdash; due lane, due hex, nessuna delle due l'aveva verificato</b>
+    <p>L'intera aritmetica del colore assume <code>#C8102E</code>; un'altra lane assumeva <code>#CE1126</code> (il rosso della bandiera) e dichiarava la propria incertezza. Verificato nel repo: <strong><code>#C8102E</code></strong>, in <code>tokens.json</code> e vivo in <code>semantic.css</code> pi&ugrave; cinque file del frontend. <code>#CE1126</code> non compare da nessuna parte. I gate di colore poggiano sul valore giusto.</p>
+  </div>
+
+  <div class="flag">
+    <span class="prov">Aperto</span>
+    <b>Ogni numero APCA del corpus va rieseguito</b>
+    <p>Prodotti da una reimplementazione locale dell'algoritmo, validata solo contro due valori canonici di riferimento. La lane stessa lo prescrive: prima di cablarli in CI, vanno rifatti passare da <code>apcacontrast.com</code>. Lo stesso vale per il modello di luce ambientale: la struttura &egrave; corretta, ma la riflettanza, i nit e i valori in lux sono stime d'ingegneria, non misure. La <em>daylight test</em> poggia su quelle.</p>
+  </div>
+
+  <div class="flag">
+    <span class="prov">Aperto</span>
+    <b>L'espansione del testo indonesiano non ha una cifra pubblicata &mdash; da nessuno</b>
+    <p>Due lane hanno cercato indipendentemente su quattro fonti dell'industria della localizzazione e nessuna delle quattro pubblica una percentuale per il bahasa. L'unico dato duro esistente &egrave; <strong>+40% su una singola etichetta di bottone</strong>, dalla documentazione Canva. Il margine 35-50% del pavimento &egrave; un margine d'ingegneria, non una misura. Due lane che falliscono indipendentemente nel trovare un numero &egrave; una prova pi&ugrave; forte che il numero non esista di quanto la stima di una delle due sia prova di un valore.</p>
+  </div>
+
+  <div class="flag">
+    <span class="prov">Aperto &mdash; e va detto ad alta voce</span>
+    <b>Se la letteratura moderna sulla credibilit&agrave; web esista</b>
+    <p>Il punto debole pi&ugrave; onesto del corpus e il suo pi&ugrave; importante avvertimento di metodo: <em>&laquo;Il lavoro canonico citabile &egrave;</em> vecchio<em> (Stanford ~2002, Nielsen 1999). Non sono riuscito a far emergere una replica 2020-2026 di autorit&agrave; comparabile. Non lasciate che qualcuno presenti "la ricerca dice X sui segnali di fiducia" come conoscenza 2026 assodata.&raquo;</em> Quello che <em>&egrave;</em> difendibile: il meccanismo (la morte del segnale), le regole dei regolatori, e l'autopsia dal vivo del sito falso.</p>
+  </div>
+
+  <div class="flag">
+    <span class="prov">Ammesso da GOV.UK</span>
+    <b>Il miglior design system governativo al mondo non ha risolto proprio la nostra schermata</b>
+    <p>Il loro pattern delle pagine di conferma dichiara testualmente: <em>&laquo;Research is needed on the best way to confirm transactions that are part of a wider user task.&raquo;</em> La postura giusta per l'intero rifacimento &egrave; quella che ne segue: <strong>assumi che la versione uno sia sbagliata, e strumentala.</strong></p>
+  </div>
+
+  <p class="note"><strong>Sui quattro modelli di altre famiglie.</strong> Vanno letti per quello che sono. Codex e Qwen hanno <em>zero</em> fonti dal vivo, per come li ho ingaggiati &mdash; la loro macchina a stati e le loro osservazioni sul mercato asiatico sono artefatti di progetto, non prove. Kimi ha 3 fonti verificate su 14, e le sue gamme di oxblood sono &laquo;proposte ragionate, non valori testati&raquo;. Gemini ha consegnato quattro scoperte dove le lane con il web ne consegnano da sei a dieci, e le sue cinque citazioni &laquo;verificate&raquo; sono home page aperte senza una riga citata &mdash; sotto la soglia che avevo scritto io nel contratto. E sbaglia una norma: dichiara 48&times;48 come criterio WCAG 2.2, mentre il criterio &egrave; 24&times;24. <em>Eppure</em>: l'unico primitivo di bordo che sopravvive a <code>forced-colors</code> in tutti e sedici i report &mdash; un bordo in <code>CanvasText</code> &mdash; sta nel suo, il meno documentato di tutti.</p>
+</section>
+
+<footer>
+  Sedici ricerche indipendenti &middot; 31 agosto 2026 &middot; 254 fonti aperte e citate, 111 dichiarate a memoria<br>
+  Dodici lane con accesso al web (colore, tipografia, materia, prezzo, verdetto, checkout, anti-truffa, prova sociale, hero, accessibilit&agrave;, EN/ID, movimento)<br>
+  Quattro seat di altre famiglie: Gemini 3.1 Pro, GPT-5.6, Kimi K3, Qwen 3.8 Max<br>
+  Nessuna lane poteva vedere il lavoro delle altre. Nessun dato cliente &egrave; entrato in nessuna di esse.
+</footer>
+
+</div>

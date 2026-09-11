@@ -1,0 +1,189 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5063 (agent/nuzantara/infra/required9 -> main) — queue-unblock ruling
+  (required-checks cut + snapshot/probe reconciliation), caught up to main
+  and re-evidenced under #5049's post-landing floor-size-term rule per
+  tonight's queue-shepherd mandate.
+
+lanes:
+  - lane: required9-build
+    role: build
+    seat: claude-sonnet-5 (this session — implementer lane, CLAUDE.md §5 default)
+  - lane: required9-refuter
+    role: review
+    seat: agy (Gemini 3.1 Pro, non-Anthropic) — cross-family, never the same
+      seat as the build lane
+
+diff:
+  files: 8
+  net_lines: 262
+  measured_at: 6cba48cb3
+  note: >-
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD) HEAD`
+    -> 8 files, +270/-8, net 262. Cross-checked against `git diff --stat`'s
+    own file count (8) — they agree.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      #5063 was CONFLICTING against origin/main solely on
+      scripts/probe_merge_gate_integrity.py and
+      scripts/tests/test_probe_merge_gate_integrity.py, both of which landed
+      via #5069 (merged, later than this branch's own commits touching the
+      same two files).
+    cmd: >-
+      cd .worktrees/infra-required9 && git fetch origin main -q && git merge
+      origin/main --no-commit --no-ff
+    result: >-
+      "Auto-merging .claude/skills/modus/PENDING-ARMS.md", "Auto-merging
+      .github/workflows/runbook-section-numbers.yml", "Auto-merging
+      infra/required.d/contexts.json", "CONFLICT (content): Merge conflict
+      in scripts/probe_merge_gate_integrity.py", "CONFLICT (content): Merge
+      conflict in scripts/tests/test_probe_merge_gate_integrity.py",
+      "Automatic merge failed; fix conflicts and then commit the result."
+    exit: 1
+    ts: 2026-08-27T06:30Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      The only delta between this branch's pre-merge copy and main's copy of
+      the two conflicted files is comment/docstring prose describing the
+      same required-checks-count history (27->9->11) in slightly different
+      wording — zero executable logic differs. Keeping main's side
+      (`--theirs`) is therefore safe.
+    cmd: >-
+      git diff 6cba48cb3^1 6cba48cb3^2 -- scripts/probe_merge_gate_integrity.py
+      scripts/tests/test_probe_merge_gate_integrity.py
+    result: >-
+      3 hunks total, all inside `#`-comments or a docstring: two describe
+      the 2026-08-27 required-checks-count history ("27 cut to 9, then 2
+      reinstated within the hour" vs "27 cut to 11, queue-unblock"), one is
+      a truncation-tripwire comment restating the same fact. No `def`, no
+      assertion, no control-flow line appears in the diff on either side.
+    exit: 0
+    ts: 2026-08-27T06:31Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      Conflict resolved by keeping main's side of both files verbatim; the
+      resulting merge commit has zero remaining conflict markers and passes
+      the repo's pre-commit hook suite.
+    cmd: >-
+      git checkout --theirs scripts/probe_merge_gate_integrity.py
+      scripts/tests/test_probe_merge_gate_integrity.py && git add
+      scripts/probe_merge_gate_integrity.py
+      scripts/tests/test_probe_merge_gate_integrity.py && git status --short
+      | grep -E '^(UU|AA|DD)'; git commit --no-edit
+    result: >-
+      grep for unresolved conflict markers: empty (rc=1, none found).
+      Pre-commit hook: "✅ All pre-commit checks passed!" (secrets scan,
+      lint, off-limits check, FastAPI import-chain smoke). Commit
+      6cba48cb3 created.
+    exit: 0
+    ts: 2026-08-27T06:33Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      The deterministic gear floor recomputed from this PR's own real
+      changed-file set is 3, matching the declared gear (workflow files
+      under .github/workflows/ are touched).
+    cmd: >-
+      git diff --no-renames --name-only $(git merge-base origin/main HEAD)
+      HEAD > /tmp/5063-changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/5063-changed.txt
+    result: "3"
+    exit: 0
+    ts: 2026-08-27T06:40Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      Post-merge push succeeded and pre-push guards (actionlint on the
+      touched workflow files, path-aware full-suite trigger, R1 advisory
+      check) all passed locally.
+    cmd: git push origin agent/nuzantara/infra/required9
+    result: >-
+      "[actionlint] .github/workflows/ touched — checking. [actionlint] OK."
+      "[skills-canon] OK." Path-aware allowlist flagged 3/8 files as
+      not-innocent (workflow/CI files) and ran the full local pre-push
+      suite; "✅ All pre-push checks passed!" push accepted,
+      d81a38180..6cba48cb3.
+    exit: 0
+    ts: 2026-08-27T06:41Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      The remaining post-push red on this PR ("check" / watcher-coverage.yml
+      job, failing on an unrelated stale-entry drift in
+      main-push-failure-watch.yml's own coverage list for
+      check-skills-canonical.yml) is NOT a required context and does not
+      block merge.
+    cmd: >-
+      grep -n 'Non-required at first' .github/workflows/watcher-coverage.yml;
+      python3 -c "import json; d=json.load(open('infra/required.d/contexts.json'));
+      def find_list(o):
+        if isinstance(o, list): return o
+        if isinstance(o, dict):
+          for v in o.values():
+            r=find_list(v)
+            if r: return r
+      lst=find_list(d); print(len(lst), [x for x in lst if 'check' in str(x).lower()])"
+    result: >-
+      watcher-coverage.yml's own header comment: "Non-required at first,
+      matching this repo's established brand-new-signal convention ... A
+      fresh gate observes for a review cycle before it can block a PR."
+      contexts.json's 11-entry required list contains zero entries matching
+      'check' (the bare job-id name of this workflow's only job).
+    exit: 0
+    ts: 2026-08-27T06:50Z
+    seat: session (implementer lane)
+
+dissent:
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter)
+    objection: >-
+      Asked to confirm the keep-main's-side conflict resolution on
+      scripts/probe_merge_gate_integrity.py and its test was safe (comment-
+      only delta, no logic diff) or name a real risk. First dispatch (90s
+      budget) timed out; re-dispatched at 150s and returned. Verdict:
+      "Confirmed safe with one caveat. Discarding purely informational prose
+      in CI comments carries zero execution or logic risk." Two residual
+      risks named: (1) verify no CI script/linter regex-scrapes the
+      discarded comment text for audit tracking; (2) verify the resolver
+      only discarded comment hunks and did not drop adjacent functional
+      lines bundled in the same conflict block.
+    status: CONFIRMED
+    note: >-
+      Both named risks checked against receipt 2's actual line diff: all 3
+      changed hunks are inside `#`-comments or a docstring, zero `def`/
+      assertion/control-flow lines appear on either side of the conflict —
+      so risk (2) does not apply here. Risk (1): grepped the repo for any
+      script parsing required-checks-count out of these two files' comment
+      text (`grep -rn "required.*checks.*count\|27.*9.*11" scripts/ci/
+      scripts/*.py` under this worktree) — no hit; the count is read from
+      infra/required.d/contexts.json (structured JSON) and the live GitHub
+      API, never from comment prose. Both caveats resolved negative
+      (no risk found), verdict stands CONFIRMED.
+
+tests:
+  - "No test suite change in this PR's own diff (the conflict was resolved
+    to main's pre-existing test file verbatim); pre-commit's FastAPI
+    import-chain smoke passed on the merge commit."
+
+static:
+  - "actionlint on .github/workflows/tests.yml, harness-floor.yml,
+    runbook-section-numbers.yml — clean (pre-push gate)."
+  - "Pre-commit hooks (secret scan, python lint, off-limits-file check,
+    import-chain smoke) passed on the merge commit."
+  - "Pre-push quickcheck (prettier, actionlint, skills-canon, R1 advisory)
+    passed; full local suite ran because 3/8 changed files are CI-workflow
+    paths outside the innocent allowlist."
+
+notes:
+  - "This pack covers the merge/conflict-resolution/re-evidencing step only.
+    The original required-checks-cut design (Zero's ruling, referenced in
+    the diff's own code comments) predates this pack and this branch's
+    earlier commits; it is not re-litigated here."
+  - "scripts/probe_merge_gate_integrity.py and its test are now
+    byte-identical to origin/main post-resolution — verified by construction
+    (git checkout --theirs against a freshly-fetched origin/main), not
+    re-diffed a second time after commit."

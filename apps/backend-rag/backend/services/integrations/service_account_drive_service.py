@@ -181,6 +181,21 @@ class ServiceAccountDriveService:
         )
         return await asyncio.to_thread(request.execute)
 
+    async def download_file_content(self, file_id: str) -> bytes:
+        """Fetch a file's bytes via Drive API v3 `alt=media`.
+
+        The Service Account is the only Drive credential this backend still
+        has: the SYSTEM OAuth token has been deliberately dead since
+        2026-05-10 (`GoogleDriveService._refresh_token` returns None for
+        SYSTEM by design). Every download proxy therefore has to come
+        through here.
+        """
+        request = self.service.files().get_media(
+            fileId=file_id,
+            supportsAllDrives=True,
+        )
+        return await asyncio.to_thread(request.execute)
+
     async def get_file_metadata_detailed(self, file_id: str) -> dict[str, Any]:
         """Fetch read-only metadata needed by CRM Guardian evidence scans."""
         fields = (

@@ -1,0 +1,65 @@
+task_id: compliance-coretax-claim
+gear: 1
+gear_reason: >-
+  Computed, not chosen. scripts/evidence_pack_lint.py --print-floor over this branch's diff
+  vs origin/main (git diff --numstat/--name-only origin/main...) returns 1: no HOTZONE_PATTERNS
+  hit (apps/mouth/src/app/(blog)/services/compliance/page.tsx is not a hot-zone path) and 1 net
+  line over 1 file stays far under the size thresholds.
+l_level: L1
+gate_class: opus
+objective: >-
+  Gate residual R3 of PR #6210 (website compliance corner): the live unlisted
+  /services/compliance page (PR #6194, apps/mouth) carries an unsourced WHY_NOW bullet —
+  "Coretax made 2026 corporate filing harder, not easier: the deadline was extended after
+  thousands of complaints." — with no citation anywhere in the repo. Replace it with the
+  repo-sourced fact from research/regulatory/2026-05-28-delta.json and
+  2026-05-31-delta.json: DJP decision KEP-71/PJ/2026, issued 30 April 2026, granted corporate
+  taxpayers a penalty-free relaxation window to file their 2025 annual corporate returns
+  (SPT Tahunan Badan) under Coretax, expiring 31 May 2026; secondary source DDTC news
+  1819751.
+constraints:
+  - >-
+    One WHY_NOW array entry only (page.tsx:57) — no other bullet, section, price, FAQ, or
+    metadata changed. New sentence exact, per the delta records' `summary`/`impact_note`
+    fields: "Coretax's first corporate filing season needed a rescue: DJP's KEP-71/PJ/2026
+    waived late-filing penalties on 2025 corporate returns until 31 May 2026."
+  - >-
+    page.test.tsx asserts nothing on the WHY_NOW bullet text (grepped "Coretax\|WHY_NOW\|
+    thousands of complaints" across the test file — zero hits before and after), so no test
+    change was needed or made.
+  - Zero forbidden-phrase hits against skills/bali-zero-brand/voice/forbidden-phrases.md
+    (sections A-H) on the new sentence.
+acceptance:
+  - text: >-
+      WHEN the compliance page's WHY_NOW section renders THEN the Coretax bullet SHALL state
+      the KEP-71/PJ/2026 penalty-relaxation fact instead of the unsourced "deadline was
+      extended after thousands of complaints" claim.
+    probe: >-
+      grep -n "KEP-71/PJ/2026" page.tsx -> 1 hit at line 57; grep -n "thousands of complaints"
+      page.tsx -> 0 hits.
+  - text: The existing compliance page suite SHALL still pass unmodified.
+    probe: >-
+      npx vitest run "src/app/(blog)/services/compliance/page.test.tsx" — 3 passed, no test
+      file changed.
+  - text: Typecheck and formatting SHALL be clean on the changed file.
+    probe: >-
+      npx tsc --noEmit (exit 0, no output); npx prettier --check
+      "src/app/(blog)/services/compliance/page.tsx" -> "All matched files use Prettier code
+      style!".
+  - text: Zero forbidden-phrase hits on the new sentence.
+    probe: >-
+      Manual sweep of the new sentence against forbidden-phrases.md sections A-H (AI-tells,
+      marketing-stock, empty metaphors, engagement-bait, disclaimer legalese, title-case,
+      vague numbers, emoji) -> 0 matches.
+consumer_map:
+  - "The live unlisted /services/compliance page (PR #6194): the WHY_NOW credibility bullet
+    a prospect reads before booking."
+  - "PR #6210 gate residual R3: this PR closes that residual for the live mouth copy."
+risks:
+  - "None beyond the sentence itself — single-line factual substitution, no code path,
+    pricing, or test behavior touched."
+grader: >-
+  Reviewed by the imperator by diff; no gate/fable-gate posted, no auto-merge armed by a
+  subagent chain (single-agent lane, no delegation).
+budget: Existing subscription only; no paid API calls.
+pii_scan: clean

@@ -1,0 +1,37 @@
+mandate: >
+  Topic 5 of the 2026-09-11 Mini session: map, surface by surface of apps/mouth (home, team,
+  journal, services, Visa Oracle, Second Home, KBLI, shared chrome), what of the archived R19
+  website candidate's design language can be brought in without regressing live functionality.
+  Deliverable is one research document, research/design/2026-09-11-r19-design-reuse-map-apps-mouth.md:
+  the two-layer R19 palette measured on origin/codex/website-r19-integrated (6603d2913e), the
+  collision between the Merah Putih ruling (R4, 2026-08-27, live on Second Home) and the R19
+  direction, a wave-ordered priority criterion, a non-regression bar and four closed ruling
+  questions for the owner. No product code, token, font or test changes.
+gear: 2
+gear_reason: >
+  Deterministic floor 2 reached via the SIZE term alone: the diff is one new markdown file of
+  more than 400 net lines under research/design/, a non-hot-zone path. "Harness floor recompute"
+  on PR #6124 reported floor==2 with no evidence/brief.yml after the 2026-09-02 enforcement date.
+  No workflow, guard, schema, lockfile or CODEOWNERS-tier path is touched, so nothing raises the
+  floor above 2.
+origin: >
+  PR #6124 (agent/mini-pro2/docs/mouth-r19-design-map-20260911), first commit d23454ce27 pushed
+  and auto-merge armed before this brief existed; the harness check failed on the missing brief.
+  The document itself carries a Codex adversarial review (20 findings, 18 applied, 2 partial,
+  dispositions in its section 10) and passes scripts/check_adversarial_review.py.
+instruction_to_the_grader: >
+  Do not grade this brief — read the document and attack its load-bearing claims against the
+  repository. First, that R4 (research/design/2026-08-27-r4-identity-merah-putih-token-spec.md,
+  section 6 "Home (band swap)") puts the home inside the Merah Putih perimeter, so the design
+  collision is not confined to the funnels. Second, that publicListed:false in
+  apps/mouth/src/data/team-roster.ts filters only PUBLIC_ROSTER (book) while /team, SocialProof
+  and /v2/company/about resolve people through rosterBySlug on the full TEAM_ROSTER. Third, that
+  apps/website/src/features/visa-oracle/atlas.css on the R19 ref maps the four
+  --oracle-state-* colours onto two values while the live oracle.css keeps four. Fourth, that
+  the hex census is reproducible with the command given in section 1 (33 stylesheets, 22 with
+  both #233d52 and #a44b36, forest #253e33 in three files). Live numbers (sitemap, health
+  commit, /journal) are the author's measurements and are labelled as such; treat them as
+  unverifiable rather than wrong.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

@@ -1,0 +1,89 @@
+task_id: seat6-wiring-0901
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wire the 6th Claude OAuth seat (the Team premium account) into the cascade
+  and into every automation consumer, as LAST RESORT by position.
+
+  Why now, measured on origin/main 2026-09-01 rather than assumed:
+
+    infra/launchagents/wrappers/claude-cascade.sh:836
+      for index in 1 2 3 4 5; do          <- five slots, no slot 6
+    files naming CLAUDE_CODE_OAUTH_TOKEN_6 : 2
+    files naming CLAUDE_CODE_OAUTH_TOKEN_5 : 17
+    scripts/tests/test_claude_oauth_slot6_coverage.py : does not exist
+
+  CLAUDE.md states the opposite. It describes a six-slot cascade in which the
+  Team seat is reached only after all five MAX seats fail, and it names
+  `test_claude_oauth_slot6_coverage.py` as the mechanism that "goes RED if 6
+  precedes 5". That file is not in the tree. So the doctrine every session
+  reads at startup describes a state that does not exist, and cites an
+  enforcement artifact that was never merged — the failure mode this repo
+  treats as worse than either alternative, because the next session builds on
+  it.
+
+  This PR closes that gap in one concern instead of three. The work itself is
+  not new: it was authored across PRs #4640 / #4644 / #4645 (2026-08-23), which
+  then sat DIRTY for nine days on the repo-root evidence-path defect and were
+  never revived. Their content is carried here onto a current base, plus the
+  one fix none of them had.
+constraints:
+  - "Slot 6 is LAST RESORT and that is the whole point of the change, not a
+    side condition. It is appended after slot 5 everywhere — never inserted,
+    never reordered. The Team seat carries weekly caps with no rolling reset,
+    so reaching it early is precisely how it is found empty when it is the
+    only seat left."
+  - "No consumer may be left half-wired. The reason the original stack could
+    not land piecemeal is that #4640 wired the 14 consumers while #4644 wired
+    the picker loop itself: merging either alone leaves consumers that know
+    about a slot the cascade never reaches."
+  - "The seat-state kill switch (`seat_state_precheck_skip`) keeps its existing
+    guarantees — sourced before first dispatch, correct polarity, `return 98`
+    on skip, call sited inside try_claude(). This PR does not touch that
+    wiring; it only stops a neighbouring assertion from pinning the loop text
+    to origin/main."
+acceptance:
+  - text: >
+      WHEN the picker loop in claude-cascade.sh is read, it SHALL enumerate
+      slots 1..6 with the slot-6 marker positioned AFTER the slot-5 marker in
+      the source — proved by position, not by prose.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py::test_slot6_marker_follows_slot5_marker"
+  - text: >
+      WHERE the Team config dir or label appears in claude-cascade.sh, it
+      SHALL appear ONLY inside case branch 6.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py::test_claude_cascade_team_config_dir_only_on_slot6"
+  - text: >
+      WHEN each automation consumer iterates its seat list, it SHALL reach
+      slot 6, for every consumer named in the coverage table.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py::test_every_automation_consumer_reaches_slot6"
+  - text: >
+      WHILE the seat-state precheck remains wired, case_cascade_wiring SHALL
+      still prove sourcing, kill-switch POLARITY, the skip return and the call
+      site inside try_claude().
+    status: verified
+    probe: "bash scripts/tests/test_seat_state.sh"
+  - text: >
+      IF the slot-6 token is unset or empty, the cascade SHALL fall through as
+      it did before, with no new failure path.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_claude_cascade_shell.py"
+risks:
+  - "This is a hot-zone wrapper. The blast radius is every cron and automation
+    that dispatches Claude: if the loop were wrong, the failure is silent
+    quota consumption on the seat that must stay in reserve. The ordering is
+    therefore pinned by source POSITION in two independent tests rather than
+    by reading the code."
+  - "The change makes slot 6 REACHABLE for the first time. Nothing here proves
+    the Team token is valid or that its config dir exists on every machine —
+    only that the cascade will try it last. A dead slot-6 token now produces
+    one extra failed attempt per exhausted cascade, not a broken cascade."
+  - "test_seat_state.sh loses its byte-comparison of the picker loop against
+    origin/main. That comparison could never have survived this change (see
+    the pack's dissent section); the ordering it stood in for is now proved
+    directly. But it does mean a FUTURE edit to that loop no longer trips this
+    particular case — it trips the coverage suite instead."
+pii: none

@@ -1,0 +1,35 @@
+task_id: craft-s-arm-or-archive
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wave-2 Squad S, lane 5: arm-or-archive the four unscheduled instruments.
+
+  Measured on origin/main, all four:
+    council_yield_report.py (1066 lines)  — NO executor anywhere -> ARM
+    correction_tax.py       (461 lines)   — NO executor anywhere -> ARM
+    pr_size_taxonomy.py     (349 lines)   — ALREADY ARMED (pr-size-taxonomy.yml, daily 20:00, output to the job summary) -> no action
+    mq state                              — the instrument is armed (mq.sh calls mq_state_verdict.py), but its 113-assertion corpus `scripts/tests/test_mq_state_oracle.sh` has NO executor -> ARM the corpus
+
+  Nothing is archived: all four are live instruments with real output. Three
+  gaps, three armings.
+constraints:
+  - "'Armed' is claimed narrowly: SCHEDULED and READABLE is not READ. A consumer
+    that acts on the numbers is a separate concern and this PR does not claim to
+    be one."
+  - "An instrument whose own corpus fails prints worthless numbers, so the corpora
+    run first and block."
+  - "A report that finds nothing must be distinguishable from a report that never
+    ran (W108) — hence the emptiness gate, whose patterns are run against REAL
+    output rather than the output's assumed shape."
+  - "The mq-oracle workflow carries a paths filter and NO merge_group trigger,
+    which is the safe pairing; stated in-file so nobody adds the trigger."
+acceptance:
+  - text: "The two unarmed instruments run on a schedule and their output reaches a reader."
+    probe: "craft-instruments-daily.yml"
+  - text: "An instrument that produces no measurable output WARNS rather than passing silently, and the patterns match the real output."
+    probe: "both grep patterns run against live instrument output"
+  - text: "The mq oracle's 113 assertions can go red, and a shrinking corpus is caught."
+    probe: "the shrink-floor step body, executed"
+  - text: "The shrink floor's aborted-suite branch is REACHABLE, in the new file and in the sibling it was copied from."
+    probe: "execute both floor bodies against an aborting suite"

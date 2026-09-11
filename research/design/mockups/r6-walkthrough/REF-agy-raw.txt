@@ -1,0 +1,70 @@
+### Finding 1: Stimulus Inconsistency Invalidates Blind Panel Comparability
+* **Severity**: High
+* **Claim**: *"4 cross-family seats judged FULL pages — M4a (named human) vs M4b (team control)"* (§1) vs. *"qwen (named first, copy-only minimal payload)"* (§3)
+* **Why it fails**: Internal contradiction. §1 asserts all 4 seats evaluated full pages (markup, copy, and tokens), but §3 reveals Qwen received only a stripped "copy-only minimal payload." Qwen evaluated a fundamentally different stimulus without tokens, layout, or structural hierarchy. Aggregating Qwen into a uniform "3-1 panel verdict" is methodologically invalid.
+
+---
+
+### Finding 2: Statistical and Experimental Fallacy on Order Effects with $n=4$
+* **Severity**: High
+* **Claim**: *"Split verdict: 3-1 for the NAMED variant... and the dissent is not order-explainable — agy saw the same order as kimi (control first) and still chose named"* (§3); *"The blind counterbalance earned its cost: without it, the 3-1 split would be confounded with presentation order"* (§Meta)
+* **Why it fails**: With an $n=2$ per condition split (named-first: Codex, Qwen; control-first: AGY, Kimi), 100% of the named-first group chose Named, whereas only 50% of the control-first group chose Named. Presentation order remains a viable confound. Ruling out order effects based on a single data point (`agy`) in an $n=2$ condition lacks statistical validity. Calling a 3-seat plurality across non-uniform stimuli a "verdict" misrepresents exploratory proxy output as conclusive experimental proof.
+
+---
+
+### Finding 3: Semantic Slide from Text-Token Proxy to Visual Color Validation
+* **Severity**: High
+* **Claim**: *"The Q2 ruling (carta+rosso) therefore survives its first structured perception test — with the institutional-perception clause of R4 doing exactly the work it was written for: the mitigating marks are not decoration, they are the license for the red."* (§4)
+* **Why it fails**: LLM proxies parse text tokens and HTML class strings—they do not render pixels, process optical contrast, or experience affective visual perception. Text models approving the semantic presence of legal mitigation lines does not prove that human users perceive a red-dominant palette as "official stationery" rather than high-urgency scam marketing. The report slides directly from text-token evaluation to visual design validation.
+
+---
+
+### Finding 4: Walkthrough Contradiction: P3 Wharton Pass on Disabled Indonesian Locale
+* **Severity**: High
+* **Claim**: *"Wharton Q3 (action↔intent) passes where the live tree fails it: the applicant knows why the branch exists and how long it is before entering... delegate flow... is the first surface that even ACKNOWLEDGES the sponsor operating the screen."* (§2) vs. *"an Indonesian sponsor cannot read an EN-only delegate flow... the R5b prototype's ID toggle is honestly disabled"* (§6)
+* **Why it fails**: Internal contradiction. For an Indonesian spouse/sponsor persona (P3 baseline), Wharton Q1 (right goal), Q2 (action visible), and Q3 (action↔intent) cannot pass if the interface is rendered exclusively in English. The walkthrough declares a pass on the delegate flow while §6 acknowledges the Indonesian toggle is disabled and unusable for the target persona.
+
+---
+
+### Finding 5: Walkthrough Void: P1 Omits the Funnel's Highest-Risk Step
+* **Severity**: High
+* **Claim**: *"P1 · First-time tourist — GARUDA VOA: M1 → M2a → M2b → (checkout) → M8"* and *"the redesign answers R1's fragile moments"* (§1, §2)
+* **Why it fails**: The report admits that *"Among the ten R5 mockups there is NO GARUDA checkout page"* and *"A7 gap is still open"* (§2). A7 was declared in R1 as the highest drop-off risk (level-4 commitment). Substituting an unmocked payment contract from an entirely different funnel (Visa Oracle M5) does not constitute a cognitive walkthrough of P1. Claiming the redesign cures P1's journey while skipping the primary abandonment bottleneck is an incomplete evaluation.
+
+---
+
+### Finding 6: Invalid Persona Walkthrough Substitution for P2
+* **Severity**: Med
+* **Claim**: *"The prototype models the offshore gate-first order; the live tree asks onshore permit_expiry first. P2's walkthrough is therefore representative-not-literal on question order"* (§2)
+* **Why it fails**: P2's defining risk in R1 is onshore overstay anxiety governed by `permit_expiry`. Walking an offshore entry tree and declaring P2's cognitive walkthrough "passed" ignores the specific decision friction, branching logic, and panic state of onshore renewals. The walkthrough evaluated an unrepresentative path.
+
+---
+
+### Finding 7: False Reconciliation of P2 Pre-Purchase Price Transparency Trigger
+* **Severity**: High
+* **Claim**: *"Reconciles R1-P2's PNBP≠fee trust trigger without splitting the price. Alternative: visible PNBP split at quote (rejected...)"* (§2, §8.2)
+* **Why it fails**: R1-P2's established baseline trigger is verifying government fees (PNBP) against agency markup *prior to purchase* to prevent extortion. Disclosing non-numerical component names at checkout while deferring the actual itemized financial split to a post-payment receipt does not satisfy a pre-purchase trust gate. The user is still forced into blind financial commitment, leaving the baseline friction unresolved.
+
+---
+
+### Finding 8: False Claim of "PII-Free" WhatsApp Handoff & Disconnected Spine
+* **Severity**: Med
+* **Claim**: *"The case code is the spine... survives verdicts, failures, WhatsApp handoffs (code-only links, no PII) and the tracker."* (§6)
+* **Why it fails**: 
+  1. Handoff to WhatsApp is never PII-free. Opening a WhatsApp thread immediately exposes the user's phone number (MSISDN), profile name, and profile photo to the recipient.
+  2. The mockups fail case-code continuity: M4a/M8 uses `BZ-7Q4K` while M5/M6 uses `BZ-3M8A`.
+  3. The spine fails to connect to M6 tracker because no backend weld exists to create an account from GARUDA payments. Claiming the spine connects the journey across surfaces contradicts the declared reality that the tracker cannot be reached.
+
+---
+
+### Finding 9: Flawed Reflow Test Instrument Conflates CSS Zoom with WCAG Standards
+* **Severity**: Low
+* **Claim**: *"full-page zoom works but the headless proxy (CSS zoom:4) shows horizontal overflow — proxy-grade evidence, declared as such. Consequence: the R4 token spec's type scale should be expressed in rem (§8.4)."* (§5, §8.4)
+* **Why it fails**: Testing WCAG 2.1 SC 1.4.10 (Reflow) requires setting a responsive viewport width (320 CSS px at 400% zoom), not injecting proprietary `CSS zoom: 4` into Playwright. Non-standard CSS zoom scales element geometry without triggering browser reflow engines correctly. While migrating type tokens to `rem` is correct for SC 1.4.4 (Text Resize), attributing horizontal overflow to page reflow based on `zoom: 4` is an artifact of a flawed test probe.
+
+---
+
+### Finding 10: Western LLM Bias Overrides Local Calo Scam Patterns in Default Policy
+* **Severity**: High
+* **Claim**: *"Named stays the default (3-1 panel + R5's declaration)... Production A/B with real users goes to R7 doctrine. Alternative kept alive: control-by-default (kimi's position)."* (§8.1)
+* **Why it fails**: In Indonesia, informal visa fixers (*calo*) operate primarily via personal WhatsApp profiles, friendly headshots, and unverified individual identities. Kimi's dissent identified that for vulnerable populations (overstayers), a named photo + WhatsApp CTA replicates the exact interaction pattern of Indonesian visa scams. Adopting Named Human by default—prior to R7 real-user testing—relies on Western-aligned LLM seats (Codex, AGY) and dismisses the specific regional scam vector identified in the study.

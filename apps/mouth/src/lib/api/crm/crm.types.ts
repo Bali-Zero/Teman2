@@ -397,6 +397,19 @@ export interface ClientDocument {
   alert_color?: "green" | "yellow" | "red" | "expired";
   created_at?: string;
   updated_at?: string;
+  /**
+   * Set when the CLIENT removed the document from their portal vault
+   * (soft delete, restorable by them for 30 days; the file stays in Drive).
+   *
+   * Distinct from `is_archived`, which is the team-side archive and is
+   * already excluded from this list server-side. Until 2026-09-11 this field
+   * was not returned at all, so a removed document appeared in the team's
+   * list with `status: "received"` and `alert_color: "green"` — identical to
+   * a live one, with no field distinguishing them (portal audit F-02).
+   */
+  deleted_at?: string | null;
+  /** 'client' for a portal upload, 'team' for a CRM one. */
+  uploaded_source?: "client" | "team" | string;
 }
 
 export interface DocumentCreate {
@@ -1004,6 +1017,23 @@ export interface SearchFilters {
 }
 
 // Portal Messages (team ↔ client bridge)
+/**
+ * Whether a client can reach my.balizero.com yet, and if not, whether an
+ * invitation is already in flight. Returned by
+ * GET /api/crm/portal/clients/{id}/status.
+ * Backend: apps/backend-rag/backend/app/routers/crm_portal_integration.py
+ * (PortalStatusResponse). The three states are mutually exclusive:
+ * portal access granted, invite pending, or neither.
+ */
+export interface PortalAccessStatus {
+  has_portal_access: boolean;
+  portal_user_id: number | null;
+  portal_email: string | null;
+  last_login: string | null;
+  pending_invite: boolean;
+  invite_expires_at: string | null;
+}
+
 export interface PortalMessageThread {
   id: number;
   subject?: string;

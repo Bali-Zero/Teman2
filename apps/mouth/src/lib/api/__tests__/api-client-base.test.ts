@@ -816,7 +816,14 @@ describe("ApiClientBase", () => {
       );
     });
 
-    it("should log 401 redirect warning", async () => {
+    // This pair replaces a single "should log 401 redirect warning" test that
+    // asserted logger.warn("Token expired...") on a client with NO session --
+    // `safeStorage.getItem` returns null for every key in this file's
+    // beforeEach, so there was neither a token nor a cached profile. It was
+    // pinning the defect: telling a visitor who never logged in that their
+    // token expired, at a level that forwards to Sentry. The warn path is not
+    // dropped -- it is given the session it was always meant to describe.
+    it("logs 401 at debug when no session ever existed", async () => {
       vi.mocked(global.fetch).mockResolvedValue({
         ok: false,
         status: 401,
@@ -825,6 +832,38 @@ describe("ApiClientBase", () => {
       } as Response);
 
       await expect(client.request("/test")).rejects.toThrow();
+
+      expect(logger.debug).toHaveBeenCalledWith(
+        expect.stringContaining("Unauthenticated visitor"),
+        expect.any(Object),
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("still logs 401 at warn when a real session expired", async () => {
+      // Key-aware: getToken() reads "auth_token", the constructor reads
+      // "user_profile". Auth is cookie-PRIMARY, so a live session with no
+      // local token is normal -- the cached profile is what proves it existed.
+      vi.mocked(safeStorage.getItem).mockImplementation((key: string) =>
+        key === "user_profile"
+          ? JSON.stringify({
+              id: "1",
+              email: "someone@balizero.com",
+              name: "Someone",
+              role: "user",
+            })
+          : null,
+      );
+      const authed = new ApiClientBase(baseUrl);
+
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+        status: 401,
+        headers: new Headers(),
+        json: async () => ({ detail: "Unauthorized" }),
+      } as Response);
+
+      await expect(authed.request("/test")).rejects.toThrow();
 
       expect(logger.warn).toHaveBeenCalledWith(
         expect.stringContaining("Token expired"),

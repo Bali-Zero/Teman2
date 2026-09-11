@@ -1,0 +1,97 @@
+task_id: pack-lint-seat-rules-0826
+gear: 3
+gate_class: opus
+objective: |
+  Implement enforcer E3 (seat rules by path class) in `scripts/evidence_pack_lint.py`, per
+  `2026-08-26-PIANO-SPEC-receptor-live.md` §8. Two of the four spec'd rules land in this PR:
+
+  - R8 (ground_truth lane): a diff touching a ground-truth path (backend KB, visa_engine,
+    a KBLI dataset file, an official pricing table, research/regulatory, or a mouth
+    claim page) must declare a well-formed `{role: ground_truth, seat, nb, query_hash}`
+    lane, or the pack is rejected.
+  - R10 (pii_local seat): a diff touching a PII-bearing path (intake, CRM, CRM-guardian,
+    the WhatsApp channel, or the yield-optimizer pitch gate) must have every LLM seat in
+    its `lanes:` start with `ollama-`, unless the pack also declares `cloud_ok: <DPA ref>`
+    AND `pii_scan: clean`.
+
+  Both rules are phased: NOTICE (rc=0, stderr warning) before 2026-09-02
+  (`SEAT_RULES_ENFORCEMENT_DATE`), hard FAIL (rc=1) on/after, with a per-pack
+  `seat_override: <reason>` escape that always downgrades a hit to a reported NOTICE
+  rather than a violation, at any date.
+
+  Gear 3 by SCOPE, not by the deterministic floor (which is 1 for the three changed
+  files — none is HOTZONE by path): this PR changes a CI-enforced anti-Goodhart gate
+  that every future Gear-3 PR touching a ground-truth or PII path will be judged
+  against, and it is registered in `infra/guard-conformance/registry.json` — a wrong
+  glob here either lets a real ground-truth/PII diff through unguarded (under-match) or
+  clobbers innocent PRs repo-wide (over-match, cicatrix family #3). The evidence below
+  is sized to that blast radius, not to the line count.
+constraints:
+  - "R9 (council_run on gear:3) and R11 (cheap-seat floor on mechanical-only diffs) are
+    OUT OF SCOPE for this PR. The full 4-rule implementation measured 958 net lines
+    against origin/main — over the Agent PR Contract's 'aim ~400 net lines' target. The
+    mandate named the exact fallback for this case ('if the diff passes 400 split
+    ground_truth+PII from seat_floor+council into two PRs'); R9/R11 land in a follow-up
+    PR (PR-B) once this one merges, reusing the shared `_seat_rule_verdict` /
+    `SEAT_RULES_ENFORCEMENT_DATE` plumbing this PR introduces rather than re-deriving it."
+  - "No change to `compute_floor`, `compute_ceiling`, or the `--print-floor` CLI — a
+    parallel lane (L13-floor-size-term) owns that surface concurrently. This PR's new
+    code is appended as new functions after `check_lanes_build_seat_diversity`, with a
+    single new call site inside `lint()`."
+  - '`VALID_LANE_ROLES` is extended with `"ground_truth"` (was `("build", "review",
+    "read")`) so an R8 lane doesn''t trip D3''s own role-enum check. `ground_truth` lanes
+    are never counted toward D3''s build-lane seat-diversity math.'
+  - "New tests are appended to the EXISTING `scripts/tests/test_evidence_pack_lint.py`,
+    not a new `test_evidence_pack_lint_seat_rules.py` file as originally suggested — see
+    dissent entry in pack.yml for the verified reason (a second registry surface pointing
+    at the same source file would double-census it in `check_guard_conformance.py`)."
+acceptance:
+  - "check_ground_truth_lane and check_pii_local_seat each have parametrized guilt AND
+    innocence pytest coverage (real repo paths, not synthetic strings) plus a
+    pre-flip/post-flip NOTICE-vs-FAIL date-freeze test, per the mandate's red-first
+    discipline."
+  - "infra/guard-conformance/check_guard_conformance.py passes with 0 violations — both
+    new check_* functions are censused with guilt+innocence test-name references that
+    resolve as real `def`s in the declared test_file (no phantom references, C3)."
+  - "All pre-existing evidence packs under evidence/ still lint rc=0 under the NEW lint
+    (NOTICE lines allowed, no new hard failures) — the day-0 measurement is recorded in
+    receipts below and quoted in the PR body."
+  - "A mutation of the shared trigger helper (`_any_path_matches` -> `return False`)
+    turns every R8/R10 guilt test red, proving the guilt tests exercise real trigger
+    logic and not a vacuously-true assertion."
+consumer_map:
+  - "`scripts/evidence_pack_lint.py` — two new check_* functions, one new call site in
+    `lint()`, `VALID_LANE_ROLES` extended, module docstring section 9 updated."
+  - "`scripts/tests/test_evidence_pack_lint.py` — sole guilt+innocence corpus for both
+    new checks (also the corpus the guard-conformance registry resolves test names
+    against for the `evidence_pack_lint` surface)."
+  - "`infra/guard-conformance/registry.json` — two new `guards` entries under
+    `surfaces.evidence_pack_lint`, keeping census parity with the two new check_* defs."
+  - "Every future Gear>=1 pack under `evidence/**/pack.yml` that touches a ground-truth
+    or PII path — this rule now grades it, in NOTICE mode until 2026-09-02."
+risks:
+  - "Path-glob over/under-match (cicatrix family #3) — `fnmatch.fnmatchcase` in this
+    module treats `*` as matching `/` too, so `*/visa_engine/*` also matches
+    `apps/backend-rag/backend/tests/services/visa_engine/...` (test files, not just
+    engine logic). This is the literal glob shape the spec named; flagged here rather
+    than silently narrowed, for the refuter round to weigh in on."
+  - "NOTICE-mode means neither rule can actually block a bad PR before 2026-09-02 — by
+    design (a grace window for existing lanes to adapt), but it means this PR's own
+    day-0 measurement is the only signal anyone gets before the flip date unless someone
+    reads stderr."
+  - "`seat_override: <reason>` is a per-PACK escape with no length/content validation
+    beyond non-blank — a one-word override defeats both rules identically to a detailed
+    one. Same shape as the pre-existing D3 override pattern in this file; not a new
+    weakness this PR introduces."
+grader: |
+  Independent verification by this session (generator == author here — the mandate is
+  an implementer-lane dispatch, not a review dispatch; the adversarial gate is the
+  mandatory post-PR Codex/Kimi refuter round recorded in pack.yml's dissent, not this
+  brief). Re-ran the full guilt+innocence suite, guard-conformance, selftest, ruff, and
+  a live mutation-test proof against the shared trigger helper, all in this session.
+budget: |
+  1 implementer lane (this session, worktree-isolated), 2 rules of 4 (PR-B follows for
+  the remaining 2), 1 mandatory post-open cross-family refuter round (Codex gpt-5.6-sol,
+  fallback Kimi K3).
+pii: none — this PR touches only the CI-gate script, its test corpus, and the
+  guard-conformance registry; no client data anywhere in the diff.

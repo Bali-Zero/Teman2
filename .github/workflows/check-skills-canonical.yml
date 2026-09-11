@@ -1,0 +1,56 @@
+# Guards the `.claude/skills/` <-> `.agents/skills/` contract established
+# 2026-07-23 (skill-unification lane, PR #3019, see `.agents/skills/README.md`):
+# a shared skill's `.claude/skills/<name>` must stay a SYMLINK into the
+# canonical `.agents/skills/<name>`, and a Claude-Code-specific
+# ("Tier-B") skill must never be mirrored into `.agents/skills/` — that
+# mirror would make Kimi/Codex/Gemini CLIs, which treat `.agents/skills/`
+# as tool-agnostic ground truth, read Claude-Code-only orchestration prose
+# as if it were shared doctrine.
+#
+# scripts/tests/test_skills_canonical.py holds the rule and its
+# guilt/innocence corpus. NON-REQUIRED by design (same posture as
+# check-cicatrix-scar-pointers.yml / check-kbli-dataset-sync.yml): a
+# brand-new signal observes for a review cycle before it can block;
+# promoting to a required branch-protection check is a separate, later,
+# operator-only action (repo/branch-protection settings, CLAUDE.md §13).
+#
+# Path-scoped: only runs when either skills tree or this guard's own
+# script/workflow changes.
+name: check-skills-canonical
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - ".claude/skills/**"
+      - ".agents/skills/**"
+      - "scripts/tests/test_skills_canonical.py"
+      - ".github/workflows/check-skills-canonical.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-skills-canonical-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-skills-canonical:
+    name: check-skills-canonical
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: Skills stay canonical (guilt AND innocence)
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_skills_canonical.py -v

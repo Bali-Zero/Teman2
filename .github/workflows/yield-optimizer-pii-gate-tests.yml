@@ -23,7 +23,6 @@ on:
       - "scripts/yield_optimizer_pitch_gate.py"
       - "scripts/tests/test_yield_optimizer_pitch_gate.py"
       - ".github/workflows/yield-optimizer-pii-gate-tests.yml"
-  merge_group:
   push:
     branches:
       - main

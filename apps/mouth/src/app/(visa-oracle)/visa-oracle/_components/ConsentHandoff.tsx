@@ -13,6 +13,7 @@ import {
   createLocalConsentReceipt,
   loadLocalConsentReceipt,
   saveLocalConsentReceipt,
+  sameConsentScope,
   type LocalConsentReceipt,
   type ConsentScope,
 } from "../_lib/consent-store";
@@ -24,11 +25,8 @@ const systemReceiptId = () => crypto.randomUUID();
 
 type HandoffLanguage = "en" | "id";
 
-export interface ConsentHandoffProps {
+interface SharedHandoffProps {
   language: HandoffLanguage;
-  state: VisaOracleTelemetryState;
-  /** Engine-generated opaque reference only; never facts or candidate copy. */
-  assessmentReference?: string | null;
   guardianConsentRequired?: boolean;
   whatsappNumber?: string;
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -36,11 +34,25 @@ export interface ConsentHandoffProps {
   createReceiptId?: () => string;
 }
 
+export type ConsentHandoffProps = SharedHandoffProps &
+  (
+    | { context: "CONSULTATION"; state?: never; assessmentReference?: never }
+    | {
+        /** Omitted by existing result callers. */
+        context?: "ASSESSMENT";
+        state: VisaOracleTelemetryState;
+        /** Engine-generated opaque reference only; never facts or candidate copy. */
+        assessmentReference?: string | null;
+      }
+  );
+
 const COPY = {
   en: {
     title: "Continue with Bali Zero",
     consent:
       "I consent to open WhatsApp with a minimal Visa Oracle receipt. My interview answers are not included.",
+    consultationConsent:
+      "I consent to open WhatsApp to speak with a Bali Zero consultant. My interview answers are not included.",
     guardian:
       "I confirm that I am the parent or legal guardian and consent to this handoff for the minor.",
     guardianFirst:
@@ -50,8 +62,11 @@ const COPY = {
     open: "Open WhatsApp",
     unavailable:
       "WhatsApp handoff is not configured. You can still print or save this result.",
+    consultationUnavailable: "WhatsApp contact is not configured.",
     qr: "QR code for the consented WhatsApp handoff",
     message: "Hello Bali Zero. I consent to discuss my Visa Oracle result.",
+    consultationMessage:
+      "Hello Bali Zero. I would like to speak with a consultant about Visa Oracle.",
     state: "Result state",
     reference: "Assessment reference",
     privacy: "No interview answers are included in this message.",
@@ -60,6 +75,8 @@ const COPY = {
     title: "Lanjutkan dengan Bali Zero",
     consent:
       "Saya setuju membuka WhatsApp dengan tanda terima Visa Oracle yang minimal. Jawaban wawancara saya tidak disertakan.",
+    consultationConsent:
+      "Saya setuju membuka WhatsApp untuk berbicara dengan konsultan Bali Zero. Jawaban wawancara saya tidak disertakan.",
     guardian:
       "Saya mengonfirmasi bahwa saya adalah orang tua atau wali sah dan menyetujui handoff ini untuk anak.",
     guardianFirst:
@@ -69,8 +86,11 @@ const COPY = {
     open: "Buka WhatsApp",
     unavailable:
       "Pengalihan WhatsApp belum dikonfigurasi. Anda tetap dapat mencetak atau menyimpan hasil ini.",
+    consultationUnavailable: "Kontak WhatsApp belum dikonfigurasi.",
     qr: "Kode QR untuk pengalihan WhatsApp yang telah disetujui",
     message: "Halo Bali Zero. Saya setuju membahas hasil Visa Oracle saya.",
+    consultationMessage:
+      "Halo Bali Zero. Saya ingin berbicara dengan konsultan tentang Visa Oracle.",
     state: "Status hasil",
     reference: "Referensi asesmen",
     privacy: "Pesan ini tidak menyertakan jawaban wawancara.",
@@ -93,15 +113,17 @@ function validatedAssessmentReference(
 
 function buildMinimalMessage(
   language: HandoffLanguage,
-  state: VisaOracleTelemetryState,
-  assessmentReference: string | null | undefined,
+  scope: ConsentScope,
 ): string {
   const copy = COPY[language];
+  if (scope.context === "CONSULTATION") {
+    return `${copy.consultationMessage}\n${copy.privacy}`;
+  }
   return [
     copy.message,
-    `${copy.state}: ${state}`,
-    assessmentReference
-      ? `${copy.reference}: ${assessmentReference}`
+    `${copy.state}: ${scope.state}`,
+    scope.assessmentReference
+      ? `${copy.reference}: ${scope.assessmentReference}`
       : undefined,
     copy.privacy,
   ]
@@ -146,6 +168,7 @@ function ConsentQr({ value, label }: { value: string; label: string }) {
 
 export function ConsentHandoff({
   language,
+  context,
   state,
   assessmentReference,
   guardianConsentRequired = false,
@@ -160,14 +183,18 @@ export function ConsentHandoff({
   const copy = COPY[language];
   const publicReference = validatedAssessmentReference(assessmentReference);
   const scope = useMemo<ConsentScope>(
-    () => ({ state, assessmentReference: publicReference }),
-    [publicReference, state],
+    () =>
+      context === "CONSULTATION"
+        ? { context: "CONSULTATION" }
+        : {
+            context: "ASSESSMENT",
+            state,
+            assessmentReference: publicReference,
+          },
+    [context, publicReference, state],
   );
   const activeReceipt =
-    receipt?.scope.state === scope.state &&
-    receipt.scope.assessmentReference === scope.assessmentReference
-      ? receipt
-      : null;
+    receipt && sameConsentScope(receipt.scope, scope) ? receipt : null;
 
   useEffect(() => {
     if (guardianConsentRequired) {
@@ -227,8 +254,8 @@ export function ConsentHandoff({
   }, [activeReceipt, now, scope, storage]);
 
   const message = useMemo(
-    () => buildMinimalMessage(language, state, publicReference),
-    [language, publicReference, state],
+    () => buildMinimalMessage(language, scope),
+    [language, scope],
   );
   const whatsappUrl =
     number && activeReceipt
@@ -255,7 +282,7 @@ export function ConsentHandoff({
       .then((correlationHash) => {
         emitVisaOracleTelemetry({
           event: "visa_oracle_v2_consent_granted",
-          state,
+          ...(scope.context === "ASSESSMENT" ? { state: scope.state } : {}),
           correlationHash,
         });
       })
@@ -270,7 +297,7 @@ export function ConsentHandoff({
       .then((correlationHash) => {
         emitVisaOracleTelemetry({
           event: "visa_oracle_v2_handoff_opened",
-          state,
+          ...(scope.context === "ASSESSMENT" ? { state: scope.state } : {}),
           correlationHash,
         });
       })
@@ -289,7 +316,9 @@ export function ConsentHandoff({
           role="status"
           style={{ margin: 0, color: "var(--oracle-ink-muted)" }}
         >
-          {copy.unavailable}
+          {scope.context === "CONSULTATION"
+            ? copy.consultationUnavailable
+            : copy.unavailable}
         </p>
       ) : (
         <>
@@ -318,7 +347,9 @@ export function ConsentHandoff({
               onChange={(event) => setGranted(event.currentTarget.checked)}
               aria-describedby="oracle-handoff-receipt-note"
             />
-            {copy.consent}
+            {scope.context === "CONSULTATION"
+              ? copy.consultationConsent
+              : copy.consent}
           </label>
           <p
             id="oracle-handoff-receipt-note"

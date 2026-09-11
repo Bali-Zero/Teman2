@@ -56,6 +56,19 @@ read (`is_subagent_context`, right below `GATED_TOOLS`):
 A main-session transcript with zero dispatches past the threshold keeps
 blocking exactly as before — this exemption is scoped to the two markers
 above, never to "transcript looks quiet."
+
+DELEGATION COUNTS TOO (2026-09-07, W2 hook-canon repair, defect 2). A session
+that delegates to an ALREADY-LIVE agent via `SendMessage` — no new seat, the
+correct move when a peer already exists — was penalised exactly like a
+session that delegates nothing: the counter only recognised NEW dispatches.
+Measured 2026-09-07: three real `SendMessage` delegations to a live agent,
+zero counted, hard-blocked anyway. `SendMessage` is now a DISPATCH_TOOLS
+member for the same reason `Agent` is: it is positive evidence that the
+session is orchestrating rather than doing everything itself. Known
+coarseness, inherited from the pre-existing `Agent` detector and not newly
+introduced here: neither this nor the `Agent` check verifies the delegation
+carried real work — both are "some qualifying tool fired," not a quality
+judgment.
 """
 import json
 import os
@@ -71,18 +84,27 @@ try:
 except Exception:
     def is_plan_phase(payload):
         return False
+try:
+    from gate_coverage import record as _gc_record
+except Exception:
+    def _gc_record(hook_name, decision, payload=None):
+        pass
 
 HARD_BLOCK_THRESHOLD = 800
 RECENT_LINES = 300
 
-# Tool names that mean "a subagent was dispatched". `Agent` is the CURRENT
-# harness tool; `Task`/`TaskCreate` are its predecessors, kept so an older
+# Tool names that count as "this session is orchestrating, not doing
+# everything itself". `Agent` is the CURRENT harness tool for spawning a NEW
+# subagent; `Task`/`TaskCreate` are its predecessors, kept so an older
 # transcript still reads correctly. Measured 2026-08-12 on live M5 transcripts:
 # the quoted forms of Task/TaskCreate score ZERO occurrences ever, while
 # `"name":"Agent"` is what a real dispatch actually writes — this gate spent
 # an unknown stretch of its life with 4 of its 5 keywords pointing at a
-# vocabulary the harness had stopped emitting.
-DISPATCH_TOOLS = ("Agent", "Task", "TaskCreate")
+# vocabulary the harness had stopped emitting. `SendMessage` (2026-09-07,
+# defect 2 of the W2 hook-canon repair) is DELEGATION rather than a new
+# spawn — reusing a live agent instead of spawning a redundant one — and must
+# count identically; see the module docstring's DELEGATION COUNTS TOO note.
+DISPATCH_TOOLS = ("Agent", "Task", "TaskCreate", "SendMessage")
 # JSON spacing is not ours to assume: match `"name":"Agent"` and `"name": "Agent"`.
 DISPATCH_TOOL_RE = re.compile(
     r'"(?:name|tool_name)"\s*:\s*"(?:%s)"' % "|".join(DISPATCH_TOOLS)
@@ -238,12 +260,21 @@ def main():
 
     try:
         payload = json.load(sys.stdin)
-        if is_plan_phase(payload): sys.exit(0)  # phase-aware: relax in plan-mode
+        if not isinstance(payload, dict):
+            # Bug fixed 2026-08-27: same non-dict-JSON crash class model_routing_gate.py
+            # already guarded 2026-08-22 (payload.get() on null/42/[]/a string raises).
+            _gc_record("orchestrate_gate", "exempt", None)
+            sys.exit(0)
+        if is_plan_phase(payload):
+            _gc_record("orchestrate_gate", "exempt", payload)  # phase-aware: relax in plan-mode
+            sys.exit(0)
     except Exception:
+        _gc_record("orchestrate_gate", "exempt", None)
         sys.exit(0)
 
     tool_name = payload.get("tool_name") or payload.get("name") or ""
     if tool_name not in GATED_TOOLS:
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)
 
     if is_subagent_context(payload):
@@ -253,11 +284,13 @@ def main():
             "no Agent tool of its own, so it cannot satisfy 'zero dispatch in "
             f"last {RECENT_LINES} lines' by legitimate means. Not blocking.\n"
         )
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)
 
     transcript_path = payload.get("transcript_path", "")
     full_text = _read_transcript(transcript_path)
     if full_text is None:
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)  # cannot-verify: no transcript to read, no claim to make
 
     verdict = evaluate_transcript(full_text)
@@ -271,25 +304,32 @@ def main():
                 "the gate's detector needs re-measuring against a live transcript.",
                 file=sys.stderr,
             )
+            _gc_record("orchestrate_gate", "exempt", payload)
             sys.exit(0)
         if not verdict["would_block"]:
+            _gc_record("orchestrate_gate", "allow", payload)
             sys.exit(0)
         msg = (
             f"\n[ORCHESTRATE-GATE] Session {verdict['total_lines']} lines, zero subagent "
             f"dispatch in last {RECENT_LINES} lines. Direct {tool_name} BLOCKED.\n"
             f"Choose: (a) Agent(subagent_type=Explore|backend-verifier|frontend-browser|"
-            f"nb-curator|mcp-health|spalla-review|general-purpose, model=\"sonnet\", ...) "
+            f"nb-curator|mcp-health|spalla-review|general-purpose, model=\"sonnet\", ...), "
+            f"or SendMessage to an already-live agent if one exists (reusing it counts too), "
             f"or (b) `export ORCHESTRATE_GATE_OFF=1` if intentional direct work.\n"
         )
         print(msg, file=sys.stderr)
+        _gc_record("orchestrate_gate", "deny", payload)
         sys.exit(2)
 
     # DISARMED — never blocks. Say so, once per session, with the real verdict.
     if not verdict["recognizable"]:
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)  # cannot-verify: unrecognized shape, no would-block claim to make
     if _already_notified_disarm(transcript_path):
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)
     _emit_disarm_notice(build_disarm_notice(tool_name, verdict))
+    _gc_record("orchestrate_gate", "exempt", payload)
     sys.exit(0)
 
 

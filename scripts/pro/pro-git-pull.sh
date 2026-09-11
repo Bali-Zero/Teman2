@@ -47,8 +47,12 @@
 # untracked file (verified), so detection is per-incoming-path ("exists on disk ∧ not
 # tracked", or "tracked ∧ locally modified"), never the `--exclude-standard` lens.
 #
-# EXECUTION LOCATION: run from ~/nuzantara-deploy (kept current by the deploy-puller),
-# NOT from ~/nuzantara — a puller must not live in the tree it rewrites (self-mod).
+# EXECUTION LOCATION: ~/nuzantara — the tree it also pulls. ONE TREE (2026-09-10): the old
+# rule ("run from ~/nuzantara-deploy, a puller must not live in the tree it rewrites") is void
+# because the hazard was not real. MEASURED that day: git replaces a worktree file by
+# unlink+create, so a bash process already executing this script keeps its fd on the OLD inode
+# and runs the original to completion — a scratch-repo `git checkout` that swapped a running
+# script for entirely different content mid-run still finished the original and exited 0.
 # TARGET is $HOME/nuzantara; only origin/main (Pro pushes straight to GitHub).
 #
 # FAIL-SAFE INVARIANT: every error path leaves the repo untouched or recoverable and
@@ -70,6 +74,7 @@ LOG_FILE="${PRO_GIT_PULL_LOG:-$HOME/logs/pro-git-pull.log}"
 LOCK_DIR="${PRO_GIT_PULL_LOCK:-/tmp/pro-git-pull.lock.d}"
 BACKUP_ROOT="${PRO_GIT_PULL_BACKUP_ROOT:-$HOME/.git-pull-collision-backup}"
 LOCK_STALE_SECONDS=1800
+INDEX_LOCK_STALE_SECONDS="${PRO_GIT_PULL_INDEX_LOCK_STALE_SECONDS:-1800}"
 
 # Pro-authoritative runtime-state files — the SAME SSOT the worktree_isolation hook reads
 # (infra/claude-hooks/runtime_state_allowlist.json). On a collision these are kept LOCAL,
@@ -77,9 +82,13 @@ LOCK_STALE_SECONDS=1800
 # version is Pro's OWN older promoted snapshot. Resetting published_articles.json to it
 # would drop dedup history and re-publish already-published intel (run_intel_pipeline.py
 # loads it as the publish-history dedup set). Read from the SAME checkout the puller runs
-# from ($SELF_DIR/../..: the deploy checkout, version-matched to THIS script) rather than the
-# TARGET being pulled — else the FIRST pull that ships this correction would still see the
-# target's OLD allowlist and could origin-win the very file it protects (rollout lag).
+# from $SELF_DIR/../.. — the checkout this script itself lives in, so the allowlist is always
+# version-matched to THIS script. Under two trees that was a DIFFERENT tree from the target and
+# closed a rollout-lag hole: the first pull shipping a correction would otherwise read the
+# target's OLD allowlist and origin-win the very file it protects. ONE TREE (2026-09-10):
+# $SELF_DIR/../.. IS the target now, so that hole is open again for exactly one tick — the pull
+# that ships an allowlist change reads the pre-change allowlist. Named rather than hidden; it is
+# the price of one tree and it self-heals on the next tick.
 ALLOWLIST_FILE="${PRO_GIT_PULL_ALLOWLIST:-$SELF_DIR/../../infra/claude-hooks/runtime_state_allowlist.json}"
 KEEP_LOCAL_DIR=""        # backup/staging dir for kept-local files (set when first staged)
 KEEP_LOCAL_FILES=""      # newline list of repo-rel paths kept local (deferred checkout + restore)
@@ -134,18 +143,109 @@ for e in d.get("entries", []):
 PY
 }
 
+# File mtime in epoch seconds, portable across the two stats this repo's CI and its target
+# host actually run: GNU (`stat -c %Y`, ubuntu-latest, where the antidotes job executes the
+# suite) and BSD (`stat -f %m`, Pro/M5), with python3 — already a hard dep via tg_notify.py —
+# as the last resort. Prints NOTHING on total failure, deliberately: the caller must treat an
+# unknown mtime as "do not touch". A `|| echo $(date +%s)` fallback would be WORSE than an
+# error, because every lock would then measure 0s old and the steal would never fire — the
+# failure would be silent and indistinguishable from a healthy repo, which is exactly the
+# invisible-stall class this whole function exists to end.
+file_mtime() {
+  stat -c %Y "$1" 2>/dev/null \
+    || stat -f %m "$1" 2>/dev/null \
+    || python3 -c 'import os,sys;print(int(os.stat(sys.argv[1]).st_mtime))' "$1" 2>/dev/null
+}
+
+# A git process that crashes or is SIGKILLed mid-index-write leaves `.git/index.lock`
+# behind. Every later tick then dies inside an index-touching command — resolve_collisions'
+# `git checkout HEAD --`, or the ff itself — and git's generic "Another git process seems to
+# be running" text was logged under this script's "file/dir conflict" line, a misleading
+# message that hid the real cause for 20h / 77 ticks / 46 commits on 2026-09-10 (lock born
+# 00:00:17, zero bytes, no holder). Nothing self-heals it: an orphaned lock has no owner to
+# reap it, so the puller retries forever against a condition that never changes.
+#
+# Stealing a lock a LIVE git holds would corrupt that git's index write, so BOTH conditions
+# must hold before we touch it: (a) no process has the file open, and (b) it is older than
+# INDEX_LOCK_STALE_SECONDS (>= 2 puller ticks). Either alone is unsafe — the holder test
+# alone races a git that has not opened the lock yet in this instant, and age alone would
+# kill a genuinely long-running `git checkout`. If lsof is unavailable the holder test
+# cannot be MADE, so we do not steal: config/tooling gaps must fail toward "don't touch",
+# never toward "clobber" (the same rule _runtime_state_paths follows for a corrupt
+# allowlist). The lock is copied to the backup root before removal — a non-empty index.lock
+# can carry a partially-written index — so this deletes nothing unrecoverably.
+#
+# Returns 0 = safe to proceed, 1 = caller must skip this tick (everything left untouched).
+clear_stale_git_index_lock() {
+  local lock now mtime age holder ts dest
+  lock="$(git rev-parse --git-path index.lock 2>/dev/null)"
+  [ -n "$lock" ] || lock=".git/index.lock"
+  [ -e "$lock" ] || return 0
+
+  now=$(date +%s)
+  mtime="$(file_mtime "$lock")"
+  if [ -z "$mtime" ]; then
+    log "  ERROR: cannot read index.lock mtime (no usable stat/python3) — skip tick (fail-safe)"
+    return 1
+  fi
+  age=$(( now - mtime ))
+  if [ "$age" -le "$INDEX_LOCK_STALE_SECONDS" ]; then
+    log "index.lock present, only ${age}s old — a live git may hold it; skip tick"
+    return 1
+  fi
+
+  if ! command -v lsof >/dev/null 2>&1; then
+    log "  ERROR: index.lock is ${age}s old but lsof is unavailable — cannot prove it unheld; skip tick (fail-safe)"
+    telegram_alert "index-lock-no-lsof" \
+      "Pro pull: stale .git/index.lock (${age}s old) but lsof is missing, so the no-holder test cannot run and it was NOT stolen. Sync stays stalled until an operator clears it."
+    return 1
+  fi
+  holder="$(lsof -t "$lock" 2>/dev/null)"
+  if [ -n "$holder" ]; then
+    log "index.lock is ${age}s old but PID(s) '$holder' still hold it — not stealing; skip tick"
+    return 1
+  fi
+
+  ts="$(date '+%Y%m%d-%H%M%S')-$$"
+  dest="$BACKUP_ROOT/stale-index-lock-$ts"
+  mkdir -p "$dest" 2>>"$LOG_FILE" || { log "  ERROR: mkdir $dest for index.lock backup"; return 1; }
+  cp -p "$lock" "$dest/index.lock" 2>>"$LOG_FILE" || { log "  ERROR: index.lock backup cp failed — not stealing (fail-safe)"; return 1; }
+  rm -f "$lock" 2>>"$LOG_FILE" || { log "  ERROR: index.lock removal failed"; return 1; }
+  log "Stole stale .git/index.lock (age ${age}s, no holder) -> $dest/index.lock"
+  telegram_alert "index-lock-stale" \
+    "Pro pull: removed a stale .git/index.lock (${age}s old, no process holding it) that was blocking every sync tick. Backup: ${dest}. A git process crashed or was killed mid-index-write."
+  return 0
+}
+
 # Atomic single-instance lock via mkdir (POSIX-atomic). Steals a lock older than
 # LOCK_STALE_SECONDS (crash leftover). Returns 0 if acquired, 1 if a live peer holds it.
+#
+# The age is read through file_mtime() for the same reason clear_stale_git_index_lock does:
+# the old `stat -f %m ... || echo "$now"` was BSD-only, and its fallback did not fail, it
+# LIED. On GNU every held lock measured 0s, the steal branch never fired, and the function
+# returned 1 with no log line at all — the log file was not even created. A crash leftover
+# would have blocked the puller forever while looking like ordinary contention with a live
+# peer. That is the same invisible-stall class as W89's sibling rule: once the helper exists,
+# the sibling in the same file gets fixed, not ledgered.
+#
+# An unreadable mtime now DECLINES and says so. Refusing to steal is the safe half — the
+# worst case is a skipped tick that retries in 15 minutes — but refusing SILENTLY is not,
+# because a permanent stall and a busy peer then look identical from the outside.
 acquire_lock() {
   if mkdir "$LOCK_DIR" 2>/dev/null; then echo $$ > "$LOCK_DIR/pid" 2>/dev/null; return 0; fi
   local now mtime age
   now=$(date +%s)
-  mtime=$(stat -f %m "$LOCK_DIR" 2>/dev/null || echo "$now")
+  mtime="$(file_mtime "$LOCK_DIR")"
+  if [ -z "$mtime" ]; then
+    log "Lock dir held but its mtime is unreadable (no usable stat/python3) — declining to steal, skip tick"
+    return 1
+  fi
   age=$(( now - mtime ))
   if [ "$age" -gt "$LOCK_STALE_SECONDS" ]; then
     log "Stale lock ${age}s old, stealing"
     rm -rf "$LOCK_DIR"
     if mkdir "$LOCK_DIR" 2>/dev/null; then echo $$ > "$LOCK_DIR/pid" 2>/dev/null; return 0; fi
+    log "  ERROR: could not recreate the lock dir after clearing a stale one — skip tick"
   fi
   return 1
 }
@@ -302,10 +402,18 @@ trap 'exit 130' INT
 trap 'exit 129' HUP
 
 cd "$REPO" 2>/dev/null || { log "FATAL: $REPO not found"; exit 1; }
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-/usr/bin:/bin}"
+# /usr/sbin is on this PATH for lsof (clear_stale_git_index_lock's holder test); launchd
+# hands this job a minimal PATH, and without lsof that test fails closed and stalls sync.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:${PATH:-/usr/bin:/bin}"
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 if [ "$BRANCH" != "main" ]; then log "On branch '$BRANCH' (not main), skip"; exit 0; fi
+
+# Before ANY index-touching command (resolve_collisions' checkout, the ff): an orphaned
+# index.lock makes every one of them fail. exit 0, not 1 — a lock a live git legitimately
+# holds is transient and retries next tick, and the pathological cases (stale-but-unverifiable)
+# have already raised their own alert. This mirrors the fetch-failed path's convention.
+clear_stale_git_index_lock || exit 0
 
 if ! git fetch --quiet origin main 2>>"$LOG_FILE"; then
   log "git fetch origin failed (network?), skip"

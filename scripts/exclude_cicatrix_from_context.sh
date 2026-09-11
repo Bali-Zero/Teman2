@@ -26,8 +26,8 @@ with open(p) as f:
     s = json.load(f)  # raises (and aborts) if already corrupt — fail-safe
 
 want = [
-    "**/.claude/rules/cicatrix-scars-archive.md",
-    "**/.claude/rules/cicatrix-scars.md",
+    "**/docs/scars/cicatrix-scars-archive.md",
+    "**/docs/scars/cicatrix-scars.md",
 ]
 ex = s.setdefault("claudeMdExcludes", [])
 added = [w for w in want if w not in ex]

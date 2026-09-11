@@ -593,7 +593,7 @@ async def review_kimi(prompt: str) -> ReviewVerdict:
     (``compute_outcome``) treats a missing Kimi as a dead seat — never a red
     vote over a fixed denominator.
 
-    PII boundary (SYMBIOSIS Law 2): Kimi is a Chinese cloud — prompts must
+    PII (SYMBIOSIS Law 2, vendor-parity per Zero ruling 2026-08-24) — prompts must
     never carry client PII (KTP/passport/NPWP/akta/CRM rows). This leg only
     ever receives non-PII code diffs; keep it that way.
     """

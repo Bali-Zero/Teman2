@@ -1,0 +1,83 @@
+task_id: craft-h-l03-pr2-doctrine-citation-lint
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Make a citation that resolves to nothing a thing CI can see.
+
+  `.claude/skills/sota-architecture-loop/SKILL.md` cited
+  `research/operations/2026-05-30-sota-ai-architecture-methodology.md` and said
+  its three axioms were "verificate, vedi research file". That file has never
+  existed in this repository. A reader — human or agent — extends a cited claim
+  the trust it would extend to a real source, so a phantom citation is not a
+  broken link: it is borrowed credibility with nothing behind it.
+
+  The spec named that one. Measuring found three in live doctrine, and none of
+  the three has a substitute anywhere in the tree.
+constraints:
+  - "NEVER fabricate a plausible path to make the lint green. Where no real
+    source exists the citation is RETRACTED, and the text says so. A
+    substitute that merely resolves is the same defect with a working link."
+  - "Do not cite this lane's own spec or its source dossier as the replacement —
+    the cure citing the report that found the defect makes the lint's green
+    self-fulfilling."
+  - "A path inside a code block or a shell example is NOT a citation. This is
+    the spec's named innocence requirement, and it is also what lets the cured
+    file quote its own retracted path as a literal."
+  - "No PII. The diff touches doctrine text, a lint, and CI arming."
+acceptance:
+  - text: >-
+      WHEN a doctrine file cites a path that does not resolve, the lint SHALL
+      exit non-zero and name the file, the line, and the path.
+    probe: "python3 scripts/lint_doctrine_citations.py"
+  - text: >-
+      WHERE the pre-cure skill file is restored, the lint SHALL be red, and on
+      this branch it SHALL be green with no allowlist.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_lint_doctrine_citations.py -p no:cacheprovider"
+  - text: >-
+      IF a legitimate path appears in a fence, a shell example, a bare
+      directory, a template, or mid-way through a longer path, the lint SHALL
+      stay silent — a lint that reddens correct doctrine is one that gets
+      switched off.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_lint_doctrine_citations.py -p no:cacheprovider"
+  - text: >-
+      WHILE the lint is armed in CI, its job SHALL start on every file the lint
+      treats as a subject, and that relation SHALL be asserted rather than
+      maintained by hand.
+    probe: "actionlint .github/workflows/immune-enforcement.yml"
+consumer_map:
+  - "`scripts/lint_doctrine_citations.py` — NEW. Consumer: the `antidotes` job in
+    immune-enforcement.yml, which runs on every PR touching a doctrine subject."
+  - "`.claude/skills/sota-architecture-loop/SKILL.md`, `.claude/skills/skill-catalog/SKILL.md`,
+    `AUTONOMOUS_OPS.md` — the three cured files. Consumers: every session that
+    loads a skill or reads the autonomy contract."
+  - "`.github/workflows/immune-enforcement.yml` — path filter AND executor. The
+    filter now covers the lint's whole subject set, asserted by a symmetry test."
+risks:
+  - "The lint ships with NO allowlist, which is only possible because all three
+    findings were cured. That is stronger than a ratchet, and it is also more
+    brittle: a phantom in doctrine turns CI red immediately rather than being
+    recorded as debt. That is the intended trade — a citation that resolves to
+    nothing is not debt to schedule, it is a claim to withdraw."
+  - "The append-only `PENDING-ARMS.md` is excluded by name. Its rows citing
+    since-deleted files record what was true when written, and CI holds them
+    byte-immutable anyway — it accounted for 6 of the 6 remaining findings."
+  - "PR #5331 adds `CLAUDE.md` to the same workflow case list at a different
+    anchor. The two hunks merge without a textual conflict and produce a
+    duplicate pattern that actionlint reports as SC2221. Whoever merges second
+    de-dups one line; both the symmetry test and actionlint point at it."
+  - "Block detection is derived from how the two markdown dialects are written
+    here, not declared. A doctrine file adopting an exotic form (reference-style
+    links, HTML anchors) could carry a phantom the lint does not see. The
+    symmetry test guards the SUBJECT set, not the grammar."
+grader: |
+  generator != grader. The lint was built by kimi-for-coding (the non-Anthropic
+  lane, D3 by a real seat and never `seat_override`) and gated here, where four
+  defects were rejected before it ran on the corpus. Two cross-family council
+  seats — Codex GPT-5.6 sol at xhigh and Kimi K3 — then took the diff, each told
+  what had already been fixed so they hunted what was still wrong.
+budget: |
+  One Claude seat (M5, orchestrator + gate), one non-Anthropic build lane, two
+  cross-family refuters. Flat subscription only. Gear 3 by the deterministic
+  floor (the diff touches .github/workflows/) -> xhigh.
+pii: none

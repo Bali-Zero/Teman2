@@ -98,7 +98,7 @@ class UnifiedCoverageCollector:
                 # Longer timeout for large projects (30 minutes)
                 timeout = 1800.0 if component_name == "backend-rag" else 600.0
                 result = subprocess.run(
-                    ["pytest", "--cov=.", "--cov-report=json", "--cov-report=html", "-q"],
+                    ["pytest", "--cov=.", "--cov-report=json", "--cov-report=html"],
                     cwd=component_path,
                     capture_output=True,
                     text=True,

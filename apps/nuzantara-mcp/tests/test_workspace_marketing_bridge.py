@@ -28,15 +28,27 @@ from nuzantara_mcp.workspace_marketing_worker import (
 
 EXPECTED_TOOLS = {
     "workspace_health",
+    "intel_editorial_health",
     "newsroom_list_pending",
     "newsroom_get_article",
+    "newsroom_fact_gate",
+    "newsroom_update_article",
+    "newsroom_attach_cover",
+    "newsroom_publish",
+    "newsroom_verify_live",
     "wr2_list_review_queue",
     "wr2_get_review_item",
+    "wr2_get_delivery",
+    "wr2_request_rerender",
+    "wr2_rerender_status",
     "wr2_prepare_with_sol",
     "wr2_job_status",
     "flow_workspace_health",
+    "flow_get_media",
+    "flow_operation_status",
     "flow_generate_image",
     "flow_generate_video",
+    "flow_generate_video_from_prompt",
 }
 
 FORBIDDEN_TOOL_TERMS = {
@@ -44,7 +56,6 @@ FORBIDDEN_TOOL_TERMS = {
     "crm",
     "document",
     "admin",
-    "publish",
     "email",
     "whatsapp",
     "federation",
@@ -87,10 +98,57 @@ async def test_server_is_exact_fail_closed_allowlist() -> None:
 
     by_name = {tool.name: tool for tool in tools}
     assert by_name["workspace_health"].annotations.readOnlyHint is True
+    assert by_name["newsroom_fact_gate"].annotations.readOnlyHint is False
+    assert by_name["newsroom_publish"].annotations.readOnlyHint is False
+    assert by_name["newsroom_publish"].annotations.destructiveHint is True
+    assert by_name["newsroom_publish"].annotations.idempotentHint is True
+    assert by_name["newsroom_verify_live"].annotations.readOnlyHint is False
+    assert by_name["newsroom_verify_live"].annotations.destructiveHint is True
     assert by_name["wr2_prepare_with_sol"].annotations.readOnlyHint is False
     assert by_name["wr2_prepare_with_sol"].annotations.destructiveHint is True
+    assert by_name["wr2_request_rerender"].annotations.idempotentHint is True
+    assert by_name["wr2_get_delivery"].annotations.readOnlyHint is True
     assert by_name["flow_generate_video"].annotations.openWorldHint is True
+    assert by_name["flow_generate_video"].annotations.idempotentHint is True
+    assert by_name["flow_get_media"].annotations.readOnlyHint is True
+    assert by_name["flow_generate_video_from_prompt"].annotations.idempotentHint is True
+    assert {name for name in names if "publish" in name} == {"newsroom_publish"}
     assert mcp._mask_error_details is True
+
+
+def test_workspace_server_instructions_route_news_room_and_flow_correctly() -> None:
+    assert "Confirmed Flow image and video generation remain available" in mcp.instructions
+    assert "Flow is video-only" not in mcp.instructions
+
+
+def test_bridge_instructions_and_docstrings_make_publish_a_single_order() -> None:
+    text = mcp.instructions
+
+    assert "newsroom_list_pending" in text
+    assert "newsroom_publish" in text
+    assert "never preconditions" in text
+    assert "only after Damar explicitly requests it, the article is complete" not in text
+
+    tools, _ = _capture_tools(AsyncMock())
+
+    assert "Not required to publish" in tools["newsroom_update_article"].__doc__
+    assert "never blocks" in tools["newsroom_fact_gate"].__doc__
+    assert "His order is the decision" in tools["newsroom_publish"].__doc__
+
+
+def test_bridge_tells_the_agent_the_cover_size_the_chat_channel_can_carry() -> None:
+    # 2026-09-04: a PNG cover from native ImageGen was truncated by the chat
+    # channel and rejected; the retry as a 1200x630 JPEG (42 KB) went through.
+    text = mcp.instructions
+    tools, _ = _capture_tools(AsyncMock())
+    doc = tools["newsroom_attach_cover"].__doc__
+
+    assert "1200x630" in text
+    assert "300 KB" in text
+    assert "truncates" in text
+    assert "1200x630" in doc
+    assert "300 KB" in doc
+    assert "PNG covers must be converted" in doc
 
 
 def test_workspace_server_never_imports_full_server_or_admin_client() -> None:
@@ -104,6 +162,28 @@ def test_workspace_server_never_imports_full_server_or_admin_client() -> None:
     assert "nuzantara_mcp.tools.flowkit" not in marketing_source
     assert "nuzantara_mcp.server" not in flow_source
     assert "create_subprocess_shell" not in flow_source
+
+
+def test_public_sanitizer_removes_spaced_indonesian_identifiers() -> None:
+    raw_identifiers = "; ".join(
+        (
+            "NIK: " + "1234 5678 9012 3456",
+            "NPWP " + "12.345.678.9-012.345",
+            "passport " + "YA 123 4567",
+        )
+    )
+    cleaned = marketing._clean_text(raw_identifiers)
+
+    assert "1234 5678" not in cleaned
+    assert "12.345.678" not in cleaned
+    assert "YA 123 4567" not in cleaned
+    assert cleaned.count("[identifier removed]") == 3
+
+
+def test_flow_media_id_accepts_opaque_names_but_rejects_traversal() -> None:
+    assert marketing._validated_media_id("media/video-1") == "media/video-1"
+    with pytest.raises(ValueError, match="Invalid Flow media id"):
+        marketing._validated_media_id("media/../secret")
 
 
 @pytest.mark.asyncio
@@ -177,8 +257,173 @@ async def test_newsroom_projection_redacts_identifiers_and_raw_enrichment() -> N
     assert "123456789012345" not in json.dumps(article)
     assert "YA1234567" not in json.dumps(article)
     assert backend_call.await_args_list[0].kwargs["params"] == {
-        "limit": 25,
+        "limit": 50,
+        "offset": 0,
     }
+
+
+@pytest.mark.asyncio
+async def test_workspace_health_requires_live_v2_contract_and_write_arm(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    backend_call = AsyncMock(
+        return_value={
+            "contract": marketing.NEWSROOM_CONTRACT,
+            "ready": True,
+            "capabilities": {
+                name: "ready" for name in marketing.REQUIRED_NEWSROOM_CAPABILITIES
+            },
+        }
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["workspace_health"]()
+
+    assert result["ok"] is True
+    assert result["ready"] is True
+    assert result["backend_reachable"] is True
+    backend_call.assert_awaited_once_with("/api/workspace-marketing/capabilities")
+
+
+@pytest.mark.asyncio
+async def test_workspace_health_fails_closed_on_missing_capability(monkeypatch) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    backend_call = AsyncMock(
+        return_value={
+            "contract": marketing.NEWSROOM_CONTRACT,
+            "ready": True,
+            "capabilities": {"list_pending": "ready"},
+        }
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["workspace_health"]()
+
+    assert result["ok"] is False
+    assert result["ready"] is False
+
+
+@pytest.mark.asyncio
+async def test_intel_health_triggers_plan_b_on_zero_enrichment(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    pipeline_dir = tmp_path / "pipeline"
+    pipeline_dir.mkdir()
+    (pipeline_dir / "run_20260827_010004.json").write_text(
+        json.dumps(
+            {
+                "status": "completed",
+                "started_at": "2026-08-27T01:00:04+00:00",
+                "completed_at": "2026-08-27T01:20:00+00:00",
+                "steps": {
+                    "1_scraping": {"data": {"articles": 204}},
+                    "3_enrichment": {"data": {"selected": 15, "enriched": 0}},
+                    "7_publishing": {"data": {"submitted": 0}},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("INTEL_PIPELINE_DIR", str(pipeline_dir))
+    backend_call = AsyncMock(
+        return_value={
+            "total": 17,
+            "latest_item_at": "2026-08-23T00:00:00+00:00",
+        }
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["intel_editorial_health"]()
+
+    assert result["ok"] is False
+    assert result["candidates_found"] == 204
+    assert result["selected_for_enrichment"] == 15
+    assert result["enriched"] == 0
+    assert result["submitted_to_news_room"] == 0
+    assert result["plan_b_required"] is True
+
+
+@pytest.mark.asyncio
+async def test_fact_gate_uses_mapped_notebook_and_independent_reviewer(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    backend_call = AsyncMock(
+        return_value={
+            "item_id": "news_123",
+            "title": "Verified public business update",
+            "category": "business",
+            "content": "A material public business claim with sufficient context.",
+            "source_url": "https://example.go.id/update",
+        }
+    )
+    query = AsyncMock(return_value="The notebook supports the material claim.")
+    reviewer = AsyncMock(
+        return_value={
+            "verdict": "PASS",
+            "notebooklm_verdict": "PASS",
+            "checked_claims": 3,
+            "findings": ["Material claims are supported."],
+        }
+    )
+    monkeypatch.setattr(marketing, "_query_notebooklm", query)
+    monkeypatch.setattr(marketing, "_run_independent_fact_reviewer", reviewer)
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_fact_gate"]("news_123")
+
+    assert result["ok"] is True
+    assert result["notebooklm_domain"] == "NB-3 Company"
+    assert "fingerprint" not in result
+    assert marketing._load_fact_gate("news_123")["fingerprint"]
+    query.assert_awaited_once()
+    reviewer.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_fact_gate_blocks_pass_with_zero_checked_claims(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    backend_call = AsyncMock(
+        return_value={
+            "item_id": "news_tech",
+            "title": "Public technology update",
+            "category": "tech",
+            "content": "A public technology claim that requires verification.",
+            "source_url": "https://example.go.id/tech",
+        }
+    )
+    monkeypatch.setattr(
+        marketing,
+        "_query_notebooklm",
+        AsyncMock(return_value="NB-7 returned editorial evidence."),
+    )
+    monkeypatch.setattr(
+        marketing,
+        "_run_independent_fact_reviewer",
+        AsyncMock(
+            return_value={
+                "verdict": "PASS",
+                "notebooklm_verdict": "PASS",
+                "checked_claims": 0,
+                "findings": [],
+            }
+        ),
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_fact_gate"]("news_tech")
+
+    assert result["ok"] is False
+    assert result["notebooklm_domain"] == "NB-7 Editorial"
+    assert result["findings"] == [
+        "Independent reviewer returned no usable findings."
+    ]
 
 
 @pytest.mark.asyncio
@@ -187,6 +432,329 @@ async def test_newsroom_rejects_dot_segment_item_id() -> None:
 
     with pytest.raises(ValueError, match="Invalid News Room item id"):
         await tools["newsroom_get_article"]("..")
+
+
+@pytest.mark.asyncio
+async def test_newsroom_publish_requires_confirmation_and_is_replay_safe(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    article_payload = {
+        "item_id": "news_123",
+        "title": "A complete public article",
+        "category": "business",
+        "content": "Complete verified public editorial copy. " * 20,
+        "source_url": "https://example.go.id/article",
+    }
+    capabilities = {
+        "contract": marketing.NEWSROOM_CONTRACT,
+        "ready": True,
+        "capabilities": {
+            name: "ready" for name in marketing.REQUIRED_NEWSROOM_CAPABILITIES
+        },
+    }
+    publish_payload = {
+            "success": True,
+            "github_published": True,
+            "title": "A complete public article",
+            "published_url": "https://balizero.com/business/complete-article?draft=no#live",
+            "published_at": "2026-08-27T01:00:00+00:00",
+            "message": "Published",
+        }
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+    public_article = marketing._public_news_article(article_payload)
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_123"),
+        {
+            "ok": True,
+            "fingerprint": marketing._article_fingerprint(public_article),
+        },
+    )
+
+    with pytest.raises(ValueError, match="explicitly confirm"):
+        await tools["newsroom_publish"]("news_123", "publish-news-0001", "yes")
+
+    result = await tools["newsroom_publish"](
+        "news_123",
+        "publish-news-0001",
+        "SETUJU",
+    )
+    replay = await tools["newsroom_publish"](
+        "news_123",
+        "publish-news-0001",
+        "SETUJU",
+    )
+
+    assert result == replay
+    assert result == {
+        "ok": True,
+        "status": "queued_for_publication",
+        "item_id": "news_123",
+        "title": "A complete public article",
+        "published_url": "https://balizero.com/business/complete-article",
+        "published_at": "2026-08-27T01:00:00+00:00",
+        "message": "Published",
+        "position": "",
+        "fact_gate": {"status": "PASS", "checked_claims": 0, "findings": []},
+    }
+    assert backend_call.await_count == 3
+    backend_call.assert_any_await("/api/workspace-marketing/capabilities")
+    backend_call.assert_any_await("/api/workspace-marketing/news/news_123")
+    backend_call.assert_any_await(
+        "/api/workspace-marketing/news/news_123/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED", "position": "latest"},
+    )
+
+    with pytest.raises(ValueError, match="different inputs"):
+        await tools["newsroom_publish"](
+            "news_456",
+            "publish-news-0001",
+            "SETUJU",
+        )
+
+
+@pytest.mark.asyncio
+async def test_newsroom_publish_needs_no_fact_gate_and_reports_a_block_as_advisory(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    article_payload = {
+        "item_id": "news_123",
+        "title": "A complete public article",
+        "category": "business",
+        "content": "Complete verified public editorial copy. " * 20,
+        "source_url": "https://example.go.id/article",
+    }
+    capabilities = {
+        "contract": marketing.NEWSROOM_CONTRACT,
+        "ready": True,
+        "capabilities": {
+            name: "ready" for name in marketing.REQUIRED_NEWSROOM_CAPABILITIES
+        },
+    }
+    publish_payload = {
+        "success": True,
+        "github_published": True,
+        "title": article_payload["title"],
+        "published_url": "https://balizero.com/business/complete-article",
+        "message": "Published",
+    }
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0002", "CONFIRM"
+    )
+
+    assert result["ok"] is True
+    backend_call.assert_any_await(
+        "/api/workspace-marketing/news/news_123/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED", "position": "latest"},
+    )
+    assert result["fact_gate"] == {"status": "not_run", "findings": []}
+
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_123"),
+        {
+            "ok": False,
+            "checked_claims": 3,
+            "findings": ["FAIL — ministry name wrong"],
+            "fingerprint": marketing._article_fingerprint(
+                marketing._public_news_article(article_payload)
+            ),
+        },
+    )
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0003", "CONFIRM"
+    )
+
+    assert result["ok"] is True
+    backend_call.assert_any_await(
+        "/api/workspace-marketing/news/news_123/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED", "position": "latest"},
+    )
+    assert result["fact_gate"] == {
+        "status": "BLOCK",
+        "checked_claims": 3,
+        "findings": ["FAIL — ministry name wrong"],
+    }
+
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_123"),
+        {"ok": True, "fingerprint": "stale-fp"},
+    )
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0004", "CONFIRM"
+    )
+
+    assert result["fact_gate"]["status"] == "stale"
+
+
+@pytest.mark.asyncio
+async def test_newsroom_publish_recovers_an_accepted_operation_record(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    item_id = "news_accepted"
+    request_key = "publish-news-accepted-1"
+    article_payload = {
+        "item_id": item_id,
+        "title": "A complete accepted public article",
+        "category": "business",
+        "content": "Complete verified public editorial copy. " * 20,
+        "source_url": "https://example.go.id/article",
+    }
+    capabilities = {
+        "contract": marketing.NEWSROOM_CONTRACT,
+        "ready": True,
+        "capabilities": {
+            name: "ready" for name in marketing.REQUIRED_NEWSROOM_CAPABILITIES
+        },
+    }
+    marketing._claim_operation(
+        "newsroom-publish",
+        request_key,
+        {"item_id": item_id, "position": "latest"},
+        {"item_id": item_id, "position": "latest"},
+    )
+    public_article = marketing._public_news_article(article_payload)
+    marketing._write_json_atomic(
+        marketing._fact_gate_path(item_id),
+        {
+            "ok": True,
+            "fingerprint": marketing._article_fingerprint(public_article),
+        },
+    )
+    backend_call = AsyncMock(
+        side_effect=[
+            capabilities,
+            article_payload,
+            {
+                "success": True,
+                "github_published": True,
+                "title": article_payload["title"],
+                "published_url": "https://balizero.com/business/accepted-article",
+                "message": "Resumed",
+            },
+        ]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        item_id,
+        request_key,
+        "SETUJU",
+    )
+
+    assert result["ok"] is True
+    assert backend_call.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_attaching_a_new_cover_invalidates_the_fact_gate(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    gate_path = marketing._fact_gate_path("news_cover")
+    marketing._write_json_atomic(gate_path, {"ok": True, "fingerprint": "old"})
+    backend_call = AsyncMock(return_value={"success": True})
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_attach_cover"](
+        "news_cover",
+        "a" * 200,
+        "cover.png",
+    )
+
+    assert result["ok"] is True
+    assert not gate_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_newsroom_publish_masks_backend_failure(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    article_payload = {
+        "item_id": "news_123",
+        "title": "A complete public article",
+        "category": "business",
+        "content": "Complete verified public editorial copy. " * 20,
+        "source_url": "https://example.go.id/article",
+    }
+    backend_call = AsyncMock(
+        side_effect=[
+            {
+                "contract": marketing.NEWSROOM_CONTRACT,
+                "ready": True,
+                "capabilities": {
+                    name: "ready"
+                    for name in marketing.REQUIRED_NEWSROOM_CAPABILITIES
+                },
+            },
+            article_payload,
+            RuntimeError("client@example.com passport ABC123456 internal body"),
+        ]
+    )
+    tools, _ = _capture_tools(backend_call)
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_123"),
+        {
+            "ok": True,
+            "fingerprint": marketing._article_fingerprint(
+                marketing._public_news_article(article_payload)
+            ),
+        },
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await tools["newsroom_publish"](
+            "news_123",
+            "publish-news-fail-1",
+            "SETUJU",
+        )
+
+    assert str(exc_info.value) == "News Room publication failed"
+    operation = json.loads(
+        marketing._operation_path(
+            "newsroom-publish",
+            "publish-news-fail-1",
+        ).read_text(encoding="utf-8")
+    )
+    assert operation["result"] == {
+        "ok": False,
+        "status": "failed",
+        "item_id": "news_123",
+    }
+    assert "client@example.com" not in json.dumps(operation)
 
 
 @pytest.mark.asyncio
@@ -229,6 +797,208 @@ async def test_wr2_queue_never_returns_local_paths(tmp_path: Path, monkeypatch) 
 
 
 @pytest.mark.asyncio
+async def test_wr2_delivery_only_returns_allowlisted_drive_url(
+    tmp_path: Path, monkeypatch
+) -> None:
+    queue_path = tmp_path / "queue.json"
+    queue_path.write_text(
+        json.dumps(
+            [
+                {
+                    "item_id": "safe",
+                    "topic": "Safe delivery",
+                    "state": "drafted",
+                    "drive_url": "https://drive.google.com/drive/folders/abc?usp=sharing",
+                },
+                {
+                    "item_id": "unsafe",
+                    "topic": "Unsafe delivery",
+                    "state": "drafted",
+                    "drive_url": "https://evil.example/drive/folders/abc",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WR2_QUEUE_PATH", str(queue_path))
+    tools, _ = _capture_tools(AsyncMock())
+
+    safe = await tools["wr2_get_delivery"]("safe")
+    unsafe = await tools["wr2_get_delivery"]("unsafe")
+
+    assert safe["ok"] is True
+    assert safe["delivery_url"].startswith("https://drive.google.com/")
+    assert unsafe["ok"] is False
+    assert unsafe["delivery_url"] == ""
+
+
+@pytest.mark.asyncio
+async def test_wr2_rerender_is_prepublish_and_idempotent(
+    tmp_path: Path, monkeypatch
+) -> None:
+    queue_path = tmp_path / "queue.json"
+    draft_id = "12345678-1234-5678-1234-567812345678"
+    queue_path.write_text(
+        json.dumps(
+            [
+                {
+                    "item_id": "draft-safe",
+                    "draft_id": draft_id,
+                    "topic": "Draft",
+                    "state": "drafted",
+                },
+                {
+                    "item_id": "already-live",
+                    "draft_id": "87654321-4321-8765-4321-876543218765",
+                    "topic": "Live",
+                    "state": "published",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WR2_QUEUE_PATH", str(queue_path))
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    runner = AsyncMock()
+    monkeypatch.setattr(marketing, "_run_wr2_rerender", runner)
+    tools, _ = _capture_tools(AsyncMock())
+
+    first = await tools["wr2_request_rerender"](
+        "draft-safe", "wr2-rerender-safe-1", "SETUJU"
+    )
+    second = await tools["wr2_request_rerender"](
+        "draft-safe", "wr2-rerender-safe-1", "SETUJU"
+    )
+    status = await tools["wr2_rerender_status"]("wr2-rerender-safe-1")
+
+    assert first == second
+    assert first["status"] == "queued_for_renderer"
+    assert status["ok"] is True
+    runner.assert_awaited_once_with(draft_id)
+    with pytest.raises(ValueError, match="pre-publication"):
+        await tools["wr2_request_rerender"](
+            "already-live", "wr2-rerender-live-1", "SETUJU"
+        )
+
+
+@pytest.mark.asyncio
+async def test_flow_prompt_to_video_resumes_without_double_generation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    calls: list[list[str]] = []
+
+    async def fake_flowkit(args: list[str], *, timeout_s: int) -> dict[str, Any]:
+        calls.append(args)
+        if args == ["health"]:
+            return {"ok": True, "ready": True}
+        if args[0] == "generate-image":
+            return {"ok": True, "media_id": "media-start-1"}
+        if args[0] == "generate-video":
+            assert args[-1] == "media-start-1"
+            return {
+                "ok": True,
+                "video_media_id": "media-video-1",
+                "project_id": "project-1",
+                "scene_id": "scene-1",
+            }
+        raise AssertionError(args)
+
+    monkeypatch.setattr(marketing, "_run_flowkit_cli", fake_flowkit)
+    tools, _ = _capture_tools(AsyncMock())
+    arguments = (
+        "Editorial portrait of Zantara in a Bali Zero studio, clean and modern.",
+        "0-8s: subtle editorial dolly while Zantara explains the public update.",
+        "flow-combined-safe-1",
+        "SETUJU",
+    )
+
+    first = await tools["flow_generate_video_from_prompt"](*arguments)
+    calls_after_first = list(calls)
+    second = await tools["flow_generate_video_from_prompt"](*arguments)
+    status = await tools["flow_operation_status"](
+        "flow-combined-safe-1", "video_from_prompt"
+    )
+
+    assert first == second
+    assert first["video_media_id"] == "media-video-1"
+    assert calls == calls_after_first
+    assert [call[0] for call in calls] == [
+        "health",
+        "generate-image",
+        "health",
+        "generate-video",
+    ]
+    assert status["ok"] is True
+
+
+@pytest.mark.asyncio
+async def test_real_fastmcp_dispatch_runs_prompt_to_video_composition(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+
+    async def fake_flowkit(args: list[str], *, timeout_s: int) -> dict[str, Any]:
+        if args == ["health"]:
+            return {"ok": True, "ready": True}
+        if args[0] == "generate-image":
+            return {"ok": True, "media_id": "media/start-2"}
+        if args[0] == "generate-video":
+            return {"ok": True, "video_media_id": "media/video-2"}
+        raise AssertionError(args)
+
+    monkeypatch.setattr(marketing, "_run_flowkit_cli", fake_flowkit)
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "flow_generate_video_from_prompt",
+            {
+                "start_image_prompt": "Detailed public Bali Zero studio portrait.",
+                "video_prompt": "0-8s: subtle editorial camera movement.",
+                "request_key": "flow-fastmcp-combined-1",
+                "confirmation": "SETUJU",
+            },
+            raise_on_error=False,
+        )
+
+    assert result.is_error is False
+    assert "media/video-2" in str(result)
+
+
+@pytest.mark.asyncio
+async def test_flow_media_delivery_filters_non_google_urls(monkeypatch) -> None:
+    responses = [
+        {
+            "ok": True,
+            "media_id": "media-safe-1",
+            "ready": True,
+            "fife_url": "https://lh3.googleusercontent.com/media/video.mp4?sig=abc",
+        },
+        {
+            "ok": True,
+            "media_id": "media-unsafe-1",
+            "ready": True,
+            "fife_url": "https://evil.example/video.mp4?sig=abc",
+        },
+    ]
+
+    async def fake_flowkit(args: list[str], *, timeout_s: int) -> dict[str, Any]:
+        assert args[0] == "media-info"
+        return responses.pop(0)
+
+    monkeypatch.setattr(marketing, "_run_flowkit_cli", fake_flowkit)
+    tools, _ = _capture_tools(AsyncMock())
+
+    safe = await tools["flow_get_media"]("media-safe-1")
+    unsafe = await tools["flow_get_media"]("media-unsafe-1")
+
+    assert safe["download_url"].startswith("https://lh3.googleusercontent.com/")
+    assert "download_url" not in unsafe
+
+
+@pytest.mark.asyncio
 async def test_write_tools_are_fail_closed_until_armed(monkeypatch) -> None:
     monkeypatch.delenv("WORKSPACE_MARKETING_WRITES_ENABLED", raising=False)
     tools, _ = _capture_tools(AsyncMock())
@@ -253,6 +1023,280 @@ async def test_write_tools_are_fail_closed_until_armed(monkeypatch) -> None:
             "flow-disarmed-video-1",
             "SETUJU",
         )
+    with pytest.raises(RuntimeError, match="not armed"):
+        await tools["flow_generate_video_from_prompt"](
+            "A detailed public start image prompt",
+            "A detailed public motion prompt",
+            "flow-disarmed-combined-1",
+            "SETUJU",
+        )
+    with pytest.raises(RuntimeError, match="not armed"):
+        await tools["wr2_request_rerender"](
+            "wr2-does-not-matter",
+            "wr2-disarmed-rerender-1",
+            "SETUJU",
+        )
+    with pytest.raises(RuntimeError, match="not armed"):
+        await tools["newsroom_update_article"](
+            "news_1",
+            "A complete public title",
+            "Public copy. " * 30,
+            "business",
+            "A complete SEO title",
+            "A complete public SEO description for the Bali Zero article.",
+            "complete-public-title",
+            "Editorial view of Jakarta business activity",
+        )
+    with pytest.raises(RuntimeError, match="not armed"):
+        await tools["newsroom_attach_cover"]("news_1", "base64", "cover.png")
+    with pytest.raises(RuntimeError, match="not armed"):
+        await tools["newsroom_verify_live"]("news_1")
+
+
+@pytest.mark.asyncio
+async def test_live_verifier_checks_seo_alt_cover_and_persists_confirmation(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    slug = "complete-article"
+    article_url = f"https://balizero.com/business/{slug}"
+    cover_path = "/static/news/complete-cover.png"
+    status_payload = {
+        "item_id": "news_123",
+        "title": "A complete public article",
+        "status": "publication_pending",
+        "published_url": article_url,
+        "position": "latest",
+        "published_cover_path": cover_path,
+        "seo_title": "Complete Bali Business Update",
+        "seo_description": "A precise explanation of the Bali business update and what readers should verify.",
+        "cover_image_alt": "Jakarta skyline illustrating the business update",
+        "source_url": "https://example.go.id/business-update",
+    }
+    backend_call = AsyncMock(
+        side_effect=[
+            status_payload,
+            {
+                "success": True,
+                "status": "published",
+                "published_at": "2026-08-27T12:00:00+00:00",
+            },
+        ]
+    )
+    html_doc = f"""
+      <html><head>
+      <title>Complete Bali Business Update</title>
+      <meta name="description" content="{status_payload['seo_description']}">
+      <meta property="og:title" content="Complete Bali Business Update">
+      <meta property="og:description" content="{status_payload['seo_description']}">
+      <meta property="og:image" content="{cover_path}">
+      <link rel="canonical" href="{article_url}">
+      </head><body>{slug}<h1>A complete public article</h1>
+      <img src="{cover_path}" alt="Jakarta skyline illustrating the business update">
+      <a href="https://example.go.id/business-update?tracking=removed">Primary source</a>
+      </body></html>
+    """
+
+    class Response:
+        def __init__(
+            self,
+            *,
+            status_code: int = 200,
+            text: str = "",
+            headers: dict[str, str] | None = None,
+            payload: dict[str, Any] | None = None,
+        ) -> None:
+            self.status_code = status_code
+            self.text = text
+            self.headers = headers or {}
+            self._payload = payload or {}
+
+        def json(self) -> dict[str, Any]:
+            return self._payload
+
+    class FakeClient:
+        def __init__(self, **_kwargs: Any) -> None:
+            pass
+
+        async def __aenter__(self) -> "FakeClient":
+            return self
+
+        async def __aexit__(self, *_args: Any) -> None:
+            return None
+
+        async def get(self, url: str, **_kwargs: Any) -> Response:
+            if url == article_url:
+                return Response(text=html_doc)
+            if url == "https://balizero.com/news":
+                return Response(
+                    text=f'<a href="/business/{slug}">latest story</a>'
+                )
+            if url.endswith("complete-cover.png"):
+                return Response(headers={"content-type": "image/png"})
+            raise AssertionError(f"unexpected URL {url}")
+
+    monkeypatch.setattr(marketing.httpx, "AsyncClient", FakeClient)
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_verify_live"]("news_123")
+
+    assert result["ok"] is True
+    assert result["status"] == "published"
+    assert result["published_at"] == "2026-08-27T12:00:00+00:00"
+    assert result["seo_title_live"] is True
+    assert result["seo_description_live"] is True
+    assert result["cover_alt_live"] is True
+    assert result["source_link_live"] is True
+    backend_call.assert_any_await(
+        "/api/workspace-marketing/news/news_123/confirm-live",
+        method="POST",
+        json={"confirmation": "LIVE_VERIFIED"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_live_verifier_rejects_off_domain_metadata_and_unbound_alt(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    slug = "complete-article"
+    article_url = f"https://balizero.com/business/{slug}"
+    cover_path = "/static/news/complete-cover.png"
+    backend_call = AsyncMock(
+        return_value={
+            "item_id": "news_123",
+            "title": "A complete public article",
+            "status": "publication_pending",
+            "published_url": article_url,
+            "position": "latest",
+            "published_cover_path": cover_path,
+            "seo_title": "Complete Bali Business Update",
+            "seo_description": "A precise explanation of the Bali business update.",
+            "cover_image_alt": "Approved editorial cover",
+            "source_url": "https://example.go.id/business-update",
+        }
+    )
+    malicious = f"""
+      <html><head>
+      <title>Complete Bali Business Update</title>
+      <meta name="description" content="A precise explanation of the Bali business update.">
+      <meta property="og:title" content="WRONG TITLE">
+      <meta property="og:description" content="A precise explanation of the Bali business update.">
+      <meta property="og:image" content="https://evil.example{cover_path}">
+      <link rel="canonical" href="https://evil.example/business/{slug}">
+      </head><body><h1>A complete public article</h1>
+      <div>Approved editorial cover</div>
+      <img src="{cover_path}" alt="WRONG ALT">
+      <a href="https://example.go.id/business-update">Primary source</a>
+      </body></html>
+    """
+
+    class Response:
+        status_code = 200
+        headers: dict[str, str] = {}
+
+        def __init__(self, text: str = "") -> None:
+            self.text = text
+
+    requested: list[str] = []
+
+    class FakeClient:
+        def __init__(self, **_kwargs: Any) -> None:
+            pass
+
+        async def __aenter__(self) -> "FakeClient":
+            return self
+
+        async def __aexit__(self, *_args: Any) -> None:
+            return None
+
+        async def get(self, url: str, **_kwargs: Any) -> Response:
+            requested.append(url)
+            if url == article_url:
+                return Response(malicious)
+            if url == "https://balizero.com/news":
+                return Response(f'<a href="/business/{slug}">story</a>')
+            raise AssertionError(f"unexpected URL {url}")
+
+    monkeypatch.setattr(marketing.httpx, "AsyncClient", FakeClient)
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_verify_live"]("news_123")
+
+    assert result["ok"] is False
+    assert result["seo_title_live"] is False
+    assert result["canonical_live"] is False
+    assert result["approved_cover_live"] is False
+    assert result["cover_alt_live"] is False
+    assert not any(url.startswith("https://evil.example") for url in requested)
+    assert backend_call.await_count == 1
+
+
+def test_homepage_position_proof_requires_exact_rendered_slot() -> None:
+    document = """
+      <section id="news">
+        <a data-homepage-position="hero_main" href="/business/main-story">Main</a>
+        <a data-homepage-position="hero_2" href="/business/second-story">Second</a>
+      </section>
+    """
+
+    assert marketing._homepage_position_live(
+        document,
+        "hero_2",
+        "https://balizero.com/business/second-story",
+    )
+    assert not marketing._homepage_position_live(
+        document,
+        "hero_main",
+        "https://balizero.com/business/second-story",
+    )
+
+
+def test_publication_origin_rejects_nonstandard_ports_and_credentials() -> None:
+    assert not marketing._is_balizero_public_url(
+        "https://balizero.com:444/static/news/cover.png"
+    )
+    assert not marketing._is_balizero_public_url(
+        "https://user@balizero.com/static/news/cover.png"
+    )
+    assert (
+        marketing._normalized_public_url(
+            "https://balizero.com:444/static/news/cover.png",
+            "https://balizero.com",
+        )
+        == ""
+    )
+
+
+@pytest.mark.asyncio
+async def test_live_verifier_never_fetches_nonstandard_publication_port(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    backend_call = AsyncMock(
+        return_value={
+            "item_id": "news_123",
+            "status": "publication_pending",
+            "published_url": "https://balizero.com:444/business/story",
+        }
+    )
+    client_created = False
+
+    class ForbiddenClient:
+        def __init__(self, **_kwargs: Any) -> None:
+            nonlocal client_created
+            client_created = True
+            raise AssertionError("an invalid publication origin must never be fetched")
+
+    monkeypatch.setattr(marketing.httpx, "AsyncClient", ForbiddenClient)
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_verify_live"]("news_123")
+
+    assert result["ok"] is False
+    assert client_created is False
+    assert backend_call.await_count == 1
+
 
 @pytest.mark.asyncio
 async def test_flow_generation_has_fixed_tier_no_paths_and_idempotency(
@@ -299,7 +1343,9 @@ async def test_flow_generation_has_fixed_tier_no_paths_and_idempotency(
 
 
 @pytest.mark.asyncio
-async def test_flow_health_error_never_returns_raw_path_or_diagnostic(monkeypatch) -> None:
+async def test_flow_health_error_never_returns_raw_path_or_diagnostic(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         marketing,
         "_run_flowkit_cli",
@@ -899,3 +1945,360 @@ def test_worker_environment_is_explicit_allowlist(monkeypatch) -> None:
         "TMPDIR",
         "WORKSPACE_MARKETING_STATE_DIR",
     }
+
+
+# ── Independent-reviewer context isolation ────────────────────────────────
+# Regression cover for the 2026-09-01 fact-gate outage: the reviewer inherited
+# the machine's $HOME/.claude, so SessionStart hooks prepended fleet-mailbox
+# text to its context and it answered THAT instead of emitting verdict JSON.
+# Every article failed identically, which read as a per-article defect.
+
+
+def test_reviewer_config_dir_is_isolated_from_the_machine_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The reviewer must never be pointed at the machine's own ~/.claude."""
+
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+
+    env = marketing._verification_env("claude")
+
+    config_dir = env.get("CLAUDE_CONFIG_DIR")
+    assert config_dir, "reviewer must always run with an explicit CLAUDE_CONFIG_DIR"
+    assert Path(config_dir).is_dir(), "the isolated config dir must exist before launch"
+    assert Path(config_dir) != Path(tmp_path / "home") / ".claude"
+    assert str(tmp_path / "state") in config_dir
+
+
+def test_reviewer_does_not_inherit_an_ambient_claude_config_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Guilt test: inheriting CLAUDE_CONFIG_DIR is the outage itself.
+
+    With the ambient value inherited, the reviewer loads that profile's hooks
+    and its verdict JSON is replaced by whatever those hooks injected.
+    """
+
+    hooked_profile = tmp_path / "machine-profile"
+    hooked_profile.mkdir()
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(hooked_profile))
+
+    env = marketing._verification_env("claude")
+
+    assert env["CLAUDE_CONFIG_DIR"] != str(hooked_profile), (
+        "the ambient profile leaked into the reviewer — its SessionStart hooks "
+        "will prepend other sessions' text to a fact-gate verdict"
+    )
+
+
+def test_verification_env_still_withholds_app_secrets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Isolation must not widen the allow-list."""
+
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("WA_MIRROR_DATABASE_URL", "postgres://should-not-leak")
+    monkeypatch.setenv("WORKSPACE_MARKETING_API_KEY", "should-not-leak")
+
+    env = marketing._verification_env("claude")
+
+    assert "WA_MIRROR_DATABASE_URL" not in env
+    assert "WORKSPACE_MARKETING_API_KEY" not in env
+    assert not any("should-not-leak" in value for value in env.values())
+
+
+def test_identifier_guard_keeps_editorial_keyword_phrases_and_still_catches_numbers() -> None:
+    """Innocence AND guilt for the keyword+identifier guard (scar family #3).
+
+    The keyword followed by an ordinary word is editorial copy; the keyword
+    followed by a digit-bearing token is an identifier. Both lists are checked
+    through the same public-input gate the update tool uses.
+    """
+
+    innocent = (
+        "Passport holders from 97 countries can apply on arrival.",
+        "NPWP registration is now automatic for new NIK holders.",
+        "KTP elektronik replaces the paper card for tax ID purposes.",
+        "Tax ID numbers are issued within a week; ID number checks follow.",
+        "Nomor paspor harus sesuai dengan data imigrasi.",
+        "NIK-based verification starts in 2027.",
+    )
+    for text in innocent:
+        assert marketing._public_team_input(text, field="content", limit=500) == text
+
+    # Built by concatenation so no single source line is itself identifier-shaped
+    # (the repo's Law-2 pre-commit gate scans staged lines for exactly this shape).
+    guilty = (
+        "NPWP: " + "12.345.678.9-012.000",
+        "NIK " + "3171234567890001" + " was used",
+        "passport number " + "AB1234567" + " expires soon",
+        "tax id " + "01.234.567.8-901.000",
+        "KTP #" + "3171-2345-6789-0001",
+    )
+    for text in guilty:
+        with pytest.raises(ValueError, match="private or local-only"):
+            marketing._public_team_input(text, field="content", limit=500)
+        assert "[identifier removed]" in marketing._clean_text(text) or (
+            "[number removed]" in marketing._clean_text(text)
+        )
+
+
+def test_verification_env_reads_batch_seat_from_secrets_file_when_env_is_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tunnel runtime starts the server from `env -i`; the isolated
+    CLAUDE_CONFIG_DIR has no login. The batch seat must come from the 0600
+    secrets file — and only that one key may leave the file."""
+
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".nuzantara-secrets.env").write_text(
+        "\n".join(
+            (
+                'export NUZANTARA_WORKSPACE_MARKETING_API_KEY="app-secret-should-not-leak"',
+                "export CLAUDE_CODE_OAUTH_TOKEN_1='seat-one-should-not-leak'",
+                'export CLAUDE_CODE_OAUTH_TOKEN_3="batch-seat-token"',
+                "CLAUDE_CODE_OAUTH_TOKEN_6=team-seat-should-not-leak",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    for name in ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN_3"):
+        monkeypatch.delenv(name, raising=False)
+
+    env = marketing._verification_env("claude")
+
+    assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "batch-seat-token"
+    assert env["CLAUDE_CONFIG_DIR"] == str(tmp_path / "state" / "verifier-config")
+    assert not any("should-not-leak" in value for value in env.values())
+
+    # An explicit env token still wins over the file.
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "explicit-token")
+    assert marketing._verification_env("claude")["CLAUDE_CODE_OAUTH_TOKEN"] == "explicit-token"
+
+    # A missing file is not an error: the verifier then fails loudly at run time.
+    assert marketing._secrets_file_value("CLAUDE_CODE_OAUTH_TOKEN_3", tmp_path / "nope") == ""
+
+
+async def test_failed_verifier_logs_redacted_output_tail(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """`claude --print` reports "Not logged in" on STDOUT with exit 1: the Pro
+    log must say so, while the editor-facing message stays constant."""
+
+    import sys as _sys
+
+    caplog.set_level("WARNING", logger="nuzantara_mcp.tools.workspace_marketing")
+    with pytest.raises(RuntimeError, match="provider is unavailable"):
+        await marketing._run_public_subprocess(
+            [
+                _sys.executable,
+                "-c",
+                "import sys; print('Not logged in - contact user@example.com'); "
+                "sys.stderr.write('token sk-abcdefghijklmnopqrstuvwxyz'); sys.exit(1)",
+            ],
+            timeout_seconds=20,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+
+    record = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "exited 1" in record
+    assert "Not logged in" in record
+    assert "user@example.com" not in record
+    assert "sk-abcdefghijklmnopqrstuvwxyz" not in record
+
+
+async def test_refusals_reach_the_editor_unmasked_but_unexpected_errors_stay_masked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """mask_error_details=True hides internals; this module's own constant
+    refusals are the editor's only feedback and must pass through."""
+
+    from fastmcp.exceptions import ToolError as ClientToolError
+
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    monkeypatch.delenv("WORKSPACE_MARKETING_WRITES_ENABLED", raising=False)
+
+    async with Client(mcp) as client:
+        with pytest.raises(ClientToolError) as disarmed:
+            await client.call_tool(
+                "newsroom_update_article",
+                {
+                    "item_id": "news_20260903_173431_b5405cf4",
+                    "title": "t",
+                    "content": "c",
+                    "category": "tax",
+                    "seo_title": "s",
+                    "seo_description": "d",
+                    "slug": "slug",
+                    "cover_image_alt": "alt",
+                },
+            )
+        assert "write actions are not armed" in str(disarmed.value)
+
+        with pytest.raises(ClientToolError) as bad_input:
+            await client.call_tool("newsroom_get_article", {"item_id": "../etc/passwd"})
+        assert "Invalid News Room item id" in str(bad_input.value)
+
+        def explode(item_id: str) -> str:
+            raise TypeError("internal detail must not leak")
+
+        monkeypatch.setattr(marketing, "_validated_item_id", explode)
+        with pytest.raises(ClientToolError) as masked:
+            await client.call_tool("newsroom_get_article", {"item_id": "x"})
+        assert "internal detail" not in str(masked.value)
+        assert "TypeError" not in str(masked.value)
+
+
+def test_editor_facing_errors_remain_value_and_runtime_errors() -> None:
+    """Callers (and the existing tests) keep catching the builtin classes."""
+
+    assert issubclass(marketing.EditorFacingValueError, ValueError)
+    assert issubclass(marketing.EditorFacingRuntimeError, RuntimeError)
+    tools, _ = _capture_tools(AsyncMock())
+    assert tools["newsroom_get_article"].__wrapped__.__name__ == "newsroom_get_article"
+
+
+def test_notebooklm_questions_stay_under_the_cli_limit_and_cover_the_article() -> None:
+    """`nlm query` refuses questions over ~5,000 characters (measured on Pro
+    2026-09-04). Every built question must fit the budget and the parts must
+    reassemble into the full body, in order."""
+
+    body = "\n\n".join(
+        f"Paragraph {n}: the KITAS holder must report within thirty days. " * 4
+        for n in range(60)
+    )
+    article = {"title": "Long visa update", "content": body, "source_url": "https://x.y/z"}
+    parts = marketing._split_article_for_notebooklm(article)
+
+    assert len(parts) > 1
+    assert "".join(parts) == body
+    for index, part in enumerate(parts, start=1):
+        question = marketing._notebooklm_question(article, part, index, len(parts))
+        assert len(question.encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET
+        assert f"part {index} of {len(parts)}" in question
+
+    short = {"title": "t", "content": "One short claim.", "source_url": ""}
+    assert marketing._split_article_for_notebooklm(short) == ["One short claim."]
+    assert "part 1 of 1" not in marketing._notebooklm_question(short, "x", 1, 1)
+
+
+def test_notebooklm_budget_is_measured_on_the_serialised_form() -> None:
+    """Quotes, backslashes and non-ASCII text grow when JSON-encoded; a budget
+    measured on the raw text would still overflow the CLI."""
+
+    body = ('"quoted" \\ back\\slash " ' * 300) + ("Peraturan Menteri — ‘kutipan’ " * 200)
+    article = {"title": "t", "content": body, "source_url": ""}
+    parts = marketing._split_article_for_notebooklm(article)
+    assert "".join(parts) == body
+    for index, part in enumerate(parts, start=1):
+        question = marketing._notebooklm_question(article, part, index, len(parts))
+        assert len(question.encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET
+
+
+async def test_query_notebooklm_queries_once_per_part_and_joins_the_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    async def fake_subprocess(argv: list[str], **_: Any) -> str:
+        calls.append(argv)
+        return json.dumps({"answer": f"evidence {len(calls)}"})
+
+    monkeypatch.setattr(marketing, "_run_public_subprocess", fake_subprocess)
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+
+    body = "Claim sentence number one about LKPM reporting. " * 400
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": body, "source_url": ""}, "nb-id"
+    )
+
+    assert len(calls) >= 3
+    assert all(argv[:4] == ["/usr/bin/nlm", "query", "notebook", "nb-id"] for argv in calls)
+    assert all(
+        len(argv[4].encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET for argv in calls
+    )
+    assert evidence.startswith("[part 1/")
+    assert f"evidence {len(calls)}" in evidence
+
+    # A single-part article keeps the plain evidence note.
+    calls.clear()
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": "short", "source_url": ""}, "nb-id"
+    )
+    assert calls and evidence == "evidence 1"
+
+
+async def test_query_notebooklm_refuses_an_article_beyond_the_part_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+    monkeypatch.setattr(
+        marketing, "_run_public_subprocess", AsyncMock(side_effect=AssertionError("no call"))
+    )
+    body = "x" * (marketing._NOTEBOOKLM_QUESTION_BUDGET * (marketing._NOTEBOOKLM_MAX_PARTS + 2))
+    with pytest.raises(RuntimeError, match="too long for NotebookLM"):
+        await marketing._query_notebooklm(
+            {"title": "t", "content": body, "source_url": ""}, "nb-id"
+        )
+
+
+async def test_notebooklm_parts_run_concurrently_under_a_real_answer_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A grounded NotebookLM answer took 121 s on Pro (2026-09-04); the old 75 s
+    cap killed every real query. Parts must carry a budget above that and run
+    concurrently so the gate waits for one answer, not one per part."""
+
+    in_flight = 0
+    peak = 0
+    budgets: list[tuple[str, int]] = []
+
+    async def fake_subprocess(argv: list[str], *, timeout_seconds: int, **_: Any) -> str:
+        nonlocal in_flight, peak
+        budgets.append((argv[argv.index("--timeout") + 1], timeout_seconds))
+        in_flight += 1
+        peak = max(peak, in_flight)
+        await asyncio.sleep(0.01)
+        in_flight -= 1
+        return json.dumps({"answer": "evidence"})
+
+    monkeypatch.setattr(marketing, "_run_public_subprocess", fake_subprocess)
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+
+    body = "Claim sentence number one about LKPM reporting. " * 400
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": body, "source_url": ""}, "nb-id"
+    )
+
+    assert len(budgets) >= 3
+    assert peak > 1, "parts ran one after another"
+    assert peak <= marketing._NOTEBOOKLM_CONCURRENCY
+    for cli_timeout, outer_timeout in budgets:
+        assert int(cli_timeout) >= 200
+        assert outer_timeout > int(cli_timeout)
+    # Order is preserved even though the parts finish independently.
+    assert evidence.startswith("[part 1/")
+    assert evidence.index("[part 2/") > evidence.index("[part 1/")
+
+
+async def test_timed_out_verifier_names_the_provider_in_the_log(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import sys as _sys
+
+    caplog.set_level("WARNING", logger="nuzantara_mcp.tools.workspace_marketing")
+    with pytest.raises(RuntimeError, match="timed out"):
+        await marketing._run_public_subprocess(
+            [_sys.executable, "-c", "import time; time.sleep(5)"],
+            timeout_seconds=1,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+    record = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "timed out after 1s" in record
+    assert Path(_sys.executable).name in record

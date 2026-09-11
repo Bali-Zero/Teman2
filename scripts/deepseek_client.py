@@ -1,16 +1,34 @@
 #!/usr/bin/env python3
 """Shared DeepSeek client for scripts/ — breaker-guarded, ledger-writing, flash-first.
 
-WHY (smart-spend mandate 2026-07-14): the 30-day DeepSeek bill was $40.03 across
-9,428 requests, 96% of it ``deepseek-v4-pro`` called RAW from campaign scripts
-(curl/httpx straight to api.deepseek.com). Those callers were LEDGER-BLIND: the
-already-shipped ``scripts/cost_breaker.py`` guard (provider "deepseek", default
-budget $5/24h, DEGRADE at 85%) could never see or stop them, because nobody
-wrote cost events and nobody consulted the breaker. This module is the missing
-consumer side of that contract:
+RE-POINTED 2026-08-29 (misroute fix, not a replacement): this module used to
+call DeepSeek's own metered endpoint (``api.deepseek.com`` + ``DEEPSEEK_API_KEY``)
+directly. That direct-billing door was RETIRED 2026-07-19 (pre-authorization
+revoked, balance dead — HTTP-402; CLAUDE.md §"Cost constraint"). The SAME model
+family stayed live the whole time through a second, distinct door: the Alibaba
+**TP1** (Token Plan) OpenAI-compatible gateway, which ``FLEET_TOPOLOGY.json``
+records as a 2026-08-10 "DeepSeek re-admission" — ``deepseek-v4-flash-0731``
+measured ARMED (806 calls / 131.2M tokens, 2026-08-08→14 window);
+``deepseek-v4-pro`` is listed PROBATION with zero measured calls in that same
+window — do not conflate the two tiers' maturity. Endpoint + default model
+below now target that door, mirroring ``scripts/tp1_call.py`` /
+``scripts/arsenal_probe.py`` (the credential loader + URL constant are
+imported from there, not re-derived — reuse, not a second drifting copy) and
+``apps/backend-rag/backend/llm/deepseek_client.py`` (the sibling backend
+client, re-pointed the same way in this same retirement pass).
 
-  1. DEFAULT MODEL IS CHEAP: ``deepseek-v4-flash`` unless the caller (or the
-     ``DEEPSEEK_MODEL`` env) explicitly asks for ``deepseek-v4-pro``. Bulk
+WHY the breaker/ledger machinery still exists (smart-spend mandate
+2026-07-14): the 30-day DeepSeek bill on the old direct door was $40.03
+across 9,428 requests, 96% of it ``deepseek-v4-pro`` called RAW from campaign
+scripts (curl/httpx straight to api.deepseek.com). Those callers were
+LEDGER-BLIND: the already-shipped ``scripts/cost_breaker.py`` guard (provider
+"deepseek", default budget $5/24h, DEGRADE at 85%) could never see or stop
+them, because nobody wrote cost events and nobody consulted the breaker. This
+module is the missing consumer side of that contract — unaffected by the door
+change, since the breaker guards SPEND, not transport:
+
+  1. DEFAULT MODEL IS CHEAP: ``deepseek-v4-flash-0731`` unless the caller (or
+     the ``DEEPSEEK_MODEL`` env) explicitly asks for ``deepseek-v4-pro``. Bulk
      passes get flash; pro is an opt-in per run, not a hardcoded constant.
   2. EVERY call appends a cost event to the breaker's JSONL ledger
      (``llm_cost_log.{date}.jsonl`` — same schema ``cost_breaker`` sums:
@@ -21,11 +39,20 @@ consumer side of that contract:
 
 Legacy aliases ``deepseek-chat`` / ``deepseek-reasoner`` are REJECTED: they
 return 200 but silently route to flash (cicatrix 2026-05-24) — a caller that
-thinks it bought pro quality must say so explicitly.
+thinks it bought pro quality must say so explicitly. Unverified whether TP1
+recognizes them at all — do not rely on them here regardless.
 
 Pricing mirrors ``apps/backend-rag/backend/llm/deepseek_client.py`` (V4 list
 prices, 2026-04-24 release). It is a governance PROXY for the breaker, not
-billing truth — DeepSeek's invoice is authoritative.
+billing truth — DeepSeek's invoice (now via the TP1/Alibaba account) is
+authoritative.
+
+Auth: ``BAILIAN_TOKEN_PLAN_API_KEY`` — the TP1 credential name, NOT
+``DEEPSEEK_API_KEY`` (that name now names only the retired direct door and
+must never be topped up). Env var wins; else the file
+``arsenal_probe.load_tp1_settings_key()`` already reads for the sibling
+``tp1_call.py`` seat (``~/.qwen/settings.json`` — a launchd context has no
+env, same reasoning as the old ``_SECRET_FILES`` fallback this replaces).
 
 Stdlib-only on purpose (urllib, no httpx/requests): campaign scripts and
 launchd wrappers run outside any venv on M5/Pro/Mini.
@@ -67,11 +94,15 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 import cost_breaker  # noqa: E402
+from arsenal_probe import (  # noqa: E402  (sibling import, see module docstring — reuse not duplication)
+    TP1_CHAT_COMPLETIONS_URL,
+    load_tp1_settings_key,
+)
 
-API_URL = "https://api.deepseek.com/v1/chat/completions"
+API_URL = TP1_CHAT_COMPLETIONS_URL
 PROVIDER = "deepseek"
 
-DEFAULT_MODEL = "deepseek-v4-flash"
+DEFAULT_MODEL = "deepseek-v4-flash-0731"
 PRO_MODEL = "deepseek-v4-pro"
 
 #: Aliases that still answer 200 OK but silently serve V4-Flash (2026-05-24 trap).
@@ -83,11 +114,6 @@ PRICES_PER_MTOK: dict[str, tuple[float, float, float]] = {
     PRO_MODEL: (0.435, 0.435, 0.87),
     DEFAULT_MODEL: (0.14, 0.0028, 0.28),
 }
-
-_SECRET_FILES = (
-    Path.home() / ".openclaw" / "workspace" / ".env.master",
-    Path.home() / ".nuzantara-secrets.env",
-)
 
 _verdict_lock = threading.Lock()
 _verdict_cache: dict[str, Any] = {"ts": 0.0, "decision": None}
@@ -112,7 +138,8 @@ class DeepSeekBudgetExceeded(DeepSeekError):
 
 
 class DeepSeekBalanceDead(DeepSeekError):
-    """HTTP 402 Insufficient Balance — top-up is an operator[business] action."""
+    """HTTP 402 Insufficient Balance on the TP1/Alibaba account — top-up is
+    an operator[business] action (Zero)."""
 
 
 def resolve_model(model: str | None = None) -> str:
@@ -127,25 +154,19 @@ def resolve_model(model: str | None = None) -> str:
 
 
 def api_key() -> str:
-    """DEEPSEEK_API_KEY from env, else the on-disk secret files (launchd has no env)."""
-    key = os.environ.get("DEEPSEEK_API_KEY")
-    if key:
-        return key
-    for secrets_path in _SECRET_FILES:
-        if not secrets_path.exists():
-            continue
-        try:
-            for line in secrets_path.read_text().splitlines():
-                stripped = line.strip()
-                if stripped.startswith("export "):
-                    stripped = stripped[len("export "):]
-                if stripped.startswith("DEEPSEEK_API_KEY="):
-                    value = stripped.split("=", 1)[1].strip().strip('"').strip("'")
-                    if value:
-                        return value
-        except OSError:
-            continue
-    raise DeepSeekError("no DEEPSEEK_API_KEY in env or secret files")
+    """BAILIAN_TOKEN_PLAN_API_KEY from env, else Qwen's settings.json (the
+    TP1 credential loader ``scripts/tp1_call.py`` already trusts — a launchd
+    context has no env, same reasoning the old ``DEEPSEEK_API_KEY``/
+    ``_SECRET_FILES`` fallback existed for). NOT ``DEEPSEEK_API_KEY`` — that
+    name only ever names the retired direct door now (see module docstring)
+    and this client will not read it even if set."""
+    env_key = os.environ.get("BAILIAN_TOKEN_PLAN_API_KEY")
+    if env_key and env_key.strip():
+        return env_key.strip()
+    value, note = load_tp1_settings_key()
+    if value:
+        return value
+    raise DeepSeekError(f"no BAILIAN_TOKEN_PLAN_API_KEY: {note}")
 
 
 def ledger_root(root: str | Path | None = None) -> Path:
@@ -349,8 +370,8 @@ def complete(
         except urllib.error.HTTPError as exc:
             if exc.code == 402:
                 raise DeepSeekBalanceDead(
-                    "DeepSeek HTTP 402 Insufficient Balance — top-up is "
-                    "operator[business] (Zero on platform.deepseek.com)."
+                    "TP1 gateway HTTP 402 Insufficient Balance (Alibaba Token "
+                    "Plan account) — top-up is operator[business] (Zero)."
                 ) from exc
             body = exc.read().decode("utf-8", errors="replace")[:300]
             last_error = DeepSeekError(f"HTTP {exc.code}: {body}")

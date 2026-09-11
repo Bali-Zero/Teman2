@@ -1,0 +1,127 @@
+{
+  "_comment": [
+    "SANITIZED structural fixture matching the concrete host grants in infra/tailscale/policy.hujson.",
+    "",
+    "Uses the LIVE PacketFilter schema (Srcs/Dsts/Net/Ports), measured on this fleet",
+    "2026-08-31 \u2014 not the older SrcIPs/DstPorts shape this file originally carried. A",
+    "fixture in a format the real netmap never emits proves the tool against a world that",
+    "does not exist.",
+    "",
+    "Source addresses are RFC 5737 documentation ranges, not node addresses: this repo is",
+    "public, and the comparison classifies a source only as 'specific' vs 'any', so the",
+    "identities were never load-bearing. The DESTINATIONS and PORTS are truthful \u2014 they are",
+    "what makes this fixture match the policy and therefore exercise the CLEAN path.",
+    "The DESTINATION addresses are the three fleet hosts, and they are deliberately NOT sanitized: they are already published in infra/tailscale/policy.hujson and infra/tailscale/README.md, this fixture exists to MATCH that policy, and replacing them would break the very comparison the CLEAN path is meant to exercise. The tool's own OUTPUT still never carries them \u2014 evidence says 'specific-destination', never an address."
+  ],
+  "PacketFilter": [
+    {
+      "Srcs": ["192.0.2.10/32"],
+      "SrcCaps": null,
+      "Dsts": [
+        {
+          "Net": "100.93.236.6/32",
+          "Ports": {
+            "First": 22,
+            "Last": 22
+          }
+        },
+        {
+          "Net": "100.93.236.6/32",
+          "Ports": {
+            "First": 6379,
+            "Last": 6379
+          }
+        },
+        {
+          "Net": "100.93.236.6/32",
+          "Ports": {
+            "First": 11434,
+            "Last": 11434
+          }
+        },
+        {
+          "Net": "100.93.236.6/32",
+          "Ports": {
+            "First": 8990,
+            "Last": 8990
+          }
+        },
+        {
+          "Net": "100.110.186.116/32",
+          "Ports": {
+            "First": 22,
+            "Last": 22
+          }
+        }
+      ],
+      "Caps": [],
+      "IPProto": [6]
+    },
+    {
+      "Srcs": ["198.51.100.10/32"],
+      "SrcCaps": null,
+      "Dsts": [
+        {
+          "Net": "100.107.22.111/32",
+          "Ports": {
+            "First": 22,
+            "Last": 22
+          }
+        }
+      ],
+      "Caps": [],
+      "IPProto": [6]
+    },
+    {
+      "Srcs": ["203.0.113.10/32"],
+      "SrcCaps": null,
+      "Dsts": [
+        {
+          "Net": "100.107.22.111/32",
+          "Ports": {
+            "First": 22,
+            "Last": 22
+          }
+        },
+        {
+          "Net": "100.107.22.111/32",
+          "Ports": {
+            "First": 443,
+            "Last": 443
+          }
+        },
+        {
+          "Net": "100.93.236.6/32",
+          "Ports": {
+            "First": 22,
+            "Last": 22
+          }
+        },
+        {
+          "Net": "100.93.236.6/32",
+          "Ports": {
+            "First": 4317,
+            "Last": 4317
+          }
+        }
+      ],
+      "Caps": [],
+      "IPProto": [6]
+    },
+    {
+      "Srcs": ["192.0.2.10/32"],
+      "SrcCaps": null,
+      "Dsts": [
+        {
+          "Net": "100.107.22.111/32",
+          "Ports": {
+            "First": 443,
+            "Last": 443
+          }
+        }
+      ],
+      "Caps": [],
+      "IPProto": [6]
+    }
+  ]
+}

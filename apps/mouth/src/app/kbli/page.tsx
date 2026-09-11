@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getAllCodes, getSections } from "@/lib/kbli-data";
 import { baliBlockedHint } from "@/lib/kbli-bali-block";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
-import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
+import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
 import { KBLIPersonaDoors } from "@/components/kbli/KBLIPersonaDoors";
 import { FunnelFrame } from "@balizero/core";
@@ -34,6 +34,7 @@ export default async function KBLIHomePage({
   const initialQuery = q ? decodeURIComponent(q) : "";
   const sections = getSections().filter((s) => s.codeCount > 0);
   const allCodes = getAllCodes();
+  const codeCount = allCodes.length.toLocaleString("en-US");
   const baliBlockedPct = Math.round(
     (allCodes.filter((c) => c.baliL4?.blocked).length / allCodes.length) * 100,
   );
@@ -43,7 +44,6 @@ export default async function KBLIHomePage({
       funnel="kbli"
       sessionId="SSR"
       trust={{
-        clientCount: 5000,
         rating: GOOGLE_RATING,
         reviewCount: GOOGLE_REVIEW_COUNT,
       }}
@@ -123,8 +123,8 @@ export default async function KBLIHomePage({
 
               {/* Inline stats */}
               <p className="mt-3 text-sm text-zinc-500 tracking-wide">
-                1,559 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA
-                rules
+                {codeCount} codes&ensp;&middot;&ensp;22
+                sectors&ensp;&middot;&ensp;PMA rules
               </p>
 
               {/* CTA — glassmorphism button */}
@@ -203,7 +203,7 @@ export default async function KBLIHomePage({
         {/* ── TRUST BAR ── */}
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 -mt-4">
           {[
-            { num: "1,559", label: "KBLI Codes" },
+            { num: codeCount, label: "KBLI Codes" },
             { num: "22", label: "Industry Sectors" },
             {
               num: `~${baliBlockedPct}%`,
@@ -250,7 +250,7 @@ export default async function KBLIHomePage({
           <h2 className="mb-4 text-xl font-semibold text-white/90">
             Browse by Sector
           </h2>
-          <KBLISectorGrid sections={sections} />
+          <KBLISectorBrowser sections={sections} />
         </section>
 
         {/* ── ZANTARA AI ── */}

@@ -72,9 +72,12 @@ from backend.tests.services.visa_engine.gold_replay import (
     _decision_actual,
     _persona_assessment_id,
     _persona_divergences,
-    _persona_expected,
 )
-from backend.tests.services.visa_engine.test_evaluator_gold import PERSONAS, Persona
+from backend.tests.services.visa_engine.test_evaluator_gold import (
+    PERSONAS,
+    PRODUCTION_REPLAY_EXPECTATIONS,
+    Persona,
+)
 
 logger = logging.getLogger("visa_engine.gold_replay_driver")
 
@@ -91,7 +94,7 @@ REPORT_SCHEMA_VERSION = "1.0.0"
 _REPOSITORY_PRODUCTION_SIGNING_KEYS: tuple[dict[str, str | None], ...] = (
     {
         "kid": "prod-2026-07-1",
-        "public_key": "gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA",
+        "public_key": "gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA",  # pragma: allowlist secret - pinned Ed25519 public verification key, not a credential
         "environment": "PRODUCTION",
         "valid_from": "2026-07-19T00:00:00Z",
         "valid_to": None,
@@ -341,14 +344,14 @@ def replay_offline_decisions(
 
 
 def _normalized_expected(persona: Persona) -> dict[str, Any]:
-    expected = _persona_expected(persona)
+    expected = PRODUCTION_REPLAY_EXPECTATIONS[persona.id]
     return {
-        "state": expected["state"],
-        "candidate_products": expected["candidates"],
-        "missing_facts": expected["missing_facts"],
-        "review_reason_codes": expected["review_reason_codes"],
-        "no_path_reason_codes": expected["no_path_reason_codes"],
-        "notice_codes": expected["notice_codes"],
+        "state": expected.state.value,
+        "candidate_products": list(expected.candidates),
+        "missing_facts": sorted(expected.missing),
+        "review_reason_codes": list(expected.review_codes),
+        "no_path_reason_codes": list(expected.no_path_codes),
+        "notice_codes": sorted(expected.notice_codes),
     }
 
 
@@ -487,6 +490,7 @@ def build_report(
     persona_reports: list[dict[str, Any]] = []
     for persona, decision in zip(PERSONAS, decisions, strict=True):
         expected = _normalized_expected(persona)
+        expectation_basis = PRODUCTION_REPLAY_EXPECTATIONS[persona.id]
         actual = _normalized_actual(decision)
         differences = _persona_divergences(persona.id, expected, actual)
         pack = _decision_pack(decision)
@@ -507,6 +511,10 @@ def build_report(
                 "persona_id": persona.id,
                 "label": persona.label,
                 "expected": expected,
+                "legal_basis": {
+                    "citations": list(expectation_basis.legal_citations),
+                    "rationale": expectation_basis.rationale,
+                },
                 "actual": actual,
                 "pack": pack,
                 "divergence": bool(differences),

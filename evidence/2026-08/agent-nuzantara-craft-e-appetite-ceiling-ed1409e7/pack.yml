@@ -1,0 +1,143 @@
+brief_ref: evidence/2026-08/agent-nuzantara-craft-e-appetite-ceiling-ed1409e7/brief.yml
+plan_ref: docs/plans/2026-08-29-beyond-sota-craft-wave/L01-intake-triage-specification.md
+lanes:
+  - lane: E1
+    role: build
+    seat: sonnet-5
+  - lane: E2
+    role: review
+    seat: kimi-k3
+  - lane: E3
+    role: review
+    seat: opus-5
+seat_diversity:
+  "Build and grade are separated by FAMILY, not only by instance: the diff was built by
+  Sonnet 5 and refuted by Kimi K3, which was handed the rule and its one helper with no
+  tests, no PR framing and no author intent. The final on-disk gate is the orchestrating
+  Opus 5 session, which re-ran every measurement itself rather than accepting either
+  subordinate's report. That gate found a defect the implementer missed AND had one of its
+  own findings overturned by the refuter — in both directions, the separation earned its
+  keep rather than performing it."
+spend:
+  wall_clock_hours: 0.7
+  adversarial_rounds: 1
+spend_note:
+  "Measured, not estimated. wall_clock_hours is the branch lifetime at pack-write time
+  (created 2026-08-29T09:13:33Z per git reflog); it necessarily excludes the CI and
+  merge-queue tail, which is precisely the PR-lifetime limitation rule 14's own docstring
+  declares. adversarial_rounds is 1: one Kimi K3 dispatch, RC=0 first try. `tokens` is
+  DELIBERATELY ABSENT — this session has no instrument to measure its own token
+  consumption at pack-write time, so rule 14 emits its 'not verified this run' NOTICE on
+  the very pack that introduces the rule. That is the honest dogfood: the rule SPEAKS on a
+  live artifact, and speaks the truth, which is that one of the three ceilings it was
+  given cannot be checked from here."
+diff:
+  files: 6
+  added: 1222
+  deleted: 12
+  net: 1210
+pii_scan: clean
+pii_scan_note:
+  "A CI lint script, its hermetic test corpus, a JSON registry entry, one doctrine
+  paragraph, and this pack. No client data, no credentials, no external identifiers
+  anywhere in the diff."
+receipts:
+  - claim: "The linter's hermetic corpus passes with the new rule-14 fixtures included: 122 checks ok, 0 FAIL, exit 0. Up from 96 on origin/main."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 scripts/evidence_pack_lint.py --selftest"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "The full pytest wrapper passes: 288 tests, up from 262 on origin/main. Bytecode writing OFF and pytest cache disabled, because a mutation loop over cached bytecode measures the filesystem rather than the corpus (W121)."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_evidence_pack_lint.py -q -p no:cacheprovider"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "guard-conformance reports 0 violations; the evidence-pack-lint census moved 15 -> 16, matching the one new check_* def. It went RED first, on a phantom left by my own test rename, and that red is the proof the guard is armed rather than merely present."
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "The registry is now exhaustive in BOTH directions for all three rules of this lane — acceptance-probe 14/14, assumptions 18/18, appetite 26/26, zero phantoms AND zero unlisted. guard-conformance only enforces the first direction, so nine tests were on disk and unlisted, three of them carried from PR-2. They are the sharpest tests in the file; unlisted, deleting them would have gone unnoticed."
+    cmd: "compare each registry entry's guilt+innocence names against every def test_* on disk"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "ruff is clean on both changed Python files. Measured with the real binary: this shell's python3 has no ruff module, which produced a false red on a green step during PR-2."
+    cmd: "/opt/homebrew/bin/ruff check scripts/evidence_pack_lint.py scripts/tests/test_evidence_pack_lint.py"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "MUTATION 17/17 KILLED on the FINAL code, baseline green, file restored from a cp backup rather than git checkout. Mutants covered the core contract (> becomes >=, violation downgraded to notice, bool ceilings admitted, the non-mapping short-circuit removed, a truthy non-str accepted as acknowledgment), the sanitiser, and every numeric guard the refuter's findings produced."
+    cmd: "for each mutant: replace the anchor, re-run --selftest and pytest, restore"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "Two mutants were RE-CUT rather than counted. M10's anchor no longer existed after the numeric guard was rewritten, and M11 had become SEMANTICALLY EQUIVALENT — with NaN filtered upstream, 'not (a <= b)' and 'a > b' agree on every reachable input. A surviving mutant is a claim about the corpus only when the mutation actually changes behaviour."
+    cmd: "re-cut M10 against the rewritten guard; re-cut M11 as abs() folding, which IS reachable"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "ZERO NEW REDS across the whole repo AND every open PR: 42 open PRs, 1348 packs, 0 unfetchable branches, 0 exit-code deltas against origin/main's linter. Plus main's own 53 packs: 2 non-zero under BOTH linters, 0 deltas. A pack counts as a new red only when the two exit codes DIFFER — comparing against absolute zero would convict pre-existing failures as mine."
+    cmd: "/tmp/e_inflight_sweep.py scripts/evidence_pack_lint.py"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "Rule 14 emits nothing on any of the 53 packs on main — not one message contains the string 'appetite'. No pack declares appetite as a mapping, so any output would have been a false positive on the lane's only convicting rule."
+    cmd: "lint every pack, grep stdout+stderr for 'appetite'"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "The gear floor recomputes to 2 from THIS branch's changed files and numstat, measured from the merge-base. The two-dot diff against the live tip of main returned 3 — main had advanced 1,514 lines since the branch cut, so that number accused this PR of files it never touched (W102). CI is merge-base anchored too, so it will compute the same 2."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <mb> --numstat-file <mb>"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "Blind cross-family refutation returned 6 findings and 4 explicitly-clean categories. All six were REPRODUCED ON DISK before disposition rather than accepted on the argument (W65). Five fixed, one decided and documented in the docstring."
+    cmd: "kimi -m kimi-code/k3 -p <10.7KB payload: the rule + its one helper, no tests, no framing>"
+    exit: 0
+    ts: "2026-08-29T09:51:54Z"
+    seat: "kimi-k3 (blind refuter, non-Anthropic)"
+dissent:
+  - objection: "F4 HIGH — a spend of .nan escapes BOTH the violation and the unmeasured notice: type(nan) is float admitted it as a MEASUREMENT, and every NaN comparison is False, so the rule fell totally silent. Report any overrun as .nan and nothing is said."
+    seat: "kimi-k3 (blind cross-family refuter)"
+    status: CONFIRMED
+    disposition: "Reproduced on disk, then fixed in _appetite_numeric (math.isfinite). The finding's real weight is not the bug: the ORCHESTRATOR HAD ALREADY EXAMINED THIS EXACT INPUT, called it 'fail-open, therefore safe', and written a test asserting ([], []) as correct. Half right — fail-open on the VIOLATION is safe, fail-open on the NOTICE is a bypass, and the docstring already promised a notice for a dimension with no comparable numeric value. The author's own test would have carried the defect to main as a certified invariant. That test is now rewritten, and it carries this history in its docstring."
+  - objection: "F1 HIGH — appetite_exceeded: yes parses as the YAML bool True, so an honest pack was convicted with a message reading 'no appetite_exceeded: acknowledgment' while the author had plainly written one."
+    seat: "kimi-k3 (blind cross-family refuter)"
+    status: CONFIRMED
+    disposition: "Reproduced, then SPLIT: confirmed as a message defect, retracted as a false positive. The conviction is correct and stays — this field mirrors gear_override, where the REASON is the artifact, and accepting a bare 'yes' would turn the lane's only failing rule into a one-token bypass. Only the message changed; it now names the type. An innocence twin pins that a genuinely-absent acknowledgment still gets the original wording."
+  - objection: "F3 MED — a negative ceiling (adversarial_rounds: -1, a typo) is a genuine int, so an honest spend of 0 convicted via 0 > -1."
+    seat: "kimi-k3 (blind cross-family refuter)"
+    status: CONFIRMED
+    disposition: "Reproduced and fixed by the same numeric guard as F4 (>= 0). The over-correction twin is pinned in the same commit (W94): the bound is >= 0 and never > 0, so wall_clock_hours: 0 remains a real declaration and a real observation."
+  - objection: "F5/F6 MED/LOW — -.inf spend is the same silent bypass as F4; a negative spend passes as a clean measurement."
+    seat: "kimi-k3 (blind cross-family refuter)"
+    status: CONFIRMED
+    disposition: "Both closed by the single isfinite/non-negative guard. One cure, four findings — which is what a class fix looks like versus patching the instance that bit you."
+  - objection: "F2 MED — raw IEEE > on self-reported floats convicts over 4e-17: 0.1+0.2 = 0.30000000000000004 against a declared 0.3."
+    seat: "kimi-k3 (blind cross-family refuter)"
+    status: CONFIRMED
+    disposition: "Reproduced, and DECIDED rather than smoothed. No epsilon: picking a tolerance is picking a NUMBER, and ceiling values are explicitly a Zero ruling this rule carries rather than decides; and an epsilon wide enough for float noise on wall_clock_hours would silently forgive a real breach on tokens. The message prints both values, so the edge is visible rather than silent. Written into the docstring as a known sharp edge, not left for the next reader to rediscover."
+  - objection: "LOW nit — the acknowledged notice embedded the reason unquoted, so a reason reading 'nothing' rendered as 'acknowledged: nothing', which reads as the rule reporting no acknowledgment."
+    seat: "kimi-k3 (blind cross-family refuter)"
+    status: CONFIRMED
+    disposition: "Fixed by quoting the reason. Cheap, and this rule has not landed yet so there is no landed output to churn."
+  - objection: "Four categories returned NONE FOUND: no crash path (None/str/list/int in every position, non-str keys, 10**100, mixed int/float), no message injection, and independent confirmation of 'must NEVER raise', 'equality is not a breach' and the after-sanitising emptiness rule."
+    seat: "kimi-k3 (blind cross-family refuter)"
+    status: RETRACTED
+    disposition: "Recorded as evidence, not filler. The refuter re-derived on its own that \\x1b[31m'.isspace() is False, that the isprintable filter also kills bidi overrides and zero-width characters, and that truncation happens AFTER sanitising — design claims confirmed by someone who did not write them."
+  - objection: "Self-refutation while gating: the acknowledgment reason reached stderr with no sanitising at all, so a newline split the notice across two stderr lines and ESC/BEL reached the terminal verbatim."
+    seat: "opus-5 (orchestrator, gating its own implementer's diff)"
+    status: CONFIRMED
+    disposition: "Found by READING the code, not by running the suite, which was green. It is the identical defect blind review found in rule 13 one PR earlier — the sanitiser existed and rule 14 simply did not call it. Cured structurally rather than locally: _sanitize_notice_text extracted as a shared named function now used by rules 12, 13 and 14, proven byte-identical on rules 12/13 across nine shapes, with a mutation deleting its filter killing their tests."
+size_note:
+  "1,210 net lines is three times the mandate's ~400 guideline, and it is stated here
+  rather than hidden in the diffstat. The breakdown: 889 lines of code+corpus (535 lint,
+  354 tests), 275 of REQUIRED evidence ceremony (this pack and its brief), 38 registry,
+  11 doctrine. It is not splittable along any honest seam — shipping the rule without its
+  corpus would be superscar #2 in one commit (a convicting rule with no proof it bites),
+  and the lane spec itself defines PR-3 as rule + tests + the SKILL.md paragraph, in that
+  unit, after PR-2. Of the 535 lint lines, roughly 90 are docstring: this repo treats the
+  honest limit as something that must live IN THE CODE, not only in a PR body, and that
+  is a cost paid deliberately."
+notes: "Two of my own measurement errors, recorded because they are the instructive part. (1) A background launch reported 'exit code 0' and I nearly read it as the sweep's verdict — it was the exit of the echo that launched it; the sweep was still running with a zero-byte log because Python buffers when stdout is not a tty. (2) The first floor measurement returned 3 from a two-dot diff against a main that had moved 1,514 lines under me, which is W102 exactly: the tool answered honestly, the question was wrong. Both were caught by re-measuring rather than by reasoning about what the number ought to be. A third near-miss belongs to the refuter: it was ALSO nearly wasted, because the mutation sweep it informed was first run against a linter I had already changed — re-run on the final bytes, which is the only version that means anything."

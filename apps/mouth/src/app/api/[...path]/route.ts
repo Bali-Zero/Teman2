@@ -11,6 +11,13 @@ export const maxDuration = 300; // 5 minutes max for agentic RAG
 const VISA_ORACLE_EVALUATE_PATH = "/api/visa-oracle/evaluate";
 const VISA_ORACLE_MAX_BODY_BYTES = 32 * 1024;
 
+// The Fetch spec forbids a non-null body on these statuses ("null body status").
+// `new Response(buf, { status })` throws a TypeError even when `buf` is an empty
+// ArrayBuffer — the caught TypeError then surfaced as a fabricated 500 "Proxy
+// error" for upstream responses (e.g. a successful DELETE returning 204) that
+// never actually failed.
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
 class RequestBodyTooLargeError extends Error {
   constructor() {
     super(`Request body exceeds ${VISA_ORACLE_MAX_BODY_BYTES} bytes`);
@@ -507,11 +514,14 @@ async function proxy(req: NextRequest): Promise<Response> {
       }
     }
 
-    return new Response(bodyBuffer, {
-      status: upstream.status,
-      statusText: upstream.statusText,
-      headers: respHeaders,
-    });
+    return new Response(
+      NULL_BODY_STATUSES.has(upstream.status) ? null : bodyBuffer,
+      {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: respHeaders,
+      },
+    );
   } catch (error) {
     logger.error(
       `[Proxy] Fetch error for ${req.method} ${url.pathname}`,

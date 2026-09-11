@@ -27,9 +27,19 @@ Hard rules carried from the spec:
   - ``completed_pending_consume`` is NON-terminal (Codex r3-NEW-1): it holds
     ``result_text`` under the fence until the single consumer (the worker's
     finalization) CASes it to ``consumed``. The reaper covers a dead consumer.
-  - One serve-mode job per outbox row, ever — enforced by the DB
-    (``uq_broker_jobs_serve_outbox``, migration 270); ``offer_job`` treats the
-    unique violation as "already spent" and reports it, never retries.
+  - One serve-mode job IN FLIGHT per outbox row at a time — enforced by the
+    DB (``uq_broker_jobs_serve_outbox_live``, migration 296, superseding
+    migration 270's ever-scoped ``uq_broker_jobs_serve_outbox``). A row may
+    spend more than one leg over its life: once the prior leg is terminal
+    (consumed/expired/failed), ``offer_job`` admits a new one, up to
+    ``MAX_CODEX_LEGS`` legs total — the same retry budget
+    ``wa_outbox_worker.MAX_ATTEMPTS`` already gives the row overall. A
+    caller offering into a still-LIVE prior leg gets it back
+    (``OfferOutcome.REATTACHED``) instead of losing it. This retired the
+    original "ever" invariant, whose only effect was turning every
+    RECOVERABLE codex failure into a silent fall-off to Gemini — safe while
+    Gemini stood behind it, a mute customer once Gemini is gone (spec
+    gradino 2/5).
   - Client text never in logs: this module logs job ids, states and typed
     outcomes only — never ``package`` or ``result_text`` content.
 """
@@ -48,20 +58,58 @@ import asyncpg
 
 logger = logging.getLogger(__name__)
 
-# T_exec (spec 2.1): claim-wait <=3s + exec <=12s. Config override
-# WA_BROKER_DEADLINE_S; read per-call so tests and rollouts never need a
-# process restart.
-DEFAULT_DEADLINE_S = 15
+# T_exec (spec 2.1). Widened 2026-08-28 (measured incident: wa_outbox 352,
+# thread 394 — a real client message took 2m21s because a normal, slightly
+# heavier question (successful generations run 5.6-8.4s) blew through the
+# old 15s ceiling twice before succeeding on the third attempt). Target is
+# the 60s end-to-end reply budget with headroom: at 45s the effective exec
+# budget (deadline minus claim-wait minus WA_BROKER_NET_MARGIN_S, see
+# wa_codex_daemon.compute_budget_s) is ~42s, comfortably above every
+# measured successful generation, while still leaving room for the retry
+# ladder (wa_outbox_worker.MAX_ATTEMPTS) to reach a terminal apology in a
+# few minutes rather than hang open. Config override WA_BROKER_DEADLINE_S;
+# read per-call so tests and rollouts never need a process restart.
+DEFAULT_DEADLINE_S = 45
 
-# Broker claim lease: how long a leased job waits for /complete before the
-# reaper may expire it. Slightly above the deadline so the deadline (not the
-# lease) is what normally decides.
-LEASE_TTL_S = 20
+# Headroom the broker claim lease carries OVER the exec deadline (spec 2.1).
+# The two are coupled by INTENT but anchored at DIFFERENT clocks: deadline_at
+# is set relative to OFFER time (offer_job's INSERT), lease_expires_at is set
+# relative to CLAIM time (claim_job's UPDATE, which happens at or after
+# offer). A bare LEASE_TTL_S constant that does not track deadline_seconds()
+# can invert that ordering the moment WA_BROKER_DEADLINE_S is raised past the
+# constant's value: in the worst case (claim happens immediately after
+# offer, zero lag), deadline_at would then land AFTER lease_expires_at, and
+# the reaper would start expiring leases out from under jobs that are still
+# executing well within their (now larger) exec budget — a worse failure
+# than the timeout this margin exists to relieve, and one no test would
+# catch because the bare constant still "looks fine" on its own (cured
+# 2026-08-28: see lease_ttl_seconds() below, which is what claim_job and the
+# reaper actually use). Value preserves the original 20-15=5s buffer.
+LEASE_TTL_MARGIN_S = 5
 
 # Admission depth cap (spec 2.1, Codex H12): the broker is single-flight, so
 # more than one outstanding (offered|leased) job means the second cannot start
 # within budget by construction. DB-atomic via advisory xact lock below.
 MAX_DEPTH = 1
+
+# Retry budget for the codex leg (spec gradino 2/5, migration 296): the most
+# broker_jobs rows a single outbox_id may ever accumulate (mode='serve').
+# Deliberately mirrors wa_outbox_worker.MAX_ATTEMPTS by VALUE, not by
+# import — wa_outbox_worker already imports wa_codex_leg which imports
+# this module, so importing back would cycle. The two constants are
+# cross-checked by
+# test_max_codex_legs_matches_outbox_worker_max_attempts (test_wa_broker.py)
+# so a change to one without the other fails CI instead of drifting quietly
+# (same closed-vocabulary discipline as ALLOWED_ERROR_CLASSES / W114).
+# Counted as durable broker_jobs ROWS, not a read of wa_outbox.attempts:
+# attempts is only written by the outer retry ladder when a claim's
+# generation actually raises, and a worker crash between a durable offer
+# and that raise (stale-claim reclaim — wa_outbox_worker.py's
+# claim_expires_at sweep resets status to 'pending' WITHOUT touching
+# attempts) would leave it under-counting how many codex legs a row has
+# really spent. A row-count anchored on the INSERT that creates each leg
+# survives that crash by construction.
+MAX_CODEX_LEGS = 5
 
 # "Broker absent" threshold (spec 2.1). Deliberately NOT 2x the poll interval:
 # the broker is single-flight and does not poll while an exec is in flight, so
@@ -78,8 +126,14 @@ BREAKER_OPEN_SECONDS = 300
 # admission check demotes it back to open (fresh cooldown). Reachable only if
 # the canary's worker crashes between consuming the result and recording the
 # outcome — without this exit, half_open would be an absorbing state and the
-# codex route dark forever. Sized above deadline + consume grace so it can
-# never fire while a legitimate canary is still being processed.
+# codex route dark forever. The actual guard against firing while a
+# legitimate canary is still being processed is the demotion query's own
+# NOT EXISTS (offered/leased/completed_pending_consume) predicate below, not
+# this value's size relative to the exec deadline or consume grace — those
+# two grew with the 2026-08-28 exec-budget widening (deadline_seconds() +
+# lease_ttl_seconds()*3 can now exceed this constant), and the predicate is
+# what keeps that harmless: a canary still in any of those three states
+# blocks the demotion regardless of how long HALF_OPEN_ORPHAN_S is.
 HALF_OPEN_ORPHAN_S = 120
 
 # Terminal-row retention (spec 2, Codex NEW-1).
@@ -105,6 +159,7 @@ ALLOWED_ERROR_CLASSES = frozenset(
     {
         "exec_timeout",  # codex subprocess exceeded its budget
         "cli_failure",  # codex CLI exited non-zero / unparseable output
+        "quota_exhausted",  # codex seat's usage window is exhausted (B2b)
         "cli_version_mismatch",  # daemon version pin refused to exec (chaos row 8)
         "spawn_failure",  # subprocess could not be started
         "oversized_output",  # result exceeded the transport bound (chaos row 7)
@@ -124,6 +179,16 @@ def deadline_seconds() -> int:
     return value if value > 0 else DEFAULT_DEADLINE_S
 
 
+def lease_ttl_seconds() -> int:
+    """How long a leased job waits for /complete before the reaper may
+    expire it. DERIVED from deadline_seconds() + LEASE_TTL_MARGIN_S rather
+    than a bare constant, so raising WA_BROKER_DEADLINE_S can never invert
+    the deadline/lease ordering (see LEASE_TTL_MARGIN_S's docstring for the
+    failure this closes). Read per-call, same reload discipline as
+    deadline_seconds()."""
+    return deadline_seconds() + LEASE_TTL_MARGIN_S
+
+
 def absent_after_seconds() -> int:
     raw = os.getenv("WA_BROKER_ABSENT_AFTER_S", "")
     try:
@@ -135,13 +200,30 @@ def absent_after_seconds() -> int:
 
 class OfferOutcome(str, enum.Enum):
     """Why an offer did or did not happen. The caller (worker broker leg)
-    routes to the Gemini leg on anything but OFFERED."""
+    routes to the Gemini leg on anything but OFFERED or REATTACHED — those
+    two carry a job_id worth waiting on; every other member is a certain
+    non-durable outcome."""
 
-    OFFERED = "offered"
+    OFFERED = "offered"  # a NEW job was created (first leg, or a retry
+    # leg once the prior one went terminal — both share this member; the
+    # caller's handling is identical either way).
+    REATTACHED = "reattached"  # a PRIOR leg for this outbox_id is still
+    # alive (offered/leased/completed_pending_consume) — its job_id comes
+    # back so the caller waits/consumes it instead of losing it. This is
+    # the fix for the historical bug: a retry used to see ALREADY_SPENT
+    # with no job_id and fall off, even when the original leg was still
+    # running to completion unobserved.
     BROKER_ABSENT = "broker_absent"
     BREAKER_OPEN = "breaker_open"
     QUEUE_FULL = "queue_full"
-    ALREADY_SPENT = "already_spent"  # unique violation: row's codex leg used
+    ALREADY_SPENT = "already_spent"  # defensive fallback only: the DB's own
+    # unique-violation verdict on the live-scoped index (a race the
+    # advisory xact lock should already make unreachable in practice).
+    LEGS_EXHAUSTED = "legs_exhausted"  # the prior leg is terminal, but this
+    # outbox_id has already spent MAX_CODEX_LEGS rows — a NAMED terminal
+    # outcome, never conflated with the generic ALREADY_SPENT above: a
+    # caller needs to tell "the DB raced me" apart from "this row is truly
+    # done with codex" (spec gradino 2/5, point 3 — no silent fall-off).
     FENCE_LOST = "fence_lost"  # wa_outbox claim no longer ours
 
 
@@ -149,6 +231,16 @@ class OfferOutcome(str, enum.Enum):
 class OfferResult:
     outcome: OfferOutcome
     job_id: uuid.UUID | None = None
+    # Set alongside job_id on OFFERED/REATTACHED only: the epoch the
+    # SERVING job actually runs under. For OFFERED this equals the caller's
+    # own thread_epoch argument; for REATTACHED it is the PRIOR leg's own
+    # frozen value, which can predate this call's local epoch read (the
+    # prior leg may have been offered by an earlier, since-failed claim).
+    # wa_codex_leg.py's post-completion drift check must fence against
+    # THIS value, not its own freshly-read thread_epoch — using the wrong
+    # one would silently defeat the thread-epoch-drift protocol on a
+    # reattach (spec 2.3).
+    thread_epoch: int | None = None
 
 
 class WaitOutcome(str, enum.Enum):
@@ -376,7 +468,8 @@ async def offer_job(
     package_hash: str,
     thread_epoch: int,
 ) -> OfferResult:
-    """Offer one serve-mode job — the row's ONE codex leg (spec 2).
+    """Offer one serve-mode job for this outbox row (spec 2, retry budget
+    gradino 2/5).
 
     ONE TRANSACTION, fenced on the outbox claim (Codex NEW-2): the
     ``generation_route`` marker and the job INSERT commit or vanish together;
@@ -384,6 +477,13 @@ async def offer_job(
     breaker, depth) is checked INSIDE the same transaction under an advisory
     xact lock, so two workers reading the same stale gauge cannot double-offer
     past the cap (Codex H12).
+
+    A row may call this more than once over its life (worker retries).
+    The first call always creates a fresh job. Every later call re-reads
+    this SAME row's leg history and answers one of: REATTACHED (a prior
+    leg is still alive — take its job_id back, do not create a second
+    one), a fresh OFFERED (the prior leg is terminal and the row has not
+    exhausted MAX_CODEX_LEGS), or LEGS_EXHAUSTED (terminal, budget spent).
 
     ``package``/``evidence_inputs`` arrive as already-serialized JSON strings
     (the caller owns the allowlist schema, spec 2.2) — this module never
@@ -393,9 +493,14 @@ async def offer_job(
     async with conn.transaction():
         await conn.execute(_ADMISSION_LOCK_SQL)
 
+        # broker_last_seen_at travels alongside the liveness boolean —
+        # reused below (no extra query) to resolve the daemon-still-busy
+        # ambiguity on a retry whose prior leg expired by deadline (S2
+        # cross-family review round 2, "budget-drain" finding).
         gauge = await conn.fetchrow(
             """
-            SELECT broker_last_seen_at >= now() - ($1 * INTERVAL '1 second')
+            SELECT broker_last_seen_at,
+                   broker_last_seen_at >= now() - ($1 * INTERVAL '1 second')
                        AS broker_alive
             FROM wa_broker_gauge WHERE id = 1
             """,
@@ -404,8 +509,20 @@ async def offer_job(
         if gauge is None or not gauge["broker_alive"]:
             return OfferResult(OfferOutcome.BROKER_ABSENT)
 
+        # Excludes THIS outbox_id's own live job(s) — a retry reattaching
+        # to a leg it already holds asks for no NEW capacity, so it must
+        # never be refused by the very cap that admitted that leg in the
+        # first place (retry budget, spec gradino 2/5). Safe globally: the
+        # advisory xact lock above serializes every offer, so depth
+        # (unscoped) never exceeds MAX_DEPTH=1 at any committed state —
+        # if THIS row already holds the one live slot, no OTHER row can
+        # hold one too, so excluding self can never hide a real conflict.
         depth = await conn.fetchval(
-            "SELECT count(*) FROM broker_jobs WHERE state IN ('offered', 'leased')",
+            """
+            SELECT count(*) FROM broker_jobs
+            WHERE state IN ('offered', 'leased') AND outbox_id != $1
+            """,
+            outbox_id,
         )
         if int(depth or 0) >= MAX_DEPTH:
             return OfferResult(OfferOutcome.QUEUE_FULL)
@@ -420,27 +537,133 @@ async def offer_job(
         if not await breaker_admits(conn):
             return OfferResult(OfferOutcome.BREAKER_OPEN)
 
-        # Route marker, fenced on the outbox claim.
+        # Route marker, fenced on the outbox claim. Idempotent re-write
+        # (SET generation_route = 'codex' unconditionally, no longer
+        # ``AND generation_route IS NULL``): this ONE statement now serves
+        # BOTH the ownership check (claim_token + status must still match —
+        # a caller whose lease was reclaimed must never learn about, let
+        # alone extend, another owner's leg) AND the read of the row's
+        # PRE-update route via the FROM-old self-join (same pattern
+        # consume_result uses to read a value before its own UPDATE nulls
+        # it). route_before is NULL only on this row's very first-ever
+        # offer; any other value means a prior leg exists and this is a
+        # retry. A fenced-is-None result is now UNAMBIGUOUSLY fence loss —
+        # the historical version conflated "fence lost" with "marker
+        # already set" and reported ALREADY_SPENT for both, which was safe
+        # only because that branch never wrote anything; it is not safe
+        # once a retry can create or reattach to a job (see the FENCE_LOST
+        # branch below, and its test's updated expectation).
         fenced = await conn.fetchrow(
             """
-            UPDATE wa_outbox SET generation_route = 'codex'
-            WHERE id = $1 AND claim_token = $2 AND status = $3
-              AND generation_route IS NULL
-            RETURNING id
+            UPDATE wa_outbox AS w
+            SET generation_route = 'codex'
+            FROM wa_outbox AS old
+            WHERE w.id = old.id
+              AND w.id = $1 AND w.claim_token = $2 AND w.status = $3
+            RETURNING w.id, old.generation_route AS route_before
             """,
             outbox_id,
             claim_token,
             outbox_expected_status,
         )
         if fenced is None:
-            # Either the lease was lost, or the marker is already set (a
-            # previous attempt spent the leg). Disambiguate for the ledger.
-            already = await conn.fetchval(
-                "SELECT generation_route IS NOT NULL FROM wa_outbox WHERE id = $1",
+            await _revert_canary_cas(conn)
+            return OfferResult(OfferOutcome.FENCE_LOST)
+
+        if fenced["route_before"] is not None:
+            # RETRY: this outbox row already spent at least one codex leg.
+            # The historical "ever" invariant (migration 270) is exactly
+            # what turned every recoverable codex failure into a silent
+            # Gemini fall-off; with Gemini's removal that becomes a mute
+            # customer instead. New rule: reattach to a still-alive leg,
+            # or admit a fresh one while the row has budget left.
+            # deadline_open is DB-computed (never a Python/DB clock
+            # comparison) — same discipline as the gauge's broker_alive
+            # boolean and wait_for_job's deadline_passed. thread_epoch is
+            # NOT NULL at the schema (migration 270) — no broker_jobs row
+            # can ever exist without it, so no defensive cast guard here.
+            prior = await conn.fetchrow(
+                """
+                SELECT job_id, state, thread_epoch, deadline_at,
+                       deadline_at > now() AS deadline_open
+                FROM broker_jobs
+                WHERE outbox_id = $1 AND mode = 'serve'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
                 outbox_id,
             )
-            await _revert_canary_cas(conn)
-            return OfferResult(OfferOutcome.ALREADY_SPENT if already else OfferOutcome.FENCE_LOST)
+            if (
+                prior is not None
+                and prior["state"] not in _TERMINAL_STATES
+                and prior["deadline_open"]
+            ):
+                # Still alive (offered/leased/completed_pending_consume)
+                # AND its own deadline has not yet elapsed — hand its
+                # job_id back instead of losing it. A live-state row PAST
+                # its own deadline (not yet reaped) is deliberately NOT
+                # reattached here (S2 cross-family review round 2, minor
+                # 2): the caller would just wait_for_job it straight into
+                # an immediate deadline-CAS — a wasted round trip for a
+                # leg that is, for every practical purpose, already done.
+                # It falls through to the terminal-budget path below
+                # exactly like a formally 'expired' row would.
+                await _revert_canary_cas(conn)
+                return OfferResult(
+                    OfferOutcome.REATTACHED,
+                    job_id=prior["job_id"],
+                    thread_epoch=int(prior["thread_epoch"]),
+                )
+
+            if prior is not None and prior["state"] not in ("consumed", "failed"):
+                # AMBIGUOUS: the prior leg is not reattachable (terminal,
+                # or live but past its own deadline) AND the daemon never
+                # explicitly told us it is done with it — 'consumed' and
+                # 'failed' are the only two states that follow an actual
+                # /complete report; 'expired' (and "live but deadline_open
+                # false") both mean nobody has confirmed the daemon has
+                # moved on. The daemon is single-flight and strictly
+                # sequential (claim -> exec -> complete -> claim again,
+                # never polling mid-exec — verified against
+                # wa_codex_daemon.py's run_forever, not its docstring), so
+                # broker_last_seen_at moving to AFTER this leg's own
+                # deadline_at is proof positive it has cycled back to idle
+                # since. Without that proof, admitting a new leg risks the
+                # "budget drain" race (S2 cross-family review round 2,
+                # MAJOR): the daemon is still busy on the leg that just
+                # expired under it, so a second (third, fourth...) leg
+                # would sit unclaimed until IT ALSO expires, burning the
+                # whole retry budget and multiple breaker-failure folds on
+                # one slow-but-healthy exec instead of one. QUEUE_FULL is
+                # deliberately reused here, not a new outcome: the shape
+                # is identical (same-claim Gemini fall-off, zero
+                # retry-ladder involvement) and semantically apt — there
+                # genuinely is no CONFIRMED capacity right now.
+                if (
+                    gauge["broker_last_seen_at"] is None
+                    or gauge["broker_last_seen_at"] <= prior["deadline_at"]
+                ):
+                    await _revert_canary_cas(conn)
+                    return OfferResult(OfferOutcome.QUEUE_FULL)
+
+            leg_count = await conn.fetchval(
+                "SELECT count(*) FROM broker_jobs WHERE outbox_id = $1 AND mode = 'serve'",
+                outbox_id,
+            )
+            if int(leg_count or 0) >= MAX_CODEX_LEGS:
+                # Terminal + budget exhausted: NAMED, never conflated with
+                # the generic ALREADY_SPENT below (spec gradino 2/5, point
+                # 3 — no silent fall-off for this case either).
+                await _revert_canary_cas(conn)
+                return OfferResult(OfferOutcome.LEGS_EXHAUSTED)
+            # else: the prior leg is terminal (or confirmed/proven not to
+            # be occupying the daemon) and the budget has room — fall
+            # through to the SAME savepoint-protected INSERT a fresh
+            # (first-ever) offer uses below. uq_broker_jobs_serve_outbox_live
+            # (migration 296) only forbids a SECOND live row, so this INSERT
+            # is expected to succeed; the advisory xact lock already
+            # serializes the whole broker system-wide, so no other offer
+            # can be racing this one for the same or any other outbox_id.
 
         # SAVEPOINT around the INSERT (S2 cross-family review, finding 2):
         # a UniqueViolationError aborts the enclosing PostgreSQL transaction,
@@ -480,12 +703,13 @@ async def offer_job(
                     t_exec,
                 )
         except asyncpg.UniqueViolationError:
-            # uq_broker_jobs_serve_outbox: the leg was already spent by a
-            # path that did not set the marker (should not happen — the two
-            # writes are one transaction — but the DB is the invariant's
-            # owner, so honor its verdict rather than assume). The marker
-            # written above survives the savepoint rollback and commits,
-            # repairing the missing historical fence.
+            # uq_broker_jobs_serve_outbox_live: a live row already exists
+            # for this outbox_id via a path this transaction did not see
+            # (should not happen — the advisory xact lock serializes the
+            # whole broker, and the REATTACHED branch above already checks
+            # for a live prior leg — but the DB is the invariant's owner,
+            # so honor its verdict rather than assume). The marker written
+            # above survives the savepoint rollback and commits.
             await _revert_canary_cas(conn)
             return OfferResult(OfferOutcome.ALREADY_SPENT)
 
@@ -496,7 +720,7 @@ async def offer_job(
         thread_id,
         t_exec,
     )
-    return OfferResult(OfferOutcome.OFFERED, job_id=job_id)
+    return OfferResult(OfferOutcome.OFFERED, job_id=job_id, thread_epoch=thread_epoch)
 
 
 async def wait_for_job(
@@ -662,7 +886,7 @@ async def claim_job(
                   deadline_at, now() AS server_now
         """,
         fence_token,
-        LEASE_TTL_S,
+        lease_ttl_seconds(),
     )
     if row is not None:
         logger.info("wa_broker: job %s leased", row["job_id"])
@@ -894,7 +1118,7 @@ async def expire_stale_jobs(pool: asyncpg.Pool) -> ReapResult:
                      AND expires_at IS NOT NULL AND expires_at <= now())
             RETURNING mode, outcome
             """,
-            LEASE_TTL_S * 3,
+            lease_ttl_seconds() * 3,
         )
         result = ReapResult()
         for row in rows:

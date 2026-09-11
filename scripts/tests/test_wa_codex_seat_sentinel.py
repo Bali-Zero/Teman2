@@ -117,12 +117,28 @@ def test_guilt_other_failure_verdict_is_warn_not_red() -> None:
 
 
 def test_guilt_unrecognized_probe_verdict_falls_visibly_as_warn_never_silent() -> None:
-    """W116: un finale non mappato (un probe futuro che scrive p.es.
-    "quota_exhausted") deve cadere VISIBILE, mai nel secchio sano."""
-    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    """W116: un finale non mappato (un probe futuro che scrive un verdetto
+    ancora sconosciuto a questo lettore) deve cadere VISIBILE, mai nel
+    secchio sano. "quota_exhausted" non e piu questo caso — B2b lo ha reso
+    un verdetto RICONOSCIUTO (vedi test dedicato sotto)."""
+    verdicts = wa.evaluate(_probe("some_future_verdict_not_yet_mapped", 0, 1), 10.0, _gauge(), NOW)
     assert len(verdicts) == 1
     assert verdicts[0].level == wa.WARN
-    assert "quota_exhausted" in verdicts[0].message
+    assert "some_future_verdict_not_yet_mapped" in verdicts[0].message
+
+
+def test_guilt_quota_exhausted_is_red_dedicated_not_warn() -> None:
+    """B2b: closes the gap the test above used to encode — a quota-dead
+    seat is a DEDICATED RED condition now, not the generic WARN
+    "other_failure" bucket (no operator re-login fixes it, but it is real
+    and worth paging on, same severity tier as auth_death)."""
+    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    v = verdicts[0]
+    assert v.level == wa.RED
+    assert v.condition == "quota_exhausted"
+    assert "QUOTA EXHAUSTED" in v.message
+    assert "no operator re-login" in v.message.lower()
 
 
 def test_guilt_never_seen_daemon_null_staleness_parses_to_daemon_silent() -> None:

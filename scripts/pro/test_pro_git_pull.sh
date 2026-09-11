@@ -72,6 +72,14 @@ write_allowlist() {
     printf ']}\n'; } > "$out"
 }
 
+# Backdate a file by 2h, portably. The obvious spellings are each half-portable — BSD touch
+# wants an absolute stamp its own date builds, GNU touch takes a relative phrase and rejects
+# the BSD date flag outright — and this suite runs on BOTH (ubuntu-latest in the antidotes
+# job, macOS on Pro and M5). python3 sidesteps the split; it is already a hard dep here.
+backdate_2h() {
+  python3 -c 'import os,sys,time; t=time.time()-7200; os.utime(sys.argv[1],(t,t))' "$1"
+}
+
 echo "=== pro-git-pull adversarial suite ==="
 
 # ── A: clean behind → ff, no backup ──
@@ -283,6 +291,86 @@ eq_ne "$RC" "0" "I5 rc=0"
 eq_ne "$(head_of)" "$(remote_head)" "I5 HEAD advanced"
 [ "$(cat "$LOCAL/data/published_articles.json")" = 'p-local' ] && ok "I5 file#1 kept local" || bad "I5 file#1 reset to origin"
 [ "$(cat "$LOCAL/escalations.jsonl")" = 'e-local' ] && ok "I5 file#2 kept local" || bad "I5 file#2 reset (multi-file restore missed one!)"
+rm -rf "$SANDBOX"
+
+# ── J1: STALE unheld .git/index.lock → stolen (backed up), ff succeeds ──
+# The 2026-09-10 outage in one case: an orphaned lock blocked 77 consecutive ticks because
+# nothing reaps a lock whose owner died. Backdated 2h so it is past INDEX_LOCK_STALE_SECONDS.
+echo "[J1] stale unheld index.lock → stolen, ff succeeds"
+setup_case J1; advance_origin "docs/j1.md" "hello"; git -C "$LOCAL" fetch -q origin main
+: > "$LOCAL/.git/index.lock" || fatal "J1 lock create"
+backdate_2h "$LOCAL/.git/index.lock" || fatal "J1 backdate"
+RC=$(run_puller); eq_ne "$RC" "0" "J1 rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "J1 HEAD advanced past the stale lock"
+[ ! -e "$LOCAL/.git/index.lock" ] && ok "J1 stale lock removed" || bad "J1 stale lock survived"
+ls "$SANDBOX"/backup/stale-index-lock-* >/dev/null 2>&1 && ok "J1 lock backed up (recoverable)" || bad "J1 no lock backup"
+rm -rf "$SANDBOX"
+
+# ── J2: FRESH index.lock → tick skipped, lock untouched, HEAD unmoved ──
+# A young lock is presumed to belong to a live git; stealing it would corrupt that write.
+echo "[J2] fresh index.lock → skip tick, lock preserved"
+setup_case J2; advance_origin "docs/j2.md" "hello"; git -C "$LOCAL" fetch -q origin main
+: > "$LOCAL/.git/index.lock" || fatal "J2 lock create"
+RC=$(run_puller); eq_ne "$RC" "0" "J2 rc=0 (transient skip, not an error)"
+ne_ne "$(head_of)" "$(remote_head)" "J2 HEAD did NOT move"
+[ -e "$LOCAL/.git/index.lock" ] && ok "J2 fresh lock preserved" || bad "J2 fresh lock stolen (would corrupt a live git!)"
+rm -rf "$SANDBOX"
+
+# ── J3: OLD lock but a LIVE process holds it → NOT stolen ──
+# The sharp one: age alone must never authorise the steal. Only the holder test separates
+# this case from J1, so a regression that drops lsof fails here and nowhere else.
+echo "[J3] old-but-held index.lock → not stolen (holder test is load-bearing)"
+setup_case J3; advance_origin "docs/j3.md" "hello"; git -C "$LOCAL" fetch -q origin main
+: > "$LOCAL/.git/index.lock" || fatal "J3 lock create"
+backdate_2h "$LOCAL/.git/index.lock" || fatal "J3 backdate"
+if command -v lsof >/dev/null 2>&1; then
+  sleep 30 9>"$LOCAL/.git/index.lock" & HOLDER=$!
+  sleep 1
+  if lsof -t "$LOCAL/.git/index.lock" >/dev/null 2>&1; then
+    RC=$(run_puller); eq_ne "$RC" "0" "J3 rc=0"
+    ne_ne "$(head_of)" "$(remote_head)" "J3 HEAD did NOT move"
+    [ -e "$LOCAL/.git/index.lock" ] && ok "J3 held lock preserved" || bad "J3 stole a lock a live process held!"
+  else
+    bad "J3 fixture: holder process did not register with lsof (case did not run)"
+  fi
+  kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
+else
+  # No lsof on this host (some CI images ship without it). The holder test cannot be
+  # ISOLATED here, so asserting "lock preserved" would pass for the wrong reason. Assert the
+  # function's no-lsof REFUSAL path instead: same observable outcome, but a claim this
+  # environment can actually earn.
+  RC=$(run_puller); eq_ne "$RC" "0" "J3 rc=0 (no lsof on this host, refusal path)"
+  ne_ne "$(head_of)" "$(remote_head)" "J3 HEAD did NOT move (no-lsof refusal)"
+  [ -e "$LOCAL/.git/index.lock" ] && ok "J3 lock preserved without a holder test" || bad "J3 stole a lock with no way to check for a holder!"
+fi
+rm -rf "$SANDBOX"
+
+# ── K: acquire_lock's own stale-lock branch. It had NO coverage, and on GNU it was a
+# silent no-op: `stat -f %m` failed, the `|| echo "$now"` fallback made every held lock
+# measure 0s, the steal never fired and the function returned 1 without writing a single log
+# line. A crash leftover would stall the puller forever while looking like a busy peer.
+# The fixture plants a lock dir whose recorded pid is DEAD — note the script decides on the
+# DIRECTORY's age and never reads that pid file, so the pid documents the scenario while the
+# assertion rests on mtime, which is the thing that was broken.
+echo "[K1] stale lock dir (dead pid) → stolen, tick proceeds"
+setup_case K1; advance_origin "docs/k1.md" "hello"; git -C "$LOCAL" fetch -q origin main
+sleep 0 & DEADPID=$!; wait "$DEADPID" 2>/dev/null   # a pid that has certainly exited
+mkdir -p "$SANDBOX/pull.lock.d" || fatal "K1 lock dir"
+echo "$DEADPID" > "$SANDBOX/pull.lock.d/pid" || fatal "K1 pid file"
+backdate_2h "$SANDBOX/pull.lock.d" || fatal "K1 backdate"
+RC=$(run_puller); eq_ne "$RC" "0" "K1 rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "K1 HEAD advanced (stale lock was stolen)"
+grep -q "Stale lock" "$SANDBOX/pull.log" 2>/dev/null && ok "K1 steal is logged, not silent" || bad "K1 no log line (the GNU silent no-op)"
+[ "$(cat "$SANDBOX/pull.lock.d/pid" 2>/dev/null)" != "$DEADPID" ] && ok "K1 lock dir retaken by this run" || bad "K1 dead pid still owns the lock"
+rm -rf "$SANDBOX"
+
+echo "[K2] fresh lock dir → live peer presumed, tick skipped"
+setup_case K2; advance_origin "docs/k2.md" "hello"; git -C "$LOCAL" fetch -q origin main
+mkdir -p "$SANDBOX/pull.lock.d" || fatal "K2 lock dir"
+echo "999999" > "$SANDBOX/pull.lock.d/pid" || fatal "K2 pid file"
+RC=$(run_puller); eq_ne "$RC" "0" "K2 rc=0 (silent skip, a peer is running)"
+ne_ne "$(head_of)" "$(remote_head)" "K2 HEAD did NOT move"
+[ "$(cat "$SANDBOX/pull.lock.d/pid" 2>/dev/null)" = "999999" ] && ok "K2 young lock left to its owner" || bad "K2 stole a lock a peer may still hold!"
 rm -rf "$SANDBOX"
 
 echo "=== $PASS passed, $FAIL failed ==="

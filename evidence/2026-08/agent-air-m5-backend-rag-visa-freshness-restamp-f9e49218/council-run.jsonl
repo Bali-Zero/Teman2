@@ -1,0 +1,2 @@
+{"seat":"codex-gpt-5.6-sol","role":"review","ok":true,"ts":"2026-08-30T23:30:00Z","verdict":"REJECT","note":"adversarial review of the diff, dispatched without the brief; four findings confirmed, three unsubstantiated and withdrawn by the reviewer itself"}
+{"seat":"kimi-code/k3","role":"review","ok":true,"ts":"2026-08-31T00:20:00Z","verdict":"SHIP-WITH-FIXES","note":"adversarial review of the diff, dispatched without the brief; three findings confirmed and fixed, one headline finding refuted as a fabricated precedent"}

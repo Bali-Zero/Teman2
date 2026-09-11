@@ -5,12 +5,15 @@ Subprocess wrapper per LLM CLI/local tools (claude, agy, codex, ollama).
 Vincolo inviolabile: MAI API HTTP, MAI SDK import.
 Tutto passa via subprocess blocking.
 
-Multi-account fallback for Claude CLI:
-  CLAUDE_CODE_OAUTH_TOKEN_1 → account 1 (try first)
-  CLAUDE_CODE_OAUTH_TOKEN_2 → account 2 (if 1 exhausted)
-  CLAUDE_CODE_OAUTH_TOKEN_3 → account 3 (if 2 exhausted)
-  CLAUDE_CODE_OAUTH_TOKEN_4 → account 4 (if 3 exhausted)
-  CLAUDE_CODE_OAUTH_TOKEN_5 → Team seat (last-resort subscription)
+Multi-account fallback for Claude CLI (the ORDER is the rule: 5 MAX seats
+tried first, the Team seat last because it is weekly-capped and the MAX
+seats are not — never reorder slot 6 ahead of 1-5):
+  CLAUDE_CODE_OAUTH_TOKEN_1 → antonellosiano@gmail.com (MAX 20x, try first)
+  CLAUDE_CODE_OAUTH_TOKEN_2 → sianoantonello@gmail.com (MAX 20x)
+  CLAUDE_CODE_OAUTH_TOKEN_3 → applevisionpro1987@gmail.com (MAX 20x)
+  CLAUDE_CODE_OAUTH_TOKEN_4 → antozero1987@gmail.com (MAX 20x)
+  CLAUDE_CODE_OAUTH_TOKEN_5 → kaiser198719871987@gmail.com (MAX 20x)
+  CLAUDE_CODE_OAUTH_TOKEN_6 → zero@balizero.com (Team premium, weekly-capped, LAST RESORT)
   CLAUDE_CODE_OAUTH_TOKEN   → legacy single-token fallback
   keychain fallback          → whatever logged in via claude auth
   agy -p                     → final fallback if all Claude exhausted
@@ -40,19 +43,24 @@ logger = logging.getLogger("mata_garuda.runtime")
 # Timeout default per subprocess (5 minuti)
 DEFAULT_TIMEOUT = 300
 
-# Token env var names (in priority order)
+# Token env var names, in priority order. The order IS the rule: 5 MAX
+# seats first, the Team seat (6) last because it is weekly-capped and the
+# MAX seats are not — never reorder 6 ahead of 1-5.
+#
+# Corrected 2026-08-23 (Zero ruling): this comment map was verified stale as
+# of that date via `claude auth status` + the setup-token transcript. The old
+# map (slot 2 = kaiser, slot 3 = "RETIRED 2026-07-25, slot libero", slot 4 =
+# applevisionpro1987, slot 5 = zero@balizero.com "Team premium, last-resort")
+# was wrong on every slot but 1: slot 3 was re-armed the same day the old
+# comment was written and the "RETIRED" note was never updated to match —
+# replaced here, not conserved. The Team seat is slot 6, not 5.
 CLAUDE_TOKEN_VARS = [
-    "CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com
-    "CLAUDE_CODE_OAUTH_TOKEN_2",  # kaiser198719871987@gmail.com
-    # RETIRED 2026-07-25 (Zero): l'abbonamento MAX dietro lo slot 3 non viene
-    # rinnovato; la credenziale e' stata rimossa da ~/.nuzantara-secrets.env su
-    # M5+Pro+Mini. La voce resta in lista di proposito: ogni consumatore salta i
-    # token vuoti, quindi la posizione e' riusabile per un seat futuro senza
-    # toccare le 6 liste di enumerazione sparse nel repo. Prove-live 2026-07-25:
-    # la cascata su Pro fa 1(limit) -> 2(limit) -> 4(PONG), slot 3 mai tentato.
-    "CLAUDE_CODE_OAUTH_TOKEN_3",  # RITIRATO — slot libero
-    "CLAUDE_CODE_OAUTH_TOKEN_4",  # applevisionpro1987@gmail.com (4th MAX x20)
-    "CLAUDE_CODE_OAUTH_TOKEN_5",  # zero@balizero.com (Team premium seat — weekly-capped, last-resort)
+    "CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com (MAX 20x)
+    "CLAUDE_CODE_OAUTH_TOKEN_2",  # sianoantonello@gmail.com (MAX 20x)
+    "CLAUDE_CODE_OAUTH_TOKEN_3",  # applevisionpro1987@gmail.com (MAX 20x) — re-armed, previous RETIRED note was stale
+    "CLAUDE_CODE_OAUTH_TOKEN_4",  # antozero1987@gmail.com (MAX 20x)
+    "CLAUDE_CODE_OAUTH_TOKEN_5",  # kaiser198719871987@gmail.com (MAX 20x)
+    "CLAUDE_CODE_OAUTH_TOKEN_6",  # zero@balizero.com (Team premium seat — weekly-capped, LAST RESORT)
 ]
 
 # Rate limit detection patterns in stderr/stdout
@@ -348,7 +356,8 @@ def claude_token_chain() -> list[tuple[str, str]]:
     """Build the ordered list of (label, token_value) to try.
 
     Aligned with bali-intel-scraper/scripts/claude_cli_enricher.py:
-      1. CLAUDE_CODE_OAUTH_TOKEN_1/2/3/4/5 (explicit chain)
+      1. CLAUDE_CODE_OAUTH_TOKEN_1/2/3/4/5/6 (explicit chain — 6 is the Team
+         seat, weekly-capped, tried last by position, never reordered)
       2. CLAUDE_CODE_OAUTH_TOKEN (legacy single token, if different from above)
       3. "" (keychain — CLI uses whatever account is logged in)
 

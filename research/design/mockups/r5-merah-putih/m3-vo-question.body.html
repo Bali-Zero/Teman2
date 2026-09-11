@@ -1,0 +1,47 @@
+<!-- M3 · Visa Oracle question screen — cures D-V3 (question above the fold), D-V6 (why-we-ask BEFORE the field), D-V1 (identity header), D-V2 (canopy → red per budget), D-V11 (branch announcement — now context-coherent: immigration-history section, not sponsor). Rev 2 post-panel. -->
+<div class="page">
+  <header class="id-header">
+    <a class="wordmark" href="#home">BALI ZERO</a>
+    <div class="hdr-right">
+      <span class="lang-toggle" role="group" aria-label="Language"><span class="on" tabindex="0">EN</span><span class="off" tabindex="0">ID</span></span>
+      <a class="wa-entry" href="#wa" aria-label="Ask us on WhatsApp"><span class="wa-ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.4-.7-2.9-1.1-4.7-4-4.9-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5s.7 1.8.8 1.9c.1.2.1.3 0 .5-.1.2-.2.4-.3.5l-.5.6c-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.3.1.2.1.7-.1 1.2z"/></svg></span></a>
+    </div>
+  </header>
+
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" style="width:55%"></div></div>
+    <p class="counter" aria-live="polite">Question 6 of 11</p>
+    <p class="branch-note">Immigration history — 2 questions. Your total updated from 9 to 11.</p>
+  </div>
+
+  <main class="main">
+    <p style="font-size:13px;margin-top:2px"><a href="#path" class="soft" style="color:var(--ink-soft)">Your path so far · 5 answers ▸</a></p>
+
+    <h2 style="margin-top:10px">Have you overstayed a visa in Indonesia before?</h2>
+
+    <div class="card" style="margin-top:10px;padding:12px 14px">
+      <p style="font-size:14px"><strong>Why we ask.</strong> A past overstay does not exclude you. It routes your case to human review so we can check the fine was settled — that is all this answer changes <span class="soft">(rules as of <span class="mono">27 Aug 2026</span>)</span>.</p>
+    </div>
+
+    <div style="margin-top:14px" role="radiogroup" aria-label="Have you overstayed a visa in Indonesia before?">
+      <button class="option" role="radio" aria-checked="false"><span class="check"></span> No, never</button>
+      <button class="option selected" role="radio" aria-checked="true"><span class="check">✓</span> Yes, in the past</button>
+    </div>
+
+    <div class="field" style="margin-top:12px">
+      <label for="days">How many days? (approximately is fine)</label>
+      <input id="days" inputmode="numeric" type="text" placeholder="e.g. 12">
+    </div>
+
+    <p class="notsure">Not sure of the exact number? <a href="#human">Tell a person instead</a>.</p>
+  </main>
+
+  <div class="sticky-cta">
+    <a class="cta" href="#next">Continue</a>
+    <a class="cta-secondary" href="#back">Back</a>
+  </div>
+
+  <footer class="footer" style="padding-top:12px;padding-bottom:16px">
+    <p class="idline">PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> · Rules current as of <span class="mono">27 Aug 2026</span></p>
+  </footer>
+</div>

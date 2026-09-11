@@ -8,9 +8,19 @@ adversarial_review: exempt-corrections-index
 
 > **Status:** Rounds 1-2 (`property-villa-rental`, `visa-second-home-variants`,
 > `visa-catalog-sweep`) were applied + re-harvested to prod on 2026-07-20.
-> **Round 3 (this PR)** adds 2 more files — `visa-golden-investor.jsonl` +
-> `visa-working-kitas-depth.jsonl` — NOT yet applied (harvest recipe in the
-> "Round 3" section at the end). Round 1-2 detail below is preserved as-is.
+> **Round 3** adds 2 more files — `visa-golden-investor.jsonl` +
+> `visa-working-kitas-depth.jsonl`. These were described here as "NOT yet
+> applied" until 2026-08-31, when a read-only probe of the production Qdrant
+> `curated_qa` collection found **every row of both files already live**:
+> 22/22 from `visa-golden-investor.jsonl` (batch `visa-d7ab2bf05258`) and 20/20
+> from `visa-working-kitas-depth.jsonl` (batch `visa-65d03713975b`), zero
+> absent, each file carrying a single batch id. The harvest recipe in the
+> "Round 3" section at the end is therefore a record of how it was applied, not
+> a to-do. Round 1-2 detail below is preserved as-is.
+>
+> The round-3 correction that matters most is Q17's — base E33 is **not** a work
+> visa. Verified live in the same probe: the point is `active: true`,
+> `invalidated_at: null`, and its answer carries the corrected sentence.
 
 Drafted after independently verifying 8 disputed team-review corrections
 against official sources (see the 3 research captures in `research/property/`

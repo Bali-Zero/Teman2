@@ -8,10 +8,40 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+# Single source of truth for the digits the CLIENT-FACING price list shows.
+#
+# This is deliberately NOT `settings.SUPPORT_WHATSAPP`
+# (apps/backend-rag/backend/app/core/config.py). They are different things:
+# SUPPORT_WHATSAPP is the Meta-verified number the BOT RECEIVES on — its
+# inbound identity, which no human answers — while these digits are the line
+# a client is invited to write to. On 2026-08-31 a fix for a real defect
+# resolved the two toward SUPPORT_WHATSAPP and put the bot's inbound number
+# on the price list; the owner reversed it on 2026-09-01. The lead-capture and
+# document surfaces (the IT/ID notification templates, the lead-capture
+# deeplink, the welcome-practice and welcome-email services, the Canva renderer,
+# the rendered price list, the whole frontend) already used these digits —
+# among those, this sheet was the only dissenter. AMENDED 2026-09-01: this
+# comment used to end "A separate set of email footers and the chat CTA still
+# carry the bot's inbound number; that is ledgered as an owner decision." The
+# owner gave the decision the same day ("metti ari anche in quelle") and those
+# surfaces were moved, so the sentence is now false and would invite the next
+# maintainer to restore the bot's number on the authority of a stale comment.
+# Nothing client-facing in the backend carries it any more.
+#
+# `whatsapp` (human-readable) and `wa_link` (wa.me href) are both derived
+# from this one string below so they cannot disagree — that was the 2026-08-31
+# defect: a hand-typed duplication let `wa_link` drift to different digits
+# while `whatsapp` was edited (docs/pricing/Bali_Zero_Price_List_2026.md).
+# Keep them derived; never hand-edit either half, here or in the sheet.
+_CANONICAL_WHATSAPP_DIGITS = "628213454721"
+
 CANONICAL_CONTACT = {
     "email": "zero@balizero.com",
-    "whatsapp": "+62 821 3465 159",
-    "wa_link": "https://wa.me/628213454721",
+    "whatsapp": (
+        f"+{_CANONICAL_WHATSAPP_DIGITS[:2]} {_CANONICAL_WHATSAPP_DIGITS[2:5]} "
+        f"{_CANONICAL_WHATSAPP_DIGITS[5:9]} {_CANONICAL_WHATSAPP_DIGITS[9:]}"
+    ),
+    "wa_link": f"https://wa.me/{_CANONICAL_WHATSAPP_DIGITS}",
     "location": "Kerobokan, Bali, Indonesia",
     "website": "balizero.com",
 }

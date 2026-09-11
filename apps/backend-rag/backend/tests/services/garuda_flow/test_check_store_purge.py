@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import json
 import os
 import uuid
 from datetime import date
@@ -33,6 +32,7 @@ import pytest
 asyncpg = pytest.importorskip("asyncpg")
 
 from backend.services.garuda_flow.check_store import purge_expired_garuda_voa_check_results
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
@@ -106,7 +106,7 @@ async def _insert_check_result(connection: asyncpg.Connection, *, result_id: str
         secret_hash,
         date(2026, 8, 1),
         date(2027, 8, 1),
-        json.dumps([]),
+        [],  # the LIST: the prod-shaped pool's jsonb codec serializes it, once
         date(2026, 8, 31),
         500_000,
         "test-fixture",
@@ -116,7 +116,7 @@ async def _insert_check_result(connection: asyncpg.Connection, *, result_id: str
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=4)
+        p = await create_prod_shaped_pool(_DSN, min_size=1, max_size=4)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(

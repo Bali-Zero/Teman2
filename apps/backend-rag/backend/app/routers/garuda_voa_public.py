@@ -64,6 +64,7 @@ from backend.services.garuda_flow.public_api import (
 
 logger = get_logger(__name__)
 
+
 class _FeatureDisabled(Exception):
     """Sentinel raised by the router-level `_require_public_enabled`
     dependency below — see that function's docstring for why this exists
@@ -242,8 +243,7 @@ def _error_responses(operation_id: str) -> dict[int | str, dict[str, object]]:
         status_code, _retryable, _message_key = _ERROR_CATALOG[code]
         by_status.setdefault(status_code, []).append(code)
     return {
-        status_code: {"description": " / ".join(codes)}
-        for status_code, codes in by_status.items()
+        status_code: {"description": " / ".join(codes)} for status_code, codes in by_status.items()
     }
 
 
@@ -278,7 +278,44 @@ def _error_responses(operation_id: str) -> dict[int | str, dict[str, object]]:
 # existing wrapper, never replacing one. `create_app()` already has exactly
 # this pattern for a different reason (`_openapi_with_visa_decision_conditionals`)
 # — this reuses that shape rather than inventing a new one.
-_NO_VALIDATION_ERROR_OPERATIONS = frozenset({"getEligibilityResult", "deleteEligibilityResult"})
+#
+# `getOrderAndPractice` (L3, `garuda_orders_router.py`) joined this set
+# 2026-08-30: identical shape — `order_id: str` is a bare, unconstrained path
+# capture validated by hand inside the handler (ownership-filtered query),
+# never a Pydantic path constraint — so FastAPI's blanket "any parameterized
+# route gets a 422" default fires there for exactly the same unreachable
+# reason as the two operations below. Measured by
+# `test_garuda_voa_openapi_parity.py`'s widened parity check, which is the
+# only place that noticed this router's schema at all before 2026-08-30 (see
+# that module's own docstring for L3's status-code documentation gap more
+# broadly).
+#
+# `listIntakeDocuments` (L5, `garuda_documents_router.py`) joined this set
+# when that router was mounted: same shape again — `result_id: str` is a
+# bare path capture, ownership checked by hand (`_require_owned_result`)
+# against the session's own actor, never a Pydantic path constraint — so
+# the frozen contract's 5-code set for this GET (200/401/404/500/503, no
+# 422 at all) would otherwise be permanently unmatchable by any live schema.
+_NO_VALIDATION_ERROR_OPERATIONS = frozenset(
+    {
+        "getEligibilityResult",
+        "deleteEligibilityResult",
+        "getOrderAndPractice",
+        "listIntakeDocuments",
+        # `listStaffPractices`/`getStaffPractice` (step 8,
+        # `garuda_staff_router.py`) joined the same way: `practice_id` is a
+        # bare path capture (existence/visibility checked by hand against
+        # the actor, never a Pydantic path constraint) and every
+        # `listStaffPractices` query param is a plain `str | None` with no
+        # constrained schema — neither route has any body/path/query shape
+        # a real request can fail Pydantic validation against, so the
+        # frozen contract's 5/6-code sets (no 422 at all) would otherwise
+        # be permanently unmatchable by any live schema, same as the four
+        # operations above.
+        "listStaffPractices",
+        "getStaffPractice",
+    }
+)
 
 
 def strip_unreachable_validation_errors(schema: dict) -> dict:

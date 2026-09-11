@@ -1,0 +1,15 @@
+1. **High — Contradiction (C7)**: Missing GARUDA checkout is called the largest open surface, yet the redesign is claimed to “answer” R1’s fragile moments.
+
+2. **High — Unsupported leap (C3)**: A 3–1 preference with n=4 plus a verifiability caveat does not prove a named-by-default contract; “real person / consistent identity / real photo or none” are added without evidence.
+
+3. **High — Internal gap (C2 → C3)**: If unverifiable names score below control for every seat, default naming must be verification-gated; C3 does not establish that gate.
+
+4. **Medium — Unsupported inference (C1)**: “Not order-explainable” is too strong a conclusion from four judges and one same-order counterexample.
+
+5. **Medium — Scoring inconsistency (C5)**: Text-only zoom doing nothing is functionally a failure; reporting 0 FAIL and declaring an unverified rem fix is unsupported.
+
+6. **Medium — Unsupported spine claim (C8)**: Case code cannot be the wayfinding spine for GARUDA→portal if no GARUDA payment currently creates a portal account.
+
+7. **Low — Scope overclaim (C6)**: Keyboard-only PASS does not cover untested screen-reader timing; it cannot imply full end-to-end accessibility.
+
+8. **Low — Weak support (C4)**: “Institutional” 3/3 despite missing physical address rests only on asserted mitigating marks; the missing address undercuts the conclusion.

@@ -40,6 +40,18 @@ Abuse controls (Codex red-team, binding per the W1 brief):
   adjudicated HIGH). Missing/mismatched token, unarmed class, or unset
   secret env: 400, with a single generic message that never reveals which
   layer failed.
+- Canary mode override (``X-Visa-Canary-Mode`` + ``X-Visa-Canary-Token``):
+  the per-request rollout lever. Presence of the MODE header is the only
+  thing that opens the branch, so a request without it runs the identical
+  statement it ran before the lever existed. When it is present, the mode
+  must be ``SHADOW``/``ENFORCE`` AND the token must match
+  ``VISA_ENGINE_EVALUATE_CANARY_TOKEN`` (constant-time) — otherwise 400,
+  with one generic message covering every failure layer. On success the
+  request's ``traffic_source`` is FORCED to ``synthetic_driver`` before the
+  canonical request is built, so a canary decision is never counted as real
+  production demand and the idempotency binding records the true label.
+  This is a separate secret from the driver credential on purpose: holding
+  the replay-driver token must not confer the authority to change mode.
 - ``request_category`` (query param, optional): the v2 interview tile
   hint; validated against migration 257's 10-value enum. See
   ``evaluate_path.derive_request_category`` for why the hint exists
@@ -65,6 +77,7 @@ import json
 import re
 import uuid
 from collections.abc import Awaitable, Callable
+from contextlib import nullcontext
 from enum import Enum
 from typing import Annotated, Any, cast
 
@@ -98,6 +111,12 @@ MAX_CONTENT_LENGTH_DIGITS = 20
 
 #: The W4 gold-corpus replay driver credential header (see module docstring).
 DRIVER_TOKEN_HEADER = "x-visa-driver-token"
+
+#: Per-request canary mode override (see module docstring). BOTH headers are
+#: required: the mode header states the intent, the token header proves the
+#: authority. Neither alone does anything.
+CANARY_MODE_HEADER = "x-visa-canary-mode"
+CANARY_TOKEN_HEADER = "x-visa-canary-token"
 
 #: Opaque caller token accepted for durable replay. A closed ASCII alphabet
 #: avoids normalization ambiguity between proxies and PostgreSQL.
@@ -343,9 +362,37 @@ async def evaluate_applicant(
             detail="request_category is not an accepted value",
         )
 
-    if traffic_source != TrafficSourceParam.REAL.value and (
-        traffic_source not in evaluate_path.resolve_allowed_synthetic_sources()
-        or not evaluate_path.verify_driver_token(request.headers.get(DRIVER_TOKEN_HEADER))
+    # Canary mode override. Presence of the mode header is the ONLY thing
+    # that opens this branch: a request without it takes the exact path it
+    # took before this lever existed, whether or not the secret is
+    # provisioned. Rejection is 400 with a single generic message, for the
+    # same reason as the synthetic gate below — the caller learns nothing
+    # about which layer said no.
+    canary_mode = None
+    if request.headers.get(CANARY_MODE_HEADER) is not None:
+        canary_mode = evaluate_path.parse_canary_mode(request.headers.get(CANARY_MODE_HEADER))
+        if canary_mode is None or not evaluate_path.verify_canary_token(
+            request.headers.get(CANARY_TOKEN_HEADER)
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Canary mode override is not accepted from anonymous callers",
+            )
+        # A canary evaluation is never real traffic. Forced server-side and
+        # unconditionally, so the caller cannot both hold the canary
+        # credential and have its rows counted as production demand — and
+        # cannot self-label `synthetic_gold` either. This overwrite happens
+        # BEFORE the canonical request is built, so the idempotency binding
+        # records the label the row will actually carry.
+        traffic_source = TrafficSourceParam.SYNTHETIC_DRIVER.value
+
+    if (
+        canary_mode is None
+        and traffic_source != TrafficSourceParam.REAL.value
+        and (
+            traffic_source not in evaluate_path.resolve_allowed_synthetic_sources()
+            or not evaluate_path.verify_driver_token(request.headers.get(DRIVER_TOKEN_HEADER))
+        )
     ):
         # One generic message for every failure layer (unarmed class, unset
         # secret env, missing token, mismatched token) — an attacker learns
@@ -372,16 +419,22 @@ async def evaluate_applicant(
     }
     canonical_request_bytes = canonicalize_json(cast(dict[str, JsonValue], canonical_request))
 
+    # `nullcontext` keeps ONE call path: a non-canary request is not merely
+    # equivalent to the pre-canary code, it executes the same statement.
+    authority = (
+        nullcontext() if canary_mode is None else evaluate_path.canary_mode_override(canary_mode)
+    )
     try:
-        return await evaluate_path.run_public_evaluation(
-            db_pool,
-            request=request_body,
-            traffic_source=traffic_source,
-            request_category_hint=request_category,
-            request_trace=request_trace,
-            canonical_request=canonical_request_bytes,
-            idempotency_key=idempotency_key,
-        )
+        with authority:
+            return await evaluate_path.run_public_evaluation(
+                db_pool,
+                request=request_body,
+                traffic_source=traffic_source,
+                request_category_hint=request_category,
+                request_trace=request_trace,
+                canonical_request=canonical_request_bytes,
+                idempotency_key=idempotency_key,
+            )
     except IdempotencyConflictError:
         raise HTTPException(
             status_code=409,

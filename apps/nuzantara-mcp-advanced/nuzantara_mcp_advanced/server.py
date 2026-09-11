@@ -243,7 +243,6 @@ async def check_deployment_readiness() -> dict:
                 "backend/tests/services/rag/test_kg_langgraph.py",
                 "backend/tests/services/rag/test_kg_subgraphs.py",
                 "backend/tests/services/rag/test_confidence.py",
-                "-q"
             ],
             cwd=BACKEND_ROOT,
             env={**os.environ, "PYTHONPATH": "."},

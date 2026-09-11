@@ -9,7 +9,7 @@ architecturally different models, plus a separate Claude judge.
 
     V1 · claude -p (Opus)           — strategic analyst, McKinsey-style
     V2 · gemini -p (Pro)            — compliance lawyer, Indonesian bar
-    V3 · DeepSeek R1 HTTP           — behavioural economist
+    V3 · kimi -p (K3)               — behavioural economist
     V4 · Ollama gemma4:26b          — skeptic devil's advocate (refuse groupthink)
     Judge · claude -p (Sonnet)      — synthesises to ≤3 UltraMove
 
@@ -17,8 +17,9 @@ Simpler than ToneCouncil (Sprint 3): we don't need the Round-1 challenge
 step because the voices are already producing action proposals (not tonal
 choices). The judge's job is to synthesize — or veto — not to select.
 
-All calls go through :class:`CLIRunner` (Legge 1; DeepSeek HTTP is the
-documented exception).
+All calls go through :class:`CLIRunner` (Legge 1, CLI-only — no HTTP
+exception since the retired DeepSeek voice was replaced by Kimi K3,
+2026-07-19).
 """
 
 from __future__ import annotations
@@ -48,7 +49,7 @@ DEFAULT_JUDGE_TIMEOUT = 180
 PROPONENT_PERSONAS: dict[str, str] = {
     "claude": "strategic analyst in McKinsey style, focused on opportunity sizing",
     "gemini": "compliance lawyer from the Indonesian bar, Jakarta office",
-    "deepseek": "behavioural economist, looking for second-order effects",
+    "kimi": "behavioural economist, looking for second-order effects",
     "ollama": "skeptic devil's advocate — your job is to refuse consensus",
 }
 
@@ -154,7 +155,7 @@ class OracleCouncil:
     Parameters
     ----------
     proponents : dict[str, CLIRunner]
-        Name → runner. Typically 4 entries (claude/gemini/deepseek/ollama).
+        Name → runner. Typically 4 entries (claude/gemini/kimi/ollama).
     judge : CLIRunner
         Separate Claude runner.
     max_moves : int

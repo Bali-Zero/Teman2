@@ -1,0 +1,119 @@
+task_id: infra-arm-day-contrast
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  ARM A GUARD THAT WAS BUILT, MERGED, AND NEVER CONNECTED TO ANYTHING.
+
+  `scripts/tests/test_merah_putih_day_contrast.py` is the machine-checked identity law for the
+  Merah Putih DAY palette: every text/ground pair on the public second-home surfaces must clear
+  WCAG AA, no retired colour or Montserrat face may reappear there. It has been on main since the
+  palette migration landed, it passes (42 tests), and it goes red on a real regression. What it
+  never had is a trigger.
+
+  MEASURED 2026-08-31 by reading the CONTENT of all 116 workflow files on origin/main: ZERO name
+  `merah_putih_day_contrast`. The measurement itself needed a second attempt and that is worth
+  recording — the first probe was `git grep <ref> -- .github/workflows/`, whose POSITIVE CONTROL
+  also returned empty, so the negative proved nothing and was thrown away rather than believed.
+  The working probe (read each file's blob, substring-match in-process) has a live positive
+  control: `test_check_token_contrast` -> `token-contrast-tests.yml`.
+
+  The only place the guard executed was `scripts-tests-sweep.yml`: `schedule:`-only,
+  `continue-on-error: true`, not required, and its own header says it gates nothing. So a PR
+  touching only `merahPutihDayVars.ts` started no blocking check on it at all. Cicatrix family #2
+  ("esiste != armato"), on the guard protecting the very palette this lane just migrated.
+
+  A second, sharper symptom: `merahPutihDayVars.ts`'s own doc-comment claimed the guard "fails the
+  build if any pair below drifts". That was FALSE as measured — prose asserting enforcement that CI
+  does not back, which is worse than no claim because it stops the next reader from checking.
+
+  THIS PR adds `.github/workflows/merah-putih-day-contrast.yml` and corrects that sentence.
+constraints:
+  - "The paths filter is DERIVED FROM WHAT THE GUARD READS — and this constraint caught its own
+    violation. The first version enumerated merahPutihDayVars.ts, the *.tsx tree under
+    app/visa/second-home/, and packages/core/tokens/semantic.css, and stopped there. It MISSED the
+    fourth surface: _perimeter_sources() also resolves every `@/components/...` import out of the
+    two wrappers and scans those files (today ConsentBanner.tsx and WhatsAppLeadButton.tsx — the
+    guard exists partly BECAUSE ConsentBanner measured 2.56:1). A real regression in either would
+    have started no check: arming a guard behind a filter that misses the files it protects, the
+    same defect one level up, in the PR whose whole purpose is to end that defect. Found by the
+    cross-family refuter, confirmed against the guard's source, fixed with
+    `apps/mouth/src/components/**` — a TRUE superset, since the resolver's regex is anchored to
+    `@/components/`, not a second hand-kept list."
+  - "NO merge_group trigger. This workflow is advisory (backs no entry in
+    infra/required.d/contexts.json and none in branch protection), and the 2026-08-27 queue-slim
+    cure asks advisory workflows to stay out of the queue. That cure is UNENFORCED in this
+    direction, so obeying it is a choice, stated not assumed. pull_request.paths and push.paths
+    are the same anchored list, so this file cannot develop the head-green/queue-red asymmetry
+    that jammed the queue on 2026-08-30 (#5378)."
+  - "The kita console `(workspace)/second-home` stays out of scope — the guard's own docstring
+    declares it deliberately excluded, and the paths filter does not reach it."
+  - "No paid API. Flat-subscription seats only."
+acceptance:
+  - "WHEN a PR changes ANY file this guard reads — merahPutihDayVars.ts, any *.tsx under
+    app/visa/second-home/, any `@/components/...` the two wrappers import, semantic.css, the guard
+    itself, or this workflow — THEN this workflow SHALL start a check run. probe: NOT an
+    eyeball comparison, a test.
+    `apps/backend-rag/.venv/bin/python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py -q`
+    -> 43 passed, where test #43 resolves the guard's read set and fails on any file no `paths:`
+    pattern matches. GUILT-CONTROLLED: with `apps/mouth/src/components/**` deleted from the
+    anchor the same run gives `1 failed, 42 passed`, naming
+    apps/mouth/src/components/lead/WhatsAppLeadButton.tsx and
+    apps/mouth/src/components/visa/ConsentBanner.tsx; workflow byte-identical after restore."
+  - "WHILE the palette is intact the guard SHALL pass. probe:
+    `apps/backend-rag/.venv/bin/python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py -q`
+    -> 42 passed."
+  - "IF the DAY ink token is replaced by a retired colour THEN the job SHALL fail. probe: the
+    workflow's own `guilt control` step mutates `--text-primary` to #ff3344, asserts pytest exits
+    non-zero, restores, and asserts green again — run locally before shipping: rc=1 (3 failed, 39
+    passed), then rc=0 (42 passed), file byte-identical after restore."
+  - "WHERE the trigger-symmetry lint applies, this new file SHALL introduce no violation. probe:
+    `scripts/ci/lint_trigger_symmetry.py` (borrowed from #5340) on this tree reports exactly one
+    violation and it is with-seat-broker-tests.yml, the pre-existing defect #5378 fixes — not this
+    file."
+  - "WHEN actionlint parses this workflow THEN it SHALL report no error. probe:
+    `actionlint .github/workflows/merah-putih-day-contrast.yml` -> rc=0."
+consumer_map:
+  - "Every future PR touching the DAY palette tokens or the second-home Studio/Landing components
+    — they gain a blocking check that did not exist."
+  - "apps/mouth/src/lib/theme/merahPutihDayVars.ts — its doc-comment's enforcement claim becomes
+    true for the first time; the sentence is rewritten to say exactly what now backs it."
+  - "scripts-tests-sweep.yml — unchanged. It still sweeps this test nightly with
+    continue-on-error; this workflow does not replace it, it adds the blocking path the sweep
+    explicitly declines to be."
+  - "The merge queue — unaffected by construction: no merge_group trigger, so this adds zero runs
+    per queue entry."
+risks:
+  - "RETIRED — this risk row described the defect that then actually happened, and the cure is now
+    IN this PR rather than deferred out of it. It read: the two lists are kept in sync by hand, so
+    if the guard grows a source the filter does not, coverage lapses silently; a lint deriving the
+    filter from the test's source is the real cure and is not in this PR. The refuter found the
+    lapse in the very first version. So the derivation landed here:
+    `test_the_workflow_trigger_covers_every_file_this_guard_reads` parses this workflow's own
+    `paths:` block and fails naming any file the guard reads that no pattern matches. Deferring it
+    would have meant shipping a filter I had already been shown could rot, with a note saying so."
+  - "The conformance test's own instrument could lie, so it carries a NEGATIVE CONTROL in the same
+    run: it asserts a path outside the filter (`packages/core/tokens/themes/editorial.css`) does
+    NOT match, because a glob matcher that matches everything would make every later assertion
+    vacuously green. Residual: it approximates GitHub's `paths:` semantics with two substitutions
+    (`**` -> `.*`, `*` -> `[^/]*`) rather than reimplementing them; the approximation is
+    deliberately PERMISSIVE-FREE in the direction that matters — a pattern it fails to expand can
+    only produce a false RED, never a false green."
+  - "The guilt-control step edits a tracked file inside the runner and restores it. It restores
+    unconditionally on both branches and asserts `git diff --exit-code` afterwards, so a dirty
+    tree cannot leak into later steps — but it is a mutation in CI and is called out rather than
+    buried."
+  - "This is advisory, not required. It goes red on a PR and a human (or a session) must not merge
+    past it. Promoting it to a required context is a branch-protection change and deliberately not
+    bundled here."
+grader: |
+  generator != grader. The finding this PR acts on was produced by a SEPARATE agent auditing
+  whether the guard was armed — it reported "NOT ARMED" with its own guilt/innocence mutations. I
+  did not take that on trust: the arming question was re-measured here from scratch, and the first
+  re-measurement was DISCARDED because its positive control came back empty (a probe that cannot
+  return a positive cannot return a negative either). The second measurement, with a live positive
+  control, confirmed it.
+budget: |
+  Flat-subscription only. This session (Claude MAX OAuth, Opus 5 xhigh) for the measurement, the
+  workflow, and all verification. Zero metered API spend.
+pii: none

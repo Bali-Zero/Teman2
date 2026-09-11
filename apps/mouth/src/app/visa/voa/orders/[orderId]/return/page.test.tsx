@@ -88,6 +88,31 @@ describe("OrderReturnPage — browser return is an observation, not a truth", ()
     });
   });
 
+  it("shows a visible waiting state — never a blank screen — while the browser-return observation is in flight (R3 D-G4/ENG hand-off: minimal transition state)", async () => {
+    mocks.useSearchParams.mockReturnValue(
+      new URLSearchParams({ return_nonce: "a".repeat(20) }),
+    );
+    let resolveFetch: (value: unknown) => void = () => {};
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+
+    render(<OrderReturnPage />);
+
+    expect(screen.getByText("Confirming your payment…")).toBeInTheDocument();
+    expect(
+      screen.getByText("One moment while we check your order status."),
+    ).toBeInTheDocument();
+
+    resolveFetch({ ok: true, status: 204, json: async () => ({}) });
+    await waitFor(() =>
+      expect(mocks.replace).toHaveBeenCalledWith("/visa/voa/orders/order-1"),
+    );
+  });
+
   it("forwards straight to the tracker without calling the API when no return_nonce is present", async () => {
     mocks.useSearchParams.mockReturnValue(new URLSearchParams());
 

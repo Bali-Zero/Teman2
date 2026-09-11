@@ -9,15 +9,16 @@ import homepageLayout from "@/content/homepage-layout.json";
  */
 export async function GET() {
   try {
-    const slugOrder = [
-      homepageLayout.hero_main,
-      homepageLayout.hero_2,
-      homepageLayout.hero_3,
-      homepageLayout.hero_4,
-      homepageLayout.hero_5,
-      (homepageLayout as Record<string, string>).hero_6,
-      (homepageLayout as Record<string, string>).hero_7,
-    ].filter(Boolean);
+    const configuredPositions = {
+      hero_main: homepageLayout.hero_main,
+      hero_2: homepageLayout.hero_2,
+      hero_3: homepageLayout.hero_3,
+      hero_4: homepageLayout.hero_4,
+      hero_5: homepageLayout.hero_5,
+      hero_6: (homepageLayout as Record<string, string>).hero_6,
+      hero_7: (homepageLayout as Record<string, string>).hero_7,
+    };
+    const slugOrder = Object.values(configuredPositions).filter(Boolean);
 
     // Fetch all articles (cached, revalidates every 60s)
     const { articles } = await getAllArticles({ limit: 200 });
@@ -27,7 +28,7 @@ export async function GET() {
       title: a.title,
       category: a.category,
       cover_image: a.coverImage || null,
-      href: `https://balizero.com/articles/${a.category}/${a.slug}`,
+      href: `https://balizero.com/${a.category}/${a.slug}`,
     });
 
     // Pin configured slugs first (in order), then fill remaining slots with
@@ -49,7 +50,7 @@ export async function GET() {
       .map(toHeroItem);
 
     return NextResponse.json(
-      { articles: heroArticles },
+      { articles: heroArticles, configured_positions: configuredPositions },
       {
         headers: {
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
@@ -57,6 +58,9 @@ export async function GET() {
       },
     );
   } catch {
-    return NextResponse.json({ articles: [] }, { status: 200 });
+    return NextResponse.json(
+      { articles: [], configured_positions: {} },
+      { status: 200 },
+    );
   }
 }

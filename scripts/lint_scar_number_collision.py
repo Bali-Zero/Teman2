@@ -24,7 +24,7 @@ TWO TRAPS baked into the check below because both have drawn blood:
      for the first `W<digits>` token.
 
 THE CLAIM SET, precisely: every W-number that leads its own `###`/`####`
-heading on `origin/main`'s `.claude/rules/cicatrix-scars.md`, unioned with
+heading on `origin/main`'s `docs/scars/cicatrix-scars.md`, unioned with
 every W-number introduced by a `+`-added heading line in the diff of that
 same file across every currently OPEN pull request. A number is a COLLISION
 when 2+ sources OTHER THAN `origin/main` both add it (two open PRs picked the
@@ -65,7 +65,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPO = "Bali-Zero/Teman2"
-DEFAULT_FILE = ".claude/rules/cicatrix-scars.md"
+DEFAULT_FILE = "docs/scars/cicatrix-scars.md"
+# Where the corpus lived before L02-PR1 moved it out of the auto-injected
+# `.claude/rules/` directory. Needed for exactly one merge window: this lint
+# reads `origin/main`, and on the PR that performs the move `origin/main` still
+# only has the old path — reading the new one there returns a git error, and a
+# lint that dies on its own migration is a lint nobody trusts again. Delete
+# this constant and `_show_on_main`'s fallback once the move is on `origin/main`.
+LEGACY_FILE = ".claude/rules/cicatrix-scars.md"
 
 # Heading lines: `### 🐛 W127 (...)`, `#### W67b — ...`, `## W94 — ...`. The
 # emoji (or nothing at all) between the `#`s and the `W` is why this anchors
@@ -181,9 +188,25 @@ def _run(cmd: list[str], **kwargs) -> str:
     return result.stdout
 
 
+def _show_on_main(file: str) -> str:
+    """`git show origin/main:<file>`, tolerating the one-merge move window.
+
+    Judged by whether the blob comes back, never by the path looking right: on
+    the PR that moves the corpus, `origin/main` still carries only the legacy
+    path, and treating that as a hard error would make this lint red on its own
+    migration.
+    """
+    try:
+        return _run(["git", "show", f"origin/main:{file}"], cwd=REPO_ROOT)
+    except LintOperationalError:
+        if file != DEFAULT_FILE:
+            raise
+        return _run(["git", "show", f"origin/main:{LEGACY_FILE}"], cwd=REPO_ROOT)
+
+
 def gather_live_claim_data(repo: str, file: str) -> tuple[list[int], dict[str, list[int]]]:
     """origin/main headings + every open PR's added headings for `file`, via git+gh."""
-    main_text = _run(["git", "show", f"origin/main:{file}"], cwd=REPO_ROOT)
+    main_text = _show_on_main(file)
     main_numbers = parse_heading_numbers(main_text)
 
     pr_list = json.loads(
@@ -200,10 +223,16 @@ def gather_live_claim_data(repo: str, file: str) -> tuple[list[int], dict[str, l
         n = entry["number"]
         # gh pr diff does not accept a pathspec ("accepts at most 1 arg(s)");
         # the files API's per-file .patch is the scoped equivalent.
+        # Both filenames, for the same merge window LEGACY_FILE exists for: every
+        # PR open right now still carries the corpus at the old path, and matching
+        # only the new one would read every one of them as claiming nothing — a
+        # collision lint that silently sees an empty claim set is worse than none.
+        wanted = [file] + ([LEGACY_FILE] if file == DEFAULT_FILE else [])
+        jq = " or ".join(f'.filename == "{w}"' for w in wanted)
         patch = _run(
             [
                 "gh", "api", f"repos/{repo}/pulls/{n}/files",
-                "--jq", f'.[] | select(.filename == "{file}") | .patch',
+                "--jq", f".[] | select({jq}) | .patch",
             ]
         )
         numbers = parse_added_heading_numbers_from_patch(patch)

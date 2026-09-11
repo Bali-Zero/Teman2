@@ -1,0 +1,173 @@
+# THE STAGING LAYOUT, and it is NOT the layout of this directory. Both refs below
+# name where `harness-floor.yml` STAGES these files (/tmp/evidence-check/evidence/),
+# never where they live in the repo — and the two resolve against different bases:
+# evidence_pack_lint.py resolves `brief_ref` against --repo-root, and `council_run`
+# against the PACK'S OWN directory. So the correct values are the literal
+# "evidence/brief.yml" and a bare sibling filename, whatever this pack's real
+# per-PR path is. Writing the obviously-correct-looking per-PR path here is the
+# exact trap harness-floor.yml documents at the staging step; it was written here
+# first, and CI caught it. Running the lint LOCALLY does not: locally these refs
+# resolve against the real tree, so the per-PR value reads clean and the correct
+# value can read broken. The lint is authoritative only in CI's staged layout.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: implementer
+    role: build
+    role_note: "authored both workflow edits from a spec written by the gate: paths removal, merge_group trigger, apt step swap, comment rewrites"
+    seat: "codex-gpt-5.6-terra (high)"
+  - lane: orchestrator
+    role: review
+    role_note: "ground and measurement (live branch protection, the on: blocks parsed as YAML, job durations, the queue critical path), the final on-disk gate, and every cure that followed blind review — including rejecting one of the refuter's cures as worse than its disease"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: refuter
+    role: review
+    role_note: "round 1 — blind cross-family refutation of the diff and the two resulting files; no PR framing, no ledger, no author intent. 8 findings, 5 accepted, 1 rejected with cause"
+    seat: "kimi-code/k3"
+  - lane: refuter
+    role: review
+    role_note: "round 2 — blind review of the CORRECTED diff. Confirmed round 1's cleared claims independently and found one new defect the corrections had introduced"
+    seat: "tp1-glm-5.2"
+seat_diversity: 4
+seat_diversity_note: >-
+  Four families, and generator != grader holds in the direction that matters.
+  The BUILD lane is non-Anthropic (OpenAI Codex GPT-5.6 terra) — D3 satisfied by
+  a real build lane, never by seat_override. The refuter is a THIRD family
+  (Moonshot Kimi K3), deliberately not Codex sol: the battle plan routes
+  workflow-class diffs to Codex sol, but rule 3's family exclusion is the
+  stronger constraint and this diff was BUILT by Codex, so refuting it with
+  Codex would have put generator and grader in one family. Both refuters saw the
+  diff and the resulting files only. A round-2 seat was added (Alibaba GLM-5.2)
+  after the two seats R9's allowlist would have accepted were both measured
+  unreachable — see the seat-availability entry in dissent, which is a finding
+  about the RULE and not about this diff.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: the whole PR is 5 files, +330/-49,
+    net 281 — measured THREE-DOT against the merge base a66c76ab6, never
+    two-dot, which on a moved base blames this PR for files that landed on main
+    after the branch point (W102). Three of those five files are this evidence
+    pack itself; the SUBJECT of the change is two workflow files. Deterministic
+    gear floor recomputed from this diff = 3 (hot-zone: .github/workflows/);
+    declared Gear 3, at the floor. Inside the ~400 net-line target. The line
+    count is mostly comment prose, because four sentences the diff falsified had
+    to be rewritten rather than left to lie.
+  behaviour_change: >-
+    WHEN each job runs changes; WHAT each job asserts does not. Both now run on
+    every pull request (the paths filter is gone) and on every merge-queue entry
+    (merge_group added). No step is added, removed, or reordered in either file
+    except the voa apt step, whose command changes from a raw unbounded
+    `apt-get update && apt-get install zsh` to `scripts/ci/apt_install.sh zsh
+    zsh` — same package, bounded and fail-closed. restore-drill's
+    cancel-in-progress changes from `!= 'merge_group'` to `== 'pull_request'`:
+    both leave queue runs alone, the new one additionally stops a push to main
+    from cancelling an in-flight main run. NOTHING is promoted to a required
+    context by this PR — that is branch protection, and it is the conductor's.
+receipts:
+  - claim: "INNOCENCE — the conformance guard finds zero violations for the two wired contexts"
+    cmd: "python3 scripts/ci/check_required_workflow_conformance.py --contexts <12 live contexts + the 4 promotion candidates>"
+    result: "16 contexts checked, 2 violations — BOTH of them the two workflows this PR does NOT touch (pr-collision-check, p1s2-mutation-incremental, wired by the next two PRs). Neither wired context is named."
+    exit: 1
+    ts: "2026-08-31T00:55Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "GUILT 1 — reintroducing a pull_request paths filter on voa-probe-tests is caught"
+    cmd: "insert `paths:` under on.pull_request, re-run the guard, restore"
+    result: "3 violations; the new one names the file verbatim: 'top-level `paths:` filter under `on.pull_request` — an innocent PR outside that filter never starts a run, so this required context hangs Expected — waiting forever'. Restored tree returns to 2."
+    exit: 1
+    ts: "2026-08-31T00:55Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "GUILT 2 — removing the merge_group trigger from restore-drill-wiring-tests is caught"
+    cmd: "delete the `merge_group:` line, re-run the guard, restore"
+    result: "3 violations; the new one names the file: 'missing `merge_group:` trigger — this context cannot be satisfied by a merge-queue run'. Restored tree returns to 2, and git diff --stat is byte-for-byte what it was before the mutation."
+    exit: 1
+    ts: "2026-08-31T00:55Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "ZERO merge-queue latency regression — measured on the critical path, not on per-job wall time"
+    cmd: "Actions API, last 8 completed merge_group entries: for each, the slowest REQUIRED check"
+    result: "critical path median 415s (min 58s, max 440s); it is `Frontend Tests (Next.js)` in 4/8 and `E2E Tests (Playwright)` in 3/8, both median 413s on merge_group refs. The two jobs added here are 50.0s (n=4) and 28.0s (n=5); they run in PARALLEL with the existing checks, so neither can move a 415s path. The slower of the two would have to regress ~8x — or ~2.4x even against its own 170s worst case (120s apt ceiling + 50s) — before it could become the path itself."
+    exit: 0
+    ts: "2026-08-31T00:50Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The apt step can no longer report `cancelled` by eating the job budget (W118)"
+    cmd: "read scripts/ci/apt_install.sh; bash -n it; confirm the `zsh zsh` invocation against its contract"
+    result: "contract is `apt_install.sh <verify-binary> <package>...`; sets Acquire::*::Timeout=15 and Retries=2, wraps update and install in `timeout 60` each (120s ceiling inside a 10-minute job budget), and fail-closes with `command -v zsh`. `zsh zsh` = verify zsh, install zsh — correct, and it early-exits 0 if zsh is already present."
+    exit: 0
+    ts: "2026-08-31T00:58Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Both corpora still pass, unchanged"
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_restore_drill_workflow_wiring.py scripts/tests/test_restore_drill_verify.py -q; bash scripts/tests/test_voa_probe_wrapper.sh; node scripts/probes/voa_journey_probe.mjs --self-test"
+    result: "40 passed; TOTAL 56 FAILED 0 (floor is 56); SELF-TEST OK (53 assertions, 0 network calls)"
+    exit: 0
+    ts: "2026-08-31T00:57Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "actionlint green and both `on:` blocks parse to the intended shape"
+    cmd: "actionlint on both files; yaml.safe_load and print the on: block keys"
+    result: "actionlint clean. Both parse to {'pull_request': None, 'push': ['branches','paths'], 'merge_group': None} — no paths under pull_request, no paths under merge_group, push filter intact. `git diff --check` clean."
+    exit: 0
+    ts: "2026-08-31T00:58Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+dissent:
+  - objection: "Per-job wall time does not discharge a merge-queue latency constraint; the diff presented PR-context cost as if it did. Queue latency is the critical path of required checks on each merge_group entry."
+    seat: "kimi-code/k3"
+    status: CONFIRMED
+    disposition: accepted
+    note: "The sharpest finding and entirely correct. The gate's first evidence compared both jobs to the `Backend Tests` median (98s) — a number that answers 'is this job slow' and not 'does this slow the queue'. Re-measured the actual critical path (415s median, n=8) and rewrote both the claim and the in-file comment. The conclusion survived the correction, but it was luck, not rigour, that it did."
+  - objection: "restore-drill-wiring-tests keeps `cancel-in-progress: ${{ github.event_name != 'merge_group' }}`, which is TRUE on push — so a later push to main cancels an in-flight main run of this corpus. The same diff fixes exactly this in voa-probe-tests and its comment denounces it."
+    seat: "kimi-code/k3"
+    status: CONFIRMED
+    disposition: accepted
+    note: "The lesson had been applied to one of two sibling files in the same PR. Changed to `== 'pull_request'` with the reasoning written into the file, crediting where it came from."
+  - objection: "The voa header still says 'It is NOT in main's required contexts ... SIGNAL-ONLY UNTIL PROMOTED', contradicted ~60 lines below by a new comment asserting the job IS now required. The file asserts opposite things about its own gating status."
+    seat: "kimi-code/k3"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Both sentences were wrong, in opposite directions — the new one worst, because it asserted a promotion that has not happened and is not this PR's to perform. Rewritten to state the INVARIANT (this file's job is to be safe to require; whether it IS required lives in branch protection) instead of inventorying mutable state, which is the W106 shape."
+  - objection: "Three more comment sentences are now false: the `paths:` covers the probe... paragraph, the push filter's 'Symmetric with the pull_request list above', and the corpus shim's 'It stays in `paths:`'."
+    seat: "kimi-code/k3"
+    status: CONFIRMED
+    disposition: accepted
+    note: "All three rewritten. The measurement inside the first one (the probe imports only node builtins, so no import closure a path list would have had to widen to) is still true and was kept, relabelled as what the old filter used to argue."
+  - objection: 'Unpinned `pip install pytest pyyaml` in a job that now gates every PR and every queue entry makes PyPI availability and a major bump into a gate on merges, for reasons unrelated to any diff. Proposed cure: `"pytest>=7,<9" "pyyaml>=6,<7"`.'
+    seat: "kimi-code/k3"
+    status: CONFIRMED
+    disposition: rejected
+    note: "The RISK is real; the CURE is worse and was measured before rejecting. This repo runs pytest 9.0.3 in apps/backend-rag/.venv, requirements-test.txt lists a bare `pytest`, and 12+ sibling workflows install it bare. A `<9` ceiling in this one file would make CI verify these corpora under pytest 8 while every developer and every other workflow runs 9 — a version skew between the checker and the checked (superscar #9) bought to reduce a supply-availability risk. Pinned test deps in CI is a repo-wide decision and its own PR, not a rider on a trigger-wiring diff. The rejection and its reasoning are written into the workflow at the step, so the next reader inherits the argument instead of re-deriving it."
+  - objection: "`apt_install.sh` is better but not strictly better: `timeout 60` can cut a healthy-but-slow install, and tolerating a failed `update` can install from a stale cache where the raw chain would have gone red."
+    seat: "kimi-code/k3"
+    status: CONFIRMED
+    disposition: accepted
+    note: "True, and the script's own header already owns the trade. Not changed — it is the repo's single cure for this class with 7 other callers, and diverging here would fork it. The trade is now DECLARED at the call site rather than left for a reader to discover."
+  - objection: "New external failure surface now gates every PR: the Ubuntu archive, nodejs.org via setup-node, PyPI, and ubuntu-latest image drift."
+    seat: "kimi-code/k3"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Inherent to promotion, not to this diff — a required check that runs on every PR is by construction exposed to its own toolchain. Named here rather than left implicit. The largest of them (apt) is the one this PR bounds; setup-node reads the hosted toolcache for Node 22 and touches the network only on a cache miss."
+  - objection: "Bare `merge_group:`, the concurrency blocks, YAML validity, job names, and checkout on a gh-readonly-queue ref."
+    seat: "kimi-code/k3"
+    status: RETRACTED
+    disposition: rejected
+    note: "Reported by the refuter as NOT-A-FINDING after checking: bare merge_group is correct (default type checks_requested) and matches 8 sibling required workflows; no step consumes a pull_request-only payload; both cancel-in-progress expressions are false on merge_group so no queue entry can be ejected by concurrency; ref-keyed groups are unique per entry. Recorded because a checked-and-cleared claim is evidence too."
+  - objection: "SEAT AVAILABILITY — R9's review-seat allowlist cannot be satisfied from this machine today. This is a finding about the rule, surfaced by this PR rather than claimed by it."
+    seat: "claude-opus-5 (orchestrator, measured this turn)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      R9 (evidence_pack_lint.py, hard FAIL from 2026-09-02) requires a Gear-3
+      pack to carry a council journal with >=2 distinct review seats marked
+      ok:true drawn from exactly ('codex-gpt-5.6-sol', 'kimi-code/k3',
+      'tp1-qwen3.8-max'). Measured on Pro at 01:20-01:25 on 2026-08-31: Codex is
+      OUT OF CREDITS on the whole seat (both gpt-5.6-sol and gpt-5.6-terra
+      answer 'ERROR: Your workspace is out of credits', ~1h after terra built
+      this very diff), and tp1-qwen3.8-max timed out twice at 400s on 20KB and
+      on 7.8KB prompts. kimi-code/k3 is the only member of that set reachable —
+      so one seat, where the rule wants two. A working cross-family seat that
+      the allowlist does NOT accept (tp1-glm-5.2) was used instead, which is
+      better engineering and still not R9 compliance. Consequence, carried to
+      Squad S lane 6 rather than decided here: pulling R9's enforcement date
+      forward while 2 of its 3 named seats are unreachable would hard-block
+      every Gear-3 PR in the fleet on a seat outage, not on a defect. Whether
+      the cure is a wider allowlist, a reachability preflight, or simply waiting
+      for the seats is a lane-6 question and, where it touches the rule, Zero's.
+      Today R9 is still a NOTICE, so this pack lints clean and the finding is
+      evidence rather than an excuse.

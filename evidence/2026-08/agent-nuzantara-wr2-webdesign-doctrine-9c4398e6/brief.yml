@@ -1,0 +1,66 @@
+task_id: wr2-webdesign-doctrine-0831
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  The bali-zero-brand skill declares four surfaces and ships specs for three. The fourth —
+  web-mouth, the largest public surface Bali Zero has — is documented inside the skill as
+  "separate stack — not maintained in this skill". So the site had no brand contract at all:
+  no palette rule, no contrast floor, no copy blocklist, nothing a reviewer could point at.
+
+  Three rounds of design were rejected before this. The last rejection was one sentence:
+  "non mi piace nessuna — sono tutte uguali, soprattutto nella palette". Fifteen entries from
+  five different model families, one look.
+
+  A sixteen-lane research programme was run to find out why, under a contract that made every
+  source rankable rather than merely summarised: VERIFIED-LIVE with a URL, or FROM-MEMORY.
+  365 sources, 254 verified live. Its central finding is that a fad, a scam signal and a
+  lookalike mockup are one defect with three names — an artefact that cannot name its input.
+
+  This PR ships that as three organs: the evidence (research capture), the doctrine (the
+  web surface spec), and the enforcement (a lint, because a rule that can be violated
+  silently is not a control).
+
+  Gear 3 by size and by blast radius: the diff is 5,169 net lines and it introduces a new
+  governing document for a public surface.
+
+constraints:
+  - "STUDY ONLY. No product code, no deploy, no flag change. The lint is a script; nothing
+    in CI is wired to it by this PR, and nothing under apps/ is modified. The two real
+    product defects the lint found on its first run go to the ledger, not into this diff."
+  - "The spec ships the GENERATOR, not the palette. This is the whole finding: the previous
+    briefs shipped values and every model returned them. Eleven knobs with measured envelopes
+    plus the arithmetic that derives a scale — never a list of hexes. A spec that hands out
+    reference colours reproduces the defect it exists to prevent."
+  - "Every figure carries its provenance. A number the lanes marked FROM-MEMORY keeps its
+    [M] mark in the spec; a number with a live source carries the source. Laundering an
+    unverified figure into a confident one is the failure this corpus is specifically about."
+  - "generator != grader, across FAMILIES. The spec and the lint were both written by Claude
+    models, so a Claude review of them is not a review. The adversarial pass is Kimi K3 —
+    briefed on the files, not on the reasoning — and the repair of the lint was routed to
+    Codex gpt-5.6-sol, not back to the model that wrote it."
+  - "No PII anywhere in the corpus, the spec, the lint or its fixtures. The client-facing
+    copy in the spec's examples is public marketing text; licence numbers are {PLACEHOLDERS}."
+acceptance:
+  - text: >-
+      WHEN the lint's test suite is run by the session — never reported by the seat that wrote the
+      code — it SHALL pass in full, and the count SHALL rise with every review finding fixed,
+      because each one adds a guilty and an innocent case.
+    probe: apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_lint_web_surface.py -q
+  - text: >-
+      WHEN a gate is repaired after a review finding, the repair SHALL be proven on the REVIEWER'S
+      OWN string in both directions — the guilty shape fires, the innocent shape stays silent —
+      and never on a fixture the author chose.
+    probe: apps/backend-rag/.venv/bin/python scripts/lint_web_surface.py /private/tmp/claude-501/acid
+  - text: >-
+      IF the lint reports zero findings over a corpus, that clean SHALL NOT be accepted without a
+      positive control on the same corpus, because a scanner that silently skips content and a
+      corpus that is genuinely clean are indistinguishable from the exit code alone.
+    probe: apps/backend-rag/.venv/bin/python scripts/lint_web_surface.py apps/mouth/src
+  - text: >-
+      WHERE the spec cites the research capture as its authority, the two SHALL carry the same
+      corrected values; a spec that corrects its own source while leaving the source wrong is a
+      correction that dies with the next reader.
+    probe: >-
+      grep -c "18.66px" skills/bali-zero-brand/surfaces/web.md
+      research/design/2026-08-31-web-design-sixteen-lane-corpus/SYNTHESIS.md

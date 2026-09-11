@@ -195,7 +195,7 @@ def _verifier_oauth_env(token: str) -> dict[str, str]:
 def _verifier_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for i in (1, 2, 3, 4, 5):
+    for i in (1, 2, 3, 4, 5, 6):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
@@ -250,7 +250,7 @@ def call_claude_verifier(
     claim_id: str, claim_text: str, document_excerpt: str
 ) -> ClaimVerificationResult:
     """Verify a single claim via claude CLI (Max subscription).
-    Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain."""
+    Multi-account fallback: TOKEN_1→2→3→4→5→6 (Team, last-resort)→legacy→keychain."""
     prompt = build_haiku_verification_prompt(claim_text, document_excerpt)
     deadline = time.monotonic() + 60
     chain = _verifier_token_chain()

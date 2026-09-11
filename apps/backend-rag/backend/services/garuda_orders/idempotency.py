@@ -126,7 +126,7 @@ async def complete(
         """,
         key_sha256,
         response_status,
-        json.dumps(response_body, default=str),
+        response_body,
     )
 
 

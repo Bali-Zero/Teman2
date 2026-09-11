@@ -1,7 +1,15 @@
 """Actuator: open PR adding a learned YAML rule to organism/rules/learned/.
 
-L3 actuator — IRREVERSIBLE (long-lived repo effect). Consiglio gate requires
-3/4 agreement before dispatch (already wired in W2.C IRREVERSIBLE_ACTUATORS).
+L3 actuator — IRREVERSIBLE (long-lived repo effect). NOT gated by
+Consiglio today, despite W2.C's IRREVERSIBLE_ACTUATORS set naming it:
+`organism/supervisor/consiglio_gate.py`'s ConsiglioGate is fully built
+and tested, but nothing on the live dispatch path
+(`organism/supervisor/dispatch.py`) ever imports or calls it. Step 10
+below self-arms `gh pr merge --auto --squash` on CI-green ALONE — no
+human, no deliberation — and the resulting rule feeds back into the
+same RuleMatcher that decides future actuator dispatches. Whoever flips
+the organism out of shadow mode (`ORGANISM_ACTIVE_FLAG_PATH`) needs to
+read this sentence, not the reassurance it replaces.
 
 Input:
 - params["rule_candidate"]: dict with at least {id, match, action, confidence}
@@ -17,7 +25,8 @@ Flow:
 7. Commit
 8. Push
 9. gh pr create --title + --body describing candidate origin + provenance
-10. gh pr merge --auto --squash (rule becomes live once CI green)
+10. gh pr merge --auto --squash (rule becomes live once CI green — no
+    human review, no Consiglio deliberation; see module docstring above)
 
 Failure modes: each step short-circuits by raising RuntimeError so ActuatorBase
 emits propose_yaml_rule_failed (not _done) and monitoring captures them.
@@ -231,7 +240,11 @@ def test_learned_rule_{rule_id}_matches_expected_kind():
 - confidence: `{candidate.get('confidence', 0.8)}`
 
 ## Provenance
-Proposed via Consiglio v1 3/4 deliberation (L3 irreversible actuator).
+Proposed by the organism's `propose_yaml_rule` actuator from a learned
+pattern. **NOT reviewed by Consiglio v1 deliberation** — that gate
+(`organism/supervisor/consiglio_gate.py`) exists but is not called from
+this actuator's dispatch path today. This PR auto-merges on CI-green
+alone with no human or multi-LLM review before the rule goes live.
 See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` §Safety.
 
 ## Files

@@ -449,8 +449,12 @@ def _ingest_to_backend(pdf_path: Path, row: RegulationRow) -> dict:
             result = poll.json()
 
         if result.get("status") in ("failed", "error"):
+            status = str(result.get("status") or "")
+            message = str(result.get("message") or "")[:200]
+            error = str(result.get("error") or "")[:200]
             raise RuntimeError(
-                f"ingest-full job {job_id} failed: {result.get('message', '')[:200]}"
+                f"ingest-full job {job_id} failed: status={status} "
+                f"message={message} error={error}"
             )
 
     # Intel Lake Wave 4 (2026-05-12): enqueue regulation observation to

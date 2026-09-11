@@ -1,0 +1,582 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  No docs/plans/ file — direct team-lead mandate (teammate-message, this session,
+  2026-08-31): build the one instrument squad S's three wiring PRs (#5325, #5329,
+  #5332) needed but never shipped, then RUN it for real against the four contexts
+  those PRs made conformant.
+lanes:
+  - lane: craft-s-promo-probe-build-core
+    role: build
+    seat: claude-opus-5
+    scope: |
+      check_promotion_readiness.py itself (classify()/evaluate()/fetch_* /main()),
+      the workflow executor, and the brief — written directly by the orchestrator
+      rather than blind-dispatched, because the traps it has to survive (job-name
+      vs workflow-name, skipped/neutral semantics, the bulk-query 504) were each
+      individually measured against this repo's live state first, and that
+      ground-truth was cheaper to carry forward than to hand off. Also applied
+      every fix in response to the three review lanes below (each fix mutation-
+      verified where the guard is a boolean state-machine branch — see receipts).
+  - lane: craft-s-promo-probe-build-tests
+    role: build
+    seat: kimi-code/kimi-for-coding
+    scope: |
+      scripts/ci/test_check_promotion_readiness.py, the original 45-case
+      guilt+innocence corpus (grown to 57 after two review rounds), dispatched
+      non-interactively (`kimi -p ... -m kimi-code/kimi-for-coding`, no
+      filesystem access beyond the worktree). Self-caught and fixed two of its
+      own failures on the first pytest run before reporting done; self-removed
+      its scratch venv afterward (confirmed via git status --porcelain showing
+      nothing untracked).
+  - lane: craft-s-promo-probe-refute-agy
+    role: review
+    seat: agy-gemini-3.1-pro
+    scope: |
+      Blind adversarial pass #1 against the full staged diff (sandboxed,
+      read-only — no --dangerously-skip-permissions), all 8 mandate areas.
+  - lane: craft-s-promo-probe-refute-k3
+    role: review
+    seat: kimi-code/k3
+    scope: |
+      Blind adversarial pass #2, independent of agy — same diff (post-agy-fix),
+      same 8 areas, no visibility into agy's findings.
+  - lane: craft-s-promo-probe-refute-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+    scope: |
+      Blind adversarial pass #3, xhigh effort, --sandbox read-only — same diff
+      as k3's pass, independent of both other review lanes, no visibility into
+      either's findings.
+seat_diversity: satisfied
+seat_diversity_note: |
+  Two build lanes (claude-opus-5, kimi-code/kimi-for-coding) — one non-Anthropic,
+  satisfying D3 on the build side alone. On top of that, THREE independent
+  non-Anthropic review lanes across three distinct vendor families (Google/agy,
+  Moonshot/kimi, OpenAI/codex) reviewed the same diff blind to each other's
+  output — matching the sibling PR-collision-corpus PR's precedent of using
+  codex-gpt-5.6-sol + kimi-code/k3 specifically because those are two of the
+  three COUNCIL_REVIEW_SEATS entries this repo has cross-family CLI doors for
+  (the third, tp1-qwen3.8-max, was not additionally dispatched — two distinct
+  qualifying seats already clears R9 quorum; agy is a real third opinion on top,
+  not counted toward quorum since it isn't in that fixed list).
+diff: |
+  New: `scripts/ci/check_promotion_readiness.py` (the instrument — classify() /
+  evaluate() / fetch_open_prs() / fetch_pr_rollup() / fetch_all_rollups() /
+  main(), full state table for PASS/SKIPPED/NEUTRAL/PENDING/FAIL/ABSENT, exit
+  codes 0/1/2/3), its corpus `scripts/ci/test_check_promotion_readiness.py`, its
+  dedicated CI executor `.github/workflows/promotion-readiness-tests.yml` (no
+  existing scripts/ci/ sweep would ever have run this corpus — checked against
+  shard_tests.py's DEFAULT_TARGETS and scripts-tests-sweep.yml's own declared
+  scope, neither covers this path), and this task's own brief.yml.
+
+  Two blind review rounds — agy alone, then kimi-code/k3 and codex-gpt-5.6-sol
+  in parallel against the post-agy-fix diff, neither seeing the other's or
+  agy's output — found nine real, confirmed defects total, ONE graded blocker
+  by its finder (codex-gpt-5.6-sol). None were in the core classify() state
+  table itself; all were in main()'s orchestration, the report layer, or
+  peripheral I/O: an uncaught OSError on a missing --candidates-file, a
+  misnamed duplicate test, six stale probe citations in brief.yml, `--limit`
+  bounding the wrong universe because `--base` was never passed to `gh pr list`
+  itself (the blocker), fetch-failed PRs silently classified as measured-and-
+  ABSENT (phantom rows AND a misleading PROMOTABLE verdict on partial data — two
+  distinct symptoms of one root cause, found independently by kimi and codex),
+  a docstring overclaim about --repo (found independently by both non-Anthropic
+  seats), argparse's own hardcoded exit-2-on-parse-error contradicting this
+  script's documented exit-3 usage-error code, an unconfirmed-but-plausible
+  statusCheckRollup pagination cap, and a TypeError-on-valid-JSON in the
+  advisory contexts.json reader. All nine cured; see dissent and receipts for
+  the mutation-kill proof on each behavioral fix.
+receipts:
+  - claim: |
+      THE FULL CORPUS PASSES on the final tree, all 9 fixes included.
+    cmd: |
+      PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/pytest
+      scripts/ci/test_check_promotion_readiness.py -q -p no:cacheprovider
+    result: |
+      57 passed in 18.27s
+    exit: 0
+    ts: "2026-08-30T20:05:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      A MISSING --candidates-file PATH USED TO ESCAPE main() AS AN UNHANDLED
+      FileNotFoundError — a Python traceback and Python's default exit code 1,
+      outside this script's own documented 0/1/2/3 contract. Found by agy.
+    cmd: |
+      mutation: temporarily removed the try/except OSError guard around
+      _load_candidates_file()'s call site in main(); ran the guilt test alone;
+      restored the guard; re-ran the full corpus.
+    result: |
+      guard removed : FAILED — FileNotFoundError: [Errno 2] No such file or
+        directory: '/nonexistent/does-not-exist.json' (pathlib.py:1044),
+        uncaught, escaping main() exactly as agy described.
+      guard restored: full corpus green again (guilt AND innocence tests both
+        pass).
+    exit: 0
+    ts: "2026-08-30T19:55:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      SIX OF brief.yml's ACCEPTANCE probe CITATIONS NAMED TEST FUNCTIONS THAT
+      DO NOT EXIST under those names in the shipped corpus. Found by agy;
+      independently confirmed here by reading the actual test file.
+    cmd: |
+      Read scripts/ci/test_check_promotion_readiness.py in full; compared every
+      acceptance[].probe test-name token in brief.yml against the real def
+      names.
+    result: |
+      test_classify_absent_context_blocks -> real name is
+        test_classify_absent_when_other_contexts_present
+      test_evaluate_absent_pr_is_newly_blocked -> real name is
+        test_evaluate_blocked_pr_present_and_clean_pr_absent
+      test_classify_pass_does_not_block -> real name is test_classify_checkrun_pass
+      test_main_zero_prs_examined_is_cannot_verify -> real name is
+        test_main_empty_pr_list_exits_two_not_zero
+      test_main_zero_candidates_is_usage_error_no_gh_call -> real name is
+        test_main_no_context_exits_three_and_never_calls_gh
+      test_classify_skipped_is_nonblocking_distinct_state /
+        test_classify_neutral_is_nonblocking_distinct_state -> real names are
+        test_classify_checkrun_skipped_not_fail / test_classify_checkrun_neutral_not_fail
+      test_gh_run_exhausts_retries_raises_cannot_verify /
+        test_main_pr_view_failure_is_cannot_verify -> real names are
+        test_gh_run_retry_exhausted_raises_cannot_verify /
+        test_main_one_pr_view_fails_among_others_exits_two
+      (test_main_all_passing_exits_zero and test_never_calls_gh_run_or_actions_
+      runs_api were already correct.) All six corrected in brief.yml. codex-
+      gpt-5.6-sol's later independent pass re-checked all 11 probe citations
+      against the corrected corpus and reported every one resolves.
+    exit: 0
+    ts: "2026-08-30T19:53:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      test_evaluate_all_candidates_must_block_innocence claimed in its docstring
+      to be the innocence sibling of test_evaluate_any_candidate_blocks_not_all,
+      but its body was a byte-for-byte duplicate of that guilt test. Found by agy.
+    cmd: |
+      Read both test bodies side by side; confirmed identical prs fixture,
+      identical candidates list, identical assertion.
+    result: |
+      Renamed to test_evaluate_all_candidates_pass_innocence; rewrote the body
+      to the case its old name and docstring actually claimed — two candidates
+      that BOTH pass, PR must NOT be newly-blocked. Full corpus green after the
+      rewrite.
+    exit: 0
+    ts: "2026-08-30T19:54:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      FETCH-FAILED PRs WERE FED TO evaluate() WITH AN EMPTY ROLLUP, classified
+      ABSENT/blocks=True for every candidate — phantom rows in the table, per-
+      context totals, and newly_blocked_prs for PRs that were never actually
+      measured, in a run whose true status is CANNOT-VERIFY. Found by
+      kimi-code/k3, reproduced independently here via mutation.
+    cmd: |
+      mutation: reverted `measured_pr_list = [p for p in pr_list if
+      p["number"] not in fetch_failures]` back to the old unconditional
+      `for p in pr_list: p["rollup"] = rollups.get(...)`; ran the new guilt
+      test (--json, asserts per_context_totals + newly_blocked_prs + rows)
+      alone; restored; re-ran the full corpus.
+    result: |
+      mutated : FAILED — AssertionError: {'ABSENT': 1, 'PASS': 1} == {'PASS': 1}
+        — the exact phantom ABSENT entry kimi predicted, reproduced to the
+        letter.
+      restored: full corpus green (measured PR correctly counted, fetch-failed
+        PR excluded from every report field, still named in the CANNOT-VERIFY
+        block).
+    exit: 0
+    ts: "2026-08-30T20:00:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE PRINTED VERDICT LINE COULD STILL SAY "PROMOTABLE TODAY" ON A RUN WITH
+      FETCH FAILURES even after the phantom-row fix above, because format_totals
+      computed the verdict from newly_blocked/threshold alone, with zero
+      awareness of fetch_failures — a DISTINCT symptom of the same root cause,
+      found independently by codex-gpt-5.6-sol (kimi's fix cured the DATA,
+      codex's finding is that the LABEL could still lie even on now-honest
+      data, e.g. with --max-newly-blocked >= 1). The brief mandates pasting this
+      exact table into the PR body verbatim.
+    cmd: |
+      format_totals() unit test: report with zero blocked PRs, fetch_failures_
+      count=1 -> assert verdict line contains CANNOT-VERIFY, not PROMOTABLE.
+    result: |
+      Before the fix: verdict line read "PROMOTABLE TODAY" with 1 fetch
+        failure outstanding.
+      After: fetch_failures_count, now threaded through from main(), forces
+        "verdict: CANNOT-VERIFY — N PR(s) unmeasured (see below), not a real
+        promotable/not-promotable answer" — unconditionally, before the
+        newly-blocked computation is even consulted. Innocence test confirms
+        zero fetch failures leaves the original PROMOTABLE/NOT PROMOTABLE
+        wording byte-identical to before.
+    exit: 0
+    ts: "2026-08-30T20:02:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      `--limit` WAS APPLIED TO gh pr list WITH NO SERVER-SIDE --base FILTER,
+      so `--limit` bounded the RAW result across every base branch in the repo,
+      not just PRs targeting the requested base — an incomplete sweep that
+      still exits 0 if enough non-matching-base PRs exhaust the limit first.
+      Found by codex-gpt-5.6-sol, graded blocker by its finder.
+    cmd: |
+      Read fetch_open_prs()'s gh invocation directly: `["pr", "list", "--repo",
+      repo, "--state", "open", "--limit", str(limit), "--json", ...]` — no
+      --base flag anywhere, confirmed by direct read before fixing.
+    result: |
+      Added `base: str` as a required positional parameter; the `gh pr list`
+      argv now includes `--base <value>`, server-side, so --limit bounds only
+      the relevant subset. New test asserts the literal argv contains
+      ["--base", "main"]. The pre-existing Python-side baseRefName filter is
+      kept as defense-in-depth, explicitly commented as belt-and-suspenders,
+      never the only thing bounding the result.
+    exit: 0
+    ts: "2026-08-30T20:03:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      _gh_run's DOCSTRING CLAIMED "every caller passes --repo explicitly" —
+      false for repo_slug(), whose entire job is discovering the repo from
+      cwd when --repo is not given. Found INDEPENDENTLY by BOTH non-Anthropic
+      review seats (kimi-code/k3 graded it minor, codex-gpt-5.6-sol graded it
+      real) — cross-family corroboration on the same defect from two different
+      vendor families reviewing blind to each other.
+    cmd: |
+      Read repo_slug()'s own gh invocation: ["repo", "view", "--json",
+      "nameWithOwner"] — confirmed no --repo flag, by design (this IS the
+      repo-discovery function).
+    result: |
+      Docstring corrected to scope the invariant to fetch_open_prs/
+      fetch_pr_rollup specifically, naming repo_slug() as the one deliberate
+      exception rather than leaving an unqualified claim that was locally
+      false for the function containing it.
+    exit: 0
+    ts: "2026-08-30T20:04:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      A MALFORMED CLI ARGUMENT (e.g. --max-newly-blocked nope, or an unknown
+      flag) EXITED 2 VIA ARGPARSE'S OWN HARDCODED sys.exit(2), colliding with
+      this script's documented exit-2 = CANNOT-VERIFY — a usage typo becomes
+      indistinguishable from a network failure to any caller checking the exit
+      code. Found by codex-gpt-5.6-sol.
+    cmd: |
+      Empirically tested exit_on_error=False (the documented argparse opt-out)
+      across 4 error shapes on this repo's actual Python 3.11.11 BEFORE
+      choosing a fix, rather than assuming it would work: type=int failure,
+      missing value, unknown flag, missing append-value.
+    result: |
+      exit_on_error=False alone: caught type=int/missing-value as
+        ArgumentError, but "unrecognized arguments" (an unknown flag) still
+        called self.exit(2, ...) directly, bypassing that flag entirely — a
+        real, separate argparse code path.
+      _UsageErrorParser subclass (overrides .error() itself, the ONE
+        interception point every path funnels through): all 4 shapes -> exit
+        3, empirically re-verified. main() additionally wraps parse_args() in
+        try/except SystemExit so main() itself always RETURNS an int, never
+        raises, matching every other branch's contract. Two guilt tests (type
+        failure + unrecognized flag) both mutation-verified: reverting to
+        bare argparse.ArgumentParser makes both fail with the exact "assert 2
+        == 3" this defect describes.
+    exit: 0
+    ts: "2026-08-30T20:06:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      gh's OWN GraphQL QUERY FOR statusCheckRollup PAGES contexts AT
+      first:100 — whether the `gh` CLI itself follows pageInfo.hasNextPage to
+      fetch subsequent pages before emitting --json statusCheckRollup was NOT
+      confirmed either way, and a rollup silently truncated at 100 would
+      misclassify a candidate beyond that point as ABSENT. Found by
+      codex-gpt-5.6-sol, citing gh CLI issue #12904.
+    cmd: |
+      `gh issue view 12904 --repo cli/cli --json body` — the issue itself is
+      about an unrelated auth-scope error, but its pasted GH_DEBUG=api log
+      dump contains gh's REAL live GraphQL query text verbatim, including
+      `statusCheckRollup: commits(last: 1) {nodes {commit {statusCheckRollup
+      {contexts(first:100) {nodes {...} pageInfo{hasNextPage,endCursor}}}}}}`
+      — confirming the first:100 page size as real, not merely codex's
+      inference. Then queried every open PR in Bali-Zero/Teman2 for its live
+      rollup length to check whether any PR currently exceeds 100 (which would
+      let the claim be tested empirically rather than argued).
+    result: |
+      Page size 100 confirmed live in gh's own query text. Max rollup length
+      found across every open PR in this repo today: 81 (#5331) — under 100,
+      so the truncation question could NOT be settled empirically either way
+      today. Given genuine unresolved uncertainty and the mandate's own rule
+      ("never a guess, never a silent skip"), added a defensive guard rather
+      than a confirmed fix: fetch_pr_rollup() now raises CannotVerify when a
+      rollup lands AT OR ABOVE 100 entries, regardless of whether gh actually
+      truncates or transparently paginates — the cost of a false CANNOT-VERIFY
+      on an innocent 100+-check PR is far lower than a false ABSENT that
+      blocks promotion of a context that is actually present past the
+      hypothetical cutoff. Guilt (rollup of exactly 100 -> CannotVerify) and
+      innocence (99 entries -> trusted normally) both tested and
+      mutation-verified (bumping the constant to 999999 makes the guilt test
+      fail).
+    exit: 0
+    ts: "2026-08-30T20:07:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      load_already_required()'s DOCSTRING PROMISES "NEVER raises", BUT
+      `sorted({c["name"] for c in contexts if ... and c.get("name")})` used a
+      bare truthy check — a JSON `"name": 1` is truthy but not a string, and
+      sorting a set mixing str and int raises TypeError on Python 3, on a file
+      that IS valid JSON. Found by codex-gpt-5.6-sol.
+    cmd: |
+      Read load_already_required()'s actual set-comprehension line directly;
+      confirmed `c.get("name")` (bare truthy) rather than an isinstance check.
+    result: |
+      Changed to `isinstance(c.get("name"), str) and c["name"].strip()` —
+      malformed non-string entries are silently dropped rather than crashing,
+      matching this being an advisory-only, best-effort file by the function's
+      own docstring. Guilt test: {"contexts": [{"name": "ctx"}, {"name": 1}]}
+      -> ["ctx"], no exception (previously: unhandled TypeError).
+    exit: 0
+    ts: "2026-08-30T20:08:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      EVERY DECLARED ACCEPTANCE PROBE, WITH ITS OUTCOME — listed verbatim so
+      none reads as unrecorded.
+    cmd: |
+      probe: test_classify_absent_when_other_contexts_present / test_evaluate_blocked_pr_present_and_clean_pr_absent / live run against VOA probe organ tests
+      probe: test_classify_checkrun_pass / test_main_all_passing_exits_zero
+      probe: test_main_empty_pr_list_exits_two_not_zero
+      probe: test_main_no_context_exits_three_and_never_calls_gh
+      probe: test_classify_checkrun_skipped_not_fail / test_classify_checkrun_neutral_not_fail
+      probe: test_gh_run_retry_exhausted_raises_cannot_verify / test_main_one_pr_view_fails_among_others_exits_two
+      probe: test_never_calls_gh_run_or_actions_runs_api
+      probe: python3 scripts/ci/check_promotion_readiness.py --context ... (all four) --repo Bali-Zero/Teman2
+    result: |
+      All 8 pass on the final 57-test corpus (individually confirmed by name
+      in the full pytest -v run) plus the live run receipts above. Zero
+      probes unbound.
+    exit: 0
+    ts: "2026-08-30T20:10:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      STATIC GATES clean on the final tree, all 9 fixes included.
+    cmd: |
+      python3 -m py_compile scripts/ci/check_promotion_readiness.py
+      scripts/ci/test_check_promotion_readiness.py ; actionlint
+      .github/workflows/promotion-readiness-tests.yml
+    result: |
+      py_compile: no output, exit 0 both files.
+      actionlint: no output, exit 0.
+    exit: 0
+    ts: "2026-08-30T20:09:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE INSTRUMENT RAN FOR REAL, MULTIPLE TIMES ACROSS THE FIX ROUNDS, against
+      the four live candidate contexts — REFUTES the conductor's earlier-
+      tonight headcount upward, not down: far more PRs already carry all four
+      contexts than the conductor's snapshot showed, and the total open-PR
+      count kept climbing between runs (a live queue, not a static fixture).
+    cmd: |
+      apps/backend-rag/.venv/bin/python3 scripts/ci/check_promotion_readiness.py
+      --repo Bali-Zero/Teman2 --context "VOA probe organ tests"
+      --context "Restore drill wiring tests"
+      --context "Canary self-test + incremental mutation"
+      --context "PR collision check corpus"
+    result: |
+      First run (19:44Z, pre-fix build): 46 PRs examined, 18 carrying all four
+        PASS, 1 (#5072, draft) carrying zero, 28 newly-blocked.
+      Second run (19:59Z): 48 PRs examined (2 more opened), 19 carrying all
+        four PASS, 1 flipped to PENDING on Canary (#5333), 29 newly-blocked.
+      Conductor's earlier-tonight snapshot (41 open, 3 carrying all four, 32
+        carrying just one) is REFUTED on the "3 carrying all four" figure
+        specifically — the real count is roughly 6x that — most likely
+        because PRs opened/pushed after the three wiring PRs merged pick up
+        all four contexts organically, before any promotion. The "not
+        promotable today" verdict itself is unchanged and CONFIRMED across
+        every run: a majority of open PRs do not yet carry at least one of the
+        four contexts. A final measurement, taken after all 9 fixes and
+        immediately before opening the PR, is pasted into the PR body
+        verbatim as the authoritative figure.
+    exit: 1
+    ts: "2026-08-30T19:59:00Z"
+    seat: claude-opus-5 (gate)
+pii_scan: clean
+pii_note: |
+  A CI read-only measurement tool. Reads PR numbers, branch names, and
+  statusCheckRollup entries from `gh`; writes nothing back to GitHub. No client
+  data, no credentials, no PII anywhere in scope.
+dissent:
+  - status: CONFIRMED
+    seat: agy-gemini-3.1-pro
+    objection: |
+      real — brief.yml's acceptance[].probe test-name citations are
+      desynchronized from the actual test function names in
+      test_check_promotion_readiness.py (6 of 8 acceptance bullets affected).
+      Running `pytest -k test_classify_absent_context_blocks` as cited would
+      silently collect zero tests.
+    disposition: |
+      CONFIRMED by direct read of the shipped test file (not taken on faith —
+      cicatrix #6, even a refuter can hallucinate). All 6 affected probe
+      strings corrected in brief.yml to the real function names; see the
+      matching receipt above.
+  - status: CONFIRMED
+    seat: agy-gemini-3.1-pro
+    objection: |
+      minor — test_evaluate_all_candidates_must_block_innocence is a misnamed
+      duplicate: its docstring claims to be an innocence test but its body is
+      identical to test_evaluate_any_candidate_blocks_not_all.
+    disposition: |
+      CONFIRMED by side-by-side read of both test bodies. Renamed to
+      test_evaluate_all_candidates_pass_innocence and rewritten to assert the
+      case its name actually claims.
+  - status: CONFIRMED
+    seat: agy-gemini-3.1-pro
+    objection: |
+      minor — _load_candidates_file has no try/except around its own
+      Path.read_text(); a nonexistent --candidates-file path raises an
+      unhandled FileNotFoundError instead of the documented exit-2/exit-3
+      contract.
+    disposition: |
+      CONFIRMED and reproduced independently via mutation. Cured: OSError now
+      caught at the main() call site, returning exit 3.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      real — fetch-failed PRs are passed to evaluate() with empty rollups, so
+      they are classified ABSENT/blocks=True for every candidate and pollute
+      the table, per-context totals, newly_blocked_prs, and the printed
+      verdict line with phantom measurements in a CANNOT-VERIFY (exit 2) run.
+    disposition: |
+      CONFIRMED and mutation-verified: reverting the exclusion reproduces the
+      exact phantom {'ABSENT': 1, 'PASS': 1} entry predicted. Cured — see
+      matching receipt.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      minor — _gh_run's docstring claims every caller passes --repo
+      explicitly; repo_slug() deliberately does not (it IS the repo-discovery
+      function).
+    disposition: |
+      CONFIRMED — independently corroborated by codex-gpt-5.6-sol's own pass
+      (graded real there). Docstring corrected to name repo_slug() as the one
+      deliberate exception.
+  - status: PLAUSIBLE
+    seat: kimi-code/k3
+    objection: |
+      minor — PENDING-as-blocking means a single in-flight run on any open PR
+      flips the default-mode verdict to NOT PROMOTABLE; on a busy fleet some
+      candidate is nearly always mid-run, so the gate can read as noisy at any
+      given instant.
+    disposition: |
+      DECLARED, NOT CURED — a genuine tradeoff, not a bug, and kimi's own
+      review said as much ("the docstring documents this as deliberate").
+      Flipping PENDING to non-blocking would be the more dangerous direction:
+      it would let a run print PROMOTABLE while a candidate check is actively
+      running and could still fail moments later. Fail-closed on an in-flight
+      state is the correct default for a promotion gate; a caller who wants a
+      settled-only read already has --max-newly-blocked to tune the
+      threshold. Not changed.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      blocker — fetch_open_prs() applies --limit before any --base filtering;
+      gh pr list has no --base flag in the call, so --limit bounds the RAW
+      result across every base branch in the repo, not just the requested
+      one. Two PRs against main, --limit 1, PR1 PASS/PR2 ABSENT ->
+      only PR1 examined, verdict PROMOTABLE TODAY, exit 0.
+    disposition: |
+      CONFIRMED by direct read (no --base flag existed in the gh invocation).
+      Cured: --base is now a required parameter threaded through to `gh pr
+      list --base <value>` itself, server-side. New test asserts the literal
+      argv. The graded-blocker severity is honored — this was the highest-
+      severity finding across both review rounds and the first fix applied
+      from the round-2 batch.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      real — a fetch-failed PR can still produce a printed "verdict:
+      PROMOTABLE TODAY" before the CANNOT-VERIFY warning prints, when
+      --max-newly-blocked >= 1 or (after kimi's fix) when the measured subset
+      alone has zero blocked PRs. The brief mandates pasting this exact table
+      into the PR body verbatim.
+    disposition: |
+      CONFIRMED — a distinct symptom of the same root cause kimi found (kimi
+      fixed the DATA going into evaluate(); this is the LABEL format_totals()
+      prints, which had zero awareness of fetch_failures at all). Cured:
+      fetch_failures_count now forces a "CANNOT-VERIFY — N PR(s) unmeasured"
+      verdict unconditionally, ahead of the newly-blocked computation.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      real — repo_slug() resolves the target repo from cwd when --repo is
+      omitted, contradicting both the docstring ("every caller passes
+      --repo") and a literal reading of the help text.
+    disposition: |
+      CONFIRMED — same defect kimi-code/k3 found independently (graded minor
+      there), cross-family corroborated. The cwd-fallback BEHAVIOR itself is
+      correct/intended (repo_slug's whole job is discovering the repo when
+      --repo isn't given, exactly like `gh` itself defaults to cwd) — only
+      the docstring's unqualified wording was wrong. Docstring corrected.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      real — argparse.ArgumentParser.parse_args() raises SystemExit(2) on any
+      CLI syntax error (e.g. --max-newly-blocked nope), colliding with this
+      script's own documented exit-2 = CANNOT-VERIFY and making a usage typo
+      indistinguishable from a network failure.
+    disposition: |
+      CONFIRMED and reproduced empirically across 4 argparse error shapes
+      before fixing. Cured with an ArgumentParser subclass overriding
+      .error() itself (exit_on_error=False alone does not cover
+      "unrecognized arguments" — verified empirically, not assumed). Two
+      guilt tests mutation-verified.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      real — gh's underlying GraphQL query pages statusCheckRollup contexts
+      at first:100; fetch_pr_rollup() treats the result as complete with no
+      truncation detection, so a PR with 101+ checks and the candidate past
+      position 100 would read as a false ABSENT.
+    disposition: |
+      CONFIRMED on the page-size claim itself (verified live via `gh issue
+      view 12904 --repo cli/cli`, whose pasted debug log contains gh's actual
+      query text with `contexts(first:100)` verbatim). NOT confirmable either
+      way on whether gh actually follows pagination internally — this repo's
+      live PRs top out at 81 checks today, so it cannot be tested
+      empirically. Given genuine unresolved uncertainty, added a defensive
+      guard rather than waiting for certainty: fetch_pr_rollup() now raises
+      CannotVerify at or above 100 entries. Cost of a false CANNOT-VERIFY on
+      an innocent large PR is far lower than a false ABSENT blocking a real
+      promotion.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      real — load_already_required()'s docstring promises "NEVER raises",
+      but sorted({c["name"] for c in contexts if isinstance(c, dict) and
+      c.get("name")}) uses a bare truthy check; a JSON "name": 1 passes it
+      and sorting a set mixing str/int raises TypeError on valid JSON.
+    disposition: |
+      CONFIRMED by direct read of the set comprehension. Cured with an
+      explicit isinstance(str) check; malformed non-string entries are
+      dropped rather than crashing, matching this being an advisory-only
+      file per the function's own docstring.
+tests: |
+  57 passed (scripts/ci/test_check_promotion_readiness.py), up from the
+  kimi-authored 45 after two review rounds added 12 tests (2 candidates-file,
+  1 phantom-row/JSON-structural, 2 argparse usage-error, 1 --base argv
+  verification, 2 rollup page-size, 2 format_totals verdict override, 1
+  load_already_required non-string-name) and rewrote 1 (the misnamed
+  duplicate). Every behavioral fix mutation-verified: reverting the guard and
+  confirming the specific predicted failure reappears, then restoring and
+  confirming the full corpus is green again — done individually for the
+  candidates-file guard, the phantom-row exclusion, the argparse subclass
+  (twice — both error shapes), and the rollup page-size guard.
+  PYTHONDONTWRITEBYTECODE=1 and -p no:cacheprovider throughout (W121).
+static: |
+  py_compile clean on both Python files. actionlint clean on
+  promotion-readiness-tests.yml.
+notes: |
+  The mandate's own framing — "wiring a context and being able to require it
+  are two different states, and this repo has no instrument that can tell them
+  apart" — applied recursively to this PR's own evidence twice over: brief.yml
+  declared acceptance probes that were never run against the real test names,
+  and the instrument itself had a --limit/--base gap that is the exact same
+  disease as the mandate it exists to cure (a bound computed over the wrong
+  universe, still reporting a clean answer). Two blind review rounds, three
+  vendor families, zero visibility between seats, found nine real defects and
+  zero in the actual classify() state table that is this tool's core claim to
+  correctness — every finding was in orchestration, reporting, or peripheral
+  I/O, which is where 9 of 9 defects clustering suggests the next build of a
+  tool shaped like this one should spend proportionally more adversarial
+  attention. The live measurement itself both refutes and confirms the
+  conductor's earlier-tonight numbers: far more PRs than thought already
+  carry all four contexts — but the promotability verdict is unchanged,
+  because the PRs that don't are still the majority.

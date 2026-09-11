@@ -1,0 +1,251 @@
+council_run: journal.jsonl
+# The literal `evidence/brief.yml`, NEVER this pack's real per-PR path.
+# harness-floor.yml stages BOTH files under canonical names into a synthetic tree
+# and resolves brief_ref against THAT; its own comment calls the per-PR value
+# "exactly the trap this migration exists to remove", and
+# scripts/ci/evidence_paths.py says the same. Running the lint LOCALLY there is no
+# staging, so brief_ref resolves against the real repo root and lands on an
+# unrelated task's brief -- which emits an acceptance-probe NOTICE that looks like
+# a bug and is really just the absence of staging. Verified by reproducing CI's
+# layout locally (pack+brief+journal copied under canonical names, --repo-root
+# pointed at that tree) rather than by trusting the bare local run.
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L13-security-secrets-pii.md
+  section "PR-1: feat(security): seat broker - exec-time minimal env for external LLM dispatch".
+
+lanes:
+  - lane: with-seat-build
+    role: build
+    seat: codex-gpt-5.6-terra (non-Anthropic, effort high) -- D3 build lane, never the grader
+  - lane: with-seat-refute
+    role: review
+    seat: kimi-code/k3 (non-Anthropic) -- blind adversarial refutation of the broker diff
+  - lane: with-seat-workflow-refute
+    role: review
+    seat: codex-gpt-5.6-sol xhigh -- blind adversarial refutation of the workflow diff
+  - lane: with-seat-gate
+    role: review
+    seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
+
+pii_scan: clean
+
+diff:
+  files: 8
+  net_lines: 907
+  measured_at: HEAD-of-branch
+  note: >-
+    Measured with git diff --numstat over merge-base..HEAD. Over the <=400
+    net-line target of rules-of-engagement #2, declared rather than hidden: the
+    broker is 352 lines and its corpus 241 -- and the corpus is why six defects
+    were caught before merge rather than after, three of them by it directly.
+    94 lines are the CI executor without which a .sh corpus has no consumer able
+    to go red, 1 line registers that executor with the main-push failure watcher,
+    and the remainder is this branch's own evidence pack. Splitting the corpus or
+    the executor out would ship a credential broker whose guards nothing runs.
+
+receipts:
+  - claim: "21/21 corpus green, and it bites: 8 mutants killed at real code sites (basename-only exec resolution restored; declared search paths removed; bare-relative search path; swallowing TERM trap restored; file_mode forced to answer a safe mode; length cap raised past a sha256 hex; secret-shape scan disabled; seat-name/allowlist consistency disabled)."
+    cmd: "bash scripts/tests/test_with_seat_env_minimization.sh"
+    exit: 0
+    ts: "2026-08-31T01:30:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "THE BITE, measured on Mini with the real registry: a codex child goes from 49 inherited env names (16 secret-shaped, 11 credential families) to 6 declared names and 0 secret-shaped. Names only; no external CLI was asked to print its environment; --dry-run executes nothing."
+    cmd: "with_seat.sh --dry-run codex codex, from a parent that has sourced ~/.nuzantara-secrets.env"
+    exit: 0
+    ts: "2026-08-31T01:10:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "All four declared seats resolve their own executable through their declared search path (codex, agy, kimi, claude-seat). Before the fix, agy and kimi could not."
+    cmd: "bash scripts/tests/test_with_seat_env_minimization.sh"
+    exit: 0
+    ts: "2026-08-31T01:25:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The workflow passes the pinned actionlint the required CI gate runs (1.7.12) and the required per-job checkout-budget floor."
+    cmd: "actionlint .github/workflows/with-seat-broker-tests.yml && python3 scripts/lint_workflow_timeout_floor.py"
+    exit: 0
+    ts: "2026-08-31T01:28:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The executor is registered with main-push-failure-watch.yml, verified by removing the registration and watching check_watcher_coverage.py name this workflow as uncovered."
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    exit: 0
+    ts: "2026-08-31T01:00:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+
+dissent:
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      The exec allowlist was a naming convention, not an allowlist: it checked the
+      BASENAME of a caller-supplied path, so `with_seat.sh codex /tmp/evil/codex`
+      executed the attacker's binary and the broker reported a clean exit.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (ATTACKER CODE RAN, exit 0), then fixed: a caller may name only a
+      bare command, and WHERE it resolves comes from the registry -- the trusted
+      input here, since the broker refuses to read it if group- or world-writable
+      -- never from argv or the environment. Pinned by a case that plants an
+      executable with an allowlisted basename and asserts it neither runs nor
+      leaves a marker.
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      Two of the four shipped seats could not resolve their own binary: agy lives
+      in ~/.local/bin and kimi in ~/.kimi-code/bin, neither on the fixed system
+      search path. A broker armed for one seat in two.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced ("cannot resolve command" for both), then fixed with a per-seat
+      exec_search_path supporting "~/"-prefixed entries -- necessary because the
+      three fleet machines do not share a home (/Users/nuzantara on Pro and Mini,
+      /Users/balizero on M5), and a registry that is wrong on one machine is a
+      broker that gets bypassed there. The deeper defect was in the CORPUS: every
+      check used a synthetic seat, so it could not see this. A check against the
+      REAL registry was added and is what now pins it.
+  - seat: kimi-code/k3 (blind refutation of the broker diff)
+    objection: >-
+      `trap 'rm -f ...' EXIT HUP INT TERM` cleans up but does not exit, so on TERM
+      the script continues and the broker survives the signal its supervisor sent.
+    status: CONFIRMED
+    resolution: >-
+      Measured on bash 3.2.57: the line after `kill -TERM $$` printed and the
+      script exited 0. Fixed to clean up, restore the default handler and
+      re-raise; measured rc=143. Pinned by a case that TERMs the broker while a
+      deliberately slow child is running, so the answer is deterministic rather
+      than a race the test would have to tolerate.
+  - seat: kimi-code/k3 (blind refutation of the broker diff)
+    objection: >-
+      file_mode tries BSD `stat -f '%Lp'` and falls back to GNU `stat -c '%a'`,
+      but on GNU `-f` is not an unknown flag -- it means --file-system. The
+      fallback depends on GNU stat failing for the right reason; if it does not,
+      the function returns garbage and the group/world-writable refusal silently
+      stops refusing.
+    status: CONFIRMED
+    resolution: >-
+      Accepted without needing to settle what GNU stat does, because the
+      uncertainty IS the defect: a security guard should not rest on a guess about
+      another platform's error handling. Replaced with python3, already a hard
+      dependency of this script, which means the same thing everywhere.
+      Mutation-verified: a file_mode that always answers 600 turns the
+      writable-registry check red.
+  - seat: kimi-code/k3 (blind refutation of the broker diff)
+    objection: >-
+      `set +e` disables errexit but leaves pipefail on, so a SIGPIPE or failure in
+      the left side of the dispatch pipeline would be reported as the child's exit
+      status.
+    status: CONFIRMED
+    resolution: >-
+      Fixed by disabling pipefail for exactly that pipeline and restoring it after.
+      The child's status is the one thing this wrapper promises to preserve.
+  - seat: kimi-code/k3 (blind refutation of the broker diff)
+    objection: >-
+      `${!name+x}` (indirect expansion with the +x test) may not be supported on
+      bash 3.2, which would break the present/absent decision for every declared
+      name.
+    status: RETRACTED
+    resolution: >-
+      Measured on /bin/bash 3.2.57 rather than reasoned about: both the set and
+      unset branches behave correctly. Recorded as NOT a defect so that a future
+      reader does not "fix" working code on the strength of a maybe. The refuter
+      itself flagged this as uncertain rather than asserting it, which is the
+      right shape for a finding it could not test.
+  - seat: claude opus-5 xhigh (this orchestrator, on its OWN workflow)
+    objection: >-
+      The workflow step asserting "the registry holds names, never values"
+      grepped for value-shaped `key: "value"` pairs -- but the registry is arrays
+      of strings, so it matched neither realistic paste.
+    status: CONFIRMED
+    resolution: >-
+      Measured both misses: a token dropped into an `env` array is not a
+      key/value pair and never matched, and a 64-char sha256-shaped hex string is
+      itself a syntactically valid identifier. Replaced with a structural
+      validator in the corpus (so it runs locally and is mutation-testable) that
+      bounds the SHAPE of every field instead of guessing what a secret looks
+      like, plus guilt fixtures for exactly those two pastes. The length cap is 48
+      deliberately: 64 would have let a sha256 hex through, which it measurably
+      did on the first attempt.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      The registry's secret check exempts `note`, so a credential wrapped in
+      prose lands untouched -- a note reading "<VENDOR>_API_KEY: <token>" defeats it,
+      because the key name is short enough that the colon breaks the character run,
+      and the token itself is not adjacent to a quote, so no key/value pattern
+      considers it. (Deliberately described rather than quoted: a pack that carries a
+      value-shaped string is exactly what this finding is about, and the repo's own
+      secret scanner flagged the first draft of this entry for containing one --
+      W108's "the guard that forbids the string was writing it", one level up.)
+    status: CONFIRMED
+    resolution: >-
+      Reproduced against the real registry: it passed. The scan now covers the
+      WHOLE file, prose included, rejecting any 32+ char run of secret-charset.
+      32 is measured rather than guessed -- the longest legitimate token anywhere
+      in this registry's prose is 23 (CLAUDE_CODE_OAUTH_TOKEN,
+      FLEET_BURST_SEAT_BROKER). Pinned by a guilt fixture built from the real
+      registry plus exactly that note.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      The real-seat resolution check can execute ZERO cases and still pass: it
+      skips a seat whose CLI is absent and then asserts only that failures == 0.
+      None of codex/agy/kimi/claude exist on ubuntu-latest, so on CI it always
+      checks nothing. `"exec_allowlist": ["codxe"]` is structurally valid and
+      invisible there, while production rejects the real codex.
+    status: CONFIRMED
+    resolution: >-
+      This is the coverage-theatre shape the workflow's own header criticises,
+      inside the workflow. Fixed with a rule that needs no binary present: a
+      seat's allowlist must contain the executable the seat is NAMED for
+      (claude-seat -> claude), so a typo is caught on every machine including a
+      runner where nothing is installed. The resolution check is kept for the
+      machines that CAN answer it and now prints how many seats it actually
+      checked, so a zero-coverage run is visible rather than a silent green.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      Three trigger gaps: `.gitattributes` is not in the path filter (an
+      `eol=crlf` entry breaks every guarded shell script without touching any
+      listed path); there is no `merge_group` trigger, so the
+      `!= 'merge_group'` concurrency exception is dead code and two individually
+      green PRs whose COMBINATION breaks the broker are not caught before
+      landing; and the push:main filter omits the workflow file itself, so a PR
+      changing only it produces no main-push run for the failure watcher to
+      observe.
+    status: CONFIRMED
+    resolution: >-
+      All three fixed: `.gitattributes` added, `merge_group:` added (which also
+      makes the existing concurrency expression live logic rather than dead), and
+      the two path sets unified with a YAML anchor so they cannot drift apart
+      again -- the third defect existed only because they were maintained as two
+      hand-copied lists.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      The header claims the job "runs on every PR touching the broker". GitHub
+      evaluates path filters against at most the first 3,000 files of a diff, so
+      a large enough PR can touch a guarded file and not trigger this workflow.
+    status: CONFIRMED
+    resolution: >-
+      The claim was false and is not restated: the header now says "starts on"
+      and names the 3,000-file limit as a platform constraint this file cannot
+      close. A comment that overstates a guard's reach is how the next reader
+      stops looking.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      `scripts/fleet_burst.sh` and `FLEET_BURST_SEAT_BROKER` do not exist in the
+      inspected repository, so the workflow can prove an isolated fixture while
+      no fleet dispatch actually uses the broker.
+    status: CONFIRMED
+    resolution: >-
+      Correct and worth stating rather than arguing: fleet_burst arrives in
+      L09-PR2 (PR #5322), which is open and green but not merged. Until then the
+      broker's only proven consumer is its own corpus, and the path-filter entry
+      is inert -- a filter naming an absent file never matches. The comment now
+      says exactly that instead of implying a live consumer.
+  - seat: tp1-glm-5.2 (third security opinion, DID NOT PRODUCE A VERDICT)
+    objection: >-
+      No findings: the seat returned finish_reason "length" with ZERO content at
+      max_tokens 8000 and again at 32000, spending its whole budget on reasoning.
+    status: PLAUSIBLE
+    resolution: >-
+      Recorded as a door limitation rather than silently dropped, because a
+      missing refuter is exactly the kind of absence that reads as "no findings".
+      This is the trap arsenal_probe.py:156 documents -- TP1 thinking models cap
+      reasoning and answer TOGETHER -- so any lane budgeting such a seat by
+      expected ANSWER length gets an empty HTTP 200. GLM-5.2 is not usable as a
+      refuter on a diff of this size through that door. The family-exclusion and
+      R9 quorum requirements are met without it by kimi-code/k3 and
+      codex-gpt-5.6-sol.

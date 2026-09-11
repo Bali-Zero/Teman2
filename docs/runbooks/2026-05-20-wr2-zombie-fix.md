@@ -133,7 +133,7 @@ Note: rollback restores the BUG state. Only do this if the new supervisor is cau
 
 ## Cicatrix entry
 
-This bug is structurally identical to scar 2026-05-10 "WR2 canva-apply path coupling between deploy worktree and main repo" — same antibody pattern (worktree presence required), same trauma class (deleted/missing worktree). Append to `.claude/rules/cicatrix-scars.md` after PR-B1b merges to main.
+This bug is structurally identical to scar 2026-05-10 "WR2 canva-apply path coupling between deploy worktree and main repo" — same antibody pattern (worktree presence required), same trauma class (deleted/missing worktree). Append to `docs/scars/cicatrix-scars.md` after PR-B1b merges to main.
 
 ## Verification commands (for ops)
 

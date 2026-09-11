@@ -1,0 +1,86 @@
+task_id: codex-leg-retry-budget-0827
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Sciogliere l'invariante che, tolto il ripiego su Gemini, trasforma ogni
+  fallimento recuperabile della rotta ChatGPT in silenzio verso un cliente.
+
+  Stato di partenza, misurato: `offer_job` marcava `wa_outbox.generation_route
+  = 'codex'` al primo offer, e ogni offer successivo per la stessa riga — a
+  qualunque claim_token futuro — tornava `ALREADY_SPENT` SENZA `job_id`. Il
+  chiamante non poteva nemmeno riagganciare il job già offerto. Non era un
+  difetto: era voluto, e la chaos-table del test lo dice ("row 2:
+  ALREADY_SPENT -> Gemini"). L'invariante "UNA gamba codex per riga, per
+  sempre" aveva senso finché Gemini raccoglieva ogni caduta.
+
+  Il proprietario ha stabilito il 2026-08-27 che Gemini esce dal canale
+  WhatsApp in modo permanente. Da quel momento quell'invariante È la causa
+  del silenzio, non una protezione. Questa PR la riformula in: "una gamba
+  IN VOLO per riga, fino a un budget di gambe" — lo stesso limite che il
+  contatore dei tentativi già imponeva.
+
+  Gear 3 per PATH, non per raggio d'azione: il diff tocca
+  `apps/backend-rag/backend/db/migrations_v2/` (migrazione 296), che è
+  hot-zone in `scripts/evidence_pack_lint.py`. Il pavimento è un limite
+  inferiore deterministico calcolato dal diff, mai una scelta di chi scrive.
+constraints:
+  - "Il CAS di `complete_job` non si tocca. È la protezione contro la doppia
+    risposta al cliente, ed è l'unica che la review avversariale ha attaccato
+    senza riuscire a romperla. Non si baratta per comodità."
+  - "La transazione fenced su claim_token+status e la protezione contro il
+    doppio-job restano intatte: l'unique index passa da mai-scoped a
+    scoped-agli-stati-vivi, non sparisce."
+  - "Il vocabolario chiuso degli stati non si allarga senza aggiornare ogni
+    validatore che lo legge."
+  - "Nessuna cifra, nessun prezzo, nessun riferimento normativo: questo
+    codice non produce testo rivolto al cliente."
+acceptance:
+  - "Un secondo offer con la gamba precedente VIVA restituisce il job_id
+    esistente (REATTACHED) e la gamba si riaggancia invece di cadere."
+  - "Un secondo offer con la gamba precedente TERMINALE e budget disponibile
+    ammette una nuova gamba."
+  - "Oltre il budget l'esito è NOMINATO (LEGS_EXHAUSTED), mai un fall-off
+    silenzioso."
+  - "Due worker concorrenti sulla stessa riga non producono due gambe vive —
+    dimostrato su Postgres reale, non su mock."
+  - "Una gamba scaduta per deadline NON libera budget finché il demone non ha
+    completato almeno un giro di polling dopo quella scadenza."
+risks:
+  - "Il rollback della migrazione non è reversibile una volta che una riga ha
+    due gambe: il CREATE UNIQUE INDEX originale fallirebbe sui duplicati.
+    Dichiarato nel file SQL e nel corpo PR — un rollback che fallisce
+    rumorosamente è preferibile a uno che sembra riuscito."
+  - "Il DROP+CREATE dell'indice non è concorrente: prende ACCESS EXCLUSIVE.
+    Accettabile perché `broker_jobs` è quasi vuota (una riga in tutta la sua
+    storia, misurata il 2026-08-27); se quella premessa decade, la build
+    dell'indice blocca le scritture del broker."
+  - "Il budget è contato sulle righe reali di `broker_jobs`, che lo sweep a 7
+    giorni cancella: su una riga molto vecchia il budget si riazzera. La
+    direzione dell'errore è 'qualche gamba in più', mai una risposta doppia,
+    e la scala esterna dei tentativi la limita comunque."
+grader: |
+  Verifica indipendente della sessione conduttrice (generator != grader: chi
+  ha scritto il diff non lo giudica). Review avversariale cross-family con
+  Kimi K3 su contesto fresco, prompt di refutazione su sette assi
+  (concorrenza/doppio-job, migrazione, correttezza del riaggancio, budget,
+  esito terminale, controllo di profondità, qualità dei test). Verdetto
+  grezzo BLOCK con due MAJOR.
+
+  La conduttrice ha pesato i rilievi invece di eseguirli: il MAJOR sull'esito
+  terminale che lascia il cliente muto è stato RESPINTO con motivazione —
+  giudica contro un mondo in cui Gemini è già stato tolto, che è il quinto
+  gradino di questa scala, non il secondo; oggi quel ramo cade correttamente
+  su Gemini. Il MAJOR sul prosciugamento del budget è stato ACCETTATO come
+  regressione vera introdotta da questa PR: prima una scadenza bruciava una
+  gamba, dopo ne bruciava cinque.
+
+  La cura preferita dalla conduttrice (leggere `in_flight` dal gauge) si è
+  rivelata SBAGLIATA — quel campo è codice morto, il demone lo manda
+  hardcodato a zero — e il costruttore l'ha corretta usando un timestamp che
+  il database scrive di suo. Registrato qui perché una cura basata su un
+  campo morto sarebbe stata verde per sempre.
+budget: |
+  Due round. Round 1: costruzione + review avversariale. Round 2: cura del
+  prosciugamento del budget, due minori, e questo pacchetto di evidenze.
+pii: none

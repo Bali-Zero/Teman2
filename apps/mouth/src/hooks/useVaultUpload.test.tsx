@@ -231,6 +231,67 @@ describe("useVaultUpload", () => {
     expect(result.current.canRetry).toBe(false);
   });
 
+  // Portal audit ux F1 (2026-09-11): the failure branch rendered
+  // `Upload failed (${status})` and threw the response body away, even
+  // though the success branch parses it two lines above. A client hitting
+  // the hour-long duplicate guard saw "Upload failed (409)" instead of the
+  // sentence the backend had already written for them.
+  it("shows the reason the server gave, not just its status code", async () => {
+    const { result } = renderHook(() => useVaultUpload());
+    const file = makeFile("ok.pdf", 4096, "application/pdf");
+
+    act(() => result.current.upload(file));
+    const xhr = MockXHR.last!;
+
+    // The live 409 from the duplicate guard, verbatim.
+    const detail =
+      "A file with this name was uploaded less than an hour ago. " +
+      "Please rename it or wait.";
+    act(() => xhr.resolve(409, JSON.stringify({ detail })));
+
+    await waitFor(() => expect(result.current.state.status).toBe("error"));
+    if (result.current.state.status === "error") {
+      expect(result.current.state.message).toBe(detail);
+      expect(result.current.state.httpStatus).toBe(409);
+    }
+  });
+
+  it("prefers `message` when the envelope uses it instead of `detail`", async () => {
+    const { result } = renderHook(() => useVaultUpload());
+    const file = makeFile("ok.pdf", 4096, "application/pdf");
+
+    act(() => result.current.upload(file));
+    const xhr = MockXHR.last!;
+    act(() => xhr.resolve(422, JSON.stringify({ message: "Wrong doc type" })));
+
+    await waitFor(() => expect(result.current.state.status).toBe("error"));
+    if (result.current.state.status === "error") {
+      expect(result.current.state.message).toBe("Wrong doc type");
+    }
+  });
+
+  it.each([
+    ["an empty body", ""],
+    ["HTML from a proxy", "<html><body>502</body></html>"],
+    [
+      "a non-string detail (FastAPI validation errors are a LIST)",
+      JSON.stringify({ detail: [{ loc: ["body"], msg: "x", type: "y" }] }),
+    ],
+    ["a blank detail", JSON.stringify({ detail: "   " })],
+  ])("falls back to the status code for %s", async (_label, body) => {
+    const { result } = renderHook(() => useVaultUpload());
+    const file = makeFile("ok.pdf", 4096, "application/pdf");
+
+    act(() => result.current.upload(file));
+    const xhr = MockXHR.last!;
+    act(() => xhr.resolve(500, body));
+
+    await waitFor(() => expect(result.current.state.status).toBe("error"));
+    if (result.current.state.status === "error") {
+      expect(result.current.state.message).toBe("Upload failed (500)");
+    }
+  });
+
   it("surfaces network error", async () => {
     const { result } = renderHook(() => useVaultUpload());
     const file = makeFile("ok.pdf", 4096, "application/pdf");

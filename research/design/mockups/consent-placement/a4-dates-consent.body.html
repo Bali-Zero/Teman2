@@ -1,0 +1,134 @@
+<!-- GARUDA A4 — dates + consent, redesigned as the CUSTODY-BEFORE-ASK reference
+     implementation (consent-placement lane, R7 §4 item 2; §6.1 declaration).
+     This is the ISSUANCE path; the extension path adds two fields (VOA expiry,
+     extension-already-used — page.tsx:306-346) INSIDE the same custody frame, declared
+     not drawn. A4 is a LOW-SENSITIVITY ask (two dates), so it gets the COMPACT HINT tier
+     of the custody component — the full module (who-sees, controller, authorization) is
+     the A6/checkout/Oracle-start tier.
+     Honesty contract: {RETENTION_WINDOW} renders ONLY from an ACTIVE policy row (none is
+     seeded today — 264:5-7; seeding is a pre-arm act, §5.2); the deletion-right line
+     renders because the customer-facing DELETE endpoint EXISTS
+     (deleteEligibilityResult, garuda_voa_public.py:569-590) — its user-facing affordance
+     lives on the result/tracker screens (§3.3); the copy NEVER says "deleted
+     automatically" (the retention purge has no scheduler, §5.8). The acknowledgement
+     checkbox stays LAST and stays, full stop: the live write path requires it
+     (garuda_voa_check_results.retention_notice_acknowledged_at NOT NULL, 286:121) — and
+     its label speaks its column's true semantics: notice acknowledgement, not consent.
+     Rem type tokens (R7 §2 am. 3 scope), 44px tap targets (the ack target is the ROW),
+     identity header (R4:108), trust footer (R7 §2 am. 4 — funnel-wide law). -->
+<style>
+  :root{
+    --carta:#f7f6f2; --elevated:#ffffff; --ink:#16213a; --ink-soft:#475372;
+    --border-input:#7a8093; --hairline:#e3e1da;
+    --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+    --radius:12px; --radius-nested:8px; --motion:220ms;
+    --font-display:"Cormorant Garamond",Georgia,serif;
+    --font-ui:"Inter",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    --t-body:1rem; --t-small:.8125rem; --t-label:.875rem; --t-h1:1.5rem; --t-h2:1.125rem;
+  }
+  .a4{background:var(--carta);color:var(--ink);font-family:var(--font-ui);font-size:var(--t-body);
+      line-height:1.55;max-width:26rem;margin:0 auto;padding:1rem 1rem 2rem}
+  .a4 .idh{display:flex;justify-content:space-between;align-items:center;min-height:2.75rem;margin-bottom:.25rem}
+  .a4 .idh .wm{font-family:var(--font-display);font-weight:600;font-size:var(--t-h2);
+      letter-spacing:.08em;color:var(--ink);text-decoration:none;display:inline-flex;
+      align-items:center;min-height:2.75rem}
+  .a4 .idh .idh-right{display:flex;gap:.5rem}
+  .a4 .idh .idh-right a{display:inline-flex;align-items:center;min-height:2.75rem;
+      padding:0 .5rem;font-size:var(--t-small);color:var(--ink);text-decoration:none}
+  .a4 .idh .idh-right a.wa{color:var(--merah-action);text-decoration:underline}
+  .a4 .counter{font-size:var(--t-small);color:var(--ink-soft);margin-bottom:.75rem}
+  .a4 h1{font-family:var(--font-display);font-size:var(--t-h1);font-weight:600;margin:.25rem 0 .75rem}
+  /* ══ COMPACT CUSTODY HINT — the low-sensitivity tier of the custody component (§6.1).
+        One breath before the fields: purpose · duration (conditional) · deletion right ·
+        policy link. The 4-line FULL module is the A6/checkout tier, not this one. ══ -->
+  .a4 .custody{border-left:3px solid var(--ink);padding:.375rem .75rem;margin-bottom:1rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .a4 .custody .mono{font-family:var(--font-mono);color:var(--ink)}
+  .a4 .custody a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  .a4 .field{margin-bottom:.75rem}
+  .a4 label{display:block;font-size:var(--t-label);font-weight:600;margin-bottom:.25rem}
+  .a4 .hint{font-size:var(--t-small);color:var(--ink-soft);margin:.125rem 0 .25rem}
+  .a4 input[type=text]{width:100%;min-height:2.75rem;font:inherit;color:var(--ink);
+      background:var(--elevated);border:1px solid var(--border-input);
+      border-radius:var(--radius-nested);padding:.5rem .75rem}
+  .a4 input:focus{outline:2px solid var(--ink);outline-offset:1px}
+  /* Acknowledgement row: the whole row is the tap target (44px floor) — the 20px glyph
+     alone would fail R4:146; the label IS the control surface. */
+  .a4 .ack{display:flex;gap:.625rem;align-items:center;border:1px solid var(--hairline);
+      border-radius:var(--radius-nested);background:var(--elevated);padding:.5rem 1rem;
+      min-height:2.75rem;margin:1rem 0;font-size:var(--t-label)}
+  .a4 .ack input[type=checkbox]{width:1.25rem;height:1.25rem;flex:0 0 auto}
+  .a4 .ack label{font-weight:400;margin:0;font-size:var(--t-label);display:flex;
+      align-items:center;min-height:2.75rem;cursor:pointer}
+  .a4 .cta{display:flex;justify-content:center;width:100%;min-height:2.75rem;
+      background:var(--merah-action);color:#fff;border:0;border-radius:var(--radius);
+      font:600 var(--t-body) var(--font-ui);padding:.75rem 1rem;cursor:pointer;
+      transition:background var(--motion)}
+  .a4 .cta:active{background:var(--merah-pressed)}
+  .a4 .trust{border-top:2px solid var(--ink);margin-top:1.25rem;padding-top:.75rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .a4 .trust .role{color:var(--ink);font-weight:600}
+  .a4 .trust a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  @media (prefers-reduced-motion: reduce){ .a4 .cta{transition:none} }
+</style>
+
+<div class="a4">
+  <header class="idh">
+    <a class="wm" href="{HOME_LINK}">BALI ZERO</a>
+    <!-- EN·ID is the toggle CONTROL's placeholder — the real control is the shell's
+         language switch component (R4:108), not a bare link. -->
+    <span class="idh-right"><a href="{LANG_TOGGLE}" aria-label="Ganti bahasa">EN · ID</a><a class="wa" href="{WA_HEADER_LINK}">WhatsApp</a></span>
+  </header>
+
+  <p class="counter" aria-live="polite">Question {X} of {Y}</p>
+  <h1>Your dates</h1>
+
+  <!-- ══ Compact custody hint — BEFORE the fields (§6.1, hint tier).
+       Line 2 (duration) is CONDITIONAL: renders only from an ACTIVE policy row — no row,
+       no duration (and the same absence blocks the funnel's own INSERT — §4).
+       Line 3 (deletion) states the right the LIVE endpoint serves; affordance on the
+       result/tracker screens (§3.3). No "automatically" — the purge has no scheduler.
+       The privacy link is GATED (§6.3): renders only when it targets the corrected,
+       surface-scoped policy — while GARUDA is dark this gate can never face a visitor. ══ -->
+  <aside class="custody" aria-label="How your answers are handled">
+    Your dates decide which visa paths are open to you.
+    Kept for <span class="mono">{RETENTION_WINDOW}</span> ·
+    you can delete this check at any time.
+    <a href="{PRIVACY_LINK}">How we handle your data →</a>
+  </aside>
+
+  <div class="field">
+    <label for="a4-entry">Planned entry date</label>
+    <p class="hint">Example: 27 Aug 2026</p>
+    <input id="a4-entry" type="text" inputmode="numeric" autocomplete="off" value="{ENTRY_DATE}">
+  </div>
+  <div class="field">
+    <label for="a4-expiry">Passport expiry date</label>
+    <p class="hint">Example: 27 Aug 2026</p>
+    <input id="a4-expiry" type="text" inputmode="numeric" autocomplete="off" value="{PASSPORT_EXPIRY}">
+  </div>
+  <!-- EXTENSION PATH (declared, not drawn): caseType === "extension" inserts the VOA
+       expiry field + extension-already-used control HERE, inside the custody-covered
+       region — the hint's purpose line covers them (§4 acceptance). -->
+
+  <!-- Acknowledgement LAST — kept (NOT NULL on the live write path, 286:121). The label
+       speaks the column's semantics: NOTICE acknowledgement — the affirmative
+       authorization tier lives at A6/checkout, not here (§3.7b). -->
+  <div class="ack">
+    <input id="a4-ack" type="checkbox">
+    <label for="a4-ack">I've read how my answers are stored.</label>
+  </div>
+
+  <button class="cta" type="button">Continue →</button>
+
+  <!-- ══ Trust footer — R7 §2 am. 4 funnel-wide law (role-separation + PT/NPWP/registry
+       + physical address); names the controller (the UX seat's transparency finding). ══ -->
+  <footer class="trust">
+    <p class="role">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p>Controller: PT {PT_LEGAL_NAME} · NPWP {NPWP} · <a href="{REGISTRY_LINK}">registry entry</a><br>
+    {OFFICE_STREET_ADDRESS}, Bali — {OFFICE_HOURS}</p>
+  </footer>
+</div>

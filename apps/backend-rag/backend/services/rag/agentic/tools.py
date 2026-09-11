@@ -25,6 +25,7 @@ from typing import Any
 import httpx
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
+from backend.core import score_provenance
 from backend.services.kbli_eye import KBLIEye
 from backend.services.kbli_pma_disclosure import (
     disclose_bali,
@@ -102,12 +103,16 @@ class VectorSearchTool(BaseTool):
             "This is recommended for complex questions that may span multiple topics.\n\n"
             "**OPTIONALLY specify a collection** ONLY for focused single-topic queries:\n"
             "- visa_oracle: Visas, KITAS, KITAP, immigration, stay permits\n"
-            "- legal_unified: Laws, company types (PT, CV, Firma), regulations\n"
+            "- legal_unified: Full text of primary Indonesian laws and ministerial regulations "
+            "- immigration (UU Keimigrasian, Permenkumham/PermenImipas on visa and izin tinggal, "
+            "visa-free country lists), tax (PMK), labour (PP, THR), company law (PT, CV, Firma), "
+            "KUHP, and regional Bali (Perda) regulations\n"
             "- kbli_2025_final: Business classification codes (KBLI 2025, BPS 7/2025 + PP28/2025), 1,559 codes with licensing detail, PMA status\n"
             "- tax_genius: Taxes, PPh, PPN, NPWP, fiscal matters\n"
             "- bali_zero_pricing_hybrid: Official Bali Zero service pricing and costs\n"
             "- training_conversations_hybrid: Procedures, practical examples, FAQs\n"
-            "- immigration_circulars: Immigration policy updates, circulars, Kemnaker regulations\n"
+            "- immigration_circulars: Circulars, SE, and policy-update announcements on immigration "
+            "(NOT the statutory text itself - for the laws/regulations, use legal_unified)\n"
             "- balizero_news: Latest news, intel articles, regulation updates, business news from BaliZero\n\n"
             "Example: 'PT PMA requirements' → federated (legal + visa + tax)\n"
             "Example: 'PPh 21 rates' → collection='tax_genius'\n"
@@ -278,6 +283,11 @@ class VectorSearchTool(BaseTool):
                         "title": title,
                         "url": metadata.get("url", ""),
                         "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
+                        # B1.1: carry the chunk's declared score_kind/score_raw
+                        # through this projection (UNKNOWN/None when the
+                        # chunk declared none) — never guessed from "score".
+                        "score_kind": score_provenance.kind_of(chunk),
+                        "score_raw": score_provenance.raw_of(chunk),
                         "collection": source_col,
                         "doc_id": doc_id,
                         "snippet": text[:500],

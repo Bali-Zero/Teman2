@@ -1,0 +1,242 @@
+task_id: wire-ledger-loss-check-0830
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Wire `scripts/check_ledger_no_silent_loss.py`'s verdict where a reader actually
+  looks. Team-lead's mandate (relayed from a prior lane in this same session that
+  resolved conflicts on PR #5279/#5244): the script already exists, is already
+  wired into `.github/workflows/check-ledger-no-silent-loss.yml`, and already ran
+  correctly on every PR touching PENDING-ARMS.md — but `continue-on-error: true`
+  on the invariant-check step made the JOB read "success" on the PR's checks list
+  regardless of the script's own exit code, so a genuine finding sat only in raw
+  step logs. Measured live before this PR: `gh run view <run-id> --log` on the
+  exact run for PR #5279 shows `FAIL ... 1 open ledger row(s) ... absent from this
+  branch's HEAD` and `Process completed with exit code 1`, while `gh run list`
+  for that same run reports `success` — the job conclusion and the check's own
+  verdict disagreed, and only the job conclusion was visible without digging.
+
+  This is the third instance in one session of one disease per team-lead: "the
+  organism keeps rebuilding what it already owns... the artifact was correct and
+  simply not in the path of the person who needed it." The fix is NOT a new
+  script — it is making the EXISTING script's verdict reach a reader.
+
+  Gear 3 by PATH, deterministic: `python3 scripts/evidence_pack_lint.py
+  --print-floor --changed-files-file <enumeration>` -> 3 (the diff touches
+  `.github/workflows/check-ledger-no-silent-loss.yml`). Honored, not argued with.
+
+  SECOND PASS, same day: an independent gate reviewing this PR before merge
+  flagged that the invariant-check step passed `--base-ref "$BASE_SHA"`
+  (`pull_request.base.sha`, the PR's frozen fork point) to the script —
+  structurally an ancestor of HEAD, so `check()`'s own
+  `git merge-base(base_ref, head)` always resolves back to that same frozen
+  commit, collapsing `main_entries` onto `base_entries` regardless of what
+  main has done since. Fixed to `--base-ref origin/main`, fetched by name.
+  Empirical testing of the actual defect's polarity is recorded as a genuine
+  `dissent:` entry in pack.yml — the fix direction matches what was
+  instructed; the mechanism this session could independently reproduce
+  (false-positive generator on legitimate closures, not a silent-pass
+  instrument) differs from how it was described, and is surfaced rather than
+  silently agreed with.
+
+  THIRD PASS, same day: the independent gate re-reviewed the second pass and
+  found it FAILED — three findings. (F1) The step's own `set -uo pipefail`
+  never disables errexit, and GH Actions' default shell already runs `-eo
+  pipefail`, so a NON-CLEAN verdict made the shell exit AT THE PIPE, before
+  `RC=${PIPESTATUS[0]}` — no rc written, no step summary, on exactly the
+  verdict this PR exists to surface. Fixed with the same `set +e`/`set -e`
+  idiom already proven at fly-deploy.yml's own PIPESTATUS use. My own prior
+  bash-step verification (SECOND PASS) never caught this because it ran
+  under plain `bash script.sh`, never GH Actions' authentic default shell
+  (`bash --noprofile --norc -eo pipefail`) — re-verified this pass under the
+  real shell (receipt 15/16). (F2) The pack's own diff-size prose narration
+  chases a number that can never converge (the pack's own bulk is inside the
+  diff it measures) — cured by dropping specific insertion/deletion/net-line
+  counts from prose everywhere, keeping only file names; the structured
+  `diff.net_lines`/`diff.files` fields are the sole numeric source (and are
+  not themselves scanned by the countable-claims rule — it walks only string
+  scalars). (F3) The comment-upsert's bare `if: always()` could false-accuse
+  a skipped/cancelled run — fixed to
+  `if: always() && steps.ledger_check.outputs.rc != ''`.
+
+  FOURTH PASS, same day: team-lead ruled on the risks-entry recommendation
+  below (state the observed noise rate so a reader's first exposure sets the
+  right prior). Decision: implement the qualitative fact, explicitly WITHOUT
+  a numeric ratio — the ~1-in-3 figure comes from ten runs, and printing it
+  as permanent surface text would harden n=10 into a stated prior nobody
+  re-measures, the exact folklore problem the number was meant to prevent.
+  Verbatim text (team-lead's own wording): "A flag here may be a deliberate,
+  correctly-explained row closure rather than an accidental loss — this
+  check cannot tell them apart. Confirm with `git log --oneline
+  <base>..<head> -- .claude/skills/modus/PENDING-ARMS.md` and read the
+  commit message before treating it as a defect." Added to BOTH surfaces:
+  the bash step-summary (right after the verdict line, before any detail)
+  and the PR-comment JS body (moved to sit immediately after the `direction`
+  headline and BEFORE the collapsed `<details>` block — the prior ordering
+  had it only after `<details>`, satisfying "visible without expanding" but
+  not "same visual unit as the alarming headline"). Verified with a 4-case
+  mock harness (rc=0/no-existing, rc=0/existing, rc=1/no-existing,
+  rc=2/existing) asserting the caveat text's string index precedes the
+  `<details>` block's index on every non-clean branch, and is ABSENT on the
+  clean-path body (receipt 17).
+constraints:
+  - "Must stay NON-REQUIRED (team-lead's explicit instruction, and the check's
+    own header comment/history): promoting to a required branch-protection
+    context is a separate, later, operator-only action. Verified this PR does
+    NOT add the job to branch protection — `gh api
+    repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks`
+    still lists 11 contexts, none matching this job (receipt 1)."
+  - "'Non-required' must come from branch-protection omission, NOT from
+    `continue-on-error` — that was the actual defect (the file's own header
+    cited check-kbli-dataset-sync.yml as its posture precedent, but that file
+    has no continue-on-error anywhere; the citation was aspirational, not
+    actual — receipt 2)."
+  - "The comment-upsert surface must not spam: only post/update when the
+    verdict is non-clean, and self-correct to 'now clean' in place (edited,
+    not reposted) rather than accumulating a second comment (receipt 5, mock
+    test cases 1/3)."
+  - "The 'confirm in one step' guidance for a flagged row (team-lead's explicit
+    design requirement) must be tuned against a REAL case, not asserted —
+    a first draft (`grep -c '^+- closed'` on the diff) was found to
+    under-detect: tested against the actual PR #5279 base/head SHAs, it
+    returns 0 even though that removal was genuinely deliberate and fully
+    explained in its own commit message (receipt 6). Corrected to point at
+    `git log --oneline <base>..<head> -- .claude/skills/modus/PENDING-ARMS.md`
+    plus reading the commit messages, and re-verified against the same real
+    SHAs that the commit message DOES explain the removal (receipt 7)."
+  - "No PII/OSINT in any artifact — this is pure CI-plumbing (one workflow
+    YAML file, one test-file addition). Nothing here touches client data."
+  - "The `--base-ref` fix must be proven against the WORKFLOW's actual
+    invocation path, not just the script in isolation — replayed through
+    the real extracted bash step (receipt 10), not only `check()` called
+    directly (receipt 9)."
+  - "No bare conflict-marker (`<<<<<<<`/`>>>>>>>`) grep may exist anywhere
+    on this PR's surface — PENDING-ARMS.md carries 9 of each as quoted
+    prose describing past scars, a known false-positive trap. Checked:
+    N/A, nothing on this surface greps for markers (receipt 11)."
+acceptance:
+  - "actionlint passes clean on the modified workflow file (receipt 3)."
+  - "The embedded github-script JS is syntactically valid when wrapped the way
+    `actions/github-script@v9` actually executes it (async IIFE) — a raw
+    `node --check` on the extracted script fails on top-level `await` by
+    design (that's expected outside the actions/github-script wrapper), so
+    the real check wraps it first (receipt 4)."
+  - "The invariant-check step's bash logic (RC capture, step-summary write,
+    real exit propagation) is verified end-to-end against TWO real historical
+    scenarios from this session's own prior work: PR #5279's base/head (known
+    LOST-row case, expected exit 1) and PR #5244's base/head (known-clean
+    case, expected exit 0) — both reproduce the expected exit code AND a
+    correctly-formatted step summary (receipts 6, 8)."
+  - "The github-script comment-upsert logic is verified via a mock harness
+    covering all 4 reachable branches: rc=0/no-existing-comment (no API call
+    beyond listing), rc=1/no-existing (createComment with LOST direction),
+    rc=0/existing-comment (updateComment to 'now clean'), rc=2/existing
+    (updateComment with DUPLICATED direction) — all 4 run without exception
+    and produce the expected body content (receipt 5)."
+  - "The base-ref fix eliminates a real, demonstrated false-positive class
+    (a legitimate closure the branch correctly merged in, mistakenly
+    flagged as a loss) without losing sensitivity to real accidental loss —
+    both directions verified against `check()` directly (receipt 9) AND
+    against the real bash step (receipt 10)."
+  - "Net diff stays within one PR-one-concern scope: the workflow file
+    (wiring the verdict to a reader; feeding it a base_ref that doesn't
+    false-flag legitimate closures; the errexit and skipped-run fixes
+    below) plus one new test file. No specific line count is narrated here
+    — see `diff:` for the single measured figure; this is the same
+    self-referential fixpoint #5237 hit (a pack's own bulk is part of the
+    diff it describes, so any prose number chasing it goes stale the
+    moment it's written)."
+  - "F1: a non-clean verdict does not go silent under GH Actions' actual
+    default shell (`bash --noprofile --norc -eo pipefail`) — verified by
+    replaying BOTH the pre-fix and fixed step bodies under that authentic
+    shell (not a plain `bash script.sh` replay, which is what let this
+    defect through the SECOND PASS's own verification): pre-fix,
+    GITHUB_OUTPUT/GITHUB_STEP_SUMMARY both empty on a real LOST-row case;
+    fixed, both correctly populated (receipt 15)."
+  - "F3: the comment-upsert step's `if:` condition is
+    `always() && steps.ledger_check.outputs.rc != ''` — verified directly
+    against the step's own source; a SKIPPED or CANCELLED
+    `ledger_check` leaves `outputs.rc` empty, and the new condition
+    excludes exactly that case (receipt 16)."
+  - "FOURTH PASS: the qualitative (non-numeric) caveat team-lead specified
+    is present on BOTH surfaces — the bash step-summary immediately after
+    the verdict line, and the PR-comment JS body immediately after the
+    `direction` headline and before the collapsed `<details>` block — and
+    is absent from the clean-path (`rc === 0`) comment body. Verified with
+    a 4-case mock harness against the real extracted script under the
+    actual async-IIFE wrapper `actions/github-script@v9` uses, asserting
+    string-index ordering (caveat precedes `<details>`) on every non-clean
+    branch (receipt 17)."
+consumer_map:
+  - ".github/workflows/check-ledger-no-silent-loss.yml — the file itself; this
+    PR is a self-contained wiring fix with no other file depending on its
+    exact shape."
+  - "Every future PR whose diff touches `.claude/skills/modus/PENDING-ARMS.md`,
+    `scripts/check_ledger_no_silent_loss.py`,
+    `scripts/pending_arms_report.py`, or this workflow file — the check
+    already ran on all of them (path-scoped, unchanged by this PR); after
+    this PR, a real finding on any of those PRs shows red on the checks list
+    and gets a PR comment, instead of a silent green with the finding buried
+    in a log nobody opens."
+risks:
+  - "A future push to `main-push-failure-watch.yml`'s workflow-coverage list
+    could, in principle, need this workflow registered if that watcher
+    enumerates workflow NAMES and this PR is read as introducing a 'new'
+    workflow — checked and ruled out: this PR modifies an EXISTING workflow
+    file (`check-ledger-no-silent-loss.yml` already existed and was already
+    running before this PR), so no new workflow name is introduced and no
+    coverage-list registration is needed."
+  - "The `pull-requests: write` permission is new on this workflow (was
+    `contents: read` only). Scoped to this single workflow's
+    `GITHUB_TOKEN`, standard least-privilege pattern already used elsewhere
+    in this repo (tests.yml, sonarqube.yml both use `actions/github-script`
+    with issue/PR comment permissions) — not a novel grant shape."
+  - "If GitHub's ~65536-char PR-comment body limit is approached by an
+    unusually large check output (many flagged rows at once), the comment
+    truncates at 55000 chars with a note pointing to the full run log —
+    verified in code (receipt 5's mock output field), not yet observed
+    against a real oversized output since no PR has flagged that many rows
+    at once in this repo's history so far."
+  - "JUDGMENT CALL, RESOLVED (FOURTH PASS): the independent gate's own
+    measurement (7 clean / 3 non-clean across ten recent runs, one of the
+    three a legitimate closure) is residual noise this check's design
+    accepts by construction — it cannot see intent, only content, and
+    F2/base-ref only ever addressed a DIFFERENT false-positive class (a
+    main-side closure this branch correctly merged in). A branch's own
+    deliberate closure of a row it owns is indistinguishable from an
+    accident by content alone; no base_ref choice fixes that. Team-lead's
+    ruling on the recommendation this entry originally carried: implement
+    a calibrating sentence on both surfaces, but WITHOUT the numeric ratio
+    — n=10 is too small a sample to harden into permanent surface text
+    that nobody re-measures; that is exactly the folklore failure mode the
+    number was meant to guard against. The qualitative version needs no
+    sample and cannot go stale. Done — see objective's FOURTH PASS
+    paragraph for the verbatim text and placement, and receipt 17 for the
+    verification. Deliberately still NOT suppressing the deliberate-closure
+    shape or adding a threshold: suppression needs a signal this check does
+    not have (intent), and this remains an open, accepted design limitation
+    — the surface now sets the reader's prior correctly, it does not (and
+    cannot) eliminate the ambiguity itself. If the ratio becomes interesting
+    after this check has a few hundred runs of real history, it can be
+    measured and stated properly then — not before."
+grader: |
+  generator != grader: this session (M5, ledger-conflicts lane, continuing the
+  same thread that found the gap) is both author and the one running the
+  verification receipts below — flagged as a limitation, not concealed. The
+  mitigating factor: every claim below is a COMMAND RUN THIS TURN against real
+  data (actionlint, a JS syntax check under the actual execution wrapper, two
+  live git-history replays of real PR SHAs, a 4-case mock harness, 3 crafted
+  scenarios run directly against check(), a real bash-step replay of the fix),
+  not a self-report of intent. An INDEPENDENT gate DID review this PR before
+  merge (its finding — the frozen base_ref — is what this second pass fixes),
+  partially offsetting the single-session limitation; this session's own
+  empirical testing of that finding produced a genuine, disclosed dissent
+  (pack.yml `dissent:`) on the exact mechanism rather than silent agreement.
+  No cross-family refuter was separately dispatched for this specific PR —
+  team-lead's mandate did not request one and the change is CI-plumbing (a
+  YAML/JS wiring fix plus one base_ref argument correction around an
+  already-tested Python script), not a new invariant or a business decision.
+budget: |
+  Single-lane CI-plumbing wiring fix, no new script, no cloud LLM spend beyond
+  this session's own interactive turns. Flat-subscription only.
+pii: none

@@ -1,0 +1,179 @@
+# CI stages every per-PR pair under /tmp/evidence-check/evidence/{brief,pack}.yml.
+# evidence_paths.py and harness-floor.yml therefore require this canonical staging reference.
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so the D3 floor does not fire. The review side is deliberately cross-family and
+  is the substance of this PR rather than a formality: two non-Anthropic seats (OpenAI
+  gpt-5.6-sol at xhigh, Moonshot kimi-code/k3) were asked the PUBLICATION question, not a code
+  question, and both answered "not as-is". A same-family reviewer would have been reading its own
+  house's audit of its own house.
+plan_ref: "Put the 16-lane anatomy panel where MEMORY.md's index already claimed it was. The sibling craft panel (13 reports) landed earlier; this one never did."
+lanes:
+  - lane: beyond-sota-16-lane-publication-build
+    role: build
+    seat: "conductor session (M5, Opus 5)"
+  - lane: beyond-sota-16-lane-publication-review
+    role: review
+    seat: "codex-gpt-5.6-sol (xhigh) + kimi-code/k3, cross-family; every concrete claim re-derived by an independent fact-checking seat"
+diff:
+  files: 21
+  net_lines: "21 files, +4769/-57, commit count unmeasured (no --commit-count, no pull_request payload)"
+  behaviour_change: >-
+    None. This diff adds markdown under research/operations/ and ships no code into any deployed
+    artifact. What changes is what a session can READ: the memory index pointed at a directory
+    that did not exist, so the panel was unreachable to every reader of that index.
+receipts:
+  - claim: >-
+      The panel was genuinely absent from origin/main, while the sibling craft panel of 13 reports
+      was fully present — this PR closes a real gap rather than duplicating one.
+    cmd: "git ls-tree -r --name-only origin/main -- research/operations/2026-08-28-beyond-sota/ (0 files), and the same query for the flat craft files (13 present)"
+    exit: 0
+    ts: "2026-08-30 (conductor, M5)"
+    seat: "conductor (M5, Opus 5)"
+  - claim: >-
+      The single BLOCK the council raised — B3's Meta webhook signature "not confirmed set in
+      production", with an exploitation probe written out — is FALSE OF PRODUCTION TODAY. This is
+      the receipt that dissolved the block, and it was taken against prod, not against the source.
+    cmd: >-
+      flyctl secrets list -a nuzantara-rag (NAMES AND DIGESTS ONLY, never values) shows
+      WHATSAPP_APP_SECRET, INSTAGRAM_APP_SECRET and META_WEBHOOK_REQUIRE_SIGNATURE deployed; then
+      the decisive one, which needs no secret at all — an unsigned
+      POST https://nuzantara-rag.fly.dev/webhook/whatsapp
+    exit: 0
+    ts: "2026-08-30 — answered 401, detail 'Invalid signature'"
+    seat: "conductor (M5, Opus 5), against production"
+  - claim: >-
+      The staleness finding — the strongest thing the council produced — is real, and was
+      re-derived by the conductor rather than accepted from the report. The panel is pinned 123
+      commits behind, and every fix it presents as an open P0 is a descendant of that pin.
+    cmd: >-
+      git rev-list --count 11a3c89a2e..origin/main gives 123; git merge-base --is-ancestor
+      11a3c89a2e <sha> for cc82ed62e4, 0cccbbc925, d6556a75bf and 3861567e52 — all four are
+      descendants
+    exit: 0
+    ts: "2026-08-30 (conductor, M5)"
+    seat: "conductor (M5, Opus 5)"
+  - claim: >-
+      The sharpest disclosure in the set (the unauthenticated writable ttyd on the PII host) adds
+      ZERO marginal exposure, because origin/main already publishes it verbatim with the same URL,
+      port and writable flag, and the sibling security report already on main carries the same
+      finding. This is the measured half of the "already public" argument; the council was right
+      that the argument does not generalise beyond it, which is why it is scoped here.
+    cmd: >-
+      git show origin/main:infra/tailscale/policy.hujson piped through a case-insensitive grep for
+      ttyd/unauthenticated/writable//term (hits at lines 3-26); plus git ls-tree -r origin/main
+      over research/operations/2026-08-28-beyond-sota*
+    exit: 0
+    ts: "2026-08-30 (conductor, corroborated by the independent fact-check seat)"
+    seat: "conductor (M5, Opus 5)"
+  - claim: >-
+      The one personal name in the set is gone, and the credential-location pointer that was NOT
+      already public is redacted. Both verified by residual count, never by having done the edit.
+    cmd: >-
+      a recursive grep -c for the redacted employee name over the published directory returns 0;
+      the same for the phrases naming the DNS-write credential's machine and its memory file
+    exit: 0
+    ts: "2026-08-30 (conductor, M5)"
+    seat: "conductor (M5, Opus 5)"
+  - claim: >-
+      Gear 3 is by SIZE and was recomputed from the real numstat, not asserted: the path term does
+      not fire, because nothing in this diff is hot-zone.
+    cmd: "compute_floor(files, numstat) returns (3, 'size'); thresholds are 400 and 1828"
+    exit: 0
+    ts: "2026-08-30 (conductor, M5)"
+    seat: "conductor (M5, Opus 5)"
+tests:
+  - "None. This diff adds markdown and changes no code path, so there is nothing to unit-test. The
+    assertions that matter are the receipts above, three of which are measurements against
+    production or against origin/main rather than against this worktree."
+static:
+  - "YAML frontmatter re-parsed in all 17 files AFTER the staleness header was inserted, to prove
+    the header landed below the closing delimiter and did not corrupt the block it follows."
+  - "Secret and PII sweep over the published set: no token, key, phone number, or 15-16 digit
+    identity number; the only email address is a company sender already present throughout the repo."
+runtime_proof: >-
+  None applicable and none claimed — no code ships. The nearest thing to a prove-live is the
+  production probe in the receipts, and that proves something about the SUBJECT of a report, not
+  about this diff.
+dissent:
+  - seat: "kimi-code/k3"
+    objection: >-
+      HOLD on B3: the Meta webhook secret is documented as not confirmed set in production, and the
+      file supplies the exact exploitation probe. Unlike the ttyd, this exposure is not already
+      burned elsewhere, so publishing it would be a genuine incremental disclosure.
+    status: RETRACTED
+  - seat: "both seats"
+    objection: >-
+      The reports are pinned 123 commits behind origin/main and present at least four already-cured
+      defects as current P0s — including F2 calling the magic-link flow "replay-safe" when it then
+      carried the ownership hole that #5298 closed. The panel's own thesis, that a written artefact
+      gets presumed to be in force, describes the panel.
+    status: CONFIRMED
+  - seat: "codex-gpt-5.6-sol"
+    objection: >-
+      "It is already public elsewhere" is sound ONLY for the specific ttyd URL and becomes a
+      rationalisation if stretched over the whole diff: aggregation is itself a disclosure, because
+      a curated P0 table is a targeting document even when every row is individually known.
+    status: CONFIRMED
+  - seat: "codex-gpt-5.6-sol"
+    objection: >-
+      The panel's mandate file self-labels IN-PROGRESS and internal, and reproduces the owner's
+      internal mandate verbatim; it should not be published at all.
+    status: CONFIRMED
+  - seat: "kimi-code/k3"
+    objection: >-
+      B5 names the location of a live DNS-write credential and the internal memory recording it.
+      That pointer lives outside git, so it is not covered by the "already public" argument.
+    status: CONFIRMED
+  - seat: "kimi-code/k3"
+    objection: >-
+      Several counts are simply wrong and checkable in under a minute — X3's directory and symlink
+      count, and its tool-decorator count, among them.
+    status: CONFIRMED
+  - seat: "codex-gpt-5.6-sol"
+    objection: >-
+      B4 contradicts itself inside one file: it states that OCR of identity documents never leaves
+      the machine, and then states that OCR'd passport, NPWP and akta text is shipped to a cloud
+      model by CRM-Guardian.
+    status: CONFIRMED
+  - seat: "codex-gpt-5.6-sol"
+    objection: >-
+      B4 names the exact worker that puts client PII into a process argument vector, visible to any
+      local user through the process table, and records it as unresolved — reconnaissance value
+      beyond what the repo already discloses.
+    status: CONFIRMED
+  - seat: "both seats"
+    objection: >-
+      B3 and B7 publish private operational state: outage duration, live row counts, human-handoff
+      failure rate, a team-message corpus size, and the observation that the pipeline captures team
+      members' personal messaging accounts.
+    status: PLAUSIBLE
+  - seat: "conductor"
+    objection: >-
+      The wrong counts were deliberately NOT corrected in the text. Correcting the two that were
+      re-measured while leaving seven others merely PLAUSIBLE would imply the remainder are
+      verified. The header declares every number unverified instead.
+    status: CONFIRMED
+residual_risks:
+  - "Aggregation risk, conceded rather than argued away: both seats are right that a curated defect
+    table is a targeting document even when each row is individually public. The mitigation is not
+    that the risk is absent — it is that the sibling 13-report panel, including its security lane,
+    is already on main carrying the same ttyd finding verbatim, so this diff opens no new category;
+    and the staleness header actively degrades the set's targeting value by naming which entries
+    are already closed."
+  - "Nine of the council's numeric objections are marked PLAUSIBLE because the fact-checking seat
+    ran out of time, not because they were investigated and found doubtful. They are listed in
+    dissent so the next reader inherits the open list instead of a false all-clear."
+  - "Two items were WITHHELD (the internal mandate file, and the credential location). A reader
+    comparing this directory against the panel's own file list will find 17 where the mandate says
+    18 — the header says so, so the absence is legible rather than silent."
+  - "The PII-in-argv defect B4 names, and B4's internal contradiction, are real, live, and NOT
+    fixed by this PR — it publishes the report that names them. Both get ledger rows. Publishing a
+    finding is not curing it, which is the exact distinction this panel exists to draw."
+sources:
+  - "research/operations/2026-08-28-beyond-sota-* — the sibling 13-lane craft panel, already on main"
+  - "infra/tailscale/policy.hujson — the already-public ttyd disclosure"
+  - "PR #5298 (magic-link ownership), #5190, #5211, #5207, #5181 — the cures that postdate the pin"
+pii_scan: clean

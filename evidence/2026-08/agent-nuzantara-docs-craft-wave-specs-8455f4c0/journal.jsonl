@@ -1,0 +1,5 @@
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-08-29T00:37:48Z"}
+{"seat": "codex-gpt-5.6", "role": "review", "ok": true, "ts": "2026-08-29T00:50:31Z"}
+{"seat": "claude-sonnet-5", "role": "build", "ok": true, "ts": "2026-08-29T00:28:00Z"}
+{"seat": "codex-gpt-5.6", "role": "build", "ok": true, "ts": "2026-08-29T00:22:00Z"}
+{"seat": "claude-fable-5", "role": "build", "ok": true, "ts": "2026-08-29T00:21:00Z"}

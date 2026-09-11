@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import uuid
+from collections.abc import Callable
 
 import httpx
 import pytest
@@ -33,19 +34,40 @@ from backend.services.garuda_orders import journal
 from backend.services.garuda_orders.outbox_consumer import KILL_SWITCH_ENV, drain_once
 from backend.services.garuda_orders.outbox_handlers import (
     BrevoEmailSender,
+    CheckoutReadyEmailHandler,
     EmailSendFailed,
+    LateRefundConfirmationEmailHandler,
+    LateRefundFacts,
     OrderEmailFacts,
+    PaymentExpiredEmailHandler,
+    PaymentFailedEmailHandler,
     PaymentPaidEmailHandler,
+    PracticeReceivedEmailHandler,
     PracticeReleaseHandler,
+    PracticeTransitionEmailFacts,
+    RefundEmailHandler,
+    _practice_transition_body,
     build_handlers,
 )
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
-# `_seed_full_case` is imported rather than re-implemented ON PURPOSE. Seeding a
-# usable case means check -> order -> journal -> practice PLUS an active
-# GARUDA_CHECK retention policy, because `garuda_voa_check_results` is
-# fail-closed by trigger. A second copy of that would drift from the first, and
-# this suite would start proving something the adapter suite no longer does.
-from backend.tests.services.garuda_ops.test_adapters_pg import _seed_full_case
+# `_seed_full_case` and `_reset_suite_rows` are imported rather than
+# re-implemented ON PURPOSE. Seeding a usable case means check -> order ->
+# journal -> practice PLUS an active GARUDA_CHECK retention policy, because
+# `garuda_voa_check_results` is fail-closed by trigger. A second copy of
+# either would drift from the first, and this suite would start proving
+# something the adapter suite no longer does — which is exactly what had
+# already happened to the cleanup half: this file's `pool` fixture used to
+# carry its own hand-copied TRUNCATE/DELETE block with no post-yield call,
+# so the release-job tests below (which mint real `practices` rows keyed to
+# `visa_b1_voa` via `PostgresCrmWriter`) could leave the LAST such row
+# committed for whatever runs next on this worker. See `_reset_suite_rows`'s
+# docstring for the cross-file FK violation that caused
+# (`test_migration_303_voa_price_roundtrip.py`'s DELETE on the same code).
+from backend.tests.services.garuda_ops.test_adapters_pg import (
+    _reset_suite_rows,
+    _seed_full_case,
+)
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
@@ -66,32 +88,28 @@ RECIPIENT = "traveller@example.invalid"
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(_DSN, min_size=1, max_size=4)
+        p = await create_prod_shaped_pool(_DSN, min_size=1, max_size=4)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(f"no reachable Postgres in CI at {_DSN}: {exc}")
         pytest.skip(f"no reachable Postgres at {_DSN}: {exc}")
+        # Unreachable in practice: pytest.fail/skip are NoReturn, so `p` is
+        # always bound below. CodeQL can't see that through the pytest API;
+        # this `raise` terminates the branch provably and re-raises the
+        # connection error if that assumption ever stops being true.
+        raise
     try:
-        async with p.acquire() as conn:
-            await conn.execute(
-                "TRUNCATE garuda_practices, garuda_order_outbox, "
-                "garuda_order_journal, garuda_orders, garuda_voa_check_results "
-                "CASCADE"
-            )
-            # The weld tests below write real CRM rows, so this fixture has to
-            # clean the CRM side too. Order matters and the second delete is
-            # not redundant: the first clears what the adapter wrote (every
-            # such row carries a key), the second clears any NULL-key row the
-            # first cannot see, and both must precede the client delete or
-            # `practices_client_id_fkey` rejects it — the same teardown trap
-            # `test_adapters_pg.py`'s fixture documents.
-            await conn.execute("DELETE FROM practices WHERE source_idempotency_key IS NOT NULL")
-            await conn.execute(
-                "DELETE FROM practices WHERE client_id IN "
-                "(SELECT id FROM clients WHERE email LIKE '%@example.invalid')"
-            )
-            await conn.execute("DELETE FROM clients WHERE email LIKE '%@example.invalid'")
+        # The weld tests below write real CRM rows (via `PostgresCrmWriter`,
+        # every such row carries a key), so cleanup has to reach the CRM side
+        # too, not just this file's own garuda_* tables — exactly what
+        # `_reset_suite_rows` already does for `test_adapters_pg.py`. Called
+        # both before AND after the yield: the second call is what closes the
+        # cross-file leak (see that function's docstring) — without it, the
+        # LAST release-job test in this file left a `practices` row keyed to
+        # `visa_b1_voa` committed for whatever ran next on this worker.
+        await _reset_suite_rows(p)
         yield p
+        await _reset_suite_rows(p)
     finally:
         await p.close()
 
@@ -168,6 +186,11 @@ def _facts(**over) -> OrderEmailFacts:
         "case_type": "issuance",
         "price_idr": 790000,
         "state": "paid",
+        # OP-F04/OP-F05 flag. Required on the dataclass on purpose: a `_load`
+        # that forgets the column must fail loudly rather than default to
+        # "no late payment" and let a terminal notice go out to a charged
+        # customer. This factory's default is the ordinary case.
+        "late_case_open": False,
     }
     base.update(over)
     return OrderEmailFacts(**base)
@@ -265,6 +288,105 @@ def test_the_body_carries_no_passport_or_name():
     body = PaymentPaidEmailHandler._body(_facts())
     assert "X0000000" not in body
     assert "SPECIMEN" not in body
+
+
+# --------------------------------------------------------------------------
+# GA-B-1: `case_type` reaches 8 separate HTML bodies (9 constructor sites
+# across 4 dataclasses feed them — no single upstream factory) and every one
+# must html-escape it. The 5 `staff_page_*` Telegram pages are plain-text /
+# `_escape_markdown`-escaped and are deliberately NOT covered here.
+# --------------------------------------------------------------------------
+
+
+def _late_refund_facts(**over) -> LateRefundFacts:
+    base = {
+        "order_id": "ord_specimen",
+        "email": RECIPIENT,
+        "case_type": "issuance",
+        "resolution": "refunded_in_full",
+    }
+    base.update(over)
+    return LateRefundFacts(**base)
+
+
+def _practice_transition_facts(**over) -> PracticeTransitionEmailFacts:
+    base = {
+        "order_id": "ord_specimen",
+        "email": RECIPIENT,
+        "case_type": "issuance",
+        "state": "Approved",
+        "customer_reason_key": None,
+        "required_action_key": None,
+        "artifact_available": False,
+    }
+    base.update(over)
+    return PracticeTransitionEmailFacts(**base)
+
+
+#: One entry per HTML body, named after the outbox `job_type` it renders for
+#: (`practice_transition_email` covers all seven PR-02..PR-11 job types —
+#: they share one `_body` factory, `_practice_transition_body`). Each value
+#: is a `case_type -> rendered body` callable so the escaping tests below can
+#: drive all 8 with the same two assertions and still name the failing body
+#: in the parametrize id.
+_HTML_BODY_RENDERERS: dict[str, Callable[[str], str]] = {
+    "payment_paid_email": lambda case_type: PaymentPaidEmailHandler._body(
+        _facts(case_type=case_type)
+    ),
+    "checkout_ready_email": lambda case_type: CheckoutReadyEmailHandler._body(
+        _facts(case_type=case_type), "https://pay.example.invalid/session"
+    ),
+    "payment_failed_email": lambda case_type: PaymentFailedEmailHandler._body(
+        _facts(case_type=case_type),
+        "Please try again with a different card or payment method.",
+    ),
+    "payment_expired_email": lambda case_type: PaymentExpiredEmailHandler._body(
+        _facts(case_type=case_type)
+    ),
+    "refund_email": lambda case_type: RefundEmailHandler._body(_facts(case_type=case_type)),
+    "late_refund_confirmation_email": lambda case_type: (
+        LateRefundConfirmationEmailHandler._body(_late_refund_facts(case_type=case_type))
+    ),
+    "practice_received_email": lambda case_type: PracticeReceivedEmailHandler._body(
+        _facts(case_type=case_type)
+    ),
+    "practice_transition_email": lambda case_type: _practice_transition_body(
+        "is now being reviewed by our team."
+    )(_practice_transition_facts(case_type=case_type)),
+}
+
+
+@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
+def test_html_body_escapes_a_script_case_type(job_type):
+    """Guilt case: a `<script>` `case_type` must never reach the wire raw.
+
+    Revert `_h()` (or one of its 8 call sites) to a bare `facts.case_type` and
+    this goes red, naming the body in the parametrize id.
+    """
+
+    render = _HTML_BODY_RENDERERS[job_type]
+    body = render("<script>x</script>")
+    assert "<script>x</script>" not in body
+    assert "&lt;script&gt;x&lt;/script&gt;" in body
+
+
+@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
+def test_html_body_escapes_ampersand_and_quote_case_type(job_type):
+    render = _HTML_BODY_RENDERERS[job_type]
+    body = render('visa & "extra"')
+    assert 'visa & "extra"' not in body
+    assert "visa &amp; &quot;extra&quot;" in body
+
+
+@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
+def test_html_body_renders_a_normal_case_type_unchanged(job_type):
+    """Innocence case: an ordinary `case_type` is not mangled by the escape."""
+
+    render = _HTML_BODY_RENDERERS[job_type]
+    body = render("issuance")
+    assert "issuance" in body
+    assert "&amp;" not in body
+    assert "&lt;" not in body
 
 
 # --------------------------------------------------------------------------
@@ -419,11 +541,12 @@ async def test_a_retry_after_a_transient_failure_delivers(pool):
 async def test_unrouted_job_types_are_reported_not_delivered(pool):
     """A job type with no registered handler must show as unroutable.
 
-    This used to assert on `practice_release`, which acquired a handler when
-    the CRM weld landed. The specimen is now `refund_email` — still enqueued by
-    `repository.py`, still deliberately unrouted. Repointing rather than
-    deleting keeps the property under test: `build_handlers` must report what
-    it cannot route instead of consuming it.
+    This used to assert on `practice_release`, then on `refund_email` — both
+    acquired handlers as the outbox drain grew. The specimen is now
+    `staff_page_duplicate_charge`, one of the five `staff_page_*` jobs
+    `build_handlers` deliberately never routes (module docstring). Repointing
+    rather than deleting keeps the property under test: `build_handlers` must
+    report what it cannot route instead of consuming it.
     """
 
     order_id = await _seed_order(pool)
@@ -437,7 +560,10 @@ async def test_unrouted_job_types_are_reported_not_delivered(pool):
             customer_visible=True,
         )
         await journal.enqueue_outbox(
-            conn, order_id=order_id, journal_event_id=event_id, job_type="refund_email"
+            conn,
+            order_id=order_id,
+            journal_event_id=event_id,
+            job_type="staff_page_duplicate_charge",
         )
 
     rec = _Recorder()
@@ -449,7 +575,7 @@ async def test_unrouted_job_types_are_reported_not_delivered(pool):
         await client.aclose()
 
     assert stats.unroutable == 1
-    assert "refund_email" in stats.unroutable_types
+    assert "staff_page_duplicate_charge" in stats.unroutable_types
     assert rec.requests == []
 
 
@@ -469,7 +595,39 @@ def test_build_handlers_routes_practice_release() -> None:
     """
 
     handlers = build_handlers(pool=None, sender=None)  # type: ignore[arg-type]
-    assert set(handlers) == {"payment_paid_email", "practice_release"}
+    # The set is EXACT on purpose: adding a route must be a deliberate edit
+    # here, and removing one can never pass unnoticed. `portal_invite` joined
+    # it when a paid order started producing a portal account as well as a
+    # practice; the five customer-email jobs joined when the outbox grew to
+    # cover checkout/failure/expiry/refund/receipt;
+    # `late_refund_confirmation_email` joined last — the type three separate
+    # counts missed because its call site passes `job_type` as a VARIABLE and
+    # every count was a `job_type="` grep.
+    #
+    # This hand-maintained set is a SECOND opinion. The primary check is
+    # `test_outbox_job_type_coverage.py`, which reads the enqueued types out of
+    # the AST — the only shape that can see a non-literal argument.
+    assert set(handlers) == {
+        "checkout_ready_email",
+        "payment_paid_email",
+        "payment_failed_email",
+        "payment_expired_email",
+        "refund_email",
+        "late_refund_confirmation_email",
+        "practice_release",
+        "practice_received_email",
+        "portal_invite",
+        # step 8 (round 3, item E): the 7 staff-transition customer emails,
+        # `staff_transitions.py::apply_transition`'s own job_type if/elif
+        # chain — see that module and PracticeTransitionEmailHandler above.
+        "practice_in_review_email",
+        "practice_blocked_email",
+        "practice_submitted_email",
+        "practice_approved_email",
+        "practice_rejected_email",
+        "practice_resumed_email",
+        "practice_delivered_email",
+    }
     assert isinstance(handlers["practice_release"], PracticeReleaseHandler)
 
 

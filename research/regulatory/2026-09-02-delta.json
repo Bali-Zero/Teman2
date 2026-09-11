@@ -1,0 +1,105 @@
+{
+  "run_at": "2026-09-02T07:15:00+08:00",
+  "today": "2026-09-02",
+  "yesterday_seen_count": 23,
+  "yesterday_file_used": "2026-08-31-delta.json",
+  "yesterday_file_note": "2026-09-01-delta.json is missing on disk (cron organism heartbeat shows pro.regulatory_watcher_daily status=error 'all tiers failed' for that date). Per spec this would be cold-start (yesterday_seen_count:0), but the dedup baseline from the most recent available run (2026-08-31) was used instead to avoid false 'new' flags on citations seen 2 days ago. This is a deliberate deviation, declared here, not a cold start.",
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare challenge (HTTP 403), persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but body is soft-404 'Artikel tidak ditemukan'"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare challenge (HTTP 403), persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "http_404",
+      "note": "Persisted after 1 retry with Mozilla UA; same known defect as prior runs (task #95)"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Next.js client-side SPA shell, no pre-rendered regulation entries in static HTML"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entries 26 Aug 2026 (Permen Pendidikan 21/2026, Permenkumham 14/2026), predate 48h window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "Search page loaded real content, zero PMK entries returned for 2026 filter"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Newest item 1 Sep 2026 (arrest report, non-regulatory), no visa/immigration regulation citation in window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest entry PER-8/PJ/2026 dated 2026-07-28, predates 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "Newest visible entry UU Nomor 2 Tahun 2026 (30 Apr 2026); no Permenaker promulgated in 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PMK Nomor 55 Tahun 2026",
+      "title_id": "PMK 55/2026 Atur Bentuk dan Struktur Kantor Konsultan Pajak",
+      "title_en": "PMK 55/2026 on the Form and Structure of Tax Consultant Offices",
+      "service_line": ["tax"],
+      "severity": "medium",
+      "impact_note": "Procedural/organizational rule for licensed tax consultant offices (kantor konsultan pajak) — relevant to how Bali Zero's tax practice is structured if it operates under this designation, not an immediate client-facing deadline.",
+      "summary": "New Ministry of Finance regulation setting the required legal form and organizational structure for tax consultant offices in Indonesia.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/",
+      "verbatim_excerpt": "PMK 55/2026 Atur Bentuk dan Struktur Kantor Konsultan Pajak",
+      "confidence": "medium",
+      "first_seen_at": "2026-09-02T07:15:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PMK Nomor 28 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "PMK Nomor 55 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026"
+  ]
+}

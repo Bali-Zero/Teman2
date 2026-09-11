@@ -1,0 +1,83 @@
+task_id: queue-shepherd-0827
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  PR #5071 (agent/nuzantara/infra/queue-shepherd -> main): ships
+  scripts/queue_shepherd.py, a new StartInterval=600s launchd organ
+  (com.nuzantara.queue-shepherd.10min.plist) that does budgeted merge-queue
+  auto-rearm + stale-run janitor work (Merge-OS v3 Codex F7). "Every organ
+  is born with its genes" was red on the pushed head: the new organ shipped
+  with no organs_registry.yaml entry (G1) and no heartbeat sidecar (G2) —
+  the pre-existing QUEUE_SHEPHERD_ENABLED kill switch already satisfied G5.
+
+  Gear 3 by PATH, deterministic: touches `infra/launchagents/*`
+  (HOTZONE_PATTERNS hit) — a new plist is exactly the class of change that
+  floor exists to gate. Re-evidenced tonight under the queue-shepherd sweep
+  (post-#5049 size-term floor landing after tonight's PRs were originally
+  armed).
+constraints:
+  - "No PII/OSINT — pure CI-plumbing/ops-tooling (a merge-queue janitor
+    script, a launchd plist, a registry entry, a heartbeat helper, tests).
+    Nothing here touches client data."
+  - "The heartbeat write must never become a NEW failure mode for the
+    organ's actual work: a heartbeat-write exception may only be logged,
+    never raised, or a heartbeat bug would take down the merge-queue
+    rearm/janitor pass it is supposed to be observing."
+  - "The failure-path heartbeat must fire BEFORE re-raising, not instead of
+    re-raising — G2's contract is 'heartbeat on success AND failure', not
+    'swallow the failure once heartbeated' (superscar #2: exists != armed
+    demands the real exception still propagate to launchd's own exit-code
+    signal)."
+acceptance:
+  - "infra/organ-conformance/check_organ_conformance.py reports 0
+    non-conformant births for com.nuzantara.queue-shepherd.10min.plist
+    (previously 1)."
+  - "apps/organism/organism/organs_registry.yaml's top-level checksum is
+    regenerated via `python -m organism.tools.validate_organs_registry
+    <path> --update-checksum` and the registry re-validates clean."
+  - "scripts/tests/test_queue_shepherd.py's existing suite passes unchanged
+    (no regression) after the heartbeat wrapping is added to tick()."
+  - "The deterministic floor recomputed from this PR's own real changed-file
+    set (committed, not working-tree-only) is 3, and this brief declares
+    gear 3 — never below it."
+consumer_map:
+  - "`apps/organism/organism/organs_registry.yaml` — new `pro.queue_shepherd`
+    entry, consumed by the fleet's organism-heartbeat proprioception sweep
+    (staleness alerting) same as every other registered organ."
+  - "`infra/organ-conformance/check_organ_conformance.py` — the gate this PR
+    was red on; consumes the plist + the registry entry + the heartbeat
+    write to judge G1/G2/G5 at PR-check time from this PR forward."
+  - "`~/.organism/last_seen/pro.queue_shepherd.json` — new heartbeat
+    sidecar file, read by the organism heartbeat health-check (superscar #2
+    antidote: `scripts/pending_arms_report.py`-class monitoring)."
+risks:
+  - "A heartbeat write failure is swallowed (logged, not raised) by design
+    — this is the correct trade-off (a heartbeat bug must never break the
+    actual merge-queue rearm/janitor work) but it does mean a persistently
+    broken heartbeat sidecar (e.g. a permissions regression on
+    ~/.organism/last_seen/) would silently degrade the organ from
+    'observable' back to 'exists != armed' (superscar #2) without failing
+    CI or the cron job itself — only the staleness monitor would notice,
+    on its own delayed cadence."
+  - "expected_hb_seconds: 900 vs the plist's StartInterval=600s gives a
+    300s slack margin — generous enough to absorb one missed tick without
+    false-alarming, but not investigated against the janitor pass's own
+    worst-case runtime; if a future change makes a single tick run longer
+    than ~900s under load, the staleness monitor would fire even though
+    the organ is still alive and working."
+grader: |
+  generator != grader: cross-family refuter (agy / Gemini 3.1 Pro,
+  non-Anthropic) reviewed the heartbeat try/except design (swallow-on-write-
+  failure, heartbeat-then-reraise-on-tick-failure) before this pack was
+  finalized. This session independently re-ran the organ-conformance gate
+  and the existing test suite after the fix, and re-derived the
+  deterministic floor from the real (committed) changed-file enumeration
+  rather than trusting a working-tree snapshot (the same class of mistake
+  already caught once tonight on PR #5063's evidence-path resolution).
+budget: |
+  Single-lane CI-plumbing/ops-tooling mechanical sweep task. Flat-
+  subscription seats only (Claude Sonnet 5 build via this session, agy
+  cross-family refuter). No metered API spend, no cloud LLM touching PII
+  (there is none in this diff).
+pii: none

@@ -1,0 +1,26 @@
+task_id: pse-regulations-sources
+gear: 1
+l_level: L2
+gate_class: opus
+objective: >-
+  Lane E of the compliance-stack build: pin the primary-source texts of the PSE and
+  PDP layer in data/source_documents/t0_regulations/ so the legal_unified collection
+  can ingest them after merge. Four PDFs committed (PP 71/2019 body and elucidation,
+  Permenkominfo 5/2020, Permenkominfo 10/2021) with MANIFEST-pse-pdp-2026-09.md
+  recording source URL, sha256, page count and effective date; UU 27/2022 and
+  PMK 37/2025 recorded by URL and sha256 only because every primary copy exceeds the
+  1000 KB check-added-large-files limit. Manifest linked from
+  data/kb_sources/LEGAL_GAP_ANALYSIS.md. Nothing ingested.
+grader: >-
+  Fresh Opus 5 session commissioned by the imperator (Fable 5.1 window); not yet
+  performed, no verdict asserted here.
+pii: none
+notes: >-
+  Floor 1 computed with scripts/evidence_pack_lint.py --print-floor over the staged
+  changed-file list and git numstat: no hot-zone path, and the size term counts only
+  the 114 markdown lines because the PDFs are binary in numstat. Sources are
+  government primary only (peraturan.go.id, peraturan.bpk.go.id, jdih.komdigi.go.id);
+  jdih.kemenkeu.go.id timed out over HTTPS from Pro and Mini on 2026-09-11.
+  PMK 37/2025 exists and is PMSE-related (income tax collected by electronic trading
+  operators), not the PMSE VAT rule; the manifest says so and points to PMK 60/2022
+  (revoked) and PMK 81/2024.

@@ -18,6 +18,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.app.core.config import settings
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.notifications.email_branding import logo_header_html
 
@@ -295,7 +296,7 @@ class BirthdayNotifierService:
                 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                 <p style="font-size: 12px; color: #666;">
                     <strong>Zantara — Bali Zero Team</strong><br>
-                    📧 asya@balizero.com | 📱 WhatsApp: +62 821 3465 159<br>
+                    📧 asya@balizero.com | 📱 WhatsApp: {settings.CLIENT_CONTACT_WHATSAPP}<br>
                     <a href="https://www.balizero.com" style="color: #3498db;">www.balizero.com</a>
                 </p>
             </div>

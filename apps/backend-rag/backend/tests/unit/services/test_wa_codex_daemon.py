@@ -23,6 +23,7 @@ from backend.llm.codex_exec_client import (
     CodexExecCommunicationError,
     CodexExecOutputShapeError,
     CodexExecProcessError,
+    CodexExecQuotaError,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
 )
@@ -463,6 +464,7 @@ class TestErrorMapping:
             (CodexExecCommunicationError("c"), "cli_failure"),
             (CodexExecOutputShapeError("o"), "cli_failure"),
             (CodexExecAuthError("a"), "cli_failure"),
+            (CodexExecQuotaError("q"), "quota_exhausted"),
             (RuntimeError("anything unexpected"), "cli_failure"),
         ],
     )

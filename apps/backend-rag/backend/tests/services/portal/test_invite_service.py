@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
@@ -36,16 +37,24 @@ class FakeConnection:
         self,
         fetchrow_results: list[dict | None] | None = None,
         fetch_results: list[dict] | None = None,
+        fetchval_results: list[object] | None = None,
     ) -> None:
         self.fetchrow_results = list(fetchrow_results or [])
         self.fetch_results = fetch_results or []
+        self.fetchval_results = list(fetchval_results or [])
         self.fetchrow_calls: list[tuple[str, tuple]] = []
         self.execute_calls: list[tuple[str, tuple]] = []
         self.fetch_calls: list[tuple[str, tuple]] = []
+        self.fetchval_calls: list[tuple[str, tuple]] = []
 
     async def fetchrow(self, query: str, *args) -> dict | None:
         self.fetchrow_calls.append((query, args))
         return self.fetchrow_results.pop(0)
+
+    async def fetchval(self, query: str, *args) -> object:
+        self.fetchval_calls.append((query, args))
+        # Default: no row found. Only the email-collision test seeds a value.
+        return self.fetchval_results.pop(0) if self.fetchval_results else None
 
     async def execute(self, query: str, *args) -> str:
         self.execute_calls.append((query, args))
@@ -304,7 +313,12 @@ async def test_complete_registration_join_excludes_archived_clients_by_query() -
 
     query, args = conn.fetchrow_calls[0]
     assert "c.deleted_at IS NULL" in query
-    assert args == ("tok-archived",)
+    # $1 is the digest, $2 the raw token for rows written before hashing
+    # landed (authz F1); the archived-client guard is unaffected by either.
+    assert args == (
+        hashlib.sha256(b"tok-archived").hexdigest(),
+        "tok-archived",
+    )
 
 
 @pytest.mark.asyncio
@@ -374,7 +388,9 @@ async def test_complete_registration_reactivates_inactive_existing_account() -> 
     # seed default client_preferences.
     assert len(conn.execute_calls) == 3
     update_query, update_args = conn.execute_calls[0]
-    assert "SET pin_hash = $1, active = true, portal_access = true" in update_query
+    assert "SET pin_hash = $1," in update_query
+    assert "active = true" in update_query
+    assert "portal_access = true" in update_query
     assert update_args[1] == 55
 
 
@@ -419,8 +435,89 @@ async def test_complete_registration_allows_placeholder_active_account() -> None
     assert result["user_id"] == 55
     # The real PIN is written over the placeholder — this IS onboarding.
     update_query, update_args = conn.execute_calls[0]
-    assert "SET pin_hash = $1, active = true, portal_access = true" in update_query
+    assert "SET pin_hash = $1," in update_query
+    assert "active = true" in update_query
+    assert "portal_access = true" in update_query
     assert update_args[1] == 55
+
+
+# =============================================================================
+# F1 (2026-09-11 portal↔CRM bridge audit) — the login identity is
+# `team_members.email`, and this branch never wrote it. A consultant who
+# changed `clients.email` and re-invited produced a client who could complete
+# registration through the NEW address and then could not sign in with it:
+# `auth.py` matches `team_members.email` only, which still held the old one.
+# Nothing surfaced the failure to either side.
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_moves_the_login_email_to_the_invited_address() -> None:
+    """Guilt-proof: drop `email = COALESCE($3, email)` from the UPDATE and
+    this fails — which is exactly the state production was in."""
+    now = datetime.now(timezone.utc)
+    conn = FakeConnectionWithTransaction(
+        fetchrow_results=[
+            {
+                "id": 9,
+                "client_id": 7,
+                # the invitation went to the NEW address
+                "email": "new-address@example.com",
+                "expires_at": now + timedelta(hours=1),
+                "used_at": None,
+                "client_name": "Client Name",
+            },
+            # the provisioned row still carries the OLD login email
+            {"id": 55, "active": True, "pin_hash": PLACEHOLDER_PIN_HASH},
+        ]
+    )
+    service = InviteService(FakePool(conn))
+
+    with patch(
+        "backend.services.common.cache._invalidate_cache",
+        new=AsyncMock(return_value=1),
+    ):
+        result = await service.complete_registration(token="tok", pin="1234")
+
+    assert result["success"] is True
+    update_query, update_args = conn.execute_calls[0]
+    assert "email = COALESCE($3, email)" in update_query
+    assert update_args[2] == "new-address@example.com"
+    # and the collision check ran against that same address
+    conflict_query, conflict_args = conn.fetchval_calls[0]
+    assert "LOWER(email) = LOWER($1)" in conflict_query
+    assert conflict_args == ("new-address@example.com", 55)
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_refuses_when_another_account_holds_the_email() -> None:
+    """`team_members.email` is UNIQUE. A different row already holding the
+    invited address is a real identity collision — refuse and say so, rather
+    than let the UPDATE blow up as an opaque 500 or, worse, move a login that
+    belongs to somebody else."""
+    now = datetime.now(timezone.utc)
+    conn = FakeConnectionWithTransaction(
+        fetchrow_results=[
+            {
+                "id": 9,
+                "client_id": 7,
+                "email": "taken@example.com",
+                "expires_at": now + timedelta(hours=1),
+                "used_at": None,
+                "client_name": "Client Name",
+            },
+            {"id": 55, "active": True, "pin_hash": PLACEHOLDER_PIN_HASH},
+        ],
+        # some OTHER team_members row already uses taken@example.com
+        fetchval_results=[999],
+    )
+    service = InviteService(FakePool(conn))
+
+    with pytest.raises(ValueError, match="Another account already uses this email"):
+        await service.complete_registration(token="tok", pin="1234")
+
+    # Nothing was written — not the PIN, not the invitation's used_at.
+    assert conn.execute_calls == []
 
 
 @pytest.mark.asyncio
@@ -478,4 +575,119 @@ async def test_validate_token_excludes_archived_clients() -> None:
 
     query, args = conn.fetchrow_calls[0]
     assert "JOIN clients c ON c.id = i.client_id AND c.deleted_at IS NULL" in query
-    assert args == ("tok-archived",)
+    assert args == (
+        hashlib.sha256(b"tok-archived").hexdigest(),
+        "tok-archived",
+    )
+
+
+# ---------------------------------------------------------------------------
+# authz F1 — the invitation token is a credential, and is hashed at rest
+# ---------------------------------------------------------------------------
+
+_RAW = "token-abc"
+_DIGEST = hashlib.sha256(_RAW.encode("utf-8")).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_create_invitation_stores_the_digest_and_mails_the_raw_token() -> None:
+    """GUILT: the row must never hold a redeemable token.
+
+    `client_invitations.token` used to hold `secrets.token_urlsafe(64)` in
+    the clear — an unused, unexpired row was a live 72h registration
+    credential for anyone who could read the table (portal audit, authz F1).
+    The client still receives the RAW token: only the stored copy changes.
+    """
+    expires_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    conn = FakeConnection(
+        fetchrow_results=[
+            {"id": 7, "full_name": "Client Name", "email": "old@example.com"},
+            None,
+            {"id": 44, "expires_at": expires_at, "created_at": expires_at},
+        ],
+    )
+    service = InviteService(FakePool(conn))
+
+    with (
+        patch(
+            "backend.services.portal.invite_service.secrets.token_urlsafe",
+            return_value=_RAW,
+        ),
+        patch(
+            "backend.services.common.cache._invalidate_cache",
+            new=AsyncMock(return_value=1),
+        ),
+    ):
+        result = await service.create_invitation(
+            client_id=7,
+            email="client@example.com",
+            created_by="team@example.com",
+        )
+
+    insert_query, insert_args = conn.fetchrow_calls[-1]
+    assert "INSERT INTO client_invitations" in insert_query
+    assert _DIGEST in insert_args, "the stored token must be the sha256 digest"
+    assert _RAW not in insert_args, "the raw token must never reach the database"
+
+    # What the client receives is unchanged — otherwise the link would not work.
+    assert result["token"] == _RAW
+    assert result["invite_url"] == f"/portal/register?token={_RAW}"
+
+
+@pytest.mark.asyncio
+async def test_validate_token_matches_on_the_digest() -> None:
+    conn = FakeConnection(fetchrow_results=[None])
+    service = InviteService(FakePool(conn))
+
+    assert await service.validate_token(_RAW) is None
+
+    query, args = conn.fetchrow_calls[0]
+    assert args[0] == _DIGEST
+    assert "i.token = $1" in query
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_matches_on_the_digest() -> None:
+    conn = FakeConnection(fetchrow_results=[None])
+
+    class _Tx:
+        async def __aenter__(self) -> None:
+            return None
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+    conn.transaction = lambda: _Tx()  # type: ignore[attr-defined]
+    service = InviteService(FakePool(conn))
+
+    with (
+        pytest.raises(ValueError, match="Invalid invitation token"),
+        patch(
+            "backend.services.common.cache._invalidate_cache",
+            new=AsyncMock(return_value=1),
+        ),
+    ):
+        await service.complete_registration(token=_RAW, pin="1234")
+
+    _query, args = conn.fetchrow_calls[0]
+    assert args[0] == _DIGEST
+
+
+def test_a_stored_digest_cannot_be_replayed_as_a_token() -> None:
+    """GUILT: the legacy plaintext branch must not re-open the hole.
+
+    Both read paths still accept a plaintext row, because rows written
+    before this change hold one. Without the shape guard, an attacker who
+    read the table could submit the STORED digest as their token and the
+    plaintext branch would match it — the table would be a credential
+    store again. The predicate therefore excludes rows whose token already
+    looks like a digest; migration 310 rewrites the rest.
+    """
+    from backend.services.portal.invite_service import (
+        _HASHED_TOKEN_RE,
+        _LEGACY_PLAINTEXT_PREDICATE,
+    )
+
+    assert _HASHED_TOKEN_RE == "^[0-9a-f]{64}$"
+    assert f"i.token !~ '{_HASHED_TOKEN_RE}'" in _LEGACY_PLAINTEXT_PREDICATE
+    assert "i.token = $2" in _LEGACY_PLAINTEXT_PREDICATE

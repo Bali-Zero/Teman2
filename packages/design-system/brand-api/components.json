@@ -514,7 +514,6 @@
       "import": "@balizero/core/components/TrustBand",
       "source": "packages/core/components/TrustBand.tsx",
       "props": {
-        "clientCount": "number",
         "rating": "string",
         "reviewCount": "number"
       },
@@ -522,7 +521,7 @@
         "trust",
         "social proof"
       ],
-      "example": "<TrustBand clientCount={/* number */} rating={/* string */} reviewCount={/* number */} />"
+      "example": "<TrustBand rating={/* string */} reviewCount={/* number */} />"
     },
     {
       "name": "WhatsAppFAB",

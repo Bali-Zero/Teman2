@@ -1,0 +1,223 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M4a · VO human review (named) — Merah Putih</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"><style>/* Merah Putih — R4 token spec (research/design/2026-08-27-r4-identity-merah-putih-token-spec.md)
+   Shared foundation inlined into every R5 mockup. Primitives → semantic, per the ENG 3-tier note.
+   Rev 2 after the R5 panel (codex 25 · kimi 18 · agy 20): full-coverage focus-visible, 44px shell
+   targets, real shadows on interactive containers, ::placeholder AA, track boundary, dark primitives. */
+:root {
+  /* grounds */
+  --carta: #f7f6f2;
+  --elevated: #ffffff;
+  --ink: #16213a;
+  --ink-soft: #475372;
+  --hairline: #e3e1da;        /* DECORATIVE only (1.21 on carta) */
+  --border-input: #7a8093;    /* interactive boundaries: 3.64 carta / 3.94 white */
+  /* red family */
+  --merah: #C8102E;           /* structure: bands (home only), progress fill, brand marks */
+  --merah-action: #D01033;    /* primary CTAs and links */
+  --merah-pressed: #c40020;   /* pressed/hover — always with elevation/motion change */
+  /* semantic states */
+  --state-eligible: #16683f;
+  --state-likely: #2a6f97;
+  --state-conditional: #7a5209;
+  --state-error: #a83a44;     /* never color-alone: icon + text + outline */
+  --whatsapp: #25d366;        /* ICON only — never a text surface */
+  /* dark floor — PRIMITIVES ONLY (R4 §3). Dark component mockups: declared deviation → R5b. */
+  --ground-dark: #10141f;
+  --panel-dark: #1b2333;
+  --text-dark: #ecebe6;
+  --soft-dark: #aab1c4;
+  --hairline-dark: #2c3550;
+  --merah-dark-mode: #ff2d4c; /* text duty only under declared deviation D4 */
+  /* type */
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif; /* ≥24px only */
+  --font-ui: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Menlo, monospace; /* codes, prices, timestamps */
+  /* shape + motion */
+  --radius: 12px;
+  --radius-nested: 8px;       /* nesting law floor: max(8, outer − padding) — amendment declared in the R5 report */
+  --radius-pill: 9999px;
+  --motion: 220ms;            /* slide+fade 200-250ms */
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--carta);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.55; /* absorbs Bahasa Indonesia's longer words */
+}
+button, input { font-family: inherit; }
+h1, h2 { font-family: var(--font-display); font-weight: 600; line-height: 1.2; }
+h1 { font-size: 28px; } /* Cormorant floor is 24px */
+h2 { font-size: 24px; }
+h3 { font-family: var(--font-ui); font-weight: 600; font-size: 17px; } /* below the serif floor → Inter */
+a { color: var(--merah-action); }
+.mono { font-family: var(--font-mono); white-space: nowrap; }
+.soft { color: var(--ink-soft); }
+
+/* focus — border-focus double ring on EVERY interactive element (panel: inputs-only was a false pass) */
+a:focus-visible, button:focus-visible, input:focus-visible,
+.cta:focus-visible, .cta-secondary:focus-visible, .option:focus-visible,
+.wa-card:focus-visible, .wa-entry:focus-visible, .lang-toggle span:focus-visible {
+  outline: 2px solid var(--ink); outline-offset: 2px;
+}
+::placeholder { color: var(--ink-soft); opacity: 1; } /* 7.64 on white — UA default was 2.35 (kimi) */
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* identity header — slim carta variant (funnels): NEVER a red band on mobile.
+   Contract: wordmark left · EN/ID toggle + WhatsApp ENTRY right (44px shell targets). */
+.id-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 16px; background: var(--carta);
+  border-bottom: 1px solid var(--hairline); /* decorative */
+  position: sticky; top: 0;
+}
+.wordmark { font-family: var(--font-ui); font-weight: 700; letter-spacing: .04em; color: var(--merah); font-size: 15px; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
+.hdr-right { display: flex; gap: 8px; align-items: center; }
+.lang-toggle {
+  display: inline-flex; border: 1px solid var(--border-input); border-radius: var(--radius-pill);
+  overflow: hidden; font-size: 12px; font-weight: 600;
+}
+.lang-toggle span { padding: 0 12px; min-height: 44px; display: inline-flex; align-items: center; }
+.lang-toggle .on { background: var(--ink); color: #fff; }
+.lang-toggle .off { color: var(--ink-soft); }
+.wa-entry { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; text-decoration: none; }
+
+/* progress + counter (Q8 counter law) — track carries a real boundary (was 1.22 on carta, invisible in glare) */
+.progress-wrap { padding: 10px 16px 0; }
+.progress-track { height: 6px; background: var(--hairline); border: 1px solid var(--border-input); border-radius: var(--radius-pill); }
+.progress-fill { height: 100%; background: var(--merah); border-radius: var(--radius-pill); }
+.counter { font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-top: 6px; }
+.branch-note { font-size: 13px; color: var(--ink); background: var(--elevated); border: 1px solid var(--border-input); border-radius: var(--radius); padding: 8px 10px; margin-top: 8px; }
+
+/* cards / options — border-input + shadow are MANDATORY on interactive containers (elevated-vs-carta is 1.08) */
+.card {
+  background: var(--elevated); border: 1px solid var(--border-input); border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(22,33,58,.08);
+  padding: 16px;
+}
+.option {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  background: var(--elevated); border: 1px solid var(--border-input); border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgba(22,33,58,.06);
+  padding: 14px 16px; font-size: 16px; text-align: left; min-height: 44px; /* Merah Putih house floor */
+  margin-bottom: 8px; transition: border-color var(--motion);
+}
+.option.selected { border: 2px solid var(--ink); padding: 13px 15px; font-weight: 600; } /* selection is NEVER red; padding compensates the 1px shift */
+.check { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 50%; border: 1.5px solid var(--border-input); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+.option.selected .check { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* CTAs — stacked pairs keep ≥8px clearance (house rule) */
+.cta {
+  display: block; width: 100%; text-align: center; text-decoration: none;
+  background: var(--merah-action); color: #fff; font-weight: 600; font-size: 16px;
+  border: 0; border-radius: var(--radius); padding: 14px 16px; min-height: 44px;
+  transition: background var(--motion), transform var(--motion);
+}
+.cta:active { background: var(--merah-pressed); transform: scale(.99); box-shadow: 0 1px 2px rgba(22,33,58,.2); } /* pressed = hue + elevation/motion, never hue alone */
+.cta-secondary { display: block; text-align: center; color: var(--ink); font-weight: 600; text-decoration: none; padding: 12px; min-height: 44px; margin-top: 8px; }
+
+/* inputs */
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.field input {
+  width: 100%; font-size: 16px; padding: 12px; min-height: 44px;
+  border: 1px solid var(--border-input); border-radius: var(--radius); background: var(--elevated);
+  box-shadow: inset 0 1px 2px rgba(22,33,58,.05);
+  color: var(--ink);
+}
+.field.error input { border: 2px solid var(--state-error); }
+.error-msg { display: flex; gap: 6px; align-items: flex-start; color: var(--state-error); font-size: 14px; margin-top: 6px; }
+.error-msg .ic { flex: 0 0 auto; font-weight: 700; } /* icon co-carries the signal (never color-alone) */
+
+/* honesty devices */
+.why { font-size: 14px; margin-top: 10px; }
+.why a { font-weight: 600; }
+.notsure { font-size: 14px; color: var(--ink-soft); margin-top: 4px; }
+
+/* avatars — non-interactive: carta fill, decorative hairline ring (hairline is not a component boundary) */
+.avatar { border-radius: 50%; background: var(--carta); border: 1px solid var(--hairline); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-soft); font-weight: 700; }
+
+/* WhatsApp exit — card-with-icon component (white text on the green is BANNED, 1.98) */
+.wa-card {
+  display: flex; align-items: center; gap: 12px; text-decoration: none;
+  background: var(--elevated); border: 1px solid var(--border-input); border-radius: var(--radius-nested);
+  padding: 14px 16px; min-height: 44px; color: var(--ink); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(22,33,58,.08);
+}
+.wa-ic { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%; background: var(--whatsapp); display: inline-flex; align-items: center; justify-content: center; }
+.wa-ic svg { width: 16px; height: 16px; fill: #fff; }
+.wa-sub { display: block; font-size: 13px; font-weight: 400; color: var(--ink-soft); }
+
+/* placeholder markers — audited-facts constraint: never invented reassurance.
+   Meta-markup of the mockup itself, declared exempt from the product shape law. */
+.ph {
+  font-family: var(--font-mono); font-size: 13px; color: var(--state-conditional);
+  border: 1px dashed var(--state-conditional); border-radius: 4px; padding: 1px 5px; white-space: nowrap;
+}
+
+/* payment rail badges — pill per the shape law (12 or 9999 are the two legal radii) */
+.rail { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border-input); border-radius: var(--radius-pill); padding: 10px 14px; min-height: 44px; font-size: 13px; font-weight: 600; background: var(--elevated); }
+.rail.selected { border: 2px solid var(--ink); padding: 9px 13px; }
+.rail .check { width: 16px; height: 16px; flex: 0 0 16px; font-size: 10px; }
+.rail.selected .check { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* trust strip + footer */
+.trust { border-top: 1px solid var(--hairline); padding: 20px 16px; font-size: 14px; color: var(--ink-soft); }
+.trust .official { color: var(--ink); font-weight: 600; }
+.footer { padding: 20px 16px 32px; font-size: 13px; color: var(--ink-soft); border-top: 1px solid var(--hairline); }
+.footer .mono { font-size: 12px; }
+.idline { font-size: 12px; color: var(--ink-soft); margin-top: 8px; }
+
+/* layout */
+.page { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+.main { flex: 1; padding: 16px; }
+.sticky-cta { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--carta) 30%); padding: 12px 16px 16px; }
+</style></head><body>
+<!-- M4a · VO verdict HUMAN_REVIEW_REQUIRED — honest-human VARIANT A (named person), full page (panel split: one variant per page, one primary CTA). Cures D-V9; opaque-code wa.me; no price on this verdict (C1). -->
+<div class="page">
+  <header class="id-header">
+    <a class="wordmark" href="#home">BALI ZERO</a>
+    <div class="hdr-right">
+      <span class="lang-toggle" role="group" aria-label="Language"><span class="on" tabindex="0">EN</span><span class="off" tabindex="0">ID</span></span>
+      <a class="wa-entry" href="#wa" aria-label="Ask us on WhatsApp"><span class="wa-ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.4-.7-2.9-1.1-4.7-4-4.9-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5s.7 1.8.8 1.9c.1.2.1.3 0 .5-.1.2-.2.4-.3.5l-.5.6c-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.3.1.2.1.7-.1 1.2z"/></svg></span></a>
+    </div>
+  </header>
+
+  <main class="main">
+    <p class="mono" style="font-size:13px;color:var(--ink-soft)">Case <strong>BZ-7Q4K</strong></p>
+
+    <div class="card" style="margin-top:10px;border-left:4px solid var(--state-conditional)">
+      <h2 style="color:var(--state-conditional)">Your case needs a human look</h2>
+      <p style="margin-top:8px;font-size:15px">Because of your past overstay, we can't give an automatic answer. That's not a no — a specialist checks the settled-fine record and replies with your real options.</p>
+      <p class="soft" style="margin-top:8px;font-size:13px">No price is shown for this outcome — you only see a number when your exact case has one.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="avatar" style="width:44px;height:44px"><span class="ph" style="border:0;padding:0">{FOTO}</span></span>
+        <div>
+          <p style="font-weight:600"><span class="ph">{NAMED_AGENT}</span></p>
+          <p class="soft" style="font-size:13px">Visa specialist, Bali office · answers within <span class="ph">{SLA}</span> · <span class="ph">{OFFICE_HOURS}</span> WITA</p>
+        </div>
+      </div>
+      <a class="wa-card" href="#wa?case=BZ-7Q4K" style="margin-top:12px">
+        <span class="wa-ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.4-.7-2.9-1.1-4.7-4-4.9-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5s.7 1.8.8 1.9c.1.2.1.3 0 .5-.1.2-.2.4-.3.5l-.5.6c-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.3.1.2.1.7-.1 1.2z"/></svg></span>
+        <span>Continue on WhatsApp<span class="wa-sub">Your case travels as code BZ-7Q4K — no personal facts in the link</span></span>
+      </a>
+    </div>
+
+    <p style="margin-top:14px;font-size:14px"><a href="#review">Review or change your answers</a> — nothing is submitted yet.</p>
+  </main>
+
+  <footer class="footer">
+    <p>Assessment based on rules current as of <span class="mono">27 Aug 2026</span>. We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p class="idline">PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> · <span class="ph">{REGISTRY_LINK}</span></p>
+  </footer>
+</div>
+
+</body></html>

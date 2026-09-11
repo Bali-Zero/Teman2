@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import type { Language } from "../_lib/flow";
-import { REVIEW_GATE_ITEMS, type OracleQuestion } from "../_lib/tree";
+import {
+  questionPromptI18nKey,
+  REVIEW_GATE_ITEMS,
+  type OracleFacts,
+  type OracleQuestion,
+} from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
 import {
   canonicalCountryCodes,
@@ -35,6 +40,11 @@ export interface QuestionScreenProps {
    * only `kind` whose local UI state doesn't already derive straight from
    * a single `onAnswer(key)` click). */
   currentAnswer?: string;
+  /** The interview's answers so far. Read for one purpose only: choosing
+   * between a question's standpoint-dependent prompts
+   * (`questionPromptI18nKey`). Never consulted to select, gate or skip a
+   * question — that is the reducer's job. */
+  facts?: OracleFacts;
 }
 
 /**
@@ -53,6 +63,7 @@ export function QuestionScreen({
   courtesyNoteI18nKey,
   conflictI18nKey,
   currentAnswer,
+  facts,
 }: QuestionScreenProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [dateValue, setDateValue] = useState("");
@@ -95,7 +106,8 @@ export function QuestionScreen({
     setFlaggedItems(parseReviewGateAnswer(currentAnswer));
   }, [currentAnswer, question.id, question.kind]);
 
-  const hintKey = `${question.i18nKey}.hint` as I18nKey;
+  const promptKey = questionPromptI18nKey(question, facts ?? {}) as I18nKey;
+  const hintKey = `${promptKey}.hint` as I18nKey;
   const hasHint = translate(language, hintKey) !== hintKey;
 
   return (
@@ -128,7 +140,7 @@ export function QuestionScreen({
 
       <div>
         <h1 className="oracle-headline" tabIndex={-1} ref={headingRef}>
-          {translate(language, question.i18nKey as I18nKey)}
+          {translate(language, promptKey)}
         </h1>
         {hasHint && (
           <p className="oracle-question__hint">
@@ -155,7 +167,7 @@ export function QuestionScreen({
         <div
           className="oracle-tiles"
           role="group"
-          aria-label={translate(language, question.i18nKey as I18nKey)}
+          aria-label={translate(language, promptKey)}
         >
           {question.options.map((option) => (
             <button
@@ -174,7 +186,7 @@ export function QuestionScreen({
         <div
           className="oracle-options"
           role="group"
-          aria-label={translate(language, question.i18nKey as I18nKey)}
+          aria-label={translate(language, promptKey)}
         >
           {question.options.map((option) => (
             <button
@@ -408,17 +420,32 @@ function CountryPicker({
   onNotListed: () => void;
 }) {
   const [pendingCode, setPendingCode] = useState("");
+  const [countryQuery, setCountryQuery] = useState("");
   const options = useMemo(() => getCountryOptions(language), [language]);
   const nameByCode = useMemo(
     () =>
       new Map<string, string>(options.map(({ code, name }) => [code, name])),
     [options],
   );
+  // Predictive filter (D-V5): 190+ countries in a plain <select> forces
+  // scroll-and-scan. This narrows the <option> list client-side by name or
+  // code — no new dependency, no change to how a selection is committed.
+  const filteredOptions = useMemo(() => {
+    const query = countryQuery.trim().toLowerCase();
+    if (!query) return options;
+    return options.filter(
+      ({ code, name }) =>
+        name.toLowerCase().includes(query) ||
+        code.toLowerCase().includes(query),
+    );
+  }, [options, countryQuery]);
   const selectId = `${questionId}-country`;
+  const searchId = `${questionId}-country-search`;
   const maxReached = selectedCodes.length >= maxSelections;
 
   useEffect(() => {
     setPendingCode("");
+    setCountryQuery("");
   }, [language, questionId]);
 
   const addPendingCountry = () => {
@@ -447,6 +474,23 @@ function CountryPicker({
           {translate(language, labelI18nKey)}
         </span>
       </label>
+      <label className="oracle-input-label" htmlFor={searchId}>
+        <span className="oracle-sr-only">
+          {translate(language, "question.country_picker.search")}
+        </span>
+        <input
+          id={searchId}
+          type="text"
+          className="oracle-form-control"
+          value={countryQuery}
+          onChange={(event) => setCountryQuery(event.target.value)}
+          placeholder={translate(
+            language,
+            "question.country_picker.search_placeholder",
+          )}
+          autoComplete="off"
+        />
+      </label>
       <div className="oracle-country-picker__control">
         <select
           id={selectId}
@@ -468,7 +512,7 @@ function CountryPicker({
           <option value="">
             {translate(language, "question.country_picker.placeholder")}
           </option>
-          {options.map(({ code, name }) => (
+          {filteredOptions.map(({ code, name }) => (
             <option
               key={code}
               value={code}

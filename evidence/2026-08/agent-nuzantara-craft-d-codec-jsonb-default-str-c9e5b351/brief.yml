@@ -1,0 +1,63 @@
+task_id: craft-d-l12-pr1-jsonb-codec
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  Close the JSONB double-encoding defect class at its root: make the asyncpg
+  codec a strict SUPERSET of what every caller already did by hand, make ONE
+  initializer object the thing every pool passes to `create_pool(init=...)`,
+  and drop the caller-side pre-serialization that the old bare encoder forced.
+
+  Three pools each registered their own `jsonb`/`json` codec with a BARE
+  `json.dumps` encoder. Four caller sites therefore pre-serialized with
+  `json.dumps(..., default=str)` -- the bare encoder raises `TypeError` on the
+  first `datetime`/`Decimal` -- and the codec then encoded that string a SECOND
+  time, so Postgres stored a JSONB *string scalar*. On 2026-08-27 that shape
+  answered HTTP 500 to GARUDA VOA's first customer action in production, while
+  the integration test passed 10/10 against a real Postgres with the real
+  migration: the test pool had no codec, so test and production disagreed about
+  what a jsonb parameter means.
+
+  This is the arming action for the 2026-08-27 PENDING-ARMS row, which
+  specified this cure almost verbatim.
+
+  SCOPE NOTE: this is PR 1 of the L12-PR1 split. It carries the codec, the
+  callers, the shared fixture, and the STRUCTURAL + LIVE halves of the parity
+  test. The REAL-CALL-SITE half (four production writers against the four real
+  jsonb columns) is the next PR; the lint + its shrink-only baseline + its CI
+  executor is the one after.
+constraints:
+  - "The codec widening must be a strict SUPERSET, never a behaviour change:
+    `json.dumps(x)` succeeding implies `json.dumps(x, default=str)` succeeds
+    with byte-identical output. `default=` is consulted ONLY for values that
+    were previously a hard `TypeError`. Nothing that worked can start failing."
+  - "The canonical initializer registers CODECS ONLY. The two production pools
+    and the test fixture set `statement_timeout='30s'` but `get_db_pool()` does
+    not, and the full pool additionally runs a `SELECT 1`. Folding those into
+    the shared hook would silently change behaviour for a standalone script
+    pool. Codec parity is the invariant that must not drift; the timeouts are
+    per-pool. (The GLM-5.2 counter-build argued the opposite -- see dissent.)"
+  - "Zero JSONB shape regressions -- established by A/B FAILURE-NAME-SET
+    identity against origin/main, not by argument and not by counts alone."
+  - "No client PII in any artifact. Live tests write synthetic rows to a
+    disposable local container and drop their temp table in a `finally`."
+  - "No production deploy and no production probe in this PR. Those are carried
+    by a PENDING-ARMS row, never implied by a green CI."
+acceptance:
+  - text: >-
+      WHEN `JSONB_ENCODER` is reverted to a bare `json.dumps`, the parity file
+      SHALL turn exactly 3 red inside the already-required backend shard.
+    probe: "pytest backend/tests/db/test_jsonb_codec_parity.py"
+  - text: >-
+      WHILE the codec is unreverted, the parity file SHALL be 9 green and the
+      pre-existing double-encoding class guard SHALL stay green beside it.
+    probe: "backend/tests/db/test_jsonb_double_encoding_class_guard.py"
+  - text: >-
+      WHERE a value is bound PRE-serialized, the stored shape SHALL still be a
+      JSONB string scalar -- bound bare AND through an explicit `::jsonb`
+      cast, because the cast is not a bypass of the codec's encode step.
+    probe: "test_pre_serialized_string_still_becomes_jsonb_string_scalar"
+  - text: >-
+      IF this diff is applied, THEN the FAILED/ERROR name set of both A/B
+      scopes SHALL be identical to origin/main.
+    probe: "git checkout origin/main -- apps/backend-rag/"

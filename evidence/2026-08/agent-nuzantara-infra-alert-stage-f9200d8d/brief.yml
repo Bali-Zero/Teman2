@@ -1,0 +1,130 @@
+task_id: alert-stage-0831
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Fix a caveat a Gear-3 gate raised on PR #5422 ("ci(deploy): fall back off the depot builder, on
+  the one string that means depot", branch agent/nuzantara/infra/fly-depot-retry, ARMED/FROZEN,
+  not yet merged): "alert names wrong stage when run-migrations cancelled".
+
+  PR #5422 widens `deploy-failure-alert`'s job-level `if:` in
+  `.github/workflows/fly-deploy.yml` so it fires on `needs.<job>.result == 'cancelled'` as well as
+  `'failure'`, for both `run-migrations` and `deploy`. It does NOT touch the step that follows,
+  "Determine failing stage" (unchanged lines 660-671 on origin/main
+  80b460bc4d715f47fd30062f02dad8d5fa4b9585, which this branch is cut from) — that step still tests
+  only the literal string `"failure"`:
+
+    if [ "${{ needs.run-migrations.result }}" = "failure" ]; then
+      stage=run-migrations ...
+    else
+      stage=deploy ...
+    fi
+
+  CONFIRMED REAL (read, not assumed): with #5422's widened `if:` live, a `run-migrations` job that
+  is `cancelled` (its own 10-minute step timeout, or a whole-workflow cancellation while it runs)
+  now reaches this alert job — but the literal-string test above only matches `"failure"`, so
+  `"cancelled"` falls through to the `else` branch and the alert reports `stage=deploy`,
+  `"flyctl deploy crashed before the rolling swap reached health check"`. That is doubly wrong:
+  wrong STAGE (deploy never ran — `deploy`'s only gate is `needs: run-migrations` with no override
+  `if:`, verified on disk, so `deploy.result` is `skipped` whenever `run-migrations` did not
+  succeed) and wrong NARRATIVE ("crashed" for a cancellation/timeout). A human paged by this alert
+  would open flyctl deploy logs for a job that never ran, while the real evidence sits in the
+  run-migrations job they were never pointed at — "the wrong logs at the worst possible moment"
+  (dispatching team lead's framing). This is exactly the family-#3 UNDER-match shape in
+  `.claude/rules/cicatrix-superscar.md` (W82 sibling): a guard keyed on one literal string, blind
+  to a synonymous state the surrounding condition was just widened to admit.
+
+  Matches cicatrix family #9 (State-schema mutation drift) in shape too: PR #5422 changed what
+  STATES can reach this job (the job-level `if:`) without updating the downstream reader (the
+  step body) that interprets those states — a producer/consumer drift inside one file.
+
+  FIX (this PR, applied on a FRESH origin/main — #5422's branch is frozen, not touched): replace
+  the 2-branch if/else with a 4-branch if/elif/elif/else that tests both `"failure"` and
+  `"cancelled"` for `run-migrations`, then both for `deploy` (`deploy`'s `"failure"` case stays the
+  final `else`, unchanged text). Full truth table and reachability argument in pack.yml `diff:`
+  and receipts. Does not touch #5422's own diff (job-level `if:`, deploy timeout/retry logic) —
+  no line overlap, composes cleanly with #5422 landing either before or after this PR.
+
+  Gear is 3, DETERMINISTICALLY, by PATH: `.github/workflows/*` is a HOTZONE_PATTERNS entry in
+  `scripts/evidence_pack_lint.py`, reconfirmed by reading that module this session (not merely
+  cited) — `compute_floor()` returns 3 on any hot-zone path hit regardless of diff size. The actual
+  diff is small (1 file, +17/-0, all inside one step's `run:` block) — a Gear-1-shaped diff by the
+  SIZE term, but the ceiling check's own contract is explicit: "FLOOR ALWAYS WINS: if changed_paths
+  hits the hot-zone ... this function returns (3, []) immediately" (compute_ceiling docstring,
+  read this session) — so there is no ceiling conflict and no `gear_override` is needed.
+
+constraints:
+  - "Do not touch PR #5422's branch (agent/nuzantara/infra/fly-depot-retry) or its diff — it is
+    ARMED and FROZEN. This PR is cut from fresh origin/main and does not depend on #5422 having
+    merged first: its new `elif` branches are simply unreachable dead code on pre-#5422 main
+    (the job-level `if:` there still only admits `failure`), and become live automatically the
+    moment #5422 lands — no coordination step required."
+  - "Cure only what the caveat names: the stage-attribution logic in the 'Determine failing stage'
+    step. Do not touch #5422's own lines (job-level `if:`, deploy timeout/retry loop) — verified
+    no line-range overlap between the two diffs (Regola 8: cure what THIS diff introduces / what
+    the caveat named, do not re-litigate #5422's own content)."
+  - "Every new branch must name a REAL, reachable (upstream-result, deploy-result) state — no
+    branch may be dead code under the alert job's own `if:` gate. Verified via the full truth
+    table in pack.yml `diff:`."
+  - "Preserve the two pre-existing, verified-correct branches byte-for-byte in behavior: `deploy`
+    ended `failure` (with `run-migrations` `success`) keeps stage=deploy/icon=🚨/'crashed' text
+    unchanged; `run-migrations` ended `failure` keeps stage=run-migrations/icon=🧬/'failed' text
+    unchanged."
+
+acceptance:
+  - text: >
+      WHEN `run-migrations` concludes `failure`, the step SHALL set stage=run-migrations with the
+      unchanged "DB migration failed" detail (pre-existing behavior, must not regress).
+    probe: "needs.run-migrations.result == 'failure' -> stage=run-migrations"
+  - text: >
+      WHEN `run-migrations` concludes `cancelled`, the step SHALL set stage=run-migrations (NOT
+      deploy) with detail text that says "cancelled", not "crashed" or "failed". THIS IS THE BUG
+      BEING FIXED — before this PR, this case fell to the `else` branch and reported stage=deploy.
+    probe: "needs.run-migrations.result == 'cancelled' -> stage=run-migrations, detail mentions cancelled"
+  - text: >
+      WHILE `run-migrations` is `success` AND `deploy` concludes `cancelled`, the step SHALL set
+      stage=deploy with detail text that says "cancelled", not "crashed" (secondary imprecision
+      fixed alongside the primary bug — same root cause, same fix shape).
+    probe: "needs.deploy.result == 'cancelled' (run-migrations success) -> stage=deploy, detail mentions cancelled"
+  - text: >
+      WHILE `run-migrations` is `success` AND `deploy` concludes `failure`, the step SHALL set
+      stage=deploy with the unchanged "flyctl deploy crashed" detail (pre-existing behavior, must
+      not regress).
+    probe: "needs.deploy.result == 'failure' (run-migrations success) -> stage=deploy, unchanged crashed text"
+  - text: >
+      WHERE `actionlint -shellcheck=` (the exact invocation `.github/workflows/actionlint.yml`'s
+      REQUIRED gate runs) is applied to the fixed file, the finding count SHALL be 0, matching
+      origin/main exactly — this gate does not run shellcheck at all (schema + expression syntax
+      only), so it is unaffected by this diff either way.
+    probe: "actionlint -shellcheck= .github/workflows/fly-deploy.yml"
+
+consumer_map:
+  - "`.github/workflows/fly-deploy.yml`, job `deploy-failure-alert`, step 'Determine failing
+    stage' — the only step this diff touches. Its outputs (`stage`, `icon`, `detail`) feed
+    directly into the next step's Telegram message text; that next step (`Telegram alert (deploy
+    crash before health)`) is UNCHANGED by this diff."
+  - "The Telegram alert channel itself (Bot API call, secrets TELEGRAM_BOT_TOKEN /
+    TELEGRAM_OWNER_CHAT_ID) — unchanged mechanism, only the upstream text it relays is corrected."
+  - "PR #5422 (separate, frozen, not touched) — this PR's new branches are inert until #5422's
+    job-level `if:` widening lands; no shared state, no file-line overlap, composes cleanly
+    landing in either order (verified: #5422's diff ends at the `steps:` line, this diff starts
+    at the first step's `run:` body, several unchanged context lines apart)."
+  - "No PENDING-ARMS row needed — a merged GitHub Actions workflow file is armed by construction
+    (GitHub picks it up on the next matching push), same reasoning #5422's own pack recorded for
+    the same file."
+
+risks:
+  - "Residual, LOW severity: this brief and its review (see pack.yml dissent) could not find a
+    documented GitHub Actions mechanism that leaves `deploy.result == 'skipped'` while
+    `run-migrations.result == 'success'` (deploy's only gate is `needs: run-migrations`, no
+    override `if:`, verified on disk) — so that combination is treated as unreachable and gets no
+    dedicated branch. If it is somehow reachable after all, the WORST case is not a wrong-stage
+    alert: the job-level `if:` (from #5422) requires `run-migrations` OR `deploy` to be in
+    {failure, cancelled} to fire at all, so a `(success, skipped)` state simply does not trigger
+    the alert job — silence, not misattribution. This is the SAME failure mode that combination
+    already has today (pre-this-PR), so this diff introduces no regression on it either way."
+  - "This fix does not, and does not need to, distinguish WHY a job shows `cancelled` (its own
+    `timeout-minutes` kill vs. an external whole-workflow cancellation) — both branches' wording
+    ('its own timeout, or the workflow run was cancelled') covers either cause without asserting
+    which one happened, so this residual is deliberately absorbed by wording, not left as an
+    open question requiring a probe."

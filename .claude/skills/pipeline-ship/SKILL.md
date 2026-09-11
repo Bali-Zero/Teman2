@@ -1,7 +1,11 @@
 ---
 name: pipeline-ship
-description: Use when opening/arming/merging a PR, pushing a branch, or wondering why CI or the merge queue is behaving oddly. Covers the merge-queue-era ship mechanics (live since 2026-07-27), the path-aware pre-push gate, the machine-wide suite lock, and the specific ways this pipeline lies to you. Complements agent-session-discipline (which owns worktree creation).
+description: "Use when opening/arming/merging a PR, pushing a branch, or CI/merge-queue behaves oddly. Covers merge-queue-era ship mechanics, the path-aware pre-push gate, and the ways this pipeline lies to you."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Also covers the machine-wide suite lock. Merge-queue-era ship mechanics have been live since 2026-07-27. Complements agent-session-discipline, which owns worktree creation.
 
 > **CANON**: repo `.claude/` — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`.
 
@@ -189,8 +193,32 @@ Merged is not live. After a merge, verify on the **consuming surface**:
 - a dependency/security fix → read the alert state, and if it is unchanged, check whether the
   alert's `manifest_path` is the file you fixed and whether its `updated_at` predates your
   merge (⇒ rescan lag, not a wrong fix);
-- a deployed surface → curl/screenshot it; `curl` on `nuzantara-rag` returns 401 **before**
-  routing, so an anonymous curl is never proof an endpoint is alive.
+- a deployed surface → curl/screenshot it; an anonymous 401 from backend authentication
+  middleware is not proof that the target endpoint routed or its behavior changed.
+
+### Backend and frontend release evidence
+
+After the merge, record its SHA and fetch current `origin/main` history. Backend releases
+require a successful `fly-deploy.yml` run, then `curl -fsS https://nuzantara-rag.fly.dev/health`
+and its `build_sha`. Frontend releases require
+`curl -fsS https://kita.balizero.com/api/health` and its `commit`.
+Run `git merge-base --is-ancestor <merge-sha> <served-sha>`: equality or a descendant passes;
+missing, malformed, unknown or older SHAs do not. GitHub deployments API records are NOT
+live evidence, even when marked active, successful or inactive.
+
+Then make one HTTP probe that observes the changed behavior itself, authenticated when
+required. Build identity alone does not prove the feature works. Record both the ancestry
+command and the behavioral HTTP observation; never persist credentials or response PII.
+
+The Frontend Live Sentinel uses kita's health commit against the newest commit touching
+`apps/mouth/**` or shared build inputs (`packages/**`, root package manifests, `vercel.json`).
+The September 6 follow-up contract includes mouth e2e changes too, superseding the old
+exclusion and matching the Vercel build trigger. The grace window is **30 minutes from the
+expected commit's committer timestamp**. Push/manual runs poll through the remaining window;
+scheduled runs defer younger commits and fail/alert on unproven inclusion after the window.
+Its `*/30` schedule is a backstop, not a delivery SLA: GitHub can delay scheduled jobs.
+For a sentinel change, retain the **post-merge main run URL and expected/served comparison
+log** as its Bites evidence. Other domains are not inferred from kita's response.
 
 ## 7. See also
 
@@ -199,3 +227,61 @@ Merged is not live. After a merge, verify on the **consuming surface**:
 - `.claude/rules/cicatrix-superscar.md` — the 10 scar families these traps belong to
   (#2 esiste≠armato, #3 over/under-match, #9 the proxy lies)
 - `docs/runbooks/merge-queue-discipline.md` — queue ruleset, canary, rollback
+- `docs/runbooks/prod-db-writes.md` — when prove-live needs a production ROW changed: the agent
+  has a read path and no write path, so it prepares the exact statement (measurement, rollback,
+  expected row count), the owner runs it, and the read path proves the result. Same standard as
+  §6: "the owner said done" is not the observation, the read-back is
+
+## 8. Queue hygiene — what changed on 2026-09-09 (M5 session, Zero mandate "nessuna PR parcheggiata")
+
+Measured that morning: 68 identical bot PRs open, 18 CLEAN PRs unarmed for 2-33 h, a docs-only
+PR paying 6 min of `antidotes`. Four cures landed; every seat that ships must know them:
+
+- **Bot translation batches are exempt from the size floor** (#6011). `apps/mouth/src/content/
+articles/**/*.{id,it,ru,fr}.mdx` is a generated artifact and no longer counts toward
+  `SIZE_GEAR3_THRESHOLD`; the English source still counts in full. The hourly wrapper closes every
+  OLDER open `chore(mouth): promote hourly-translated` PR (unless it holds a queue slot) — never
+  re-open a superseded copy by hand.
+- **The auto-merge whitelist arms with `gh pr merge --auto` only** (#6017). Under the merge-queue
+  ruleset `--squash` and `--delete-branch` are rejected; the step now judges the PR's OWN state
+  (`autoMergeRequest` OR `mergeQueueEntry`) and goes RED when nothing armed. A whitelisted PR
+  with that check red is the signal — do not "fix" it by arming by hand without reading the log.
+- **`antidotes` runs only the ledger's readers on a ledger-only diff** (#6020). A diff whose every
+  path is `.claude/skills/modus/PENDING-ARMS.md` (blob present at HEAD) skips the 39 heavy steps
+  in both the PR and merge-group lanes. Any extra file, rename or deletion = full battery. Keep
+  healer-tick PRs ledger-only if you want the diet.
+- **The stall notifier is live on Mini** (`scripts/queue_stall_notify_cron.sh`, `*/30`, cap 5,
+  repage 6 h). A CLEAN PR unarmed for 30 min is a `not-armed` stall and reaches the fleet mailbox;
+  the session that reads it arms it (own/whitelisted) or gates+arms it (external seat — Subhi's
+  PRs cannot self-arm, Builder Contract 5). Dependabot PRs sharing `package-lock.json`: one at a
+  time; separate lockfiles in parallel. `gh pr merge N --auto` on a CLEAN PR enqueues it directly
+  with `autoMergeRequest` still null — read `mergeQueueEntry`, not the empty output (W111).
+
+### 8b. The critical path got shorter on 2026-09-09/10 — and two traps a shipping seat now meets
+
+Measured before the cures: CodeQL python 13–15 min in BOTH lanes (6,517 files, 3,008 of them
+tests), 10 of 54 merge-group Security runs red, E2E 244 s of which the tests were 69 s,
+`antidotes` unit tests 116 s. Five cures landed; the numbers a seat should expect now:
+
+- **CodeQL never uploads under `merge_group`** (#6029, `upload: never`). The queue's temporary
+  ref was deleted before the SARIF upload and the run went red with `ref … not found` on a commit
+  the queue had already merged. A `merge_group` CodeQL red with that text is gone; if you see one
+  on a PR-lane run it is a different disease — read the log.
+- **CodeQL scans code, not tests** (#6030, `paths-ignore` in `.github/codeql-config.yml`):
+  python 15 → 7 min, js 4 → 2 min. Tests, `vendor/`, `research/`, `docs/`, `skills/`,
+  `evidence/` are out of scope; a finding you expect in a test file will not appear.
+- **E2E restores `apps/mouth/.next/cache`** (#6032). First run after a lockfile or source change
+  seeds it; `hashFiles` has NO brace expansion — `*.{ts,tsx}` matches nothing and silently
+  collapses a key. One pattern per extension.
+- **`antidotes` unit tests run once under `pytest-xdist -n 4`** (#6040): 116 → 47 s, same 66
+  files; the list lines are still one path per line because
+  `test_immune_enforcement_trigger_symmetry.py` parses them, and a new test wired into the loop
+  must ALSO be a sentinel path or that pin goes red (#6029 paid that round).
+- **Two reds that are not yours.** (1) `Harness floor recompute` red with
+  `harness_gate_read: PENDING` on a Gear-3 PR = the floor ran before the gate verdict was posted:
+  post the gate, then rerun THAT run. (2) A backend shard `cancelled` at the 30-min job timeout
+  with `Install dependencies (uv)` at 25 min = runner network, rerun. Before `gh run rerun --failed`
+  check the run's `headSha` equals the PR head: rerunning a STALE run on a branch with
+  `cancel-in-progress` cancels the run of the newer commit (it did, on #6029).
+- **Stall notifier cadence is now `:07/:37`** on Mini with a 300 s classifier timeout — its
+  first `*/30` run collided with `queue_unstick` at `:00` and timed out.

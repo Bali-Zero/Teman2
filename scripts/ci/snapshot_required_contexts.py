@@ -46,6 +46,7 @@ No mutation of GitHub state — read-only `gh api`/`gh pr checks` calls only.
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import subprocess
 import sys
@@ -157,7 +158,7 @@ def build_snapshot(branch: str, derived_pr: str | None) -> dict:
             "live branch protection is expected and cured by REGEN, never hand-edit — "
             "see regen_command below."
         ),
-        "generated_at": "2026-08-11",
+        "generated_at": datetime.date.today().isoformat(),
         "source": source,
         "derived_from_pr": derived_pr if source == "derived" else None,
         "repo": repo,

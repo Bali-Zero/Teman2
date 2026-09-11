@@ -1,0 +1,52 @@
+task_id: beyond-sota-panel-0828
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Zero's mandate (2026-08-28, interactive Pro session, `/model claude-fable-5` selected by hand):
+  partition how this repository designs, builds, verifies and ships into coherent parts, run one
+  Fable-5 max-effort research lane per part that grounds in the repo, deep-researches the world's
+  best systems for that part, and recommends beyond-SOTA moves; every report copied to the M5
+  desktop. This PR ships the 13 lane reports, the panel PROTOCOL and the INDEX (cross-lane
+  synthesis, needs-ruling list, first-PR table) plus one modus AMENDMENTS entry describing the
+  fan-out misfire that shaped the panel's own method.
+
+  Gear 3 by BLAST RADIUS, deterministically: 16 files / +4,969 lines, so the floor is 3
+  regardless of the diff being docs-only (no code, no workflow, no hot-zone path). Recomputed
+  from the actual changed-file list — receipt in the pack. Docs-only is why l_level is L1: nothing
+  here executes, deploys, or touches runtime state.
+constraints:
+  - "Research only: no code, no workflow, no config change rides along. The only non-research file
+    is the AMENDMENTS.md entry (the loop's misfire log)."
+  - "Every repository path a report cites was checked on disk by the orchestrator's gate; a path
+    that does not exist is a PROPOSED artifact and is named as such in the report's §5/§6."
+  - "PII/OSINT output boundary (SYMBIOSIS Law 2): the gate scanned every report for emails, phone
+    numbers and secret-shaped strings — zero. Reports speak of mechanisms, never of client data."
+  - "Fable 5 was used ONLY under Zero's manual selection for this panel; no script, cron or
+    doctrine change routes to it. The AMENDMENTS entry records the fan-out failure, not a routing."
+  - "Do not weaken any check. The two reds this PR drew (`Harness floor recompute`, `R1 gate`) are
+    answered by supplying this pack and the adversarial reviews, never by touching a gate."
+acceptance:
+  - "All 13 reports carry `status: complete` with sections 0-9 present (gate.py: sections=0123456789)."
+  - "Every report carries `adversarial_review: <cross-family seat>` and a `## Adversarial review`
+    section listing the refuter's surviving objections with dispositions."
+  - "`python scripts/check_adversarial_review.py --diff origin/main` exits 0 on this branch."
+  - "`Harness floor recompute` goes green with this per-PR brief (gear 3 >= floor 3) and a
+    conformant pack (receipts, dissent, council_run journal with >= 2 distinct review seats)."
+  - "The M5 desktop copy matches the committed files (rsync proof in the session)."
+consumer_map:
+  - "Human readers (Zero) and future sessions — `research/operations/` is read by GROUND stages;
+    the INDEX's needs-ruling list is the input to Legge-5 decisions."
+  - "The follow-up PRs named in INDEX §F (context attestation, journey sentinels, seat broker) —
+    each will cite its lane report as evidence; none exists yet."
+  - "The cross-family blind replica (65 runs on Codex/Kimi/Gemini/DeepSeek/Qwen, launched
+    2026-08-29) — its reports will be compared against these in a second PR."
+  - "`.claude/skills/modus/AMENDMENTS.md` — read by modus-bench; the new entry is evidence for the
+    next bench run, not doctrine."
+risks:
+  - "A report's recommendation could be mistaken for a ruling. Mitigation: every business/credential
+    item is under a `needs-ruling` heading in each report and consolidated in INDEX §E."
+  - "Numbers measured on 2026-08-28 decay. Mitigation: every number carries its measurement command
+    in the report; INDEX §G lists them as a dated ledger."
+  - "Reviewer seats are API-only (TP1) and cannot verify paths; path existence was verified by the
+    orchestrator's gate independently, so the refuters attack logic, numbers and rule-compliance."

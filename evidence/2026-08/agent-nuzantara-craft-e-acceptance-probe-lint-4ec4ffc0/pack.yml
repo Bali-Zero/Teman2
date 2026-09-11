@@ -1,0 +1,110 @@
+brief_ref: evidence/2026-08/agent-nuzantara-craft-e-acceptance-probe-lint-4ec4ffc0/brief.yml
+plan_ref: docs/plans/2026-08-29-beyond-sota-craft-wave/L01-intake-triage-specification.md (PR-1)
+lanes:
+  - lane: E1
+    role: build
+    seat: sonnet-5
+  - lane: E2
+    role: review
+    seat: kimi-k3
+  - lane: E3
+    role: review
+    seat: opus-5
+seat_diversity: "build seat (sonnet-5) and refuting seat (kimi-k3) are different families; the diff's author never graded it"
+diff:
+  files: 4
+  added: 598
+  deleted: 0
+  net: 598
+  floor: 2
+  floor_source: size
+pii_scan: clean
+pii_scan_note: "no client data in the diff — a CI lint script, its test corpus, the guard-conformance registry, one doctrine paragraph. Test fixtures use synthetic strings only."
+receipts:
+  - claim: "BASELINE. Across every evidence pack on disk, 209 acceptance bullets in 49 Gear>=2 packs carry a probe: field ZERO times. 46/49 express acceptance as plain strings; 3 have no acceptance block. This is the number the rule exists to move."
+    cmd: "python3 - <<'PY' (yaml.safe_load every evidence/*/*/brief.yml + evidence/brief.yml, count acceptance bullets and dict-bullets carrying a non-empty probe) PY"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "The linter's hermetic corpus passes with the 14 new rule-12 fixtures included: 77 ok, 0 FAIL."
+    cmd: "python3 scripts/evidence_pack_lint.py --selftest"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "The full pytest wrapper passes: 244 tests, of which 14 are rule-12 proofs (9 from the build, 5 pinning the adversarial fixes)."
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_evidence_pack_lint.py -q -p no:cacheprovider"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "Guard-conformance reports 0 violations and now censuses 14 evidence-pack-lint checks (was 13): the new check_* function carries guilt+innocence test names that resolve to real defs. census.method is ast-def-prefix on prefix check_, so an unregistered new check_ would have gone red."
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "MUTATION PROOF, 9/9 killed. Five mutants of the core rule (drop the gear>=2 scope guard; add re.IGNORECASE to the EARS regex; blank N1's uncovered list; drop cmd from N2's searched fields; return [] unconditionally) and four reverting each adversarial fix (bare-substring binding; no probe dedupe; no quote/newline sanitising; no isinstance guard on pack) each turned the corpus red — 2 to 6 pytest failures plus selftest FAILs. Run with PYTHONDONTWRITEBYTECODE=1 and -p no:cacheprovider (W121: a stale .pyc makes a mutation sweep measure the wrong bytes)."
+    cmd: "cp pristine; apply mutation; pytest scripts/tests/test_evidence_pack_lint.py -q -p no:cacheprovider; python3 scripts/evidence_pack_lint.py --selftest; restore  # x9"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "ZERO NEW REDS. Sweeping all 49 packs on disk under the NEW linter, exactly 2 exit non-zero — and both fail IDENTICALLY, byte-for-byte in violation text, under origin/main's linter (countable-claims on an unreceipted test count; consenso sospetto on a zero-dissent Gear-3 pack). Neither is caused by this PR. The other 47 stay clean; the notices are advisory and never change an exit code."
+    cmd: 'for p in evidence/*/*/pack.yml evidence/pack.yml; do python3 scripts/evidence_pack_lint.py "$p"; done  # then re-run both reds against git show origin/main:scripts/evidence_pack_lint.py'
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "The declared gear 2 is the deterministic floor recomputed from this PR's own changed-file list, not a choice: floor 2, source 'size' (the diff is past the blast-radius threshold on non-hot-zone paths)."
+    cmd: "git diff --numstat origin/main..HEAD > /tmp/e_numstat.txt && git diff --name-only origin/main..HEAD > /tmp/e_changed.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/e_changed.txt --numstat-file /tmp/e_numstat.txt"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "CRASH SWEEP. 19 hostile brief/pack shapes (acceptance as a dict, as a bare string, empty; bullets that are None/int/nested-list; probe as None/list/whitespace; text as int; receipts as dict/list-of-strings/with an int cmd; gear as True/2.0/'2'; brief as None/list) all return normally. Zero exceptions. A NOTICE-only rule that can raise could fail a run, which is precisely what it must never do."
+    cmd: "python3 - <<'PY' (call check_acceptance_probe_pairing over 19 adversarial shapes, catching every exception) PY"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "EARS OVER/UNDER-MATCH SWEEP, 10/10 correct. SHALLOW, GIF, WIFI, NOTIFY, MODIFY, WHEREAS and lowercase 'if it works when run' all correctly do NOT satisfy the EARS check; 'the check SHALL be green', 'WHEN x THEN y' and 'IF-THEN table' correctly do. Case-sensitivity is the whole defence: with re.IGNORECASE, ordinary prose would satisfy the rule."
+    cmd: "python3 - <<'PY' (probe _EARS_KEYWORD_RE against 10 adversarial strings, expected verdict pinned per string) PY"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "REFUTER FINDINGS REPRODUCED BEFORE DISPOSITION, not taken on trust. pack=None raised AttributeError; a bullet containing a newline produced a two-line notice with unclosed quotes; probe 'ls' was silently BOUND by a receipt reading 'run the tools suite'; two bullets naming one probe reported '2 declared probe(s)'. All four confirmed, then fixed. Kimi's proposed EARS fix was REFUTED by measurement: its regex leaves PRE-SHALL matching exactly as before."
+    cmd: "python3 - <<'PY' (re-run each refuter claim against the live function; then diff old vs Kimi-proposed EARS regex over PRE-SHALL / IF-THEN / SHALLOW) PY"
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "DOGFOOD. This pack's own brief is the first in the corpus to use the mapping acceptance form: all 5 bullets carry a probe, every probe binds to a receipt above, every text is EARS-shaped — so rule 12 is SILENT on this pack. The rule's innocence case is demonstrated by the artifact that introduces it, not only by a fixture."
+    cmd: 'python3 scripts/evidence_pack_lint.py "$p"  # with p = this pack; grep acceptance-probe -> no output'
+    exit: 0
+    ts: "2026-08-29T06:50:39Z"
+    seat: "opus-5 (orchestrator, Pro)"
+dissent:
+  - seat: kimi-k3
+    objection: "N2 bound a declared probe by bare substring, so probe 'ls' counted as bound by a receipt reading 'run the tools suite' — the under-match direction of superscar #3: the notice that should have fired stayed silent."
+    status: CONFIRMED
+  - seat: kimi-k3
+    objection: "_acceptance_examples interpolated bullet text raw, so a bullet carrying a newline or a double quote (both routine in YAML block scalars) made one NOTICE span several stderr lines with unclosed delimiters — a grep-hostile message."
+    status: CONFIRMED
+  - seat: kimi-k3
+    objection: "pack.get('receipts') raised AttributeError when pack was not a mapping; a NOTICE-only rule must never be able to fail a run."
+    status: CONFIRMED
+  - seat: kimi-k3
+    objection: "Two bullets naming the SAME probe were counted twice, so the notice overstated the gap ('2 declared probe(s)' for one string)."
+    status: CONFIRMED
+  - seat: kimi-k3
+    objection: "The \b in _EARS_KEYWORD_RE treats '-' as a boundary, so 'PRE-SHALL review' passes the EARS check; use (?<![A-Za-z])...(?![A-Za-z]) instead."
+    status: RETRACTED
+  - seat: kimi-k3
+    objection: "Receipt entries that are plain strings are skipped, so a pack whose receipts are a list of strings would have every probe flagged unbound — a false positive."
+    status: RETRACTED
+  - seat: kimi-k3
+    objection: "N1 counts legacy string bullets as uncovered, so any pack with legacy bullets emits guaranteed, unfixable noise; restrict N1 to mapping bullets."
+    status: RETRACTED
+tests:
+  - "scripts/tests/test_evidence_pack_lint.py — 14 rule-12 tests (6 guilt, 8 innocence), all named in the guard-conformance registry entry."
+  - "scripts/evidence_pack_lint.py --selftest — 14 hermetic rule-12 fixtures inside the embedded corpus."
+static:
+  - "ruff check on both changed Python files — All checks passed."
+  - "python3 -c 'import json; json.load(...)' on registry.json — valid; the entry was inserted TEXTUALLY (21 added / 0 deleted). A json.dumps rewrite had reformatted the whole file to 337/98 and was reverted: a full rewrite is unreviewable (W109)."
+notes:
+  - "SPEC DELTA (declared): L01/PR-1's stated innocence fixture — 'the live visa-retention-scope pack's acceptance shape must stay silent' — is unsatisfiable alongside its own Build text once the shape is measured (that pack's 5 bullets are bare strings, 0 probes). A rule honouring the fixture would fire only on mapping bullets, of which zero exist: a guard that cannot fire, superscar #2. The Build text governs; innocence is re-derived as a probe-covered pack, a Gear-1 pack, and a pack with no acceptance block. Recorded in SQUAD-LEDGER.md for the lane-spec correction PR."
+  - "Rule 12 has NO phased flip date, deliberately unlike rules 8-10. Flipping NOTICE to FAIL is explicitly out of scope for this lane; it requires a CI step that actually executes the probe, tracked as ASSEMBLY-LINE.md enforcement-backlog item 8."
+  - "Diff is 598 net lines against the contract's ~400 target. It is one concern (rule 12) and splitting it would ship the linter apart from the corpus that proves it. 350 of the 598 are in the linter, and the house style there is heavily documented — the executable body of the new rule is roughly a third of that."

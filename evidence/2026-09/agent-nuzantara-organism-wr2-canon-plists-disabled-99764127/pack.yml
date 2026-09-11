@@ -1,0 +1,178 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  team-lead mandate, 2026-09-01 (option (b) of a 3-option message): build the
+  descriptive Evidence Pack artifacts (brief.yml + pack.yml) for PR #5510,
+  leave every verdict field empty/pending, and let the conductor session do
+  the independent review and post the harness/fable-gate verdict on this
+  exact HEAD SHA separately.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+  - lane: review-cross-family-qwen
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+
+what_changed: |
+  31 files, all under infra/launchagents/ and 3 of its consumers, per the
+  commit's own body (see `git log -1 --format=%B`). Summary: 27 git-tracked
+  LaunchAgent canon plists renamed <name>.plist -> <name>.plist.disabled-
+  2026-09-01-wr2-runs-only-on-command (pure renames, 0 content bytes changed);
+  infra/organ-conformance/genes.json had its 23 now-orphaned grandfathered-
+  baseline entries for those files removed; infra/home-fork/declared-pairs.json
+  had its 4 now-dead live/repo pairs removed; infra/tailscale/policy.hujson had
+  one ACL comment reworded (no rule/port/src/dst change); infra/launchagents/
+  install_wr2_ig_metrics_scrape.sh's FATAL "template not found" message was
+  made explicit about WR2's retirement (found by cross-family review, see
+  dissent below).
+
+proof: |
+  See receipts below for the exact commands and their real output. Summary:
+  deterministic Gear floor recomputed against this branch's real merge-base
+  diff (source: PATH, infra/launchagents/*); organ-conformance and organs-
+  registry validators both green; the launchagent/plist/proprioception/canon
+  slice of scripts/tests green; scripts/consumer_map.py down to the single
+  documented permanent false-positive; the launchagent_canon proprioception
+  probe unchanged from its pre-existing 55-finding baseline (none WR2); two
+  independent cross-family reviews (tp1-qwen3.8-max GO/no-findings,
+  codex-gpt-5.6-sol NO-GO/2-findings) with both codex findings addressed (see
+  dissent).
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The review packet handed to both council seats built its diff summary
+      with `git diff origin/main HEAD --stat` -- a two-dot diff against a
+      MOVING branch tip, not the PR's actual merge-base diff. By review time,
+      9 unrelated files from OTHER PRs that had landed on origin/main after
+      this branch was cut showed up in that stat (e.g. scripts/tp1_call.py,
+      scripts/mos-plus-compression-worker.py), making the packet look
+      contaminated -- cicatrix-superscar family #9 / W102's exact shape
+      ("two-dot diff accuses the PR of main's files"), but in the REVIEW
+      TOOLING, not the PR itself.
+    status: CONFIRMED
+    resolution: >-
+      Re-verified with `git diff $(git merge-base origin/main HEAD) HEAD
+      --stat`: merge-base is unchanged since branch creation
+      (6a78af5b2e53d63de62e6a16bcdfd8d53b9f0f5e), and the true PR diff is
+      exactly the 31-file/+14/-133/2-commit shape the local commit
+      (427cf72207 + 28b6325d8b (installer follow-up), pre-evidence-pack) already
+      had -- matching what the reviewer itself separately noted ("the local
+      commit 427cf72207 contains only the expected 30 files"). No change to
+      the PR; the finding is retained here as a documented review-process
+      lesson, not a PR defect.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      infra/launchagents/install_wr2_ig_metrics_scrape.sh builds its template
+      path from a `$LABEL` shell variable
+      (`SRC="$REPO/infra/launchagents/$LABEL.plist"`), so scripts/consumer_map.py's
+      literal-basename grep cannot see it as a consumer of the renamed
+      ig-metrics-scrape.daily plist -- but running this installer after the
+      rename would deterministically hit its own generic
+      "FATAL: template not found at $SRC" guard, with no indication that the
+      cause is WR2's deliberate retirement rather than a missing/broken file.
+    status: CONFIRMED
+    resolution: >-
+      Fixed in this PR: the FATAL branch now states outright that WR2 runs
+      only on command (Zero, 2026-09-01), that this is the deliberate reason
+      the canon template is absent, and names the exact re-arm step (rename
+      the canon plist back to `$LABEL.plist`) an operator would need to take.
+      Verified `bash -n` on the edited script (syntax OK) and confirmed via
+      `grep -l "com.balizero.wr2" infra/launchagents/install_*.sh` that no
+      other installer under infra/launchagents/ references a com.balizero.wr2
+      path, so no sibling fix was needed.
+
+receipts:
+  - claim: "this diff's deterministic Gear floor is 3, sourced from PATH"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file <numstat>; --print-floor-source (same args)"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-01T12:05:00Z"
+    seat: claude-sonnet-5
+  - claim: "check_organ_conformance.py stays green after the rename + genes.json cleanup"
+    cmd: "python3 infra/organ-conformance/check_organ_conformance.py"
+    result: "organ conformance: 162 plists scanned, 106 grandfathered (report-only), 0 regressions, 0 non-conformant births"
+    exit: 0
+    ts: "2026-09-01T12:20:00Z"
+    seat: claude-sonnet-5
+  - claim: "organs_registry.yaml stays valid"
+    cmd: "python3 apps/organism/organism/tools/validate_organs_registry.py"
+    result: "organs_registry.yaml valid"
+    exit: 0
+    ts: "2026-09-01T12:20:15Z"
+    seat: claude-sonnet-5
+  - claim: "infra/organ-conformance's own pytest suite is unaffected"
+    cmd: "pytest infra/organ-conformance -q"
+    result: "169 passed"
+    exit: 0
+    ts: "2026-09-01T12:21:00Z"
+    seat: claude-sonnet-5
+  - claim: "the launchagent/plist/proprioception/canon-tagged slice of scripts/tests is unaffected"
+    cmd: 'pytest scripts/tests -q -k "launchagent or plist or proprioception or canon"'
+    result: "392 passed, 18 skipped (all pre-existing/unrelated -- 17 KBLI batch-registry fixtures pending a separate data PR (batch_a_lot5/6/8/9/10), and one live-DR-snapshot check that only runs off Pro's own live checkout, not a worktree)"
+    exit: 0
+    ts: "2026-09-01T12:22:00Z"
+    seat: claude-sonnet-5
+  - claim: "scripts/consumer_map.py finds exactly 1 LIVE hit -- the documented, permanent, intentional false-positive on the historical-commit replay fixture in scripts/tests/test_prepush_classify.py -- and zero others, after the genes.json/declared-pairs.json/policy.hujson/installer fixes"
+    cmd: "python3 scripts/consumer_map.py --base origin/main"
+    result: "CONSUMER_MAP_LIVE_COUNT=1 (scripts/tests/test_prepush_classify.py:1162)"
+    exit: 1
+    ts: "2026-09-01T12:23:00Z"
+    seat: claude-sonnet-5
+  - claim: "the launchagent_canon proprioception probe is unchanged from its pre-existing baseline -- same 55 findings, none of them WR2 -- so this rename introduced no new home-fork/broken-target/repo-divergent finding"
+    cmd: 'python3 scripts/proprioception.py --json --no-fetch | python3 -c "import json,sys; d=json.load(sys.stdin); print([p for p in d[''probes''] if p[''id'']==''launchagent_canon''])"'
+    result: "{'id': 'launchagent_canon', 'status': 'DIVERGED', 'n_findings': 55, 'evidence': ['broken_target: 1', 'home_fork_target: 50', 'repo_divergent: 4']}"
+    exit: 0
+    ts: "2026-09-01T12:24:00Z"
+    seat: claude-sonnet-5
+  - claim: "cross-family review, tp1-qwen3.8-max: GO, no findings, against the full diff + a targeted 3-question prompt (unrelated-file entries removed? ACL rule changed? any missed live consumer?)"
+    cmd: 'qwen -p "$(cat /tmp/qwen_review_prompt.txt)" -m qwen3.8-max < /dev/null'
+    result: "VERDICT: GO, no findings (plus an incidental, verified-correct, out-of-scope note: genes.json's pre-existing newsletter.plist entry, untouched by this diff, predates this PR by a July 2026 commit)"
+    exit: 0
+    ts: "2026-09-01T12:15:00Z"
+    seat: tp1-qwen3.8-max
+  - claim: "cross-family review, codex-gpt-5.6-sol: NO-GO, 2 findings -- review-packet two-dot diff artifact (not a PR defect, see dissent), and a missed executable consumer in install_wr2_ig_metrics_scrape.sh (real, fixed, see dissent)"
+    cmd: 'codex exec -m gpt-5.6-sol -c model_reasoning_effort="medium" --sandbox read-only --skip-git-repo-check "$(cat /tmp/qwen_review_prompt.txt)" < /dev/null'
+    result: "VERDICT: NO-GO -- 2 findings, both addressed"
+    exit: 0
+    ts: "2026-09-01T12:18:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "the true PR diff (merge-base to HEAD, not a two-dot diff against a moved origin/main) is unaffected by other PRs landing on main -- confirms dissent[0] as a review-tooling artifact, not a PR defect"
+    cmd: "git merge-base origin/main HEAD; git diff <that-sha> HEAD --stat"
+    result: "merge-base 6a78af5b2e53d63de62e6a16bcdfd8d53b9f0f5e (unchanged since branch creation); 31 files changed, 14 insertions(+), 133 deletions(-)"
+    exit: 0
+    ts: "2026-09-01T12:25:00Z"
+    seat: claude-sonnet-5
+  - claim: "the edited installer script (infra/launchagents/install_wr2_ig_metrics_scrape.sh) is still syntactically valid bash after the retirement-message fix"
+    cmd: "bash -n infra/launchagents/install_wr2_ig_metrics_scrape.sh"
+    result: "SYNTAX OK (no output from bash -n itself, i.e. clean)"
+    exit: 0
+    ts: "2026-09-01T12:26:00Z"
+    seat: claude-sonnet-5
+  - claim: "no other install_*.sh script under infra/launchagents/ references a com.balizero.wr2 path, so no sibling installer needed the same fix"
+    cmd: 'grep -l "com.balizero.wr2" infra/launchagents/install_*.sh'
+    result: "infra/launchagents/install_wr2_ig_metrics_scrape.sh (only match)"
+    exit: 0
+    ts: "2026-09-01T12:26:30Z"
+    seat: claude-sonnet-5
+
+pii_scan: clean
+pii_scan_note: >-
+  Diff is 27 LaunchAgent plist renames (0 content bytes changed), 2 JSON
+  metadata files (organ-conformance baseline, home-fork declared-pairs -- no
+  client data, only infra file paths/labels), one network-ACL comment, one
+  installer script's error message, and this Evidence Pack's own brief/pack/
+  journal files. No client data, OSINT, or credentials touched or referenced
+  anywhere in this diff.
+
+spend:
+  wall_clock_hours: 1.2
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; not narrated here because the local three-dot count and the CI count disagreed (superscar family nine shape, two-dot vs merge ref) — the CI-computed value governs"

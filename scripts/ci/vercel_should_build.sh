@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Vercel "Ignored Build Step" — decides whether this commit can change what the browser
-# receives. Wired into the project's `commandForIgnoringBuildStep`, which is capped at 256
-# characters, so the field holds only a pointer to this file and the reasoning lives here.
+# receives. Wired in twice with the SAME line: apps/mouth/vercel.json `ignoreCommand` (wins,
+# versioned with the tree it judges) and the project's `commandForIgnoringBuildStep` (the
+# fallback if the file ever drops the key). Both are capped at 256 characters, so the field
+# holds only a pointer to this file and the reasoning lives here.
 #
 # CONTRACT — read this twice, it is not the usual shell convention:
 #   exit 0  -> SKIP the build
@@ -23,7 +25,7 @@
 # Two consequences, both load-bearing:
 #   1. Every path in this file exits 0 or 1 and nothing else. Pinned by a test that greps for
 #      any other literal exit code, because a `exit 2` added later would look harmless.
-#   2. The project setting must NORMALISE, never point here bare:
+#   2. The pointer must NORMALISE, never point here bare:
 #        S="$(git rev-parse --show-toplevel)/scripts/ci/vercel_should_build.sh"; [ -f "$S" ] || exit 1; bash "$S"; [ $? = 0 ] && exit 0 || exit 1
 #      so a missing file, a syntax error, or a signal all become BUILD instead of ERROR. And it
 #      is armed only AFTER this file is on main — the ordering that was skipped.
@@ -49,10 +51,26 @@
 # to compare against: the merge-base with the production branch, which is exactly "what this
 # branch changes". Anything that cannot be established still builds.
 #
-# WHAT IS DELIBERATELY NOT OPTIMISED: the production branch never skips on a missing previous
-# SHA. Comparing main against main yields an empty diff, i.e. "skip", and that single line
-# would be a machine for freezing production — the failure this repo spent 2026-07-27 and
-# 2026-07-28 recovering from. It is guarded explicitly and tested.
+# PRODUCTION (rewritten 2026-09-10; the 2026-08-18 version built EVERY production commit).
+# The base for a production deployment is neither `VERCEL_GIT_PREVIOUS_SHA` nor `HEAD^`:
+#   * VERCEL_GIT_PREVIOUS_SHA names the previous ATTEMPT — skips and cancellations included —
+#     so it advances past a frontend commit whose own build never shipped, and no later diff
+#     spans that commit again. That stranded balizero.com on a 2026-08-15 build for three
+#     days (#4309), and is why the interim rule was "production never skips".
+#   * HEAD^ is the previous commit, not the previous PUSH. The merge queue lands batches of up
+#     to four squash commits in one push and Vercel deploys the tip, so HEAD^..HEAD sees only
+#     the last PR of the batch; a frontend PR earlier in the same batch is invisible to it.
+# The only base that answers the real question — "does this commit change what is LIVE?" — is
+# the commit production is serving, and production says so itself: kita.balizero.com/api/health
+# returns `{"commit": "<sha>"}` (the probe the Frontend Live Sentinel and the mini.vercel_autopromote
+# organ already trust). Diff that against HEAD; no frontend path -> SKIP. Any doubt -> BUILD:
+# probe down, field missing, sha unknown and unfetchable, live == HEAD. A dead autopromote organ
+# degrades to today's behaviour (every commit builds), never to a stale site, because the live
+# sha then stops moving and every later diff keeps spanning the unshipped change.
+# Measured before arming: 301 commits on main in 7 days, 79 of which change the bundle — this
+# rule builds 79, the interim rule built ~245 (one per push). Tests pin the batch shape, the
+# stranded shape and every fail-open path. SHOULD_BUILD_LIVE_PROBE_URL overrides the probe
+# (test seam and emergency lever; a `file://` URL works).
 #
 # Tests: scripts/tests/test_vercel_should_build.sh (guilt + innocence, run in a real git repo).
 
@@ -65,59 +83,127 @@ set -u
 # a real build log, not from the setting: the build ran `next build --webpack` (the apps/mouth
 # value), never the root file's `npm run build -w apps/mouth`. It is still matched here on
 # purpose — if a root `vercel.json` ever comes back, rebuilding on it is the fail-open answer.
+# Keep in step with BUNDLE_PATHS in scripts/vercel_prod_deploy.py and the `paths:` of
+# .github/workflows/frontend-live-sentinel.yml: a commit they call bundle-relevant must BUILD
+# here, or the sentinel goes red for a build this script declined to make.
 FRONTEND_RE='^(apps/mouth/|packages/|package\.json|package-lock\.json|vercel\.json|apps/mouth/vercel\.json)'
 
 PROD_BRANCH="${VERCEL_GIT_PROD_BRANCH:-main}"
 REF="${VERCEL_GIT_COMMIT_REF:-}"
 BASE="${VERCEL_GIT_PREVIOUS_SHA:-}"
+LIVE_PROBE_URL="${SHOULD_BUILD_LIVE_PROBE_URL:-https://kita.balizero.com/api/health}"
 
 log() { printf 'should-build: %s\n' "$1" >&2; }
 
-# Production never skips. Not on a missing previous SHA, and not on a present one.
-#
-# The guard used to live inside the `[ -z "$BASE" ]` block below, on the reasoning that the danger
-# was comparing main against main and reading the empty diff as "nothing to build". That named the
-# right danger and only half the doors. On main `VERCEL_GIT_PREVIOUS_SHA` is normally SET, so the
-# block was skipped whole and the guard inside it never ran.
-#
-# WHAT VERCEL_GIT_PREVIOUS_SHA ACTUALLY CONTAINED, measured rather than read off the docs. Vercel
-# documents it as the last SUCCESSFUL deployment for the project and branch. On 2026-08-18 that
-# was demonstrably not what arrived. The production build of 98ab65ab logged:
-#
-#     should-build: no frontend path in 18 changed file(s) -> SKIP
-#
-# Eighteen. Walking main's first-parent history and diffing each candidate against 98ab65ab, the
-# only commits that produce exactly 18 changed files are 5deddb30e / 41cd6b786 / e61c9e076 /
-# b6cb85034 — all landed the SAME DAY. The last successful production deployment, f6dfda99 from
-# 2026-08-15, sits 272 files back with 30 frontend paths among them, and would have produced
-# BUILD. #4178 sits 39 files back, also with frontend paths. So the base was neither: it had
-# already advanced past both, onto commits that never shipped anything.
-#
-# The exact SHA cannot be pinned from the log (four candidates give 18, the log does not print
-# the base). What IS established is the direction, and it is the whole point: the base advances
-# past commits whose builds never shipped, so a frontend commit that is superseded once is never
-# seen by any later diff again. It is stranded for good.
-#
-# The visible cost: balizero.com served the 2026-08-15 build for three days while main ran 75
-# commits ahead, and kept publishing `Avg reply: 2 min` — measured false against 189 message
-# pairs, average ~9h — for three days after #4178 removed it. Every check was green throughout.
-#
+# The repository URL Vercel itself advertises in the build env (VERCEL_GIT_REPO_OWNER/SLUG; the
+# repo is public, an anonymous fetch suffices). SHOULD_BUILD_FETCH_URL overrides it — test seam
+# and emergency lever. Empty when nothing can be constructed. The value may carry credentials
+# or another sensitive locator and must never be copied into Vercel logs.
+repo_fetch_url() {
+  if [ -n "${SHOULD_BUILD_FETCH_URL:-}" ]; then
+    printf '%s' "$SHOULD_BUILD_FETCH_URL"
+  elif [ -n "${VERCEL_GIT_REPO_OWNER:-}" ] && [ -n "${VERCEL_GIT_REPO_SLUG:-}" ]; then
+    printf 'https://github.com/%s/%s.git' "$VERCEL_GIT_REPO_OWNER" "$VERCEL_GIT_REPO_SLUG"
+  fi
+}
+
+# Verdict from a list of changed files. Judge grep by its exit code explicitly: 0 = matched,
+# 1 = no match, >=2 = grep itself failed. Collapsing that into `&& exit 1 || exit 0` would turn a
+# grep error into a SKIP — the one outcome this script must never produce by accident.
+verdict_from_changed() { # verdict_from_changed <changed-file-list>
+  printf '%s\n' "$1" | grep -qE "$FRONTEND_RE"
+  case $? in
+    0) log "frontend paths changed -> BUILD"; exit 1 ;;
+    1) log "no frontend path in $(printf '%s\n' "$1" | grep -c .) changed file(s) -> SKIP"; exit 0 ;;
+    *) log "grep failed -> BUILD (fail-open)"; exit 1 ;;
+  esac
+}
+
+# The TOP-LEVEL `commit` of the health body, validated as a 40-hex sha, or empty. A JSON parser
+# when one is at hand (node is always in Vercel's container: it is what builds the app), so a
+# body that ever grows a second commit-shaped field (`previousCommit`, a deployments array)
+# cannot be mis-read by a positional grep — the wrong sha picked is a false SKIP, the one
+# direction this script must never take (raised by the adversarial review of #6042). The
+# anchored grep is the fallback where no parser exists; empty on any doubt, and empty builds.
+live_commit_of() { # live_commit_of <health-body>
+  local raw=
+  if command -v node >/dev/null 2>&1; then
+    raw=$(printf '%s' "$1" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{const c=JSON.parse(d).commit;process.stdout.write(typeof c==="string"?c:"")}catch(e){}})' 2>/dev/null)
+  elif command -v python3 >/dev/null 2>&1; then
+    raw=$(printf '%s' "$1" | python3 -c 'import json,sys
+try:
+    c=json.load(sys.stdin).get("commit")
+    sys.stdout.write(c if isinstance(c,str) else "")
+except Exception:
+    pass' 2>/dev/null)
+  else
+    raw=$(printf '%s' "$1" | grep -oE '"commit"[[:space:]]*:[[:space:]]*"[0-9a-f]{40}"' | head -1 | grep -oE '[0-9a-f]{40}')
+  fi
+  printf '%s' "$raw" | grep -oE '^[0-9a-f]{40}$' | head -1
+}
+
+# A fetch that stalls past Vercel's own step budget kills the WRAPPER, and a killed wrapper is
+# a deployment ERROR, not a build — outside the `[ $? = 0 ] && exit 0 || exit 1` normaliser.
+# GNU `timeout` exists in Vercel's container and on CI; where it does not (a Mac), run bare.
+with_timeout() { # with_timeout <seconds> <command...>
+  if command -v timeout >/dev/null 2>&1; then timeout "$@"; else shift; "$@"; fi
+}
+
+# PRODUCTION. Compare HEAD against the commit production is serving, never against a previous
+# attempt (see the header). Every path that cannot establish the live commit builds.
+production_verdict() {
+  local body live head_sha url changed
+  if ! body=$(curl -fsS --max-time 20 "$LIVE_PROBE_URL" 2>/dev/null); then
+    log "production: live probe failed -> BUILD (fail-open)"
+    exit 1
+  fi
+  live=$(live_commit_of "$body")
+  if [ -z "$live" ]; then
+    log "production: live probe exposes no 40-hex commit -> BUILD (fail-open)"
+    exit 1
+  fi
+  head_sha=$(git rev-parse HEAD 2>/dev/null) || { log "cannot resolve HEAD -> BUILD"; exit 1; }
+  if [ "$live" = "$head_sha" ]; then
+    log "production: live commit equals HEAD (a redeploy) -> BUILD"
+    exit 1
+  fi
+  if ! git cat-file -e "${live}^{commit}" 2>/dev/null; then
+    # The container's clone is shallow and may not hold the live commit. Cheapest first: the
+    # production branch's recent history (the live commit is normally a few days back), then
+    # the exact sha (GitHub serves any reachable sha to a shallow fetch). The URL, never a
+    # named remote: measured 2026-08-10, the container has no usable `origin`.
+    url=$(repo_fetch_url)
+    if [ -z "$url" ]; then
+      log "production: live commit ${live:0:9} not in clone and no repo URL to fetch it -> BUILD (fail-open)"
+      exit 1
+    fi
+    with_timeout 90 git fetch --no-tags --depth=200 "$url" "$PROD_BRANCH" >/dev/null 2>&1 || true
+    if ! git cat-file -e "${live}^{commit}" 2>/dev/null; then
+      with_timeout 90 git fetch --no-tags --depth=1 "$url" "$live" >/dev/null 2>&1 || true
+    fi
+    if ! git cat-file -e "${live}^{commit}" 2>/dev/null; then
+      log "production: live commit ${live:0:9} not fetchable -> BUILD (fail-open)"
+      exit 1
+    fi
+    log "production: fetched live commit ${live:0:9}"
+  fi
+  if ! changed=$(git diff --name-only "$live" HEAD 2>/dev/null); then
+    log "production: git diff failed against live ${live:0:9} -> BUILD (fail-open)"
+    exit 1
+  fi
+  log "production: comparing HEAD against live ${live:0:9}"
+  verdict_from_changed "$changed"
+}
+
 # WHY THE TEST IS `VERCEL_ENV` FIRST. The branch comparison alone is not the deployment
 # environment: `vercel --prod` can promote a non-production branch, and that deployment is
 # production no matter what its ref says. `VERCEL_ENV` is the documented system variable for
 # exactly this question, so it leads; the branch test stays as the second arm because
 # `VERCEL_GIT_PROD_BRANCH` may be absent (the `:-main` fallback is correct for this repo) and
 # because the corpus runs the script outside Vercel entirely, where only the ref exists.
-#
-# Direction of failure is settled by the asymmetry at the top of this file: an unnecessary
-# production build costs ~6 minutes, a wrongly skipped one serves stale code across the whole
-# public surface until a human happens to notice. NOT claimed: that this is free. The 2026-07-29
-# measurement (83% of build minutes in PR previews) says where the historical minutes went, and
-# cannot price builds that were skipped and so never appear in it. The marginal cost of building
-# every production commit is unmeasured here; it is accepted, not shown to be zero.
 if [ "${VERCEL_ENV:-}" = "production" ] || { [ -n "$REF" ] && [ "$REF" = "$PROD_BRANCH" ]; }; then
-  log "production deployment (env='${VERCEL_ENV:-unset}' ref='${REF:-unset}') -> BUILD (a previous SHA names an earlier ATTEMPT, not what is live)"
-  exit 1
+  log "production deployment (env='${VERCEL_ENV:-unset}' ref='${REF:-unset}') -> judged against what is live, never a previous attempt"
+  production_verdict
 fi
 
 if [ -z "$BASE" ]; then
@@ -135,11 +221,6 @@ if [ -z "$BASE" ]; then
   # "cannot fetch" and nothing else. A fail-open branch that does not say WHICH stage opened
   # cannot be repaired from its own evidence. So: cheapest-first resolution, each stage
   # announcing itself without replaying Git stderr, which may contain an authenticated URL.
-  # (The production check that used to sit here has moved above this block, where it also sees the
-  # deployments that DO carry a previous SHA — the case this block never reaches, and the one that
-  # froze production. A first deployment with no previous SHA still exists and is still covered,
-  # now by the same check one level up. Leaving a copy here would be unreachable code that reads
-  # like a second line of defence.)
 
   # (1) The merge queue puts the BASE COMMIT in the ref name:
   #     gh-readonly-queue/<base-branch>/pr-<n>-<base-sha>
@@ -173,27 +254,20 @@ if [ -z "$BASE" ]; then
   # — so every first deployment fell through to fail-open and bought a full 1,755-page build:
   # the exact 89%-of-waste case this block exists to close, inert for a second reason after
   # the 2026-07-30 rework fixed the first. The cure is to fetch the production branch straight
-  # from the repository URL that Vercel itself advertises in the build env
-  # (VERCEL_GIT_REPO_OWNER/SLUG; the repo is public, an anonymous fetch suffices).
-  # SHOULD_BUILD_FETCH_URL overrides the constructed URL — test seam and emergency lever.
-  # Every failure still exits 1 (BUILD), with each failed transport named. Git stderr is never
-  # logged because it can normalize and repeat credentials or query tokens from the fetch URL.
+  # from the repository URL (repo_fetch_url above). Every failure still exits 1 (BUILD), with
+  # each failed transport named. Git stderr is never logged because it can normalize and repeat
+  # credentials or query tokens from the fetch URL.
   if [ -z "$BASE" ]; then
     fetched=
     if git fetch --no-tags --depth=200 origin "$PROD_BRANCH" >/dev/null 2>&1; then
       fetched=origin
     else
-      FETCH_URL="${SHOULD_BUILD_FETCH_URL:-}"
-      if [ -z "$FETCH_URL" ] && [ -n "${VERCEL_GIT_REPO_OWNER:-}" ] && [ -n "${VERCEL_GIT_REPO_SLUG:-}" ]; then
-        FETCH_URL="https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}.git"
-      fi
+      FETCH_URL=$(repo_fetch_url)
       if [ -z "$FETCH_URL" ]; then
         log "cannot fetch $PROD_BRANCH (no origin, no repo env to build a URL) -> BUILD (fail-open). origin fetch failed"
         exit 1
       fi
       if git fetch --no-tags --depth=200 "$FETCH_URL" "$PROD_BRANCH" >/dev/null 2>&1; then
-        # The override is an operational seam and may contain credentials or another
-        # sensitive locator. The fetch target must never be copied into Vercel logs.
         fetched=url
       else
         log "cannot fetch $PROD_BRANCH from origin or URL -> BUILD (fail-open). origin fetch failed | URL fetch failed"
@@ -224,12 +298,4 @@ if ! CHANGED=$(git diff --name-only "$BASE" HEAD 2>/dev/null); then
   exit 1
 fi
 
-# Judge grep by its exit code explicitly: 0 = matched, 1 = no match, >=2 = grep itself failed.
-# Collapsing that into `&& exit 1 || exit 0` would turn a grep error into a SKIP — the one
-# outcome this script must never produce by accident.
-printf '%s\n' "$CHANGED" | grep -qE "$FRONTEND_RE"
-case $? in
-  0) log "frontend paths changed -> BUILD"; exit 1 ;;
-  1) log "no frontend path in $(printf '%s\n' "$CHANGED" | grep -c .) changed file(s) -> SKIP"; exit 0 ;;
-  *) log "grep failed -> BUILD (fail-open)"; exit 1 ;;
-esac
+verdict_from_changed "$CHANGED"

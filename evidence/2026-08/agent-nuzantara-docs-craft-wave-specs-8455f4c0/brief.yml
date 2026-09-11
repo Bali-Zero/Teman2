@@ -1,0 +1,34 @@
+task_id: beyond-sota-craft-wave-specs-0829
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Zero's mandate (2026-08-29, interactive session on `/model claude-fable-5`, manual selection):
+  write the FINAL build specs for the 13 beyond-SOTA engineering-craft lanes (39 first-PRs, panel
+  of 2026-08-28 / PR #5177) plus L00 (R9 harness-floor defuse, hard deadline 2026-09-02), and the
+  battle plan for executing them in parallel squads — Opus 5 orchestrators, cross-family arsenal
+  positioned per role, the authoring session NOT in the squad. This PR ships 16 docs files:
+  00-BATTLE-PLAN.md, L00-L13 lane specs, README.
+
+  Gear 3 by BLAST RADIUS, deterministically: 16 files / +2,468 lines before this pack — floor
+  recomputed from the actual changed-file list (receipt in the pack). Docs-only is why l_level is
+  L1: nothing here executes, deploys, or touches runtime state.
+constraints:
+  - "Docs only: no code, no workflow, no config change rides along."
+  - "Every [exists] path claim in the specs was verified on disk this session against a fresh
+    origin/main worktree; unverifiable claims are marked [proposed] or flagged for re-verify."
+  - "Needs-ruling items are carried verbatim and deferred to Zero — no spec decides one; interim
+    constants are explicitly labelled INTERIM."
+  - "No Fable auto-routing is introduced anywhere: squads run Opus 5; Fable appears only as the
+    historical author of the panel under Zero's manual order."
+  - "PII/OSINT output boundary (SYMBIOSIS Law 2): specs scanned for emails, phones and
+    secret-shaped strings — zero after cure (one team-email mention was removed at the gate)."
+acceptance:
+  - "All 14 lane specs carry the mandatory sections (Mission / Ground / PR blocks / Needs-ruling /
+    Suspend / Out of scope) — receipt: 14/14."
+  - "Blind cross-family adversarial review performed and dispositioned (Kimi K3: 20 objections,
+    verdict FIX-FIRST; all 4 HIGH fixed; second review by Codex GPT-5.6 on the fixed plan)."
+  - "Secret/PII scan of the whole spec directory: zero hits."
+appetite:
+  "one session; two adversarial rounds (Kimi, then Codex on the fixes); no third round —
+  leftover objections become spec caveats, not rewrites."

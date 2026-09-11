@@ -2,6 +2,11 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
 import { translate } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
+import {
+  computeNextNode,
+  type OracleNode,
+} from "../src/app/(visa-oracle)/visa-oracle/_lib/flow";
+import type { OracleFacts } from "../src/app/(visa-oracle)/visa-oracle/_lib/tree";
 
 const ENABLED = process.env.VISA_ORACLE_FULLSTACK === "1";
 const DATABASE_URL = process.env.VISA_ORACLE_SMOKE_DATABASE_URL ?? "";
@@ -11,8 +16,9 @@ const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
 
-const SYNTHETIC_VERDICT_FACTS = {
+const SYNTHETIC_VERDICT_FACTS: OracleFacts = {
   in_indonesia: "no",
+  holds_stay_permit: "no",
   overstay_days: "0",
   nationalities: "US",
   birth_date: "1990-01-01",
@@ -23,20 +29,45 @@ const SYNTHETIC_VERDICT_FACTS = {
   review_gate: "none",
 };
 
-const VERDICT_HISTORY = [
-  { kind: "framing" },
-  { kind: "question", questionId: "in_indonesia" },
-  { kind: "question", questionId: "overstay_days" },
-  { kind: "question", questionId: "nationalities" },
-  { kind: "question", questionId: "birth_date" },
-  { kind: "question", questionId: "category" },
-  { kind: "question", questionId: "trip_scope" },
-  { kind: "question", questionId: "stay_days" },
-  { kind: "question", questionId: "entry_pattern" },
-  { kind: "question", questionId: "review_gate" },
-  { kind: "confirmation" },
-  { kind: "verdict" },
-];
+/**
+ * DERIVED from the live interview tree — never transcribed.
+ *
+ * This history is a resume snapshot that `restoreInterviewSnapshot` replays
+ * node by node against `computeNextNode`; its guard (`flow.ts`, "if
+ * (!sameNode(expected, savedNext)) break") TRUNCATES the restore at the first
+ * node the tree would not have produced. A truncated restore never reaches
+ * `kind: "verdict"`, so `OracleShell`'s effect gate returns early, no
+ * `POST /api/visa-oracle/evaluate` is ever issued, and this spec dies on the
+ * `waitForRequest` timeout — 30s of silence that looks like a backend fault
+ * and is in fact a stale fixture.
+ *
+ * That is exactly how it broke: the hardcoded list jumped `in_indonesia` ->
+ * `overstay_days`, while the tree routes `in_indonesia: "no"` to
+ * `holds_stay_permit` first. Re-transcribing the corrected path by hand would
+ * only reset the clock on the same failure. Deriving it means the fixture
+ * cannot go stale: it is whatever the tree says today, and if the tree grows a
+ * question this fixture has no answer for, the throw below names it instead of
+ * letting the spec time out.
+ */
+function deriveVerdictHistory(facts: OracleFacts): OracleNode[] {
+  const history: OracleNode[] = [{ kind: "framing" }];
+  // Bounded so a cycle in the tree fails loudly here rather than hanging.
+  for (let step = 0; step < 64; step += 1) {
+    const current = history[history.length - 1]!;
+    const next = computeNextNode(current, facts);
+    history.push(next);
+    if (next.kind === "verdict") return history;
+    if (next.kind === "question" && facts[next.questionId] === undefined) {
+      throw new Error(
+        `interview tree asks "${next.questionId}" and this fixture has no ` +
+          `answer for it — add the fact to SYNTHETIC_VERDICT_FACTS`,
+      );
+    }
+  }
+  throw new Error("interview tree never reached a verdict in 64 steps");
+}
+
+const VERDICT_HISTORY = deriveVerdictHistory(SYNTHETIC_VERDICT_FACTS);
 
 type PublicDecisionResponse = {
   mode: string;

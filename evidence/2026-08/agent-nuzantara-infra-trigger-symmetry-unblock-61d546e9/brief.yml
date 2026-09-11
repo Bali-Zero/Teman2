@@ -1,0 +1,121 @@
+task_id: infra-trigger-symmetry-unblock
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  The merge queue jammed: #5340, #5370 and #5372 all showed UNMERGEABLE while GREEN on their own
+  PR refs. One job failed on the merge_group ref of all three — "Immune enforcement (superscar
+  antidotes)" running test_lint_trigger_symmetry.py::test_live_tree_is_clean_and_the_linter_saw_it.
+  #5369 at queue position 3 was MERGEABLE and everything from position 4 (#5340) back was not:
+  one poisoned entry, not three bad PRs.
+
+  ROOT CAUSE. `.github/workflows/with-seat-broker-tests.yml` landed 2026-08-30 19:15 (#5326)
+  carrying BOTH a bare `merge_group:` trigger and an `on.pull_request.paths:` filter. GitHub's
+  `merge_group` accepts no `paths:` sub-key at all, so the queue run ALWAYS executed while the PR
+  run fired only when one of 6 guarded files changed. Measured over every run the workflow had
+  since it landed: 57 `merge_group`, ZERO `pull_request` (counted between the file landing at
+  2026-08-30T19:15:44Z and the first run its own fix triggered, over `gh run list --limit 300`;
+  the introducing PR #5326's own 4 `pull_request` runs sit BEFORE that window). An earlier draft
+  of this brief said "EIGHT" — that was `--limit 8` read as a total, W97, corrected by the
+  cross-family refuter and re-measured independently. That is the head-green/queue-red split
+  the L06-PR1 trigger-symmetry lint exists to forbid, and this file was its first live violation.
+  #5340 is the PR that INTRODUCES that lint and does not touch this file, so it was unmergeable by
+  its own construction — its `test_live_tree_is_clean_and_the_linter_saw_it` asserts a clean tree
+  that isn't. #5340's own evidence pack recorded "ZERO violations on the live tree (112 workflows,
+  measured 2026-08-31)"; the queue measures 116 workflows and 1 violation. The premise expired
+  between measurement and merge, by the arrival of exactly the shape #5340's own comment predicted
+  someone would write ("make it queue-aware is naturally done by adding merge_group: and leaving
+  the filter alone. That is the violation, one keystroke away, on files a squad was editing this
+  week").
+
+  THE FIX, AND THE REVERSAL. Both halves of the pair satisfy the lint. This branch's FIRST commit
+  removed the `paths:` filter and kept `merge_group:`. A cross-family adversarial review
+  (kimi-code/k3) REFUTED that choice and was right: Zero's 2026-08-27 queue-slim cure removed
+  `merge_group` from EVERY advisory workflow, because each queue entry was spawning ~50 runs and
+  the 11 gating contexts starved behind the ~40 that gate nothing
+  (scripts/tests/test_advisory_workflows_no_merge_group.py). This workflow is advisory on three
+  independent measurements — absent from infra/required.d/contexts.json (11 contexts), absent from
+  branch protection's 12 required contexts, and its own header says "Deliberately NOT a
+  branch-protection required context". So the queue trigger was never its to take. The second
+  commit reverses the first: the `merge_group:` line goes, the `paths:` filter stays, and the file
+  returns to the shape of the three siblings its own header names as its family
+  (fleet-burst-tests.yml, vercel-autopromote-tests.yml, intake-review-reader-liveness.yml) — all of
+  which carry pull_request.paths and no merge_group. It was the outlier against its own declared
+  family.
+
+  DECLARED LOSS, written into the file's header rather than dropped quietly: a merge_group run
+  tests the SYNTHETIC MERGE revision, so it could catch two individually-green PRs whose
+  COMBINATION breaks the broker. The 2026-08-27 cure made exactly that trade for every advisory
+  workflow, deliberately. This file does not get to re-decide it alone.
+constraints:
+  - "Third lane touching a file shipped by a fourth. Checked first that no OPEN PR touches
+    with-seat-broker-tests.yml (none does) and that no live sibling holds it; the #5340 conductor
+    had explicitly declined to make this call, so it was nobody's and the queue was jammed."
+  - "No repo file outside .github/workflows/with-seat-broker-tests.yml changed by the fix commits.
+    The L06 lint was BORROWED from #5340's branch to run it (it does not exist on main) and was
+    never committed."
+  - "Every edit in .worktrees/infra-trigger-symmetry-unblock/. One destructive slip happened and is
+    reported rather than hidden: a shutil.rmtree aimed at the borrowed lint's directory removed the
+    worktree's whole tracked scripts/ tree; `git checkout -- scripts/` restored all 3366 files, 0
+    deletions remained, and the axis-4 test that ran during that window returned rc=4 'no tests
+    ran' and was RE-RUN afterwards rather than credited."
+  - "No auto-merge armed by this session on this PR — it carries a Gear-3 floor and needs this pack
+    plus an external gate verdict first."
+  - "No paid API. The cross-family review used `kimi -m kimi-code/k3` (Moonshot Allegro flat
+    subscription, OAuth device-code). Zero metered spend."
+acceptance:
+  - "L06 trigger-symmetry lint (run from #5340's branch against this tree): rc=0, 116 workflows
+    checked, 0 violations."
+  - "Positive control — merge_group reinserted: rc=1, 116 workflows checked, 1 violation naming
+    this exact file. The lint can still go red; the green is not a green-by-absence."
+  - "scripts/tests/test_advisory_workflows_no_merge_group.py -- 3 passed (the tripwire that
+    protects the OPPOSITE direction: a REQUIRED workflow must never lose merge_group)."
+  - "scripts/tests/test_check_required_workflow_conformance.py -- 37 passed."
+  - "actionlint on the changed file -- rc=0."
+  - "YAML re-parsed: triggers are [pull_request, push]; the &guarded_paths anchor survives and
+    pull_request.paths == push.paths byte-for-byte (6 entries)."
+consumer_map:
+  - ".github/workflows/with-seat-broker-tests.yml -- the workflow itself; after this change it runs
+    on pull_request (filtered, 6 paths) and push-to-main (same filter), and no longer in the merge
+    queue."
+  - "scripts/ci/lint_trigger_symmetry.py (arrives with #5340) -- its
+    test_live_tree_is_clean_and_the_linter_saw_it goes green against a tree carrying this fix; that
+    is what lets #5340 land at all."
+  - "The merge queue -- one fewer advisory job per queue entry, which is the 2026-08-27 cure's
+    whole point."
+  - "main-push-failure-watch.yml -- unaffected: push.paths is untouched."
+risks:
+  - "The combination-coverage loss is real and is NOT hypothetical-only: with merge_group gone, two
+    individually-green PRs whose merged tree breaks the broker are caught by the post-merge push
+    run (detection) rather than before landing (prevention). Accepted because the 2026-08-27
+    ruling already priced exactly this trade fleet-wide; re-opening it for one file would be the
+    same unilateral move this PR is correcting."
+  - "This fix was written, reversed and rewritten inside one session. The reversal is recorded in
+    both the commit message and the file's header, but a reader who sees only the final diff will
+    not know the first choice was considered and refuted — hence this brief."
+  - "The lint whose green this PR restores is not on main yet. If #5340 never lands, this change is
+    still correct (it obeys the 2026-08-27 ruling independently) but its most visible symptom
+    disappears, which could make it look unmotivated later."
+grader: |
+  generator != grader, cross-family. `kimi -p "<diff + context>" -m kimi-code/k3` (Moonshot, flat
+  subscription, non-Anthropic) reviewed the FIRST commit adversarially on six named axes and
+  produced the finding that reversed it: it located
+  scripts/tests/test_advisory_workflows_no_merge_group.py and its 2026-08-27 policy docstring,
+  which this session had not found. That finding was then verified INDEPENDENTLY before acting on
+  it — the test file was read from origin/main in this turn, and the advisory status was confirmed
+  three ways (contexts.json, branch protection, the file's own header) rather than taken on the
+  reviewer's word.
+
+  Two of the reviewer's other findings were REFUTED with evidence it did not have, and are recorded
+  rather than silently dropped: (1) "the diff is comment-incomplete, the 20-line header still
+  justifies the old behaviour" — the header is fully rewritten in both commits; the reviewer was
+  working from a prose description of the change, not the diff. (2) "I cannot find any lint that
+  flags the pair merge_group + pull_request.paths, so verify which check actually fired" — a fair
+  doubt, and the answer is that scripts/ci/lint_trigger_symmetry.py is NOT on main; it arrives with
+  #5340, which is why a repo-wide grep could not see it. The failing CI log was read directly and
+  names that test by path.
+budget: |
+  Flat-subscription only. This session (Claude MAX OAuth, Opus 5 xhigh) for diagnosis, both fix
+  commits and verification; `kimi -m kimi-code/k3` (Moonshot Allegro flat subscription) for the
+  cross-family adversarial review that reversed the first commit. Zero metered API spend.
+pii: none

@@ -134,9 +134,20 @@ describe("QuestionCard > OptionButton selection control", () => {
         /\.bz-shs-option\[data-selected="true"\]\s*\{([^}]*)\}/s,
       )?.[1] ?? "";
     expect(baseRule).toMatch(/border:\s*1px solid/);
+    // WCAG 2.2 SC 1.4.11 regression guard: the resting-state boundary must
+    // be --border-strong (3.64:1 on carta / 3.94:1 on white), never the
+    // decorative --color-border-subtle (1.21:1 / 1.31:1) — this is the
+    // OptionButton's only boundary at rest (transparent fill).
+    expect(baseRule).toMatch(/border:\s*1px solid var\(--border-strong\)/);
+    expect(baseRule).not.toMatch(/--color-border-subtle/);
     expect(selectedRule).not.toMatch(/(?:^|;)\s*border\s*:/);
     expect(selectedRule).not.toMatch(/border-width\s*:/);
-    expect(selectedRule).toMatch(/border-color:\s*var\(--accent-funnel\)/);
+    // Ink, not red: R4 §3/§4.5 gives red exactly two duties (structure and
+    // action) and selection is neither — a chosen option is an ink outline.
+    // The thickness assertions above are the ones guarding against layout
+    // shift; this line only pins WHICH colour the outline takes.
+    expect(selectedRule).toMatch(/border-color:\s*var\(--text-primary\)/);
+    expect(selectedRule).not.toMatch(/var\(--accent-funnel\)/);
     expect(css).toMatch(
       /\.bz-shs-option\[data-selected="true"\]\s*\{[^}]*box-shadow:\s*inset 0 0 0 2px/s,
     );

@@ -1,0 +1,74 @@
+task_id: craft-f2-l09-pr2-fleet-burst
+gear: 3
+l_level: L2
+gate_class: opus
+council_run: journal.jsonl
+acceptance:
+  - text: "WHEN more lanes are requested than there are verified-LIVE seats, the dispatcher SHALL refuse before mapping any lane, and SHALL NOT emit a partial plan."
+    probe: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+  - text: "WHEN the same seat is offered twice, it SHALL be collapsed, so two lanes can never resolve to one seat."
+    probe: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+  - text: "WHERE a seat resolves EXHAUSTED or UNKNOWN, it SHALL NOT be assigned to a lane."
+    probe: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+  - text: "IF a real (non-dry-run) burst is requested with no seat broker, the dispatcher SHALL refuse rather than let every lane share one ambient credential."
+    probe: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+  - text: "WHILE a real burst is running, the number of live children SHALL never exceed --max-concurrency."
+    probe: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+  - text: "IF any value interpolated into a plan row carries a tab, newline or carriage return, the dispatcher SHALL refuse rather than emit a row a reader would silently truncate."
+    probe: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+  - text: "IF a caller supplies a fable model string, the dispatcher SHALL refuse (CLAUDE.md section 5, RULED 2026-08-20 — fable is manual-only)."
+    probe: "bash scripts/tests/test_fleet_burst.sh --dry-run"
+
+objective: |
+  L09-PR2 of the beyond-SOTA craft wave (squad F', fleet & security): an
+  account-sharded headless fan-out that replaces the fork/tmux-pane shape behind
+  scars W98 (lanes writing zero bytes to disk) and W96 (ENXIO with 94% of ptys
+  free, cause undetermined).
+
+  scripts/fleet_burst.sh plans one distinct verified-LIVE seat per lane through
+  the L09-PR1 ledger (scripts/lib/seat_state.sh), holds a default ceiling of 3
+  simultaneous children, gives each lane its own CLAUDE_CONFIG_DIR and output
+  path, and refuses a fable model string outright.
+
+  It ships with its own CI executor, because a .sh corpus has no consumer in this
+  repo otherwise: scripts-tests-sweep.yml collects only test_*.py through pytest
+  and is continue-on-error besides. The workflow is the half that makes this
+  bite; the script alone would be one more inert artefact.
+
+  This PR also carries the held commit c246e4405b, a docs-only correction to a
+  measured-false EDITING NOTE inside seat_state.sh that could not be pushed while
+  #5290 was queued.
+constraints:
+  - "UNKNOWN is not dispatchable. seat_state.sh's own polarity is fail-OPEN for
+    the cascade's skip decision; here it is deliberately inverted, because
+    assigning a lane to a seat we cannot verify is exactly how two lanes end up
+    on one seat."
+  - "A real burst is FAIL-CLOSED on the seat-binding gap. This script handles
+    seat IDENTIFIERS only and never reads or injects a credential value, so by
+    itself it cannot make a child USE the seat planned for it. Rather than let
+    three lanes silently share one ambient credential and spend one seat's quota
+    three times while the plan reads correct, a non-dry-run burst refuses unless
+    FLEET_BURST_SEAT_BROKER names an executable. That contract
+    (<broker> <seat-key> <command...>) is deliberately the signature of L13-PR1's
+    with_seat.sh, so the two lanes of this squad meet at a declared seam instead
+    of each half-solving it."
+  - "The concurrency ceiling is recorded as a precaution, not a proven fix: W96's
+    ENXIO occurred with 94% of ptys free and the cause is undetermined. The file
+    says so rather than claiming a cure."
+  - "Never reads, prints or logs a credential value. Every seat in the corpus is
+    a fake identifier and the seat-state library is stubbed, so no test touches a
+    real fleet report, a real CLI, or the network."
+grader: |
+  generator != grader with family exclusion, both directions. The shell half
+  (fleet_burst.sh + its corpus) was BUILT by Codex GPT-5.6 terra (non-Anthropic,
+  effort high) and refuted blind by Kimi K3 (non-Anthropic, different family from
+  its builder). The workflow half was written by this Anthropic orchestrator and
+  refuted blind by Codex GPT-5.6 sol at xhigh, the security/workflow-class
+  refuter. Each refuter received the DIFF, never a narrative. The final on-disk
+  gate is this orchestrator, empirical, this turn: every suite re-run and every
+  claimed guard mutation-tested at a real code site.
+budget: |
+  Flat-subscription seats only: this session (orchestrator + gate), Codex
+  GPT-5.6 terra (build) and sol (workflow refutation) on ChatGPT Pro, Kimi K3
+  (code refutation) on the Allegro flat plan. No metered API spend.
+pii: none

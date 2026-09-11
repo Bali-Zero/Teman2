@@ -1,0 +1,126 @@
+task_id: floor-workflow-pin-0901
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Narrow the harness floor's PATH term so a mechanical first-party action
+  version pin under .github/workflows/ no longer floors at Gear 3.
+
+  Owner ruling 2026-09-01, verbatim: "Cambio la regola adesso" — asked
+  whether to unblock the affected PRs first and decide the rule later, or
+  change the rule now, and choosing the second.
+
+  Measured on origin/main the same day, not assumed:
+
+    PR #5442  .github/workflows/security.yml              +2 -2
+    PR #5444  .github/workflows/security.yml              +1 -1
+    PR #5445  .github/workflows/merah-putih-day-contrast.yml  +1 -1
+
+  For each, the ONLY non-passing check is "Harness floor recompute"
+  (`gh pr checks <n>` filtered to non-pass returns exactly that one line;
+  #5444 has none and is BLOCKED for an unrelated reason). Each diff is one
+  or two `uses:` lines whose ref moved and nothing else. `.github/workflows/*`
+  is in HOTZONE_PATTERNS, so each floored at 3 and was asked for a full
+  evidence pack, a council and a Gear-3 gate verdict — a ceremony that reads
+  none of what they changed.
+
+  The hot zone is right about the directory and wrong about this shape. A
+  workflow edit can disarm a gate; bumping the ref of an action the workflow
+  already calls adds no step, removes no step, and touches no `if:`,
+  `permissions:`, `paths:` or `on:`.
+constraints:
+  - "The exemption is decided by the DIFF'S CONTENT and never by its AUTHOR.
+    This is the whole safety argument, not a stylistic preference: scar W98
+    is a Dependabot bump that shipped a malicious `fastapi` to PROD past a
+    constraint the updater could not see. `dependabot[bot] opened it` must
+    never be a key that opens a gate. A human hand-editing the same line
+    gets the same exemption; a bot that changes anything else gets none."
+  - "FAIL-CLOSED, structurally. The exemption must be PROVEN by a patch:
+    `patch=None` — every caller that omits one, and every CI run where the
+    file is missing, unreadable or truncated — exempts nothing and computes
+    exactly the floor it computed before this existed. This is why an
+    unreadable --patch-file is a stderr notice and NOT the `return 3` that
+    --numstat-file uses: that file can only RAISE a floor, this one can only
+    LOWER one, so their safe direction on failure is opposite."
+  - "HOTZONE_PATTERNS is not edited. `.github/workflows/*` stays in the list
+    verbatim, so hot-zone-pr-gate.yml's deliberately duplicated case-block
+    still matches these PRs and NO drift is introduced between the two lists
+    that the module docstring says must be kept in sync by hand. What this
+    adds is an exemption applied to the FLOOR term, not a change to hot-zone
+    membership."
+  - "Third-party actions keep their floor. Only `actions/*` and `github/*`
+    are exempt; a `snyk/actions/*` or `astral-sh/*` bump is a live
+    supply-chain surface and still floors at 3."
+acceptance:
+  - text: >
+      WHEN a .github/workflows/ file's entire change is first-party `uses:`
+      version pins, the floor SHALL be 1 instead of 3 — proved on the three
+      REAL blocked PR diffs, not on fixtures.
+    status: verified
+    probe: "gh pr diff 5442 > /tmp/p.patch && python scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf.txt --patch-file /tmp/p.patch"
+  - text: >
+      IF any added or removed line in that file is NOT a first-party `uses:`
+      line, the file SHALL keep floor 3.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption_guilt"
+  - text: >
+      IF the multiset of action identities differs between the minus and plus
+      sides — a step added, removed, or swapped for another action — the file
+      SHALL keep floor 3.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption_guilt"
+  - text: >
+      WHERE no patch is supplied, or the patch file is missing or unreadable,
+      the floor SHALL be exactly what it was before this change.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption_defaults_to_no_exemption"
+  - text: >
+      WHILE the exemption exists, the set it returns SHALL contain only
+      .github/workflows/ paths — so it can never narrow the path term for
+      fly.toml, .github/CODEOWNERS or any other hot zone.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_evidence_pack_lint.py -k never_returns_a_non_workflow_path"
+  - text: >
+      WHEN this PR's OWN diff is measured, it SHALL still floor at 3 — the
+      new rule must not exempt the change that introduces it.
+    status: verified
+    probe: "python scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <this diff> --numstat-file <this diff>  # -> path, floor 3"
+risks:
+  - "This is a hole in a gate, and a hole in a gate is the one thing that
+    cannot be validated by an innocence-only test suite. The guilt corpus is
+    therefore the primary artifact (10 parametrized attacks) and each of the
+    six conditions was mutation-tested: removing any one of them reddens the
+    suite, and none of them reddens all of it — the signature of a test that
+    discriminates on behaviour rather than on environment."
+  - "A first-party action version could itself be compromised upstream. This
+    exemption does not defend against that — but neither did the Gear-3
+    ceremony it replaces, which reads a brief and a pack, not the action's
+    changelog. The real defences there (pinned SHAs, actionlint, CodeQL,
+    the CODEOWNERS tier) are untouched by this diff."
+  - "The parser reads a unified diff by hand rather than using a diff library.
+    Its blind spots are therefore its own: the `--- a/path` header trap is
+    handled explicitly (headers are consumed before the +/- branch), and the
+    guilt corpus includes a real diff envelope for that reason, but a
+    combined diff (`diff --cc`, merge commits) is not exercised. CI never
+    feeds it one — the producer step runs `git diff <merge-base> <head>` — so
+    the exposure is a future caller, not this one."
+instruction_to_the_grader: |
+  READ THE EXEMPTION'S SOURCE, NOT THIS BRIEF'S DESCRIPTION OF IT.
+
+  Stated verbatim because a peer session measured the failure mode today: three of six
+  "violations" in a parallel audit it ran were defects in ITS OWN brief, not in the code — the
+  auditors faithfully applied a rule the brief had paraphrased too tightly, and the reports came
+  back with file:line and numbers, i.e. disguised as measurement. The rigour of a report
+  AUTHENTICATES a bad paraphrase instead of correcting it.
+
+  So: the three conditions as this brief states them are a summary. The contract is
+  `workflow_paths_exempt_from_path_term()` in scripts/evidence_pack_lint.py. If they disagree, the
+  code is what ships and the brief is the defect.
+
+  Second: treat the guilt corpus as UNDER-SELECTED, not as coverage. It has already been beaten
+  once — a cross-family answer truncated at 214 bytes named the reorder hole after ten attacks had
+  passed. Shapes still unattacked as far as the author knows: `uses:` inside a `run:` heredoc where
+  `#` is not a comment, YAML anchors/aliases, block scalars, a workflow file added wholesale, and
+  `diff --cc` (refused, but never parsed).
+
+pii: none

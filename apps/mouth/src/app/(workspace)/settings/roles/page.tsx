@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { useSessionState } from "@/hooks/useSessionState";
 
 interface Permission {
   id: string;
@@ -86,6 +87,7 @@ const allPermissions: Permission[] = [
 
 export default function RolesPermissionsPage() {
   const router = useRouter();
+  const session = useSessionState();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -211,16 +213,17 @@ export default function RolesPermissionsPage() {
   }, [showCreateModal]);
 
   useEffect(() => {
-    if (!api.isAuthenticated()) {
+    if (session === "anonymous") {
       router.push("/login");
       return;
     }
+    if (session !== "authenticated") return;
     if (!api.isAdmin()) {
       router.push("/chat");
       return;
     }
     setIsAuthorized(true);
-  }, [router]);
+  }, [session, router]);
 
   if (!isAuthorized) {
     return null;

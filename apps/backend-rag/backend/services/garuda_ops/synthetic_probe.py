@@ -22,9 +22,7 @@ NOW wires a real `GarudaOrderRepository`/`PaymentProvider` onto
 account for this product yet (a business/owner decision, not a code gap).
 Every request still 503s today, for a DIFFERENT reason than before
 (`test_blocked_stage_staleness.py` holds the mechanical proxy for each of
-these, updated the same PR). L4's portal has no practice-serving module
-yet, and no production code wires `garuda_ops/crm_handoff.py`'s
-`CrmHandoffService` to a real event journal either. Faking success for
+these, updated the same PR). Faking success for
 stages 2-5 would be exactly the "green mascherava organi morti" failure
 this lane was explicitly warned against (cicatrix-superscar.md family #2).
 Each stage below either runs for real or raises
@@ -197,9 +195,14 @@ ReceivedPracticeStage = _blocked_stage(
     # paid order, and `garuda_orders_router.py::get_order_and_practice`
     # calls it instead of hardcoding `None`. The REAL remaining blocker is
     # upstream of this stage entirely: `sandbox_checkout`/`signed_webhook_
-    # paid` above are themselves still blocked on the orchestrator's own
-    # composition gap (no production code wires `app.state.garuda_order_
-    # repository` / `app.state.garuda_payment_provider`), so this probe
+    # paid` above are themselves still blocked -- but NOT, as this comment
+    # used to say, because "no production code wires
+    # `app.state.garuda_order_repository` / `app.state.garuda_payment_
+    # provider`". That wiring exists (`app/setup/service_initializer.py`,
+    # the GARUDA order-lane block) and this file's own header already said
+    # so, so the file contradicted itself. The real blocker is that the
+    # wiring is gated on `GARUDA_XENDIT_SECRET_KEY`, which is unset -- an
+    # owner decision, not a composition gap. So this probe
     # never reaches a genuinely paid order to hand this stage in the first
     # place -- `run_probe` stops at the first non-success (see its own
     # comment) two stages before this one runs. This stage's own

@@ -1,0 +1,83 @@
+l_level: L2
+gear: 3
+objective: >-
+  Close the harness-layer gap: the CI and repo layer already binds every model equally, but each
+  CLI auto-loads its OWN door file and nothing had ever compared them. A seat that BUILDS started
+  with whatever its door happened to say. This marks ONE canon block — the builder contract — in
+  CLAUDE.md, AGENTS.md, GEMINI.md and QWEN.md, and ships a probe that goes RED when any copy
+  drifts from CLAUDE.md's.
+
+context: >-
+  Measured on origin/main before this lane: `grep -c 'CANON:'` returned 0 in all three existing
+  doors, and QWEN.md was not tracked at all — the Qwen seat opened no door whatsoever. An
+  independent extraction of the five binding rule families across the five door files found the
+  gap is not cosmetic: the Anthropic-SDK/API-key ban exists ONLY in CLAUDE.md, with no restatement
+  and no cross-reference anywhere else; the full PR contract exists only in CLAUDE.md; the PII
+  boundary is a full enumerated rule in CLAUDE.md and AGENTS.md and a three-word line ("PII: mai.")
+  in GEMINI.md; the ship sequence appears in CLAUDE.md as ownership doctrine and in the external
+  doors only as its mirror-image prohibition; the `Bites:` requirement exists in no door at all.
+
+decisions:
+  - "CLAUDE.md is the REFERENCE, not merely a peer. It is the door the codeowner reads and the one
+    rulings land in first, so 'the others agree with it' is the direction that means something.
+    A block present in a peer and ABSENT from the reference is still a finding — doctrine binding
+    one seat and not the others is the disease, not a peer being helpfully extra."
+  - "BLOCK level, never whole file. These doors are SUPPOSED to differ: each carries its own CLI's
+    invocation, model roster and sandbox flags. A whole-file comparison would alarm on every
+    legitimate difference and be switched off within a week."
+  - "The probe asks GIT which doors exist, never the filesystem. Measured 2026-08-31: QWEN.md and
+    qwen.md shared inode 343120045 on this machine — APFS is case-insensitive by default, so
+    `[ -f QWEN.md ]`, `ls` and `wc` all answer for the lowercase name while git's index and any
+    case-sensitive volume have only the lowercase one."
+  - "qwen.md is RENAMED to QWEN.md rather than duplicated. The amendment said to CREATE QWEN.md
+    carrying the block plus qwen.md's door text; on a case-insensitive volume those two cannot
+    both exist in the working tree — creating one truncates the other. A rename makes the door the
+    Qwen CLI already looks for actually resolve, and avoids two copies that would drift invisibly
+    on every machine we own."
+  - "The marker syntax is the one the L10-PR2 comparator already reads (`<!-- CANON:<id> -->`),
+    NOT the `<!-- CANON:<id>:<sha16> -->` form the amendment named. A sha written INTO the marker
+    is a second copy of a derived value that a human must keep in sync and that is stale the
+    moment the block is edited. The digest is computed, never transcribed."
+  - "kimi.md is deliberately NOT a door here. The Kimi CLI reads AGENTS.md, so kimi.md really is
+    human-referenced only — marking it would add a fifth copy to keep in sync for a file no CLI
+    opens."
+
+acceptance:
+  - text: >-
+      WHEN any door's canon block differs from CLAUDE.md's, the probe SHALL report DIVERGED and
+      name the door AND the block id.
+    probe: >-
+      pytest scripts/tests/test_door_canon_parity.py -k "reworded_rule or door_MISSING or
+      binding_ONE_SEAT_ONLY"
+  - text: >-
+      WHILE all four doors carry a byte-identical block, the probe SHALL be silent, and IF the
+      doors differ only OUTSIDE the marked block it SHALL still be silent.
+    probe: >-
+      pytest scripts/tests/test_door_canon_parity.py -k "four_identical or OUTSIDE_the_block or
+      whitespace_only"
+  - text: >-
+      IF a door is present on disk but NOT tracked by git, the probe SHALL report it absent — the
+      case a case-insensitive filesystem cannot see.
+    probe: >-
+      pytest scripts/tests/test_door_canon_parity.py -k "GIT_DOES_NOT_TRACK"
+  - text: >-
+      WHERE the reference door carries no markers, the probe SHALL report UNPROBEABLE naming that
+      absence and SHALL NOT report agreement.
+    probe: >-
+      pytest scripts/tests/test_door_canon_parity.py -k "no_markers_anywhere or all_FENCED or
+      absent_reference"
+  - text: >-
+      IF this PR's sentinel path is removed from immune-enforcement.yml, the trigger-symmetry check
+      SHALL fail — the arming is proven by mutation, never by the line's presence.
+    probe: >-
+      delete the `scripts/tests/test_door_canon_parity.py|\` line, then
+      pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py
+
+out_of_scope:
+  - "Marking a SECOND canon block. One block, the builder contract, is what the amendment asked
+    for; a second would need its own decision about what belongs in it."
+  - "kimi.md and codex.md. Neither is auto-loaded by the CLI that names it (Kimi reads AGENTS.md);
+    adding them would create copies to keep in sync for files no CLI opens."
+  - "Reconciling the WORDING of the per-door rules outside the marked block. GEMINI.md's 'PII:
+    mai.' is a three-word version of a rule the block now states in full — the block binds, the
+    surrounding prose is each door's own and is left alone."

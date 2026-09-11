@@ -1,0 +1,339 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Issue #5316 (comment 02:32) — squad S's unowned task, reassigned. Item 1:
+  quarantine queue_shepherd.py's uncancellable runs after 3 consecutive
+  failures. Item 2: a read-only stall classifier for queue_stall_classifier.py.
+  One PR, both items, plus 6 real findings from two independent cross-family
+  adversarial review rounds, all fixed in the same PR per the Agent PR
+  Contract's "fix real findings" instruction.
+
+lanes:
+  - lane: queue-stall-classifier-build
+    role: build
+    seat: claude-sonnet-5 (session, 2 forked continuations for code-writing/
+      verification legs — quarantine mechanism in queue_shepherd.py, the
+      classifier itself, docstring/trap documentation, integration of all 6
+      adversarial-review fixes, evidence pack)
+  - lane: queue-stall-classifier-review-codex
+    role: review
+    seat: gpt-5.6-sol (codex exec --sandbox read-only, ChatGPT Pro,
+      non-Anthropic — round-1 adversarial review of the classifier; 4
+      findings, all CONFIRMED and fixed)
+  - lane: queue-stall-classifier-test-authorship-codex
+    role: build
+    seat: gpt-5.6-sol (codex exec --sandbox workspace-write, same dispatch as
+      the review lane above — independently wrote and verified 6 genuine test
+      cases, namely checkSuites/checkRuns truncation guilt+innocence and
+      render_table markdown-pipe escaping)
+  - lane: queue-stall-classifier-review-kimi
+    role: review
+    seat: kimi-code/k3 (kimi CLI, Moonshot Allegro flat subscription,
+      non-Anthropic — round-2 independent second-opinion adversarial review,
+      steered only to "4 findings already fixed, look elsewhere"; found 2
+      further real blockers neither this session nor gpt-5.6-sol had caught,
+      both CONFIRMED and fixed, plus 4 non-blockers triaged in dissent below)
+
+council_run: council-journal.jsonl
+
+diff:
+  files: 7
+  net_lines: 2740
+  measured_at: 08ea5fb2f
+  note: >-
+    Churn (added+deleted) summed across all 7 changed files via `git diff
+    --no-renames --numstat --cached 08ea5fb2f` (the merge-base against
+    origin/main, unchanged from HEAD — this branch has not diverged since
+    fork): brief.yml (153+0), council-journal.jsonl (2+0), pack.yml (332+0),
+    scripts/queue_shepherd.py (116+4), scripts/queue_stall_classifier.py
+    (756+0), scripts/tests/test_queue_shepherd.py (264+0),
+    scripts/tests/test_queue_stall_classifier.py (1113+0) = 2740. Measured
+    once, as the last action before the commit that includes this exact
+    pack. CI supplies the authoritative numstat via --numstat-file at merge
+    time and prefers it over this self-declared value, per the linter's
+    ceiling rule. Comfortably above SIZE_GEAR3_THRESHOLD (1828) even
+    counting only the 4 code/test files (2253) — the evidence pack's own
+    size does not change the gear this diff floors at.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The full test suite for both touched modules passes, including all 37
+      new tests (16 quarantine + 21 adversarial-review-fix guilt/innocence
+      pairs) added on top of the 123 pre-existing tests (79 queue_shepherd +
+      60 stall-classifier minus double count... see exact command output).
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 -m pytest
+      scripts/tests/test_queue_stall_classifier.py
+      scripts/tests/test_queue_shepherd.py -q
+    result: "160 passed in 0.37s (venv python — system python3 lacks pytest)."
+    exit: 0
+    ts: "2026-08-30T20:25:10Z"
+    seat: session (Pro, implementer lane, independently re-run after both fork legs)
+
+  - claim: Zero lint warnings on any of the 4 touched files.
+    cmd: >-
+      apps/backend-rag/.venv/bin/ruff check scripts/queue_stall_classifier.py
+      scripts/queue_shepherd.py scripts/tests/test_queue_stall_classifier.py
+      scripts/tests/test_queue_shepherd.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-08-30T20:25:20Z"
+    seat: session (Pro, implementer lane)
+
+  - claim: All 4 touched files are syntactically valid.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 -m py_compile
+      scripts/queue_stall_classifier.py scripts/queue_shepherd.py
+      scripts/tests/test_queue_stall_classifier.py
+      scripts/tests/test_queue_shepherd.py
+    result: "PY_COMPILE_OK (zero output from py_compile itself, exit 0)."
+    exit: 0
+    ts: "2026-08-30T20:26:00Z"
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The module's own static self-protection scan proves it can never
+      mutate a PR/run/check — no write-shaped gh invocation, no GraphQL
+      mutation, no gh pr merge/gh run rerun argv anywhere in its source.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 -m pytest
+      scripts/tests/test_queue_stall_classifier.py -q -k
+      "no_write_shaped or no_mutating or no_graphql_mutation or
+      never_calls_gh_pr_merge or never_imports_or_calls"
+    result: "6 passed, 75 deselected in 0.16s."
+    exit: 0
+    ts: "2026-08-30T20:26:10Z"
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Bite #2 (mandate requirement): the classifier runs against LIVE open
+      PRs in Bali-Zero/Teman2 and produces a real classification table,
+      correctly distinguishing gate-verdict-missing (6 real PRs, e.g. #5037/
+      #5302/#5309) from required-check-red (16 real PRs), including the
+      documented #4543 stale-check shape on a REAL PR (#5350: rollup FAILURE
+      but harness/fable-gate already posted 'success', correctly recommending
+      `gh run rerun` instead of a code fix) and a real posted non-success
+      verdict (#5158: harness/fable-gate='failure'). Zero CANNOT-VERIFY rows
+      on this real run; exit 0.
+    cmd: "apps/backend-rag/.venv/bin/python3 scripts/queue_stall_classifier.py --repo Bali-Zero/Teman2"
+    result: >-
+      examined 50 open PR(s) total (9 draft, excluded); 33 stale rows;
+      Summary: conflict=1, gate-verdict-missing=6, not-armed=5,
+      queued-and-advancing=5, required-check-red=16. Full table pasted into
+      the PR body verbatim.
+    exit: 0
+    ts: "2026-08-30T20:26:32Z"
+    seat: session (Pro, implementer lane)
+
+dissent:
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter, round 1)
+    objection: >-
+      `read_fable_gate_state`'s REST call to commits/{sha}/status was
+      unpaginated — GitHub defaults to 30 results per page, and
+      harness_gate_read.py itself (which this function deliberately mirrors)
+      does not paginate it either. A context sitting past page 1 would read
+      as "never posted" -> a false gate-verdict-missing.
+    status: CONFIRMED
+    note: >-
+      Fixed: added `?per_page=100` plus an explicit check of the response's
+      own `total_count` field against what was actually fetched; a truncated
+      response with the context not found raises (-> CANNOT-VERIFY at the
+      caller) rather than returning "never posted". Verified live that this
+      endpoint exposes a usable `total_count` (currently 1 for a real commit
+      in this repo).
+
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter, round 1)
+    objection: >-
+      `_describe_cause`'s required-check-red detail text unconditionally
+      said "(a real verdict was posted and it is not success)" whenever
+      fable_gate_state was not None — including when it was literally
+      `"success"` (the documented #4543 stale-check-landed-before-the-verdict
+      shape from harness_gate_read.py's own docstring), which is factually
+      false in that case.
+    status: CONFIRMED
+    note: >-
+      Fixed: a dedicated `if fable_gate_state == "success":` branch now
+      recommends `gh run rerun <original pull_request run>` instead of
+      claiming the verdict is not success. Confirmed live against a REAL PR
+      in this exact classifier run (#5350) — see the Bite #2 receipt above.
+
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter, round 1)
+    objection: >-
+      Empty `commits.nodes` on an open PR (impossible for a real PR — every
+      open PR has >=1 commit) was silently treated as normal data: rollup
+      state defaulted to None in `_normalize_open_pr`, and
+      `fetch_check_runs_flat` returned `([], False)` — either could hide a
+      possibly-red gate behind a GraphQL data anomaly instead of flagging it.
+    status: CONFIRMED
+    note: >-
+      Fixed: `_normalize_open_pr` now sets a `commits_missing` flag,
+      `_classify_one` checks it FIRST (before any other classification
+      logic) and returns CANNOT-VERIFY, and `fetch_check_runs_flat` raises
+      RuntimeError on the same anomaly instead of fabricating an
+      empty-but-valid-looking tuple.
+
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter, round 1)
+    objection: >-
+      `fetch_open_prs`'s MAX_PAGES exhaustion logged a warning and returned
+      the PARTIAL PR list collected so far, letting `main()` exit 0 on a
+      board that was silently never fully examined — undermining the
+      mandate's own "must go RED if it examined ZERO PRs" requirement by
+      allowing "examined SOME but silently not ALL" to pass as clean.
+    status: CONFIRMED
+    note: >-
+      Fixed: raises RuntimeError instead (-> a loud top-level failure, the
+      same shape an outright `gh` error already produces). Deliberately
+      diverges from queue_shepherd.py's OWN warn-and-return-partial
+      convention for its analogous MAX_PAGES-bounded fetches — those have a
+      secondary cancel-time recheck that independently re-verifies liveness
+      before acting, so a partial list there is safe; this reporter has no
+      such safety net, so a partial board must never be reported as complete.
+
+  - seat: kimi-code/k3 (cross-family refuter, round 2, independent second seat)
+    objection: >-
+      `find_named_check_conclusion` returned the textually-FIRST checkRun
+      matching HARNESS_FLOOR_CHECK_NAME — but the Agent PR Contract's own
+      rule 3 documents that a `workflow_dispatch` rerun of the same job
+      lands in a DIFFERENT check suite on the SAME commit, so two checkRuns
+      sharing this exact name with DIFFERING conclusions is a real,
+      repo-documented occurrence, not a hypothetical. First-match is
+      order-dependent on GraphQL's unspecified checkSuites ordering and can
+      go wrong in EITHER direction: a stale FAILURE found first while the
+      latest rerun is green fabricates a gate-verdict-missing; a stale
+      SUCCESS found first while the latest is red demotes a real
+      gate-verdict-missing into required-check-red — exactly the swallow
+      this module's own docstring says must never happen.
+    status: CONFIRMED
+    note: >-
+      Fixed: `find_named_check_conclusion` now collects the SET of
+      conclusions across every matching run; when they agree it returns
+      that shared conclusion unchanged (the common case, unaffected); when
+      they disagree it returns a new `AMBIGUOUS_CHECK_CONCLUSION` sentinel,
+      which `_classify_one` reads as CANNOT-VERIFY — reusing this module's
+      own pre-existing discipline for the structurally identical truncation
+      case (trap (d)) rather than inventing a new pattern. Documented as
+      trap (h) in the module docstring. Not exercised against a live
+      duplicate-suite PR (none exists on the current board) — verified only
+      via monkeypatched unit tests; risk acknowledged in brief.yml.
+
+  - seat: kimi-code/k3 (cross-family refuter, round 2, independent second seat)
+    objection: >-
+      `RED_CHECK_CONCLUSIONS = ("FAILURE",)` omitted `TIMED_OUT` — a genuine
+      gate-rejection shape (a required job that overran its timeout-minutes
+      is exactly as rejected as one that failed outright). The exclusion
+      comment named CANCELLED/NEUTRAL/SKIPPED/ACTION_REQUIRED as deliberately
+      excluded and never mentioned TIMED_OUT at all, reading as an oversight
+      rather than a deliberate narrowing.
+    status: CONFIRMED
+    note: >-
+      Fixed: `"TIMED_OUT"` added to `RED_CHECK_CONCLUSIONS` alongside
+      `"FAILURE"`, comment corrected to explain the addition. Guilt test
+      (a TIMED_OUT gate run classifies as gate-verdict-missing, not
+      swallowed into required-check-red) + innocence test (SKIPPED, one of
+      the genuinely-excluded conclusions, still does not count as red) both
+      added.
+
+  - seat: kimi-code/k3 (cross-family refuter, round 2, independent second seat)
+    objection: >-
+      `classify_stall` never consults `mergeStateStatus == "BLOCKED"` (or
+      `"UNSTABLE"`): an armed PR blocked on a non-check requirement (e.g. a
+      missing required review) with an otherwise-green rollup is reported
+      `queued-and-advancing` — "no known blocker" while GitHub is actually
+      reporting one.
+    status: PLAUSIBLE
+    note: >-
+      Triaged, not fixed: the mandate specifies a CLOSED 5-cause set by
+      design ("classify it correctly ... from a closed set"), and BLOCKED/
+      UNSTABLE do not map cleanly onto any of the 5 without either widening
+      the set (out of this PR's scope, a new mandate decision) or silently
+      overloading an existing cause's meaning. `queued-and-advancing`
+      remains technically true (nothing REQUIRED is red) even if incomplete
+      as a diagnosis. Left for a future PR if Zero widens the cause set.
+
+  - seat: kimi-code/k3 (cross-family refuter, round 2, independent second seat)
+    objection: >-
+      A TOCTOU window exists between the bulk discovery read (rollup state,
+      head sha) and the per-PR fresh fetches (check runs, fable-gate state):
+      DIRTY gets an explicit fresh re-check (trap (c)), but a head push
+      between the two reads could mix an old rollup verdict with new check
+      data into one label instead of CANNOT-VERIFY.
+    status: PLAUSIBLE
+    note: >-
+      Triaged, not fixed: real but low-probability (requires a push landing
+      in the exact multi-second window between two fetches in the same
+      classifier pass), and the fix (re-reading headRefOid in
+      CHECK_RUNS_QUERY and comparing) is a larger structural change than
+      this PR's two-item scope. Recorded as a risk in brief.yml for a future
+      PR.
+
+  - seat: kimi-code/k3 (cross-family refuter, round 2, independent second seat)
+    objection: >-
+      `gc_uncancellable_state` (queue_shepherd.py) can drop a quarantined run
+      id if it falls on a page `fetch_queued_runs` did not reach under its
+      own pre-existing MAX_PAGES partial-fetch bound, causing that run to be
+      re-hammered for up to 3 ticks before re-quarantining.
+    status: PLAUSIBLE
+    note: >-
+      Triaged, not fixed: this interaction PRE-DATES this PR (both
+      gc_uncancellable_state and fetch_queued_runs' page bound already
+      existed for the original "uncancellable_409" persistence mechanism);
+      the reviewer's own assessment calls it "bounded and self-healing".
+      Out of this PR's Item-1 scope (quarantine-after-N-failures), not
+      introduced by it.
+
+  - seat: kimi-code/k3 (cross-family refuter, round 2, independent second seat)
+    objection: >-
+      `is_quarantined` fails open (returns False, allowing a retry) on an
+      unparseable `quarantined_at` timestamp, and `--dry-run` bypasses the
+      skip-list entirely (loads `{}` instead of the real uncancellable
+      state), so dry-run output overstates what a real tick would cancel.
+    status: PLAUSIBLE
+    note: >-
+      Not a defect: fail-open-to-retry on a malformed timestamp is an
+      INTENTIONAL design choice in this PR (fail-open beats a permanently
+      stuck skip on a corrupted entry) and is already directly tested —
+      test_is_quarantined_malformed_timestamp_fails_open_to_retry_never_permanent_skip.
+      The dry-run behavior matches the PRE-EXISTING convention
+      run_rearm_pass already uses for budget_state/alerted_state
+      (`{} if dry_run else _load_json(...)`) — this PR's uncancellable_state
+      simply follows the same established pattern, not a new inconsistency.
+
+tests:
+  - "scripts/tests/test_queue_stall_classifier.py + test_queue_shepherd.py —
+    160 passed, 0 failed (venv python)."
+  - "Guilt+innocence pairs present for: quarantine threshold/cooldown/reset
+    (13 tests), all 5 classify_stall causes + exhaustive closed-set sweep,
+    and each of the 6 adversarial-review fixes (2 tests each: pagination
+    truncation, success-but-stale text, commits_missing, MAX_PAGES raise,
+    duplicate-check-run ambiguity, TIMED_OUT)."
+
+static:
+  - "ruff check on all 4 touched files — All checks passed!"
+  - "python3 -m py_compile on all 4 touched files — rc=0."
+  - "6 AST-based self-protection tests (mirrors test_harness_gate_read.py's
+    technique): no write-shaped string literal, no mutating gh subcommand
+    phrase, no GraphQL mutation operation, no gh pr merge/gh run rerun as
+    argv, no import of queue_shepherd's rearm_pr — all pass, plus guilt-pin
+    counterparts proving each scan actually catches a synthetic violation."
+
+notes:
+  - "Scope discipline: Item 1 (quarantine) touches only
+    queue_shepherd.py's uncancellable-state handling
+    (record_cancel_failure/clear_cancel_entry/is_quarantined +
+    run_janitor_pass's skip/save logic); Item 2 (classifier) is an entirely
+    new standalone script, per this family's STANDALONE-by-design convention
+    (duplicates small helpers from queue_shepherd.py/harness_gate_read.py
+    rather than importing them, to avoid coupling/drift risk across these
+    independent organs)."
+  - "council_run: council-journal.jsonl carries 2 DISTINCT real qualifying
+    seats (codex-gpt-5.6-sol, kimi-code/k3) from COUNCIL_REVIEW_SEATS, each
+    role=review/ok=true — a genuine R9 quorum, not relying on the
+    2026-09-02 grace-period NOTICE-only window."
+  - "Constraints honored: no LaunchAgent touched, no secret printed, no
+    --no-verify, no harness/fable-gate verdict posted by this session, no
+    auto-merge armed — `gh pr merge --auto` is deliberately NOT run; the
+    conductor merges per the mandate."
+  - "gh pr merge --auto, if/when the conductor arms it, should be armed
+    NAKED (no strategy flag) per repo doctrine — the merge queue rejects
+    strategy flags."

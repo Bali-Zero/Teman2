@@ -1,0 +1,51 @@
+task_id: craft-s-required-context-wiring-2
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wave-2 Squad S, lane 1, PR 2 of 3. Make `p1s2-mutation-incremental.yml`
+  (context `Canary self-test + incremental mutation`) safe to require, WITHOUT
+  buying a full mutation pass on every merge-queue entry.
+
+  It already had no `on.pull_request.paths:` filter — a sentinel step gates the
+  expensive work instead — so conformance rule 4 was satisfied. What it lacked
+  was a `merge_group:` trigger, and its own header explained at length why
+  adding one alone would be a mistake: the relevance sentinel answered
+  `run=true` for EVERY non-`pull_request` event, so every queue entry would
+  have run `pip install mutmut` plus a mutation pass, fleet-wide, for every
+  lane. That header also named the fix, verbatim: "the relevance step must
+  first learn to compute changed files against
+  `github.event.merge_group.base_sha`."
+
+  This PR does that, so the trigger arrives WITH its cost control rather than
+  ahead of it. It promotes nothing — branch protection is operator-tier and the
+  conductor performs the promotion on the evidence in #5316.
+constraints:
+  - "`scripts/tests/test_hermetic_census.py` pins the workflow's `push: paths:`
+    list EQUAL to the sentinel's grep alternation, and finds the grep with the
+    regex `grep -qE \\\\\\n\\s+'\\^\\(([^)]*)\\)\\$'`. The alternation, its six
+    entries, their order and their escaping are therefore untouchable — the pin
+    must still pass, and it does (43 tests green)."
+  - "The sentinel must FAIL OPEN. A sentinel that answers `run=false` because it
+    could not measure is a false green on a correctness gate — the one direction
+    this job must never fail in."
+  - "`push:` and every other event keep the old unconditional `run=true`. Push is
+    already paths-filtered at the trigger, so a push run that exists needs the work."
+  - "Zero's lane constraint: no merge-queue latency regression. The whole point of
+    the sentinel change is that a queue entry touching no trust path costs ~10s
+    instead of a mutation pass."
+acceptance:
+  - text: "WHEN a merge_group entry changes no trust path, the sentinel SHALL
+      resolve run=false — this is the entire reason the trigger was safe to add."
+    probe: "test_merge_group_touching_nothing_relevant_skips"
+  - text: "WHEN a merge_group entry DOES change a trust path, the sentinel SHALL
+      resolve run=true — the queue must not be a hole in the gate."
+    probe: "test_merge_group_touching_a_trust_path_runs_the_gate"
+  - text: "WHEN the base SHA is empty, unresolvable, or grep cannot read the
+      changed-file list, the sentinel SHALL resolve run=true AND emit a warning."
+    probe: "test_a_grep_that_cannot_read_is_not_read_as_no_match"
+  - text: "The census pin SHALL still hold — the push paths list and the grep
+      alternation remain one relevance decision."
+    probe: "pytest scripts/tests/test_hermetic_census.py"
+  - text: "The corpus SHALL go RED on a regression, not merely green on the fix."
+    probe: "six mutants, each reverted after measuring"

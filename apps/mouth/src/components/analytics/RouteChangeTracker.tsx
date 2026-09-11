@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
+import { redactSensitiveQueryParams } from "@/lib/analytics-url";
+
 type GtagWindow = typeof window & { gtag?: (...args: unknown[]) => void };
 
 /**
@@ -29,7 +31,9 @@ export function RouteChangeTracker() {
     if (typeof win.gtag !== "function") return;
     win.gtag("event", "page_view", {
       page_path: pathname,
-      page_location: window.location.href,
+      // Never the raw href: a credential-bearing query string reached
+      // Google verbatim through this field (portal audit L-GA, 2026-09-11).
+      page_location: redactSensitiveQueryParams(window.location.href),
       page_title: document.title,
     });
   }, [pathname]);

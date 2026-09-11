@@ -178,7 +178,25 @@ class PostgresCheckStore:
             case_type = CaseType(canonical_request["case_type"])
             purpose = Purpose(canonical_request["purpose"])
 
-            reason_codes_json = json.dumps([code.value for code in outcome.reason_codes])
+            # The LIST, deliberately not `json.dumps(...)` of it. Every pool this
+            # store runs on registers a `jsonb` type codec whose encoder IS
+            # `json.dumps` (`service_initializer.py::_light_init_connection` for
+            # the `api` process, `init_db_connection` for `rag`), so handing it a
+            # pre-serialized string makes asyncpg serialize it a SECOND time: the
+            # array `["X"]` lands as the JSONB scalar string `"[\"X\"]"`.
+            # Migration 286's CHECK constraint then calls
+            # `jsonb_array_length(reason_codes)` on that scalar — on BOTH the
+            # ACCEPT and the DECLINE branch — and Postgres raises SQLSTATE 22023
+            # `cannot get array length of a scalar`. That is not a
+            # `PersistencePolicyUnavailable` nor an `IdempotencyConflict`, the only
+            # two the router catches, so it escaped as a bare HTTP 500 on EVERY
+            # create() call. Measured live 2026-08-27: the funnel's first action
+            # 500'd for every payload shape, and both check tables held 0 rows.
+            # An explicit `$N::jsonb` cast does NOT dodge the codec — measured
+            # with a real INSERT: with the codec active, `$1` and `$1::jsonb` both
+            # store `jsonb_typeof = string`. Do not "fix" a future instance of
+            # this by adding a cast.
+            reason_codes_list = [code.value for code in outcome.reason_codes]
 
             # `canonical_request` is `EligibilityCheckRequest.model_dump(mode="json")`
             # at the real call site -- dates arrive as ISO strings, never
@@ -218,7 +236,7 @@ class PostgresCheckStore:
                 int(canonical_request["travellers"]),
                 bool(canonical_request["self_pay"]),
                 "ACCEPT" if outcome.accepted else "DECLINE",
-                reason_codes_json,
+                reason_codes_list,
                 outcome.published_filing_deadline,
                 outcome.price_idr,
                 outcome.price_source,

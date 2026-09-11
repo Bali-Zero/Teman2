@@ -1,0 +1,117 @@
+task_id: craft-s-promotion-readiness-1
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Build the precondition the conductor set before promoting four CI check
+  contexts to `main`'s required-status-checks. Squad S's three wiring PRs
+  (#5325, #5329, #5332, all merged 2026-08-30/31) made four job contexts
+  SAFE TO REQUIRE — `on.pull_request` with no top-level `paths:`, plus
+  `merge_group:` — but squad S exited without building the instrument that
+  answers the actual promotion question, and none existed on origin/main.
+
+  Wiring a context and being able to REQUIRE it are two different states,
+  and this repo had no instrument that could tell them apart. Conformance
+  (scripts/ci/check_required_workflow_conformance.py) proves a NEW push
+  would report the context; it says nothing about PRs already open, whose
+  head commit predates the workflow or its `paths:`-filter removal. A
+  context absent from a PR's rollup hangs "Expected — waiting for status"
+  forever (cicatrix W69) — three individually-correct wiring PRs could
+  still stall the fleet-wide merge queue if "conformance green" were read
+  as "promotable". Zero's constraint on this whole wave, verbatim:
+  "abbiamo lavorato tanto per velocizzarla, non voglio regressioni".
+
+  Ships: `scripts/ci/check_promotion_readiness.py` (the instrument),
+  `scripts/ci/test_check_promotion_readiness.py` (guilt+innocence corpus,
+  non-Anthropic build lane), `.github/workflows/promotion-readiness-
+  tests.yml` (its executor — a new scripts/ci/ corpus has no existing
+  sweep that would ever run it, measured against shard_tests.py's
+  DEFAULT_TARGETS and scripts-tests-sweep.yml's own declared scope), and a
+  REAL measurement run against the four live candidate contexts, whose
+  table is pasted into the PR body verbatim.
+
+  This PR does NOT promote anything and does NOT touch branch protection
+  or infra/required.d/contexts.json. The conductor promotes on this
+  evidence; this session measures.
+constraints:
+  - "MUST NOT mutate branch protection: no `gh api .../branches/main/protection`
+    write of any kind, no `contexts.json` edit that claims a context is
+    required when it is not. The script is read-only `gh pr list`/`gh pr
+    view`/`gh repo view` only — verified by a dedicated test that mocks
+    subprocess.run and asserts no invocation's argv contains `run` as the
+    gh subcommand or the literal substring `actions/runs`."
+  - "The reported context is the JOB's `name:` (or job id), never the
+    workflow's top-level `name:` — confirmed live 2026-08-31, not assumed:
+    `PR collision check corpus` reports under workflowName `PR collision
+    check (advisory)`; `Canary self-test + incremental mutation` reports
+    under workflowName `P1 STRATO-2 incremental mutation gate`. classify()
+    matches on the rollup's own name/context field only."
+  - "A skipped required check is satisfied per GitHub's documented Checks
+    API semantics — same non-blocking treatment applies to `neutral`,
+    confirmed as a REAL live conclusion in this repo (CodeQL, Vercel Agent
+    Review both report NEUTRAL on open PRs today) — both get their OWN
+    table state, never silently folded into PASS or ABSENT."
+  - "Candidates are CLI input (--context, repeatable), never hardcoded
+    literals inside the script. infra/required.d/contexts.json is read
+    ONLY to annotate a candidate already present there — it is known to
+    have drifted (11 entries vs 12 live) and is never trusted as the
+    candidate source or validated against."
+  - "Examining zero PRs or zero candidates must never exit 0 — the exact
+    defect class this wave exists to kill, found twice already tonight per
+    the mandate. Zero PRs -> CANNOT-VERIFY (exit 2); zero candidates ->
+    usage error (exit 3) before any gh call is made."
+  - "A single `gh pr list --json ...,statusCheckRollup` call across this
+    repo's ~44 open PRs returns HTTP 504 on every attempt — MEASURED
+    2026-08-31, not assumed. The script fetches one PR's rollup at a time
+    (measured reliable) and parallelizes with a bounded thread pool
+    instead of ever retrying the bulk shape."
+  - "Never post a harness/fable-gate verdict, never merge, leave auto-merge
+    OFF. Never print a secret. Never --no-verify."
+acceptance:
+  - text: "WHEN a candidate context is ABSENT from a PR's rollup (no entry
+      names it at all), the tool SHALL classify that PR as newly-blocked
+      for that context and SHALL exit non-zero when such PRs exceed
+      --max-newly-blocked (default 0)."
+    probe: "test_classify_absent_when_other_contexts_present / test_evaluate_blocked_pr_present_and_clean_pr_absent / live run against VOA probe organ tests"
+  - text: "WHEN every candidate context PASSES on a PR, that PR SHALL NOT
+      appear in newly_blocked_prs, and a run where every open PR passes
+      every candidate SHALL exit 0."
+    probe: "test_classify_checkrun_pass / test_main_all_passing_exits_zero"
+  - text: "WHEN the tool examines zero open PRs (an empty gh pr list result,
+      or a --base filter matching none), it SHALL exit 2 (CANNOT-VERIFY),
+      never 0."
+    probe: "test_main_empty_pr_list_exits_two_not_zero"
+  - text: "WHEN zero --context values are supplied, the tool SHALL exit 3
+      (usage error) WITHOUT making any gh call."
+    probe: "test_main_no_context_exits_three_and_never_calls_gh"
+  - text: "WHEN a candidate's rollup entry has conclusion SKIPPED or
+      NEUTRAL, the tool SHALL classify it as non-blocking (blocks=False)
+      while still labeling it distinctly from PASS/ABSENT in the table."
+    probe: "test_classify_checkrun_skipped_not_fail / test_classify_checkrun_neutral_not_fail"
+  - text: "WHEN a gh call fails on every retry attempt (network/API
+      failure), the tool SHALL exit 2 and SHALL NOT report a partial
+      result as if it were complete."
+    probe: "test_gh_run_retry_exhausted_raises_cannot_verify / test_main_one_pr_view_fails_among_others_exits_two"
+  - text: "The tool SHALL never read check-run state from a repo-wide run
+      listing (`gh run list` / `gh api .../actions/runs`) — only from a
+      PR's own statusCheckRollup."
+    probe: "test_never_calls_gh_run_or_actions_runs_api"
+  - text: "RUN for real against the four live candidate contexts and paste
+      the output table + verdict into the PR body, with a fresh count
+      confirming or refuting the conductor's earlier-tonight measurement
+      (41 open PRs, 3 carrying all four, 32 carrying just one)."
+    probe: "python3 scripts/ci/check_promotion_readiness.py --context ... (all four) --repo Bali-Zero/Teman2"
+assumptions:
+  - text: "The four candidate context names recovered from #5325/#5329/#5332
+      are exactly the defining workflow's JOB `name:` field, not the
+      workflow's top-level name — this was VERIFIED against a live PR
+      rollup (gh pr list), not read off the workflow YAML alone."
+    status: verified
+    probe: "gh pr list --json statusCheckRollup, grep the four names + their workflowName siblings"
+  - text: "GitHub's Checks API treats a NEUTRAL conclusion as satisfying a
+      required check the same way SKIPPED does. This is documented
+      platform behavior, not something re-derivable from this repo's own
+      data (no candidate context in this repo has ever reported NEUTRAL
+      live)."
+    status: unverified
+    probe: "would need a live required-context PR with a NEUTRAL conclusion to observe branch-protection's actual merge-eligibility verdict on it"

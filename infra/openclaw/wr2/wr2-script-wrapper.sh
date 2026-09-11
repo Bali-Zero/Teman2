@@ -72,7 +72,7 @@ _wr2_alerted=0
 # far execution got; every input it reads has to be available at line one.
 _wr2_gateway() {
     local root
-    for root in "${WR2_REPO_ROOT:-}" "${REPO_ROOT:-}" "$HOME/nuzantara-deploy" "$HOME/nuzantara"; do
+    for root in "${WR2_REPO_ROOT:-}" "${REPO_ROOT:-}" "$HOME/nuzantara"; do
         [[ -n "$root" && -f "$root/scripts/tg_notify.py" ]] || continue
         printf '%s' "$root/scripts/tg_notify.py"
         return 0
@@ -123,13 +123,15 @@ shift
 # below and must never depend on how far execution got.
 SCRIPT_ID="$(basename "$SCRIPT_PATH" .py)"
 
-# 2026-05-06: switched from ~/nuzantara (multi-agent collision zone)
-# to dedicated git worktree ~/nuzantara-deploy on branch deploy/main.
-# The main repo at ~/nuzantara is shared by 3+ Claude/Codex sessions
-# that toggle branches every 1-3 min — production cron must read from a stable
-# worktree pinned to origin/main, never feature branches.
-# To update: `cd ~/nuzantara-deploy && git pull origin main`.
-REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/nuzantara-deploy}"
+# 2026-05-06: switched from ~/nuzantara (multi-agent collision zone) to a
+# dedicated ~/nuzantara-deploy checkout, because the main repo was shared by 3+
+# sessions toggling branches every 1-3 min and production cron must read stable code.
+# 2026-09-10 ONE TREE: that reason is gone. Agent sessions now run in dedicated
+# worktrees under .worktrees/ via scripts/agent_start.py and no longer toggle the
+# main checkout's branch, which the 15-min puller holds at origin/main. The frozen
+# checkout is retired, so this default has to move with it or every WR2 script here
+# resolves to a path that does not exist.
+REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/nuzantara}"
 SECRETS_FILE="${HOME}/.nuzantara-secrets.env"
 
 # 0. PATH — launchd hands this wrapper a minimal PATH (no /opt/homebrew/bin).

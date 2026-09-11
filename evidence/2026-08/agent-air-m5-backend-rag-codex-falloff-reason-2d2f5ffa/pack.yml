@@ -1,0 +1,271 @@
+# NOTE: brief_ref is the CANONICAL name, not this pack's own directory — the
+# harness-floor.yml CI workflow copies both discovered per-PR files into
+# /tmp/evidence-check/evidence/{brief,pack}.yml under these exact names
+# before validating, so brief_ref must always read "evidence/brief.yml".
+brief_ref: evidence/brief.yml
+plan_ref: PR #5137 — agent/air-m5/backend-rag/codex-falloff-reason
+# Diff stats below are the LITERAL output of the command in the matching
+# receipt (git diff --numstat origin/main...HEAD), summed by hand ONLY as
+# 82+157+9+164+28=440 / 0+6+0+0+0=6 -- the per-file rows are the
+# transcription of the command's own stdout, not a re-estimate.
+diff:
+  files: 5
+  insertions: 440
+  deletions: 6
+  hotzone_hits:
+    - apps/backend-rag/backend/db/migrations_v2/290_wa_outbox_generation_fall_off_reason.sql
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: review
+    role: review
+    seat: opus-5 orchestrator (team-lead, fresh context on the diff)
+
+receipts:
+  - claim: "Deterministic floor for this diff is 3 (hot-zone migration path: apps/backend-rag/backend/db/migrations_v2/290_wa_outbox_generation_fall_off_reason.sql)."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed_files_290.txt"
+    exit: 0
+    ts: "2026-08-27T21:36:00Z"
+    seat: sonnet-5
+  - claim: "Migration 290 is squawk-clean under the repo's standard exclusion set."
+    cmd: "squawk --pg-version=15.0 --exclude=require-concurrent-index-creation --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid --exclude=prefer-bigint-over-int --exclude=prefer-identity --exclude=disallowed-unique-constraint apps/backend-rag/backend/db/migrations_v2/290_wa_outbox_generation_fall_off_reason.sql"
+    exit: 0
+    ts: "2026-08-27T21:47:10Z"
+    seat: sonnet-5
+  - claim: "The migration carries exactly one ROLLBACK marker."
+    cmd: "grep -c '^-- === ROLLBACK ===$' apps/backend-rag/backend/db/migrations_v2/290_wa_outbox_generation_fall_off_reason.sql"
+    exit: 0
+    ts: "2026-08-27T21:47:20Z"
+    seat: sonnet-5
+  - claim: "Queried the FULL open-PR set (not just main + one named PR) for migration-number claims, re-checked fresh: no open PR claims 290. #5072 claims 289_practice_status_log.sql, which COLLIDES with 289_visa_retention_binders_scope_to_visa_decision.sql already merged on origin/main -- a real, pre-existing collision on a different PR, not introduced or touched by this one. #5037 claims 293/294/295 -- no overlap."
+    cmd: "gh pr list --state open --limit 300 --json number,files -q '.[] | .number as $n | .files[]?.path | select(test(\"migrations_v2/[0-9]+_\")) | \"\\($n): \\(.)\"'"
+    exit: 0
+    ts: "2026-08-27T21:47:25Z"
+    seat: sonnet-5
+  - claim: "origin/main's real migration tip is 289_visa_retention_binders_scope_to_visa_decision.sql, with 296_wa_broker_jobs_live_only_unique.sql already merged out of numeric order (290-295 were free before this PR) -- confirmed by listing the tracked tree, not assumed."
+    cmd: "git ls-tree origin/main -- apps/backend-rag/backend/db/migrations_v2/ | grep -oE '[0-9]{3}_[a-z_0-9]+\\.sql' | sort -t_ -k1 -n | tail -8"
+    exit: 0
+    ts: "2026-08-27T21:47:35Z"
+    seat: sonnet-5
+  - claim: "ruff check is clean on all 4 touched Python files (the migration .sql is not a ruff target)."
+    cmd: "ruff check backend/services/integrations/wa_codex_leg.py backend/services/integrations/wa_outbox_worker.py backend/tests/unit/services/test_wa_codex_leg.py backend/tests/unit/services/test_wa_outbox_worker.py"
+    exit: 0
+    ts: "2026-08-27T21:50:05Z"
+    seat: sonnet-5
+  - claim: "Literal git diff --numstat origin/main...HEAD over the 5 touched files, transcribed verbatim: migration 290 82/0, wa_codex_leg.py 157/6, wa_outbox_worker.py 9/0, test_wa_codex_leg.py 164/0, test_wa_outbox_worker.py 28/0. Totals: 5 files, 440 insertions, 6 deletions."
+    cmd: "git diff --numstat origin/main...HEAD"
+    exit: 0
+    ts: "2026-08-27T21:45:00Z"
+    seat: sonnet-5
+  - claim: "test_wa_codex_leg.py is green: 53 passed, 0 failed (49 pre-existing + 4 new: 3 durability tests + 1 AST coverage test)."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py"
+    exit: 0
+    ts: "2026-08-27T21:49:43Z"
+    seat: sonnet-5
+  - claim: "test_wa_outbox_worker.py is green: 31 passed, 0 failed (30 pre-existing + 1 new: provider_not_codex durable-reason test)."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_outbox_worker.py"
+    exit: 0
+    ts: "2026-08-27T21:49:47Z"
+    seat: sonnet-5
+  - claim: "Unaffected sibling suite test_wa_outbox_worker_manners.py stays green after this change: 23 passed, 0 failed."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_outbox_worker_manners.py"
+    exit: 0
+    ts: "2026-08-27T21:49:52Z"
+    seat: sonnet-5
+  - claim: "Unaffected sibling suite test_wa_broker.py stays green after this change: 44 passed, 0 failed."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_broker.py"
+    exit: 0
+    ts: "2026-08-27T21:49:56Z"
+    seat: sonnet-5
+  - claim: "Mutation A (disable the recording call in attempt()'s wrapper, `if result.text is None: await record_fall_off_reason(...)` removed) turns exactly the two durability tests red: test_no_customer_message_records_a_durable_fall_off_reason (AssertionError, sql_contains returns False) and test_legs_exhausted_offer_refusal_records_a_durable_fall_off_reason (ValueError, zero matching UPDATE calls). 2 failed. File cleanly reverted afterward, re-confirmed green (0 failed) and git status clean (no stray .bak)."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py -q -k 'durable_fall_off or legs_exhausted_offer_refusal'"
+    exit: 1
+    ts: "2026-08-27T21:50:33Z"
+    seat: sonnet-5
+  - claim: "Mutation B (inject an extra CodexLegResult(fail='totally_fake_reason_xyz:detail') return, unreachable dead code but still a real AST call site) turns exactly test_fall_off_reason_map_covers_every_reason_the_module_can_emit red: AssertionError naming the unmapped head ('totally_fake_reason_xyz'). File cleanly reverted afterward, re-confirmed the full test_wa_codex_leg.py suite green (53 passed) and git status clean."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py -q -k map_covers_every_reason"
+    exit: 1
+    ts: "2026-08-27T21:50:56Z"
+    seat: sonnet-5
+  - claim: "The migration's CHECK constraint's allowed-value set is IDENTICAL to _FALL_OFF_REASON_PREFIX_MAP's value set unioned with {'unknown'} -- 20 values on both sides, verified programmatically (set equality), not eyeballed."
+    cmd: "PYTHONPATH=. python3 -c \"import re; from backend.services.integrations.wa_codex_leg import _FALL_OFF_REASON_PREFIX_MAP; mv=set(_FALL_OFF_REASON_PREFIX_MAP.values())|{'unknown'}; sql=open('backend/db/migrations_v2/290_wa_outbox_generation_fall_off_reason.sql').read(); m=re.search(r'generation_fall_off_reason IN \\((.*?)\\)\\)', sql, re.DOTALL); cv=set(re.findall(r\\\"'([a-z_]+)'\\\", m.group(1))); print('EQUAL:', mv==cv)\""
+    exit: 0
+    ts: "2026-08-27T21:51:00Z"
+    seat: sonnet-5
+  - claim: "Migration 290 applies cleanly against a scratch local Postgres (throwaway DB, dropped after): both new columns and the CHECK constraint are added, a valid enum value inserts, an invalid value ('bogus_reason') is rejected by the CHECK constraint with the exact error, and the rollback section removes both columns and the constraint, leaving the table byte-identical (\\d wa_outbox) to before the migration."
+    cmd: "createdb falloff_reason_migration_evidence_0827 && psql -d falloff_reason_migration_evidence_0827 -c 'CREATE TABLE wa_outbox (id BIGSERIAL PRIMARY KEY, generation_route TEXT);' && psql -d falloff_reason_migration_evidence_0827 -v ON_ERROR_STOP=1 -f /tmp/290_forward.sql && psql -d falloff_reason_migration_evidence_0827 -c \"INSERT INTO wa_outbox (generation_fall_off_reason) VALUES ('bogus_reason');\" ; psql -d falloff_reason_migration_evidence_0827 -v ON_ERROR_STOP=1 -f /tmp/290_rollback.sql && psql -d falloff_reason_migration_evidence_0827 -c '\\d wa_outbox' ; dropdb falloff_reason_migration_evidence_0827"
+    exit: 0
+    ts: "2026-08-27T21:51:11Z"
+    seat: sonnet-5
+  - claim: "Grepped the entire diff for raw exception-message interpolation into a fall-off reason string (str(exc), f'{exc}', message-carrying formats) -- zero hits. Every dynamic reason segment is type(exc).__name__ or a typed enum's .value, never message content, and record_fall_off_reason only ever receives the ALREADY-normalized 20-value code as its SQL parameter."
+    cmd: "grep -n 'str(exc)\\|f\"{exc}\"' backend/services/integrations/wa_codex_leg.py backend/services/integrations/wa_outbox_worker.py"
+    exit: 1
+    ts: "2026-08-27T21:52:00Z"
+    seat: sonnet-5
+
+tests:
+  cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py backend/tests/unit/services/test_wa_outbox_worker.py backend/tests/unit/services/test_wa_outbox_worker_manners.py backend/tests/unit/services/test_wa_broker.py"
+  passed: 151
+  failed: 0
+static:
+  lint: ok
+  typecheck: n/a-python-uses-mypy-elsewhere-not-in-touched-files
+  build: n/a
+
+runtime_proof: []
+
+dissent:
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      FIX-FIRST: _normalize_fall_off_reason maps any unrecognized head to
+      "unknown" at runtime (correct behavior), but nothing verified
+      _FALL_OFF_REASON_PREFIX_MAP actually covers every reason head the
+      module can emit. A future CodexLegResult(fail="something_new:...")
+      added later, with nobody teaching the map its head, would go red
+      NOWHERE at import or unit-test time -- the column would just quietly
+      fill with "unknown", silently reintroducing the exact defect this PR
+      exists to cure, this time disguised as a populated column.
+    status: CONFIRMED
+    repro: >
+      Added test_fall_off_reason_map_covers_every_reason_the_module_can_emit,
+      which extracts via AST -- not a hand-copied list, which would itself
+      be unable to fail when it drifts from the source -- every reason head
+      from wa_codex_leg.py's CodexLegResult(reason=/fail=) call sites (the
+      one success shape, text=result.text + reason="completed", is
+      deliberately excluded: it is never written to the DB) plus the
+      worker's one literal raw_reason="provider_not_codex" (the sole
+      condition the leg itself never emits), and asserts each is a key in
+      the map. Verified it can actually fail (mutation B above): a
+      temporarily injected CodexLegResult(fail="totally_fake_reason_xyz:...")
+      turned exactly this test red, naming the unmapped head; reverted, the
+      full suite is green again.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      MINOR: _normalize_fall_off_reason's docstring described a
+      "longest-prefix match on ':' ... tried before the bare split, so
+      multi-underscore prefixes are not shadowed" two-step algorithm that
+      the code never implements -- it does one split(":", 1)[0] and a
+      single exact dict lookup. No shadowing can ever occur because reason
+      heads never share a prefix that could collide (e.g.
+      "offer_contract_break" and "offer" are two distinct exact keys, not a
+      prefix relationship the lookup needs to disambiguate).
+    status: CONFIRMED
+    repro: >
+      Rewrote the docstring to describe the single-split-plus-exact-lookup
+      behavior the code actually has, and to point at the new AST coverage
+      test as the real guarantee (rather than an algorithm claim). No code
+      change -- the prior behavior was already correct, only its
+      description was wrong.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      Declared limitation, NOT requested to be cured in behavior:
+      record_fall_off_reason's docstring said it "swallows every
+      exception" -- literally true only for Exception, not
+      BaseException/CancelledError, which propagates under cancellation by
+      design (matching attempt()'s own "never raises... except
+      cancellation" contract). Swallowing a cancellation here would be the
+      wrong kind of best-effort -- it would hide asyncio shutdown from the
+      caller instead of merely hiding a DB hiccup.
+    status: CONFIRMED
+    repro: >
+      Corrected the docstring wording on record_fall_off_reason and on the
+      comment inside attempt() that repeated the same overclaim ("never
+      raises"). The BEHAVIOR (propagate on cancellation, catch Exception
+      only) was already correct and is unchanged -- only the description
+      was wrong, and it is now accurate. This is the residual documented
+      in this brief's risks, not a bug fixed in code.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      Client text or PII could reach generation_fall_off_reason if a raw
+      exception message or query content were ever interpolated into a
+      reason string.
+    status: RETRACTED
+    repro: >
+      Grepped the whole diff for str(exc)/f"{exc}"-style message
+      interpolation -- zero hits (receipt above). Every dynamic reason
+      segment across all 20 CodexLegResult construction sites is
+      type(exc).__name__ or a typed enum's .value, never message content.
+      Even if a raw string somehow carried arbitrary text,
+      record_fall_off_reason only ever writes the ALREADY-normalized code
+      (one of the fixed 20-value vocabulary, or "unknown") to the SQL
+      parameter -- the raw string itself never reaches the database.
+      Closed by construction, not by convention.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      The DB CHECK constraint might accept a value the Python normalizer
+      could never produce (or vice versa), silently letting the two drift
+      apart over time with nothing catching it.
+    status: RETRACTED
+    repro: >
+      Verified programmatically (receipt above): migration 290's CHECK
+      IN-list and _FALL_OFF_REASON_PREFIX_MAP's value set (unioned with
+      "unknown") are set-EQUAL today, 20 values on both sides. The two
+      halves have no shared source of truth (SQL vs Python) and must be
+      kept in sync BY HAND -- documented as a residual risk below, not
+      claimed as structurally impossible to drift.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      record_fall_off_reason's own-connection discipline might reintroduce
+      the InterfaceError scar (cicatrix family #8) by sharing the worker's
+      claim connection with its concurrent lease heartbeat.
+    status: RETRACTED
+    repro: >
+      Read the function body directly: record_fall_off_reason acquires its
+      OWN connection via `async with pool.acquire() as conn`, never
+      touching the caller's claim connection -- consistent with every
+      other DB access in this module (offer/wait/consume/drift-check all
+      acquire their own connections too, per the module's own
+      "Connection discipline" paragraph).
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      A DB write failure while recording the fall-off reason could
+      propagate and turn a successful send (or an ordinary fall-off) into
+      a hard failure, defeating mandate constraint 4.
+    status: RETRACTED
+    repro: >
+      test_fall_off_reason_recording_failure_never_blocks_the_result: a
+      fake pool that raises on the record-write's own connection acquire
+      (enter_exc_on_acquire=1, targeting the write's acquire specifically
+      since the no_customer_message path does zero acquires of its own).
+      attempt() still returns the identical fall-off result
+      (reason="no_customer_message", text=None). Verified via pytest,
+      part of the green 53-test suite above.
+
+residual_risks:
+  - "No independent cross-family review seat delivered a verdict on this PR
+    -- the dedicated refuter went idle twice without producing output. The
+    adversarial review recorded as dissent above was performed by the
+    conductor (team-lead, opus-5 orchestrator) on fresh context against the
+    diff, not by a second-family seat. Declared honestly per the mandate's
+    own instruction, not hidden."
+  - "generation_fall_off_reason holds only the LAST recorded fall-off
+    reason, not a per-attempt history. A row that falls off 3 times for 3
+    different reasons before eventually succeeding or terminally failing
+    keeps only the most recent one. Matches the mandate's literal ask
+    ('durable, per wa_outbox row') and keeps the migration additive/minimal
+    -- a history table would be a separate, larger change."
+  - "The migration's CHECK constraint and _FALL_OFF_REASON_PREFIX_MAP have
+    no single shared source of truth (SQL vs Python) and must be kept in
+    sync BY HAND. Verified identical today (receipt above); a future
+    change to only one side would not be caught by any test in this repo
+    short of running the full suite (which would then fail loudly, since
+    an unmapped head normalizes to 'unknown' but the CHECK still accepts
+    'unknown' -- so the failure mode is a silently-degraded reason, not an
+    outright DB error)."
+  - "record_fall_off_reason catches Exception, not BaseException -- a
+    cancellation during the write propagates by design and is NOT
+    swallowed, matching attempt()'s own contract. This is intentional, not
+    a bug, and is now correctly stated in the docstring after this round's
+    cure (previously the docstring overclaimed 'swallows every
+    exception')."
+  - "Whether this durable reason will actually get exercised against real
+    production traffic is unmeasured this round -- WA_GENERATION_PROVIDER
+    was unarmed at the time the mandate-triggering row (346) fell off, so
+    there is no live post-fix corpus yet to confirm the recorded reasons
+    match what actually happens in prod once the codex provider is armed."
+
+sources: []
+pii_scan: clean
+size_tokens: 5600

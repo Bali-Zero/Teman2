@@ -1,0 +1,373 @@
+{
+  "$description": "DO NOT EDIT BY HAND. SSOT for the Merah Putih identity's color and typography primitives, transcribed from research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3 (R4, Design Study Loop, Zero mandate 2026-08-27). A future generator will own re-derivation from that source; until it exists, edit the source doc and re-transcribe by hand — never patch this file in isolation without updating R4 too (two writers on one artifact is cicatrix family #9, state-schema mutation drift). Every color token that carries a WCAG duty (text / large-text / non-text / decorative / icon-only) declares its measured contrast ratio(s) in $extensions.\"com.balizero.contrast\"; scripts/check_token_contrast.py recomputes every one from the raw hex values with the WCAG 2.x relative-luminance formula and fails if a value drifts from its claim, or if a claim fails the WCAG floor its declared duty demands. This file does NOT migrate any production surface — apps/mouth/src/app/globals.css and the raw hex in (marketing)/page.tsx, PersonaDoors.tsx and layout.tsx stay untouched; per PR-2 of docs/plans/2026-08-29-beyond-sota-craft-wave/L11-product-ux-visual-design.md this artifact is SSOT + tripwire only, migration is a later PR. R4's shape/spacing/motion values (radius, spacing scale, motion durations) are deliberately NOT transcribed here — the mandate scoped this file to R4 §3's four MEASURED tables (grounds/ink/boundaries, the red family, semantic states, typography); shape/spacing/motion are new judgment values, not contrast facts, and carry no WCAG claim to tripwire. This is a DIFFERENT token store from .claude/skills/bali-zero-brand/tokens.json (the IG-carousel brand-cortex system) — do not conflate them.",
+  "$extensions": {
+    "com.balizero.provenance": {
+      "source": "research/design/2026-08-27-r4-identity-merah-putih-token-spec.md",
+      "section": "§3",
+      "authored_by_pr": "PR-2, docs/plans/2026-08-29-beyond-sota-craft-wave/L11-product-ux-visual-design.md",
+      "do_not_edit_by_hand": true
+    }
+  },
+  "color": {
+    "$type": "color",
+    "$description": "Grouped by shared WCAG duty, not by R4's table layout: R4's single \"Grounds, ink, boundaries\" table splits here into ground (pure backgrounds, never a foreground), text (every token R4 labels a text duty: ink/ink-soft/text-dark/soft-dark) and boundary (hairline + border-input + border-focus, R4's decorative/non-text component boundaries). red and state each mirror one of R4's own table headings verbatim (\"The red family\", \"Semantic states\").",
+    "ground": {
+      "carta": {
+        "$value": "#f7f6f2",
+        "$description": "THE page ground for the whole public perimeter under this identity (home, GARUDA, Visa Oracle, my) — wins over VO's #f7f5ef and my's #f4f1ea per ruling D-X2 (\"one carta must win\"). Never a foreground; carries no contrast claim of its own — see color.text.*, color.boundary.*, color.red.* and color.state.* for what is measured legible against it. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "elevated": {
+        "$value": "#ffffff",
+        "$description": "Cards, question options, inputs. Delta vs carta is only 1.08:1 — hierarchy must NEVER rely on the fill alone; color.boundary.border-input plus a shadow are mandatory on interactive containers built on this ground. Also serves as the white TEXT color on the red/error/whatsapp family backgrounds — those claims live here, in $extensions.\"com.balizero.contrast\", not on the backgrounds. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.red.merah}",
+              "ratio": 5.88,
+              "duty": "text"
+            },
+            {
+              "against": "{color.red.merah-action}",
+              "ratio": 5.52,
+              "duty": "text"
+            },
+            {
+              "against": "{color.red.merah-pressed}",
+              "ratio": 6.24,
+              "duty": "text"
+            },
+            {
+              "against": "{color.state.state-error}",
+              "ratio": 6.26,
+              "duty": "text"
+            },
+            {
+              "against": "{color.state.whatsapp}",
+              "ratio": 1.98,
+              "duty": "icon-only"
+            }
+          ]
+        }
+      },
+      "ground-dark": {
+        "$value": "#10141f",
+        "$description": "Dark-mode page ground, derived from ink — explicitly NOT derived from the retired navy #1e3863. Floor-level only (§2.3): a full dark token system is R5 work under the same contrast law. Never a foreground; no contrast claim of its own. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "panel-dark": {
+        "$value": "#1b2333",
+        "$description": "Dark-mode elevated surface (the dark-mode analogue of color.ground.elevated). Never a foreground; no contrast claim of its own — see color.text.text-dark and color.text.soft-dark for what is measured legible against it. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      }
+    },
+    "text": {
+      "ink": {
+        "$value": "#16213a",
+        "$description": "Primary text color, light mode. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3. The ink-on-whatsapp pairing (8.07) mathematically clears the text floor but is REJECTED for use: R4 §3 records it only to say \"though it measures 8.07, [it] breaks the platform's mental model\" — WhatsApp green is icon-only law (see color.state.whatsapp), this claim exists purely as the measured fact behind that rejection, not as an endorsed usage.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 14.79,
+              "duty": "text"
+            },
+            {
+              "against": "{color.ground.elevated}",
+              "ratio": 16.0,
+              "duty": "text"
+            },
+            {
+              "against": "{color.state.whatsapp}",
+              "ratio": 8.07,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "ink-soft": {
+        "$value": "#475372",
+        "$description": "Secondary text, light mode. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 7.07,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "text-dark": {
+        "$value": "#ecebe6",
+        "$description": "Dark-mode primary text. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.ground-dark}",
+              "ratio": 15.41,
+              "duty": "text"
+            },
+            {
+              "against": "{color.ground.panel-dark}",
+              "ratio": 13.18,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "soft-dark": {
+        "$value": "#aab1c4",
+        "$description": "Dark-mode secondary text. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.ground-dark}",
+              "ratio": 8.58,
+              "duty": "text"
+            },
+            {
+              "against": "{color.ground.panel-dark}",
+              "ratio": 7.34,
+              "duty": "text"
+            }
+          ]
+        }
+      }
+    },
+    "boundary": {
+      "hairline": {
+        "$value": "#e3e1da",
+        "$description": "DECORATIVE dividers only. At 1.21:1 on carta it fails even the 3:1 non-text floor, so R4 explicitly narrows its duty: it may not be the sole identifier of an interactive component (WCAG 2.2 SC 1.4.11). No WCAG floor is enforced on this claim — that is the point of the decorative duty, not a gap. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 1.21,
+              "duty": "decorative"
+            }
+          ]
+        }
+      },
+      "hairline-dark": {
+        "$value": "#2c3550",
+        "$description": "Dark-mode decorative divider (the dark-mode analogue of color.boundary.hairline). R4's own table gives this token no ratio (\"new, computed\" with no number in the cell) — no contrast claim is shipped here either, rather than inventing one the source never measured. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "border-input": {
+        "$value": "#7a8093",
+        "$description": "Interactive component boundaries — clears the WCAG 2.2 SC 1.4.11 non-text 3:1 bar on both grounds it is measured against. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 3.64,
+              "duty": "non-text"
+            },
+            {
+              "against": "{color.ground.elevated}",
+              "ratio": 3.94,
+              "duty": "non-text"
+            }
+          ]
+        }
+      },
+      "border-focus": {
+        "$type": "border",
+        "$value": {
+          "color": "{color.text.ink}",
+          "width": "2px",
+          "style": "solid"
+        },
+        "$description": "Focus ring. R4 §3 specifies \"ink 2px + 2px carta offset\" — a double-ring pattern this DTCG border composite CANNOT fully express (the composite has no offset-ring member); this token captures only the outer ring (ink, 2px, solid). The 2px carta-colored OFFSET GAP between the ring and the focused element is declared here, not silently dropped, and must be implemented in CSS as e.g. outline-offset: 2px against color.ground.carta. No contrast claim is attached to this token: its color is an alias to color.text.ink, whose own contrast facts are already claimed there; R4 gives no separate ratio for the focus ring itself. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      }
+    },
+    "red": {
+      "merah": {
+        "$value": "#C8102E",
+        "$description": "STRUCTURE: home hero/footer band, progress fill, brand marks. Also used as the wordmark/link TEXT color per §4.1 (\"the logo-red family\" is one of the four permitted text colors on carta/white) — hence the text-duty claim below, alongside R4's own \"structure-only in dark mode\" (3.13, non-text) fact. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 5.44,
+              "duty": "text"
+            },
+            {
+              "against": "{color.ground.ground-dark}",
+              "ratio": 3.13,
+              "duty": "non-text"
+            }
+          ]
+        }
+      },
+      "merah-action": {
+        "$value": "#D01033",
+        "$description": "Primary CTAs and links — action only: SELECTED state is NOT red (ink outline + check icon instead). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 5.11,
+              "duty": "text"
+            },
+            {
+              "against": "{color.ground.elevated}",
+              "ratio": 5.52,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "merah-pressed": {
+        "$value": "#c40020",
+        "$description": "Pressed/hover — always paired with an elevation or motion change, never hue-alone (the three reds sit 1.06-1.13 apart: no duty may depend on telling them apart by color). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 5.77,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "merah-dark-mode": {
+        "$value": "#ff2d4c",
+        "$description": "Dark-mode accent. Its TEXT duty exists only under DECLARED DEVIATION D4 (§9.4): Q-R3.2 ruled \"mai per testo\" (logo-red family never carries text) and this token amends that ruling for dark mode ONLY, because on the dark ground the logo-red family cannot read (merah on ground-dark = 3.13, structure-only) while this bright variant can (5.02). This file does not silently launder that deviation into an ordinary claim — it is recorded as a ruling deviation, not a default. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.ground-dark}",
+              "ratio": 5.02,
+              "duty": "text"
+            }
+          ]
+        }
+      }
+    },
+    "state": {
+      "state-eligible": {
+        "$value": "#16683f",
+        "$description": "Positive verdicts, success. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 6.29,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "state-likely": {
+        "$value": "#2a6f97",
+        "$description": "Probabilistic-positive. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 5.08,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "state-conditional": {
+        "$value": "#7a5209",
+        "$description": "Conditional/warning — also absorbs VO's gold #a8791f. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 6.39,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "state-error": {
+        "$value": "#a83a44",
+        "$description": "Field errors, negative verdicts — never color-alone: icon + text + border-input outline always co-carry the signal, because CVD users may not separate this wine from crimson. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3.",
+        "$extensions": {
+          "com.balizero.contrast": [
+            {
+              "against": "{color.ground.carta}",
+              "ratio": 5.79,
+              "duty": "text"
+            }
+          ]
+        }
+      },
+      "whatsapp": {
+        "$value": "#25d366",
+        "$description": "The ICON of the human exit — NEVER a text surface (white on it is 1.98, and ink-on-it, though it measures 8.07 — see color.text.ink — still breaks the platform's mental model). The WhatsApp component is: elevated card, border-input, official green icon, ink label. This green is the explicit exception to \"green survives only as state-eligible\". No text-duty claim is attached to this token itself — the white-on-whatsapp fact is claimed on color.ground.elevated (the foreground being measured), with duty icon-only so no WCAG text floor is (wrongly) demanded of an icon fill. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      }
+    },
+    "retired": {
+      "$value": "#ff3344",
+      "$deprecated": true,
+      "$extensions": {
+        "com.balizero.deprecated": true,
+        "com.balizero.contrast": [
+          {
+            "against": "{color.ground.carta}",
+            "ratio": 3.34,
+            "duty": "decorative"
+          },
+          {
+            "against": "{color.ground.elevated}",
+            "ratio": 3.62,
+            "duty": "decorative"
+          }
+        ]
+      },
+      "$description": "RETIRED — do not use for anything, in any duty. R4 §3's token table has no name for this row at all (it reads \"— retired\"); \"retired\" as a KEY is this file's own synthesis for addressability, not a name R4 ever wrote. R4 records it failing as text: \"fails 3.20-3.39 on the warm papers, 3.62 on white\" — the 3.20-3.39 range spans THREE warm papers (carta plus VO's and my's, neither of which is a token in this file); the carta-specific value (3.34) was computed by this file's own author from R4's hex, not copied from R4's prose, and falls inside R4's stated range as it must. Both claims below are declared duty \"decorative\" so scripts/check_token_contrast.py does not fail the shipped file on an intentionally-failing, intentionally-unused color — this is a checker technicality, NOT a design instruction: this token carries no live duty of any kind, decorative included. $deprecated (core DTCG) plus the namespaced com.balizero.deprecated extension both mark it: the namespaced key is the load-bearing one (guaranteed valid under any DTCG draft), $deprecated is included as a best-effort signal in case a generic DTCG-aware tool reads it. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+    }
+  },
+  "typography": {
+    "$description": "Typography ROLES only — fontFamily and fontWeight, the two leaf shapes DTCG defines a $type for. R4 §3's typography table also specifies per-role sizing/case/line-height rules (e.g. display minimum 24px, mono thousands-separator handling) that have no DTCG token $type to hold them; those rules are NOT invented a shape here — they stay prose-only in the source doc (research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3) until a future PR designs (or DTCG ships) a typography-role composite that can carry them. Retired typefaces (Montserrat, Arial Black, Impact, JetBrains Mono) are also not tokenized here — the mandate for this file scoped it to R4's four measured tables, and a retirement list is not a token any surface will ever reference.",
+    "fontFamily": {
+      "$type": "fontFamily",
+      "display": {
+        "$value": "Cormorant Garamond",
+        "$description": "h1/h2 only; sentence case; minimum 24px (prose rule, not expressed as a token — see typography.$description). No fallback stack is included here: R4 does not specify one (§8 ENG notes name font-display swap + fallback metrics as later ENG work). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "ui": {
+        "$value": "Inter",
+        "$description": "Everything else. Line-height tokens (not shipped here) must absorb Bahasa Indonesia's longer words without clipping. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "mono": {
+        "$value": "IBM Plex Mono",
+        "$description": "Visa codes, prices, timestamps. IDR amounts carry many zeros: mono plus thousands separators, never wrapping mid-amount at 360px (prose rule, not expressed as a token). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      }
+    },
+    "fontWeight": {
+      "$type": "fontWeight",
+      "display-medium": {
+        "$value": 500,
+        "$description": "Cormorant Garamond 500 (display, lighter cut). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "display-semibold": {
+        "$value": 600,
+        "$description": "Cormorant Garamond 600 (display, heavier cut). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "ui-regular": {
+        "$value": 400,
+        "$description": "Inter 400 (UI/body default). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "ui-medium": {
+        "$value": 500,
+        "$description": "Inter 500 (UI/body emphasis). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "ui-semibold": {
+        "$value": 600,
+        "$description": "Inter 600 — also the weight for headings below the 24px Cormorant floor (§3: \"below that, low-DPI Android antialiasing shreds the serif—smaller headings are Inter 600\"). Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "mono-regular": {
+        "$value": 400,
+        "$description": "IBM Plex Mono 400. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      },
+      "mono-medium": {
+        "$value": 500,
+        "$description": "IBM Plex Mono 500. Source: research/design/2026-08-27-r4-identity-merah-putih-token-spec.md §3."
+      }
+    }
+  }
+}

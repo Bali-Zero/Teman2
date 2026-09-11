@@ -1,0 +1,153 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: "L07-PR3 — docs/plans/2026-08-29-beyond-sota-craft-wave/L07-deploy-release-prove-live.md"
+diff:
+  files: 8
+  hotzone_hits:
+    - infra/launchagents/com.nuzantara.voa-deadman.plist
+    - infra/launchagents/wrappers/voa-deadman-wrapper.sh
+    - infra/launchagents/install_voa_deadman.sh
+    - apps/organism/organism/organs_registry.yaml
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: refute
+    role: review
+    seat: codex gpt-5.6-sol (xhigh, blind, cross-family, MANDATORY for the prod-flag PR)
+  - lane: gate
+    role: review
+    seat: opus-5 squad-P orchestrator (final on-disk gate, empirical, in-session, two rounds)
+
+receipts:
+  - claim: "The CRITICAL reproduced BEFORE fixing: a persistent fresh `unknown` returns healthy forever, so a real DNS/TLS outage leaves the funnel dying unwatched."
+    cmd: "three consecutive runs against a fresh verdict=unknown heartbeat"
+    exit: 0
+    ts: "2026-08-29T23:58:00Z"
+    seat: opus-5 orchestrator
+  - claim: "After the fix, DURATION discriminates: three DISTINCT fresh unknown observations -> healthy, healthy, fire_sustained_unknown (fire=True)."
+    cmd: "VOA_PROBE_HEARTBEAT=<fixture> python voa_deadman.py x3, distinct ts_epoch"
+    exit: 1
+    ts: "2026-08-30T00:02:00Z"
+    seat: opus-5 orchestrator
+  - claim: "A BLIP still never fires: unknown, unknown, dark, unknown, unknown -> fire=False on every tick, because any other verdict resets the streak."
+    cmd: "five runs, verdicts unknown/unknown/dark/unknown/unknown"
+    exit: 0
+    ts: "2026-08-30T00:02:30Z"
+    seat: opus-5 orchestrator
+  - claim: "The spec's GUILT acceptance: a stale heartbeat fires, enumerates all EIGHT secrets, states no gh workflow run was invoked, and produces a Telegram message delivered to the spool."
+    cmd: "seeded heartbeat 3600s old, TG_DRY_RUN=1 with a scratch spool"
+    exit: 1
+    ts: "2026-08-29T23:31:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The spec's INNOCENCE acceptance, run against the REAL LIVE probe heartbeat on Mini (fresh, verdict=dark): healthy_dark, fire=False, real_fire_gate=disabled. Plus fresh pass and unknown -> no fire; fresh fail -> fire."
+    cmd: "python voa_deadman.py with the live ~/logs/voa-probe-heartbeat.json, then three fixtures"
+    exit: 0
+    ts: "2026-08-29T23:33:00Z"
+    seat: opus-5 orchestrator
+  - claim: "'No alert' proven BY CONSEQUENCE: after the guilt run plus four innocence runs, the scratch spool holds exactly ONE message — the guilt case's."
+    cmd: "wc -l < <scratch>/sent-dry.jsonl"
+    exit: 0
+    ts: "2026-08-29T23:33:30Z"
+    seat: opus-5 orchestrator
+  - claim: "Corpus 96 passed (95 python + wrapper shim); shell wrapper corpus 24/24; gateway direct-sender lint clean (9566 files scanned)."
+    cmd: "pytest -B -p no:cacheprovider; bash test_voa_deadman_wrapper.sh; lint_tg_direct_senders.py"
+    exit: 0
+    ts: "2026-08-30T00:06:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Round-1 gate finding: `_NEVER_FIRE_VERDICTS` was DEAD CODE — removing `dark` from it left all 43 tests green. Now it GOVERNS: the same mutation gives 3 red."
+    cmd: "mutate the constant; pytest"
+    exit: 1
+    ts: "2026-08-30T00:08:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Mutation battery on every NEW invariant, all biting: streak 3->999 = 1 red; SILENCE_MARGIN_S 180->0 = 1 red; identity gate neutered = 1 red; schema accepts bool = 1 red; non-finite ts_epoch accepted = 4 red; threshold validator accepts nan/inf = 9 red."
+    cmd: "six mutations, PYTHONDONTWRITEBYTECODE=1, __pycache__ purged, restored byte-identical each time"
+    exit: 1
+    ts: "2026-08-30T00:09:00Z"
+    seat: opus-5 orchestrator
+  - claim: "StartInterval=300 with KeepAlive=false — verified by the linter, not by reading the plist (superscar #7)."
+    cmd: "python3 scripts/lint_plist_keepalive.py"
+    exit: 0
+    ts: "2026-08-30T00:05:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Exactly ONE subprocess.run in the module and it invokes the tg_notify gateway; zero `gh workflow run` invocations in any code path."
+    cmd: "grep -c 'subprocess.run'; grep for gh/os.system outside comments"
+    exit: 0
+    ts: "2026-08-30T00:05:30Z"
+    seat: opus-5 orchestrator
+
+dissent:
+  - objection: "CRITICAL — fresh `unknown` heartbeats can conceal a genuine outage forever."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "FIXED. Reproduced first (three consecutive ticks, fire=False). NOT cured by firing on `unknown` — PR-2's refutation established that firing on a single unattributable blip would be an outage the dead-man itself caused, and both refutations are correct. The discriminator is DURATION: UNKNOWN_ESCALATION_STREAK=3 distinct observations, keyed on ts_epoch so a faster poll cannot double-count, reset by any other verdict. Both directions proven live."
+  - objection: "HIGH — the silence threshold has no scheduling margin (threshold == producer interval)."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "FIXED. Measured: SILENCE_THRESHOLD_S was 900.0 and the producer's interval is exactly 900s, so a probe delayed one second reads as stale — and a FALSE fire darkens a LIVE funnel, the worst direction. Now derived as PRODUCER_INTERVAL_S + SILENCE_MARGIN_S, both named, with a pin so the margin cannot silently return to zero."
+  - objection: "CRITICAL — the heartbeat's identity and target are not validated; a fresh `pass` from staging or another probe is accepted as proof production is healthy."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "FIXED. `probe == voa_journey` and `mode == full` are now required; a mismatch is SILENCE naming the mismatch. `probe_version`/`base_url` explicitly declared-not-gated with their own pin."
+  - objection: "HIGH — future or non-finite timestamps create an immortal false green (1e309 is inf)."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "FIXED via math.isfinite plus an OverflowError catch on huge JSON ints, each routed to a distinct SILENCE code."
+  - objection: "HIGH — a nan/inf threshold disables silence detection entirely; a negative one causes constant false fires; a non-numeric one crashes before run_once()."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "FIXED. CLI and env validated identically; a bad value is refused loudly and falls back to the default rather than running with a threshold that cannot fire."
+  - objection: "HIGH — OverflowError inside classify() emits no decision, no P0 and no DEADMAN_RESULT on input the spec says counts as SILENCE."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "FIXED — caught in read_heartbeat(), never reaches classify()."
+  - objection: "MEDIUM — Path.read_bytes() with no regular-file check can block the tick forever on a FIFO/device/stalled mount."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "FIXED. A hung watcher is a dead watcher, and launchd will not start another instance while it hangs. is_file() check plus a 64 KiB stat()-based bound."
+  - objection: "LOW — `schema != 1` is not exact: True == 1 and 1.0 == 1 in Python."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "FIXED — the check now matches what its docstring claims."
+  - objection: "HIGH — a non-atomic heartbeat write causes a false fire; there is no retry, stable-read check or last-known-good snapshot."
+    seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    disposition: "REFUTED WITH EVIDENCE, not fixed. False for THIS producer: voa_journey_probe.mjs writes <targetPath>.<pid>.<randomUUID>.tmp then renames, and its own comment records that the per-PID-random name exists precisely so a concurrent reader (this organ) cannot observe a torn file. Rename on one filesystem is atomic. Pinned with a test that a live sibling .tmp never leaks into a read, plus a NO-RETRY-ON-READ paragraph in read_heartbeat()'s docstring so nobody 'fixes' this into existence later."
+  - objection: "CRITICAL — the watcher shares the probe's failure domain."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "DECLARED, not fixed — it was already declared in the brief before the refutation. Curing it means a second machine, which is an infrastructure decision outside this PR."
+  - objection: "HIGH — persistent fire conditions would cause repeated production restarts; Telegram dedup does not deduplicate GitHub workflows."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "DECLARED, and escalated. It cannot bite today (dry-run only, no dispatch exists) but it makes a dispatch idempotency LATCH a PREREQUISITE for ever authorising real-fire. Written into the brief's risks so needs-ruling item 2 is asked with this attached rather than discovered afterwards."
+  - objection: "HIGH — the dry-run materially understates repeated actuation."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "DECLARED — same root as the latch above and cured by the same future change."
+  - objection: "MEDIUM — the 'full blast radius' is a stale hardcoded copy, not derived from a pinned workflow revision."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "DECLARED in the docstring and the brief. Deriving it would mean parsing the workflow at runtime; the honest interim is to say plainly that it is a transcription that can drift."
+  - objection: "MEDIUM — the runtime kill switch is indefinite, with no expiry or notification."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "DECLARED. A forgotten VOA_DEADMAN_ENABLED=false leaves the funnel unguarded while reporting the state as intentional."
+  - objection: "HIGH — absence fires immediately rather than after an observed silence window."
+    seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    disposition: "DECLARED, not fixed — defensible as designed (an absent heartbeat means the probe never ran, which IS the condition), with the bootstrap-order caveat recorded."
+  - objection: "MEDIUM — wrapper mktemp failure, and the plist's StandardOutPath requires ~/logs to pre-exist."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "DECLARED. Verified that ~/logs exists on Mini, so neither bites at this arming; both are fresh-host concerns."
+
+pii_scan: clean
+
+residual_risks:
+  - "Six refutation findings are DECLARED and not patched. The load-bearing one: a dispatch idempotency LATCH is a PREREQUISITE for authorising real-fire, because with a persistent fire condition this organ would dispatch every tick and Telegram dedup does not deduplicate GitHub workflows."
+  - "Probe and dead-man are colocated on Mini — one failure domain. Worst-case actuation ~33 min after the threshold gained its margin."
+  - "The blast-radius message is a transcription of garuda-arm.yml, not derived from a pinned revision; it can drift from what a real dispatch would do."
+  - "`stage_only=true` may not suffice to make a flag flip take effect. Inferred from the workflow SOURCE and NOT live-verified — flyctl on Mini has no usable credential."
+  - "Only ONE cross-family seat was reachable this session. Kimi K3 returns empty; tp1-qwen3.8-max pings LIVE but times out on real work. The mandated seat for this diff (Codex sol) WAS reached, so the lane spec's requirement is met — but the council's preferred second opinion is absent and that is recorded, not papered over."

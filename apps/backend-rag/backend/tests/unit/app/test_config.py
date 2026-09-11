@@ -53,3 +53,125 @@ class TestConfig:
         settings = Settings(_env_file=None)
 
         assert settings.database_url == "postgresql://user:secret@db.example.com:5432/app"
+
+
+class TestPortalInviteUrl:
+    """The base URL every client-portal invitation email is built on.
+
+    `FRONTEND_PORTAL_URL` is unset on the production machine (measured on the
+    running nuzantara-rag machine 2026-09-10), so the FIELD DEFAULT — not an
+    env var — is what `portal_invite.send_invitation` prefixes to
+    `InviteService.create_invitation`'s `/portal/register?token=...`. The
+    previous default `https://nuzantara-mouth.vercel.app` answers 404 on every
+    path and the mouth project carries no such alias, so an invitation the CRM
+    reported as "sent" handed the client a dead link and no portal login could
+    follow.
+    """
+
+    def test_default_is_the_live_portal_domain(self, monkeypatch):
+        monkeypatch.delenv("FRONTEND_PORTAL_URL", raising=False)
+
+        settings = Settings(_env_file=None)
+
+        assert settings.frontend_portal_url == "https://my.balizero.com"
+
+    def test_default_is_not_a_vercel_deployment_alias(self, monkeypatch):
+        """A deployment alias can stop resolving; the custom domain is the contract.
+
+        This is the regression that matters, and it is about the KIND of host,
+        not one spelling: any `*.vercel.app` default puts the invite link on a
+        host whose lifetime is a deploy's, not the product's.
+        """
+        monkeypatch.delenv("FRONTEND_PORTAL_URL", raising=False)
+
+        settings = Settings(_env_file=None)
+
+        assert ".vercel.app" not in settings.frontend_portal_url
+
+    def test_composed_invite_url_matches_the_registration_route(self, monkeypatch):
+        """Compose the link exactly as the invite router does.
+
+        `send_invitation` does `settings.frontend_portal_url + result["invite_url"]`,
+        and `invite_url` is `/portal/register?token=<token>`. The composed value
+        is the one the client clicks.
+        """
+        monkeypatch.delenv("FRONTEND_PORTAL_URL", raising=False)
+
+        settings = Settings(_env_file=None)
+        composed = f"{settings.frontend_portal_url}/portal/register?token=abc123"
+
+        assert composed == "https://my.balizero.com/portal/register?token=abc123"
+
+    def test_env_var_still_overrides_the_default(self, monkeypatch):
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://portal.example.test")
+
+        settings = Settings(_env_file=None)
+
+        assert settings.frontend_portal_url == "https://portal.example.test"
+
+
+class TestPortalUrlTrailingSlash:
+    """The doubled separator, cured on the VALUE rather than at a call site.
+
+    Two consumers concatenate this base with a path that already starts with
+    "/": `portal_invite.send_invitation` and
+    `garuda_orders/outbox_handlers.py` (as `portal_base_url`). The first cure
+    normalised inside the invite router only, and the independent Gear-3 gate
+    caught that GARUDA would still mail `//portal/...`. Normalising on the
+    setting is what makes a NEW consumer safe without being told.
+    """
+
+    def test_env_var_trailing_slash_is_stripped(self, monkeypatch):
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://my.balizero.com/")
+
+        settings = Settings(_env_file=None)
+
+        assert settings.frontend_portal_url == "https://my.balizero.com"
+
+    def test_repeated_trailing_slashes_are_stripped(self, monkeypatch):
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://portal.example.test///")
+
+        settings = Settings(_env_file=None)
+
+        assert settings.frontend_portal_url == "https://portal.example.test"
+
+    def test_composed_link_has_no_doubled_separator(self, monkeypatch):
+        """Compose as both consumers do, from a base that carried a slash."""
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://my.balizero.com/")
+
+        settings = Settings(_env_file=None)
+        composed = f"{settings.frontend_portal_url}/portal/register?token=abc123"
+
+        assert "//portal" not in composed
+        assert composed == "https://my.balizero.com/portal/register?token=abc123"
+
+    def test_a_clean_base_is_left_alone(self, monkeypatch):
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://my.balizero.com")
+
+        settings = Settings(_env_file=None)
+
+        assert settings.frontend_portal_url == "https://my.balizero.com"
+
+
+# --- option D (RULED 2026-09-11): the migration runner's own DSN -----------------
+
+
+def test_migration_database_url_defaults_to_none(monkeypatch):
+    """Unset means single-DSN: exactly the pre-2026-09-11 runner behaviour."""
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.delenv("MIGRATION_DATABASE_URL", raising=False)
+    settings = Settings(_env_file=None)
+    assert settings.migration_database_url is None
+
+
+def test_migration_database_url_normalizes_postgres_scheme(monkeypatch):
+    """The migrator DSN gets the same scheme fix as DATABASE_URL (option D)."""
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.setenv(
+        "MIGRATION_DATABASE_URL",
+        "postgres://backend_rag_migrator:secret@nuzantara-postgres.flycast:5432/nuzantara_rag",
+    )
+    settings = Settings(_env_file=None)
+    assert settings.migration_database_url == (
+        "postgresql://backend_rag_migrator:secret@nuzantara-postgres.flycast:5432/nuzantara_rag"
+    )

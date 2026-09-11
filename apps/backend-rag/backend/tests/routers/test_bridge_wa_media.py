@@ -19,6 +19,7 @@ import pytest_asyncio
 
 import backend.app.routers.bridge as bridge
 from backend.services.events import outbox as events_outbox
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 _DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -30,7 +31,7 @@ _AUTH = "test-bridge-key-piece-b"
 
 @pytest_asyncio.fixture
 async def pool() -> asyncpg.Pool:
-    p = await asyncpg.create_pool(dsn=_DB_URL, min_size=1, max_size=3)
+    p = await create_prod_shaped_pool(_DB_URL, min_size=1, max_size=3)
     try:
         yield p
     finally:

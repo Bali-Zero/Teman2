@@ -1,0 +1,94 @@
+task_id: craft-p-l07-pr3-voa-deadman
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Close the L07 lane: a receptor on the receptor. It watches the heartbeat
+  PR-2's probe writes — NOT the probe process, because "the probe is dead"
+  and "the probe reports FAIL" are different states this organ must
+  distinguish and act on differently.
+
+  Built only after PR-2 was MERGED **and ARMED on Mini** with proof (four
+  autonomous ticks at ~906s against StartInterval=900), because its own spec
+  forbids building ahead of that. Building a receptor on a heartbeat whose
+  producer runs nowhere is precisely the "esiste != armato" shape this whole
+  lane exists to cure.
+
+  The lattice has FOUR verdicts and TWO of them must NEVER fire:
+
+    pass     funnel works end to end                    -> no fire
+    dark     flag deliberately OFF -- the state prod is
+             in RIGHT NOW, pre-launch                   -> NEVER fires
+    unknown  transport failure the probe could not
+             attribute                                  -> never fires on a BLIP
+    fail     funnel broken                              -> FIRE
+    SILENCE  absent/unreadable/malformed/wrong-schema/
+             stale heartbeat                            -> FIRE
+
+  `dark` must never fire because an alarm that fires every tick is one nobody
+  reads (W104). `unknown` must never fire on a blip because the dead-man's
+  only power is to turn a public funnel OFF, so firing on a wifi flap would
+  be an outage the dead-man itself caused -- the same class PR-2's refutation
+  forced a fourth verdict to prevent, one layer up at the ACTUATOR.
+constraints:
+  - "DRY-RUN ONLY. No code path may invoke `gh workflow run`. The single
+    subprocess call site is the tg_notify gateway. Real-fire is gated on an
+    exact literal (not 1/true/yes) and even then only logs a refusal.
+    Real-fire authority is Zero's -- needs-ruling item 2, NOT granted."
+  - "The dry-run message must enumerate the FULL blast radius: all EIGHT Fly
+    secrets garuda-arm.yml rewrites AND the app restart. The lane spec's
+    original build line said `-f garuda_public_enabled=false`, which
+    describes a far smaller act than the workflow performs. A dry-run that
+    under-reports what the real fire does is a dry-run nobody can consent to
+    on the basis of."
+  - "StartInterval, never KeepAlive (superscar #7). Verified by
+    lint_plist_keepalive.py, not by reading the plist."
+  - "Organ genes G1 (registry row), G2 (organism heartbeat -- SEPARATE from
+    the probe heartbeat it READS) and G5 (kill switch writing status=disabled
+    so a healer never resurrects an intentionally-stopped organ). #5215's CI
+    caught its sibling for missing exactly these."
+acceptance: |
+  GUILT     stale heartbeat (> threshold) -> dry-run fire, blast radius
+            enumerated, Telegram produced AND delivered.
+  GUILT     fresh verdict=fail -> fire.
+  GUILT     absent / directory / unreadable / invalid-UTF8 / malformed-JSON /
+            wrong-schema / unrecognized-verdict heartbeat -> SILENCE, fire-
+            eligible, each naming its OWN cause (an operator reads the reason
+            at 3am, not the state name).
+  GUILT     unknown SUSTAINED beyond its bound -> fire (see risks).
+  INNOCENCE fresh pass / dark / unknown-blip -> no fire, no alert, proven by
+            the alert count NOT rising rather than by asserting it.
+  PIN       real-fire default is OFF; the dry-run enumerates all eight
+            secrets; the never-fire set actually GOVERNS the decision.
+risks: |
+  - Probe and dead-man are colocated on Mini: ONE failure domain. If the
+    machine sleeps or loses power, both stop and nothing detects silence.
+    Worst-case actuation ~30 min (15-min probe interval + silence threshold).
+    The honest number, not the report's optimistic "<20 min".
+  - A dispatch idempotency LATCH is a PREREQUISITE for ever authorising
+    real-fire: with a persistent fire condition this organ would dispatch
+    every tick, and Telegram dedup does NOT deduplicate GitHub workflows.
+    Declared here so the ruling in needs-ruling item 2 is asked for with this
+    attached, not discovered afterwards.
+  - The blast-radius message is a hardcoded copy, not derived from a pinned
+    workflow revision. If garuda-arm.yml changes, the dry-run can describe a
+    different operation from the one a real dispatch would perform.
+  - The kill switch has no expiry: a forgotten VOA_DEADMAN_ENABLED=false
+    leaves the funnel unguarded while reporting the state as intentional.
+  - `stage_only=true` may NOT suffice to make a flag flip take effect -- the
+    workflow's own comment says staged secrets apply on the next deploy,
+    which contradicts the assumption that a per-request flag read makes a
+    restart unnecessary. Inferred from SOURCE, not live-verified: flyctl on
+    Mini has no usable credential.
+grader: |
+  Blind cross-family refutation by Codex GPT-5.6 sol at xhigh -- MANDATORY
+  for this PR per the lane spec, because it is the prod-flag-touching one.
+  Final on-disk gate held by the Opus 5 squad orchestrator, empirically, in
+  session: the spec's own acceptance fixtures were run against the REAL live
+  probe heartbeat, and every mutation was re-run by the gate seat rather than
+  accepted from the implementer's report.
+budget: |
+  One Sonnet 5 implementer pass plus two orchestrator-driven correction
+  rounds; one Codex sol xhigh refutation. Runtime cost: one file read every
+  5 minutes, zero network calls unless it fires.
+pii: none

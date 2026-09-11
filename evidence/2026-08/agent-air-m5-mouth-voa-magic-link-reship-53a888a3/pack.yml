@@ -1,0 +1,512 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR reshipping #5157 (agent/air-m5/ops/garuda-magic-link-consume-0828) onto a fresh
+  origin/main. #5157 was SUSPENDED under Agent-PR-Contract rule 8 after three consecutive
+  Gear-3 BLOCKs, none of them on the code: each was an inaccuracy in the pack's own prose.
+  The code is brought across; the pack is written from scratch by a lane that did not write
+  the code. Nothing in this pack is copied from #5157's pack, and every number here was
+  re-measured on THIS branch.
+
+lanes:
+  # The seat values are QUOTED block scalars on purpose: a bare `#5157` in a plain YAML
+  # scalar opens a comment, and an earlier draft of this very block lost the rest of the
+  # line to it silently. Caught here by the linter refusing to parse, which is the good
+  # failure mode — the bad one is a value that truncates and still validates.
+  - lane: voa-magic-link-code-bring-across
+    role: build
+    seat: >-
+      claude-opus-5 (this session — the only build lane; it authored no new production
+      code, it transplanted #5157's and corrected two test files plus one comment)
+  - lane: voa-magic-link-refuter-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (OpenAI, non-Anthropic) — adversarial security review on a fresh
+      context, never the seat that wrote the code
+  - lane: voa-magic-link-refuter-kimi
+    role: review
+    seat: >-
+      kimi-code/k3 (Moonshot, non-Anthropic) — second, independent cross-family refuter,
+      no visibility of the first seat's output
+
+council_run: journal.jsonl
+
+diff:
+  net_lines: "14 files, +1980/-14"
+  measured_by: >-
+    scripts/evidence_pack_lint.py --print-measured --numstat-file <merge-base numstat>,
+    taken immediately before the final commit. Not hand-counted. The commit count is
+    deliberately NOT narrated anywhere in this pack: it changes between the last edit and
+    the push, so any value written here would be stale by the time it is read.
+  note: >-
+    See the receipt "measured countable claims" below for the verbatim sentence the linter
+    printed and the exact command that produced it.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      Before this PR, NOTHING in apps/mouth consumed the magic-link token. This is the
+      whole defect: the backend has been minting single-use tokens into emails that no
+      frontend surface reads.
+    cmd: >-
+      git grep -l "magic_token" origin/main -- apps/mouth ; git grep -l
+      "GARUDA_PUBLIC_ENABLED" origin/main -- apps/mouth
+    result: >-
+      First command: no output, rc=1 — zero files. Second (positive control, run in the
+      same shell from the worktree root to prove the search is not silently scoped away):
+      3 files. So the absence is a real absence, not a mis-scoped git-grep. Repo-wide,
+      `magic_token` on origin/main appears only in
+      apps/backend-rag/backend/services/garuda_portal/magic_link_store.py, two backend
+      tests, and one research manifest.
+    exit: 1
+    ts: 2026-08-29T03:10Z
+    seat: session (build lane)
+
+  - claim: >-
+      The funnel's first page — the URL the emailed link used to point at — reads neither
+      query parameter, so a recipient landed on a form asking what they had already
+      answered, with an unread credential trailing in the URL.
+    cmd: grep -n "magic_token\|result_id\|searchParams" apps/mouth/src/app/visa/voa/page.tsx
+    result: "no matches"
+    exit: 1
+    ts: 2026-08-29T03:10Z
+    seat: session (build lane)
+
+  - claim: >-
+      8 of this PR's 11 CODE files are BYTE-IDENTICAL to #5157 (compared by git blob SHA,
+      not by eye). "11 code files", not "11 changed files": the PR changes 14, the other
+      three being this pack, its brief and its journal.
+      The 8: the workflow, the backend store, the backend test, the sitemap test, and all
+      four of route.ts / exchange/route.ts / continue/page.tsx / continue/page.test.tsx.
+      NO PRODUCTION CODE PATH DIFFERS FROM THE VERSION THE GEAR-3 GATE MEASURED SOUND. The
+      three that differ are contract.ts (comment only), route.test.ts and
+      exchange/route.test.ts (both test-only) — the two corrections described in their own
+      receipts below.
+    cmd: >-
+      for f in <the 11 paths>; do [ "$(git rev-parse FETCH_HEAD:$f)" =
+      "$(git rev-parse HEAD:$f)" ] && echo IDENTICAL || echo DIFFERS; done   # FETCH_HEAD =
+      b0454bd80a, #5157's head
+    result: >-
+      IDENTICAL for .github/workflows/garuda-arm.yml, magic_link_store.py,
+      test_magic_link.py, sitemap.test.ts, visa/voa/auth/route.ts,
+      visa/voa/auth/exchange/route.ts, visa/voa/auth/continue/page.tsx,
+      visa/voa/auth/continue/page.test.tsx. DIFFERS for visa/voa/auth/contract.ts,
+      visa/voa/auth/route.test.ts, visa/voa/auth/exchange/route.test.ts.
+    exit: 0
+    ts: 2026-08-29T03:05Z
+    seat: session (build lane)
+
+  - claim: >-
+      The three new frontend test files plus the sitemap test are green on this branch, on
+      a fresh origin/main base.
+    cmd: >-
+      cd apps/mouth && npx vitest run src/app/visa/voa/auth src/app/sitemap.test.ts
+    result: >-
+      "Test Files 4 passed (4) / Tests 75 passed (75)". Per file, measured separately in
+      the same pass: route.test.ts 14, exchange/route.test.ts 35, continue/page.test.tsx 11
+      (= 60 in the magic-link corpus this PR adds), sitemap.test.ts 15 (a PRE-EXISTING file
+      — this PR adds three entries to its INTENTIONALLY_UNLISTED map and no new test).
+    exit: 0
+    ts: 2026-08-29T03:16Z
+    seat: session (build lane)
+
+  - claim: "apps/mouth typechecks clean with the three new routes in the tree."
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: "no output, exit 0"
+    exit: 0
+    ts: 2026-08-29T03:16Z
+    seat: session (build lane)
+
+  - claim: >-
+      The backend magic-link suite is green, and 4 of its 8 tests are the ones this PR
+      adds for the emailed-URL default.
+    cmd: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
+      backend/tests/services/garuda_portal/test_magic_link.py
+    result: >-
+      "8 passed in 0.02s". The 4 added by this PR, read from the diff:
+      test_default_link_targets_the_page_that_redeems_the_token,
+      test_default_link_is_not_the_funnel_first_page,
+      test_link_carries_both_parameters_the_landing_page_reads,
+      test_env_var_overrides_the_default.
+    exit: 0
+    ts: 2026-08-29T03:12Z
+    seat: session (build lane)
+
+  - claim: >-
+      ELEVEN mutations were applied to THIS branch, one at a time, each auto-restored after
+      its run, and EVERY ONE turns at least one test red. The count after each name is the
+      number of tests that went red, measured — not asserted — in ONE battery run against
+      the FINAL state of the files (auth corpus = 60 tests). Two earlier receipts in this
+      pack quote different counts for M1 and M8; those were taken on the PRE-CORRECTION
+      files and each says so. Same mutation, different file, different number — not a
+      contradiction, and flagged here so a reader does not have to reconcile it alone.
+      M1 loopback drop `localhost`:
+      1. M2 hasAccountSession first-match-wins instead of last-wins: 1. M3 hasAccountSession
+      accept an empty cookie value: 3. M4 landing stop binding the result id to the token: 1.
+      M5 landing drop HttpOnly: 1. M6 exchange skip the same-origin check: 5. M7 exchange
+      fold Set-Cookie with get() instead of getSetCookie(): 2. M8 exchange accept any
+      upstream status, not only 204: 1. M9 exchange leave the pending cookie alive on the
+      flag-off path: 1. M10 continue offer the button with no token in flight: 6. M11
+      backend revert the emailed link to the funnel first page: 2.
+    cmd: >-
+      python3 <mutation harness — applies one textual substitution, asserts it matched
+      exactly once, runs `npx vitest run src/app/visa/voa/auth` (or the backend pytest for
+      M11), restores the file, records the red count>
+    result: >-
+      11 of 11 BITE. Working tree verified clean afterwards (`git status --short` showed
+      only the untracked evidence directory), so no mutation leaked into the commit.
+    exit: 0
+    ts: 2026-08-29T03:14Z
+    seat: session (build lane)
+
+  - claim: >-
+      M8 did NOT bite on the code as #5157 shipped it — it survived with 0 tests red — and
+      that is why exchange/route.test.ts differs here. The `upstream.status !== 204` guard
+      was correct but entirely unasserted: every other non-204 fixture in that file also
+      carries no cookies, so `hasAccountSession` refused them for the OTHER reason and the
+      status check could be deleted with no test noticing. One test was added for the one
+      shape that separates the two guards — a non-204 answer that DOES carry an account
+      cookie. Reported as a finding rather than repeated as a passing claim.
+    cmd: >-
+      (before) replace `if (upstream.status !== 204) {` with `if (false) {`, run the auth
+      corpus ; (after) same mutation, same command, with the new test present
+    result: >-
+      Before the added test (corpus = 59 tests): "Tests 59 passed (59)" — 0 red, mutation
+      SURVIVED. After (corpus = 60): "Tests 1 failed | 59 passed (60)" — 1 red, mutation
+      bites. The 1 here and the 1 reported for M8 in the battery receipt are the same
+      measurement on the same final file.
+    exit: 0
+    ts: 2026-08-29T03:02Z
+    seat: session (build lane)
+
+  - claim: >-
+      The carried-forward suspicion about route.test.ts's loopback case is TRUE, and its
+      mechanism is now measured rather than inferred. `NextRequest` normalises the hostname:
+      `new NextRequest("http://127.0.0.1:3000/x")` gives
+      `new URL(request.url).hostname === "localhost"`, while a plain
+      `new URL("http://127.0.0.1:3000/x")` keeps `127.0.0.1`. So the `it.each` row labelled
+      "omits Secure on 127.0.0.1" was exercising the `localhost` entry and could not fail if
+      the `127.0.0.1` entry were deleted. The vacuous row was removed and the surviving
+      single case documents exactly what it does and does not cover.
+    cmd: >-
+      a throwaway vitest probe printing the two hostnames, then two mutations: delete
+      `"127.0.0.1"` from LOOPBACK_HOSTS, then delete `"localhost"`
+    result: >-
+      Probe: `http://127.0.0.1:3000/x -> NextRequest:localhost plainURL:127.0.0.1`.
+      Then, ON THE PRE-CORRECTION FILE (route.test.ts still carrying the two-row `it.each`,
+      15 tests): deleting `"127.0.0.1"` -> 15 passed, 0 red; deleting `"localhost"` ->
+      2 failed, 13 passed — and BOTH reds were the two rows of that one `it.each`, which is
+      the proof that both rows ran through the single `localhost` entry. AFTER the vacuous
+      row was removed the file holds 14 tests and the same `"localhost"` deletion turns 1
+      red, which is the number the mutation-battery receipt above reports for M1. The probe
+      file was deleted; `git status` confirms it is not in the commit.
+    exit: 0
+    ts: 2026-08-29T02:58Z
+    seat: session (build lane)
+
+  - claim: >-
+      Every `file:line` that the brought-across code cites in its own comments still
+      resolves on THIS base — the rebase onto a moved main did not leave a stale citation
+      behind. Checked by opening each line, not by trusting the comment.
+    cmd: >-
+      awk 'NR==421||NR==449||NR==510' "apps/mouth/src/app/api/[...path]/route.ts" ;
+      awk 'NR>=1328&&NR<=1334' apps/backend-rag/backend/app/setup/service_initializer.py ;
+      grep -n "" apps/backend-rag/backend/app/routers/garuda_portal_auth.py (lines 225/234/238) ;
+      grep -n "GoogleAnalytics\|RouteChangeTracker" apps/mouth/src/app/layout.tsx
+    result: >-
+      proxy 421 = `const respHeaders = new Headers(upstream.headers);`, 449 =
+      `const isLoginEndpoint =`, 510 = `return new Response(bodyBuffer, {` — the verbatim
+      Set-Cookie forwarding and its single login-only exception, as the exchange route's
+      comment describes. service_initializer.py:1331 =
+      `app.state.garuda_magic_link_store = garuda_magic_link_store`.
+      garuda_portal_auth.py:225 = `result_id: str = Field(pattern=r"^[A-Za-z0-9_-]{22,128}$")`,
+      :234 = `token: str = Field(min_length=32, max_length=2048)`, :238 =
+      `_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})` — the three
+      constants contract.ts mirrors. layout.tsx:289 `<GoogleAnalytics .../>` and :290
+      `<RouteChangeTracker />`, the reason the landing renders no document.
+    exit: 0
+    ts: 2026-08-29T03:08Z
+    seat: session (build lane)
+
+  - claim: >-
+      The deterministic gear floor recomputed from this PR's own COMMITTED changed-file set
+      is 3, matching the gear the brief declares, and it comes from a PATH hit
+      (.github/workflows/**) rather than from blast radius.
+    cmd: >-
+      git diff --no-renames --name-only $(git merge-base origin/main HEAD) HEAD ><changed>
+      && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed>
+      && python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file
+      <changed>   # <changed> is a scratchpad file outside the repo, never /tmp
+    result: "3 — and floor source: path"
+    exit: 0
+    ts: 2026-08-29T03:11Z
+    seat: session (build lane)
+
+  - claim: >-
+      Two cross-family refuters were actually run against this branch — they are not a
+      formality declared in `lanes:`. Both got the same prompt and a fresh context, neither
+      saw the other's output, and both delivered. The single most consequential finding of
+      the round (no ownership check on magic-link ISSUANCE) came from the refuter, not from
+      the lane that brought the code across, which is the point of running them.
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort="xhigh" --sandbox read-only
+      --skip-git-repo-check "<adversarial prompt>" ;  kimi -p "<same prompt>" -m
+      kimi-code/k3
+    result: >-
+      Codex: 8 ranked findings (3 HIGH / 4 MEDIUM / 1 LOW) plus 5 explicit retractions.
+      Kimi: independent analysis converging on the same missing-documents-endpoint finding,
+      an independent RETRACTION of the desync-as-authorization-break, and one further
+      operational finding (double-submit render race). Both recorded in journal.jsonl and
+      graded, individually re-verified, in `dissent` below.
+    exit: 0
+    ts: 2026-08-29T03:33Z
+    seat: session (build lane, reporting the review lanes' completion)
+
+  - claim: >-
+      The R9 council quorum IS satisfied — the NOTICE is CI's file-staging, not an absent
+      council, and this is measured rather than argued. Linting the pack IN PLACE, where
+      journal.jsonl sits beside it, the `council_run` NOTICE DISAPPEARS and only the
+      ground_truth one remains. Linting the CI-faithful staged copy (pack.yml + brief.yml
+      alone, exactly what harness-floor.yml copies) brings it back.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py
+      evidence/2026-08/agent-air-m5-mouth-voa-magic-link-reship-53a888a3/pack.yml
+      --changed-files-file <changed> --numstat-file <numstat>   # then the same lint
+      against a staged copy holding only pack.yml + brief.yml
+    result: >-
+      In place: "NOTICE — ground_truth" then "clean", exit 0 — no council_run notice.
+      CI-faithful staged copy: "NOTICE — ground_truth" AND "NOTICE — council_run", then
+      "clean", exit 0. Same pack, same flags; the only difference is whether the journal
+      is present to be opened.
+    exit: 0
+    ts: 2026-08-29T03:41Z
+    seat: session (build lane)
+
+  - claim: >-
+      MEASURED COUNTABLE CLAIMS. This is the linter's own sentence, recomputed from git and
+      pasted verbatim rather than counted by hand — the mechanism #5191 added precisely
+      because hand-counted diff stats are what BLOCKed #5157's round 3.
+    cmd: >-
+      git diff --cached --no-renames --numstat $(git merge-base origin/main HEAD) ><numstat>
+      && python3 scripts/evidence_pack_lint.py --print-measured --numstat-file <numstat>
+      # --cached, so the staged evidence files are counted too; merge-base anchored, never
+      # a two-dot diff against origin/main's tip (W102)
+    result: "14 files, +1980/-14, commit count unmeasured (no --commit-count, no pull_request payload) — pasted verbatim into diff.net_lines, where the linter re-derives and checks it"
+    exit: 0
+    ts: 2026-08-29T03:20Z
+    seat: session (build lane)
+
+dissent:
+  # Every entry below was RE-VERIFIED by this session against the code before being
+  # written down — the refuter hallucinates too (superscar #6). Where a seat's severity or
+  # framing did not survive that check, the entry says so rather than repeating it.
+
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      HIGH — magic-link ISSUANCE has no ownership check, so anyone who knows a `result_id`
+      can have a link for it emailed to an address of their choosing. `request_magic_link`
+      accepts any non-empty `garuda_result_session` cookie; the store then throws the
+      secret away without ever matching it.
+    status: CONFIRMED
+    note: >-
+      VERIFIED by this session, and it is worse than a missing check — the check exists
+      elsewhere and this path alone skips it.
+      `garuda_portal_auth.py:329` short-circuits only on
+      `garuda_result_session is None or <malformed result_id>`; any junk string passes.
+      `magic_link_store.py:222` is literally
+      `del result_session_secret  # not persisted`. Meanwhile
+      `garuda_voa_check_results.session_secret_hash` EXISTS (migration
+      `286_garuda_voa_check_results.sql:99`) and `check_store.py:267,314` DO filter
+      `WHERE result_id = $1 AND session_secret_hash = $2`. So the ownership key is real and
+      enforced by the result-page readers, and only issuance ignores it — while
+      `request_magic_link`'s own docstring claims "Always 202 for an unknown or NON-OWNED
+      result".
+      SCOPE: pre-existing, NOT introduced or touched by this PR (this diff modifies only
+      `_default_send_magic_link_email` and a class docstring in that file; `issue()` and
+      `request_magic_link` are untouched). NOT live: `GARUDA_PUBLIC_ENABLED` is false, and
+      the router answers a fabricated token with 401. Deliberately NOT fixed here — it is a
+      backend authorization change, a different concern, and folding it in would be exactly
+      the fix-of-a-fix widening rule 8 exists to stop. Escalated to the team lead as a
+      separate PR, and it must land before go-live: it is what turns the login-CSRF entry
+      below from "attacker uses their own application" into "attacker uses yours".
+
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      HIGH — login CSRF is fully exploitable: an attacker mails the victim the ATTACKER's
+      link, the victim clicks Continue, and the victim's browser ends up holding the
+      attacker's session, then uploads a passport into the attacker's application.
+    status: CONFIRMED
+    note: >-
+      Confirmed, and already named by the code itself — `continue/page.tsx:30-38` declares
+      it as a KNOWN RESIDUAL, explains that closing it needs a non-consuming
+      recipient-identity lookup the backend does not expose, and states that the sentence
+      shown to the customer is a mitigation and not a fix. This pack does not upgrade that
+      to "handled". The operative protection is that the funnel is dark; the standing
+      condition in that comment — "The funnel is dark while this stands" — is a go-live
+      gate, and this PR does not lift it.
+
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      LOW — an invalid landing GET does not clear an ALREADY-LIVE pending credential. Link A
+      sets `garuda_magic_pending`; the browser then visits a malformed link; the failure
+      page appears, but A stays usable for up to ten minutes from another tab.
+    status: CONFIRMED
+    note: >-
+      VERIFIED in this PR's own code: `route.ts:93-95` is
+      `if (!usable) { return seeOther(FAILURE_LOCATION); }` — `seeOther`'s cookie argument
+      is omitted, so no expiry is emitted on that path. This is the ONE confirmed finding
+      that lands inside this diff. It is NOT fixed here, deliberately: the fix is a
+      production-code change, and this PR's central claim — and the reason an independent
+      gate can trust it — is that no production code path differs from the version already
+      measured sound. Changing one now to answer a LOW finding would trade that guarantee
+      for a small hardening. Handed to the team lead as a follow-up; the residual is bounded
+      by the cookie's own 600-second `Max-Age` and by the token's server-side TTL.
+
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MEDIUM — an ACTIVE scanner can still consume the token: a cookie-preserving sandbox
+      that follows the 303, parses the continuation form and submits it presents
+      `Sec-Fetch-Site: same-origin` and burns the token before the recipient arrives.
+    status: CONFIRMED
+    note: >-
+      Correct, and the code already claims exactly this much and no more —
+      `exchange/route.ts:22-28` says a POST "is NOT proof of a human gesture", names the
+      cookie-preserving sandbox by description, and records it as accepted residual. What
+      POST-only buys is that no PASSIVE fetch spends the token, which both seats confirmed
+      separately. Recorded here so the ledger shows the limit was measured, not assumed.
+
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      HIGH — the account cookie is minted with `Domain=.balizero.com` and `SameSite=None`,
+      so every sibling subdomain's server receives the bearer and a compromised sibling can
+      replay it against GARUDA endpoints.
+    status: PLAUSIBLE
+    note: >-
+      The mechanism is real and this session verified the SameSite half directly:
+      `cookie_auth.py:49-61` returns `"none"` in production, by design, for cross-subdomain
+      fetch. But the severity is not this PR's to carry and the framing is downgraded on
+      purpose: the attributes are the BACKEND's runtime choice
+      (`_set_account_session_cookie` reads `get_cookie_domain()` / `get_samesite_policy()`),
+      and this PR forwards the `Set-Cookie` verbatim precisely so it cannot drift from what
+      the backend intends. Re-deriving narrower attributes in the frontend would be a copy
+      that silently goes stale — the failure this design deliberately avoids. Left as a
+      declared property of the existing SSO cookie policy, not a defect introduced here.
+
+  - seat: kimi-code/k3
+    objection: >-
+      The result-id/token pair in the pending cookie is unsigned, so a sibling subdomain
+      that can plant a `Domain=balizero.com` cookie of the same name desyncs the redirect
+      target from the session the backend mints.
+    status: RETRACTED
+    note: >-
+      Retracted as an AUTHORIZATION break after both seats and this session checked the
+      server side — not merely disputed. `garuda_orders_router.py:208` is
+      `if result_id != actor:` -> 404, where `actor` IS the session's result_id, so a
+      desynced redirect fails CLOSED on every order operation. The seat that raised it
+      reached the same conclusion on re-reading ("the desync fails closed server-side"), and
+      the other seat scoped its own version the same way ("does not forge the backend
+      session or grant access to B when downstream ownership checks work"). What remains is
+      a URL/session mismatch reachable only via the login-CSRF path already recorded above,
+      not a new capability.
+
+  - seat: kimi-code/k3
+    objection: >-
+      Minor/operational — a double-click on Continue races two POSTs. The first redeems and
+      sets the session; the second gets a refusal and its 303 may be the one the browser
+      renders, so a customer who now HOLDS a valid session can be shown "This link is no
+      longer valid".
+    status: PLAUSIBLE
+    note: >-
+      Not verified end-to-end by this session — asserting it would need a concurrent
+      two-request test this pack does not have, and the outcome depends on browser
+      navigation ordering rather than on anything in the code. Recorded honestly as
+      unmeasured. Reading the code, the ingredients are present: both paths clear the
+      pending cookie, only the first receives an account cookie, and no test in the corpus
+      submits concurrently. It is a UX defect, not a security one — the session the first
+      POST minted is real either way.
+
+  - seat: codex-gpt-5.6-sol + kimi-code/k3 (independently, same finding)
+    objection: >-
+      MEDIUM — the destination this PR redirects to cannot actually work: the upload step's
+      API, `POST /api/visa/voa/eligibility-checks/{result_id}/documents`, has no backend
+      route, and `/visa/voa/upload/[resultId]` is a client component with no server-side
+      session check.
+    status: CONFIRMED
+    note: >-
+      VERIFIED by this session, and it is why the brief's scope sentence was narrowed
+      before this pack was written rather than after a gate caught it.
+      `apps/mouth/src/app/visa/voa/upload/api-client.ts:3` declares that path;
+      `git grep "eligibility-checks" -- apps/backend-rag/backend/app` returns only
+      `garuda_voa_public.py:477,541,570` plus two public-endpoint allowlist entries — no
+      `documents` sub-path anywhere.
+      `upload/[resultId]/page.tsx:1` is `"use client"` with no session check, so with the
+      flag on the PAGE renders for anyone; nothing sensitive is displayed and the order APIs
+      independently require the magic session, so this is a UI-reachability fact, not an
+      authorization bypass. Consequence for how this PR should be read: merging it makes the
+      magic link REACH the upload page; it does not make an upload succeed. Out of scope
+      here, named in the PR body, escalated.
+
+tests:
+  - "apps/mouth (vitest): 75 passed, 0 failed across 4 files — 60 of them the magic-link
+    corpus this PR adds (route 14, exchange 35, continue 11), 15 the pre-existing sitemap
+    test."
+  - "apps/backend-rag (pytest): backend/tests/services/garuda_portal/test_magic_link.py —
+    8 passed, 0 failed; 4 of the 8 added by this PR."
+  - "Mutation coverage: 11 declared mutations, 11 bite. The one that did NOT bite on
+    #5157's code (M8) is named in its own receipt together with the test that fixes it."
+
+static:
+  - "apps/mouth `tsc --noEmit` — clean, exit 0."
+  - "`npx prettier --write` over the changed frontend paths — one file reformatted
+    (exchange/route.test.ts, the newly added test), the rest already conformant."
+  - "Pre-commit ran on the real commit: lease-check, anti-reward-hacking test lint,
+    print()/console.log scans, hardcoded-secret scan, eslint, mouth typecheck, ruff,
+    off-limits-file check, FastAPI import chain — all passed, no --no-verify."
+
+notes:
+  - "SCOPE OF THIS LANE'S AUTHORITY: this pack carries NO gate verdict, by design. The
+    lane that wrote it did not write the production code and does not grade it either;
+    an independent Gear-3 adjudicator is dispatched separately. That separation is the
+    entire reason this PR exists rather than a fourth round on #5157."
+  - "OPERATOR ACTION, NOT DONE HERE: `GARUDA_MAGIC_LINK_BASE_URL` must be set on Fly to
+    `https://balizero.com/visa/voa/auth`. The workflow default in garuda-arm.yml is
+    updated, but an env var already set on the app OVERRIDES the Python default, so until
+    that workflow is re-run (or the value set by hand) production keeps emailing the old
+    URL. This PR cannot perform it — it is a credential-plane action."
+  - "OWNER DECISION, NOT TAKEN HERE: the landing page after a successful exchange is a
+    product decision reserved to Zero (Legge 5). This PR sends the customer to
+    `/visa/voa/upload/{resultId}`, which is where the funnel continues today; it is not a
+    ratified choice."
+  - "`council_run: journal.jsonl` is expected to raise a NOTICE in CI, not a violation, and
+    the cause is a known CI limitation rather than a defect in this pack: harness-floor.yml
+    copies only pack.yml and brief.yml into its check directory, so a journal sitting next
+    to the pack in the repo is never present for the linter to read. R9 flips from NOTICE
+    to violation on 2026-09-02; the fix belongs in .github/workflows/ (CODEOWNERS tier-1),
+    not here."
+  - "R8 (ground-truth lane) triggers on this diff because `apps/mouth/src/app/visa/*` is a
+    claim-page glob. It is answered with `seat_override` rather than a NotebookLM lane: the
+    four matching files are an auth landing route, a shared constants module, a POST
+    redemption handler and a page whose entire body is 'Continue your application'. None
+    of them makes a regulatory claim, so a ground-truth lane here would be a lane convened
+    to verify nothing."
+
+seat_override: >-
+  This override is shared plumbing and silences TWO rules on this pack — R8 and R9 — so it
+  states a reason for each rather than one reason wearing two hats.
+
+  R8 (ground-truth lane not convened): the rule fires on the path glob
+  `apps/mouth/src/app/visa/*`, and this diff's four non-test files under it
+  (auth/route.ts, auth/contract.ts, auth/exchange/route.ts, auth/continue/page.tsx) carry
+  no visa/tax/KBLI/zoning claim of any kind — they are session plumbing for an emailed
+  link, and the only customer-visible prose is "Continue your application" plus an expiry
+  notice. Convening a NotebookLM ground-truth seat against them would produce a receipt
+  about nothing, which is the shape of evidence this gate exists to reject.
+
+  R9 (Gear-3 council quorum): two cross-family review seats WERE convened and their
+  findings are in `dissent`; `journal.jsonl` sits next to this pack and records them. The
+  quorum still reads as unmet because harness-floor.yml copies only pack.yml and brief.yml
+  into its check directory, so the journal is never present for the linter to open —
+  a CI limitation, measured on PR #5177, not an absent council. R9 flips from NOTICE to
+  violation on 2026-09-02 and the fix belongs in .github/workflows/ (CODEOWNERS tier-1),
+  which is out of scope for this PR and must not be smuggled into it.

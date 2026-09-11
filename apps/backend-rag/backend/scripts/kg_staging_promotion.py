@@ -82,6 +82,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.app.core.database import init_asyncpg_connection
 from backend.services.rag.kg_auto_expansion import normalize_entity_id
 
 logger = logging.getLogger(__name__)
@@ -394,14 +395,25 @@ def _clean_database_dsn(dsn: str) -> tuple[str, bool | None]:
 
 
 async def _init_connection(conn: asyncpg.Connection) -> None:
-    """Per-connection init: statement timeout + jsonb/json codecs (prod-pool shape)."""
+    """Per-connection init: statement timeout + jsonb/json codecs (prod-pool shape).
+
+    The codec half is DELEGATED to `init_asyncpg_connection` (2026-08-30) rather
+    than re-registered here. This function used to register both codecs itself
+    with a bare `json.dumps` encoder -- a FOURTH independent registration that
+    `database.py`'s "every pool this codebase creates" docstring did not know
+    about, and that the parity test could not see because its
+    `_CANONICAL_CODEC_FILES` listed only three paths. A cross-family refuter
+    (Codex GPT-5.6 sol, blind) found it; it is fixed here rather than left as a
+    footnote, because a centralisation claim with a known exception is worse
+    than no claim at all -- the next reader trusts it.
+
+    The `SET statement_timeout` stays HERE and is deliberately not folded into
+    the shared hook: this is the "thin wrapper that adds pool-specific extras"
+    the hook's own docstring describes. `get_db_pool()` wants no statement
+    timeout at all, so a hook that imposed one would be wrong for it.
+    """
     await conn.execute("SET statement_timeout = '30s'")
-    await conn.set_type_codec(
-        "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
-    )
-    await conn.set_type_codec(
-        "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
-    )
+    await init_asyncpg_connection(conn)
 
 
 async def create_pool(database_url: str) -> asyncpg.Pool:

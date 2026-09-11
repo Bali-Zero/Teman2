@@ -1,0 +1,44 @@
+task_id: pilot-mission-1-capo-vs-builder
+gear: 2
+l_level: L2
+gate_class: opus
+brief_ref: evidence/brief.yml
+# Floor is 2 via the SIZE term alone: one new markdown file in research/operations/,
+# no hot-zone path, no code. The size comes from the report being the pilot's full
+# record — measurements, verbatim denials and Fable's adjudication — not from a large
+# change surface. Gear 2 declared to match the floor exactly; no pack below Gear 3.
+objective: >-
+  Record pilot mission 1 (D3 of infra/codex-hooks/FABLE-MEASUREMENTS-2026-09-09.md):
+  two arms building the same frozen spec for a read-only child-calibration receptor —
+  a standalone Sonnet 5 builder (arm A) and a Codex Capo with one builder and one
+  support at max_threads=3 (arms B and B-2) — with wall time, parent/child/retry
+  consumption, every ledger needs_attention and every child denial verbatim, so that
+  Fable and Astra can adjudicate. The report states that the Capo-vs-builder question
+  is NOT answered by run 1 rather than manufacturing a verdict from it.
+constraints:
+  - "Docs only. No code, no probe, no hook, no settings file touched by this PR."
+  - "Budgets stayed enforced throughout; MANDATE_BUDGET_OFF never set, no guard disabled."
+  - "Generator is never grader: the Dux ran C1-C6 on each arm; the arms' self-reports
+    were compared against those runs, never substituted for them."
+  - "Neither arm's PR merges before the pilot closes (#6054 open and unarmed; arm B has none)."
+  - "Fable's correction had to be verified on disk before acceptance, not taken on trust."
+acceptance: >-
+  Fable's PASS-WITH-CONDITIONS gate on PR #6056, whose single condition — the arm-B
+  attribution correction appended to the report — is met by sections 1, 4, 7 and 9.
+consumer_map:
+  - "Fable and Astra adjudicate D3 from this file; it is their only record of the run."
+  - "The three defects it names are owed to the follow-up PR that already carries the
+    two probe defects and the nine council residuals (another Claude session ships)."
+  - "Zero owns the two seat-configuration decisions it surfaces (builder threshold 0.6
+    on the Codex seat, AGENTS.md index diet) — prerequisites for any arm B-3."
+risks:
+  - "The report records two defects in the Dux's own instrument (C3 graded pre-existing
+    lint; the halt-on-first-denial clause penalised the wider topology). Stating them
+    is the point: a pilot that hides its instrument error measures nothing."
+  - "Arm B-2 forked from a later main (9e64bcbf99) than run 1 (4eed90f149) because the
+    merge queue advanced in between. Recorded in section 10 rather than hidden."
+budget: "one markdown file, ~430 lines, three commits (report, Fable correction, B-2)."
+pii: >-
+  none — no client data, no OSINT. Machine-local paths, model names, token counts and
+  thread ids only; no session transcript content, no credential, no scope hash beyond
+  an 8-character prefix.

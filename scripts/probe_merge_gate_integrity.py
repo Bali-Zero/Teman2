@@ -121,7 +121,10 @@ SILENT_PASS_CONCLUSIONS = {"skipped"}
 # CANNOT-VERIFY (26 consecutive failed runs on 2026-08-23 alone). The repo
 # already checks in the same list at infra/required.d/contexts.json
 # (scripts/ci/snapshot_required_contexts.py writes it); verified content-
-# identical to the live API on 2026-08-23 — 27 contexts, same names, no diff.
+# identical to the live API on 2026-08-27 — 11 contexts, same names, no diff
+# (Zero's 2026-08-27 queue-unblock ruling cut required checks from 27 to 11;
+# advisory workflows stopped running on merge_group so the queue no longer
+# waits on ~50 runs per entry for only 11 that matter).
 # Advisory-but-present beats authoritative-but-unreadable: the live API is
 # still tried FIRST, so a privileged caller keeps ground truth, and the
 # verdict records which source was used.

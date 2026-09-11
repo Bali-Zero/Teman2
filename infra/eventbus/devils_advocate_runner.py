@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Devils Advocate runner v2 — NB-grounded red-team via DeepSeek v4-pro.
+"""Devils Advocate runner v3 — NB-grounded red-team via Kimi K3.
 
-Architecture (post-2026-05-10 cross-LLM consultation):
+Architecture (post-2026-05-10 cross-LLM consultation; DeepSeek->Kimi swap
+2026-08-29 — the direct DeepSeek door this runner called (`api.deepseek.com`
++ `DEEPSEEK_API_KEY`) was retired 2026-07-19, pre-authorization revoked;
+CLAUDE.md §5 names Kimi K3 as the sanctioned refuter/second-opinion
+replacement):
 
   Stage 1: regex extractor — find regulation codes in target document
   Stage 2: NB ground-truth verification (cached, batched per notebook)
@@ -9,13 +13,15 @@ Architecture (post-2026-05-10 cross-LLM consultation):
            - asyncio.Semaphore(5) parallel queries to NotebookLM
            - State enum: VERIFIED_EXISTS / NOT_FOUND_IN_QUERIED / CONFLICTED / UNKNOWN
            - Failure mode: degraded (NEEDS_FIX_GROUNDING_UNAVAILABLE, not BLOCK)
-  Stage 3: DeepSeek v4-pro red-team WITH ground_truth dict
+  Stage 3: Kimi K3 red-team WITH ground_truth dict
            - System prompt safety net: any reg_code in doc NOT in ground_truth → UNVERIFIED_CITATION
   Stage 4: post-processing override
-           - DeepSeek verdict=PASS but ground_truth has NOT_FOUND → override to BLOCK
+           - Kimi verdict=PASS but ground_truth has NOT_FOUND → override to BLOCK
   Stage 5: publish redteam.completed (extended payload with ground_truth + nb_available + degraded)
 
-Cost: ~$0.013/run DeepSeek + $0 NotebookLM. Latency: 30-90s (cache hit) or 60-180s (cache miss).
+Cost: $0 — Kimi is a flat-sub, OAuth device-code CLI (no API key, no
+per-token spend) + $0 NotebookLM. Latency: 30-90s (cache hit) or 60-180s
+(cache miss).
 """
 from __future__ import annotations
 import argparse
@@ -23,7 +29,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import os
 import re
 import subprocess
 import sys
@@ -52,11 +57,10 @@ CONSTITUTION = Path.home() / ".claude/skills/bali-zero-brand/constitution.md"
 FORBIDDEN_PHRASES = Path.home() / ".claude/skills/bali-zero-brand/voice/forbidden-phrases.md"
 
 # ────────────────────────────────────────────────────────────────────────────
-# DeepSeek config
+# Kimi K3 config
 # ────────────────────────────────────────────────────────────────────────────
-DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_MODEL = "deepseek-v4-pro"
-DEEPSEEK_TIMEOUT_SEC = 300
+KIMI_MODEL = "kimi-code/k3"
+KIMI_TIMEOUT_SEC = 300
 
 # ────────────────────────────────────────────────────────────────────────────
 # NotebookLM registry (domain → ordered list of notebooks)
@@ -400,7 +404,7 @@ async def verify_reg_codes_async(reg_codes: list[dict], domain: str) -> dict:
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# Stage 3 — DeepSeek with ground truth
+# Stage 3 — Kimi K3 with ground truth
 # ────────────────────────────────────────────────────────────────────────────
 SYSTEM_PROMPT_BASE = """You are a brutal legal/tax/audit reviewer for Bali Zero \
 (Indonesian business services agency: visa, company, tax, property).
@@ -487,53 +491,30 @@ def _format_ground_truth_for_prompt(ground_truth: dict) -> str:
     return "\n".join(lines)
 
 
-def call_deepseek(target_text: str, target_path: str, brand_ctx: str,
-                  ground_truth_payload: dict) -> dict:
-    """Stage 3: DeepSeek v4-pro with ground truth injected."""
-    api_key = os.environ.get("DEEPSEEK_API_KEY")
-    if not api_key:
-        secrets = Path.home() / ".nuzantara-secrets.env"
-        if secrets.exists():
-            for line in secrets.read_text().splitlines():
-                if line.startswith("export DEEPSEEK_API_KEY=") or line.startswith("DEEPSEEK_API_KEY="):
-                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
-                    break
-    if not api_key:
-        raise RuntimeError("DEEPSEEK_API_KEY missing")
+def call_kimi(target_text: str, target_path: str, brand_ctx: str,
+              ground_truth_payload: dict) -> str:
+    """Stage 3: Kimi K3 with ground truth injected.
 
-    # Smart-spend 2026-07-14: consult the cost breaker before spending, ledger
-    # after. Best-effort import (the HOME-fork copy on Pro lives at
-    # ~/scripts/eventbus/ with no repo scripts/ two levels up, so we also try
-    # NUZANTARA_REPO_ROOT and the known checkout locations) — a missing guard
-    # logs a warning and proceeds; a firing guard raises, which is the
-    # runner's normal fail-visible path.
-    _dsc = None
-    try:
-        import sys as _sys
-        _env_root = os.environ.get("NUZANTARA_REPO_ROOT")
-        _candidates = [
-            Path(__file__).resolve().parents[2] / "scripts",
-            *([Path(_env_root) / "scripts"] if _env_root else []),
-            Path.home() / "Desktop" / "nuzantara-deploy" / "scripts",
-            Path.home() / "Desktop" / "nuzantara" / "scripts",
-        ]
-        _scripts_dir = next(
-            (str(c) for c in _candidates if (c / "deepseek_client.py").is_file()),
-            str(_candidates[0]),
-        )
-        if _scripts_dir not in _sys.path:
-            _sys.path.insert(0, _scripts_dir)
-        import deepseek_client as _dsc  # noqa: PLC0415
+    Replaces the retired direct DeepSeek door (`api.deepseek.com` +
+    `DEEPSEEK_API_KEY`, retired 2026-07-19, pre-authorization revoked) —
+    CLAUDE.md §5 names Kimi K3 as the sanctioned refuter/second-opinion
+    replacement seat. Kimi is a flat-sub OAuth device-code CLI
+    (`~/.kimi-code/bin/kimi`) — no API key to read, no per-token cost, so
+    the DeepSeek-specific budget-breaker guard that gated the old call
+    (`scripts/deepseek_client.py::budget_verdict()`) is removed rather
+    than ported: `scripts/cost_breaker.py` already models "kimi" as an
+    unlimited/no-budget tier (`config.budget_for("kimi") is None`,
+    `evaluate("kimi", ...) is Verdict.ALLOW` regardless of spend), so
+    there is nothing here for a breaker to gate.
 
-        _decision = _dsc.budget_verdict()
-        if _decision.verdict is not _dsc.cost_breaker.Verdict.ALLOW:
-            raise _dsc.DeepSeekBudgetExceeded(_decision)
-    except Exception as exc:  # noqa: BLE001
-        if _dsc is not None and isinstance(exc, _dsc.DeepSeekBudgetExceeded):
-            raise
-        log.warning("deepseek budget guard unavailable (%s) — proceeding", exc)
-        _dsc = None
+    The Kimi CLI is a single-prompt interface (`kimi -p <prompt> -m
+    kimi-code/k3`) — unlike DeepSeek's system/user chat-completion
+    message roles, system and user content are concatenated into one
+    prompt below.
 
+    Returns the raw stdout text (Kimi has no OpenAI-style JSON envelope
+    to unwrap — `parse_da_response()` parses this string directly).
+    """
     system = SYSTEM_PROMPT_BASE
     if brand_ctx:
         system += f"\n\n# Brand context\n\n{brand_ctx}"
@@ -575,53 +556,36 @@ def call_deepseek(target_text: str, target_path: str, brand_ctx: str,
         f"code citation. Return JSON only."
     )
 
-    body = {
-        "model": DEEPSEEK_MODEL,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_msg},
-        ],
-        "temperature": 0,
-        "seed": 42,
-        "max_tokens": 16000,
-        "reasoning_effort": "high",
-    }
+    full_prompt = f"{system}\n\n{user_msg}"
 
-    log.info("calling DeepSeek (model=%s, target=%s, doc_chars=%d, ground_truth_codes=%d)",
-             DEEPSEEK_MODEL, target_path, len(target_text),
+    log.info("calling Kimi K3 (model=%s, target=%s, doc_chars=%d, ground_truth_codes=%d)",
+             KIMI_MODEL, target_path, len(target_text),
              len(ground_truth_payload.get("ground_truth", {})))
     t0 = time.time()
     result = subprocess.run(
-        ["curl", "-sf", "-X", "POST", DEEPSEEK_URL,
-         "-H", f"Authorization: Bearer {api_key}",
-         "-H", "Content-Type: application/json",
-         "-d", json.dumps(body)],
-        capture_output=True, text=True, timeout=DEEPSEEK_TIMEOUT_SEC,
+        ["kimi", "-p", full_prompt, "-m", KIMI_MODEL],
+        stdin=subprocess.DEVNULL,
+        capture_output=True, text=True, timeout=KIMI_TIMEOUT_SEC,
     )
     elapsed = time.time() - t0
     if result.returncode != 0:
-        raise RuntimeError(f"curl failed exit={result.returncode}: {result.stderr[:500]}")
-    parsed = json.loads(result.stdout)
-    log.info("DeepSeek responded in %.1fs (model=%s, finish=%s)",
-             elapsed, parsed.get("model", "?"),
-             parsed.get("choices", [{}])[0].get("finish_reason", "?"))
-    if _dsc is not None:
-        _dsc.log_cost_event(
-            str(parsed.get("model") or DEEPSEEK_MODEL),
-            parsed.get("usage") or {},
-            purpose="devils-advocate",
-        )
-    return parsed
+        raise RuntimeError(f"kimi rc={result.returncode}: {result.stderr[-500:]}")
+    log.info("Kimi K3 responded in %.1fs (stdout_chars=%d)", elapsed, len(result.stdout))
+    return result.stdout
 
 
-def parse_da_response(deepseek_raw: dict) -> dict:
-    """Extract verdict + findings from DeepSeek response."""
-    try:
-        content = deepseek_raw["choices"][0]["message"]["content"]
-    except (KeyError, IndexError) as e:
-        raise RuntimeError(f"DeepSeek response missing content: {e}")
+def parse_da_response(kimi_stdout: str) -> dict:
+    """Extract verdict + findings from Kimi K3's raw stdout.
 
-    content = content.strip()
+    Kimi's CLI (unlike DeepSeek's chat-completion API) prints plain text
+    on stdout — there is no `choices[0].message.content` envelope to
+    unwrap. The report JSON (verdict/findings/...) is still requested
+    via the system prompt and parsed the same way as before.
+    """
+    if not kimi_stdout or not kimi_stdout.strip():
+        raise RuntimeError("Kimi response empty")
+
+    content = kimi_stdout.strip()
     if content.startswith("```"):
         lines = content.splitlines()
         if lines[0].startswith("```"):
@@ -638,7 +602,7 @@ def parse_da_response(deepseek_raw: dict) -> dict:
         if start >= 0 and end > start:
             report = json.loads(content[start:end + 1])
         else:
-            raise RuntimeError("DeepSeek content not JSON-parseable")
+            raise RuntimeError("Kimi content not JSON-parseable")
 
     report.setdefault("verdict", "NEEDS_FIX")
     report["verdict"] = str(report["verdict"]).upper()
@@ -659,15 +623,15 @@ def parse_da_response(deepseek_raw: dict) -> dict:
 # Stage 4 — Post-processing override
 # ────────────────────────────────────────────────────────────────────────────
 def post_process_override(report: dict, ground_truth_payload: dict) -> dict:
-    """If DeepSeek says PASS but ground_truth has hallucinations, override to BLOCK.
+    """If Kimi says PASS but ground_truth has hallucinations, override to BLOCK.
 
-    This is the safety net for cases where DeepSeek ignores ground_truth.
+    This is the safety net for cases where Kimi ignores ground_truth.
     """
     gt = ground_truth_payload.get("ground_truth", {})
     not_found_codes = [code for code, info in gt.items() if info["state"] == "NOT_FOUND_IN_QUERIED"]
 
     if not_found_codes and report["verdict"] == "PASS":
-        log.warning("OVERRIDE: DeepSeek said PASS but ground_truth has NOT_FOUND for: %s",
+        log.warning("OVERRIDE: Kimi said PASS but ground_truth has NOT_FOUND for: %s",
                     not_found_codes)
         # Inject synthetic findings + override verdict
         for code in not_found_codes:
@@ -706,19 +670,19 @@ def _expected_report_path(slug: str) -> Path:
     return Path(f"/tmp/devils-advocate-{slug}-report.json")
 
 
-def _expected_deepseek_path(slug: str) -> Path:
-    return Path(f"/tmp/devils-advocate-{slug}-deepseek.json")
+def _expected_kimi_path(slug: str) -> Path:
+    return Path(f"/tmp/devils-advocate-{slug}-kimi.json")
 
 
-def write_report(report: dict, deepseek_raw: dict, ground_truth_payload: dict,
+def write_report(report: dict, kimi_raw: str, ground_truth_payload: dict,
                  target: str, slug: str) -> Path:
-    deepseek_path = _expected_deepseek_path(slug)
-    deepseek_path.write_text(json.dumps(deepseek_raw, indent=2))
+    kimi_path = _expected_kimi_path(slug)
+    kimi_path.write_text(json.dumps({"model": KIMI_MODEL, "raw_stdout": kimi_raw}, indent=2))
 
     full_report = {
         "target": target,
         "reviewed_at": datetime.now(timezone.utc).isoformat(),
-        "deepseek_response_path": str(deepseek_path),
+        "kimi_response_path": str(kimi_path),
         "verdict": report["verdict"],
         "findings": report["findings"],
         "verdict_rationale": report.get("verdict_rationale", ""),
@@ -726,11 +690,11 @@ def write_report(report: dict, deepseek_raw: dict, ground_truth_payload: dict,
         "ground_truth": ground_truth_payload.get("ground_truth", {}),
         "nb_available": ground_truth_payload.get("nb_available", False),
         "nb_stats": ground_truth_payload.get("stats", {}),
-        "runner_version": "v2-nb-grounded-2026-05-10",
+        "runner_version": "v3-kimi-nb-grounded-2026-08-29",
     }
     report_path = _expected_report_path(slug)
     report_path.write_text(json.dumps(full_report, indent=2))
-    log.info("wrote report=%s deepseek=%s", report_path, deepseek_path)
+    log.info("wrote report=%s kimi=%s", report_path, kimi_path)
     return report_path
 
 
@@ -843,19 +807,19 @@ def main() -> int:
             log.exception("Stage 2 failed catastrophically: %s", e)
             ground_truth_payload = {"ground_truth": {}, "nb_available": False, "reason": f"exception: {e}"}
 
-    # Stage 3: DeepSeek with ground truth
+    # Stage 3: Kimi K3 with ground truth
     brand_ctx = _load_brand_context(args.target)
     slug = _slug_from_target(args.target)
     try:
-        deepseek_raw = call_deepseek(target_text, args.target, brand_ctx, ground_truth_payload)
+        kimi_raw = call_kimi(target_text, args.target, brand_ctx, ground_truth_payload)
     except Exception as e:
-        log.exception("DeepSeek call failed: %s", e)
+        log.exception("Kimi call failed: %s", e)
         emit_block_fallback(args.target, args.topic_slug, args.domain, args.trace_id,
-                            f"DeepSeek failed: {e}")
+                            f"Kimi failed: {e}")
         return 1
 
     try:
-        report = parse_da_response(deepseek_raw)
+        report = parse_da_response(kimi_raw)
     except Exception as e:
         log.exception("response parse failed: %s", e)
         emit_block_fallback(args.target, args.topic_slug, args.domain, args.trace_id,
@@ -866,7 +830,7 @@ def main() -> int:
     report = post_process_override(report, ground_truth_payload)
 
     # Stage 5: persist + publish
-    write_report(report, deepseek_raw, ground_truth_payload, args.target, slug)
+    write_report(report, kimi_raw, ground_truth_payload, args.target, slug)
     emit_redteam_event(report, ground_truth_payload, args.target, args.topic_slug,
                        args.domain, args.trace_id)
     return 0

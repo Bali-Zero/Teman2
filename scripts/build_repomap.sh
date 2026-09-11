@@ -13,7 +13,8 @@
 #           .next, .turbo, .vercel, coverage, *.min.js (build artifacts — 2026-06-13
 #           connectome audit: ctags fallback indexed minified webpack chunks,
 #           188kB of noise injected into every session instead of the 4-20kB target)
-# Target: 4-20kB output (~1-5k tokens)
+# Target: 4-20kB output (~1-5k tokens), enforced by a HARD CAP at 20480 bytes
+# (REPOMAP_HARD_CAP_BYTES) — truncated by rank at block boundaries, not warned about
 #
 # Kill-switch: REPOMAP_ENABLED=false → exit 0 (no-op)
 
@@ -31,10 +32,33 @@ if [[ "${REPOMAP_ENABLED:-true}" == "false" ]]; then
 fi
 
 # === Config ===
+# Resolved HERE, before the `cd` below, and symlink-followed: this is what
+# `$(dirname "$0")` could not be relied on to give afterwards.
+SCRIPT_SELF="${BASH_SOURCE[0]:-$0}"
+while [[ -L "$SCRIPT_SELF" ]]; do
+    _link="$(readlink "$SCRIPT_SELF")"
+    case "$_link" in
+        /*) SCRIPT_SELF="$_link" ;;
+        *)  SCRIPT_SELF="$(cd "$(dirname "$SCRIPT_SELF")" && pwd)/$_link" ;;
+    esac
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SELF")" && pwd)"
+
 REPO_ROOT="${REPOMAP_REPO_ROOT:-/Users/nuzantara/nuzantara}"
 OUTPUT_PATH="${REPOMAP_OUTPUT:-$HOME/.nuzantara-repomap.txt}"
 OUTPUT_TMP="${OUTPUT_PATH}.tmp.$$"
 MAX_TOKENS="${REPOMAP_MAX_TOKENS:-1024}"
+
+# Validated at CONFIG time, not at use time. Unvalidated it aborted the run under
+# `set -u` at `(( SIZE_BYTES > CAP_BYTES ))` — AFTER the uncapped map had already
+# been installed, which is the worst possible order to fail in (Codex sol,
+# 2026-08-31). A bad cap is a misconfiguration to announce and ignore, never a
+# reason to leave the machine without a map.
+CAP_BYTES="${REPOMAP_HARD_CAP_BYTES:-20480}"
+if ! [[ "$CAP_BYTES" =~ ^[0-9]+$ ]] || (( CAP_BYTES < 1 )); then
+    echo "[build_repomap] WARN: REPOMAP_HARD_CAP_BYTES=$CAP_BYTES is not a positive integer — using 20480" >&2
+    CAP_BYTES=20480
+fi
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')] [build_repomap]"
 
 cd "$REPO_ROOT" || {
@@ -218,6 +242,46 @@ HEADER_TMP="${OUTPUT_TMP}.header"
     cat "$OUTPUT_TMP"
 } > "$HEADER_TMP"
 
+# === Hard cap by rank (W76 antibody) ===
+# The old behaviour here was a stderr WARN above 30kB that let the file through.
+# It fired and nobody saw it: measured on Pro 2026-08-31, the live map was
+# 42,779 bytes — past its own warn band, injected into every session, for weeks.
+# A warning nobody reads is not a control (superscar #2 / W55: signal emitted is
+# not signal seen). So the generator now TRUNCATES instead of complaining.
+#
+# Truncation is by RANK and at BLOCK boundaries, never mid-symbol: both
+# strategies already emit their file blocks best-first (ctags sorts by entry
+# count, aider by its PageRank), so keeping a whole-block prefix keeps the
+# highest-signal part of exactly the ordering they chose. A half-written block
+# would be worse than a missing one — a reader cannot tell a truncated symbol
+# list from a short one.
+# Resolved BEFORE the `cd "$REPO_ROOT"` above, and made absolute, because after
+# that cd a relative `$0` points at the repo root instead of at this script's own
+# directory — so `$(dirname "$0")/repomap_cap.py` silently missed, the filter
+# "failed", and the UNCAPPED map was installed with only a WARN (Codex sol,
+# 2026-08-31). Symlink-resolved too: the cron may one day point at a link.
+CAP_SCRIPT="$SCRIPT_DIR/repomap_cap.py"
+
+CAPPED_TMP="${HEADER_TMP}.capped"
+if [[ ! -f "$CAP_SCRIPT" ]]; then
+    echo "$LOG_PREFIX WARN: $CAP_SCRIPT missing — map left UNCAPPED (the repomap_size probe reports the oversize)" >&2
+    rm -f "$CAPPED_TMP"
+elif python3 "$CAP_SCRIPT" "$HEADER_TMP" "$CAPPED_TMP" "$CAP_BYTES"
+then
+    if [[ -s "$CAPPED_TMP" ]]; then
+        mv -f "$CAPPED_TMP" "$HEADER_TMP"
+    else
+        # Fail OPEN, loudly: an empty capped file must never replace a real map.
+        echo "$LOG_PREFIX WARN: hard-cap filter produced an empty file — keeping the uncapped map" >&2
+        rm -f "$CAPPED_TMP"
+    fi
+else
+    # Same posture: a broken filter degrades to the old behaviour and SAYS so,
+    # instead of failing the whole build or silently shipping an unbounded map.
+    echo "$LOG_PREFIX WARN: hard-cap filter failed — map left uncapped, size unbounded" >&2
+    rm -f "$CAPPED_TMP"
+fi
+
 SIZE_BYTES=$(wc -c < "$HEADER_TMP")
 SIZE_LINES=$(wc -l < "$HEADER_TMP")
 
@@ -227,11 +291,19 @@ rm -f "$OUTPUT_TMP"
 
 echo "$LOG_PREFIX done strategy=$STRATEGY bytes=$SIZE_BYTES lines=$SIZE_LINES"
 
-# Warn (not fail) if outside target band 1kB-30kB
+# The <1kB warning stays: it is an unrelated failure mode (a strategy that
+# produced almost nothing), and unlike the old >30kB warning it is not something
+# this script can fix by itself — there is nothing to truncate.
 if (( SIZE_BYTES < 1024 )); then
     echo "$LOG_PREFIX WARN: output suspiciously small (<1kB)" >&2
-elif (( SIZE_BYTES > 30720 )); then
-    echo "$LOG_PREFIX WARN: output >30kB (target 4-20kB); consider lowering REPOMAP_MAX_TOKENS" >&2
+fi
+
+# Above-cap is now a contradiction, not a warning: the truncator ran, so this can
+# only mean the truncator failed open (it says so above) or someone raised
+# REPOMAP_HARD_CAP_BYTES. Either way it is a fact worth stating, because a map
+# larger than its own cap is paid by every session on this machine.
+if (( SIZE_BYTES > CAP_BYTES )); then
+    echo "$LOG_PREFIX WARN: output ${SIZE_BYTES}B exceeds the ${CAP_BYTES}B hard cap — the truncator did not run" >&2
 fi
 
 exit 0

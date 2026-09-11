@@ -1,0 +1,16 @@
+task_id: b04b-category-boundary
+gear: 1
+objective: Keep article and parent category metadata on the same six canonical category keys.
+constraints:
+  - Extract CATEGORY_SEO without changing its title or description values.
+  - Reject raw noncanonical article metadata paths before either lookup; keep render redirects unchanged.
+  - No MDX edits, production operations, or client data.
+acceptance:
+  - text: All aliases and prototype keys return noindex metadata before English or localized article lookup.
+    probe: page.metadata.test.tsx
+  - text: Six canonical categories preserve metadata, including localized and noIndex controls.
+    probe: page.metadata.test.tsx and layout.test.tsx
+  - text: Restoring alias resolution makes the regression tests fail; restoring the candidate passes.
+    probe: mutation.patch followed by the four-suite vitest command.
+consumer_map:
+  - Article generateMetadata and parent CategoryLayout/generateMetadata.

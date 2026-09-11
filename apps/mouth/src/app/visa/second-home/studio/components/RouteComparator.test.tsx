@@ -119,6 +119,26 @@ describe("RouteComparator", () => {
     );
   });
 
+  it("route headings (table + mobile cards) use Inter 600, not Cormorant, at 1rem (16px) — below the R4 §3 24px display floor", () => {
+    const { container } = render(<RouteComparator />);
+    const css = container.querySelector("style")?.textContent ?? "";
+    const rule = css.match(/\.bz-shs-route-heading\s*{([^}]+)}/)?.[1] ?? "";
+    const fontFamily = rule.match(/font-family:\s*([^;]+);/)?.[1]?.trim();
+    const fontSize = rule.match(/font-size:\s*([^;]+);/)?.[1]?.trim();
+    const fontWeight = rule.match(/font-weight:\s*([^;]+);/)?.[1]?.trim();
+
+    expect(fontFamily).toBe(
+      "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
+    );
+    expect(fontSize).toBe("1rem");
+    expect(fontWeight).toBe("600");
+
+    // The class must actually be live on both the table th and the mobile
+    // card h3, not just declared in an unused stylesheet rule.
+    const headings = container.querySelectorAll(".bz-shs-route-heading");
+    expect(headings.length).toBeGreaterThanOrEqual(6); // 3 table + 3 cards
+  });
+
   it("keeps text AA and identity marks perceivable on every route tint", () => {
     const { container } = render(<RouteComparator />);
     const css = container.querySelector("style")?.textContent ?? "";
