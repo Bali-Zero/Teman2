@@ -1053,6 +1053,24 @@ class Settings(BaseSettings):
         ),
     )
 
+    developer_emails: str | None = Field(
+        default=None,
+        description=(
+            "Comma-separated allowlist of developer addresses that may read the five "
+            "read-only team-activity log endpoints under /api/admin/logs/* with their "
+            "ordinary team JWT, through admin_logs.verify_log_read_access. Set via "
+            "DEVELOPER_EMAILS env var. It grants NOTHING under /api/debug/* — that router "
+            "keeps its admin-only gate because it holds POST /api/debug/postgres/query "
+            "(caller-supplied SQL against production), DELETE /api/debug/traces and "
+            "POST /api/debug/profile; granting log access through it would have handed a "
+            "developer arbitrary SELECT over the client book. Deliberately SEPARATE from "
+            "admin_emails for the same reason: reading logs is not administering the CRM "
+            "book, and conflating them would force one to be widened to grant the other. "
+            "Empty by default — an unset var grants nobody, and revoking is removing the "
+            "address from the list."
+        ),
+    )
+
     notification_cc_emails: str | None = Field(
         default=None,
         description=(
@@ -1106,6 +1124,21 @@ class Settings(BaseSettings):
         if not emails:
             return self._ADMIN_EMAILS_FALLBACK
         return frozenset(emails)
+
+    @property
+    def developer_emails_set(self) -> frozenset[str]:
+        """Developer observability allowlist (lower-case, frozen).
+
+        NO fallback, unlike :attr:`admin_emails_set`: an unset or blank
+        DEVELOPER_EMAILS must grant NOBODY. A fallback here would mean a
+        deployment that never configured the var silently hands log access to
+        whoever the historical default named — the opposite of a grant that is
+        meant to be explicit and revocable.
+        """
+        raw = self.developer_emails
+        if not raw:
+            return frozenset()
+        return frozenset(e.strip().lower() for e in raw.split(",") if e.strip())
 
     @property
     def notification_cc_emails_list(self) -> tuple[str, ...]:
