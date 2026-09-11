@@ -41,6 +41,16 @@ gear_note: >-
   scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cfb5.txt --numstat-file
   /tmp/nsb5.txt` -> still floor 2, source size. 24 files, churn `awk -F'\t' '{s+=$1+$2}
   END{print s}' /tmp/nsb5.txt` = 1021, still between 400 and 1828. Gear stays 2.
+
+  RE-RECOMPUTED a fourth time after the Detect Secrets cure (8cb6a5a6f4: one
+  CONTENT_KEYED_RULES entry in scripts/detect_secrets_auto_triage.py + its guilt/innocence
+  tests, because the legacy-service-inventory.json parity fixture's 250 sha256 content
+  digests arrived as 222 unaudited Hex High Entropy findings on db5e7cac60). Same recipe
+  against origin/codex/website-r19-integrated (909e257d97): 26 files, churn 1168
+  (+1059/-109), `--print-floor` -> 2, `--print-floor-source` -> size. Still gear 2; the
+  two scripts/ files do not trip a path floor (measured before committing, option B --
+  hand-marking the baseline -- would have read 3 and was not taken).
+
 objective: >-
   Add "compliance" as the fifth first-class service pillar on the NEW apps/website R19 site
   (branch codex/website-r19-integrated, not yet on main): a full ServicePage entry rendered by
