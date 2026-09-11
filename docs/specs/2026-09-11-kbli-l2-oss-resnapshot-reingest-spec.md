@@ -138,3 +138,61 @@ kewajiban, kewenangan}` + `_l2_source` + `_l2_status` — identical on every cod
    `Resiko.localization.id.uraian`; a code is "changed" when its set of triples differs.
    Under this definition the September set is **181** codes (`/tmp/l2/changed_pinned.txt`
    at gate time; PR-B recomputes it from the frozen vaults and quotes the number).
+
+## 7. PR-B outcome — merge policy, re-ingestion, and two supersessions (r3, 2026-09-11)
+
+Measured on M5 in worktree `kbli-l2-pr-b-policy`, adapter over the frozen September vault
+(manifest sha256 `e18a5cf3fb99e99de81cc4ea502c96ccb4cbc759f08195d7069a171df8bfb955`), transform
+`--apply` under the merge policy of §6 ruling 3, then `scripts/derive_fiktif_positif.py` (the
+owner of `fiktif_positif`, idempotent on unchanged rows), `sync_kbli_dataset.sh`, sidecar bump.
+
+**Two rulings of §6 collided with doctrine the repo already carried, and the repo wins:**
+
+1. **§6 ruling 2 is superseded.** The "no Usaha Besar row = reserved for UMKM" inference is
+   WITHDRAWN (`scripts/kbli_filiera/tests/test_withdrawn_umkm_inference_absent.py`,
+   `_l4bali_basis.py`: Permeninves 5/2025 Pasal 26(1) makes Besar a consequence of PMA status).
+   Whether such a code is closed to PMA is decided by the Perpres 49/2021 Lampiran II allocation
+   layer (`cure_l4bali_perpres_adjudication.py`), which owns `l4_bali` for those codes. The
+   transform therefore never rewrites `l4_bali` on a `NO_BESAR` verdict — neither copy's mapping is
+   ported, and the backend copy's mapping is now the wrong one too.
+2. **§6 ruling 4 is superseded.** 119 codes carry a `per_skala_disputed_*` marker (PP28 collision /
+   false-friend quarantine, `scripts/tests/test_kbli_false_friend_registry.py`): their `per_skala`
+   is cure-owned and the transform skips them — including **20111** (its 12 September rows stay
+   evidence for the quarantine owner, not data) and **49213** (per-ancestor restore pinned verbatim
+   in `cure_specs/restore_49213.json`; A-PSK-0001 stays open on the quarantine lane). Six of the
+   nine new-only `93xxx` codes are quarantined too; three (93111, 93112, 93119) are applied.
+
+**Rule 4 under this policy (July vault, dry-run against the v10.0 canonical):**
+`SUMMARY changed_codes=0 … quarantined_skipped=119 rows_carried=9078 rows_fresh=0` — the June
+state reproduces exactly, no exception list.
+
+**Rule 5 (September vault):** tier-set changes on 183 codes = the pinned 181 minus 20111
+(quarantined) plus the 3 applied new-only codes; nothing outside that set. Field table on rows
+common to both sides: `skala_usaha`/`kategori_risiko`/`scope_index` 0; `scope_uraian` 141,
+`persyaratan` 14, `kewajiban` 28, `perizinan` 1, `kewenangan` ~1290 (OSS de-duplicated the
+authority lists — the report's generic drift flag); `jangka_waktu` 6 codes (unsourced rows whose
+OSS value changed; sourced rows preserved on 4,048 rows); `fiktif_positif`/`jangka_waktu_source`
+dropped on 0 rows. Top level: `absent_probes` 13 (= the old-only set), `_l2_status` 16,
+`l4_bali.blocked` 7, `l4_bali.verdict` 27, `verdict_state`/`confidence`/`pma_*` 0. Every
+top-level cell is inside the predicted set (pinned ∪ new-only ∪ old-only).
+
+**Downstream pins that move on any regeneration, and their owners (run in this order, canonical
+committed first):** `emit_batch_membership --apply` → `emit_batch_calibration --apply` →
+`gold_risk_dispute_relation --emit` → `emit_l4bali_verdict_state_spec --emit` →
+`backfill_new_sha256 --write` on the hash-pinned cure specs; then the measured count pins in
+`test_perpres_body_default.py`, `test_gold_risk_dispute.py`, `test_emit_batch_membership.py`
+are re-measured with a dated reason.
+
+**Left standing, by design, as follow-ups (not this PR's concern):**
+
+- `data/kbli-filiera/pma-editorial-certifications.json.sourceDatasetSha256` is a human-owned
+  publication gate (editorial re-verification, then bump): the backend Qdrant/`kbli_documents`
+  resync of the deploy step is fail-closed until it is re-certified. PENDING-ARMS row.
+- `backend/tests/scripts/test_kbli_qdrant_pma_sync.py`: 21022's regenerated PMA prose shape is not
+  in `rewrite_pma_prose`'s repair table — generator-contract gap, editorial decision.
+- Literal innocence pins of historic lots in `scripts/tests/` (46100 row count 15→12, 56101/56102
+  record hashes, 10419) and the "diff vs origin/main is exactly …" tripwires: nightly-only,
+  advisory (`scripts-tests-sweep.yml`, not a required check); the sanctioned extension is a
+  `cure_specs/*.json` manifest registering the L2 footprint, own PR.
+- The 13 `absent_pending_corroboration` codes: re-probe at +24h and +72h before any flips to
+  `no_oss_risk` (P3). PENDING-ARMS row.
