@@ -19,6 +19,18 @@ gear_note: >-
   + 116+0 + 27+2 + 20+0 + 62+0 + 27+1 + 1+0 + 3+0 + 106+0), between SIZE_GEAR2_THRESHOLD (400)
   and SIZE_GEAR3_THRESHOLD (1828), no hot-zone path hit ->
   floor 2. Declared 2 to match the measurement, superseding the stale gear:1 above.
+
+  RE-RECOMPUTED after the gate r1 REWORK-BUILD cures (5 more commits: PMK 81/2024 citation,
+  drop the forbidden "landscape" metaphor, four-pillar parity in company.ts/site-smoke.mjs +
+  Company.test.tsx, Coretax bullet resourced to the repo's KEP-71/PENG-31 record). Same recipe,
+  same base: `git diff --name-only agent/nuzantara/website/prettier-content-files...HEAD >
+  /tmp/cfb3.txt; git diff --numstat agent/nuzantara/website/prettier-content-files...HEAD >
+  /tmp/nsb3.txt; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+  /tmp/cfb3.txt --numstat-file /tmp/nsb3.txt` -> still floor 2, source size
+  (`--print-floor-source` confirms `size`). 23 files now (22 content/test files + this
+  brief.yml), churn `awk -F'\t' '{s+=$1+$2} END{print s}' /tmp/nsb3.txt` = 984, still between
+  SIZE_GEAR2_THRESHOLD (400) and SIZE_GEAR3_THRESHOLD (1828), no hot-zone path hit. Gear stays
+  2.
 objective: >-
   Add "compliance" as the fifth first-class service pillar on the NEW apps/website R19 site
   (branch codex/website-r19-integrated, not yet on main): a full ServicePage entry rendered by
@@ -52,9 +64,17 @@ constraints:
     Why-now facts are the three the task specified, sourced, and NOT the draft's unverified
     "PP 28/2025 fines" line: (a) Komdigi blocked eBay and KLM on 28 June 2025 and sent
     notification letters to 25 operators on 26 June 2026 (Komdigi press releases 9446 and
-    10354); (b) the 2026 Coretax corporate filing deadline was extended to 31 May after around
-    4,000 complaints; (c) quarterly LKPM deadlines moved to the 15th under BKPM Regulation
-    5/2025.
+    10354); (b) CURED at gate r1 (REWORK-BUILD, comment 5630621483) -- the original "extended to
+    31 May after around 4,000 complaints" had no repo provenance for the causal "~4,000
+    complaints" claim. Resourced to
+    docs/superpowers/specs/2026-05-08-domain-mesh-research/r3-djp-coretax-tax-tech-2026-05-08.md
+    sec. 1.4 (LMI Consultancy, quoted): KEP-71/PJ/2026 (reinforced by PENG-31/PJ.09/2026)
+    extended the 2025 corporate income tax return filing window through 31 May 2026 and waived
+    administrative sanctions for corporate taxpayers who file and settle any Article 29
+    underpayment within that window. The same doc's "~4,000" figure (HeyGoTrade) attaches to a
+    different claim ("formal petitions... for the deadline relief"), not "complaints" -- dropped
+    rather than restated imprecisely; (c) quarterly LKPM deadlines moved to the 15th under BKPM
+    Regulation 5/2025.
   - >-
     A parallel, unrelated lane (roster name dux-w1-pr2-compliance-page) is adding an UNLISTED,
     noindex /services/compliance page to a DIFFERENT app (apps/mouth, reading a committed price
@@ -85,7 +105,13 @@ acceptance:
   - text: Every surface listing the four pillars SHALL list five, or be shown not to enumerate them.
     probe: >-
       Entry.test.tsx / Home.test.tsx updated and green for the fifth nav category and homepage
-      card; Footer.tsx read in full -- contains no per-pillar links to update.
+      card; Footer.tsx read in full -- contains no per-pillar links to update. CORRECTED at gate
+      r1 (REWORK-BUILD): this sweep missed two surfaces. src/content/company.ts's
+      companyExpertise array (rendered on /about) and tests/qa/site-smoke.mjs's REQUIRED_ROUTES
+      both still listed only four pillars; both cured (commit bb76bbecef), plus
+      Company.test.tsx's hardcoded expected-routes assertion, which the sweep also missed
+      (commit 96dd25fe33). grep -rn "companyExpertise\|REQUIRED_ROUTES" apps/website/src
+      apps/website/tests now shows both including /services/compliance.
   - text: Typecheck, full test suite and production build SHALL be clean.
     probe: >-
       npx tsc --noEmit (exit 0); npm test -- --maxWorkers=1 --no-file-parallelism (100 files /
