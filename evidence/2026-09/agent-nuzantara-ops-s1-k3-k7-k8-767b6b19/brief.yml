@@ -121,7 +121,10 @@ residuals:
 
 consumer_map:
   - >-
-    launchd on Pro runs scripts/queue_shepherd.py every 600s as
-    com.nuzantara.queue-shepherd.10min; it is the only consumer of the three guards.
+    launchd on Pro runs scripts/queue_shepherd.py every 600s. The plist FILE is
+    com.nuzantara.queue-shepherd.10min.plist but its Label — the string launchctl knows and
+    the one launchd_liveness_detector.py matches on — is com.nuzantara.queue-shepherd, which
+    is why the residual below is stated against that name. Reading the filename as the label
+    is the same conflation the residual is about. It is the only consumer of the three guards.
   - >-
     scripts/tests/test_queue_shepherd.py runs in CI in this PR and is the shipped proof.

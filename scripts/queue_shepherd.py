@@ -1494,8 +1494,11 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
     folded into a zero (S1, 2026-09-10 — see the module docstring's S1 section for the measured
     incident this responds to). `cannot_verify` is None on a clean read, else "rearm_state"
     (budget/alerted/red/rearm-fail state file corrupt), "rearm_candidates" (the gh candidate-PR
-    fetch failed after its one retry), or "red_state_gc" (K-7: a hand-edited red-file key could not
-    be parsed as a PR number). `detail` carries the first 300 chars of the triggering exception, for
+    fetch failed after its one retry), "red_state_gc" (K-7: a hand-edited red-file key could not
+    be parsed as a PR number), or "rearm_pr_reads" (a PER-PR timeline or infra-correlation read
+    failed after the list read had already succeeded). The last one is the reason tick() at the
+    log line below branches on the SET ("rearm_candidates", "rearm_state") rather than on
+    cannot_verify being truthy: only those two leave examined/candidates unknowable. `detail` carries the first 300 chars of the triggering exception, for
     tick()'s heartbeat/alert — not part of the spec-named fields, purely a passthrough. `unverified`
     counts candidates whose OWN per-PR timeline read failed (skipped that PR, not the whole tick).
     `rearm_write_failed` (K-3) counts candidates whose `rearm_pr` WRITE has now failed
