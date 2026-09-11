@@ -108,7 +108,7 @@ def _source() -> dict[str, Any]:
     return {
         "body": _BODY,
         "intel_events": {_EVENT_ID: _intel_event()},
-        "document_versions": {_VERSION_ID: _sha256(_BODY)},
+        "document_versions": {_VERSION_ID: {"document_id": _URL, "content_hash": _sha256(_BODY)}},
         "locators": {_LOCATOR: {"start": start, "end": start + len(_QUOTE)}},
     }
 
@@ -135,6 +135,7 @@ def _admissible_record() -> dict[str, Any]:
             "subject_ref": "synthetic.instrument.01",
             "predicate": "synthetic.fee.amount",
             "object_ref_or_value": "IDR 1,234,000",
+            "value_span": {"start": _QUOTE.index("IDR 1,234,000"), "end": len(_QUOTE)},
             "derived_from_span": True,
         },
         "source_event_ref": {"event_id": "11111111-0000-4000-8000-0000000000e1"},
@@ -342,9 +343,55 @@ def test_an_invented_or_mismatched_version_is_excluded_by_name() -> None:
     assert isinstance(first, Excluded) and first.reason == "source_version_missing"
 
     other_body = _source()
-    other_body["document_versions"][_VERSION_ID] = _sha256("a different body")
+    other_body["document_versions"][_VERSION_ID] = {"document_id": _URL, "content_hash": _sha256("a different body")}
     second = admit(_admissible_record(), other_body)
     assert isinstance(second, Excluded) and second.reason == "source_version_missing"
+
+    # Round 2 (codex, B3 PARTIAL): same body hash, registered for ANOTHER document.
+    other_document = _source()
+    other_document["document_versions"][_VERSION_ID] = {
+        "document_id": "https://example.invalid/another-document",
+        "content_hash": _sha256(_BODY),
+    }
+    third = admit(_admissible_record(), other_document)
+    assert isinstance(third, Excluded) and third.reason == "source_version_missing"
+
+
+def test_a_value_that_merely_shares_a_number_with_the_span_is_excluded_by_name() -> None:
+    """Codex round 2 BLOCKER: overlap is not derivation.
+
+    The span here starts at "Article 1", so it holds two numbers. Each case keeps every other
+    rule satisfied and breaks only the value's anchoring: a string that shares a digit with the
+    article number, a paraphrase built around the real figure, part of a larger number, no anchor
+    at all, and an anchor on the OTHER number. The innocence case is the real figure at its real
+    offsets.
+    """
+
+    quote = _BODY[_BODY.index("Article 1") : _BODY.index(_QUOTE) + len(_QUOTE)]
+    source = _source()
+    begin = _BODY.index(quote)
+    source["locators"]["art-1"] = {"start": begin, "end": begin + len(quote)}
+
+    def with_value(value: Any, anchor: dict[str, int] | None) -> Excluded | Admitted:
+        record = _admissible_record()
+        record["source_span"] = {"locator": "art-1", "quoted_text": quote, "quote_hash": _sha256(quote)}
+        record["statement"]["object_ref_or_value"] = value
+        record["statement"]["value_span"] = anchor
+        return admit(record, source)
+
+    article = quote.index("1")
+    fee = quote.index("1,234,000")
+    for value, anchor in (
+        ("1 year", {"start": article, "end": article + 1}),
+        ("1,234,000 days of detention", {"start": fee, "end": fee + len("1,234,000")}),
+        (1234, {"start": fee, "end": fee + len("1,234")}),
+        (1234000, None),
+        (1234000, {"start": article, "end": article + 1}),
+    ):
+        decision = with_value(value, anchor)
+        assert isinstance(decision, Excluded), (value, anchor)
+        assert decision.reason == "statement_not_from_source", (value, anchor)
+    assert isinstance(with_value(1234000, {"start": fee, "end": fee + len("1,234,000")}), Admitted)
 
 
 def test_a_genuine_quote_at_a_fictional_locator_is_excluded_by_name() -> None:
@@ -399,6 +446,25 @@ def test_two_simultaneous_defects_report_the_earlier_rule() -> None:
     rights_and_retention["retention"] = {}
     third = admit(rights_and_retention, _source())
     assert isinstance(third, Excluded) and third.reason == "rights_missing"
+
+    # Kimi round 2, LOW: the tail adjacencies (7,8), (8,9), (9,10) were unpinned.
+    retention_and_classification = _admissible_record()
+    retention_and_classification["retention"] = {}
+    retention_and_classification["classification"] = {"rights": "public-domain"}
+    fourth = admit(retention_and_classification, _source())
+    assert isinstance(fourth, Excluded) and fourth.reason == "retention_missing"
+
+    classification_and_review = _admissible_record()
+    classification_and_review["classification"] = {"rights": "public-domain"}
+    del classification_and_review["review"]
+    fifth = admit(classification_and_review, _source())
+    assert isinstance(fifth, Excluded) and fifth.reason == "classification_missing"
+
+    review_and_family = _admissible_record()
+    del review_and_family["review"]
+    del review_and_family["manifest_family_id"]
+    sixth = admit(review_and_family, _source())
+    assert isinstance(sixth, Excluded) and sixth.reason == "review_state_missing"
 
 
 def test_the_seed_cohorts_fully_sourced_records_are_admitted() -> None:

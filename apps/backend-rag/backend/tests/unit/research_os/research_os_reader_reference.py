@@ -434,10 +434,12 @@ def _group(
     (`naga.claim_family.bdd…` against claims carrying `bdd…`) was never attached and every
     temporal test stayed green over edges manufactured in the reader's private shape.
 
-    An edge is NEVER silently dropped. One whose `family_id` names no family here but whose
-    refs name a member of one is attached to that member's family, where
+    An edge that touches this read is never silently dropped: one whose `family_id` names no
+    family here but whose refs name a member of one is attached to that member's family, where
     `_integrity_reasons` quarantines it as `family_identity_mismatch` — ignoring it would be the
-    very defect this function was cured of.
+    very defect this function was cured of. An edge whose family AND refs name nothing under this
+    `subject_key` belongs to another key's read and is not considered here (kimi round 2, LOW:
+    the earlier wording promised more than that).
     """
 
     families: dict[str, _Family] = {}

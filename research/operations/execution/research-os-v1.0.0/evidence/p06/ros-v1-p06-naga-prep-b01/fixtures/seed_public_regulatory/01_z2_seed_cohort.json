@@ -19,6 +19,10 @@
           },
           "predicate": "naga.fee_schedule.kitas_renewal",
           "object_ref_or_value": 1234567,
+          "value_span": {
+            "start": 95,
+            "end": 104
+          },
           "derived_from_span": true
         },
         "source_span": {
@@ -96,7 +100,10 @@
           }
         },
         "document_versions": {
-          "v1-2026-01-01": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965"
+          "v1-2026-01-01": {
+            "document_id": "https://example.go.id/permenkumham-synth-77-2026",
+            "content_hash": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965"
+          }
         },
         "locators": {
           "https://example.go.id/permenkumham-synth-77-2026#pasal-9-ayat-3": {
@@ -279,6 +286,10 @@
           },
           "predicate": "naga.eligibility_rule.min_capital",
           "object_ref_or_value": 9876543210,
+          "value_span": {
+            "start": 87,
+            "end": 100
+          },
           "derived_from_span": true
         },
         "source_span": {
@@ -356,7 +367,10 @@
           }
         },
         "document_versions": {
-          "v1-2026-02-01": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7"
+          "v1-2026-02-01": {
+            "document_id": "https://example.go.id/pp-synth-58-2026",
+            "content_hash": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7"
+          }
         },
         "locators": {
           "https://example.go.id/pp-synth-58-2026#pasal-4-ayat-1": {
@@ -537,7 +551,11 @@
             "object_id": "permen-bkpm-synth-9-2026"
           },
           "predicate": "naga.compliance_deadline.lkpm_filing",
-          "object_ref_or_value": "quarterly, due by the 23rd of the seventh following month",
+          "object_ref_or_value": "paling lambat tanggal 23 (dua puluh tiga) bulan ketujuh berikutnya",
+          "value_span": {
+            "start": 75,
+            "end": 141
+          },
           "derived_from_span": true
         },
         "source_span": {
@@ -615,7 +633,10 @@
           }
         },
         "document_versions": {
-          "v1-2026-04-01": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3"
+          "v1-2026-04-01": {
+            "document_id": "https://example.go.id/permen-bkpm-synth-9-2026",
+            "content_hash": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3"
+          }
         },
         "locators": {
           "https://example.go.id/permen-bkpm-synth-9-2026#pasal-12-ayat-2": {
@@ -637,7 +658,7 @@
               "object_hash": "e1108477e0857c832ac26e5cd6891df055113763845295da439a65b5a446c558"
             },
             "predicate": "naga.compliance_deadline.lkpm_filing",
-            "object_ref_or_value": "quarterly, due by the 23rd of the seventh following month"
+            "object_ref_or_value": "paling lambat tanggal 23 (dua puluh tiga) bulan ketujuh berikutnya"
           },
           "scope": {
             "domain": "compliance.synthetic",
@@ -687,7 +708,7 @@
               }
             }
           },
-          "object_hash": "eca46d06755f394484b1276e020fa90de93480aa2392471d89f6817cada7a256"
+          "object_hash": "496b4ab3acd51964b7591e295093bbd65260139cf30e64d39696f5ff70cd1232"
         },
         "evidence": {
           "evidence_id": "9f01af10-da15-5b7d-855f-cea987a9015e",
@@ -796,6 +817,10 @@
           },
           "predicate": "naga.fee_schedule.rptka_sponsor",
           "object_ref_or_value": 4321,
+          "value_span": {
+            "start": 116,
+            "end": 121
+          },
           "derived_from_span": true
         },
         "source_span": {
@@ -873,7 +898,10 @@
           }
         },
         "document_versions": {
-          "v1-2026-03-01": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336"
+          "v1-2026-03-01": {
+            "document_id": "https://example.go.id/permenaker-synth-15-2026",
+            "content_hash": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336"
+          }
         },
         "locators": {
           "https://example.go.id/permenaker-synth-15-2026#pasal-6-ayat-1": {
@@ -1055,7 +1083,11 @@
             "object_id": "permenlhk-synth-21-2026"
           },
           "predicate": "naga.eligibility_rule.permit_validity",
-          "object_ref_or_value": "13 years from date of issuance",
+          "object_ref_or_value": "13 (tiga belas) tahun",
+          "value_span": {
+            "start": 31,
+            "end": 52
+          },
           "derived_from_span": true
         },
         "source_span": {
@@ -1133,7 +1165,10 @@
           }
         },
         "document_versions": {
-          "v1-2026-05-01": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975"
+          "v1-2026-05-01": {
+            "document_id": "https://example.go.id/permenlhk-synth-21-2026",
+            "content_hash": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975"
+          }
         },
         "locators": {
           "https://example.go.id/permenlhk-synth-21-2026#pasal-15-ayat-4": {
@@ -1155,7 +1190,7 @@
               "object_hash": "799b33abf8a9a2c4aeaff9a3fcdc3499cc5a641800422104f0b96fa6798eb4be"
             },
             "predicate": "naga.eligibility_rule.permit_validity",
-            "object_ref_or_value": "13 years from date of issuance"
+            "object_ref_or_value": "13 (tiga belas) tahun"
           },
           "scope": {
             "domain": "environmental.synthetic",
@@ -1205,7 +1240,7 @@
               }
             }
           },
-          "object_hash": "a5bf077ac38eb7b10729ca31764df71751feda113dc48615b16a8e32275708d5"
+          "object_hash": "2043440f2430eb8a32538ded8694f7f7f4ef37d53bfd9e2686c1ace428cfe52e"
         },
         "evidence": {
           "evidence_id": "b054fb94-6a72-5024-9511-25b18ff270e7",
@@ -1463,5 +1498,5 @@
     ]
   },
   "z2b_production_eligibility": "NOT PRODUCTION-ELIGIBLE. This cohort is SYNTHETIC — every instrument is spelled 'permenkumham-synth-*' and every figure is invented — so it is a TEST fixture set and NOT the cohort Z2b(a) authorises. Z2b(a) authorises at most 20 PUBLIC REGULATORY claims FULLY SOURCED from public documents (body hash of the real body, exact span, valid time, rights). Nothing here is sourced from a real instrument. THEREFORE the Z2b seed cohort is EMPTY until sourced: R2's --apply may write only whatever the legacy admission dry-run admits (expected 0), and not one row of this file. Sourcing a real cohort is DEFERRED work, named in brief.yml and in the PR body. R1 section 6's stop rule is why it was not invented instead: a figure that cannot be sourced from a public document stops the window, it does not get fabricated and labelled sourced. RULED by the imperator nuzantara-0d 2026-09-11T10:57Z (R1-ack on envelope 20260911T105202Z-2f23.md), disposition (b) of two offered.",
-  "correction_2026_09_11_codex_r1": "CORRECTED (R1 g3, adversarial round 1). (a) Every record's `source` now carries `document_versions` (version id -> the body hash that version was registered for) and `locators` (locator -> {start, end} character offsets of the quoted span in `body`), the two mappings D4 rules 3 and 4 resolve against instead of accepting a non-empty string (codex findings 3 and 4). (b) Both `correction_pair` claims now carry the `com.balizero.research-os.naga` extension with subject_key `id/permenkumham-synth-40-2026/pasal-5-ayat-2` (invented, like every identifier here) -- without it they were invisible to `read()` (Gemini N4). The edge keeps `naga.claim_family.<uuid>`: `ObjectSuccessorEdge.family_id` is a RegisteredName and `Claim.claim_family_id` a uuid, so the READER derives the registered name (codex finding 5). Every object_hash recomputed by `_recompute_hashes.py`. (c) FIGURES MADE UNMISTAKABLY INVENTED (codex MEDIUM + Gemini): Rp1.234.567, Rp9.876.543.210, the 23rd of the seventh following month, USD 4,321, 13 years -- none is, or resembles, a real Indonesian rate, threshold or deadline. This also cured a real inconsistency the round-1 rule 1 derivation caught on its first run: rptka-sponsor-fee-04 stated 1200000 while its own quoted span said USD 1,200. Body hashes, quote hashes, locator offsets and every object_hash were recomputed, never typed."
+  "correction_2026_09_11_codex_r1": "CORRECTED (R1 g3, adversarial round 1). (a) Every record's `source` now carries `document_versions` (version id -> the body hash that version was registered for) and `locators` (locator -> {start, end} character offsets of the quoted span in `body`), the two mappings D4 rules 3 and 4 resolve against instead of accepting a non-empty string (codex findings 3 and 4). (b) Both `correction_pair` claims now carry the `com.balizero.research-os.naga` extension with subject_key `id/permenkumham-synth-40-2026/pasal-5-ayat-2` (invented, like every identifier here) -- without it they were invisible to `read()` (Gemini N4). The edge keeps `naga.claim_family.<uuid>`: `ObjectSuccessorEdge.family_id` is a RegisteredName and `Claim.claim_family_id` a uuid, so the READER derives the registered name (codex finding 5). Every object_hash recomputed by `_recompute_hashes.py`. (c) FIGURES MADE UNMISTAKABLY INVENTED (codex MEDIUM + Gemini): Rp1.234.567, Rp9.876.543.210, the 23rd of the seventh following month, USD 4,321, 13 years -- none is, or resembles, a real Indonesian rate, threshold or deadline. This also cured a real inconsistency the round-1 rule 1 derivation caught on its first run: rptka-sponsor-fee-04 stated 1200000 while its own quoted span said USD 1,200. Body hashes, quote hashes, locator offsets and every object_hash were recomputed, never typed. (d) ROUND 2 (codex BLOCKER + B3 PARTIAL): every record statement carries `value_span`, the {start, end} offsets of its value's whole token inside the quoted span, and the two string values are now the literal Indonesian tokens they anchor to rather than English paraphrases -- rule 1 compares whole tokens, never shared digits. `document_versions` values are {document_id, content_hash}, binding the version to the document as well as the body."
 }

@@ -123,45 +123,60 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-#: Digit runs inside prose, admitting the locale thousands-separators ("," and ".") the seed
-#: cohort's Indonesian gazette text and English fixtures both use — "Rp1.234.567" and "1,234,000"
-#: both match, and the separators are stripped before comparison so either grouping normalises to
-#: the same digit string as the record's own numeric `object_ref_or_value`.
-_NUMERIC_SPAN_RE = re.compile(r"\d(?:[\d.,]*\d)?")
+#: ONE number token, with at most one consistent grouping separator: "1.234.567", "4,321", "13".
+#: The derivation compares a WHOLE token to the claimed number, never a digit run found anywhere.
+_NUMBER_TOKEN_RE = re.compile(r"\d{1,3}(?:([.,])\d{3}(?:\1\d{3})*)?|\d+")
+_SEPARATORS = ".,"
 
 
-def _digit_groups(text: str) -> set[str]:
-    """Every digit run in `text`, thousands separators stripped and normalised.
+def _is_delimited(text: str, start: int, end: int, *, numeric: bool) -> bool:
+    """`text[start:end]` is a whole token: it does not continue a number, or a word, on either side."""
 
-    "Rp1.234.567", "1,234,567" and "1234567" all normalise to the same group -- the same
-    figure is spelled with different locale separators across this bundle's fixtures (the
-    Indonesian gazette bodies use "." per group, the English ones use ",") and neither spelling
-    is the raw `int`.
+    before = text[start - 1] if start > 0 else ""
+    after = text[end] if end < len(text) else ""
+    if not numeric:
+        return not (before.isalnum() or after.isalnum())
+    if before.isdigit() or after.isdigit():
+        return False
+    if before != "" and before in _SEPARATORS and start >= 2 and text[start - 2].isdigit():
+        return False
+    return not (after != "" and after in _SEPARATORS and end + 1 < len(text) and text[end + 1].isdigit())
+
+
+def _value_is_anchored_in_span(statement: Mapping[str, Any], quoted_text: str) -> bool:
+    """The claimed value IS a whole, delimited token of the quoted span, at the offsets it names.
+
+    Round 2 (codex, BLOCKER): the round-1 cure admitted ANY shared digit group, so "1 year" passed
+    over a span that merely said "Article 1". Overlap is not derivation. The statement must carry
+    `value_span` = `{start, end}` offsets into `quoted_text`, and that exact slice must be a
+    delimited token EQUAL to the value — a number token whose separator-stripped digits equal an
+    `int` value, or, for a string value, the identical characters. Any other value type is not
+    mechanically bindable and is not admitted.
+
+    NECESSARY, NOT SUFFICIENT. A record that points a real number at the wrong phrase (the "1" of
+    "Article 1" declared as a fee) still passes: deciding what a token MEANS needs the statement
+    atomizer (`G-STATEMENT`, deferred), and review — not this predicate — owns that residual. What a
+    record can no longer do is pass by incidental overlap, point at nothing, or point at part of a
+    larger number.
     """
 
-    return {match.group().replace(",", "").replace(".", "") for match in _NUMERIC_SPAN_RE.finditer(text)}
-
-
-def _object_value_occurs_in_span(value: Any, quoted_text: str) -> bool:
-    """Is `value` actually IN the quoted span, not merely somewhere plausible?
-
-    A caller's `derived_from_span=True` is a promise, not a derivation (B2, codex round 1 finding
-    2) — this function is the derivation. When `value`'s own text carries a digit run (true for
-    every numeric `object_ref_or_value` AND for a natural-language paraphrase that names its
-    figure, e.g. "13 years from date of issuance" or "the 23rd of the seventh following month"), a shared
-    normalised digit group between the value and the quoted span IS the derivation -- the
-    paraphrase's language need not match the quote's (this bundle mixes English record-level
-    paraphrases with Indonesian gazette quotes), only its figure. A value with no digits at all
-    falls back to an exact substring check (case folded).
-    """
-
-    if isinstance(value, bool):
-        return str(value).lower() in quoted_text.lower()
-    text = str(value)
-    value_digits = _digit_groups(text)
-    if value_digits:
-        return bool(value_digits & _digit_groups(quoted_text))
-    return bool(text) and (text in quoted_text or text.lower() in quoted_text.lower())
+    value = statement.get("object_ref_or_value")
+    anchor = statement.get("value_span")
+    if not isinstance(anchor, Mapping):
+        return False
+    start, end = anchor.get("start"), anchor.get("end")
+    if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(quoted_text):
+        return False
+    piece = quoted_text[start:end]
+    if type(value) is int:
+        return (
+            _NUMBER_TOKEN_RE.fullmatch(piece) is not None
+            and piece.replace(",", "").replace(".", "") == str(value)
+            and _is_delimited(quoted_text, start, end, numeric=True)
+        )
+    if isinstance(value, str) and value:
+        return piece == value and _is_delimited(quoted_text, start, end, numeric=False)
+    return False
 
 
 def _statement_is_from_source(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
@@ -172,8 +187,9 @@ def _statement_is_from_source(record: Mapping[str, Any], source: Mapping[str, An
     to occur somewhere in the body and the caller set the flag to `true` — the flag alone carried
     the rule, per codex round 1 finding 2. The cure derives: the span's quoted text must be
     present in the document body (unchanged), every required part of the triple must be present
-    (unchanged), AND the triple's `object_ref_or_value` must actually OCCUR in the quoted span
-    itself (`_object_value_occurs_in_span`) — not merely in the wider body, and not merely
+    (unchanged), AND the triple's `object_ref_or_value` must BE the token of the quoted span that
+    `statement.value_span` names (`_value_is_anchored_in_span`; round 2 tightened this from a
+    shared digit group to whole-token equality) — not merely in the wider body, and not merely
     asserted by the flag. The flag remains a required gate (a genuine derivation the caller forgot
     to mark is still not admitted — NAGA has no atomizer, `G-STATEMENT`, still deferred, so for a
     legacy row this is False by construction, which is the honest answer, not a bug), but it can
@@ -189,7 +205,7 @@ def _statement_is_from_source(record: Mapping[str, Any], source: Mapping[str, An
         return False
     if statement.get("derived_from_span") is not True:
         return False
-    return _object_value_occurs_in_span(statement["object_ref_or_value"], quoted)
+    return _value_is_anchored_in_span(statement, quoted)
 
 
 def _content_hash_is_url(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
@@ -319,10 +335,11 @@ def _source_version_resolves(record: Mapping[str, Any], source: Mapping[str, Any
     `R1-build-spec.md §3` rule 3's own text: "no `document_version_id` for this `(document_id,
     body hash)`". The cure resolves it against `source["document_versions"]` -- a mapping this
     predicate ADDS to the SourceSnapshot's contract, keyed by `document_version_id`, valued by
-    the body hash THAT version was registered for. An invented version id that resolves to
-    nothing, or one that resolves to a DIFFERENT body hash than this record's own
-    `document_content_hash`, is the same failure: neither is the version for this document and
-    this body.
+    the `{document_id, content_hash}` THAT version was registered for — both halves of the pair
+    the spec names (round 2, codex: a mapping to the body hash alone left the document unbound).
+    An invented version id, one registered for a DIFFERENT body hash, and one registered for a
+    DIFFERENT document with the same body are the same failure: none is the version for this
+    document and this body.
     """
 
     version_id = record.get("document_version_id")
@@ -332,8 +349,12 @@ def _source_version_resolves(record: Mapping[str, Any], source: Mapping[str, Any
     if not document_hash:
         return False
     versions = source.get("document_versions") or {}
-    registered_hash = versions.get(version_id)
-    return registered_hash is not None and registered_hash == document_hash
+    registered = versions.get(version_id)
+    return (
+        isinstance(registered, Mapping)
+        and registered.get("document_id") == record.get("document_id")
+        and registered.get("content_hash") == document_hash
+    )
 
 
 _RULES: tuple[tuple[str, Callable[[Mapping[str, Any], Mapping[str, Any]], bool]], ...] = (
