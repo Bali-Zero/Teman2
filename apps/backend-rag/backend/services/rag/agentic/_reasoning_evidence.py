@@ -33,6 +33,7 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
+from backend.core import score_provenance
 from backend.services.rag.agentic._tool_denial import is_denial_observation
 
 logger = logging.getLogger(__name__)
@@ -363,10 +364,14 @@ def compute_evidence_score(
 ) -> float:
     """Return 0.85 if trusted tools succeeded, else keyword-based score."""
     if trusted_tools_used:
+        # B1.1: this is a WHOLE-PACKAGE label (score_provenance.TRUSTED_TOOL_BYPASS),
+        # never a per-source score — `sources` is untouched on this branch.
+        # Named here only; the returned value stays exactly 0.85.
         logger.info(
-            "🛡️ [%s] Trusted tools used: score=%.2f",
+            "🛡️ [%s] Trusted tools used: score=%.2f kind=%s",
             log_prefix,
             EVIDENCE_SCORE_TRUSTED_TOOL,
+            score_provenance.TRUSTED_TOOL_BYPASS,
         )
         return EVIDENCE_SCORE_TRUSTED_TOOL
     # Lookup via the reasoning module so tests that patch

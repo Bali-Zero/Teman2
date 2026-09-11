@@ -23,6 +23,7 @@ import time
 from typing import Any
 
 from backend.app.core.config import settings
+from backend.core import score_provenance
 
 # Tracing utilities (with fallback for standalone usage)
 try:
@@ -345,11 +346,17 @@ class CrossEncoderReranker:
                     doc_copy["rerank_score"] = float(score)
 
                     # Preserve original score
+                    prior_score = doc_copy.get("score")
                     if "score" in doc_copy and "vector_score" not in doc_copy:
                         doc_copy["vector_score"] = doc_copy["score"]
 
                     # Update main score to rerank score
                     doc_copy["score"] = float(score)
+                    score_provenance.stamp(
+                        doc_copy,
+                        score_provenance.RERANKED,
+                        prior_score if isinstance(prior_score, (int, float)) else None,
+                    )
                     reranked_docs.append(doc_copy)
 
                 # Sort by rerank score (descending)

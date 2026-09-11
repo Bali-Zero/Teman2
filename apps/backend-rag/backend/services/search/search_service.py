@@ -24,6 +24,7 @@ from qdrant_client.http import exceptions as qdrant_exceptions
 
 from backend.app.core.config import settings
 from backend.app.models import TierLevel
+from backend.core import score_provenance
 from backend.core.cache import cached
 from backend.core.collection_registry import canonicalize_collection_name
 from backend.services.ingestion.collection_manager import CollectionManager
@@ -662,6 +663,17 @@ class SearchService:
                         )
                         if metrics_collector:
                             metrics_collector.search_hybrid_total.inc()
+                        # B1.1 / ruling R1, same discrimination as
+                        # hybrid_search():1169 — `vector_db.hybrid_search()`
+                        # can degrade to dense internally
+                        # (core/qdrant_db.py:1362) and that dict carries no
+                        # "search_type" key. Read the key's PRESENCE, never
+                        # its value.
+                        declared_kind = (
+                            score_provenance.HYBRID_RRF_FORMATTED
+                            if "search_type" in raw_results
+                            else score_provenance.DENSE_FORMATTED
+                        )
                     else:
                         # Fallback to dense-only if hybrid_search not available
                         raise AttributeError("vector_db does not support hybrid_search")
@@ -678,6 +690,7 @@ class SearchService:
                     )
                     if metrics_collector:
                         metrics_collector.search_hybrid_failed_total.inc()
+                    declared_kind = score_provenance.DENSE_FORMATTED
                     # Fall through to dense-only search
                     use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
                     raw_results = await vector_db.search(
@@ -699,6 +712,7 @@ class SearchService:
                 )
                 if metrics_collector:
                     metrics_collector.search_dense_only_total.inc()
+                declared_kind = score_provenance.DENSE_FORMATTED
 
             # Format results using helper method
             formatted_results = format_search_results(
@@ -706,6 +720,7 @@ class SearchService:
                 collection_name,
                 primary_collection=None,
                 query=query,
+                score_kind=declared_kind,
             )
 
             # Record query for health monitoring
@@ -887,6 +902,9 @@ class SearchService:
             collection_name,
             primary_collection=None,
             query=query,
+            # B1.1: raw_results above came from the dense path, so the kind is
+            # known here and is declared rather than left to the UNKNOWN default.
+            score_kind=score_provenance.DENSE_FORMATTED,
         )
         return {
             "query": query,
@@ -1100,6 +1118,15 @@ class SearchService:
         cached_result = await cache.get(cache_key)
         if cached_result is not None:
             cached_result["cache_hit"] = True
+            # B1.1: a cached entry written before score_provenance existed
+            # (or by a legacy code path) carries no score_kind — declare it
+            # UNKNOWN rather than leaving the field absent. No number moves.
+            for entry in cached_result.get("results", []):
+                if (
+                    isinstance(entry, dict)
+                    and score_provenance.SCORE_KIND_KEY not in entry
+                ):
+                    score_provenance.stamp(entry, score_provenance.UNKNOWN)
             return cached_result
 
         try:
@@ -1140,6 +1167,21 @@ class SearchService:
                     prefetch_limit=limit * 3,  # Get more candidates for fusion
                 )
                 search_type = raw_results.get("search_type", "hybrid_rrf")
+                # B1.1 / ruling R1: score_kind is DECLARED by this branch,
+                # never derived from the (known-lossy) search_type default
+                # above. `vector_db.hybrid_search()` stamps its own native
+                # RRF-shaped dict with a "search_type" key on every path
+                # (success and its own empty-result error path) — the ONE
+                # case that key is absent is when it silently degraded to
+                # `self.search()` internally (core/qdrant_db.py:1362),
+                # whose dense-shaped dict never carries that key. Checking
+                # the key's PRESENCE (not its value) tells hybrid from
+                # dense here without touching `search_type` itself.
+                declared_kind = (
+                    score_provenance.HYBRID_RRF_FORMATTED
+                    if "search_type" in raw_results
+                    else score_provenance.DENSE_FORMATTED
+                )
             else:
                 # Fallback to dense-only search
                 use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
@@ -1150,6 +1192,7 @@ class SearchService:
                     vector_name=use_vector_name,
                 )
                 search_type = "dense_only"
+                declared_kind = score_provenance.DENSE_FORMATTED
 
             if METRICS_AVAILABLE and search_start:
                 rag_vector_search_duration.observe(time.time() - search_start)
@@ -1160,6 +1203,7 @@ class SearchService:
                 collection_name,
                 primary_collection=None,
                 query=query,
+                score_kind=declared_kind,
             )
 
             # Record query for health monitoring
@@ -1426,6 +1470,9 @@ class SearchService:
                     collection_name,
                     primary_collection=primary_collection,
                     query=query,
+                    # B1.1: raw_results above came from the dense path, so the kind is
+                    # known here and is declared rather than left to the UNKNOWN default.
+                    score_kind=score_provenance.DENSE_FORMATTED,
                 )
 
                 return collection_name, formatted_results
@@ -1612,6 +1659,9 @@ class SearchService:
                 collection_name,
                 primary_collection=None,
                 query=query,
+                # B1.1: raw_results above came from the dense path, so the kind is
+                # known here and is declared rather than left to the UNKNOWN default.
+                score_kind=score_provenance.DENSE_FORMATTED,
             )
 
             return {"query": query, "results": formatted_results, "collection": collection_name}

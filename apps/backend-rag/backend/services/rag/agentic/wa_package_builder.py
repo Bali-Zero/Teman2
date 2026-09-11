@@ -37,6 +37,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from backend.core import score_provenance
 from backend.prompts.channel_overlays import CHANNEL_CONFIGS
 from backend.prompts.zantara_core import (
     CITATION_RULES,
@@ -282,13 +283,19 @@ async def _search_collection_chunks(
         text = hit.get("text")
         if not text:
             continue
-        chunks.append(
-            {
-                "collection": collection,
-                "text": text,
-                "score": hit.get("score", 0.0),
-            },
+        chunk = {
+            "collection": collection,
+            "text": text,
+            "score": hit.get("score", 0.0),
+        }
+        # B1.1: carry the hit's declared score_kind/score_raw through —
+        # UNKNOWN when the hit declared none.
+        score_provenance.stamp(
+            chunk,
+            score_provenance.kind_of(hit),
+            score_provenance.raw_of(hit),
         )
+        chunks.append(chunk)
     return chunks
 
 
@@ -526,7 +533,9 @@ async def build_context_package(
 
     chunks: list[dict[str, Any]] = []
     if curated_qa_block:
-        chunks.append({"collection": "curated_qa", "text": curated_qa_block, "score": 1.0})
+        curated_chunk = {"collection": "curated_qa", "text": curated_qa_block, "score": 1.0}
+        score_provenance.stamp(curated_chunk, score_provenance.CURATED_SYNTHETIC)
+        chunks.append(curated_chunk)
 
     retrieved: list[dict[str, Any]] = []
     for collection in ordered_collections:
@@ -592,7 +601,14 @@ async def build_context_package(
     # fields, it never recomputes them against a possibly-drifted retrieval.
     abstain_policy = build_abstain_policy(query)
     evidence_score = calculate_evidence_score(
-        sources=[{"score": chunk["score"]} for chunk in chunks],
+        sources=[
+            {
+                "score": chunk["score"],
+                "score_kind": score_provenance.kind_of(chunk),
+                "score_raw": score_provenance.raw_of(chunk),
+            }
+            for chunk in chunks
+        ],
         context_gathered=[chunk["text"] for chunk in chunks],
         query=query,
     )
