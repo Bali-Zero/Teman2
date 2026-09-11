@@ -3,7 +3,7 @@
   "mission": "SHWEB-20260911",
   "window": "W1-SH-TECH",
   "colour": "BLUE",
-  "state": "BOZZA -> BUILD (PRE-review received 2026-09-11T11:30Z)",
+  "state": "CANDIDATO (PR #6243); head frozen before POST refuter round 2",
   "frozenAt": "2026-09-11T11:10:00Z",
   "frozenBy": "Dux Opus 5 xhigh, M5 Air-M5, Claude session 49aaaada-dcb1-4b4b-92d2-33af01e2f4f8 (peer name nuzantara-8a)",
   "baseSha": "ea50eb262f9ed96ce070cb407b55202002b0dae8",
@@ -260,6 +260,20 @@
       "08a8905f7a": "adoption (+ D2 prettier padding, required by pre-commit)",
       "6d8c6a75e8": "D1 test names/docstrings",
       "ccb05384b1": "D3 research frontmatter + review section"
+    }
+  },
+  "postRefuterRound1": {
+    "seat": "gpt-5.6-sol xhigh, codex-cli 0.154.0, --sandbox read-only",
+    "session": "01a09046-9e62-7ee1-a280-e1628fd3c856",
+    "window": "2026-09-11T11:42:20Z..11:50:28Z",
+    "reviewedHead": "commit b87db24a30",
+    "verdict": "REWORK",
+    "file": "reviews/post-refuter-codex-sol-round1.txt",
+    "dispositions": {
+      "F1 BLOCKER (head moved during review: D4 + size exception)": "ACCEPTED: head frozen before round 2 and not moved until the gate verdict (imperator condition a)",
+      "F2 BLOCKER (no exact build or preview browser before POST review)": "ACCEPTED: Vercel preview READY on d5e267c735 with build-log lines and a 5-scenario browser walk (preview-verification.md, preview-browser-out.json); later commits touch only evidence/** and .secrets.baseline",
+      "F3 MAJOR (verified claims without durable logs)": "ACCEPTED: local-proofs.txt with commands, product tree hashes and real exit codes (pytest 0, mutant 1, tsc 0, eslint 0, diff --check 0); root cause found while curing: `.gitignore:126 *.log` had kept every proof log out of git, so they now ship as .txt (local-proofs.txt, vitest-targeted.txt, negative-old-build-flag.txt, npm-audit-gate.txt)",
+      "F4 MINOR (test names: 'production path', no WAIVE == {} pin)": "REBUTTED: a second rename is a fix-of-a-fix (Builder Contract 1, depth 1; imperator concurs); 'production path' names the class of an unvetted non-dev node, 'no standing waiver' is scoped to the retired advisories; the emptiness pin was already rebutted as policy (Kimi F5)"
     }
   }
 }

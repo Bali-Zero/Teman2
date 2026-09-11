@@ -4,7 +4,7 @@ mandate_id: SHWEB-20260911/W1-SH-TECH
 colour: BLUE
 l_level: L2
 gate_class: opus
-state: BUILD # PRE-review received 2026-09-11T11:30Z (Codex Sol GO-WITH-CONDITIONS, Kimi K3 HOLDS-WITH-CONDITIONS)
+state: CANDIDATO # PR #6243; PRE-review 11:30Z; POST refuter round 1 REWORK (process, no code defect) 11:50Z; round 2 on the frozen head
 host: Air-M5 (balizero)
 host_override: >-
   W1-studio-tech.md §1 names Mini; overridden by Zero's ruling M = ENTRAMBI (02-DECISIONI-ZERO.md sha
@@ -18,7 +18,7 @@ base_sha: ea50eb262f9ed96ce070cb407b55202002b0dae8 # pragma: allowlist secret - 
 worktree: .worktrees/mouth-shweb-w1-tech-20260911
 branch: agent/air-m5/mouth/shweb-w1-tech-20260911
 opened_at: "2026-09-11T11:04Z"
-deadline_utc: "2026-09-11T14:05Z"
+deadline_utc: "2026-09-11T15:05Z" # renewed by the imperator 12:58Z (time lost on a permission prompt 11:51Z-12:56Z)
 objective: >-
   Second Home Studio technical completion (F7 hygiene), adopting ONCE Astra's frozen topic-4 patch
   (evidence/secondhome-prepared.patch, sha256 90589bfa…e754f): retire the four obsolete npm audit
@@ -70,20 +70,20 @@ acceptance:
       (historical fixture). This is a synthetic high reclassification: the two Hono advisories are
       officially Moderate upstream and stay non-blocking by the gate's BLOCKING=("high","critical")
       design; the test does not claim that a real Moderate reintroduction blocks (Codex Sol PRE-review F3).
-    probe: "pytest scripts/ci/test_npm_audit_gate.py (19 tests) + mutation: restore one WAIVE entry -> test red"
+    probe: "local-proofs.txt §1-§2: pytest scripts/ci/test_npm_audit_gate.py (19) + mutant with the gray-matter waiver restored -> exit 1"
     status: verified # 19 passed; restored gray-matter waiver -> 1 failed on GHSA-5p4m (scratchpad mutant), 11:33Z
   - text: WHEN the build line is reverted to LLMS_GENERATE_FULL_ONLY=1, THEN llms-article-exports.test.ts SHALL fail on the stale ID export.
     probe: "vitest run src/lib/llms-article-exports.test.ts with the old flag -> red; new flag -> green"
-    status: verified # old flag -> 1 failed: expected 'stale ID export' to contain 'TITLE: Current ID' (negative-old-build-flag.log); package.json restored byte-identical
+    status: verified # old flag -> 1 failed: expected 'stale ID export' to contain 'TITLE: Current ID' (negative-old-build-flag.txt); package.json restored byte-identical
   - text: WHEN the real npm audit JSON (--audit-level=high --omit=dev) runs through the gate, THEN none of the four retired ids SHALL appear and the three new highs SHALL stay reported (exit 1, advisory job).
     probe: "npm audit --audit-level=high --omit=dev --json | python3 scripts/ci/npm_audit_gate.py"
-    status: verified # gate_rc=1: js-yaml GHSA-2883, mysql2 GHSA-3f6p/GHSA-rgwj, sharp GHSA-rgj7; 0 retired ids (npm-audit-gate.log, 11:36Z)
+    status: verified # gate_rc=1: js-yaml GHSA-2883, mysql2 GHSA-3f6p/GHSA-rgwj, sharp GHSA-rgj7; 0 retired ids (npm-audit-gate.txt, 11:36Z)
   - text: WHEN the Second Home suite, export test and KBLI corpus test run on the new base, THEN all SHALL pass; tsc exit 0; eslint on touched TSX 0 errors; git diff --check clean; next build (npm run build) exit 0.
     probe: "cd apps/mouth && npx vitest run second-home secondhome llms-article-exports kbli-llms-corpus; npx tsc --noEmit; npm run build"
-    status: partial # vitest 31 files/552 passed (vitest-targeted.log); tsc exit 0 (pre-commit); eslint 0 errors; diff --check clean; full npm run build -> Vercel preview
+    status: verified # vitest 31 files/552 (vitest-targeted.txt); pytest 19, tsc 0, eslint 0, diff --check 0 with real exit codes (local-proofs.txt); full npm run build READY on the Vercel preview of d5e267c735 (preview-verification.md)
   - text: WHEN a browser walks the Studio (E33/E33E/E33F, onshore/offshore) on the PR preview, THEN the real price elements SHALL compute font-family Cormorant and font-variant-numeric tabular-nums, prices SHALL equal the resolver, bands/custody/save/share/print unchanged.
     probe: "Playwright on the Vercel preview; getComputedStyle on the real price nodes; print emulation"
-    status: pending
+    status: verified # preview d5e267c735: E33 35.000.000 / E33E 45.000.000 / E33F 14.000.000 and 16.000.000 IDR, property no price; cormorant + tabular-nums on screen and print; custody visible; #p= round-trip (preview-verification.md)
   - text: WHEN the merged commit is promoted by Vercel, THEN balizero.com/llms-id.txt and /llms-full.txt SHALL match the release sources except the generation date, and /llms.txt freshness SHALL list each URL once.
     probe: "curl on production after INTEGRATA; compare to generator output from the promoted sha"
     status: pending

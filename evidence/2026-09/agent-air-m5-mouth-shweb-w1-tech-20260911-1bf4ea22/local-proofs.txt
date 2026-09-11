@@ -1,0 +1,36 @@
+# W1-SH-TECH local proofs — 2026-09-11T12:57:56Z — host Air-M5
+# commit 10ce4e865984c599ea5d2e88d4481fb6bc342b1b
+# product trees (unchanged by evidence-only commits):
+#   apps/mouth tree a6615874721ddd3c03d5850e7af2d0b3812d3bcc
+#   scripts/ci tree 0b0b1dfbd09c20c59c600c648f98ec67d15553b8
+#   .agents/skills/secondhome tree c870d348f6c1de62b041ca9326baeddd10602a7b
+#   research/secondhome tree 4a5070af3d155d2ad65dd5f72420b5b997349d00
+
+## 1. npm gate unit tests
+$ /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python3 -m pytest scripts/ci/test_npm_audit_gate.py -p no:randomly -q
+...................                                                      [100%]
+19 passed in 0.09s
+exit=0
+
+## 2. negative: shipped WAIVE restored for GHSA-5p4m (mutant copy in scratchpad, worktree untouched) — expected exit 1
+$ cd /private/tmp/claude-501/-Users-balizero-nuzantara/49aaaada-dcb1-4b4b-92d2-33af01e2f4f8/scratchpad/mut2 && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python3 -m pytest test_npm_audit_gate.py -p no:randomly -q
+npm audit: non-waived high/critical vulnerabilities found:
+   ('find-my-way', 'high', ['GHSA-c96f-x56v-gq3h'], 'not waived')
+npm audit: only waived advisories present — gate OK
+=========================== short test summary info ============================
+FAILED test_npm_audit_gate.py::test_retired_advisories_get_no_standing_waiver
+1 failed, 18 passed in 0.10s
+exit=1
+
+## 3. TypeScript (apps/mouth)
+$ cd /Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911/apps/mouth && npx tsc --noEmit
+exit=0
+
+## 4. ESLint on the two touched TSX
+$ cd /Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911/apps/mouth && npx eslint src/app/visa/second-home/studio/StudioApp.tsx src/app/visa/second-home/studio/components/ScenarioToggle.tsx
+exit=0
+
+## 5. git diff --check ea50eb262f..HEAD
+$ git -C /Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911 diff --check ea50eb262f..HEAD
+exit=0
+
