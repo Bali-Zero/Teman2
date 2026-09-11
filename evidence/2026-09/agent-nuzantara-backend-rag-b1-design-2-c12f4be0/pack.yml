@@ -127,7 +127,34 @@ lanes:
     state: delivered
   - lane: "B1.2 adversarial round 1"
     role: review
-    seat: "codex gpt-5.6-sol, effort high, read-only"
-    state: pending
+    seat: "codex gpt-5.6-sol, effort high, read-only (round 1 account 1 Pro, round 2 account 2 Mini)"
+    state: "round 1 BLOCK -> cured; round 2 pending"
 dissent: []
-adversarial: pending
+deviations:
+  - >-
+    Net size above the ~400-line guideline (registry + guard grew to about 1,250
+    added lines after the round-1 cure): one concern, tests only, no production
+    file; the growth is the independent EXPECTED table (G9) and the pinned
+    original-AST snapshot (G8) that round 1 demanded.
+  - >-
+    Codex account 1 on Pro ran out of workspace credits at 17:56Z (round 2 died
+    at start, retried 17:59Z, same error); round 2 moved to Codex account 2 on
+    Mini (CODEX_HOME=~/.codex-acct2, codex-cli 0.154.0) over a read-only extract
+    of the worktree at 5a4505040b. Same seat family and model, not a fallback.
+adversarial:
+  - round: 1
+    seat: "codex gpt-5.6-sol, effort high, read-only, account 1 (Pro)"
+    reviewed_sha: 4963e47f917af712a6eb1ad1204ba0356765ab32 # pragma: allowlist secret
+    at: "2026-09-11T17:31:29Z/17:39:23Z"
+    verdict: BLOCK
+    record: evidence/2026-09/agent-nuzantara-backend-rag-b1-design-2-c12f4be0/codex-round-1-b1-2.md
+    dispositions:
+      - "F1 BLOCKER provenance called measured: CURED 5a4505040b — dense_rank0 and qdrant_server None, collection renamed formatter_collection (simulation input), simulated field, row-9 source_chunk_association unresolved, docstring rewritten"
+      - "F2 BLOCKER G4 bypass by mutating the returned list: CURED — G6 whole-body AST parity; Dux mutation m1 red"
+      - "F3 BLOCKER duplicate def / weakening both: CURED — G7 single definition, G8 pinned original-AST sha256; Dux mutations m2, m3 red"
+      - "F4 MAJOR fields unpinned: CURED — G9 independent literal table, G2 recomputes with rounding_digits; Dux mutations m4, m6 red"
+      - "F5 MAJOR shallow immutability: CURED — MappingProxyType registry and carried_keys, G10"
+  - round: 2
+    seat: "codex gpt-5.6-sol, effort high, read-only, account 2 (Mini)"
+    reviewed_sha: 5a4505040b
+    verdict: pending
