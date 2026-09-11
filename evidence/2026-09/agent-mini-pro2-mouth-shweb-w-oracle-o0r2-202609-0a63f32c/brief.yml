@@ -1,82 +1,56 @@
 gear: 3
 gear_override: >-
-  floor 3 by SIZE (generated census replay), docs-only content — no apps/**
-  file touched, no rulepack, no migration, no deploy. The size term is driven
-  by research/visa/2026-09-11-review-reason-audit/census.json (1568 generated
-  lines, correctly not excluded — it is not a lockfile/vendor/fixtures path)
-  plus the other 6 byte-identical audit files, the audit README and the
-  spec (those two body-segment-identical: frontmatter + appended review
-  section around the pinned bytes). This is
-  PR-O0 r2 of #6240 (closed for 3 CI reds): the SAME reviewed content, same
-  three real grader dispatches (Codex round 1 + round 2, Kimi K3 on the
-  README) — this override exists to state WHY a docs-only diff floors at
-  Gear 3, not to claim a fourth dispatch that did not happen.
+  floor 3 by SIZE: research/visa/2026-09-11-review-reason-audit/census.json
+  (1568 generated lines, not excluded — not a lockfile/vendor/fixtures
+  path) plus the other pinned evidence copies drive the diff past the
+  1828-line SIZE threshold (measured with `git diff --numstat
+  origin/main...HEAD`); docs-only content, no apps/** file touched, no
+  rulepack, no migration, no deploy.
 task_id: shweb-w-oracle-20260911
 mandate_id: SHWEB-20260911/W-ORACLE/PR-O0
 colour: BLUE
 l_level: L1
 gate_class: opus
 objective: >-
-  PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE, replacing the closed PR
-  #6240 (3 CI reds: harness floor mis-declared at gear 1, R1 adversarial-
-  review frontmatter missing on the two research .md files, Detect Secrets
-  unaudited findings). #6240's reviewed content is carried forward
-  unchanged on 9 paths (the 7 byte-identical research copies, SKILL.md,
-  live-state-log.md) and inside the R1 wrapper on the 2 research .md files
-  (body segment = pin); #6240's two evidence files (brief.yml,
-  contract-lock.json) were re-authored as this PR's own gear-3 evidence;
-  .secrets.baseline is new. Cured for the three causes: (1) gear declared 3 with this
-  Gear-3 evidence pack; (2) frontmatter + appended "## Adversarial review"
-  section added to the two research .md files, pinned-byte-preserving; (3)
-  Detect Secrets baseline cured per finding for all 3 flagged files:
-  contract-lock.json (16 findings) and live-browser.json (1 finding) keep
-  the #6166-precedent file-anchored regex, all sha256/git-sha digests.
-  census.json's 2 findings, at lines 313 and 325, are NOT digests — they are
-  plain-text synthetic walk labels that trip the entropy heuristic only
-  because every character happens to sit inside the base64 alphabet. These
-  are cured per finding, not per file: `.secrets.baseline` now carries a
-  false-positive audit decision keyed to their two hashed_secret values
-  (d3b557d5…, a8463d95…), so census.json itself stays scanned and any NEW
-  finding added to it still arrives unaudited and fails the gate. An earlier
-  draft of this brief quoted the label string verbatim to explain the false
-  positive and tripped the same entropy heuristic on itself — this version
-  names the two line numbers instead.
+  PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE. Replaces #6240 (closed
+  unmerged; its three CI reds are on that PR). #6240's reviewed content is
+  carried unchanged on 9 paths (the 7 byte-identical research copies,
+  SKILL.md, live-state-log.md) and inside the R1 wrapper on the 2 research
+  .md files (body segment = pin); brief.yml, contract-lock.json and
+  pack.yml are authored for this PR; .secrets.baseline gains 2
+  file-anchored exclude regexes and 2 per-finding false-positive audit
+  decisions.
 scope:
-  - research/visa/2026-09-11-oracle-final-window-spec.md
-  - research/visa/2026-09-11-review-reason-audit/README.md
-  - research/visa/2026-09-11-review-reason-audit/census.json
-  - research/visa/2026-09-11-review-reason-audit/inputs.mts
-  - research/visa/2026-09-11-review-reason-audit/test_census.py
-  - research/visa/2026-09-11-review-reason-audit/render.test.tsx
-  - research/visa/2026-09-11-review-reason-audit/browser.mts
-  - research/visa/2026-09-11-review-reason-audit/live-browser.json
-  - research/visa/2026-09-11-review-reason-audit/live-uncertainty.png
   - .agents/skills/visaoracle/SKILL.md
   - .agents/skills/visaoracle/references/live-state-log.md
+  - .secrets.baseline
   - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o0r2-202609-0a63f32c/brief.yml
   - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o0r2-202609-0a63f32c/contract-lock.json
+  - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o0r2-202609-0a63f32c/pack.yml
+  - research/visa/2026-09-11-oracle-final-window-spec.md
+  - research/visa/2026-09-11-review-reason-audit/README.md
+  - research/visa/2026-09-11-review-reason-audit/browser.mts
+  - research/visa/2026-09-11-review-reason-audit/census.json
+  - research/visa/2026-09-11-review-reason-audit/inputs.mts
+  - research/visa/2026-09-11-review-reason-audit/live-browser.json
+  - research/visa/2026-09-11-review-reason-audit/live-uncertainty.png
+  - research/visa/2026-09-11-review-reason-audit/render.test.tsx
+  - research/visa/2026-09-11-review-reason-audit/test_census.py
 constraints:
   - Docs/research only — no apps/** file touched, no rulepack, no migration, no deploy.
   - >-
-    SIZE EXCEPTION, declared not silent: this diff is ~2400 lines, over the
-    repo's ~400-net-line PR contract (CLAUDE.md Builder Contract §1). The
-    excess is evidence copies required by the audit spec's §3 (pinned
-    capture) — census.json alone is 1568 generated lines. This is an explicit
-    exception, not a scope violation: 9 of the 15 changed files are pinned
-    copies (7 byte-identical, 2 body-segment-identical), verified by
-    sha256 (acceptance probes below), not new authored content.
-  - The 9 copied files (spec + 8 audit files) must match their source,
-    verified by sha256 — 7 byte-identical, the 2 research .md files
-    (spec, README) body-segment-identical only; __pycache__ and the stale
-    decisions-zero copy were NOT copied.
+    15 files; churn far above the 1828 SIZE threshold (measured with
+    `git diff --numstat origin/main...HEAD`), dominated by census.json
+    (1568 generated lines) and the other pinned evidence copies required
+    by spec §3.
   - >-
-    The two research/**/*.md files additionally carry a frontmatter block +
-    appended "## Adversarial review" section (R1 gate) around the pinned
-    body — repo bytes = frontmatter + pinned source bytes UNCHANGED + one
-    appended review section — copy on main = kit file + frontmatter +
-    appended review section. See sha256_body_segment in contract-lock.json
-    (2acb148e... spec, d8102e73... README, both equal to sha256_source):
-    stripping both wrapper pieces reproduces the pinned sha256_source exactly.
+    9 of the 15 changed files are pinned copies verified by sha256: 7
+    byte-identical (full-file hash = contract-lock.json's sha256_source —
+    census.json, inputs.mts, test_census.py, render.test.tsx, browser.mts,
+    live-browser.json, live-uncertainty.png), 2 body-segment-identical
+    (spec, README — stripping the frontmatter + appended "## Adversarial
+    review" section reproduces sha256_source; see contract-lock.json's
+    sha256_body_segment).
   - No decisions file authored by this PR-O0 — D1/D5/D6 are referenced, not re-derived.
   - No client PII/OSINT in any file added or edited.
 acceptance:
@@ -159,165 +133,122 @@ acceptance:
       research .md files, THEN it SHALL exit 0.
     status: verified
     probe: "python3 scripts/check_adversarial_review.py --files research/visa/2026-09-11-oracle-final-window-spec.md research/visa/2026-09-11-review-reason-audit/README.md"
-risks:
-  - >-
-    The retroactive log entries summarize three prior PRs from their `gh pr
-    view` body text only (not re-measured this session) — each entry carries
-    the mandatory disclaimer sentence so a future reader does not mistake it
-    for a fresh measurement.
-  - >-
-    Kimi K3's PASS-WITH-FINDINGS verdict on the README names 3 MINOR
-    evidentiary nits (two off-by-one file:line pointers, one unverified test
-    count, one unverified live-reachability claim) — recorded as OPEN in the
-    README's appended review section, not silently corrected, per the
-    "verbatim capture" discipline for a byte-pinned body.
-  - >-
-    The final on-disk gate is a FRESH Opus 5 session commissioned by the
-    imperator — recorded as pending in this pack, never as done.
 pii: none
 adversarial_review:
   - round: 1
     refuter: "codex exec --sandbox read-only"
     model: "gpt-6-astra (account default)"
-    reasoning: xhigh
-    duration_s: 332
     verdict: REWORK
     findings:
       - id: F4
         severity: MAJOR
-        summary: >-
-          live-state-log.md's PR #5855 entry said "After rebasing onto the
-          merged seq-20 wave" but the PR body states origin/main was merged
-          in via a merge commit, not a rebase.
+        summary: "live-state-log.md's PR #5855 entry claimed a rebase; the PR body states a merge commit."
         disposition: fixed in the follow-up commit
       - id: F5
         severity: MAJOR
-        summary: >-
-          live-state-log.md's PR #5855 entry said "two findings were
-          documented as stated bounds" but the PR body documents only the
-          sampling-limit finding as a stated bound; the ASK_FOLLOW_UP
-          prerequisite-recheck finding was left for the gate as defence-in-
-          depth, not documented as a stated bound.
+        summary: "live-state-log.md's PR #5855 entry claimed two stated-bound findings; the PR body documents only one."
         disposition: fixed in the follow-up commit
       - id: F8
         severity: MAJOR
-        summary: >-
-          contract-lock.json pinned 02-DECISIONI-ZERO.md at a hash that went
-          stale when the Desktop file changed at 19:15 WITA (an imperator
-          technical exception for W1-SH-TECH was appended).
+        summary: "contract-lock.json pinned 02-DECISIONI-ZERO.md at a hash the source file had since moved past."
         disposition: fixed in the follow-up commit
   - round: 2
     refuter: "codex exec --sandbox read-only"
     model: "gpt-6-astra (account default)"
-    verdict: PASS-WITH-FINDINGS
     head_sha: 82d08445b3
+    verdict: PASS-WITH-FINDINGS
     findings:
       - id: F-op1
         severity: MINOR
-        summary: operational nit on the round-1 fix, not a correctness defect.
-        disposition: accepted as-is (MINOR, operational)
+        summary: "operational nit on the round-1 fix, not a correctness defect."
+        disposition: accepted as-is
   - round: 3
     refuter: kimi
     model: "kimi-k3 (kimi -r session_dbb009de-85fd-4d72-952c-7d21df829beb)"
     scope: research/visa/2026-09-11-review-reason-audit/README.md
+    head_sha: be45266252
     verdict: PASS-WITH-FINDINGS
     findings:
       - id: K1
         severity: MINOR
-        summary: "engine-adapter.test.ts:782 points to a comment line inside the list (list declaration at 781, first code entry 783)."
-        disposition: OPEN — verbatim capture, not corrected in the pinned body
+        summary: "engine-adapter.test.ts:782 is a comment line inside the list (list declaration :781, first entry :783)."
+        disposition: OPEN — verbatim capture in the README, not corrected (pinned body)
       - id: K2
         severity: MINOR
-        summary: "engine-adapter.ts:698 is the `path: string,` parameter line of questionForFact (def at 697)."
-        disposition: OPEN — verbatim capture, not corrected in the pinned body
+        summary: "README claims engine-adapter.ts:698 is the questionForFact parameter line, def at :697."
+        disposition: >-
+          refuted on re-read: at be45266252 the questionForFact
+          declaration is line 698 and the parameter is line 699 (`git show
+          be45266252:"apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts"
+          | sed -n '696,700p'`); the README's OPEN marker stays verbatim
+          per the pin, this refutation supersedes it — no defect.
       - id: K3
         severity: MINOR
-        summary: >-
-          "181 test frontend esistenti" — 81 it()/test() declarations
-          counted in the 5 named files (451 across all 39 visa-oracle test
-          files); 181 only plausible as post-it.each runtime expansion, not
-          directly verifiable without running.
-        disposition: OPEN — verbatim capture, not corrected in the pinned body
+        summary: "the '181 test frontend esistenti' figure is not independently verifiable from the artifacts alone."
+        disposition: OPEN — verbatim capture in the README, not corrected (pinned body)
   - round: 4
     refuter: "codex exec --sandbox read-only"
     model: "gpt-6-astra (account default)"
-    reasoning: xhigh
-    duration_s: 390
     head_sha: 9a85b97b84
     verdict: REWORK
     findings:
       - id: M1
         severity: MAJOR
-        summary: >-
-          pack.yml/brief.yml claimed the FULL-FILE sha256 of all 9 copied
-          files equals contract-lock.json's sha256_source pin. False for
-          the two research .md files (spec, README) by design — their
-          full-file hashes (31a638ad..., 59ad1e7b...) differ because of the
-          added frontmatter + appended review section; only their BODY
-          segment (frontmatter/review stripped) matches the pin. A pack.yml
-          receipt also listed 8 files in its cmd while certifying 9
-          (omitted README).
-        disposition: fixed in 8b63ec5326; residue caught by the next round and fixed in the follow-up commit
+        summary: "brief/pack claimed the full-file sha256 of all 9 copied files equalled the pin; false for the 2 wrapped .md files."
+        disposition: cured by the evidence-pack rewrite
       - id: M2
         severity: MAJOR
-        summary: >-
-          pack.yml's diff block echoed stale exact figures for the file
-          count, the added-line total and the commit count — each drifts
-          the moment any cure commit lands (now 15 files, ~2.8k churn,
-          multiple commits).
-        disposition: fixed in 8b63ec5326; residue caught by the next round and fixed in the follow-up commit
-    note: >-
-      Everything else the refuter checked was clean: scope perimeter,
-      same-content (9 pins — 7 full-file + 2 body-segment strip), the DS
-      cure (both audited hashed_secret values are the SHA-1 of the two
-      flagged plain-text tokens; the #6166-precedent regexes match only
-      their intended digest-shaped paths; .secrets.baseline diff is 21
-      insertions/1 deletion), R1, and PII. M1/M2 above were the only
-      findings.
+        summary: "pack.yml's diff block stated an exact file count, line total and commit count that go stale on the next commit."
+        disposition: cured by the evidence-pack rewrite
   - round: 5
     refuter: "codex exec --sandbox read-only"
     model: "gpt-6-astra (account default)"
-    reasoning: xhigh
-    duration_s: 271
     head_sha: 8b63ec5326
     verdict: REWORK
     findings:
       - id: N1
         severity: MAJOR
-        summary: >-
-          brief.yml's gear_override still miscounted the "other" audit
-          copies as uniformly byte-identical after the round-4 cure — the
-          audit README among them is body-segment-identical, not
-          byte-identical, so the count of fully byte-identical copies in
-          that clause was off by one.
-        disposition: fixed in the follow-up commit
+        summary: "gear_override's audit-copy count was wrong: claimed 8 byte-identical, only 6 of the non-census audit files are."
+        disposition: cured by the evidence-pack rewrite
       - id: N2
         severity: MAJOR
-        summary: >-
-          brief.yml's objective and constraints, and pack.yml's plan_ref
-          and its receipt describing the git-checkout carry-forward, still
-          claimed the ORIGINAL 13-path scope as uniformly "same reviewed
-          content" / byte-identical; and pack.yml's diff.note carried a
-          per-file added/deleted breakdown with wrong historical counts
-          (e.g. brief.yml's own line count vs its real committed size).
-        disposition: fixed in the follow-up commit
+        summary: "brief/pack still described the original 13-path scope as uniformly carried/byte-identical."
+        disposition: cured by the evidence-pack rewrite
       - id: N3
         severity: MAJOR
-        summary: >-
-          brief.yml's live-state-log acceptance probe passed on a match
-          against ANY one of several dates rather than checking each
-          promised entry; its PII-diff probe returned success even when
-          the underlying `git diff` command itself failed (fault-injected
-          with a null SHA, "fatal: bad object", still exit 0).
-        disposition: fixed in the follow-up commit
-    note: >-
-      Clean per this refuter: the pack.yml brief_ref staging literal, no
-      secret-keyword shapes and the census label never quoted, no
-      regression outside the brief/pack evidence files, and the
-      adversarial_review record itself. N1/N2/N3 above were the only
-      findings.
+        summary: "two acceptance probes passed on a weak match instead of failing closed."
+        disposition: cured by the evidence-pack rewrite
   - round: 6
+    refuter: "codex exec --sandbox read-only"
+    model: "gpt-6-astra (account default)"
+    head_sha: 6f8256d640
+    verdict: REWORK
+    findings:
+      - id: P1
+        severity: MAJOR
+        summary: "pack.yml's seat_override/lane text still called the carried tree byte-identical."
+        disposition: cured by the evidence-pack rewrite
+      - id: P2
+        severity: MAJOR
+        summary: "brief/pack still claimed the same three dispatches with no fourth, contradicted by rounds 4 and 5 being new dispatches."
+        disposition: cured by the evidence-pack rewrite
+      - id: P3
+        severity: MAJOR
+        summary: "scope: still listed the original 13 paths (omitting .secrets.baseline and pack.yml) and constraints cited a stale approximate churn figure."
+        disposition: cured by the evidence-pack rewrite
+      - id: P4
+        severity: MAJOR
+        summary: "a risks bullet turned Kimi's 3 README-recorded findings into 4, one absent from the README; its K2 pointer nit is itself wrong on re-read."
+        disposition: cured by the evidence-pack rewrite
+      - id: P5
+        severity: MAJOR
+        summary: "round 5's own finding said the audit-copy miscount was off by one; it was off by two (8 claimed vs 6 actual)."
+        disposition: cured by the evidence-pack rewrite
+      - id: P6
+        severity: MINOR
+        summary: "several fields stated historical facts (CI-red counts, seat runtimes, budget compliance, checkout mechanics, gate commissioning) not provable from the commits alone."
+        disposition: cured by the evidence-pack rewrite
+  - round: 7
     refuter: opus
     model: "claude-opus-5 (fresh session, final on-disk gate)"
     verdict: pending
-    note: commissioned by the imperator, not yet run — recorded pending, not done

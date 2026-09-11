@@ -1,50 +1,38 @@
 brief_ref: evidence/brief.yml # staging-layout literal CI lints against (harness-floor.yml:989); the real brief lives beside this pack
 seat_override: >-
-  no council_run journal convened for this r2 — the reviewed content is
-  byte-identical to #6240's head 82d08445b3, already reviewed by codex
-  (gpt-6-astra, round 1 + round 2) and kimi-k3 on the README (see lanes/
-  dissent below); neither seat string is a literal COUNCIL_REVIEW_SEATS
-  token (codex-gpt-5.6-sol / kimi-code/k3 / tp1-qwen3.8-max), and re-
-  dispatching a fresh council against content already reviewed twice would
-  not add signal. Truthful spend: no new grader dispatch was made for r2.
+  no council_run journal convened — the 9 unchanged + 2 wrapped paths were
+  already reviewed by codex (gpt-6-astra, round 1 + round 2) and kimi-k3
+  on the README (see dissent below and brief.yml adversarial_review);
+  neither seat string is a literal COUNCIL_REVIEW_SEATS token
+  (codex-gpt-5.6-sol / kimi-code/k3 / tp1-qwen3.8-max).
 plan_ref: >-
-  PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE, replacing the closed PR
-  #6240 (3 CI reds). Docs/research capture only: bring #6240's head
-  82d08445b3 content forward — unchanged on 9 paths (7 byte-identical
-  research copies, SKILL.md, live-state-log.md), inside the R1 wrapper on
-  the 2 research .md files, and re-authored as this PR's own gear-3
-  evidence for its 2 evidence files (brief.yml, contract-lock.json);
-  .secrets.baseline is new — cure the harness-floor gear declaration, the
-  R1 adversarial-review frontmatter, and the Detect Secrets baseline.
-  Single-lane implementer task under a 50-tool-call / 45-minute cap.
+  PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE. Replaces #6240 (closed
+  unmerged; its three CI reds are on that PR). #6240's reviewed content is
+  carried unchanged on 9 paths (the 7 byte-identical research copies,
+  SKILL.md, live-state-log.md) and inside the R1 wrapper on the 2 research
+  .md files (body segment = pin); brief.yml, contract-lock.json and
+  pack.yml are authored for this PR; .secrets.baseline gains 2
+  file-anchored exclude regexes and 2 per-finding false-positive audit
+  decisions.
 
 lanes:
   - lane: o0r2-build
     role: build
-    seat: "claude-sonnet-5 (implementer session — this PR — branch, checkout reviewed content, evidence-dir move, gear-3 pack, R1 frontmatter, Detect Secrets cure, evidence-pack self-consistency fixes)"
+    seat: "claude-sonnet-5 (implementer session — this PR)"
   - lane: o0r2-review-codex
     role: review
-    seat: "gpt-6-astra (codex exec --sandbox read-only, xhigh — round 1 REWORK 3 MAJOR on 8b947103b5, round 2 PASS-WITH-FINDINGS on 82d08445b3, 1 MINOR operational; this is #6240's already-completed review, carried forward unchanged since the tree content is byte-identical)"
+    seat: "gpt-6-astra (codex exec --sandbox read-only, xhigh — see brief.yml adversarial_review for every round and verdict)"
   - lane: o0r2-review-kimi
     role: review
-    seat: "kimi-k3 (kimi -r session_dbb009de-85fd-4d72-952c-7d21df829beb — independent cross-family review of research/visa/2026-09-11-review-reason-audit/README.md; PASS-WITH-FINDINGS, 3 MINOR evidentiary nits, recorded OPEN in the README's appended review section)"
+    seat: "kimi-k3 (kimi -r session_dbb009de-85fd-4d72-952c-7d21df829beb — see brief.yml adversarial_review round 3)"
 
 diff:
   files: 15
   churn: >-
-    ~2.8k (well above the 1828 SIZE threshold for floor 3), measured with
-    `git diff --numstat origin/main...HEAD` — not pinned to an exact figure
-    here since it grows with every follow-up commit on this branch.
-  measured_at: >-
-    git diff --numstat origin/main...HEAD, the committed diff at HEAD (not
-    a pre-commit working-tree snapshot).
-  note: >-
-    Churn dominated by research/visa/2026-09-11-review-reason-audit/
-    census.json alone (1568 added lines, generated evidence, correctly not
-    excluded from the SIZE term — not a lockfile/vendor/fixtures path).
-    Local --print-floor/--print-floor-source (numstat-only, reproducing
-    harness-floor.yml Step 2c/Step 6) both print 3 / size, matching this
-    pack's declared gear.
+    15 files; churn far above the 1828 SIZE threshold (measured with
+    `git diff --numstat origin/main...HEAD`), dominated by census.json
+    (1568 generated lines) and the other pinned evidence copies required
+    by spec §3.
 
 pii_scan: clean
 
@@ -53,10 +41,9 @@ receipts:
       7 of the 9 copied files (census.json, inputs.mts, test_census.py,
       render.test.tsx, browser.mts, live-browser.json,
       live-uncertainty.png) are byte-identical to contract-lock.json's
-      pinned sha256_source (full-file hash). The other 2 (the research .md
-      files, spec + README) are body-segment-identical only — their
-      full-file hashes differ by design (added frontmatter + appended
-      review section); see the strip-and-hash receipt below.
+      pinned sha256_source (full-file hash). The other 2 (spec, README)
+      are body-segment-identical only — their full-file hashes differ by
+      design (added frontmatter + appended review section).
     cmd: |
       shasum -a 256 -c <<'SUMS'
       11fe7c1886cf2559493811f8cbdbb883b274f797eaaae3f2e6bb90261f12e704  research/visa/2026-09-11-review-reason-audit/census.json
@@ -69,7 +56,7 @@ receipts:
       SUMS
     result: "7/7 OK — every hash matches the corresponding sha256_source pin in contract-lock.json."
     exit: 0
-    ts: "2026-09-11T12:00Z"
+    ts: "2026-09-11T21:40Z"
     seat: session (o0r2-build lane)
 
   - claim: >-
@@ -82,7 +69,7 @@ receipts:
       --numstat-file /tmp/o0r2-numstat.txt
     result: "3"
     exit: 0
-    ts: "2026-09-11T12:01Z"
+    ts: "2026-09-11T21:41Z"
     seat: session (o0r2-build lane)
 
   - claim: >-
@@ -95,7 +82,7 @@ receipts:
       research/visa/2026-09-11-review-reason-audit/README.md
     result: "PASS — 2 research file(s)"
     exit: 0
-    ts: "2026-09-11T12:05Z"
+    ts: "2026-09-11T21:42Z"
     seat: session (o0r2-build lane)
 
   - claim: >-
@@ -106,75 +93,40 @@ receipts:
     cmd: "see brief.yml acceptance probe #2 (strip-and-hash proof)"
     result: "both stripped-body hashes equal their pin (2acb148e... spec, d8102e73... README)."
     exit: 0
-    ts: "2026-09-11T12:07Z"
+    ts: "2026-09-11T21:43Z"
     seat: session (o0r2-build lane)
 
 dissent:
-  - seat: gpt-6-astra (codex, cross-family refuter, round 1 on 8b947103b5)
+  - seat: gpt-6-astra (codex, round 1, head 8b947103b5)
     objection: >-
       live-state-log.md's PR #5855 entry said "After rebasing onto the
       merged seq-20 wave" but the PR body states origin/main was merged in
       via a merge commit, not a rebase.
     status: CONFIRMED
-    note: fixed in the follow-up commit (round-2 head 82d08445b3), carried forward unchanged into this r2.
-  - seat: gpt-6-astra (codex, cross-family refuter, round 1 on 8b947103b5)
+    note: fixed in the follow-up commit (round-2 head 82d08445b3).
+  - seat: gpt-6-astra (codex, round 1, head 8b947103b5)
     objection: >-
-      live-state-log.md's PR #5855 entry said "two findings were documented
-      as stated bounds" but the PR body documents only the sampling-limit
-      finding as a stated bound; the ASK_FOLLOW_UP prerequisite-recheck
-      finding was left for the gate as defence-in-depth, not documented as a
-      stated bound.
+      live-state-log.md's PR #5855 entry said two findings were documented
+      as stated bounds; the PR body documents only the sampling-limit
+      finding as a stated bound.
     status: CONFIRMED
-    note: fixed in the follow-up commit (round-2 head 82d08445b3), carried forward unchanged into this r2.
-  - seat: gpt-6-astra (codex, cross-family refuter, round 1 on 8b947103b5)
+    note: fixed in the follow-up commit (round-2 head 82d08445b3).
+  - seat: gpt-6-astra (codex, round 1, head 8b947103b5)
     objection: >-
-      contract-lock.json pinned 02-DECISIONI-ZERO.md at a hash that went
-      stale when the Desktop file changed at 19:15 WITA (an imperator
-      technical exception for W1-SH-TECH was appended).
+      contract-lock.json pinned 02-DECISIONI-ZERO.md at a hash the source
+      Desktop file had since moved past (an imperator exception for
+      W1-SH-TECH was appended there).
     status: CONFIRMED
-    note: fixed in the follow-up commit (round-2 head 82d08445b3), carried forward unchanged into this r2.
-  - seat: kimi-k3 (cross-family refuter, session_dbb009de-85fd-4d72-952c-7d21df829beb)
+    note: fixed in the follow-up commit (round-2 head 82d08445b3).
+  - seat: kimi-k3 (session_dbb009de-85fd-4d72-952c-7d21df829beb)
     objection: >-
-      README.md's engine-adapter.test.ts:782/engine-adapter.ts:698
-      file:line pointers are off-by-one (a comment/parameter line, not the
-      code entry described); the "181 test frontend esistenti" figure is
-      unverifiable from the artifacts alone.
+      README.md's engine-adapter.test.ts:782 and engine-adapter.ts:698
+      file:line pointers are off-by-one; the "181 test frontend esistenti"
+      figure is not independently verifiable from the artifacts alone.
     status: PLAUSIBLE
     note: >-
-      recorded OPEN in the README's appended "## Adversarial review" section
-      — verbatim capture, the pinned body is not corrected (would break the
-      sha256_source pin); disposition is a future PR's call, not this one's.
-
-tests:
-  - "scripts/check_adversarial_review.py --files <2 research .md files> — PASS, rc=0."
-
-static:
-  - "python3 scripts/evidence_pack_lint.py --print-floor/--print-floor-source — 3 / size, matching declared gear."
-  - "shasum -a 256 -c on the 7 byte-identical pinned-copy files — every hash matches contract-lock.json's sha256_source; the 2 research .md files are verified by the body-segment strip-and-hash probe instead (brief.yml acceptance #2)."
-
-notes:
-  - >-
-    This PR-O0 r2 supersedes the closed #6240: `git checkout 82d08445b3 --
-    <path>` was run for the 11 carried paths (9 unchanged + the 2 research
-    .md files, which additionally get the R1 wrapper around the pinned
-    body). #6240's own two evidence files (brief.yml, contract-lock.json)
-    were re-authored as this PR's own gear-3 evidence pack, and
-    .secrets.baseline is new — no new authoring beyond that, only the
-    three CI-red cures (gear declaration, R1 frontmatter wrapper, Detect
-    Secrets baseline) plus this evidence pack itself and its own
-    evidence-dir slug (branch name changed, so the
-    scripts/ci/evidence_paths.py slug changed too).
-  - >-
-    The final on-disk gate is a FRESH Opus 5 session commissioned by the
-    imperator, recorded pending in brief.yml's adversarial_review round 6 —
-    never claimed as done by this builder session.
-  - >-
-    Detect Secrets: cured per finding for all 3 flagged files.
-    contract-lock.json and live-browser.json keep the #6166-precedent
-    file-anchored regex (sha256/git-sha digests). census.json's 2 findings,
-    at lines 313 and 325, are plain-text synthetic walk labels, not digests
-    — `.secrets.baseline` now carries a false-positive audit decision
-    keyed to their two hashed_secret values, so census.json itself stays
-    scanned and any NEW finding added to it still arrives unaudited and
-    fails the gate. `scripts/detect_secrets_check_unaudited.py` exits 0.
-  - "gh pr merge --auto is the orchestrator's action, not this builder session's — this session commits only, per its hard limits."
+      recorded OPEN in the README's appended "## Adversarial review"
+      section — verbatim capture, the pinned body is not corrected (would
+      break the sha256_source pin). The engine-adapter.ts:698 pointer
+      objection is itself refuted on re-read — see brief.yml
+      adversarial_review round 3, finding K2.
