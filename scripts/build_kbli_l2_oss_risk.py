@@ -25,10 +25,12 @@ kategori_risiko, scope_index, scope_uraian, perizinan, persyaratan, kewajiban, k
 plus _l2_source/_l2_status. Everything else on the record was written by LATER layers
 (scripts/enrich_kbli_jangka_waktu.py, scripts/derive_fiktif_positif.py, the l4 cure
 scripts, scripts/resolve_kbli_l4_needs_review.py) and is merged, never clobbered:
-  - per_skala rows are matched by (scope_index, skala_usaha, kategori_risiko). A matched
-    row keeps every non-L2-owned key of the canonical row (jangka_waktu_source,
-    fiktif_positif, pb_umku, sanksi_*, ...) and keeps its jangka_waktu when
-    jangka_waktu_source is set. An unmatched (new/changed-tier) row is fresh from OSS;
+  - per_skala rows are matched by scope identity (scope_uraian, skala_usaha,
+    kategori_risiko), each canonical row donating once. A matched row keeps every
+    non-L2-owned key of the canonical row (jangka_waktu_source, fiktif_positif, pb_umku,
+    sanksi_*, ...) and keeps its jangka_waktu when jangka_waktu_source is set or OSS sends
+    a dirty value. A row whose scope was split/renamed carries only the (code, tier)-level
+    facts from a same-tier row. An unmatched (new/changed-tier) row is fresh from OSS;
     Rendah / Menengah Rendah tiers get jangka_waktu "Otomatis" (PP 28/2025 Pasal 130/131,
     the same rule enrich_kbli_jangka_waktu.py applies) — fiktif_positif is left to its
     owner, derive_fiktif_positif.py, which is idempotent on unchanged rows.
@@ -141,41 +143,67 @@ def parse_per_skala(raw_data):
     return out
 
 
+TIER_LEVEL_CARRY = ("jangka_waktu_source", "fiktif_positif")   # facts of (code, tier), not of a scope row
+
+
 def _row_key(p):
-    return (p.get("scope_index"), tuple(p.get("skala_usaha") or []),
+    return ((p.get("scope_uraian") or "").strip(), tuple(p.get("skala_usaha") or []),
             (p.get("kategori_risiko") or "").strip().lower())
+
+
+def _tier_key(p):
+    return (tuple(p.get("skala_usaha") or []), (p.get("kategori_risiko") or "").strip().lower())
+
+
+def _pop_donor(pool, key):
+    rows = pool.get(key)
+    return rows.pop(0) if rows else None
 
 
 def merge_per_skala(old_ps, new_ps, stats=None):
     """Merge policy (module docstring): new_ps rows are authoritative for the L2-owned
-    fields; a row matched in old_ps by (scope_index, skala, tier) carries the canonical
-    row's later-layer keys through and keeps its jangka_waktu when a later layer sourced
-    it or when OSS sends a dirty value; an unmatched row is fresh from OSS (automatic
-    tiers -> "Otomatis", dirty -> empty)."""
+    fields. A row matched in old_ps by SCOPE IDENTITY (scope uraian, skala, tier) carries
+    the canonical row's later-layer keys through and keeps its jangka_waktu when a later
+    layer sourced it or OSS sends a dirty value. A row whose scope was split/renamed but
+    whose (skala, tier) existed on the code carries only the TIER-LEVEL facts (jangka
+    enrichment keyed by (code, tier), fiktif_positif) — never scope-specific keys such as
+    pb_umku/sanksi_*. Each canonical row donates at most once (codex PR-B F1, F2)."""
     stats = stats if stats is not None else Counter()
-    old_by = {}
+    by_scope, by_tier = {}, {}
     for p in old_ps or []:
-        old_by.setdefault(_row_key(p), p)
+        by_scope.setdefault(_row_key(p), []).append(p)
+        by_tier.setdefault(_tier_key(p), []).append(p)
     merged = []
     for n in new_ps:
         row = dict(n)
-        o = old_by.get(_row_key(n))
+        o = _pop_donor(by_scope, _row_key(n))
         if o is not None:
             for k, v in o.items():
                 if k not in L2_OWNED_PER_SKALA_FIELDS and k != "jangka_waktu":
                     row[k] = v
             if o.get("jangka_waktu_source") or not is_clean_jangka(row.get("jangka_waktu")):
-                # sourced by a later layer, or OSS sent nothing clean: keep the canonical value
                 row["jangka_waktu"] = o.get("jangka_waktu")
                 stats["rows_jangka_preserved"] += 1
             stats["rows_carried"] += 1
-        else:
-            if (row.get("kategori_risiko") or "").strip().lower() in AUTOMATIC_RISKS:
-                row["jangka_waktu"] = "Otomatis"
-                row["jangka_waktu_source"] = "PP28_rule_risk_class"
-            elif not is_clean_jangka(row.get("jangka_waktu")):
-                row["jangka_waktu"] = ""          # dirty ("-") is never written; empty is honest
-            stats["rows_fresh"] += 1
+            merged.append(row)
+            continue
+        t = _pop_donor(by_tier, _tier_key(n))
+        if t is not None:
+            for k in TIER_LEVEL_CARRY:
+                if k in t:
+                    row[k] = t[k]
+            if t.get("jangka_waktu_source") or not is_clean_jangka(row.get("jangka_waktu")):
+                row["jangka_waktu"] = t.get("jangka_waktu")
+                stats["rows_jangka_preserved"] += 1
+            stats["rows_carried_tier"] += 1
+            merged.append(row)
+            continue
+        if (row.get("kategori_risiko") or "").strip().lower() in AUTOMATIC_RISKS:
+            row["jangka_waktu"] = "Otomatis"
+            row["jangka_waktu_source"] = "PP28_rule_risk_class"
+        elif not is_clean_jangka(row.get("jangka_waktu")):
+            row["jangka_waktu"] = ""          # dirty ("-") is never written; empty is honest
+        stats["rows_fresh"] += 1
         merged.append(row)
     return merged
 
@@ -284,7 +312,14 @@ def main(argv=None):
             quarantined.append(code)
             continue
 
-        if not r or r.get("status") != 200 or not r.get("data", {}).get("success"):
+        if not r or r.get("status") not in (200, 404) or (
+                r.get("status") == 200 and not r.get("data", {}).get("success")):
+            # not evidence of anything (missing record, 5xx, 200 without success):
+            # the record is left exactly as it is (codex PR-B F3)
+            stats["no_evidence"] += 1
+            continue
+
+        if r.get("status") == 404:
             # No OSS scope today. per_skala and l4_bali stay as the later layers left
             # them (the #1814 pass resolved every _l4_needs_review flag — none is written).
             had_scope = rec.get("_l2_source") == L2_SOURCE and rec.get("_l2_status") != "no_oss_risk"
@@ -359,6 +394,7 @@ def main(argv=None):
                 rec["per_skala"] = new_ps
                 rec["_l2_source"] = L2_SOURCE
                 rec.pop("_l2_status", None)
+                rec.pop("absent_probes", None)      # presence closes the episode (F4)
             if args.apply and l4_moved:
                 rec["l4_bali"]["blocked"] = new_blocked
                 rec["l4_bali"]["status"] = new_l4_status
@@ -381,6 +417,7 @@ def main(argv=None):
             rec["per_skala"] = new_ps
             rec["_l2_source"] = L2_SOURCE
             rec.pop("_l2_status", None)
+            rec.pop("absent_probes", None)
         stats["l2_applied"] += 1
 
     # ---- REPORT ----
@@ -430,6 +467,8 @@ def main(argv=None):
         f"absent_pending={len(absent_pending)} "
         f"quarantined_skipped={len(quarantined)} "
         f"rows_carried={stats.get('rows_carried', 0)} "
+        f"rows_carried_tier={stats.get('rows_carried_tier', 0)} "
+        f"no_evidence={stats.get('no_evidence', 0)} "
         f"rows_jangka_preserved={stats.get('rows_jangka_preserved', 0)} "
         f"rows_fresh={stats.get('rows_fresh', 0)}"
     )
@@ -439,7 +478,8 @@ def main(argv=None):
         md["version"] = args.version
         if args.source_fix:
             md["source"] = str(md.get("source", "")).replace(args.source_fix[0], args.source_fix[1])
-        if args.snapshot_vault or args.fetched or args.snapshot_manifest_sha256:
+        if any((args.snapshot_vault, args.fetched, args.snapshot_manifest_sha256,
+                args.snapshot_codes_changed is not None)):
             md["l2_snapshot"] = {
                 "vault": args.snapshot_vault,
                 "manifest_sha256": args.snapshot_manifest_sha256,

@@ -37,9 +37,9 @@ def _transform():
     return t
 
 
-def _row(skala, tier, scope=0, jw="", **extra):
+def _row(skala, tier, scope=0, jw="", uraian="Seluruh", **extra):
     r = {"skala_usaha": [skala], "kategori_risiko": tier, "jangka_waktu": jw, "scope_index": scope,
-         "scope_uraian": "Seluruh", "perizinan": [], "persyaratan": [], "kewajiban": [], "kewenangan": []}
+         "scope_uraian": uraian, "perizinan": [], "persyaratan": [], "kewajiban": [], "kewenangan": []}
     r.update(extra)
     return r
 
@@ -76,6 +76,25 @@ class TestMergePerSkala:
         assert "fiktif_positif" not in m                    # not carried across a tier change
         assert m["jangka_waktu"] == "Otomatis"
         assert m["jangka_waktu_source"] == "PP28_rule_risk_class"
+
+    def test_scope_split_carries_only_tier_level_facts(self):
+        """codex PR-B F1: 'Seluruh' split into two named scopes — the named rows must not
+        inherit the old row's scope-specific keys (pb_umku), only the tier-level ones."""
+        t = _transform()
+        old = [_row("Besar", "Tinggi", jw="7", jangka_waktu_source="lampiran_parsed_richfile",
+                    fiktif_positif=True, pb_umku=["x"])]
+        new = [_row("Besar", "Tinggi", scope=0, uraian="Sub A", jw="3"),
+               _row("Besar", "Tinggi", scope=1, uraian="Sub B", jw="3")]
+        m = t.merge_per_skala(old, new)
+        assert m[0]["jangka_waktu"] == "7" and m[0]["fiktif_positif"] is True and "pb_umku" not in m[0]
+        assert m[1]["jangka_waktu"] == "3" and "fiktif_positif" not in m[1]   # donor consumed once
+
+    def test_duplicate_keys_donate_once_in_order(self):
+        """codex PR-B F2: two canonical rows with the same key keep their own values."""
+        t = _transform()
+        old = [_row("Besar", "Tinggi", jw="7", jangka_waktu_source="s"), _row("Besar", "Tinggi", jw="21", jangka_waktu_source="s")]
+        new = [_row("Besar", "Tinggi", jw="1"), _row("Besar", "Tinggi", jw="1")]
+        assert [r["jangka_waktu"] for r in t.merge_per_skala(old, new)] == ["7", "21"]
 
     def test_fresh_lampiran_tier_row_stays_honestly_empty(self):
         t = _transform()
@@ -126,7 +145,7 @@ class TestNoBesarDecidesNothing:
         assert no_besar
         for r in no_besar:
             l4 = r["l4_bali"]
-            assert l4.get("status") != "OK_or_HIGHER_RISK" or l4.get("blocked") is False, r["kode_kbli_2025"]
+            assert "reserved for UMKM" not in (l4.get("reason") or ""), r["kode_kbli_2025"]
             if l4.get("status") == "CHIUSO_PMA_NO_BESAR":
                 assert "Lampiran II" in l4.get("reason", ""), r["kode_kbli_2025"]
 
@@ -205,6 +224,36 @@ class TestApplyMergesInsteadOfRewriting:
         assert by["56101"]["l4_bali"] == before["l4_bali"]
         assert by["85583"]["_l2_status"] == "no_oss_risk"          # never had scope
         assert "absent_probes" not in by["85583"]
+
+    def test_presence_closes_an_absence_episode_and_non_404_is_not_evidence(self, tmp_path):
+        """codex PR-B F3/F4: a 5xx / missing record leaves the record untouched; a 200
+        after a pending absence clears absent_probes."""
+        t = _transform()
+
+        def pending(canon):
+            for rec in canon["data"]:
+                if str(rec["kode_kbli_2025"]) == "10215":
+                    rec["_l2_status"] = "absent_pending_corroboration"
+                    rec["absent_probes"] = ["2026-09-01"]
+        root, canon = _seed_root(tmp_path, pending)
+        _, by = _run(t, root, FIXTURES / "vault", tmp_path)
+        assert "absent_probes" not in by["10215"] and "_l2_status" not in by["10215"]
+        # now a 500 for 56101: untouched, not pending
+        from kbli_filiera import vault_to_risk_jsonl as adapter
+        raw = tmp_path / "raw500.jsonl"
+        lines = []
+        for line in (tmp_path / "raw.jsonl").read_text(encoding="utf-8").splitlines():
+            rec = json.loads(line)
+            if rec["kode"] == "56101":
+                rec = {"kode": "56101", "uuid": rec["uuid"], "status": 500, "data": {}}
+            lines.append(json.dumps(rec, ensure_ascii=False))
+        raw.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        before = next(r for r in canon["data"] if str(r["kode_kbli_2025"]) == "56101")
+        root2, _ = _seed_root(tmp_path / "b")
+        t.main(["--root", str(root2), "--raw", str(raw), "--apply", "--fetched", "2026-09-11"])
+        out = json.loads((root2 / "data/source_documents/KBLI_2025_FINAL_CLEAN.json").read_text(encoding="utf-8"))
+        rec = next(r for r in out["data"] if str(r["kode_kbli_2025"]) == "56101")
+        assert rec == before
         assert all("_l4_needs_review" not in r for r in by.values())
 
     def test_quarantined_per_skala_is_skipped_entirely(self, tmp_path):
@@ -231,6 +280,9 @@ class TestApplyMergesInsteadOfRewriting:
                       "--snapshot-manifest-sha256", "abc", "--snapshot-codes-changed", "181",
                       "--source-fix", "PP28_2024", "PP28_2025")
         md = out["metadata"]
+        root2, _ = _seed_root(tmp_path / "only-count")
+        out2, _ = _run(t, root2, FIXTURES / "vault", tmp_path / "only-count", "--snapshot-codes-changed", "181")
+        assert out2["metadata"]["l2_snapshot"]["codes_changed"] == 181   # codex PR-B F5
         assert md["version"] == "v11.0-test" and md["source"] == "X + PP28_2025 (y)"
         assert md["l2_snapshot"] == {"vault": "v", "manifest_sha256": "abc", "fetched": "2026-09-11",
                                      "codes_changed": 181, "absent_pending": 0}
