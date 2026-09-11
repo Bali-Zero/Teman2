@@ -28,8 +28,8 @@ objective: >-
   census.json's 2 findings, at lines 313 and 325, are NOT digests — they are
   plain-text synthetic walk labels that trip the entropy heuristic only
   because every character happens to sit inside the base64 alphabet. These
-  are cured per finding, not per file: `.secrets.baseline` now carries an
-  `is_secret: false` audit decision keyed to their two hashed_secret values
+  are cured per finding, not per file: `.secrets.baseline` now carries a
+  false-positive audit decision keyed to their two hashed_secret values
   (d3b557d5…, a8463d95…), so census.json itself stays scanned and any NEW
   finding added to it still arrives unaudited and fails the gate. An earlier
   draft of this brief quoted the label string verbatim to explain the false
@@ -84,16 +84,26 @@ acceptance:
       remaining body bytes SHALL hash to the pinned sha256_source exactly
       (proves the wrapper never touched the pinned bytes).
     status: verified
-    probe: >-
-      apps/backend-rag/.venv/bin/python3 -c "import hashlib,sys
-      path=sys.argv[1]
-      text=open(path,encoding='utf-8').read()
-      fm_end=text.index('---',text.index('---')+3)+3
-      body=text[fm_end:]
-      marker='\n## Adversarial review'
-      idx=body.index(marker)
-      stripped=body[:idx].strip('\n')+'\n'
-      print(hashlib.sha256(stripped.encode('utf-8')).hexdigest())" <path>
+    probe: |
+      python3 - <<'PY'
+      import hashlib
+      pins = {
+          "research/visa/2026-09-11-oracle-final-window-spec.md": "2acb148ea72fec9bf34d2022c03e1d9883fa557ba8b1f4ff0ff736f697e7c9d5",
+          "research/visa/2026-09-11-review-reason-audit/README.md": "d8102e736d5602be33c9c8b668a91d6f245adb30454bf754cda8add1e0dd029b",
+      }
+      ok = True
+      for path, pin in pins.items():
+          text = open(path, encoding="utf-8").read()
+          fm_end = text.index("---", text.index("---") + 3) + 3
+          body = text[fm_end:]
+          marker = "\n## Adversarial review"
+          idx = body.index(marker)
+          stripped = body[:idx].strip("\n") + "\n"
+          got = hashlib.sha256(stripped.encode("utf-8")).hexdigest()
+          print(path, got, "OK" if got == pin else "MISMATCH")
+          ok = ok and (got == pin)
+      raise SystemExit(0 if ok else 1)
+      PY
   - text: >-
       SKILL.md's LIVE STATE section is grepped for the fresh 67-walk census
       figure, THEN it SHALL be present at least once.
@@ -108,9 +118,10 @@ acceptance:
   - text: >-
       WHEN the full diff against origin/main is grepped for PII shapes
       (emails, +62 phone numbers, passport/KTP/NPWP-like tokens), THEN no
-      match SHALL be found.
+      match SHALL be found — the probe exits 0 only when grep itself finds
+      nothing (grep's own exit 1-on-no-match is inverted with `!`).
     status: verified
-    probe: "git diff origin/main...HEAD | grep -inE '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}|\\+62[0-9]{8,13}|\\b[0-9]{16}\\b|\\b[a-zA-Z][0-9]{7}\\b'"
+    probe: "! git diff origin/main...HEAD | grep -inE '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}|\\+62[0-9]{8,13}|\\b[0-9]{16}\\b|\\b[a-zA-Z][0-9]{7}\\b'"
   - text: >-
       WHEN scripts/check_adversarial_review.py is run against the two
       research .md files, THEN it SHALL exit 0.
