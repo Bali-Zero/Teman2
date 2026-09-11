@@ -34,6 +34,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -229,12 +230,27 @@ class TestPracticeCreate:
             PracticeCreate(client_id=1, practice_type_code="x", quoted_price=Decimal("-100"))
 
 
+    def test_practice_type_code_is_optional_for_open_inquiry(self) -> None:
+        from backend.app.routers.crm_practices import PracticeCreate
+
+        p = PracticeCreate(client_id=1)
+        assert p.practice_type_code is None
+        assert p.status == "inquiry"
+
+
 class TestPracticeUpdate:
     def test_valid_update(self) -> None:
         from backend.app.routers.crm_practices import PracticeUpdate
 
         u = PracticeUpdate(status="completed")
         assert u.status == "completed"
+
+    def test_practice_type_code_accepted(self) -> None:
+        from backend.app.routers.crm_practices import PracticeUpdate
+
+        u = PracticeUpdate(practice_type_code="kitas_working_onshore")
+        assert u.practice_type_code == "kitas_working_onshore"
+        assert "practice_type_code" in u.model_fields_set
 
     def test_invalid_status(self) -> None:
         from backend.app.routers.crm_practices import PracticeUpdate
@@ -744,6 +760,186 @@ class TestGetPractice:
         assert "client_email" not in result
         assert "client_phone" not in result
         assert "client_lead" not in result
+
+
+# ---------------------------------------------------------------------------
+# Open inquiry: create without a service, gate on leaving inquiry
+# ---------------------------------------------------------------------------
+
+
+class TestOpenInquiry:
+    @pytest.mark.asyncio
+    async def test_create_without_service_uses_placeholder_type(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """No practice_type_code → the row is created against `open_inquiry`."""
+        from backend.app.routers.crm_practices import PracticeCreate, create_practice
+        from backend.services.crm.practice_state_machine import OPEN_INQUIRY_TYPE_CODE
+
+        practice = PracticeCreate(client_id=42)
+        with pytest.raises(HTTPException) as exc_info:
+            # First fetchrow = practice type lookup. Returning None makes the
+            # handler 404 right after the lookup, which is enough to observe
+            # WHICH code it resolved without simulating the full insert.
+            mock_db_conn.fetchrow = AsyncMock(return_value=None)
+            await create_practice(
+                request=MagicMock(),
+                practice=practice,
+                background_tasks=MagicMock(),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+        assert exc_info.value.status_code == 404
+        lookup_args = mock_db_conn.fetchrow.call_args_list[0].args
+        assert lookup_args[1] == OPEN_INQUIRY_TYPE_CODE
+        assert OPEN_INQUIRY_TYPE_CODE in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_create_without_service_refused_past_inquiry(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import PracticeCreate, create_practice
+
+        practice = PracticeCreate(client_id=42, status="waiting_documents")
+        with pytest.raises(HTTPException) as exc_info:
+            await create_practice(
+                request=MagicMock(),
+                practice=practice,
+                background_tasks=MagicMock(),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+        assert exc_info.value.status_code == 400
+        assert "practice_type_code is required" in exc_info.value.detail
+        mock_db_conn.fetchrow.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_to_waiting_documents_blocked_on_placeholder(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+            "practice_type_code": "open_inquiry",
+        }
+        mock_db_conn.fetchrow = AsyncMock(return_value=old_row)
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await update_practice(
+                request=MagicMock(),
+                practice_id=1,
+                updates=PracticeUpdate(status="waiting_documents"),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+        assert exc_info.value.status_code == 400
+        assert "select a service" in exc_info.value.detail
+        mock_db_conn.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_sets_service_and_advances_in_one_patch(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """practice_type_code in the same PATCH satisfies the gate and is
+        written as practice_type_id (never as a raw column)."""
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+            "practice_type_code": "open_inquiry",
+        }
+        type_row = {"id": 24}
+        canonical_row = {
+            "id": 1,
+            "status": "waiting_documents",
+            "client_visible": True,
+            "practice_type_id": 24,
+            "client_id": 42,
+            "practice_type_code": "kitas_working_onshore",
+            "practice_type_name": "Working KITAS (Altus/Onshore)",
+            "completion_date": None,
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, type_row, canonical_row])
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
+            patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()),
+            patch("backend.app.routers.crm_practices.to_jsonb", return_value="{}"),
+        ):
+            result = await update_practice(
+                request=MagicMock(),
+                practice_id=1,
+                updates=PracticeUpdate(
+                    status="waiting_documents",
+                    practice_type_code="kitas_working_onshore",
+                ),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+
+        assert result["practice_type_code"] == "kitas_working_onshore"
+        type_lookup = mock_db_conn.fetchrow.call_args_list[1].args
+        assert "FROM practice_types" in type_lookup[0]
+        assert type_lookup[1] == "kitas_working_onshore"
+        update_sql = mock_db_conn.fetchrow.call_args_list[2].args[0]
+        assert "practice_type_id = $" in update_sql
+        assert "practice_type_code = $" not in update_sql
+
+    @pytest.mark.asyncio
+    async def test_update_unknown_service_is_404(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+            "practice_type_code": "open_inquiry",
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, None])
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await update_practice(
+                request=MagicMock(),
+                practice_id=1,
+                updates=PracticeUpdate(practice_type_code="nope"),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+        assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_catalog_hides_placeholder(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import get_practice_types_catalog
+        from backend.services.crm.practice_state_machine import OPEN_INQUIRY_TYPE_CODE
+
+        mock_db_conn.fetch = AsyncMock(return_value=[])
+        await get_practice_types_catalog(db_pool=mock_db_pool, current_user=admin_user)
+        sql, code = mock_db_conn.fetch.call_args.args
+        assert "code <> $1" in sql
+        assert code == OPEN_INQUIRY_TYPE_CODE
 
 
 # ---------------------------------------------------------------------------

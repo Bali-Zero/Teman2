@@ -26,8 +26,11 @@ from backend.app.utils.logging_utils import get_logger, log_database_operation, 
 from backend.core.cache import cached, invalidate_cache
 from backend.services.common.background import spawn
 from backend.services.crm.practice_state_machine import (
+    OPEN_INQUIRY_TYPE_CODE,
+    STATES_WITHOUT_SERVICE,
     InvalidTransitionError,
     normalize_state,
+    validate_service_selected,
     validate_transition,
 )
 from backend.services.invoicing import InvoiceAutomationService
@@ -298,7 +301,10 @@ PAYMENT_STATUS_VALUES = {"unpaid", "partial", "paid"}
 
 class PracticeCreate(BaseModel):
     client_id: int
-    practice_type_code: str  # Practice type code retrieved from database
+    # Optional since 2026-09-11 (Ari): an inquiry may be opened without a
+    # service; it is stored against the `open_inquiry` placeholder type and
+    # the real service must be picked before leaving the inquiry stage.
+    practice_type_code: str | None = None
     status: str = "inquiry"
     priority: str = "normal"  # 'low', 'normal', 'high', 'urgent'
     quoted_price: Decimal | None = None
@@ -357,6 +363,9 @@ class PracticeCreate(BaseModel):
 
 class PracticeUpdate(BaseModel):
     status: str | None = None
+    # Pick (or change) the service after creation — resolved to
+    # practice_type_id in update_practice. Required before leaving inquiry.
+    practice_type_code: str | None = None
     priority: str | None = None
     quoted_price: Decimal | None = None
     discount_amount: Decimal | None = None
@@ -455,18 +464,31 @@ async def create_practice(
     # Extract created_by from current user
     created_by = current_user.get("email", "").lower()
 
+    # No service picked → open inquiry against the placeholder type. Only an
+    # inquiry-stage practice may start without a service.
+    practice_type_code = practice.practice_type_code or OPEN_INQUIRY_TYPE_CODE
+    if (
+        practice_type_code == OPEN_INQUIRY_TYPE_CODE
+        and practice.status not in STATES_WITHOUT_SERVICE
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"practice_type_code is required to create a practice in status '{practice.status}'",
+        )
+    practice.practice_type_code = practice_type_code
+
     try:
         async with db_pool.acquire() as conn:
             # Get practice_type_id from code
             practice_type_row = await conn.fetchrow(
                 "SELECT id, base_price, category, name FROM practice_types WHERE code = $1",
-                practice.practice_type_code,
+                practice_type_code,
             )
 
             if not practice_type_row:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Practice type '{practice.practice_type_code}' not found",
+                    detail=f"Practice type '{practice_type_code}' not found",
                 )
 
             # If family_member_id is set, verify it belongs to the same client.
@@ -1012,8 +1034,10 @@ async def get_practice_types_catalog(
                        typical_duration_days
                 FROM practice_types
                 WHERE is_active = true
+                  AND code <> $1
                 ORDER BY category, name
-                """
+                """,
+                OPEN_INQUIRY_TYPE_CODE,
             )
 
             categories: dict[str, list[dict[str, Any]]] = {}
@@ -1151,15 +1175,18 @@ async def update_practice(
             old_discount_amount: Decimal | None = None
             old_metadata: dict | None = None
             old_quoted_price: Decimal | None = None
+            old_practice_type_code: str | None = None
             try:
                 old_row = await conn.fetchrow(
                     """
                     SELECT p.status, p.client_id, p.client_visible, p.created_by,
                            p.assigned_to, p.start_date, p.completion_date,
                            p.discount_amount, p.metadata, p.quoted_price,
-                           c.assigned_to AS client_lead
+                           c.assigned_to AS client_lead,
+                           pt.code AS practice_type_code
                     FROM practices p
                     LEFT JOIN clients c ON p.client_id = c.id
+                    LEFT JOIN practice_types pt ON pt.id = p.practice_type_id
                     WHERE p.id = $1
                     """,
                     practice_id,
@@ -1187,6 +1214,7 @@ async def update_practice(
                     else:
                         old_metadata = raw_meta or {}
                     old_quoted_price = old_row.get("quoted_price")
+                    old_practice_type_code = old_row.get("practice_type_code")
             except Exception as e:
                 # Backward compatibility: client_visible column may not exist yet.
                 if getattr(e, "sqlstate", None) == "42703":
@@ -1239,6 +1267,13 @@ async def update_practice(
                 normalized_old = normalize_state(old_status)
                 try:
                     validate_transition(normalized_old, updates.status, current_user)
+                    # An open inquiry (placeholder service) may not advance
+                    # until a real service is chosen — in this same PATCH or
+                    # an earlier one.
+                    validate_service_selected(
+                        updates.status,
+                        updates.practice_type_code or old_practice_type_code,
+                    )
                 except InvalidTransitionError as e:
                     raise HTTPException(
                         status_code=400,
@@ -1249,6 +1284,26 @@ async def update_practice(
             update_fields: list[str] = []
             params: list[Any] = []
             param_index = 1
+
+            # practice_type_code → practice_type_id (the column the row stores).
+            # Resolved up-front so an unknown/inactive code fails before any SQL.
+            update_set = updates.dict(exclude_unset=True)
+            new_practice_type_code = update_set.pop("practice_type_code", None)
+            if "practice_type_code" in updates.model_fields_set and not new_practice_type_code:
+                raise HTTPException(status_code=400, detail="practice_type_code cannot be null")
+            if new_practice_type_code:
+                new_type_row = await conn.fetchrow(
+                    "SELECT id FROM practice_types WHERE code = $1 AND is_active = true",
+                    new_practice_type_code,
+                )
+                if not new_type_row:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Practice type '{new_practice_type_code}' not found",
+                    )
+                update_fields.append(f"practice_type_id = ${param_index}")
+                params.append(new_type_row["id"])
+                param_index += 1
 
             # Map of allowed fields to database columns
             field_mapping = {
@@ -1272,7 +1327,6 @@ async def update_practice(
                 "missing_documents": "missing_documents",
             }
 
-            update_set = updates.dict(exclude_unset=True)
             for field, value in update_set.items():
                 if field not in field_mapping:
                     raise HTTPException(status_code=400, detail=f"Invalid field name: {field}")
