@@ -74,34 +74,25 @@ canonicalUrl: "https://balizero.com/business/intellectual-property-indonesia"
 ogImage: "/static/insights/business/intellectual-property-indonesia.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
-source_sha256: "a9065b1e12f20824b7aaf7fd1c107c6a03f2d5932c6cbb64bc6608ba70957f58"
+source_sha256: "068f92b30e453ab4c6c2572f0eef15aa5a88c837455f7d143d4588cbf3c91dde"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  JourneyMap,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Hak Kekayaan Intelektual di Indonesia 2026: Panduan Perlindungan
 
-# Kekayaan Intelektual di Indonesia 2026: Panduan Perlindungan
+Melindungi kekayaan intelektual Anda sangat penting saat berbisnis di Indonesia. Berikut adalah hal-hal yang perlu Anda ketahui.
 
-Melindungi kekayaan intelektual Anda sangat penting saat berbisnis di Indonesia. Berikut yang perlu Anda ketahui.
-
-## Jenis Perlindungan KI
+## Jenis Perlindungan HKI
 
 <DecisionTree
-  title="Perlindungan KI Mana?"
+  title="Perlindungan HKI Mana?"
   description="Temukan perlindungan yang tepat untuk aset Anda"
   nodes={[
     {
       id: "start",
-      question: "Apa yang Anda lindungi?",
+      question: "Apa yang ingin dilindungi?",
       options: [
         { label: "Nama merek/logo", next: "trademark" },
-        { label: "Invensi/proses", next: "patent" },
+        { label: "Penemuan/proses", next: "patent" },
         { label: "Karya kreatif", next: "copyright" },
         { label: "Rahasia bisnis", next: "trade-secret" },
       ],
@@ -109,33 +100,33 @@ Melindungi kekayaan intelektual Anda sangat penting saat berbisnis di Indonesia.
     {
       id: "trademark",
       result: {
-        title: "Merek",
+        title: "Merek Dagang (Merek)",
         description:
-          "Daftarkan nama merek, logo, atau slogan Anda ke DGIP. Perlindungan berlangsung 10 tahun, dapat diperpanjang. Penting untuk setiap bisnis yang beroperasi di Indonesia.",
+          "Daftarkan nama merek, logo, atau slogan Anda ke DGIP. Perlindungan berlaku 10 tahun dan dapat diperpanjang. Penting untuk setiap bisnis yang beroperasi di Indonesia.",
       },
     },
     {
       id: "patent",
       result: {
-        title: "Paten",
+        title: "Paten (Paten)",
         description:
-          "Lindungi invensi, proses, atau solusi teknis. Paten standar: 20 tahun. Paten sederhana: 10 tahun. Harus baru dan dapat diterapkan secara industri.",
+          "Lindungi penemuan, proses, atau solusi teknis. Paten standar: 20 tahun. Paten sederhana: 10 tahun. Harus bersifat baru dan dapat diterapkan secara industri.",
       },
     },
     {
       id: "copyright",
       result: {
-        title: "Hak Cipta",
+        title: "Hak Cipta (Hak Cipta)",
         description:
-          "Perlindungan otomatis untuk karya kreatif. Pendaftaran opsional tetapi disarankan untuk bukti. Berlangsung 70 tahun setelah kematian pencipta untuk sebagian besar karya.",
+          "Perlindungan otomatis untuk karya kreatif. Pendaftaran opsional namun direkomendasikan sebagai bukti. Berlaku 70 tahun setelah kematian pencipta untuk sebagian besar karya.",
       },
     },
     {
       id: "trade-secret",
       result: {
-        title: "Rahasia Dagang",
+        title: "Rahasia Dagang (Rahasia Dagang)",
         description:
-          "Lindungi informasi bisnis rahasia melalui kontrak dan tindakan keamanan. Tidak diperlukan pendaftaran. Perlindungan berlangsung selama rahasia dijaga.",
+          "Lindungi informasi bisnis rahasia melalui kontrak dan langkah-langkah keamanan. Pendaftaran tidak diperlukan. Perlindungan berlaku selama rahasia tersebut dijaga.",
       },
     },
   ]}
@@ -143,31 +134,31 @@ Melindungi kekayaan intelektual Anda sangat penting saat berbisnis di Indonesia.
 
 ---
 
-## Perbandingan Perlindungan KI
+## Perbandingan Perlindungan HKI
 
 <ComparisonTable
-  title="Jenis KI Sekilas"
+  title="Jenis HKI Sekilas"
   description="Pilih perlindungan yang tepat"
   items={[
     {
-      name: "Merek",
+      name: "Merek Dagang",
       subtitle: "Perlindungan merek",
       values: {
         Protects: "Nama, logo, slogan",
         Duration: "10 tahun (dapat diperpanjang)",
         Registration: "Diperlukan",
-        Cost: "IDR 2-10Jt",
+        Cost: "IDR 2-10M",
       },
       highlight: true,
     },
     {
       name: "Paten",
-      subtitle: "Perlindungan invensi",
+      subtitle: "Perlindungan penemuan",
       values: {
-        Protects: "Invensi, proses",
+        Protects: "Penemuan, proses",
         Duration: "20 tahun (standar)",
         Registration: "Diperlukan",
-        Cost: "IDR 10-50Jt+",
+        Cost: "IDR 10-50M+",
       },
     },
     {
@@ -177,17 +168,17 @@ Melindungi kekayaan intelektual Anda sangat penting saat berbisnis di Indonesia.
         Protects: "Seni, musik, perangkat lunak, tulisan",
         Duration: "70 tahun pasca-kematian",
         Registration: "Opsional",
-        Cost: "IDR 500Rb-2Jt",
+        Cost: "IDR 500K-2M",
       },
     },
     {
       name: "Desain Industri",
-      subtitle: "Penampilan produk",
+      subtitle: "Tampilan produk",
       values: {
         Protects: "Bentuk, pola, warna",
         Duration: "10 tahun",
         Registration: "Diperlukan",
-        Cost: "IDR 3-8Jt",
+        Cost: "IDR 3-8M",
       },
     },
   ]}
@@ -195,48 +186,48 @@ Melindungi kekayaan intelektual Anda sangat penting saat berbisnis di Indonesia.
 
 ---
 
-## Pendaftaran Merek
+## Pendaftaran Merek Dagang
 
 ### Mengapa Mendaftar di Indonesia?
 
-<InfoCard variant="warning" title="Sistem First-to-File">
-Indonesia menggunakan sistem **first-to-file**:
-- Yang pertama mendaftar memiliki merek
-- Merek Anda di tempat lain tidak melindungi Anda di sini
-- "Penyerobot" mungkin mendaftarkan merek Anda lebih dulu
-- Tanpa pendaftaran, penegakan terbatas
+<InfoCard variant="warning" title="Sistem Pertama yang Mendaftar">
+Indonesia menggunakan sistem **pertama yang mendaftar**:
+- Pihak pertama yang mendaftarkan memiliki merek dagang tersebut
+- Merek dagang Anda di tempat lain tidak melindungi Anda di sini
+- "Penumpang gelap" mungkin mendaftarkan merek Anda terlebih dahulu
+- Tanpa pendaftaran, penegakan hukum terbatas
 
-**Daftarkan merek Anda sebelum memasuki pasar Indonesia!**
+**Daftarkan merek dagang Anda sebelum memasuki pasar Indonesia!**
 
 </InfoCard>
 
 ### Proses Pendaftaran
 
 <JourneyMap
-  title="Pendaftaran Merek"
-  description="Langkah untuk mendaftarkan merek Anda"
+  title="Pendaftaran Merek Dagang"
+  description="Langkah-langkah untuk mendaftarkan merek dagang Anda"
   estimatedTotal="12-18 bulan"
   steps={[
     {
       id: "search",
       title: "Pencarian Merek",
-      description: "Periksa ketersediaan",
+      description: "Cek ketersediaan",
       duration: "1-2 minggu",
       status: "required",
       tips: [
-        "Cari database DGIP",
-        "Periksa merek serupa",
-        "Pertimbangkan kesamaan fonetis",
+        "Cari di database DGIP",
+        "Periksa merek yang serupa",
+        "Pertimbangkan kesamaan fonetik",
       ],
     },
     {
       id: "prepare",
-      title: "Siapkan Aplikasi",
+      title: "Siapkan Permohonan",
       description: "Kumpulkan dokumen",
       duration: "1-2 minggu",
       status: "required",
       documents: [
-        "Spesimen merek (logo)",
+        "Contoh merek dagang (logo)",
         "Daftar barang/jasa",
         "Detail pemohon",
         "Surat kuasa (jika menggunakan agen)",
@@ -244,15 +235,11 @@ Indonesia menggunakan sistem **first-to-file**:
     },
     {
       id: "file",
-      title: "Ajukan Aplikasi",
-      description: "Kirim ke DGIP",
+      title: "Ajukan Permohonan",
+      description: "Kirimkan ke DGIP",
       duration: "1-2 hari",
       status: "required",
-      tips: [
-        "Online via sistem DGIP",
-        "Atau melalui agen KI",
-        "Bayar biaya pengajuan",
-      ],
+      tips: ["Online via sistem DGIP", "Atau melalui agen HKI", "Bayar biaya pendaftaran"],
     },
     {
       id: "examine",
@@ -261,22 +248,18 @@ Indonesia menggunakan sistem **first-to-file**:
       duration: "1-2 bulan",
       status: "required",
       tips: [
-        "Tinjauan administratif",
+        "Peninjauan administratif",
         "Mungkin meminta koreksi",
-        "Tanggal pengajuan ditetapkan",
+        "Tanggal pendaftaran ditetapkan",
       ],
     },
     {
       id: "substantive",
-      title: "Pemeriksaan Substansial",
-      description: "Tinjauan merit merek",
+      title: "Pemeriksaan Substantif",
+      description: "Tinjau nilai merek dagang",
       duration: "6-9 bulan",
       status: "required",
-      tips: [
-        "Pemeriksaan kekhasan",
-        "Pencarian konflik",
-        "Mungkin menghadapi keberatan",
-      ],
+      tips: ["Cek keunikan", "Pencarian konflik", "Mungkin menghadapi keberatan"],
     },
     {
       id: "publish",
@@ -285,38 +268,38 @@ Indonesia menggunakan sistem **first-to-file**:
       duration: "2 bulan",
       status: "required",
       tips: [
-        "Periode oposisi",
-        "Pihak ketiga dapat keberatan",
-        "Tanggapi jika ditantang",
+        "Periode keberatan",
+        "Pihak ketiga dapat mengajukan keberatan",
+        "Respon jika ditantang",
       ],
     },
     {
       id: "certificate",
       title: "Sertifikat Diterbitkan",
-      description: "Merek terdaftar",
+      description: "Merek dagang terdaftar",
       duration: "1-2 bulan",
       status: "final",
       tips: [
         "Perlindungan 10 tahun dimulai",
-        "Dapat menggunakan simbol ®",
-        "Perpanjang sebelum habis",
+        "Bisa menggunakan simbol ®",
+        "Perbarui sebelum kedaluwarsa",
       ],
     },
   ]}
 />
 
-### Kelas Merek
+### Kelas Merek Dagang
 
-| Kelas | Kategori           | Contoh                    |
-| ----- | ------------------ | ------------------------- |
-| 25    | Pakaian            | Pakaian, alas kaki        |
-| 35    | Jasa bisnis        | Ritel, periklanan         |
-| 41    | Pendidikan/Hiburan | Pelatihan, acara          |
-| 42    | Teknologi          | Perangkat lunak, jasa TI  |
-| 43    | Jasa makanan       | Restoran, kafe            |
-| 9     | Elektronik         | Perangkat lunak, aplikasi |
+| Class | Kategori                | Contoh                  |
+| ----- | ----------------------- | ----------------------- |
+| 25    | Pakaian                 | Busana, alas kaki       |
+| 35    | Jasa bisnis             | Ritel, periklanan       |
+| 41    | Pendidikan/Hiburan      | Pelatihan, acara        |
+| 42    | Teknologi               | Perangkat lunak, jasa TI|
+| 43    | Layanan makanan         | Restoran, kafe          |
+| 9     | Elektronik              | Perangkat lunak, aplikasi|
 
-Anda harus mendaftar di setiap kelas yang relevan secara terpisah.
+Anda harus mendaftarkan di setiap kelas yang relevan secara terpisah.
 
 ---
 
@@ -324,35 +307,35 @@ Anda harus mendaftar di setiap kelas yang relevan secara terpisah.
 
 ### Jenis Paten
 
-| Jenis           | Durasi   | Untuk                   |
-| --------------- | -------- | ----------------------- |
-| Paten Standar   | 20 tahun | Invensi kompleks        |
-| Paten Sederhana | 10 tahun | Inovasi lebih sederhana |
+| Tipe            | Durasi   | Untuk                    |
+| --------------- | -------- | ------------------------ |
+| Paten Standar   | 20 tahun | Penemuan kompleks        |
+| Paten Sederhana | 10 tahun | Inovasi yang lebih sederhana |
 
 ### Persyaratan Paten
 
 <Checklist
-  title="Aplikasi Paten"
+  title="Permohonan Paten"
   description="Elemen yang diperlukan"
   persistKey="patent-checklist"
   items={[
     {
       id: "novel",
       label: "Kebaruan",
-      description: "Belum diketahui sebelum pengajuan",
+      description: "Belum diketahui sebelum pendaftaran",
       required: true,
       category: "requirements",
     },
     {
       id: "inventive",
-      label: "Langkah inventif",
+      label: "Langkah penemuan",
       description: "Tidak jelas bagi para ahli",
       required: true,
       category: "requirements",
     },
     {
       id: "industrial",
-      label: "Dapat diterapkan secara industri",
+      label: "Keterapan industri",
       description: "Dapat diproduksi/digunakan",
       required: true,
       category: "requirements",
@@ -367,7 +350,7 @@ Anda harus mendaftar di setiap kelas yang relevan secara terpisah.
     {
       id: "claims",
       label: "Klaim paten",
-      description: "Lingkup perlindungan",
+      description: "Cakupan perlindungan",
       required: true,
       category: "documents",
     },
@@ -381,7 +364,7 @@ Anda harus mendaftar di setiap kelas yang relevan secara terpisah.
     {
       id: "abstract",
       label: "Abstrak",
-      description: "Ringkasan invensi",
+      description: "Ringkasan penemuan",
       required: true,
       category: "documents",
     },
@@ -393,15 +376,15 @@ Anda harus mendaftar di setiap kelas yang relevan secara terpisah.
   showProgress={true}
 />
 
-<InfoCard variant="note" title="Timeline Paten">
-Pendaftaran paten biasanya membutuhkan waktu **3-5 tahun** di Indonesia.
+<InfoCard variant="note" title="Jadwal Paten">
+Pendaftaran paten biasanya memakan waktu **3-5 tahun** di Indonesia.
 
 **Penting:**
 
-- Ajukan lebih awal (sistem first-to-file)
-- Jaga kerahasiaan invensi sampai diajukan
-- Dapat mengklaim prioritas dari pengajuan asing (12 bulan)
-  </InfoCard>
+- Ajukan lebih awal (sistem pertama yang mendaftar)
+- Jaga kerahasiaan penemuan hingga diajukan
+- Dapat mengklaim prioritas dari pendaftaran asing (12 bulan)
+</InfoCard>
 
 ---
 
@@ -409,32 +392,32 @@ Pendaftaran paten biasanya membutuhkan waktu **3-5 tahun** di Indonesia.
 
 ### Perlindungan Otomatis
 
-Perlindungan hak cipta **otomatis** di Indonesia untuk:
+Perlindungan hak cipta adalah **otomatis** di Indonesia untuk:
 
 - Karya sastra
 - Musik dan lagu
-- Seni dan fotografi
+- Seni dan foto
 - Film dan video
 - Perangkat lunak dan basis data
 - Arsitektur
 
 ### Mengapa Tetap Mendaftar?
 
-| Manfaat    | Penjelasan                      |
-| ---------- | ------------------------------- |
-| Bukti      | Membuktikan tanggal kepemilikan |
-| Penegakan  | Tindakan hukum lebih mudah      |
-| Lisensi    | Kepemilikan lebih jelas         |
-| Nilai aset | Untuk valuasi bisnis            |
+| Manfaat      | Penjelasan                  |
+| ------------ | --------------------------- |
+| Bukti        | Membuktikan tanggal kepemilikan |
+| Penegakan    | Tindakan hukum lebih mudah  |
+ Lisensi       | Kepemilikan lebih jelas     |
+| Nilai aset   | Untuk penilaian bisnis      |
 
 ### Proses Pendaftaran
 
-| Langkah                | Durasi     |
-| ---------------------- | ---------- |
-| Siapkan dokumen        | 1 minggu   |
-| Aplikasi online        | 1 hari     |
-| Tinjauan DGIP          | 1-3 bulan  |
-| Sertifikat diterbitkan | 1-2 minggu |
+| Langkah               | Durasi       |
+| --------------------- | ------------ |
+| Siapkan dokumen       | 1 minggu     |
+| Permohonan online      | 1 hari       |
+| Tinjauan DGIP          | 1-3 bulan    |
+| Sertifikat diterbitkan  | 1-2 minggu   |
 
 ---
 
@@ -445,83 +428,83 @@ Perlindungan hak cipta **otomatis** di Indonesia untuk:
 <InfoCard variant="tip" title="Lindungi Rahasia Anda">
 Untuk mempertahankan perlindungan rahasia dagang:
 
-1. **Identifikasi** apa yang rahasia
+1. **Identifikasi** apa yang bersifat rahasia
 2. **Tandai** dokumen sebagai rahasia
-3. **Batasi** akses sesuai kebutuhan
-4. **NDA** dengan karyawan dan mitra
-5. **Tindakan keamanan** (fisik dan digital)
-6. **Latih** staf tentang kerahasiaan
+3. **Batasi** akses hanya untuk yang perlu tahu
+4. **Perjanjian Kerahasiaan (NDA)** dengan karyawan dan mitra
+5. **Keamanan** (fisik dan digital)
+6. **Pelatihan** staf tentang kerahasiaan
 
-Setelah dipublikasikan, perlindungan hilang selamanya.
+Setelah menjadi publik, perlindungan hilang selamanya.
 
 </InfoCard>
 
-### Elemen NDA
+### Inti Perjanjian Kerahasiaan (NDA)
 
-| Elemen       | Tujuan                      |
-| ------------ | --------------------------- |
-| Definisi     | Apa yang rahasia            |
-| Kewajiban    | Cara melindungi             |
-| Durasi       | Berapa lama mengikat        |
-| Pengecualian | Pengungkapan yang diizinkan |
-| Remedi       | Konsekuensi pelanggaran     |
-| Yurisdiksi   | Biasanya hukum Indonesia    |
+| Elemen          | Tujuan                    |
+| --------------- | ------------------------- |
+| Definisi        | Apa yang bersifat rahasia |
+| Kewajiban       | Cara melindunginya        |
+| Durasi          | Berapa lama mengikat      |
+| Pengecualian    | Pengungkapan yang diizinkan |
+| Remedial        | Konsekuensi pelanggaran   |
+| Yurisdiksi      | Hukum Indonesia biasanya  |
 
 ---
 
-## Penegakan
+## Penegakan Hukum
 
-### Jika KI Anda Dilanggar
+### Jika HKI Anda Dilanggar
 
-| Tindakan             | Detail                     |
-| -------------------- | -------------------------- |
-| Surat hentikan       | Surat menuntut penghentian |
-| Mediasi              | Negosiasi penyelesaian     |
-| Gugatan perdata      | Ganti rugi, injungsi       |
-| Laporan pidana       | Pelanggaran yang disengaja |
-| Pencatatan bea cukai | Hentikan impor             |
+| Tindakan              | Detail                    |
+| --------------------- | ------------------------- |
+| Surat berhenti dan larangan | Surat menuntut berhenti |
+| Mediasi               | Negosiasi penyelesaian    |
+| Gugatan perdata       | Ganti rugi, perintah injunctif |
+| Pelaporan pidana      | Pelanggaran sengaja      |
+| Pencatatan Bea Cukai  | Hentikan impor            |
 
-### Remedi yang Tersedia
+### Remedial yang Tersedia
 
-| Remedi               | Jenis                 |
-| -------------------- | --------------------- |
-| Injungsi             | Hentikan pelanggaran  |
-| Ganti rugi           | Kompensasi            |
-| Akuntansi keuntungan | Keuntungan pelanggar  |
-| Penghancuran         | Barang yang melanggar |
-| Sanksi pidana        | Denda, penjara        |
+| Remedial             | Tipe                    |
+| --------------------- | ----------------------- |
+| Injunctif             | Berhenti melanggar      |
+| Ganti rugi            | Kompensasi              |
+| Laporan keuntungan   | Keuntungan pelanggar    |
+| Penghancuran          | Barang yang melanggar   |
+| Sanksi pidana         | Denda, penjara          |
 
 ---
 
 ## Ringkasan Biaya
 
-| Jenis KI        | Biaya Pemerintah | Biaya Agen   | Estimasi Total |
-| --------------- | ---------------- | ------------ | -------------- |
-| Merek           | IDR 1-2Jt        | IDR 3-8Jt    | IDR 4-10Jt     |
-| Paten           | IDR 2-5Jt        | IDR 15-50Jt+ | IDR 20-60Jt+   |
-| Hak Cipta       | IDR 200-500Rb    | IDR 1-3Jt    | IDR 1.5-4Jt    |
-| Desain Industri | IDR 1-2Jt        | IDR 3-6Jt    | IDR 4-8Jt      |
+| Jenis HKI           | Biaya Pemerintah | Biaya Agen  | Total Estimasi |
+| ------------------- | ---------------- | ----------- | -------------- |
+| Merek Dagang        | IDR 1-2M         | IDR 3-8M    | IDR 4-10M      |
+| Paten               | IDR 2-5M         | IDR 15-50M+ | IDR 20-60M+    |
+| Hak Cipta           | IDR 200-500K     | IDR 1-3M    | IDR 1.5-4M     |
+| Desain Industri     | IDR 1-2M         | IDR 3-6M    | IDR 4-8M       |
 
 ---
 
 ## Perlindungan Internasional
 
-### Perjanjian yang Diikuti Indonesia
+### Perjanjian yang Dilakukan Indonesia
 
-| Perjanjian      | Manfaat                       |
-| --------------- | ----------------------------- |
-| Konvensi Paris  | Klaim prioritas (12 bulan)    |
-| TRIPS           | Standar minimum               |
-| Protokol Madrid | Sistem merek internasional    |
-| PCT             | Pengajuan paten internasional |
-| Konvensi Bern   | Pengakuan hak cipta           |
+| Perjanjian           | Manfaat                    |
+| --------------------- | -------------------------- |
+| Konvensi Paris        | Klaim prioritas (12 bulan) |
+| TRIPS                 | Standar minimum            |
+| Protokol Madrid       | Sistem merek internasional |
+| PCT                   | Pendaftaran paten internasional |
+| Konvensi Bern         | Pengakuan hak cipta        |
 
 <InfoCard variant="note" title="Klaim Prioritas">
-Jika Anda memiliki pendaftaran KI yang ada di luar negeri, Anda dapat mengklaim **prioritas** di Indonesia:
-- Merek: 6 bulan dari pengajuan pertama
-- Paten: 12 bulan dari pengajuan pertama
+Jika Anda memiliki pendaftaran HKI yang ada di luar negeri, Anda dapat mengklaim **prioritas** di Indonesia:
+- Merek dagang: 6 bulan dari pendaftaran pertama
+- Paten: 12 bulan dari pendaftaran pertama
 
-Ini mengundur tanggal pengajuan Indonesia Anda.
+Ini akan mendahului tanggal pendaftaran Indonesia Anda.
 
 </InfoCard>
 
@@ -529,27 +512,27 @@ Ini mengundur tanggal pengajuan Indonesia Anda.
 
 ## Kesalahan Umum
 
-| Kesalahan                       | Konsekuensi                 |
-| ------------------------------- | --------------------------- |
-| Tidak mencari terlebih dahulu   | Penolakan, pemborosan biaya |
-| Menggunakan sebelum pendaftaran | Risiko klaim pelanggaran    |
-| Pemilihan kelas yang salah      | Perlindungan tidak lengkap  |
-| Membiarkan pendaftaran habis    | Kehilangan hak              |
-| Dokumentasi yang buruk          | Kesulitan penegakan         |
-| Mengabaikan pelanggaran         | Melemahkan hak              |
+| Kesalahan                    | Konsekuensi                 |
+| ---------------------------- | --------------------------- |
+| Tidak mencari terlebih dahulu | Penolakan, pemborosan biaya |
+| Menggunakan sebelum mendaftar | Risiko klaim pelanggaran    |
+| Pemilihan kelas yang salah   | Perlindungan tidak lengkap  |
+ | Membiarkan pendaftaran kadaluarsa | Hilang hak                  |
+| Dokumentasi buruk           | Kesulitan penegakan hukum   |
+| Mengabaikan pelanggaran      | Melemahkan hak              |
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Kekayaan intelektual Indonesia, merek, paten, hak cipta, rahasia dagang"
-  placeholder="Tanyakan tentang perlindungan KI..."
+  context="Hak kekayaan intelektual Indonesia, merek dagang, paten, hak cipta, rahasia dagang"
+  placeholder="Tanya tentang perlindungan HKI..."
   suggestedQuestions={[
-    "Bisakah saya mendaftarkan merek dalam bahasa Inggris?",
+    "Apakah saya bisa mendaftarkan merek dagang dalam bahasa Inggris?",
     "Bagaimana cara menghentikan seseorang menggunakan merek saya?",
-    "Apakah paten AS saya melindungi saya di Indonesia?",
-    "Bagaimana jika seseorang sudah mendaftarkan merek saya?",
+    "Apakah paten AS melindungi saya di Indonesia?",
+    "Bagaimana jika seseorang sudah mendaftarkan merek dagang saya?",
   ]}
 />
 
@@ -557,6 +540,6 @@ Ini mengundur tanggal pengajuan Indonesia Anda.
 
 ## Artikel Terkait
 
-- [Panduan Setup PT PMA](/business/pt-pma-registration-guide?lang=id)
-- [Ikhtisar Lisensi Bisnis](/insights/business/business-licenses-overview)
-- [Kontrak di Bawah Hukum Indonesia](/insights/business/contracts-indonesian-law)
+- [Panduan Setup PT PMA](/business/pt-pma-registration-guide)
+- [Ringkasan Izin Usaha](/insights/business/business-licenses-overview)
+- [Kontrak di bawah Hukum Indonesia](/insights/business/contracts-indonesian-law)

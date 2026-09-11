@@ -73,62 +73,54 @@ canonicalUrl: "https://balizero.com/tax/corporate-income-tax"
 ogImage: "/static/insights/tax/corporate-tax.jpg"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "877f9197f2758d0c20b42ced1fb4c651563a9abc3921bc9c6cdee8574b85a0c9"
+source_sha256: "d4445f69a7de10c5818e80de88a18594de129b14268e70ed4a87bc126d871c0d"
 ---
 
-import {
-  ComparisonTable,
-  Calculator,
-  InfoCard,
-  Checklist,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Imposta sul reddito delle società in Indonesia 2026: Guida Completa
 
-# Imposta sul reddito delle società in Indonesia 2026: Guida completa
+L'imposta sul reddito delle società (PPh Badan) è un fattore significativo da considerare per qualsiasi impresa operante in Indonesia. Ecco cosa devi sapere.
 
-L'imposta sul reddito delle società (PPh Badan) è un aspetto fondamentale per qualsiasi attività che operi in Indonesia. Ecco tutto quello che devi sapere.
-
-## Panoramica delle aliquote fiscali
+## Panoramica delle Aliquote
 
 <ComparisonTable
-  title="Aliquote dell'imposta sul reddito delle società"
+  title="Aliquote Imposta sul Reddito delle Società"
   description="Aliquote attuali per diverse entità"
   items={[
     {
       name: "Aliquota Standard",
-      subtitle: "La maggior parte delle aziende",
+      subtitle: "Maggior parte delle aziende",
       values: {
-        Aliquota: "22%",
-        "Si applica a": "Reddito netto imponibile",
-        "Tipo di entità": "PT, CV, ecc.",
+        Rate: "22%",
+        "Applies To": "Reddito imponibile netto",
+        "Entity Type": "PT, CV, ecc.",
       },
       highlight: true,
     },
     {
-      name: "Società Quotata",
-      subtitle: "Società quotate in borsa",
+      name: "Società Quotate",
+      subtitle: "Aziende listate",
       values: {
-        Aliquota: "19%",
-        "Si applica a": "IPO con oltre il 40% di flottante",
-        "Tipo di entità": "PT quotata",
+        Rate: "19%",
+        "Applies To": "IPO con flottazione libera 40%+",
+        "Entity Type": "PT quotata",
       },
     },
     {
       name: "Aliquota PMI",
       subtitle: "Piccole imprese",
       values: {
-        Aliquota: "0,5% del fatturato",
-        "Si applica a": "Fatturato < 4,8 miliardi IDR",
-        "Tipo di entità": "CV, PT con basso fatturato",
+        Rate: "0.5% del fatturato",
+        "Applies To": "Fatturato < 4,8 Miliardi IDR",
+        "Entity Type": "CV, PT con basso ricavo",
       },
     },
     {
       name: "Imposta Finale",
       subtitle: "Settori specifici",
       values: {
-        Aliquota: "Variabile (0,5-10%)",
-        "Si applica a": "Industrie specifiche",
-        "Tipo di entità": "Costruzioni, ecc.",
+        Rate: "Variabile (0.5-10%)",
+        "Applies To": "Industrie specifiche",
+        "Entity Type": "Costruzioni, ecc.",
       },
     },
   ]}
@@ -136,15 +128,15 @@ L'imposta sul reddito delle società (PPh Badan) è un aspetto fondamentale per 
 
 ---
 
-## Calcolo delle tasse
+## Calcolo dell'Imposta
 
 <Calculator
-  title="Stimatore dell'imposta sulle società"
-  description="Stima l'imposta annuale della tua società"
+  title="Stimatore Imposta Societaria"
+  description="Stima la tua imposta societaria annuale"
   fields={[
     {
       id: "revenue",
-      label: "Fatturato annuo (IDR)",
+      label: "Fatturato Annuo (IDR)",
       type: "number",
       defaultValue: 5000000000,
       min: 0,
@@ -153,7 +145,7 @@ L'imposta sul reddito delle società (PPh Badan) è un aspetto fondamentale per 
     },
     {
       id: "expenses",
-      label: "Spese deducibili (IDR)",
+      label: "Spese Deducibili (IDR)",
       type: "number",
       defaultValue: 3500000000,
       min: 0,
@@ -162,12 +154,12 @@ L'imposta sul reddito delle società (PPh Badan) è un aspetto fondamentale per 
     },
     {
       id: "type",
-      label: "Tipo di società",
+      label: "Tipo di Azienda",
       type: "select",
       options: [
         { value: "standard", label: "PT/PT PMA Standard" },
-        { value: "public", label: "Società quotata in borsa" },
-        { value: "sme", label: "PMI (fatturato < 4,8 mld IDR)" }
+        { value: "public", label: "Società Quotata" },
+        { value: "sme", label: "PMI (< 4,8 Miliardi IDR di ricavo)" }
       ],
       defaultValue: "standard"
     }
@@ -182,7 +174,7 @@ L'imposta sul reddito delle società (PPh Badan) è un aspetto fondamentale per 
 
     if (values.type === "sme" && revenue <= 4800000000) {
       tax = revenue * 0.005;
-      rate = "0,5% del fatturato";
+      rate = "0.5% del fatturato";
     } else if (values.type === "public") {
       tax = profit > 0 ? profit * 0.19 : 0;
       rate = "19%";
@@ -196,8 +188,8 @@ L'imposta sul reddito delle società (PPh Badan) è un aspetto fondamentale per 
       breakdown: [
         { label: "Fatturato", amount: revenue },
         { label: "Spese", amount: expenses },
-        { label: "Utile imponibile", amount: profit > 0 ? profit : 0 },
-        { label: "Imposta dovuta", amount: tax }
+        { label: "Utilizzo Imponibile", amount: profit > 0 ? profit : 0 },
+        { label: "Imposta Dovuta", amount: tax }
       ],
       currency: "IDR",
       note: `Aliquota applicata: ${rate}`
@@ -208,247 +200,245 @@ L'imposta sul reddito delle società (PPh Badan) è un aspetto fondamentale per 
 
 ---
 
-## Imposta finale per le PMI (PP 55/2022)
+## Imposta Finale PMI (PP 55/2022)
 
-<InfoCard variant="tip" title="Semplificato per le piccole imprese">
-Le aziende con un fatturato lordo inferiore a **4,8 miliardi di IDR/anno** possono utilizzare l'imposta finale semplificata:
+<InfoCard variant="tip" title="Semplificato per Piccole Imprese">
+Le imprese con un fatturato lordo inferiore a **4,8 miliardi IDR/anno** possono utilizzare l'imposta finale semplificata:
 
-- **Aliquota**: 0,5% del fatturato lordo
+- **Aliquota**: 0.5% del fatturato lordo
 - **Nessun calcolo complesso**
 - **Pagamento mensile**
-- **Si applica a**: PT, CV, individui con partita IVA
-- **Durata**: Massimo 7 anni per le PT, 4 anni per CV/individui
+- **Applicabile a**: PT, CV, individui con attività commerciale
+- **Durata**: Massimo 7 anni per PT, 4 anni per CV/individui
 
-Al termine del periodo massimo, si applicano le aliquote ordinarie.
+Dopo il periodo massimo, si applicano le aliquote regolari.
 
 </InfoCard>
 
-### Esempio di tassazione PMI
+### Esempio Imposta PMI
 
-| Fatturato mensile | Imposta dovuta |
+| Fatturato Mensile | Imposta Dovuta |
 | ----------------- | -------------- |
-| 100 mln IDR       | 500 mila IDR   |
-| 200 mln IDR       | 1 mln IDR      |
-| 400 mln IDR       | 2 mln IDR      |
+| 100 Miliardi IDR  | 500 K IDR      |
+| 200 Miliardi IDR  | 1 M IDR        |
+| 400 Miliardi IDR  | 2 M IDR        |
 
 ---
 
-## Spese deducibili
+## Spese Deducibili
 
-### Cosa è deducibile?
+### Cosa è Deducibile?
 
 <Checklist
-  title="Comuni spese deducibili"
+  title="Spese Deducibili Comuni"
   description="Spese che riducono il reddito imponibile"
   persistKey="deductible-expenses-checklist"
   items={[
     {
       id: "salaries",
-      label: "Stipendi e benefit per i dipendenti",
-      description: "Salari, contributi BPJS",
+      label: "Stipendi e benefit per dipendenti",
+      description: "Retribuzioni, contributi BPJS",
       required: false,
-      category: "operativo",
+      category: "operational",
     },
     {
       id: "rent",
-      label: "Affitto dell'ufficio",
-      description: "Canoni di locazione",
+      label: "Affitto ufficio",
+      description: "Pagamenti di locazione",
       required: false,
-      category: "operativo",
+      category: "operational",
     },
     {
       id: "utilities",
-      label: "Utenze",
+      label: "Servizi pubblici",
       description: "Elettricità, acqua, internet",
       required: false,
-      category: "operativo",
+      category: "operational",
     },
     {
       id: "depreciation",
       label: "Ammortamento",
-      description: "Beni strumentali nel tempo",
+      description: "Attività nel tempo",
       required: false,
-      category: "capitale",
+      category: "capital",
     },
     {
       id: "interest",
-      label: "Spese per interessi",
-      description: "Interessi sui prestiti (entro i limiti)",
+      label: "Spese di interesse",
+      description: "Interessi sui prestiti (nei limiti)",
       required: false,
-      category: "finanziario",
+      category: "financial",
     },
     {
       id: "training",
-      label: "Formazione dei dipendenti",
+      label: "Formazione dipendenti",
       description: "Sviluppo professionale",
       required: false,
-      category: "operativo",
+      category: "operational",
     },
     {
       id: "marketing",
       label: "Marketing e pubblicità",
-      description: "Promozione dell'attività",
+      description: "Promozione aziendale",
       required: false,
-      category: "operativo",
+      category: "operational",
     },
     {
       id: "professional",
-      label: "Spese professionali",
-      description: "Legali, contabili, consulenza",
+      label: "Onorari professionali",
+      description: "Legale, contabilità, consulenza",
       required: false,
-      category: "servizi",
+      category: "services",
     },
   ]}
   categories={[
-    { id: "operativo", label: "Operativo", color: "blue" },
-    { id: "capitale", label: "Capitale", color: "green" },
-    { id: "finanziario", label: "Finanziario", color: "amber" },
-    { id: "servizi", label: "Servizi", color: "purple" },
+    { id: "operational", label: "Operativo", color: "blue" },
+    { id: "capital", label: "Capitale", color: "green" },
+    { id: "financial", label: "Finanziario", color: "amber" },
+    { id: "services", label: "Servizi", color: "purple" },
   ]}
   showProgress={false}
 />
 
-### Spese non deducibili
+### Spese Non Deducibili
 
-| Spesa                        | Note                                |
-| ---------------------------- | ----------------------------------- |
-| Dividendi                    | Non sono una spesa                  |
-| Spese personali              | Devono essere inerenti all'attività |
-| Donazioni (la maggior parte) | Alcune eccezioni                    |
-| Multe e sanzioni             | Multe governative                   |
-| Rappresentanza (non docum.)  | Necessaria documentazione idonea    |
-| Premi a parti correlate      | Sopra il tasso di mercato           |
+| Spesa                      | Note                     |
+| -------------------------- | ------------------------ |
+| Dividendi                  | Non è una spesa          |
+| Spese personali            | Devono essere aziendali  |
+| Donazioni (maggior parte)  | Alcune eccezioni         |
+| Multe e sanzioni           | Multe governative        |
+| Intrattenimento (non documentato) | Serve documentazione adeguata |
+| Premium parti correlate    | Sopra il tasso di mercato |
 
 ---
 
 ## Ammortamento
 
-### Gruppi di ammortamento
+### Gruppi di Ammortamento
 
-| Gruppo                   | Beni         | Aliquota (Quote costanti) | Aliquota (Quote decres.) |
-| ------------------------ | ------------ | ------------------------- | ------------------------ |
-| 1                        | Vita 4 anni  | 25%                       | 50%                      |
-| 2                        | Vita 8 anni  | 12,5%                     | 25%                      |
-| 3                        | Vita 16 anni | 6,25%                     | 12,5%                    |
-| 4                        | Vita 20 anni | 5%                        | 10%                      |
-| Edifici (permanenti)     | 20 anni      | 5%                        | -                        |
-| Edifici (non permanenti) | 10 anni      | 10%                       | -                        |
+| Gruppo                    | Attività       | Aliquota (Linea Retta) | Aliquota (Decrescente) |
+| ------------------------- | -------------- | ---------------------- | ----------------------- |
+| 1                         | Vita 4 anni    | 25%                    | 50%                     |
+| 2                         | Vita 8 anni    | 12.5%                  | 25%                     |
+| 3                         | Vita 16 anni   | 6.25%                  | 12.5%                   |
+| 4                         | Vita 20 anni   | 5%                     | 10%                     |
+| Edificio (permanente)     | 20 anni        | 5%                     | -                       |
+| Edificio (non permanente) | 10 anni        | 10%                    | -                       |
 
 ---
 
-## Requisiti per la dichiarazione dei redditi
+## Requisiti di Dichiarazione dell'Imposta
 
-### Dichiarazione dei redditi annuale delle società
+### Dichiarazione Annuale Imposta sul Reddito delle Società
 
-<InfoCard variant="note" title="Scadenze per la presentazione">
+<InfoCard variant="note" title="Scadenze Presentazione">
 
-  **SPT Tahunan Badan** (Dichiarazione annuale delle società): - **Scadenza**: 4
-  mesi dopo la fine dell'anno fiscale - **Per l'anno solare**: 30 aprile -
-  **Proroga**: possibile fino a 2 mesi - **Metodo**: e-Filing obbligatorio
+  **SPT Tahunan Badan** (Dichiarazione Annuale Imposta sul Reddito delle Società): - **Scadenza**: 4 mesi dopo la fine dell'esercizio fiscale - **Per l'anno solare**: 30 aprile - **Proroga**: Fino a 2 mesi possibili - **Metodo**: e-Filing obbligatorio
 </InfoCard>
 
-### Obblighi mensili
+### Obblighi Mensili
 
-| Obbligo   | Scadenza                 | Descrizione               |
-| --------- | ------------------------ | ------------------------- |
-| PPh 21    | 10 del mese successivo   | Ritenute sui dipendenti   |
-| PPh 23    | 10 del mese successivo   | Ritenute sui servizi      |
-| PPh 25    | 15 del mese successivo   | Acconto mensile CIT       |
-| PPh 4(2)  | 10 del mese successivo   | Voci di imposta finale    |
-| IVA (PPN) | Fine del mese successivo | Se registrati ai fini IVA |
+| Obbligo                    | Scadenza                      | Descrizione               |
+| -------------------------- | ----------------------------- | ------------------------- |
+| PPh 21                     | 10 del mese successivo        | Trattenuta dipendenti     |
+| PPh 23                     | 10 del mese successivo        | Trattenuta servizi        |
+| PPh 25                     | 15 del mese successivo        | Rate anticipate IRES      |
+| PPh 4(2)                   | 10 del mese successivo        | Elementi imposta finale   |
+| IVA (PPN)                  | Fine mese successivo          | Se registrato IVA         |
 
 ---
 
-## Transfer Pricing
+## Pricing di Trasferimento
 
-<InfoCard variant="warning" title="Operazioni con parti correlate">
-L'Indonesia ha norme rigorose sul **transfer pricing** per le transazioni tra parti correlate:
+<InfoCard variant="warning" title="Operazioni tra Parti Correlate">
+L'Indonesia ha regole rigorose sul **pricing di trasferimento** per le operazioni tra parti correlate:
 
-- Devono avvenire a prezzi di **libera concorrenza** (arm's length)
-- **Documentazione richiesta** (Master File, Local File)
-- **Rendicontazione Paese per Paese** per i grandi gruppi
-- **Sanzioni** per mancata conformità
+- Devono essere a prezzi **arm's length**
+- **Documentazione richiesta** (File Master, File Locale)
+- **Reporting Paese per Paese** per grandi gruppi
+- **Sanzioni** per non conformità
 
-Rivolgiti a consulenti fiscali qualificati per le transazioni con parti correlate.
+Collabora con consulenti fiscali qualificati per le operazioni tra parti correlate.
 
 </InfoCard>
 
-### Requisiti di documentazione
+### Requisiti di Documentazione
 
-| Report      | Richiesto per        | Soglia                      |
-| ----------- | -------------------- | --------------------------- |
-| Master File | Grandi contribuenti  | Fatturato 50 mld+ IDR       |
-| Local File  | Accordi tra part.cor | Ogni transazione rilevante  |
-| Report CbC  | Multinazionali       | Fatturato gruppo 750 mln+ € |
-
----
-
-## Incentivi fiscali
-
-### Incentivi disponibili
-
-| Incentivo              | Beneficio                  | Per chi                  |
-| ---------------------- | -------------------------- | ------------------------ |
-| Industria pioniera     | Tax holiday fino a 20 anni | Grandi investimenti      |
-| Deduzione investimenti | 30% super deduzione        | Investimenti qualificati |
-| Incentivo R&S          | Deduzione del 300%         | Attività di ricerca      |
-| Formazione vocazionale | Deduzione del 200%         | Programmi di formazione  |
-| Zone Economiche Spec.  | Vari                       | Imprese situate in ZES   |
+| Report      | Richiesto Per        | Soglia                |
+| ----------- | --------------------- | --------------------- |
+| File Master | Grandi contribuenti   | Fatturato 50 Miliardi IDR+ |
+| File Locale | Operazioni parti correlate | Qualsiasi transazione materiale |
+| Report CbC  | Multinazionali        | Fatturato gruppo €750M+ |
 
 ---
 
-## Problemi comuni per le aziende straniere
+## Incentivi Fiscali
 
-### Considerazioni sulle PT PMA
+### Incentivi Disponibili
 
-1. **Sottocapitalizzazione** - Limiti al rapporto debito/capitale (4:1)
-2. **Transfer Pricing** - Scrutinio delle transazioni con parti correlate
-3. **Ritenute d'acconto** - Pagamenti a affiliate straniere
-4. **Stabile Organizzazione** - Necessaria un'attenta strutturazione
-5. **Trattati fiscali** - Verificare l'applicabilità
+| Incentivo                 | Beneficio                    | Per Chi                |
+| ------------------------- | ----------------------------- | ---------------------- |
+| Industria Pioniera        | Congedo fiscale fino a 20 anni | Grandi investimenti    |
+| Detrazione Investimento   | Super-detrazione del 30%      | Investimenti qualificati |
+| Incentivo R&S             | Detrazione del 300%           | Attività di ricerca    |
+| Formazione Professionale  | Detrazione del 200%           | Programmi di formazione |
+| Zona Economica Speciale   | Vari                          | Aziende in ZES         |
 
 ---
 
-## Calendario della conformità
+## Problemi Comuni per le Società Esterne
 
-| Mese        | Attività                            |
-| ----------- | ----------------------------------- |
-| Gennaio     | Riconciliazione anno precedente     |
-| Marzo       | Preparazione dichiarazione annuale  |
-| Aprile      | Invio dichiarazione (scade il 30/4) |
-| Mensile     | Acconti PPh e ritenute              |
-| Trimestrale | Revisione e rettifica stime         |
+### Considerazioni PT PMA
+
+1. **Thin Capitalization** - Limiti rapporto debito/capitale proprio (4:1)
+2. **Pricing di Trasferimento** - Controllo operazioni parti correlate
+3. **Imposte di Trattenuta** - Pagamenti a affiliate estere
+4. **Stabilimento Permanente** - Necessaria strutturazione attenta
+5. **Trattati Fiscali** - Verificare applicabilità
+
+---
+
+## Calendario di Conformità
+
+| Mese     | Attività                          |
+| -------- | --------------------------------- |
+| Gennaio  | Conciliazione anno precedente     |
+| Marzo    | Preparare dichiarazione annuale   |
+| Aprile   | Presentare dichiarazione annuale (scadenza 30 aprile) |
+| Mensile  | Rate PPh e trattenute             |
+| Trimestrale | Revisione e aggiustamento stime |
 
 ---
 
 ## Sanzioni
 
-| Violazione          | Sanzione                     |
-| ------------------- | ---------------------------- |
-| Ritardato invio     | 1 mln IDR/mese (max 24 mesi) |
-| Ritardato pagamento | 2% al mese                   |
-| Sottopagamento      | 2% al mese + potenziale 200% |
-| Frode fiscale       | Possibili sanksioni penali   |
+| Violazione    | Sanzione                       |
+| ------------- | ------------------------------ |
+| Presentazione tardiva | 1 Miliardi IDR/mese (max 24 mesi) |
+| Pagamento tardivo | 2% al mese                     |
+| Sottopagamento | 2% al mese + potenziale 200%   |
+| Frode fiscale | Possibili sanzioni penali      |
 
 ---
 
-## Domande comuni
+## Domande Frequenti
 
 <AskZantara
-  context="Imposta sul reddito delle società Indonesia, PPh Badan, tasse aziendali, tasse PT PMA"
-  placeholder="Chiedi informazioni sulla tassazione societaria..."
+  context="Imposta sul reddito delle società Indonesia, PPh Badan, imposta aziendale, tassa PT PMA"
+  placeholder="Chiedi sull'imposta societaria..."
   suggestedQuestions={[
-    "Qual è la soglia dell'aliquota fiscale per le PMI?",
-    "Come si calcola l'ammortamento?",
+    "Qual è la soglia dell'aliquota PMI?",
+    "Come calcolo l'ammortamento?",
     "Quali spese sono deducibili?",
-    "Quando scade la dichiarazione dei redditi delle società?",
+    "Quando scade la dichiarazione annuale?",
   ]}
 />
 
 ---
 
-## Articoli correlati
+## Articoli Correlati
 
-- [Guida alla creazione di una PT PMA](/business/pt-pma-registration-guide?lang=it)
-- [Guida all'IVA (PPN)](/insights/tax-legal/vat-ppn-guide)
-- [Guida alle ritenute d'acconto](/insights/tax-legal/withholding-tax-guide)
+- [Guida Setup PT PMA](/business/pt-pma-registration-guide)
+- [Guida IVA (PPN)](/insights/tax-legal/vat-ppn-guide)
+- [Guida Imposta di Trattenuta](/insights/tax-legal/withholding-tax-guide)

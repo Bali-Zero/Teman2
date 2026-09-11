@@ -84,20 +84,20 @@ ogImage: "/static/insights/business/starting-a-business-in-indonesia-complete-gu
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "290b74468f56baea36128f60dfb93fc2241ea0a5d3ee3b1402f272d24e8eb349"
+source_sha256: "9a4f2d10db9461842e3fc0e1dcd438c8244c0c2d674dfdadf0a9dfe60dd4d64e"
 ---
 
 # Memulai Bisnis di Indonesia: Panduan Lengkap 2026
 
-Ekonomi Indonesia adalah salah satu yang tumbuh paling cepat di Asia Tenggara, dengan PDB lebih dari $1,3 triliun dan populasi 275 juta. Bagi pengusaha asing, peluangnya sangat besar—tetapi begitu juga kompleksitas mendirikan badan usaha yang legal.
+Ekonomi Indonesia adalah salah satu yang tumbuh tercepat di Asia Tenggara, dengan PDB lebih dari $1,3 triliun dan populasi 275 juta jiwa. Bagi wirausahawan asing, peluangnya sangat besar—namun begitu pula kompleksitas dalam mendirikan entitas bisnis legal.
 
-Panduan ini akan memandu Anda melalui semua yang perlu Anda ketahui tentang memulai bisnis di Indonesia, mulai dari memilih struktur perusahaan yang tepat hingga memperoleh izin operasi Anda.
+Panduan ini akan memandu Anda melalui segala sesuatu yang perlu diketahui tentang memulai bisnis di Indonesia, mulai dari memilih struktur perusahaan yang tepat hingga memperoleh izin operasional.
 
 <ConfidenceMeter
-  title="Tingkat Kepercayaan Informasi"
+  title="Information Confidence"
   items={[
     {
-      label: "Jenis dan Struktur Perusahaan",
+      label: "Jenis & Struktur Perusahaan",
       confidence: 98,
       source: "Peraturan OSS & BKPM 2024",
     },
@@ -110,12 +110,12 @@ Panduan ini akan memandu Anda melalui semua yang perlu Anda ketahui tentang memu
     {
       label: "Waktu Pemrosesan",
       confidence: 85,
-      source: "Data klien yang dikumpulkan 2024",
+      source: "Data agregat klien 2024",
     },
     {
-      label: "Biaya & Tarif",
+      label: "Biaya & Biaya Lain",
       confidence: 88,
-      source: "Jadwal tarif pemerintah + tarif pasar",
+      source: "Jadwal biaya pemerintah + tarif pasar",
     },
   ]}
 />
@@ -124,11 +124,11 @@ Panduan ini akan memandu Anda melalui semua yang perlu Anda ketahui tentang memu
 
 ## Struktur Bisnis Mana yang Tepat untuk Anda?
 
-Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indonesia menawarkan beberapa opsi, tetapi bagi investor asing, pilihannya lebih terbatas.
+Keputusan pertama dan terpenting adalah memilih entitas legal yang benar. Indonesia menawarkan beberapa pilihan, namun bagi investor asing, pilihannya lebih terbatas.
 
 <DecisionTree
   title="Temukan Struktur Bisnis Ideal Anda"
-  description="Jawab beberapa pertanyaan untuk mengetahui entitas bisnis Indonesia yang sesuai dengan situasi Anda"
+  description="Jawab beberapa pertanyaan untuk menemukan entitas bisnis Indonesia yang sesuai dengan situasi Anda"
   nodes={[
     {
       id: "start",
@@ -140,30 +140,27 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
     },
     {
       id: "foreign-ownership",
-      question: "Tingkat kepemilikan apa yang Anda butuhkan?",
+      question: "Berapa tingkat kepemilikan yang Anda butuhkan?",
       options: [
         { label: "Kepemilikan asing 100%", nextNodeId: "check-sector" },
-        { label: "Usaha patungan dengan mitra lokal", nextNodeId: "jv-option" },
-        { label: "Saham minoritas saja", nextNodeId: "local-majority" },
+        { label: "Joint venture dengan mitra lokal", nextNodeId: "jv-option" },
+        { label: "Hanya saham minoritas", nextNodeId: "local-majority" },
       ],
     },
     {
       id: "check-sector",
-      question: "Sektor apa yang akan Anda operasikan?",
+      question: "Di sektor apa Anda akan beroperasi?",
       options: [
-        {
-          label: "Teknologi/Digital/Perangkat Lunak",
-          nextNodeId: "result-pma-tech",
-        },
+        { label: "Teknologi/Digital/Perangkat Lunak", nextNodeId: "result-pma-tech" },
         { label: "Perdagangan/Impor-Ekspor", nextNodeId: "result-pma-trading" },
-        { label: "F&B/Restoran/Perhotelan", nextNodeId: "result-pma-fnb" },
+        { label: "Makanan & Minuman/Restoran/Hospitality", nextNodeId: "result-pma-fnb" },
         { label: "Manufaktur", nextNodeId: "result-pma-manufacturing" },
-        { label: "Jasa Profesional", nextNodeId: "result-pma-services" },
+        { label: "Layanan Profesional", nextNodeId: "result-pma-services" },
       ],
     },
     {
       id: "jv-option",
-      question: "Apakah Anda memiliki mitra Indonesia yang terpercaya?",
+      question: "Apakah Anda memiliki mitra Indonesia yang dipercaya?",
       options: [
         { label: "Ya, saya memiliki mitra", nextNodeId: "result-jv" },
         { label: "Tidak, sedang mencari", nextNodeId: "result-find-partner" },
@@ -174,10 +171,10 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       question: "Jenis bisnis apa yang ingin Anda mulai?",
       options: [
         {
-          label: "Usaha kecil (< IDR 500 Juta pendapatan)",
+          label: "Bisnis kecil (< pendapatan IDR 500M)",
           nextNodeId: "result-cv",
         },
-        { label: "PT PMDN Menengah-Besar", nextNodeId: "result-pt-pmdn" },
+        { label: "PT Menengah-Besar", nextNodeId: "result-pt-pmdn" },
       ],
     },
     {
@@ -185,10 +182,7 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       question: "Berapa tingkat investasi Anda?",
       options: [
         { label: "Di atas IDR 10 miliar", nextNodeId: "result-pma-minority" },
-        {
-          label: "Di bawah IDR 10 miliar",
-          nextNodeId: "result-nominee-warning",
-        },
+        { label: "Di bawah IDR 10 miliar", nextNodeId: "result-nominee-warning" },
       ],
     },
     {
@@ -198,11 +192,11 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       description:
         "Perusahaan teknologi dapat dimiliki 100% oleh asing di sebagian besar kategori KBLI.",
       recommendation:
-        "Anda dapat mendirikan PT PMA yang sepenuhnya dimiliki oleh asing. Investasi minimum: IDR 10 miliar. Sektor teknologi umumnya tidak memiliki batasan kepemilikan asing.",
+        "Anda dapat mendirikan PT PMA yang sepenuhnya dimiliki asing. Investasi minimum: IDR 10 miliar. Sektor teknologi umumnya tidak memiliki batasan kepemilikan asing.",
       nextSteps: [
-        "Periksa kode KBLI tertentu",
+        "Periksa kode KBLI spesifik",
         "Siapkan rencana investasi",
-        "Libatkan sekretaris perusahaan",
+        "Libatkan sekretaris korporat",
       ],
     },
     {
@@ -210,13 +204,13 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       isResult: true,
       title: "PT PMA - Sektor Perdagangan",
       description:
-        "Perusahaan perdagangan memiliki persyaratan dan pembatasan tertentu.",
+        "Perusahaan perdagangan memiliki persyaratan dan beberapa batasan tertentu.",
       recommendation:
-        "PT PMA untuk perdagangan membutuhkan investasi minimum IDR 10 miliar. Beberapa kegiatan perdagangan mungkin memiliki batasan kepemilikan asing 67%. Perdagangan skala besar (impor) memerlukan lisensi tambahan.",
+        "PT PMA untuk perdagangan memerlukan investasi minimum IDR 10 miliar. Beberapa aktivitas perdagangan mungkin memiliki batas asing 67%. Perdagangan skala besar (impor) memerlukan lisensi tambahan.",
       nextSteps: [
-        "Verifikasi pembatasan KBLI",
-        "Ajukan permohonan lisensi importir (API)",
-        "Pertimbangkan kebutuhan pergudangan",
+        "Verifikasi batasan KBLI",
+        "Ajukan lisensi importir (API)",
+        "Pertimbangkan kebutuhan gudang",
       ],
     },
     {
@@ -224,13 +218,13 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       isResult: true,
       title: "PT PMA - Makanan & Minuman",
       description:
-        "Restoran dan perhotelan dapat dimiliki oleh asing dengan syarat tertentu.",
+        "Restoran dan hospitality dapat dimiliki oleh asing dengan syarat.",
       recommendation:
-        "PT PMA F&B/Restoran membutuhkan investasi IDR 10 miliar. Harus menjadi operasi 'skala besar'. Restoran kecil dicadangkan untuk UMKM lokal.",
+        "PT PMA F&B/Restoran memerlukan investasi IDR 10 miliar. Harus berupa operasi 'skala besar'. Restoran kecil direservasi untuk UMKM lokal.",
       nextSteps: [
         "Rencanakan operasi skala besar",
         "Lokasi dan izin",
-        "BPOM dan sertifikat kesehatan",
+        "Sertifikat BPOM dan kesehatan",
       ],
     },
     {
@@ -239,21 +233,21 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       title: "PT PMA - Manufaktur",
       description: "Manufaktur umumnya terbuka untuk kepemilikan asing 100%.",
       recommendation:
-        "PT PMA manufaktur dengan kepemilikan asing 100% dimungkinkan. Izin lingkungan tambahan (AMDAL/UKL-UPL) diperlukan. Pertimbangkan lokasi zona industri.",
+        "PT PMA manufaktur dengan kepemilikan asing 100% dimungkinkan. Diperlukan izin lingkungan tambahan (AMDAL/UKL-UPL). Pertimbangkan lokasi di kawasan industri.",
       nextSteps: [
         "Penilaian lingkungan",
-        "Lokasi di zona industri",
-        "Lisensi impor-ekspor jika diperlukan",
+        "Lokasi di kawasan industri",
+        "Izin impor-ekspor jika diperlukan",
       ],
     },
     {
       id: "result-pma-services",
       isResult: true,
-      title: "PT PMA - Jasa Profesional",
+      title: "PT PMA - Layanan Profesional",
       description:
-        "Perusahaan jasa dapat dimiliki sepenuhnya oleh asing di sebagian besar kategori.",
+        "Perusahaan layanan dapat dimiliki sepenuhnya oleh asing di sebagian besar kategori.",
       recommendation:
-        "PT PMA jasa profesional memungkinkan kepemilikan asing 100%. Investasi minimum IDR 10 miliar. Beberapa profesi yang diatur mungkin memiliki batasan.",
+        "PT PMA layanan profesional memungkinkan kepemilikan asing 100%. Investasi minimum IDR 10 miliar. Beberapa profesi terregulasi mungkin memiliki batasan.",
       nextSteps: [
         "Periksa persyaratan lisensi profesional",
         "Domisili kantor",
@@ -263,27 +257,26 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
     {
       id: "result-jv",
       isResult: true,
-      title: "Usaha Patungan PT PMA",
-      description: "Bermitra dengan perusahaan atau individu Indonesia.",
+      title: "Joint Venture PT PMA",
+      description: "Bekerja sama dengan perusahaan atau individu Indonesia.",
       recommendation:
-        "Usaha patungan dapat mengurangi persyaratan modal dan memberikan pengetahuan pasar lokal. Pastikan perjanjian pemegang saham dan klausul keluar yang jelas.",
+        "Joint venture dapat mengurangi persyaratan modal dan memberikan pengetahuan pasar lokal. Pastikan perjanjian pemegang saham yang jelas dan klausul keluar.",
       nextSteps: [
         "Due diligence pada mitra",
         "Perjanjian pemegang saham",
-        "Syarat pembagian keuntungan yang jelas",
+        "Syarat distribusi keuntungan yang jelas",
       ],
     },
     {
       id: "result-find-partner",
       isResult: true,
       title: "Mencari Mitra Lokal",
-      description:
-        "Anda perlu menemukan mitra Indonesia yang terpercaya terlebih dahulu.",
+      description: "Anda perlu menemukan mitra Indonesia yang dapat dipercaya terlebih dahulu.",
       recommendation:
-        "Berhati-hatilah dengan pengaturan nominee—itu ilegal dan dapat mengakibatkan penyitaan aset. Pertimbangkan layanan pencocokan bisnis, kamar dagang, atau jaringan profesional.",
+        "Sangat berhati-hatilah dengan pengaturan nominee—itu ilegal. Pertimbangkan layanan matchmaking bisnis, kamar dagang, atau jaringan profesional.",
       nextSteps: [
         "Jaringan melalui kamar dagang",
-        "Layanan pencocokan profesional",
+        "Layanan matchmaking profesional",
         "Due diligence hukum",
       ],
     },
@@ -291,25 +284,25 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       id: "result-cv",
       isResult: true,
       title: "CV (Commanditaire Vennootschap)",
-      description: "Struktur persekutuan untuk usaha kecil Indonesia.",
+      description: "Struktur kemitraan untuk bisnis Indonesia kecil.",
       recommendation:
-        "CV cocok untuk usaha kecil lokal. Tidak tersedia untuk investor asing. Struktur sederhana dengan tanggung jawab terbatas hanya untuk mitra diam.",
+        "CV cocok untuk bisnis lokal kecil. Tidak tersedia bagi investor asing. Struktur sederhana dengan tanggung jawab terbatas hanya untuk mitra diam.",
       nextSteps: [
-        "Daftarkan dengan notaris lokal",
+        "Daftarkan ke notaris lokal",
         "Dapatkan NIB melalui OSS",
-        "Pertimbangkan untuk meningkatkan ke PT nanti",
+        "Pertimbangkan upgrade ke PT nanti",
       ],
     },
     {
       id: "result-pt-pmdn",
       isResult: true,
       title: "PT PMDN (PT Lokal)",
-      description: "Perseroan terbatas Indonesia standar.",
+      description: "Perusahaan perseroan terbatas Indonesia standar.",
       recommendation:
-        "PT PMDN untuk kepemilikan 100% Indonesia. Persyaratan modal lebih rendah. Dapat kemudian dikonversi menjadi PT PMA jika ada investasi asing.",
+        "PT PMDN untuk kepemilikan 100% Indonesia. Persyaratan modal lebih rendah. Dapat dikonversi nanti ke PT PMA jika ada investasi asing.",
       nextSteps: [
         "Minimal 2 pemegang saham",
-        "Modal disetor minimum IDR 50 juta",
+        "Modal minimum IDR 50 juta",
         "Pendaftaran NIB",
       ],
     },
@@ -317,13 +310,13 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       id: "result-pma-minority",
       isResult: true,
       title: "PT PMA dengan Saham Asing Minoritas",
-      description: "Pemegang saham asing minoritas dalam perusahaan Indonesia.",
+      description: "Pemegang saham asing minoritas di perusahaan Indonesia.",
       recommendation:
         "Jika berinvestasi lebih dari IDR 10 miliar sebagai minoritas, Anda dapat bergabung dengan PT yang ada atau membentuk PT PMA baru. Direktur asing dimungkinkan.",
       nextSteps: [
-        "Negosiasi perjanjian pemegang saham",
-        "Posisi direktur/komisaris",
-        "Dokumentasi investasi",
+        "Negosiasikan perjanjian pemegang saham",
+        "Posisi direksi/komisaris",
+        "Dokumen investasi",
       ],
     },
     {
@@ -332,11 +325,11 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       title: "Peringatan: Pengaturan Nominee",
       description: "Kepemilikan asing dengan investasi rendah sangat terbatas.",
       recommendation:
-        "Pengaturan nominee (menggunakan nama Indonesia untuk memegang saham) ILEGAL dan dapat mengakibatkan penyitaan aset. Investasi minimum untuk PT PMA adalah IDR 10 miliar.",
+        "Pengaturan nominee (menggunakan nama Indonesia untuk memegang saham) adalah ILLEGAL dan dapat berakibat pada penyitaan aset. Investasi minimum untuk PT PMA adalah IDR 10 miliar.",
       nextSteps: [
-        "Pertimbangkan untuk memenuhi investasi minimum",
-        "Jelajahi opsi usaha patungan yang legal",
-        "Konsultasikan pengacara imigrasi",
+        "Pertimbangkan memenuhi investasi minimum",
+        "Jelajahi opsi JV legal",
+        "Konsultasikan dengan pengacara imigrasi",
       ],
     },
   ]}
@@ -344,7 +337,7 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
 
 ---
 
-## Memahami Jenis Perusahaan Indonesia
+## Memahami Jenis-Jenis Perusahaan Indonesia
 
 <ComparisonTable
   title="Perbandingan Struktur Perusahaan"
@@ -356,13 +349,13 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       values: {
         "Kepemilikan Asing": "Hingga 100%",
         "Investasi Min.": "IDR 10 miliar (~$625.000)",
-        "Modal Disetor Min.": "IDR 10 miliar",
+        "Modal Diterima Min.": "IDR 10 miliar",
         "Pemegang Saham Min.": "2 (bisa asing)",
         "Direktur Min.": "1 (bisa asing)",
         "Komisaris Min.": "1 (bisa asing)",
-        Liability: "Terbatas hingga modal",
-        "Izin Kerja": "Dapat mensponsori",
-        "Terbaik Untuk": "Investor asing",
+        Liability: "Terbatas pada modal",
+        "Izin Kerja": "Dapat sponsor",
+        "Cocok Untuk": "Investor asing",
       },
       highlight: true,
     },
@@ -372,28 +365,28 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       values: {
         "Kepemilikan Asing": "0%",
         "Investasi Min.": "Tidak ada minimum",
-        "Modal Disetor Min.": "IDR 50 juta",
-        "Pemegang Saham Min.": "2 (Indonesian saja)",
-        "Direktur Min.": "1 (Indonesian)",
-        "Komisaris Min.": "Tidak diperlukan",
-        Liability: "Terbatas hingga modal",
-        "Izin Kerja": "Tidak dapat mensponsori",
-        "Terbaik Untuk": "Pengusaha Indonesia",
+        "Modal Diterima Min.": "IDR 50 juta",
+        "Pemegang Saham Min.": "2 (hanya Indonesia)",
+        "Direktur Min.": "1 (Indonesia)",
+        "Komisaris Min.": "Tidak wajib",
+        Liability: "Terbatas pada modal",
+        "Izin Kerja": "Tidak dapat sponsor",
+        "Cocok Untuk": "Wirausahawan Indonesia",
       },
     },
     {
       name: "CV",
-      subtitle: "Persekutuan Terbatas",
+      subtitle: "Kemitraan Terbatas",
       values: {
         "Kepemilikan Asing": "0%",
         "Investasi Min.": "Tidak ada",
-        "Modal Disetor Min.": "Tidak ada",
+        "Modal Diterima Min.": "Tidak ada",
         "Pemegang Saham Min.": "2 mitra",
         "Direktur Min.": "Mitra pengelola",
         "Komisaris Min.": "N/A",
-        Liability: "Tidak terbatas untuk mitra aktif",
-        "Izin Kerja": "Tidak dapat mensponsori",
-        "Terbaik Untuk": "Usaha kecil lokal",
+        Liability: "Tanpa batas untuk mitra aktif",
+        "Izin Kerja": "Tidak dapat sponsor",
+        "Cocok Untuk": "Bisnis lokal kecil",
       },
     },
     {
@@ -402,13 +395,13 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
       values: {
         "Kepemilikan Asing": "100%",
         "Investasi Min.": "Tidak ada",
-        "Modal Disetor Min.": "Tidak ada",
+        "Modal Diterima Min.": "Tidak ada",
         "Pemegang Saham Min.": "Perusahaan induk",
-        "Direktur Min.": "Chief Representative",
+        "Direktur Min.": "Kepala Perwakilan",
         "Komisaris Min.": "N/A",
         Liability: "Perusahaan induk",
         "Izin Kerja": "Terbatas",
-        "Terbaik Untuk": "Riset pasar saja",
+        "Cocok Untuk": "Penelitian pasar saja",
       },
     },
   ]}
@@ -421,7 +414,7 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
     {
       id: "capital",
       label: "Modal",
-      fields: ["Investasi Min.", "Modal Disetor Min."],
+      fields: ["Investasi Min.", "Modal Diterima Min."],
     },
     {
       id: "structure",
@@ -431,49 +424,49 @@ Keputusan pertama dan terpenting adalah memilih entitas hukum yang benar. Indone
     {
       id: "operations",
       label: "Operasi",
-      fields: ["Izin Kerja", "Terbaik Untuk"],
+      fields: ["Izin Kerja", "Cocok Untuk"],
     },
   ]}
 />
 
 <InfoCard variant="important" title="Penting: Persyaratan IDR 10 Miliar">
-Investasi minimum untuk PT PMA adalah **IDR 10 miliar** (~$625.000 USD). Ini tidak berarti Anda harus menyetor jumlah ini segera—ini adalah investasi total yang direncanakan selama masa hidup perusahaan, termasuk:
-- Modal disetor
+Investasi minimum untuk PT PMA adalah **IDR 10 miliar** (~$625.000 USD). Ini tidak berarti Anda harus menyetorkan jumlah ini segera—ini adalah total investasi yang direncanakan selama masa hidup perusahaan, termasuk:
+- Modal saham yang telah lunas
 - Pinjaman ke perusahaan
 - Aset tetap dan peralatan
 - Modal kerja
 
-**Modal yang disetor** (kas aktual yang disetor) juga harus minimal IDR 10 miliar.
+**Modal yang telah lunas** (uang tunai aktual yang disetor) Anda juga harus minimal IDR 10 miliar.
 
 </InfoCard>
 
 ---
 
-## Istilah-Istilah yang Akan Anda Temui
+## Istilah Kunci yang Akan Anda Temui
 
-Sebelum menyelami proses pendaftaran, mari pahami terminologi penting:
+Sebelum masuk ke proses pendaftaran, mari pahami terminologi penting:
 
 <LegalDecoder
   title="Istilah Pendaftaran Bisnis Indonesia"
   documentRef="Berbagai Peraturan"
   documentType="Lainnya"
   status="aktif"
-  summary="Memahami istilah-istilah ini sangat penting untuk menavigasi pendaftaran bisnis Indonesia."
+  summary="Memahami istilah-istilah ini sangat penting untuk menavigasi pendaftaran bisnis di Indonesia."
   sections={[
     {
       id: "nib",
       original:
         "Nomor Induk Berusaha (NIB) adalah identitas pelaku usaha yang diterbitkan oleh Lembaga OSS setelah pelaku usaha melakukan pendaftaran.",
       explanation:
-        "NIB (Nomor Induk Berusaha) adalah identitas unik perusahaan Anda, seperti 'ID kartu' bisnis. Ini dihasilkan secara otomatis saat Anda mendaftar melalui sistem OSS dan berfungsi sebagai lisensi bisnis dasar Anda.",
+        "NIB (Business Identification Number) adalah identifikasi unik perusahaan Anda, seperti 'kartu ID' bisnis. Ini secara otomatis digenerasi saat Anda mendaftar melalui sistem OSS dan berfungsi sebagai lisensi bisnis dasar Anda.",
       keyPoints: [
-        "Menggantikan banyak lisensi lama (TDP, API-U, dll.)",
-        "Diperlukan untuk SEMUA kegiatan bisnis",
-        "Dihasilkan secara otomatis melalui OSS",
+        "Menggantikan berbagai lisensi lama (TDP, API-U, dll)",
+        "Diperlukan untuk SEMUA aktivitas bisnis",
+        "Digenerasi otomatis melalui OSS",
         "Berlaku seumur hidup perusahaan",
       ],
       impact:
-        "Anda tidak dapat beroperasi secara legal tanpa NIB. Ini adalah hal pertama yang akan Anda peroleh setelah pendirian perusahaan.",
+        "Anda tidak dapat beroperasi secara legal tanpa NIB. Ini adalah hal pertama yang akan Anda dapatkan setelah pendirian perusahaan.",
       severity: "tinggi",
       reference: "PP 28/2025",
     },
@@ -482,15 +475,15 @@ Sebelum menyelami proses pendaftaran, mari pahami terminologi penting:
       original:
         "Klasifikasi Baku Lapangan Usaha Indonesia (KBLI) adalah klasifikasi rujukan yang digunakan untuk mengklasifikasikan aktivitas/kegiatan ekonomi Indonesia.",
       explanation:
-        "Kode KBLI adalah nomor klasifikasi 5 digit yang mendefinisikan kegiatan bisnis apa yang dapat dilakukan perusahaan Anda. Anggap saja ini sebagai 'lisensi kegiatan bisnis' - Anda hanya dapat melakukan apa yang diizinkan oleh kode KBLI Anda.",
+        "Kode KBLI adalah angka klasifikasi 5 digit yang mendefinisikan aktivitas bisnis apa yang dapat dilakukan perusahaan Anda. Bayangkan ini sebagai 'lisensi aktivitas bisnis'—Anda hanya dapat melakukan apa yang diizinkan oleh kode KBLI Anda.",
       keyPoints: [
         "Kode 5 digit (misalnya, 62010 untuk perangkat lunak)",
         "Menentukan batasan kepemilikan asing",
         "Dapat menambahkan beberapa kode ke satu perusahaan",
-        "Beberapa kode dibatasi atau dilarang untuk orang asing",
+        "Beberapa kode dibatasi atau dilarang bagi orang asing",
       ],
       impact:
-        "Pemilihan kode KBLI yang salah dapat membatasi kegiatan bisnis atau persentase kepemilikan asing Anda.",
+        "Pemilihan KBLI yang salah dapat membatasi aktivitas bisnis Anda atau persentase kepemilikan asing.",
       severity: "tinggi",
       reference: "KBLI 2020",
     },
@@ -499,15 +492,15 @@ Sebelum menyelami proses pendaftaran, mari pahami terminologi penting:
       original:
         "Online Single Submission (OSS) adalah sistem perizinan berusaha terintegrasi secara elektronik yang dikelola oleh Lembaga OSS.",
       explanation:
-        "OSS (Pengajuan Perizinan Terpadu Online) adalah portal pemerintah tempat SEMUA izin bisnis diproses. Ini adalah toko serba ada yang menggantikan lusinan lembaga perizinan yang berbeda.",
+        "OSS (Online Single Submission) adalah portal online pemerintah di mana SEMUA izin bisnis diproses. Ini adalah satu-beranda yang menggantikan puluhan agen lisensi berbeda.",
       keyPoints: [
-        "Portal tunggal untuk semua izin bisnis",
-        "Pendekatan Berbasis Risiko (RBA)",
-        "Pembuatan NIB otomatis",
+        "Portal tunggal untuk semua lisensi bisnis",
+        "Sistem Pendekatan Berbasis Risiko (RBA)",
+        "Pengenerasian NIB otomatis",
         "Melacak status izin secara online",
       ],
       impact:
-        "Semua izin Anda mengalir melalui OSS. Belajarlah untuk menavigasinya atau pekerjakan seseorang yang bisa.",
+        "Semua izin Anda mengalir melalui OSS. Pelajari cara menavigasinya atau雇佣 seseorang yang bisa.",
       severity: "sedang",
       reference: "PP 28/2025",
     },
@@ -516,15 +509,15 @@ Sebelum menyelami proses pendaftaran, mari pahami terminologi penting:
       original:
         "Perizinan Berusaha Berbasis Risiko adalah perizinan berusaha berdasarkan tingkat risiko kegiatan usaha.",
       explanation:
-        "RBA (Pendekatan Berbasis Risiko) mengkategorikan bisnis berdasarkan tingkat risiko: Rendah, Sedang-Rendah, Sedang-Tinggi, dan Tinggi. Tingkat risiko Anda menentukan izin apa yang Anda butuhkan—risiko rendah mungkin hanya membutuhkan NIB, sementara risiko tinggi membutuhkan lisensi operasional penuh.",
+        "RBA (Pendekatan Berbasis Risiko) mengkategorikan bisnis berdasarkan tingkat risiko: Rendah, Sedang-Rendah, Sedang-Tinggi, dan Tinggi. Tingkat risiko Anda menentukan izin apa yang Anda butuhkan—risiko rendah mungkin hanya memerlukan NIB, sedangkan risiko tinggi memerlukan lisensi operasional penuh.",
       keyPoints: [
-        "Risiko Rendah: NIB saja",
-        "Risiko Sedang-Rendah: NIB + Sertifikat Standar",
-        "Risiko Sedang-Tinggi: NIB + Sertifikat Standar + Inspeksi",
-        "Risiko Tinggi: Lisensi penuh + Audit rutin",
+        "Risiko Rendah: Hanya NIB",
+        "Sedang-Rendah: NIB + Sertifikat Standar",
+        "Sedang-Tinggi: NIB + Sertifikat Standar + Inspeksi",
+        "Tinggi: Lisensi penuh + Audit berkala",
       ],
       impact:
-        "Risiko lebih tinggi = lebih banyak izin = lebih banyak waktu dan biaya. Sebagian besar kegiatan PT PMA berisiko sedang hingga tinggi.",
+        "Risiko lebih tinggi = lebih banyak izin = lebih banyak waktu dan biaya. Sebagian besar aktivitas PT PMA adalah risiko menengah hingga tinggi.",
       severity: "sedang",
       reference: "PP 28/2025",
     },
@@ -535,11 +528,11 @@ Sebelum menyelami proses pendaftaran, mari pahami terminologi penting:
 
 ## Proses Pendaftaran PT PMA
 
-Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
+Berikut adalah perjalanan lengkap dari keputusan hingga operasi:
 
 <JourneyMap
   title="Perjalanan Pendaftaran PT PMA"
-  description="Jadwal waktu lengkap dari perencanaan awal hingga operasi bisnis"
+  description="Jadwal lengkap dari perencanaan awal hingga operasi bisnis"
   estimatedTotal="4-8 minggu"
   steps={[
     {
@@ -556,30 +549,30 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
         "Struktur pemegang saham",
       ],
       tips: [
-        "Riset kode KBLI secara menyeluruh - mereka menentukan segalanya",
-        "Rencanakan cakrawala investasi 3 tahun",
+        "Teliti riset kode KBLI—mereka menentukan segalanya",
+        "Perencanaan untuk cakrawala investasi 3 tahun",
         "Tentukan persentase pemegang saham dengan hati-hati",
       ],
       warnings: [
         "Beberapa kode KBLI memiliki batasan kepemilikan asing",
-        "Mengubah kode KBLI nanti memerlukan amandemen",
+        "Mengganti kode KBLI nanti memerlukan amandemen",
       ],
     },
     {
       id: "notary",
       title: "Proses Notaris",
-      description: "Draf dan eksekusi akta perusahaan dengan notaris Indonesia",
+      description: "Menyusun dan melaksanakan akta perusahaan dengan notaris Indonesia",
       duration: "3-5 hari",
       status: "diperlukan",
       documents: [
         "Salinan paspor (semua pemegang saham)",
-        "Salinan KITAS/visa (jika sudah di Indonesia)",
+        "Salinan KITAS/visa (jika di Indonesia)",
         "Bukti alamat (semua pemegang saham)",
         "Pilihan nama perusahaan (3 opsi)",
         "Draf Anggaran Dasar",
       ],
       tips: [
-        "Siapkan 3 opsi nama perusahaan",
+        "Siapkan 3 pilihan nama perusahaan",
         "Nama harus dalam bahasa Indonesia (2+ kata)",
         "Biaya notaris: IDR 10-20 juta",
       ],
@@ -590,19 +583,19 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
     },
     {
       id: "kemenkumham",
-      title: "Persetujuan Kementerian Hukum dan HAM",
-      description: "Persetujuan akta perusahaan dan status badan hukum",
+      title: "Persetujuan Kementerian Hukum",
+      description: "Persetujuan akta perusahaan dan status entitas legal",
       duration: "3-7 hari",
       status: "diperlukan",
       documents: [
-        "Akta pendirian yang dinotariskan",
+        "Akta pendirian yang dinotarisasi",
         "Reservasi nama perusahaan",
         "Aplikasi SK Kemenkumham",
       ],
       tips: [
-        "Ditangani oleh notaris",
-        "Nama harus unik (diperiksa dalam database)",
-        "Menghasilkan SK Kemenkumham (sertifikat badan hukum)",
+        "Notaris menangani proses ini",
+        "Nama harus unik (diperiksa di database)",
+        "Hasilnya SK Kemenkumham (sertifikat entitas legal)",
       ],
     },
     {
@@ -614,11 +607,11 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
       documents: [
         "SK Kemenkumham",
         "Akta perusahaan",
-        "ID/paspor Direktur",
+        "ID/Paspor Direktur",
         "Surat domisili",
       ],
       tips: [
-        "Dapat dilakukan secara online melalui DJP",
+        "Dapat dilakukan secara online via DJP",
         "Format NPWP: XX.XXX.XXX.X-XXX.XXX",
         "Diperlukan sebelum membuka rekening bank",
       ],
@@ -626,47 +619,42 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
     {
       id: "oss",
       title: "Pendaftaran OSS & NIB",
-      description: "Daftar di sistem OSS dan peroleh NIB",
+      description: "Daftar di sistem OSS dan dapatkan NIB",
       duration: "1-3 hari",
       status: "diperlukan",
-      documents: [
-        "SK Kemenkumham",
-        "Akta perusahaan",
-        "NPWP",
-        "Daftar kode KBLI",
-      ],
+      documents: ["SK Kemenkumham", "Akta perusahaan", "NPWP", "Daftar kode KBLI"],
       tips: [
-        "Akun OSS ditautkan ke NIK/paspor direktur",
-        "NIB diterbitkan secara otomatis setelah selesai",
-        "Tambahkan semua kode KBLI yang diperlukan pada tahap ini",
+        "Akun OSS terhubung dengan NIK/paspor direktur",
+        "NIB diterbitkan secara otomatis setelah penyelesaian",
+        "Tambah semua kode KBLI yang diperlukan pada tahap ini",
       ],
       warnings: [
         "Sistem OSS bisa lambat atau bermasalah",
-        "Mungkin perlu mencoba lagi jika terjadi kesalahan sistem",
+        "Mungkin perlu mencoba ulang jika terjadi kesalahan sistem",
       ],
     },
     {
       id: "bkpm",
       title: "Pendaftaran Investasi (BKPM)",
-      description: "Daftarkan rencana investasi ke Dewan Investasi",
+      description: "Daftar rencana investasi dengan Dewan Investasi",
       duration: "3-7 hari",
       status: "diperlukan",
       documents: [
         "NIB",
         "Rencana investasi",
-        "Angka kerja yang diproyeksikan",
+        "Jumlah tenaga kerja yang diproyeksikan",
         "Rincian struktur modal",
       ],
       tips: [
         "Dilakukan melalui sistem OSS",
         "Rencana investasi adalah komitmen",
-        "Sertakan peralatan, tanah, modal kerja",
+        "Sertakan peralatan, lahan, dan modal kerja",
       ],
     },
     {
       id: "bank",
       title: "Pembukaan Rekening Bank",
-      description: "Buka rekening bank perusahaan dan setor modal",
+      description: "Buka rekening bank korporat dan setor modal",
       duration: "1-2 minggu",
       status: "diperlukan",
       documents: [
@@ -674,56 +662,172 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
         "Akta perusahaan",
         "NPWP",
         "NIB",
-        "Paspor & KITAS Direktur",
+        "Paspor Direktur + KITAS",
       ],
       tips: [
-        "Bank utama: BCA, Mandiri, CIMB Niaga",
-        "Setor modal disetor",
+        "Bank besar: BCA, Mandiri, CIMB Niaga",
+        "Setor modal yang telah lunas",
         "Dapatkan surat konfirmasi setoran",
       ],
       warnings: [
-        "Beberapa bank mengharuskan direktur untuk mengunjungi secara langsung",
+        "Beberapa bank memerlukan direktur untuk berkunjung secara langsung",
         "Proses KYC dapat memakan waktu",
       ],
     },
     {
       id: "permits",
       title: "Izin Operasional",
-      description:
-        "Dapatkan izin khusus sektor berdasarkan tingkat risiko KBLI",
+      description: "Dapatkan izin sektoral berdasarkan tingkat risiko KBLI",
       duration: "1-4 minggu",
-      status: "bersyarat",
-      documents: ["NIB", "Hasil penilaian risiko", "Persyaratan khusus sektor"],
+      status: "kondisional",
+      documents: [
+        "NIB",
+        "Hasil penilaian risiko",
+        "Persyaratan sektoral spesifik",
+      ],
       tips: [
         "Risiko rendah: NIB sudah cukup",
-        "Risiko Sedang: Sertifikat Standar diperlukan",
-        "Risiko Tinggi: Izin penuh diperlukan",
+        "Risiko menengah: Sertifikat Standar diperlukan",
+        "Risiko tinggi: Izin penuh (license) diperlukan",
       ],
       warnings: [
         "Beberapa izin memerlukan inspeksi",
-        "Jadwal bervariasi menurut sektor dan wilayah",
+        "Jadwal bervariasi per sektor dan wilayah",
       ],
     },
     {
       id: "operation",
       title: "Mulai Operasi",
-      description: "Mulai kegiatan bisnis Anda",
-      duration: "Berkelanjutan",
-      status: "final",
+      description: "Mulakan aktivitas bisnis Anda",
+      duration: "Berlangsung",
+      status: "akhir",
       documents: [
-        "Semua lisensi tersedia",
+        "Semua lisensi dalam tempat",
         "Rekening bank operasional",
-        "Pengaturan kepatuhan pajak",
+        "Setup kepatuhan pajak",
       ],
       tips: [
-        "Siapkan pembukuan dari hari pertama",
+        "Atur pembukuan dari hari pertama",
         "Daftar untuk PPN jika pendapatan > IDR 4,8M",
         "Ajukan laporan pajak bulanan",
       ],
     },
   ]}
   showFastTrack={true}
-  fastTrackNote="Menggunakan sekretaris perusahaan profesional dapat mengurangi total jangka waktu menjadi 3-4 minggu"
+  fastTrackNote="Menggunakan sekretaris korporat profesional dapat mengurangi total jadwal menjadi 3-4 minggu"
+/>
+
+---
+
+## Kalkulator Biaya
+
+<Calculator
+  title="Estimator Biaya Setup PT PMA"
+  description="Perkirakan total biaya setup Anda berdasarkan situasi spesifik Anda"
+  fields={[
+    {
+      id: "service-level",
+      label: "Tingkat Layanan",
+      type: "select",
+      options: [
+        { value: "diy", label: "DIY (otonom)" },
+        { value: "basic", label: "Layanan agen dasar" },
+        { value: "full", label: "Sekretaris korporat full-service" }
+      ],
+      defaultValue: "basic"
+    },
+    {
+      id: "capital",
+      label: "Modal Diterima (IDR)",
+      type: "number",
+      defaultValue: 10000000000,
+      min: 10000000000,
+      step: 1000000000,
+      suffix: "IDR"
+    },
+    {
+      id: "virtual-office",
+      label: "Perlu Kantor Virtual?",
+      type: "checkbox",
+      defaultValue: true
+    },
+    {
+      id: "location",
+      label: "Lokasi Perusahaan",
+      type: "select",
+      options: [
+        { value: "jakarta", label: "Jakarta" },
+        { value: "bali", label: "Bali" },
+        { value: "surabaya", label: "Surabaya" },
+        { value: "other", label: "Kota lain" }
+      ],
+      defaultValue: "bali"
+    },
+    {
+      id: "directors",
+      label: "Jumlah Direktur Asing",
+      type: "number",
+      defaultValue: 1,
+      min: 0,
+      max: 5
+    },
+    {
+      id: "work-permits",
+      label: "Perlu Izin Kerja?",
+      type: "checkbox",
+      defaultValue: true
+    }
+  ]}
+  calculateResult={(values) => {
+    let total = 0;
+    const breakdown = [];
+
+    // Biaya notaris
+    const notaryFee = 15000000;
+    total += notaryFee;
+    breakdown.push({ label: "Biaya Notaris & Hukum", amount: notaryFee });
+
+    // Biaya layanan berdasarkan tingkat
+    let serviceFee = 0;
+    if (values['service-level'] === 'basic') {
+      serviceFee = 25000000;
+    } else if (values['service-level'] === 'full') {
+      serviceFee = 45000000;
+    }
+    if (serviceFee > 0) {
+      total += serviceFee;
+      breakdown.push({ label: "Layanan Sekretaris Korporat", amount: serviceFee });
+    }
+
+    // Biaya pemerintah
+    const govFees = 5000000;
+    total += govFees;
+    breakdown.push({ label: "Biaya Pemerintah (Kemenkumham, OSS)", amount: govFees });
+
+    // Kantor virtual
+    if (values['virtual-office']) {
+      const voFee = values.location === 'jakarta' ? 15000000 : 12000000;
+      total += voFee;
+      breakdown.push({ label: "Kantor Virtual (1 tahun)", amount: voFee });
+    }
+
+    // Izin kerja
+    if (values['work-permits'] && values.directors > 0) {
+      const wpCost = values.directors * 35000000;
+      total += wpCost;
+      breakdown.push({ label: `Izin Kerja (${values.directors} orang)`, amount: wpCost });
+    }
+
+    return {
+      total,
+      breakdown,
+      currency: "IDR",
+      note: "Tidak termasuk modal yang telah lunas dan biaya operasional berkelanjutan"
+    };
+
+}}
+ctaText="Dapatkan Penawaran Detail"
+ctaAction={() => window.open('/contact?service=pt-pma', '\_blank')}
 />
 
 ---
@@ -731,20 +835,20 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
 ## Daftar Periksa Pra-Pendaftaran
 
 <Checklist
-  title="Daftar Periksa PT PMA"
+  title="Daftar Dokumen PT PMA"
   description="Kumpulkan dokumen-dokumen ini sebelum memulai proses pendaftaran"
   persistKey="pt-pma-checklist"
   items={[
     {
       id: "passport",
       label: "Salinan paspor (semua pemegang saham)",
-      description: "Pindai warna, berlaku lebih dari 18 bulan",
+      description: "Scan berwarna, berlaku 18+ bulan",
       required: true,
       category: "identitas",
     },
     {
       id: "photo",
-      label: "Foto paspor (4x6, latar belakang merah)",
+      label: "Foto paspor (4x6, latar merah)",
       description: "Foto terbaru untuk semua pemegang saham dan direktur",
       required: true,
       category: "identitas",
@@ -752,7 +856,7 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
     {
       id: "address-proof",
       label: "Bukti alamat (semua pemegang saham)",
-      description: "Tagihan utilitas, laporan bank, atau ID pemerintah",
+      description: "Tagihan utilitas, laporan bank, atau KTP pemerintah",
       required: true,
       category: "identitas",
     },
@@ -765,7 +869,7 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
     },
     {
       id: "company-names",
-      label: "3 opsi nama perusahaan",
+      label: "3 pilihan nama perusahaan",
       description: "Nama Indonesia, 2+ kata, unik",
       required: true,
       category: "perusahaan",
@@ -773,14 +877,14 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
     {
       id: "business-plan",
       label: "Ringkasan rencana bisnis",
-      description: "Aktivitas, pasar sasaran, jadwal investasi",
+      description: "Aktivitas, pasar target, jadwal investasi",
       required: true,
       category: "perusahaan",
     },
     {
       id: "kbli-list",
       label: "Daftar kode KBLI",
-      description: "Semua kegiatan bisnis yang Anda rencanakan untuk dilakukan",
+      description: "Semua aktivitas bisnis yang Anda rencanakan untuk lakukan",
       required: true,
       category: "perusahaan",
     },
@@ -814,9 +918,8 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
     },
     {
       id: "poa",
-      label: "Surat kuasa (jika tidak hadir)",
-      description:
-        "Surat kuasa dinotariskan untuk menandatangani dokumen dari jarak jauh",
+      label: "Kuasa hukum (jika tidak hadir)",
+      description: "POA dinotarisasi untuk menandatangani dokumen secara jarak jauh",
       required: false,
       category: "operasional",
     },
@@ -825,7 +928,7 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
     { id: "identity", label: "Dokumen Identitas", color: "blue" },
     { id: "company", label: "Informasi Perusahaan", color: "purple" },
     { id: "financial", label: "Dokumen Keuangan", color: "green" },
-    { id: "operational", label: "Pengaturan Operasional", color: "amber" },
+    { id: "operational", label: "Setup Operasional", color: "amber" },
   ]}
   showProgress={true}
   allowExport={true}
@@ -842,46 +945,40 @@ Berikut adalah perjalanan lengkap dari perencanaan hingga operasi:
   relatedTerms={["NIB", "OSS", "DNI"]}
 >
   Kode KBLI
-</GlossaryTerm>
-mungkin merupakan elemen terpenting dari pengaturan PT PMA Anda. Mereka
-menentukan:
+</GlossaryTerm> mungkin merupakan elemen paling penting dalam setup PT PMA Anda. Mereka menentukan:
 
-- **Aktivitas apa yang secara hukum dapat Anda lakukan**
+- **Aktivitas apa yang dapat Anda lakukan secara legal**
 - **Apakah orang asing dapat memiliki 100%** (atau kurang)
 - **Izin apa yang Anda butuhkan**
 - **Klasifikasi risiko Anda**
 
 <InfoCard variant="tip" title="Tips Pemilihan KBLI">
-  1. **Bersifat komprehensif** - Tambahkan semua aktivitas yang mungkin Anda
-  lakukan, termasuk aktivitas pendukung 2. **Periksa daftar DNI** - Beberapa
-  kode memiliki batasan kepemilikan asing 3. **Primer vs sekunder** - Kode utama
-  memengaruhi perlakuan pajak 4. **Siapkan masa depan** - Menambahkan kode nanti
-  memerlukan amandemen (biaya dan waktu)
+  1. **Jadilah komprehensif** - Tambahkan semua aktivitas yang mungkin Anda lakukan, termasuk aktivitas pendukung 2. **Periksa daftar DNI** - Beberapa kode memiliki batas kepemilikan asing 3. **Utama vs sekunder** - Kode utama Anda mempengaruhi perlakuan pajak 4.
+  **Siap untuk masa depan** - Menambahkan kode nanti memerlukan amandemen (biaya dan waktu)
 </InfoCard>
 
 ### Kode KBLI Populer untuk Perusahaan Asing
 
 | Kode  | Aktivitas                 | Kepemilikan Asing |
-| ----- | ------------------------- | ----------------- |
-| 62010 | Pemrograman Komputer      | 100%              |
-| 62020 | Konsultasi TI             | 100%              |
-| 70201 | Konsultasi Bisnis         | 100%              |
+| ----- | ------------------------ | ----------------- |
+| 62010 | Pemrograman Komputer     | 100%              |
+| 62020 | Konsultasi IT            | 100%              |
+| 70201 | Konsultasi Bisnis        | 100%              |
 | 46100 | Perdagangan Grosir (agen) | 100%              |
-| 55111 | Hotel Bintang 5           | 100%              |
-| 56101 | Restoran (skala besar)    | 100%              |
-| 73100 | Periklanan                | 100%              |
-| 74100 | Kegiatan Desain           | 100%              |
-| 73100 | Periklanan                | 100%              |
+| 55111 | Hotel Bintang Lima       | 100%              |
+| 56101 | Restoran (skala besar)   | 100%              |
+| 73100 | Iklan                    | 100%              |
+| 74100 | Aktivitas Desain         | 100%              |
 
 <InfoCard variant="warning" title="Aktivitas Terbatas">
-Beberapa aktivitas **ditutup** untuk investasi asing atau memiliki batasan kepemilikan:
-- Ritel kecil (dicadangkan untuk UMKM)
-- Restoran kecil (dicadangkan untuk UMKM)
-- Agen perjalanan (batas kepemilikan asing 49%)
+Beberapa aktivitas **ditutup** bagi investasi asing atau memiliki batas kepemilikan:
+- Ritel kecil (direservasi untuk UMKM)
+- Restoran kecil (direservasi untuk UMKM)
+| Agen perjalanan (batas asing 49%)
 - Beberapa media dan penyiaran
-- Pengangkutan darat
+- Transportasi darat
 
-Selalu verifikasi status Daftar Negatif Investasi (DNI) saat ini sebelum menyelesaikan kode KBLI.
+Selalu verifikasi status DNI (Daftar Investasi Negatif) terkini sebelum menakhiri kode KBLI.
 
 </InfoCard>
 
@@ -891,49 +988,49 @@ Selalu verifikasi status Daftar Negatif Investasi (DNI) saat ini sebelum menyele
 
 <InfoCard variant="error" title="Kesalahan Kritis">
 **1. Pengaturan Nominee**
-Menggunakan nama orang Indonesia untuk memegang saham adalah **ilegal**. Pemilik sebenarnya dapat kehilangan segalanya, dan nominee dapat mengklaim aset.
+Menggunakan nama orang Indonesia untuk memegang saham adalah **ilegal**. Pemilik asli dapat kehilangan segalanya, dan nominee dapat mengklaim aset.
 
 **2. Meremehkan Modal**
-IDR 10 miliar bukan hanya angka—Anda harus menunjukkan aktivitas investasi. Rencanakan penyebaran modal yang realistis.
+IDR 10 miliar bukan hanya angka—Anda perlu menunjukkan aktivitas investasi. Perencanaan penempatan modal yang realistis.
 
-**3. Kode KBLI yang Salah**
-Memilih kode tanpa memeriksa batasan dapat membatasi bisnis atau persentase kepemilikan Anda.
+**3. Kode KBLI Salah**
+Memilih kode tanpa memeriksa batasan dapat membatasi bisnis Anda atau persentase kepemilikan.
 
-**4. Melewatkan Izin**
-Beroperasi tanpa lisensi yang tepat dapat mengakibatkan denda, penutupan, atau pembatalan visa.
+**4. Melewati Izin**
+Beroperasi tanpa lisensi yang tepat dapat berakibat pada denda, penutupan, atau pembatalan visa.
 
-**5. Ketidakpatuhan Pajak**
-Indonesia melacak perusahaan asing dengan cermat. Pelaporan terlambat = penalti. Tidak ada pelaporan = masalah besar.
+**5. Kepatuhan Pajak**
+Indonesia melacak perusahaan asing dengan ketat. Laporan terlambat = sanksi. Tidak ada laporan = masalah besar.
 
 </InfoCard>
 
 ---
 
-## Kepatuhan Setelah Pendaftaran
+## Setelah Pendaftaran: Kepatuhan Berkelanjutan
 
 <Checklist
   title="Kepatuhan Bulanan & Tahunan"
-  description="Jaga PT PMA Anda tetap dalam kondisi baik dengan persyaratan rutin ini"
+  description="Jaga PT PMA Anda dalam kondisi baik dengan persyaratan reguler ini"
   persistKey="pt-pma-compliance"
   items={[
     {
       id: "pph21",
       label: "PPh 21 (Pajak Karyawan)",
-      description: "Pelaporan pajak pemotongan bulanan pada gaji",
+      description: "Pajak pemotongan bulanan untuk gaji",
       required: true,
       category: "bulanan",
     },
     {
       id: "ppn",
-      label: "Laporan PPN",
-      description: "Pelaporan PPN bulanan (jika terdaftar sebagai PKP)",
+      label: "Laporan PPN (PPN)",
+      description: "Pelaporan PPN bulanan (jika terdaftar PKP)",
       required: false,
       category: "bulanan",
     },
     {
       id: "pph23",
       label: "PPh 23/26 (Pemotongan)",
-      description: "Pelaporan pajak bulanan atas jasa, sewa, dividen",
+      description: "Pajak bulanan untuk layanan, sewa, dividen",
       required: true,
       category: "bulanan",
     },
@@ -947,36 +1044,36 @@ Indonesia melacak perusahaan asing dengan cermat. Pelaporan terlambat = penalti.
     {
       id: "spt-badan",
       label: "SPT Tahunan Badan",
-      description: "Laporan pajak perusahaan tahunan (batas waktu April)",
+      description: "Laporan pajak korporat tahunan (batas April)",
       required: true,
       category: "tahunan",
     },
     {
       id: "lkpm",
       label: "Laporan LKPM",
-      description: "Laporan aktivitas investasi triwulanan ke BKPM",
+      description: "Laporan aktivitas investasi kuartalan ke BKPM",
       required: true,
-      category: "triwulanan",
+      category: "kuartalan",
     },
     {
       id: "rups",
-      label: "Rapat Umum Pemegang Saham (RUPS)",
-      description: "Rapat pemegang saham tahunan dan risalah",
+      label: "Rapat Umum Tahunan (RUPS)",
+      description: "Rapat pemegang saham tahunan dan notulensi",
       required: true,
       category: "tahunan",
     },
     {
       id: "fs-audit",
       label: "Audit Laporan Keuangan",
-      description: "Diwajibkan untuk perusahaan di atas ambang batas",
+      description: "Diperlukan untuk perusahaan di atas ambang batas",
       required: false,
       category: "tahunan",
     },
   ]}
   categories={[
-    { id: "bulanan", label: "Bulanan", color: "blue" },
-    { id: "triwulanan", label: "Triwulanan", color: "purple" },
-    { id: "tahunan", label: "Tahunan", color: "green" },
+    { id: "monthly", label: "Bulanan", color: "blue" },
+    { id: "quarterly", label: "Kuartalan", color: "purple" },
+    { id: "annual", label: "Tahunan", color: "green" },
   ]}
   showProgress={true}
 />
@@ -985,15 +1082,15 @@ Indonesia melacak perusahaan asing dengan cermat. Pelaporan terlambat = penalti.
 
 ## Butuh Bantuan?
 
-Memulai bisnis di Indonesia itu kompleks, tetapi sangat mungkin dilakukan dengan panduan yang tepat. Jika Anda memiliki pertanyaan khusus tentang situasi Anda:
+Memulai bisnis di Indonesia itu kompleks, tetapi sangat dapat dicapai dengan bimbingan yang tepat. Jika Anda memiliki pertanyaan spesifik tentang situasi Anda:
 
 <AskZantara
-  context="pembentukan PT PMA, kode KBLI, pendaftaran OSS, investasi asing di Indonesia"
-  placeholder="Tanyakan tentang pembentukan perusahaan, kode KBLI, persyaratan investasi..."
+  context="Pembentukan perusahaan PT PMA, kode KBLI, pendaftaran OSS, investasi asing di Indonesia"
+  placeholder="Tanya tentang pembentukan perusahaan, kode KBLI, persyaratan investasi..."
   suggestedQuestions={[
-    "Kode KBLI apa yang saya butuhkan untuk perusahaan konsultan IT?",
-    "Bisakah orang asing memiliki 100% restoran di Bali?",
-    "Berapa lama pendaftaran PT PMA?",
+    "Kode KBLI apa yang saya butuhkan untuk perusahaan konsultasi IT?",
+    "Apakah orang asing dapat memiliki 100% restoran di Bali?",
+    "Berapa lama pendaftaran PT PMA berlangsung?",
     "Apa perbedaan antara PT PMA dan kantor perwakilan?",
     "Apakah saya harus berada di Indonesia untuk mendirikan PT PMA?",
   ]}
@@ -1005,17 +1102,14 @@ Memulai bisnis di Indonesia itu kompleks, tetapi sangat mungkin dilakukan dengan
 
 - [PT PMA vs PT PMDN: Mana yang Tepat untuk Anda?](/insights/business/pt-pma-vs-pt-pmdn-comparison)
 - [Kode KBLI Dijelaskan: Referensi Lengkap](/kbli)
-- [KITAS Investor: Visa untuk Pemilik Bisnis](/insights/immigration/investor-kitas-guide)
-- [Pajak Perusahaan di Indonesia: Apa yang Dibayar Perusahaan Asing](/taxes/corporate-income-tax?lang=id)
-- [Mempekerjakan Karyawan di Indonesia](/business/hiring-indonesian-employees?lang=id)
+- [Investor KITAS: Visa untuk Pemilik Bisnis](/insights/immigration/investor-kitas-guide)
+- [Pajak Korporat di Indonesia: Apa yang Dibayar Perusahaan Asing](/taxes/corporate-income-tax)
+- [Merekrut Karyawan di Indonesia](/business/hiring-indonesian-employees)
 
 ---
 
-<InfoCard variant="note" title="Penafian">
+<InfoCard variant="note" title="Disclaimer">
 
-Panduan ini hanya untuk tujuan informasi dan bukan merupakan nasihat hukum
-atau pajak. Peraturan berubah dengan cepat—selalu verifikasi persyaratan
-terkini dengan sumber resmi atau profesional yang berkualifikasi. Terakhir
-diperbarui: Januari 2026.
+Panduan ini hanya untuk tujuan informasi dan tidak merupakan nasihat hukum atau pajak. Peraturan berubah secara sering—selalu verifikasi persyaratan terkini dengan sumber resmi atau profesional yang berkualifikasi. Terakhir diperbarui: Januari 2026.
 
 </InfoCard>

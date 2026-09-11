@@ -73,30 +73,22 @@ tags:
 canonicalUrl: "https://balizero.com/id/digital-nomad/remote-work-tax"
 ogImage: "/static/insights/lifestyle/remote-work-tax.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "5a68d9297572390556475621b29a8880251533e96d63074038e890b3ea171fd3"
+source_sha256: "a11fc823562ddaf4546c9a3cb6c5fe2f3789e949f429eb0934bc77cae8c4eed1"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  Calculator,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Pajak Penghasilan Kerja Remote Indonesia 2026: Panduan Pajak Digital Nomad
 
-# Pajak Kerja Remote Indonesia 2026: Panduan Pajak Digital Nomad
-
-Pekerja remote dan digital nomad menghadapi pertanyaan pajak yang unik. Berikut adalah cara kerja perpajakan saat Anda tidak terikat lokasi di Indonesia.
+Pekerja remote dan digital nomad menghadapi pertanyaan pajak yang unik. Berikut ini cara kerja perpajakan ketika Anda bekerja tanpa terikat lokasi di Indonesia.
 
 ## Pertanyaan Kunci
 
 <DecisionTree
-  title="Apakah Anda Subjek Pajak Dalam Negeri?"
+  title="Apakah Anda Penduduk Pajak?"
   description="Tentukan status Anda"
   nodes={[
     {
       id: "start",
-      question: "Berapa lama di Indonesia tahun ini?",
+      question: "Berapa lama berada di Indonesia tahun ini?",
       options: [
         { label: "Kurang dari 183 hari", next: "nonresident" },
         { label: "183 hari atau lebih", next: "resident-check" },
@@ -107,31 +99,31 @@ Pekerja remote dan digital nomad menghadapi pertanyaan pajak yang unik. Berikut 
       question: "Apakah Anda berniat tinggal di Indonesia?",
       options: [
         { label: "Ya, saya tinggal di sini", next: "resident" },
-        { label: "Hanya perpanjangan masa tinggal", next: "complex" },
+        { label: "Hanya memperpanjang kunjungan", next: "complex" },
       ],
     },
     {
       id: "nonresident",
       result: {
-        title: "Status Subjek Pajak Luar Negeri",
+        title: "Status Non-Penduduk Pajak",
         description:
-          "Di bawah 183 hari umumnya berarti bukan subjek pajak dalam negeri Indonesia. Kewajiban pajak Anda bergantung pada aturan negara asal Anda dan dari mana pendapatan Anda bersumber.",
+          "Kurang dari 183 hari umumnya berarti tidak menjadi penduduk pajak Indonesia. Kewajiban pajak Anda bergantung pada aturan negara asal dan sumber penghasilan Anda.",
       },
     },
     {
       id: "resident",
       result: {
-        title: "Subjek Pajak Dalam Negeri",
+        title: "Penduduk Pajak",
         description:
-          "Lebih dari 183 hari dengan niat untuk tinggal berarti subjek pajak dalam negeri Indonesia. Anda dikenakan pajak atas penghasilan seluruh dunia. Perlu NPWP dan lapor pajak tahunan.",
+          "Lebih dari 183 hari dengan niat tinggal berarti menjadi penduduk pajak Indonesia. Anda dikenai pajak atas penghasilan worldwide (seluruh dunia). Perlu memiliki NPWP dan melaporkan pajak tahunan.",
       },
     },
     {
       id: "complex",
       result: {
-        title: "Situasi Bergantung Kondisi",
+        title: "Situasi Bergantung",
         description:
-          "Area abu-abu yang memerlukan analisis. Faktor-faktornya meliputi: niat, ikatan dengan Indonesia, jenis visa, tempat Anda dibayar. Pertimbangkan saran pajak profesional.",
+          "Area abu-abu yang memerlukan analisis. Faktor-faktor meliputi: niat, ikatan dengan Indonesia, jenis visa, dan tempat penghasilan diterima. Pertimbangkan nasihat pajak profesional.",
       },
     },
   ]}
@@ -139,70 +131,70 @@ Pekerja remote dan digital nomad menghadapi pertanyaan pajak yang unik. Berikut 
 
 ---
 
-## Penjelasan Domisili Pajak
+## Penjelasan Penduduk Pajak
 
 <InfoCard variant="warning" title="Aturan 183 Hari">
-**Pemicu domisili pajak Indonesia:**
+**Pemicu penduduk pajak Indonesia:**
 
-1. Berada di Indonesia **183+ hari** dalam 12 bulan, ATAU
-2. Bertempat tinggal di Indonesia dengan **niat untuk menetap**
+1. Hadir di Indonesia **183+ hari** dalam 12 bulan, ATAU
+2. Tinggal di Indonesia dengan **niat untuk tinggal**
 
-**Jika menjadi subjek pajak dalam negeri:**
+**Jika menjadi penduduk pajak:**
 
-- Dipajak atas penghasilan seluruh dunia
-- Wajib memiliki NPWP
-- Wajib lapor SPT tahunan
+- Dikenai pajak atas penghasilan worldwide (seluruh dunia)
+- Harus memiliki NPWP
+- Harus melaporkan SPT tahunan
 
-Ini berlaku terlepas dari jenis visa Anda!
+Hal ini berlaku tanpa memandang jenis visa!
 
 </InfoCard>
 
 ---
 
-## Skenario Umum Pekerja Remote
+## Skenario Pekerja Remote Umum
 
 <ComparisonTable
   title="Skenario Pajak"
-  description="Situasi yang berbeda"
+  description="Berbagai situasi"
   items={[
     {
-      name: "Wisatawan/Masa Tinggal Singkat",
+      name: "Turis/Kunjungan Singkat",
       subtitle: "< 183 hari",
       values: {
-        "Subjek Pajak Dalam Negeri": "Tidak",
-        "Pajak Indo yang Jatuh Tempo": "Hanya atas penghasilan sumber Indo",
-        "Pajak Negara Asal": "Biasanya masih berlaku",
+        "Penduduk Pajak Indo": "Tidak",
+        "Pajak Indo yang Harus Dibayar": "Hanya atas penghasilan sumber Indo",
+        "Pajak Negara Asal": "Biasanya tetap berlaku",
         "Tindakan yang Diperlukan": "Ikuti aturan negara asal",
       },
     },
     {
-      name: "Nomad yang Memperpanjang Masa Tinggal",
-      subtitle: "183+ hari, tanpa niat menetap",
+      name: "Nomad Perpanjangan",
+      subtitle: "183+ hari, tanpa niat tinggal",
       values: {
-        "Subjek Pajak Dalam Negeri": "Mungkin",
-        "Pajak Indo yang Jatuh Tempo": "Tidak jelas - minta saran",
-        "Pajak Negara Asal": "Mungkin masih berlaku",
-        "Tindakan yang Diperlukan": "Cari saran pajak",
+        "Penduduk Pajak Indo": "Mungkin",
+        "Pajak Indo yang Harus Dibayar": "Tidak jelas - dapatkan nasihat",
+        "Pajak Negara Asal": "Mungkin tetap berlaku",
+        "Tindakan yang Diperlukan": "Cari nasihat pajak",
       },
       highlight: true,
     },
     {
-      name: "Ekspatriat yang Menetap",
+      name: "Expatriat yang Telah Berpindah",
       subtitle: "Tinggal di Indonesia",
       values: {
-        "Subjek Pajak Dalam Negeri": "Ya",
-        "Pajak Indo yang Jatuh Tempo": "Penghasilan seluruh dunia",
-        "Pajak Negara Asal": "Cek aturan perjanjian (P3B)",
-        "Tindakan yang Diperlukan": "NPWP + laporan tahunan",
+        "Penduduk Pajak Indo": "Ya",
+        "Pajak Indo yang Harus Dibayar": "Penghasilan worldwide (seluruh dunia)",
+        "Pajak Negara Asal": "Periksa aturan perjanjian pajak",
+        "Tindakan yang Diperlukan": "NPWP + pelaporan tahunan",
       },
     },
     {
       name: "Pemegang KITAS",
       subtitle: "Izin kerja",
       values: {
-        "Subjek Pajak Dalam Negeri": "Ya",
-        "Pajak Indo yang Jatuh Tempo": "Penghasilan seluruh dunia",
-        "Pajak Negara Asal": "Cek aturan perjanjian (P3B)",
+        "Penduduk Pajak Indo": "Ya",
+        "Pajak Indo yang Harus Dibayar": "Penghasilan worldwide (seluruh dunia)",
+        "Pajak Negara Asal": "Periksa aturan perjanjian pajak",
         "Tindakan yang Diperlukan": "NPWP + bulanan + tahunan",
       },
     },
@@ -215,17 +207,17 @@ Ini berlaku terlepas dari jenis visa Anda!
 
 <InfoCard variant="warning" title="Area Abu-abu">
 **Secara teknis:**
-- Visa turis = tidak diizinkan bekerja
-- Bekerja secara remote untuk klien luar negeri = area abu-abu
-- Indonesia belum secara aktif menindak pekerja remote
-- Namun aturan bisa saja ditegakkan
+- Visa turis = tidak diperbolehkan bekerja
+- Bekerja remote untuk klien asing = area abu-abu
+- Indonesia belum secara aktif menegakkan aturan pada pekerja remote
+- Namun aturan bisa diterapkan
 
-**Kenyataannya:**
+**Realitasnya:**
 
 - Banyak digital nomad bekerja dengan visa turis
-- Secara teknis tidak legal jika \"bekerja\"
-- Penegakan hukum saat ini masih rendah
-- Risiko ada pada penilaian Anda sendiri
+- Tidak sepenuhnya legal jika "bekerja"
+- Penegakan hukum saat ini rendah
+- Risiko adalah tanggung jawab Anda untuk menilai
 
 Untuk kepatuhan penuh, pertimbangkan Visa Digital Nomad E33G (Visa Pekerja Remote).
 
@@ -233,17 +225,17 @@ Untuk kepatuhan penuh, pertimbangkan Visa Digital Nomad E33G (Visa Pekerja Remot
 
 ---
 
-## Jika Anda Subjek Pajak Dalam Negeri
+## Jika Anda Menjadi Penduduk Pajak
 
 ### Kewajiban Anda
 
-| Kewajiban               | Detail                     |
-| ----------------------- | -------------------------- |
-| Dapatkan NPWP           | Nomor identitas pajak      |
-| Lapor penghasilan dunia | Semua sumber secara global |
-| Lapor SPT tahunan       | Paling lambat 31 Maret     |
-| Bayar pajak terutang    | Tarif progresif hingga 35% |
-| Lapor aset luar negeri  | Jika berlaku               |
+| Kewajiban              | Detail                     |
+| ----------------------- | --------------------------- |
+| Mendapatkan NPWP       | Nomor ID pajak             |
+| Melaporkan penghasilan worldwide | Semua sumber secara global        |
+| Mengajukan SPT tahunan  | Sebelum tanggal 31 Maret   |
+| Membayar pajak yang harus dibayar | Tarif progresif hingga 35% |
+| Melaporkan aset asing   | Jika berlaku               |
 
 ### Kalkulator Pajak
 
@@ -263,15 +255,15 @@ Untuk kepatuhan penuh, pertimbangkan Visa Digital Nomad E33G (Visa Pekerja Remot
       label: "Status",
       type: "select",
       options: [
-        { value: "resident", label: "Subjek Pajak Dalam Negeri" },
-        { value: "nonresident", label: "Subjek Pajak Luar Negeri" }
+        { value: "resident", label: "Penduduk Pajak" },
+        { value: "nonresident", label: "Non-Penduduk" }
       ],
       defaultValue: "resident"
     }
   ]}
   calculateResult={(values) => {
     const annual = values.monthly * 12;
-    const ptkp = 54000000; // Pengurang standar
+    const ptkp = 54000000; // Pengurangan standar
 
     let taxable, tax;
 
@@ -291,7 +283,7 @@ Untuk kepatuhan penuh, pertimbangkan Visa Digital Nomad E33G (Visa Pekerja Remot
         tax = 3000000 + 28500000 + 62500000 + 1350000000 + (taxable - 5000000000) * 0.35;
       }
     } else {
-      // Tarif flat non-residen
+      // Tarif tetap untuk non-penduduk
       taxable = annual;
       tax = annual * 0.20;
     }
@@ -300,12 +292,12 @@ Untuk kepatuhan penuh, pertimbangkan Visa Digital Nomad E33G (Visa Pekerja Remot
       total: Math.round(tax),
       breakdown: [
         { label: "Penghasilan tahunan", amount: annual },
-        { label: values.resident === "resident" ? "Setelah pengurang PTKP" : "Kena Pajak (tarif flat)", amount: Math.round(taxable) },
-        { label: "Estimasi pajak tahunan", amount: Math.round(tax) },
+        { label: values.resident === "resident" ? "Setelah pengurangan PTKP" : "Kena pajak (tarif tetap)", amount: Math.round(taxable) },
+        { label: "Pajak tahunan estimasi", amount: Math.round(tax) },
         { label: "Ekuivalen pajak bulanan", amount: Math.round(tax / 12) }
       ],
       currency: "IDR",
-      note: values.resident === "resident" ? "Tarif progresif 5-35%" : "Flat 20% untuk subjek pajak luar negeri"
+      note: values.resident === "resident" ? "Tarif progresif 5-35%" : "Tarif tetap 20% untuk non-penduduk"
     };
 
 }}
@@ -315,80 +307,80 @@ Untuk kepatuhan penuh, pertimbangkan Visa Digital Nomad E33G (Visa Pekerja Remot
 
 ## Pajak Negara Asal
 
-### Jangan Lupakan Negara Asal
+### Jangan Lupa Negara Asal
 
-<InfoCard variant="note" title="Risiko Pajak Berganda">
-**Anda mungkin masih berutang pajak di negara asal:**
+<InfoCard variant="note" title="Risiko Pajak Ganda">
+**Anda mungkin masih wajib bayar pajak di negara asal:**
 
-- Warga negara AS: Dipajak atas penghasilan seluruh dunia terlepas dari tempat tinggal
-- Sebagian besar negara: Subjek pajak dalam negeri membayar pajak di negara asal
-- Perjanjian (P3B): Dapat mengurangi tetapi tidak menghilangkan
-- Pelaporan: Mungkin perlu melaporkan penghasilan luar negeri
+- Warga AS: Dikenai pajak atas penghasilan worldwide tanpa terkecuali
+- Sebagian besar negara: Penduduk pajak membayar pajak di negara asal
+- Perjanjian: Mungkin mengurangi tetapi tidak menghilangkan kewajiban
+- Pelaporan: Mungkin perlu melaporkan penghasilan asing
 
-**Cek dengan negara asal Anda!**
+**Periksa dengan negara asal Anda!**
 
-- Aturan domisili pajak di sana
-- Pelaporan penghasilan luar negeri
+- Aturan penduduk pajak di sana
+- Pelaporan penghasilan asing
 - Manfaat perjanjian pajak
-- Kredit pajak luar negeri
+- Kredit pajak asing
 </InfoCard>
 
 ### Negara Asal Umum
 
-| Negara    | Jika Anda Pergi                    |
-| --------- | ---------------------------------- |
-| AS        | Tetap dipajak sebagai warga negara |
-| Inggris   | Mungkin tetap menjadi subjek pajak |
-| Australia | Tes 183 hari berlaku               |
-| Kanada    | Tergantung pada ikatan             |
-| Belanda   | Harus keluar secara formal         |
-| Jerman    | Tergantung pada ikatan             |
+| Negara     | Jika Anda Meninggalkan            |
+| ----------- | ----------------------- |
+| USA         | Tetap dikenai pajak sebagai warga negara  |
+| UK          | Mungkin tetap menjadi penduduk pajak    |
+| Australia   | Uji coba 183 hari berlaku    |
+| Canada      | Bergantung pada ikatan         |
+| Netherlands | Harus keluar secara resmi      |
+| Germany     | Bergantung pada ikatan         |
 
 ---
 
-## Perjanjian Pajak (P3B)
+## Perjanjian Pajak
 
 ### Bagaimana Perjanjian Membantu
 
-Indonesia memiliki perjanjian pajak (P3B) dengan banyak negara yang:
+Indonesia memiliki perjanjian pajak dengan banyak negara yang:
 
-- Mencegah pajak berganda
+- Mencegah pemajakan ganda
 - Menentukan negara mana yang memajaki apa
-- Mengizinkan kredit pajak luar negeri
-- Dapat mengurangi tarif
+- Memungkinkan kredit pajak asing
+- Mungkin mengurangi tarif
 
-### Manfaat Utama Perjanjian
+### Manfaat Kunci Perjanjian
 
-| Jenis Penghasilan | Manfaat Perjanjian                         |
-| ----------------- | ------------------------------------------ |
-| Pekerjaan         | Biasanya dipajak di tempat kerja dilakukan |
-| Wiraswasta        | Tergantung pada BUT (PE)                   |
-| Dividen           | Tarif yang dikurangi                       |
-| Bunga             | Tarif yang dikurangi                       |
-| Royalti           | Tarif yang dikurangi                       |
+| Jenis Penghasilan     | Manfaat Perjanjian                |
+| --------------- | ----------------------------- |
+| Pekerjaan      | Biasanya dipajaki di tempat pelaksanaan |
+| Usaha Mandiri | Bergantung pada PE (Permanent Establishment)                 |
+| Dividen       | Tarif yang dikurangi                 |
+| Bunga          | Tarif yang dikurangi                 |
+ Royalti       | Tarif yang dikurangi                 |
 
 ---
 
 ## Opsi Strukturisasi
 
-### Untuk Kerja Remote yang Patuh
+### Untuk Kerja Remote yang Sesuai Hukum
 
-| Opsi                  | Cara Kerjanya                               |
-| --------------------- | ------------------------------------------- |
-| PT PMA                | Perusahaan Indonesia, Anda sebagai direktur |
-| Perusahaan Asing      | Tetap dipekerjakan oleh entitas asing       |
-| Freelance dengan NPWP | Wiraswasta di Indonesia                     |
-| Tetap Non-Residen     | Di bawah 183 hari                           |
+| Pilihan              | Cara Kerjanya                        |
+| ------------------- | ----------------------------------- |
+| PT PMA              | Perusahaan Indonesia, Anda sebagai direktur |
+| Perusahaan asing     | Tetap dipekerjakan oleh entitas asing   |
+| Freelance dengan NPWP | Usaha mandiri di Indonesia          |
+| Tetap non-penduduk   | Kurang dari 183 hari                      |
 
-<InfoCard variant="tip" title="Untuk Masa Tinggal Lebih Lama">
+<InfoCard variant="tip" title="Untuk Tinggal Lama">
 **Jika tinggal jangka panjang:**
 
 Pertimbangkan struktur **PT PMA**:
 
-- Otorisasi kerja legal
+- Otorisasi kerja yang sah
 - Posisi pajak yang jelas
-- Dapat menagih klien
-- Akses rekening bank
+- Bisa memfaktur klien
+- Akses ke rekening bank
 - Status profesional
 
 Ya, ada biaya dan kompleksitas, tetapi ini memberikan kejelasan.
@@ -399,51 +391,51 @@ Ya, ada biaya dan kompleksitas, tetapi ini memberikan kejelasan.
 
 ## Kepatuhan Praktis
 
-### Jika Anda Menjadi Subjek Pajak Dalam Negeri
+### Jika Anda Menjadi Penduduk Pajak
 
-| Langkah                 | Kapan                                     |
-| ----------------------- | ----------------------------------------- |
-| Dapatkan NPWP           | Saat menjadi residen, sebelum lapor Maret |
-| Lacak semua penghasilan | Sepanjang tahun                           |
-| Hitung pajak            | Di akhir tahun                            |
-| Lapor SPT               | Paling lambat 31 Maret                    |
-| Bayar sisa saldo        | Paling lambat 31 Maret                    |
+| Langkah             | Kapan                               |
+| ---------------- | ---------------------------------- |
+| Mendapatkan NPWP         | Saat menjadi penduduk, sebelum pelaporan Maret |
+| Melacak semua penghasilan | Selama tahun                    |
+| Menghitung pajak    | Pada akhir tahun                        |
+| Mengajukan SPT         | Sebelum tanggal 31 Maret                        |
+| Membayar sisa yang harus dibayar  | Sebelum tanggal 31 Maret                        |
 
-### Dokumentasi yang Harus Disimpan
+### Dokumentasi untuk Disimpan
 
-| Dokumen                        | Tujuan                      |
-| ------------------------------ | --------------------------- |
-| Hari di Indonesia              | Membuktikan status domisili |
-| Catatan penghasilan            | Semua sumber                |
-| Pajak luar negeri yang dibayar | Untuk kredit pajak          |
-| Rekening koran                 | Mendukung klaim penghasilan |
-| Kontrak                        | Bukti pengaturan kerja      |
+| Dokumen          | Tujuan                 |
+| ----------------- | ----------------------- |
+| Hari di Indonesia | Bukti status penduduk   |
+| Catatan penghasilan    | Semua sumber             |
+| Pajak asing yang telah dibayar  | Untuk kredit             |
+| Laporan bank   | Mendukung klaim penghasilan   |
+| Kontrak         | Bukti pengaturan        |
 
 ---
 
 ## Kesalahan Umum
 
-| Kesalahan                                | Risiko                                 |
-| ---------------------------------------- | -------------------------------------- |
-| Mengabaikan aturan 183 hari              | Kewajiban pajak tak terduga            |
-| Menganggap visa turis = tanpa pajak      | Bukan begitu cara kerja domisili pajak |
-| Tidak melaporkan penghasilan luar negeri | Penggelapan pajak                      |
-| Pajak berganda                           | Tidak menggunakan perjanjian           |
-| Tanpa dokumentasi                        | Masalah audit                          |
+| Kesalahan                        | Risiko                        |
+| ------------------------------ | --------------------------- |
+| Mengabaikan aturan 183 hari          | Liabilitas pajak yang tidak terduga    |
+| Asumsi visa turis = tidak ada pajak | Bukan cara kerja penduduk pajak |
+| Tidak melaporkan penghasilan asing   | Penghindaran pajak                 |
+| Pemajakan ganda                | Tidak menggunakan perjanjian        |
+| Tidak ada dokumentasi               | Masalah audit              |
 
 ---
 
 ## Kapan Harus Mencari Bantuan
 
-<InfoCard variant="warning" title="Cari Saran Profesional Jika:">
-- Anda berada di Indonesia lebih dari 183 hari
-- Anda memiliki penghasilan signifikan
-- Anda tidak yakin dengan domisili pajak Anda
-- Anda memiliki berbagai sumber penghasilan
+<InfoCard variant="warning" title="Cari Nasihat Profesional Jika:">
+- Anda berada lebih dari 183 hari
+- Anda memiliki penghasilan yang signifikan
+- Anda tidak yakin tentang status penduduk pajak
+- Anda memiliki banyak sumber penghasilan
 - Negara asal memiliki aturan yang kompleks
 - Anda ingin menyusun struktur dengan benar
 
-Kesalahan pajak itu mahal. Saran yang baik sangat berharga.
+Kesalahan pajak itu mahal. Nasihat yang baik sangat berharga.
 
 </InfoCard>
 
@@ -452,12 +444,12 @@ Kesalahan pajak itu mahal. Saran yang baik sangat berharga.
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Pajak kerja remote Indonesia, pajak digital nomad, domisili pajak, pajak freelancer"
-  placeholder="Tanyakan tentang pajak kerja remote..."
+  context="Pajak kerja remote Indonesia, pajak digital nomad, penduduk pajak, pajak freelancer"
+  placeholder="Tanya tentang pajak kerja remote..."
   suggestedQuestions={[
-    "Apakah saya membayar pajak jika menggunakan visa turis?",
-    "Dapatkah saya tinggal kurang dari 183 hari untuk menghindari pajak?",
-    "Apakah saya butuh NPWP sebagai digital nomad?",
+    "Apakah saya bayar pajak jika menggunakan visa turis?",
+    "Bisakah saya tinggal kurang dari 183 hari untuk menghindari pajak?",
+    "Apakah saya perlu NPWP sebagai digital nomad?",
     "Bagaimana cara kerja perjanjian pajak?",
   ]}
 />
@@ -467,5 +459,5 @@ Kesalahan pajak itu mahal. Saran yang baik sangat berharga.
 ## Artikel Terkait
 
 - [Freelancing Secara Legal di Indonesia](/insights/lifestyle/freelancing-legally-indonesia)
-- [Visa Digital Nomad Indonesia](/visas/e33g-remote-worker-visa-guide?lang=id)
-- [Panduan Pajak Penghasilan Pribadi](/taxes/pph-21-expat-guide?lang=id)
+- [Visa Digital Nomad Indonesia](/visas/e33g-remote-worker-visa-guide)
+- [Panduan Pajak Penghasilan Pribadi](/taxes/pph-21-expat-guide)
