@@ -1,0 +1,264 @@
+{
+  "version": "studio-web-contract-v1",
+  "mission": "SHWEB-20260911",
+  "window": "W1-SH-TECH",
+  "colour": "BLUE",
+  "state": "BOZZA -> BUILD (PRE-review received 2026-09-11T11:30Z)",
+  "frozenAt": "2026-09-11T11:10:00Z",
+  "frozenBy": "Dux Opus 5 xhigh, M5 Air-M5, Claude session 49aaaada-dcb1-4b4b-92d2-33af01e2f4f8 (peer name nuzantara-8a)",
+  "baseSha": "ea50eb262f9ed96ce070cb407b55202002b0dae8",
+  "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911",
+  "branch": "agent/air-m5/mouth/shweb-w1-tech-20260911",
+  "authority": {
+    "package": "/Users/balizero/Desktop/SHWEB-20260911-mouth-final/pacchetto",
+    "packageManifestSha256": "38be665035194f934b3e24c4bbb2029856102d5e360e915b114635589720133a",
+    "packageManifestCheck": "shasum -a 256 -c MANIFEST.sha256 -> every line OK (2026-09-11T11:05Z)",
+    "finalSpecSha256": "4bf043675730c225e255590edf8a41e821f14d4700f9a90da8c5085a78b50d04",
+    "w1SpecSha256": "34ae740243eb37e663849ff196e23341ae05e888fabd5e7b15d557de8d651ae2",
+    "sourceManifestSha256": "9ae274b56e98962984ef83bcf4b7a7528dc4aad791dc62d6b70f8f5ab67d1bb7",
+    "f7ReportSha256": "e3004f3db0cf301c5de57933deec57743265196d6633e49f283c443962565b8d",
+    "zeroDecisions": {
+      "path": "/Users/balizero/Desktop/w-oracle-launch-20260911/02-DECISIONI-ZERO.md",
+      "sha256": "5e9f325cb435136f699bf3809aa917b0aa11538379bcf1afb9b6166968ab8229",
+      "binding": [
+        "M = ENTRAMBI (RULED Zero 2026-09-11 ~15:00 WITA)",
+        "D4 = D-A (RULED Zero 2026-09-11 ~15:00 WITA)"
+      ]
+    }
+  },
+  "patch": {
+    "path": "pacchetto/evidence/secondhome-prepared.patch",
+    "author": "Astra (gpt-6-astra, Codex family), topic 4, Mini worktree mouth-secondhome-f7-20260911",
+    "sha256": "90589bfa93ba8191d2dcfd790c4d49b7906f55349eb2618b25a26f55585e754f",
+    "bytes": 59834,
+    "patchBaseSha": "be45266252",
+    "applyCheckOnBase": {
+      "cmd": "git apply --check --verbose <patch>",
+      "exit": 0,
+      "at": "2026-09-11T11:06Z",
+      "cwd": "/Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911 at HEAD ea50eb262f (not at be45266252)"
+    },
+    "baseDriftOnPatchedFiles": {
+      "cmd": "git diff --stat be45266252 HEAD -- <10 files>",
+      "output": "empty",
+      "commitsBetween": 114
+    },
+    "ownerWorktreeComparison": {
+      "at": "2026-09-11T11:06Z",
+      "method": "git diff HEAD (intent-to-add for the 2 untracked files) on Mini, split per file, index lines ignored, sha256 per file",
+      "result": "identical on all 10 files; owner worktree still uncommitted at be45266252"
+    },
+    "files": {
+      ".agents/skills/secondhome/SKILL.md": {
+        "baseSha256": "72b73eb8c804dac4549475122482c5f8572f17980cdaefa6701e7bca6512bbfa",
+        "role": "corner doc, F7 status lines"
+      },
+      "apps/mouth/package.json": {
+        "baseSha256": "1616b25accb846ae1697c2130dc3b0b96197123bb4cacb5dca436e4f2fae8cda",
+        "role": "build line only: LLMS_GENERATE_FULL_ONLY -> LLMS_GENERATE_ARTICLES_ONLY"
+      },
+      "apps/mouth/scripts/generate-llms-full.ts": {
+        "baseSha256": "599011a463971a1833fe5700bb9cacb1def1c3449319f2c360884bc3619e9e7e",
+        "role": "ARTICLES_ONLY skips KBLI; freshness lists canonical EN files once"
+      },
+      "apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx": {
+        "baseSha256": "9b904e19f3da96203b532998aaa885163da78a62c208ae9d42d103a510951a8a",
+        "role": "fontVariantNumeric tabular-nums on {price}, Cormorant kept"
+      },
+      "apps/mouth/src/app/visa/second-home/studio/components/ScenarioToggle.tsx": {
+        "baseSha256": "f15085038b10897ad49c515e43c05927bc84977f593fc0345cc2b32bab401da3",
+        "role": "fontVariantNumeric tabular-nums on {previewPrice}, Cormorant kept"
+      },
+      "apps/mouth/src/lib/kbli-llms-corpus.test.ts": {
+        "baseSha256": "4b43262ae4f77542a0ae5d89e361bb16f5a744e91a49454828f3a95b0b6f4863",
+        "role": "comments only (flag name)"
+      },
+      "scripts/ci/npm_audit_gate.py": {
+        "baseSha256": "0a98247baece7cd2757142a7f14e64ed37d2855e0b642921b98766b3f9a55ec4",
+        "role": "WAIVE = {} (4 retired waivers)"
+      },
+      "scripts/ci/test_npm_audit_gate.py": {
+        "baseSha256": "97e28d7485de82e57cafe64613f791bd9a57b24e91d9f4c09515527cb2fc2415",
+        "role": "gray-matter waiver pin rewritten as historical fixture: each retired advisory reintroduced must exit 1"
+      },
+      "apps/mouth/src/lib/llms-article-exports.test.ts": {
+        "baseSha256": null,
+        "role": "new: runs the real generator with the flag parsed from the real build line"
+      },
+      "research/secondhome/2026-09-11-f7-reverification.md": {
+        "baseSha256": null,
+        "role": "new: F7 report (evidence)"
+      }
+    }
+  },
+  "siblingContract": {
+    "planStorageKey": "bz_shs_plan_v1 (apps/mouth/src/lib/secondhome-studio/plan-codec.ts)",
+    "planUrlFragment": "#p=",
+    "priceSource": "PricingTool via resolveSecondHomePriceKey(); absent price is never zero",
+    "verdict": "bands strong_fit | likely_fit | edge_case | not_eligible, never numeric scores",
+    "exports": "FULL_ONLY keeps legacy behaviour for external callers; ARTICLES_ONLY regenerates EN, ID and freshness without KBLI",
+    "consumers": "W3 inherits generator and build only after W1 is INTEGRATA; WEB consumes only the Studio URL"
+  },
+  "contracts": [
+    {
+      "source": "apps/mouth/src/lib/secondhome-studio/types.ts",
+      "sha256": "24d615a1b891c8e54d4a7287cf8a862904c6787e529b5b9add3e3b234aa981a5",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/src/lib/secondhome-studio/plan-codec.ts",
+      "sha256": "cb122e37f40850690fd29f2c25adc583ecec825b9dc4026425e1d252ca74408d",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/src/lib/secondhome-studio/__tests__/plan-codec.test.ts",
+      "sha256": "446478ba5d7d195e10344b6b27cada1b66ce1b74cc0aa8b7de2da9efcd4b74e3",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/src/lib/secondhome-studio/__tests__/pricing-key.test.ts",
+      "sha256": "e971bb439b0c52b478fa64886d49bd8d16216ee9c9190374926b227785f92cbd",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/src/lib/secondhome-studio/__tests__/rules.test.ts",
+      "sha256": "aaeb01c79285fcaca9f5328650f68ccdfaad196dfee5a18518cb7550f532cf6f",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/src/lib/blog/types.ts",
+      "sha256": "9912e72f0bba405a7bdffda0a49f2bd5c641be51d1b47c57f533d8dd5453c758",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/src/lib/blog/categories.ts",
+      "sha256": "37856352e22e2d32666172a7e4adf0b08deffcfcf13ceadd5b45fb86c73aaef1",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/src/data/team-roster.ts",
+      "sha256": "947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "research/secondhome/e33-fact-registry.json",
+      "sha256": "c056bb86d7bf710d5eea764f525ab5b67e717301ac91323893bbe09239821716",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "package-lock.json",
+      "sha256": "0952ade18fe70ce7ebfd1a2314ae7c196e23adc01a111c251e96a6a95afbbc1b",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/package.json",
+      "sha256": "1616b25accb846ae1697c2130dc3b0b96197123bb4cacb5dca436e4f2fae8cda",
+      "matchesSourceManifest": true,
+      "note": null
+    },
+    {
+      "source": "apps/mouth/src/lib/secondhome-studio/pricing-key.ts",
+      "sha256": "5ebf010d23f813a9c862118b1c94bd4459ee4defc0761e7a9be4d2e3736e94c6",
+      "matchesSourceManifest": false,
+      "note": "not listed in source-manifest.json (only its tests are); frozen here — gap reported to the package owner"
+    },
+    {
+      "source": "apps/mouth/src/lib/secondhome-studio/rules.ts",
+      "sha256": "169296991fa3e14356912068989c64746ec756204840f8abce18825d23e300e8",
+      "matchesSourceManifest": false,
+      "note": "not listed in source-manifest.json (only its tests are); frozen here — gap reported to the package owner"
+    }
+  ],
+  "invariantsAtHead": [
+    "TOTALITY: `git diff --name-only ea50eb262f..HEAD` == exactly the 10 files of patch 90589bfa (8 modified, 2 added) plus paths under evidence/2026-09/agent-air-m5-mouth-shweb-w1-tech-20260911-1bf4ea22/; nothing else (Kimi K3 F1)",
+    "PATCH ONCE: post-adoption sha256 of the 10 files recorded in postAdoption below right after `git apply`; a second apply exits 1 (self-revealing)",
+    "DELTA D1 only: after adoption, scripts/ci/test_npm_audit_gate.py may differ from its patch post-image ONLY in two test function names and their docstrings/comments — zero assertion or payload change (Codex Sol F3, Kimi K3 F4)",
+    "DELTA D2 only: .agents/skills/secondhome/SKILL.md may differ from its patch post-image only by Prettier whitespace padding on the one table row the patch edits (`git diff -w` empty)",
+    "DELTA D3 only: research/secondhome/2026-09-11-f7-reverification.md = patch post-image with a YAML frontmatter prepended and a `## Adversarial review` section appended; 0 body lines removed (adversarial-review-gate)",
+    "package-lock.json sha256 unchanged (0952ade1…)",
+    "research/secondhome/e33-fact-registry.json sha256 unchanged (c056bb86…)",
+    "types.ts, plan-codec.ts, pricing-key.ts, rules.ts sha256 unchanged",
+    "no *.mdx path in the diff at all (MDX lives under apps/mouth/src/content/**, apps/website/**, apps/mouth/docs/content-templates/**)",
+    "no path under apps/website/**, apps/mouth/src/app/(visa-oracle)/**, scripts/visa-oracle/**, e2e/visa-oracle-*, research/visa/**, .agents/skills/visaoracle/**, .github/**, apps/mouth/next.config.*, packages/core/**",
+    "apps/mouth/package.json differs from base on the build line only",
+    "scripts/ci/npm_audit_gate.py WAIVE is empty; no new waiver id",
+    "StudioApp.tsx and ScenarioToggle.tsx each differ from base by exactly one added line `fontVariantNumeric: \"tabular-nums\",`"
+  ],
+  "outOfScopeDebt": [
+    "3 new high advisories (js-yaml GHSA-2883-xcg3-v3hh -> 3.15.2, sharp GHSA-rgj7-g3m4-5g8c -> 0.35.4, mysql2 GHSA-3f6p-5ww8-9rcr / GHSA-rgwj-5xj2-c3m3 via prisma): visible, not waived, not fixed in W1 (FINAL §2.6, §2.11, §2.20); lockfile owner to be named in a separate spec"
+  ],
+  "expectedGateOutcomeAtHead": {
+    "cmd": "npm audit --audit-level=high --omit=dev --json | python3 scripts/ci/npm_audit_gate.py",
+    "expectedExit": 1,
+    "expectedReportedHighs": [
+      "js-yaml GHSA-2883-xcg3-v3hh",
+      "sharp GHSA-rgj7-g3m4-5g8c",
+      "mysql2 GHSA-3f6p-5ww8-9rcr",
+      "mysql2 GHSA-rgwj-5xj2-c3m3"
+    ],
+    "mustNotAppear": [
+      "GHSA-frvp-7c67-39w9",
+      "GHSA-9mqv-5hh9-4cgg",
+      "GHSA-c96f-x56v-gq3h",
+      "GHSA-5p4m-2wfm-xmqj"
+    ],
+    "note": "accepted red: the npm-audit CI job is advisory-only (L13, 2026-08-21); these highs are out-of-scope debt, never waived or fixed in W1 (Kimi K3 F2)"
+  },
+  "preReview": {
+    "codexSol": {
+      "seat": "gpt-5.6-sol xhigh, codex-cli 0.154.0, --sandbox read-only",
+      "session": "01a0902a-8855-7ed0-a01b-940ce3a9bcf2",
+      "window": "2026-09-11T11:11:41Z..11:26:24Z",
+      "verdict": "GO-WITH-CONDITIONS",
+      "file": "reviews/pre-review-codex-sol.txt"
+    },
+    "kimiK3": {
+      "seat": "kimi-code/k3, kimi 0.41.0",
+      "session": "session_a41ccd47-d2cc-4d4b-86a5-f327daedfd05",
+      "window": "2026-09-11T11:12:17Z..11:29:47Z",
+      "verdict": "HOLDS-WITH-CONDITIONS",
+      "file": "reviews/second-reader-kimi-k3.txt"
+    },
+    "dispositions": {
+      "codex.F3 MAJOR (Hono advisories are Moderate upstream; test is a synthetic high reclassification)": "ACCEPTED: brief acceptance #1 restated; D1 renames the new test to what it proves (no standing waiver)",
+      "codex.F7 MINOR (host)": "ACCEPTED: brief host_override + build_lane (full build on Vercel preview; Pro fallback)",
+      "kimi.F1 MAJOR (no totality invariant)": "ACCEPTED: TOTALITY + PATCH ONCE invariants above",
+      "kimi.F2 MINOR (expected red not in lock)": "ACCEPTED: expectedGateOutcomeAtHead",
+      "kimi.F3 MINOR (schema)": "ACCEPTED: boolean + note",
+      "kimi.F4 MINOR (vetted-path test name now misleading)": "ACCEPTED: D1 renames it to what it pins with WAIVE empty; assertion unchanged",
+      "kimi.F5 MINOR (nothing pins WAIVE emptiness)": "REBUTTED for W1: a policy pin forbidding future owner-approved waivers widens the mandate; the no-new-waiver constraint is owned by this lock's invariant, the refuter on the PR HEAD and the fresh gate"
+    }
+  },
+  "postAdoption": {
+    "appliedAt": "2026-09-11T11:31:50Z",
+    "cmd": "git apply --verbose <frozen patch>",
+    "exit": 0,
+    "postImageSha256": {
+      ".agents/skills/secondhome/SKILL.md": "44da81d3ffdf0947f059d3f7effd978ccd0b630b69781639e9416ca77a0699f4",
+      "apps/mouth/package.json": "5b73f698919da2791af8f42bf5f0d0a8cea61fc7213fe9bd903904763a0e2aca",
+      "apps/mouth/scripts/generate-llms-full.ts": "692c50d4801be1ea64d216bb403bebb2ca71b977197602ec0ce6c763be6feeb4",
+      "apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx": "468ed894ee0325e27f50b4349e3864f970baf1823cd86d1fff1205c14f965bec",
+      "apps/mouth/src/app/visa/second-home/studio/components/ScenarioToggle.tsx": "3bcced564e4afa1da68e80bb9c9f89a89c700a60708e47c3353a2cec3a9b2f45",
+      "apps/mouth/src/lib/kbli-llms-corpus.test.ts": "e355c611a06547af096a873524d6f4baa8e79163ec851202a99217cf9df9782d",
+      "scripts/ci/npm_audit_gate.py": "a256dae0f9163a55d062c4f7895a4052b2de9ddda79ce9463dc5ae0d375bf9fa",
+      "scripts/ci/test_npm_audit_gate.py": "700fe687a8c7d6295bfed4a16c4e121b343366f5d5aaced5584265447c59d0b9",
+      "apps/mouth/src/lib/llms-article-exports.test.ts": "3d38032da35cadf40c5e2ca02710a3f0a619d307337fc7d3e12605058572ec00",
+      "research/secondhome/2026-09-11-f7-reverification.md": "e3004f3db0cf301c5de57933deec57743265196d6633e49f283c443962565b8d"
+    },
+    "commits": {
+      "08a8905f7a": "adoption (+ D2 prettier padding, required by pre-commit)",
+      "6d8c6a75e8": "D1 test names/docstrings",
+      "ccb05384b1": "D3 research frontmatter + review section"
+    }
+  }
+}

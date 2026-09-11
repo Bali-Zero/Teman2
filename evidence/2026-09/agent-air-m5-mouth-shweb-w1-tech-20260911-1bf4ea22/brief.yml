@@ -1,0 +1,111 @@
+gear: 2
+task_id: shweb-w1-tech-20260911
+mandate_id: SHWEB-20260911/W1-SH-TECH
+colour: BLUE
+l_level: L2
+gate_class: opus
+state: BUILD # PRE-review received 2026-09-11T11:30Z (Codex Sol GO-WITH-CONDITIONS, Kimi K3 HOLDS-WITH-CONDITIONS)
+host: Air-M5 (balizero)
+host_override: >-
+  W1-studio-tech.md §1 names Mini; overridden by Zero's ruling M = ENTRAMBI (02-DECISIONI-ZERO.md sha
+  5e9f325c: "W-ORACLE su Mini e W1-SH-TECH su M5") and by the FINAL §3 prompt's M5 package path.
+build_lane: >-
+  M5 is a thin client: targeted vitest/pytest/tsc/eslint run locally in the worktree; the full
+  `npm run build` (generator + next build --webpack + login-bundle assert) is verified on the Vercel
+  preview build of the PR — the same buildCommand production runs — with its build log recorded;
+  Pro is the fallback lane if the preview build is unavailable (Codex Sol PRE-review F6/F7).
+base_sha: ea50eb262f9ed96ce070cb407b55202002b0dae8
+worktree: .worktrees/mouth-shweb-w1-tech-20260911
+branch: agent/air-m5/mouth/shweb-w1-tech-20260911
+opened_at: "2026-09-11T11:04Z"
+deadline_utc: "2026-09-11T14:05Z"
+objective: >-
+  Second Home Studio technical completion (F7 hygiene), adopting ONCE Astra's frozen topic-4 patch
+  (evidence/secondhome-prepared.patch, sha256 90589bfa…e754f): retire the four obsolete npm audit
+  waivers and rewrite the gray-matter pin in test_npm_audit_gate.py as a historical fixture; make the
+  apps/mouth build regenerate the EN and ID article exports and the llms.txt freshness block
+  (LLMS_GENERATE_ARTICLES_ONLY, KBLI skipped, canonical EN listed once); fontVariantNumeric
+  tabular-nums on the two IDR amounts of StudioApp.tsx and ScenarioToggle.tsx keeping Cormorant.
+  Success: the served Studio and the served /llms-full.txt, /llms-id.txt, /llms.txt match the
+  release sources, and the npm gate carries no standing waiver.
+scope:
+  - .agents/skills/secondhome/SKILL.md
+  - apps/mouth/package.json # build line only
+  - apps/mouth/scripts/generate-llms-full.ts
+  - apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx # one style property
+  - apps/mouth/src/app/visa/second-home/studio/components/ScenarioToggle.tsx # one style property
+  - apps/mouth/src/lib/kbli-llms-corpus.test.ts # comments only
+  - apps/mouth/src/lib/llms-article-exports.test.ts # new
+  - scripts/ci/npm_audit_gate.py
+  - scripts/ci/test_npm_audit_gate.py
+  - research/secondhome/2026-09-11-f7-reverification.md # new
+  - evidence/2026-09/agent-air-m5-mouth-shweb-w1-tech-20260911-1bf4ea22/**
+constraints:
+  - No lockfile line, no npm audit fix, no bump of js-yaml/sharp/mysql2/prisma, no new waiver (FINAL §2.20).
+  - No MDX, price list, fact registry, DB/switch, WEB/R19 file, apps/website, layout/token/global font.
+  - No W-ORACLE file (apps/mouth/src/app/(visa-oracle)/**, scripts/visa-oracle/**, e2e/visa-oracle-*, research/visa/**, .agents/skills/visaoracle/**).
+  - Engine, price resolver, verdict bands, money-path, save/share/print, Merah Putih palette and Studio identity preserved; tabular-nums is the ONLY visual change.
+  - Patch applied ONCE in BUILD from the frozen evidence copy, after PRE-review; no generated export churn committed.
+  - >-
+    Declared post-adoption delta D1 (registered before BUILD): scripts/ci/test_npm_audit_gate.py — two test
+    functions renamed with docstrings/comments saying what they pin with WAIVE empty (Codex Sol F3, Kimi K3 F4);
+    zero assertion or payload change. No other post-adoption edit.
+  - >-
+    Declared delta D2 (found at first commit): Prettier table-cell padding on the one SKILL.md row the
+    patch edits, whitespace only, required by the pre-commit formatter.
+  - >-
+    Declared delta D3 (found by running the R1 gate): research frontmatter + `## Adversarial review`
+    section added to research/secondhome/2026-09-11-f7-reverification.md; body unchanged (42 added, 0 removed).
+  - A frozen file in the diff is STOP plus a line to the imperator.
+acceptance:
+  - text: >-
+      WHEN any of the four retired advisory ids is reported at high/critical severity on its old node,
+      THEN the shipped gate (empty WAIVE) SHALL exit 1 for every one — i.e. no standing waiver remains
+      (historical fixture). This is a synthetic high reclassification: the two Hono advisories are
+      officially Moderate upstream and stay non-blocking by the gate's BLOCKING=("high","critical")
+      design; the test does not claim that a real Moderate reintroduction blocks (Codex Sol PRE-review F3).
+    probe: "pytest scripts/ci/test_npm_audit_gate.py (19 tests) + mutation: restore one WAIVE entry -> test red"
+    status: verified # 19 passed; restored gray-matter waiver -> 1 failed on GHSA-5p4m (scratchpad mutant), 11:33Z
+  - text: WHEN the build line is reverted to LLMS_GENERATE_FULL_ONLY=1, THEN llms-article-exports.test.ts SHALL fail on the stale ID export.
+    probe: "vitest run src/lib/llms-article-exports.test.ts with the old flag -> red; new flag -> green"
+    status: verified # old flag -> 1 failed: expected 'stale ID export' to contain 'TITLE: Current ID' (negative-old-build-flag.log); package.json restored byte-identical
+  - text: WHEN the real npm audit JSON (--audit-level=high --omit=dev) runs through the gate, THEN none of the four retired ids SHALL appear and the three new highs SHALL stay reported (exit 1, advisory job).
+    probe: "npm audit --audit-level=high --omit=dev --json | python3 scripts/ci/npm_audit_gate.py"
+    status: verified # gate_rc=1: js-yaml GHSA-2883, mysql2 GHSA-3f6p/GHSA-rgwj, sharp GHSA-rgj7; 0 retired ids (npm-audit-gate.log, 11:36Z)
+  - text: WHEN the Second Home suite, export test and KBLI corpus test run on the new base, THEN all SHALL pass; tsc exit 0; eslint on touched TSX 0 errors; git diff --check clean; next build (npm run build) exit 0.
+    probe: "cd apps/mouth && npx vitest run second-home secondhome llms-article-exports kbli-llms-corpus; npx tsc --noEmit; npm run build"
+    status: partial # vitest 31 files/552 passed (vitest-targeted.log); tsc exit 0 (pre-commit); eslint 0 errors; diff --check clean; full npm run build -> Vercel preview
+  - text: WHEN a browser walks the Studio (E33/E33E/E33F, onshore/offshore) on the PR preview, THEN the real price elements SHALL compute font-family Cormorant and font-variant-numeric tabular-nums, prices SHALL equal the resolver, bands/custody/save/share/print unchanged.
+    probe: "Playwright on the Vercel preview; getComputedStyle on the real price nodes; print emulation"
+    status: pending
+  - text: WHEN the merged commit is promoted by Vercel, THEN balizero.com/llms-id.txt and /llms-full.txt SHALL match the release sources except the generation date, and /llms.txt freshness SHALL list each URL once.
+    probe: "curl on production after INTEGRATA; compare to generator output from the promoted sha"
+    status: pending
+consumer_map:
+  - Studio visitor on balizero.com/visa/second-home/studio (price display).
+  - EN/ID crawlers reading balizero.com/llms-full.txt, /llms-id.txt, /llms.txt.
+  - npm-audit (advisory) job in .github/workflows/tests.yml via scripts/ci/npm_audit_gate.py.
+  - W3-SH-EDITORIAL inherits the generator and build line after INTEGRATA.
+adversarial_review:
+  pre_review: "Codex Sol (gpt-5.6-sol, codex-cli 0.154.0 at /Users/balizero/.local/bin/codex), codex exec --sandbox read-only, on brief + contract-lock + patch — cross-family vs the Dux (Claude)"
+  second_reader: "Kimi K3 (kimi -m kimi-code/k3 -p) on contract-lock.json and the historical fixture in test_npm_audit_gate.py — cross-family vs the patch author (Astra, Codex family)"
+  refuter_post: "Codex Sol on the PR HEAD diff"
+  probation: "deepseek-v4-pro never counts toward quorum"
+  gate: "fresh headless Opus 5 xhigh session outside the chain, commissioned and posted by the imperator (harness/fable-gate) on the PR HEAD"
+  family_note: "Patch author = Codex family (Astra); Dux/adopter = Claude; Kimi K3 is the family distinct from both. A Claude Opus 5 review of the source package already exists (F7 report) — that session is in the chain and cannot be the gate."
+team:
+  dux: "Opus 5 xhigh, Claude session 49aaaada-dcb1-4b4b-92d2-33af01e2f4f8 (nuzantara-8a), M5; also release owner (FINAL §2.9)"
+  implementer: "none — the Dux applies the frozen patch once; no child"
+  imperator: "Fable 5.1, M5, session 116b2671-9748-485b-ade4-db76a770af08 (checkpoints via fleet mailbox)"
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
+budget_enforcement: "scripts/mandate_budget.py absent on base ea50eb262f: ledger + imperator mailbox checkpoints only, no invented flag"
+debt_out_of_scope:
+  - "3 new high npm advisories (js-yaml 3.15.2, sharp 0.35.4, mysql2 via prisma) stay visible and unwaived; lockfile owner to be named in a separate spec."
+  - "F7 editorial (W3), F4b Day-90 (e33_cases 2 rows, 0 eligible — suspended), F5 letters, F6, F8 are not closed by W1."
+risks:
+  - "Build now rewrites public/llms-id.txt and public/llms.txt at Vercel build time; a local npm run build dirties tracked exports — restored, never committed."
+  - "Dependabot PRs #6028/#6015/#5975 touch apps/mouth/package.json dependency lines; different lines from the build line, queue may need a rebase."
+pre_review_dispositions: "contract-lock.json preReview.dispositions (codex F3/F7, kimi F1-F5)"
+pii: none
