@@ -19,7 +19,7 @@ mission:
   host: Pro
   worktree: .worktrees/backend-rag-r1-research-os-design
   branch: agent/nuzantara/backend-rag/r1-research-os-design
-  base: 9304392d1a3c1f50dc6be847e8cd16d29a0c738b
+  base: 9304392d1a3c1f50dc6be847e8cd16d29a0c738b # pragma: allowlist secret
   base_equals_origin_main_at: "2026-09-10T21:12:47Z"
   mandate_ref: research/operations/2026-09-10-fable-max-sessions/R-research-os.md
   build_spec_ref: evidence/2026-09/agent-nuzantara-backend-rag-r1-research-os-desig-3e4165f9/R1-build-spec.md
@@ -410,7 +410,7 @@ checkpoints:
   - generation: 4
     state: round-1-cure-green
     envelope: 20260911T113047Z-27fe.md
-    envelope_sha256: 31505741de08df704f314af196670a2da8f000189aa41a627b5ff29d2de91186
+    envelope_sha256: 31505741de08df704f314af196670a2da8f000189aa41a627b5ff29d2de91186 # pragma: allowlist secret
     sent: "2026-09-11T11:30:47Z"
     ack: >-
       R1-ack g4, imperator nuzantara-0d, 2026-09-11T11:36Z, quoting the envelope and its sha256. Mutation
@@ -420,7 +420,7 @@ checkpoints:
   - generation: 3
     state: window-jump
     envelope: 20260911T111701Z-592c.md
-    envelope_sha256: fdb3527611f824cabfec20e0fef5bd6e607bdfd11e681a489344f4efbde00979
+    envelope_sha256: fdb3527611f824cabfec20e0fef5bd6e607bdfd11e681a489344f4efbde00979 # pragma: allowlist secret
     sent: "2026-09-11T11:17:01Z"
     ack: >-
       R1-ack, imperator nuzantara-0d, 2026-09-11T11:27Z, quoting the envelope and its sha256.
@@ -430,7 +430,7 @@ checkpoints:
   - generation: 3
     state: adversarial-round-1
     envelope: 20260911T110055Z-1772.md
-    envelope_sha256: c593679f1304c752b9b7f11ac5f786a5bbffbdbf700c125041d20f2bb4b9bb7c
+    envelope_sha256: c593679f1304c752b9b7f11ac5f786a5bbffbdbf700c125041d20f2bb4b9bb7c # pragma: allowlist secret
     sent: "2026-09-11T11:00:55Z"
     ack: >-
       R1-ack, imperator nuzantara-0d, 2026-09-11T11:10Z. Disposition (b) on the Z2b cohort ACCEPTED;
@@ -452,7 +452,7 @@ checkpoints:
   - generation: 3
     state: resume
     envelope: 20260911T100036Z-0486.md
-    envelope_sha256: c099065f8b3962817092f174ead32ffdc167b3f32863044150c2d336b6fce9ee
+    envelope_sha256: c099065f8b3962817092f174ead32ffdc167b3f32863044150c2d336b6fce9ee # pragma: allowlist secret
     sent: "2026-09-11T10:00:36Z"
     ack: >-
       R1-ack g3, imperator nuzantara-0d, 2026-09-11T10:27Z, quoting envelope

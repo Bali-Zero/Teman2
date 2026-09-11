@@ -6,7 +6,7 @@ head_sha: 1bd1319590d323a029c4db81b90e9f699a8d5783 # pragma: allowlist secret �
 code_sha: 1bd1319590d323a029c4db81b90e9f699a8d5783 # pragma: allowlist secret — last commit touching apps/
 reviewed_sha: e6754556e1402f36a9d017c6d32ddec30697bd83 # pragma: allowlist secret — what adversarial round 2 read; the round-2 correction on top is NOT seat-reviewed (two rounds is the appetite) and is handed to the gate as such
 base_sha: 9304392d1a3c1f50dc6be847e8cd16d29a0c738b # pragma: allowlist secret
-brief_ref: evidence/2026-09/agent-nuzantara-backend-rag-r1-research-os-desig-3e4165f9/brief.yml
+brief_ref: evidence/brief.yml # the staging literal harness-floor.yml lints against (S12/C6); the real brief lives beside this pack
 gear: 3
 
 spend:

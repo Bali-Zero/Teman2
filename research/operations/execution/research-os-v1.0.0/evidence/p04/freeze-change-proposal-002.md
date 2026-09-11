@@ -1,5 +1,5 @@
 ---
-adversarial_review: kimi-k3, codex-gpt-5.6-sol, gemini-3.1-pro
+adversarial_review: kimi-k3
 ---
 
 # Freeze-change proposal 002 — the two validators disagree on one spelling, and 001's cost premise has expired
@@ -134,3 +134,13 @@ this proposal needs no separate decision and should be closed against 001's.
 - It does not claim the split is reachable through the sanctioned serializer. It is reachable
   through a hand-written or externally-produced document, which is precisely what the admission
   path in D4 exists to receive.
+
+## Adversarial review
+
+- `kimi-k3` (`kimi-code/k3`, R1 round 1) raised the question this proposal answers — whether the
+  published schema admits the lowercase `z` the reference reader accepts
+  (`evidence/2026-09/agent-nuzantara-backend-rag-r1-research-os-desig-3e4165f9/kimi-round1-verdict.txt`).
+- The proposal text itself was written after that round and was read by the fresh Opus 5 gate as
+  part of the R1 candidate, not by a quorum seat.
+- An earlier frontmatter also named `codex-gpt-5.6-sol` and `gemini-3.1-pro`; neither seat's R1
+  verdict mentions this proposal or the spelling split, so they are no longer named as reviewers.
