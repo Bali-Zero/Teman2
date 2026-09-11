@@ -184,6 +184,34 @@ assumptions:
       infra/codex-hooks/mandate_budget.py renew() — previous_deadline
       2026-09-10T22:22:47Z, new_deadline 2026-09-11T01:05:00Z, counters untouched.
 
+findings_measured_not_inherited:
+  - text: >-
+      THE FROZEN SURFACE CONTRADICTS ITSELF ON ONE SPELLING — and the first measurement of it
+      was WRONG, which is the part worth keeping. Raised by kimi-code/k3 as a question it could not
+      settle from its bytes ("parse_instant accepts a lowercase 'z'; does the published schema?").
+      The first measurement rewrote time/valid_from inside a real canonical Claim WITHOUT
+      recomputing object_hash, so model_validate was rejecting a HASH MISMATCH and the result was
+      being read as a verdict on the SPELLING. It showed three splits; two were artefacts. Had it
+      been reported as measured, the freeze-change proposal would have asserted that pydantic
+      rejects sub-six-digit fractions, which is false. Re-measured with the two effects separated:
+      EFFECT 1, spelling only, object_hash out of the picture — exactly ONE split, lowercase 'z',
+      which the exported JSON-schema pattern (?:Z|\+00:00)$ REJECTS and the pydantic UtcDateTime
+      validator ADMITS; every other spelling agrees, including .1Z and .1234567Z. EFFECT 2, with
+      object_hash recomputed — five splits, all of them proposal 001's known hash-path axis (the
+      model path re-renders through model_dump(mode="json"), the dict path hashes verbatim), which
+      is 001's to decide and not this window's. It is not theoretical here: the P06 bundle guard
+      this window ships validates every canonical object with jsonschema AND the pydantic model,
+      side by side, on the same bytes. packages/research-os-core/** is frozen, so nothing was
+      edited; filed as evidence/p04/freeze-change-proposal-002.md, the path D9 names. The proposal
+      also reports that proposal 001's own stated expiry condition has arrived: 001 §2.6 rested its
+      "practical cost is zero" conclusion on "nothing outside packages/research-os-core imports
+      research_os today", naming "the day a consumer is written" as its expiry — measured on this
+      base sha, eight files outside the core import it, including consul_executor.py with its
+      executable INSERT INTO research_os_objects, and R2 is building a persistence API against that
+      table right now.
+    status: filed as a proposal, not fixed
+    seat: kimi-code/k3 raised it, R1 Dux measured it
+
 deferred_named:
   - text: >-
       SOURCING THE REAL Z2b COHORT. Up to 20 public regulatory claims sourced from primary public
@@ -357,6 +385,20 @@ team:
       room, not by this window; it signs and never arms.
 
 checkpoints:
+  - generation: 3
+    state: adversarial-round-1
+    envelope: 20260911T110055Z-1772.md
+    envelope_sha256: c593679f1304c752b9b7f11ac5f786a5bbffbdbf700c125041d20f2bb4b9bb7c
+    sent: "2026-09-11T11:00:55Z"
+    ack: >-
+      R1-ack, imperator nuzantara-0d, 2026-09-11T11:10Z. Disposition (b) on the Z2b cohort ACCEPTED;
+      the deferred sourcing goes to Zero as a NEW MANDATE and is not reassigned inside this window.
+      Disk cleared (53Gi free, 0 chrome_url_fetcher dirs) — push is no longer at risk on space. The
+      gate will spot-check exactly the blocker family: that the admission rules bind event, span,
+      version and locator to the record's OWN document, and that the reader consumes the SHIPPED
+      fixture edge rather than a private shape. Cap discipline restated: if cure + round 2 + pack +
+      release do not fit before 13:55:42Z, freeze the candidate unpushed, checkpoint the sha and the
+      remaining work, and stop — a truthful cap beats a rushed release.
   - generation: 3
     state: build-complete
     envelope: 20260911T105202Z-2f23.md
