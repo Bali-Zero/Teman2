@@ -11,7 +11,7 @@ the classification text stayed identical.
 | OSS list (2422 records, 1559 five-digit): 0 codes added/removed, 0 judul/uraian/uuid changes since the June 19 ground truth                                                                                                                                                                                                                  | `~/Desktop/oss-resnapshot-20260911/oss_list_diff_20260911.md`       |
 | Full 4-endpoint re-snapshot, 1559/1559, 0 failures                                                                                                                                                                                                                                                                                           | `~/nuzantara-vault-20260911/oss/` + `fetch-log.jsonl`               |
 | `detail` and `relasi`: 1559/1559 byte-identical to the 2026-07-17 vault                                                                                                                                                                                                                                                                      | `~/Desktop/oss-resnapshot-20260911/oss_vault_diff_20260911.md` §1-2 |
-| `ruang_lingkup` risk-tier set changed on **178** codes: 70 = scope "Seluruh" split into named sub-scopes with identical tiers; **108 = new (skala, resiko) combinations**                                                                                                                                                                    | same, §3                                                            |
+| `ruang_lingkup` risk-tier set changed on **181** codes (pinned triple, §6 rule 5; the first report said 178 because it collapsed homonymous scopes): 70 = scope "Seluruh" split into named sub-scopes with identical tiers; **108 = new (skala, resiko) combinations**                                                                       | same, §3                                                            |
 | `umku`: newly published for 262 codes, dropped for 23, licence set changed on 74 (true removals: 10772/10773 lost SPP-IRT — verified on raw files 13 → 11 rows; 11040 −19; 20114, 20123-20125, 32906, 46442, 43120, 50122, 71202, 93210, 93294)                                                                                              | same, §4; spot-check in session                                     |
 | `ruang_lingkup` presence: 1325 both, 212 absent both, **13 old-only, 9 new-only**                                                                                                                                                                                                                                                            | same, §1                                                            |
 | Canonical corpus `v10.0-L2-oss-risk` was built on 2026-06-20 (PR #1592 + #1598) by `scripts/build_kbli_l2_oss_risk.py` from `/tmp/oss_risk_raw.jsonl` (single endpoint, `scripts/fetch_oss_risk.py`), **not** from the vault                                                                                                                 | `scripts/build_kbli_l2_oss_risk.py:30-35,142-146`                   |
@@ -53,7 +53,7 @@ the 74-code diff as evidence); English titles; `ruang_lingkup` text (unchanged);
    If neither reproduces, STOP: the June state was produced by something not on `main`, and the
    plan is under-specified (Builder Contract rule 1, fix-of-a-fix depth 1).
 5. **Predicted diff = measured diff.** Dry-run over the September jsonl must change exactly the
-   codes named in `oss_vault_diff_20260911.md` §3 (178 on tiers) plus whatever perizinan-level
+   codes named by the pinned triple of §6 rule 5 (181 on tiers) plus whatever perizinan-level
    changes the report's generic flag covers; any code outside that set changing is a STOP.
 6. **Absences are not applied.** The 13 codes present in July and 404 today keep their July
    `per_skala` and get `_l2_status: "absent_pending_corroboration"` with `absent_probes: [date]`;
@@ -61,24 +61,24 @@ the 74-code diff as evidence); English titles; `ruang_lingkup` text (unchanged);
    applied (presence needs no corroboration).
 7. **Version and provenance.** `metadata.version = "v11.0-L2-oss-risk-20260911"`,
    `metadata.l2_snapshot = {vault: "nuzantara-vault-20260911", manifest_sha256, fetched: "2026-09-11",
-codes_changed: 178, absent_pending: 13}`, `metadata.source` corrected to `PP28_2025`.
+codes_changed: 181, absent_pending: 13}`, `metadata.source` corrected to `PP28_2025`.
 8. **Same dump.** `json.dumps(ds, ensure_ascii=False, indent=2)` exactly as today (`:267`), then
    `scripts/sync_kbli_dataset.sh` for the five copies, then the sidecar
    (`datasetSha256 = sha256:<new>`, `lastModified = <commit date>`).
 
 ## 3. Launch sequence (one session owns it end to end)
 
-| step                | command / action                                                                                                                                                                                                  | proof                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| L0                  | `python3 scripts/kbli_filiera/vault_manifest.py --vault-root ~/nuzantara-vault-20260911 --out ~/Desktop/oss-resnapshot-20260911/manifest.json` then `chmod -R a-w ~/nuzantara-vault-20260911`                     | manifest sha256 in brief                                                                  |
-| PR-A (code, Gear 2) | adapter + `--root/--raw` flags + adapter test + reproduction test that runs the July vault through adapter+transform and asserts 0 changes (fixture: 20 codes, not the whole vault)                               | CI green; `Bites:` = the reproduction test                                                |
-| L1                  | adapter over July vault → `/tmp/l2/july.jsonl`; `build_kbli_l2_oss_risk.py --root <fresh worktree> --raw /tmp/l2/july.jsonl` (dry-run)                                                                            | report shows 0 changed codes (rule 4)                                                     |
-| L2                  | adapter over September vault → `/tmp/l2/sept.jsonl`; dry-run                                                                                                                                                      | changed set == §3 set of the diff report (rule 5); absent set == 13 (rule 6)              |
-| PR-B (data, Gear 3) | `--apply` in the worktree, `sync_kbli_dataset.sh`, sidecar bump, `metadata.*` per rule 7; `evidence/brief.yml` + `evidence/pack.yml` (size floor 3); council per harness                                          | vitest sidecar test, navigator 1559 pins, backend `test_kbli_*` pins, tripwires all green |
-| gate                | fresh Opus session signs `harness/fable-gate` on the head; codex refuter round on the per-code diff (generator ≠ grader)                                                                                          | status on head sha                                                                        |
-| deploy              | merge = Vercel deploy of apps/mouth; backend `kbli_documents.metadata` resync (the `--licensing-only`-style script used in PR #5513, `apps/backend-rag/backend/scripts/kbli_documents_cure.py`) for the 178 codes | see prove-live                                                                            |
-| prove-live          | `curl https://balizero.com/kbli/10215` shows the new tier set (10215 gained 4 tiers); `inspect_kbli 10215` from the MCP returns the same; sidecar sha == live dataset sha                                         | screenshots + curl output in the pack                                                     |
-| hand-off            | `oss_vault_diff_20260911.md` §4 (74 licence codes) attached to spec r4 as the umku evidence; 13 absent codes scheduled for re-probe at +24h and +72h                                                              | PENDING-ARMS rows                                                                         |
+| step                | command / action                                                                                                                                                                                                                                          | proof                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| L0                  | `python3 scripts/kbli_filiera/vault_manifest.py --vault-root ~/nuzantara-vault-20260911 --out ~/Desktop/oss-resnapshot-20260911/manifest.json` then `chmod -R a-w ~/nuzantara-vault-20260911`                                                             | manifest sha256 in brief                                                                  |
+| PR-A (code, Gear 2) | adapter + `--root/--raw` flags + adapter test + reproduction test that runs the July vault through adapter+transform and asserts 0 changes (fixture: 20 codes, not the whole vault)                                                                       | CI green; `Bites:` = the reproduction test                                                |
+| L1                  | adapter over July vault → `/tmp/l2/july.jsonl`; `build_kbli_l2_oss_risk.py --root <fresh worktree> --raw /tmp/l2/july.jsonl` (dry-run)                                                                                                                    | report shows 0 changed codes (rule 4)                                                     |
+| L2                  | adapter over September vault → `/tmp/l2/sept.jsonl`; dry-run                                                                                                                                                                                              | changed set == §3 set of the diff report (rule 5); absent set == 13 (rule 6)              |
+| PR-B (data, Gear 3) | `--apply` in the worktree, `sync_kbli_dataset.sh`, sidecar bump, `metadata.*` per rule 7; `evidence/brief.yml` + `evidence/pack.yml` (size floor 3); council per harness                                                                                  | vitest sidecar test, navigator 1559 pins, backend `test_kbli_*` pins, tripwires all green |
+| gate                | fresh Opus session signs `harness/fable-gate` on the head; codex refuter round on the per-code diff (generator ≠ grader)                                                                                                                                  | status on head sha                                                                        |
+| deploy              | merge = Vercel deploy of apps/mouth; backend `kbli_documents.metadata` resync (the `--licensing-only`-style script used in PR #5513, `apps/backend-rag/backend/scripts/kbli_documents_cure.py`) for the changed codes (181 under the pinned triple of §6) | see prove-live                                                                            |
+| prove-live          | `curl https://balizero.com/kbli/10215` shows the new tier set (10215 gained 4 tiers); `inspect_kbli 10215` from the MCP returns the same; sidecar sha == live dataset sha                                                                                 | screenshots + curl output in the pack                                                     |
+| hand-off            | `oss_vault_diff_20260911.md` §4 (74 licence codes) attached to spec r4 as the umku evidence; 13 absent codes scheduled for re-probe at +24h and +72h                                                                                                      | PENDING-ARMS rows                                                                         |
 
 ## 4. Stop conditions
 
@@ -92,5 +92,49 @@ codes_changed: 178, absent_pending: 13}`, `metadata.source` corrected to `PP28_2
 
 - PR-A: ~150 lines of code + tests, Gear 2, one afternoon.
 - PR-B: one 36 MB file rewritten in five copies; Gear 3 by size, evidence pack mandatory;
-  client-facing change on 178 code pages and on the RAG answers for those codes.
+  client-facing change on ~181 code pages and on the RAG answers for those codes.
 - Nothing touches the KG, the WhatsApp bot rules, or the editorial pages.
+
+## 6. Rule-4 outcome — PR-A gate run, 2026-09-11 (r2)
+
+Measured on M5 with the adapter over the **July** vault (1559/1559, no missing evidence),
+`--apply` on a `/tmp` copy only, field-level diff against the canonical `v10.0-L2-oss-risk`:
+
+| field                                                                 | codes differing                                                      | note                                                                                               |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `skala_usaha`, `kategori_risiko`, `scope_index`                       | 0                                                                    | L2-owned, reproduced                                                                               |
+| `scope_uraian`, `perizinan`, `persyaratan`, `kewajiban`, `kewenangan` | 1 (49213)                                                            | the divergence Lane A already recorded (A-PSK-0001)                                                |
+| `jangka_waktu`                                                        | 942                                                                  | NOT L2-owned: rewritten after L2 by `scripts/enrich_kbli_jangka_waktu.py` (2026-06-28, PP28 rules) |
+| `fiktif_positif`                                                      | dropped on 1337 codes (9,095 rows; 1342 codes carry it)              | a later layer adds it; the transform does not carry it                                             |
+| `jangka_waktu_source`                                                 | dropped on 941 codes (4,200 rows)                                    | same                                                                                               |
+| per_skala row count                                                   | 1 (20111: 0 → 12 rows across 3 scopes)                               | new OSS data, not a loss                                                                           |
+| `l4_bali.blocked`                                                     | 21 with `scripts/` copy, **0 with `apps/backend-rag/scripts/` copy** | backend copy's NO_BESAR → `CHIUSO_PMA_NO_BESAR` (blocked) is what the canonical carries            |
+
+Rule 5 (September vault): the adapter-driven (scope, skala, resiko) change set equals the
+raw-vault change set computed with the same method (0 in either difference), which is the
+invariant that proves the adapter faithful. The COUNT is method-dependent: 178 with the first
+report's scope-name-keyed dict (homonymous scopes collapse), 181 with the pinned triple below
+(codex round 2 found the 3 collapsed codes 31021, 31029, 82921). Absences 13 old-only /
+9 new-only / 212 both. All field counts above are on rows common to both sides; 20111's
+12 new rows are counted in the row-count line, not in the field cells.
+
+**Rulings that follow (r2):**
+
+1. Rule 4 is restated: reproduction means the **L2-owned field set** —
+   `per_skala[].{skala_usaha, kategori_risiko, scope_index, scope_uraian, perizinan, persyaratan,
+kewajiban, kewenangan}` + `_l2_source` + `_l2_status` — identical on every code except the ones
+   the vault diff names. `jangka_waktu`, `fiktif_positif`, `jangka_waktu_source` and the L4 labels
+   belong to later layers and are excluded by name, never silently.
+2. The canonical L4 logic is the **`apps/backend-rag/scripts/` copy** (NO_BESAR is a block).
+   PR-B ports that mapping into `scripts/build_kbli_l2_oss_risk.py` with a test on the 21 codes,
+   and the backend copy is retired in a separate backend PR (its merge is a deploy).
+3. PR-B's transform needs a **merge policy**, not a rewrite: on `--apply` it must preserve
+   `jangka_waktu` where `jangka_waktu_source` is set, and carry `fiktif_positif` and
+   `jangka_waktu_source` through; a dry-run field table like the one above is part of PR-B's
+   evidence pack, and any non-zero cell outside the predicted set is a STOP.
+4. 49213 is resynced from OSS in PR-B (closes A-PSK-0001); 20111 gains its 12 rows across 3 scopes.
+5. The change-set triple is pinned, so PR-B's predicted diff has one definition: per scope
+   `localization.id.uraian`, per `KbliResikos[]` entry `SkalaUsaha.kode` and
+   `Resiko.localization.id.uraian`; a code is "changed" when its set of triples differs.
+   Under this definition the September set is **181** codes (`/tmp/l2/changed_pinned.txt`
+   at gate time; PR-B recomputes it from the frozen vaults and quotes the number).

@@ -133,25 +133,40 @@ def besar_block_verdict(per_skala):
     return "OPEN"
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
-    args = ap.parse_args()
+    ap.add_argument("--root", type=Path, default=ROOT,
+                     help="checkout root holding data/source_documents/... and "
+                          "apps/mouth/data/... (default: today's literal, keeps the "
+                          "June run reproducible)")
+    ap.add_argument("--raw", type=Path, default=RAW,
+                     help="jsonl of {kode,uuid,status,data} records, e.g. produced by "
+                          "vault_to_risk_jsonl.py (default: today's literal)")
+    args = ap.parse_args(argv)
+
+    root = args.root
+    raw_path = args.raw
+    targets = [
+        root / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json",
+        root / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json",
+    ]
 
     raw = {}
-    for line in RAW.read_text(encoding="utf-8").splitlines():
+    for line in raw_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         r = json.loads(line)
         raw[r["kode"]] = r
 
-    ds = json.loads(TARGETS[0].read_text(encoding="utf-8"))
+    ds = json.loads(targets[0].read_text(encoding="utf-8"))
     records = ds["data"]
 
     stats = Counter()
     block_changes = []          # codes whose l4 blocked flips
     perskala_fixed = []         # codes whose per_skala scale-count changed
     risk_mismatch = []          # codes whose risk text differs from old
+    per_skala_changed = []      # codes whose per_skala differs by full json equality
 
     for rec in records:
         code = str(rec.get("kode_kbli_2025") or "")
@@ -189,6 +204,9 @@ def main():
         new_risks = {(p.get("kategori_risiko") or "").lower() for p in new_ps}
         if old_risks != new_risks:
             risk_mismatch.append((code, sorted(old_risks), sorted(new_risks)))
+        # full per_skala change (json equality) — the number rule 4 needs
+        if new_ps != old_ps:
+            per_skala_changed.append(code)
 
         # recompute Bali block (only for risk-derived statuses) using the
         # OFFICIAL per-scope risk at scale Besar (Regola D, chosen by Zero 2026-06-20).
@@ -262,10 +280,24 @@ def main():
     for c, os_, ns, risks in block_changes[:20]:
         print(f"    {c}: {os_} -> {ns}  (official risk {risks})")
 
+    # machine-readable line for the reproduction/diff gates (spec rules 4-5):
+    # changed_codes = codes whose per_skala (full json equality) or l4_bali
+    # block flag differs from the current canonical.
+    changed_set = set(per_skala_changed) | {c for c, *_ in block_changes}
+    needs_review = stats.get("needs_review_no_scope_blocked", 0) + stats.get("verdict_NO_BESAR", 0)
+    print(
+        f"\nSUMMARY changed_codes={len(changed_set)} "
+        f"no_oss_risk={stats.get('no_oss_risk', 0)} "
+        f"empty_oss_risk={stats.get('empty_oss_risk', 0)} "
+        f"needs_review={needs_review} "
+        f"per_skala_changed={len(per_skala_changed)} "
+        f"l4_changed={len(block_changes)}"
+    )
+
     if args.apply:
         ds["metadata"]["version"] = "v10.0-L2-oss-risk"
         blob = json.dumps(ds, ensure_ascii=False, indent=2)
-        for t in TARGETS:
+        for t in targets:
             t.write_text(blob, encoding="utf-8")
         print(f"\nAPPLIED. wrote {len(blob)} bytes to both targets. version v10.0-L2-oss-risk")
     else:
