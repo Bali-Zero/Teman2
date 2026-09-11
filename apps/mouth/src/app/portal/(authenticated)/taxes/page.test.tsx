@@ -95,6 +95,41 @@ describe("TaxesPage", () => {
     expect(container.innerHTML).not.toContain("rgba(255,255,255,0.05)");
   });
 
+  it("says Total Due is not tracked instead of printing Rp 0", async () => {
+    // The backend has no payment tracking, so it now sends totalDue: null
+    // rather than a hardcoded 0 that this tile rendered as a confident
+    // "Rp 0" (portal audit, ux F2). A measured zero still prints Rp 0.
+    mockGetTaxOverview.mockResolvedValue({
+      summary: { ...TAX_DATA.summary, totalDue: null },
+      obligations: [],
+    });
+    render(<TaxesPage />);
+
+    expect(await screen.findByText("Not tracked")).toBeInTheDocument();
+    expect(screen.queryByText("Rp 0")).toBeNull();
+  });
+
+  it("renders no obligations section when the client has none", async () => {
+    // A client with no company, no tax practice and no NPWP gets an empty
+    // obligations list from the backend (portal audit, live F-05).
+    mockGetTaxOverview.mockResolvedValue({
+      summary: {
+        status: "none",
+        totalDue: null,
+        nextDeadline: null,
+        daysToDeadline: null,
+        pendingCount: 0,
+        overdueCount: 0,
+      },
+      obligations: [],
+    });
+    render(<TaxesPage />);
+
+    await screen.findByText("Not tracked");
+    expect(screen.queryByText("Current Obligations")).toBeNull();
+    expect(screen.queryByText("Pending")).toBeNull();
+  });
+
   it("maps obligation statuses to the semantic --state-* tokens", async () => {
     await renderLoaded();
 

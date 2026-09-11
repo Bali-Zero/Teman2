@@ -211,11 +211,21 @@ export default function TaxesPage() {
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Total Due
             </p>
-            <p className="text-lg font-bold">
-              {taxData.summary.totalDue > 0
-                ? formatIDR(taxData.summary.totalDue)
-                : "Rp 0"}
-            </p>
+            {/* null means the backend tracks no payment amounts at all —
+                it used to send 0 and this tile rendered a confident
+                "Rp 0" (ux F2). A measured zero still prints Rp 0. */}
+            {taxData.summary.totalDue === null ? (
+              <p
+                className="text-lg font-bold"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                Not tracked
+              </p>
+            ) : (
+              <p className="text-lg font-bold">
+                {formatIDR(taxData.summary.totalDue)}
+              </p>
+            )}
           </div>
 
           <div className="p-4 rounded-lg" style={TILE_STYLE}>

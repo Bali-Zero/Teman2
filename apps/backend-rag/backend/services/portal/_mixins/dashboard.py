@@ -103,9 +103,14 @@ class PortalDashboardMixin:
                 companies[0] if companies else None,
             )
 
-            # Get upcoming tax deadlines (next 30 days)
+            # Get upcoming tax deadlines (next 30 days) — only for a client
+            # the system knows has tax obligations at all (F-05).
             today = datetime.now(timezone.utc)
-            tax_deadlines = self._get_standard_tax_deadlines(today)
+            tax_deadlines = (
+                self._get_standard_tax_deadlines(today)
+                if await self._has_tax_footprint(conn, client_id)
+                else []
+            )
             next_deadline = tax_deadlines[0] if tax_deadlines else None
 
             # Get action items (practices with required documents)
@@ -808,9 +813,16 @@ class PortalDashboardMixin:
             except Exception as e:
                 logger.warning("Could not fetch tax practices: %s", e)
 
-            # Generate standard tax deadlines
+            # Generate standard tax deadlines — only for a client the system
+            # knows has tax obligations at all (F-05). Without this gate a
+            # client with no company, no tax practice and no NPWP was shown
+            # three dated "Pending" obligations that are not theirs.
             today = datetime.now(timezone.utc)
-            deadlines = self._get_standard_tax_deadlines(today)
+            deadlines = (
+                self._get_standard_tax_deadlines(today)
+                if await self._has_tax_footprint(conn, client_id)
+                else []
+            )
 
             # Build obligations from deadlines (upcoming tax filings)
             obligations = []
@@ -863,7 +875,12 @@ class PortalDashboardMixin:
             return {
                 "summary": {
                     "status": status,
-                    "totalDue": 0,  # No payment tracking yet
+                    # No payment tracking exists in this system: there is no
+                    # amount to sum. It used to emit 0, which the portal
+                    # rendered as a confident "Rp 0" — a figure the backend
+                    # had not measured (portal audit finding, ux F2). None
+                    # means "not tracked" and the UI says so.
+                    "totalDue": None,
                     "nextDeadline": next_deadline,
                     "daysToDeadline": days_to_deadline,
                 },
@@ -1052,9 +1069,14 @@ class PortalDashboardMixin:
             except Exception as e:
                 logger.warning("Could not fetch practices for timeline: %s", e)
 
-            # Add upcoming deadlines (future events)
+            # Add upcoming deadlines (future events) — same gate as the
+            # dashboard and the Taxes page (F-05).
             today = datetime.now(timezone.utc)
-            deadlines = self._get_standard_tax_deadlines(today)
+            deadlines = (
+                self._get_standard_tax_deadlines(today)
+                if await self._has_tax_footprint(conn, client_id)
+                else []
+            )
             for deadline in deadlines[:3]:  # Max 3 deadlines
                 entries.append(
                     {
@@ -1081,6 +1103,46 @@ class PortalDashboardMixin:
     # ================================================
     # HELPER METHODS
     # ================================================
+
+    async def _has_tax_footprint(self, conn, client_id: int) -> bool:
+        """Does this client have anything that makes a tax calendar theirs?
+
+        ``_get_standard_tax_deadlines`` is a pure calendar: it generates PPh
+        21/23/4(2), PPN and the Annual SPT from today's date and nothing else.
+        Shown unconditionally, a brand-new client with no company, no tax
+        practice and no NPWP saw three dated obligations marked "Pending" on
+        their Taxes page and a live countdown on their dashboard — statutory
+        dates that are not, as far as this system knows, theirs to file
+        (portal audit finding F-05). A footprint is one company link, one
+        tax-category practice, or an NPWP on the client record.
+
+        FAILS OPEN on a query error (returns True, i.e. keep showing the
+        calendar): hiding a real deadline from a real taxpayer is the worse
+        of the two errors, and every other query in this mixin degrades the
+        same way rather than blanking the page.
+        """
+        try:
+            return bool(
+                await conn.fetchval(
+                    """
+                    SELECT
+                        EXISTS (SELECT 1 FROM client_company_links WHERE client_id = $1)
+                        OR EXISTS (
+                            SELECT 1 FROM practices p
+                            JOIN practice_types pt ON pt.id = p.practice_type_id
+                            WHERE p.client_id = $1 AND pt.category = 'tax'
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM clients
+                            WHERE id = $1 AND npwp IS NOT NULL AND btrim(npwp) <> ''
+                        )
+                    """,
+                    client_id,
+                ),
+            )
+        except Exception as e:
+            logger.warning("Could not determine tax footprint for client %s: %s", client_id, e)
+            return True
 
     def _get_standard_tax_deadlines(self, today: datetime) -> list[dict[str, Any]]:
         """Generate standard Indonesian tax deadlines."""

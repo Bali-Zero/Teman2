@@ -131,7 +131,9 @@ export interface ComplianceItem {
 export interface TaxOverview {
   summary: {
     status: "none" | "upcoming" | "attention" | "overdue";
-    totalDue: number;
+    /** null = the backend tracks no payment amounts, so there is no figure
+     *  to show. Distinct from 0, which would be a measured "nothing due". */
+    totalDue: number | null;
     nextDeadline: string | null;
     daysToDeadline: number | null;
     pendingCount: number;
