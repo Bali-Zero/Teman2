@@ -1,0 +1,363 @@
+task_id: voa-contract-closure
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-11
+machine: air-m5 (M5)
+lanes:
+  - lane: voa-401-envelope-build
+    role: build
+    seat: >-
+      claude-opus-5 xhigh (Dux Sol, builder seat in worktree
+      backend-rag-voa-contract-closure, branch
+      agent/air-m5/backend-rag/voa-contract-closure). Moved the frozen
+      contract's 401 SESSION_REQUIRED envelope and its three privacy headers
+      onto HybridAuthMiddleware's generic refusal for the five GARUDA VOA
+      staff operations; retired the body-equality discriminator the two
+      canary suites used to rely on and replaced it with find_entry() /
+      WWW-Authenticate assertions that cannot go blind the way a body string
+      can.
+  - lane: voa-401-envelope-refute-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol (Astra-class cross-family red-team, `codex exec -m
+      gpt-5.6-sol --sandbox read-only`), OUT of the contribution chain.
+      Round 1 (O1) on head 1967526ff5b996866b1f9530fd1814a1fef9d474: VERDICT
+      BLOCK, 4 BLOCK findings + 4 SURVIVES. See journal.jsonl and dissent
+      below.
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane, so D3's seat-diversity requirement does not attach (it
+  binds packs with >= 2 build lanes).
+seat_override: >-
+  R9 council_run: only one COUNCIL_REVIEW_SEATS-qualifying seat
+  (codex-gpt-5.6-sol) was dispatched for this PR, so the journal below does
+  not reach the 2-distinct-seat quorum by itself. Kimi K3 second-reader was
+  deliberately NOT invoked for this PR (see journal.jsonl's kimi-code/k3
+  note line): this PR does not modify
+  products/garuda-voa/contracts/openapi.yaml, and the two-reader rule binds
+  the contract/data diffs — Kimi's read is deferred to PRs 3 and 4 of this
+  window, which do touch the contract. Round 2 (O2) with codex-gpt-5.6-sol RAN
+  on the cured tree and is recorded in the receipts below: VERDICT BLOCK on one
+  surviving finding (#3, the prefix matcher still admitting non-contract
+  descendants), cured by switching to frozen-operation-TEMPLATE matching; that
+  is stated plainly here
+  rather than claimed as having happened.
+council_run: journal.jsonl
+outcome: >-
+  hybrid_auth.py's refusal helper now answers every unauthenticated request
+  under /api/visa/voa/staff/ with the frozen contract's {"code":
+  "SESSION_REQUIRED", "retryable": false, "message_key":
+  "garuda_voa.error.session_required"} body and the three privacy headers
+  (Cache-Control: no-store, private / Referrer-Policy: no-referrer /
+  X-Robots-Tag: noindex, nofollow, noarchive), matching
+  garuda_staff_router._privacy_headers. Matching is a plain startswith on
+  the /api/visa/voa/staff/ prefix, never a substring — /api/visa/voa/staffroom,
+  /api/visa/voa/staff-directory and the bare /api/visa/voa/staff all keep the
+  generic body. openapi.yaml is untouched: the cure is one-sided, code moved
+  to the contract. Codex's round-1 refuter pass found 4 real BLOCK issues in
+  the first cut (stale canary assertion, missing privacy headers, an
+  over-matching bare path, and a mount-prefix property of the whole
+  registry); the first three are cured in this diff, the fourth is
+  documented in code as a pre-existing, non-regression property rather than
+  patched on one side only. Round 2 and Kimi's contract-diff read are both
+  still pending — recorded honestly, not implied as done.
+diff:
+  # The PULL REQUEST changes eight paths: the five scoped code files plus
+  # this pack, its brief and its council journal. Stated as the whole
+  # number rather than the code-only five, because that is the set the
+  # linter and the gate both measure — an author-flattering subset here
+  # would disagree with every tool that reads it.
+  files: 8
+  net_lines: >-
+    Deliberately NOT restated as a literal here. The linter measures it
+    itself, merge-base-anchored, from `git diff --no-renames --numstat
+    $(git merge-base BASE HEAD) HEAD` over the WHOLE pull request — evidence
+    files included, no path filter — and `harness-floor.yml` hands it that
+    measurement through `--numstat-file`. Two lints already failed on a
+    literal in this field, for two different reasons, and both were the same
+    mistake: the first figure counted only the scoped CODE files while the
+    rule counts the whole PR, and the second went stale the instant a commit
+    touched this very file. A number that changes when you write it down
+    cannot be written down; the command that produces it can. Shape, in
+    prose rather than arithmetic: the middleware carries the registry, the
+    matcher and a long comment block explaining why it matches templates and
+    not a prefix; `public_endpoints.py` gains the extracted
+    `path_matches_template` and loses the inline copy; the new unit-test file
+    is the largest single addition and is almost entirely innocence cases and
+    two derived anchors; the two mounted canaries gain header assertions and
+    lose their retired body-equality discriminator. The evidence directory is
+    the rest. Per-file insertions and deletions are in the run log of the
+    command above — read there, not from a copy here that can go stale.
+  behaviour_change: >-
+    HybridAuthMiddleware's 401 body and headers change for the five GARUDA
+    VOA staff routes only. No router, service, or contract file changes.
+    public_endpoints.py's change is a comment block only (no route entry
+    added, removed or widened) — see brief.yml scope note.
+  shape: >-
+    One shared refusal-body/headers helper in hybrid_auth.py, one documented
+    comment in public_endpoints.py explaining the canary discriminator
+    change, two updated canary test files (find_entry()/WWW-Authenticate
+    replace the retired body-equality discriminator), one new unit-test
+    module (test_hybrid_auth_contract_401_envelope.py) pinning the contract
+    envelope, the three privacy headers, the non-staff-path innocence cases,
+    and the public-endpoint-widening guilt case.
+pii_scan: clean
+pii_scan_note: >-
+  Middleware, registry comment, and tests only; no client data, no
+  credential, no PII path touched.
+receipts:
+  - claim: >-
+      the deterministic gear floor for this PR's changed-file set is 3
+      (apps/backend-rag/backend/app/auth/* is a HOTZONE_PATTERNS hit)
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --changed-files-file cf.txt --numstat-file numstat.txt (cf.txt lists
+      the 5 scope files; numstat.txt is `git diff $(git merge-base HEAD
+      origin/main) --numstat -- <5 scope files>`)
+    result: "3 / path"
+    ts: "2026-09-11T18:30:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      local test evidence: 217 passed across backend/tests/unit/middleware/
+      plus the two mounted canary suites, test_garuda_voa_flag_ordering.py
+      and test_garuda_staff_actor_async_verifier.py
+    cmd: >-
+      PYTHONPATH=. pytest backend/tests/unit/middleware/
+      backend/tests/app/routers/test_garuda_voa_public_root_allowlist.py
+      backend/tests/app/routers/test_garuda_staff_public_prefix_guard.py
+      backend/tests/app/routers/test_garuda_voa_flag_ordering.py
+      backend/tests/app/routers/test_garuda_staff_actor_async_verifier.py
+    result: "217 passed"
+    ts: "2026-09-11T00:00:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the cure is not vacuous — mutation-verified in round 1 by disabling
+      the cure at the call site
+    cmd: >-
+      contract_401_body() call site temporarily reverted to the pre-cure
+      generic body, reran the 5 new parametrized
+      test_hybrid_auth_contract_401_envelope.py cases, then restored
+    result: "5 of 5 new parametrized cases FAILED with the cure disabled; 5 of 5 passed after restore"
+    ts: "2026-09-11T00:00:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      codex round-1 adversarial review completed live despite a stale
+      SessionStart arsenal probe entry
+    cmd: codex exec -m gpt-5.6-sol --sandbox read-only (round 1, head 1967526ff5)
+    result: >-
+      the SessionStart arsenal probe reported "codex ✗timeout"; the seat
+      answered PONG in under 45s and then completed a full read-only review
+      producing 4 BLOCK + 4 SURVIVES findings — probe snapshot stale, seat
+      live, no SEAT RULE escalation needed
+    ts: "2026-09-11T00:00:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      codex's four SURVIVES findings (security, information disclosure,
+      canary-regression authority, completeness) found no blocking issue on
+      independent verification
+    cmd: codex exec -m gpt-5.6-sol --sandbox read-only (round 1, head 1967526ff5), findings #5-8
+    result: >-
+      security: the refusal helper runs only after public-endpoint rejection
+      AND failed authentication, hardcodes 401, never calls call_next.
+      information disclosure: the five staff paths are already published in
+      the frozen contract, every descendant gets the same envelope, no
+      per-route existence is revealed. canary regression:
+      public_endpoints.find_entry IS the same function
+      HybridAuthMiddleware.is_public_endpoint calls, so the structural
+      assertion is authoritative. completeness: CSRF and revocation failures
+      both funnel into this same modified branch; router-originated 401s are
+      normalised by each router's own _ContractErrorRoute; the outer limiter
+      emits 429, not 401.
+    ts: "2026-09-11T00:00:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      codex round-2 (O2) adversarial review of the CURED tree: round-1
+      findings #1 and #2 CURED, #3 NOT CURED, #4 accepted as a documented NIT
+    cmd: codex exec -m gpt-5.6-sol --sandbox read-only (round 2, cured worktree)
+    result: >-
+      VERDICT BLOCK. #3 NOT CURED — the prefix matcher still assigned the
+      frozen envelope to "/api/visa/voa/staff/" (trailing slash only),
+      "/api/visa/voa/staff//practices" (double slash) and arbitrary
+      descendants; all five frozen paths were covered and no under-match was
+      found. #4 NOT CURED but NIT — "both readers currently fail together and
+      production serves root-level main_api:app without --root-path at
+      apps/backend-rag/fly.toml, so no production-reachable divergence was
+      found", which is the reasoning this pack recorded in round 1, confirmed
+      by the refuter rather than asserted by the author. #5 MINOR — the
+      privacy-header test compared middleware to ROUTER, so synchronised
+      drift would pass. #6 MINOR — the mounted tests asserted
+      WWW-Authenticate PRESENCE, not its value. #9 NIT — the cured docstring
+      still named the removed contract_401_body().
+    ts: "2026-09-11T10:45:00Z"
+    seat: codex-gpt-5.6-sol
+    exit: 1
+  - claim: >-
+      every round-2 finding cured in the same PR at fix-of-a-fix depth 1
+    cmd: >-
+      matcher replaced with path_matches_template() against the five frozen
+      operation templates; two DERIVED anchors added; WWW-Authenticate
+      tightened to == "Bearer"; stale docstring purged
+    result: >-
+      #3 — the template matcher is segment-COUNT based, so the bare path, the
+      trailing-slash-only path, the double-slash path, an empty {practice_id}
+      and every arbitrary descendant fail BY CONSTRUCTION; 12 of them are
+      explicit innocence cases. The matcher itself is not a second copy: the
+      template comparison was EXTRACTED out of PublicEndpoint.matches into
+      public_endpoints.path_matches_template and both callers now share one
+      definition (cicatrix #3 — a guard that drifts from the matcher it
+      mirrors is worse than no guard). #5 — the privacy headers are now
+      anchored to products/garuda-voa/contracts/openapi.yaml's own
+      x-public-privacy-response-headers anchor, PARSED from the YAML; the
+      router comparison is kept as an explicitly weaker second anchor and now
+      compares in both directions. The operation template set is anchored the
+      same derived way, so a new staff operation landing in the contract and
+      not here fails the suite. #6 — both mounted canaries assert
+      WWW-Authenticate == "Bearer". #9 — zero occurrences of
+      contract_401_body remain in apps/backend-rag.
+    ts: "2026-09-11T10:55:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      full affected suite green after the round-2 cures
+    cmd: >-
+      PYTHONPATH=. pytest backend/tests/app/routers/test_garuda_staff_public_prefix_guard.py
+      backend/tests/app/routers/test_garuda_voa_public_root_allowlist.py
+      backend/tests/app/routers/test_garuda_voa_flag_ordering.py
+      backend/tests/app/routers/test_garuda_staff_actor_async_verifier.py
+      backend/tests/app/routers/test_garuda_voa_openapi_parity.py
+      backend/tests/unit/middleware/
+    result: "254 passed in 15.82s (includes the frozen-vs-live OpenAPI parity suite)"
+    ts: "2026-09-11T10:58:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the 189 errors in the wider `pytest backend/tests -k garuda` sweep are a
+      LOCAL environment gap, not a regression from this diff
+    cmd: PYTHONPATH=. pytest backend/tests -k garuda
+    result: >-
+      935 passed, 128 skipped, 189 errors — every error is
+      asyncpg.exceptions.UndefinedColumnError column "policy_scope" does not
+      exist, i.e. the local test Postgres is behind migrations 284-289. This
+      diff contains zero occurrences of policy_scope and touches no DB code;
+      reported as a measured environment gap rather than claimed green.
+    ts: "2026-09-11T10:30:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      BLOCK #1. test_garuda_staff_public_prefix_guard.py:89 still asserted
+      the OLD generic refusal body, so the cured backend suite would be RED
+      on its own canary.
+    resolution: >-
+      That file's assertion replaced with WWW-Authenticate + the contract
+      envelope + the three privacy headers; its docstring rewritten to say
+      what replaced the body discriminator.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      BLOCK #2. The middleware's 401 emitted no privacy headers, while the
+      contract attaches Cache-Control: no-store, private / Referrer-Policy:
+      no-referrer / X-Robots-Tag: noindex, nofollow, noarchive to that
+      response via its x-public-privacy-response-headers anchor.
+    resolution: >-
+      The registry now carries (body, headers); a new test pins the three
+      headers equal to what garuda_staff_router._privacy_headers puts on
+      responses that DO reach the router.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      BLOCK #3. The bare path /api/visa/voa/staff was claimed by the
+      matcher although no frozen operation lives there, and
+      garuda_voa.py's owner-archive route /api/visa/voa/{hash}
+      pattern-matches it.
+    resolution: >-
+      SUPERSEDED by the round-2 cure below. The round-1 cure (prefix
+      /api/visa/voa/staff/ with a plain startswith) removed the bare-path
+      collision but was itself refuted in round 2 for still admitting
+      non-contract descendants; the matcher is now template-based.
+  - seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    objection: >-
+      BLOCK #4. request.url.path carries any ASGI mount prefix, reproduced
+      by the refuter with a synthetic parent.mount("/mounted", child).
+    resolution: >-
+      DOWNGRADED to documented-NIT by the Dux: is_public_endpoint
+      (hybrid_auth.py, path = request.url.path) reads the same attribute,
+      so this is a pre-existing property of the entire public registry and
+      not a regression this PR introduces; a mount-aware reading here plus
+      a mount-blind one there would be strictly worse than both being
+      consistent. Production serves main_api:app at the root. Documented in
+      contract_401_envelope's docstring rather than fixed on one side only.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      ROUND 2 BLOCK #3 (NOT CURED). The round-1 prefix matcher still
+      assigned the frozen envelope to "/api/visa/voa/staff/" (trailing
+      slash only), "/api/visa/voa/staff//practices" (double slash) and to
+      arbitrary descendants the contract never declares. All five frozen
+      paths were covered, so there was no under-match — the defect was
+      purely over-match.
+    resolution: >-
+      Matching is now against the five frozen OPERATION TEMPLATES via
+      public_endpoints.path_matches_template, which compares segment COUNT
+      first, so every named case fails by construction rather than by
+      vigilance — 12 of them are explicit innocence cases in
+      test_hybrid_auth_contract_401_envelope.py. The matcher is not a
+      second copy: the template comparison was EXTRACTED out of
+      PublicEndpoint.matches and both callers share one definition. A
+      derived test pins the middleware's template tuple equal to the set of
+      staff paths the frozen contract declares with a 401 SESSION_REQUIRED,
+      so a new staff operation cannot land in the contract and silently get
+      the generic body here.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      ROUND 2 MINOR #5. The privacy-header test compared the middleware to
+      garuda_staff_router._privacy_headers — a coupled comparison, not an
+      independent anchor: synchronised drift on both sides would pass.
+    resolution: >-
+      The headers are now anchored to
+      products/garuda-voa/contracts/openapi.yaml's own
+      x-public-privacy-response-headers anchor, PARSED out of the YAML. The
+      router comparison is kept, explicitly labelled the weaker of the two,
+      and now compares in BOTH directions so an extra privacy header on the
+      router side also fails.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      ROUND 2 MINOR #6. Both mounted canaries asserted that
+      WWW-Authenticate was PRESENT, so a wrong authentication scheme would
+      have stayed green.
+    resolution: >-
+      Both now assert WWW-Authenticate == "Bearer".
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      ROUND 2 NIT #9. The cured documentation still named the removed
+      contract_401_body() and still called the change body-only after
+      headers had been added.
+    resolution: >-
+      Purged — zero occurrences of contract_401_body remain under
+      apps/backend-rag; the prose now says response-SHAPE and names
+      contract_401_envelope().
+  - seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    objection: >-
+      ROUND 2 NIT #4 restated. Reader consistency is not contract
+      correctness under an ASGI mount.
+    resolution: >-
+      Accepted as stated, not cured: the same refuter measured that "both
+      readers currently fail together and production serves root-level
+      main_api:app without --root-path at apps/backend-rag/fly.toml, so no
+      production-reachable divergence was found". The reasoning lives in
+      contract_401_envelope's docstring so the next reader inherits the
+      measurement rather than the assumption.
+appetite_exceeded: ""

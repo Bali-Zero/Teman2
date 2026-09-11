@@ -41,6 +41,31 @@ class Category(str, Enum):
     BRIDGE = "bridge"
 
 
+def path_matches_template(path: str, template: str) -> bool:
+    """FastAPI-style template match: SAME number of `/`-separated segments,
+    literal segments equal, `{param}` segments non-empty.
+
+    Extracted from `PublicEndpoint.matches` so a second caller cannot own a
+    second copy of this logic (cicatrix #3 — a guard that drifts from the
+    matcher it claims to mirror is worse than no guard). The other caller is
+    `middleware/hybrid_auth.py::contract_401_envelope`, which needs exactly
+    this shape to decide whether a refused path is a frozen-contract
+    operation rather than an arbitrary descendant of its prefix.
+
+    Segment COUNT is what makes `/a/b/` and `/a//b` and `/a/b/c` all fail
+    against `/a/b`: `"".strip("/").split("/")` leaves an empty segment in the
+    double-slash case and drops one in the trailing-slash case.
+    """
+    template_parts = template.strip("/").split("/")
+    path_parts = path.strip("/").split("/")
+    if len(template_parts) != len(path_parts):
+        return False
+    return all(
+        bool(actual) if expected.startswith("{") and expected.endswith("}") else actual == expected
+        for expected, actual in zip(template_parts, path_parts, strict=True)
+    )
+
+
 @dataclass(frozen=True)
 class PublicEndpoint:
     prefix: str
@@ -53,16 +78,7 @@ class PublicEndpoint:
         if self.match == "exact":
             return path == self.prefix
         if self.match == "template":
-            prefix_parts = self.prefix.strip("/").split("/")
-            path_parts = path.strip("/").split("/")
-            if len(prefix_parts) != len(path_parts):
-                return False
-            return all(
-                bool(actual)
-                if expected.startswith("{") and expected.endswith("}")
-                else actual == expected
-                for expected, actual in zip(prefix_parts, path_parts, strict=True)
-            )
+            return path_matches_template(path, self.prefix)
         return path.startswith(self.prefix)
 
 
@@ -701,10 +717,20 @@ _VISA_ORACLE = (
     # `test_garuda_voa_public_root_allowlist.py` pins both halves: every
     # public route below answers anonymously through the REAL mounted app
     # (`main_api.app`, not a bare `FastAPI()+include_router()` double — the
-    # note above was only caught that way), and the staff route still 401s
-    # with the middleware's OWN "Authentication required" body (never the
-    # handler's SESSION_REQUIRED) — the second assertion is what stays red
-    # if a future edit ever widens one of these entries into a prefix.
+    # note above was only caught that way), and every staff route is still
+    # refused by the middleware itself. That second assertion used to read
+    # the middleware's OWN "Authentication required" body; since the W3C
+    # contract-closure PR the middleware serves the frozen contract's
+    # SESSION_REQUIRED envelope on `/api/visa/voa/staff/**`
+    # (`hybrid_auth.contract_401_envelope` — a response-SHAPE change, body
+    # plus the contract's three privacy headers, never a grant: it matches
+    # the frozen OPERATION TEMPLATES via `path_matches_template` below, so it
+    # can claim neither the bare `/api/visa/voa/staff` nor an arbitrary
+    # descendant of it), so the body no longer discriminates and the test
+    # asserts two things that cannot go blind instead:
+    # `find_entry(<staff path>) is None` (reads THIS registry directly) and
+    # the `WWW-Authenticate: Bearer` header the middleware's 401 branch sets
+    # and no GARUDA router ever does.
     PublicEndpoint(
         "/api/visa/voa/eligibility-checks",
         Category.VISA_ORACLE,
