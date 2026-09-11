@@ -87,6 +87,21 @@ step model only has two booleans to say so. The honest fix is probably a third s
 
 **Owner: `operator[business]`** — what a client should see when their case was cancelled.
 
+> ⚡ **ANSWERED 2026-09-11 (Zero, M5, asked with the two renderings side by side): a cancelled
+> practice is a step that is CLOSED but did not SUCCEED.** `completed=true, is_current=false` —
+> nothing is still running, so the client sees no spinner — and it is NOT confused with a
+> successful practice because the client colours the step by its STATUS, not by its booleans:
+> `apps/mouth/src/components/portal/process/stateColors.ts` already maps `cancelled` to `danger`.
+> So the third state this section proposed is not needed: the status field IS the third state, and
+> the two booleans only say "closed" and "not running".
+>
+> This resolves the disagreement in the direction of the history path, which means the 124 rows do
+> change rendering — from a grey empty circle to a filled `danger` marker. That is the intended
+> outcome: a cancelled practice reading as "neither done nor active" was the less honest of the two.
+> Both paths now compute the pair in `_step_flags()`, and
+> `test_both_paths_answer_identically_for_the_same_status` runs one practice through both for every
+> terminal status. Removing the helper turns it red on `cancelled` specifically — verified.
+
 ### Q3 — Should the timeline show where a practice STARTED?
 
 The trigger is `AFTER UPDATE OF status` only. A practice's **first** status — the one set at
@@ -176,8 +191,17 @@ was not routed around. Owner: `operator[control-plane]`.
 ## Definition of done for the resumed PR
 
 1. Q1 and Q2 answered by the owner; Q3 chosen; Q4 folded in.
+   — **Q2 ANSWERED 2026-09-11** (above). Q1 remains open and is the reason item 4 is still open.
 2. `asyncpg.InterfaceError` no longer escapes the reader (fixed on the branch — see below).
 3. Both execution paths give the **same answer for the same practice**, proven by a test that runs
    one practice through both and asserts the payloads are equal.
+   — **DONE**: `test_both_paths_answer_identically_for_the_same_status`, parametrised over
+   `completed`/`approved`/`cancelled`/`on_process`. Guilt proven: reverting `_step_flags()` turns it
+   red on `cancelled` with both renderings printed in the failure message.
 4. A test that asserts the backend can never emit a status the frontend enum rejects — the
    contract, not just the code.
+   — **STILL OPEN, and deliberately so.** The backend can still emit `"status": null`, which the
+   closed `z.enum` in `apps/mouth/src/lib/schemas/process.ts` rejects wholesale. Closing it needs a
+   value on BOTH sides of the contract (`unknown` in the enum, or `SET NOT NULL` + backfill — 0 rows
+   measured 2026-08-27), i.e. Q1. Both seats of the 2026-09-11 council flagged it; it is recorded
+   here rather than half-fixed in the router.

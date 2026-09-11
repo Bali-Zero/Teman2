@@ -1,5 +1,6 @@
 brief_ref: evidence/brief.yml
 plan_ref: "the portal tracker reads a table no migration ever created (2026-08-27)"
+council_run: council.jsonl
 diff:
   net_lines: >-
     +459/-6 (net +453) across 4 files, measured at SHA 5b790247b by
@@ -306,3 +307,48 @@ dissent:
       is nullable with no CHECK — but nothing exercises it. It is latent, not live, which moves it
       from incident to hygiene. Recorded rather than quietly dropped because the owner acted on the
       stronger claim.
+  - seat: kimi-code/k3 (round 2026-09-11, council re-run)
+    objection: >-
+      BLOCKER — the two paths STILL disagree, for `cancelled`. The history path answers
+      `completed=True` (a filled tick) and the fallback path `completed=False` (a grey circle) for
+      the same practice, so applying 310 changes how 124 of 893 real rows render with no frontend
+      change and no test going red. The previous round fixed the disagreement for
+      `completed`/`approved` only, and `TestATerminalStatusIsNeverRenderedAsInProgress` covers
+      neither `cancelled` nor the fallback path.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed on disk before accepting, and it required an OWNER decision, not a code choice:
+      what a client should see for a cancelled case is Q2 of the spec this diff ships, assigned to
+      `operator[business]`. RULED 2026-09-11 (Zero, asked with both renderings side by side): a
+      cancelled practice is CLOSED but did not SUCCEED — `completed=True, is_current=False`, told
+      apart from a success by its STATUS, which `stateColors.ts` already maps to `danger`. Both
+      branches now call one `_step_flags()` helper. Guilt proven: reverting it fails the new parity
+      test on `cancelled` ONLY, printing both renderings; 19 passed with the cure.
+  - seat: codex-gpt-5.6-sol (round 2026-09-11, council re-run)
+    objection: >-
+      BLOCKER — the db-test fixture's guard judges a SUBSTRING of the DSN, not the database. A
+      `/nuzantara%5Frag` tail carries no `nuzantara_rag` substring and passes, while asyncpg
+      percent-decodes it and connects to exactly that database; the fixture then applies migration
+      DDL there permanently, outside any transaction.
+    status: CONFIRMED
+    resolution: >-
+      This repo's scar family #3 (guard-over-match) in its pure form, on a guard added in an earlier
+      round of this same PR. The fixture now asks the SERVER — `SELECT current_database()` on the
+      established connection — before any DDL runs; the text check is kept only because it can
+      refuse before a socket is opened. The second seat independently reproduced both halves: the
+      encoded tail evades the text check and is caught by the server-reported name.
+  - seat: codex-gpt-5.6-sol (round 2026-09-11, round 2 of the re-run)
+    objection: >-
+      BLOCKER — the new parity test admits a SHARED error: it compares the two branches without
+      asserting what the answer should BE, so a helper returning a constant `(True, False)` passes
+      every case. Reproduced: removing `approved` from TERMINAL_STATUSES left the file at 19 passed
+      while `approved` rendered as still in progress. Separately, `[ \t]+` normalisation leaves
+      NEWLINES intact, so `new_status VARCHAR(64)\nNOT NULL` evades the shape guard while a correct
+      ALTER merely wrapped onto two lines is rejected — over-match and under-match at once.
+    status: CONFIRMED
+    resolution: >-
+      Both correct and both cured, each verified with the seat's OWN mutation. The parity test now
+      carries the expected pair per status and asserts it against EACH branch separately: the
+      `approved` mutation fails with "history path answers (False, True) for 'approved', expected
+      (True, False)". The guard uses `\s+`: the newline-split defect fails with "new_status must be
+      NULLABLE", and a correctly wrapped ALTER passes. Round 3 verdict from the same seat: OK.

@@ -26,6 +26,7 @@ has not landed, which are the only ones where it matters.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import asyncpg
@@ -98,10 +99,20 @@ def test_the_migration_declares_the_shape_its_execution_cannot_prove() -> None:
         for line in forward_raw.splitlines()
         if line.strip() and not line.strip().startswith("--")
     )
+    # ...and collapse runs of whitespace, because the assertions below are
+    # substring checks against the file's COLUMN ALIGNMENT. `new_status  VARCHAR(64)
+    # NOT NULL` carries two spaces; reintroducing the defect with one space, or
+    # `DEFAULT  NOW()` with two, walks straight past a guard keyed on the exact
+    # spelling. Same over-match family as the comment stripping above: what is
+    # being asserted is a PROPERTY of the DDL, not its formatting. `\s+` and not
+    # `[ \t]+`: a round-2 seat showed the narrower class leaves NEWLINES intact, so
+    # `new_status VARCHAR(64)\nNOT NULL` walked past the guard while a correct ALTER
+    # merely wrapped onto two lines was REJECTED — over-match and under-match at once.
+    sql = re.sub(r"\s+", " ", sql)
 
     # new_status must be nullable: prod's practices.status is nullable, so a
     # transition TO NULL must be expressible or the trigger aborts the UPDATE.
-    assert "new_status  VARCHAR(64) NOT NULL" not in sql, (
+    assert "new_status VARCHAR(64) NOT NULL" not in sql, (
         "new_status must be NULLABLE — a NOT NULL here makes the trigger abort "
         "any UPDATE that sets practices.status to NULL"
     )
@@ -127,19 +138,39 @@ def test_the_migration_declares_the_shape_its_execution_cannot_prove() -> None:
 _FORBIDDEN_DB_SUBSTRINGS = ("nuzantara_rag", "prod", "production")
 
 
+def _forbidden(dbname: str) -> str | None:
+    """The first forbidden substring `dbname` matches, or None."""
+    lowered = dbname.lower()
+    return next((bad for bad in _FORBIDDEN_DB_SUBSTRINGS if bad in lowered), None)
+
+
 @pytest.fixture
 async def conn():
-    dbname = (TEST_DSN or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1].lower()
-    for bad in _FORBIDDEN_DB_SUBSTRINGS:
-        if bad in dbname:
-            pytest.fail(
-                f"refusing to apply migration DDL to database {dbname!r} — "
-                f"TEST_DATABASE_URL looks like a real database (matched {bad!r}). "
-                "This fixture applies 310 permanently, outside any transaction."
-            )
+    # Two checks, and the SECOND one is the guard. Reading the DSN as text
+    # answers a question about a STRING, not about the database the driver will
+    # open: `/nuzantara%5Frag` carries no `nuzantara_rag` substring, yet asyncpg
+    # percent-decodes it and connects to exactly that database — reproduced with
+    # the installed parser, without connecting. A review seat raised it, and it
+    # is cicatrix #3 (a guard that judges a substring instead of the entity).
+    # The text check is kept only because it can refuse BEFORE opening a socket.
+    if (bad := _forbidden((TEST_DSN or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1])):
+        pytest.fail(
+            f"refusing to apply migration DDL — TEST_DATABASE_URL names a real "
+            f"database (matched {bad!r}). This fixture applies 310 permanently, "
+            "outside any transaction."
+        )
 
     connection = await asyncpg.connect(TEST_DSN)
     try:
+        # Ask the SERVER which database this connection actually landed in. No
+        # DDL runs before this answer.
+        actual = await connection.fetchval("SELECT current_database()")
+        if (bad := _forbidden(actual or "")):
+            pytest.fail(
+                f"refusing to apply migration DDL to database {actual!r} — the "
+                f"connection resolved to a real database (matched {bad!r}), "
+                "whatever TEST_DATABASE_URL looked like."
+            )
         forward, _ = split_migration_sql(MIGRATION.read_text())
         await connection.execute(forward)
         yield connection

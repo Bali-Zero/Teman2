@@ -77,7 +77,9 @@ COMMENT ON TABLE practice_status_log IS
     'Append-only status history for practices, written by trg_practice_status_log. Feeds the client portal process timeline. changed_by holds an internal actor and is never exposed to a client.';
 
 COMMENT ON COLUMN practice_status_log.old_status IS
-    'NULL for the first recorded transition of a practice that predates this table.';
+    'NULL only when the PREVIOUS status was itself NULL. Not NULL for the first 
+     recorded transition of a pre-existing practice: the trigger writes OLD.status, 
+     which already holds that practice''s status.';
 
 COMMENT ON COLUMN practice_status_log.changed_by IS
     'Internal actor, read from the app.actor session GUC when the caller sets one; NULL otherwise. Never selected by the client-facing timeline query.';

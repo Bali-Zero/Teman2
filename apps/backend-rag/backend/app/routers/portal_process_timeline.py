@@ -67,6 +67,33 @@ def _status_label(status: str | None) -> str:
     return STATUS_LABELS.get(status, status.replace("_", " ").title())
 
 
+def _step_flags(
+    status: str | None, current_status: str | None, is_last: bool
+) -> tuple[bool, bool]:
+    """`(completed, is_current)` for one step — the ONE place either path decides it.
+
+    RULED 2026-09-11 (Zero, answering Q2 of `practice-timeline-semantics-v1`): a
+    CANCELLED practice is a step that is CLOSED but did not SUCCEED. It is
+    `completed` — nothing is still running, so no spinner — and never
+    `is_current`; the client tells it apart from `completed`/`approved` by its
+    status, which `stateColors.ts` already maps to `danger` rather than to the
+    success tone. It is not rendered as a green tick and not rendered as a
+    practice still in flight.
+
+    This function exists because the two paths used to compute these two flags
+    SEPARATELY and disagreed for exactly that status: the history path said
+    `completed=True` (a filled tick) and the fallback path `completed=False` (a
+    grey circle) for the same cancelled practice. Applying migration 310 would
+    therefore have flipped 124 of 893 real rows from one rendering to the other
+    without a line of frontend changing — a review seat found it, and it is the
+    reason a single helper now serves both branches.
+    """
+    is_current = bool(
+        is_last and status == current_status and status not in TERMINAL_STATUSES
+    )
+    return (not is_current), is_current
+
+
 async def _build_timeline(
     pool: asyncpg.Pool,
     practice_id: int,
@@ -119,7 +146,13 @@ async def _build_timeline(
                     SELECT old_status, new_status, changed_at
                     FROM practice_status_log
                     WHERE practice_id = $1
-                    ORDER BY changed_at ASC
+                    -- `id ASC` is the tie-breaker, not decoration: `is_last`
+                    -- below decides which step is CURRENT, and rows stamped
+                    -- before the clock_timestamp() convergence (or written in
+                    -- one transaction) can share a changed_at. Without it
+                    -- Postgres may return either row last and the wrong step
+                    -- renders as current.
+                    ORDER BY changed_at ASC, id ASC
                     """,
                     practice_id,
                 )
@@ -157,25 +190,26 @@ async def _build_timeline(
                 # and the client rendered a spinning loader on a finished
                 # practice — while the fallback path, right below, got it right.
                 # The two paths disagreed on the same practice.
-                is_current = (
-                    status == current_status and is_last and status not in TERMINAL_STATUSES
-                )
+                completed, is_current = _step_flags(status, current_status, is_last)
                 steps.append(
                     {
                         "status": status,
                         "label": _status_label(status),
-                        "completed": not is_current,
+                        "completed": completed,
                         "is_current": is_current,
                         "changed_at": str(row["changed_at"]) if row["changed_at"] else None,
                     }
                 )
         else:
+            fb_completed, fb_is_current = _step_flags(
+                current_status, current_status, is_last=True
+            )
             steps = [
                 {
                     "status": current_status,
                     "label": _status_label(current_status),
-                    "completed": current_status in ("completed", "approved"),
-                    "is_current": current_status not in TERMINAL_STATUSES,
+                    "completed": fb_completed,
+                    "is_current": fb_is_current,
                     "changed_at": str(practice["start_date"]) if practice["start_date"] else None,
                 }
             ]

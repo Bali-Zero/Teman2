@@ -365,6 +365,18 @@ class TestTheTimelineSurvivesAStatusProductionActuallyAllows:
     `STATUS_LABELS.get(status, status.replace(...))`, and Python evaluates a
     `dict.get` DEFAULT eagerly — so it raised before the lookup that would have
     succeeded.
+
+    WHAT THESE TWO TESTS DO NOT CLAIM, stated because both review seats of the
+    2026-09-11 council named it: a payload carrying `"status": null` is still
+    REJECTED WHOLESALE by the client. `apps/mouth/src/lib/schemas/process.ts`
+    types `ProcessStep.status` and `ProcessTimelineData.current_status` as
+    members of a closed, non-nullable `z.enum`, so Zod discards the entire
+    response and the tracker shows "unable to load" instead of a 500. What is
+    fixed here is only the AttributeError; making a NULL status renderable
+    needs a value on BOTH sides of the contract (`unknown` in the enum, or
+    `SET NOT NULL` with a backfill — 0 rows measured 2026-08-27), which is a
+    contract change and is not made in this PR. These tests pin the crash that
+    is fixed; they do not assert that the client can render the result.
     """
 
     @pytest.mark.asyncio
@@ -438,3 +450,91 @@ class TestATerminalStatusIsNeverRenderedAsInProgress:
         last = result["steps"][-1]
         assert last["is_current"] is True
         assert last["completed"] is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("status", "expected"),
+        [
+            ("completed", (True, False)),
+            ("approved", (True, False)),
+            ("cancelled", (True, False)),
+            ("on_process", (False, True)),
+        ],
+    )
+    async def test_both_paths_answer_identically_for_the_same_status(
+        self, status, expected
+    ) -> None:
+        """DoD #3 of the spec: one practice, both paths, the same two flags.
+
+        The previous round fixed the disagreement for `completed` and `approved`
+        only. `cancelled` kept it: the history path said `completed=True` (a
+        filled tick) and the fallback path `completed=False` (a grey circle) for
+        the same practice — so applying migration 310 would have changed how 124
+        of 893 real rows render, with no frontend change and no test going red.
+        A review seat drove both paths and reported the two answers side by side.
+
+        Parametrised over every terminal status AND a non-terminal one, because
+        a helper that returned a constant would satisfy a single case. The flags
+        now come from `_step_flags`, so this asserts the two branches CALL it
+        rather than each carrying its own copy of the rule.
+        """
+        history_conn = AsyncMock()
+        history_conn.fetchrow.return_value = _practice_row(status=status)
+        history_conn.fetch.return_value = [
+            {"old_status": "inquiry", "new_status": status, "changed_at": "2026-01-02"}
+        ]
+
+        fallback_conn = AsyncMock()
+        fallback_conn.fetchrow.return_value = _practice_row(status=status)
+        fallback_conn.fetch.side_effect = asyncpg.UndefinedTableError("no table")
+
+        from_history = await _build_timeline(
+            _pool_for(history_conn), practice_id=5, client_id=1
+        )
+        from_fallback = await _build_timeline(
+            _pool_for(fallback_conn), practice_id=5, client_id=1
+        )
+
+        h, f = from_history["steps"][-1], from_fallback["steps"][-1]
+        assert (h["completed"], h["is_current"]) == (f["completed"], f["is_current"]), (
+            f"the two paths disagree for {status!r}: history says "
+            f"completed={h['completed']}/is_current={h['is_current']}, fallback says "
+            f"completed={f['completed']}/is_current={f['is_current']}"
+        )
+        # ...and the pair they agree on is the RIGHT one. Agreement alone is a
+        # weak assertion: a helper returning a constant `(True, False)` makes
+        # every case above pass, and a round-2 seat reproduced exactly that —
+        # dropping `approved` from TERMINAL_STATUSES left the whole file at 19
+        # passed while `approved` rendered as still in progress.
+        assert (h["completed"], h["is_current"]) == expected, (
+            f"history path answers {(h['completed'], h['is_current'])} for {status!r}, "
+            f"expected {expected}"
+        )
+        assert (f["completed"], f["is_current"]) == expected, (
+            f"fallback path answers {(f['completed'], f['is_current'])} for {status!r}, "
+            f"expected {expected}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_cancelled_is_closed_but_not_rendered_as_a_success(self) -> None:
+        """RULED 2026-09-11 (Zero, Q2 of practice-timeline-semantics-v1).
+
+        A cancelled practice is a step that is CLOSED — nothing is still
+        running, so `is_current` is False and the client shows no spinner — and
+        `completed` is True. It is not confused with a successful practice
+        because the client colours it by STATUS: `stateColors.ts` maps
+        `cancelled` to `danger`, not to the success tone. This test pins the
+        backend half of that ruling; the colour mapping is the frontend's.
+        """
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row(status="cancelled")
+        mock_conn.fetch.return_value = [
+            {"old_status": "inquiry", "new_status": "cancelled", "changed_at": "2026-01-02"}
+        ]
+
+        result = await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+        last = result["steps"][-1]
+        assert last["status"] == "cancelled", "the client needs the status to colour it"
+        assert last["is_current"] is False, "a cancelled practice is not in flight"
+        assert last["completed"] is True, "a cancelled practice is closed"
