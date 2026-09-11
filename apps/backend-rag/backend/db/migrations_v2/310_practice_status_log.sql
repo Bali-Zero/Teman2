@@ -61,6 +61,11 @@ CREATE TABLE IF NOT EXISTS practice_status_log (
 -- was fixed, because the CREATE never ran. These ALTERs make the file converge
 -- to the intended shape whatever the database started from, which is also what
 -- makes it honestly idempotent rather than idempotent-only-for-creation.
+-- Squawk lint suppression: the table is CREATEd in this same file, so there are no existing
+-- clients to break; the real risk runs the other way -- a NOT NULL inherited from an earlier
+-- draft would veto the very transition this table exists to observe (see the CONVERGENCE
+-- comment above).
+-- squawk-ignore ban-drop-not-null
 ALTER TABLE practice_status_log ALTER COLUMN new_status DROP NOT NULL;
 ALTER TABLE practice_status_log ALTER COLUMN changed_at SET DEFAULT clock_timestamp();
 
