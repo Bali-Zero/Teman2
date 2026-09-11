@@ -761,14 +761,17 @@ async def get_staff_practice_artifact(
             raise HTTPException(
                 status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
             ) from exc
-        except (ArtifactObjectMissing, ArtifactDigestMismatch):
-            # Zero unverified/partial bytes on the wire -- built directly
-            # (bypassing `_ContractErrorRoute`, which only intercepts a
-            # raised `HTTPException`) exactly like the customer lane's own
-            # `getPracticeArtifact` handles the same two exceptions.
-            empty = Response(status_code=503, content=b"")
-            _privacy_headers(empty)
-            return empty
+        except (ArtifactObjectMissing, ArtifactDigestMismatch) as exc:
+            # Zero unverified/partial PDF bytes on the wire -- but the
+            # ERROR response still goes through the normal
+            # `_ContractErrorRoute` -> `_error()` path, exactly like the
+            # customer lane's own `getPracticeArtifact` (see that
+            # handler's identical correction note). "Zero body bytes"
+            # means zero bytes of the unverified PDF, never an empty HTTP
+            # body in place of the contract's error envelope.
+            raise HTTPException(
+                status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
+            ) from exc
 
     logger.info(
         "garuda_staff.practice_artifact_read",

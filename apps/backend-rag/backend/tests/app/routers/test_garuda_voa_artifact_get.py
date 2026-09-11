@@ -484,9 +484,16 @@ class TestGetPracticeArtifactCustomer:
         assert resp.status_code == 404
         assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
-    async def test_digest_mismatch_is_503_with_an_empty_body(
+    async def test_digest_mismatch_is_503_through_the_normal_contract_error_envelope(
         self, pool, order_repository, client, object_store: InMemoryArtifactObjectStore
     ) -> None:
+        """Dux correction: "zero body bytes" (spec §5) means zero bytes of
+        the UNVERIFIED PDF -- it does not mean an empty HTTP body in place
+        of the contract's error envelope. Every error in this lane goes
+        through `_ContractErrorRoute` -> `_error()` and carries the same
+        three fields (code, retryable, message_key) every sibling error
+        does; a raw empty `Response` built directly would have been the
+        one error on this route that broke that shape."""
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-getmis-000000000000", provider_event_id="evt-getmis-1"
         )
@@ -504,7 +511,14 @@ class TestGetPracticeArtifactCustomer:
             cookies={_SESSION_COOKIE: "secret-getmis-0000000000000000"},
         )
         assert resp.status_code == 503
-        assert len(resp.content) == 0
+        assert resp.headers["content-type"].startswith("application/json")
+        body = resp.json()
+        assert body["code"] == "SERVICE_UNAVAILABLE"
+        assert body["retryable"] is True
+        # No byte of the (unverified, or tampered-replacement) PDF ever
+        # reaches the wire.
+        assert "%PDF" not in resp.text
+        assert "tampered" not in resp.text
 
 
 @pytest.mark.asyncio

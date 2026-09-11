@@ -716,16 +716,20 @@ async def get_practice_artifact(
             raise HTTPException(
                 status_code=404, detail={"code": "ORDER_NOT_FOUND", "retryable": False}
             ) from exc
-        except (ArtifactObjectMissing, ArtifactDigestMismatch):
-            # Zero body bytes on the wire -- never a partial or unverified
-            # payload, and never even the standard JSON error envelope
-            # (this route's success body IS the raw PDF; an envelope here
-            # would be indistinguishable from a malformed PDF to a naive
-            # caller). Built directly, bypassing `_ContractErrorRoute`
-            # (which only intercepts a raised `HTTPException`).
-            empty = Response(status_code=503, content=b"")
-            _privacy_headers(empty)
-            return empty
+        except (ArtifactObjectMissing, ArtifactDigestMismatch) as exc:
+            # Zero ARTIFACT bytes on the wire -- never a partial or
+            # unverified PDF byte -- but the ERROR response still goes
+            # through the normal `_ContractErrorRoute` -> `_error()` path
+            # like every other code in this lane, so it carries the same
+            # three contract fields (code, retryable, message_key) as
+            # every sibling error. CORRECTED (Dux review): an earlier
+            # version of this handler built a raw zero-byte `Response`
+            # directly, bypassing `_ContractErrorRoute` entirely -- "zero
+            # body bytes" meant zero bytes of the unverified PDF, not an
+            # empty HTTP body.
+            raise HTTPException(
+                status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
+            ) from exc
 
     headers = {
         "Content-Disposition": f'attachment; filename="voa-{order_id}.pdf"',
