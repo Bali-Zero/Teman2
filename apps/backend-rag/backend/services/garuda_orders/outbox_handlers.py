@@ -78,6 +78,14 @@ logger = logging.getLogger("garuda.orders.outbox_handlers")
 TRACKER_BASE_URL_ENV = "GARUDA_TRACKER_BASE_URL"
 DEFAULT_TRACKER_BASE_URL = "https://balizero.com/visa/voa/orders"
 
+#: The `delivered` email's second link (spec §5: "Fact 6's body gains a
+#: second link beside the tracker ... The link carries no token"). Mirrors
+#: `TRACKER_BASE_URL_ENV`'s own env-with-default shape one line above --
+#: the customer route is `getPracticeArtifact`
+#: (`garuda_orders_router.py`, `GET {base}/{order_id}/artifact`).
+ARTIFACT_BASE_URL_ENV = "GARUDA_ARTIFACT_BASE_URL"
+DEFAULT_ARTIFACT_BASE_URL = "https://balizero.com/api/visa/voa/orders"
+
 EMAIL_API_URL_ENV = "INTERNAL_EMAIL_API_URL"
 DEFAULT_EMAIL_API_URL = "https://nuzantara-rag.fly.dev/api/notifications/send-email"
 EMAIL_API_KEY_ENV = "NUZANTARA_API_KEY"
@@ -1332,19 +1340,36 @@ class PracticeTransitionEmailHandler:
         )
 
 
-def _practice_transition_body(message: str) -> Callable[[PracticeTransitionEmailFacts], str]:
+def _practice_transition_body(
+    message: str, *, include_download_link: bool = False
+) -> Callable[[PracticeTransitionEmailFacts], str]:
     """Same tracker-link body shape `PracticeReceivedEmailHandler._body`
-    uses above, parameterized only by the one sentence that differs per
-    transition."""
+    uses above, parameterized by the one sentence that differs per
+    transition. `include_download_link` is `True` ONLY for the `delivered`
+    email (spec §5's second link, "Download my document") -- the other six
+    transition emails must never gain it; `_wire_handlers`'s call site
+    below is the one place that decides which job_type gets `True`, so
+    adding an eighth transition email later cannot accidentally inherit it.
+
+    The link carries NO token (spec §5): it points at the customer's own
+    magic-link-gated `getPracticeArtifact` route, the same session-scoped
+    auth every other tracker/download link in this handler already relies
+    on -- never a bearer credential riding in the email itself."""
 
     def _body(facts: PracticeTransitionEmailFacts) -> str:
         base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
         tracker = f"{base}/{facts.order_id}"
+        download_line = ""
+        if include_download_link:
+            artifact_base = os.getenv(ARTIFACT_BASE_URL_ENV, DEFAULT_ARTIFACT_BASE_URL).rstrip("/")
+            artifact_url = f"{artifact_base}/{facts.order_id}/artifact"
+            download_line = f'<a href="{_h(artifact_url)}">Download my document</a><br><br>'
         return (
             "Hello,<br><br>"
             f"Your Bali Zero Visa on Arrival application ({_h(facts.case_type)}) {message}<br><br>"
             "You can follow its progress at any time here:<br><br>"
             f'<a href="{tracker}">Track my application</a><br><br>'
+            f"{download_line}"
             "— Bali Zero"
         )
 
@@ -2123,7 +2148,9 @@ def build_handlers(
             sender,
             job_type=job_type,
             subject=subject,
-            body=_practice_transition_body(message),
+            body=_practice_transition_body(
+                message, include_download_link=job_type == "practice_delivered_email"
+            ),
         )
     if staff_page_sender is not None:
         handlers.update(

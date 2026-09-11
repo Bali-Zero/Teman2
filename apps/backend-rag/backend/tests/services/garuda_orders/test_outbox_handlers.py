@@ -389,6 +389,35 @@ def test_html_body_renders_a_normal_case_type_unchanged(job_type):
     assert "&lt;" not in body
 
 
+def test_delivered_email_body_gains_a_tokenless_download_link() -> None:
+    """Spec §5: only `practice_delivered_email` gains the second link
+    ("Download my document"), and it carries NO token -- it points at the
+    customer's magic-link-gated `getPracticeArtifact` route, not a bearer
+    credential riding in the email."""
+
+    body = _practice_transition_body(
+        "is complete — your document is ready.", include_download_link=True
+    )(_practice_transition_facts(order_id="ord_specimen"))
+    assert "Download my document" in body
+    assert "/orders/ord_specimen/artifact" in body
+    assert "token" not in body.lower()
+    assert "?" not in body
+
+
+def test_non_delivered_transition_email_bodies_never_gain_the_download_link() -> None:
+    """The other six transition emails (`_PRACTICE_TRANSITION_EMAILS`'s
+    remaining entries) must NOT gain the link -- `include_download_link`
+    defaults to `False`, and the in-review body is the representative
+    sample already covered by `_HTML_BODY_RENDERERS["practice_transition_
+    email"]` above."""
+
+    body = _practice_transition_body("is now being reviewed by our team.")(
+        _practice_transition_facts(order_id="ord_specimen")
+    )
+    assert "/artifact" not in body
+    assert "Download my document" not in body
+
+
 # --------------------------------------------------------------------------
 # the handler, against real order rows
 # --------------------------------------------------------------------------

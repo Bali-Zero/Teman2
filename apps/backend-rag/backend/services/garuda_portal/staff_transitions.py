@@ -28,6 +28,10 @@ from typing import Any
 import asyncpg
 from fastapi import HTTPException
 
+from backend.services.garuda_artifacts.service import (
+    ArtifactDeliveryRejected,
+    GarudaArtifactService,
+)
 from backend.services.garuda_orders import journal
 
 __all__ = [
@@ -83,6 +87,14 @@ _EVIDENCE_KIND: dict[str, str] = {"submit": "filing", "approve": "approval", "re
 #: they are staff-supplied opaque identifiers of the identical shape and
 #: deserve the identical guard, not a laxer one by omission.
 _ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
+
+#: Fact 17's second half (spec §5): the WIRE check on `artifact_digest` was
+#: a bare length test (`len(...) != 64`), looser than the contract's own
+#: `^[a-f0-9]{64}$` -- a value with the right length but any uppercase or
+#: non-hex character passed this function only to be rejected later (or
+#: worse, silently normalized) somewhere downstream. Cured in the same
+#: place fact 17's first half (PR-11 resolve-and-verify, below) is cured.
+_DIGEST_PATTERN = re.compile(r"^[a-f0-9]{64}$")
 
 
 def visible_or_403(row: asyncpg.Record, actor: dict[str, Any]) -> None:
@@ -151,7 +163,7 @@ def validate_transition_body(transition_id: str, body: dict) -> dict[str, Any]:
             not isinstance(artifact_id, str)
             or not _ID_PATTERN.match(artifact_id)
             or not isinstance(artifact_digest, str)
-            or len(artifact_digest) != 64
+            or not _DIGEST_PATTERN.match(artifact_digest)
         ):
             _fail()
         return {"artifact_id": artifact_id, "artifact_digest": artifact_digest}
@@ -168,6 +180,7 @@ async def apply_transition(
     fields: dict[str, Any],
     key_digest: bytes,
     payload_digest: bytes,
+    artifact_service: GarudaArtifactService | None = None,
 ) -> asyncpg.Record:
     """Runs INSIDE the caller's transaction (same convention `journal.py`
     itself documents). Returns the `updated` row (state + customer-visible
@@ -228,6 +241,40 @@ async def apply_transition(
             raise HTTPException(
                 status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
             )
+
+    if spec.kind == "deliver":
+        # PENDING-ARMS row 1847 / spec §5: the two fields stay in the wire
+        # request (a breaking contract change was rejected), but what they
+        # MEAN changes here -- an assertion the server CHECKS, never a
+        # claim it records. Runs BEFORE the CAS UPDATE below and BEFORE the
+        # outbox enqueue at the end of this function: a rejection raises
+        # out of this `async with conn.transaction():` block (the router's
+        # own), so the practice's state and the outbox are left completely
+        # untouched, same as every other guard in this function.
+        #
+        # `resolve_for_delivery` (`garuda_artifacts/service.py`) is steps
+        # 1-3 of spec §5 in one call: resolve the LIVE (non-superseded)
+        # artifact row for this practice, require the submitted
+        # (artifact_id, artifact_digest) pair to equal that row's, then
+        # confirm the stored object exists and hashes to the row's digest.
+        # A fabricated, stale, superseded, or another practice's pair all
+        # collapse to the same `ArtifactDeliveryRejected` -> 422
+        # INVALID_REQUEST, never a 403/404 that would leak which case it was.
+        if artifact_service is None:
+            raise HTTPException(
+                status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
+            )
+        try:
+            await artifact_service.resolve_for_delivery(
+                conn,
+                practice_id=practice_id,
+                artifact_id=fields["artifact_id"],
+                artifact_digest=fields["artifact_digest"],
+            )
+        except ArtifactDeliveryRejected as exc:
+            raise HTTPException(
+                status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
+            ) from exc
 
     # Pre-generated so the SAME UPDATE that flips state to Blocked can also
     # store this id as `active_block_id`, and the journal row written below

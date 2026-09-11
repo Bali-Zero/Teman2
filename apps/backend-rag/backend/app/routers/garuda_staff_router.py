@@ -566,6 +566,17 @@ async def transition_practice(
         raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
     fields = validate_transition_body(transition_id, body)
 
+    # PR-11 (`deliver`) is the one transition that needs the artifact store
+    # wired -- resolved here, BEFORE the idempotency key is reserved (same
+    # "fail closed before burning a key slot" discipline `assign_practice`'s
+    # target-validity check already uses), never as an unconditional
+    # `Depends(get_artifact_service)` on this handler, which would 503
+    # every OTHER transition (PR-02..PR-10) the moment the artifact store
+    # happens to be unwired.
+    artifact_service: GarudaArtifactService | None = None
+    if TRANSITIONS[transition_id].kind == "deliver":
+        artifact_service = get_artifact_service(request)
+
     key_digest = idempotency.scoped_key_sha256(
         actor=actor["email"], operation="transitionPractice", raw_key=key
     )
@@ -602,6 +613,7 @@ async def transition_practice(
                 fields=fields,
                 key_digest=key_digest,
                 payload_digest=payload_digest,
+                artifact_service=artifact_service,
             )
             response_body = _practice_view(updated)
             await idempotency.complete(

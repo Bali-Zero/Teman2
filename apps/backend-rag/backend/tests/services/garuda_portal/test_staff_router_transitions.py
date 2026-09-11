@@ -31,6 +31,9 @@ from jose import jwt as jose_jwt
 
 from backend.app.core.database import init_asyncpg_connection
 from backend.app.routers import garuda_staff_router
+from backend.services.garuda_artifacts.fakes import InMemoryArtifactObjectStore
+from backend.services.garuda_artifacts.postgres_repository import PostgresArtifactRepository
+from backend.services.garuda_artifacts.service import GarudaArtifactService
 from backend.services.garuda_flow.intake import CaseType
 from backend.services.garuda_orders.idempotency import canonical_payload_sha256, scoped_key_sha256
 from backend.services.garuda_orders.models import Applicant
@@ -118,6 +121,52 @@ async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_versi
     )
 
 
+async def _ensure_garuda_document_test_policy(conn: asyncpg.Connection) -> str:
+    """Verbatim copy of `test_staff_router_put_practice_artifact.py`'s own
+    helper -- see that file for the full self-heal reasoning. PR-11's own
+    tests need this too, now that delivery goes through `putPracticeArtifact`
+    for real (migration 312's `bind_garuda_practice_artifact_retention_
+    policy` `BEFORE INSERT` trigger fails the row closed without an active
+    `GARUDA_DOCUMENT` policy)."""
+    await conn.execute(
+        """
+        UPDATE public.visa_decision_retention_policies
+           SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
+         WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'
+           AND upper(effective_period) IS NULL
+        """
+    )
+    policy_version = f"staff-transitions-fixture-{uuid.uuid4().hex[:16]}"
+    await conn.execute(
+        """
+        INSERT INTO visa_decision_retention_policies (
+            environment, policy_scope, policy_version, retention_interval,
+            idempotency_retention_interval, legal_hold_review_interval,
+            retention_anchor, effective_period, approved_by, approval_reference
+        ) VALUES (
+            'TEST', 'GARUDA_DOCUMENT', $1, INTERVAL '30 days',
+            INTERVAL '1 hour', INTERVAL '30 days',
+            'CREATED_AT', tstzrange(clock_timestamp(), NULL, '[)'),
+            'zero-test-approver', 'ZERO-GARUDA-DOCUMENT-RETENTION-TEST-APPROVAL'
+        )
+        """,
+        policy_version,
+    )
+    return policy_version
+
+
+async def _close_garuda_document_test_policy(conn: asyncpg.Connection, policy_version: str) -> None:
+    await conn.execute(
+        """
+        UPDATE public.visa_decision_retention_policies
+           SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
+         WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'
+           AND policy_version = $1 AND upper(effective_period) IS NULL
+        """,
+        policy_version,
+    )
+
+
 @pytest.fixture
 async def pool():
     # `pytest.fail`/`pytest.skip` both raise, but a static analyser cannot
@@ -140,13 +189,16 @@ async def pool():
     assert p is not None
     async with p.acquire() as conn:
         await conn.execute(
-            "TRUNCATE garuda_practices, garuda_order_outbox, garuda_order_journal, "
-            "garuda_payment_inbox, garuda_order_idempotency, garuda_orders CASCADE"
+            "TRUNCATE garuda_practice_artifacts, garuda_practices, garuda_order_outbox, "
+            "garuda_order_journal, garuda_payment_inbox, garuda_order_idempotency, "
+            "garuda_orders CASCADE"
         )
-        policy_version = await _ensure_garuda_order_test_policy(conn)
+        order_policy_version = await _ensure_garuda_order_test_policy(conn)
+        document_policy_version = await _ensure_garuda_document_test_policy(conn)
     yield p
     async with p.acquire() as conn:
-        await _close_garuda_order_test_policy(conn, policy_version)
+        await _close_garuda_order_test_policy(conn, order_policy_version)
+        await _close_garuda_document_test_policy(conn, document_policy_version)
     await p.close()
 
 
@@ -161,6 +213,21 @@ def order_repository(pool, monkeypatch):
     )
     return GarudaOrderRepository(
         pool, eligibility_lookup=_FakeLookup(), provider=_FakeProvider(), environment="TEST"
+    )
+
+
+@pytest.fixture
+def artifact_service() -> GarudaArtifactService:
+    """Real Postgres row (`PostgresArtifactRepository`), in-memory object
+    store -- same shape `test_staff_router_put_practice_artifact.py`'s own
+    fixture uses. PR-11's resolve-and-verify needs a REAL wired service to
+    exercise both the rejection (no live artifact yet) and acceptance
+    (a real `putPracticeArtifact` pair) paths against the actual migration
+    312 constraints, not a hand-rolled stand-in."""
+    return GarudaArtifactService(
+        repository=PostgresArtifactRepository(),
+        object_store=InMemoryArtifactObjectStore(),
+        environment="TEST",
     )
 
 
@@ -182,10 +249,11 @@ def _jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _make_app(pool) -> FastAPI:
+def _make_app(pool, *, artifact_service: GarudaArtifactService | None = None) -> FastAPI:
     app = FastAPI()
     app.include_router(garuda_staff_router.router)
     app.state.garuda_db_pool = pool
+    app.state.garuda_artifact_service = artifact_service
     return app
 
 
@@ -213,6 +281,8 @@ def _bearer(email: str, role: str) -> str:
 _ADMIN = "zero@balizero.com"
 _TEAM_A = "teama@balizero.com"
 _TEAM_B = "teamb@balizero.com"
+
+_SYNTHETIC_PDF = b"%PDF-1.4\n%synthetic-test-fixture-no-real-document\n%%EOF"
 
 
 async def _create_and_pay_order(order_repository, *, result_id: str, provider_event_id: str) -> str:
@@ -372,12 +442,20 @@ class TestTransitionMatrixAndReplay:
             json=payload,
         )
 
-    async def test_happy_path_pr02_pr04_pr06_pr11(self, pool, order_repository) -> None:
+    async def test_happy_path_pr02_pr04_pr06_pr11(
+        self, pool, order_repository, artifact_service
+    ) -> None:
+        """PENDING-ARMS row 1847 / spec §5: PR-11 must VERIFY the submitted
+        (artifact_id, artifact_digest) pair resolves to a real, live,
+        byte-verified artifact for THIS practice -- never just RECORD
+        whatever the caller sent. A fabricated pair is rejected (422,
+        practice stays Approved, no delivery email queued); only a pair
+        `putPracticeArtifact` actually produced is accepted."""
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-happy-0000000000", provider_event_id="evt-happy-1"
         )
         practice_id = await _practice_id_for(pool, order_id)
-        app = _make_app(pool)
+        app = _make_app(pool, artifact_service=artifact_service)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             r02 = await self._post(
@@ -404,14 +482,47 @@ class TestTransitionMatrixAndReplay:
             assert r06.status_code == 200, r06.text
             assert r06.json()["state"] == "Approved"
 
+            # A fabricated pair with no putPracticeArtifact behind it: 422,
+            # never recorded.
+            r11_fabricated = await self._post(
+                client,
+                practice_id,
+                "happy-key-pr11-fabricated-0001",
+                {
+                    "transition_id": "PR-11",
+                    "artifact_id": "artifact_id_0000000000001",
+                    "artifact_digest": "a" * 64,
+                },
+            )
+            assert r11_fabricated.status_code == 422, r11_fabricated.text
+            assert r11_fabricated.json()["code"] == "INVALID_REQUEST"
+
+            still_approved = await client.get(
+                f"/api/visa/voa/staff/practices/{practice_id}",
+                headers={"Authorization": _bearer(_ADMIN, "admin")},
+            )
+            assert still_approved.json()["state"] == "Approved"
+            assert still_approved.json()["artifact_available"] is False
+
+            put_resp = await client.put(
+                f"/api/visa/voa/staff/practices/{practice_id}/artifact",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "happy-key-put-artifact-0001",
+                },
+                content=_SYNTHETIC_PDF,
+            )
+            assert put_resp.status_code == 200, put_resp.text
+            artifact = put_resp.json()
+
             r11 = await self._post(
                 client,
                 practice_id,
                 "happy-key-pr11-0000000001",
                 {
                     "transition_id": "PR-11",
-                    "artifact_id": "artifact_id_0000000000001",
-                    "artifact_digest": "a" * 64,
+                    "artifact_id": artifact["artifact_id"],
+                    "artifact_digest": artifact["artifact_digest"],
                 },
             )
             assert r11.status_code == 200, r11.text
@@ -422,8 +533,8 @@ class TestTransitionMatrixAndReplay:
                 f"/api/visa/voa/staff/practices/{practice_id}",
                 headers={"Authorization": _bearer(_ADMIN, "admin")},
             )
-            assert detail.json()["artifact_id"] == "artifact_id_0000000000001"
-            assert detail.json()["artifact_digest"] == "a" * 64
+            assert detail.json()["artifact_id"] == artifact["artifact_id"]
+            assert detail.json()["artifact_digest"] == artifact["artifact_digest"]
 
         # Evidence rows (round-2 disposition #8): one per submit/approve
         # transition, `kind` matching `_EVIDENCE_KIND_BY_TRANSITION_KIND`,
@@ -434,10 +545,133 @@ class TestTransitionMatrixAndReplay:
                 " WHERE practice_id = $1 ORDER BY transition_id",
                 practice_id,
             )
+            outbox_job_types = await conn.fetch(
+                "SELECT job_type FROM garuda_order_outbox WHERE order_id = $1", order_id
+            )
         assert [(r["transition_id"], r["evidence_id"], r["kind"]) for r in rows] == [
             ("PR-04", "evidence_filing_0000000001", "filing"),
             ("PR-06", "evidence_approval_000000001", "approval"),
         ]
+        # Exactly ONE delivered-email job, from the accepted PR-11 --
+        # the fabricated-pair rejection above enqueued nothing.
+        assert sum(1 for r in outbox_job_types if r["job_type"] == "practice_delivered_email") == 1
+
+    async def test_pr11_correct_artifact_id_but_wrong_digest_is_422(
+        self, pool, order_repository, artifact_service
+    ) -> None:
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-wrongdig-000000000", provider_event_id="evt-wrongdig-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool, artifact_service=artifact_service)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await self._post(client, practice_id, "wrongdig-key-pr02-0001", {"transition_id": "PR-02"})
+            await self._post(
+                client,
+                practice_id,
+                "wrongdig-key-pr04-0001",
+                {"transition_id": "PR-04", "evidence_id": "evidence_filing_0000000002"},
+            )
+            await self._post(
+                client,
+                practice_id,
+                "wrongdig-key-pr06-0001",
+                {"transition_id": "PR-06", "evidence_id": "evidence_approval_000000002"},
+            )
+            put_resp = await client.put(
+                f"/api/visa/voa/staff/practices/{practice_id}/artifact",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "wrongdig-key-put-0001",
+                },
+                content=_SYNTHETIC_PDF,
+            )
+            assert put_resp.status_code == 200, put_resp.text
+            artifact = put_resp.json()
+            wrong_digest = "b" * 64
+            assert wrong_digest != artifact["artifact_digest"]
+
+            r11 = await self._post(
+                client,
+                practice_id,
+                "wrongdig-key-pr11-0001",
+                {
+                    "transition_id": "PR-11",
+                    "artifact_id": artifact["artifact_id"],
+                    "artifact_digest": wrong_digest,
+                },
+            )
+        assert r11.status_code == 422, r11.text
+        assert r11.json()["code"] == "INVALID_REQUEST"
+
+    async def test_pr11_another_practices_artifact_is_422(
+        self, pool, order_repository, artifact_service
+    ) -> None:
+        """A live, real artifact -- just not THIS practice's. Same shape
+        as a superseded one from PR-11's point of view: `resolve_for_
+        delivery`'s locked lookup is scoped to `practice_id`, so an
+        artifact minted for a different practice never resolves here."""
+        order_a = await _create_and_pay_order(
+            order_repository, result_id="result-otherprac-a-0000", provider_event_id="evt-otherprac-a"
+        )
+        order_b = await _create_and_pay_order(
+            order_repository, result_id="result-otherprac-b-0000", provider_event_id="evt-otherprac-b"
+        )
+        practice_a = await _practice_id_for(pool, order_a)
+        practice_b = await _practice_id_for(pool, order_b)
+        app = _make_app(pool, artifact_service=artifact_service)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await self._post(client, practice_a, "otherprac-a-pr02-0001", {"transition_id": "PR-02"})
+            await self._post(
+                client,
+                practice_a,
+                "otherprac-a-pr04-0001",
+                {"transition_id": "PR-04", "evidence_id": "evidence_filing_0000000003"},
+            )
+            await self._post(
+                client,
+                practice_a,
+                "otherprac-a-pr06-0001",
+                {"transition_id": "PR-06", "evidence_id": "evidence_approval_000000003"},
+            )
+            put_resp = await client.put(
+                f"/api/visa/voa/staff/practices/{practice_a}/artifact",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "otherprac-a-put-0001",
+                },
+                content=_SYNTHETIC_PDF,
+            )
+            assert put_resp.status_code == 200, put_resp.text
+            artifact_a = put_resp.json()
+
+            await self._post(client, practice_b, "otherprac-b-pr02-0001", {"transition_id": "PR-02"})
+            await self._post(
+                client,
+                practice_b,
+                "otherprac-b-pr04-0001",
+                {"transition_id": "PR-04", "evidence_id": "evidence_filing_0000000004"},
+            )
+            await self._post(
+                client,
+                practice_b,
+                "otherprac-b-pr06-0001",
+                {"transition_id": "PR-06", "evidence_id": "evidence_approval_000000004"},
+            )
+            r11 = await self._post(
+                client,
+                practice_b,
+                "otherprac-b-pr11-0001",
+                {
+                    "transition_id": "PR-11",
+                    "artifact_id": artifact_a["artifact_id"],
+                    "artifact_digest": artifact_a["artifact_digest"],
+                },
+            )
+        assert r11.status_code == 422, r11.text
+        assert r11.json()["code"] == "INVALID_REQUEST"
 
     async def test_evidence_id_reused_on_another_practice_is_422(
         self, pool, order_repository
