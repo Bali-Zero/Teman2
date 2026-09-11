@@ -510,7 +510,18 @@ def test_the_detector_sees_a_family_that_contains_an_underscore():
 # here fails too, and the exception cannot outlive the problem it names.
 # ---------------------------------------------------------------------------
 
-BARE_PERMEN_ID = re.compile(r"\bPermen_(\d+)_(\d{4})\b")
+# No LEADING \b on purpose. `\b` requires a non-word char before `P`, so
+# `aPermen_1_2026` -- an id glued to a preceding word character -- was invisible
+# to the scan. Dropping it is a strict widening with no false-positive risk:
+# `Permen_` needs an underscore immediately after `Permen`, which no
+# ministry-qualified id has (`Permenkumham_`, `PermenImipas_` continue with a
+# letter), so the qualified forms still cannot match. The TRAILING \b stays --
+# it is what stops `Permen_1_20260` from reading as `Permen_1_2026`.
+#
+# Two assumptions left standing DELIBERATELY, because no id in kb/ violates
+# them and widening further would start matching prose: ids are exact-case
+# (`permen_1_2026` is not matched) and never split across a line break.
+BARE_PERMEN_ID = re.compile(r"Permen_(\d+)_(\d{4})\b")
 
 # Frozen 2026-09-05. Every entry is an instrument whose KB id drops the
 # ministry qualifier and is therefore ambiguous across the eight ministries.
@@ -548,8 +559,23 @@ def _bare_permen_ids_in_kb() -> set[str]:
             continue
         try:
             text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
+        except (OSError, UnicodeDecodeError) as exc:
+            # NOT skipped. `_kb_instrument_identities` above states the rule for
+            # its own walk -- "a KB file broken enough to fail YAML is a KB file
+            # this test needs to know is broken, not one that should silently
+            # vanish" -- and the first version of this function contradicted it
+            # 270 lines later with a bare `continue`. That is precisely the
+            # under-match this frozen set exists to prevent: an undecodable KB
+            # file introducing a seventeenth bare id would have disappeared from
+            # the invariant instead of failing it. Caught by adversarial review
+            # before it could matter, 2026-09-05.
+            raise AssertionError(
+                f"{path} is under kb/ and matches this scan's suffix allowlist, "
+                f"but could not be read as UTF-8 ({exc!r}). It is not skipped. "
+                "If a binary file legitimately belongs under kb/, drop its suffix "
+                "from _KB_TEXT_SUFFIXES -- do not swallow the error here, or the "
+                "frozen set silently stops covering that file."
+            ) from exc
         found.update(match.group(0) for match in BARE_PERMEN_ID.finditer(text))
     return found
 
@@ -580,4 +606,15 @@ def test_innocence_a_ministry_qualified_id_is_not_counted_as_bare():
         assert BARE_PERMEN_ID.search(qualified) is None, (
             f"{qualified} is ministry-qualified and must not count as a bare id"
         )
-    assert BARE_PERMEN_ID.search("Permen_1_2026") is not None
+    # Guilt, in the shapes a YAML file actually writes them, plus the
+    # glued-prefix case the leading \b used to miss.
+    for bare in (
+        "Permen_1_2026",
+        "id: Permen_1_2026",
+        '"Permen_1_2026"',
+        "Permen_1_2026:",
+        "aPermen_1_2026",
+    ):
+        assert BARE_PERMEN_ID.search(bare) is not None, f"{bare} must count as bare"
+    # The trailing \b still bites: a longer year is a different token.
+    assert BARE_PERMEN_ID.search("Permen_1_20260") is None
