@@ -1,17 +1,17 @@
-"""Execute migration 289's trigger against a live Postgres.
+"""Execute migration 310's trigger against a live Postgres.
 
 WHY THIS IS AN EXECUTING TEST AND NOT A SOURCE ASSERTION
-The defect 289 fixes was never a typo — it was a table that four surfaces
+The defect 310 fixes was never a typo — it was a table that four surfaces
 referenced (`portal_process_timeline.py`, its unit test, and the frontend's
 `portal.types.ts` + `schemas/process.ts`) and that no migration in this repo
 ever created. Measured on prod 2026-08-27: `relation "practice_status_log"
-does not exist`. A test that only greps 289's SQL for the right keywords would
+does not exist`. A test that only greps 310's SQL for the right keywords would
 reproduce exactly that failure mode one level up — an artifact that looks
 correct and was never run. So this file runs the DDL and then drives the
 trigger through real UPDATEs.
 
 The migration converges rather than merely creating: `CREATE TABLE IF NOT
-EXISTS` silently accepts a pre-existing table of a DIFFERENT shape, so 289
+EXISTS` silently accepts a pre-existing table of a DIFFERENT shape, so 310
 follows it with explicit ALTERs. This is not theory -- an earlier draft of
 this file claimed to be "safe whether or not the test database has already
 seen it" and that claim was false: a database holding the draft's
@@ -19,7 +19,7 @@ seen it" and that claim was false: a database holding the draft's
 because the CREATE never ran.
 
 Applying it here rather than skipping is deliberate: skipping when the table
-is absent would make this test vacuous on precisely the databases where 289
+is absent would make this test vacuous on precisely the databases where 310
 has not landed, which are the only ones where it matters.
 """
 
@@ -34,7 +34,7 @@ import pytest
 from backend.db.migration_base import split_migration_sql
 
 MIGRATION = (
-    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "289_practice_status_log.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "310_practice_status_log.sql"
 )
 
 TEST_DSN = os.environ.get("TEST_DATABASE_URL")
@@ -135,7 +135,7 @@ async def conn():
             pytest.fail(
                 f"refusing to apply migration DDL to database {dbname!r} — "
                 f"TEST_DATABASE_URL looks like a real database (matched {bad!r}). "
-                "This fixture applies 289 permanently, outside any transaction."
+                "This fixture applies 310 permanently, outside any transaction."
             )
 
     connection = await asyncpg.connect(TEST_DSN)
@@ -181,13 +181,13 @@ async def _one_practice(conn, status: str | None) -> int:
             vals.append(
                 await conn.fetchval(
                     "INSERT INTO clients (full_name) VALUES ($1) RETURNING id",
-                    "mig289 fixture",
+                    "mig310 fixture",
                 )
             )
         elif name.endswith("_id"):
             vals.append(1)
         else:
-            vals.append("mig289")
+            vals.append("mig310")
 
     placeholders = ", ".join(f"${i}" for i in range(1, len(cols) + 1))
     return await conn.fetchval(

@@ -78,9 +78,9 @@ history path never runs:
 | Path                  | `cancelled` renders as                                                             |
 | --------------------- | ---------------------------------------------------------------------------------- |
 | fallback (live today) | `completed=false, is_current=false` → a grey empty circle: neither done nor active |
-| history (after 289)   | `completed=true, is_current=false` → a **green checkmark**                         |
+| history (after 310)   | `completed=true, is_current=false` → a **green checkmark**                         |
 
-Applying migration 289 would silently flip 124 client-visible practices from "grey" to "green
+Applying migration 310 would silently flip 124 client-visible practices from "grey" to "green
 tick". Neither is obviously right: a cancelled practice is _finished_ but not _achieved_, and the
 step model only has two booleans to say so. The honest fix is probably a third state
 (`terminal_unsuccessful`) rather than forcing `cancelled` into `completed`.
@@ -102,7 +102,7 @@ arm to the trigger; or declare that the timeline starts at the first _transition
 `old_status` column from the query so the code stops implying otherwise.
 
 **Owner: session**, once Q2 is answered — it is a modelling choice, not a business one. Note the
-SQL comment at `289_practice_status_log.sql:75` is **wrong as written**: for a pre-existing
+SQL comment at `310_practice_status_log.sql:75` is **wrong as written**: for a pre-existing
 practice the trigger records `OLD.status`, not `NULL`.
 
 ### Q4 — Ordering and snapshot
@@ -155,7 +155,7 @@ That is the real finding, and it is bigger than this PR: it wants a fix in the *
 ledger, or the rollback clearing both), plus a test that drives apply → rollback → apply and
 asserts the objects exist at the end — never a 171st hand-patched rollback.
 
-**Blocked on M5, recorded not circumvented.** Adding the 277-style two-line workaround to 289 was
+**Blocked on M5, recorded not circumvented.** Adding the 277-style two-line workaround to 310 was
 attempted and **refused by the guardrails static fallback** (`SQL destructive introduced in Edit`)
 — the tier-1 daemon is absent on this machine, so the fallback blocks all DML in a migration file
 without being able to judge that these two DELETEs target the migration's own ledger rows inside a

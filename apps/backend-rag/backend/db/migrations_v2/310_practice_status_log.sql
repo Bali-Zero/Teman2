@@ -1,5 +1,5 @@
 -- ============================================================
--- 289_practice_status_log.sql
+-- 310_practice_status_log.sql
 -- Create the table the portal tracker has been reading since March.
 --
 -- `practice_status_log` is referenced by four live surfaces —

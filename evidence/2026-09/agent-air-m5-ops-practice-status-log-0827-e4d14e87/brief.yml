@@ -16,7 +16,7 @@ objective: |
   parcel-style progression the client portal promises could not render, and nothing anywhere went
   red: no error, no log line, no failing check.
 
-  Fix: migration 289 creates the table plus an `AFTER UPDATE OF status` trigger that fills it, and
+  Fix: migration 310 creates the table plus an `AFTER UPDATE OF status` trigger that fills it, and
   the reader's except is narrowed so a degraded path announces itself.
 constraints:
   - "A TRIGGER, not application code. `practices.status` is written from many services; a history
@@ -42,7 +42,7 @@ constraints:
   - "The narrowed except must NOT become a new catch-all. `UndefinedTableError` degrades and says so;
     a `PostgresError` logs with a traceback; anything else PROPAGATES rather than being rendered as
     an empty history, which is indistinguishable from a practice that never moved."
-  - "Nothing in this diff touches a running database. Applying 289 to prod is a separate step, and
+  - "Nothing in this diff touches a running database. Applying 310 to prod is a separate step, and
     at the time of writing `flyctl deploy` / `flyctl secrets set` are both refused in this session by
     the auto-mode classifier."
 acceptance:
@@ -59,13 +59,13 @@ acceptance:
     no residual diff."
   - "The migration is idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`,
     `DROP TRIGGER IF EXISTS`) so the test applies it itself. This is deliberate: SKIPPING when the
-    table is absent would make the test vacuous on exactly the databases where 289 has not landed,
+    table is absent would make the test vacuous on exactly the databases where 310 has not landed,
     which are the only ones where it matters."
   - "Two pre-existing tests raised a bare `Exception` to simulate the missing table; the narrowed
     except no longer catches that, so they are repointed to `asyncpg.UndefinedTableError` rather
     than left to pass for the wrong reason."
   - "386 passed / 15 skipped across `backend/tests/db/` — the migration contract and ROLLBACK-marker
-    suites accept 289 — plus 8 passed on the router's own unit tests."
+    suites accept 310 — plus 8 passed on the router's own unit tests."
 consumer_map:
   - "`backend/app/routers/portal_process_timeline.py` — the only backend reader; builds the client
     tracker. Modified in this diff."
@@ -77,7 +77,7 @@ consumer_map:
   - "migration 075's `trg_practice_changed` — a SECOND trigger on the same column. Both fire; they
     are independent (pg_notify vs INSERT) and neither reads the other's effect."
 risks:
-  - "289 IS NOT APPLIED TO PROD by this diff, so the tracker keeps taking its degraded path until an
+  - "310 IS NOT APPLIED TO PROD by this diff, so the tracker keeps taking its degraded path until an
     operator applies it. The difference from today is only that the path now announces itself."
   - "The prod/test schema divergence above is DISCLOSED, not closed. In particular the NULL-status
     arm of the trigger is exercised only where the live column admits NULL — on the migrated test

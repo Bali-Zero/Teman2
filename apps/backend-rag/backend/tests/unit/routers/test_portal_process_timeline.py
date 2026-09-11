@@ -233,7 +233,7 @@ def _pool_for(mock_conn) -> MagicMock:
 class TestHistoryFailuresAreNotSpelledAsEmptyHistory:
     """A missing table and a broken query must not look the same.
 
-    Until migration 289 the history query was wrapped in a bare
+    Until migration 310 the history query was wrapped in a bare
     `except Exception: pass`, so BOTH cases produced a one-step timeline and a
     200 — and an empty history is indistinguishable from a practice that never
     moved. Prod was measured in that state on 2026-08-27: the table did not
@@ -242,7 +242,7 @@ class TestHistoryFailuresAreNotSpelledAsEmptyHistory:
 
     @pytest.mark.asyncio
     async def test_absent_table_degrades_but_says_so(self, caplog) -> None:
-        """The pre-289 database still serves a timeline, and logs a warning."""
+        """The pre-310 database still serves a timeline, and logs a warning."""
         mock_conn = AsyncMock()
         mock_conn.fetchrow.return_value = _practice_row()
         mock_conn.fetch.side_effect = asyncpg.UndefinedTableError(
@@ -256,7 +256,7 @@ class TestHistoryFailuresAreNotSpelledAsEmptyHistory:
         assert len(result["steps"]) == 1
         joined = " ".join(r.getMessage() for r in caplog.records)
         assert "practice_status_log is absent" in joined
-        assert "289" in joined, "the log line must name the migration that fixes it"
+        assert "310" in joined, "the log line must name the migration that fixes it"
 
     @pytest.mark.asyncio
     async def test_a_real_db_error_still_degrades_but_is_no_longer_SILENT(self, caplog) -> None:
@@ -359,7 +359,7 @@ class TestTheTimelineSurvivesAStatusProductionActuallyAllows:
     `AttributeError: 'NoneType' object has no attribute 'replace'` — including
     the fallback path, which is the one production takes today. This was a LIVE
     500 on the client tracker for any practice with a NULL status, not a defect
-    migration 289 introduced; 289 only makes a second path reach it.
+    migration 310 introduced; 310 only makes a second path reach it.
 
     The cause is subtle enough to be worth naming: the call was
     `STATUS_LABELS.get(status, status.replace(...))`, and Python evaluates a
@@ -401,7 +401,7 @@ class TestATerminalStatusIsNeverRenderedAsInProgress:
     `{"status": "completed", "completed": False, "is_current": True}` and the
     client rendered a spinning loader on finished work — while the fallback
     path, ten lines below, got the same practice right. Caught by an adversarial
-    review, and reachable only because 289 makes the history path run at all.
+    review, and reachable only because 310 makes the history path run at all.
     """
 
     @pytest.mark.asyncio

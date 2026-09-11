@@ -28,7 +28,7 @@ receipts:
     ts: "2026-08-27T03:5x"
     seat: "session (m5)"
   - claim: "The trigger works on real Postgres: 7 behaviours driven through actual UPDATEs, not inferred from the SQL"
-    cmd: "createdb throwaway; apply 289 (NOTICE: trigger does not exist, skipping — expected on first apply); then INSERT/UPDATE sequence -> after_insert_rows=0; after_change=inquiry->on_process by=<null>; after_noop_update_rows=1 (unchanged); after_same_value_rows=1 (unchanged); null_transition old=<null> new=completed; with_guc by=ops@balizero.com; TOTAL_ROWS=3"
+    cmd: "createdb throwaway; apply 310 (NOTICE: trigger does not exist, skipping — expected on first apply); then INSERT/UPDATE sequence -> after_insert_rows=0; after_change=inquiry->on_process by=<null>; after_noop_update_rows=1 (unchanged); after_same_value_rows=1 (unchanged); null_transition old=<null> new=completed; with_guc by=ops@balizero.com; TOTAL_ROWS=3"
     exit: 0
     ts: "2026-08-27T03:5x"
     seat: "session (m5)"
@@ -62,7 +62,7 @@ receipts:
     exit: 0
     ts: "2026-08-27T03:5x"
     seat: "session (m5)"
-  - claim: "The migration contract and ROLLBACK-marker suites accept 289"
+  - claim: "The migration contract and ROLLBACK-marker suites accept 310"
     cmd: "PYTHONPATH=. pytest backend/tests/unit/routers/test_portal_process_timeline.py backend/tests/db/ -> 386 passed, 15 skipped; pre-commit W42 lint -> 166 post-cutoff migrations, all have ROLLBACK marker"
     exit: 0
     ts: "2026-08-27T04:0x"
@@ -159,8 +159,8 @@ dissent:
     resolution: >-
       Confirmed AND RESCOPED by measurement: the FALLBACK path crashes on the same input, and that
       is the path production takes TODAY — so this is a LIVE 500 on the client tracker for any
-      practice with a NULL status, not a defect 289 introduced. 289 only makes a second path reach
-      it. Fixed here anyway, because shipping 289 without it would widen a live crash: a NULL-safe
+      practice with a NULL status, not a defect 310 introduced. 310 only makes a second path reach
+      it. Fixed here anyway, because shipping 310 without it would widen a live crash: a NULL-safe
       `_status_label` helper, with tests proving BOTH paths raised before the fix.
   - seat: codex-gpt-5.6-sol (round 2)
     objection: >-
@@ -182,11 +182,11 @@ dissent:
     status: CONFIRMED
     resolution: >-
       Fixed — a terminal status is never current, and the two paths now agree. Reachable only
-      because 289 makes the history path run at all, so it belongs to this diff. Guilt AND innocence
+      because 310 makes the history path run at all, so it belongs to this diff. Guilt AND innocence
       tested: a non-terminal last step is still current.
   - seat: codex-gpt-5.6-sol (round 2)
     objection: >-
-      SHOULD-FIX — the fixture applies 289 PERMANENTLY, outside any transaction, and the db-test
+      SHOULD-FIX — the fixture applies 310 PERMANENTLY, outside any transaction, and the db-test
       configuration permits pointing TEST_DATABASE_URL at a tunnel. A mistyped DSN is the whole
       distance between a test run and unreviewed DDL on a real database.
     status: CONFIRMED
@@ -204,22 +204,22 @@ dissent:
     status: CONFIRMED
     resolution: >-
       The two cited lines were re-read this turn and say exactly what the objection claims. NOT
-      FIXED HERE, and deliberately: this is a defect of the migration RUNNER, not of 289, and it
+      FIXED HERE, and deliberately: this is a defect of the migration RUNNER, not of 310, and it
       would affect every migration in the tree. Curing it inside a migration file would be the wrong
       layer and a far larger blast radius than this PR's concern. Reported as a separate finding;
-      289's own rollback statements are executable and correctly ordered. An independent seat was
+      310's own rollback statements are executable and correctly ordered. An independent seat was
       asked to establish the precise CONDITION under which the two ledgers actually meet (both
       paths reachable from the same runner) rather than to agree with the claim.
   - seat: codex-gpt-5.6-sol (round 2)
     objection: >-
       BLOCKER — the convergence ALTERs converge only two attributes. A pre-existing table with the
       right column names but no sequence/default on `id`, or missing the PK or the FK, survives
-      migration 289 unchanged, and the trigger's INSERT then aborts caller transactions — the very
+      migration 310 unchanged, and the trigger's INSERT then aborts caller transactions — the very
       failure mode round 1 closed.
     status: PLAUSIBLE
     resolution: >-
       The mechanism is real and the counterexample is sound. NOT FIXED, and the reason is scope
-      rather than disagreement: 289 has never shipped, so no database can hold a partial earlier
+      rather than disagreement: 310 has never shipped, so no database can hold a partial earlier
       shape except one a developer hand-built. Full catalog convergence (or a fail-loud shape
       assertion) is the right long-term answer and is out of scope for the PR that creates the
       table. DISCLOSED here rather than closed, so the next person meets it as a known limit and not
@@ -248,7 +248,7 @@ dissent:
     resolution: >-
       Verified: `grep -n old_status` on the router returns exactly ONE line (:119, the SELECT) — the
       column is written, fetched, and discarded. Also correct that the SQL comment at
-      289_practice_status_log.sql:75 is false as written: for a pre-existing practice the trigger
+      310_practice_status_log.sql:75 is false as written: for a pre-existing practice the trigger
       records OLD.status, not NULL. Not fixed — whether the timeline should show where a practice
       STARTED is a modelling decision. Spec Q3.
   - seat: codex-gpt-5.6-sol (round 3)
@@ -275,7 +275,7 @@ dissent:
     status: CONFIRMED
     resolution: >-
       All three confirmed by reading both paths. (c) is the one that touches real rows: production
-      holds 124 cancelled practices out of 893, so applying 289 would silently flip 124
+      holds 124 cancelled practices out of 893, so applying 310 would silently flip 124
       client-visible practices from a grey circle to a green checkmark. Which of the two is CORRECT
       is not a bug question — a cancelled practice is finished but not achieved, and the step model
       has only two booleans. Spec Q2 and Q4.

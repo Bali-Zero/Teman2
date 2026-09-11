@@ -58,8 +58,8 @@ def _status_label(status: str | None) -> str:
     to do `STATUS_LABELS.get(status, status.replace(...))` — Python evaluates a
     `dict.get` default EAGERLY, so a NULL status raised AttributeError before
     the lookup even happened. That was a LIVE 500 on the fallback path, i.e. on
-    the path production takes today, not something migration 289 introduced;
-    289 only makes a second path reach it. Measured 2026-08-27: both paths
+    the path production takes today, not something migration 310 introduced;
+    310 only makes a second path reach it. Measured 2026-08-27: both paths
     raised `'NoneType' object has no attribute 'replace'`.
     """
     if not status:
@@ -97,14 +97,14 @@ async def _build_timeline(
         if not practice:
             return None
 
-        # Status history. Migration 289 creates practice_status_log and the
+        # Status history. Migration 310 creates practice_status_log and the
         # trigger that fills it; before that migration this query raised
         # UndefinedTableError on every request and the old code swallowed it
         # with a bare `except Exception: pass`, so the tracker answered 200
         # with a one-step timeline and no surface anywhere went red. Prod was
         # measured in exactly that state on 2026-08-27.
         #
-        # The narrow except stays, because a database that has not run 289 yet
+        # The narrow except stays, because a database that has not run 310 yet
         # must still serve the practice's current status rather than 500 — but
         # it now catches ONLY "the table is absent" and says so out loud. Every
         # other failure (permissions, a dropped connection, a bad plan) is a
@@ -127,7 +127,7 @@ async def _build_timeline(
         except asyncpg.UndefinedTableError:
             logger.warning(
                 "practice_status_log is absent — serving a single-step timeline. "
-                "Migration 289 has not been applied to this database."
+                "Migration 310 has not been applied to this database."
             )
         except (asyncpg.PostgresError, asyncpg.InterfaceError):
             # InterfaceError is listed EXPLICITLY because it is NOT a subclass of
