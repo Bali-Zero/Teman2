@@ -117,8 +117,8 @@ team:
   imperator: "Fable 5.1, M5, session 116b2671-9748-485b-ade4-db76a770af08 (checkpoints via fleet mailbox)"
 size_exception: >-
   The PR exceeds the ~400 net-line contract by construction, and every block is named: product +
-  research +460/-57 (the adopted patch's 10 files, D1/D3 and D5), evidence +1028 (brief,
-  contract-lock, review records, local proof logs, preview browser output, the v5 FINAL spec pinned) and
+  research +460/-57 (the adopted patch's 10 files, D1/D3 and D5), evidence +933 (brief,
+  contract-lock, review records, local proof logs, preview browser output; v5 FINAL by sha256 only) and
   .secrets.baseline +306 (D4 audit entries, is_secret false). One concern, one adoption; splitting
   the evidence or the baseline audit into another PR would leave this PR's own checks red.
 appetite:
