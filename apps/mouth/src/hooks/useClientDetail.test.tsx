@@ -77,11 +77,13 @@ describe("buildBusinessStorySearchTerms", () => {
     ]);
   });
 
-  it("keeps Ocean and Bimala fallback search terms for unlinked people", () => {
+  it("names only the client when no company is linked", () => {
+    /* GUILT for portal audit F-06: the term list used to fall back to the
+       two tax-pilot keys, which are REAL client companies — so viewing an
+       unlinked client emitted two unrelated clients' company names into
+       the evidence-dossiers query string. */
     expect(buildBusinessStorySearchTerms("Natan Kleimonov", [])).toEqual([
       "Natan Kleimonov",
-      "ocean",
-      "bimala",
     ]);
   });
 });
