@@ -74,75 +74,68 @@ ogImage: "/static/insights/business/business-bank-account.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "270c7a520c3d28b08190f28c538e3853855e877ae2c0fe23d831d5a459555d8a"
+source_sha256: "9d821bcd295c340faab57d88927d6f37268ed7c2c616a2d2c7874291bb7a476b"
 ---
 
-import {
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Guida al conto bancario per PT PMA in Indonesia 2026: Conto Aziendale
 
-# Conto Bancario Aziendale Indonesia 2026: Guida PT PMA
-
-Ogni società indonesiana ha bisogno di un conto bancario aziendale. Ecco come aprirne uno per la tua PT PMA.
+Ogni azienda indonesiana ha bisogno di un conto bancario aziendale. Ecco come aprirne uno per la tua PT PMA.
 
 ## Opzioni Bancarie
 
 <ComparisonTable
   title="Banche per PT PMA"
-  description="Scelte popolari per società a proprietà straniera"
+  description="Scelte popolari per aziende a proprietà estera"
   items={[
     {
       name: "BCA",
       subtitle: "Bank Central Asia",
       values: {
-        Type: "Local (largest private)",
-        English: "Good",
-        Online: "Excellent",
-        "PT PMA friendly": "Yes",
+        Type: "Locale (più grande privata)",
+        English: "Buono",
+        Online: "Eccellente",
+        "PT PMA friendly": "Sì",
       },
       highlight: true,
     },
     {
       name: "Mandiri",
-      subtitle: "State-owned",
+      subtitle: "Statale",
       values: {
-        Type: "Local (largest)",
-        English: "Good",
-        Online: "Good",
-        "PT PMA friendly": "Yes",
+        Type: "Locale (più grande)",
+        English: "Buono",
+        Online: "Buono",
+        "PT PMA friendly": "Sì",
       },
     },
     {
       name: "CIMB Niaga",
-      subtitle: "Foreign-linked",
+      subtitle: "Collegata a estero",
       values: {
-        Type: "Local/Malaysian",
-        English: "Very good",
-        Online: "Good",
-        "PT PMA friendly": "Very",
+        Type: "Locale/Malesiana",
+        English: "Molto buono",
+        Online: "Buono",
+        "PT PMA friendly": "Molto",
       },
     },
     {
       name: "HSBC",
-      subtitle: "International",
+      subtitle: "Internazionale",
       values: {
-        Type: "International",
-        English: "Excellent",
-        Online: "Excellent",
-        "PT PMA friendly": "Yes",
+        Type: "Internazionale",
+        English: "Eccellente",
+        Online: "Eccellente",
+        "PT PMA friendly": "Sì",
       },
     },
     {
       name: "Standard Chartered",
-      subtitle: "International",
+      subtitle: "Internazionale",
       values: {
-        Type: "International",
-        English: "Excellent",
-        Online: "Excellent",
-        "PT PMA friendly": "Yes",
+        Type: "Internazionale",
+        English: "Eccellente",
+        Online: "Eccellente",
+        "PT PMA friendly": "Sì",
       },
     },
   ]}
@@ -154,19 +147,19 @@ Ogni società indonesiana ha bisogno di un conto bancario aziendale. Ecco come a
 
 <InfoCard variant="note" title="Quale Scegliere?">
 **Banche Locali (BCA, Mandiri):**
-- Più filiali/ATM
+- Più filiali e bancomat
 - Migliore integrazione locale
-- Tariffe solitamente più basse
-- Buone per affari domestici
+- Commissioni generalmente più basse
+- Ideali per attività domestica
 
 **Banche Internazionali (HSBC, SCB):**
 
 - Trasferimenti internazionali più facili
 - Migliori per operazioni globali
-- Minimi/tariffe più elevate
+- Minimi e commissioni più alti
 - Servizio in inglese eccellente
 
-**La maggior parte delle PT PMA usa:** BCA o CIMB Niaga per operazioni quotidiane, a volte banca internazionale per cross-border.
+**La maggior parte delle PT PMAs utilizza:** BCA o CIMB Niaga per le operazioni quotidiane, talvolta una banca internazionale per i transfrontalieri.
 
 </InfoCard>
 
@@ -175,86 +168,86 @@ Ogni società indonesiana ha bisogno di un conto bancario aziendale. Ecco come a
 ## Requisiti Documentali
 
 <Checklist
-  title="Documenti Conto Aziendale"
+  title="Documenti per Conto Aziendale"
   description="Cosa richiedono le banche"
   persistKey="corp-bank-checklist"
   items={[
     {
-      id: 'akta',
-      label: 'Atto costitutivo (Akta)',
-      description: 'Versione più recente con tutti gli emendamenti',
+      id: "akta",
+      label: "Atto societario (Akta)",
+      description: "Ultima versione con tutte le modifiche",
       required: true,
-      category: 'company',
+      category: "company",
     },
     {
-      id: 'sk',
-      label: 'Approvazione MOL&HR (SK)',
-      description: 'Lettera di approvazione del Ministero',
+      id: "sk",
+      label: "Approvazione MOL&HR (SK)",
+      description: "Lettera di approvazione del Ministero",
       required: true,
-      category: 'company',
+      category: "company",
     },
     {
-      id: 'nib',
-      label: 'NIB (ID Aziendale)',
-      description: 'Dal sistema OSS',
+      id: "nib",
+      label: "NIB (ID Aziendale)",
+      description: "Dal sistema OSS",
       required: true,
-      category: 'company',
+      category: "company",
     },
     {
-      id: 'npwp',
-      label: 'NPWP Aziendale',
-      description: 'Numero ID fiscale',
+      id: "npwp",
+      label: "NPWP dell'Azienda",
+      description: "Numero di ID fiscale",
       required: true,
-      category: 'company',
+      category: "company",
     },
     {
-      id: 'director-id',
-      label: 'ID Direttore',
-      description: 'Passaporto per stranieri, KTP per indonesiani',
+      id: "director-id",
+      label: "ID del Direttore",
+      description: "Passaporto per stranieri, KTP per indonesiani",
       required: true,
-      category: 'director',
+      category: "director",
     },
     {
-      id: 'director-npwp',
-      label: 'NPWP Direttore',
-      description: 'ID fiscale personale',
+      id: "director-npwp",
+      label: "NPWP del Direttore",
+      description: "ID fiscale personale",
       required: true,
-      category: 'director',
+      category: "director",
     },
     {
-      id: 'kitas',
-      label: 'KITAS (se direttore straniero)',
-      description: 'Permesso di soggiorno valido',
+      id: "kitas",
+      label: "KITAS (se direttore straniero)",
+      description: "Permesso di soggiorno valido",
       required: true,
-      category: 'director',
+      category: "director",
     },
     {
-      id: 'shareholder-docs',
-      label: 'Documentazione azionisti',
-      description: 'ID di tutti gli azionisti',
+      id: "shareholder-docs",
+      label: "Documentazione dei Soci",
+      description: "ID di tutti i soci",
       required: true,
-      category: 'shareholders',
+      category: "shareholders",
     },
     {
-      id: 'domicile',
-      label: 'Lettera di domicilio aziendale',
-      description: 'Prova di indirizzo ufficio',
+      id: "domicile",
+      label: "Lettera di domicilio aziendale",
+      description: "Prova dell'indirizzo ufficio",
       required: true,
-      category: 'company',
+      category: "company",
     },
     {
-      id: 'board-resolution',
-      label: 'Delibera del consiglio',
-      description: 'Che autorizza l''apertura del conto',
+      id: "board-resolution",
+      label: "Delibera del Consiglio",
+      description: "Autorizzazione all'apertura del conto",
       required: true,
-      category: 'governance',
+      category: "governance",
     },
   ]}
   categories={[
-    { id: 'company', label: 'Azienda', color: 'blue' },
-    { id: 'director', label: 'Direttore', color: 'green' },
-    { id: 'shareholders', label: 'Azionisti', color: 'amber' },
-    { id: 'governance', label: 'Governance', color: 'purple' },
+    { id: "company", label: "Azienda", color: "blue" },
+    { id: "director", label: "Direttore", color: "green" },
+    { id: "shareholders", label: "Soci", color: "amber" },
+    { id: "governance", label: "Governance", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -265,35 +258,35 @@ Ogni società indonesiana ha bisogno di un conto bancario aziendale. Ecco come a
 
 ### Passo dopo Passo
 
-| Passo                            | Cosa Succede                  |
-| -------------------------------- | ----------------------------- |
-| 1. Scegli la banca               | Confronta opzioni, posizione  |
-| 2. Incontro iniziale             | Discuti i requisiti           |
-| 3. Presentazione documenti       | Pacchetto completo            |
-| 4. Due diligence                 | La banca verifica i documenti |
-| 5. Approvazione                  | Solitamente 1-3 settimane     |
-| 6. Attivazione conto             | Firma documenti, deposito     |
-| 7. Configurazione online banking | Token, credenziali            |
+| Step                    | Cosa Accade              |
+| ----------------------- | ------------------------- |
+| 1. Scegliere la banca   | Confrontare opzioni e posizione |
+| 2. Incontro iniziale    | Discutere i requisiti     |
+| 3. Invio documenti      | Pacchetto completo        |
+| 4. Due diligence        | La banca verifica i documenti |
+| 5. Approvazione         | Di solito 1-3 settimane   |
+| 6. Attivazione conto    | Firmare documenti, versamento |
+| 7. Configurazione online banking | Token, credenziali        |
 
-### Cronologia
+### Tempistiche
 
-| Fase                   | Durata            |
-| ---------------------- | ----------------- |
+| Fase                | Durata      |
+| -------------------- | ------------- |
 | Preparazione documenti | 1-2 settimane     |
-| Revisione banca        | 1-3 settimane     |
-| Approvazione           | 1-2 settimane     |
-| **Totale**             | **3-6 settimane** |
+| Revisione banca          | 1-3 settimane     |
+| Approvazione             | 1-2 settimane     |
+| **Totale**            | **3-6 settimane** |
 
 <InfoCard variant="warning" title="Ritardi Comuni">
 **Cosa rallenta le cose:**
 
 - Documenti incompleti
 - Direttore senza KITAS ancora
-- Domande compliance della banca
-- Problemi verifica indirizzo
-- Lacune documentazione azionisti
+- Domande di conformità bancaria
+- Problemi di verifica dell'indirizzo
+- Lacune nella documentazione dei soci
 
-Prepara accuratamente per evitare ritardi!
+Preparati a fondo per evitare ritardi!
 
 </InfoCard>
 
@@ -303,116 +296,116 @@ Prepara accuratamente per evitare ritardi!
 
 ### Offerte Standard
 
-| Tipo Conto       | Scopo                  |
-| ---------------- | ---------------------- |
-| Giro (Corrente)  | Operazioni giornaliere |
-| Deposito (Fisso) | Guadagnare interessi   |
-| Conto USD        | Valuta estera          |
-| Multi-valuta     | Varie valute           |
+| Tipo di Conto     | Scopo               |
+| ------------------ | --------------------- |
+| Giro (Corrente)   | Operazioni quotidiane |
+| Deposito (Fisso)  | Guadagno interessi    |
+| Conto USD         | Valuta estera         |
+| Multi-valuta      | Vari valute           |
 
 ### Funzionalità da Richiedere
 
-| Funzionalità                 | Perché Necessaria      |
-| ---------------------------- | ---------------------- |
-| Internet banking             | Gestione remota        |
-| Mobile banking               | Convenienza            |
-| Più firmatari                | Controllo              |
-| Trasferimenti internazionali | Pagamenti cross-border |
-| Pagamenti bulk               | Buste paga, fornitori  |
-| Accesso API                  | Integrazione sistemi   |
+| Funzionalità                 | Perché Necessaria            |
+| ----------------------------- | ----------------------------- |
+| Internet banking              | Gestione remota              |
+| Mobile banking                | Comodità                     |
+| Più firmatari                 | Controllo                    |
+| Trasferimenti internazionali  | Pagamenti transfrontalieri   |
+| Pagamenti in blocco           | Stipendi, fornitori          |
+| Accesso API                  | Integrazione sistemi         |
 
 ---
 
 ## Depositi Minimi
 
-| Banca              | Conto IDR | Conto USD     |
-| ------------------ | --------- | ------------- |
-| BCA                | IDR 5-10M | USD 500-1.000 |
-| Mandiri            | IDR 5-10M | USD 500       |
-| CIMB Niaga         | IDR 5-10M | USD 500       |
-| HSBC               | IDR 50M+  | USD 5.000+    |
-| Standard Chartered | IDR 50M+  | USD 5.000+    |
+| Banca               | Conto IDR | Conto USD   |
+| ------------------- | --------- | ----------- |
+| BCA                 | IDR 5-10M | USD 500-1,000 |
+| Mandiri             | IDR 5-10M | USD 500     |
+| CIMB Niaga          | IDR 5-10M | USD 500     |
+| HSBC                | IDR 50M+  | USD 5,000+    |
+| Standard Chartered  | IDR 50M+  | USD 5,000+    |
 
-Le banche internazionali tipicamente richiedono minimi più elevati.
+Le banche internazionali richiedono tipicamente minimi più alti.
 
 ---
 
-## Tariffe e Commissioni
+## Commissioni e Tariffe
 
-### Tariffe Mensili Tipiche
+### Commissioni Mensili Tipiche
 
-| Servizio                 | Range                |
-| ------------------------ | -------------------- |
-| Manutenzione conto       | IDR 25-100K          |
-| Internet banking         | IDR 0-50K            |
+| Servizio             | Fascia                |
+| -------------------- | --------------------- |
+| Manutenzione conto   | IDR 25-100K           |
+| Internet banking     | IDR 0-50K             |
 | Commissione saldo minimo | IDR 50-150K se sotto |
 
-### Commissioni Transazione
+### Commissioni Transazionali
 
-| Transazione                  | Banca Locale | Internazionale |
-| ---------------------------- | ------------ | -------------- |
-| Trasferimento domestico      | IDR 2.5-6.5K | IDR 5-15K      |
-| Trasferimento internazionale | IDR 50-150K  | IDR 100-300K   |
-| Libretto assegni             | IDR 100-200K | IDR 200-300K   |
+| Transazione            | Banca Locale   | Internazionale |
+| ---------------------- | -------------- | -------------- |
+| Trasferimento interno  | IDR 2.5-6.5K   | IDR 5-15K      |
+| Trasferimento esterno  | IDR 50-150K    | IDR 100-300K   |
+| Libretto assegni       | IDR 100-200K   | IDR 200-300K   |
 
 ---
 
 ## Trasferimenti Internazionali
 
-### Invio Denaro all'Estero
+### Invio di Denaro All'Estero
 
 <InfoCard variant="note" title="Controlli Valutari">
 **L'Indonesia ha alcuni controlli:**
 
-- Transazioni oltre USD 25K richiedono documenti sottostanti
-- Potrebbe essere richiesta liquidazione fiscale
-- La banca segnala alla banca centrale
-- Documentazione corretta essenziale
+- Transazioni sopra USD 25K richiedono documenti sottostanti
+- Potrebbe essere richiesta autorizzazione fiscale
+- La banca riferisce alla banca centrale
+- Documentazione adeguata essenziale
 
-Conserva tutte le fatture, contratti per i trasferimenti!
+Conserva tutte le fatture e contratti per i trasferimenti!
 
 </InfoCard>
 
 ### Documenti Richiesti per Trasferimento in Uscita
 
-| Per                    | Documenti                             |
-| ---------------------- | ------------------------------------- |
-| Pagamento importazione | Fattura, LC, documenti doganali       |
-| Pagamento servizi      | Contratto, fattura                    |
-| Dividendo              | Delibera consiglio, documenti fiscali |
-| Rimborso prestito      | Contratto di prestito                 |
+| Per             | Documenti                  |
+| --------------- | -------------------------- |
+| Pagamento import  | Fattura, LC, documenti doganali  |
+| Pagamento servizi | Contratto, fattura          |
+| Dividendo        | Delibera del Consiglio, documenti fiscali |
+| Rimborso prestito  | Accordo di prestito             |
 
 ---
 
-## Ricezione Denaro
+## Ricezione di Denaro
 
-### Rimessa in Entrata
+### Rimessa Inbound
 
-| Requisito         | Dettagli                     |
-| ----------------- | ---------------------------- |
+| Requisito      | Dettagli                    |
+| --------------- | -------------------------- |
 | Fattura/contratto | Documento di supporto        |
-| NPWP              | Numero fiscale aziendale     |
-| Reporting         | Oltre USD 10K auto-segnalato |
+| NPWP            | Numero fiscale aziendale     |
+| Segnalazione    | Oltre USD 10K segnalata automaticamente |
 
-### Suggerimenti per Ricezione Senza Intoppi
+### Consigli per una Ricezione Fluida
 
-- Informa la banca di trasferimenti elevati previsti
-- Abbi documenti di supporto pronti
-- Fai corrispondere il riferimento di trasferimento alla fattura
-- Assicurati che il mittente usi i dati corretti
+- Informa la banca sui grandi trasferimenti attesi
+- Tieni pronti i documenti di supporto
+- Allinea il riferimento del trasferimento alla fattura
+- Assicurati che il mittente usi i dettagli corretti
 
 ---
 
 ## Conti Multi-Valuta
 
-### Quando Utili
+### Quando Sono Utili
 
-| Scenario                 | Beneficio                             |
-| ------------------------ | ------------------------------------- |
-| Business di esportazione | Ricevi in valuta estera               |
-| Business di importazione | Paga fornitori direttamente           |
-| Clienti internazionali   | Fattura nella loro valuta             |
-| Hedging                  | Trattieni valuta per tassi favorevoli |
+| Scenario              | Beneficio                           |
+| --------------------- | --------------------------------- |
+| Attività di esportazione   | Ricevere in valuta estera       |
+| Attività di importazione   | Pagare fornitori direttamente            |
+| Clienti internazionali     | Fatturare nella loro valuta         |
+| Copertura (Hedging)        | Tenere valuta per tassi favorevoli |
 
 ### Valute Comuni
 
@@ -428,48 +421,49 @@ Conserva tutte le fatture, contratti per i trasferimenti!
 
 ### Funzionalità Disponibili
 
-| Funzionalità                   | Disponibilità                 |
-| ------------------------------ | ----------------------------- |
-| Controllo saldo                | Tutte le banche               |
-| Trasferimento (domestico)      | Tutte le banche               |
-| Trasferimento (internazionale) | La maggior parte delle banche |
-| Caricamento bulk               | Conti aziendali               |
-| Download estratto              | Tutte le banche               |
-| Pagamento tasse                | La maggior parte delle banche |
+| Funzionalità                  | Disponibilità       |
+| ------------------------------ | ------------------ |
+| Controllo saldo                | Tutte le banche    |
+| Trasferimento (interno)        | Tutte le banche    |
+| Trasferimento (internazionale) | Molte banche       |
+| Caricamento in blocco          | Conti aziendali    |
+| Download estratti conto        | Tutte le banche    |
+| Pagamento tasse                | Molte banche       |
 
 ### Sicurezza
 
-| Misura di Sicurezza | Pratica Standard          |
-| ------------------- | ------------------------- |
-| Token/OTP           | Richiesto per transazioni |
-| Limiti utente       | Configurabili             |
-| Flusso approvazione | Più firmatari             |
-| Restrizioni IP      | Alcune banche             |
+| Misura di Sicurezza  | Pratica Standard         |
+| --------------------- | ------------------------- |
+| Token/OTP            | Richiesto per transazioni |
+| Limiti utente        | Configurabili             |
+| Workflow approvazione | Più firmatari             |
+| Restrizioni IP       | Alcune banche             |
 
 ---
 
-## Suggerimenti per il Successo
+## Consigli per il Successo
 
-<InfoCard variant="tip" title="Suggerimenti Apertura Conto">
+<InfoCard variant="tip" title="Consigli per l'Apertura del Conto">
 **Per un processo fluido:**
 
-1. **Documenti completi prima** — Non presentare parziali
-2. **Usa segretaria societaria** — Conoscono i requisiti bancari
-3. **Costruisci relazione** — Il relationship manager aiuta
-4. **Inizia processo presto** — Prima che tu ne abbia urgente bisogno
-5. **Considera banca di backup** — Due conti è comune
-6. **Mantieni documenti aggiornati** — Cambiamenti annuali atto costitutivo
-   </InfoCard>
+1. **Documenti completi prima** - Non inviare parziali
+2. **Usa un segretario societario** - Conoscono i requisiti bancari
+3. **Costruisci relazioni** - Il relationship manager aiuta
+4. **Inizia presto** - Prima di averne urgente bisogno
+5. **Considera una banca di backup** - Due conti è comune
+6. **Mantieni documenti aggiornati** - Modifiche annuali all'atto
+
+</InfoCard>
 
 ### Errori Comuni
 
-| Errore                | Conseguenza                    |
-| --------------------- | ------------------------------ |
-| Documenti incompleti  | Rifiuto/ritardi                |
-| Direttore senza KITAS | Impossibile aprire             |
-| Nome aziendale errato | Deve corrispondere esattamente |
-| Versione atto vecchia | Deve essere corrente           |
-| NPWP mancante         | Rifiuto immediato              |
+| Errore                | Conseguenza         |
+| --------------------- | -------------------- |
+| Documenti incompleti  | Rifiuto/ritardi      |
+| Direttore senza KITAS | Impossibile aprire   |
+| Nome azienda errato   | Deve corrispondere esattamente |
+| Versione vecchia dell'atto    | Deve essere attuale     |
+| NPWP mancante         | Rifiuto immediato    |
 
 ---
 
@@ -477,12 +471,12 @@ Conserva tutte le fatture, contratti per i trasferimenti!
 
 ### Requisiti Continuativi
 
-| Requisito                | Frequenza                    |
-| ------------------------ | ---------------------------- |
-| Aggiornamento documenti  | Quando l'azienda cambia      |
-| Saldo minimo             | Mantieni per evitare tariffe |
-| Revisione annuale        | Aggiornamento KYC banca      |
-| Monitoraggio transazioni | Conformità continua          |
+| Requisito            | Frequenza              |
+| -------------------- | ---------------------- |
+| Aggiornamento documenti       | Quando cambiano i dati aziendali   |
+| Saldo minimo        | Mantenere per evitare commissioni |
+| Revisione annuale          | Aggiornamento KYC bancario     |
+| Monitoraggio transazioni | Conformità continua     |
 
 ---
 
@@ -490,12 +484,12 @@ Conserva tutte le fatture, contratti per i trasferimenti!
 
 <AskZantara
   context="Conto bancario aziendale Indonesia, PT PMA banking, conto aziendale, banche indonesiane"
-  placeholder="Chiedi su banca aziendale..."
+  placeholder="Chiedi su banca d'azienda..."
   suggestedQuestions={[
-    "Posso aprire conto prima del KITAS?",
-    "Quale banca è migliore per PT PMA?",
+    "Posso aprire un conto prima del KITAS?",
+    "Quale banca è meglio per PT PMA?",
     "Quanto tempo ci vuole?",
-    "Ho bisogno di presenza fisica?",
+    "Devo essere presente fisicamente?",
   ]}
 />
 
@@ -503,6 +497,6 @@ Conserva tutte le fatture, contratti per i trasferimenti!
 
 ## Articoli Correlati
 
-- [Guida Configurazione PT PMA](/business/pt-pma-registration-guide?lang=it)
+- [Guida alla Configurazione PT PMA](/business/pt-pma-registration-guide)
 - [Banca per Stranieri](/insights/lifestyle/banking-for-foreigners)
-- [Guida Requisiti Capitale](/insights/business/capital-requirements-guide)
+- [Guida ai Requisiti di Capitale](/insights/business/capital-requirements-guide)

@@ -74,22 +74,14 @@ canonicalUrl: "https://balizero.com/it/business/environmental-permits"
 ogImage: "/static/insights/business/environmental-permits.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
-source_sha256: "45e86cc56cc3592aa9729bc1472db2d7cae1a56fdf07ae82b609bc489dfa8798"
+source_sha256: "a40c69874aaf2d2022342e2bcccbad6eb505a452b304fd69d89165198be9d620"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
-
-# Permessi Ambientali Indonesia 2026: Guida al Business
+# Permessi Ambientali Indonesia 2026: Guida per le Imprese
 
 La conformità ambientale è obbligatoria per la maggior parte delle imprese in Indonesia. Ecco cosa devi sapere.
 
-## Hai Bisogno di un'Approvazione Ambientale?
+## Hai bisogno dell'approvazione ambientale?
 
 <DecisionTree
   title="Tipo di Permesso Ambientale"
@@ -97,28 +89,28 @@ La conformità ambientale è obbligatoria per la maggior parte delle imprese in 
   nodes={[
     {
       id: "start",
-      question: "Qual è la tua attività commerciale?",
+      question: "Qual è l'attività della tua impresa?",
       options: [
         { label: "Grande industria/impatto significativo", next: "amdal" },
-        { label: "Media impresa/impatto moderato", next: "ukl" },
+        { label: "Impresa di medie dimensioni/impatto moderato", next: "ukl" },
         { label: "Piccola impresa/basso impatto", next: "sppl" },
-        { label: "Solo ufficio/retail", next: "minimal" },
+        { label: "Solo ufficio/attività al dettaglio", next: "minimal" },
       ],
     },
     {
       id: "amdal",
       result: {
-        title: "Richiesto AMDAL",
+        title: "AMDAL Richiesto",
         description:
-          "Richiesta Valutazione di Impatto Ambientale. Questo è il processo più completo per attività ad alto impatto come grandi impianti manifatturieri, estrazione mineraria o grandi sviluppi.",
+          "Valutazione di Impatto Ambientale richiesta. Questo è il processo più completo per attività ad alto impatto come grandi manifatture, estrazione mineraria o grandi sviluppi.",
       },
     },
     {
       id: "ukl",
       result: {
-        title: "Richiesto UKL-UPL",
+        title: "UKL-UPL Richiesto",
         description:
-          "Richiesti Sforzi di Gestione e Monitoraggio Ambientale. Per imprese a medio impatto come ristoranti, piccole fabbriche o costruzioni moderate.",
+          "Sforzi di Gestione e Monitoraggio Ambientale richiesti. Per imprese a impatto medio come ristoranti, piccole fabbriche o costruzioni moderate.",
       },
     },
     {
@@ -126,7 +118,7 @@ La conformità ambientale è obbligatoria per la maggior parte delle imprese in 
       result: {
         title: "SPPL Sufficiente",
         description:
-          "Lettera di Impegno per la Gestione Ambientale. La forma più semplice per imprese a basso impatto. Spesso solo una dichiarazione tramite OSS.",
+          "Lettera di Impegno per la Gestione Ambientale. La forma più semplice per imprese a basso impatto. Spesso è solo una dichiarazione tramite OSS.",
       },
     },
     {
@@ -134,7 +126,7 @@ La conformità ambientale è obbligatoria per la maggior parte delle imprese in 
       result: {
         title: "Requisiti Minimi",
         description:
-          "Gli uffici standard o il commercio al dettaglio in genere non necessitano di permessi ambientali separati oltre alla conformità di base. Verifica tramite OSS per il tuo KBLI specifico.",
+          "Gli uffici standard o il retail di solito non necessitano di permessi ambientali separati oltre alla conformità di base. Controlla tramite OSS per il tuo codice KBLI specifico.",
       },
     },
   ]}
@@ -152,20 +144,20 @@ La conformità ambientale è obbligatoria per la maggior parte delle imprese in 
       name: "AMDAL",
       subtitle: "Valutazione di Impatto Ambientale",
       values: {
-        Per: "Attività ad alto impatto",
-        Processo: "Valutazione completa + studio",
-        Tempo: "6-12 mesi",
-        Costo: "IDR 100M-500M+",
+        For: "Attività ad alto impatto",
+        Process: "Valutazione completa + studio",
+        Time: "6-12 mesi",
+        Cost: "IDR 100M-500M+",
       },
     },
     {
       name: "UKL-UPL",
       subtitle: "Gestione e Monitoraggio",
       values: {
-        Per: "Attività a medio impatto",
-        Processo: "Piano di gestione",
-        Tempo: "2-4 mesi",
-        Costo: "IDR 20-100M",
+        For: "Attività a impatto medio",
+        Process: "Piano di gestione",
+        Time: "2-4 mesi",
+        Cost: "IDR 20-100M",
       },
       highlight: true,
     },
@@ -173,10 +165,10 @@ La conformità ambientale è obbligatoria per la maggior parte delle imprese in 
       name: "SPPL",
       subtitle: "Lettera di Impegno",
       values: {
-        Per: "Attività a basso impatto",
-        Processo: "Solo dichiarazione",
-        Tempo: "1-2 settimane",
-        Costo: "IDR 1-5M",
+        For: "Attività a basso impatto",
+        Process: "Solo dichiarazione",
+        Time: "1-2 settimane",
+        Cost: "IDR 1-5M",
       },
     },
   ]}
@@ -186,51 +178,51 @@ La conformità ambientale è obbligatoria per la maggior parte delle imprese in 
 
 ## AMDAL (Valutazione di Impatto Ambientale)
 
-<InfoCard variant="warning" title="Solo per Grandi Progetti">
-**L'AMDAL è richiesto per:**
-- Grandi impianti di produzione
+<InfoCard variant="warning" title="Solo Grandi Progetti">
+**AMDAL è richiesto per:**
+- Grandi impianti manifatturieri
 - Operazioni minerarie
 - Grandi progetti infrastrutturali
 - Agricoltura su larga scala
-- Sviluppo fondiario significativo
-- Impianti chimici/pericolosi
+- Sviluppo significativo del terreno
+- Impianti chimici o pericolosi
 
-L'AMDAL comporta consultazioni pubbliche e valutazioni di esperti.
+AMDAL prevede consultazione pubblica e valutazione da parte di esperti.
 
 </InfoCard>
 
 ### Processo AMDAL
 
-| Fase                   | Descrizione                         | Durata        |
-| ---------------------- | ----------------------------------- | ------------- |
-| Screening              | Determinare se l'AMDAL è necessario | 1-2 settimane |
-| Definizione Scopo      | Definire l'ambito dello studio      | 2-4 settimane |
-| Studio VIA             | Studio di impatto ambientale        | 3-6 mesi      |
-| Consultazione Pubblica | Input della comunità                | 1-2 mesi      |
-| Revisione              | Valutazione da parte del comitato   | 1-2 mesi      |
-| Approvazione           | Rilascio del permesso ambientale    | 2-4 settimane |
+| Fase               | Descrizione                 | Durata      |
+| ------------------ | --------------------------- | ----------- |
+| Screening          | Determinare se serve AMDAL  | 1-2 settimane |
+| Scoping            | Definire lo studio          | 2-4 settimane |
+| Studio EIA         | Studio di impatto ambientale | 3-6 mesi    |
+| Consultazione pubblica | Input della comunità       | 1-2 mesi    |
+| Revisione          | Valutazione da parte del comitato | 1-2 mesi |
+| Approvazione       | Permesso ambientale emesso  | 2-4 settimane |
 
 ### Componenti AMDAL
 
-| Documento | Scopo                            |
-| --------- | -------------------------------- |
-| KA-ANDAL  | Termini di riferimento           |
-| ANDAL     | Analisi dell'impatto             |
-| RKL       | Piano di gestione ambientale     |
+| Documento | Scopo                       |
+| --------- | --------------------------- |
+| KA-ANDAL  | Termini di riferimento      |
+| ANDAL     | Analisi d'impatto           |
+| RKL       | Piano di gestione ambientale |
 | RPL       | Piano di monitoraggio ambientale |
 
 ---
 
 ## UKL-UPL (Gestione e Monitoraggio)
 
-### Quando è richiesto l'UKL-UPL
+### Quando è richiesto UKL-UPL
 
-La maggior parte delle medie imprese necessita di UKL-UPL:
+La maggior parte delle imprese di medie dimensioni ha bisogno di UKL-UPL:
 
 - Ristoranti e caffè
-- Produzione medio-piccola
+- Manifattura da piccola a media
 - Officine e garage
-- Costruzioni medie
+- Costruzioni di medie dimensioni
 - Hotel (di determinate dimensioni)
 
 ### Requisiti UKL-UPL
@@ -241,59 +233,59 @@ La maggior parte delle medie imprese necessita di UKL-UPL:
   persistKey="ukl-upl-checklist"
   items={[
     {
-      id: 'form',
-      label: 'Modulo/domanda UKL-UPL',
-      description: 'Formato standard',
+      id: "form",
+      label: "Modulo/applicazione UKL-UPL",
+      description: "Formato standard",
       required: true,
-      category: 'domanda',
+      category: "application",
     },
     {
-      id: 'map',
-      label: 'Mappa della posizione',
-      description: 'Sito e dintorni',
+      id: "map",
+      label: "Mappa della posizione",
+      description: "Sito e dintorni",
       required: true,
-      category: 'tecnico',
+      category: "technical",
     },
     {
-      id: 'layout',
-      label: 'Layout dell''edificio/impianto',
-      description: 'Planimetrie, posizionamento attrezzature',
+      id: "layout",
+      label: "Piano di edificio/impianto",
+      description: "Piani al piano, posizionamento attrezzature",
       required: true,
-      category: 'tecnico',
+      category: "technical",
     },
     {
-      id: 'process',
-      label: 'Descrizione del flusso di processo',
-      description: 'Dettaglio delle attività aziendali',
+      id: "process",
+      label: "Descrizione del flusso dei processi",
+      description: "Dettagli delle attività aziendali",
       required: true,
-      category: 'tecnico',
+      category: "technical",
     },
     {
-      id: 'waste',
-      label: 'Piano di gestione dei rifiuti',
-      description: 'Come verranno gestiti i rifiuti',
+      id: "waste",
+      label: "Piano di gestione dei rifiuti",
+      description: "Come verranno gestiti i rifiuti",
       required: true,
-      category: 'ambientale',
+      category: "environmental",
     },
     {
-      id: 'water',
-      label: 'Piano di utilizzo dell''acqua',
-      description: 'Fonte e trattamento',
+      id: "water",
+      label: "Piano di utilizzo dell'acqua",
+      description: "Fonte e trattamento",
       required: true,
-      category: 'ambientale',
+      category: "environmental",
     },
     {
-      id: 'monitoring',
-      label: 'Piano di monitoraggio',
-      description: 'Controlli ambientali continui',
+      id: "monitoring",
+      label: "Piano di monitoraggio",
+      description: "Controlli ambientali continui",
       required: true,
-      category: 'ambientale',
+      category: "environmental",
     },
   ]}
   categories={[
-    { id: 'domanda', label: 'Domanda', color: 'blue' },
-    { id: 'tecnico', label: 'Tecnico', color: 'green' },
-    { id: 'ambientale', label: 'Ambientale', color: 'amber' },
+    { id: "application", label: "Applicazione", color: "blue" },
+    { id: "technical", label: "Tecnico", color: "green" },
+    { id: "environmental", label: "Ambientale", color: "amber" },
   ]}
   showProgress={true}
 />
@@ -303,7 +295,7 @@ La maggior parte delle medie imprese necessita di UKL-UPL:
 ## SPPL (Lettera di Dichiarazione)
 
 <InfoCard variant="tip" title="Opzione più Semplice">
-**L'SPPL** è per imprese a basso impatto:
+**SPPL** è per imprese a basso impatto:
 - Piccoli negozi al dettaglio
 - Servizi di base
 - Attività d'ufficio
@@ -317,37 +309,37 @@ Spesso generato automaticamente tramite il sistema OSS in base al tuo codice KBL
 
 1. Registrati sul sistema OSS
 2. Inserisci i dettagli dell'attività
-3. L'SPPL viene generato se il rischio è basso
-4. Stampa e conserva nei registri
+3. SPPL generato se il rischio è basso
+4. Stampa e conserva per archivio
 5. Rispetta gli impegni dichiarati
 
 ---
 
-## Approccio Basato sul Rischio
+## Approccio Basato sui Rischi
 
 ### Classificazione del Rischio OSS
 
-Il sistema OSS utilizza ora un **approccio basato sul rischio**:
+Il sistema OSS ora utilizza un **approccio basato sui rischi**:
 
 | Livello di Rischio | Requisito Ambientale        |
 | ------------------ | --------------------------- |
 | Basso              | SPPL (automatico in OSS)    |
 | Medio-Basso        | SPPL o UKL-UPL semplificato |
 | Medio-Alto         | UKL-UPL standard            |
-| Alto               | AMDAL valutazione completa  |
+| Alto               | AMDAL valutazione completa   |
 
-Rischio determinato da:
+Il rischio è determinato da:
 
-- Classificazione aziendale KBLI
+- Classificazione KBLI dell'attività
 - Scala delle operazioni
 - Sensibilità della posizione
-- Potenziale impatto ambientale
+- Impatto ambientale potenziale
 
 ---
 
 ## Obblighi di Conformità
 
-### Dopo l'ottenimento del permesso
+### Dopo l'Ottenimento del Permesso
 
 <Checklist
   title="Conformità Ambientale Continua"
@@ -355,46 +347,46 @@ Rischio determinato da:
   persistKey="env-compliance-checklist"
   items={[
     {
-      id: 'monitoring',
-      label: 'Monitoraggio regolare',
-      description: 'Secondo il piano approvato',
+      id: "monitoring",
+      label: "Monitoraggio regolare",
+      description: "Come previsto dal piano approvato",
       required: true,
-      category: 'monitoraggio',
+      category: "monitoring",
     },
     {
-      id: 'reporting',
-      label: 'Rapporti periodici',
-      description: 'All''agenzia ambientale',
+      id: "reporting",
+      label: "Reporting periodico",
+      description: "All'agenzia ambientale",
       required: true,
-      category: 'rapporti',
+      category: "reporting",
     },
     {
-      id: 'waste-records',
-      label: 'Registri gestione rifiuti',
-      description: 'Documentazione dello smaltimento',
+      id: "waste-records",
+      label: "Documentazione gestione rifiuti",
+      description: "Documentare lo smaltimento",
       required: true,
-      category: 'registri',
+      category: "records",
     },
     {
-      id: 'permits-current',
-      label: 'Mantenere i permessi aggiornati',
-      description: 'Rinnovare prima della scadenza',
+      id: "permits-current",
+      label: "Mantieni i permessi in corso",
+      description: "Rinnova prima della scadenza",
       required: true,
-      category: 'amministrazione',
+      category: "admin",
     },
     {
-      id: 'changes',
-      label: 'Segnalare cambiamenti significativi',
-      description: 'Se le operazioni cambiano materialmente',
+      id: "changes",
+      label: "Segnala cambiamenti significativi",
+      description: "Se le operazioni cambiano sostanzialmente",
       required: true,
-      category: 'amministrazione',
+      category: "admin",
     },
   ]}
-  categories={={[
-    { id: 'monitoraggio', label: 'Monitoraggio', color: 'blue' },
-    { id: 'rapporti', label: 'Rapporti', color: 'green' },
-    { id: 'registri', label: 'Registri', color: 'amber' },
-    { id: 'amministrazione', label: 'Admin', color: 'purple' },
+  categories={[
+    { id: "monitoring", label: "Monitoraggio", color: "blue" },
+    { id: "reporting", label: "Reporting", color: "green" },
+    { id: "records", label: "Documentazione", color: "amber" },
+    { id: "admin", label: "Amministrazione", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -405,49 +397,49 @@ Rischio determinato da:
 
 ### Categorie di Rifiuti
 
-| Categoria       | Esempi                  | Requisiti                       |
-| --------------- | ----------------------- | ------------------------------- |
-| B3 (Pericolosi) | Chimici, batterie, olio | Smaltimento autorizzato         |
-| Non-B3          | Rifiuti generici        | Smaltimento corretto            |
-| Acque reflue    | Acqua di processo       | Trattamento prima dello scarico |
-| Emissioni aria  | Fumo, gas               | Monitoraggio, filtri            |
+| Categoria       | Esempi                  | Requisiti               |
+| --------------- | ------------------------ | ------------------------ |
+| B3 (Pericoloso) | Sostanze chimiche, batterie, olio | Smaltimento autorizzato  |
+| Non-B3          | Rifiuti generici         | Smaltimento appropriato  |
+| Acque reflue    | Acqua di processo        | Trattamento prima scarico|
+| Emissioni aria  | Fumo, gas                | Monitoraggio, filtri     |
 
 <InfoCard variant="warning" title="Rifiuti B3">
 **I rifiuti pericolosi (B3)** richiedono:
 - Stoccaggio separato
 - Trasportatore autorizzato
 - Impianto di smaltimento autorizzato
-- Documentazione del manifesto
-- Rapporti regolari
+- Documentazione manifesto
+- Reporting regolare
 
-Le violazioni possono comportare gravi sanzioni.
+Le violazioni possono comportare sanzioni gravi.
 
 </InfoCard>
 
 ---
 
-## Sanzioni per Inosservanza
+## Sanzioni per Non Conformità
 
-| Violazione                 | Sanzione                       |
-| -------------------------- | ------------------------------ |
-| Operare senza permesso     | Chiusura + multe               |
-| Superamento degli standard | Avvisi → multe → chiusura      |
-| Smaltimento improprio      | Possibili accuse penali        |
-| Rapporti falsi             | Revoca del permesso            |
-| Violazioni B3              | Responsabilità penale + civile |
+| Violazione                | Sanzione                    |
+| ------------------------- | --------------------------- |
+| Operare senza permesso    | Chiusura + multe            |
+| Superamento degli standard | Avvisi → multe → chiusura   |
+| Smaltimento improprio     | Possibili accuse penali     |
+| Reporting falso           | Revoca del permesso         |
+| Violazioni B3             | Responsabilità penale e civile |
 
 ---
 
 ## Domande Frequenti
 
 <AskZantara
-  context="Environmental permit Indonesia, AMDAL, UKL-UPL, SPPL, business compliance"
+  context="Permesso ambientale Indonesia, AMDAL, UKL-UPL, SPPL, conformità aziendale"
   placeholder="Chiedi sui permessi ambientali..."
   suggestedQuestions={[
     "Il mio ristorante ha bisogno di AMDAL?",
-    "Quanto tempo richiede l'UKL-UPL?",
-    "Posso operare mentre aspetto il permesso?",
-    "Cosa succede se non sono in regola?",
+    "Quanto tempo impiega il UKL-UPL?",
+    "Posso operare in attesa del permesso?",
+    "Cosa succede se non mi conformo?",
   ]}
 />
 
@@ -455,6 +447,6 @@ Le violazioni possono comportare gravi sanzioni.
 
 ## Articoli Correlati
 
-- [Panoramica Licenze Commerciali](/it/insights/business/business-licenses-overview)
-- [Guida alla creazione di una PT PMA](/business/pt-pma-registration-guide?lang=it)
-- [Guida alle Imprese Manifatturiere](/it/insights/business/manufacturing-business-guide)
+- [Panoramica Licenze Aziendali](/insights/business/business-licenses-overview)
+- [Guida Setup PT PMA](/business/pt-pma-registration-guide)
+- [Guida Attività Manifatturiera](/insights/business/manufacturing-business-guide)

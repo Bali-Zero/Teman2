@@ -84,42 +84,34 @@ ogImage: "/static/insights/business/consulting-business-guide.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "c35e9b5b66eae65c238cf6ab78c35158203bf646548d28b6c143278912515598"
+source_sha256: "adcce1c163289cd63d3cb5366d6d4b28784450c084c984a3ac35849aad107ed2"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Consulenza in Indonesia 2026: Guida per Consulenti Esteri
 
-# Attività di Consulenza in Indonesia 2026: Guida per Consulenti Stranieri
-
-I servizi professionali e di consulenza sono in crescita in Indonesia. Ecco come i consulenti stranieri possono avviare attività legali.
+I servizi professionali e la consulenza stanno crescendo in Indonesia. Ecco come i consulenti esteri possono organizzare le operazioni legali.
 
 ## Opzioni di Attività di Consulenza
 
 <DecisionTree
-  title="Scegli la Tua Struttura"
+  title="Scegli la tua Struttura"
   description="Trova la configurazione giusta per la tua attività di consulenza"
   nodes={[
     {
       id: "start",
-      question: "Dove sono i tuoi clienti?",
+      question: "Dove si trovano i tuoi clienti?",
       options: [
         { label: "Clienti indonesiani", next: "indo-clients" },
-        { label: "Solo clienti stranieri", next: "foreign-clients" },
-        { label: "Misto", next: "mixed" },
+        { label: "Solo clienti esteri", next: "foreign-clients" },
+        { label: "Misto di entrambi", next: "mixed" },
       ],
     },
     {
       id: "indo-clients",
       question: "Come fornirai i servizi?",
       options: [
-        { label: "Di persona, dall'Indonesia", next: "pt-pma" },
-        { label: "Possibile da remoto", next: "remote-indo" },
+        { label: "In presenza, dall'Indonesia", next: "pt-pma" },
+        { label: "Remotamente possibile", next: "remote-indo" },
       ],
     },
     {
@@ -127,21 +119,21 @@ I servizi professionali e di consulenza sono in crescita in Indonesia. Ecco come
       question: "Lavorerai dall'Indonesia?",
       options: [
         { label: "Sì, vivendo in Indonesia", next: "remote-visa" },
-        { label: "No, visitando occasionalmente", next: "no-company" },
+        { label: "No, solo visite occasionali", next: "no-company" },
       ],
     },
     {
       id: "mixed",
       result: {
-        title: "PT PMA Raccomandata",
+        title: "PT PMA Consigliato",
         description:
-          "Con clienti sia indonesiani che stranieri, una PT PMA ti offre la massima flessibilità. Puoi fatturare a livello locale e internazionale.",
+          "Con sia clienti indonesiani che esteri, una PT PMA ti offre la massima flessibilità. Puoi emettere fatture localmente e internazionalmente.",
       },
     },
     {
       id: "pt-pma",
       result: {
-        title: "PT PMA Richiesta",
+        title: "PT PMA Richiesto",
         description:
           "Per servire clienti indonesiani dall'Indonesia, hai bisogno di una PT PMA. Questo ti permette di fatturare in IDR, assumere personale locale e lavorare legalmente.",
       },
@@ -149,17 +141,17 @@ I servizi professionali e di consulenza sono in crescita in Indonesia. Ecco come
     {
       id: "remote-indo",
       result: {
-        title: "Considera Entrambe le Opzioni",
+        title: "Valuta Entrambe le Opzioni",
         description:
-          "Se i servizi possono essere forniti da remoto, potresti fatturare da una società straniera. Ma per le migliori relazioni con i clienti e la riscossione dei pagamenti, la PT PMA è spesso migliore.",
+          "Se i servizi possono essere forniti remotamente, potresti fatturare da una società estera. Ma per le migliori relazioni con i clienti e la raccolta pagamenti, la PT PMA è spesso migliore.",
       },
     },
     {
       id: "remote-visa",
       result: {
-        title: "E33G Nomade Digitale + Società Straniera",
+        title: "E33G Digital Nomad + Società Estera",
         description:
-          "Puoi lavorare da remoto per clienti stranieri con determinati visti senza una società indonesiana. Ma sei limitato nel servire il mercato indonesiano.",
+          "Puoi lavorare remotamente per clienti esteri su certi visti senza una società indonesiana. Ma sei limitato nel servire il mercato indonesiano.",
       },
     },
     {
@@ -167,7 +159,7 @@ I servizi professionali e di consulenza sono in crescita in Indonesia. Ecco come
       result: {
         title: "Nessuna Società Indonesiana Necessaria",
         description:
-          "Se non vivi in Indonesia e servi solo clienti stranieri, non hai bisogno di una società indonesiana. Visita con un visto d'affari se necessario.",
+          "Se non vivi in Indonesia e servi solo clienti esteri, non hai bisogno di una società indonesiana. Visita con visto d'affari quando necessario.",
       },
     },
   ]}
@@ -179,14 +171,14 @@ I servizi professionali e di consulenza sono in crescita in Indonesia. Ecco come
 
 ### Codici KBLI per la Consulenza
 
-| Code  | Attività (KBLI 2025)                                 | Livello di Rischio | Stato PMA    |
-| ----- | ---------------------------------------------------- | ------------------ | ------------ |
-| 70209 | Konsultasi Manajemen dan Bisnis Lainnya              | Rendah             | TERBUKA 100% |
-| 70202 | Konsultansi Manajemen dan Bisnis Industri            | Menengah Tinggi    | TERBUKA 100% |
-| 70203 | Konsultansi Manajemen dan Bisnis Perdagangan         | Rendah             | TERBUKA 100% |
-| 70201 | Konsultansi Manajemen dan Bisnis **Pariwisata**      | Rendah             | TERBUKA 100% |
-| 62209 | Konsultansi Komputer dan Manajemen Fasilitas Lainnya | -                  | TERBUKA 100% |
-| 62201 | Konsultansi dan Manajemen Keamanan Siber             | -                  | TERBUKA 100% |
+| Codice  | Attività (KBLI 2025)                                 | Livello di Rischio      | Status PMA   |
+| ----- | ---------------------------------------------------- | --------------- | ------------ |
+| 70209 | Konsultasi Manajemen dan Bisnis Lainnya              | Rendah          | TERBUKA 100% |
+| 70202 | Konsultansi Manajemen dan Bisnis Industri            | Menengah Tinggi | TERBUKA 100% |
+| 70203 | Konsultansi Manajemen dan Bisnis Perdagangan         | Rendah          | TERBUKA 100% |
+| 70201 | Konsultansi Manajemen dan Bisnis **Pariwisata**      | Rendah          | TERBUKA 100% |
+| 62209 | Konsultansi Komputer e Gestione di Infrastrutture Alt. | -               | TERBUKA 100% |
+| 62201 | Konsultansi e Gestione della Sicurezza Cibernetica   | -               | TERBUKA 100% |
 
 <InfoCard variant="warning" title="KBLI 2025: Codici Vecchi Rimossi">
 I seguenti codici KBLI 2020 **non esistono più** nel KBLI 2025:
@@ -194,32 +186,32 @@ I seguenti codici KBLI 2020 **non esistono più** nel KBLI 2025:
 - ~~69209~~ (altri servizi professionali) → Ristrutturato
 - ~~74909~~ (altro supporto aziendale) → Ristrutturato
 
-Se la tua PT PMA esistente utilizza vecchi codici, devi verificare la migrazione al KBLI 2025 ora che la finestra di transizione di giugno 2026 è chiusa (BPS Reg. 7/2025).
+Se la tua PT PMA esistente utilizza codici vecchi, dovrai migrare al KBLI 2025 ora che la finestra di transizione di giugno 2026 è chiusa (Regolamento BPS 7/2025).
 
 </InfoCard>
 
-<InfoCard variant="note" title="Proprietà Straniera al 100% Confermata">
+<InfoCard variant="note" title="Possesso Estero del 100% Confermato">
 
-Tutti i codici KBLI di consulenza elencati sopra hanno lo status PMA
-**TERBUKA** con `pma_max_asing: 100%`. Nessun partner indonesiano richiesto.
-Fonte: Perpres 10/2021, 49/2021, 14/2024.
+Tutti i codici KBLI per la consulenza elencati sopra hanno status PMA **TERBUKA** con
+`pma_max_asing: 100%`. Nessun partner indonesiano richiesto. Fonte: Perpres
+10/2021, 49/2021, 14/2024.
 
 </InfoCard>
 
 ### Requisiti di Investimento
 
-PT PMA di Consulenza:
+PT PMA per la consulenza:
 
-- **Investimento totale minimo**: IDR 10 miliardi (~USD 625.000)
-- **Capitale versato minimo**: IDR 2,5 miliardi (~USD 156.000)
-- Questi sono i minimi legali secondo il Regolamento BKPM 5/2025
+- **Investimento minimo totale**: IDR 10 miliardi (~USD 625.000)
+- **Capitale sociale versato minimo**: IDR 2,5 miliardi (~USD 156.000)
+- Questi sono minimi statuti secondo il Regolamento BKPM 5/2025
 
-<InfoCard variant="tip" title="Costi di Avvio della Consulenza Bali Zero">
+<InfoCard variant="tip" title="Configurazione Bali Zero per Consulenza">
 - **Nuova Società (PT PMA):** IDR 20.000.000
-- **Ufficio Virtuale** (domicilio aziendale): IDR 5.000.000
-- **KITAS di Lavoro (Direttore E25B):** IDR 34.500.000 (Offshore), IDR 36.000.000 (Onshore), IDR 31.500.000 (Estensione)
+- **Ufficio Virtuale** (sede sociale): IDR 5.000.000
+- **KITAS Lavorativo (E25B Direttore):** IDR 34.500.000 (Offshore), IDR 36.000.000 (Onshore), IDR 31.500.000 (Rinnovo)
 
-Queste sono le tariffe di servizio di Bali Zero, separate dai requisiti di capitale legale di cui sopra.
+Questi sono le tariffe di servizio Bali Zero, separate dai requisiti statuti di capitale sopra elencati.
 
 </InfoCard>
 
@@ -228,7 +220,7 @@ Queste sono le tariffe di servizio di Bali Zero, separate dai requisiti di capit
 ## Confronto delle Strutture
 
 <ComparisonTable
-  title="Strutture Aziendali di Consulenza"
+  title="Strutture di Attività di Consulenza"
   description="Opzioni per i servizi professionali"
   items={[
     {
@@ -236,33 +228,33 @@ Queste sono le tariffe di servizio di Bali Zero, separate dai requisiti di capit
       subtitle: "Società indonesiana",
       values: {
         "Clienti Indonesiani": "Sì",
-        "Clienti Stranieri": "Sì",
+        "Clienti Esteri": "Sì",
         "Personale Locale": "Sì",
-        "Il Tuo Permesso di Lavoro": "KITAS Direttore E25B",
-        Investment: "IDR 10B (legale)",
+        "Permesso di Lavoro per Te": "KITAS Direttore E25B",
+        Investimento: "IDR 10B (statuto)",
       },
       highlight: true,
     },
     {
-      name: "Foreign Company + Remote Visa",
+      name: "Società Estera + Visto Remoto",
       subtitle: "Fatturazione dall'estero",
       values: {
         "Clienti Indonesiani": "Limitato",
-        "Clienti Stranieri": "Sì",
+        "Clienti Esteri": "Sì",
         "Personale Locale": "No",
-        "Il Tuo Permesso di Lavoro": "Visto Lavoratore Remoto E33G",
-        Investment: "Nessuno in Indonesia",
+        "Permesso di Lavoro per Te": "Visto E33G Lavoratore Remoto",
+        Investimento: "Nessuno in Indonesia",
       },
     },
     {
-      name: "Freelancer",
+      name: "Freelance",
       subtitle: "Pratica individuale",
       values: {
         "Clienti Indonesiani": "Zona grigia",
-        "Clienti Stranieri": "Sì",
+        "Clienti Esteri": "Sì",
         "Personale Locale": "No",
-        "Il Tuo Permesso di Lavoro": "Tramite Nomade Digitale E33G",
-        Investment: "Nessuno",
+        "Permesso di Lavoro per Te": "Via E33G Digital Nomad",
+        Investimento: "Nessuno",
       },
     },
   ]}
@@ -270,46 +262,46 @@ Queste sono le tariffe di servizio di Bali Zero, separate dai requisiti di capit
 
 ---
 
-## Costituzione di una PT PMA di Consulenza
+## Configurazione della PT PMA per la Consulenza
 
 <Checklist
-  title="Configurazione PT PMA di Consulenza"
-  description="Passi per stabilire la tua attività"
+  title="Configurazione PT PMA per la Consulenza"
+  description="Passi per istituire la tua pratica"
   persistKey="consulting-setup-checklist"
   items={[
     {
       id: "plan",
-      label: "Definire servizi e codici KBLI",
+      label: "Definisci servizi e codici KBLI",
       description: "Quali servizi di consulenza offrirai?",
       required: true,
       category: "planning",
     },
     {
       id: "company",
-      label: "Costituire PT PMA",
-      description: "Costituzione della società tramite Notaris",
+      label: "Istituisce PT PMA",
+      description: "Formazione della società tramite notaio",
       required: true,
       category: "company",
     },
     {
       id: "nib",
-      label: "Ottenere NIB tramite OSS",
-      description: "Registrazione dell'attività",
+      label: "Ottieni NIB tramite OSS",
+      description: "Registrazione aziendale",
       required: true,
       category: "company",
     },
     {
       id: "bank",
-      label: "Aprire un conto bancario aziendale",
+      label: "Apri conto bancario aziendale",
       description: "Per fatturazione e pagamenti",
       required: true,
       category: "operations",
     },
     {
       id: "kitas",
-      label: "Richiedere KITAS Direttore (E25B)",
+      label: "Richiedi KITAS per Direttore (E25B)",
       description:
-        "RPTKA + DKP-TKA + visto E25B. KITAS di Lavoro Bali Zero a partire da IDR 31.5M",
+        "RPTKA + DKP-TKA + Visto E25B. KITAS Lavorativo Bali Zero da IDR 31,5M",
       required: true,
       category: "immigration",
     },
@@ -322,24 +314,24 @@ Queste sono le tariffe di servizio di Bali Zero, separate dai requisiti di capit
     },
     {
       id: "accounting",
-      label: "Impostare la contabilità",
-      description: "Contabile o ragioniere",
+      label: "Configura contabilità",
+      description: "Contabile o commercialista",
       required: true,
       category: "operations",
     },
     {
       id: "contracts",
-      label: "Modelli di contratto cliente",
-      description: "Accordi bilingue",
+      label: "Modelli di contratto per clienti",
+      description: "Accordi bilingui",
       required: true,
       category: "legal",
     },
   ]}
   categories={[
     { id: "planning", label: "Pianificazione", color: "blue" },
-    { id: "company", label: "Azienda", color: "green" },
+    { id: "company", label: "Società", color: "green" },
     { id: "immigration", label: "Immigrazione", color: "amber" },
-    { id: "tax", label: "Fiscale", color: "red" },
+    { id: "tax", label: "Fisco", color: "red" },
     { id: "operations", label: "Operazioni", color: "purple" },
     { id: "legal", label: "Legale", color: "cyan" },
   ]}
@@ -350,29 +342,28 @@ Queste sono le tariffe di servizio di Bali Zero, separate dai requisiti di capit
 
 ## Fatturazione e Pagamenti
 
-### Fatturazione Clienti Indonesiani
+### Fatturazione a Clienti Indonesiani
 
-Con una PT PMA, puoi:
+Con la PT PMA, puoi:
 
 - Fatturare in IDR
 - Emettere fatture fiscali (Faktur Pajak)
-- Riscotere l'IVA (11%)
+- Raccogliere IVA (11%)
 - Accettare bonifici bancari locali
 
-### Fatturazione Clienti Stranieri
+### Fatturazione a Clienti Esteri
 
-Da PT PMA:
+Dalla PT PMA:
 
-- Fatturare in USD o altre valute
-- Ricevere su conto bancario indonesiano
-- Convertire in IDR
-- Considerazioni sul cambio valuta
+- Fattura in USD o altre valute
+- Ricevi su conto bancario indonesiano
+- Converti in IDR
+- Considerazioni sui cambi valuta
 
 <InfoCard variant="warning" title="IVA sui Servizi">
 
-I servizi di consulenza sono soggetti all'**IVA (PPN) dell'11%**. Devi
-addebitarla ai clienti indonesiani e versarla all'ufficio delle imposte
-mensilmente.
+I servizi di consulenza sono soggetti all'**IVA del 11% (PPN)**. Devi addebitare questa tassa ai
+clienti indonesiani e versarla all'ufficio delle imposte mensilmente.
 
 </InfoCard>
 
@@ -380,28 +371,27 @@ mensilmente.
 
 ## Considerazioni sul Permesso di Lavoro
 
-### Come Direttore della Tua PT PMA
+### Come Direttore della tua PT PMA
 
-Hai bisogno di un **KITAS Direttore (E25B - Visa Kerja Direktur Perusahaan)**:
+Hai bisogno di un **KITAS per Direttore (E25B - Visto di Lavoro per Direttore di Azienda)**:
 
 - RPTKA (richiesto anche per la propria azienda)
 - Tassa DKP-TKA (USD 100/mese)
 - KITAS Direttore E25B
 
-<InfoCard variant="tip" title="KITAS di Lavoro Bali Zero (E25B)">
+<InfoCard variant="tip" title="KITAS Lavorativo Bali Zero (E25B)">
 
-- **Offshore** (richiesta dall'estero): IDR 34.500.000 - **Onshore**
-  (richiesta dall'Indonesia): IDR 36.000.000 - **Estensione** (rinnovo): IDR
-  31.500.000
+- **Offshore** (richiesta dall'estero): IDR 34.500.000 - **Onshore** (richiesta in
+  Indonesia): IDR 36.000.000 - **Rinnovo**: IDR 31.500.000
   </InfoCard>
 
-### Assunzione di Altri Consulenti Stranieri
+### Assunzione di Altri Consulenti Esteri
 
-Il personale straniero aggiuntivo richiede:
+Personale straniero aggiuntivo richiede:
 
 - RPTKA individuale
 - Giustificazione della posizione
-- Formazione della controparte indonesiana
+- Formazione del controparte indonesiano
 - Costi completi del permesso per persona
 
 ---
@@ -410,46 +400,44 @@ Il personale straniero aggiuntivo richiede:
 
 ### Imposte Aziendali
 
-| Imposta                           | Aliquota         | Frequenza       |
-| --------------------------------- | ---------------- | --------------- |
-| IVA (PPN)                         | 11% sui servizi  | Mensile         |
-| Imposta sul Reddito delle Società | 22% sul profitto | Annuale         |
-| Ritenuta sui pagamenti            | Varia            | Per transazione |
+| Imposta                     | Tassità            | Frequenza       |
+| --------------------------- | ------------------ | --------------- |
+| IVA (PPN)                  | 11% sui servizi   | Mensile         |
+| Imposta sul Reddito d'Impresa | 22% sugli utili    | Annuale         |
+| Trattenuta sui pagamenti    | Variabile         | Per transazione |
 
 ### Imposte Personali
 
 Come direttore/proprietario:
 
-- Salario soggetto a PPh 21
+- Stipendio soggetto a PPh 21
 - Dividendi tassabili
-- SPT annuale richiesto
+- Dichiarazione annuale SPT richiesta
 
 ---
 
-## Tipi Comuni di Consulenza
+## Tipologie Comuni di Consulenza
 
-### Consentiti agli Stranieri
+### Consentite per Esteri
 
 - Consulenza gestionale
 - Consulenza strategica
 - Consulenza IT
 - Consulenza finanziaria (non regolamentata)
-- Consulenza di marketing
-- Consulenza HR (non di collocamento)
+- Consulenza marketing
+- Consulenza HR (non placement)
 - Consulenza tecnica
 
 ### Aree Restrette
 
-- Consulenza legale (richiede avvocato indonesiano)
-- Consulenza fiscale (tecnicamente ristretta)
-- Servizi di revisione (contabili autorizzati)
+- Consulti legali (richiede avvocato indonesiano)
+- Consulti fiscali (tecnicamente limitati)
+- Servizi di revisione (commercialisti abilitati)
 - Certi servizi finanziari
 
 <InfoCard variant="note" title="Partnership">
 
-Per i servizi ristretti, considera la possibilità di collaborare con
-professionisti indonesiani autorizzati che possono fornire i componenti
-regolamentati.
+Per i servizi limitati, considera di associarti con professionisti indonesiani abilitati che possono fornire le componenti regolamentate.
 
 </InfoCard>
 
@@ -459,32 +447,32 @@ regolamentati.
 
 ### Lavorare dall'Indonesia Senza PT PMA
 
-Se i clienti sono puramente stranieri:
+Se i clienti sono puramente esteri:
 
-- Opzioni di Visto Nomade Digitale E33G
-- Fatturazione da società straniera
+- Opzioni per Visto E33G Digital Nomad
+- Fatturazione da società estera
 - Nessun impiego indonesiano
-- Impossibile servire clienti indonesiani
+- Non puoi servire clienti indonesiani
 
 ### Limitazioni
 
-- Impossibile costruire una base di clienti indonesiani
-- Difficoltà con il conto bancario
+- Non puoi costruire una base di clienti indonesiana
+- Difficoltà con i conti bancari
 - Stabilità a lungo termine limitata
 - Rinnovi del visto richiesti
 
 ---
 
-## Domande Frequenti
+## Domande Comuni
 
 <AskZantara
-  context="Consulting business Indonesia, professional services, PT PMA consulting, foreign consultant"
-  placeholder="Chiedi informazioni sull'attività di consulenza..."
+  context="Business di consulenza in Indonesia, servizi professionali, consulenza PT PMA, consulente estero"
+  placeholder="Chiedi sul business di consulenza..."
   suggestedQuestions={[
-    "Posso fare consulenza con un visto turistico?",
-    "Cosa succede se ho un solo cliente indonesiano?",
-    "Come stabilisco i prezzi dei servizi in IDR vs USD?",
-    "Ho bisogno di certificazioni professionali?",
+    "Posso fare consulenza con visto turistico?",
+    "Cosa succede se ho solo un cliente indonesiano?",
+    "Come posso tarare i servizi in IDR vs USD?",
+    "Devo avere una certificazione professionale?",
   ]}
 />
 
@@ -492,6 +480,6 @@ Se i clienti sono puramente stranieri:
 
 ## Articoli Correlati
 
-- [Guida alla Registrazione della PT PMA](/insights/business/pt-pma-registration-guide)
+- [Guida alla Registrazione PT PMA](/insights/business/pt-pma-registration-guide)
 - [KITAS Direttore vs Dipendente](/insights/immigration/director-vs-employee-kitas)
 - [Guida Fiscale per Freelance](/insights/tax/freelancer-tax-guide)

@@ -74,34 +74,26 @@ canonicalUrl: "https://balizero.com/business/ecommerce-indonesia"
 ogImage: "/static/insights/business/ecommerce-indonesia.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
-source_sha256: "fc505ab2935f72b4ce6bb1cdabcd4aa744524415b648386f96b1c224c1ad8e0d"
+source_sha256: "06d3d8f7fb05cb7b710562a8801b75a96e19b8232e336ea34a5e84f6baf3bb82"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# E-Commerce Business Indonesia 2026: Guida Completa
 
-# Business E-Commerce in Indonesia 2026: Guida Completa
-
-L'Indonesia è il più grande mercato e-commerce del Sud-est asiatico. Ecco come cogliere questa opportunità.
+L'Indonesia è il più grande mercato dell'e-commerce del Sud-Est asiatico. Ecco come sfruttare questa opportunità.
 
 ## Panoramica del Mercato
 
 <InfoCard variant="note" title="E-Commerce in Indonesia">
 **Dimensioni del mercato (2026):**
 
-- Mercato da oltre 80 miliardi di dollari
-- Oltre 280 milioni di abitanti
-- Oltre 200 milioni di utenti internet
+- ~80+ miliardi di dollari di mercato
+- 280+ milioni di abitanti
+- 200+ milioni di utenti internet
 - Classe media in crescita
-- Alta penetrazione del mobile
+- Alta penetrazione mobile
 - Social commerce in ascesa
 
-Uno dei mercati e-commerce a più rapida crescita al mondo.
+Uno dei mercati dell'e-commerce più veloci al mondo.
 
 </InfoCard>
 
@@ -115,7 +107,7 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
   nodes={[
     {
       id: "start",
-      question: "Cosa stai vendendo?",
+      question: "Cosa vendi?",
       options: [
         { label: "Prodotti fisici", next: "physical" },
         { label: "Prodotti digitali", next: "digital" },
@@ -124,9 +116,9 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
     },
     {
       id: "physical",
-      question: "Inventario di proprietà?",
+      question: "Possiedi l'inventario?",
       options: [
-        { label: "Sì, stock proprio", next: "own-stock" },
+        { label: "Sì, ho scorte", next: "own-stock" },
         { label: "No, dropshipping", next: "dropship" },
         { label: "Venditore su marketplace", next: "marketplace" },
       ],
@@ -136,7 +128,7 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
       result: {
         title: "Prodotti Digitali",
         description:
-          "Software, corsi, contenuti digitali. Minore complessità logistica. Considera opzioni di consegna internazionale. Potrebbe richiedere una minore presenza locale.",
+          "Software, corsi, contenuti digitali. Minore complessità logistica. Valuta opzioni di consegna internazionale. Potrebbe essere necessaria una presenza locale ridotta.",
       },
     },
     {
@@ -144,7 +136,7 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
       result: {
         title: "Marketplace di Servizi",
         description:
-          "Connessione tra fornitori di servizi e clienti. Modello a piattaforma. Potrebbe richiedere una PT PMA con KBLI specifico per marketplace.",
+          "Collegamento tra fornitori di servizi e clienti. Modello piattaforma. Potrebbe essere necessario un PT PMA con codice KBLI marketplace.",
       },
     },
     {
@@ -152,7 +144,7 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
       result: {
         title: "E-Commerce Tradizionale",
         description:
-          "Acquisto/produzione inventario, stoccaggio, vendita online, spedizione. Richiede magazzino e logistica. PT PMA necessaria per investimenti stranieri.",
+          "Acquista/fai scorte, stoccaggio, vendita online, spedizione. Richiede magazzino e logistica. PT PMA per investimenti esteri.",
       },
     },
     {
@@ -160,7 +152,7 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
       result: {
         title: "Dropshipping",
         description:
-          "Vendita di prodotti senza possedere inventario. Il fornitore spedisce direttamente. Minore capitale richiesto ma meno controllo.",
+          "Vendi prodotti senza detenere scorte. Il fornitore spedisce direttamente. Capitale inferiore ma meno controllo.",
       },
     },
     {
@@ -168,7 +160,7 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
       result: {
         title: "Venditore su Marketplace",
         description:
-          "Vendita su Tokopedia, Shopee, ecc. Sfrutta il traffico esistente. Si applicano commissioni. Ottimo punto di partenza.",
+          "Vendi su Tokopedia, Shopee, ecc. Sfrutta traffico esistente. Si applicano commissioni. Ottimo punto di partenza.",
       },
     },
   ]}
@@ -184,12 +176,12 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
   items={[
     {
       name: "Tokopedia",
-      subtitle: "La più grande piattaforma locale",
+      subtitle: "Piattaforma locale più grande",
       values: {
-        "Quota di mercato": "~35%",
-        "Commissioni venditore": "0-5%",
-        "Ideale per": "Prodotti generici",
-        "Venditori stranieri": "Richiede entità locale",
+        "Market share": "~35%",
+        "Seller fees": "0-5%",
+        "Best for": "Prodotti generici",
+        "Foreign sellers": "Necessaria entità locale",
       },
       highlight: true,
     },
@@ -197,40 +189,40 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
       name: "Shopee",
       subtitle: "Gigante regionale",
       values: {
-        "Quota di mercato": "~35%",
-        "Commissioni venditore": "1-5%",
-        "Ideale per": "Moda, lifestyle",
-        "Venditori stranieri": "Richiede entità locale",
+        "Market share": "~35%",
+        "Seller fees": "1-5%",
+        "Best for": "Moda, lifestyle",
+        "Foreign sellers": "Necessaria entità locale",
       },
     },
     {
       name: "Lazada",
-      subtitle: "Supportata da Alibaba",
+      subtitle: "Sostenuta da Alibaba",
       values: {
-        "Quota di mercato": "~15%",
-        "Commissioni venditore": "1-4%",
-        "Ideale per": "Elettronica, marchi",
-        "Venditori stranieri": "Opzione cross-border",
+        "Market share": "~15%",
+        "Seller fees": "1-4%",
+        "Best for": "Elettronica, marchi",
+        "Foreign sellers": "Opzione cross-border",
       },
     },
     {
       name: "Bukalapak",
       subtitle: "Focus locale",
       values: {
-        "Quota di mercato": "~10%",
-        "Commissioni venditore": "0-2%",
-        "Ideale per": "PMI, retail tradizionale",
-        "Venditori stranieri": "Richiede entità locale",
+        "Market share": "~10%",
+        "Seller fees": "0-2%",
+        "Best for": "PMI, retail tradizionale",
+        "Foreign sellers": "Necessaria entità locale",
       },
     },
     {
-      name: "Sito Web Proprio",
+      name: "Own Website",
       subtitle: "Negozio indipendente",
       values: {
-        "Quota di mercato": "N/A",
-        "Commissioni venditore": "Solo gateway di pagamento",
-        "Ideale per": "Brand, DTC",
-        "Venditori stranieri": "Flessibile",
+        "Market share": "N/A",
+        "Seller fees": "Solo gateway di pagamento",
+        "Best for": "Marchi, DTC",
+        "Foreign sellers": "Flessibile",
       },
     },
   ]}
@@ -240,18 +232,18 @@ Uno dei mercati e-commerce a più rapida crescita al mondo.
 
 ## Requisiti Legali
 
-### Per Investitori Stranieri
+### Per Investitori Esteri
 
-<InfoCard variant="warning" title="Richiesta PT PMA">
-**Investimenti stranieri nell'e-commerce:**
+<InfoCard variant="warning" title="PT PMA Richiesto">
+**Investimento estero in e-commerce:**
 
-- PT PMA necessaria per operazioni significative
+- Necessario PT PMA per operazioni significative
 - Requisiti minimi di investimento
 - Codici KBLI per attività di e-commerce
 - NIB tramite OSS
-- Potrebbe essere richiesta la registrazione PPMSE
+- Potrebbe essere necessaria registrazione PPMSE
 
-Non è possibile operare informalmente come straniero.
+Non si può operare informalmente come straniero.
 
 </InfoCard>
 
@@ -264,15 +256,15 @@ Non è possibile operare informalmente come straniero.
   items={[
     {
       id: "ptpma",
-      label: "Costituzione PT PMA",
-      description: "Società a investimento straniero",
+      label: "Istituzione PT PMA",
+      description: "Società di investimento estero",
       required: true,
       category: "entity",
     },
     {
       id: "nib",
-      label: "NIB (Business ID)",
-      description: "Tramite il sistema OSS",
+      label: "NIB (ID Aziendale)",
+      description: "Attraverso il sistema OSS",
       required: true,
       category: "licenses",
     },
@@ -286,7 +278,7 @@ Non è possibile operare informalmente come straniero.
     {
       id: "ppmse",
       label: "Registrazione PPMSE",
-      description: "Registrazione come operatore e-commerce",
+      description: "Registrazione operatore e-commerce",
       required: true,
       category: "ecommerce",
     },
@@ -299,7 +291,7 @@ Non è possibile operare informalmente come straniero.
     },
     {
       id: "consumer-protection",
-      label: "Conformità alla tutela dei consumatori",
+      label: "Conformità protezione consumatori",
       description: "Politiche di reso, ecc.",
       required: true,
       category: "compliance",
@@ -317,18 +309,18 @@ Non è possibile operare informalmente come straniero.
 
 ---
 
-## Regolamentazione dei Prodotti
+## Regolamentazione Prodotti
 
 ### Categorie con Requisiti Speciali
 
-| Categoria          | Requisito                     |
-| ------------------ | ----------------------------- |
-| Alimenti e bevande | Registrazione BPOM            |
-| Cosmetici          | BPOM + halal (se applicabile) |
-| Elettronica        | Certificazione SNI            |
-| Medicinali         | Controlli rigorosi            |
-| Merci importate    | Dogane, dazi                  |
-| Prodotti Halal     | Certificazione MUI            |
+| Categoria        | Requisito                  |
+| --------------- | ---------------------------- |
+| Food & beverage | Registrazione BPOM            |
+| Cosmetics       | BPOM + halal (se applicabile) |
+| Electronics     | Certificazione SNI            |
+| Medicines       | Controlli rigorosi              |
+| Imported goods  | Dogane, dazi              |
+| Halal products  | Certificazione MUI            |
 
 ---
 
@@ -336,20 +328,20 @@ Non è possibile operare informalmente come straniero.
 
 ### Opzioni Popolari
 
-| Metodo                        | Utilizzo                     |
-| ----------------------------- | ---------------------------- |
-| Bonifico bancario             | Molto comune                 |
-| E-wallet (OVO, GoPay, Dana)   | In rapida crescita           |
-| Carte di credito              | Penetrazione limitata        |
-| COD (Pagamento alla consegna) | Ancora significativo         |
-| Rateizzazione                 | Popolare per grandi acquisti |
+| Metodo                       | Utilizzo                     |
+| ---------------------------- | ------------------------- |
+| Bonifico bancario                | Molto comune               |
+| E-wallets (OVO, GoPay, Dana) | In rapida crescita           |
+| Carte di credito                 | Penetrazione limitata       |
+| COD (Pagamento alla consegna)       | Ancora significativo         |
+| Rateizzazione                 | Popolare per acquisti grandi |
 
 <InfoCard variant="tip" title="Strategia di Pagamento">
-**Offri molteplici opzioni:**
+**Offri più opzioni:**
 
 - Bonifico bancario (essenziale)
-- E-wallet (essenziale)
-- Carte di credito (per valori più alti)
+- E-wallets (essenziali)
+- Carte di credito (per importi più elevati)
 - COD (se puoi gestire la logistica)
 
 Gli indonesiani preferiscono metodi di pagamento familiari.
@@ -362,45 +354,45 @@ Gli indonesiani preferiscono metodi di pagamento familiari.
 
 ### Opzioni di Consegna
 
-| Fornitore    | Punto di forza              |
-| ------------ | --------------------------- |
-| JNE          | Copertura nazionale         |
-| J&T Express  | Focalizzato sull'e-commerce |
-| SiCepat      | Veloce, e-commerce          |
-| Anteraja     | Digital-first               |
-| GoSend       | Consegna in giornata locale |
-| Grab Express | Consegna in giornata locale |
+| Provider     | Punti di forza            |
+| ------------ | ------------------- |
+| JNE          | Copertura nazionale |
+| J&T Express  | Focalizzato su e-commerce  |
+| SiCepat      | Veloce, e-commerce    |
+| Anteraja     | Digital-first       |
+| GoSend       | Stessa giornata (locale)    |
+| Grab Express | Stessa giornata (locale)    |
 
 ### Opzioni di Fulfillment
 
-| Modello                 | Ideale per               |
-| ----------------------- | ------------------------ |
-| Self-fulfillment        | Bassi volumi, locale     |
-| Fulfillment marketplace | Venditori su piattaforma |
-| Magazzino 3PL           | Operazioni su scala      |
-| Dropshipping            | Modello senza inventario |
+| Modello                   | Ideale Per           |
+| ----------------------- | ------------------ |
+| Self-fulfillment        | Volumi bassi, locale  |
+| Marketplace fulfillment | Venditori piattaforma   |
+| 3PL warehousing         | Operazioni scalabili   |
+| Drop shipping           | Modello senza scorte |
 
 ---
 
 ## Obblighi Fiscali
 
-### Tasse sull'E-Commerce
+### Tasse E-Commerce
 
-| Imposta                 | Aliquota    | Quando                       |
-| ----------------------- | ----------- | ---------------------------- |
-| Reddito societario      | 22%         | Profitto annuale             |
-| IVA (PPN)               | 11%         | Se PKP, sulle vendite        |
-| Ritenuta d'acconto      | Varie       | Sui pagamenti effettuati     |
-| Commissioni piattaforma | IVA esclusa | Commissione alla piattaforma |
+| Tassa              | Aliquota           | Quando                   |
+| ---------------- | -------------- | ---------------------- |
+| Corporate income | 22%            | Utile annuo          |
+| IVA (PPN)        | 11%            | Se PKP, su vendite       |
+| Withholding      | Variabile        | Su pagamenti effettuati       |
+| Commissioni piattaforma    | Nessuna IVA addebitata | Commissione alla piattaforma |
 
 <InfoCard variant="note" title="IVA sull'E-Commerce">
 **Considerazioni sull'IVA:**
 
 - Soglia: 4,8 miliardi di IDR di fatturato
-- Necessità di registrarsi come PKP
-- Emissione di e-Faktur
-- La piattaforma potrebbe gestire l'IVA per le vendite su marketplace
-- Il cross-border segue regole differenti
+- Deve registrarsi come PKP
+- Emettere e-Faktur
+- La piattaforma può gestire per vendite su marketplace
+- Cross-border ha regole diverse
   </InfoCard>
 
 ---
@@ -409,22 +401,22 @@ Gli indonesiani preferiscono metodi di pagamento familiari.
 
 ### Digital Marketing
 
-| Canale               | Efficacia                      |
-| -------------------- | ------------------------------ |
+| Canale              | Efficacia                 |
+| -------------------- | ----------------------------- |
 | Social media         | Molto alta (Instagram, TikTok) |
-| Ricerca (Google)     | In crescita                    |
-| Annunci marketplace  | Tipicamente alto ROI           |
-| Influencer marketing | Molto popolare                 |
-| Marketing WhatsApp   | Comune per il CRM              |
+| Ricerca (Google)      | In crescita                       |
+| Pubblicità marketplace      | ROI alto tipicamente            |
+| Influencer marketing | Molto popolare                  |
+| Marketing WhatsApp   | Comune per CRM                |
 
 ### Social Commerce
 
-| Piattaforma        | Funzionalità E-Commerce |
-| ------------------ | ----------------------- |
-| TikTok Shop        | Shopping integrato      |
-| Instagram Shopping | Tag di prodotto         |
-| Facebook Shops     | Integrazione catalogo   |
-| WhatsApp Business  | Cataloghi prodotti      |
+| Piattaforma           | Funzionalità E-Commerce  |
+| ------------------ | ------------------- |
+| TikTok Shop        | Acquisti integrati |
+| Instagram Shopping | Tag prodotti        |
+| Facebook Shops     | Integrazione catalogo |
+| WhatsApp Business  | Cataloghi prodotti    |
 
 ---
 
@@ -432,14 +424,14 @@ Gli indonesiani preferiscono metodi di pagamento familiari.
 
 ### Problemi Comuni
 
-| Sfida                  | Soluzione                 |
-| ---------------------- | ------------------------- |
-| Complessità logistica  | Collaborazione con 3PL    |
-| Diversità di pagamenti | Gateways multipli         |
-| Concorrenza            | Differenziazione, nicchia |
-| Frodi                  | Sistemi di verifica       |
-| Resi                   | Politiche chiare          |
-| Regolamentazione       | Mantenere la conformità   |
+| Sfida            | Soluzione               |
+| -------------------- | ---------------------- |
+| Complessità logistica | Partner con 3PL       |
+| Diversità pagamenti    | Più gateway      |
+| Concorrenza          | Differenziazione, nicchia |
+| Frodi                | Sistemi di verifica   |
+| Resi              | Politiche chiare         |
+| Regolamentazione           | Rimani conforme         |
 
 ---
 
@@ -448,13 +440,13 @@ Gli indonesiani preferiscono metodi di pagamento familiari.
 <InfoCard variant="tip" title="Chiavi del Successo">
 **Cosa funziona in Indonesia:**
 
-1. **Lingua locale** - Il Bahasa Indonesia è essenziale
-2. **Mobile-first** - Oltre il 90% acquista da mobile
-3. **Riprova sociale** - Recensioni, testimonianze
-4. **Supporto via chat** - Gli indonesiani vogliono chattare
-5. **Pagamenti flessibili** - Molte opzioni
-6. **Spedizione veloce** - Le aspettative sono in aumento
-7. **Partnership locali** - Fondamentali per capire il mercato
+1. **Lingua locale** - Bahasa Indonesia essenziale
+2. **Mobile-first** - Oltre il 90% acquista su mobile
+3. **Prova sociale** - Recensioni, testimonianze
+4. **Supporto chat** - Gli indonesiani vogliono chattare
+5. **Pagamento flessibile** - Molte opzioni
+6. **Spedizione veloce** - Aspettative in crescita
+7. **Partnership locali** - Comprendi il mercato
    </InfoCard>
 
 ---
@@ -463,37 +455,37 @@ Gli indonesiani preferiscono metodi di pagamento familiari.
 
 ### Costi di Avvio
 
-| Voce                 | Range              |
-| -------------------- | ------------------ |
-| Costituzione PT PMA  | 50-150 milioni IDR |
-| Inventario iniziale  | Variabile          |
-| Sito web/piattaforma | 10-50 milioni IDR  |
-| Lancio marketing     | 20-100 milioni IDR |
-| Setup logistico      | 10-30 milioni IDR  |
+| Voce              | Fascia       |
+| ----------------- | ----------- |
+ Istituzione PT PMA      | 50-150 milioni di IDR |
+ Scorte iniziali | Variabile      |
+ Sito web/piattaforma  | 10-50 milioni di IDR  |
+ Lancio marketing  | 20-100 milioni di IDR |
+ Setup logistica   | 10-30 milioni di IDR  |
 
 ### Costi Ricorrenti
 
-| Costo                   | Mensile                       |
-| ----------------------- | ----------------------------- |
-| Commissioni piattaforma | 1-5% delle vendite            |
-| Gateway di pagamento    | 2-3% delle vendite            |
-| Logistica               | Variabile                     |
-| Marketing               | Tipicamente 10-30% dei ricavi |
-| Personale               | 5-20 milioni IDR a persona    |
-| Conformità              | Contabilità, tasse            |
+| Voce            | Mensile                   |
+| --------------- | ------------------------- |
+ Commissioni piattaforma   | 1-5% delle vendite             |
+ Gateway di pagamento | 2-3% delle vendite             |
+ Logistica       | Variabile                    |
+ Marketing       | Tipicamente 10-30% del fatturato |
+ Personale           | 5-20 milioni di IDR a persona      |
+ Conformità      | Contabilità, tasse           |
 
 ---
 
-## Domande Comuni
+## Domande Frequenti
 
 <AskZantara
   context="E-commerce Indonesia, online business, Tokopedia, Shopee, digital commerce"
-  placeholder="Chiedi informazioni sull'e-commerce..."
+  placeholder="Chiedi sull'e-commerce..."
   suggestedQuestions={[
-    "Gli stranieri possono vendere su Tokopedia?",
-    "Quali licenze servono per l’e-commerce?",
+    "Possono gli stranieri vendere su Tokopedia?",
+    "Quali licenze servono per l'e-commerce?",
     "Il dropshipping è legale in Indonesia?",
-    "Come si gestisce l’IVA per le vendite online?",
+    "Come gestire l'IVA per le vendite online?",
   ]}
 />
 
@@ -501,6 +493,6 @@ Gli indonesiani preferiscono metodi di pagamento familiari.
 
 ## Articoli Correlati
 
-- [Guida alla Costituzione PT PMA](/business/pt-pma-registration-guide?lang=it)
-- [Panoramica delle Licenze Commerciali](/insights/business/business-licenses-overview)
-- [Guida all'IVA (PPN)](/insights/tax-legal/vat-ppn-guide)
+- [Guida all'Istituzione PT PMA](/business/pt-pma-registration-guide)
+- [Panoramica Licenze Aziendali](/insights/business/business-licenses-overview)
+- [Guida IVA (PPN)](/insights/tax-legal/vat-ppn-guide)

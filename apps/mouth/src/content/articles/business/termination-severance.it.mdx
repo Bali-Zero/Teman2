@@ -73,57 +73,57 @@ ogImage: "/static/insights/business/termination-severance.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "cbb2a3b49b51d06b70805e320be92a042fbd27bc90b28f6ab8f7f953a8422b62"
+source_sha256: "ecf7cbc87e522d72cbbd8d34f3fcda8244bc532e0761601a5217bbed376554ee"
 ---
 
-# Licenziamento e Indennità di Risoluzione del Rapporto di Lavoro in Indonesia 2026
+# Dismissal & Indennità di Licenziamento in Indonesia 2026
 
-Terminare il rapporto di lavoro in Indonesia (PHK - Pemutusan Hubungan Kerja) richiede di seguire procedure legali specifiche e di pagare la giusta indennità.
+Il licenziamento dei dipendenti in Indonesia (PHK - Pemutusan Hubungan Kerja) richiede il rispetto di specifiche procedure legali e il pagamento delle dovute indennità.
 
-## Tipi di Risoluzione
+## Tipi di Licenziamento
 
 <ComparisonTable
-  title="Categorie di Risoluzione"
-  description="Diversi tipi di risoluzione del rapporto di lavoro"
+  title="Categorie di Licenziamento"
+  description="Diversi tipi di fine del rapporto di lavoro"
   items={[
     {
-      name: 'Iniziata dal Datore di Lavoro',
-      subtitle: 'Decisione aziendale',
+      name: "Iniziativa del Datore di Lavoro",
+      subtitle: "Decisione aziendale",
       values: {
-        Examples: 'Ridondanza, scarsa performance',
-        Severance: 'Piena o parziale',
-        Notice: 'Richiesta',
-        Process: 'Procedura formale',
+        Examples: "Ridondanza, scarsa performance",
+        Severance: "Integra o parziale",
+        Notice: "Richiesto",
+        Process: "Procedura formale",
       },
     },
     {
-      name: 'Dimissioni del Dipendente',
-      subtitle: 'Volontaria',
+      name: "Dimissioni del Dipendente",
+      subtitle: "Volontarie",
       values: {
-        Examples: 'Scelta del dipendente',
-        Severance: 'Solo indennità',
-        Notice: 'Tipicamente 30 giorni',
-        Process: 'Lettera di dimissioni',
+        Examples: "Scelta del dipendente",
+        Severance: "Solo indennità",
+        Notice: "Tipicamente 30 giorni",
+        Process: "Lettera di dimissioni",
       },
     },
     {
-      name: 'Fine del Contratto',
-      subtitle: 'Scadenza PKWT',
+      name: "Fine Contratto",
+      subtitle: "Scadenza PKWT",
       values: {
-        Examples: 'Termine del contratto',
-        Severance: 'Pagamento di un'indennità',
-        Notice: 'Per contratto',
-        Process: 'Automatico a meno che non venga rinnovato',
+        Examples: "Termine del contratto",
+        Severance: "Pagamento indennità",
+        Notice: "Secondo il contratto",
+        Process: "Automatico a meno di rinnovo",
       },
     },
     {
-      name: 'Grave Condotta',
-      subtitle: 'Licenziamento immediato',
+      name: "Ingiuria Grave",
+      subtitle: "Licenziamento immediato",
       values: {
-        Examples: 'Furto, violenza, frode',
-        Severance: 'Nessuna (solitamente)',
-        Notice: 'Non richiesta',
-        Process: 'È richiesta un’indagine',
+        Examples: "Furto, violenza, frode",
+        Severance: "Nessuna (solitamente)",
+        Notice: "Non richiesto",
+        Process: "Richiesta indagine",
       },
       highlight: true,
     },
@@ -132,30 +132,30 @@ Terminare il rapporto di lavoro in Indonesia (PHK - Pemutusan Hubungan Kerja) ri
 
 ---
 
-## Componenti dell’Indennità
+## Componenti dell'Indennità
 
 <InfoCard variant="note" title="Tre Componenti">
-L’indennità in Indonesia tipicamente ha **tre componenti**:
+L'indennità in Indonesia ha tipicamente **tre componenti**:
 
 1. **Uang Pesangon (UP)** - Indennità di base
-2. **Uang Penghargaan Masa Kerja (UPMK)** - Indennità per l’anzianità di servizio
-3. **Uang Penggantian Hak (UPH)** - Compensazione per benefici non utilizzati
+2. **Uang Penghargaan Masa Kerja (UPMK)** - Indennità per anzianità
+3. **Uang Penggantian Hak (UPH)** - Indennizzo per benefici non goduti
 
-L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
+L'importo dipende dalla causa del licenziamento e dagli anni di servizio.
 
 </InfoCard>
 
 ---
 
-## Calcolatore dell’Indennità
+## Calcolatore dell'Indennità
 
 <Calculator
-  title="Stima dell’Indennità"
-  description="Calcola il potenziale pagamento dell’indennità"
+  title="Stima Indennità"
+  description="Calcola il potenziale pagamento indennitario"
   fields={[
     {
       id: "salary",
-      label: "Stipendio Mensile (IDR)",
+      label: "Salario Mensile (IDR)",
       type: "number",
       defaultValue: 15000000,
       min: 0,
@@ -173,13 +173,13 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
     },
     {
       id: "reason",
-      label: "Motivo della Risoluzione",
+      label: "Motivo del Licenziamento",
       type: "select",
       options: [
         { value: "redundancy", label: "Ridondanza/Efficienza" },
-        { value: "closure", label: "Chiusura Aziendale" },
+        { value: "closure", label: "Chiusura Azienda" },
         { value: "performance", label: "Scarsa Performance" },
-        { value: "misconduct", label: "Grave Condotta" },
+        { value: "misconduct", label: "Ingiuria Grave" },
         { value: "resignation", label: "Dimissioni" },
         { value: "retirement", label: "Pensionamento" }
       ],
@@ -187,7 +187,7 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
     },
     {
       id: "leave",
-      label: "Ferie Annuali Non Utilizzate (giorni)",
+      label: "Ferie Annuali Non Godute (giorni)",
       type: "number",
       defaultValue: 5,
       min: 0,
@@ -200,11 +200,11 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
     const years = Number(values.years);
     const leave = Number(values.leave);
 
-    // Tabella UP (Pesangon) - massimo 9 mesi
+    // UP (Pesangon) table - max 9 months
     const upTable = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     const upMonths = years >= 8 ? 9 : upTable[Math.min(years, 8)] || 0;
 
-    // Tabella UPMK - anzianità di servizio
+    // UPMK table - long service
     let upmkMonths = 0;
     if (years >= 3 && years < 6) upmkMonths = 2;
     else if (years >= 6 && years < 9) upmkMonths = 3;
@@ -215,7 +215,7 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
     else if (years >= 21 && years < 24) upmkMonths = 8;
     else if (years >= 24) upmkMonths = 10;
 
-    // Moltiplicatori in base al motivo
+    // Multipliers based on reason
     let upMultiplier = 1;
     let upmkMultiplier = 1;
 
@@ -249,10 +249,10 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
     const up = salary * upMonths * upMultiplier;
     const upmk = salary * upmkMonths * upmkMultiplier;
 
-    // UPH - ferie non utilizzate e altri benefici
+    // UPH - unused leave and other entitlements
     const dailySalary = salary / 30;
     const leaveCompensation = dailySalary * leave;
-    const housingMedical = (up + upmk) * 0.15; // 15% di stima
+    const housingMedical = (up + upmk) * 0.15; // 15% estimate
     const uph = leaveCompensation + housingMedical;
 
     const total = up + upmk + uph;
@@ -262,9 +262,9 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
       breakdown: [
         { label: "Pesangon (UP)", amount: Math.round(up) },
         { label: "Anzianità (UPMK)", amount: Math.round(upmk) },
-        { label: "Indennità Ferie", amount: Math.round(leaveCompensation) },
-        { label: "Abitazione/Assistenza Medica (15%)", amount: Math.round(housingMedical) },
-        { label: "Indennità Totale", amount: Math.round(total) }
+        { label: "Indennizzo Ferie", amount: Math.round(leaveCompensation) },
+        { label: "Abitazione/Medico (15%)", amount: Math.round(housingMedical) },
+        { label: "Totale Indennità", amount: Math.round(total) }
       ],
       currency: "IDR",
       note: `UP: ${upMonths} mesi × ${upMultiplier}, UPMK: ${upmkMonths} mesi`
@@ -275,56 +275,56 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
 
 ---
 
-## Tabelle dell’Indennità
+## Tabelle delle Indennità
 
 ### Uang Pesangon (UP) - Indennità di Base
 
-| Periodo di Servizio   | Mesi   |
-| --------------------- | ------ |
-| Meno di 1 anno        | 1 mese |
-| Da 1 a meno di 2 anni | 2 mesi |
-| Da 2 a meno di 3 anni | 3 mesi |
-| Da 3 a meno di 4 anni | 4 mesi |
-| Da 4 a meno di 5 anni | 5 mesi |
-| Da 5 a meno di 6 anni | 6 mesi |
-| Da 6 a meno di 7 anni | 7 mesi |
-| Da 7 a meno di 8 anni | 8 mesi |
-| 8+ anni               | 9 mesi |
+| Periodo di Servizio | Mesi   |
+| -------------- | -------- |
+| < 1 anno       | 1 mese  |
+| 1 a < 2 anni | 2 mesi |
+| 2 a < 3 anni | 3 mesi |
+| 3 a < 4 anni | 4 mesi |
+| 4 a < 5 anni | 5 mesi |
+| 5 a < 6 anni | 6 mesi |
+| 6 a < 7 anni | 7 mesi |
+| 7 a < 8 anni | 8 mesi |
+| 8+ anni       | 9 mesi |
 
-### UPMK - Anzianità di Servizio
+### UPMK - Anzianità
 
-| Periodo di Servizio     | Mesi    |
-| ----------------------- | ------- |
-| Da 3 a meno di 6 anni   | 2 mesi  |
-| Da 6 a meno di 9 anni   | 3 mesi  |
-| Da 9 a meno di 12 anni  | 4 mesi  |
-| Da 12 a meno di 15 anni | 5 mesi  |
-| Da 15 a meno di 18 anni | 6 mesi  |
-| Da 18 a meno di 21 anni | 7 mesi  |
-| Da 21 a meno di 24 anni | 8 mesi  |
-| 24+ anni                | 10 mesi |
+| Periodo di Servizio   | Mesi    |
+| ---------------- | --------- |
+| 3 a < 6 anni   | 2 mesi  |
+| 6 a < 9 anni   | 3 mesi  |
+| 9 a < 12 anni  | 4 mesi  |
+| 12 a < 15 anni | 5 mesi  |
+| 15 a < 18 anni | 6 mesi  |
+| 18 a < 21 anni | 7 mesi  |
+| 21 a < 24 anni | 8 mesi  |
+| 24+ anni        | 10 mesi |
 
 ---
 
-## Indennità in Base al Motivo
+## Indennità per Motivo
 
 <ComparisonTable
-  title="Diritto all’Indennità"
-  description="In base al motivo della risoluzione"
+  title="Diritto all'Indennità"
+  description="In base al motivo del licenziamento"
   items={[
     {
-      name: "Chiusura Aziendale",
+      name: "Chiusura Azienda",
       values: {
-        UP: "1× piena",
-        UPMK: "1× piena",
+        UP: "1× completo",
+        UPMK: "1× completo",
         UPH: "Sì",
       },
     },
     {
       name: "Ridondanza",
       values: {
-        UP: "1× piena",
-        UPMK: "1× piena",
+        UP: "1× completo",
+        UPMK: "1× completo",
         UPH: "Sì",
       },
     },
@@ -332,7 +332,7 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
       name: "Perdita Aziendale (2 anni)",
       values: {
         UP: "0.5×",
-        UPMK: "1× piena",
+        UPMK: "1× completo",
         UPH: "Sì",
       },
     },
@@ -340,7 +340,7 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
       name: "Forza Maggiore",
       values: {
         UP: "0.5×",
-        UPMK: "1× piena",
+        UPMK: "1× completo",
         UPH: "Sì",
       },
     },
@@ -348,16 +348,16 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
       name: "Pensionamento",
       values: {
         UP: "1.75×",
-        UPMK: "1× piena",
+        UPMK: "1× completo",
         UPH: "Sì",
       },
     },
     {
-      name: "Grave Condotta",
+      name: "Ingiuria Grave",
       values: {
         UP: "Nessuna",
         UPMK: "Nessuna",
-        UPH: "Solo ferie non utilizzate",
+        UPH: "Solo ferie non godute",
       },
     },
     {
@@ -365,7 +365,7 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
       values: {
         UP: "Nessuna",
         UPMK: "Solo indennità",
-        UPH: "Ferie non utilizzate",
+        UPH: "Ferie non godute",
       },
     },
   ]}
@@ -373,22 +373,22 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
 
 ---
 
-## Procedura di Risoluzione
+## Procedura di Licenziamento
 
 <JourneyMap
-  title="Procedura di Risoluzione"
-  description="Passaggi per la risoluzione legale"
+  title="Procedura di Licenziamento"
+  description="Passaggi per un licenziamento legale"
   estimatedTotal="2-8 settimane"
   steps={[
     {
       id: "grounds",
-      title: "Stabilire le Ragioni",
+      title: "Stabilire le Causa",
       description: "Documentare il motivo",
       duration: "Continuo",
       status: "richiesto",
       tips: [
-        "Documentazione delle prestazioni",
-        "Lettere di avvertimento (se applicabile)",
+        "Documentazione sulla performance",
+        "Lettere di richiamo (se applicabile)",
         "Giustificazione aziendale",
         "Revisione legale",
       ],
@@ -400,49 +400,49 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
       duration: "Max 30 giorni",
       status: "richiesto",
       tips: [
-        "Incontrare il dipendente/sindacato",
-        "Tentare un accordo reciproco",
+        "Incontro con dipendente/sindacato",
+        "Tentativo di accordo reciproco",
         "Documentare tutte le discussioni",
-        "Firmare l’accordo se raggiunto",
+        "Firmare l'accordo se raggiunto",
       ],
     },
     {
       id: "tripartite",
       title: "Tripartita (se necessario)",
-      description: "Mediazione dell’ufficio del lavoro",
+      description: "Mediazione ufficio lavoro",
       duration: "30 giorni",
       status: "richiesto",
       tips: [
-        "Se la negoziazione bipartita fallisce",
-        "Applicare a Disnaker",
-        "Mediazione/conciliazione",
-        "Richiedere una raccomandazione",
+        "Se la bipartita fallisce",
+        "Richiedere a Disnaker",
+        "Mediazione/Conciliazione",
+        "Cercare raccomandazione",
       ],
     },
     {
       id: "court",
       title: "Tribunale del Lavoro (se necessario)",
-      description: "Procedimenti PHI",
+      description: "Procedura PHI",
       duration: "Settimane-mesi",
       status: "richiesto",
       tips: [
-        "Se non si raggiunge un accordo",
-        "Presentare istanza al tribunale PHI",
-        "Presentare il caso",
-        "Attendere la decisione",
+        "Se non è stato raggiunto un accordo",
+        "Presentare al tribunale PHI",
+        "Esporre il caso",
+        "Aspettare decisione",
       ],
     },
     {
       id: "payment",
-      title: "Pagamento dell’Indennità",
-      description: "Pagare i benefici",
-      duration: "Al momento della risoluzione",
+      title: "Pagamento Indennità",
+      description: "Paga le indennità",
+      duration: "Al momento del licenziamento",
       status: "finale",
       tips: [
         "Calcolare tutti i componenti",
-        "Preparare la documentazione",
-        "Elaborare il pagamento",
-        "Ottenere le ricevute",
+        "Preparare documentazione",
+        "Elaborare pagamento",
+        "Ottenere ricevute",
       ],
     },
   ]}
@@ -450,112 +450,111 @@ L'importo dipende dal motivo della risoluzione e dagli anni di servizio.
 
 ---
 
-## Sistema di Avvertimento
+## Sistema di Richiamo
 
 <InfoCard variant="warning" title="Disciplina Progressiva">
-Per problemi di performance/condotta, utilizzare la disciplina progressiva:
+Per problemi di performance/comportamento, utilizzare la disciplina progressiva:
 
-1. **Primo Avvertimento (SP1)** - Scritto, valido 6 mesi
-2. **Secondo Avvertimento (SP2)** - Scritto, valido 6 mesi
-3. **Terzo Avvertimento (SP3)** - Avvertimento finale
+1. **Primo Richiamo (SP1)** - Scritto, valido 6 mesi
+2. **Secondo Richiamo (SP2)** - Scritto, valido 6 mesi
+3. **Terzo Richiamo (SP3)** - Ultimo richiamo
 
-Dopo SP3, la risoluzione è possibile con una indennità ridotta.
+Dopo SP3, è possibile il licenziamento con indennità ridotta.
 
-**Nota:** Per grave condotta, la risoluzione immediata è possibile senza avvertimenti.
+**Nota:** Per ingiurie gravi, è possibile un licenziamento immediato senza richiami.
 
 </InfoCard>
 
 ---
 
-## Grave Condotta
+## Ingiuria Grave
 
 ### Cosa Qualifica?
 
 <Checklist
-  title="Esempi di Grave Condotta"
-  description="Motivi per il licenziamento immediato"
+  title="Esempi di Ingiuria Grave"
+  description="Causa per licenziamento immediato"
   persistKey="misconduct-checklist"
   items={[
     {
       id: "fraud",
       label: "Frode o appropriazione indebita",
-      description: "Furto di beni aziendali",
+      description: "Rubare beni aziendali",
       required: false,
-      category: "criminale",
+      category: "criminal",
     },
     {
       id: "violence",
       label: "Violenza o minacce",
-      description: "Aggressione fisica, minacce",
+      description: "Assalto fisico, minacce",
       required: false,
-      category: "criminale",
+      category: "criminal",
     },
     {
       id: "drugs",
       label: "Uso di droghe sul posto di lavoro",
       description: "Possesso o uso",
       required: false,
-      category: "criminale",
+      category: "criminal",
     },
     {
       id: "secrets",
-      label: "Divulgazione di segreti commerciali",
-      description: "Perdita di informazioni riservate",
+      label: "Rivelazione segreti commerciali",
+      description: "Fuga informazioni riservate",
       required: false,
-      category: "violazione",
+      category: "breach",
     },
     {
       id: "gambling",
-      label: "Gioco d’azzardo sul posto di lavoro",
-      description: "Durante l’orario di lavoro",
+      label: "Scommesse sul posto di lavoro",
+      description: "Durante l'orario di lavoro",
       required: false,
-      category: "politica",
+      category: "policy",
     },
     {
       id: "absent",
-      label: "Assenza per 5+ giorni senza preavviso",
+      label: "Assenza 5+ giorni senza preavviso",
       description: "Giorni consecutivi",
       required: false,
-      category: "frequenza",
+      category: "attendance",
     },
     {
       id: "immoral",
       label: "Atti immorali sul posto di lavoro",
       description: "Molestie sessuali, ecc.",
       required: false,
-      category: "politica",
+      category: "policy",
     },
   ]}
   categories={[
     { id: "criminal", label: "Penale", color: "red" },
-    { id: "breach", label: "Violazione del contratto", color: "amber" },
-    { id: "policy", label: "Violazione delle politiche", color: "purple" },
-    { id: "attendance", label: "Frequenza", color: "blue" },
+    { id: "breach", label: "Violazione Contratto", color: "amber" },
+    { id: "policy", label: "Violazione Politica", color: "purple" },
+    { id: "attendance", label: "Presenza", color: "blue" },
   ]}
   showProgress={false}
 />
 
 ---
 
-## Compensazione per PKWT
+## Indennità PKWT
 
-Per i contratti a tempo determinato (PKWT), alla scadenza:
+Per contratti a termine (PKWT), allo scadere:
 
-### Formula di Compensazione
+### Formula di Indennizzo
 
-| Durata del Contratto  | Compensazione          |
-| --------------------- | ---------------------- |
-| Ogni mese di servizio | 1 giorno di stipendio  |
-| Esempio: 12 mesi      | 12 giorni di stipendio |
-| Esempio: 24 mesi      | 24 giorni di stipendio |
+| Durata Contratto       | Indennizzo   |
+| --------------------- | -------------- |
+| Ogni mese di servizio | 1 giorno di salario |
+| Esempio: 12 mesi    | 12 giorni di salario |
+| Esempio: 24 mesi    | 24 giorni di salario |
 
-<InfoCard variant="note" title="Risoluzione Anticipata di PKWT">
+<InfoCard variant="note" title="Rottura Anticipata PKWT">
 
-Se il PKWT viene risolto anticipatamente dal datore di lavoro: - Deve pagare
-il valore rimanente del contratto - Più l’indennità per il periodo di servizio
+Se il PKWT è terminato anticipatamente dal datore di lavoro: - Deve pagare il valore del contratto residuo -
+Più indennizzo per il periodo di servizio - A meno che non sia per ingiuria grave
 
-- A meno che non vi sia grave condotta
-  </InfoCard>
+</InfoCard>
 
 ---
 
@@ -563,39 +562,39 @@ il valore rimanente del contratto - Più l’indennità per il periodo di serviz
 
 ### Documenti Richiesti
 
-| Documento                            | Scopo                         |
-| ------------------------------------ | ----------------------------- |
-| Lettera di risoluzione               | Avviso ufficiale              |
-| Calcolo dell’indennità               | Dettaglio                     |
-| Verbale della negoziazione bipartita | Registrazioni delle riunioni  |
-| Accordo                              | Consenso reciproco            |
-| Ricevuta                             | Prova di pagamento            |
-| Lettera di referenza                 | Per il dipendente (opzionale) |
+| Documento              | Scopo                 |
+| --------------------- | ----------------------- |
+| Lettera di licenziamento    | Avviso ufficiale         |
+| Calcolo indennità   | Dettaglio dettagliato      |
+| Verbale bipartita     | Registri incontro         |
+| Accordo             | Consenso reciproco          |
+| Ricevuta               | Prova di pagamento        |
+| Lettera di riferimento      | Per il dipendente (opzionale) |
 
 ---
 
 ## Errori Comuni
 
-| Errore                                 | Impatto                                        |
-| -------------------------------------- | ---------------------------------------------- |
-| Nessun avvertimento scritto            | Non si può provare la causa                    |
-| Omissione della negoziazione bipartita | Processo non valido                            |
-| Sottostima dell’indennità              | Richieste legali                               |
-| Risoluzione immediata senza motivo     | Deve reintegrare o pagare l’indennità completa |
-| Mancanza di documentazione             | Posizione legale debole                        |
+| Errore                               | Impatto                     |
+| ------------------------------------- | -------------------------- |
+| Nessun richiamo scritto                   | Non si può provare la causa          |
+| Saltare la fase bipartita                    | Procedura invalida            |
+| Sottopagamento indennità                 | Richieste legali               |
+| Licenziamento immediato senza cause        | Deve reintegrare o pagare intero |
+| Non documentare                       | Posizione legale debole        |
 
 ---
 
 ## Domande Frequenti
 
 <AskZantara
-  context="Risoluzione del rapporto di lavoro in Indonesia, indennità di risoluzione, PHK, legge sul lavoro sulla risoluzione"
-  placeholder="Chiedere informazioni sulla risoluzione e sull’indennità..."
+  context="Licenziamento dipendenti Indonesia, indennità di licenziamento, PHK, diritto del lavoro licenziamento"
+  placeholder="Chiedi su licenziamento e indennità..."
   suggestedQuestions={[
-    "Qual è l’indennità per 5 anni di servizio?",
+    "Quanto è l'indennità per 5 anni di servizio?",
     "Posso licenziare senza indennità?",
-    "Qual è la procedura di risoluzione?",
-    "I dipendenti PKWT hanno diritto all’indennità?",
+    "Qual è la procedura di licenziamento?",
+    "I dipendenti PKWT ricevono indennità?",
   ]}
 />
 
@@ -603,6 +602,6 @@ il valore rimanente del contratto - Più l’indennità per il periodo di serviz
 
 ## Articoli Correlati
 
-- [Guida alla legge sul lavoro](/insights/business/labor-law-guide)
-- [Assunzione di dipendenti indonesiani](/insights/business/hiring-indonesian-employees)
-- [Guida alla costituzione di PT PMA](/business/pt-pma-registration-guide?lang=it)
+- [Guida Diritto del Lavoro](/insights/business/labor-law-guide)
+- [Assunzione Dipendenti Indonesiani](/insights/business/hiring-indonesian-employees)
+- [Guida Setup PT PMA](/business/pt-pma-registration-guide)

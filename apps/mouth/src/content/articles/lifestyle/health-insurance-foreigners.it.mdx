@@ -72,23 +72,14 @@ tags:
 canonicalUrl: "https://balizero.com/it/lifestyle/health-insurance-foreigners"
 ogImage: "/static/insights/lifestyle/health-insurance.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "d065c5ae3bfce8cb9b7d7a9a636e6fa32b2399af53c017372bf0a85a30eab3e4"
+source_sha256: "e0c3a5e1241fb2b65c90a9d3478f63372b81cec88ee7231a54c8804e2cb7fd97"
 ---
-
-import {
-  ComparisonTable,
-  DecisionTree,
-  Checklist,
-  InfoCard,
-  Calculator,
-  AskZantara,
-} from "@/components/insights/interactive";
 
 # Assicurazione Sanitaria per Stranieri in Indonesia 2026
 
-L'assistenza sanitaria in Indonesia spazia dalle cliniche di base a ospedali di classe mondiale. Avere un'assicurazione adeguata è essenziale per la propria tranquillità.
+L'assistenza sanitaria in Indonesia varia da cliniche di base a ospedali di livello mondiale. Avere un'assicurazione adeguata è essenziale per la tranquillità.
 
-## Panoramica delle Opzioni Assicurative
+## Panoramica delle Opzioni di Assicurazione
 
 <DecisionTree
   title="Scegli la tua Assicurazione"
@@ -98,25 +89,25 @@ L'assistenza sanitaria in Indonesia spazia dalle cliniche di base a ospedali di 
       id: "start",
       question: "Qual è il tuo status in Indonesia?",
       options: [
-        { label: "Titolare di KITAS (lavoro)", next: "kitas" },
+        { label: "Titolare di KITAS (lavoratore)", next: "kitas" },
         { label: "Titolare di KITAS (altro)", next: "kitas-other" },
         { label: "Turista / senza KITAS", next: "tourist" },
       ],
     },
     {
       id: "kitas",
-      question: "Il tuo datore di lavoro fornisce l'assicurazione?",
+      question: "Il tuo datore di lavoro fornisce un'assicurazione?",
       options: [
-        { label: "Sì, assicurazione aziendale", next: "employer" },
-        { label: "No, ne serve una mia", next: "own-insurance" },
+        { label: "Sì, assicurazione del datore di lavoro", next: "employer" },
+        { label: "No, ho bisogno della mia", next: "own-insurance" },
       ],
     },
     {
       id: "kitas-other",
       result: {
-        title: "BPJS + Integrazione Internazionale",
+        title: "BPJS + Supplemento Internazionale",
         description:
-          "La BPJS Kesehatan è obbligatoria per i titolari di KITAS. Considera l'aggiunta di un'assicurazione internazionale per una copertura e ospedali migliori.",
+          "La BPJS Kesehatan è obbligatoria per i titolari di KITAS. Valuta l'aggiunta di un'assicurazione internazionale per una copertura migliore e accesso a ospedali.",
       },
     },
     {
@@ -124,15 +115,15 @@ L'assistenza sanitaria in Indonesia spazia dalle cliniche di base a ospedali di 
       result: {
         title: "Assicurazione Viaggio / Internazionale",
         description:
-          "Senza KITAS, hai bisogno di un'assicurazione di viaggio internazionale o di un'assicurazione sanitaria globale. La BPJS non è disponibile per i turisti.",
+          "Senza KITAS, hai bisogno di un'assicurazione di viaggio internazionale o sanitaria globale. La BPJS non è disponibile per i turisti.",
       },
     },
     {
       id: "employer",
       result: {
-        title: "Controlla la Copertura Aziendale",
+        title: "Verifica la Copertura del Datore di Lavoro",
         description:
-          "Verifica se l'assicurazione del datore di lavoro è sufficiente. Molti aggiungono un'assicurazione internazionale personale per un migliore accesso agli ospedali e copertura all'estero.",
+          "Controlla se l'assicurazione del datore di lavoro è sufficiente. Molti aggiungono un'assicurazione internazionale personale per un migliore accesso agli ospedali e copertura all'estero.",
       },
     },
     {
@@ -140,7 +131,7 @@ L'assistenza sanitaria in Indonesia spazia dalle cliniche di base a ospedali di 
       result: {
         title: "BPJS + Assicurazione Internazionale",
         description:
-          "Devi avere la BPJS (obbligatoria). Aggiungi un'assicurazione internazionale per ospedali premium e copertura completa.",
+          "Devi avere la BPJS (obbligatoria). Aggiungi un'assicurazione internazionale per ospedali di fascia alta e copertura completa.",
       },
     },
   ]}
@@ -151,37 +142,37 @@ L'assistenza sanitaria in Indonesia spazia dalle cliniche di base a ospedali di 
 ## Tipi di Assicurazione
 
 <ComparisonTable
-  title="Confronto Opzioni Assicurative"
-  description="Capire le tue scelte"
+  title="Opzioni di Assicurazione Confrontate"
+  description="Comprendere le tue scelte"
   items={[
     {
       name: "BPJS Kesehatan",
       subtitle: "Assicurazione sanitaria nazionale",
       values: {
-        "Costo Mensile": "150k-600k IDR",
-        "Accesso Ospedali": "Pubblici + partner",
-        Copertura: "Base completa",
+        "Costo Mensile": "IDR 150K-600K",
+        "Accesso Ospedaliero": "Pubblico + partner",
+        Copertura: "Completa di base",
         Stranieri: "Solo titolari KITAS",
       },
     },
     {
-      name: "Assic. Privata Locale",
-      subtitle: "Compagnie indonesiane",
+      name: "Assicurazione Privata Locale",
+      subtitle: "Aziende indonesiane",
       values: {
-        "Costo Mensile": "300k-2M IDR",
-        "Accesso Ospedali": "Ampia rete",
-        Copertura: "Buona ospedalizzazione",
-        Stranieri: "Solitamente accettati",
+        "Costo Mensile": "IDR 300K-2M",
+        "Accesso Ospedaliero": "Ampla rete",
+        Copertura: "Buona degenza",
+        Stranieri: "Generalmente accettata",
       },
     },
     {
-      name: "Assic. Internazionale",
-      subtitle: "Provider globali",
+      name: "Assicurazione Internazionale",
+      subtitle: "Fornitori globali",
       values: {
-        "Costo Mensile": "100-500 USD",
-        "Accesso Ospedali": "Ospedali premium",
+        "Costo Mensile": "USD 100-500",
+        "Accesso Ospedaliero": "Ospedali di fascia alta",
         Copertura: "Globale completa",
-        Stranieri: "Pensata per expat",
+        Stranieri: "Progettata per espatriati",
       },
       highlight: true,
     },
@@ -189,10 +180,10 @@ L'assistenza sanitaria in Indonesia spazia dalle cliniche di base a ospedali di 
       name: "Assicurazione Viaggio",
       subtitle: "Copertura a breve termine",
       values: {
-        "Costo Mensile": "30-100 USD",
-        "Accesso Ospedali": "Focus emergenze",
+        "Costo Mensile": "USD 30-100",
+        "Accesso Ospedaliero": "Focus sull'emergenza",
         Copertura: "Emergenza + evacuazione",
-        Stranieri: "Chiunque",
+        Stranieri: "Qualsiasi persona",
       },
     },
   ]}
@@ -204,92 +195,92 @@ L'assistenza sanitaria in Indonesia spazia dalle cliniche di base a ospedali di 
 
 ### Cos'è la BPJS?
 
-<InfoCard variant="note" title="Obbligatoria per i titolari di KITAS">
-**BPJS Kesehatan** è l'assicurazione sanitaria nazionale indonesiana. È **obbligatoria** per:
+<InfoCard variant="note" title="Obbligatoria per i Titolari di KITAS">
+**BPJS Kesehatan** è l'assicurazione sanitaria nazionale dell'Indonesia. È **obbligatoria** per:
 - Cittadini indonesiani
-- Stranieri con KITAS che lavorano da più di 6 mesi
+- Stranieri con KITAS che lavorano da 6+ mesi
 
-Il tuo datore di lavoro deve registrarti o puoi farlo tu stesso.
+Il tuo datore di lavoro deve registrarti o ti registri tu stesso.
 
 </InfoCard>
 
 ### Classi BPJS
 
-| Classe   | Premio Mensile | Tipo di Stanza | Note     |
-| -------- | -------------- | -------------- | -------- |
-| Classe 1 | 150.000 IDR    | VIP singola    | Migliore |
-| Classe 2 | 100.000 IDR    | Semi-privata   | Buona    |
-| Classe 3 | 42.000 IDR     | Corsia         | Base     |
+| Classe   | Premio Mensile    | Tipo di Camera    | Note |
+| -------- | ------------------ | ------------------ | ----- |
+| Classe 1 | IDR 150.000        | Singola VIP        | Migliore |
+| Classe 2 | IDR 100.000        | Semi-privata       | Buona |
+| Classe 3 | IDR 42.000         | Sala               | Base |
 
 ### Copertura BPJS
 
 - Cure ambulatoriali
-- Ricovero ospedaliero
+- Ospedalizzazione in regime di degenza
 - Chirurgia
-- Farmaci (prontuario)
+- Farmaci (formulario)
 - Cure d'emergenza
-- Rinvio a specialisti
+- Riferimenti a specialisti
 
-### Limitazioni BPJS
+### Limitazioni della BPJS
 
 - Tempi di attesa lunghi comuni
-- Qualità variabile a seconda dell'ospedale
-- Sistema di rinvio richiesto
-- Alcuni farmaci non coperti
-- Ospedali premium spesso esclusi
+- La qualità varia da ospedale ad ospedale
+- Richiesto il sistema di referral
+- Alcuni farmaci non sono coperti
+- Gli ospedali di fascia alta spesso non sono inclusi
 
 ---
 
 ## Assicurazione Internazionale
 
-### Perché molti expat scelgono l'internazionale
+### Perché Molti Espatriati Scegliendo l'Internazionale
 
-1. **Scelta dell'ospedale** - Accesso a ospedali privati premium
-2. **Nessun rinvio** - Accesso diretto allo specialista
-3. **Copertura globale** - Coperti anche in viaggio
-4. **Supporto in inglese** - Comunicazione facile
-5. **Evacuazione** - Evacuazione medica se necessaria
+1. **Scelta dell'Ospedale** - Accesso a ospedali privati di fascia alta
+2. **Nessun Riferimento** - Vai direttamente dallo specialista
+3. **Copertura Globale** - Coperto durante i viaggi
+4. **Supporto in Inglese** - Comunicazione facile
+5. **Evacuazione** - Evacuazione medica se necessario
 
-### Provider Popolari
+### Fornitori Popolari
 
-| Provider            | A partire da  | Note               |
-| ------------------- | ------------- | ------------------ |
-| Cigna Global        | ~200 USD/mese | Ampia rete         |
-| Allianz             | ~150 USD/mese | Ottima reputazione |
-| AXA                 | ~150 USD/mese | Portata globale    |
-| Pacific Cross       | ~100 USD/mese | Focus Asia         |
-| April International | ~120 USD/mese | Spec. per expat    |
+| Fornitore            | A Partire Da     | Note               |
+| -------------------- | ----------------- | ------------------ |
+| Cigna Global         | ~USD 200/mese    | Ampia rete         |
+| Allianz              | ~USD 150/mese    | Buona reputazione  |
+| AXA                  | ~USD 150/mese    | Raggiungimento globale |
+| Pacific Cross        | ~USD 100/mese    | Focus Asia         |
+| April International  | ~USD 120/mese    | Specialista espatriati |
 
-<InfoCard variant="tip" title="Richiedi più preventivi">
+<InfoCard variant="tip" title="Ottieni Più Preventivi">
 
-  I costi assicurativi variano significativamente in base a: - Età - Livello di
-  copertura - Franchigia - Copertura geografica - Condizioni preesistenti
+  I costi delle assicurazioni variano significativamente in base a: - Età - Livello di copertura -
+  Franchigia - Copertura geografica - Condizioni preesistenti
 </InfoCard>
 
 ---
 
-## Ospedali Premium in Indonesia
+## Ospedali di Fascia Alta in Indonesia
 
 ### Bali
 
-- **BIMC Hospital** (Kuta, Nusa Dua) - Il preferito dagli expat
+- **BIMC Hospital** (Kuta, Nusa Dua) - Preferito dagli espatriati
 - **Siloam** (Kuta) - Strutture moderne
-- **Kasih Ibu** - Buon ospedale generale
+- **Kasih Ibu** - Buono ospedale generale
 
-### Giacarta (Jakarta)
+### Jakarta
 
-- **Pondok Indah Hospital** - Livello top
+- **Pondok Indah Hospital** - Top tier
 - **RS Medistra** - Standard internazionale
 - **Siloam Semanggi** - Ampia rete
-- **Mayapada** - Completo
+- **Mayapada** - Completa
 
 ---
 
 ## Calcolatore dei Costi
 
 <Calculator
-  title="Confronto Costi Assicurativi"
-  description="Stima dei costi assicurativi annuali"
+  title="Confronto dei Costi dell'Assicurazione"
+  description="Stima i costi annuali dell'assicurazione"
   fields={[
     {
       id: "type",
@@ -298,28 +289,28 @@ Il tuo datore di lavoro deve registrarti o puoi farlo tu stesso.
       options: [
         { value: "bpjs", label: "Solo BPJS Classe 1" },
         { value: "local", label: "Assicurazione privata locale" },
-        { value: "international", label: "Internazionale (media)" },
+        { value: "international", label: "Internazionale (medio livello)" },
         { value: "premium", label: "Internazionale (premium)" }
       ],
       defaultValue: "international"
     },
     {
       id: "age",
-      label: "Fascia d'Età",
+      label: "Gruppo Età",
       type: "select",
       options: [
-        { value: "young", label: "Sotto i 35 anni" },
-        { value: "middle", label: "35-50 anni" },
-        { value: "senior", label: "50-65 anni" },
-        { value: "elderly", label: "Oltre i 65 anni" }
+        { value: "young", label: "Sotto 35" },
+        { value: "middle", label: "35-50" },
+        { value: "senior", label: "50-65" },
+        { value: "elderly", label: "65+" }
       ],
       defaultValue: "middle"
     }
   ]}
   calculateResult={(values) => {
-    // Costi base per tipo
+    // Costi di base per tipo
     const baseCosts = {
-      "bpjs": 1800000, // Classe 1 annuale
+      "bpjs": 1800000, // Class 1 annuale
       "local": 12000000,
       "international": 36000000,
       "premium": 72000000
@@ -345,7 +336,7 @@ Il tuo datore di lavoro deve registrarti o puoi farlo tu stesso.
         { label: "Totale Annuale", amount: annual }
       ],
       currency: "IDR",
-      note: `Circa ${Math.round(annual / 16000)} USD all'anno`
+      note: `Circa USD ${Math.round(annual / 16000)}/anno`
     };
 
 }}
@@ -353,17 +344,17 @@ Il tuo datore di lavoro deve registrarti o puoi farlo tu stesso.
 
 ---
 
-## Di Quale Copertura hai Bisogno?
+## Che Copertura Hai Bisogno?
 
 <Checklist
-  title="Checklist Copertura Assicurativa"
+  title="Elenco di Controllo della Copertura dell'Assicurazione"
   description="Coperture essenziali da cercare"
   persistKey="insurance-coverage-checklist"
   items={[
     {
       id: "inpatient",
-      label: "Ricovero ospedaliero",
-      description: "Stanza, vitto, chirurgia",
+      label: "Ospedalizzazione in regime di degenza",
+      description: "Camera, vitto, chirurgia",
       required: true,
       category: "core",
     },
@@ -377,14 +368,14 @@ Il tuo datore di lavoro deve registrarti o puoi farlo tu stesso.
     {
       id: "emergency",
       label: "Cure d'emergenza",
-      description: "Pronto soccorso h24",
+      description: "Assistenza di emergenza 24/7",
       required: true,
       category: "core",
     },
     {
       id: "evacuation",
       label: "Evacuazione medica",
-      description: "Trasporto in struttura migliore",
+      description: "Trasporto verso una struttura migliore",
       required: true,
       category: "emergency",
     },
@@ -404,22 +395,22 @@ Il tuo datore di lavoro deve registrarti o puoi farlo tu stesso.
     },
     {
       id: "dental",
-      label: "Cure dentistiche",
-      description: "Spesso separate o limitate",
+      label: "Assistenza dentale",
+      description: "Spesso separata o limitata",
       required: false,
       category: "optional",
     },
     {
       id: "vision",
-      label: "Cure oculistiche",
-      description: "Esami della vista, occhiali",
+      label: "Assistenza visiva",
+      description: "Esami dell'occhio, occhiali",
       required: false,
       category: "optional",
     },
   ]}
   categories={[
-    { id: "core", label: "Base", color: "blue" },
-    { id: "emergency", label: "Emergenza", color: "red" },
+    { id: "core", label: "Core", color: "blue" },
+    { id: "emergency", label: "Emergency", color: "red" },
     { id: "optional", label: "Opzionale", color: "green" },
   ]}
   showProgress={true}
@@ -429,29 +420,29 @@ Il tuo datore di lavoro deve registrarti o puoi farlo tu stesso.
 
 ## Condizioni Preesistenti
 
-<InfoCard variant="warning" title="La Trasparenza è Fondamentale">
-La maggior parte degli assicuratori internazionali:
-- Chiederà informazioni sulle condizioni preesistenti
-- Potrebbe escluderle inizialmente
-- Offrirà copertura dopo un periodo di attesa
+<InfoCard variant="warning" title="La Dichiarazione è Importante">
+La maggior parte delle compagnie assicurative internazionali:
+- Chiederanno informazioni sulle condizioni preesistenti
+- Potrebbero escluderle inizialmente
+- Offriranno copertura dopo un periodo di attesa
 - Il premio potrebbe essere più alto
 
-**Non nascondere mai le patologie** - le richieste di risarcimento possono essere rifiutate se non dichiarate.
+**Non nascondere mai le condizioni** - i reclami possono essere rifiutati se non dichiarate.
 
 </InfoCard>
 
 ---
 
-## Domande Comuni
+## Domande Frequenti
 
 <AskZantara
-  context="Assicurazione sanitaria Indonesia, BPJS, assicurazione expat, copertura medica"
-  placeholder="Chiedi informazioni sull'assicurazione sanitaria..."
+  context="Assicurazione sanitaria Indonesia, BPJS, assicurazione espatriati, copertura medica"
+  placeholder="Chiedi riguardo all'assicurazione sanitaria..."
   suggestedQuestions={[
-    "La BPJS è sufficiente per gli expat?",
+    "La BPJS è sufficiente per gli espatriati?",
     "Cosa succede se ho condizioni preesistenti?",
     "Quali ospedali accettano l'assicurazione internazionale?",
-    "Serve l'assicurazione per la richiesta del visto?",
+    "Ho bisogno di un'assicurazione per le domande di visto?",
   ]}
 />
 
@@ -460,5 +451,5 @@ La maggior parte degli assicuratori internazionali:
 ## Articoli Correlati
 
 - [Costo della Vita a Bali](/insights/lifestyle/cost-of-living-bali)
-- [Visto per Pensionati Indonesia](/insights/immigration/retirement-visa-indonesia)
-- [Guida al Permesso di Lavoro KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=it)
+- [Visto di Pensionamento in Indonesia](/insights/immigration/retirement-visa-indonesia)
+- [Guida al Permesso di Lavoro KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)

@@ -73,81 +73,73 @@ tableOfContents: true
 canonicalUrl: "https://balizero.com/it/property/land-ownership-rules"
 ogImage: "/static/insights/property/land-ownership.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "fcd5ef7ae4c68879ce98a38cce5fb6af591772bf5be17fdaa4b0a323ebb6e210"
+source_sha256: "33f8515d30353d9c223bd359e1745f863423544da90567dac243f7d1d177eb9e"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Regole sulla Proprietà Terreni in Indonesia 2026: Guida per Stranieri
 
-# Regole Proprietà Fondiaria Indonesia 2026: Guida per Stranieri
+Gli stranieri non possono possedere direttamente terreni a titolo di piena proprietà (freehold) in Indonesia. Tuttavia, esistono modi legali per garantire diritti sulla proprietà. Ecco la vostra guida completa.
 
-Gli stranieri non possono possedere direttamente terreni in piena proprietà (freehold) in Indonesia. Tuttavia, esistono modi legali per garantire i diritti di proprietà. Ecco la tua guida completa.
-
-## La Regola di Base
+## La Regola Fondamentale
 
 <InfoCard variant="warning" title="Restrizione Fondamentale">
 **Legge indonesiana (Legge Agraria 1960):**
 
-- Solo i cittadini indonesiani possono detenere l'**Hak Milik** (proprietà piena)
-- Gli stranieri possono detenere determinati **diritti d'uso**
-- Il terreno torna automaticamente allo Stato se uno straniero detiene l'Hak Milik
+- Solo i cittadini indonesiani possono detenere **Hak Milik** (piena proprietà)
+- Gli stranieri possono detenere determinati **diritti di uso**
+- Il terreno torna automaticamente allo stato se uno straniero detiene Hak Milik
 
-Questa è una legge costituzionale - non può essere aggirata legalmente.
+Si tratta di una legge costituzionale - non può essere aggirata legalmente.
 
 </InfoCard>
 
 ---
 
-## Tipi di Titoli Fondiari
+## Tipi di Titolo Terreni
 
 <ComparisonTable
-  title="Titoli Fondiari Indonesiani"
+  title="Titoli Terreni Indonesiani"
   description="Comprendere i diversi diritti"
   items={[
     {
       name: "Hak Milik",
-      subtitle: "Proprietà Piena (Freehold)",
+      subtitle: "Piena proprietà (Freehold)",
       values: {
-        Proprietario: "Solo indonesiani",
-        Durata: "Perpetua",
-        Diritti: "Proprietà completa",
-        Straniero: "Non ammesso",
+        Owner: "Solo cittadini indonesiani",
+        Duration: "Perpetuo",
+        Rights: "Piena proprietà",
+        Foreigner: "Non consentito",
       },
     },
     {
       name: "Hak Guna Bangunan (HGB)",
       subtitle: "Diritto di Costruzione",
       values: {
-        Proprietario: "Indonesiani/PT PMA",
-        Durata: "30+20+30 anni",
-        Diritti: "Costruire sul terreno",
-        Straniero: "Solo tramite PT PMA",
+        Owner: "Indonesiano/PT PMA",
+        Duration: "30+20+20 anni",
+        Rights: "Costruire sul terreno",
+        Foreigner: "Solo tramite PT PMA",
       },
       highlight: true,
     },
     {
       name: "Hak Pakai",
-      subtitle: "Diritto d'Uso",
+      subtitle: "Diritto di Uso",
       values: {
-        Proprietario: "Indonesiani/Stranieri",
-        Durata: "30+20+30 anni",
-        Diritti: "Uso, residenza",
-        Straniero: "Ammesso (con condizioni)",
+        Owner: "Indonesiano/Straniero",
+        Duration: "30+20+20 anni",
+        Rights: "Utilizzare, costruire residenza",
+        Foreigner: "Consentito (con condizioni)",
       },
     },
     {
       name: "Hak Sewa",
       subtitle: "Locazione (Leasehold)",
       values: {
-        Proprietario: "Chiunque",
-        Durata: "Come da accordo (solitamente 25-30 anni)",
-        Diritti: "Uso durante il leasing",
-        Straniero: "Ammesso",
+        Owner: "Chiunque",
+        Duration: "Come concordato (tipicamente 25-30 anni)",
+        Rights: "Utilizzare durante il contratto di locazione",
+        Foreigner: "Consentito",
       },
     },
   ]}
@@ -158,8 +150,8 @@ Questa è una legge costituzionale - non può essere aggirata legalmente.
 ## Opzioni Legali per gli Stranieri
 
 <DecisionTree
-  title="Quale struttura scegliere?"
-  description="Trova il tuo percorso legale verso la proprietà"
+  title="Quale Struttura?"
+  description="Trovare la vostra via legale verso la proprietà"
   nodes={[
     {
       id: "start",
@@ -175,7 +167,7 @@ Questa è una legge costituzionale - non può essere aggirata legalmente.
       question: "Per uso personale o investimento?",
       options: [
         { label: "Residenza personale", next: "hakpakai" },
-        { label: "Investimento/affitto", next: "ptpma" },
+        { label: "Investimento/locazione", next: "ptpma" },
       ],
     },
     {
@@ -183,23 +175,23 @@ Questa è una legge costituzionale - non può essere aggirata legalmente.
       result: {
         title: "PT PMA con HGB",
         description:
-          "Una società a investimento estero (PT PMA) può detenere il titolo HGB per scopi commerciali. È la struttura più sicura per gli investimenti immobiliari aziendali.",
+          "Una società di investimento estera (PT PMA) può detenere il titolo HGB a fini commerciali. Struttura più sicura per investimenti immobiliari aziendali.",
       },
     },
     {
       id: "agricultural",
       result: {
-        title: "Molto limitato",
+        title: "Molto Restrittivo",
         description:
-          "I terreni agricoli sono fortemente limitati per gli stranieri. Le PT PMA con licenze specifiche possono accedervi tramite l'HGU (diritti di coltivazione) solo per progetti su larga scala.",
+          "I terreni agricoli sono fortemente limitati per gli stranieri. Una PT PMA con licenze specifiche può accedere tramite HGU (diritti di coltivazione) solo per progetti su larga scala.",
       },
     },
     {
       id: "hakpakai",
       result: {
-        title: "Hak Pakai (Diritto d'Uso)",
+        title: "Hak Pakai (Diritto di Uso)",
         description:
-          "Gli stranieri con KITAS/KITAP possono detenere l'Hak Pakai su proprietà residenziali. Termini di 30+20+30 anni. Deve essere solo per residenza personale, non commerciale.",
+          "Gli stranieri con KITAS/KITAP possono detenere Hak Pakai su proprietà residenziale. Termini 30+20+20 anni. Deve essere esclusivamente per residenza personale, non commerciale.",
       },
     },
     {
@@ -207,7 +199,7 @@ Questa è una legge costituzionale - non può essere aggirata legalmente.
       result: {
         title: "PT PMA con HGB",
         description:
-          "Costituisci una società a investimento estero per detenere il titolo HGB. Può essere utilizzata per investimento, affitto o sviluppo. Più complessa ma più flessibile.",
+          "Costituite una società di investimento estera per detenere il titolo HGB. Può essere utilizzata per investimenti, locazioni o sviluppo. Più complessa ma più flessibile.",
       },
     },
   ]}
@@ -215,32 +207,32 @@ Questa è una legge costituzionale - non può essere aggirata legalmente.
 
 ---
 
-## Hak Pakai per gli Stranieri
+## Hak Pakai per Stranieri
 
 ### Requisiti
 
 <Checklist
   title="Requisiti Hak Pakai"
-  description="Cosa serve agli stranieri"
+  description="Cosa gli stranieri necessitano"
   persistKey="hak-pakai-checklist"
   items={[
     {
       id: "kitas",
       label: "KITAS/KITAP valido",
-      description: "Richiesto permesso di soggiorno legale",
+      description: "Permesso di soggiorno legale richiesto",
       required: true,
       category: "visa",
     },
     {
       id: "residence",
-      label: "Solo per residenza personale",
-      description: "Non utilizzabile commercialmente",
+      label: "Esclusivamente per residenza personale",
+      description: "Non può essere utilizzato commercialmente",
       required: true,
       category: "purpose",
     },
     {
       id: "minvalue",
-      label: "Valore minimo proprietà",
+      label: "Valore minimo della proprietà",
       description: "Varia per regione (IDR 5B+ a Bali)",
       required: true,
       category: "property",
@@ -248,14 +240,14 @@ Questa è una legge costituzionale - non può essere aggirata legalmente.
     {
       id: "single",
       label: "Massimo una proprietà",
-      description: "Per ogni singolo straniero",
+      description: "Per singolo straniero",
       required: true,
       category: "limits",
     },
     {
       id: "notary",
       label: "Atto notarile",
-      description: "Tramite PPAT",
+      description: "Attraverso PPAT",
       required: true,
       category: "legal",
     },
@@ -268,7 +260,7 @@ Questa è una legge costituzionale - non può essere aggirata legalmente.
     },
   ]}
   categories={[
-    { id: "visa", label: "Visto", color: "blue" },
+    { id: "visa", label: "Visa", color: "blue" },
     { id: "purpose", label: "Scopo", color: "green" },
     { id: "property", label: "Proprietà", color: "amber" },
     { id: "limits", label: "Limiti", color: "red" },
@@ -280,22 +272,22 @@ Questa è una legge costituzionale - non può essere aggirata legalmente.
 
 ### Valori Minimi delle Proprietà
 
-| Regione       | Valore Minimo    |
-| ------------- | ---------------- |
-| Bali          | 5 miliardi IDR   |
-| Jakarta       | 10 miliardi IDR  |
-| Altro Java    | 5 miliardi IDR   |
-| Altre regioni | 2-5 miliardi IDR |
+| Regione        | Valore Minimo   |
+| ------------- | --------------- |
+| Bali          | IDR 5 miliardi   |
+| Jakarta       | IDR 10 miliardi  |
+| Altre Giava    | IDR 5 miliardi   |
+| Altre regioni  | IDR 2-5 miliardi |
 
 <InfoCard variant="note" title="Durata Hak Pakai">
-**Durata Hak Pakai:** 30 + 20 + 30 anni = 80 anni totali
+**Termine Hak Pakai:** 30 + 20 + 20 anni = 70 anni totali
 
-Le estensioni sono soggette a:
+Le proroghe sono soggette a:
 
-- Permesso di soggiorno valido continuativo
+- Permesso di soggiorno continuativamente valido
 - Terreno utilizzato come previsto
-- Nessuna violazione
-- Domanda presentata prima della scadenza
+- Nessun violazione
+- Richiesta prima della scadenza
 </InfoCard>
 
 ---
@@ -304,182 +296,182 @@ Le estensioni sono soggette a:
 
 ### Come Funziona
 
-1. **Costituzione PT PMA** - Società a investimento estero
+1. **Costituzione PT PMA** - Società di investimento estera
 2. **Registrazione attività immobiliare** - Nella licenza commerciale
 3. **Acquisizione titolo HGB** - La società detiene il titolo
-4. **Controllo della società** - Proprietà indiretta
+4. **Voi controllate la società** - Proprietà indiretta
 
 ### Vantaggi
 
-| Beneficio              | Dettagli                         |
-| ---------------------- | -------------------------------- |
-| Uso commerciale        | Può affittare la proprietà       |
-| Proprietà multiple     | Nessun limite di una proprietà   |
-| Operazioni aziendali   | Piena attività commerciale       |
-| Trasferibile           | Si vendono le quote, non il bene |
-| Finanziamento bancario | Più facile da ottenere           |
+| Beneficio             | Dettagli                    |
+| ------------------- | -------------------------- |
+| Uso commerciale      | Possibilità di locare la proprietà      |
+| Multiple properties | Nessun limite sul numero di proprietà   |
+| Operazioni aziendali | Piena attività commerciale |
+| Trasferibile        | Vendita di quote, non della proprietà  |
+| Finanziamento bancario      | Più facile da ottenere           |
 
 ### Svantaggi
 
-| Sfida                 | Dettagli                      |
-| --------------------- | ----------------------------- |
-| Costi di setup        | IDR 100-200M+                 |
-| Compliance continua   | Reporting, tasse              |
-| Requisiti di capitale | Investimento minimo           |
-| Complessità           | Oneri legali e amministrativi |
-| Costi di gestione     | Contabilità, licenze          |
+| Sfida            | Dettagli                |
+| -------------------- | ---------------------- |
+| Costo di avvio           | IDR 100-200M+          |
+   Compliance continuativa   | Reporting, tasse         |
+| Requisiti di capitale | Investimento minimo     |
+| Complessità           | Onere legale e amministrativo |
+| Costi operativi        | Contabilità, licenze   |
 
 ---
 
-## Accordi di Locazione (Leasehold)
+## Accordi di Locazione
 
-### Leasing a Lungo Termine
+### Locazione a Lungo Termine
 
-<InfoCard variant="tip" title="Alternativa più semplice">
-La **Locazione (Hak Sewa)** è spesso più semplice:
+<InfoCard variant="tip" title="Alternativa Più Semplice">
+**Locazione (Hak Sewa)** è spesso più semplice:
 
-- Affitto del terreno da un proprietario indonesiano
+- Locare il terreno dal proprietario indonesiano
 - Termini tipici: 25-30 anni
-- Possibilità di costruire con permesso
+- Possibilità di costruire con autorizzazione
 - Minore complessità rispetto alla PT PMA
 - Nessun requisito di valore minimo
 
-Molti espatriati preferiscono questa opzione per la sua semplicità.
+Molti espatri preferiscono questa opzione per la semplicità.
 
 </InfoCard>
 
-### Struttura del Leasing
+### Struttura di Locazione
 
-| Elemento            | Termini Tipici                   |
-| ------------------- | -------------------------------- |
-| Durata              | 25-30 anni                       |
-| Estensione          | Spesso negoziabile               |
-| Registrazione       | Accordo notarile                 |
-| Diritti costruzione | Solitamente inclusi              |
-| Migliorie           | Tornano al proprietario o pagate |
+| Elemento         | Termini Tipici                  |
+| --------------- | ------------------------------ |
+| Durata        | 25-30 anni                    |
+| Proroga       | Spesso negoziabile               |
+| Registrazione    | Accordo notarile            |
+| Diritti di costruzione | Di solito inclusi               |
+| Migliorie    | Torno al proprietario o compensate |
 
 ---
 
-## E per quanto riguarda i prestanome (Nominee)?
+## Che Dire dei Nominee?
 
-<InfoCard variant="warning" title="Accordi Nominee">
-**Nominee = un indonesiano detiene il titolo per lo straniero**
+<InfoCard variant="warning" title="Accordi con Nominee">
+**Nominee = Un indonesiano detiene il titolo per conto dello straniero**
 
 **La verità:**
 
 - Comune ma **legalmente rischioso**
-- La legge fondiaria non riconosce i prestanome
-- Il prestanome può rivendicare la vera proprietà
+- La legge sui terreni non riconosce il nominee
+- Il nominee può rivendicare la vera proprietà
 - I tribunali potrebbero non proteggere lo straniero
-- Può essere annullato se contestato
+- Può essere nullo se contestato
 
-**Se usi un prestanome:**
+**Se usate un nominee:**
 
-- Usa accordi legali completi
-- Comprendi di avere una protezione LIMITATA
-- Considera la PT PMA per una maggiore sicurezza
+- Utilizzare accordi legali completi
+- Comprendere che avete una PROTEZIONE LIMITATA
+- Considerare PT PMA per maggiore sicurezza
 </InfoCard>
 
 ### Rischi del Nominee
 
-| Rischio                              | Conseguenza                       |
-| ------------------------------------ | --------------------------------- |
-| Il prestanome rivendica la proprietà | Perdita della proprietà           |
-| Decesso del prestanome               | Complicazioni ereditarie          |
-| Debiti del prestanome                | La proprietà può essere pignorata |
-| Divorzio del prestanome              | Il coniuge può avanzare pretese   |
-| Sfida legale                         | Accordo nullo                     |
+| Rischio                     | Conseguenza               |
+| ------------------------ | ------------------------- |
+| Il nominee rivendica la proprietà | Potreste perdere la proprietà         |
+| Morte del nominee             | Complicazioni ereditarie |
+| Debiti del nominee          | La proprietà può essere pignorata    |
+| Divorzio del nominee          | Il coniuge potrebbe rivendicare      |
+| Contestazione legale          | L'accordo diventa nullo          |
 
 ---
 
-## Titolo Strata / Appartamenti
+## Titolo di Condominio/Strata Title
 
 ### Opzione Migliore per gli Stranieri
 
-<InfoCard variant="note" title="Titolo Strata (Hak Milik Sarusun)">
+<InfoCard variant="note" title="Titolo di Condominio (Hak Milik Sarusun)">
 **Gli appartamenti sono diversi!**
 
-Gli stranieri possono detenere direttamente il titolo strata (HMSRS):
+Gli stranieri possono detenere direttamente il titolo di condominio (HMSRS):
 
-- Nessuna PT PMA necessaria
-- Nessun KITAS necessario (controllare lo sviluppo specifico)
-- Si applicano comunque i requisiti di valore minimo
-- Processo di transazione più semplice
+- Non serve PT PMA
+- Non serve KITAS (verificare lo sviluppo specifico)
+- Si applicano ancora i requisiti di valore minimo
+- Processo transazionale più semplice
 
-Molti stranieri scelgono gli appartamenti per la loro semplicità.
+Molti stranieri scelgono gli appartamenti per la semplicità.
 
 </InfoCard>
 
 ### Requisiti
 
-| Requisito        | Dettagli                         |
-| ---------------- | -------------------------------- |
-| Valore minimo    | Varia per regione                |
-| Tipo di edificio | Solo appartamenti/strata         |
-| Documentazione   | Passaporto, contratto d'acquisto |
-| Registrazione    | Tramite sviluppatore/BPN         |
+| Requisito   | Dettagli                      |
+| ------------- | ---------------------------- |
+| Valore minimo | Varia per regione             |
+| Tipo di edificio | Solo condomini/strata       |
+| Documentazione | Passaporto, contratto di acquisto |
+| Registrazione  | Attraverso sviluppatore/BPN        |
 
 ---
 
-## Checklist per la Due Diligence
+## Checklist Due Diligence
 
 <Checklist
-  title="Due Diligence Immobiliare"
-  description="Prima di ogni acquisto immobiliare"
+  title="Due Diligence sulla Proprietà"
+  description="Prima dell'acquisto di qualsiasi proprietà"
   persistKey="property-dd-checklist"
   items={[
     {
       id: "certificate",
-      label: "Verifica certificato fondiario",
-      description: "Controlla presso l'ufficio BPN",
+      label: "Verificare il certificato del terreno",
+      description: "Controllare presso l'ufficio BPN",
       required: true,
       category: "title",
     },
     {
       id: "zoning",
-      label: "Controlla lo stato della zonizzazione",
-      description: "Uso consentito",
+      label: "Verificare lo status urbanistico",
+      description: "Utilizzo consentito",
       required: true,
       category: "title",
     },
     {
       id: "owner",
-      label: "Verifica che il venditore sia il proprietario",
-      description: "Confronta con il certificato",
+      label: "Verificare che il venditore sia il proprietario",
+      description: "Confrontare con il certificato",
       required: true,
       category: "seller",
     },
     {
       id: "encumbrances",
-      label: "Controlla ipoteche o gravami",
+      label: "Controllare ipotechi/gravami",
       description: "Titolo pulito",
       required: true,
       category: "title",
     },
     {
       id: "tax",
-      label: "Verifica pagamento tasse",
+      label: "Verificare tasse pagate",
       description: "PBB aggiornato",
       required: true,
       category: "financial",
     },
     {
       id: "boundaries",
-      label: "Rilievo dei confini",
-      description: "Confronta con il certificato",
+      label: "Sondare i confini",
+      description: "Confrontare con il certificato",
       required: true,
       category: "physical",
     },
     {
       id: "access",
-      label: "Verifica l'accesso legale",
+      label: "Verificare accesso legale",
       description: "Diritti di accesso stradale",
       required: true,
       category: "physical",
     },
     {
       id: "building",
-      label: "Controlla i permessi di costruzione",
+      label: "Verificare permessi edilizi",
       description: "IMB/PBG se applicabile",
       required: true,
       category: "permits",
@@ -499,42 +491,42 @@ Molti stranieri scelgono gli appartamenti per la loro semplicità.
 
 ## Costi e Tasse
 
-### Costi d'Acquisto
+### Costi di Acquisto
 
-| Costo                         | Aliquota                  |
-| ----------------------------- | ------------------------- |
-| BPHTB (tassa di acquisizione) | 5% del valore transazione |
-| Spese notarili/PPAT           | 0,5-1%                    |
-| Registrazione (AJB)           | ~1%                       |
-| Spese legali                  | Variabili                 |
+| Costo                    | Tasso                    |
+| ----------------------- | ----------------------- |
+| BPHTB (tassa di acquisto) | 5% del valore transazionale |
+| Onorari Notare/PPAT        | 0.5-1%                  |
+| Registrazione (AJB)      | ~1%                     |
+| Onorari legali              | Variabile                  |
 
-### Costi Ricorrenti
+### Costi Continuativi
 
-| Costo                 | Frequenza                |
-| --------------------- | ------------------------ |
-| PBB (tassa fondiaria) | Annuale                  |
-| Manutenzione edificio | Continua                 |
-| Compliance PT PMA     | Annuale (se applicabile) |
+| Costo                 | Frequenza              |
+| -------------------- | ---------------------- |
+| PBB (tassa sui terreni)       | Annuale                 |
+| Manutenzione edificio   | Continua                |
+   Compliance PT PMA    | Annuale (se applicabile) |
 
 ---
 
-## Domande comuni
+## Domande Comuni
 
 <AskZantara
-  context="Proprietà fondiaria Indonesia, proprietà stranieri, Hak Pakai, HGB, PT PMA, nominee"
+  context="Proprietà terreni Indonesia, proprietà stranieri, Hak Pakai, HGB, PT PMA, nominee"
   placeholder="Chiedi sulla proprietà..."
   suggestedQuestions={[
-    "Posso comprare risaie come straniero?",
-    "L'accordo nominee è sicuro?",
-    "Quanto tempo richiede il setup della PT PMA?",
+    "Posso acquistare terreno a riso come straniero?",
+    "L'accordo con un nominee è sicuro?",
+    "Quanto tempo impiega la costituzione di una PT PMA?",
     "Posso ottenere un prestito bancario come straniero?",
   ]}
 />
 
 ---
 
-## Articoli correlati
+## Articoli Correlati
 
-- [Guida agli investimenti immobiliari](/it/insights/property/property-investment-guide)
-- [Acquisto villa a Bali](/it/insights/property/villa-purchase-bali)
-- [Guida al setup PT PMA](/business/pt-pma-registration-guide?lang=it)
+- [Guida agli Investimenti Immobiliari](/insights/property/property-investment-guide)
+- [Acquisto Villa a Bali](/insights/property/villa-purchase-bali)
+- [Guida alla Costituzione PT PMA](/business/pt-pma-registration-guide)
