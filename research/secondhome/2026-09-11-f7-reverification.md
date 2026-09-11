@@ -1,3 +1,18 @@
+---
+date: 2026-09-11
+domain: visa
+client_case: none (technical hygiene of the E33 Second Home Studio and its llms exports)
+adversarial_review: codex
+sources:
+  - https://github.com/advisories/GHSA-frvp-7c67-39w9
+  - https://github.com/advisories/GHSA-9mqv-5hh9-4cgg
+  - https://github.com/advisories/GHSA-c96f-x56v-gq3h
+  - https://github.com/advisories/GHSA-5p4m-2wfm-xmqj
+  - https://github.com/Bali-Zero/Teman2/actions/runs/34423820190
+  - https://balizero.com/llms-full.txt
+  - https://balizero.com/llms-id.txt
+---
+
 # Second Home Studio — F7 e prerequisiti, 11 settembre 2026
 
 Passata tecnica preparata su Mini, base `be45266252`, branch
@@ -210,3 +225,30 @@ Build Next completo, deploy e prova post-release dei nuovi export non eseguiti.
 Il contratto external-agent in `AGENTS.md` consente la preparazione, non merge,
 arming o deploy da questa sessione. Le prove live sopra fotografano la produzione
 prima di questa patch.
+
+## Adversarial review
+
+Aggiunta all'adozione in W1-SH-TECH (SHWEB-20260911, 2026-09-11); il corpo sopra è
+invariato rispetto alla patch congelata (sha256 `e3004f3d…`). Nessuno dei due seat ha
+scritto la patch (autrice Astra) né il brief del Dux.
+
+- **Codex Sol** (`gpt-5.6-sol` xhigh, `codex exec --sandbox read-only`, sessione
+  `01a0902a-8855-7ed0-a01b-940ce3a9bcf2`): GO-WITH-CONDITIONS. Ha confermato nel
+  `package-lock.json` le versioni dietro le quattro waiver ritirate (`@hono/node-server`
+  2.0.11, `find-my-way` 9.7.0, `js-yaml` 3.15.1 annidato e 4.3.1 al root) contro i range
+  corretti degli advisory. Obiezione principale accettata: i due advisory Hono sono
+  Moderate a monte e il gate ignora Moderate per costruzione, quindi il test storico prova
+  che la waiver non esiste più, non che una reintroduzione Moderate reale blocchi; il test
+  è stato rinominato di conseguenza. Non ha potuto eseguire `npm audit` (registry non
+  raggiungibile dalla sandbox).
+- **Kimi K3** (`kimi-code/k3`, sessione `session_a41ccd47-d2cc-4d4b-86a5-f327daedfd05`):
+  HOLDS-WITH-CONDITIONS. Ha eseguito mutazioni sul gate: ripristinare una qualsiasi delle
+  quattro waiver fa diventare rosso il test storico; 19/19 verdi con `WAIVE` vuoto.
+  Obiezione accettata: il test sul percorso non verificato ora blocca come "not waived" e
+  non più attraverso il ramo di path-scoping, che resta coperto dai test con waiver di
+  fixture; rinominato. Obiezione respinta per W1: un vincolo che impedisca per test ogni
+  futura waiver è una scelta di policy fuori mandato.
+
+Le tre advisory high più recenti (`js-yaml`, `sharp`, `mysql2` via `prisma`) restano
+segnalate e non coperte da waiver: questa revisione non certifica il workspace privo di
+advisory.
