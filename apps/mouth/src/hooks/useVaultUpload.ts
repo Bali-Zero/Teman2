@@ -53,6 +53,42 @@ function isRetryableHttpStatus(status: number): boolean {
  * the backend's client-safe document projection; scan, OCR, and storage
  * internals are intentionally unavailable to the UI.
  */
+/**
+ * The reason the server gave, not just the number it gave it with.
+ *
+ * The failure branch used to render `Upload failed (${status})` and throw
+ * `xhr.responseText` away — even though the success branch two lines above
+ * already parses it. A client hitting the hour-long duplicate guard saw
+ * "Upload failed (409)" instead of "A file with this name was uploaded less
+ * than an hour ago", and a client hitting a document-type rule saw
+ * "Upload failed (422)" instead of the rule (portal audit ux F1).
+ *
+ * FastAPI puts the reason in `detail`; this app's own envelopes use
+ * `message`. Anything else — HTML from a proxy, an empty body, a non-string
+ * `detail` (FastAPI's validation errors are a LIST of objects, which is
+ * exactly the shape that must not be stringified at a client) — falls back
+ * to the status code, which is still more honest than a wrong sentence.
+ */
+function serverRejectionMessage(responseText: string, status: number): string {
+  const fallback = `Upload failed (${status})`;
+  try {
+    const body: unknown = JSON.parse(responseText);
+    if (typeof body !== "object" || body === null) return fallback;
+    const { detail, message } = body as {
+      detail?: unknown;
+      message?: unknown;
+    };
+    for (const candidate of [detail, message]) {
+      if (typeof candidate === "string" && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function useVaultUpload() {
   const [state, setState] = useState<UploadState>({ status: "idle" });
   const retryableUploadRef = useRef<RetryableUpload | null>(null);
@@ -143,7 +179,7 @@ export function useVaultUpload() {
         }
         setState({
           status: "error",
-          message: `Upload failed (${xhr.status})`,
+          message: serverRejectionMessage(xhr.responseText, xhr.status),
           httpStatus: xhr.status,
         });
       }
