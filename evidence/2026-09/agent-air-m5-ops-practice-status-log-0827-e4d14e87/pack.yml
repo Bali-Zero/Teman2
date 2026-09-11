@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-air-m5-ops-practice-status-log-0827-e4d14e87/brief.yml
+brief_ref: evidence/brief.yml # staging-layout literal, NOT the per-PR path (harness-floor.yml:989)
 plan_ref: "the portal tracker reads a table no migration ever created (2026-08-27)"
 council_run: council.jsonl
 diff:
