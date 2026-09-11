@@ -329,6 +329,14 @@ function UpgradedLoginPageInner() {
         [data-theme="operative-light"] .gate-scene [stroke="#8a6030"] { stroke: #9c7c4e; } /* token-lint-ok: decorative illustration dim gold stroke */
         [data-theme="operative-light"] .gate-scene [fill="#000000"] { fill: #d8cdb6; } /* token-lint-ok: decorative illustration sand silhouette (moon cover, ground, foliage) */
         [data-theme="operative-light"] .gate-scene [fill="#0a0a0a"] { fill: #d9a441; } /* token-lint-ok: decorative illustration sun disc */
+        /* #passageGlow was still the night-only ember (#1a1008 → #000000,
+           opaque both stops), so in daylight the central passage rendered
+           as a near-black slab instead of a glimpse of sky through the
+           gate. Re-lit with the same two skyGrad tones so the passage
+           reads as daylight, not a void — both stops clear WCAG 3:1
+           against the copper title text that overlaps this rect. */
+        [data-theme="operative-light"] .gate-scene #passageGlow stop[stop-color="#1a1008"] { stop-color: #f7f3ea; } /* token-lint-ok: decorative illustration daylight passage glow (reuses day sky) */
+        [data-theme="operative-light"] .gate-scene #passageGlow stop[stop-color="#000000"] { stop-color: #e6dcc8; } /* token-lint-ok: decorative illustration daylight passage glow depth (reuses day sky depth) */
       `}</style>
 
       {/* ═══════════════════════════════════════
