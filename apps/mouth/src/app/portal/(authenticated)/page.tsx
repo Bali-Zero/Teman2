@@ -47,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import type { TimelineEntry } from "@/lib/api/types/timeline.types";
 import type { DashboardSummary } from "@/lib/api/portal/portal.types";
 import { DeadlineBadge } from "@balizero/core";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 function getStatusCode(error: unknown): number | undefined {
   if (!error || typeof error !== "object") return undefined;
@@ -63,6 +64,7 @@ function isClientConnectionError(error: unknown): boolean {
 
 export default function PortalHomePage() {
   const router = useRouter();
+  const { formatDate } = usePortalDateFormat();
   const dashboardQuery = usePortalDashboard();
   const summaryQuery = usePortalDashboardSummary();
   const timelineQuery = usePortalTimeline(20);
@@ -267,9 +269,7 @@ export default function PortalHomePage() {
           status={defaultDashboard.taxes.status}
           label={
             defaultDashboard.taxes.nextDeadline
-              ? new Date(
-                  defaultDashboard.taxes.nextDeadline,
-                ).toLocaleDateString("en-US", {
+              ? formatDate(defaultDashboard.taxes.nextDeadline, {
                   month: "short",
                   day: "numeric",
                 })
@@ -447,6 +447,7 @@ function StatusCard({
   // fix): forward it to the button so the card has an accessible name.
   "aria-label"?: string;
 }) {
+  const { formatDate } = usePortalDateFormat();
   // Semantic state tokens: WS2 light overrides keep these ≥4.5:1 on paper
   // (success 4.80, warning 4.78, danger 5.74, info 5.94 — see semantic.css).
   const getStatusStyle = (s: string) => {
@@ -483,8 +484,7 @@ function StatusCard({
   // shares the warning step with the ≤30d tier.
   const getExpiryInfo = () => {
     if (!expiry) return { text: subLabel || "", color: "" };
-    const date = new Date(expiry);
-    const formatted = date.toLocaleDateString("en-US", {
+    const formatted = formatDate(expiry, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -536,7 +536,7 @@ function StatusCard({
         )}
         title={
           expiry
-            ? new Date(expiry).toLocaleDateString("en-US", {
+            ? formatDate(expiry, {
                 month: "long",
                 day: "numeric",
                 year: "numeric",

@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { PortalApprovedIntelligence } from "@/lib/api/portal/portal.types";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 function parseMatterId(value: string | string[] | undefined): number | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -32,15 +33,21 @@ function parseMatterId(value: string | string[] | undefined): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function formatReviewedAt(value: string | null): string | null {
+function formatReviewedAt(
+  value: string | null,
+  formatDate: (
+    value: string | Date | null | undefined,
+    options?: Intl.DateTimeFormatOptions,
+  ) => string,
+): string | null {
   if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return (
+    formatDate(value, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }) || null
+  );
 }
 
 function LoadingState() {
@@ -79,7 +86,11 @@ function ApprovedIntelligencePanel({
 }: {
   intelligence: PortalApprovedIntelligence;
 }) {
-  const reviewedAt = formatReviewedAt(intelligence.last_reviewed_at);
+  const { formatDate } = usePortalDateFormat();
+  const reviewedAt = formatReviewedAt(
+    intelligence.last_reviewed_at,
+    formatDate,
+  );
 
   if (!intelligence.available) {
     return (
@@ -172,6 +183,7 @@ export default function PortalMatterDetailPage() {
   const params = useParams<{ id?: string | string[] }>();
   const matterId = parseMatterId(params?.id);
   const { data, isLoading, isError, refetch } = usePortalMatter(matterId);
+  const { formatDate } = usePortalDateFormat();
 
   if (!matterId) {
     return (
@@ -276,7 +288,8 @@ export default function PortalMatterDetailPage() {
                 Next deadline
               </p>
               <p className="mt-1 text-sm font-medium text-[var(--bz-text-1)]">
-                {formatReviewedAt(data.next_deadline) ?? data.next_deadline}
+                {formatReviewedAt(data.next_deadline, formatDate) ??
+                  data.next_deadline}
               </p>
             </div>
           )}

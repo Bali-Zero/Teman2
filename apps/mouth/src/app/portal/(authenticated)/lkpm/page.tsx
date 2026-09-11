@@ -35,6 +35,7 @@ import type {
 } from "@/lib/api/portal/portal.types";
 import { formatIDR } from "@balizero/core/utils";
 import { Button } from "@/components/ui/button";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 // Day card surface (GARUDA Day concept .panel): white card on warm paper,
 // hairline warm border, soft navy shadow (near-invisible on dark).
@@ -85,6 +86,7 @@ function LkpmMasthead() {
 
 export default function LKPMPage() {
   const { error } = useToast();
+  const { formatDate } = usePortalDateFormat();
   const [history, setHistory] = useState<LKPMDraftSummary[]>([]);
   const [deadlines, setDeadlines] = useState<LKPMDeadline[]>([]);
   const [receipts, setReceipts] = useState<LKPMReceipt[]>([]);
@@ -341,7 +343,7 @@ export default function LKPMPage() {
               </p>
               <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                 Deadline:{" "}
-                {new Date(nextDeadline.deadline).toLocaleDateString("en-US", {
+                {formatDate(nextDeadline.deadline, {
                   month: "long",
                   day: "numeric",
                   year: "numeric",

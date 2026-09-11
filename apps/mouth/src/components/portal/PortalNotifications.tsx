@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { usePortalNotifications } from "@/hooks/usePortalNotifications";
 import type { PortalNotification } from "@/lib/api/portal/portal.types";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 function getNotificationIcon(type: string) {
   switch (type) {
@@ -29,7 +30,13 @@ function getNotificationIcon(type: string) {
   }
 }
 
-function timeAgo(dateStr: string | null): string {
+function timeAgo(
+  dateStr: string | null,
+  formatDate: (
+    value: string | Date | null | undefined,
+    options?: Intl.DateTimeFormatOptions,
+  ) => string,
+): string {
   if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
@@ -39,7 +46,7 @@ function timeAgo(dateStr: string | null): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-US", {
+  return formatDate(dateStr, {
     month: "short",
     day: "numeric",
   });
@@ -78,6 +85,7 @@ export function PortalNotificationsList({
   onRetryMarkRead?: () => void;
   onRetryMarkAllRead?: () => void;
 }) {
+  const { formatDate } = usePortalDateFormat();
   const unread = notifications.filter((n) => !n.read);
 
   return (
@@ -203,7 +211,7 @@ export function PortalNotificationsList({
                   style={{ color: "var(--bz-text-3)" }}
                   suppressHydrationWarning
                 >
-                  {timeAgo(notif.created_at)}
+                  {timeAgo(notif.created_at, formatDate)}
                 </p>
               </div>
               {!notif.read && (
