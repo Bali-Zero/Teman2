@@ -3,11 +3,11 @@ plan_ref: "the portal tracker reads a table no migration ever created (2026-08-2
 council_run: council.jsonl
 diff:
   net_lines: >-
-    +459/-6 (net +453) across 4 files, measured at SHA 5b790247b by
-    `git diff --shortstat 10c1a1729 5b790247b`. Base is the MERGE-BASE, so main's own landings are
-    not counted as this PR's. The SHA is the load-bearing part: this line lives inside its own diff,
-    so re-running the command at whatever the head is NOW returns a larger number, and a bare figure
-    with no SHA would be false the moment the next commit lands.
+    +1611/-15 (net +1596) across 8 files, by `git diff --numstat $(git merge-base origin/main
+    HEAD)..HEAD` — the command the pack linter itself runs. Base is the MERGE-BASE, so main's own
+    landings are not counted as this PR's. The earlier figure here (+459/-6 across 4 files) was not
+    wrong when written: the branch was then 972 commits behind, and bringing it up to date plus the
+    2026-09-11 council cure is the whole difference. Re-measure after any further commit.
   behaviour_change: >-
     New table + trigger (not applied to any running database by this diff). One behaviour change in
     the reader: a non-Postgres exception in the history query now PROPAGATES where it was previously
