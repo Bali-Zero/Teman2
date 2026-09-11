@@ -318,7 +318,7 @@ export const serviceSectionContent: Record<
     ],
     whyNow: [
       "Komdigi blocked eBay and KLM on 28 June 2025 and sent notification letters to 25 operators on 26 June 2026 (Komdigi press releases 9446 and 10354).",
-      "Coretax: the 2026 corporate filing deadline was extended to 31 May after around 4,000 complaints.",
+      "KEP-71/PJ/2026 (reinforced by PENG-31/PJ.09/2026) extended the 2025 corporate income tax return filing window through 31 May 2026, waiving administrative sanctions for corporate taxpayers who file and settle any Article 29 underpayment within that period.",
       "Quarterly LKPM deadlines moved to the 15th under BKPM Regulation 5/2025.",
     ],
   },
