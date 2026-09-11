@@ -462,4 +462,12 @@ gear_floor_correction:
     --changed-files-file` resolves the per-PR brief — but a human or agent
     debugging locally is measuring another lane's declaration. (2) The lint reads
     the COMMITTED brief, not the working tree: an uncommitted correction is
-    invisible to it, which reads exactly like "my fix did nothing".
+    invisible to it, which reads exactly like "my fix did nothing". (3) The same
+    is true of `evidence/pack.yml` at root — also a different lane's, narrating
+    "4 files, +538/-2". Reproducing CI's staged tree with `--repo-root` pointed
+    at the real worktree makes the lint read BOTH root files instead of the
+    staged ones, so a local reproduction reports four violations that belong to
+    another PR entirely. The reproduction that is actually faithful is CI's own
+    decisive step: `git show <sha>:<per-PR brief>` then compare its gear to
+    `--print-floor --changed-files-file … --numstat-file …`. That is the check
+    that was red, and it is the one to re-run locally.
