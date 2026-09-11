@@ -109,7 +109,7 @@ INSERT — is never recorded. So after the first transition the timeline shows o
 and the starting point is gone.
 
 The migration already captures `old_status`, and the reader already **selects it and then ignores
-it** (`portal_process_timeline.py:119` is the only occurrence in the file). So the data to answer
+it** (`portal_process_timeline.py:146`, still the only occurrence in the file). So the data to answer
 this is being written and thrown away.
 
 Three options: synthesise the baseline from the first row's `old_status`; add an `AFTER INSERT`
@@ -137,13 +137,26 @@ shape Q1–Q3 settle on.
 
 ---
 
-## One defect that belongs to nobody here: the migration runner
+## One defect that belonged to nobody here: the migration runner — SINCE FIXED
 
-Independently verified at the cited lines, and **out of scope for any migration PR** because it is
-a property of the runner:
+> ⚡ **STALE AS WRITTEN, corrected 2026-09-11 after a council seat re-measured it.** Everything from
+> here to "What is NOT wrong" described the runner as it stood when this spec was drafted. It no
+> longer stands: `rollback_migration` (`backend/db/migration_manager.py:318-404`) deletes from
+> **BOTH** ledgers inside the rollback transaction, and says so in its own comment — _"Remove from
+> BOTH ledgers"_. The cited line numbers were also off: `_is_applied` is at
+> `backend/db/migration_base.py:644-648`, not `:365`.
+>
+> The consequence for THIS PR: 310's three-DROP rollback is correct as written and needs no
+> 277-style hand-patch, so the "Blocked on M5" paragraph below is moot — there is nothing left to
+> add to it. The text is kept rather than deleted because the reasoning is still the clearest
+> record of WHY the two-ledger shape was dangerous, and because a reader meeting a pre-2026-09-01
+> database still needs it.
 
-- rollback deletes from **`_schema_versions`** (`backend/db/migration_manager.py:257`)
-- the applied-check reads **`schema_migrations`** (`backend/db/migration_base.py:365`)
+The original finding, as written then — out of scope for any migration PR because it is a property
+of the runner:
+
+- rollback deleted from **`_schema_versions`** only
+- the applied-check reads **`schema_migrations`**
 
 They ARE reachable from the same run, and it is one chain, not two runners that never meet:
 `apply_all_pending()` filters pending work using `_schema_versions`, then constructs a
@@ -162,8 +175,9 @@ deleted: the objects are gone and both ledgers report success.
 - `schema_audit.py` was built to detect the two ledgers diverging, and its own header calls them
   _"two tables in flight … during the migration-runner consolidation"_.
 
-So the workaround exists, is documented, and is applied by **3 migrations out of 171** — which
-means **168 are not re-runnable after a rollback**, and nothing tells you which. Each new migration
+So the workaround existed, was documented, and was applied by a handful of migrations — the rest
+were not re-runnable after a rollback, and nothing told you which. The runner fix removed the need
+for it; the hand-patches that remain are harmless. Each new migration
 is expected to rediscover this and hand-patch its own rollback.
 
 That is the real finding, and it is bigger than this PR: it wants a fix in the **runner** (one
