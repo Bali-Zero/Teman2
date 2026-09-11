@@ -15,7 +15,7 @@ plan_ref: "the portal tracker reads a table no migration ever created (2026-08-2
 council_run: council.jsonl
 diff:
   net_lines: >-
-    +1640/-15 (net +1625) across 8 files, by `git diff --numstat $(git merge-base origin/main
+    +1673/-15 (net +1658) across 8 files, by `git diff --numstat $(git merge-base origin/main
     HEAD)..HEAD` — the command the pack linter itself runs. Base is the MERGE-BASE, so main's own
     landings are not counted as this PR's. This line lives inside its own diff, so it has to be
     re-measured after every commit that follows it, and the figure it carried before was true of an
