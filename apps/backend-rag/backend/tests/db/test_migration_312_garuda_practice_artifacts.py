@@ -295,15 +295,18 @@ class TestGuardTriggerAppendOnly:
     @pytest.mark.asyncio
     async def test_update_with_no_superseded_at_at_all_is_refused(self, conn) -> None:
         """The only-permitted-shape branch: an UPDATE that never touches
-        `superseded_at` (leaving it NULL) is refused regardless of what
-        column it DOES touch."""
+        `superseded_at`/`superseded_by` (leaving both NULL) is refused
+        regardless of what column it DOES touch."""
         tx = conn.transaction()
         await tx.start()
         try:
             practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
             artifact_id = f"art_{uuid.uuid4().hex[:20]}"
             await _insert_artifact(conn, artifact_id=artifact_id, practice_id=practice_id)
-            with pytest.raises(asyncpg.PostgresError, match="the only permitted UPDATE sets superseded_at"):
+            with pytest.raises(
+                asyncpg.PostgresError,
+                match="the only permitted UPDATE sets superseded_at and superseded_by together",
+            ):
                 await conn.execute(
                     "UPDATE garuda_practice_artifacts SET produced_by = 'someone-else@balizero.com' "
                     "WHERE artifact_id = $1",
@@ -313,21 +316,24 @@ class TestGuardTriggerAppendOnly:
             await tx.rollback()
 
     @pytest.mark.asyncio
-    async def test_update_setting_superseded_at_alongside_another_column_is_refused(
+    async def test_update_setting_only_superseded_at_without_superseded_by_is_refused(
         self, conn
     ) -> None:
-        """The immutable-columns branch: setting `superseded_at` does not
-        license changing anything else in the SAME UPDATE."""
+        """The pair-together rule (decision #13-revision): `superseded_at`
+        alone, with `superseded_by` left NULL, is refused -- same branch,
+        different half of the pair than the symmetric case below."""
         tx = conn.transaction()
         await tx.start()
         try:
             practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
             artifact_id = f"art_{uuid.uuid4().hex[:20]}"
             await _insert_artifact(conn, artifact_id=artifact_id, practice_id=practice_id)
-            with pytest.raises(asyncpg.PostgresError, match="only superseded_at may change"):
+            with pytest.raises(
+                asyncpg.PostgresError,
+                match="the only permitted UPDATE sets superseded_at and superseded_by together",
+            ):
                 await conn.execute(
-                    "UPDATE garuda_practice_artifacts "
-                    "SET superseded_at = clock_timestamp(), produced_by = 'someone-else@balizero.com' "
+                    "UPDATE garuda_practice_artifacts SET superseded_at = clock_timestamp() "
                     "WHERE artifact_id = $1",
                     artifact_id,
                 )
@@ -335,7 +341,83 @@ class TestGuardTriggerAppendOnly:
             await tx.rollback()
 
     @pytest.mark.asyncio
-    async def test_setting_superseded_at_succeeds_and_frees_the_practice_for_a_new_live_row(
+    async def test_update_setting_only_superseded_by_without_superseded_at_is_refused(
+        self, conn
+    ) -> None:
+        """Symmetric half of the pair-together rule: `superseded_by` alone
+        is refused too, even though it names a real row."""
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            artifact_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=artifact_id, practice_id=practice_id)
+            other_practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            other_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=other_id, practice_id=other_practice_id)
+            with pytest.raises(
+                asyncpg.PostgresError,
+                match="the only permitted UPDATE sets superseded_at and superseded_by together",
+            ):
+                await conn.execute(
+                    "UPDATE garuda_practice_artifacts SET superseded_by = $2 WHERE artifact_id = $1",
+                    artifact_id,
+                    other_id,
+                )
+        finally:
+            await tx.rollback()
+
+    @pytest.mark.asyncio
+    async def test_a_row_cannot_name_itself_as_its_own_superseded_by(self, conn) -> None:
+        """`CHECK (superseded_by IS NULL OR superseded_by <> artifact_id)`
+        -- a row can never claim to have replaced itself."""
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            artifact_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=artifact_id, practice_id=practice_id)
+            with pytest.raises(asyncpg.CheckViolationError):
+                await conn.execute(
+                    "UPDATE garuda_practice_artifacts "
+                    "SET superseded_at = clock_timestamp(), superseded_by = $1 "
+                    "WHERE artifact_id = $1",
+                    artifact_id,
+                )
+        finally:
+            await tx.rollback()
+
+    @pytest.mark.asyncio
+    async def test_update_setting_the_pair_alongside_another_column_is_refused(
+        self, conn
+    ) -> None:
+        """The immutable-columns branch: setting the pair does not license
+        changing anything else in the SAME UPDATE."""
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            artifact_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=artifact_id, practice_id=practice_id)
+            other_practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            other_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=other_id, practice_id=other_practice_id)
+            with pytest.raises(
+                asyncpg.PostgresError, match="only superseded_at and superseded_by may change"
+            ):
+                await conn.execute(
+                    "UPDATE garuda_practice_artifacts "
+                    "SET superseded_at = clock_timestamp(), superseded_by = $2, "
+                    "    produced_by = 'someone-else@balizero.com' "
+                    "WHERE artifact_id = $1",
+                    artifact_id,
+                    other_id,
+                )
+        finally:
+            await tx.rollback()
+
+    @pytest.mark.asyncio
+    async def test_setting_the_pair_succeeds_and_frees_the_practice_for_a_new_live_row(
         self, conn
     ) -> None:
         tx = conn.transaction()
@@ -345,42 +427,70 @@ class TestGuardTriggerAppendOnly:
             first_id = f"art_{uuid.uuid4().hex[:20]}"
             await _insert_artifact(conn, artifact_id=first_id, practice_id=practice_id)
 
+            # The partial unique index only binds LIVE rows -- insert the
+            # new row FIRST for a DIFFERENT practice here only to have a
+            # real artifact_id to supersede-by; the real service instead
+            # orders it old-row-UPDATE-then-new-row-INSERT for the SAME
+            # practice (postgres_repository.py::insert_superseding).
+            second_id = f"art_{uuid.uuid4().hex[:20]}"
+            other_practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            await _insert_artifact(conn, artifact_id=second_id, practice_id=other_practice_id)
+
             await conn.execute(
-                "UPDATE garuda_practice_artifacts SET superseded_at = clock_timestamp() "
+                "UPDATE garuda_practice_artifacts "
+                "SET superseded_at = clock_timestamp(), superseded_by = $2 "
+                "WHERE artifact_id = $1",
+                first_id,
+                second_id,
+            )
+            row = await conn.fetchrow(
+                "SELECT superseded_at, superseded_by FROM garuda_practice_artifacts "
                 "WHERE artifact_id = $1",
                 first_id,
             )
-            superseded_at = await conn.fetchval(
-                "SELECT superseded_at FROM garuda_practice_artifacts WHERE artifact_id = $1",
-                first_id,
-            )
-            assert superseded_at is not None
+            assert row["superseded_at"] is not None
+            assert row["superseded_by"] == second_id
 
-            # The partial unique index only binds LIVE rows -- a fresh
-            # insert for the same practice must now succeed.
-            second_id = f"art_{uuid.uuid4().hex[:20]}"
-            await _insert_artifact(conn, artifact_id=second_id, practice_id=practice_id)
+            # The practice this superseded row belonged to is free again --
+            # a fresh live insert for it must now succeed.
+            third_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=third_id, practice_id=practice_id)
         finally:
             await tx.rollback()
 
     @pytest.mark.asyncio
-    async def test_superseded_at_is_immutable_once_set(self, conn) -> None:
+    async def test_the_pair_is_immutable_once_set_a_second_supersession_is_refused(
+        self, conn
+    ) -> None:
         tx = conn.transaction()
         await tx.start()
         try:
             practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
             artifact_id = f"art_{uuid.uuid4().hex[:20]}"
             await _insert_artifact(conn, artifact_id=artifact_id, practice_id=practice_id)
+            other_practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            other_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=other_id, practice_id=other_practice_id)
             await conn.execute(
-                "UPDATE garuda_practice_artifacts SET superseded_at = clock_timestamp() "
+                "UPDATE garuda_practice_artifacts "
+                "SET superseded_at = clock_timestamp(), superseded_by = $2 "
                 "WHERE artifact_id = $1",
                 artifact_id,
+                other_id,
             )
-            with pytest.raises(asyncpg.PostgresError, match="immutable once set"):
+            third_practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            third_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=third_id, practice_id=third_practice_id)
+            with pytest.raises(
+                asyncpg.PostgresError,
+                match="superseded_at/superseded_by are immutable once set",
+            ):
                 await conn.execute(
-                    "UPDATE garuda_practice_artifacts SET superseded_at = clock_timestamp() "
+                    "UPDATE garuda_practice_artifacts "
+                    "SET superseded_at = clock_timestamp(), superseded_by = $2 "
                     "WHERE artifact_id = $1",
                     artifact_id,
+                    third_id,
                 )
         finally:
             await tx.rollback()

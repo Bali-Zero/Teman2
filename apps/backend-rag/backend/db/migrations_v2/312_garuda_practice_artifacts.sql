@@ -32,14 +32,15 @@
 -- unconditionally; REVOKE against the owner is a no-op, and there is no ACL
 -- entry that can make an owner's own DELETE fail. Because `backend_rag_v2`
 -- is both this table's owner and the sole runtime writer in production, the
--- GRANT statements in (4) (SELECT + INSERT, and UPDATE scoped to the single
--- column `superseded_at`) document the INTENDED boundary and would bind a
--- future non-owner grantee (a read-only reporting role, or a split-ownership
--- migration the way 300/301 later did for magic-link retention) -- but
--- cannot themselves stop `backend_rag_v2` from writing outside that
--- boundary. The guard trigger in (3) is the REAL enforcement: it runs
--- regardless of which role's privileges apply and rejects any DELETE and
--- any UPDATE that is not exactly "set superseded_at once, nothing else."
+-- GRANT statements in (4) (SELECT + INSERT, and UPDATE scoped to the two
+-- columns `superseded_at`/`superseded_by`) document the INTENDED boundary
+-- and would bind a future non-owner grantee (a read-only reporting role, or
+-- a split-ownership migration the way 300/301 later did for magic-link
+-- retention) -- but cannot themselves stop `backend_rag_v2` from writing
+-- outside that boundary. The guard trigger in (3) is the REAL enforcement:
+-- it runs regardless of which role's privileges apply and rejects any
+-- DELETE and any UPDATE that is not exactly "set superseded_at and
+-- superseded_by together, once, nothing else."
 --
 -- SCOPE DEPENDENCY (phase_2_gate condition 2, brief.yml): retention is
 -- bound to the existing `GARUDA_DOCUMENT` policy_scope, widened onto
@@ -136,8 +137,30 @@ CREATE TABLE IF NOT EXISTS public.garuda_practice_artifacts (
     -- may point at -- enforced by the partial unique index below, not by
     -- convention). Set exactly once, by a correction superseding this row
     -- (spec SS2); the guard trigger in (3) makes "exactly once" a fact the
-    -- database enforces, not just a caller's discipline.
+    -- database enforces, not just a caller's discipline. Always set in the
+    -- SAME update as superseded_by (Imperatore decision #13-revision,
+    -- 2026-09-11: "always supersede, never 409, made observable") -- the
+    -- guard trigger refuses either column changing without the other.
     superseded_at       TIMESTAMPTZ,
+    -- The new row's artifact_id that replaced this one -- NULL exactly when
+    -- superseded_at is NULL (decision #13-revision). Self-referencing FK,
+    -- not a separate lookup table: a supersession is a fact about this one
+    -- row, and the CHECK below refuses a row naming itself.
+    --
+    -- DEFERRABLE INITIALLY DEFERRED, on purpose: `postgres_repository.py::
+    -- insert_superseding` marks the OLD row's superseded_by = <new
+    -- artifact_id> BEFORE the new row is inserted (the partial unique
+    -- index `ux_garuda_practice_artifacts_live` requires that order --
+    -- inserting the new live row first would transiently give it two live
+    -- rows for the same practice_id). A NOT DEFERRABLE FK checks
+    -- immediately after that UPDATE and fails closed with "not present in
+    -- garuda_practice_artifacts", because the referenced row does not
+    -- exist yet at that point in the SAME transaction -- measured directly
+    -- (asyncpg.ForeignKeyViolationError) while building this migration.
+    -- Deferring the check to COMMIT is what lets both statements land in
+    -- the one order the unique index tolerates.
+    superseded_by       TEXT REFERENCES public.garuda_practice_artifacts (artifact_id)
+                        DEFERRABLE INITIALLY DEFERRED,
     -- NOW() (== transaction_timestamp()): the retention-binding trigger
     -- below checks `NEW.created_at IS DISTINCT FROM transaction_timestamp()`
     -- (304's exact convention) -- see that migration's own comment for why
@@ -146,13 +169,19 @@ CREATE TABLE IF NOT EXISTS public.garuda_practice_artifacts (
     retention_policy_id UUID NOT NULL REFERENCES public.visa_decision_retention_policies (id),
     retention_until     TIMESTAMPTZ NOT NULL,
     CHECK (retention_until > created_at),
-    CHECK (superseded_at IS NULL OR superseded_at > created_at)
+    CHECK (superseded_at IS NULL OR superseded_at > created_at),
+    -- The two supersession columns are set together or not at all --
+    -- structural backstop for the guard trigger's identical rule.
+    CHECK ((superseded_at IS NULL) = (superseded_by IS NULL)),
+    CHECK (superseded_by IS NULL OR superseded_by <> artifact_id)
 );
 
 COMMENT ON TABLE public.garuda_practice_artifacts IS
     'GARUDA VOA delivered artifact (product step 8, PR-11). One row per artifact version; at most one live (superseded_at IS NULL) row per practice, enforced by ux_garuda_practice_artifacts_live below. Never holds document bytes -- storage_key names an object in the PRIVATE garuda-voa-artifacts Tigris bucket (spec SS3), never nuzantara-warroom-images (public-read).';
 COMMENT ON COLUMN public.garuda_practice_artifacts.superseded_at IS
-    'NULL = live. Set exactly once by a correction; the guard trigger (3) refuses any other UPDATE and every DELETE for the runtime role. Physical row deletion is the retention sweep''s own role (spec SS6, decision #7a) -- not built by this migration.';
+    'NULL = live. Set exactly once by a correction, together with superseded_by; the guard trigger (3) refuses any other UPDATE and every DELETE for the runtime role. Physical row deletion is the retention sweep''s own role (spec SS6, decision #7a) -- not built by this migration.';
+COMMENT ON COLUMN public.garuda_practice_artifacts.superseded_by IS
+    'NULL = live. Set exactly once, together with superseded_at, to the artifact_id of the row that replaced this one (decision #13-revision) -- the guard trigger (3) enforces both columns move together and never again after that.';
 
 -- One live artifact per practice is a database fact, not a convention
 -- (spec SS2) -- also the index the customer/staff read paths use to find
@@ -162,8 +191,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_garuda_practice_artifacts_live
     WHERE superseded_at IS NULL;
 
 -- Retention sweep's own scan (spec SS6: "the same retention-purge path the
--- other GARUDA_* scopes use"). Not partial: a superseded row's OBJECT is
--- already deleted immediately (SS2), but its ROW still waits for the sweep.
+-- other GARUDA_* scopes use"). Not partial: a superseded row's OBJECT stays
+-- in the bucket -- there is no delete member on the object-store port
+-- (decision #13-revision) -- physical deletion of either the object or the
+-- row is the retention sweep's own future role (spec SS6, decision #7a),
+-- not built by this migration.
 CREATE INDEX IF NOT EXISTS idx_garuda_practice_artifacts_retention_purge
     ON public.garuda_practice_artifacts (retention_until);
 
@@ -375,10 +407,13 @@ BEGIN
 
     -- TG_OP = 'UPDATE' from here.
     IF OLD.superseded_at IS NOT NULL THEN
-        RAISE EXCEPTION 'garuda_practice_artifacts: superseded_at is immutable once set';
+        -- OLD.superseded_by is NOT NULL too whenever OLD.superseded_at is
+        -- (table CHECK enforces the pair) -- one guard covers both: a row
+        -- may be superseded exactly once, never a second time.
+        RAISE EXCEPTION 'garuda_practice_artifacts: superseded_at/superseded_by are immutable once set';
     END IF;
-    IF NEW.superseded_at IS NULL THEN
-        RAISE EXCEPTION 'garuda_practice_artifacts: the only permitted UPDATE sets superseded_at';
+    IF NEW.superseded_at IS NULL OR NEW.superseded_by IS NULL THEN
+        RAISE EXCEPTION 'garuda_practice_artifacts: the only permitted UPDATE sets superseded_at and superseded_by together';
     END IF;
     IF NEW.artifact_id IS DISTINCT FROM OLD.artifact_id
        OR NEW.practice_id IS DISTINCT FROM OLD.practice_id
@@ -392,7 +427,7 @@ BEGIN
        OR NEW.retention_policy_id IS DISTINCT FROM OLD.retention_policy_id
        OR NEW.retention_until IS DISTINCT FROM OLD.retention_until
     THEN
-        RAISE EXCEPTION 'garuda_practice_artifacts: only superseded_at may change on UPDATE';
+        RAISE EXCEPTION 'garuda_practice_artifacts: only superseded_at and superseded_by may change on UPDATE';
     END IF;
     RETURN NEW;
 END;
@@ -423,7 +458,7 @@ BEGIN
         -- PL/pgSQL has no direct GRANT statement -- EXECUTE, same as
         -- 244_compliance_alerts_runtime_grants.sql's own grant block.
         EXECUTE 'GRANT SELECT, INSERT ON TABLE public.garuda_practice_artifacts TO backend_rag_v2';
-        EXECUTE 'GRANT UPDATE (superseded_at) ON TABLE public.garuda_practice_artifacts TO backend_rag_v2';
+        EXECUTE 'GRANT UPDATE (superseded_at, superseded_by) ON TABLE public.garuda_practice_artifacts TO backend_rag_v2';
     END IF;
 END;
 $garuda_312_runtime_grants$;

@@ -81,7 +81,13 @@ class GarudaArtifactService:
         """Staff write (`putPracticeArtifact`). PDF allowlist, byte
         ceiling, server-side digest -- object THEN row (spec SS3), never
         the reverse: a row pointing at bytes that were never written would
-        be a worse defect than an orphan object in the bucket."""
+        be a worse defect than an orphan object in the bucket.
+
+        Always supersedes a live artifact rather than refusing the write
+        (decision #13-revision, 2026-09-11: "always supersede, never 409,
+        made observable") -- see `_supersede_side_effects` for what else
+        happens, in the SAME transaction, when a live row already exists.
+        """
 
         if not body.startswith(_PDF_MAGIC):
             raise InvalidArtifactContent("uploaded body is not a PDF")
@@ -93,34 +99,58 @@ class GarudaArtifactService:
         storage_key = f"artifacts/{self._environment}/{practice_id}/{artifact_id}"
 
         await self._object_store.put(key=storage_key, body=body, content_type=_CONTENT_TYPE)
+
+        # Advisory lock BEFORE the first read of this practice's artifacts --
+        # see `lock_practice_for_artifact_write`'s own docstring for the
+        # exact two-concurrent-puts race this closes.
+        await self._repository.lock_practice_for_artifact_write(conn, practice_id=practice_id)
+        existing = await self._repository.get_live_for_practice_locked(
+            conn, practice_id=practice_id
+        )
+
         try:
-            return await self._repository.insert(
-                conn,
-                artifact_id=artifact_id,
-                practice_id=practice_id,
-                storage_key=storage_key,
-                artifact_digest=artifact_digest,
-                byte_length=len(body),
-                content_type=_CONTENT_TYPE,
-                produced_by=produced_by,
-                environment=self._environment,
-            )
+            if existing is None:
+                record = await self._repository.insert(
+                    conn,
+                    artifact_id=artifact_id,
+                    practice_id=practice_id,
+                    storage_key=storage_key,
+                    artifact_digest=artifact_digest,
+                    byte_length=len(body),
+                    content_type=_CONTENT_TYPE,
+                    produced_by=produced_by,
+                    environment=self._environment,
+                )
+            else:
+                record = await self._repository.insert_superseding(
+                    conn,
+                    old_artifact_id=existing.artifact_id,
+                    artifact_id=artifact_id,
+                    practice_id=practice_id,
+                    storage_key=storage_key,
+                    artifact_digest=artifact_digest,
+                    byte_length=len(body),
+                    content_type=_CONTENT_TYPE,
+                    produced_by=produced_by,
+                    environment=self._environment,
+                )
         except ArtifactAlreadyExists:
             # Best-effort: this phase has no delete member on the object
             # store port (see that port's docstring) -- an orphan object
-            # under a key no row will ever reference is the accepted cost
-            # of refusing supersession here rather than silently replacing
-            # a live artifact. Nothing to clean up with THIS port; the
-            # retention sweep never needs to (no row exists to age it out).
+            # under a key no row will ever reference is the accepted cost.
+            # This is now a genuine anomaly (PK/storage_key collision), NOT
+            # "a live artifact already exists" -- that case is handled
+            # above by superseding instead of racing into this exception
+            # (decision #13-revision).
             raise
         except Exception:
-            # Any OTHER row-insert failure (constraint violation unrelated
-            # to `ux_garuda_practice_artifacts_live`, connection drop,
-            # etc.) leaves the SAME orphan object behind -- the object was
-            # already written above, object-then-row (spec SS3), and this
-            # port has no delete member (see `ArtifactObjectStorePort`'s
-            # docstring). Only `practice_id`/`artifact_id` are logged --
-            # never the body, never an email, never a credential.
+            # Any OTHER row-write failure (constraint violation, connection
+            # drop, etc.) leaves the SAME orphan object behind -- the
+            # object was already written above, object-then-row (spec
+            # SS3), and this port has no delete member (see
+            # `ArtifactObjectStorePort`'s docstring). Only
+            # `practice_id`/`artifact_id` are logged -- never the body,
+            # never an email, never a credential.
             logger.warning(
                 "garuda_artifacts.orphan_object_on_insert_failure",
                 extra={
@@ -129,6 +159,72 @@ class GarudaArtifactService:
                 },
             )
             raise
+
+        if existing is not None:
+            await self._supersede_side_effects(
+                conn, practice_id=practice_id, old=existing, new=record
+            )
+        return record
+
+    async def _supersede_side_effects(
+        self,
+        conn: asyncpg.Connection,
+        *,
+        practice_id: str,
+        old: ArtifactRecord,
+        new: ArtifactRecord,
+    ) -> None:
+        """Everything decision #13-revision requires beyond the row swap
+        itself, in the SAME transaction as the insert/update above:
+
+        1. If the practice is already Delivered, move its
+           `artifact_id`/`artifact_digest` pointer to the new pair so
+           Delivered always resolves to retrievable bytes (287's CHECK --
+           `(state = 'Delivered') = (artifact_id IS NOT NULL AND
+           artifact_digest IS NOT NULL)` -- still holds: both columns stay
+           non-NULL, only their VALUES move). `artifact_available` is
+           untouched (stays TRUE). No transition happens here -- Delivered
+           has no outgoing transition (STATE-MACHINE.md), so no concurrent
+           `apply_transition` can be racing this UPDATE for this practice.
+        2. Make it OBSERVABLE without a journal row. The Dux's ruling on
+           this exact question (2026-09-12, restated after an earlier
+           inbox crossing): NO `garuda_order_journal` row for supersession
+           in this preparation -- `transition_id` (284_garuda_orders.sql:
+           292-306) is CHECK-constrained to the SAME closed enum the
+           frozen `products/garuda-voa/contracts/events.yaml` TransitionId
+           admits, by explicit design, and no existing member fits a
+           non-state-transition artifact-lifecycle event. Inventing a
+           DB-only value breaks that invariant; editing `events.yaml` is
+           out of this window's scope (`contracts/**`). The superseded ROW
+           ITSELF is the persisted, ids-only, immutable record the
+           Imperatore's decision actually requires (`superseded_at` +
+           `superseded_by`, set once, guard-enforced, undeletable) -- a
+           STRONGER guarantee than a journal line would have been. This
+           structured log line is the observability surface on top of
+           that row, not a substitute for it.
+
+           DEFERRED CONTRACT ITEM (rebase-time, not DB-first): a
+           `practice.artifact_superseded` journal event, its
+           `events.yaml` TransitionId member, and a customer-tracker field
+           land TOGETHER in the contract PR at rebase -- never DB-first,
+           same discipline as every other frozen-contract boundary this
+           window respects.
+        """
+        practice_was_delivered = await self._repository.move_practice_pointer_if_delivered(
+            conn,
+            practice_id=practice_id,
+            artifact_id=new.artifact_id,
+            artifact_digest=new.artifact_digest,
+        )
+        logger.info(
+            "garuda_artifacts.artifact_superseded",
+            extra={
+                "practice_id": sanitize_for_log(practice_id),
+                "superseded_artifact_id": sanitize_for_log(old.artifact_id),
+                "new_artifact_id": sanitize_for_log(new.artifact_id),
+                "practice_was_delivered": practice_was_delivered,
+            },
+        )
 
     async def get_order_artifact(
         self, conn: asyncpg.Connection, *, order_id: str, result_id_ref: str

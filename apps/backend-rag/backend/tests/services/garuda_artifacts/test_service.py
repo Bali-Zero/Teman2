@@ -18,7 +18,6 @@ from backend.services.garuda_artifacts.fakes import (
     InMemoryArtifactObjectStore,
     InMemoryArtifactRepository,
 )
-from backend.services.garuda_artifacts.ports import ArtifactAlreadyExists
 from backend.services.garuda_artifacts.service import (
     MAX_ARTIFACT_BYTES,
     ArtifactDeliveryRejected,
@@ -82,18 +81,26 @@ class TestPutPracticeArtifact:
         assert store._objects == {}
 
     @pytest.mark.asyncio
-    async def test_second_put_while_a_live_artifact_exists_is_refused(self) -> None:
-        """Mirrors ux_garuda_practice_artifacts_live (migration 312):
-        supersession is decision #7a's future work, not this phase's."""
-        service, _repo, _store = _service()
+    async def test_second_put_while_a_live_artifact_exists_supersedes_it(self) -> None:
+        """Decision #13-revision ("always supersede, never 409, made
+        observable"): a second put no longer raises `ArtifactAlreadyExists`
+        -- it replaces the live artifact and leaves the old row marked."""
+        service, repo, _store = _service()
         practice_id = "prc_test0000000000004"
-        await service.put_practice_artifact(
+        first = await service.put_practice_artifact(
             conn=None, practice_id=practice_id, body=_SYNTHETIC_PDF, produced_by="staff@balizero.com"
         )
-        with pytest.raises(ArtifactAlreadyExists):
-            await service.put_practice_artifact(
-                conn=None, practice_id=practice_id, body=_SYNTHETIC_PDF, produced_by="staff@balizero.com"
-            )
+        second = await service.put_practice_artifact(
+            conn=None, practice_id=practice_id, body=_SYNTHETIC_PDF, produced_by="staff2@balizero.com"
+        )
+        assert second.artifact_id != first.artifact_id
+        assert second.is_live
+        old = repo._by_id[first.artifact_id]
+        assert not old.is_live
+        assert old.superseded_by == second.artifact_id
+        live = await repo.get_live_for_practice(None, practice_id=practice_id)
+        assert live is not None
+        assert live.artifact_id == second.artifact_id
 
     @pytest.mark.asyncio
     async def test_put_after_supersession_succeeds(self) -> None:

@@ -98,6 +98,50 @@ class InMemoryArtifactRepository:
             created_at=now,
             retention_until=now + timedelta(days=30),
             superseded_at=None,
+            superseded_by=None,
+        )
+        self._by_id[artifact_id] = record
+        return record
+
+    async def lock_practice_for_artifact_write(self, conn, *, practice_id: str) -> None:
+        # No real concurrency to serialize in this single-coroutine fake --
+        # protocol conformance only (see the Postgres implementation's own
+        # docstring for the race this closes for real).
+        del conn, practice_id
+
+    async def insert_superseding(
+        self,
+        conn,
+        *,
+        old_artifact_id: str,
+        artifact_id: str,
+        practice_id: str,
+        storage_key: str,
+        artifact_digest: str,
+        byte_length: int,
+        content_type: str,
+        produced_by: str,
+        environment: str,
+    ) -> ArtifactRecord:
+        del conn
+        old = self._by_id[old_artifact_id]
+        self._by_id[old_artifact_id] = dataclasses.replace(
+            old, superseded_at=datetime.now(UTC), superseded_by=artifact_id
+        )
+        now = datetime.now(UTC)
+        record = ArtifactRecord(
+            artifact_id=artifact_id,
+            practice_id=practice_id,
+            storage_key=storage_key,
+            artifact_digest=artifact_digest,
+            byte_length=byte_length,
+            content_type=content_type,
+            produced_by=produced_by,
+            environment=environment,
+            created_at=now,
+            retention_until=now + timedelta(days=30),
+            superseded_at=None,
+            superseded_by=None,
         )
         self._by_id[artifact_id] = record
         return record
@@ -118,8 +162,23 @@ class InMemoryArtifactRepository:
     ) -> ArtifactRecord | None:
         return await self.get_live_for_practice(conn, practice_id=practice_id)
 
-    def supersede_for_test(self, artifact_id: str) -> None:
-        """Test hook: mark a row superseded without going through the
-        (unbuilt, decision #7a) supersession path."""
+    async def move_practice_pointer_if_delivered(
+        self, conn, *, practice_id: str, artifact_id: str, artifact_digest: str
+    ) -> bool:
+        # Not modeled: this fake tracks garuda_practice_artifacts only, no
+        # garuda_practices state at all. Always reports "not Delivered" --
+        # the Delivered-pointer-move is exercised for real against Postgres
+        # in tests/services/garuda_portal/test_staff_router_put_practice_
+        # artifact.py and tests/app/routers/test_garuda_voa_artifact_get.py.
+        del conn, practice_id, artifact_id, artifact_digest
+        return False
+
+    def supersede_for_test(self, artifact_id: str, *, superseded_by: str = "art_test_other") -> None:
+        """Test hook: mark a row superseded directly, without going through
+        `insert_superseding` -- for tests that only need "this row is
+        already superseded" as a precondition (e.g. `resolve_for_delivery`
+        rejecting a stale id), not the full supersession side effects."""
         record = self._by_id[artifact_id]
-        self._by_id[artifact_id] = dataclasses.replace(record, superseded_at=datetime.now(UTC))
+        self._by_id[artifact_id] = dataclasses.replace(
+            record, superseded_at=datetime.now(UTC), superseded_by=superseded_by
+        )

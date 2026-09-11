@@ -44,7 +44,6 @@ from fastapi.routing import APIRoute
 
 from backend.app.utils.logging_utils import sanitize_for_log
 from backend.services.garuda_artifacts.ports import (
-    ArtifactAlreadyExists,
     ArtifactDigestMismatch,
     ArtifactObjectMissing,
 )
@@ -136,11 +135,18 @@ _ERROR_CATALOG: dict[str, tuple[int, bool, str]] = {
     "PRACTICE_NOT_FOUND": (404, False, "garuda_voa.error.practice_not_found"),
     "INVALID_STATE_TRANSITION": (409, False, "garuda_voa.error.invalid_state_transition"),
     # Phase 2 addition (W3A) -- putPracticeArtifact is not yet in the frozen
-    # contract (phase_2_gate, brief.yml), so this code has no
-    # `errors.yaml` entry to mirror yet; `contract-fragment.openapi.yaml`
-    # declares it for the pending PR A/B, and it moves into the real
-    # `errors.yaml` alongside the operation itself once the gate opens.
-    "ARTIFACT_ALREADY_EXISTS": (409, False, "garuda_voa.error.artifact_already_exists"),
+    # contract (phase_2_gate, brief.yml), so `_OPERATION_STATUS_CODES`'s own
+    # entry below points back here for that reasoning.
+    #
+    # ARTIFACT_ALREADY_EXISTS (409) is GONE, not renamed -- decision
+    # #13-revision (2026-09-11, "always supersede, never 409, made
+    # observable") removed the only call site that raised it for "a live
+    # artifact already exists". `ArtifactAlreadyExists` can still be
+    # raised for a genuine anomaly (artifact_id/storage_key collision) --
+    # that is deliberately left uncaught here and falls through to the
+    # generic 500 every operation can already produce, same as any other
+    # unexpected row-write failure (service.py's own `except Exception`
+    # logs the orphan object either way).
 }
 
 
@@ -699,11 +705,11 @@ async def put_practice_artifact(
                 raise HTTPException(
                     status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
                 ) from exc
-            except ArtifactAlreadyExists as exc:
-                raise HTTPException(
-                    status_code=409,
-                    detail={"code": "ARTIFACT_ALREADY_EXISTS", "retryable": False},
-                ) from exc
+            # `ArtifactAlreadyExists` is deliberately NOT caught here any
+            # more (decision #13-revision) -- see `_ERROR_CATALOG`'s own
+            # comment just above. A live artifact is now superseded, never
+            # refused; what remains is a genuine anomaly that falls through
+            # to the generic 500 this operation already advertises.
             response_body = {
                 "artifact_id": record.artifact_id,
                 "artifact_digest": record.artifact_digest,

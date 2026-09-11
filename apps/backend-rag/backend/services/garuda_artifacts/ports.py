@@ -24,23 +24,25 @@ class ArtifactDigestMismatch(RuntimeError):
 
 
 class ArtifactAlreadyExists(RuntimeError):
-    """`insert` was attempted while a live artifact already exists for this
-    `practice_id` -- `ux_garuda_practice_artifacts_live` (migration 312)
-    refused the row. Supersession (spec SS2) is decision #7a's future work,
-    not this phase's -- `putPracticeArtifact` maps this to `409` rather
-    than silently replacing the live artifact."""
+    """`insert`/`insert_superseding` hit a genuine collision -- `artifact_id`'s
+    PK or `storage_key`'s UNIQUE (both astronomically unlikely: 128 random
+    bits from `journal.new_opaque_id`). NOT raised for "a live artifact
+    already exists" any more (decision #13-revision, 2026-09-11: "always
+    supersede, never 409, made observable") -- the service resolves the live
+    row itself and calls `insert_superseding` instead of racing `insert`
+    into `ux_garuda_practice_artifacts_live`. `putPracticeArtifact` maps
+    this to `500`, not `409`: an anomaly, not a business conflict."""
 
 
 class ArtifactObjectStorePort(Protocol):
     """The private artifact bucket -- put, then fetch-verify.
 
     No `delete` member: physical deletion is the retention sweep's own role
-    (spec SS6, decision #7a), not built by this phase. Supersession (spec
-    SS2: "the superseded row is marked `superseded_at` and its object is
-    deleted immediately") is therefore also out of this phase's scope --
-    `putPracticeArtifact` refuses a second write while a live artifact
-    already exists (`ArtifactAlreadyExists`, service.py) rather than
-    silently deleting the first.
+    (spec SS6, decision #7a), not built by this phase. Supersession
+    (decision #13-revision) leaves the superseded row's OBJECT in the
+    bucket -- there is still no delete member here, on purpose -- only the
+    ROW is marked `superseded_at`/`superseded_by` (migration 312); the
+    object waits for that same future retention sweep.
     """
 
     async def put(self, *, key: str, body: bytes, content_type: str) -> None: ...
@@ -106,5 +108,56 @@ class ArtifactRepositoryPort(Protocol):
         """`SELECT ... FOR UPDATE` twin of `get_live_for_practice`, for
         PR-11's resolve-and-verify (spec SS5) -- runs inside the SAME
         transaction as the CAS state UPDATE, so the row cannot be
-        superseded out from under the check between resolve and write."""
+        superseded out from under the check between resolve and write.
+        Also `putPracticeArtifact`'s own first read (decision #13-revision):
+        locates the row it is about to supersede, if any."""
+        ...
+
+    async def lock_practice_for_artifact_write(
+        self, conn: asyncpg.Connection, *, practice_id: str
+    ) -> None:
+        """Advisory xact-lock keyed on `practice_id`, taken before the FIRST
+        read of this practice's artifacts in `putPracticeArtifact` (decision
+        #13-revision) -- serializes two concurrent puts for the SAME
+        practice so the second one's `get_live_for_practice_locked` always
+        sees the first one's fully-committed result, never a stale re-check
+        of the row the first one just superseded. See the Postgres
+        implementation's own docstring for the exact race this closes."""
+        ...
+
+    async def insert_superseding(
+        self,
+        conn: asyncpg.Connection,
+        *,
+        old_artifact_id: str,
+        artifact_id: str,
+        practice_id: str,
+        storage_key: str,
+        artifact_digest: str,
+        byte_length: int,
+        content_type: str,
+        produced_by: str,
+        environment: str,
+    ) -> ArtifactRecord:
+        """Mark `old_artifact_id` superseded by the new row and insert that
+        new row, in the one order that never transiently violates
+        `ux_garuda_practice_artifacts_live` (decision #13-revision).
+        Caller must already hold `old_artifact_id`'s row lock (via
+        `get_live_for_practice_locked`) and the practice's advisory lock
+        (via `lock_practice_for_artifact_write`)."""
+        ...
+
+    async def move_practice_pointer_if_delivered(
+        self, conn: asyncpg.Connection, *, practice_id: str, artifact_id: str, artifact_digest: str
+    ) -> bool:
+        """If `practice_id`'s `garuda_practices` row is already Delivered
+        (287's CHECK: `(state = 'Delivered') = (artifact_id IS NOT NULL
+        AND artifact_digest IS NOT NULL)`), move its pointer to this new
+        `(artifact_id, artifact_digest)` pair so Delivered always resolves
+        to retrievable bytes (decision #13-revision) -- a no-op otherwise.
+        `artifact_available` is untouched; no transition happens (Delivered
+        has no outgoing transition, so nothing else can be racing this
+        practice's row). Returns whether the practice WAS Delivered (i.e.
+        whether the pointer actually moved) -- the caller's `practice_was_
+        delivered` structured-log field."""
         ...

@@ -18,6 +18,9 @@ class ArtifactRecord:
 
     `superseded_at is None` means live -- the one row the partial unique
     index (`ux_garuda_practice_artifacts_live`) allows per `practice_id`.
+    `superseded_by` is the artifact_id of the row that replaced this one --
+    always set together with `superseded_at` (decision #13-revision, DB
+    CHECK + guard trigger in migration 312 enforce the pair).
     """
 
     artifact_id: str
@@ -31,6 +34,7 @@ class ArtifactRecord:
     created_at: datetime
     retention_until: datetime
     superseded_at: datetime | None = None
+    superseded_by: str | None = None
 
     @property
     def is_live(self) -> bool:

@@ -353,14 +353,64 @@ async def _practice_id_for(pool, order_id: str) -> str:
     )
 
 
-async def _put_artifact(client: AsyncClient, practice_id: str, key: str) -> dict:
+async def _put_artifact(
+    client: AsyncClient, practice_id: str, key: str, *, body: bytes = _SYNTHETIC_PDF
+) -> dict:
+    key = key.ljust(16, "0")
     resp = await client.put(
         f"/api/visa/voa/staff/practices/{practice_id}/artifact",
         headers={"Authorization": _bearer(_ADMIN, "admin"), "Idempotency-Key": key},
-        content=_SYNTHETIC_PDF,
+        content=body,
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
+
+
+async def _transition(client: AsyncClient, practice_id: str, key: str, payload: dict) -> dict:
+    """Same shape as `test_staff_router_transitions.py`'s own `_post`
+    helper (not imported -- per-file-copy discipline this tree already
+    uses). Pads `key` out to the router's 16-char `_idempotency_key`
+    minimum -- short, readable test-local prefixes stay short."""
+    key = key.ljust(16, "0")
+    resp = await client.post(
+        f"/api/visa/voa/staff/practices/{practice_id}/transitions",
+        headers={"Authorization": _bearer(_ADMIN, "admin"), "Idempotency-Key": key},
+        json=payload,
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+async def _deliver(client: AsyncClient, practice_id: str, *, key_prefix: str) -> dict:
+    """PR-02 -> PR-04 -> PR-06 -> PR-11, the same chain `test_staff_router_
+    transitions.py::test_happy_path_pr02_pr04_pr06_pr11` drives, ending with
+    a putPracticeArtifact + PR-11 deliver. Returns the artifact dict PR-11
+    was delivered with."""
+    await _transition(client, practice_id, f"{key_prefix}-pr02", {"transition_id": "PR-02"})
+    await _transition(
+        client,
+        practice_id,
+        f"{key_prefix}-pr04",
+        {"transition_id": "PR-04", "evidence_id": f"evidence_filing_{key_prefix}"},
+    )
+    await _transition(
+        client,
+        practice_id,
+        f"{key_prefix}-pr06",
+        {"transition_id": "PR-06", "evidence_id": f"evidence_approval_{key_prefix}"},
+    )
+    artifact = await _put_artifact(client, practice_id, f"{key_prefix}-put")
+    await _transition(
+        client,
+        practice_id,
+        f"{key_prefix}-pr11",
+        {
+            "transition_id": "PR-11",
+            "artifact_id": artifact["artifact_id"],
+            "artifact_digest": artifact["artifact_digest"],
+        },
+    )
+    return artifact
 
 
 @pytest.mark.asyncio
@@ -423,16 +473,34 @@ class TestGetPracticeArtifactCustomer:
         assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
     async def test_superseded_is_404(self, pool, order_repository, client) -> None:
+        """A row marked superseded with no OTHER live row on ITS OWN
+        practice reads as gone to the customer -- exercised here via a
+        direct manual mark (real `putPracticeArtifact` supersession always
+        inserts a replacement for the SAME practice in the SAME
+        transaction, decision #13-revision; this test is about the raw
+        invariant at the SQL layer, not that end-to-end flow, which
+        `TestArtifactSupersession` below covers separately)."""
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-getsup-000000000000", provider_event_id="evt-getsup-1"
         )
         practice_id = await _practice_id_for(pool, order_id)
         await _seed_session(pool, raw_secret="secret-getsup-0000000000000000", result_id="result-getsup-000000000000")
         artifact = await _put_artifact(client, practice_id, "getsup-put-key-00000000001")
-        # The guard trigger permits exactly this ONE column change.
+
+        # superseded_by is now a required, FK-checked partner column -- give
+        # it a real (unrelated) artifact_id to point at, same guard trigger
+        # shape `test_migration_312_...`'s own pair tests use.
+        elsewhere_order_id = await _create_and_pay_order(
+            order_repository, result_id="result-getsup-elsewhere-0000", provider_event_id="evt-getsup-elsewhere-1"
+        )
+        elsewhere_practice_id = await _practice_id_for(pool, elsewhere_order_id)
+        elsewhere = await _put_artifact(client, elsewhere_practice_id, "getsup-elsewhere-put-key-01")
+
         await pool.execute(
-            "UPDATE garuda_practice_artifacts SET superseded_at = clock_timestamp() WHERE artifact_id = $1",
+            "UPDATE garuda_practice_artifacts SET superseded_at = clock_timestamp(), superseded_by = $2 "
+            "WHERE artifact_id = $1",
             artifact["artifact_id"],
+            elsewhere["artifact_id"],
         )
 
         resp = await client.get(
@@ -551,3 +619,118 @@ class TestGetStaffPracticeArtifact:
         assert resp.status_code == 200, resp.text
         assert resp.content == _SYNTHETIC_PDF
         assert resp.headers["content-type"] == "application/pdf"
+
+
+@pytest.mark.asyncio
+class TestArtifactSupersession:
+    """S7 (Imperatore decision #13-revision, 2026-09-11: "always supersede,
+    never 409, made observable"). `test_staff_router_put_practice_
+    artifact.py` covers the row-level shape (old row's two columns, ZERO
+    outbox rows, idempotent replay, concurrent puts) -- this class covers
+    the two cross-router consequences that need BOTH routers wired
+    together: the Delivered practice's own pointer, and PR-11's stale-pair
+    rejection."""
+
+    async def test_supersede_on_delivered_practice_moves_pointer_and_customer_sees_new_bytes(
+        self, pool, order_repository, client
+    ) -> None:
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-supdeliv-00000000000", provider_event_id="evt-supdeliv-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        await _seed_session(
+            pool, raw_secret="secret-supdeliv-000000000000000", result_id="result-supdeliv-00000000000"
+        )
+        first = await _deliver(client, practice_id, key_prefix="supdeliv")
+
+        before = await client.get(
+            f"/api/visa/voa/orders/{order_id}/artifact",
+            cookies={_SESSION_COOKIE: "secret-supdeliv-000000000000000"},
+        )
+        assert before.status_code == 200, before.text
+        assert before.content == _SYNTHETIC_PDF
+
+        # Deliberately NOT a superset of `_SYNTHETIC_PDF` (only the
+        # mandatory `%PDF-` magic prefix is shared) -- so "the old bytes
+        # are gone" below is a real substring check, not trivially true.
+        second_pdf = b"%PDF-1.4\n%replacement-document-v2\n%%EOF"
+        second = await _put_artifact(
+            client, practice_id, "supdeliv-put-key-v2-0000001", body=second_pdf
+        )
+        assert second["artifact_id"] != first["artifact_id"]
+
+        # (6b) the Delivered practice's own pointer moved to the new pair,
+        # in the SAME transaction as the row swap -- 287's CHECK still
+        # holds (both columns stay non-NULL, only their values move) and
+        # artifact_available is untouched.
+        row = await pool.fetchrow(
+            "SELECT state, artifact_id, artifact_digest, artifact_available "
+            "FROM garuda_practices WHERE practice_id = $1",
+            practice_id,
+        )
+        assert row["state"] == "Delivered"
+        assert row["artifact_id"] == second["artifact_id"]
+        assert row["artifact_digest"] == second["artifact_digest"]
+        assert row["artifact_available"] is True
+
+        # Delivered always resolves to retrievable bytes -- the customer
+        # now gets the NEW pdf, never the superseded one.
+        after = await client.get(
+            f"/api/visa/voa/orders/{order_id}/artifact",
+            cookies={_SESSION_COOKIE: "secret-supdeliv-000000000000000"},
+        )
+        assert after.status_code == 200, after.text
+        assert after.content == second_pdf
+        assert after.content != before.content
+        assert before.content not in after.content
+
+    async def test_pr11_with_the_superseded_pair_is_422(self, pool, order_repository, client) -> None:
+        """(6c) Approved practice, artifact put once then superseded BEFORE
+        delivery -- attempting PR-11 with the now-stale pair is 422, the
+        SAME `ArtifactDeliveryRejected` path B3/B4 already cover for a
+        fabricated or foreign pair (`resolve_for_delivery` checks the
+        submitted pair against the CURRENT live row, and the superseded id
+        no longer matches it)."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-suppr11-000000000000", provider_event_id="evt-suppr11-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        await _transition(client, practice_id, "suppr11-pr02", {"transition_id": "PR-02"})
+        await _transition(
+            client,
+            practice_id,
+            "suppr11-pr04",
+            {"transition_id": "PR-04", "evidence_id": "evidence_filing_suppr11_0001"},
+        )
+        await _transition(
+            client,
+            practice_id,
+            "suppr11-pr06",
+            {"transition_id": "PR-06", "evidence_id": "evidence_approval_suppr11_0001"},
+        )
+        first = await _put_artifact(client, practice_id, "suppr11-put-key-v1-00000001")
+        second = await _put_artifact(
+            client, practice_id, "suppr11-put-key-v2-00000001", body=_SYNTHETIC_PDF + b"\n%v2"
+        )
+        assert second["artifact_id"] != first["artifact_id"]
+
+        resp = await client.post(
+            f"/api/visa/voa/staff/practices/{practice_id}/transitions",
+            headers={
+                "Authorization": _bearer(_ADMIN, "admin"),
+                "Idempotency-Key": "suppr11-pr11-with-old-pair-0001",
+            },
+            json={
+                "transition_id": "PR-11",
+                "artifact_id": first["artifact_id"],
+                "artifact_digest": first["artifact_digest"],
+            },
+        )
+        assert resp.status_code == 422, resp.text
+        assert resp.json()["code"] == "INVALID_REQUEST"
+
+        # The practice never became Delivered off the stale pair.
+        state = await pool.fetchval(
+            "SELECT state FROM garuda_practices WHERE practice_id = $1", practice_id
+        )
+        assert state == "Approved"

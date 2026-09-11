@@ -16,6 +16,7 @@ Postgres for the row, no real Tigris credentials needed for this test.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -461,15 +462,22 @@ class TestPutPracticeArtifactHappyPathAndValidation:
         assert resp.status_code == 422
         assert resp.json()["code"] == "INVALID_REQUEST"
 
-    async def test_a_second_put_while_a_live_artifact_exists_is_409(
+    async def test_a_second_put_while_a_live_artifact_exists_supersedes_it(
         self, pool, order_repository, artifact_service
     ) -> None:
+        """(6a) Decision #13-revision: "always supersede, never 409, made
+        observable" -- a second put (a DIFFERENT Idempotency-Key, not a
+        replay of the first) replaces the live artifact instead of being
+        refused. Old row: both `superseded_at`/`superseded_by` set, the new
+        artifact_id. New row: live. ZERO outbox rows (no email on
+        supersession, decision #13-revision item 3)."""
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-putdup-000000000", provider_event_id="evt-putdup-1"
         )
         practice_id = await _practice_id_for(pool, order_id)
         app = _make_app(pool, artifact_service=artifact_service)
         transport = ASGITransport(app=app)
+        second_pdf = _SYNTHETIC_PDF + b"\n%v2-corrected-document"
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             first = await client.put(
                 f"/api/visa/voa/staff/practices/{practice_id}/artifact",
@@ -480,18 +488,64 @@ class TestPutPracticeArtifactHappyPathAndValidation:
                 content=_SYNTHETIC_PDF,
             )
             assert first.status_code == 200, first.text
+            async with pool.acquire() as conn:
+                outbox_count_before = await conn.fetchval(
+                    "SELECT count(*) FROM garuda_order_outbox WHERE order_id = $1", order_id
+                )
+                journal_count_before = await conn.fetchval(
+                    "SELECT count(*) FROM garuda_order_journal "
+                    "WHERE aggregate_type = 'practice' AND aggregate_id = $1",
+                    practice_id,
+                )
             second = await client.put(
                 f"/api/visa/voa/staff/practices/{practice_id}/artifact",
                 headers={
                     "Authorization": _bearer(_ADMIN, "admin"),
                     # A DIFFERENT key -- a same-key replay is idempotency's
-                    # job (tested below), not this guard's.
+                    # job (tested separately below), not this guard's.
                     "Idempotency-Key": "putdup-key-0000000000002",
                 },
-                content=_SYNTHETIC_PDF,
+                content=second_pdf,
             )
-        assert second.status_code == 409
-        assert second.json()["code"] == "ARTIFACT_ALREADY_EXISTS"
+        assert second.status_code == 200, second.text
+        assert second.json()["artifact_id"] != first.json()["artifact_id"]
+        assert second.json()["artifact_digest"] != first.json()["artifact_digest"]
+
+        async with pool.acquire() as conn:
+            old_row = await conn.fetchrow(
+                "SELECT superseded_at, superseded_by FROM garuda_practice_artifacts "
+                "WHERE artifact_id = $1",
+                first.json()["artifact_id"],
+            )
+            live_row = await conn.fetchrow(
+                "SELECT artifact_id, superseded_at FROM garuda_practice_artifacts "
+                "WHERE practice_id = $1 AND superseded_at IS NULL",
+                practice_id,
+            )
+            outbox_count_after = await conn.fetchval(
+                "SELECT count(*) FROM garuda_order_outbox WHERE order_id = $1", order_id
+            )
+            journal_count_after = await conn.fetchval(
+                "SELECT count(*) FROM garuda_order_journal "
+                "WHERE aggregate_type = 'practice' AND aggregate_id = $1",
+                practice_id,
+            )
+        assert old_row["superseded_at"] is not None
+        assert old_row["superseded_by"] == second.json()["artifact_id"]
+        assert live_row is not None
+        assert live_row["artifact_id"] == second.json()["artifact_id"]
+        # Supersession enqueues NOTHING -- the pre-existing OP-01/OP-02
+        # lifecycle outbox rows from order creation/payment are untouched,
+        # not zero in absolute terms.
+        assert outbox_count_after == outbox_count_before
+        # Dux ruling (2026-09-12, Option 3): no `garuda_order_journal` row
+        # for supersession -- the superseded row itself (both columns set,
+        # once, immutable) IS the persisted ids-only record; a DB-only
+        # transition_id would break 284's CHECK<->events.yaml invariant,
+        # and events.yaml is out of this window's scope. This asserts the
+        # negative: supersession must not add ANY practice-scoped journal
+        # row, proving no DB-only vocabulary snuck in.
+        assert journal_count_after == journal_count_before
 
     async def test_idempotent_replay_returns_the_same_artifact(
         self, pool, order_repository, artifact_service
@@ -518,3 +572,91 @@ class TestPutPracticeArtifactHappyPathAndValidation:
         assert replay.status_code == 200, replay.text
         assert replay.json() == first.json()
         assert replay.headers.get("Idempotency-Replayed") == "true"
+
+    async def test_idempotent_replay_does_not_supersede_again(
+        self, pool, order_repository, artifact_service
+    ) -> None:
+        """(6d) An exact replay (SAME Idempotency-Key, SAME body) short-
+        circuits at `idempotency.reserve`'s own outcome check -- BEFORE
+        `artifact_service.put_practice_artifact` is ever called -- so it
+        can never supersede a SECOND time. Multiple replays leave exactly
+        the ONE row this endpoint ever wrote."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-putreplaysup-0000", provider_event_id="evt-putreplaysup-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool, artifact_service=artifact_service)
+        transport = ASGITransport(app=app)
+        key = "putreplaysup-key-0000000001"
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            first = await client.put(
+                f"/api/visa/voa/staff/practices/{practice_id}/artifact",
+                headers={"Authorization": _bearer(_ADMIN, "admin"), "Idempotency-Key": key},
+                content=_SYNTHETIC_PDF,
+            )
+            assert first.status_code == 200, first.text
+            for _ in range(2):
+                replay = await client.put(
+                    f"/api/visa/voa/staff/practices/{practice_id}/artifact",
+                    headers={"Authorization": _bearer(_ADMIN, "admin"), "Idempotency-Key": key},
+                    content=_SYNTHETIC_PDF,
+                )
+                assert replay.status_code == 200, replay.text
+                assert replay.json()["artifact_id"] == first.json()["artifact_id"]
+
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT artifact_id, superseded_at, superseded_by FROM garuda_practice_artifacts "
+                "WHERE practice_id = $1",
+                practice_id,
+            )
+        assert len(rows) == 1
+        assert rows[0]["artifact_id"] == first.json()["artifact_id"]
+        assert rows[0]["superseded_at"] is None
+        assert rows[0]["superseded_by"] is None
+
+    async def test_concurrent_puts_serialize_and_never_create_two_live_rows(
+        self, pool, order_repository, artifact_service
+    ) -> None:
+        """Two genuinely concurrent puts (DIFFERENT Idempotency-Keys, real
+        DB, `max_size=2` pool -- both requests can be in flight against
+        real connections at once) must serialize through `lock_practice_
+        for_artifact_write`'s advisory lock: exactly one wins the race and
+        stays live, the other's row is properly superseded by it, and the
+        partial unique index is never violated."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-putrace-00000000000", provider_event_id="evt-putrace-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool, artifact_service=artifact_service)
+        transport = ASGITransport(app=app)
+
+        async def _put(key: str, body: bytes):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                return await client.put(
+                    f"/api/visa/voa/staff/practices/{practice_id}/artifact",
+                    headers={"Authorization": _bearer(_ADMIN, "admin"), "Idempotency-Key": key},
+                    content=body,
+                )
+
+        first_resp, second_resp = await asyncio.gather(
+            _put("putrace-key-a-000000000001", _SYNTHETIC_PDF),
+            _put("putrace-key-b-000000000001", _SYNTHETIC_PDF + b"\n%v2"),
+        )
+        assert first_resp.status_code == 200, first_resp.text
+        assert second_resp.status_code == 200, second_resp.text
+        ids = {first_resp.json()["artifact_id"], second_resp.json()["artifact_id"]}
+        assert len(ids) == 2, "both concurrent puts must have created a DIFFERENT artifact_id"
+
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT artifact_id, superseded_at, superseded_by FROM garuda_practice_artifacts "
+                "WHERE practice_id = $1",
+                practice_id,
+            )
+        assert len(rows) == 2
+        live = [r for r in rows if r["superseded_at"] is None]
+        superseded = [r for r in rows if r["superseded_at"] is not None]
+        assert len(live) == 1, "the partial unique index must leave exactly ONE live row"
+        assert len(superseded) == 1
+        assert superseded[0]["superseded_by"] == live[0]["artifact_id"]
