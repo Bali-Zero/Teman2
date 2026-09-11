@@ -1,0 +1,106 @@
+task_id: compliance-corner
+gear: 1
+l_level: L2
+gate_class: opus
+gear_note: >-
+  Floor the CI way: git diff --name-only codex/website-r19-integrated... (19 files) piped to
+  scripts/evidence_pack_lint.py --print-floor --changed-files-file <that list> --net-lines 2135
+  (net-lines = git diff --numstat codex/website-r19-integrated... | awk '{a+=$1-$2}') -> floor 1,
+  source none (no hot-zone path hit). Declared 1. The raw git diff --stat is much larger than the
+  content this PR adds because the repo's pre-commit hook runs `prettier --check` on the FULL
+  content of every staged file, not just the diff, and several touched files (service-dossier-
+  data.ts especially) were not prettier-clean before this change (confirmed against an untouched
+  sibling file, which also fails `prettier --check` with no config override anywhere in the repo).
+  Committing without --no-verify required a whole-file `prettier --write`, which is reformatting
+  churn, not new content -- recorded here so the size term is read correctly.
+objective: >-
+  Add "compliance" as the fifth first-class service pillar on the NEW apps/website R19 site
+  (branch codex/website-r19-integrated, not yet on main): a full ServicePage entry rendered by
+  the existing ServiceJourneys/ServiceSections/ServiceCatalog machinery exactly like immigration,
+  company-setup, tax and property -- hero, who-it-helps, catalog with live prices, documents/
+  review, a "why it matters now" section carrying three sourced facts, and FAQ. Wires the five
+  live compliance_retainers catalogue keys (compliance_takeover,
+  compliance_core_retainer_monthly, compliance_employer_retainer_monthly,
+  pse_registration_fixed, pmse_vat_assessment) through service-price-identities.ts /
+  service-dossier-data.ts so prices render from GET https://nuzantara-rag.fly.dev/api/pricing/
+  service, never as a literal. Public and indexable (owner-confirmed prices, 2026-09-10) -- no
+  noindex.
+constraints:
+  - No price literal anywhere in changed source; the five catalogue keys are exact strings, not
+    inferred or guessed near-matches.
+  - >-
+    Every surface enumerating the four existing pillars gets a fifth compliance entry: /services
+    overview + [slug] detail route (slug-driven, automatic once servicePages has 5 entries),
+    the homepage hero "Choose where to start" nav (Entry.tsx), the homepage "Services and tools"
+    block (content/services.ts + Services.tsx), and the contact-topic system (lead-handoff.ts,
+    contact-context.ts, ContactOptions.tsx). Footer.tsx was checked and deliberately left
+    untouched -- it links to /services generically and does not enumerate individual pillars.
+  - >-
+    Compliance has no independent public tool (no equivalent of Visa Oracle / KBLI Navigator /
+    Tax Compliance Calendar / Property Check exists or was invented for it). ServicePage.
+    toolDestinationId became optional; the "Optional independent starting point" aside is
+    omitted for compliance rather than pointed at a fabricated destination. The homepage tools
+    card for compliance likewise omits the tool-specific CTA link, keeping only "Explore ..." and
+    "Talk to our team".
+  - >-
+    Why-now facts are the three the task specified, sourced, and NOT the draft's unverified
+    "PP 28/2025 fines" line: (a) Komdigi blocked eBay and KLM on 28 June 2025 and sent
+    notification letters to 25 operators on 26 June 2026 (Komdigi press releases 9446 and
+    10354); (b) the 2026 Coretax corporate filing deadline was extended to 31 May after around
+    4,000 complaints; (c) quarterly LKPM deadlines moved to the 15th under BKPM Regulation
+    5/2025.
+  - >-
+    A parallel, unrelated lane (roster name dux-w1-pr2-compliance-page) is adding an UNLISTED,
+    noindex /services/compliance page to a DIFFERENT app (apps/mouth, reading a committed price
+    snapshot) per evidence/2026-09/agent-nuzantara-mouth-compliance-retainer-page-0bf73876/
+    brief.yml on origin/main. No file overlap with this PR (different app, different branch,
+    different pricing mechanism) -- flagged for the reviewer's awareness, not coordinated with.
+acceptance:
+  - text: >-
+      WHEN /services and /services/compliance render THEY SHALL list/show the fifth pillar with
+      the same section shape as the other four (hero, catalog with live prices, documents/
+      review, FAQ) plus the compliance-only "why it matters now" section.
+    probe: >-
+      npx vitest run src/app/services/services.test.tsx src/components/services/
+      ServiceDossiers.test.tsx src/content/service-pages.test.ts (all green); `npm run build`
+      route table prints "/services/[slug]" with 5 SSG paths ("● /services/immigration,
+      company-setup, tax, [+2 more paths]" = property, compliance).
+  - text: The five compliance_retainers catalogue keys SHALL be wired exactly, never a literal price.
+    probe: >-
+      grep -nE "[0-9]{3},[0-9]{3}|USD [0-9]|[0-9]{1,3}\.[0-9]{3}\.[0-9]{3}" against every changed
+      file (19 files) -> 0 hits (exit 1, no match); service-pages.test.ts asserts the five
+      catalog names map onto servicePriceIdentities with category compliance_retainers and the
+      exact five key literals.
+  - text: A mutation to the new price-identity wiring SHALL be caught by the new test.
+    probe: >-
+      Renamed the "Compliance Takeover" key in service-price-identities.ts -> service-pages.
+      test.ts "wires the compliance catalog..." went RED (AssertionError: Compliance Takeover:
+      expected undefined to be defined); reverted -> GREEN again (5 passed).
+  - text: Every surface listing the four pillars SHALL list five, or be shown not to enumerate them.
+    probe: >-
+      Entry.test.tsx / Home.test.tsx updated and green for the fifth nav category and homepage
+      card; Footer.tsx read in full -- contains no per-pillar links to update.
+  - text: Typecheck, full test suite and production build SHALL be clean.
+    probe: >-
+      npx tsc --noEmit (exit 0); npm test -- --maxWorkers=1 --no-file-parallelism (100 files /
+      1345 tests passed, 1 pre-existing skip, unchanged before/after this PR); npm run build
+      (next build --webpack) completed, full route table printed, no errors.
+consumer_map:
+  - "Public visitors on the new R19 site (once codex/website-r19-integrated ships) looking for compliance/PSE/PMSE VAT support."
+  - "The other four ServicePage consumers (ServiceJourneys, ServiceSections, ServiceCatalog) -- unmodified in shape, just fed a fifth entry."
+risks:
+  - >-
+    The homepage "Compliance corner" card heading (content/services.ts) and the compliance
+    dossier's FAQ/why-now text are original copy written for this PR, adapted from the sourced
+    draft at ~/Desktop/ricerca-nicchie-online-indonesia-2026-09-11/build/page-content.draft.md;
+    they were not independently re-verified against primary regulatory sources beyond what the
+    task instructions already specified as checked.
+  - >-
+    No dedicated compliance illustration exists in public/assets; both the ServicePage hero image
+    and the homepage card reuse tool-tax-illustration.png as a placeholder (thematically adjacent
+    -- Coretax/LKPM filings) rather than fabricate a new asset. Flagged for a follow-up asset.
+grader: >-
+  The final on-disk gate is a fresh Opus 5 session commissioned by the imperator; this agent does
+  not arm auto-merge, does not merge, and posts no harness/fable-gate verdict.
+budget: Existing subscription only; no paid API calls; no subagents used (direct work throughout).
+pii: none
