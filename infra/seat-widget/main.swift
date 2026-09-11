@@ -125,7 +125,7 @@ enum Labels {
     }()
 }
 
-/// Quanto si concede a una misura prima di considerarla persa. Il refresh sano dura ~30s.
+/// What a measurement is given before it counts as lost. A healthy refresh takes ~30s.
 enum Budget {
     static let measure: TimeInterval = 120
     static let stuck: TimeInterval = 180
@@ -171,15 +171,15 @@ enum Quota {
         do { try proc.run() } catch {
             return Outcome(failure: "avvio fallito: \(error.localizedDescription)", source: source)
         }
-        // Due stadi: un figlio che ignora SIGTERM non deve poter tenere fermo il widget.
+        // Two stages: a child that ignores SIGTERM must not be able to hold the widget still.
         let pid = proc.processIdentifier
         let term = DispatchWorkItem { if proc.isRunning { kill(pid, SIGTERM) } }
         let hard = DispatchWorkItem { if proc.isRunning { kill(pid, SIGKILL) } }
         DispatchQueue.global().asyncAfter(deadline: .now() + Budget.measure, execute: term)
         DispatchQueue.global().asyncAfter(deadline: .now() + Budget.measure + 15, execute: hard)
 
-        // Entrambi i pipe su thread propri con una scadenza: readDataToEndOfFile() sul thread
-        // chiamante era il punto in cui una misura poteva non tornare mai.
+        // Both pipes on their own threads with a deadline: readDataToEndOfFile() on the
+        // calling thread was the point where a measurement could never return.
         final class Box: @unchecked Sendable { var data = Data() }
         let outBox = Box(), errBox = Box()
         let readers = DispatchGroup()
@@ -242,8 +242,8 @@ final class Model: ObservableObject {
     private var inflightSince: Date?
     private var attempt = 0
 
-    /// Vero quando i numeri a schermo hanno passato due intervalli: vanno dichiarati vecchi,
-    /// non mostrati come se fossero di adesso.
+    /// True once the numbers on screen are two intervals old: they must be declared stale,
+    /// not shown as if they were current.
     var isStale: Bool {
         guard let t = updatedAt else { return true }
         return Date().timeIntervalSince(t) > interval * 2
@@ -261,8 +261,9 @@ final class Model: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
-        // Un Timer non recupera i tick persi mentre il Mac dorme, e un tick perso è mezz'ora
-        // di numeri fermi: il supervisore al minuto li ripesca e scade i refresh appesi.
+        // A Timer does not make up ticks missed while the Mac sleeps, and one missed tick is
+        // half an hour of frozen numbers: the per-minute supervisor picks them up and expires
+        // a hung refresh.
         supervisor = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
@@ -274,7 +275,7 @@ final class Model: ObservableObject {
 
     private func tick() {
         if let since = inflightSince, Date().timeIntervalSince(since) > Budget.stuck {
-            log("stuck \(Int(Date().timeIntervalSince(since)))s: refresh abbandonato")
+            log("stuck \(Int(Date().timeIntervalSince(since)))s: refresh abandoned")
             inflight = nil
             inflightSince = nil
             loading = false
@@ -284,7 +285,7 @@ final class Model: ObservableObject {
         if !loading, waited >= nextDelay { refresh() } else { onChange?() }
     }
 
-    /// Dopo un errore si riprova presto e si allarga, invece di aspettare l'intervallo pieno.
+    /// After a failure it retries soon and widens, instead of waiting the full interval.
     private var nextDelay: TimeInterval {
         attempt == 0 ? interval
                      : min(interval, Budget.retry * pow(2, Double(min(attempt, 4) - 1)))
@@ -294,7 +295,7 @@ final class Model: ObservableObject {
         if loading {
             let expired = inflightSince.map { Date().timeIntervalSince($0) > Budget.stuck } ?? true
             guard force || expired else { return }
-            inflight = nil          // se l'esito abbandonato arriva tardi, va scartato
+            inflight = nil          // a late outcome from the abandoned run must be dropped
         }
         let token = UUID()
         inflight = token
@@ -310,7 +311,7 @@ final class Model: ObservableObject {
 
     private func apply(_ o: Quota.Outcome, started: Date, token: UUID) {
         guard token == inflight else {
-            log("scartato: esito di un refresh gia abbandonato")
+            log("dropped: outcome of an already abandoned refresh")
             return
         }
         inflight = nil
@@ -322,15 +323,15 @@ final class Model: ObservableObject {
         if let f = o.failure {
             attempt += 1
             note = f
-            log("err \(secs)s \(o.source): \(f) [tentativo \(attempt), riprovo fra \(Int(nextDelay / 60))m]")
+            log("err \(secs)s \(o.source): \(f) [attempt \(attempt), retry in \(Int(nextDelay / 60))m]")
             return
         }
-        // Nessun seat leggibile (tipicamente 429 su tutti i profili): l'ultima misura buona
-        // vale piu del vuoto, la si tiene e la si dichiara vecchia.
+        // No readable seat (typically a 429 on every profile): the last good measurement is
+        // worth more than the void, so it is kept and declared stale.
         if o.seats.isEmpty, !seats.isEmpty {
             attempt += 1
             note = o.note ?? "nessun seat leggibile, mostro l'ultima misura buona"
-            log("vuoto \(secs)s \(o.source) hidden=\(o.hidden) [tengo \(age ?? "?"), tentativo \(attempt)]")
+            log("empty \(secs)s \(o.source) hidden=\(o.hidden) [keeping \(age ?? "?"), attempt \(attempt)]")
             return
         }
         attempt = 0
