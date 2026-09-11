@@ -43,6 +43,12 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
 from backend.app.utils.logging_utils import sanitize_for_log
+from backend.services.garuda_artifacts.ports import ArtifactAlreadyExists
+from backend.services.garuda_artifacts.service import (
+    ArtifactTooLarge,
+    GarudaArtifactService,
+    InvalidArtifactContent,
+)
 from backend.services.garuda_orders import idempotency
 from backend.services.garuda_orders.idempotency import IdempotencyConflict
 from backend.services.garuda_portal.staff_auth import (
@@ -125,6 +131,12 @@ _ERROR_CATALOG: dict[str, tuple[int, bool, str]] = {
     "INVALID_REQUEST": (422, False, "garuda_voa.error.invalid_request"),
     "PRACTICE_NOT_FOUND": (404, False, "garuda_voa.error.practice_not_found"),
     "INVALID_STATE_TRANSITION": (409, False, "garuda_voa.error.invalid_state_transition"),
+    # Phase 2 addition (W3A) -- putPracticeArtifact is not yet in the frozen
+    # contract (phase_2_gate, brief.yml), so this code has no
+    # `errors.yaml` entry to mirror yet; `contract-fragment.openapi.yaml`
+    # declares it for the pending PR A/B, and it moves into the real
+    # `errors.yaml` alongside the operation itself once the gate opens.
+    "ARTIFACT_ALREADY_EXISTS": (409, False, "garuda_voa.error.artifact_already_exists"),
 }
 
 
@@ -149,6 +161,24 @@ def get_pool(request: Request) -> asyncpg.Pool:
             status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
         )
     return pool
+
+
+def get_artifact_service(request: Request) -> GarudaArtifactService:
+    """Same fail-closed shape as `get_pool` / `garuda_orders_router.py::
+    get_repository`: the orchestrator wires the real
+    `GarudaArtifactService` (Postgres repository + `TigrisArtifactObjectStore`)
+    onto `app.state.garuda_artifact_service` at composition time, once the
+    bucket's scoped credentials exist (`operator[secret]`, spec SS3) --
+    NOT done by this PR (preparation-only, no orchestrator wiring change).
+    Absent, this 503s rather than crashing with an `AttributeError` deep in
+    a handler."""
+
+    service = getattr(request.app.state, "garuda_artifact_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
+        )
+    return service
 
 
 async def _require_actor(request: Request) -> dict[str, Any]:
@@ -255,6 +285,9 @@ _OPERATION_STATUS_CODES: dict[str, tuple[int, ...]] = {
     "getStaffPractice": (401, 403, 404, 500, 503),
     "assignPractice": (400, 401, 403, 404, 422, 500, 503),
     "transitionPractice": (400, 401, 403, 404, 409, 422, 500, 503),
+    # Phase 2 addition (W3A, not yet in the frozen contract -- see
+    # ARTIFACT_ALREADY_EXISTS's comment above).
+    "putPracticeArtifact": (400, 401, 403, 404, 409, 422, 500, 503),
 }
 
 
@@ -575,6 +608,95 @@ async def transition_practice(
             "practice_id": sanitize_for_log(practice_id),
             "transition_id": sanitize_for_log(transition_id),
         },
+    )
+    return response_body
+
+
+#: Same reasoning as `_STAFF_SESSION_SECURITY` -- no `fastapi.security.*`
+#: dependency for FastAPI to introspect on this operation either.
+@router.put(
+    "/practices/{practice_id}/artifact",
+    operation_id="putPracticeArtifact",
+    responses=_status_responses("putPracticeArtifact"),
+    openapi_extra=_STAFF_SESSION_SECURITY,
+)
+async def put_practice_artifact(
+    practice_id: str,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    pool: asyncpg.Pool = Depends(get_pool),
+    artifact_service: GarudaArtifactService = Depends(get_artifact_service),
+) -> dict:
+    """The producer PR-11 consumes (spec SS3): accepts the raw PDF bytes,
+    computes the digest server-side, writes the object then the row, and
+    returns the generated `artifact_id`/`artifact_digest` -- a practice-
+    keyed sub-resource beside `/assignment` and `/transitions`, staff-only,
+    Idempotency-Key required exactly like those two."""
+
+    _privacy_headers(response)
+    actor = await _require_actor(request)
+    key = _idempotency_key(idempotency_key)
+    key_digest = idempotency.scoped_key_sha256(
+        actor=actor["email"], operation="putPracticeArtifact", raw_key=key
+    )
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT practice_id, assigned_to FROM garuda_practices WHERE practice_id = $1",
+            practice_id,
+        )
+        if row is None:
+            raise HTTPException(
+                status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
+            )
+        visible_or_403(row, actor)
+
+        # Body read stays AFTER authorization so an actor without visibility
+        # on this practice never gets a 422 (or any parsing feedback) for a
+        # resource it cannot see -- the 403 must win regardless of payload.
+        body = await request.body()
+        payload_digest = idempotency.canonical_payload_sha256(
+            {"practice_id": practice_id, "body_sha256": hashlib.sha256(body).hexdigest()}
+        )
+
+        try:
+            outcome = await idempotency.reserve(
+                conn, key_sha256=key_digest, payload_sha256=payload_digest
+            )
+        except IdempotencyConflict as exc:
+            raise HTTPException(
+                status_code=409, detail={"code": "IDEMPOTENCY_CONFLICT", "retryable": False}
+            ) from exc
+        if outcome.replayed:
+            assert outcome.response_body is not None
+            response.headers["Idempotency-Replayed"] = "true"
+            return outcome.response_body
+
+        async with conn.transaction():
+            try:
+                record = await artifact_service.put_practice_artifact(
+                    conn, practice_id=practice_id, body=body, produced_by=actor["email"]
+                )
+            except (InvalidArtifactContent, ArtifactTooLarge) as exc:
+                raise HTTPException(
+                    status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
+                ) from exc
+            except ArtifactAlreadyExists as exc:
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "ARTIFACT_ALREADY_EXISTS", "retryable": False},
+                ) from exc
+            response_body = {
+                "artifact_id": record.artifact_id,
+                "artifact_digest": record.artifact_digest,
+            }
+            await idempotency.complete(
+                conn, key_sha256=key_digest, response_status=200, response_body=response_body
+            )
+    logger.info(
+        "garuda_staff.practice_artifact_put",
+        extra={"practice_id": sanitize_for_log(practice_id)},
     )
     return response_body
 
