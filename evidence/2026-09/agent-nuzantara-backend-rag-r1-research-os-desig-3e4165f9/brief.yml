@@ -56,6 +56,22 @@ authority:
     from it. The ruling is load-bearing here in exactly one way — the seed cohort
     under fixtures/seed_public_regulatory/ is now a COHORT WITH A CEILING (20
     claims, four kinds), not an illustrative set, because R2 will back-fill it.
+  z2b_cohort_disposition: >-
+    THE SEED COHORT IS NOT THE Z2b COHORT, and saying so is the point. Raised by the imperator
+    nuzantara-0d at 2026-09-11T10:57Z against g3 checkpoint 2 and accepted without argument:
+    Z2b(a) authorises PUBLIC REGULATORY claims FULLY SOURCED from public documents, while
+    fixtures/seed_public_regulatory/01_z2_seed_cohort.json is synthetic to its identifiers
+    ('permenkumham-synth-*'). A synthetic fixture set is a fine TEST cohort and is exactly what
+    the D4 admitted-path and D3 answer-path tests need; it is not production-eligible, and letting
+    it drift into R2's --apply would put invented figures into production wearing the word
+    'sourced'. DISPOSITION (b) of the two the imperator offered: the Z2b seed cohort is EMPTY
+    until sourced. R2's --apply may write only what the legacy admission dry-run admits (expected
+    0 — legacy rows carry URL hashes, no spans, no IntelEvent identity). Sourcing a real cohort
+    from public instruments is DEFERRED and named below. Option (a), sourcing it now, was NOT
+    taken because this window cannot verify figures against primary public documents, and R1
+    section 6's stop rule says a fixture needing an unsourceable figure stops the window rather
+    than inventing one and presenting it as sourced. Recorded in three places by design: this
+    brief, the fixture file's own z2b_production_eligibility field, and the PR body.
   z3: "RULED 2026-09-11 ~15:00 WITA by Zero: BLUE for R1 and R2 — confirmed, not defaulted."
   z4: "no veto received; the window closes when R1 opens."
 
@@ -167,6 +183,17 @@ assumptions:
     probe: >-
       infra/codex-hooks/mandate_budget.py renew() — previous_deadline
       2026-09-10T22:22:47Z, new_deadline 2026-09-11T01:05:00Z, counters untouched.
+
+deferred_named:
+  - text: >-
+      SOURCING THE REAL Z2b COHORT. Up to 20 public regulatory claims sourced from primary public
+      documents — real body hash, exact span with a quote hash computed from the real quoted text,
+      real valid time, rights, retention, classification, review state and a resolving IntelEvent
+      identity. Until that exists, Z2b's production effect is bounded to whatever the legacy
+      admission dry-run admits (expected 0). Owner: not R1's to assign; it needs a window with
+      access to the primary instruments and a decision on which instruments are in scope.
+    status: open
+    raised_by: imperator nuzantara-0d, R1-ack 2026-09-11T10:57Z
 
 risks_carried_not_owned:
   - text: >-
@@ -330,6 +357,14 @@ team:
       room, not by this window; it signs and never arms.
 
 checkpoints:
+  - generation: 3
+    state: build-complete
+    envelope: 20260911T105202Z-2f23.md
+    sent: "2026-09-11T10:52:02Z"
+    ack: pending at the time of writing; the imperator reads the mailbox every 10 minutes
+    note: >-
+      Candidate 3a47abf98a frozen pending the two review seats. Carries the rule-5 cure, the two
+      corrections to the handover, and the seat cascade record.
   - generation: 3
     state: resume
     envelope: 20260911T100036Z-0486.md

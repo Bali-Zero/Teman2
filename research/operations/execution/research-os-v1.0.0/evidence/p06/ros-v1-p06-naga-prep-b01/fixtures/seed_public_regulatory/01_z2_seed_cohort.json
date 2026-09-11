@@ -1394,5 +1394,6 @@
         "object_hash": "63ecf7978e1850b8431185dfd0af00dbee0336aee4ab8497f473426bc61f02ee"
       }
     ]
-  }
+  },
+  "z2b_production_eligibility": "NOT PRODUCTION-ELIGIBLE. This cohort is SYNTHETIC — every instrument is spelled 'permenkumham-synth-*' and every figure is invented — so it is a TEST fixture set and NOT the cohort Z2b(a) authorises. Z2b(a) authorises at most 20 PUBLIC REGULATORY claims FULLY SOURCED from public documents (body hash of the real body, exact span, valid time, rights). Nothing here is sourced from a real instrument. THEREFORE the Z2b seed cohort is EMPTY until sourced: R2's --apply may write only whatever the legacy admission dry-run admits (expected 0), and not one row of this file. Sourcing a real cohort is DEFERRED work, named in brief.yml and in the PR body. R1 section 6's stop rule is why it was not invented instead: a figure that cannot be sourced from a public document stops the window, it does not get fabricated and labelled sourced. RULED by the imperator nuzantara-0d 2026-09-11T10:57Z (R1-ack on envelope 20260911T105202Z-2f23.md), disposition (b) of two offered."
 }
