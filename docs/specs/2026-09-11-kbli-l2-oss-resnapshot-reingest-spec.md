@@ -11,7 +11,7 @@ the classification text stayed identical.
 | OSS list (2422 records, 1559 five-digit): 0 codes added/removed, 0 judul/uraian/uuid changes since the June 19 ground truth                                                                                                                                                                                                                  | `~/Desktop/oss-resnapshot-20260911/oss_list_diff_20260911.md`       |
 | Full 4-endpoint re-snapshot, 1559/1559, 0 failures                                                                                                                                                                                                                                                                                           | `~/nuzantara-vault-20260911/oss/` + `fetch-log.jsonl`               |
 | `detail` and `relasi`: 1559/1559 byte-identical to the 2026-07-17 vault                                                                                                                                                                                                                                                                      | `~/Desktop/oss-resnapshot-20260911/oss_vault_diff_20260911.md` §1-2 |
-| `ruang_lingkup` risk-tier set changed on **178** codes: 70 = scope "Seluruh" split into named sub-scopes with identical tiers; **108 = new (skala, resiko) combinations**                                                                                                                                                                    | same, §3                                                            |
+| `ruang_lingkup` risk-tier set changed on **181** codes (pinned triple, §6 rule 5; the first report said 178 because it collapsed homonymous scopes): 70 = scope "Seluruh" split into named sub-scopes with identical tiers; **108 = new (skala, resiko) combinations**                                                                       | same, §3                                                            |
 | `umku`: newly published for 262 codes, dropped for 23, licence set changed on 74 (true removals: 10772/10773 lost SPP-IRT — verified on raw files 13 → 11 rows; 11040 −19; 20114, 20123-20125, 32906, 46442, 43120, 50122, 71202, 93210, 93294)                                                                                              | same, §4; spot-check in session                                     |
 | `ruang_lingkup` presence: 1325 both, 212 absent both, **13 old-only, 9 new-only**                                                                                                                                                                                                                                                            | same, §1                                                            |
 | Canonical corpus `v10.0-L2-oss-risk` was built on 2026-06-20 (PR #1592 + #1598) by `scripts/build_kbli_l2_oss_risk.py` from `/tmp/oss_risk_raw.jsonl` (single endpoint, `scripts/fetch_oss_risk.py`), **not** from the vault                                                                                                                 | `scripts/build_kbli_l2_oss_risk.py:30-35,142-146`                   |
@@ -53,7 +53,7 @@ the 74-code diff as evidence); English titles; `ruang_lingkup` text (unchanged);
    If neither reproduces, STOP: the June state was produced by something not on `main`, and the
    plan is under-specified (Builder Contract rule 1, fix-of-a-fix depth 1).
 5. **Predicted diff = measured diff.** Dry-run over the September jsonl must change exactly the
-   codes named in `oss_vault_diff_20260911.md` §3 (178 on tiers) plus whatever perizinan-level
+   codes named by the pinned triple of §6 rule 5 (181 on tiers) plus whatever perizinan-level
    changes the report's generic flag covers; any code outside that set changing is a STOP.
 6. **Absences are not applied.** The 13 codes present in July and 404 today keep their July
    `per_skala` and get `_l2_status: "absent_pending_corroboration"` with `absent_probes: [date]`;
@@ -61,7 +61,7 @@ the 74-code diff as evidence); English titles; `ruang_lingkup` text (unchanged);
    applied (presence needs no corroboration).
 7. **Version and provenance.** `metadata.version = "v11.0-L2-oss-risk-20260911"`,
    `metadata.l2_snapshot = {vault: "nuzantara-vault-20260911", manifest_sha256, fetched: "2026-09-11",
-codes_changed: 178, absent_pending: 13}`, `metadata.source` corrected to `PP28_2025`.
+codes_changed: 181, absent_pending: 13}`, `metadata.source` corrected to `PP28_2025`.
 8. **Same dump.** `json.dumps(ds, ensure_ascii=False, indent=2)` exactly as today (`:267`), then
    `scripts/sync_kbli_dataset.sh` for the five copies, then the sidecar
    (`datasetSha256 = sha256:<new>`, `lastModified = <commit date>`).
@@ -92,7 +92,7 @@ codes_changed: 178, absent_pending: 13}`, `metadata.source` corrected to `PP28_2
 
 - PR-A: ~150 lines of code + tests, Gear 2, one afternoon.
 - PR-B: one 36 MB file rewritten in five copies; Gear 3 by size, evidence pack mandatory;
-  client-facing change on 178 code pages and on the RAG answers for those codes.
+  client-facing change on ~181 code pages and on the RAG answers for those codes.
 - Nothing touches the KG, the WhatsApp bot rules, or the editorial pages.
 
 ## 6. Rule-4 outcome — PR-A gate run, 2026-09-11 (r2)
@@ -111,7 +111,12 @@ Measured on M5 with the adapter over the **July** vault (1559/1559, no missing e
 | `l4_bali.blocked`                                                     | 21 with `scripts/` copy, **0 with `apps/backend-rag/scripts/` copy** | backend copy's NO_BESAR → `CHIUSO_PMA_NO_BESAR` (blocked) is what the canonical carries            |
 
 Rule 5 (September vault): the adapter-driven (scope, skala, resiko) change set equals the
-vault-diff set **178/178** (0 in either difference); absences 13 old-only / 9 new-only / 212 both.
+raw-vault change set computed with the same method (0 in either difference), which is the
+invariant that proves the adapter faithful. The COUNT is method-dependent: 178 with the first
+report's scope-name-keyed dict (homonymous scopes collapse), 181 with the pinned triple below
+(codex round 2 found the 3 collapsed codes 31021, 31029, 82921). Absences 13 old-only /
+9 new-only / 212 both. All field counts above are on rows common to both sides; 20111's
+12 new rows are counted in the row-count line, not in the field cells.
 
 **Rulings that follow (r2):**
 
@@ -127,4 +132,9 @@ kewajiban, kewenangan}` + `_l2_source` + `_l2_status` — identical on every cod
    `jangka_waktu` where `jangka_waktu_source` is set, and carry `fiktif_positif` and
    `jangka_waktu_source` through; a dry-run field table like the one above is part of PR-B's
    evidence pack, and any non-zero cell outside the predicted set is a STOP.
-4. 49213 is resynced from OSS in PR-B (closes A-PSK-0001); 20111 gains its 12 scopes.
+4. 49213 is resynced from OSS in PR-B (closes A-PSK-0001); 20111 gains its 12 rows across 3 scopes.
+5. The change-set triple is pinned, so PR-B's predicted diff has one definition: per scope
+   `localization.id.uraian`, per `KbliResikos[]` entry `SkalaUsaha.kode` and
+   `Resiko.localization.id.uraian`; a code is "changed" when its set of triples differs.
+   Under this definition the September set is **181** codes (`/tmp/l2/changed_pinned.txt`
+   at gate time; PR-B recomputes it from the frozen vaults and quotes the number).

@@ -33,7 +33,8 @@ acceptance:
       carrying no_oss_risk=221 and l4_changed=21 (this scripts/ copy; the backend copy gives 0),
       and the field-level table of an --apply on that /tmp copy (spec §6, measured before this
       PR was opened) SHALL show 0 codes differing on skala_usaha/kategori_risiko/scope_index
-      and exactly 1 (49213) on the other L2-owned fields.
+      and exactly 1 (49213) on the other L2-owned fields, counted on rows common to both sides
+      (20111's 12 new rows are reported on the row-count line).
     probe: set -o pipefail; python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | grep '^SUMMARY'
   - text: >-
       A3: WHEN the transform's source is read SHALL still define ROOT as /tmp/kbli-l2-risk and
@@ -42,10 +43,11 @@ acceptance:
     probe: grep -c 'Path("/tmp/kbli-l2-risk")\|Path("/tmp/oss_risk_raw.jsonl")' scripts/build_kbli_l2_oss_risk.py
 assumptions:
   - text: >-
-      The vault ruang_lingkup.json is byte-for-byte the response the June fetcher stored under
-      "data", so the adapter's records are the transform's native input.
+      The vault ruang_lingkup.json has the same response shape the June fetcher stored under
+      "data" ({success,data,meta,code}), so the adapter's records are the transform's native
+      input; shape compatibility is what is proven, not byte identity with the lost June file.
     status: verified
-    probe: "rule-5 recheck — adapter-driven change set equals the raw-vault diff set 178/178"
+    probe: "rule-5 recheck — adapter-driven change set equals the raw-vault change set under the same triple definition (181/181 with the pinned triple of spec §6)"
   - text: >-
       jangka_waktu, fiktif_positif and jangka_waktu_source are owned by layers after L2, so
       their divergence is not a transform defect.
