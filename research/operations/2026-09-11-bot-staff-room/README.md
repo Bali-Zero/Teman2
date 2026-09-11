@@ -78,12 +78,15 @@ B3 preserves distinct authorized client and team identities and uses synthetic c
 
 1. **APPROVAL OF THE PACKET.** Both imperators approve at a named hash (Astra round 4); then you say when B1 opens.
 2. **B3 IDENTITIES AND THREAD.** Which synthetic client identity and which team identity may send, on which thread; the send window.
+   Item 2 — RULED 2026-09-11 ~15:00 WITA: Zero named ONE test number as the synthetic client identity; it is recorded on the Desk (`~/Desktop/BATTAGLIA-20260911/6-BOT/DECISIONI-ZERO-BOT.md`), never in this repo. The thread is the one that number opens towards the bot line. Send window: **flexible**, fixed by Zero with the B3 session at launch.
 3. **B3 LATENCY BUDGET AND STOP CONDITIONS** (Astra's protocol above lists the stop triggers; you set the latency budget).
+   Item 3 — RULED 2026-09-11: stop triggers = Astra's protocol, unchanged; the latency budget is fixed by Zero at B3 launch together with the send window (still open).
 4. **CADENCE.** The ≤10 messages/hour limit binds unless you change it (cycle 359 sent 22 in 56 min; Meta rating stayed GREEN).
+   Item 4 — RULED 2026-09-11: unchanged, ≤10 messages/hour.
 5. **PR #5337 PRIORITY.** Suspended since 2026-09-01; after B2.3b it needs a fresh base. Reopen, close, or leave suspended?
 6. **COMMERCIAL FUTURE OF THE BOT LINE** (your 09-10 queue item 5): retire, quiet fallback, or advertise again.
 7. **ONE BOUNDED EMBEDDING BATCH FOR B2.2 (paid third-party API — needs your explicit yes).** B2.2 may not call an embedding provider, and no retained query vectors exist: the only surface, `scripts/.rag_canary/embedding_baseline.json` (untracked; 20 vectors, 1536-dim, `text-embedding-3-small`, 2026-03-25), holds REFERENCE-TEXT embeddings, not queries, and `scripts/rag_canary.py:318` regenerates it through an embedding call. Requested: provider OpenAI `text-embedding-3-small`, ceiling **40 total provider attempts including SDK retries** (the product's client leaves `max_retries` at the SDK default of 2, `backend/core/embeddings.py:271`; the batch harness disables retries or counts every attempt), synthetic EN/ID tax/visa queries only, run ONCE by B1 (B1.5) under a pre-call record (authorization reference, query-list sha256, start receipt) and checked in with sha256 as the immutable artifact; estimated cost below one cent. Your answer is recorded HERE, on the next line, as `Item 7: yes — <date>` or `Item 7: no — <date>`, and nowhere else; until that line exists this item is a request, not an authorization, and B1.5 does not open. Declined or unanswered → B2.2's live sample is recorded BLOCKED and the thresholds are re-examined on the benchmark alone, without suspending B2.
-   Item 7: _unanswered_
+   Item 7 — RULED 2026-09-11 ~15:00 WITA: **YES** («ok procediamo»). One bounded batch only, capped at 40 provider attempts including retries (B1 §4), only with the approved query/vector artifact (B1.5); no other paid call. Recorded by the Fable staff-room session on M5.
 
 Not on your queue, by ruling: the additive migration (autonomous at L2 once its dry-run is green — `AUTONOMOUS_OPS.md:82-90` keeps only migrations WITHOUT a green dry-run with the operator; migration rules `:161-164` — released by the BLUE Dux after the fresh gate), score kinds, fixture coverage, migration numbering, and the four decisions already ruled today.
 
