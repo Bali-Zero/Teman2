@@ -73,7 +73,17 @@ describe("whole public archive search", () => {
     vi.stubGlobal("fetch", fetcher);
 
     const catalog = await loadPublicCatalog();
-    expect(catalog.length).toBeGreaterThanOrEqual(808);
+    // 808 before the noIndex gate, 793 after: the 15 the author marked
+    // noIndex were being listed here and therefore published into sitemap.ts,
+    // while the detail gate (public-editorial.ts) answers notFound() for them.
+    expect(catalog.length).toBeGreaterThanOrEqual(793);
+    expect(
+      catalog.some(
+        (row) =>
+          row.slug ===
+          "indonesias-second-home-visa-kitas-e33-the-complete-2025-framework",
+      ),
+    ).toBe(false);
     expect(
       catalog.every(
         (row) => isJournalCategory(row.category) && isArticleSlug(row.slug),

@@ -17,17 +17,25 @@ import LegacyCompanyRoute from "./company/page";
 afterEach(cleanup);
 
 describe("service journeys", () => {
-  it("permanently redirects legacy visa and company links", () => {
+  it("permanently redirects legacy visa and company links, carrying the query", async () => {
     for (const [route, target] of [
       [LegacyVisaRoute, "/services/immigration"],
       [LegacyCompanyRoute, "/services/company-setup"],
     ] as const) {
       try {
-        route();
+        // A 308 that drops the query caches the loss per client, and these two
+        // paths are what a campaign targets: assert the campaign parameters
+        // survive, not merely that a redirect happened.
+        await route({
+          searchParams: Promise.resolve({
+            utm_source: "newsletter",
+            gclid: "abc123",
+          }),
+        });
         throw new Error("Expected redirect");
       } catch (error) {
         expect((error as { digest: string }).digest).toContain(
-          `;${target};308;`,
+          `;${target}?utm_source=newsletter&gclid=abc123;308;`,
         );
       }
     }

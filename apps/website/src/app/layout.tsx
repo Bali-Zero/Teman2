@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ZantaraEntry } from "../components/ZantaraEntry";
+import { publicOrigin } from "../lib/public-origin";
 import assistantStyles from "../components/ZantaraEntry.module.css";
 import "../styles/brand-fonts.css";
 import "./globals.css";
+const origin = publicOrigin();
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.WEBSITE_PUBLIC_ORIGIN || "https://balizero.com",
-  ),
+  // No origin configured = not public yet: canonicals stay relative rather than
+  // claiming a host robots.ts is simultaneously telling crawlers to stay off.
+  ...(origin ? { metadataBase: new URL(origin) } : {}),
   title: "Bali Zero | Immigration, Company Setup, Tax & Property in Indonesia",
   description:
     "Immigration, company setup, tax and property guidance in Indonesia.",

@@ -17,6 +17,7 @@ vi.mock("../lib/server/public-catalog", () => ({
   loadPublicCatalog: vi.fn(async () => catalog),
 }));
 
+import robots from "./robots";
 import sitemap from "./sitemap";
 
 afterEach(() => {
@@ -75,13 +76,26 @@ describe("public sitemap", () => {
     expect(urls.some((url) => url.includes("?lang="))).toBe(false);
   });
 
-  it("uses the default origin and the committed KBLI dataset date", async () => {
-    vi.stubEnv("WEBSITE_PUBLIC_ORIGIN", "");
+  it("carries the committed KBLI dataset date", async () => {
+    vi.stubEnv("WEBSITE_PUBLIC_ORIGIN", "https://balizero.com");
 
     const entries = await sitemap();
     expect(entries[0]?.url).toBe("https://balizero.com/");
     expect(
       entries.find(({ url }) => url === "https://balizero.com/kbli/01111"),
     ).toMatchObject({ lastModified: "2026-08-15" });
+  });
+
+  // This replaces a test literally named "uses the default origin", which
+  // asserted that an UNSET variable still emits https://balizero.com/... —
+  // it pinned the divergence rather than a decision: robots.ts answers
+  // `Disallow: /` for the very same input. One input, two files, opposite
+  // conclusions is not a design, and absent in production it makes a site
+  // that looks correct everywhere and is invisible to search.
+  it("agrees with robots when no public origin is configured", async () => {
+    vi.stubEnv("WEBSITE_PUBLIC_ORIGIN", "");
+
+    expect(await sitemap()).toEqual([]);
+    expect(robots()).toEqual({ rules: { userAgent: "*", disallow: "/" } });
   });
 });

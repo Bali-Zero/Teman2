@@ -1,12 +1,12 @@
 import type { MetadataRoute } from "next";
+import { publicOrigin } from "../lib/public-origin";
 
 export default function robots(): MetadataRoute.Robots {
-  const configuredOrigin = process.env.WEBSITE_PUBLIC_ORIGIN;
-  if (!configuredOrigin) {
+  const origin = publicOrigin();
+  if (!origin) {
     return { rules: { userAgent: "*", disallow: "/" } };
   }
 
-  const origin = configuredOrigin.replace(/\/+$/, "");
   return {
     rules: {
       userAgent: "*",

@@ -3,6 +3,7 @@ import path from "node:path";
 import type { MetadataRoute } from "next";
 import { journalCategories } from "../content/journal-categories";
 import { getAllCodes, getSections } from "../features/kbli/catalog.server";
+import { publicOrigin } from "../lib/public-origin";
 import { loadPublicCatalog } from "../lib/server/public-catalog";
 
 const staticPaths = [
@@ -43,13 +44,6 @@ const visaToolPaths = [
   "/visa/second-home/studio",
 ] as const;
 
-function publicOrigin(): string {
-  return (process.env.WEBSITE_PUBLIC_ORIGIN || "https://balizero.com").replace(
-    /\/+$/,
-    "",
-  );
-}
-
 async function kbliLastModified(): Promise<string | undefined> {
   try {
     const source = await readFile(
@@ -74,6 +68,10 @@ async function kbliLastModified(): Promise<string | undefined> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = publicOrigin();
+  // No origin configured = not public yet, and robots.ts is serving
+  // `Disallow: /`. An empty sitemap says the same thing; the old fallback to
+  // the literal production host said the opposite, in the same deployment.
+  if (!origin) return [];
   const [articles, datasetDate] = await Promise.all([
     loadPublicCatalog(),
     kbliLastModified(),

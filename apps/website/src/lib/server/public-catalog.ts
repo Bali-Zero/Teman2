@@ -126,7 +126,13 @@ export const loadPublicCatalog = cache(async (): Promise<CatalogEntry[]> => {
       if (
         typeof value.title !== "string" ||
         !value.title.trim() ||
-        value.title.length > 500
+        value.title.length > 500 ||
+        // The detail gate (public-editorial.ts) refuses noIndex !== false and
+        // answers notFound(). The catalog feeds sitemap.ts, a consumer added
+        // after that gate, so without this line the sitemap publishes URLs
+        // that answer 404 — superscar #9: the step changed, the new reader
+        // downstream did not.
+        (value.noIndex !== undefined && value.noIndex !== false)
       )
         return [];
       return [
