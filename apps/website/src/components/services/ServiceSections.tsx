@@ -108,7 +108,7 @@ export function ServiceSections({ service }: { service: ServicePage }) {
         >
           <div className={styles.sectionHeading}>
             <span className={styles.eyebrow}>04 / Why it matters now</span>
-            <h2 id="why-now-heading">The obligations landscape is moving.</h2>
+            <h2 id="why-now-heading">The obligations keep moving.</h2>
           </div>
           <ul className={styles.scopeList}>
             {content.whyNow.map((fact) => (
