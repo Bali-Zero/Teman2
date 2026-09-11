@@ -471,3 +471,59 @@ gear_floor_correction:
     decisive step: `git show <sha>:<per-PR brief>` then compare its gear to
     `--print-floor --changed-files-file … --numstat-file …`. That is the check
     that was red, and it is the one to re-run locally.
+
+council_run: council-journal.jsonl
+
+receipts:
+  - claim: "the crossing suite is green at the shipped code sha"
+    cmd: "PYTHONPATH=. SKIP_SENTRY_INIT=1 .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_score_contract_crossing.py"
+    exit: 0
+    ts: 2026-09-11T00:06:00Z
+    seat: claude-opus-5
+    output: "18 passed, 1 warning in 7.06s (was 14 at the reviewed sha)"
+  - claim: "the cures move nothing in the two suites that own the touched files"
+    cmd: "PYTHONPATH=. SKIP_SENTRY_INIT=1 .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/ backend/tests/unit/services/search/"
+    exit: 0
+    ts: 2026-09-11T00:01:00Z
+    seat: claude-opus-5
+    output: "2144 passed, 30 skipped, 8 xfailed, 1 warning in 52.34s"
+  - claim: "the fresh gate re-ran the same wide suite itself, in two execution orders"
+    cmd: "same command, with and without -p no:randomly, in the gate's own session"
+    exit: 0
+    ts: 2026-09-11T00:24:00Z
+    seat: claude-opus-5-gate
+    output: "2144 passed, 30 skipped, 8 xfailed both orders (39.58s fixed, 22.43s random)"
+  - claim: "every new assertion is load-bearing — each fails under the mutation it was written for"
+    cmd: "mutate source in a cp-backed copy, run pytest -k <case>, restore, verify byte-identical"
+    exit: 0
+    ts: 2026-09-11T00:00:00Z
+    seat: claude-opus-5
+    output: >-
+      dense branches -> UNKNOWN: 13a 1 failed; :907 declaration deleted: 13b 1 failed;
+      hybrid branch swept into DENSE: 13c 1 failed; projection re-narrowed: case 10
+      1 failed; _canonical_wire separators changed coherently: compat test 1 failed
+      while the tautological version stayed GREEN under the same mutation
+  - claim: "the frozen compat literals really are what the BASE sha produces"
+    cmd: "git worktree add --detach <tmp> 1d726045c9; run the base's own _canonical_wire/_package_hash on the test's inputs"
+    exit: 0
+    ts: 2026-09-10T23:58:00Z
+    seat: claude-opus-5
+    output: "BASE_DIGEST 466643afc3c393d49fcaddd4a92f5f8be63d64e88dc351c6c90921edc84a4454, SELFCHECK True; re-derived independently by the gate and by kimi-code/k3, both matching"
+  - claim: "the shipped sha differs from the gated sha by evidence files only"
+    cmd: "git diff fbcb10fd3c HEAD -- apps/ scripts/ packages/ | wc -l"
+    exit: 0
+    ts: 2026-09-11T01:01:00Z
+    seat: claude-opus-5
+    output: "0"
+  - claim: "the gear declaration now clears the deterministic floor, reproduced the way CI computes it"
+    cmd: "git show HEAD:<per-PR brief> > /tmp/b.yml; GEAR=$(yaml gear); FLOOR=$(evidence_pack_lint.py --print-floor --changed-files-file ... --numstat-file ...)"
+    exit: 0
+    ts: 2026-09-11T01:00:00Z
+    seat: claude-opus-5
+    output: "GEAR=3 FLOOR=3 -> PASS (without --numstat-file the same flag prints floor 1 source none — the bare form is not CI-equivalent)"
+  - claim: "both council seats are live subscription seats and answered"
+    cmd: "kimi -p 'reply with exactly: PONG' -m kimi-code/k3 ; codex exec --sandbox read-only -m gpt-5.6-sol 'reply with exactly: PONG'"
+    exit: 0
+    ts: 2026-09-11T00:52:00Z
+    seat: claude-opus-5
+    output: "both PONG. Note: the known 400 'not supported with a ChatGPT account' trap is on gpt-5.6-codex, NOT on gpt-5.6-sol"
