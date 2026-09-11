@@ -227,3 +227,38 @@ seat_failure_rule: >-
   flags, active account, network); fall back INSIDE the same role (Claude: /login another of the 6
   OAuth seats, _6 Team last; Codex: second account; TP1: next model). SUSPEND only when the whole
   cascade is exhausted, written in the ledger with time and exact error. The colour never changes.
+
+generations:
+  - generation: 1
+    opened: "2026-09-11T09:35:58Z"
+    closed: "2026-09-11T11:12:24Z"
+    close_cause: >-
+      A MISROUTED CONTEXT-GUARD JUMP, treated as a death — not Zero's /exit, although g1's own
+      checkpoint 3 (envelope 20260911T111316Z-3fbe.md) believed it was. Re-measured by g2 in
+      ~/.organism/context-guard/jump.log:146-151: jump ab3d4129 (the R1 window's guard) resolved
+      "old window" as the Ghostty tab 'R2 researchos' pid 64078, opened the new window on R1's
+      worktree, typed /exit into tab-group-74a903c0a0 at 19:11:59 WITA and ended pid 64078 by
+      SIGINT x2 at 19:12:24 WITA. Carried to the tranche ledger PR as a finding.
+    secured_by: "imperator WIP commit 9f446f25e1 (R2-build-spec.md + brief.yml, prettier-formatted)"
+  - generation: 2
+    opened: "2026-09-11T15:55:19Z"
+    opened_source: "birth time of this window's session scratchpad (stat -f %SB), measured, not estimated."
+    session_tab: >-
+      Ghostty tab titled 'R2 g2 engine' via OSC 2 written to ttys007 (claude pid 76146). Whether it
+      sits in a window separate from R1 is a GUI fact this window cannot observe.
+    head_verified: "9f446f25e1dfa70da5306f115e7453dbac4b75e9, tree clean, 1 ahead / 11 behind origin/main at 15:57:14Z"
+    ledger_at_open: >-
+      Key sha256("R2") read by name: deadline 2026-09-11T15:35:58.004Z, renewals 1 (g1 opening
+      bind, previous_deadline null). EXPIRED 19m21s BEFORE g2 OPENED. mandate_budget.py rule 8: an
+      expired deadline SUSPENDS the mandate. Not renewed by g2 (opening instruction: inherit, do
+      not renew); renewal authority is the staff room.
+    env_at_open: >-
+      NUZANTARA_MANDATE_ID is NOT set in g2's environment (presence probe empty; no settings file
+      carries it). child_workflow.mandate_id() therefore keys a g2 dispatch by SESSION ID under
+      budget_mode=interactive_observation (child_workflow.py:171, :236) — the trap D-R2-1 was built
+      to avoid: a dispatch now would open a second, empty ledger and never see R2's expiry.
+    sibling_measured: >-
+      R1 MERGED: PR #6247 (head agent/nuzantara/backend-rag/r1-research-os-design-s3) merged
+      2026-09-11T14:09:07Z as e399358410; the opening instruction's "R1 unpushed at 2ee25b600e" is
+      stale. Integration by per-file blob check still pending. Migration head on origin/main is 310
+      (310_practice_status_log.sql), so R2's migration number is 311, not the build spec's 310.
