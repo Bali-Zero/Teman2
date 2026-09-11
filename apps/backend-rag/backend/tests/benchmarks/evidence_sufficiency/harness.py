@@ -157,7 +157,17 @@ def validate(manifest: dict[str, Any]) -> list[str]:
             errors.append(
                 f"{tag}: provenance_fixture.inventory_row must be an int, got {inventory_row!r}",
             )
-        for src in prov.get("sources") or []:
+        note = prov.get("note")
+        if not isinstance(note, str) or not note:
+            errors.append(f"{tag}: provenance_fixture.note must be a non-empty string")
+        sources = prov.get("sources")
+        if not isinstance(sources, list) or not sources:
+            errors.append(f"{tag}: provenance_fixture.sources must be a non-empty list")
+            sources = []
+        for src in sources:
+            if not isinstance(src, dict):
+                errors.append(f"{tag}: provenance_fixture source must be an object, got {src!r}")
+                continue
             for src_field in ("score", "score_kind", "score_raw"):
                 if src_field not in src:
                     errors.append(

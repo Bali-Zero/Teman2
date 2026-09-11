@@ -303,3 +303,25 @@ class TestValidateRejectsMalformedNuisanceBooleansAndProvenance:
         del mutated["cases"][0]["provenance_fixture"]["sources"][0][field]
         errors = harness.validate(mutated)
         assert any(field in e for e in errors), errors
+
+    @pytest.mark.parametrize("bad_sources", (None, [], ["not-an-object"]))
+    def test_missing_empty_or_non_object_sources_are_rejected(
+        self, manifest: dict, bad_sources: object
+    ) -> None:
+        mutated = copy.deepcopy(manifest)
+        if bad_sources is None:
+            del mutated["cases"][0]["provenance_fixture"]["sources"]
+        else:
+            mutated["cases"][0]["provenance_fixture"]["sources"] = bad_sources
+        errors = harness.validate(mutated)
+        assert any("provenance_fixture" in e and "source" in e for e in errors), errors
+
+    @pytest.mark.parametrize("bad_note", (None, "", 5))
+    def test_missing_or_empty_note_is_rejected(self, manifest: dict, bad_note: object) -> None:
+        mutated = copy.deepcopy(manifest)
+        if bad_note is None:
+            del mutated["cases"][0]["provenance_fixture"]["note"]
+        else:
+            mutated["cases"][0]["provenance_fixture"]["note"] = bad_note
+        errors = harness.validate(mutated)
+        assert any("provenance_fixture.note" in e for e in errors), errors
