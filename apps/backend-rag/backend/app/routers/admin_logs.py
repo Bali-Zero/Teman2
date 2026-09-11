@@ -28,6 +28,52 @@ router = APIRouter(prefix="/api/admin/logs", tags=["admin-logs"])
 _security = HTTPBearer(auto_error=False)
 
 
+_UNPROVISIONED_DETAIL = (
+    "This team-activity surface is not provisioned in this environment: the "
+    "relation it reads does not exist. Migration 041b, which creates "
+    "activity_logs, team_interactions and the two summary views, lives in "
+    "backend/migrations/ — classified 'Legacy (manual), None (manual apply)' in "
+    "MIGRATIONS.md — and has no counterpart in db/migrations_v2/, the directory "
+    "the Fly release_command actually applies. Nothing has ever created these "
+    "relations, and nothing writes to them. This is a known gap, not a "
+    "transient fault: retrying will not help."
+)
+
+
+def _query_failure(operation: str, exc: BaseException) -> HTTPException:
+    """Map a query failure to a response that does not quote the database.
+
+    Every endpoint below used to end in ``raise HTTPException(500,
+    detail=str(e))``, which handed the CALLER the raw Postgres message — on the
+    one surface whose entire purpose is to be narrower than admin
+    (``DEVELOPER_EMAILS``, see ``verify_log_read_access``). A developer reading
+    logs has no need of the server's exception text, and four of these five
+    endpoints read relations that do not exist, so that leak was not
+    hypothetical: it was the normal response. The full exception, with
+    traceback, still goes to the server log, which is where it belongs.
+
+    Three outcomes, because they mean three different things to the caller:
+
+    * an ``HTTPException`` raised inside the ``try`` is passed through
+      unchanged. The bare ``except Exception`` used to swallow it and relabel
+      it 500, so a deliberate 4xx became a server error;
+    * a missing relation is **501**, not 500 and not 503. It is not a fault and
+      not transient — the functionality is not provisioned — and 503 would
+      invite a retry that cannot succeed;
+    * anything else is a 500 naming the OPERATION, never the exception.
+    """
+    if isinstance(exc, HTTPException):
+        return exc
+    # `exc_info=exc` and not `exc_info=True`: this helper is CALLED from an
+    # except block but is not one itself, so there is no ambient exception to
+    # pick up (ruff LOG014 catches exactly that). Naming the exception gives
+    # the same traceback and works wherever the helper is called from.
+    logger.error("❌ %s failed: %s", operation, exc, exc_info=exc)
+    if isinstance(exc, asyncpg.exceptions.UndefinedTableError):
+        return HTTPException(status_code=501, detail=_UNPROVISIONED_DETAIL)
+    return HTTPException(status_code=500, detail=f"{operation} failed")
+
+
 def verify_log_read_access(
     credentials: HTTPAuthorizationCredentials | None = Depends(_security),
     request: Request = None,
@@ -289,8 +335,7 @@ async def get_activity_logs(
         }
 
     except Exception as e:
-        logger.error("❌ Failed to fetch activity logs: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _query_failure("fetch activity logs", e) from e
 
 
 @router.get("/interactions")
@@ -384,8 +429,7 @@ async def get_team_interactions(
         }
 
     except Exception as e:
-        logger.error("❌ Failed to fetch team interactions: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _query_failure("fetch team interactions", e) from e
 
 
 @router.get("/api-audit")
@@ -475,8 +519,7 @@ async def get_api_audit_trail(
         }
 
     except Exception as e:
-        logger.error("❌ Failed to fetch API audit trail: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _query_failure("fetch API audit trail", e) from e
 
 
 @router.get("/summary/today")
@@ -506,8 +549,7 @@ async def get_today_summary(
         }
 
     except Exception as e:
-        logger.error("❌ Failed to fetch today's summary: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _query_failure("fetch today's activity summary", e) from e
 
 
 @router.get("/summary/interactions")
@@ -542,5 +584,4 @@ async def get_interactions_summary(
         }
 
     except Exception as e:
-        logger.error("❌ Failed to fetch interactions summary: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _query_failure("fetch interactions summary", e) from e
