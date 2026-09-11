@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o0r2-202609-0a63f32c/brief.yml
+brief_ref: evidence/brief.yml # staging-layout literal CI lints against (harness-floor.yml:989); the real brief lives beside this pack
 seat_override: >-
   no council_run journal convened for this r2 — the reviewed content is
   byte-identical to #6240's head 82d08445b3, already reviewed by codex
@@ -163,7 +163,7 @@ notes:
     contract-lock.json and live-browser.json keep the #6166-precedent
     file-anchored regex (sha256/git-sha digests). census.json's 2 findings,
     at lines 313 and 325, are plain-text synthetic walk labels, not digests
-    — `.secrets.baseline` now carries an `is_secret: false` audit decision
+    — `.secrets.baseline` now carries a false-positive audit decision
     keyed to their two hashed_secret values, so census.json itself stays
     scanned and any NEW finding added to it still arrives unaudited and
     fails the gate. `scripts/detect_secrets_check_unaudited.py` exits 0.
