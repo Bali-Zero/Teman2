@@ -345,14 +345,35 @@ async def login(
         async with db_pool.acquire() as conn:
             # Real database authentication using team_members
             # Use case-insensitive query to handle email case variations
+            # A soft-deleted CRM client must not be able to sign in.
+            #
+            # Until 2026-09-11 this query hit `team_members` alone, with no
+            # join to `clients` — so a client whose CRM record carried
+            # `deleted_at` but whose `team_members` row was still
+            # `active`/`portal_access` with a real PIN logged in
+            # successfully. Most portal endpoints then 404'd on first use
+            # (the "BUG C" fixes: `portal_dashboard.py`, `portal.py:262`,
+            # `send_message`), but not all of them, so the result was a
+            # partially-open door rather than the clean cutoff the repo's
+            # own comments state as the intent (portal audit bridge F4).
+            #
+            # Gating HERE closes the whole class, including endpoints added
+            # later that forget the filter. `linked_client_id IS NULL` keeps
+            # every staff login — which has no client row — untouched; the
+            # no-row branch below is the existing generic failure, so this
+            # adds no enumeration signal.
             query = """
-                SELECT id, email,
-                       COALESCE(full_name, name) as name,
-                       pin_hash as password_hash, role,
-                       'active' as status, NULL::jsonb as metadata, language as language_preference,
-                       active, avatar, linked_client_id, portal_access
-                FROM team_members
-                WHERE LOWER(email) = LOWER($1)
+                SELECT tm.id, tm.email,
+                       COALESCE(tm.full_name, tm.name) as name,
+                       tm.pin_hash as password_hash, tm.role,
+                       'active' as status, NULL::jsonb as metadata,
+                       tm.language as language_preference,
+                       tm.active, tm.avatar, tm.linked_client_id,
+                       tm.portal_access
+                FROM team_members tm
+                LEFT JOIN clients c ON c.id = tm.linked_client_id
+                WHERE LOWER(tm.email) = LOWER($1)
+                  AND (tm.linked_client_id IS NULL OR c.deleted_at IS NULL)
             """
             user = await conn.fetchrow(query, request.email)
 
