@@ -232,6 +232,52 @@ async def test_a_later_settings_mutation_does_not_change_a_built_manager(monkeyp
 
 
 @pytest.mark.parametrize(
+    ("manager_kwargs", "expected"),
+    [
+        ({}, True),  # resolved to the configured migrator
+        ({"database_url": "postgresql://rt@h/db"}, False),  # explicit legacy
+        ({"database_url": "postgresql://mig2@h/db", "dedicated": True}, True),
+    ],
+)
+async def test_the_pool_setup_hook_carries_the_frozen_mode(
+    monkeypatch, manager_kwargs, expected
+):
+    """The mode does not merely sit on the manager: it reaches the POOL.
+
+    Without this, `test_real_pg_pool_setup_survives_release_and_reacquire` is
+    vacuous with respect to the wiring -- it builds its own pool with its own
+    hook and would pass even if `_create_pool` forgot `setup=` entirely (Sol,
+    2026-09-11). Here the real `_create_pool` runs and the kwargs it hands
+    asyncpg are captured.
+    """
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+
+    manager = MigrationManager(**manager_kwargs)
+    seen: dict = {}
+
+    async def _fake_create_pool(dsn, **kwargs):
+        seen["dsn"] = dsn
+        seen["setup"] = kwargs.get("setup")
+        return object()
+
+    monkeypatch.setattr("backend.db.migration_manager.asyncpg.create_pool", _fake_create_pool)
+    await manager.connect()
+
+    assert seen["dsn"] == manager.database_url
+    hook = seen["setup"]
+    assert hook is not None, "the pool must assume the runtime role on every acquire"
+    assert hook.func is assume_runtime_role
+    assert hook.keywords == {"dedicated": expected}
+
+    # ... and the frozen mode survives a later mutation of the settings object.
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", None)
+    manager.pool = None
+    await manager.connect()
+    assert seen["setup"].keywords == {"dedicated": expected}
+
+
+@pytest.mark.parametrize(
     ("dsn", "override", "expected"),
     [
         ("postgresql://rt@h/db", None, False),  # explicit legacy stays legacy
