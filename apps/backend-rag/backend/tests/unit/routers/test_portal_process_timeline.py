@@ -469,8 +469,10 @@ class TestATerminalStatusIsNeverRenderedAsInProgress:
         The previous round fixed the disagreement for `completed` and `approved`
         only. `cancelled` kept it: the history path said `completed=True` (a
         filled tick) and the fallback path `completed=False` (a grey circle) for
-        the same practice — so applying migration 310 would have changed how 124
-        of 893 real rows render, with no frontend change and no test going red.
+        the same practice — so applying migration 310 would have changed how
+        every cancelled practice renders, with no frontend change and no test
+        going red (124 of 893 when measured 2026-08-27; 137 of 1011 on
+        2026-09-11 — the count moves, the defect did not).
         A review seat drove both paths and reported the two answers side by side.
 
         Parametrised over every terminal status AND a non-terminal one, because

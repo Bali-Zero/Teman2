@@ -14,7 +14,11 @@
 
 ## The ground truth, measured 2026-08-27 against production
 
-Every number below was read from the production database this turn, not inferred.
+Every number below was read from the production database on 2026-08-27, not inferred — and they
+are a SNAPSHOT, not a constant. Re-measured 2026-09-11: **1011** practices, **137** cancelled,
+still **0** with a NULL status, and `practice_status_log` still absent. Any statement about how
+many timelines a deploy changes must be re-measured at arming time; the table below is kept at its
+original date rather than silently rewritten.
 
 | Fact                          | Value                                                                                                            | Consequence                                                                  |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -95,7 +99,7 @@ step model only has two booleans to say so. The honest fix is probably a third s
 > So the third state this section proposed is not needed: the status field IS the third state, and
 > the two booleans only say "closed" and "not running".
 >
-> This resolves the disagreement in the direction of the history path, which means the 124 rows do
+> This resolves the disagreement in the direction of the history path, which means the cancelled rows do
 > change rendering — from a grey empty circle to a filled `danger` marker. That is the intended
 > outcome: a cancelled practice reading as "neither done nor active" was the less honest of the two.
 > Both paths now compute the pair in `_step_flags()`, and

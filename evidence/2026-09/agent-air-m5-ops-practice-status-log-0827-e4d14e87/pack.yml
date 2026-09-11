@@ -12,8 +12,10 @@ diff:
     New table + trigger, APPLIED TO PRODUCTION BY THE MERGE — `fly.toml:15` runs `migrate apply-all`
     as the release_command, so there is no operator step in between. Reader changes: a non-Postgres
     exception now PROPAGATES where it was swallowed; both degraded paths log; and `cancelled` becomes
-    `completed=true` on BOTH paths per the 2026-09-11 ruling, which changes how 124 of 893 real
+    `completed=true` on BOTH paths per the 2026-09-11 ruling, which changes how 137 of 1011 real
     client-visible timelines render — on the fallback path too, i.e. from the first request.
+    (137/1011 measured on prod 2026-09-11; the 124/893 elsewhere in this pack is the 2026-08-27
+    snapshot and is kept as the dated measurement it was.)
 receipts:
   - claim: "practice_status_log DOES NOT EXIST in prod, while four surfaces reference it"
     cmd: "scripts/pg.sh -c 'SELECT count(*) FROM practice_status_log' -> ERROR relation does not exist; then information_schema.columns for that table -> 0 rows; then `git grep -ln practice_status_log origin/main` -> 6 files (router, its test, portal.types.ts, schemas/process.ts, a schemas test, a 2026-03-30 plan)"
@@ -206,9 +208,11 @@ dissent:
       recreates only the secondary entry.
     status: CONFIRMED
     resolution: >-
-      The two cited lines were re-read this turn and say exactly what the objection claims. NOT
-      FIXED HERE, and deliberately: this is a defect of the migration RUNNER, not of 310, and it
-      would affect every migration in the tree. Curing it inside a migration file would be the wrong
+      SUPERSEDED 2026-09-11: this resolution said "the two cited lines were re-read this turn and
+      say exactly what the objection claims". They no longer do — `rollback_migration`
+      (migration_manager.py:318-404) deletes from BOTH ledgers and `_is_applied` sits at
+      migration_base.py:644-648, not :365. The runner defect was FIXED on main, so 310's rollback
+      needs no hand-patch. The objection was true when raised and is now moot. Curing it inside a migration file would be the wrong
       layer and a far larger blast radius than this PR's concern. Reported as a separate finding;
       310's own rollback statements are executable and correctly ordered. An independent seat was
       asked to establish the precise CONDITION under which the two ledgers actually meet (both

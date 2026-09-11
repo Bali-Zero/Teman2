@@ -77,8 +77,9 @@ consumer_map:
   - "migration 075's `trg_practice_changed` — a SECOND trigger on the same column. Both fire; they
     are independent (pg_notify vs INSERT) and neither reads the other's effect."
 risks:
-  - "310 IS NOT APPLIED TO PROD by this diff, so the tracker keeps taking its degraded path until an
-    operator applies it. The difference from today is only that the path now announces itself."
+  - "CORRECTED 2026-09-11: this risk read '310 IS NOT APPLIED TO PROD by this diff, so the tracker
+    keeps taking its degraded path until an operator applies it.' FALSE — `fly.toml:15` runs
+    `migrate apply-all` as the release_command, so the merge applies 310. There is no operator step."
   - "The prod/test schema divergence above is DISCLOSED, not closed. In particular the NULL-status
     arm of the trigger is exercised only where the live column admits NULL — on the migrated test
     database that arm asserts the constraint instead, so CI does not prove the prod-shaped path."
