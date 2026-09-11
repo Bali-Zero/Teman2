@@ -3,8 +3,8 @@
   "mission": "SHWEB-20260911",
   "window": "W1-SH-TECH",
   "colour": "BLUE",
-  "state": "CANDIDATO (PR #6243); head frozen before POST refuter round 2",
-  "frozenAt": "2026-09-11T11:10:00Z",
+  "state": "CANDIDATO (PR #6243); head refrozen after the POST refuter round-2 rework, before round 3",
+  "frozenAt": "2026-09-11T11:10:00Z (lock contents frozen before BUILD; head freezes are listed in headFreezes)",
   "frozenBy": "Dux Opus 5 xhigh, M5 Air-M5, Claude session 49aaaada-dcb1-4b4b-92d2-33af01e2f4f8 (peer name nuzantara-8a)",
   "baseSha": "ea50eb262f9ed96ce070cb407b55202002b0dae8",
   "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911",
@@ -96,7 +96,7 @@
     "planUrlFragment": "#p=",
     "priceSource": "PricingTool via resolveSecondHomePriceKey(); absent price is never zero",
     "verdict": "bands strong_fit | likely_fit | edge_case | not_eligible, never numeric scores",
-    "exports": "FULL_ONLY keeps legacy behaviour for external callers; ARTICLES_ONLY regenerates EN, ID and freshness without KBLI",
+    "exports": "FULL_ONLY alone keeps legacy behaviour for external callers; ARTICLES_ONLY regenerates EN, ID and freshness without KBLI and wins when both are set (D5)",
     "consumers": "W3 inherits generator and build only after W1 is INTEGRATA; WEB consumes only the Studio URL"
   },
   "contracts": [
@@ -186,6 +186,7 @@
     "DELTA D2 only: .agents/skills/secondhome/SKILL.md may differ from its patch post-image only by Prettier whitespace padding on the one table row the patch edits (`git diff -w` empty)",
     "DELTA D3 only: research/secondhome/2026-09-11-f7-reverification.md = patch post-image with a YAML frontmatter prepended and a `## Adversarial review` section appended; 0 body lines removed (adversarial-review-gate)",
     "DELTA D4 only: .secrets.baseline differs from base by added entries for this pack's contract-lock.json alone, every one is_secret false, 0 lines removed (Detect Secrets check)",
+    "DELTA D5 only: apps/mouth/scripts/generate-llms-full.ts differs from its patch post-image only by the FULL_ONLY guard (ARTICLES_ONLY declared first, FULL_ONLY = LLMS_GENERATE_FULL_ONLY === '1' && !ARTICLES_ONLY, two comment lines); apps/mouth/src/lib/llms-article-exports.test.ts is the D5 rewrite (POST refuter round 2 F3/F4)",
     "package-lock.json sha256 unchanged (0952ade1…)",
     "research/secondhome/e33-fact-registry.json sha256 unchanged (c056bb86…)",
     "types.ts, plan-codec.ts, pricing-key.ts, rules.ts sha256 unchanged",
@@ -274,6 +275,26 @@
       "F2 BLOCKER (no exact build or preview browser before POST review)": "ACCEPTED: Vercel preview READY on d5e267c735 with build-log lines and a 5-scenario browser walk (preview-verification.md, preview-browser-out.json); later commits touch only evidence/** and .secrets.baseline",
       "F3 MAJOR (verified claims without durable logs)": "ACCEPTED: local-proofs.txt with commands, product tree hashes and real exit codes (pytest 0, mutant 1, tsc 0, eslint 0, diff --check 0); root cause found while curing: `.gitignore:126 *.log` had kept every proof log out of git, so they now ship as .txt (local-proofs.txt, vitest-targeted.txt, negative-old-build-flag.txt, npm-audit-gate.txt)",
       "F4 MINOR (test names: 'production path', no WAIVE == {} pin)": "REBUTTED: a second rename is a fix-of-a-fix (Builder Contract 1, depth 1; imperator concurs); 'production path' names the class of an unvetted non-dev node, 'no standing waiver' is scoped to the retired advisories; the emptiness pin was already rebutted as policy (Kimi F5)"
+    }
+  },
+  "headFreezes": [
+    "commit a3e1ee39bd frozen 2026-09-11T13:10Z for POST refuter round 2 (REWORK 13:22Z)",
+    "the evidence-only commit that adds this line, child of commit 40646c54be (D5), refrozen 2026-09-11 about 13:55Z for POST refuter round 3 and the gate; its SHA is the PR head named in the round-3 prompt and in the imperator's gate request"
+  ],
+  "postRefuterRound2": {
+    "seat": "gpt-5.6-sol xhigh, codex-cli 0.154.0, --sandbox read-only",
+    "session": "01a09098-31c6-78a3-a9d6-300e14627ba1",
+    "window": "2026-09-11T13:11:26Z..13:22:24Z",
+    "reviewedHead": "commit a3e1ee39bd",
+    "verdict": "REWORK",
+    "file": "reviews/post-refuter-codex-sol-round2.txt",
+    "dispositions": {
+      "F1 BLOCKER (diff --check: blank line at EOF in two proof files)": "ACCEPTED: local-proofs.txt stripped, negative-old-build-flag.txt regenerated; `git diff --cached --check ea50eb262f` exit 0 on the refrozen tree (rework-round2-proofs.txt)",
+      "F2 MAJOR ({previewPrice} never rendered)": "ACCEPTED: property-route plans carrying deposit answers, toggled to deposit on the preview of 40646c54be, render E33 35.000.000 and E33F 14.000.000 IDR with cormorant and tabular-nums (preview-verification.md §Round 2, preview-browser-toggle-out.json)",
+      "F3 MAJOR (legacy FULL_ONLY=1 defeats ARTICLES_ONLY; test masks it)": "ACCEPTED as D5: ARTICLES_ONLY wins; the test runs inherited FULL_ONLY 0 and 1; guilt mutant M1 red. Context: project mouth has 44 Vercel env rows and none named LLMS_*",
+      "F4 MINOR (freshness order/limit and ID content unpinned)": "ACCEPTED in D5 (same test, same round): six canonical EN articles with distinct dates, exact ordered five entries, ID URL and body asserted on the ID export; mutants M2 (slice) and M3 (sort) red",
+      "F5 MINOR (stale frozenAt, evidence count, D4 parenthetical)": "ACCEPTED: headFreezes added, frozenAt annotated; brief size_exception recomputed from `git diff --numstat` at the refrozen head; D4 names the 37 hex digests and the one Base64 finding on the package path",
+      "UNVERIFIED (D2 bytes, Node 24 coverage run, Production env)": "NOTED: D2 stays attested by the recorded post-image sha only; the Node 24 coverage run is the PR's own CI on the refrozen head; Production env names listed above, promotion is proven by curl at SERVITA"
     }
   }
 }

@@ -33,4 +33,3 @@ exit=0
 ## 5. git diff --check ea50eb262f..HEAD
 $ git -C /Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911 diff --check ea50eb262f..HEAD
 exit=0
-

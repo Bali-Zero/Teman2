@@ -4,7 +4,7 @@ mandate_id: SHWEB-20260911/W1-SH-TECH
 colour: BLUE
 l_level: L2
 gate_class: opus
-state: CANDIDATO # PR #6243; PRE-review 11:30Z; POST refuter round 1 REWORK (process, no code defect) 11:50Z; round 2 on the frozen head
+state: CANDIDATO # PR #6243; PRE-review 11:30Z; POST refuter round 1 REWORK (process) 11:50Z; round 2 REWORK 13:22Z (EOF, toggle price unobserved, legacy flag); cured, head refrozen, round 3 ordered by the imperator
 host: Air-M5 (balizero)
 host_override: >-
   W1-studio-tech.md §1 names Mini; overridden by Zero's ruling M = ENTRAMBI (02-DECISIONI-ZERO.md sha
@@ -31,11 +31,11 @@ objective: >-
 scope:
   - .agents/skills/secondhome/SKILL.md
   - apps/mouth/package.json # build line only
-  - apps/mouth/scripts/generate-llms-full.ts
+  - apps/mouth/scripts/generate-llms-full.ts # patch + D5 guard
   - apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx # one style property
   - apps/mouth/src/app/visa/second-home/studio/components/ScenarioToggle.tsx # one style property
   - apps/mouth/src/lib/kbli-llms-corpus.test.ts # comments only
-  - apps/mouth/src/lib/llms-article-exports.test.ts # new
+  - apps/mouth/src/lib/llms-article-exports.test.ts # new; D5 cases
   - scripts/ci/npm_audit_gate.py
   - scripts/ci/test_npm_audit_gate.py
   - research/secondhome/2026-09-11-f7-reverification.md # new
@@ -59,9 +59,18 @@ constraints:
     section added to research/secondhome/2026-09-11-f7-reverification.md; body unchanged (42 added, 0 removed).
   - >-
     Declared delta D4 (found by the Detect Secrets check on PR #6243): .secrets.baseline gains the 38
-    detect-secrets entries of this pack's contract-lock.json marked is_secret false (public sha256 digests
-    of repo files and a public commit id), spliced textually with 0 lines removed; brief.yml's base_sha
-    line carries the repo's inline allowlist pragma.
+    detect-secrets entries of this pack's contract-lock.json marked is_secret false — 37 Hex High Entropy
+    (public sha256 digests of repo and package files, a public commit id) and 1 Base64 High Entropy on
+    line 13, the authority package's filesystem path — spliced textually with 0 lines removed; brief.yml's
+    base_sha line carries the repo's inline allowlist pragma.
+  - >-
+    Declared delta D5 (POST refuter round 2 F3/F4, ordered by the imperator 13:37Z): generate-llms-full.ts
+    declares ARTICLES_ONLY first and sets FULL_ONLY only when ARTICLES_ONLY is off (+ 2 comment lines), so a
+    legacy LLMS_GENERATE_FULL_ONLY=1 in the environment cannot stop the build before the ID export and
+    freshness; llms-article-exports.test.ts runs the real build flag with inherited FULL_ONLY 0 and 1, seeds
+    six canonical EN articles with distinct dates and pins the exact ordered five-entry freshness block and
+    the ID export's URL and body. Guilt mutations M1 (guard removed), M2 (slice removed), M3 (sort removed)
+    each turn it red (rework-round2-proofs.txt). No other file.
   - A frozen file in the diff is STOP plus a line to the imperator.
 acceptance:
   - text: >-
@@ -74,16 +83,19 @@ acceptance:
     status: verified # 19 passed; restored gray-matter waiver -> 1 failed on GHSA-5p4m (scratchpad mutant), 11:33Z
   - text: WHEN the build line is reverted to LLMS_GENERATE_FULL_ONLY=1, THEN llms-article-exports.test.ts SHALL fail on the stale ID export.
     probe: "vitest run src/lib/llms-article-exports.test.ts with the old flag -> red; new flag -> green"
-    status: verified # old flag -> 1 failed: expected 'stale ID export' to contain 'TITLE: Current ID' (negative-old-build-flag.txt); package.json restored byte-identical
+    status: verified # rerun 13:41Z after D5: old flag -> 2 failed (both inherited FULL_ONLY cases) (negative-old-build-flag.txt); package.json restored byte-identical
+  - text: WHEN LLMS_GENERATE_FULL_ONLY=1 is inherited while the build sets LLMS_GENERATE_ARTICLES_ONLY=1, THEN the generator SHALL still write the ID export and the freshness block (D5).
+    probe: "vitest run src/lib/llms-article-exports.test.ts (case inherited FULL_ONLY=1); mutant M1 without the guard -> red"
+    status: verified # cured 2 passed; M1 -> 1 failed (inherited FULL_ONLY=1); M2/M3 -> 2 failed; restored byte-identical (rework-round2-proofs.txt, 13:40Z)
   - text: WHEN the real npm audit JSON (--audit-level=high --omit=dev) runs through the gate, THEN none of the four retired ids SHALL appear and the three new highs SHALL stay reported (exit 1, advisory job).
     probe: "npm audit --audit-level=high --omit=dev --json | python3 scripts/ci/npm_audit_gate.py"
     status: verified # gate_rc=1: js-yaml GHSA-2883, mysql2 GHSA-3f6p/GHSA-rgwj, sharp GHSA-rgj7; 0 retired ids (npm-audit-gate.txt, 11:36Z)
   - text: WHEN the Second Home suite, export test and KBLI corpus test run on the new base, THEN all SHALL pass; tsc exit 0; eslint on touched TSX 0 errors; git diff --check clean; next build (npm run build) exit 0.
     probe: "cd apps/mouth && npx vitest run second-home secondhome llms-article-exports kbli-llms-corpus; npx tsc --noEmit; npm run build"
-    status: verified # vitest 31 files/552 (vitest-targeted.txt); pytest 19, tsc 0, eslint 0, diff --check 0 with real exit codes (local-proofs.txt); full npm run build READY on the Vercel preview of d5e267c735 (preview-verification.md)
+    status: verified # after D5: vitest 31 files/553, tsc 0 (rework-round2-proofs.txt; eslint ignores the generator and the test by config, 0 errors); pytest 19 and the TSX eslint 0 (local-proofs.txt); diff --check 0 on the staged refrozen tree (rework-round2-proofs.txt); full npm run build READY on the Vercel preview of 40646c54be (preview-verification.md §Round 2)
   - text: WHEN a browser walks the Studio (E33/E33E/E33F, onshore/offshore) on the PR preview, THEN the real price elements SHALL compute font-family Cormorant and font-variant-numeric tabular-nums, prices SHALL equal the resolver, bands/custody/save/share/print unchanged.
     probe: "Playwright on the Vercel preview; getComputedStyle on the real price nodes; print emulation"
-    status: verified # preview d5e267c735: E33 35.000.000 / E33E 45.000.000 / E33F 14.000.000 and 16.000.000 IDR, property no price; cormorant + tabular-nums on screen and print; custody visible; #p= round-trip (preview-verification.md)
+    status: verified # preview d5e267c735: StudioApp {price} E33 35.000.000 / E33E 45.000.000 / E33F 14.000.000 and 16.000.000 IDR, property no price; cormorant + tabular-nums on screen and print; custody visible; #p= round-trip. Preview 40646c54be: ScenarioToggle {previewPrice} property->deposit E33 35.000.000 and E33F 14.000.000 IDR, cormorant + tabular-nums (preview-verification.md §Round 2)
   - text: WHEN the merged commit is promoted by Vercel, THEN balizero.com/llms-id.txt and /llms-full.txt SHALL match the release sources except the generation date, and /llms.txt freshness SHALL list each URL once.
     probe: "curl on production after INTEGRATA; compare to generator output from the promoted sha"
     status: pending
@@ -95,7 +107,7 @@ consumer_map:
 adversarial_review:
   pre_review: "Codex Sol (gpt-5.6-sol, codex-cli 0.154.0 at /Users/balizero/.local/bin/codex), codex exec --sandbox read-only, on brief + contract-lock + patch — cross-family vs the Dux (Claude)"
   second_reader: "Kimi K3 (kimi -m kimi-code/k3 -p) on contract-lock.json and the historical fixture in test_npm_audit_gate.py — cross-family vs the patch author (Astra, Codex family)"
-  refuter_post: "Codex Sol on the PR HEAD diff"
+  refuter_post: "Codex Sol on the PR HEAD diff — round 1 REWORK on b87db24a30, round 2 REWORK on a3e1ee39bd (reviews/post-refuter-codex-sol-round2.txt), round 3 on the refrozen head"
   probation: "deepseek-v4-pro never counts toward quorum"
   gate: "fresh headless Opus 5 xhigh session outside the chain, commissioned and posted by the imperator (harness/fable-gate) on the PR HEAD"
   family_note: "Patch author = Codex family (Astra); Dux/adopter = Claude; Kimi K3 is the family distinct from both. A Claude Opus 5 review of the source package already exists (F7 report) — that session is in the chain and cannot be the gate."
@@ -105,13 +117,13 @@ team:
   imperator: "Fable 5.1, M5, session 116b2671-9748-485b-ade4-db76a770af08 (checkpoints via fleet mailbox)"
 size_exception: >-
   The PR exceeds the ~400 net-line contract by construction, and every block is named: product +
-  research +426/-56 (the adopted patch's 10 files +384/-56 and D1/D3 +42), evidence +608 (brief,
-  contract-lock, PRE-review record, local proof logs, the v5 FINAL spec pinned byte-identical) and
+  research +460/-57 (the adopted patch's 10 files, D1/D3 and D5), evidence +1028 (brief,
+  contract-lock, review records, local proof logs, preview browser output, the v5 FINAL spec pinned) and
   .secrets.baseline +306 (D4 audit entries, is_secret false). One concern, one adoption; splitting
   the evidence or the baseline audit into another PR would leave this PR's own checks red.
 appetite:
   wall_clock_hours: 3
-  adversarial_rounds: 2
+  adversarial_rounds: 2 # exceeded: round 3 ordered by the imperator after the round-2 rework (13:37Z)
 budget_enforcement: "scripts/mandate_budget.py absent on base ea50eb262f: ledger + imperator mailbox checkpoints only, no invented flag"
 debt_out_of_scope:
   - "3 new high npm advisories (js-yaml 3.15.2, sharp 0.35.4, mysql2 via prisma) stay visible and unwaived; lockfile owner to be named in a separate spec."

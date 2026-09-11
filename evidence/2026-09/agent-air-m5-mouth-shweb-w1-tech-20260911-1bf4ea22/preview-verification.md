@@ -46,3 +46,28 @@ Every commit after `d5e267c735` on this branch touches only `evidence/**` and `.
   (production baseline 2026-09-11T11:12Z listed two URLs twice).
 - `/llms-id.txt`: `# Last updated: 2026-09-11`, **800** `TITLE:` records
   (production baseline: `# Last updated: 2026-08-11`, 785 records).
+
+## Round 2 — preview of the cured product tree (POST refuter round 2, F2 and F3)
+
+Measured 2026-09-11T13:48Z by the Dux directly (Playwright from the worktree's `node_modules`, Vercel
+share cookie, token never written). Raw output in `preview-browser-toggle-out.json`.
+
+- Deployment `dpl_Dxv7wxRwHBVgLJET6V1vjWA7Tawk` (`mouth-41fxy12oi-nuzantara-2026.vercel.app`), state
+  **READY** (GitHub check `Vercel` pass at 13:47Z), commit `40646c54becfb09568195b340862d098806c0a38`, the
+  commit that carries the FULL_ONLY guard. Commits after it touch only `evidence/**`.
+- `{previewPrice}` in ScenarioToggle, reached by loading a property-route plan that also carries the
+  deposit answers and opening "What if I took the other route?". The main result stays `edge_case` with no
+  price. The deposit preview renders a priced product:
+
+| #   | Plan (`#p=`)                            | Preview product | Preview price  | fontFamily (computed) | fontVariantNumeric | Result |
+| --- | --------------------------------------- | --------------- | -------------- | --------------------- | ------------------ | ------ |
+| t1  | under 55, property + capital ready_130k | E33             | 35.000.000 IDR | cormorant stack       | tabular-nums       | PASS   |
+| t2  | 60+, property + income_only_3k, abroad  | E33F            | 14.000.000 IDR | cormorant stack       | tabular-nums       | PASS   |
+
+Both prices equal the main-result prices recorded above for the same products (S1, S3a).
+`document.fonts.check('32px cormorant')` → `true`.
+
+- Exports served by this deployment: `/llms-id.txt` http 200, `# Last updated: 2026-09-11`, 800 `TITLE:`
+  records; `/llms-full.txt` http 200, 2559 records; `/llms.txt` freshness 5 entries, 0 duplicated URLs.
+- F3 context: `vercel env ls` on project `mouth` lists 44 environment rows and none named `LLMS_*`, so no
+  deployed environment sets the legacy flag today. The guard ships anyway.
