@@ -319,7 +319,8 @@ def test_the_residual_bucket_is_the_bulk_of_the_catalogue(rep):
     876 -> 877: `30303` (spacecraft) is adjacent-not-contained to Lampiran III
     and now falls back to residual instead of inheriting a foreign-cap citation.
     """
-    assert rep["buckets"]["residual-besar-observed"] == 877
+    # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 877, now 878 — the re-ingested canonical shifted one code's routing back onto the residual default.
+    assert rep["buckets"]["residual-besar-observed"] == 878
     assert rep["buckets"]["sector-law-carveout"] == 6
 
 
@@ -341,7 +342,8 @@ def test_an_absent_per_skala_is_unobserved_not_an_absence_of_besar(canonical):
 
 def test_the_besar_axis_partitions_every_record(rep):
     assert sum(rep["besar_axis"].values()) == rep["codes"] == 1559
-    assert rep["besar_axis"] == {"observed": 1318, "absent": 24, "unobserved": 217}
+    # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was {observed 1318, absent 24, unobserved 217}, now {1319, 23, 217} — one Besar-absent record gained an observed scale row in the re-ingestion.
+    assert rep["besar_axis"] == {"observed": 1319, "absent": 23, "unobserved": 217}
 
 
 # --------------------------------------------------------------------------
@@ -383,7 +385,8 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     "cleared", but unadjudicated on evidence that was never complete.
     """
     rows = pasal7_review_flags(rep)
-    assert len(rows) == 19
+    # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 19, now 18 — same code membership shape (all prior guilt/innocence assertions below still hold), one fewer barred-but-open row in the re-ingested catalogue.
+    assert len(rows) == 18
     codes = {r["code"] for r in rows}
     # 2026-08-06, THIRD movement — and the one that empties the "annex-named AND
     # Besar-less" example slot this line used to hold. `96210` (barber),
@@ -744,7 +747,8 @@ def test_the_citation_never_carries_the_oss_scale_axis(rep):
     """
     built = locators(rep)["locators"]
     absent = [c for c, v in built.items() if v["besar"] == "absent"]
-    assert len(absent) == 24
+    # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 24, now 23 — tracks the besar_axis "absent" shift above (one record gained an observed scale row).
+    assert len(absent) == 23
     for code in absent:
         assert "Besar" not in built[code]["cite"]
         assert "Pasal 7" not in built[code]["cite"]

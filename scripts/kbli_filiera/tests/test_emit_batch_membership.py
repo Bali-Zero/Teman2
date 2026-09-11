@@ -113,10 +113,21 @@ def test_census_and_in_scope_on_real_canonical():
     #
     # Total population is invariant at 221 across all four lots (detach-only
     # cures never remove a record, only zero or shrink its per_skala).
+    # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): the re-ingestion
+    # (commit b6e252f7a2, "data(kbli): L2 re-ingestion ... v11.0-L2-oss-risk-20260911")
+    # replaces the lot-by-lot history above as the census's most recent mover.
+    # Three of the five Lot-10-era A-serving/pp28 members now carry an
+    # OSS-sourced `_l2_source` in the re-ingested canonical -- same shape as
+    # 20111/49213 above -- so `_classify()` returns None for them and they
+    # drop out of `members` entirely (excluded, not reclassified). Only
+    # 93114 and 93191 (the two Lot 10 partial_detach codes) remain
+    # A-serving/pp28; `A-empty/gap` is unchanged at 216 because the three
+    # departures were excluded outright rather than migrated to the gap
+    # bucket. Net: pp28 5-3=2, in_scope_total 5-3=2, total 221-3=218.
     records = _load_real()
     members = m.build_members(records)
     cen = m.census(members)
-    assert cen["A-serving/pp28"] == 5
+    assert cen["A-serving/pp28"] == 2
     # census() only inserts a reason_code key when >=1 member has it (plain
     # dict accumulation, no defaultdict) -- orphan has hit exactly zero since
     # Lot 6 (80190 was the last orphan, detached by Lot 6; #2843), so the key
@@ -124,8 +135,8 @@ def test_census_and_in_scope_on_real_canonical():
     # how main() already prints it (`cen.get(k, 0)`).
     assert cen.get("A-serving/orphan", 0) == 0
     assert cen["A-empty/gap"] == 216
-    assert cen["_in_scope_total"] == 5
-    assert cen["_total"] == 221
+    assert cen["_in_scope_total"] == 2
+    assert cen["_total"] == 218
     by = {x["kode_kbli_2025"]: x for x in members}
     # the two OSS-sourced cured codes are absent
     assert "20111" not in by and "49213" not in by

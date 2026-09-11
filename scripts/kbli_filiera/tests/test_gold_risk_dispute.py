@@ -247,9 +247,8 @@ class TestUniversalClaimDispute:
         # exactly what let this slip past the zero-overlap rule.
         entry = real_disputes["46100"]
         assert entry["kind"] == "universal_claim"
+        # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was {"Menengah Rendah", "Menengah Tinggi", "Rendah", "Tinggi"}, now {"Rendah", "Tinggi"} — the re-ingested record dropped the two "Menengah" tiers, but the guilt shape is unchanged: the universal "Rendah" claim still hides the record's "Tinggi" tier.
         assert set(entry["record"]) == {
-            "Menengah Rendah",
-            "Menengah Tinggi",
             "Rendah",
             "Tinggi",
         }
@@ -517,7 +516,8 @@ class TestRealCatalogue:
     def test_population_count(self, real_disputes):
         # Pinned so a future change to the guards is forced to explain a
         # membership shift here, not just in the artifact diff.
-        assert len(real_disputes) == 33
+        # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 33, now 35 — the re-ingested canonical surfaces two more record/gold contradictions.
+        assert len(real_disputes) == 35
 
 
 # ---------------------------------------------------------------------------
