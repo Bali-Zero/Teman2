@@ -1,0 +1,130 @@
+gear: 2
+task_id: s1-k3-k7-k8
+l_level: L1
+objective: >-
+  Close the last three deferred Kimi council findings from #6127, which are one concern:
+  scripts/queue_shepherd.py reported success while a failure was happening. K-3 — a
+  `gh pr merge --auto` re-arm WRITE that fails every tick ended rc=0 with a healthy
+  heartbeat and was retried silently forever. K-7 — a PR node missing `number`, or a
+  hand-edited red-state key, escaped as a bare KeyError/ValueError instead of reaching the
+  existing CANNOT-VERIFY path. K-8 — alerted_state was never garbage-collected.
+scope:
+  - scripts/queue_shepherd.py
+  - scripts/tests/test_queue_shepherd.py
+constraints:
+  - >-
+    Tests only and one module. No workflow, no plist, no ledger row in this PR; the two
+    PENDING-ARMS rows this discharges are filed separately, rebuilt on fresh origin/main
+    (a merge=union DIRTY on that file never self-clears).
+  - >-
+    K-3 reuses the EXISTING batched send_telegram/alerted_state mechanism rather than
+    adding a second alerting path.
+  - >-
+    The RuntimeError wraps are narrow — the named access only, never a blanket try/except
+    that would swallow real bugs and turn a correct re-arm into a CANNOT-VERIFY.
+  - >-
+    3.9.6 compatibility required (the fleet still runs it in places).
+  - >-
+    No paid per-token Anthropic endpoint, no secret printed, no client PII.
+acceptance:
+  - text: >-
+      Each of the three guards SHALL be load-bearing: neutering it in a throwaway copy of
+      queue_shepherd.py turns EXACTLY its own test(s) red and nothing else.
+    probe: guilt-mutation-in-throwaway-copy
+  - text: >-
+      The suite SHALL pass at 192 (169 before; 184 after round two, 192 after round three
+      added the four tests the third gate round demanded), and /usr/bin/python3 -m py_compile
+      (3.9.6) SHALL exit 0.
+    probe: pytest-and-py-compile
+  - text: >-
+      A tick that fails on red_state_gc SHALL report the REAL candidate count, never the
+      initial 0 that reads as a measurement.
+    probe: pytest-red-state-gc-candidates-test
+  - text: >-
+      rc=3 SHALL NOT raise a false alarm. CORRECTED after the gate: the earlier wording of
+      this probe said "the child's exit code is not consumed", and that is FALSE —
+      scripts/launchd_liveness_detector.py:424 reads LastExitStatus, and
+      com.nuzantara.queue-shepherd IS inside its OURS_RE glob, measured live among its 210
+      findings. The conclusion survives its broken premise: launchd itself ignores the exit
+      code (KeepAlive=false, StartInterval=600, no wrapper), and the detector maps a
+      non-zero exit to FAILING-HONESTLY (:442-449), which is NOT in ALARM_VERDICTS (:604).
+      No page fires. A conclusion resting on a false premise is the harder defect to catch,
+      because the answer still comes out right.
+    probe: read-the-plist-and-the-detector
+assumptions:
+  - assumption: >-
+      The three findings were still unfixed on origin/main.
+    status: verified
+    evidence: >-
+      Read on disk before implementing, not assumed. No "already fixed" case among the three.
+  - assumption: >-
+      Every guard is proven by its own mutation.
+    status: unverifiable-by-the-author # twice claimed verified, twice falsified by a gate
+    evidence: >-
+      This assumption was written after four mutations and the fresh Opus 5 gate then ran
+      SEVENTEEN and found THREE guards the suite could not see, all green under deletion:
+      the gc_rearm_fail_state CALL SITE (the function had a test, the wired step did not —
+      the earlier spalla finding surviving one level up), the alerted_state pop of the
+      rearm-write-fail dedup key on a SUCCESSFUL write (without it a second run of three
+      failures after a recovery is silent, which is the K-3 disease reintroduced by the
+      dedup cache meant to cure it), and gc_alerted_state's documented "an unparseable key
+      is KEPT, never silently dropped" invariant. All three now have a test and all three
+      mutations were re-run after it: 1 failed/186 each. The claim is true at THIS sha and
+      the four-mutation version of it was not — recorded rather than quietly overwritten,
+      because a brief that inherits an over-claim is worse than one that never claimed.
+      SECOND CORRECTION, after the second gate round: the corrected wording ALSO claimed
+      verified, and a second round found three MORE blind guards (report()'s per-key block,
+      its CORRUPT branch, and the C2 conflation itself). The status is now
+      unverifiable-by-the-author on principle rather than on a count: "no guard is blind" is
+      a claim about the ABSENCE of a blind spot, and an author cannot measure the absence of
+      something they failed to imagine. Only an adversary can, and only up to the mutations
+      it happened to run. THIRD ROUND: the count was stale the moment it was written, and the
+      third gate found three MORE blind mutations — all three inside the tests the second round
+      had just added, which is the same shape for the third time running: a cure closes a hole
+      and opens an adjacent one. One of them is worth naming, because reading could not have
+      caught it: the M27 test asserted that the CORRUPT line named REARM_FAIL_FILE, and passed
+      even when the code named the WRONG file, because the exception text interpolated into the
+      same line already carried the right path — an assertion satisfied by a substring from a
+      different source than the one it meant to check. At THIS sha: 37 mutations executed, 33
+      red, 0 blind, 1 dead (M25, provably unreachable: the dry-run `continue` precedes
+      rearm_pr). That is the true statement, and it is true of these 37 only.
+  - assumption: >-
+      K-3's alert path works end to end in production.
+    status: unverified
+    evidence: >-
+      It stays unexercised until a re-arm write actually FAILS three times in a row against
+      the live API, which has not happened since #6127 shipped. Covered by tests, not by
+      observation. Stated as a limit rather than claimed — the same distinction that made
+      the live-fire drill necessary for the write path at all.
+  - assumption: >-
+      The second state file this PR adds (REARM_FAIL_FILE) does not itself grow unbounded.
+    status: verified
+    evidence: >-
+      gc_rearm_fail_state ages entries on last_attempt_at like gc_budget_state. A spalla
+      review found it shipped UNTESTED — the fix for an unbounded-growth bug had introduced
+      a second un-proven GC — and the test added then covered only the FUNCTION, so removing
+      its call site still left the suite green. The wired step is now pinned end to end by
+      test_run_rearm_pass_actually_prunes_the_rearm_fail_file_B1 (aged entry absent, fresh
+      entry present, read back off disk after the pass).
+residuals:
+  - >-
+    com.nuzantara.queue-shepherd is deliberately NOT added to
+    launchd_liveness_detector.py's EXPECTED_NONZERO_LABELS (:527-532), even though rc=3 is
+    exactly the documented "non-zero as a reporting convention" this allowlist exists for.
+    The allowlist is keyed on the LABEL, not on the exit code, so adding it would also
+    re-label rc=1 (an uncaught crash) and rc=2 (CANNOT-VERIFY) as EXPECTED-NONZERO on the
+    same job — silencing two real failures to tidy one deliberate signal. The file's own
+    comment forbids exactly that ("a genuinely broken job must NOT be added here to silence
+    it"). Left as FAILING-HONESTLY, which raises no alarm and reads truthfully. Making the
+    allowlist exit-code-aware is a change to the detector, a different concern and a
+    different PR.
+
+consumer_map:
+  - >-
+    launchd on Pro runs scripts/queue_shepherd.py every 600s. The plist FILE is
+    com.nuzantara.queue-shepherd.10min.plist but its Label — the string launchctl knows and
+    the one launchd_liveness_detector.py matches on — is com.nuzantara.queue-shepherd, which
+    is why the residual below is stated against that name. Reading the filename as the label
+    is the same conflation the residual is about. It is the only consumer of the three guards.
+  - >-
+    scripts/tests/test_queue_shepherd.py runs in CI in this PR and is the shipped proof.

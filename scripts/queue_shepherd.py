@@ -130,6 +130,7 @@ Env overrides:
     QUEUE_SHEPHERD_REPO          default "Bali-Zero/Teman2"
     QUEUE_SHEPHERD_BUDGET_FILE   default ~/logs/queue-shepherd/rearm-budget.json
     QUEUE_SHEPHERD_ALERTED_FILE  default ~/logs/queue-shepherd/alerted-unknown.json
+    QUEUE_SHEPHERD_REARM_FAIL_FILE default ~/logs/queue-shepherd/rearm-write-failures.json
     QUEUE_SHEPHERD_LOG_FILE      default ~/logs/queue-shepherd.log
     TELEGRAM_OWNER_CHAT_ID       read at send time, never hardcoded in this file (per mandate —
                                  the CI-secret path is for GitHub Actions; a local organ reads
@@ -173,6 +174,12 @@ ALERTED_FILE = Path(
         os.path.expanduser("~/logs/queue-shepherd/alerted-unknown.json"),
     )
 )
+REARM_FAIL_FILE = Path(
+    os.environ.get(
+        "QUEUE_SHEPHERD_REARM_FAIL_FILE",
+        os.path.expanduser("~/logs/queue-shepherd/rearm-write-failures.json"),
+    )
+)
 UNCANCELLABLE_FILE = Path(
     os.environ.get(
         "QUEUE_SHEPHERD_UNCANCELLABLE_FILE",
@@ -210,6 +217,31 @@ UNCANCELLABLE_RETRY_COOLDOWN_HOURS = 24  # past this since quarantined_at, allow
 # repeats. No cap on history length (B3(a), Codex review 2026-09-11): the PR's full red history
 # is kept for as long as the PR stays open — see record_red / gc_red_state.
 RED_SAME_CAUSE_LIMIT = 3
+
+# K-3 (Kimi council finding, S1 2026-09-11): a persistently failing `gh pr merge --auto` re-arm
+# WRITE (rearm_pr returning False) used to end the tick exit 0 / heartbeat ok and be retried
+# silently every 10-minute tick forever — the organ reporting success while a failure was
+# happening underneath it. Three CONSECUTIVE write failures for the SAME (PR, head SHA) — never
+# cumulative, a successful write resets the counter to zero — raises the existing batched
+# Telegram (see run_rearm_pass's new_rearm_fail_keys block, same mechanism the MEDIUM fix built
+# for UNKNOWN PRs) and makes the tick's own outcome non-ok (see tick()). 3 mirrors
+# RED_SAME_CAUSE_LIMIT's own "three strikes" idiom for the same reason: one or two transient
+# write failures (a `gh` timeout, a momentary API blip) must never alert on their own.
+REARM_WRITE_FAIL_LIMIT = 3
+
+# C2 (gate on #6175): the single spelling of the write-failure dedup prefix. It was written
+# as a literal at four sites, which is how report() came to count these keys as UNKNOWN ones.
+REARM_FAIL_ALERT_PREFIX = "rearm-write-fail:"
+
+
+def _is_rearm_fail_key(key: str) -> bool:
+    """The ONE predicate for "is this alerted_state key a write-failure dedup key". C4 (gate on
+    #6175, third round): report() asked it with `startswith(PREFIX)` and gc_alerted_state with
+    `split(":", 1)[0] == PREFIX.rstrip(":")`, and the two DIVERGE on the degenerate bare key
+    `"rearm-write-fail"` (no colon) — one read it as UNKNOWN, the other as write-fail. Only a
+    hand-edited file produces it, but "a write-failure key counted under UNKNOWN" is the exact
+    class C2 exists to close, so it must not survive in a second spelling."""
+    return key == REARM_FAIL_ALERT_PREFIX.rstrip(":") or key.startswith(REARM_FAIL_ALERT_PREFIX)
 
 _UNCANCELLABLE_ERROR_LABELS = {
     "uncancellable_409": "both cancel and force-cancel endpoints answered HTTP 409 (not queued yet)",
@@ -462,6 +494,68 @@ def gc_budget_state(budget_state: dict[str, Any], now: _dt.datetime) -> dict[str
     return kept
 
 
+def count_consecutive_rearm_write_failures(
+    rearm_fail_state: dict[str, Any], pr_number: int, head_sha: str
+) -> int:
+    """Pure: how many CONSECUTIVE `rearm_pr` WRITE failures are currently recorded for this exact
+    (PR, head SHA) — see REARM_WRITE_FAIL_LIMIT's module-level comment for the K-3 finding this
+    responds to. Keyed exactly like budget_state ("<number>:<sha>") — a head-SHA change is a
+    fresh key with zero prior failures by construction, the same "head moved = resets" idiom
+    count_recent_infra_rearms already uses."""
+    key = f"{pr_number}:{head_sha}"
+    entry = rearm_fail_state.get(key) or {}
+    return int(entry.get("consecutive_failures", 0) or 0)
+
+
+def record_rearm_write_failure(
+    rearm_fail_state: dict[str, Any], pr_number: int, head_sha: str, now: _dt.datetime
+) -> dict[str, Any]:
+    """Pure: returns a NEW rearm_fail_state (never mutates the input) with one more CONSECUTIVE
+    `rearm_pr` WRITE failure recorded against (pr_number, head_sha). Mirrors record_infra_rearm's
+    deep-copy-and-return contract — callers own persistence."""
+    key = f"{pr_number}:{head_sha}"
+    new_state = json.loads(json.dumps(rearm_fail_state))  # cheap deep copy, JSON-safe by contract
+    entry = new_state.setdefault(key, {"consecutive_failures": 0})
+    entry["consecutive_failures"] = int(entry.get("consecutive_failures", 0) or 0) + 1
+    entry["pr_number"] = pr_number
+    entry["head_sha"] = head_sha
+    entry["last_attempt_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return new_state
+
+
+def record_rearm_write_success(
+    rearm_fail_state: dict[str, Any], pr_number: int, head_sha: str
+) -> dict[str, Any]:
+    """Pure: a SUCCESSFUL `rearm_pr` write resets the consecutive-failure counter for
+    (pr_number, head_sha) back to zero — K-3's other innocence case: a write that eventually
+    succeeds must never leave a stale failure count behind to poison a LATER, unrelated run of
+    failures on the same (PR, head SHA). A no-op (returns the SAME object, not a copy) when the
+    key was never tracked — mirrors clear_cancel_entry's own no-op-when-absent convention, the
+    common case since most writes succeed on the first try."""
+    key = f"{pr_number}:{head_sha}"
+    if key not in rearm_fail_state:
+        return rearm_fail_state
+    new_state = json.loads(json.dumps(rearm_fail_state))
+    new_state.pop(key, None)
+    return new_state
+
+
+def gc_rearm_fail_state(rearm_fail_state: dict[str, Any], now: _dt.datetime) -> dict[str, Any]:
+    """Pure: drop (pr, sha) entries whose last recorded write-failure attempt is older than
+    BUDGET_GC_DAYS — mirrors gc_budget_state's own age-based bound (this file shares its
+    (pr, head_sha) key shape), so REARM_FAIL_FILE never grows unbounded across the life of the
+    repo. A successful write already drops its own entry immediately (record_rearm_write_success)
+    — this GC only catches keys that stalled mid-failure and then simply stopped recurring (head
+    moved on, PR closed without ever succeeding again)."""
+    cutoff = now - _dt.timedelta(days=BUDGET_GC_DAYS)
+    kept: dict[str, Any] = {}
+    for key, entry in rearm_fail_state.items():
+        ts = _parse_iso(entry.get("last_attempt_at"))
+        if ts is not None and ts >= cutoff:
+            kept[key] = entry
+    return kept
+
+
 def record_red(
     red_state: dict[str, Any], pr_number: int, removed_at: str, cause: str | None, head_sha: str
 ) -> dict[str, Any]:
@@ -509,8 +603,52 @@ def gc_red_state(red_state: dict[str, Any], open_pr_numbers: set[int]) -> dict[s
     set. Suspension is sticky until the PR is no longer open — no time-based unsuspend — so the
     ONLY thing that ever clears an entry is the PR itself closing/merging. Caller must only call
     this after a SUCCESSFUL fetch_open_prs read (a partial/failed set would wrongly GC every
-    entry as "not open")."""
-    return {key: entry for key, entry in red_state.items() if int(key) in open_pr_numbers}
+    entry as "not open").
+
+    K-7 (Kimi council finding, S1 2026-09-11): a hand-edited (or otherwise garbage) red-file key
+    that is not a bare PR-number string used to raise a bare ValueError here, out of any
+    try/except in run_rearm_pass — a malformed-but-JSON state file crashed the whole tick as a
+    raw, uncaught exception (loud, no Telegram) instead of reaching the existing CANNOT-VERIFY
+    path. Wrapped as RuntimeError so the caller's `except RuntimeError` catches it like every
+    other fail-closed read in this module."""
+    kept: dict[str, Any] = {}
+    for key, entry in red_state.items():
+        try:
+            pr_number = int(key)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(
+                f"gc_red_state: malformed PR-number key {key!r} in red state: {exc}"
+            ) from exc
+        if pr_number in open_pr_numbers:
+            kept[key] = entry
+    return kept
+
+
+def gc_alerted_state(alerted_state: dict[str, Any], open_pr_numbers: set[int]) -> dict[str, Any]:
+    """Pure: drop alerted-file entries (keyed "<pr_number>:<head_sha>", or "rearm-write-fail:
+    <pr_number>:<head_sha>" for the K-3 dedup entries below) whose PR number is no longer in THIS
+    TICK's examined open-PR set — K-8 (Kimi council finding, S1 2026-09-11), mirrors gc_red_state
+    exactly. Before this, a PR's alert-dedup key lived in ALERTED_FILE forever even after the PR
+    closed/merged, growing the file unbounded across the life of the repo (gc_red_state already
+    had this GC; alerted_state never did).
+
+    A key without a parseable leading PR number is KEPT rather than dropped (never silently
+    destroyed) — unlike gc_red_state, this file's entries are a dedup cache, not the suspension
+    ledger the Builder Contract §1 count depends on, so the safe default here is "do nothing",
+    never "raise and CANNOT-VERIFY the whole tick" over a cosmetic dedup key."""
+    kept: dict[str, Any] = {}
+    for key, value in alerted_state.items():
+        prefix = key.split(":", 1)[0]
+        if _is_rearm_fail_key(key):  # C4: one predicate, shared with report()
+            prefix = key.split(":", 2)[1] if key.count(":") >= 2 else ""
+        try:
+            pr_number = int(prefix)
+        except ValueError:
+            kept[key] = value  # unparseable key — never silently drop, keep as-is
+            continue
+        if pr_number in open_pr_numbers:
+            kept[key] = value
+    return kept
 
 
 def gc_uncancellable_state(
@@ -765,6 +903,18 @@ def _pr_has_fable_gate_status(node: dict[str, Any]) -> bool:
 
 
 def _normalize_rearm_pr(node: dict[str, Any]) -> dict[str, Any]:
+    # K-7 (Kimi council finding, S1 2026-09-11): a PR node missing `number` (malformed-but-JSON
+    # GraphQL data) used to raise a bare KeyError here, out of any try/except in fetch_open_prs —
+    # a real live-shape read that reaches this function escaped as a raw exception (loud, no
+    # Telegram) instead of reaching the existing CANNOT-VERIFY path. Wrapped as RuntimeError so
+    # run_rearm_pass's `except RuntimeError` around fetch_open_prs(REPO) catches it exactly like
+    # any other failed candidate-page read.
+    try:
+        number = node["number"]
+    except (KeyError, TypeError) as exc:
+        raise RuntimeError(
+            f"_normalize_rearm_pr: PR node missing 'number': {exc}: {str(node)[:200]}"
+        ) from exc
     commits = (node.get("commits") or {}).get("nodes") or []
     rollup_state = None
     if commits:
@@ -772,7 +922,7 @@ def _normalize_rearm_pr(node: dict[str, Any]) -> dict[str, Any]:
             "state"
         )
     return {
-        "number": node["number"],
+        "number": number,
         "is_draft": bool(node.get("isDraft")),
         "head_ref_name": node.get("headRefName") or "",
         "head_sha": node.get("headRefOid") or "",
@@ -1339,15 +1489,22 @@ def _enabled() -> bool:
 
 
 def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
-    """Returns {rearmed, examined, candidates, unknown, suspended, unverified, cannot_verify,
-    detail}. CANNOT-VERIFY is a tick OUTCOME the caller must surface, never silently folded into
-    a zero (S1, 2026-09-10 — see the module docstring's S1 section for the measured incident this
-    responds to). `cannot_verify` is None on a clean
-    read, else "rearm_state" (budget/alerted state file corrupt) or "rearm_candidates" (the gh
-    candidate-PR fetch failed after its one retry). `detail` carries the first 300 chars of the
-    triggering exception, for tick()'s heartbeat/alert — not part of the spec-named fields, purely
-    a passthrough. `unverified` counts candidates whose OWN per-PR timeline read failed (skipped
-    that PR, not the whole tick).
+    """Returns {rearmed, examined, candidates, unknown, suspended, unverified, rearm_write_failed,
+    cannot_verify, detail}. CANNOT-VERIFY is a tick OUTCOME the caller must surface, never silently
+    folded into a zero (S1, 2026-09-10 — see the module docstring's S1 section for the measured
+    incident this responds to). `cannot_verify` is None on a clean read, else "rearm_state"
+    (budget/alerted/red/rearm-fail state file corrupt), "rearm_candidates" (the gh candidate-PR
+    fetch failed after its one retry), "red_state_gc" (K-7: a hand-edited red-file key could not
+    be parsed as a PR number), or "rearm_pr_reads" (a PER-PR timeline or infra-correlation read
+    failed after the list read had already succeeded). The last one is the reason tick() at the
+    log line below branches on the SET ("rearm_candidates", "rearm_state") rather than on
+    cannot_verify being truthy: only those two leave examined/candidates unknowable.
+    `detail` carries the first 300 chars of the triggering exception, for
+    tick()'s heartbeat/alert — not part of the spec-named fields, purely a passthrough. `unverified`
+    counts candidates whose OWN per-PR timeline read failed (skipped that PR, not the whole tick).
+    `rearm_write_failed` (K-3) counts candidates whose `rearm_pr` WRITE has now failed
+    REARM_WRITE_FAIL_LIMIT+ CONSECUTIVE times — a non-zero value here is what makes tick() report
+    the tick's own outcome as NOT ok, even though no CANNOT-VERIFY read failure occurred.
 
     Fail-closed on state corruption (refuter round, agy pass, 2026-08-27): a torn/corrupt budget
     file must NEVER be read as "no re-arms recorded yet" — that silently grants a fresh
@@ -1361,24 +1518,27 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
         "unknown": 0,
         "suspended": 0,
         "unverified": 0,
+        "rearm_write_failed": 0,
         "cannot_verify": None,
         "detail": None,
     }
     try:
-        # Letter G (S1, 2026-09-10): dry-run READS every state file — budget/alerted/red — same
-        # as a live tick; only the WRITE at the end of this pass is skipped for dry_run. Before
-        # this fix, dry-run substituted {} here, so a dry-run tick's rearm decisions (INFRA
+        # Letter G (S1, 2026-09-10): dry-run READS every state file — budget/alerted/red/rearm-fail
+        # — same as a live tick; only the WRITE at the end of this pass is skipped for dry_run.
+        # Before this fix, dry-run substituted {} here, so a dry-run tick's rearm decisions (INFRA
         # budget, alerted-dedup, same-cause suspension) never matched what the SAME tick would
         # decide live — a dry-run's whole purpose is to preview the live decision.
         budget_state = _load_json(BUDGET_FILE)
         alerted_state = _load_json(ALERTED_FILE)
         red_state = _load_json(RED_FILE)
+        rearm_fail_state = _load_json(REARM_FAIL_FILE)  # K-3
     except RuntimeError as exc:
-        logger.error("CANNOT-VERIFY rearm/alert/red state: %s", exc)
+        logger.error("CANNOT-VERIFY rearm/alert/red/rearm-fail state: %s", exc)
         result["cannot_verify"] = "rearm_state"
         result["detail"] = str(exc)[:300]
         return result
     budget_state = gc_budget_state(budget_state, now)
+    rearm_fail_state = gc_rearm_fail_state(rearm_fail_state, now)  # K-3
 
     try:
         all_prs = fetch_open_prs(REPO)
@@ -1389,16 +1549,32 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
         return result
     examined = len(all_prs)
     unknown = sum(1 for pr in all_prs if pr.get("merge_state_status") == "UNKNOWN")
-    open_pr_numbers = {pr["number"] for pr in all_prs}
-    red_state = gc_red_state(red_state, open_pr_numbers)  # only after a successful read
-    candidates = [pr for pr in all_prs if is_rearm_candidate(pr)]
     result["examined"] = examined
     result["unknown"] = unknown
+    open_pr_numbers = {pr["number"] for pr in all_prs}
+    # Computed BEFORE the GC step below, not after: a `red_state_gc` CANNOT-VERIFY returns early,
+    # and with the filter left downstream the tick's own log printed `candidates=0` — the initial
+    # value, indistinguishable from a real zero. An organ whose failure log lies about how many
+    # PRs were waiting is the exact defect K-3/K-7/K-8 exist to remove (spalla review, 2026-09-11).
+    candidates = [pr for pr in all_prs if is_rearm_candidate(pr)]
     result["candidates"] = len(candidates)
-
+    try:
+        red_state = gc_red_state(red_state, open_pr_numbers)  # only after a successful read
+        alerted_state = gc_alerted_state(alerted_state, open_pr_numbers)  # K-8
+    except RuntimeError as exc:
+        # K-7: gc_red_state now raises RuntimeError (not a bare ValueError) on a hand-edited/
+        # garbage red-file key — caught here so it reaches CANNOT-VERIFY instead of crashing the
+        # tick as an uncaught exception. examined/unknown are already real numbers above (the
+        # fetch itself succeeded; only this GC step failed), so they are NOT masked to "-".
+        logger.error("CANNOT-VERIFY red/alerted state GC: %s", exc)
+        result["cannot_verify"] = "red_state_gc"
+        result["detail"] = str(exc)[:300]
+        return result
     rearmed = 0
     unverified = 0
     new_unknown_keys: list[str] = []  # collected, sent as ONE alert after the loop (MEDIUM fix)
+    rearm_write_failed_keys: list[str] = []  # K-3: every (pr,sha) AT/PAST the threshold this tick
+    new_rearm_fail_keys: list[str] = []  # K-3: subset of the above not yet alerted — batched below
     for pr in candidates:
         number = pr["number"]
         head_sha = pr["head_sha"]
@@ -1479,7 +1655,25 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
         if rearm_pr(REPO, number):
             budget_state = record_infra_rearm(budget_state, number, head_sha, now)
             alerted_state.pop(alert_key, None)  # a live re-arm supersedes any stale alert
+            # K-3 innocence: a SUCCESSFUL write resets the consecutive-failure counter to zero,
+            # and clears any stale write-failure alert dedup for this (pr, head sha).
+            rearm_fail_state = record_rearm_write_success(rearm_fail_state, number, head_sha)
+            alerted_state.pop(f"{REARM_FAIL_ALERT_PREFIX}{alert_key}", None)
             rearmed += 1
+        else:
+            # K-3 (Kimi council finding, S1 2026-09-11): the WRITE itself failed non-zero. Before
+            # this, a persistently failing `gh pr merge --auto` ended the tick exit 0 / heartbeat
+            # ok and was retried silently every 10-minute tick forever — the organ reporting
+            # success while a failure was happening underneath it. A single transient failure
+            # must NOT alert (innocence case); only REARM_WRITE_FAIL_LIMIT CONSECUTIVE failures
+            # for the SAME (pr, head sha) do.
+            rearm_fail_state = record_rearm_write_failure(rearm_fail_state, number, head_sha, now)
+            consecutive = count_consecutive_rearm_write_failures(rearm_fail_state, number, head_sha)
+            if consecutive >= REARM_WRITE_FAIL_LIMIT:
+                rearm_write_failed_keys.append(alert_key)  # counts toward "tick NOT ok" every tick
+                fail_alert_key = f"{REARM_FAIL_ALERT_PREFIX}{alert_key}"
+                if not alerted_state.get(fail_alert_key):
+                    new_rearm_fail_keys.append(fail_alert_key)  # batched below, deduped separately
 
     if new_unknown_keys and not dry_run:
         # MEDIUM (Codex review, 2026-09-11): ONE batched alert per tick listing every newly-
@@ -1497,12 +1691,32 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
             for k in sorted_keys:
                 alerted_state[k] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    if new_rearm_fail_keys and not dry_run:
+        # K-3: reuse the EXACT batched-Telegram mechanism the MEDIUM fix above built for UNKNOWN
+        # PRs — one `send_telegram` call per tick, deduped via the SAME alerted_state file (never
+        # a second alerting mechanism), listing every (PR, head sha) whose re-arm WRITE has now
+        # failed REARM_WRITE_FAIL_LIMIT+ consecutive times.
+        sorted_fail_keys = sorted(new_rearm_fail_keys)
+        sent = send_telegram(
+            f"re-arm WRITE (`gh pr merge --auto`) has failed {REARM_WRITE_FAIL_LIMIT}+ "
+            "consecutive times, silently (tick would otherwise read exit 0), for:\n"
+            + "\n".join(f"  PR {k[len(REARM_FAIL_ALERT_PREFIX):]}" for k in sorted_fail_keys),
+            dedup_key="queue-shepherd-rearm-write-fail-" + "+".join(sorted_fail_keys),
+        )
+        if sent:
+            for k in sorted_fail_keys:
+                alerted_state[k] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     result["rearmed"] = rearmed
     result["unverified"] = unverified
+    # K-3: NOT gated on whether a NEW alert was sent this tick (that part is deduped above) — the
+    # tick's own "not ok" signal must persist every tick the write keeps failing, not just once.
+    result["rearm_write_failed"] = len(rearm_write_failed_keys)
     if not dry_run:
         _save_json(BUDGET_FILE, budget_state)
         _save_json(ALERTED_FILE, alerted_state)
         _save_json(RED_FILE, red_state)
+        _save_json(REARM_FAIL_FILE, rearm_fail_state)
     return result
 
 
@@ -1705,6 +1919,36 @@ def tick(dry_run: bool) -> int:
             )
         return 2
 
+    rearm_write_failed = rearm_result.get("rearm_write_failed", 0)
+    if rearm_write_failed:
+        # K-3 (Kimi council finding, S1 2026-09-11): the alert already fired inside
+        # run_rearm_pass (batched, deduped via alerted_state) — this branch only makes the
+        # TICK's own outcome match reality. Before this, a persistently failing re-arm WRITE
+        # ended the tick exit 0 / heartbeat ok, exactly the blind spot K-3 named: the organ
+        # reporting success while a failure was happening underneath it. No second Telegram send
+        # here — "raise the existing batched Telegram", never a second alerting mechanism.
+        logger.error(
+            "tick complete: %s PR(s) have a re-arm WRITE failing %s+ consecutive times — "
+            "alerted (deduped), tick NOT ok. examined=%s candidates=%s rearmed=%s cancelled=%s "
+            "dry_run=%s",
+            rearm_write_failed, REARM_WRITE_FAIL_LIMIT, rearm_result["examined"],
+            rearm_result["candidates"], rearmed, cancelled, dry_run,
+        )
+        if not dry_run:  # B4: no heartbeat write anywhere in dry-run (unreachable here anyway —
+            # dry-run never calls rearm_pr, so rearm_write_failed is always 0 in dry-run)
+            _write_heartbeat(
+                "error",
+                {
+                    "rearm_write_failed": rearm_write_failed,
+                    "examined": rearm_result["examined"],
+                    "candidates": rearm_result["candidates"],
+                    "rearmed": rearmed,
+                    "cancelled": cancelled,
+                    "dry_run": dry_run,
+                },
+            )
+        return 3
+
     logger.info(
         "tick complete: examined=%s candidates=%s unknown=%s rearmed=%s suspended=%s "
         "unverified=%s cancelled=%s dry_run=%s",
@@ -1750,9 +1994,19 @@ def report() -> int:
             budget_state, entry.get("pr_number", 0), entry.get("head_sha", ""), now
         )
         print(f"    {key}: {count}/{INFRA_BUDGET_MAX} infra rearms in last {BUDGET_WINDOW_HOURS}h")
-    print(f"alerted (UNKNOWN, undelivered-until-resolved) keys: {len(alerted_state)}")
-    for key, ts in sorted(alerted_state.items()):
+    # C2 (gate on #6175, 2026-09-11): alerted_state holds TWO key families since K-3 —
+    # "<pr>:<sha>" for the UNKNOWN-class dedup and "rearm-write-fail:<pr>:<sha>" for the
+    # write-failure dedup. Counting them together under the "UNKNOWN" label reported a
+    # write-failure alert as an UNKNOWN one: two different diseases in one number, in the
+    # one command an operator runs to find out what the organ is doing.
+    unknown_alerts = {k: v for k, v in alerted_state.items() if not _is_rearm_fail_key(k)}
+    write_fail_alerts = {k: v for k, v in alerted_state.items() if _is_rearm_fail_key(k)}
+    print(f"alerted (UNKNOWN, undelivered-until-resolved) keys: {len(unknown_alerts)}")
+    for key, ts in sorted(unknown_alerts.items()):
         print(f"    {key}: alerted at {ts}")
+    print(f"alerted (re-arm WRITE failure, undelivered-until-resolved) keys: {len(write_fail_alerts)}")
+    for key, ts in sorted(write_fail_alerts.items()):
+        print(f"    {key[len(REARM_FAIL_ALERT_PREFIX):]}: write-failure alerted at {ts}")
     try:
         red_state = _load_json(RED_FILE)
     except RuntimeError as exc:
@@ -1766,6 +2020,22 @@ def report() -> int:
         susp = entry.get("suspended")
         susp_note = f" SUSPENDED at {susp.get('at')} (cause={susp.get('cause')})" if susp else ""
         print(f"    PR #{key}: {len(entry.get('reds') or [])} reds{susp_note}")
+    try:
+        rearm_fail_state = _load_json(REARM_FAIL_FILE)
+    except RuntimeError as exc:
+        logger.error("%s", exc)
+        print(f"rearm-write-fail file: {REARM_FAIL_FILE} — CORRUPT, cannot parse ({exc})")
+        rearm_fail_state = {}
+    print(
+        f"rearm-write-fail file: {REARM_FAIL_FILE} "
+        f"({'exists' if REARM_FAIL_FILE.exists() else 'missing'})"
+    )
+    print(f"  tracked (pr,sha) keys: {len(rearm_fail_state)}")
+    for key, entry in sorted(rearm_fail_state.items()):
+        print(
+            f"    {key}: {entry.get('consecutive_failures', 0)}/{REARM_WRITE_FAIL_LIMIT} "
+            f"consecutive write failures (last attempt {entry.get('last_attempt_at')})"
+        )
     if LOG_FILE.exists():
         lines = LOG_FILE.read_text(encoding="utf-8", errors="replace").splitlines()
         print(f"last log lines ({LOG_FILE}):")
