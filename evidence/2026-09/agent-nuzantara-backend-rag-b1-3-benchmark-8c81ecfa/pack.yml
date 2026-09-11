@@ -2,7 +2,7 @@ task_id: backend-rag-b1-3-benchmark
 mandate: B1
 colour: BLUE
 pr: B1.3
-code_sha: 2e830b0245edae575cfe5e0aa53a14fa1d921b6e # pragma: allowlist secret — last commit touching apps/
+code_sha: 951bad7bb45df4dc8e2c3a156f934b176948ed50 # pragma: allowlist secret — last commit touching apps/
 base_sha: 2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed # pragma: allowlist secret
 brief_ref: evidence/brief.yml
 gear: 2
@@ -34,7 +34,7 @@ frozen:
       source_quality_bands: [0.7, 0.5, 0.3, 0.15],
     }
 measured:
-  structural_tests: "59 passed"
+  structural_tests: "see A1 probe on code_sha"
   validate_mandatory: "[] (no error)"
   validate_validation: "[] (no error), 12 cases, drawn_by codex"
   balance_per_cell:
@@ -170,7 +170,7 @@ lanes:
       lane: "B1.3 adversarial label review + validation draw",
       role: review,
       seat: "codex gpt-5.6-sol high read-only",
-      state: "round 1 BLOCK -> cured; round 2 pending",
+      state: "round 1 BLOCK -> cured; round 2 BLOCK (C7 partial, 1 stale, 1 low) -> cured/recorded; appetite of 2 rounds reached, no third round",
     }
 dissent: []
 pii_scan: clean
@@ -183,4 +183,13 @@ adversarial:
       verdict: BLOCK,
       record: evidence/2026-09/agent-nuzantara-backend-rag-b1-3-benchmark-8c81ecfa/codex-label-review-b1-3.md,
     }
-  - { round: 2, verdict: pending }
+  - round: 2
+    seat: "codex gpt-5.6-sol, effort high, read-only, account 2 (Mini), diffs inlined"
+    reviewed_sha: 2e830b0245
+    verdict: BLOCK
+    record: evidence/2026-09/agent-nuzantara-backend-rag-b1-3-benchmark-8c81ecfa/codex-label-review-round-2-b1-3.md
+    dispositions:
+      - "C1-C6, C8 CURED (reviewer), including re-decided labels of every changed case and all 12 validation cases"
+      - "C7 PARTIAL -> CURED by the Dux in the code_sha commit: validate() requires provenance_fixture.sources as a non-empty list of objects and provenance_fixture.note as a non-empty string; 6 new parametrized rejection tests; mandatory and validation sets still validate clean"
+      - "N1 HIGH README D5 amendment uncommitted: STALE — the amendment was committed as 0ee2ff0358 moments after the round-2 prompt was assembled from the working tree; git log -- README.md shows it on this branch"
+      - "N2 LOW bv-6b43e1a7 explanation wording and clipped Indonesian query: RECORDED, NOT EDITED — the validation set is the adversarial seat's independent draw, copied verbatim; the Dux does not author it. Its label (irrelevant, fee_policy true) is unchanged and correct per the reviewer; residual for B2"
