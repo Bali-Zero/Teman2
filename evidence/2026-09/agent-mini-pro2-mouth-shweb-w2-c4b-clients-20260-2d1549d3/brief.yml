@@ -1,0 +1,312 @@
+# Brief for W2-C4b (same content as pack.yml beside it) — same content as brief.yml beside it, at the path
+# scripts/ci/evidence_paths.py resolves for this branch (NOT the deprecated root).
+# Evidence Pack — SHWEB-20260911 / W2-C4b (closing the exception C4 had to open)
+gear: 1 # floor from scripts/evidence_pack_lint.py --print-floor = 1, --print-floor-source = none
+task_id: shweb-w2-c4b-clients-20260913
+mandate_id: SHWEB-20260911/W2-C4b
+colour: BLUE
+l_level: L2
+host: Mini-Pro2 (nuzantara)
+worktree: .worktrees/mouth-shweb-w2-c4b-clients-20260913
+branch: agent/mini-pro2/mouth/shweb-w2-c4b-clients-20260913
+base_sha: 7ad664eccd # pragma: allowlist secret - public Git commit ID, fresh origin/main
+opened_at: "2026-09-12T18:00Z"
+state: CANDIDATO
+
+predecessor: >-
+  #6327 (merged 7731f70099, SERVED — proved on production this turn: public /lkpm 301, 0 markers in
+  any chunk outside clients/, health commit contains the merge by ancestry) moved the workspace
+  roster tables server-side, wired the chunk guard into `npm run build`, and put /lkpm into
+  INTERNAL_ROUTES. It could NOT finish clients/[id]: another window's #6329 and #6307 rewrote
+  page.tsx and components/TaxTab.tsx mid-flight and by contract the merged work won. So #6327
+  shipped ONE declared, time-boxed guard exception — ALLOWED_CHUNK_PREFIXES =
+  ["app/(workspace)/clients/"] — naming this PR as the one that deletes it.
+
+objective: >-
+  Close that exception at its cause: no chunk of the build carries an excluded roster member, with
+  the guard's allowlist back to EMPTY and the test that pins it demanding empty again.
+
+brief_ref: evidence/brief.yml # the STAGING name the validator resolves against
+pii_scan: clean
+pii_scan_note: >-
+  The only personal data is the public staff roster. This diff moves WHERE a table is read; it adds
+  no record, name or portrait path. The new fixtures use synthetic addresses (example.test) on
+  purpose — copying the production addresses into a "use client" test file would reintroduce the
+  habit this change exists to break. The five real values stay pinned in exactly one place,
+  src/lib/workspace/roster-directory.test.ts, which C4 added.
+
+the_cause:
+  what: >-
+    components/TaxTab.tsx held the five assignable tax consultants as a module constant, and it is a
+    "use client" module. A literal there is compiled into the route's static chunk.
+  why_it_matters: >-
+    A Next static chunk is served from the CDN path with NO session. Measured on production this
+    turn, anonymously, on the public domain: GET
+    /_next/static/chunks/app/(workspace)/clients/%5Bid%5D/page-6222f3820ee97c5c.js returned 200 and
+    2 marker hits. The PAGE requires auth; the CHUNK never did.
+
+scope:
+  - apps/mouth/src/app/(workspace)/clients/[id]/components/TaxTab.tsx # the literal removed; rows arrive as a required prop, through TaxConsultantSelector
+  - apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx # the client body, moved out of the route (19 lines differ from the old page.tsx, all signature)
+  - apps/mouth/src/app/(workspace)/clients/[id]/page.tsx # now a 22-line SERVER boundary that resolves and hands down
+  - apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.test.tsx # renamed from page.test.tsx, repointed, plus the forwarding assertion
+  - apps/mouth/src/app/(workspace)/clients/[id]/page.test.tsx # new: the server boundary gets its own test
+  - apps/mouth/src/app/(workspace)/clients/[id]/components/TaxTab.consultants.test.tsx # new: options and selection both read the prop
+  - apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs # the exception DELETED — allowlist back to []
+  - apps/mouth/src/lib/client-roster-boundary.test.ts # EXPECTED_CHUNK_EXCEPTIONS back to [], so empty is the assertion again
+
+constraints:
+  - >-
+    The five tax values are MOVED, never derived. A backend CHECK (migration 093) pins them and the
+    ROSTER DISAGREES with two — roster faysha.tax@ vs constraint faisha.tax@, roster tax@balizero.com
+    vs constraint veronika.tax@ — so deriving would change what the form submits. C4's
+    roster-directory.test.ts pins both spellings and stays green.
+  - apps/mouth/src/data/team-roster.ts is FROZEN and has NO hunk — verified, git reports it unmodified.
+  - package.json and package-lock.json are untouched — the build wiring landed with C4.
+  - Every other path #6277 forbade stays forbidden and none appears in the diff.
+
+acceptance:
+  - text: WHEN the app is built, THEN no chunk at all carries an excluded name, with the allowlist EMPTY.
+    probe: "npm run build (the guard runs inside it); plus an independent grep over every .js under .next/static/chunks"
+    status: PASS
+    result: >-
+      ROSTER_CHUNK_ASSERT OK: 522 chunks scanned, 0 skipped by the declared time-boxed exception
+      (none). Independent grep agrees: 0 of 522. The route's own chunk is 246,027 B with 0 markers,
+      while production's same route still serves 2.
+  - text: WHEN the exception list is non-empty, THEN client-roster-boundary.test.ts SHALL fail.
+    probe: "the test reads ALLOWED_CHUNK_PREFIXES out of the guard source and compares it to EXPECTED_CHUNK_EXCEPTIONS"
+    status: PASS
+    result: "9 tests green with both lists empty; the pinning assertion is the one at line 279."
+  - text: WHEN the dropdown renders, THEN it offers EXACTLY what the server passed — no more, no fewer.
+    probe: "exact-equality assertion, plus two guilt mutants: ignore the prop, and prop-plus-one-extra-row"
+    status: PASS
+    result: "clean tree 3/3 green; mutant A (hardcoded list) 2 failed; mutant B (prop + 1 extra) 2 failed."
+  - text: WHEN the forwarding is SUBSTITUTED for a same-shaped list, THEN a test SHALL catch it.
+    probe: "mutant: taxConsultants={teamMemberOptions} at the TaxTab call site; then tsc, then vitest"
+    status: PASS
+    result: >-
+      tsc exits 0 on the substitution — the type checker does NOT catch it, which is exactly what the
+      refuter seat predicted — and the new forwarding test goes red (1 failed of 3).
+  - text: WHEN the server boundary is wrong, THEN a test SHALL catch that too.
+    probe: "page.test.tsx asserts the prop equals taxConsultants() and that the client gets a copy it cannot mutate"
+    status: PASS
+    result: "2/2 green; the mutation test proves a later resolution is unaffected by the client mutating its array."
+  - text: WHEN the whole suite runs, THEN it is green — all of it, not a subset chosen by judgement.
+    probe: "npx vitest run with no path filter; npm run typecheck; npx prettier --check; npx eslint"
+    status: PASS
+    result: "476 files / 5129 tests passed, 0 failed, 0 errors. typecheck exit 0. prettier clean. eslint 0 errors."
+  - text: WHEN the merged commit is promoted, THEN production's chunks shall carry the names nowhere at all.
+    probe: "re-run this turn's production sweep — enumerate every chunk from the served HTML, fetch anonymously, grep"
+    status: pending — the only item that cannot close before the merge lands
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    what: the prop seam, the server boundary, the test additions, the removal of C4's exception
+  - lane: review-refuter
+    role: review
+    seat: gemini-3.1-pro
+    what: the semantic hunks, out of the contribution chain
+  - lane: review-second-reader
+    role: review
+    seat: kimi-code/k3
+    what: the same, independently
+
+council_run: journal.jsonl
+
+dissent:
+  - seat: gemini-3.1-pro
+    objection: >-
+      BLOCKER — a stray unclosed `import {` at ClientDetailClient.tsx line 5 is a syntax error that
+      will fail compilation, the Next build and every test.
+    status: RETRACTED
+    disposition: >-
+      RETRACTED, and the fault was MINE and not the seat's. It does not exist in the file. It existed in the PACKET I handed the seat: I excerpted with
+      `sed -n '1,5p;46,54p'`, which glued line 5's `import {` directly onto line 46, manufacturing an
+      unclosed statement out of two valid halves. The seat read exactly what it was given and
+      reported it correctly. Measured on the real file: lines 1-8 show the import intact, `tsc
+      --noEmit` exits 0, the build succeeds and the file's own suite is green. The packet was rebuilt
+      with contiguous excerpts before the second seat saw it. The lesson is the reviewable one: an
+      excerpt that cuts a multi-line statement does not merely omit context, it FABRICATES a defect,
+      and a reviewer cannot tell the difference.
+  - seat: gemini-3.1-pro AND kimi-code/k3 (independently, and this was the strongest finding of the round)
+    objection: >-
+      MAJOR — nothing tests that ClientDetailClient forwards `taxConsultants` to TaxTab. The one
+      test touching ClientDetailClient mocks TaxTab as a propless stub, and the TaxTab test renders
+      TaxTab directly with its own fixture, so the seam this PR actually cuts is asserted nowhere.
+      Kimi sharpened it: omission is caught by the type checker because the prop is required, but
+      SUBSTITUTION is not — this component already calls useTeamMemberOptions(), which yields the
+      same {value,label} shape, so `taxConsultants={teamMemberOptions}` would typecheck, pass every
+      test and pass the chunk guard, while feeding the dropdown a roster that disagrees with what
+      migration 093 accepts.
+    status: CONFIRMED
+    disposition: >-
+      Taken, and verified in both directions rather than argued. The TaxTab mock now records its
+      props and a new test clicks through to the Tax tab and asserts the forwarded array deep-equals
+      what the component was given. Then Kimi's exact mutant was run: with
+      `taxConsultants={teamMemberOptions}` in place, `tsc --noEmit` exits 0 — the substitution really
+      is invisible to the type system — and the new test goes red. That is the assertion earning its
+      place. A second test was added at the layer above, so the server boundary is covered too.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MAJOR — renaming page.test.tsx to ClientDetailClient.test.tsx leaves the new 22-line server
+      component with no coverage at all: nothing verifies it calls taxConsultants() or passes the
+      result down.
+    status: CONFIRMED
+    disposition: >-
+      True and taken. A new page.test.tsx asserts the prop is exactly what the server module returns
+      and that the list is non-empty, and a second case proves the client receives a COPY — mutating
+      it does not change what a later resolution returns. The assertion deliberately does not restate
+      the five addresses: they are pinned once, against the backend constraint, in
+      roster-directory.test.ts, and duplicating them would put staff emails in another file for no
+      added coverage.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MINOR — TaxTab.consultants.test.tsx checks the options on mount but never fires a change, so
+      the handler's `consultants.find(...)` label resolution and the onSaved callback are untested.
+    status: CONFIRMED
+    disposition: >-
+      Taken. A third case selects an option and asserts the PATCH payload, the toast text resolved
+      from the prop's label, and that onRefresh fired. "Beta" can only come from the fixture, so the
+      assertion pins the second read of the prop, which is the one the first two tests missed.
+  - seat: kimi-code/k3
+    objection: >-
+      MAJOR — the "0 of 522" measurement proves removal from the artifact class the data LEFT, not
+      that no statically served artifact carries it now. The guard scans only
+      .next/static/chunks/**/*.js; the data now lives in the route's flight payload, and since the
+      new page.tsx uses no request-scoped API the route is a candidate for static prerendering, whose
+      artifacts are written to .next/server/app/** — outside everything that was scanned.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED as a real gap in the MEASUREMENT, which was then measured. The seat is right that the claim was narrower than it sounded, so the surface was measured
+      instead of reasoned about. Result: `.next/server/app` holds 11 files carrying a marker —
+      lkpm.html, lkpm.rsc and its segment payloads, team-management.html/.rsc and its segments,
+      (workspace)/team-management/page.js, (blog)/team/page.js and v2/company/about/page.js — and
+      NONE of them belongs to clients/. The clients/[id] route emits no prerender artifact at all (0
+      .rsc for [id]): it is dynamic, so the static-prerender path the seat worried about does not
+      arise for this route. The 11 that do carry markers are R-A, declared by C4 and escalated to
+      Zero, plus two public team pages whose server bundle legitimately imports the roster and whose
+      RENDERED html was measured at 0 markers this turn on all six public routes. So: the gap in the
+      claim was real, the exposure for this route is not, and the guard's header already states that
+      it does not scan that surface and why extending it now would encode the thing under review.
+  - seat: kimi-code/k3
+    objection: >-
+      MINOR — the five values now live in @/lib/workspace/roster-directory, whose contents and test
+      coverage were not shown; nothing visible pins taxConsultants() to migration 093's constraint,
+      and the ROSTER_GRAPH_MODULES excerpt was truncated so the boundary claim is unverifiable.
+    status: RETRACTED
+    disposition: >-
+      RETRACTED on the evidence: both guarantees exist and the seat could not see them from the
+      packet. Fair to raise from what it was given, and both halves check out. roster-directory.test.ts
+      (added by C4) asserts TAX_CONSULTANTS.map(c => c.value) equals the five values exactly and
+      carries a test named "does NOT derive the tax-consultant values — the backend constrains them"
+      with the two roster/constraint disagreements written into it. And ROSTER_GRAPH_MODULES does
+      include "workspace/roster-directory", with a comment explaining why. Nothing to change; the
+      packet should have carried both.
+  - seat: kimi-code/k3
+    objection: >-
+      MINOR — the "byte-identical except the signature" claim for the 1039-line move is unverifiable
+      as presented, and the renamed test shows only 2 cases, so cases may have been dropped.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED as unverifiable from the packet, then proven. Measured rather than asserted: `diff` of origin/main's page.tsx against ClientDetailClient.tsx
+      reports exactly three changed regions and 19 differing lines — one added `import type`, the
+      default export replaced by the props interface plus named export, and the one forwarded prop.
+      Nothing else differs. On the test count: the old page.test.tsx had exactly 2 cases and the
+      renamed file kept both, then gained the forwarding case, so nothing was dropped.
+
+receipts:
+  - claim: "THE C4b BITES — the exception is gone from the guard's allowlist, not only from the file"
+    cmd: "npm run build; then read the guard's OK line; then vitest src/lib/client-roster-boundary.test.ts which reads ALLOWED_CHUNK_PREFIXES out of the guard source"
+    result: >-
+      "ROSTER_CHUNK_ASSERT OK: scanned 522 chunks, 0 skipped by the declared time-boxed exception
+      (none)". Before this commit the same line skipped app/(workspace)/clients/. The pinning test is
+      green with BOTH lists empty, so the removal is enforced from two places, not declared in one.
+    exit: 0
+    ts: "2026-09-12T18:32:00Z"
+    seat: claude-opus-5
+  - claim: "the route's chunk no longer carries a marker, and production still does"
+    cmd: "grep -oiE over the built clients/[id] page chunk; then the same on the live chunk fetched anonymously from balizero.com"
+    result: "built: 246,027 B, 0 markers. production (pre-C4b, pinned deployment): 2 markers. Whole build: 0 of 522 chunks."
+    exit: 0
+    ts: "2026-09-12T18:32:00Z"
+    seat: claude-opus-5
+  - claim: "the new assertions are load-bearing — four mutants, four reds"
+    cmd: "mutant A hardcode the list; mutant B prop plus one extra row; mutant C substitute teamMemberOptions; each with tsc and vitest; then restore and re-verify by cmp"
+    result: >-
+      A red (2 failed), B red (2 failed), C red (1 failed of 3) — and C passes tsc with exit 0, so
+      the type system genuinely does not see it. After each, cmp reports the file byte-identical to
+      its pre-mutant copy and the clean tree is green.
+    exit: 0
+    ts: "2026-09-12T18:31:00Z"
+    seat: claude-opus-5
+  - claim: "the 1039-line move changed nothing but the signature"
+    cmd: "diff <(git show origin/main:.../page.tsx) .../ClientDetailClient.tsx"
+    result: "3 changed regions, 19 differing lines: one import type, the export signature, one forwarded prop. Nothing else."
+    exit: 0
+    ts: "2026-09-12T18:33:00Z"
+    seat: claude-opus-5
+  - claim: "the surface this guard does NOT scan was measured rather than reasoned about"
+    cmd: "grep -rloiE over .next/server/app; find for [id] prerender artifacts"
+    result: >-
+      11 files carry a marker, none under clients/; clients/[id] emits 0 prerender artifacts (it is
+      dynamic). The 11 are lkpm and team-management payloads (R-A, declared by C4) and two public
+      team page server bundles whose rendered HTML measures 0.
+    exit: 0
+    ts: "2026-09-12T18:33:00Z"
+    seat: claude-opus-5
+  - claim: "the FULL suite is green — not a subset I chose"
+    cmd: "npx vitest run (no path filter); npm run typecheck; npx prettier --check; npx eslint on the touched files"
+    result: "Test Files 476 passed (476), Tests 5129 passed (5129), 0 errors; typecheck exit 0; prettier clean; eslint 0 errors, 1 pre-existing <img> warning that rode along with the move"
+    exit: 0
+    ts: "2026-09-12T18:34:00Z"
+    seat: claude-opus-5
+  - claim: "the frozen perimeter is untouched and the lockfile is byte-identical"
+    cmd: "the declared frozen list checked against the three-dot changed-file list; git diff for package.json and package-lock.json"
+    result: >-
+      7 files changed, none frozen. package.json and package-lock.json UNCHANGED. NOTE: a first pass
+      reported ten (visa-oracle) frozen hits — that was my own command comparing against a moved
+      origin/main instead of my base, and they were files MAIN gained, not files I touched. Re-measured
+      against the merge-base: clean.
+    exit: 0
+    ts: "2026-09-12T18:20:00Z"
+    seat: claude-opus-5
+
+lesson:
+  what: >-
+    Two of this round's findings were caused by the REVIEW PACKET, not by the code. A `sed` excerpt
+    that spliced line 5 onto line 46 manufactured an unclosed `import {`, and a seat correctly
+    reported a BLOCKER that does not exist; a truncated ROSTER_GRAPH_MODULES array made a real,
+    existing guarantee look absent. Separately, my own frozen-path check reported ten violations that
+    were artefacts of comparing against a origin/main that had moved three commits while I worked.
+  why_it_matters: >-
+    All three have the same shape: a measurement whose FRAME was wrong reported a defect with total
+    confidence, and in each case the output looked exactly like a genuine finding. An excerpt that
+    cuts a statement fabricates syntax errors; a diff against a moved ref fabricates ownership of
+    other people's files. The cure is not to trust the reviewer less — both seats read faithfully
+    what they were handed, and Kimi's substitution finding was worth the whole round — it is to make
+    the frame explicit and checkable: contiguous excerpts, and diffs against the merge-base, never
+    against a ref that moves.
+
+residuals: # unchanged, and NOT touched here by order
+  - id: R-A
+    what: >-
+      The workspace has no SERVER-side session gate: (workspace)/layout.tsx is "use client" and gates
+      with GateScreen after the payload has been sent. Measured again this turn: 11 files under
+      .next/server/app carry a marker, none of them under clients/.
+    status: >-
+      Escalated by the imperator to Zero as its own window. Explicitly NOT fixed here; the guard's
+      own header states it does not scan that surface and why.
+  - id: R-B
+    what: >-
+      public/static/team/faisha.jpg and sahira.jpg stay fetchable by direct URL — measured this turn
+      on production: 200, 69,448 B and 66,303 B.
+    status: An explicit decision pending Zero; encoded as ACCEPTED_PUBLIC_FILES so a THIRD such portrait fails the build.
+  - id: R-C
+    what: The roster's emails disagree with the backend CHECK the dropdown submits (faysha vs faisha; tax@ vs veronika.tax@).
+    status: Raised for the owner. The list is moved, not derived, so this PR does not silently pick a side.
+
+spend:
+  wall_clock_hours: 0.6
+  adversarial_rounds: 1

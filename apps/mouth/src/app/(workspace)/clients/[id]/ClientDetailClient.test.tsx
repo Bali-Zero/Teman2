@@ -11,7 +11,9 @@ const {
   mockUseClientDetail,
   stableTimeline,
   stableSearchParams,
+  taxTabProps,
 } = vi.hoisted(() => ({
+  taxTabProps: [] as Record<string, unknown>[],
   mockUpdateClient: vi.fn(),
   mockSetClientCache: vi.fn(),
   mockInvalidateClient: vi.fn(),
@@ -85,8 +87,13 @@ vi.mock("./components/ImmigrationTab", () => ({
 vi.mock("./components/CompanyTab", () => ({
   CompanyTab: () => <div data-testid="CompanyTab" />,
 }));
+// Records its props instead of discarding them. A stub that renders and forgets
+// cannot tell "the right list was forwarded" from "some same-shaped list was".
 vi.mock("./components/TaxTab", () => ({
-  TaxTab: () => <div data-testid="TaxTab" />,
+  TaxTab: (props: Record<string, unknown>) => {
+    taxTabProps.push(props);
+    return <div data-testid="TaxTab" />;
+  },
 }));
 vi.mock("./components/TimelineTab", () => ({
   TimelineTab: () => <div data-testid="TimelineTab" />,
@@ -170,6 +177,7 @@ const CONSULTANTS = [
 describe("ClientDetailClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    taxTabProps.length = 0;
     mockUseClientDetail.mockReturnValue({
       data: makeProfile(),
       isLoading: false,
@@ -216,5 +224,29 @@ describe("ClientDetailClient", () => {
     expect(
       screen.getByRole("button", { name: "Process (0)" }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Both refuter seats reached this independently, and they were right.
+   *
+   * Deleting `taxConsultants={taxConsultants}` at the TaxTab call site is caught
+   * by the type checker, because the prop is required. SUBSTITUTING it is not:
+   * this component already calls `useTeamMemberOptions()`, which yields the same
+   * `{value, label}` shape, so `taxConsultants={teamMemberOptions}` would
+   * typecheck, pass every other test, and pass the chunk guard — while feeding
+   * the dropdown a client-fetched roster that disagrees with the values backend
+   * migration 093 accepts. Identity of the forwarded array is the assertion.
+   */
+  it("forwards the server-supplied consultants to TaxTab, not some other same-shaped list", async () => {
+    const user = userEvent.setup();
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    await user.click(screen.getByRole("button", { name: "Tax" }));
+
+    await waitFor(() => expect(taxTabProps.length).toBeGreaterThan(0));
+    expect(taxTabProps[taxTabProps.length - 1].taxConsultants).toEqual(
+      CONSULTANTS,
+    );
   });
 });

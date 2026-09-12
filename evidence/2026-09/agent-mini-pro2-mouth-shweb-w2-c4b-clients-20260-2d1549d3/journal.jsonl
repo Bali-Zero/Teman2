@@ -1,0 +1,2 @@
+{"seat":"gemini-3.1-pro","role":"review","ok":true,"ts":"2026-09-12T18:26:00Z","round":"POST","verdict":"BLOCK","record":"reviews/refuter-gemini-3.1-pro.txt","scope":"the C4b semantic hunks delivered inline; its BLOCKER was an artefact of the packet excerpt and is retracted with a measurement, its two MAJORs were taken"}
+{"seat":"kimi-code/k3","role":"review","ok":true,"ts":"2026-09-12T18:30:00Z","round":"POST","verdict":"GO-WITH-CONDITIONS","record":"reviews/refuter-kimi-k3.txt","scope":"the same, independently, on a packet rebuilt so no excerpt cuts a statement"}

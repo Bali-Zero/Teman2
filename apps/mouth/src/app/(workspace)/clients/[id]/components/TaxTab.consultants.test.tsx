@@ -14,12 +14,18 @@
 // "contains", re-adding a hardcoded row beside the prop would still pass.
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+
+const { mockUpdateClient, mockToastSuccess } = vi.hoisted(() => ({
+  mockUpdateClient: vi.fn(),
+  mockToastSuccess: vi.fn(),
+}));
 
 vi.mock("@/lib/api", () => ({
   api: {
     getProfile: vi.fn().mockResolvedValue({ email: "tester@example.test" }),
-    crm: { updateClient: vi.fn().mockResolvedValue({}) },
+    crm: { updateClient: mockUpdateClient },
   },
 }));
 // Both resolve to `{ items }`, which is the shape TaxTab actually destructures
@@ -37,7 +43,7 @@ vi.mock("./AiSummaryCard", () => ({
   AiSummaryCard: () => <div data-testid="AiSummaryCard" />,
 }));
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: mockToastSuccess, error: vi.fn() },
 }));
 
 const CONSULTANTS = [
@@ -47,7 +53,10 @@ const CONSULTANTS = [
 ];
 
 describe("TaxTab tax-consultant options", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdateClient.mockResolvedValue({});
+  });
 
   it("offers exactly the consultants handed down as a prop", async () => {
     const { TaxTab } = await import("./TaxTab");
@@ -90,5 +99,44 @@ describe("TaxTab tax-consultant options", () => {
       screen.getByLabelText("Tax Consultant"),
     )) as HTMLSelectElement;
     expect(Array.from(select.options).map((o) => o.value)).toEqual([""]);
+  });
+
+  /**
+   * Raised by a refuter seat: the options were asserted but the SELECTION path
+   * was not, and that path is where the prop is read a second time — the toast
+   * resolves a label with `consultants.find(...)`. A change that rendered the
+   * prop's options but resolved labels from somewhere else would have passed.
+   */
+  it("saves the chosen value and resolves its label from the same prop", async () => {
+    const user = userEvent.setup();
+    const onSaved = vi.fn();
+    const { TaxTab } = await import("./TaxTab");
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => d}
+        client={null}
+        onRefresh={onSaved}
+        taxConsultants={CONSULTANTS}
+      />,
+    );
+
+    const select = (await waitFor(() =>
+      screen.getByLabelText("Tax Consultant"),
+    )) as HTMLSelectElement;
+    await user.selectOptions(select, "beta.tax@example.test");
+
+    await waitFor(() =>
+      expect(mockUpdateClient).toHaveBeenCalledWith(
+        7,
+        { tax_consultant: "beta.tax@example.test" },
+        "tester@example.test",
+      ),
+    );
+    // "Beta" can only come from the prop — nothing else in this test supplies it.
+    await waitFor(() =>
+      expect(mockToastSuccess).toHaveBeenCalledWith("Tax consultant: Beta"),
+    );
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
   });
 });
