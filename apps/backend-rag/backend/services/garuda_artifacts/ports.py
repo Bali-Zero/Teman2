@@ -14,10 +14,11 @@ import asyncpg
 
 from backend.services.garuda_artifacts.models import ArtifactRecord
 
-#: Hard ceiling on one artifact's byte length, enforced BEFORE any read of
-#: attacker-influenced bytes: the staff PUT refuses a body above it, the object
-#: store refuses a ContentLength above it before reading, and the bounded read
-#: refuses a body that turns out longer than its declared length. It lives on
+#: Hard ceiling on one artifact's byte length, enforced on BOTH sides of the
+#: port: `put` refuses a body above it before any upload call, and
+#: `fetch_and_verify` refuses a declared ContentLength above it before reading,
+#: bounds the read at ceiling + 1, and refuses a body that turns out longer
+#: than declared. It lives on
 #: the port and not on the service because every adapter of the port has to
 #: honour it whether or not a service exists yet (S2a ships the store before
 #: the service).

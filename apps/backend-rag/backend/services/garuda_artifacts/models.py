@@ -33,6 +33,7 @@ class ArtifactRecord:
     environment: str
     created_at: datetime
     retention_until: datetime
+    retention_policy_id: str
     superseded_at: datetime | None = None
     superseded_by: str | None = None
 

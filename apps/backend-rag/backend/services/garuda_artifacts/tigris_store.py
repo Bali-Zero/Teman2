@@ -5,6 +5,9 @@ Separate, on purpose, from `nuzantara-warroom-images`
 docstring says its prefix is public-read and its purpose is minting public
 HTTPS URLs -- reaching for it here would publish a passport-bearing
 document to the open internet (spec SS3, fact 13's "trap in plain sight").
+This module refuses that bucket by name, and refuses any endpoint that is
+not Tigris over HTTPS: a misconfigured endpoint would receive artifact
+bodies AND SigV4-signed requests carrying the dedicated key id (O1 F2).
 
 FAIL-CLOSED, OWN CREDENTIALS. This store reads exactly four env vars of its
 own and NEVER falls back to `boto3`'s default credential chain, which on
@@ -14,12 +17,25 @@ the PUBLIC bucket. Passing `aws_access_key_id=None` to `boto3.client(...)`
 does not raise; it silently activates that same default chain. So presence
 is checked FIRST, with `bool(os.environ.get(...))` (`${VAR:+SET}`
 semantics -- never logging or printing the value), and the client is
-constructed only once both scoped credentials are confirmed present.
+constructed only once both scoped credentials are confirmed present. The
+public constructor takes NO client: the only way to hand this class a
+client it did not build is `for_tests`, which says so in its name and skips
+the env gate, so production wiring cannot reach it by accident (O1 F3).
+
+WHAT THIS MODULE CANNOT DO, stated rather than implied (O1 F1): omitting an
+ACL does not make a bucket private when the bucket's own policy grants
+public reads. Privacy is a property of the bucket the operator provisions
+(spec SS3, pending #G), not of this adapter. What the adapter can do is
+refuse the one public bucket this codebase knows by name, and offer
+`assert_private()` -- a read-only probe of the bucket's public-access block
+and policy status -- for the wiring to call at startup and fail closed on
+`IsPublic`. Where the S3 API behind Tigris does not implement those calls,
+the probe says so in its return value instead of pretending.
 
 Bucket, and the scoped credential pair, are `operator[secret]` -- this
 module does not provision them (spec SS3). Absent, it raises
-`GarudaArtifactsStoreUnavailable`; callers (service.py) map that to `503
-SERVICE_UNAVAILABLE`, never a crash.
+`GarudaArtifactsStoreUnavailable`; a future caller maps that to `503
+SERVICE_UNAVAILABLE`, never a crash. No caller exists in this PR.
 """
 
 from __future__ import annotations
@@ -29,13 +45,24 @@ import hashlib
 import logging
 import os
 import time
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
+from urllib.parse import urlsplit
 
 import boto3
-from botocore.exceptions import BotoCoreError, ClientError
+from botocore.config import Config
+from botocore.exceptions import (
+    BotoCoreError,
+    ClientError,
+    ConnectionClosedError,
+    ConnectTimeoutError,
+    EndpointConnectionError,
+    ReadTimeoutError,
+)
 
 from backend.services.garuda_artifacts.ports import (
     MAX_ARTIFACT_BYTES,
+    ArtifactAlreadyExists,
     ArtifactDigestMismatch,
     ArtifactObjectMissing,
 )
@@ -48,39 +75,97 @@ SECRET_ACCESS_KEY_ENV = "GARUDA_ARTIFACTS_SECRET_ACCESS_KEY"
 ENDPOINT_URL_ENV = "GARUDA_ARTIFACTS_ENDPOINT_URL"
 DEFAULT_ENDPOINT_URL = "https://fly.storage.tigris.dev"
 
-_MAX_RETRIES = 3
+#: The only endpoint hosts this store will sign requests for (O1 F2). An
+#: override exists for a Tigris regional host, never for "any S3".
+_ALLOWED_ENDPOINT_HOST_SUFFIXES = (".tigris.dev",)
+#: The bucket this codebase already publishes from. Refused by name so that
+#: no env-var mixup can route a passport-bearing PDF to a public prefix.
+_FORBIDDEN_BUCKETS = frozenset({"nuzantara-warroom-images"})
+
+_MAX_ATTEMPTS = 3
 _BACKOFF_BASE_S = 2.0
-_TRANSIENT_ERROR_CODES = {"503", "502", "504", "RequestTimeout", "SlowDown", "Throttling"}
+#: Transient on the wire: retried, with backoff, up to `_MAX_ATTEMPTS` total
+#: calls. Everything else -- including botocore's own permanent errors such
+#: as `ParamValidationError` and `NoCredentialsError` -- is raised on the
+#: first occurrence (O1 F9).
+_TRANSIENT_ERROR_CODES = frozenset(
+    {
+        "500",
+        "502",
+        "503",
+        "504",
+        "InternalError",
+        "RequestTimeout",
+        "ServiceUnavailable",
+        "SlowDown",
+        "Throttling",
+        "ThrottlingException",
+    }
+)
+_TRANSIENT_BOTOCORE_TYPES = (
+    EndpointConnectionError,
+    ConnectionClosedError,
+    ReadTimeoutError,
+    ConnectTimeoutError,
+)
+
+_T = TypeVar("_T")
 
 
 class GarudaArtifactsStoreUnavailable(RuntimeError):
-    """One or more of this store's OWN env vars is absent. Never a fallback
-    to the public bucket's credentials -- the caller must 503, not retry
-    with a different credential source."""
+    """This store cannot be constructed safely: an env var of its own is
+    absent, the endpoint is not Tigris over HTTPS, or the bucket is the one
+    public bucket this codebase knows. Never a fallback to the public
+    bucket's credentials -- the caller must 503, not retry with a different
+    credential source."""
+
+
+def _key_ref(key: str) -> str:
+    """What logs and exception messages carry instead of the storage key
+    (O1 F4): a short digest, enough to correlate one refusal with one
+    object across a log and a row, not enough to reconstruct the key."""
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
 
 
 def _is_transient(exc: Exception) -> bool:
     if isinstance(exc, ClientError):
-        code = exc.response.get("Error", {}).get("Code", "")
-        return code in _TRANSIENT_ERROR_CODES
-    return isinstance(exc, BotoCoreError)
+        error = exc.response.get("Error", {})
+        code = str(error.get("Code", ""))
+        status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        return code in _TRANSIENT_ERROR_CODES or status in (500, 502, 503, 504)
+    return isinstance(exc, _TRANSIENT_BOTOCORE_TYPES)
+
+
+def _validate_endpoint(url: str) -> str:
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    if parts.scheme != "https" or not host.endswith(_ALLOWED_ENDPOINT_HOST_SUFFIXES):
+        raise GarudaArtifactsStoreUnavailable(
+            f"garuda artifacts store: {ENDPOINT_URL_ENV} must be an https Tigris endpoint "
+            f"(host ending in {', '.join(_ALLOWED_ENDPOINT_HOST_SUFFIXES)}); refusing to sign "
+            "requests for any other host"
+        )
+    return url
+
+
+def _validate_bucket(bucket: str) -> str:
+    if bucket in _FORBIDDEN_BUCKETS:
+        raise GarudaArtifactsStoreUnavailable(
+            f"garuda artifacts store: {BUCKET_ENV} names the PUBLIC bucket this codebase "
+            "publishes from; refusing"
+        )
+    return bucket
 
 
 class TigrisArtifactObjectStore:
     """Implements `ArtifactObjectStorePort` (structurally)."""
 
-    def __init__(self, *, client: Any | None = None) -> None:
-        """`client` is a test-only seam (a fake boto3-like S3 client) --
-        production wiring never passes it, so `service_initializer.py`
-        still gets the real `boto3.client(...)` built below. The env-var
-        presence check runs regardless of `client`, so an injected client
-        can never mask a missing credential."""
+    def __init__(self) -> None:
         bucket = os.environ.get(BUCKET_ENV)
         access_key_id = os.environ.get(ACCESS_KEY_ID_ENV)
         secret_access_key = os.environ.get(SECRET_ACCESS_KEY_ENV)
-        # Presence-only checks (`${VAR:+SET}` semantics) -- values are never
-        # logged, and the missing-vars message below names ONLY the env var,
-        # never a value.
+        # Presence only -- `bool(value)`; the values themselves are never
+        # formatted into any message.
         missing = [
             name
             for name, value in (
@@ -95,103 +180,236 @@ class TigrisArtifactObjectStore:
                 f"garuda artifacts store: missing env var(s) {', '.join(missing)} -- "
                 "refusing to fall back to the public bucket's credentials"
             )
-        self._bucket = bucket
-        self._client = (
-            client
-            if client is not None
-            else boto3.client(
-                "s3",
-                endpoint_url=os.environ.get(ENDPOINT_URL_ENV, DEFAULT_ENDPOINT_URL),
-                region_name="auto",
-                aws_access_key_id=access_key_id,
-                aws_secret_access_key=secret_access_key,
-            )
+        assert bucket is not None
+        self._bucket = _validate_bucket(bucket)
+        endpoint_url = _validate_endpoint(os.environ.get(ENDPOINT_URL_ENV, DEFAULT_ENDPOINT_URL))
+        self._client: Any = boto3.client(
+            "s3",
+            endpoint_url=endpoint_url,
+            region_name="auto",
+            aws_access_key_id=access_key_id,
+            aws_secret_access_key=secret_access_key,
+            # This module owns the retry budget (`_MAX_ATTEMPTS` calls, its
+            # own backoff); the SDK must not multiply it underneath (O1 F9).
+            config=Config(retries={"max_attempts": 1, "mode": "standard"}),
         )
+        self._sleep: Callable[[float], None] = time.sleep
 
-    def _put_sync(self, *, key: str, body: bytes, content_type: str) -> None:
-        last_exc: Exception | None = None
-        for attempt in range(1, _MAX_RETRIES + 1):
+    @classmethod
+    def for_tests(
+        cls,
+        *,
+        client: Any,
+        bucket: str = "garuda-voa-artifacts-test",
+        sleep: Callable[[float], None] | None = None,
+    ) -> TigrisArtifactObjectStore:
+        """The ONLY entry point that accepts a client this class did not
+        build, and it skips the env gate on purpose: it is for a fake
+        boto3-shaped client in a test. Its name is the boundary (O1 F3) --
+        production wiring calls the constructor, and a grep for
+        `for_tests(` outside `backend/tests/` is the check."""
+        self = cls.__new__(cls)
+        self._bucket = _validate_bucket(bucket)
+        self._client = client
+        self._sleep = sleep if sleep is not None else time.sleep
+        return self
+
+    # ------------------------------------------------------------------ retry
+
+    def _with_retries(self, call: Callable[[], _T]) -> _T:
+        """Up to `_MAX_ATTEMPTS` calls, backoff between them, ONLY on wire
+        errors classified transient; the first permanent error is raised as
+        is. A retried fetch restarts the whole GetObject -- never resumes a
+        partial read (O1 F8)."""
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
             try:
-                # No ACL kwarg -- the bucket is private by construction
-                # (spec SS3); passing `ACL="public-read"` here would be
-                # exactly the mistake this module exists to avoid.
-                self._client.put_object(
-                    Bucket=self._bucket, Key=key, Body=body, ContentType=content_type
-                )
-                return
+                return call()
             except (ClientError, BotoCoreError) as exc:
-                last_exc = exc
-                if attempt < _MAX_RETRIES and _is_transient(exc):
-                    time.sleep(_BACKOFF_BASE_S * attempt)
+                if attempt < _MAX_ATTEMPTS and _is_transient(exc):
+                    self._sleep(_BACKOFF_BASE_S * attempt)
                     continue
                 raise
-        if last_exc is not None:  # pragma: no cover - defensive
-            raise last_exc
+        raise AssertionError("unreachable: the loop returns or raises")  # pragma: no cover
+
+    # ------------------------------------------------------------------- put
+
+    def _put_sync(self, *, key: str, body: bytes, content_type: str) -> None:
+        def _once() -> None:
+            try:
+                # No ACL kwarg -- see the module docstring for what that does
+                # and does not buy. `IfNoneMatch="*"` is the write-once rule
+                # (spec SS2, O1 F5): the object is created only if no object
+                # exists under this key; a second put of any bytes under a
+                # live key is refused by the store, not by convention.
+                self._client.put_object(
+                    Bucket=self._bucket,
+                    Key=key,
+                    Body=body,
+                    ContentType=content_type,
+                    IfNoneMatch="*",
+                )
+            except ClientError as exc:
+                code = str(exc.response.get("Error", {}).get("Code", ""))
+                status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+                if code == "PreconditionFailed" or status == 412:
+                    logger.error(
+                        "garuda_artifacts.put_refused_key_exists",
+                        extra={"key_ref": _key_ref(key)},
+                    )
+                    raise ArtifactAlreadyExists(_key_ref(key)) from exc
+                raise
+
+        self._with_retries(_once)
 
     async def put(self, *, key: str, body: bytes, content_type: str) -> None:
+        if len(body) > MAX_ARTIFACT_BYTES:
+            # The ceiling binds on the way IN as well (O1 F12): nothing above
+            # it is ever uploaded, so nothing above it can be fetched.
+            logger.error(
+                "garuda_artifacts.put_refused_over_ceiling",
+                extra={"key_ref": _key_ref(key), "byte_length": len(body)},
+            )
+            raise ValueError(
+                f"artifact body of {len(body)} bytes exceeds MAX_ARTIFACT_BYTES={MAX_ARTIFACT_BYTES}"
+            )
         await asyncio.to_thread(self._put_sync, key=key, body=body, content_type=content_type)
 
+    # ----------------------------------------------------------------- fetch
+
     def _get_bytes_sync(self, *, key: str, expected_byte_length: int | None) -> bytes:
-        try:
-            resp: dict[str, Any] = self._client.get_object(Bucket=self._bucket, Key=key)
-            # F5 cure (Sol's O1, MAJOR): a row whose private object has been
-            # replaced with a multi-gigabyte value used to reach `.read()`
-            # unbounded, and the digest check below -- the ONLY thing that
-            # was supposed to catch a tampered object -- ran too late to
-            # protect this worker's memory; it only ever protected the
-            # caller's trust in the bytes it had ALREADY fully buffered.
-            # `ContentLength` is metadata the GetObject response carries
-            # before a single body byte is read, so refuse HERE, before
-            # `.read()`, when it already disagrees with the row's own
-            # expectation or this store's ceiling.
-            content_length = resp.get("ContentLength")
-            if content_length is not None and (
-                content_length > MAX_ARTIFACT_BYTES
-                or (expected_byte_length is not None and content_length != expected_byte_length)
-            ):
-                logger.error(
-                    "garuda_artifacts.declared_size_refused",
-                    extra={"storage_key": key, "content_length": content_length},
-                )
-                raise ArtifactDigestMismatch(key)
-            # Bounded read even so: `ContentLength` is metadata the object
-            # (or a misbehaving/older store) could lie about or omit. Reading
-            # at most `ceiling + 1` bytes means a lying object is still
-            # caught by the length check right below, and this worker's
-            # memory never grows past that bound regardless of what the
-            # object claims or how large it actually is.
-            body = resp["Body"].read(MAX_ARTIFACT_BYTES + 1)
-        except ClientError as exc:
-            code = exc.response.get("Error", {}).get("Code", "")
-            if code in ("NoSuchKey", "404"):
-                raise ArtifactObjectMissing(key) from exc
-            raise
-        if len(body) > MAX_ARTIFACT_BYTES:
-            logger.error(
-                "garuda_artifacts.object_exceeds_ceiling",
-                extra={"storage_key": key},
-            )
-            raise ArtifactDigestMismatch(key)
-        return body
+        ref = _key_ref(key)
+
+        def _once() -> bytes:
+            try:
+                resp = self._client.get_object(Bucket=self._bucket, Key=key)
+            except ClientError as exc:
+                code = str(exc.response.get("Error", {}).get("Code", ""))
+                if code in ("NoSuchKey", "404"):
+                    raise ArtifactObjectMissing(ref) from exc
+                raise
+            stream = resp["Body"]
+            try:
+                # `ContentLength` is metadata the GetObject response carries
+                # before a single body byte is read, so refuse HERE, before
+                # `.read()`, when it already disagrees with the row's own
+                # expectation or this store's ceiling. A missing or
+                # non-integer length is not trusted: the bounded read below
+                # and the EOF check after it are what then bind.
+                raw_length = resp.get("ContentLength")
+                content_length = raw_length if isinstance(raw_length, int) else None
+                if content_length is not None and (
+                    content_length > MAX_ARTIFACT_BYTES
+                    or (expected_byte_length is not None and content_length != expected_byte_length)
+                ):
+                    logger.error(
+                        "garuda_artifacts.declared_size_refused",
+                        extra={"key_ref": ref, "content_length": content_length},
+                    )
+                    raise ArtifactDigestMismatch(ref)
+                # Bounded read even so: metadata the object (or a misbehaving
+                # store) could lie about or omit. At most `ceiling + 1` bytes
+                # ever sit in this worker's memory, whatever the object claims.
+                body = stream.read(MAX_ARTIFACT_BYTES + 1)
+                if len(body) > MAX_ARTIFACT_BYTES:
+                    logger.error("garuda_artifacts.object_exceeds_ceiling", extra={"key_ref": ref})
+                    raise ArtifactDigestMismatch(ref)
+                # The body must be EXACTLY what was declared and expected (O1
+                # F6): shorter than declared is a truncated object, longer
+                # than declared is a lying header, and either one must never
+                # reach the digest check -- a digest computed over the wrong
+                # length can still match an attacker's chosen bytes. One more
+                # bounded read proves EOF, because a single `read(amt)` on a
+                # streaming body does not.
+                if stream.read(1):
+                    logger.error("garuda_artifacts.body_longer_than_read", extra={"key_ref": ref})
+                    raise ArtifactDigestMismatch(ref)
+                if content_length is not None and len(body) != content_length:
+                    logger.error(
+                        "garuda_artifacts.body_length_disagrees_with_declared",
+                        extra={"key_ref": ref, "content_length": content_length, "read": len(body)},
+                    )
+                    raise ArtifactDigestMismatch(ref)
+                if expected_byte_length is not None and len(body) != expected_byte_length:
+                    logger.error(
+                        "garuda_artifacts.body_length_disagrees_with_row",
+                        extra={"key_ref": ref, "expected": expected_byte_length, "read": len(body)},
+                    )
+                    raise ArtifactDigestMismatch(ref)
+                return body
+            finally:
+                # Drain-or-close on every path, including refusals that never
+                # read (O1 F7): an undrained streaming body pins a pooled
+                # connection.
+                close = getattr(stream, "close", None)
+                if callable(close):
+                    close()
+
+        return self._with_retries(_once)
 
     async def fetch_and_verify(
         self, *, key: str, expected_digest: str, expected_byte_length: int | None = None
     ) -> bytes:
-        """`expected_byte_length` is an OPTIONAL cross-check against the
-        row's own `byte_length` column (finding F5) -- `None` for any
-        caller that does not pass it (today, every caller in `service.py`,
-        which this module must not edit in this window) still gets the
-        ceiling-only refusal above; a caller that DOES pass it gets the
-        stronger row-agreement check too. Either way this method never
-        reads more than `MAX_ARTIFACT_BYTES + 1` bytes."""
+        """Fetch, bound, cross-check, hash -- and return bytes ONLY when every
+        check passed. `expected_byte_length` is the row's recorded length;
+        `None` (no caller exists in this PR) still gets the ceiling, the EOF
+        proof and the declared-length agreement; a caller that passes it gets
+        the row-agreement check too. Never more than `MAX_ARTIFACT_BYTES + 1`
+        bytes are read, plus one byte to prove EOF."""
         body = await asyncio.to_thread(
             self._get_bytes_sync, key=key, expected_byte_length=expected_byte_length
         )
         actual = hashlib.sha256(body).hexdigest()
         if actual != expected_digest:
-            logger.error(
-                "garuda_artifacts.digest_mismatch",
-                extra={"storage_key": key},
-            )
-            raise ArtifactDigestMismatch(key)
+            logger.error("garuda_artifacts.digest_mismatch", extra={"key_ref": _key_ref(key)})
+            raise ArtifactDigestMismatch(_key_ref(key))
         return body
+
+    # ---------------------------------------------------------------- probes
+
+    def _assert_private_sync(self) -> dict[str, bool | None]:
+        """Read-only probe of the bucket's public-access posture (O1 F1).
+        Raises `GarudaArtifactsStoreUnavailable` on any positive signal that
+        the bucket is public. Returns what each probe could establish:
+        `True` (verified not public), `False` (public -- but then this has
+        already raised), or `None` (the store does not implement that call,
+        so this adapter cannot verify it and says so)."""
+        verdict: dict[str, bool | None] = {"public_access_block": None, "policy_status": None}
+        try:
+            cfg = self._client.get_public_access_block(Bucket=self._bucket)[
+                "PublicAccessBlockConfiguration"
+            ]
+            blocked = all(
+                bool(cfg.get(k))
+                for k in (
+                    "BlockPublicAcls",
+                    "IgnorePublicAcls",
+                    "BlockPublicPolicy",
+                    "RestrictPublicBuckets",
+                )
+            )
+            verdict["public_access_block"] = blocked
+        except ClientError as exc:
+            code = str(exc.response.get("Error", {}).get("Code", ""))
+            if code not in (
+                "NoSuchPublicAccessBlockConfiguration",
+                "NotImplemented",
+                "MethodNotAllowed",
+            ):
+                raise
+        try:
+            status = self._client.get_bucket_policy_status(Bucket=self._bucket)["PolicyStatus"]
+            verdict["policy_status"] = not bool(status.get("IsPublic"))
+        except ClientError as exc:
+            code = str(exc.response.get("Error", {}).get("Code", ""))
+            if code not in ("NoSuchBucketPolicy", "NotImplemented", "MethodNotAllowed"):
+                raise
+        if verdict["policy_status"] is False or verdict["public_access_block"] is False:
+            raise GarudaArtifactsStoreUnavailable(
+                "garuda artifacts store: the configured bucket is PUBLIC "
+                f"(policy_status={verdict['policy_status']}, "
+                f"public_access_block={verdict['public_access_block']}); refusing to serve artifacts"
+            )
+        return verdict
+
+    async def assert_private(self) -> dict[str, bool | None]:
+        return await asyncio.to_thread(self._assert_private_sync)
