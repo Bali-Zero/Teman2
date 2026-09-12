@@ -1,0 +1,211 @@
+task_id: voa-store-adapter-v2
+mandate_id: garuda-voa-w1w
+colour: BLUE
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor MEASURED, not guessed: `scripts/evidence_pack_lint.py --print-floor --changed-files-file …
+# --numstat-file …` against the branch base 5ceb29b375 returns **3, source `size`**: churn
+# Σ(added+deleted) = 2108 over the six changed files, past SIZE_GEAR3_THRESHOLD = 1828. No path is
+# hot-zone (every file alone scores 1). The 443-line verbatim copy of SPEC-v2.md is what crosses
+# the threshold: without it the churn is 1665 and the floor is 2, which is what SPEC v2 §10
+# expected. The copy is in the diff because the gate must be able to READ the spec from the repo;
+# the alternative -- land the spec first as its own docs PR and reference it by path + sha256 --
+# was put to the Imperator at the BUILD checkpoint. Whatever he rules, the gear here equals the
+# floor as measured on the diff that ships; it is never declared below it. The stable figures are
+# the three files that are NOT this one, `git diff --numstat 5ceb29b375 -- apps/`: ports.py +70/-1,
+# postgres_store.py +461/-0 (a NEW file on main: the suspended PR2a never merged),
+# test_postgres_store.py +915/-0.
+objective: >-
+  GARUDA VOA W1W, PR2a-v2 -- the second candidate for the same concern, built from fresh main
+  against SPEC v2 (`SPEC-v2.md` beside this file; ratified source
+  `~/BATTAGLIA-20260911/1-GARUDA-VOA/spec/2026-09-12-SPEC-v2-postgres-document-store.md`, sha256
+  f7f3329aff5c7a448581cce989501e95b436cdcf6d445eb699b7a214ced2bf5d, Imperator decision #35; the
+  committed copy is that file after the repo's pre-commit `prettier --write` (applied twice: the first pass is not idempotent on this file), sha256
+  54dc70e476916bc3fa16c150b7b8a2191cb94960a4e9871613fa249a3e7e6dcc -- the only differences are
+  prettier's own: `*emphasis*` rewritten `_emphasis_` and table/whitespace normalisation, no
+  word changed; `diff -w` between the two shows nothing else). PR2a (`agent/air-m5/backend-rag/voa-store-adapter`, head aed342999e) was SUSPENDED under
+  Builder Contract 1 after three refuter rounds reopened one class: a test that pins a FORM and
+  calls it a PROPERTY. This PR keeps the store's uncontested behaviour and changes four things
+  (SPEC v2 §0): a test-only seam in `commit()` so the collision branch is FORCED under any
+  scheduler; the loser's post-collision state machine made total and typed
+  (`IdempotencyKeyVanished`); the test suite re-derived from a mutation model instead of fixture
+  pairs; every declared limit consolidated into the `limits:` block below and cited by id.
+  Two numbers, so a gate does not have to re-derive them: ~530 net lines of non-test code against
+  main, because `postgres_store.py` is new on main; ~50 of those are this PR's delta of concern
+  over the uncontested v1 store (hooks dataclass, two call sites, the typed error and its export).
+scope:
+  - apps/backend-rag/backend/services/garuda_documents/postgres_store.py
+  - apps/backend-rag/backend/services/garuda_documents/ports.py
+  - apps/backend-rag/backend/tests/services/garuda_documents/test_postgres_store.py
+  - evidence/2026-09/agent-air-m5-backend-rag-voa-store-adapter-v2-562162e6/ # brief.yml, SPEC-v2.md, ledger-rows-held.md
+constraints:
+  - >-
+    NO migration. 304 is applied in production (measured in the W1W window via scripts/pg.sh:
+    `_schema_versions.applied_as = 'backend_rag_v2 (session_user=backend_rag_migrator)'`; the
+    GARUDA_DOCUMENT policy `garuda-document-privacy-v1` is active, PRODUCTION, 30 days,
+    CREATED_AT). This PR reads that schema; received field order would need an ordinal column
+    and is therefore out (limit L1).
+  - >-
+    No production wiring: `service_initializer.py` untouched, `app.state.garuda_document_store`
+    stays unset, the router keeps its documented 503. Wiring is PR3 (limits L2, L4).
+  - >-
+    No fly.toml, no .env*, no zantara_core.py, no products/garuda-voa/contracts/openapi.yaml
+    (W3C owns the contract). No Header declarations in any router are touched. No CI workflow
+    change (limit L3).
+  - >-
+    The seam `_hooks` is keyword-only, underscore-named, defaults to None, documented as a test
+    seam production must never set; `test_the_default_constructor_has_no_hooks` pins it here and
+    PR3 asserts it at the factory (L4).
+limits:
+  L1: >-
+    A replayed `LowConfidenceOutcome` (and `ReadyOutcomeValueNotPersisted.persisted_fields`)
+    comes back in `PassportReviewFieldName`'s declaration order for EVERY received order (P11,
+    proved over all 24 permutations). The RECEIVED order is not preserved and cannot be without
+    an ordinal column on `garuda_document_review_fields` -- a migration, a separate concern. Cited
+    by `DocumentStorePort.get_existing`'s docstring and by `test_p11_*`. Ledger row 2 in
+    `ledger-rows-held.md` stays open, owner operator[product].
+  L2: >-
+    `IdempotencyKeyVanished` propagates out of `service.py` exactly as
+    `ReadyOutcomeValueNotPersisted` does today; its HTTP mapping is PR3's (SPEC v2 §9). Cited by
+    the exception's docstring in `ports.py`.
+  L3: >-
+    CI proves PostgreSQL 15 only (`services: postgres` = `postgres:15`, `INTAKE_TEST_DSN`).
+    PostgreSQL 17 is a MEASURED LOCAL run recorded under `measurements` with its
+    `server_version` string; a PG17 CI shard is a workflow change and a named follow-up PR.
+    Cited by the test module docstring.
+  L4: >-
+    The production factory (`service_initializer.py`, PR3) must assert `store._hooks is None`
+    at the factory itself; this PR pins it only for a store built the way a factory builds one.
+    Cited by `test_the_default_constructor_has_no_hooks`.
+  L5: >-
+    Four tests named at the foot of PR2a's test file are absorbed by NONE of this PR (SPEC v2
+    §9): the SECURITY DEFINER ownership-transfer pair moves to a migration-test PR unchanged in
+    name; the READY-replay pair is deferred until `service.py::_reconcile_lost_race_ready_replay`
+    exists, renamed `test_ready_replay_after_outcome_1_returns_the_committed_body` and
+    `test_sequential_ready_replay_still_raises_value_not_persisted`.
+spec_errata:
+  - >-
+    SPEC v2 §3 lists `swap_case: s -> s.swapcase()` in the mutation model E. `swapcase` is a
+    BIJECTION on ASCII letters -- it has no collision pair -- so it cannot be a member of a LOSSY
+    model and the derivation rule ("a witness the model fails to construct is a test ERROR")
+    would fail on it. The suite uses `casefold` in its place, which is lossy (`ab`/`AB`), and
+    says so in `_string_model`. The spec file is copied verbatim, not re-edited.
+  - >-
+    The retention-policy INSERT casts its interval parameter `$2::text::interval`, not
+    `$2::interval`: asyncpg infers `interval` and demands a `timedelta`, rejecting the literal
+    string. Declared in the fixture's SQL comment.
+acceptance:
+  - id: A1
+    property: P1 actor scoping is injective
+    test: test_p1_two_actors_same_literal_key_hold_two_bindings
+  - id: A2
+    property: P2 storage key injective on the 4-tuple, DERIVED from the mutation model E
+    test: >-
+      test_p2_scoped_key_distinguishes_every_pair_a_lossy_encoder_collapses (183 cases: prefix_n,
+      suffix_n, stride_k_o, drop_i, casefold, strip_sep -- on the actor AND on the idempotency
+      key), test_p2_scoped_key_distinguishes_tuples_a_separator_join_or_boundary_shift_collapses
+      (9 cases), test_p2_the_mutation_model_is_not_empty (every family present per component),
+      test_p2_golden_vector_backward_compatibility_pin_not_a_property (ONE form pin, labelled).
+  - id: A3
+    property: P3 exact replay returns the committed outcome and creates nothing
+    test: test_p3_exact_replay_returns_the_committed_outcome_and_creates_nothing, test_p3_processing_and_unreadable_replay_faithfully
+  - id: A4
+    property: P4 different payload is a conflict on BOTH entry points
+    test: test_p4_different_payload_same_key_is_a_conflict_on_both_entry_points
+  - id: A5
+    property: P5/P6 exactly one True, commit is total, the loser TRAVERSED the PK branch (schedule A, collision counter == 1)
+    test: test_p5_p6_schedule_a_exactly_one_winner_and_the_loser_traversed_the_pk_branch, test_p5_sequential_second_commit_returns_false
+  - id: A6
+    property: P7 a loser is told it lost only when the payload was compared (schedule B)
+    test: test_p7_schedule_b_loser_with_a_different_payload_gets_conflict_not_false
+  - id: A7
+    property: §2 outcome 3 -- key vanished after the collision is typed (schedule C, 2-second policy, superuser purge outside the pool)
+    test: test_schedule_c_key_vanished_after_the_collision_is_typed
+  - id: A8
+    property: §2 outcome 4 -- re-occupation collapses into outcome 1 or 2, provenance not observable (schedule D)
+    test: test_schedule_d_reoccupation_collapses_into_outcome_1_or_2[same-payload|different-payload]
+  - id: A9
+    property: P8 the two unique constraints are not interchangeable
+    test: test_p8_duplicate_document_id_under_a_fresh_key_propagates_not_a_lost_race
+  - id: A10
+    property: P9 fail-closed on retention, asserted on the TYPE
+    test: test_p9_no_active_policy_fails_closed_with_the_documented_type
+  - id: A11
+    property: P10 the PII gap is announced with the persisted structure, canonical, for every received order
+    test: test_p10_ready_replay_announces_the_gap_with_the_persisted_structure_in_canonical_order (6 permutations)
+  - id: A12
+    property: P11 replay order canonical for every received order
+    test: test_p11_low_confidence_replay_is_canonical_for_every_received_order (24 permutations)
+  - id: A13
+    property: §4.2 the seam is a test seam
+    test: test_the_default_constructor_has_no_hooks
+  - id: A14
+    property: H1 no DSN secret reaches the REPORT (subprocess, --tb=long, JUnit), and CI fails instead of skipping in all three degraded cases
+    test: >-
+      test_h1_no_dsn_secret_reaches_the_report_at_tb_long_or_the_junit_xml[unreachable-server|dsn-rejected-by-parser],
+      test_h1_non_superuser_role_fails_under_ci_without_leaking_its_password
+measurements:
+  server_versions:
+    pg15: "15.19 (Homebrew), disposable cluster in the session scratchpad, port 55432 -- CI's major"
+    pg17: "17.10 (Homebrew), local cluster, port 5432 -- production's major (prod is 17.9)"
+  suite: >-
+    test_postgres_store.py, 240 collected. PG 15.19: 240 passed in 50.44s. PG 17.10: 240 passed in
+    262.18s -- the local PG17 cluster does `CREATE DATABASE` in ~6 s today (`\timing` on a bare
+    CREATE DATABASE: 6256 ms), which is the environment, not the code; measured once, not chased.
+  ci_behaviour: >-
+    `.github/workflows/tests.yml` gives the backend shards `services: postgres`
+    (`public.ecr.aws/docker/library/postgres:15`) and exports
+    `INTAKE_TEST_DSN=postgresql://test:test@localhost:5432/nuzantara_test`, this suite's second
+    fallback. Under `CI` the fixture FAILS, never skips, in all three degraded cases -- unreachable
+    server, DSN rejected by asyncpg's parser, connecting role not a superuser -- and all three are
+    now BEHAVIOURALLY tested by the H1 subprocess runner (A14), closing the "untestable"
+    declaration PR2a's brief carried.
+  guilt_mutation_method: >-
+    One mutation at a time, applied by anchor with a cp backup and restored after (never `git
+    checkout --`). PG 15.19: the FULL file per mutation, so the count is over all 240 tests. PG
+    17.10: the same mutations against the tests the property NAMES (`-k` selector recorded per
+    row) -- the full file costs ~4.5 min per run on this cluster today (see `suite`), so the PG17
+    column proves "red on PG17" and the PG15 column proves the blast radius. Every row is red on
+    both; no row carries a scheduler caveat.
+guilt_mutations:
+  - "P1 -- actor_id replaced by an empty string in _scoped_key_sha256 -> PG15 full file: 113 failed, 127 passed; PG17 -k 'test_p1': 1 failed, 30 passed, 209 deselected"
+  - "P2 -- encoder prefix_17 substituted into the hash (the cut that walked past PR2a's 16-char pair) -> PG15 full file: 46 failed, 194 passed; PG17 -k 'prefix_17': 1 failed, 1 passed, 238 deselected"
+  - "P2 -- encoder suffix_5 (the class PR2a's prefix-only property missed entirely) -> PG15 full file: 24 failed, 216 passed; PG17 -k 'suffix_5': 1 failed, 1 passed, 238 deselected"
+  - "P2 -- encoder stride_2_1 (actor_id[1::2], named by Sol O3) -> PG15 full file: 53 failed, 187 passed; PG17 -k 'stride_2_1': 1 failed, 1 passed, 238 deselected"
+  - "P2 -- encoder drop_3 -> PG15 full file: 5 failed, 235 passed; PG17 -k 'drop_3': 1 failed, 3 passed, 236 deselected"
+  - "P2 -- encoder casefold (swapcase is a bijection; see spec_errata) -> PG15 full file: 1 failed, 239 passed; PG17 -k 'casefold': 1 failed, 1 passed, 238 deselected"
+  - "P2 -- encoder strip_sep '|' -> PG15 full file: 1 failed, 239 passed; PG17 -k 'strip_sep': 1 failed, 13 passed, 226 deselected"
+  - "P2 -- suffix_2 on the idempotency_key component -> PG15 full file: 12 failed, 228 passed; PG17 -k 'suffix_2 and key': 1 failed, 11 passed, 228 deselected"
+  - "P2 -- length-prefixing replaced by '|'.join (kills the join case AND the golden pin) -> PG15 full file: 2 failed, 238 passed; PG17 -k 'join_sep or golden': 2 failed, 6 passed, 232 deselected"
+  - "P3 -- the SELECT ... FOR UPDATE branch removed. HISTORY: SURVIVED the first version of the test (240 passed): the store still answered False with no new row, by colliding on the PK and recovering. The test now also asserts the collision seam never fired on a sequential replay. -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p3': 1 failed, 1 passed, 238 deselected"
+  - "P4 -- get_existing's hash comparison replaced by True -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p4': 1 failed, 239 deselected"
+  - "P4 -- commit's lookup-path hash comparison replaced by True -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p4': 1 failed, 239 deselected"
+  - "P5 -- the lookup-path loser returns True -> PG15 full file: 2 failed, 238 passed; PG17 -k 'test_p5': 1 failed, 1 passed, 238 deselected"
+  - "P5 -- the collision-path loser returns True -> PG15 full file: 2 failed, 238 passed; PG17 -k 'test_p5 or schedule_d': 2 failed, 2 passed, 236 deselected"
+  - "P6 -- the UniqueViolationError handler deleted. Red on BOTH versions under the seam-forced schedule, NO scheduler caveat (the caveat PR2a carried is gone: this is what SPEC v2 §4 exists for) -> PG15 full file: 5 failed, 235 passed; PG17 -k 'schedule_a or schedule_b': 2 failed, 238 deselected"
+  - "P7 -- _LostRace(payload_checked=True) on the INSERT-collision path -> PG15 full file: 5 failed, 235 passed; PG17 -k 'schedule_b': 1 failed, 239 deselected"
+  - "P8 -- the constraint_name != garuda_documents_pkey discrimination removed -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p8': 1 failed, 239 deselected"
+  - "P9 -- the active-policy guard deleted (red via the TYPE assertion: the DB trigger refuses with asyncpg.RaiseError, not PersistencePolicyUnavailable) -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p9': 1 failed, 239 deselected"
+  - "P10 -- _rehydrate fabricating a valueless ReadyOutcome -> PG15 full file: 6 failed, 234 passed; PG17 -k 'test_p10': 6 failed, 234 deselected"
+  - "P10 -- persisted_fields replaced by () -> PG15 full file: 6 failed, 234 passed; PG17 -k 'test_p10': 6 failed, 234 deselected"
+  - "P11 -- _in_canonical_order dropped, SQL order kept -> PG15 full file: 24 failed, 216 passed; PG17 -k 'test_p11': 24 failed, 216 deselected"
+  - "§2 outcome 3 -- IdempotencyKeyVanished reverted to RuntimeError -> PG15 full file: 1 failed, 239 passed; PG17 -k 'schedule_c': 1 failed, 239 deselected"
+  - "§4 -- the after_collision_before_reread seam made a no-op: every race test FAILS TO SET UP (counter != 1), none passes vacuously -> PG15 full file: 5 failed, 235 passed; PG17 -k 'schedule_a or schedule_b or schedule_c or schedule_d': 5 failed, 235 deselected"
+  - "H1 -- `from None` dropped (pytrace=True): the chained asyncpg.connect frame renders and the sentinel appears at --tb=long -> PG15 full file: 2 failed, 238 passed; PG17 -k 'test_h1': 2 failed, 1 passed, 237 deselected"
+  - "H1 -- _redacted returning the DSN unchanged -> PG15 full file: 3 failed, 237 passed; PG17 -k 'test_h1': 3 failed, 237 deselected"
+  - "H1 -- a connect moved outside the try in the helper -> PG15 full file: 2 failed, 238 passed; PG17 -k 'test_h1': 2 failed, 1 passed, 237 deselected"
+refuter:
+  seat: codex Sol
+  model_id: PENDING -- written after the round, from the log header, never from the mandate
+  model_id_source: "PENDING -- written after the round, from the log header, never from the mandate"
+  invocation: "codex exec --sandbox read-only --skip-git-repo-check -m gpt-5.6-sol -c model_reasoning_effort=xhigh"
+  round: O1 (of PR2a-v2)
+  duration: "PENDING -- written after the round, from the log header, never from the mandate"
+  verdict: PENDING -- written after the round, from the log header, never from the mandate
+  findings: PENDING -- written after the round, from the log header, never from the mandate
+perimeter_not_touched: >-
+  Not touched, so nobody infers it from absence: `service_initializer.py`, any router, any
+  `Header(...)` declaration, any migration, any contract, fly.toml, .env*, zantara_core.py, any
+  CI workflow. The suspended branch `agent/air-m5/backend-rag/voa-store-adapter` stays as the
+  record of the suspension and is never merged.

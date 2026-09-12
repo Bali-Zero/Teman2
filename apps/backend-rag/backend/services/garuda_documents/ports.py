@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from backend.services.garuda_documents.models import DocumentOutcome
+from backend.services.garuda_documents.models import DocumentOutcome, PassportReviewFieldName
 
 
 class DocumentStorePort(Protocol):
@@ -44,6 +44,20 @@ class DocumentStorePort(Protocol):
         (actor, key) pair. Raises `IdempotencyConflictError` if the key is already bound
         (for this actor) to a DIFFERENT payload hash. A different actor reusing the same
         `idempotency_key` string is a distinct binding, not a replay and not a conflict.
+
+        REPLAY ORDER, stated here so no consumer infers the stronger promise: a replayed
+        `LowConfidenceOutcome` returns its `uncertain_fields` in the CANONICAL order --
+        `PassportReviewFieldName`'s declaration order -- and NOT in the order the original
+        `commit` received. For every outcome `confidence.py` builds today the two coincide,
+        because it assembles the tuple by iterating that same enum; for a tuple assembled
+        in any other order they do not, and what comes back is the canonical one. A
+        consumer that needs the order it sent needs the store to persist an ordinal, which
+        is a column, which is a migration and therefore a different concern. This is
+        declared limit L1 in the PR's brief (`limits:` block) and nowhere else; a docstring
+        that says more or less than L1 is wrong.
+
+        Raises `IdempotencyKeyVanished` only from `commit()`'s post-collision re-read (see
+        that method); `get_existing` itself never raises it.
         """
         ...
 
@@ -71,6 +85,61 @@ class DocumentStorePort(Protocol):
 
 class IdempotencyConflictError(Exception):
     """Raised by a `DocumentStorePort` when a key is replayed with a different payload."""
+
+
+class ReadyOutcomeValueNotPersisted(Exception):
+    """Raised by `get_existing()` when a replayed key resolves to a committed `ReadyOutcome`
+    whose store cannot rehydrate `ReviewField.value` — the PII boundary forbids persisting
+    an extracted passport field's actual VALUE in cleartext (see `postgres_store.py`'s
+    module docstring for the full argument), so a store that honours that boundary has
+    nothing to rehydrate the value FROM.
+
+    Lives here, on the Protocol's own module, rather than on any one concrete store — a
+    storage-agnostic caller (`service.py`) needs to be able to catch this without
+    importing a specific implementation, the same reason `IdempotencyConflictError` lives
+    here instead of on each store that raises it.
+
+    Carries enough of the persisted STRUCTURE (`document_id`, `persisted_fields` — field
+    names and confirmation flags only, never a value) that a caller holding its own
+    independently-derived `ReadyOutcome` for the identical bytes (e.g. the loser of a
+    `commit()` race, which ran its own OCR pass before losing) can verify that outcome's
+    shape agrees with what was actually committed and re-tag it with the authoritative
+    `document_id`, without the store ever having to hand back — or fabricate — a value.
+    A caller with no such independent outcome (an ordinary sequential replay, OCR never
+    ran on this call) has nothing to reconcile against and must let this propagate; the
+    caller that CAN reconcile does not exist yet and arrives in its own PR.
+    """
+
+    def __init__(
+        self,
+        document_id: str,
+        persisted_fields: tuple[tuple[PassportReviewFieldName, bool], ...],
+    ) -> None:
+        super().__init__(document_id)
+        self.document_id = document_id
+        self.persisted_fields = persisted_fields
+
+
+class IdempotencyKeyVanished(Exception):
+    """Raised by `commit()` when its INSERT lost to a concurrent writer on the key's PRIMARY
+    KEY and the re-read that follows finds NO row holding that key.
+
+    The loser's transaction died on the collision, so it re-reads on a fresh connection.
+    Migration 304's `guard_garuda_document_mutation` forbids DELETE only while
+    `clock_timestamp() < retention_until`, so a row legitimately leaves after its retention
+    expires; a caller whose single `commit()` straddles that window can find the key bound
+    to nothing. That is outcome 3 of the loser's state machine (SPEC v2 §2): not corruption,
+    not "impossible", and not a lost race either -- "you lost to X" is false when X is gone.
+
+    Typed and on this module for the same reason `IdempotencyConflictError` is: a
+    storage-agnostic caller must catch it without importing a concrete store. No retry is
+    attempted -- re-running `commit()` re-enters a loop an adversarial re-occupier controls.
+    What the HTTP layer answers is PR3's (limit L2 in the brief); until then it propagates.
+    """
+
+    def __init__(self, idempotency_key: str) -> None:
+        super().__init__(idempotency_key)
+        self.idempotency_key = idempotency_key
 
 
 class InMemoryDocumentStore:
