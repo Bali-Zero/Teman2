@@ -165,3 +165,7 @@ docs/plans/mouth-final-20260911/README.md
 docs/plans/mouth-final-20260911/LAUNCH.md
 docs/plans/mouth-final-20260911/W[0-7]-*.md
 docs/plans/mouth-final-20260911/evidence/**
+
+# B1.5: the embedding artifact is IMMUTABLE — its sha256 is committed to in
+# evidence/.../b1-5-precall.json, and reformatting it would break that receipt.
+apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/query_vectors_b1_5.json
