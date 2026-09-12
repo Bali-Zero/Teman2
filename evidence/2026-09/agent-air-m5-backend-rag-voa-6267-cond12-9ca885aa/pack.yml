@@ -118,6 +118,16 @@ receipts:
       `garuda-contract-parity`). Zero-hit greps on the changed test file for `past_the_middleware`,
       `Match.`, `operation_id` and `matches(scope`.
     ts: "2026-09-12T04:37:39Z"
+    rectification: >-
+      ANNOTATED 2026-09-12, not rewritten. This receipt's `result` is FALSE as written: it
+      reports the external anchor as "verified by reading
+      `.github/workflows/garuda-contract-parity.yml`", and reading a workflow's NAME is not
+      measuring what its job does. That workflow installs pytest+pyyaml and its suite never
+      builds the live schema, so it compares the frozen document with itself. The on-disk gate
+      on head 48cf44357a rejected that head REWORK-BUILD for exactly this, and the anchor was
+      repointed to `backend/tests/app/routers/test_garuda_voa_openapi_parity.py`. The row stays
+      on the record with its error visible because a pack that edits its own failed receipts
+      is no longer evidence.
     seat: claude-opus-5 (this worktree session)
     exit: 0
   - claim: guilt and innocence on the reduced test, the two mutations the ruling named
@@ -197,6 +207,36 @@ receipts:
     seat:
       claude-opus-5 (GARUDA VOA W3C session 2/4, fresh context, outside the chain that produced
       48cf44357a)
+    exit: 0
+  - claim: >-
+      RECTIFICATION of three timestamps in this evidence pack and its journal. They were
+      LABELS, not measurements: each is rounded to :00 seconds and each names an instant
+      LATER than the commit that carries it (squash `1ccbf1ebad`, committed 2026-09-12T05:05:24Z)
+      and later than the merge itself (2026-09-12T05:17:56Z). Raised as condition 4 of the
+      third-party post-merge gate gate-6275b.
+    cmd: >-
+      grep -rno '2026-09-12T0[45]:[0-9][0-9]:[0-9][0-9]Z' on this evidence directory at
+      `origin/main` head ec7789460b; a python pass over this session's own transcript JSONL
+      recording, for each literal, the first record that contains it and that record's role
+      and timestamp; git log --format=%cI on the squash commit; gh pr view 6275 for the merge time
+    result: >-
+      Three rows, and the authorship is not uniform. (a) `pack.yml` ts "2026-09-12T05:40:00Z"
+      (the "four acceptance probes re-measured at this head" receipt): MINE. The literal first
+      appears in an assistant message of this session at 04:54:34Z — typed 46 minutes ahead of
+      the instant it declares. (b) `pack.yml` ts "2026-09-12T05:35:00Z" (the REWORK-BUILD
+      receipt, whose own `seat:` names the W3C 2/4 session outside the chain) and (c)
+      `journal.jsonl` row 5 ts "2026-09-12T05:20:00Z" (the same gate verdict): both already
+      present ON DISK in a diff shown to this session at 04:52:39Z, before this session ever
+      typed either literal — they were written into this worktree by the grader session, the
+      generator-is-never-grader inversion already on the record as decision #21. The REAL
+      bounds are therefore: (a) written at or just before 04:54:34Z, (b) and (c) before
+      04:52:39Z. Publishing all three unchecked is this session's own act, which is why the
+      rectification is written here and not requested from anyone else. The substance of the
+      three rows is unaffected — the measurements they describe were made; only their clock
+      was invented, and an invented clock in an evidence pack is a small forgery of the same
+      family this whole PR exists to cure: text asserting more than was measured.
+    ts: "2026-09-12T05:33:03Z"
+    seat: claude-opus-5 (M5 session, docs discharge PR, measured not recalled)
     exit: 0
 dissent:
   - seat: codex-gpt-5.6-sol
