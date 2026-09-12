@@ -1,0 +1,166 @@
+brief_ref: evidence/2026-09/agent-nuzantara-backend-rag-b12a-variants-197169e6/brief.yml
+plan_ref: >-
+  B1.2 PR-A of mandate B1 generation 4. Governing record: the B1 README's D3/D5 addition-only
+  rule and B1.1's inventory row 2 (dense_formatted). Predecessor #6266 closed on the gate's
+  split direction; see brief.yml `supersedes`.
+lanes:
+  - lane: "B1.2 variant addition (mandatory external builder lane)"
+    role: build
+    seat: >-
+      tp1-glm-5.2 (3 failed tries: rc=3 truncated reasoning-only response; off-task review with
+      0 code blocks; 9 blocks none calling pipeline_sources) then tp1-qwen3.8-max (same-role
+      fallback per the seat rule), verified and corrected by claude-opus-5 (Dux)
+    state: delivered
+  - lane: "B1.2 registry"
+    role: build
+    seat: "claude-sonnet-5 (implementer child)"
+    state: delivered
+  - lane: "B1.2 adversarial rounds 1-3"
+    role: review
+    seat: "codex gpt-5.6-sol, effort high, read-only — r1 account 1 Pro, r2/r3 account 2 Mini"
+    state: >-
+      Three BLOCK verdicts, all on ONE cause that belongs to the GUARD, not to the variants:
+      whether the guard can prove the callable pytest runs under a protected name is the def it
+      parsed. The verbatim records and their cures travel with PR-B, where the cause lives. What
+      rounds 1-3 changed in THIS half is the evidence wording only (finding R1-F1, below).
+  - lane: "B1.2 on-disk gate"
+    role: review
+    seat: "fresh claude-opus-5 commissioned by the staff room (M5, isolated detached worktree)"
+    state: >-
+      BLOCK on #6266 at 2026-09-12T02:10Z, three causes. Exactly one of them is this half's:
+      the combined PR's counted churn put the deterministic floor at 3 against a declared gear
+      2. The other two (G13 leg A convicting an honest tree under double import; an unaudited
+      hex digest in the predecessor's pack) belong to PR-B and are cured there.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Builder lane is a non-Anthropic seat by mandate (tp1-glm-5.2, then tp1-qwen3.8-max); reviewer
+  is codex gpt-5.6-sol; the on-disk gate is a fresh Anthropic seat outside the contribution
+  chain. Generator is never grader in either direction.
+diff:
+  net_lines: >-
+    Additions only, zero deletions on every changed file — the exact per-file numbers are the
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` receipt below rather than a
+    narrated total here, because a narrated total goes stale on the next edit to this very file.
+    What matters and is stable: the counted churn sits well under SIZE_GEAR3_THRESHOLD 1828 (the
+    fixtures module is on an excluded fixtures path), and `evidence_pack_lint --print-floor`
+    computes 2 with source `size`, so the declared gear and the deterministic floor agree. That
+    agreement is the entire reason this PR exists separately from PR-B.
+  behaviour_change: >-
+    None. No shipped code path is touched: this PR adds one test-fixtures module and nine test
+    functions beside nine preserved originals. The observable change is in CI only — the four
+    tripwire files collect nine more tests each carrying honest dense provenance.
+receipts:
+  - claim: >-
+      A2 — additions only: `git diff --numstat` is read against the merge base and reports 0 in
+      the deletions column for every changed file, so no original tripwire body or assertion was
+      edited
+    cmd: >-
+      git diff --numstat origin/main...HEAD (deletions column 0 on every file) — run as
+      `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`
+    result: >-
+      deletions column is 0 on every changed file. Code side: pipeline_score_fixtures.py 419/0,
+      test_reasoning_utils.py 61/0, test_evidence_scoring_abstain.py 64/0,
+      test_abstain_bypass_policy.py 22/0, test_reasoning.py 12/0. Evidence side: the build spec,
+      this pack and the brief, all new files and so all-additions by construction.
+    exit: 0
+    ts: 2026-09-12T02:15Z
+    seat: session (Dux, Pro)
+  - claim: >-
+      A1 — the four touched tripwire files are run per file and each passes at its
+      post-addition count, the nine originals preserved and each variant assertion-identical
+    cmd: >-
+      pytest the four files per file on base and head: reasoning_utils 84 -> 88,
+      evidence_scoring_abstain 26 -> 29, abstain_bypass_policy 34 -> 35, reasoning 86 -> 87 —
+      cd apps/backend-rag && PYTHONPATH=. python -m pytest <file> -o addopts= -p no:randomly -q
+    result: >-
+      test_reasoning_utils.py 88 passed · test_evidence_scoring_abstain.py 29 passed ·
+      test_abstain_bypass_policy.py 35 passed · test_reasoning.py 87 passed. The brief's
+      recorded before-counts were 84 / 26 / 34 / 86.
+    exit: 0
+    ts: 2026-09-12T02:15Z
+    seat: session (Dux, Pro)
+  - claim: "A3 innocence — the six B1 §4 files are run and report their base counts"
+    cmd: >-
+      test_evidence_cross_language 122 passed + 2 xfailed; test_evidence_scoring_abstain 29
+      (26 + 3 variants); test_wa_package_builder 29; test_wa_greeting 64;
+      test_curated_qa_government_fee_gate 21; test_wa_finalize 79 — pytest each of the six
+      files, -o addopts= -p no:randomly -q
+    result: >-
+      test_evidence_cross_language 122 passed + 2 xfailed · test_evidence_scoring_abstain 29 ·
+      test_wa_package_builder 29 · test_wa_greeting 64 · test_curated_qa_government_fee_gate 21
+      · test_wa_finalize 79.
+    exit: 0
+    ts: 2026-09-12T02:15Z
+    seat: session (Dux, Pro)
+  - claim: >-
+      The deterministic gear floor for THIS PR's changed-file list is 2, so the declared gear
+      matches — which is the whole reason the predecessor was split
+    cmd: >-
+      git diff --name-only origin/main...HEAD > /tmp/b12a-changed.txt &&
+      git diff --numstat origin/main...HEAD > /tmp/b12a-numstat.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --changed-files-file /tmp/b12a-changed.txt --numstat-file /tmp/b12a-numstat.txt
+    result: "floor 2, source `size`; no hot-zone path. Quoted in the PR body on the head sha."
+    exit: 0
+    ts: 2026-09-12T02:20Z
+    seat: session (Dux, Pro)
+pii_scan: clean
+pii_scan_note: >-
+  Nothing here transcribes client data. The fixtures module carries query and context strings
+  from the pre-existing tripwire tests (synthetic: "quantum physics theory", "KBLI
+  classification code retail 47911" and similar), cosine floats, and label strings. No applicant
+  name, document number, phone or email appears in the diff, the brief or this pack.
+dissent:
+  - seat: "codex gpt-5.6-sol (adversarial round 1, read-only, effort high)"
+    objection: >-
+      F1: the brief and the build spec described retrieval RANKS as measured. They were not —
+      the only measured number is rc1a's cosine. Describing a simulated rank as measured is the
+      same class of defect the nine tripwires exist to prevent.
+    status: CONFIRMED
+    resolution: >-
+      CURED in evidence, and it is the one round-1 finding that belongs to this half. brief.yml
+      and B1-2-build-spec.md now state that ONLY cosines were measured and name rank, list
+      membership, formatter collection, fallback path and Qdrant server as unmeasured or
+      simulated; the retained rank values are marked SUPERSEDED rather than deleted, so the
+      correction is auditable instead of invisible; dense_rank0 and qdrant_server are None.
+  - seat: "codex gpt-5.6-sol (adversarial rounds 1-3)"
+    objection: >-
+      The remaining findings of all three rounds attack the GUARD's ability to prove that the
+      callable pytest runs under a protected name is the def the guard parsed (r1 F3 duplicate
+      def; r2 N1 class-body rebinding; r3 forged-metadata clone and collection hook).
+    status: CONFIRMED
+    resolution: >-
+      Cured in PR-B, where the guard lives, by G7/G11/G12/G13 — each measured against the
+      reviewer's own bypass. Named here rather than omitted, because a reader of THIS PR must
+      know the registry it adds is pinned by a guard that arrives in the next PR, not in this
+      one.
+  - seat: "session (declared limit, unresolved)"
+    objection: >-
+      Between this PR merging and PR-B merging, the registry is unguarded: nothing is red if an
+      unlabelled score literal reappears in a variant. The split that cured the floor created
+      this window.
+    status: PLAUSIBLE
+    resolution: >-
+      Left standing and labelled rather than argued away. It is bounded by opening both PRs at
+      the same time and by the merge order A-then-B, and it is strictly smaller than the status
+      quo on origin/main, where the variants do not exist at all. Settling it would mean merging
+      one PR over the floor threshold, which is what the gate refused.
+  - seat: "session (self-review)"
+    objection: >-
+      The staff room's split direction called this half "the eleven variants". There are NINE,
+      and the count matters because B1.1's inventory names eleven REGRESSIONS, of which nine are
+      re-based here.
+    status: CONFIRMED
+    resolution: >-
+      Corrected in the open rather than copied forward: nine variants ship, the tenth regression
+      (a behaviour gap) and the eleventh (named by count, never itemised) stay UNRESOLVED as
+      B1.1 recorded them. Reported to the staff room in the same checkpoint that announces this
+      PR.
+bites:
+  consumer: >-
+    The CI `Backend Tests (Python)` shards that collect the four tripwire files — the nine new
+    variants run there, in the same shards as the nine originals they sit beside.
+  observation: >-
+    Per-file counts move from 84/26/34/86 to 88/29/35/87 with zero deletions, and the six B1 §4
+    innocence files stay at 122+2xfailed/29/29/64/21/79. Measured before this PR was opened and
+    re-measured on its head; the PR body carries both.
