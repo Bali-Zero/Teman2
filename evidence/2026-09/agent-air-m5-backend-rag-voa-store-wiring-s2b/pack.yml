@@ -46,7 +46,7 @@ outcome: >-
   must require store AND privacy.
 diff:
   files: 6
-  net_lines: 364
+  net_lines: 700 # gate-6346 condition 2: the first draft said 364, the three code files alone; the six files this key counts add 700 (measured: `git diff origin/main...HEAD --stat` at fc0cecbe64)
 pii_scan: clean
 pii_scan_note: >-
   Wiring and tests; fixture credentials are literal sentinels the tests
@@ -87,6 +87,39 @@ receipts:
     result: "1 (--print-floor-source: none)"
     exit: 0
     ts: "2026-09-12T16:03:40Z"
+    seat: claude-opus-5 (build)
+  - probe: bites
+    claim: >-
+      Bites, observed on the promoted commit and not inferred from "PR
+      merged": on BOTH processes the wiring block refuses fail-closed naming
+      the three variables and publishes nothing. Method deviation, declared:
+      `fly logs --no-tail` (also per `--machine`) returns the last 100 lines
+      only, and at 18:04Z the startup lines (api 18:03:38Z, rag 18:00:55Z)
+      were already out of the buffer -- grep returned 0 on both. No machine
+      was restarted to regenerate them (a production action, not this
+      seat's to take). The equivalent measure: the same code of the promoted
+      image executed inside each container with the container's real env --
+      `initialize_garuda_services(FastAPI(), None)` then
+      `probe_garuda_artifact_bucket(app)`, logging captured in memory,
+      script passed base64 and removed. Same code, same environment, same
+      image; not a replay of the boot log.
+    cmd: >-
+      fly ssh console -a nuzantara-rag --machine <7817d92c4117d8 | 1781e5eda03438> -C
+      "sh -c 'cd /app && echo <base64> | base64 -d > /tmp/prove_s2b.py &&
+      python3 /tmp/prove_s2b.py; rm -f /tmp/prove_s2b.py'"
+    result: >-
+      Identical on api (18:06:05Z) and rag (18:06:12Z): "INFO zantara.backend
+      ℹ️ GARUDA VOA artifact store wiring skipped (fail closed, no consumer
+      yet): garuda artifacts store: missing env var(s) GARUDA_ARTIFACTS_BUCKET,
+      GARUDA_ARTIFACTS_ACCESS_KEY_ID, GARUDA_ARTIFACTS_SECRET_ACCESS_KEY --
+      refusing to fall back to the public bucket's credentials" then
+      "store_published False pending False privacy False". No "wired", no
+      "constructed", no value. PR #6346 merged d2bc21ee34 at 17:51:32Z;
+      /health build_sha 479c6fb45c (contains d2bc21ee34 by `git merge-base
+      --is-ancestor`) served from 18:04Z; machines at v4439; deploy run
+      34709475126.
+    exit: 0
+    ts: "2026-09-12T18:06:05Z"
     seat: claude-opus-5 (build)
 guilt_mutations:
   - target: tigris_store.py:482 — the digest-mismatch log (gate-6334 mutation (d), C1)
@@ -129,6 +162,22 @@ dissent:
       All five accepted and cured in the same branch (2128dae829, then
       45fa962d8e), each with a test and a measured mutation; O3 closed each
       with file:line. None dispositioned away.
+  - seat: claude-opus-5
+    objection: >-
+      (gate-6346, PASS-WITH-CONDITIONS on 5c7936ef58, re-posted on fc0cecbe64)
+      Condition 1: Backend Shard 2 red, inherited from main (compliance
+      test_obligations_register.py after #6333 + af41675695), not this PR's.
+      Condition 2: `diff.net_lines: 364` while the six files measure +700.
+      Condition 3: the Bites line in `fly logs` after the deploy, as a
+      receipt.
+    status: CONFIRMED
+    disposition: >-
+      1: no action by this lane; main was cured by #6351 (41be9f3b58) and
+      this PR was refreshed onto it with a merge commit (fc0cecbe64, six
+      files at zero bytes of delta), re-armed, PWC re-posted. 2: corrected
+      above, with the measurement. 3: the `bites` receipt above -- with the
+      method deviation (100-line log buffer) declared rather than a restart
+      taken.
   - seat: claude-opus-5
     objection: "(design, own) The first design awaited the probe inside initialize_garuda_services."
     status: CONFIRMED
