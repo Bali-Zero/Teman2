@@ -1,0 +1,397 @@
+/* apps/mouth/src/app/(blog)/team/team.module.css
+ * ─────────────────────────────────────────────────────────────────────────────
+ * /team — R19 COMPOSITION AND RHYTHM ONLY (SHWEB-20260911 / W2, decision D-B).
+ *
+ * Every measure below is the one measured on the R19 reference commit
+ * 6603d2913e (`apps/website/src/components/Team.module.css`): container
+ * min(1320px, 90%), the page-intro and section rhythm, the 3-column leadership
+ * grid, the .8fr/2fr responsibility group, the 3-column directory of 3/4
+ * portraits, the 44/48px interactive targets.
+ *
+ * Every COLOUR and every FONT is the CURRENT apps/mouth one: the Rumah Putih
+ * variables this page already sets (`RUMAH_VARS`) and the editorial persona's
+ * own serif for headings (globals.css `[data-theme="editorial"] :is(h1,h2,h3)`).
+ * R19's Direction A palette (#F7F4EE / #233D52 / #A44B36 …) and its Fraunces +
+ * Manrope faces belong to W7 and appear nowhere in this file.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.page {
+  width: min(1320px, 90%);
+  margin-inline: auto;
+}
+
+/* ── Page intro ─────────────────────────────────────────────────────────── */
+
+.pageIntro {
+  max-width: 920px;
+  padding-block: clamp(48px, 6vw, 88px) 56px;
+}
+
+.eyebrow {
+  display: block;
+  color: var(--rp-accent, #1e3863);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.6;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.pageIntro h1 {
+  max-width: 19ch;
+  margin: 18px 0 22px;
+  font-size: clamp(40px, 5.5vw, 72px);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  color: var(--text-primary);
+}
+
+.pageIntro h1 span {
+  color: var(--text-secondary);
+}
+
+.standfirst {
+  max-width: 640px;
+  font-size: clamp(16px, 1.4vw, 18px);
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.introActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 14px 22px;
+  background: var(--rp-accent, #1e3863);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.ctaPrimary:hover {
+  background: var(--text-primary);
+}
+
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 14px 22px;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.ctaSecondary:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.trustPill {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 26px;
+  padding: 10px 16px;
+  background: var(--rp-card-bg, #ffffff);
+  border: 1px solid var(--rp-card-border, #e3e1da);
+  box-shadow: var(--rp-card-shadow, none);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.trustDivider {
+  width: 1px;
+  height: 14px;
+  background: var(--border-default);
+}
+
+.trustMuted {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.stars {
+  color: #d4a017;
+}
+
+/* ── Group navigation ───────────────────────────────────────────────────── */
+
+.groupNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 26px;
+}
+
+.groupNav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--rp-accent, #1e3863);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.groupNav a:hover {
+  border-color: var(--rp-accent, #1e3863);
+}
+
+/* ── Leadership ─────────────────────────────────────────────────────────── */
+
+.section {
+  padding-block: 36px 48px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.leadershipIntro {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 36px;
+  margin-bottom: 30px;
+}
+
+.leadershipIntro > .eyebrow {
+  flex-basis: 100%;
+}
+
+.leadershipIntro h2 {
+  margin-bottom: 0;
+  font-size: clamp(28px, 3.2vw, 38px);
+  line-height: 1.14;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.sectionSubtitle {
+  flex-basis: 100%;
+  margin-top: 10px;
+  max-width: 640px;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.leadershipGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.leader {
+  min-width: 0;
+}
+
+.leader h3,
+.person h3 {
+  margin: 16px 0 7px;
+  font-size: clamp(23px, 2.1vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+}
+
+.leader p,
+.person p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+}
+
+/* ── Responsibility groups ──────────────────────────────────────────────── */
+
+.responsibilityGroup {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
+  gap: 60px;
+  border-top: 1px solid var(--border-subtle);
+  padding-block: 56px 64px;
+}
+
+.groupIntro {
+  max-width: 285px;
+}
+
+.groupIntro h2 {
+  margin-block: 14px 20px;
+  font-size: clamp(30px, 3.2vw, 40px);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.groupIntro p {
+  margin-bottom: 18px;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.groupDirectory {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 38px 24px;
+  align-items: start;
+}
+
+.person {
+  min-width: 0;
+}
+
+/* The 3/4 portrait of the reference. The per-person gradient this page already
+   carried stays as the frame behind the photo and as the initials fallback. */
+.portrait {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  max-width: 100%;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.portraitInitials {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.projectLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rp-accent, #1e3863);
+  border-bottom: 1px solid transparent;
+}
+
+.projectLink:hover {
+  border-color: var(--rp-accent, #1e3863);
+}
+
+/* ── Closing invitation ─────────────────────────────────────────────────── */
+
+.invitation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  margin-block: 16px 64px;
+  padding: 32px;
+  border: 1px solid var(--border-subtle);
+  background: var(--rp-card-bg, #ffffff);
+}
+
+.invitation h2 {
+  margin-bottom: 10px;
+  font-size: clamp(28px, 3vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.invitation p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1000px) {
+  .responsibilityGroup {
+    gap: 30px;
+  }
+
+  .groupDirectory {
+    gap: 28px 18px;
+  }
+}
+
+@media (max-width: 700px) {
+  .pageIntro {
+    padding-block: 40px 36px;
+  }
+
+  .leadershipIntro {
+    display: block;
+  }
+
+  .section {
+    padding-block: 28px 36px;
+  }
+
+  .leadershipGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .responsibilityGroup {
+    grid-template-columns: 1fr;
+    gap: 26px;
+    padding-block: 34px 42px;
+  }
+
+  .groupIntro {
+    max-width: none;
+  }
+
+  .groupDirectory {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 30px 20px;
+  }
+
+  .groupNav {
+    gap: 5px 18px;
+  }
+
+  .groupNav a {
+    font-size: 12px;
+  }
+
+  .invitation {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+    margin-block: 4px 40px;
+    padding: 24px;
+  }
+
+  .invitation .ctaPrimary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 400px) {
+  .leader p,
+  .person p {
+    font-size: 13px;
+  }
+}

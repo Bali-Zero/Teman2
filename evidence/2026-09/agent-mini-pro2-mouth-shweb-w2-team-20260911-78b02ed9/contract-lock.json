@@ -1,0 +1,192 @@
+{
+  "version": "studio-web-contract-v1",
+  "mission": "SHWEB-20260911",
+  "window": "W2-WEB-TEAM",
+  "colour": "BLUE",
+  "state": "BUILD \u2014 PRE-review received (Kimi K3 GO-WITH-CONDITIONS), dispositions below; implementation in progress",
+  "frozenAt": "2026-09-12T03:10Z",
+  "frozenBy": "Dux Opus 5 xhigh, Mini-Pro2, Claude session b8c2b0b7-88b1-4c64-910a-8bf278ef74a6",
+  "baseSha": "70b43c5459489ce9c8d524eefc94d53a7009866d",
+  "servedBaselineCommit": "2150e4a00dc38720cfabc930240993a390ed67d5",
+  "worktree": "/Users/nuzantara/nuzantara/.worktrees/mouth-shweb-w2-team-20260911",
+  "branch": "agent/mini-pro2/mouth/shweb-w2-team-20260911",
+  "identityChoice": {
+    "value": "D-B",
+    "why": "02-DECISIONI-ZERO.md (sha256 f5bae5b1\u2026) row D4 reads D-A but scopes it: \u00abW7 parte dopo W2 integrata. Nel frattempo W2 Team procede in D-B (colori/font attuali)\u00bb. The launch prompt forbids D-A identity in this window (\u00abidentit\u00e0 D-A (\u00e8 di W7)\u00bb). Both agree: W2 = composition and rhythm only.",
+    "brings": "design addendum point 3 \u2014 container width min(1320px, 90%), section rhythm, eyebrow/H2/standfirst scale, founder-band grid and portrait geometry, 44/48px targets",
+    "excludes": "addendum point 1 (R19 token palette) and point 2 (Fraunces/Manrope) \u2014 both W7"
+  },
+  "authority": {
+    "package": "/Users/nuzantara/Desktop/SHWEB-20260911-mouth-final/pacchetto (Mini: the ORIGIN copy; the M5 path in the prompt is its transfer)",
+    "manifestSha256": "a3cd42c000fd7193a8f9f357ec58012cb809aa1fd7b61f7249b2332a11e6e0b8",
+    "manifestCheck": "shasum -a 256 -c MANIFEST.sha256 \u2192 45/45 OK, 0 FAILED (2026-09-12T03:05Z)",
+    "finalSpecSha256": "93fb6cf58cc2e7ba4a3f5855df816d7ef5e9fdccd8ac76ca366c2b24e478373b",
+    "readmeSha256": "073e57ded13ddbd6e113a338ac95dd8a67f227ef152baa4934ef80db66693c30",
+    "w2SpecSha256": "1e4da8ed13f70d6b15e9203f65b218386920f3b71cd623fc755c35ae7304f26e",
+    "sourceManifestSha256": "9ae274b56e98962984ef83bcf4b7a7528dc4aad791dc62d6b70f8f5ab67d1bb7",
+    "launchPromptSha256": "c0063d9856ff2adc2065eafaa3f563fa1401a83cbad34c9940e10a02fa3c7a18",
+    "websiteAddendumTopic5Sha256": "84ed7c8a0470beeb38907d84b413e376f29494a8162559d072441f3ac7521570",
+    "zeroDecisions": {
+      "path": "/Users/nuzantara/Desktop/w-oracle-launch-20260911/02-DECISIONI-ZERO.md",
+      "sha256": "db65ec3689d5ccb7bd068cad7f1193a5f02d77c6a99fcf30df4d2d49c328faf3",
+      "note": "re-hashed at BUILD: the file gained a RULED line dated 2026-09-12 11:40 WITA (the SHWEB imperator conducts and closes the Dux sessions; business decisions stay with Zero). Row D4 and the Q3 roster instruction are unchanged, so nothing in this window's perimeter moves.",
+      "binding": [
+        "D4 = D-A for W7, \u00abnel frattempo W2 Team procede in D-B (colori/font attuali)\u00bb, W7 starts after W2 is INTEGRATA",
+        "Q3 roster: the recorded instruction for Faysha/Faisha and Sahira applies; Kadek, Rina and the Zero entry stay"
+      ]
+    },
+    "r19Ref": {
+      "commit": "6603d2913ee9b85201c19ef8a0d124bd45f9324e",
+      "readWith": "git show 6603d2913e:<path> only \u2014 never the quarantine patch, never a reopened branch, never an active apps/website",
+      "files": {
+        "apps/website/src/components/Team.tsx": "93db8f3db162315c4c2d0c800f7938951acb31918460ad9e65c2464761036ef3",
+        "apps/website/src/components/Team.module.css": "1972afe9f02795b65a4704b103b7c5011837b03f15cafd2e741c5d86ffe0b3aa",
+        "apps/website/src/app/team/page.tsx": "9028d8d62e7cd707f50f3ac7960c8ec81906049a5ada36474d16dd904a89142d",
+        "apps/website/src/content/team.ts": "7c9d81f04b76798e26c4f55446f4d5d4d72a246becddfb028de34583123316d9",
+        "apps/website/src/components/entry.css": "debdb62f431e62ddc1fa295fe989bee3bbb18f7e0e913de1ad50014290a026e9",
+        "apps/website/src/styles/brand-fonts.css": "474e9982e9bc50ec0ff24513a208a1cd6b8695a87f7781a2108bdcda5abf1bcd"
+      },
+      "notTaken": "entry.css and brand-fonts.css are hashed as provenance for the D-B/D-A boundary ONLY: none of their tokens or font faces enters this window.",
+      "mapCommit": "d23454ce2733b3761596d8cc87acc75b9aa3cc5f (PR #6124, now on main as research/design/2026-09-11-r19-design-reuse-map-apps-mouth.md; the on-main copy differs from the PR head \u2014 \u00a74.1/\u00a74.2/\u00a77 read from origin/main at 70b43c5459, sha256 09604c713f4c7f424385e360ad279127a7025755d1a1dd2bebe3f87b07531e35)"
+    },
+    "d4Previews": "/Users/nuzantara/Desktop/w-oracle-launch-20260911/10-D4-anteprima/ (team-OGGI-vs-R19-fold.png + pagine-intere/{OGGI,R19}-team.png) \u2014 the candidate is put beside these"
+  },
+  "rosterBySlugCensus": {
+    "cmd": "grep -rn \"team-roster|TEAM_ROSTER|PUBLIC_ROSTER|rosterByDept|rosterBySlug|photoForEmail\" --include=*.ts --include=*.tsx --include=*.sql --include=*.py . (excluding node_modules and .worktrees)",
+    "ranAt": "2026-09-12T03:04Z",
+    "publicConsumersOfRosterBySlug": [
+      "apps/mouth/src/app/(blog)/team/page.tsx:43",
+      "apps/mouth/src/app/v2/_components/SocialProof.tsx:33",
+      "apps/mouth/src/app/v2/company/about/page.tsx:29"
+    ],
+    "fourthPublicConsumerOfTheRoster": "apps/mouth/src/components/book/book-data.ts:128 \u2014 TEAM_MEMBERS = PUBLIC_ROSTER.map(...), rendered by components/book/TeamGrid.tsx on /book and /book/team. Named by the topic-5 addendum: W2 owns the book's presentation filter + regression test, roster unchanged. It consumes PUBLIC_ROSTER, not rosterBySlug, and no member carries publicListed:false, so today it publishes both excluded people.",
+    "nonPublicConsumers": [
+      "apps/mouth/src/app/(workspace)/process/[id]/page.tsx:52 \u2014 imports initialsOf only (a string helper), internal workspace surface: registered, not touched (FINAL \u00a72.18)",
+      "apps/backend-rag/backend/services/notifications/email_branding.py + db/migrations_v2/229_team_avatars_align_roster.sql \u2014 server-side avatar mapping, no public person list: registered, not touched",
+      "apps/mouth/src/app/(workspace)/team-management/page.tsx:37,43 \u2014 hardcodes /static/team/{sahira,faisha}.jpg without importing the roster, so the symbol census could not see it; internal workspace surface, not touched (Kimi K3 F6)",
+      "apps/mouth/src/app/(workspace)/clients/[id]/components/TaxTab.tsx:33 and (workspace)/lkpm/page.tsx:35 \u2014 internal assignee pickers keyed on the work email; not touched",
+      "apps/mouth/src/lib/api/schema.d.ts:16032 \u2014 GENERATED from the backend OpenAPI; the name appears inside a description string owned by apps/backend-rag, not by a public page; not touched (Kimi K3 F6)",
+      "apps/mouth/src/lib/hr/bonus-aggregation.ts:308 \u2014 a comment in an internal payroll helper; not touched"
+    ],
+    "otherWindowSurfaces": "NewsHero, LatestNews, NewsPageClient (W4), Footer, MobileNav, HeroBlueprint, PersonaDoors, NavShell (W7) were grepped and consume NO roster symbol \u2014 so this window needs no FINAL \u00a72.18 partial exception and declares none.",
+    "marketingPageNote": "apps/mouth/src/app/(marketing)/page.tsx does NOT import the roster: the home's roster content arrives through <SocialProof/>. The launch prompt lists the file because the founder graft is a prop on that component \u2014 one opt-in line, nothing else."
+  },
+  "publicListBefore": {
+    "measuredOn": "served production commit 2150e4a00d, curl 2026-09-12T03:02Z, plus the editorial source lists at base 70b43c5459",
+    "team": {
+      "leadership": ["Pak Heru", "Zainal Abidin", "Ruslana", "Veronika"],
+      "setup": ["Adit", "Ari", "Krisna", "Dea", "Candra", "Vino", "Sahira"],
+      "tax": ["Angel", "Kadek", "Dewa Ayu", "Faisha"],
+      "accounting_reception": ["Asya Nadia", "Rina"],
+      "marketing": ["Zero", "Surya", "Damar", "Subhi"],
+      "servedOccurrences": {
+        "Sahira": 4,
+        "Faisha": 4,
+        "Kadek": 2,
+        "Rina": 2
+      }
+    },
+    "home": {
+      "founders": ["Zainal Abidin", "Pak Heru"],
+      "teamBehindThem": ["Ruslana", "Veronika", "Adit", "Angel"],
+      "servedOccurrences": {
+        "Sahira": 0,
+        "Faisha": 0
+      }
+    },
+    "v2": "same component as the home today (default variant): founders + the same four rows; Sahira 0, Faisha 0",
+    "v2CompanyAbout": {
+      "people": [
+        "Zainal Abidin",
+        "Pak Heru",
+        "Ruslana",
+        "Krisna",
+        "Asya Nadia"
+      ],
+      "robots": "index:false, follow:false",
+      "servedOccurrences": {
+        "Sahira": 0,
+        "Faisha": 0
+      }
+    },
+    "bookTeam": {
+      "source": "PUBLIC_ROSTER \u2014 all 20 roster members",
+      "servedOccurrences": {
+        "Sahira": 2,
+        "Faisha": 2,
+        "onBothRoutes": ["/book", "/book/team"]
+      }
+    }
+  },
+  "siblingContract": {
+    "rosterSsot": "apps/mouth/src/data/team-roster.ts \u2014 20 members, 0 with publicListed:false; READ-ONLY in this window",
+    "rosterSha256": "947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e",
+    "rosterSha256MatchesW1Lock": true,
+    "publicFixture": "the publicListBefore block above is this window's public fixture; the after-table must differ from it by exactly the two removals",
+    "presentationFilterOwner": "W2 \u2014 apps/mouth/src/lib/team-public-listing.ts is the single source of the public-exclusion decision; the four consumers import it, none of them re-lists the excluded slugs inline",
+    "socialProofOwnership": "W2 owns SocialProof; W5 inherits it after this merge. The variant is opt-in, default unchanged for /v2.",
+    "bookOwnership": "W2 owns the book's presentation filter and its regression test; CHAPTERS, TRANSLATIONS, STATS, COMPETITORS, CONTACTS and TeamGrid's markup stay as they are",
+    "w4AndW7": "no file of theirs is touched; if a later window wants the filter elsewhere it imports the same module"
+  },
+  "frozenFiles": {
+    "apps/mouth/src/data/team-roster.ts": "947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e",
+    "apps/mouth/src/app/globals.css": "ffb92591a7dcc6bdf05241a1532bbb72d29e33ca0a46925416920a2ff605c165",
+    "apps/mouth/src/app/layout.tsx": "ce994f6261b58309dc3174d6268efdf531edc4a0aa30815eaf51e6da197207dd",
+    "package-lock.json": "0952ade18fe70ce7ebfd1a2314ae7c196e23adc01a111c251e96a6a95afbbc1b",
+    "apps/mouth/src/lib/theme/rumahVars.ts": "ad336e19616a66e243c4c1963b03d5fff8f01d01df7ab7c5732fd42489090e77",
+    "apps/mouth/src/lib/trust-figures.ts": "98c6d763df6fe6f190fd390375f900527e23ab75dbb9244cc2b58acdd6263bb1",
+    "apps/mouth/src/app/v2/_components/Footer.tsx": "8bf2d29330b1cac4e465f113cd5b2b13903f78b28930e6db070f61850e6b2d93",
+    "apps/mouth/src/app/v2/_components/NewsHero.tsx": "804bc294da4335aa539c2a5320c9c5b0644a63fe9826ef280a3ea86b396d3e81",
+    "apps/mouth/src/app/v2/_components/LatestNews.tsx": "d0ea513848703ca7a15a9dccbb1183dc56efd6a3499ebec2ddd8dbf99b0a3167",
+    "apps/mouth/src/components/book/TeamGrid.tsx": "9bf7c565754da024676f51a029589d1479084ca5a512d2338f807546daf96d84",
+    "apps/mouth/e2e/persona-doors.spec.ts": "e75ceb279f1cbbb51fea850a0292e5e980009cc584df36cc1f1ae03e38560dee",
+    "packages/core/tokens/index.css": "d6eba4bfda56bb2a1c2ca154c90ff76bd4bc3781b3f9b165d3019415ea374d25",
+    "packages/core/tokens/operative.css": "153df96ee62eed43afb87293864f66eb0cdf5d3ea65ba1f98f3be4170d23fe56",
+    "packages/core/tokens/primitives.css": "0bb78dd0524514c383a660d39a76bebb940428aa9fd2e24f4786c8dc00768949",
+    "packages/core/tokens/semantic.css": "d8fdd45a4ec29a364aab1fc1abc4009ca3c459bbf6dd4a2588d0bee83dc07379",
+    "packages/core/tokens/themes/aubergine.css": "4005d1ec650f11effe7121797f2ecb23113a0e02b60420bd3cd7ea6c2ba335ce",
+    "packages/core/tokens/themes/dark.css": "763dad12bec6d7c0a7770a30b62c38eba31a68af3641aff17b35cef982457571",
+    "packages/core/tokens/themes/editorial.css": "daedd9633235a1d155f357a30ac7dfb08a14b9dd94cb023e294dfe1b791e9095",
+    "packages/core/tokens/themes/graphite.css": "3297c256fb756bdd00d27dfd64189c8bbf1d303372270fd3380cc1fcd3783ea7",
+    "packages/core/tokens/themes/ink.css": "575c83d86e4dbffd9ceff3744d20f0a0b956c7280be04628c3ac4d886b6b859d",
+    "packages/core/tokens/themes/jungle.css": "60b6918773f5b10f8f46236ca40a88353efd5117b39a7b2a1412111a812a5b2d",
+    "packages/core/tokens/themes/light.css": "cc3028f898a796a80f6bc2f6a06b4879cef89bb8cb6178974c0b36e15ef658c6",
+    "packages/core/tokens/themes/operative-dark.css": "144258b6d1c1e81ab797ff24759437928a5100948c810032f458122906b1ae03",
+    "packages/core/tokens/themes/operative-light.css": "40c768507adff76b647304e9cbd0b890c449895d8bf520f734c21438568b623e"
+  },
+  "baseSha256OfFilesToChange": {
+    "apps/mouth/src/app/(blog)/team/page.tsx": "2fd1bf282baa2894ecdb8d31d493703132d2b690b05cdc1dfa8bb38f50d700fb",
+    "apps/mouth/src/app/(marketing)/page.tsx": "bd3b314d24823ad0baa0049e08f8dc0ded7eb248da616388087e24e213823993",
+    "apps/mouth/src/app/v2/_components/SocialProof.tsx": "ace1230238b2e619970135f603333caaf3522b500e08305277ced555ee28d7e7",
+    "apps/mouth/src/app/v2/company/about/page.tsx": "9f93f2a598534de379c68059c4dccef2b58164a6e1abb59946f378e3f452d01e",
+    "apps/mouth/src/components/book/book-data.ts": "2ec875058a316c0847193e2a2863f68beb66ed48596c655b449031e4b3989e41"
+  },
+  "invariantsAtHead": [
+    "TOTALITY: `git diff --name-only 70b43c5459..HEAD` == exactly the 14 scope paths of brief.yml plus paths under this evidence directory; nothing else.",
+    "ROSTER UNCHANGED: apps/mouth/src/data/team-roster.ts sha256 == 947b181a\u2026; `git diff 70b43c5459..HEAD -- apps/mouth/src/data/team-roster.ts` empty.",
+    "FROZEN UNTOUCHED: every digest in frozenFiles re-measured identical at the gated head; no path under packages/core/**, apps/website/**, apps/mouth/src/app/(visa-oracle)/**, apps/mouth/src/app/visa/**, apps/mouth/src/app/kbli/**, and no globals.css / root layout.tsx / lockfile / package.json line.",
+    "NO D-A: the diff contains none of #F7F4EE, #233D52, #A44B36, #1D2C3B, #58626B, #DAD8D1, #FFFCF7, #EAE3D8, #EEE9E1, Fraunces, Manrope; no font file, no @font-face, no preload.",
+    "EXCLUSION IS PRESENTATION-ONLY: the two excluded slugs appear in the diff only inside team-public-listing.ts (and its test) \u2014 no consumer carries an inline copy of the list.",
+    "DEFAULT PRESERVED: SocialProof rendered without the new prop produces the same people, rows, reviews and trust strip as base; book-data's non-TEAM_MEMBERS exports are byte-identical.",
+    "ONE TEST PER CONSUMER: four consumer tests exist and each one goes red when its own consumer's filter is removed (recorded mutants).",
+    "NO INVENTED CONTENT: every name, role label, review, rating and count in the diff is traceable to the roster, to the current page source, or to trust-figures.ts."
+  ],
+  "plannedDeltas": {
+    "D1": "/team \u2014 R19 composition and rhythm (page intro + group nav, leadership grid, responsibility groups with group intro and directory, project links, closing invitation) in the CURRENT Rumah Putih variables and current fonts; people stay in the section they are in today, with the role labels they have today. Reorganising WHO sits in which group would be a content change Zero has not ordered, so it is not taken.",
+    "D2": "home founder band \u2014 SocialProof gains one opt-in prop; with it the team card shows only Zainal and Heru in the R19 band geometry (portrait 78\u00d794, object-position center 32%, radius 48px 48px 3px 3px, name 22px serif, role 12px muted, 'team' link 600 14px with a 1px bottom border, min-height 48px) and drops the four-row list; (marketing)/page.tsx changes by that prop alone.",
+    "D3": "exclusion filter \u2014 new apps/mouth/src/lib/team-public-listing.ts honouring publicListed !== false AND the two owner-ordered slugs; applied in /team, SocialProof, /v2/company/about and book-data's TEAM_MEMBERS derivation.",
+    "D4": "project links \u2014 Ari \u2192 /visa/second-home/studio, Surya \u2192 /visa/voa; both verified 200 with their own title on production (not a not-found body) at 03:03Z.",
+    "D5": "tests \u2014 one per consumer, the filter's own negatives, and e2e/shweb-team.spec.ts (viewports 360/390/768/1280/1440, keyboard, focus, image decode, overflow, measured contrast, both project links, /v2 default, /book/team)."
+  },
+  "preReview": {
+    "requestedAt": "2026-09-12T03:12Z",
+    "codexSol": {
+      "verdict": "pending",
+      "file": "reviews/pre-review-codex-sol.txt"
+    },
+    "kimiK3": {
+      "verdict": "pending",
+      "file": "reviews/second-reader-kimi-k3.txt"
+    }
+  }
+}

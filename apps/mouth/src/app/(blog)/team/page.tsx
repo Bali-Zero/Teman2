@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Phone, ArrowRight } from "lucide-react";
+import { Phone, ArrowRight, ArrowUpRight } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 import { rosterBySlug, initialsOf } from "@/data/team-roster";
+import { publicEntries } from "@/lib/team-public-listing";
 import { GOOGLE_RATING, reviewsLabel } from "@/lib/trust-figures";
+import styles from "./team.module.css";
 
 export const metadata: Metadata = {
   title: "Team",
@@ -20,6 +22,11 @@ export const metadata: Metadata = {
 // in and the per-person gradient. To change a photo/role → edit the roster, not here.
 // `nameOverride`/`roleOverride` exist for page-specific labels (e.g. Zero "SOTA Marketing")
 // and for people not in the public roster.
+//
+// WHO IS SHOWN is decided by `publicEntries()` (src/lib/team-public-listing.ts): the roster
+// keeps every record, this page publishes only the people the owner lists publicly. The
+// filter runs over the editorial entries of EVERY section — adding a person to a section
+// below is never enough to publish them.
 
 interface TeamMember {
   name: string;
@@ -27,6 +34,7 @@ interface TeamMember {
   role: string;
   gradient: string;
   photo?: string;
+  project?: { label: string; href: string };
 }
 
 interface EditorialEntry {
@@ -35,6 +43,7 @@ interface EditorialEntry {
   nameOverride?: string; // page-specific display name (or for non-roster people)
   roleOverride?: string; // page-specific role label
   photoOverride?: string;
+  project?: { label: string; href: string }; // the tool this person owns
 }
 
 // Merge an editorial entry with the roster SSOT. Roster wins for name/role/photo unless
@@ -48,12 +57,18 @@ function resolve(e: EditorialEntry): TeamMember {
     role: e.roleOverride ?? r?.role ?? "",
     gradient: e.gradient,
     photo: e.photoOverride ?? r?.photo,
+    project: e.project,
   };
+}
+
+/** Public composition: the owner's exclusions first, then the roster merge. */
+function compose(entries: EditorialEntry[]): TeamMember[] {
+  return publicEntries(entries).map(resolve);
 }
 
 // Each section keeps its EDITORIAL composition + gradients; name/role/photo come from
 // the roster SSOT via resolve(). Role overrides preserve this page's curated labels.
-const LEADERSHIP: TeamMember[] = [
+const LEADERSHIP: TeamMember[] = compose([
   {
     slug: "heru",
     roleOverride: "Komisaris · Founder (30 years)",
@@ -73,9 +88,9 @@ const LEADERSHIP: TeamMember[] = [
     roleOverride: "Manager",
     gradient: "linear-gradient(135deg, #2251ff 0%, #1a41cc 100%)",
   },
-].map(resolve);
+]);
 
-const SETUP_TEAM: TeamMember[] = [
+const SETUP_TEAM: TeamMember[] = compose([
   {
     slug: "adit",
     gradient: "linear-gradient(135deg, #06b6d4 0%, #2563eb 100%)",
@@ -84,6 +99,8 @@ const SETUP_TEAM: TeamMember[] = [
     slug: "ari",
     roleOverride: "Supervisor",
     gradient: "linear-gradient(135deg, #f43f5e 0%, #db2777 100%)",
+    // The tool Ari is responsible for, on its real page.
+    project: { label: "Second Home Studio", href: "/visa/second-home/studio" },
   },
   {
     slug: "krisna",
@@ -107,9 +124,9 @@ const SETUP_TEAM: TeamMember[] = [
     roleOverride: "Executive Consultant",
     gradient: "linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)",
   },
-].map(resolve);
+]);
 
-const TAX_TEAM: TeamMember[] = [
+const TAX_TEAM: TeamMember[] = compose([
   {
     slug: "angel",
     roleOverride: "Tax Supervisor",
@@ -129,9 +146,9 @@ const TAX_TEAM: TeamMember[] = [
     slug: "faisha",
     gradient: "linear-gradient(135deg, #f59e0b 0%, #ca8a04 100%)",
   },
-].map(resolve);
+]);
 
-const ACCOUNTING_TEAM: TeamMember[] = [
+const ACCOUNTING_TEAM: TeamMember[] = compose([
   {
     slug: "asya",
     roleOverride: "Accountant",
@@ -141,11 +158,11 @@ const ACCOUNTING_TEAM: TeamMember[] = [
     slug: "rina",
     gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)",
   },
-].map(resolve);
+]);
 
 // Marketing is an editorial grouping unique to this page (Zero is not in the public roster;
 // Surya/Subhi live under setup/support in the SSOT but are presented here as marketing).
-const MARKETING_TEAM: TeamMember[] = [
+const MARKETING_TEAM: TeamMember[] = compose([
   {
     nameOverride: "Zero",
     roleOverride: "SOTA Marketing",
@@ -156,6 +173,8 @@ const MARKETING_TEAM: TeamMember[] = [
     slug: "surya",
     roleOverride: "Marketing Specialist",
     gradient: "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)",
+    // The tool Surya is responsible for, on its real page.
+    project: { label: "E-VOA", href: "/visa/voa" },
   },
   {
     slug: "damar",
@@ -166,137 +185,92 @@ const MARKETING_TEAM: TeamMember[] = [
     slug: "subhi",
     gradient: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
   },
-].map(resolve);
+]);
+
+// The responsibility groups of the directory, in reading order. Titles and
+// descriptions are this page's existing section copy.
+const GROUPS = [
+  {
+    id: "setup",
+    eyebrow: "Setup · Visa & Company",
+    title: "Your Indonesia operation, end-to-end",
+    description:
+      "Visa intake, PT PMA incorporation, KBLI due diligence, OSS filings.",
+    people: SETUP_TEAM,
+  },
+  {
+    id: "tax",
+    eyebrow: "Tax",
+    title: "Licensed konsultan pajak",
+    description: "Corporate and personal tax compliance under CoreTax 2026.",
+    people: TAX_TEAM,
+  },
+  {
+    id: "accounting",
+    eyebrow: "Accounting & Reception",
+    title: "The backbone of every month-end",
+    description: null,
+    people: ACCOUNTING_TEAM,
+  },
+  {
+    id: "marketing",
+    eyebrow: "Marketing",
+    title: "The intelligence arm",
+    description:
+      "Editorial, content, the Zantara AI layer that keeps the site alive.",
+    people: MARKETING_TEAM,
+  },
+] as const;
 
 // ─── UI helpers ────────────────────────────────────────────────────────────
 
-function TeamCard({
-  member,
-  size = "small",
-}: {
-  member: TeamMember;
-  size?: "large" | "small";
-}) {
-  const isLarge = size === "large";
-  const avatar = isLarge ? 120 : 64;
-
+function Portrait({ member, sizes }: { member: TeamMember; sizes: string }) {
   return (
-    <div
-      className="group rounded-2xl p-5 transition-all hover:-translate-y-0.5"
-      style={{
-        background:
-          "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
-        border:
-          "1px solid color-mix(in srgb, var(--accent-funnel, #3a6dff) 20%, transparent)",
-        backdropFilter: "blur(20px) saturate(160%)",
-        WebkitBackdropFilter: "blur(20px) saturate(160%)",
-      }}
-    >
-      <div className="flex items-center gap-4">
-        <div
-          className="relative overflow-hidden rounded-full shrink-0 flex items-center justify-center"
-          style={{
-            width: avatar,
-            height: avatar,
-            background: member.gradient,
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
-          }}
-        >
-          {member.photo ? (
-            <Image
-              src={member.photo}
-              alt={`${member.name} — ${member.role}`}
-              fill
-              sizes={`${avatar}px`}
-              style={{ objectFit: "cover" }}
-            />
-          ) : (
-            <span
-              className="font-extrabold text-white"
-              style={{ fontSize: isLarge ? 38 : 20 }}
-            >
-              {member.initials}
-            </span>
-          )}
-        </div>
-        <div className="min-w-0">
-          <div
-            className={
-              isLarge
-                ? "text-[22px] font-extrabold tracking-tight"
-                : "text-[15px] font-bold tracking-tight"
-            }
-            style={{ color: "var(--text-primary)" }}
-          >
-            {member.name}
-          </div>
-          <div
-            className="text-[12px] mt-1"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {member.role}
-          </div>
-        </div>
-      </div>
+    <div className={styles.portrait} style={{ background: member.gradient }}>
+      {member.photo ? (
+        <Image
+          src={member.photo}
+          alt={`${member.name} — ${member.role}`}
+          fill
+          sizes={sizes}
+          style={{ objectFit: "cover", objectPosition: "center 30%" }}
+        />
+      ) : (
+        <span className={styles.portraitInitials} aria-hidden="true">
+          {member.initials}
+        </span>
+      )}
     </div>
   );
 }
 
-function Section({
-  eyebrow,
-  title,
-  subtitle,
-  children,
+function PersonCard({
+  member,
+  variant,
 }: {
-  eyebrow: string;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
+  member: TeamMember;
+  variant: "leader" | "person";
 }) {
+  const isLeader = variant === "leader";
   return (
-    <section
-      style={{
-        borderBottom: "1px solid var(--border-subtle)",
-        padding: "clamp(48px, 6vw, 80px) clamp(24px, 4vw, 40px)",
-      }}
-    >
-      <div className="max-w-[1400px] mx-auto">
-        <div className="mb-8">
-          <h2
-            className="font-extrabold tracking-tight"
-            style={{
-              color: "var(--text-primary)",
-              fontSize: "clamp(36px, 4.2vw, 56px)",
-              lineHeight: 1.05,
-            }}
-          >
-            {eyebrow}
-          </h2>
-          <div
-            className="mt-3 text-[15px] font-semibold"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            {title}
-          </div>
-          {subtitle ? (
-            <p
-              className="mt-1.5 text-[12px] max-w-2xl"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {subtitle}
-            </p>
-          ) : null}
-        </div>
-        <div
-          className="grid gap-4"
-          style={{
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-          }}
-        >
-          {children}
-        </div>
-      </div>
-    </section>
+    <article className={isLeader ? styles.leader : styles.person}>
+      <Portrait
+        member={member}
+        sizes={
+          isLeader
+            ? "(max-width: 700px) 45vw, (max-width: 1000px) 30vw, 400px"
+            : "(max-width: 700px) 45vw, (max-width: 1000px) 30vw, 280px"
+        }
+      />
+      <h3>{member.name}</h3>
+      <p>{member.role}</p>
+      {member.project ? (
+        <Link className={styles.projectLink} href={member.project.href}>
+          {member.project.label}
+          <ArrowUpRight size={13} strokeWidth={2} aria-hidden="true" />
+        </Link>
+      ) : null}
+    </article>
   );
 }
 
@@ -314,174 +288,112 @@ export default function TeamPage() {
         color: "var(--text-primary)",
       }}
     >
-      {/* Hero */}
-      <section
-        className="relative overflow-hidden"
-        style={{ padding: "clamp(64px, 8vw, 120px) clamp(24px, 4vw, 40px)" }}
-      >
-        <div className="max-w-[1400px] mx-auto">
-          <div className="flex flex-col lg:flex-row gap-10 items-end justify-between">
-            <div className="max-w-[720px]">
-              <div
-                className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
-                style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
-              >
-                The Team · 18+ specialists · Kerobokan, Bali
-              </div>
-              <h1
-                className="font-extrabold tracking-tight mb-5"
-                style={{
-                  fontSize: "clamp(34px, 5vw, 60px)",
-                  lineHeight: 1.05,
-                  color: "var(--text-primary)",
-                }}
-              >
-                Real people.
-                <br />
-                <span style={{ color: "var(--text-secondary)" }}>
-                  Real licenses. Real files.
-                </span>
-              </h1>
-              <p
-                className="text-[16px] leading-[1.6] mb-6"
-                style={{ color: "var(--text-secondary)", maxWidth: "56ch" }}
-              >
-                Started in Kerobokan in 2006 — two friends, one office, a lot of
-                immigration paperwork. Today the team handles 47 KITAS and 9 PT
-                PMAs every month. AI drafts; licensed Indonesians sign.
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <Link
-                  href={buildWhatsAppLink("home")}
-                  target="_blank"
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-md text-[13px] font-semibold"
-                  style={{
-                    background: "var(--accent-funnel, #3a6dff)",
-                    color: "var(--text-on-accent, #fff)",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
-                  }}
-                >
-                  <Phone size={14} strokeWidth={2.2} />
-                  Talk to the team
-                </Link>
-                <Link
-                  href="/services"
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-md text-[13px] font-semibold"
-                  style={{
-                    background: "transparent",
-                    color: "var(--text-secondary)",
-                    border: "1px solid var(--border-default)",
-                  }}
-                >
-                  See services
-                  <ArrowRight size={14} strokeWidth={2.2} />
-                </Link>
-              </div>
-            </div>
-
-            {/* Aggregate trust — Rumah Putih: white card + hairline border,
-                navy hairline dividers (was dark-glass on the editorial home). */}
-            <div
-              className="inline-flex items-center gap-4 px-4 py-2.5 rounded-full flex-wrap"
-              style={{
-                background: "var(--rp-card-bg, rgba(0,0,0,0.28))",
-                boxShadow: "var(--rp-card-shadow, none)",
-                border:
-                  "1px solid var(--rp-card-border, rgba(255,255,255,0.14))",
-              }}
+      <div className={styles.page}>
+        {/* Page intro */}
+        <div className={styles.pageIntro}>
+          <span className={styles.eyebrow}>
+            The Team · 18+ specialists · Kerobokan, Bali
+          </span>
+          <h1>
+            Real people.
+            <br />
+            <span>Real licenses. Real files.</span>
+          </h1>
+          <p className={styles.standfirst}>
+            Started in Kerobokan in 2006 — two friends, one office, a lot of
+            immigration paperwork. Today the team handles 47 KITAS and 9 PT PMAs
+            every month. AI drafts; licensed Indonesians sign.
+          </p>
+          <div className={styles.introActions}>
+            <Link
+              href={buildWhatsAppLink("home")}
+              target="_blank"
+              className={styles.ctaPrimary}
             >
-              <span
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                <span style={{ color: "#d4a017" }}>★★★★★</span>
-                <span>{GOOGLE_RATING}</span>
-                <span style={{ color: "var(--text-tertiary)" }}>
-                  {`· ${reviewsLabel()}`}
-                </span>
-              </span>
-              <span
-                className="h-3.5 w-px"
-                style={{
-                  background: "var(--border-default, rgba(255,255,255,0.18))",
-                }}
-              />
-              <span
-                className="text-[12px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                5,000+ cases
-              </span>
-              <span
-                className="h-3.5 w-px"
-                style={{
-                  background: "var(--border-default, rgba(255,255,255,0.18))",
-                }}
-              />
-              <span
-                className="text-[12px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Licensed since 2006
-              </span>
-            </div>
+              <Phone size={14} strokeWidth={2.2} aria-hidden="true" />
+              Talk to the team
+            </Link>
+            <Link href="/services" className={styles.ctaSecondary}>
+              See services
+              <ArrowRight size={14} strokeWidth={2.2} aria-hidden="true" />
+            </Link>
           </div>
+
+          {/* Aggregate trust — Rumah Putih: white card + hairline border. */}
+          <div className={styles.trustPill}>
+            <span>
+              <span className={styles.stars}>★★★★★</span> {GOOGLE_RATING}{" "}
+              <span className={styles.trustMuted}>{`· ${reviewsLabel()}`}</span>
+            </span>
+            <span className={styles.trustDivider} />
+            <span>5,000+ cases</span>
+            <span className={styles.trustDivider} />
+            <span>Licensed since 2006</span>
+          </div>
+
+          <nav aria-label="Team sections" className={styles.groupNav}>
+            <a href="#leadership">Leadership</a>
+            {GROUPS.map((group) => (
+              <a href={`#${group.id}`} key={group.id}>
+                {group.eyebrow}
+              </a>
+            ))}
+          </nav>
         </div>
-      </section>
 
-      {/* Leadership */}
-      <Section
-        eyebrow="Leadership"
-        title="The founders, the advisors, the manager"
-        subtitle="The four people who set direction and sign off on every high-risk file."
-      >
-        {LEADERSHIP.map((m) => (
-          <TeamCard key={m.initials} member={m} size="large" />
-        ))}
-      </Section>
+        {/* Leadership */}
+        <section aria-labelledby="leadership" className={styles.section}>
+          <div className={styles.leadershipIntro}>
+            <span className={styles.eyebrow}>Leadership</span>
+            <h2 id="leadership">The founders, the advisors, the manager</h2>
+            <p className={styles.sectionSubtitle}>
+              The four people who set direction and sign off on every high-risk
+              file.
+            </p>
+          </div>
+          <div className={styles.leadershipGrid}>
+            {LEADERSHIP.map((m) => (
+              <PersonCard key={m.name} member={m} variant="leader" />
+            ))}
+          </div>
+        </section>
 
-      {/* Setup team */}
-      <Section
-        eyebrow="Setup · Visa & Company"
-        title="Your Indonesia operation, end-to-end"
-        subtitle="Visa intake, PT PMA incorporation, KBLI due diligence, OSS filings."
-      >
-        {SETUP_TEAM.map((m) => (
-          <TeamCard key={m.initials} member={m} />
+        {/* Responsibility groups */}
+        {GROUPS.map((group) => (
+          <section
+            aria-labelledby={group.id}
+            className={styles.responsibilityGroup}
+            key={group.id}
+          >
+            <div className={styles.groupIntro}>
+              <span className={styles.eyebrow}>{group.eyebrow}</span>
+              <h2 id={group.id}>{group.title}</h2>
+              {group.description ? <p>{group.description}</p> : null}
+            </div>
+            <div className={styles.groupDirectory}>
+              {group.people.map((m) => (
+                <PersonCard key={m.name} member={m} variant="person" />
+              ))}
+            </div>
+          </section>
         ))}
-      </Section>
 
-      {/* Tax */}
-      <Section
-        eyebrow="Tax"
-        title="Licensed konsultan pajak"
-        subtitle="Corporate and personal tax compliance under CoreTax 2026."
-      >
-        {TAX_TEAM.map((m) => (
-          <TeamCard key={m.initials} member={m} />
-        ))}
-      </Section>
-
-      {/* Accounting & reception */}
-      <Section
-        eyebrow="Accounting & Reception"
-        title="The backbone of every month-end"
-      >
-        {ACCOUNTING_TEAM.map((m) => (
-          <TeamCard key={m.initials} member={m} />
-        ))}
-      </Section>
-
-      {/* Marketing */}
-      <Section
-        eyebrow="Marketing"
-        title="The intelligence arm"
-        subtitle="Editorial, content, the Zantara AI layer that keeps the site alive."
-      >
-        {MARKETING_TEAM.map((m) => (
-          <TeamCard key={m.initials} member={m} />
-        ))}
-      </Section>
+        {/* Closing invitation */}
+        <aside className={styles.invitation}>
+          <div>
+            <h2>Not sure who to speak to?</h2>
+            <p>Tell us what you are planning. We will start from there.</p>
+          </div>
+          <Link
+            href={buildWhatsAppLink("home")}
+            target="_blank"
+            className={styles.ctaPrimary}
+          >
+            <Phone size={14} strokeWidth={2.2} aria-hidden="true" />
+            Talk to the team
+          </Link>
+        </aside>
+      </div>
 
       <GoogleReviewsBlock limit={6} />
     </div>

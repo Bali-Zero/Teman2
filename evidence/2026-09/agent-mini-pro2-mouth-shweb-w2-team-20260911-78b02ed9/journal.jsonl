@@ -1,0 +1,3 @@
+{"seat":"kimi-code/k3","role":"review","ok":true,"ts":"2026-09-12T03:14:00Z","verdict":"GO-WITH-CONDITIONS","record":"reviews/second-reader-kimi-k3.txt","scope":"rosterBySlug consumer census + the book presentation filter"}
+{"seat":"tp1-qwen3.8-max","role":"review","ok":true,"ts":"2026-09-12T04:57:00Z","verdict":"NO-GO","record":"reviews/council-tp1-qwen3.8-max.txt","scope":"the filter module in full, its tests, every consumer call site"}
+{"seat":"codex-gpt-5.6-sol","role":"review","ok":false,"ts":"2026-09-12T03:15:00Z","verdict":null,"record":"reviews/pre-review-codex-sol-attempt2-toolrouter-timeout.txt","scope":"DEAD ON MINI: acct1 out of credits with exit 0, acct2 tool-router timeout; the imperator runs this seat from M5 against the frozen head"}
