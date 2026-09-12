@@ -12,39 +12,56 @@ const baseEntry: TimelineEntry = {
   description: "Something happened",
 };
 
-describe("TimelineItem (WS3 · GARUDA Day Edition)", () => {
-  it("maps message entries to the info state token", () => {
+describe("TimelineItem (SAETTA-R19P · concept-F spine)", () => {
+  it("gives team events a hollow slate dot", () => {
     const { container } = render(
       <TimelineItem entry={baseEntry} isLast={false} />,
     );
-    expect(container.innerHTML).toContain("var(--state-info)");
-    expect(container.innerHTML).not.toContain("neon-blue");
+    expect(container.innerHTML).toContain("border-[var(--state-info)]");
+    expect(container.innerHTML).toContain("bg-[var(--bz-base)]");
+    expect(container.innerHTML).not.toContain("crystal-stat-card");
   });
 
-  it("maps deadline entries to the danger state token", () => {
-    const entry: TimelineEntry = { ...baseEntry, id: "t2", type: "deadline" };
+  it("gives client uploads a filled copper dot", () => {
+    const entry: TimelineEntry = { ...baseEntry, id: "t2", type: "document" };
     const { container } = render(<TimelineItem entry={entry} isLast={false} />);
-    expect(container.innerHTML).toContain("var(--state-danger)");
-    expect(container.innerHTML).not.toContain("neon-rose");
+    expect(container.innerHTML).toContain("bg-[var(--bz-copper)]");
   });
 
-  it("maps future entries to the warning state token", () => {
+  it("gives a message the client sent a filled copper dot", () => {
     const entry: TimelineEntry = {
       ...baseEntry,
       id: "t3",
+      status: "client_to_team",
+    };
+    const { container } = render(<TimelineItem entry={entry} isLast={false} />);
+    expect(container.innerHTML).toContain("bg-[var(--bz-copper)]");
+  });
+
+  it("keeps deadlines on the spine without any danger fill", () => {
+    const entry: TimelineEntry = { ...baseEntry, id: "t4", type: "deadline" };
+    const { container } = render(<TimelineItem entry={entry} isLast={false} />);
+    expect(container.innerHTML).not.toContain("var(--state-danger)");
+    expect(screen.getByText("Test entry")).toBeInTheDocument();
+  });
+
+  it("marks a future entry with the word Upcoming, not a warning fill", () => {
+    const entry: TimelineEntry = {
+      ...baseEntry,
+      id: "t5",
       type: "document",
       isFuture: true,
       occurredAt: new Date(Date.now() + 5 * 86400000).toISOString(),
     };
     const { container } = render(<TimelineItem entry={entry} isLast={false} />);
-    expect(container.innerHTML).toContain("var(--state-warning)");
-    expect(container.innerHTML).not.toContain("neon-amber");
+    expect(screen.getByText(/Upcoming/)).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain("var(--state-warning)");
   });
 
   it("reply link uses the daylight copper text step (AA small text)", () => {
     const entry: TimelineEntry = {
       ...baseEntry,
-      id: "t4",
+      id: "t6",
       type: "message",
       status: "team_to_client",
     };
@@ -52,17 +69,15 @@ describe("TimelineItem (WS3 · GARUDA Day Edition)", () => {
     const reply = screen.getByText("Reply").closest("button");
     expect(reply).not.toBeNull();
     expect(reply?.className).toContain("text-[var(--bz-copper-text)]");
-    // white hover is invisible on paper — must hover to theme text instead
     expect(reply?.className).not.toContain("hover:text-white");
     expect(reply?.className).toContain("hover:text-[var(--tx-pure)]");
   });
 
-  it("relative-date chips use state tokens, not dark-theme utilities", () => {
-    const today: TimelineEntry = { ...baseEntry, id: "t5" };
+  it("keeps the relative day as quiet text, not a coloured chip", () => {
+    const today: TimelineEntry = { ...baseEntry, id: "t7" };
     const { container } = render(<TimelineItem entry={today} isLast={false} />);
-    expect(screen.getByText("Today")).toBeInTheDocument();
-    expect(container.innerHTML).toContain("var(--state-success)");
-    expect(container.innerHTML).not.toContain("text-emerald-400");
+    expect(screen.getByText(/Today/)).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain("var(--state-success)");
     expect(container.innerHTML).not.toContain("text-amber-400");
   });
 });

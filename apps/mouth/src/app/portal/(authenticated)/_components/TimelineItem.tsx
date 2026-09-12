@@ -4,23 +4,37 @@
  * TimelineItem — extracted from the portal home so the timeline section
  * can be dynamic-imported, trimming the portal home's initial bundle.
  *
- * WS3 (GARUDA Day Edition, 2026-07-24): day-theme token alignment —
- * semantic --state-* tokens (WS2 AA light overrides) instead of dark-theme
- * neon/utility colors; no hardcoded hexes or white-alpha tints.
+ * SAETTA-R19P W3 (2026-09-13): concept-F "RAPI" presentation pass. The card,
+ * the icon chip and the coloured relative-date pills are gone: each event is
+ * one entry on the page's hairline spine with a single 9px dot — copper and
+ * filled when the event came from the client (a document, a message they
+ * sent), hollow slate when it came from the team. Same props, same copy,
+ * same reply handler.
  */
 
 import React from "react";
-import {
-  Clock,
-  MessageCircle,
-  FileText,
-  Briefcase,
-  AlertTriangle,
-  ChevronRight,
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TimelineEntry } from "@/lib/api/types/timeline.types";
 import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
+
+/** Events the client themself produced: uploads and messages they sent. */
+function isClientEvent(entry: TimelineEntry): boolean {
+  if (entry.type === "document") return true;
+  return entry.type === "message" && entry.status === "client_to_team";
+}
+
+function relativeLabel(occurredAt: string): string | null {
+  const diff = Math.round(
+    (new Date(occurredAt).getTime() - Date.now()) / 86400000,
+  );
+  if (diff === 0) return "Today";
+  if (diff > 0) return `In ${diff}d`;
+  const abs = Math.abs(diff);
+  if (abs <= 7) return `${abs}d ago`;
+  if (abs <= 30) return `${Math.floor(abs / 7)}w ago`;
+  return null;
+}
 
 export function TimelineItem({
   entry,
@@ -34,168 +48,56 @@ export function TimelineItem({
     "isFuture" in entry
       ? Boolean((entry as unknown as { isFuture?: boolean }).isFuture)
       : false;
-
-  const getIcon = () => {
-    switch (entry.type) {
-      case "message":
-        return <MessageCircle className="w-4 h-4" />;
-      case "document":
-        return <FileText className="w-4 h-4" />;
-      case "practice":
-        return <Briefcase className="w-4 h-4" />;
-      case "deadline":
-        return <AlertTriangle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
-    }
-  };
-
-  const getBgColor = () => {
-    if (isFuture)
-      return "bg-[color-mix(in_srgb,var(--state-warning)_12%,transparent)] text-[var(--state-warning)]";
-    switch (entry.type) {
-      case "message":
-        return "bg-[color-mix(in_srgb,var(--state-info)_12%,transparent)] text-[var(--state-info)]";
-      case "deadline":
-        return "bg-[color-mix(in_srgb,var(--state-danger)_12%,transparent)] text-[var(--state-danger)]";
-      default:
-        return "text-[var(--tx-secondary)]";
-    }
-  };
-
-  const getDotStyle = (): React.CSSProperties => {
-    if (isFuture)
-      return {
-        background: "color-mix(in srgb, var(--state-warning) 10%, transparent)",
-        color: "var(--state-warning)",
-        borderColor: "var(--state-warning)",
-      };
-    switch (entry.type) {
-      case "message":
-        return {
-          background: "color-mix(in srgb, var(--state-info) 10%, transparent)",
-          color: "var(--state-info)",
-          borderColor: "var(--state-info)",
-        };
-      case "deadline":
-        return {
-          background:
-            "color-mix(in srgb, var(--state-danger) 10%, transparent)",
-          color: "var(--state-danger)",
-          borderColor: "var(--state-danger)",
-        };
-      default:
-        return {
-          background: "var(--glass-rim)",
-          color: "var(--tx-secondary)",
-          borderColor: "var(--bz-border-hover)",
-        };
-    }
-  };
+  const fromClient = isClientEvent(entry);
+  const relative = relativeLabel(entry.occurredAt);
 
   const _isLast = isLast; // retained for API compatibility
   void _isLast;
 
   return (
-    <div className="relative pl-6">
+    <div className={cn("relative", isLast ? "pb-0" : "pb-[18px]")}>
       <div
-        className="absolute -left-[9px] top-0 w-4 h-4 rounded-full flex items-center justify-center border-2 border-[var(--bz-base)] shadow-[0_0_10px_currentColor]"
-        style={getDotStyle()}
+        aria-hidden="true"
+        className={cn(
+          "absolute -left-[21px] top-[9px] h-[9px] w-[9px] rounded-full border-[1.5px]",
+          fromClient
+            ? "border-[var(--bz-copper)] bg-[var(--bz-copper)]"
+            : "border-[var(--state-info)] bg-[var(--bz-base)]",
+        )}
+      />
+
+      <div
+        className="text-[10px] font-semibold uppercase tracking-[0.12em] tabular-nums text-[var(--tx-secondary)]"
+        title={formatDate(entry.occurredAt, {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}
       >
-        {/* Dot only */}
+        {formatDate(entry.occurredAt, { month: "short", day: "numeric" })}
+        {relative ? ` · ${relative}` : ""}
+        {isFuture && " · Upcoming"}
       </div>
 
-      <div
-        className="crystal-stat-card !border !p-4 !shadow-none"
-        style={{
-          ...(isFuture
-            ? {
-                background:
-                  "color-mix(in srgb, var(--state-warning) 3%, transparent)",
-              }
-            : {}),
-          borderColor: isFuture
-            ? "color-mix(in srgb, var(--state-warning) 25%, transparent)"
-            : "var(--glass-rim)",
-        }}
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <div
-            className={cn(
-              "p-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--glass-rim)]",
-              getBgColor(),
-            )}
-          >
-            {getIcon()}
-          </div>
-          <span
-            className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]"
-            title={formatDate(entry.occurredAt, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          >
-            {formatDate(entry.occurredAt, {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-            {isFuture && " (Upcoming)"}
-          </span>
-          {(() => {
-            const diff = Math.round(
-              (new Date(entry.occurredAt).getTime() - Date.now()) / 86400000,
-            );
-            if (diff === 0)
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--state-success)_12%,transparent)] text-[var(--state-success)] font-semibold">
-                  Today
-                </span>
-              );
-            if (diff > 0)
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--state-warning)_12%,transparent)] text-[var(--state-warning)] font-semibold">
-                  ⏰ In {diff}d
-                </span>
-              );
-            const abs = Math.abs(diff);
-            if (abs <= 7)
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--glass-rim)] text-[var(--bz-text-2)] font-semibold">
-                  {abs}d ago
-                </span>
-              );
-            if (abs <= 30)
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--glass-rim)] text-[var(--bz-text-2)] font-semibold">
-                  {Math.floor(abs / 7)}w ago
-                </span>
-              );
-            return null;
-          })()}
-        </div>
-
-        <h3 className="font-bold text-[var(--tx-pure)] text-sm">
-          {entry.title}
-        </h3>
-        <p className="text-xs mt-1.5 text-[var(--tx-secondary)] line-clamp-2">
+      <h3 className="font-semibold text-[var(--tx-pure)]">{entry.title}</h3>
+      {entry.description && (
+        <p className="text-[13px] text-[var(--tx-secondary)] line-clamp-2">
           {entry.description}
         </p>
+      )}
 
-        {entry.type === "message" && entry.status === "team_to_client" && (
-          <button
-            type="button"
-            onClick={() => {
-              window.location.href = "/portal/chat";
-            }}
-            className="mt-3 text-[10px] font-bold uppercase tracking-widest flex items-center text-[var(--bz-copper-text)] hover:text-[var(--tx-pure)] transition-colors cursor-pointer w-fit inline-flex"
-          >
-            Reply <ChevronRight className="w-3 h-3 ml-1" />
-          </button>
-        )}
-      </div>
+      {entry.type === "message" && entry.status === "team_to_client" && (
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "/portal/chat";
+          }}
+          className="mt-1.5 inline-flex w-fit cursor-pointer items-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-copper-text)] transition-colors hover:text-[var(--tx-pure)]"
+        >
+          Reply <ChevronRight className="w-3 h-3 ml-1" />
+        </button>
+      )}
     </div>
   );
 }

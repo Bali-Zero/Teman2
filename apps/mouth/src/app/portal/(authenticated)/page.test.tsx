@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import PortalHomePage from "./page";
@@ -145,7 +151,7 @@ describe("PortalHomePage", () => {
     renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Welcome Back")).toBeInTheDocument();
+      expect(screen.getByText("Welcome back.")).toBeInTheDocument();
       expect(
         screen.getByText("Here is your Bali life overview."),
       ).toBeInTheDocument();
@@ -267,7 +273,7 @@ describe("PortalHomePage", () => {
     renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Timeline")).toBeInTheDocument();
+      expect(screen.getByText("Recent activity")).toBeInTheDocument();
       expect(screen.getByText("Test Message")).toBeInTheDocument();
     });
   });
@@ -299,14 +305,7 @@ describe("PortalHomePage", () => {
       expect(screen.getByText("Immigration")).toBeInTheDocument();
     });
 
-    const visaCard = screen.getByText("Immigration").closest("div");
-    if (visaCard && visaCard.onclick) {
-      visaCard.click();
-    } else if (visaCard) {
-      // Simulate click event
-      const clickEvent = new MouseEvent("click", { bubbles: true });
-      visaCard.dispatchEvent(clickEvent);
-    }
+    fireEvent.click(screen.getByLabelText("Immigration status"));
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/portal/visa");
@@ -322,7 +321,7 @@ describe("PortalHomePage", () => {
     await waitFor(() => {
       // When dashboard API fails, error state is shown (not default cards)
       expect(screen.getByText("Unable to load dashboard")).toBeInTheDocument();
-      expect(screen.getByText("Welcome Back")).toBeInTheDocument();
+      expect(screen.getByText("Welcome back.")).toBeInTheDocument();
     });
   });
 
@@ -339,7 +338,7 @@ describe("PortalHomePage", () => {
     await waitFor(() => {
       const h1 = screen.getByRole("heading", {
         level: 1,
-        name: "Welcome Back",
+        name: "Welcome back.",
       });
       // Cormorant via the globally wired --font-serif token (inline style)
       expect(h1.style.fontFamily).toContain("--font-serif");
@@ -349,7 +348,7 @@ describe("PortalHomePage", () => {
     });
   });
 
-  it("status cards carry semantic state-token classes (AA on light)", async () => {
+  it("status columns carry the state as an outlined word, not a fill", async () => {
     mockGetDashboard.mockResolvedValue(
       createMockDashboard({
         visa: {
@@ -370,17 +369,22 @@ describe("PortalHomePage", () => {
     renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
+      // R19: the card is a hairline column; the state is an outlined WORD
       const visaCard = screen.getByLabelText("Immigration status");
-      expect(visaCard.className).toContain("text-[var(--state-success)]");
-      expect(visaCard.className).not.toContain("neon-");
+      expect(within(visaCard).getByText("Active").className).toContain(
+        "text-[var(--state-success)]",
+      );
+      expect(visaCard.className).not.toContain("crystal-stat-card");
 
       const taxCard = screen.getByLabelText("Tax status");
-      expect(taxCard.className).toContain("text-[var(--state-warning)]");
-      expect(taxCard.className).not.toContain("neon-");
+      expect(within(taxCard).getByText("Needs you").className).toContain(
+        "text-[var(--bz-copper-text)]",
+      );
+      expect(taxCard.innerHTML).not.toContain("var(--state-danger)");
     });
   });
 
-  it("quick-stats chips use warning/info state tokens, not dark-theme utilities", async () => {
+  it("quick-stats chips are hairline pills with a copper icon, no state fill", async () => {
     mockGetDashboard.mockResolvedValue(
       createMockDashboard({
         documents: { total: 10, pending: 2 },
@@ -392,21 +396,24 @@ describe("PortalHomePage", () => {
     renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
-      const docsChip = screen
-        .getByText(/2 documents pending/)
-        .closest("button");
-      expect(docsChip).not.toBeNull();
-      expect(docsChip?.getAttribute("style")).toContain("var(--state-warning)");
-      expect(docsChip?.innerHTML).not.toContain("text-amber-400");
+      const docsChip = screen.getByRole("button", {
+        name: /2 documents pending/,
+      });
+      expect(docsChip.className).toContain("rounded-full");
+      expect(docsChip.className).toContain("border-[var(--tx-tertiary)]");
+      expect(docsChip.getAttribute("style")).toBeNull();
+      expect(docsChip.innerHTML).toContain("text-[var(--bz-copper)]");
 
-      const msgsChip = screen.getByText(/3 unread messages/).closest("button");
-      expect(msgsChip).not.toBeNull();
-      expect(msgsChip?.getAttribute("style")).toContain("var(--state-info)");
-      expect(msgsChip?.innerHTML).not.toContain("text-blue-400");
+      const msgsChip = screen.getByRole("button", {
+        name: /3 unread messages/,
+      });
+      expect(msgsChip.className).toContain("rounded-full");
+      expect(msgsChip.getAttribute("style")).toBeNull();
+      expect(msgsChip.innerHTML).toContain("text-[var(--bz-copper)]");
     });
   });
 
-  it("action items map priorities to semantic state tokens", async () => {
+  it("action items carry the priority as a word in an outlined pill", async () => {
     mockGetDashboard.mockResolvedValue(
       createMockDashboard({
         documents: { total: 0, pending: 0 },
@@ -429,8 +436,50 @@ describe("PortalHomePage", () => {
     await waitFor(() => {
       const actionBtn = screen.getByText("Pay invoice").closest("button");
       expect(actionBtn).not.toBeNull();
-      expect(actionBtn?.className).toContain("text-[var(--state-danger)]");
-      expect(actionBtn?.className).not.toContain("neon-rose");
+      expect(actionBtn?.className).not.toContain("var(--state-danger)");
+      expect(
+        within(actionBtn as HTMLElement).getByText("Needs you").className,
+      ).toContain("text-[var(--bz-copper-text)]");
+    });
+  });
+  it("renders the leading matter as the next move and the rest as an index", async () => {
+    mockGetDashboard.mockResolvedValue(createEmptyDashboard());
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+    mockGetDashboardSummary.mockResolvedValue({
+      open_actions: [
+        {
+          id: 142,
+          title: "Second Home Visa renewal",
+          type: "visa_e33",
+          pending_from_client: "bank statement, last three months",
+          status: "waiting_documents",
+        },
+        {
+          id: 98,
+          title: "LKPM Q3 report",
+          type: "lkpm",
+          pending_from_client: null,
+          status: "in_progress",
+        },
+      ],
+      upcoming_deadlines: [],
+      unread_messages: 0,
+    });
+
+    renderWithQueryClient(<PortalHomePage />);
+
+    expect(await screen.findByText(/Your next move/)).toBeInTheDocument();
+    expect(
+      screen.getByText("bank statement, last three months").className,
+    ).toContain("text-[var(--bz-copper-text)]");
+    // the second matter is a numbered index row, not a second card
+    const indexRow = screen.getByText("LKPM Q3 report").closest("button");
+    expect(indexRow).not.toBeNull();
+    expect(within(indexRow as HTMLElement).getByText("02")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open matter" }));
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/portal/matters/142");
     });
   });
 });

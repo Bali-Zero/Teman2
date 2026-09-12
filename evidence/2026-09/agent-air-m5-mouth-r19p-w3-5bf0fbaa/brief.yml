@@ -1,0 +1,36 @@
+gear: 2
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-R19P W3 (BLUE) — the client dashboard /portal in the concept-F "RAPI" language
+objective: >-
+  apps/mouth/src/app/portal/(authenticated)/page.tsx keeps its data flow (the three
+  portal hooks, summary, defaultDashboard, the router pushes, the lazy TimelineItem,
+  PracticeRecapCard) and its seven sections in the same order, but every section renders
+  as in concept-F's 02-home.html: copper rule + serif masthead, ONE "Your next move" card
+  for the leading matter plus a numbered index of the others, the three StatusCards as
+  three columns inside one hairline frame, the quick-stats bar as two quiet pill chips,
+  Action Required as numbered rows whose priority is a WORD in an outlined pill, and the
+  activity list on a hairline spine with a 9px dot — copper filled for the client's own
+  events, hollow slate for the team's. No filled danger/warning/info row survives.
+scope:
+  - apps/mouth/src/app/portal/(authenticated)/page.tsx
+  - apps/mouth/src/app/portal/(authenticated)/_components/TimelineItem.tsx
+  - apps/mouth/src/app/portal/(authenticated)/page.test.tsx
+  - apps/mouth/src/app/portal/(authenticated)/_components/TimelineItem.test.tsx
+constraints:
+  - PRESENTATION ONLY — no route, field, hook, fetch, API type or i18n key added or removed; class names, inline styles, markup order inside a section, copy.
+  - A mock detail that would need data the page does not already have is DROPPED and recorded as a leftover, never invented.
+  - Shared components (@balizero/core, components/ui/*, AppSidebar, PracticeRecapCard, StatusBadge) are other windows' property — not touched, not restyled globally.
+  - No red hex, no --state-danger fill, no client PII (synthetic names only), no vendor name in a code comment.
+  - No ledger PR, no PENDING-ARMS.md edit (SAETTA rule 2). One PR, branch agent/air-m5/mouth/r19p-w3.
+acceptance:
+  - A1 the diff is the page, the timeline item and their two sibling tests; no new data hook; the hook-call count in page.tsx is unchanged vs origin/main.
+  - A2 every router.push / window.location.href target present on origin/main is still present.
+  - A3 no bg-[color-mix(in_srgb,var(--state-danger) remains; no red hex; grep -c crystal-stat-card = 0 in both source files.
+  - A4 vitest green on both sibling test files; tsc --noEmit green; eslint 0 errors on the four files.
+  - A5 a route-intercepted screenshot of /portal at 1440 and 390 under build/r19p-w3/, else "not rendered".
+consumer_map:
+  - The live my.balizero.com /portal dashboard served by the apps/mouth Vercel deploy on merge to main — the client's first screen after sign-in.
+  - The required GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs both rewritten sibling suites on every future PR touching them.
+appetite:
+  budget: 75 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch
