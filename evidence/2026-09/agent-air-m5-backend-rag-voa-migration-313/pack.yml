@@ -43,6 +43,13 @@ lanes:
       gate-6287c cure, `-m gpt-5.6-sol` explicit, 12:12:44Z->12:22:25Z):
       MAJOR + MINOR, both confirmed, both cured; the part of the MAJOR
       that is the shared mechanism's property is declared, not fixed.
+      Third-party gate gate-6287d (fresh session outside the chain) then
+      PASSED head 73b066812a at 12:46Z: 370 passed / 3 skipped in the
+      breaking order on one PG15.19 database, GARUDA_DOCUMENT residue 0,
+      mutations (a) rollback->commit RED and (b) restore outside the
+      finally RED; mutation (c) — re-narrowing put back into 313's own
+      rollback — stayed GREEN, a measured coverage gap recorded below and
+      in ledger-rows-held.md, not a defect.
   - lane: contract-second-reader
     role: review
     seat: kimi-code/k3
@@ -194,6 +201,28 @@ receipts:
     result: "21 passed in 4.47s"
     exit: 0
     ts: "2026-09-12T12:24:53Z"
+    seat: claude-opus-5 (build)
+  - probe: A6
+    claim: >-
+      Bites, observed on the promoted commit and not inferred from "PR
+      merged": migration 313 is in `_schema_versions` applied by the runtime
+      role under the migrator's session — the same shape 304 and 312 show —
+      and every object it creates is owned by visa_ledger_owner, so the
+      forward half's own owner guard never had to refuse.
+    cmd: scripts/pg.sh -A -F'|' -c "SELECT migration_number, applied_as, executed_at, applied_via FROM _schema_versions WHERE migration_number IN (312, 313) ORDER BY migration_number"
+    result: >-
+      "312|backend_rag_v2 (session_user=backend_rag_migrator)|2026-09-12
+      06:50:16+00|release_command; 313|backend_rag_v2
+      (session_user=backend_rag_migrator)|2026-09-12 13:08:52+00|release_command"
+      — merge aa9a28b235 at 13:00:45Z, deploy run 34695230358 all jobs
+      success, release v4432; owners: garuda_practice_artifacts,
+      bind_garuda_practice_artifact_retention_policy(),
+      guard_garuda_practice_artifacts_mutation(),
+      active_garuda_practice_artifact_policy_available() all
+      visa_ledger_owner; /health healthy. Zero rows in
+      garuda_practice_artifacts — S1 ships schema only.
+    exit: 0
+    ts: "2026-09-12T13:13:25Z"
     seat: claude-opus-5 (build)
 guilt_mutations:
   - target: tests/services/visa_engine/conftest.py — the retention-FK registry entry
