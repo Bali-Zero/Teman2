@@ -157,7 +157,7 @@ _ENV = "TEST"
 #
 # A pair sharing SOME prefix only pins the cuts shorter than it: the first version of
 # these constants shared 16 characters, caught `actor_id[:8]`, and survived
-# `actor_id[:17]` (Sol, round O2, finding 2 -- the mutation moved, the suite stayed
+# `actor_id[:17]` (refuter round O2 -- gpt-6-astra, the account default, not Sol -- finding 2 -- the mutation moved, the suite stayed
 # green). A longer hand-picked prefix would have the same shape one cut further out. So
 # the prefix here is MAXIMAL rather than long: the two ids differ only in their final
 # character, which makes "every truncation collides them" a property of the pair instead
@@ -209,7 +209,7 @@ async def sandbox() -> AsyncIterator[_Sandbox]:
     # `ClientConfigurationError` (an `InterfaceError`, which is neither `OSError` nor
     # `PostgresError`) before any socket is opened, so it escaped both the redaction below
     # and the CI-must-not-skip branch, and a `--tb=long` traceback renders the connect's
-    # arguments -- the DSN, password included (Sol, round O2, finding 5).
+    # arguments -- the DSN, password included (refuter round O2 -- gpt-6-astra, the account default, not Sol -- finding 5).
     admin: asyncpg.Connection | None = None
     try:
         admin = await asyncpg.connect(_ADMIN_URL)
@@ -462,14 +462,14 @@ async def test_two_concurrent_commits_same_key_exactly_one_wins(
     # key absent at all. The barrier fixes that much -- both coroutines must have seen the
     # key ABSENT before either inserts -- and no more.
     #
-    # DECLARED LIMIT (Sol, round O2, finding 1) -- and it is the reason this file does not
+    # DECLARED LIMIT (refuter round O2 -- gpt-6-astra, the account default, not Sol -- finding 1) -- and it is the reason this file does not
     # claim to pin the PK branch. The barrier synchronises the EXTERNAL probes, not the
     # lookups the two `commit()` calls make INTERNALLY. Both racers can see the key absent,
     # pass the barrier, and then A can still run its whole transaction -- internal `SELECT
     # ... FOR UPDATE`, INSERT, commit -- before B reaches its own `SELECT ... FOR UPDATE`.
     # B then finds the row and takes the ordinary replay branch, every assertion below
     # still passes, and so does a mutant with the `UniqueViolationError` handler deleted:
-    # Sol reproduced exactly that schedule against this candidate and got two PASSes with
+    # the O2 refuter (Astra) reproduced exactly that schedule against this candidate and got two PASSes with
     # zero primary-key violations. What this test therefore proves is the OUTCOME (exactly
     # one winner, exactly one row) under a schedule where both racers start from an empty
     # key -- not that the loser travelled through the PK-violation branch. Forcing that
@@ -671,7 +671,7 @@ def test_every_truncation_of_the_actor_id_collides_the_two_fixture_actors(cut: i
     only NOTICE that if the two fixture actors collide under the truncation, and that is a
     fact about the FIXTURE, not about the store: with the previous pair (16 shared
     characters) `[:8]` was caught and `[:17]` was not, so the guard held for one chosen n
-    and the mutation simply moved (Sol, round O2, finding 2).
+    and the mutation simply moved (refuter round O2 -- gpt-6-astra, the account default, not Sol -- finding 2).
 
     So this asserts the fact directly, for all 31 cuts: under `actor_id[:cut]` the two
     actors produce the SAME scoped hash. Combined with
@@ -721,11 +721,11 @@ async def test_lost_race_with_a_different_payload_is_a_conflict_not_a_lost_race(
     to read", which is a lie: the committed outcome belongs to a DIFFERENT document. The
     contract's answer is IDEMPOTENCY_CONFLICT, and it is the answer this test pins.
 
-    DECLARED LIMIT (Sol, round O2, finding 1), same one as
+    DECLARED LIMIT (refuter round O2 -- gpt-6-astra, the account default, not Sol -- finding 1), same one as
     `test_two_concurrent_commits_same_key_exactly_one_wins`: the barrier coordinates the
     two EXTERNAL probes, not the lookups the two `commit()` calls make internally. Nothing
     here forces the loser through the `UniqueViolationError` branch rather than through the
-    ordinary sequential `SELECT ... FOR UPDATE` comparison -- Sol showed both tests pass,
+    ordinary sequential `SELECT ... FOR UPDATE` comparison -- the O2 refuter (Astra) showed both tests pass,
     with zero primary-key violations, against a candidate with that handler deleted. Both
     routes owe the caller IDEMPOTENCY_CONFLICT, which is why the assertion is still worth
     making; making WHICH route ran observable is what SPEC-PR2b-interleaving.md specifies.
@@ -796,7 +796,7 @@ async def test_low_confidence_replay_returns_the_fields_in_the_original_order(
     DISAGREE: in the enum `passport_number` precedes `nationality`, alphabetically it does
     not. A fixture whose fields happen to be alphabetical hides the whole defect.
 
-    DECLARED LIMIT (Sol, round O2, finding 4). What this proves is the CANONICAL case:
+    DECLARED LIMIT (refuter round O2 -- gpt-6-astra, the account default, not Sol -- finding 4). What this proves is the CANONICAL case:
     the store returns the enum's declaration order, and for outcomes `confidence.py`
     produces that IS the order they were sent in. It does NOT prove the stronger sentence
     "a replay preserves the order received", which is false for a `LowConfidenceOutcome`

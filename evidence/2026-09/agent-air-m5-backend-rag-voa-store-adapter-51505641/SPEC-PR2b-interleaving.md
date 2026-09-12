@@ -1,8 +1,17 @@
 # SPEC — PR2b: make the INSERT-race branch OBSERVABLE, and give "winner vanished" a semantics
 
+> **superseded-by: SPEC-v2** (Imperator decision #34, 2026-09-12). Sol O3 — the first round on
+> the real Sol door, `-m gpt-5.6-sol` — found this spec under-specified in three of its five
+> requirements: R1's advisory-lock alternative coordinates nothing (the store never takes that
+> lock); R5 needs an awaitable seam AFTER the collision and BEFORE the re-read, which R1–R3 do
+> not provide; R4(a) cannot tell the original winner from a re-occupier without a generation
+> captured before the purge; and §2's CHECK belongs to migration 264, not 304, and requires
+> `<=`, not equality. A fresh out-of-chain author writes SPEC-v2 as PROPERTIES. This file stays
+> as the record of what was proposed and why it was not enough; nothing below is normative.
+
 Written under Builder Contract 1: a fix-of-a-fix stops at depth 1, and if the correction is
 itself wrong the surface is under-specified, so the spec is written instead of a third cure.
-Two refuter rounds on PR2a (Sol, `gpt-5.6-sol`, O1 → O2) reopened the same class twice: tests
+Two refuter rounds on PR2a (O1 → O2, both on `gpt-6-astra`, the account default, not Sol) reopened the same class twice: tests
 that pin a SHAPE (one winner, two distinct actors, fields in some order) and not the PROPERTY
 (the loser went through the primary-key branch; ANY truncation collides; the order is the
 one received). PR2a ships with those three declared as limits. This is what PR2b must do to
@@ -26,7 +35,7 @@ The two race tests (`test_two_concurrent_commits_same_key_exactly_one_wins`,
 `asyncio.Barrier(2)` between an EXTERNAL probe ("is the key absent?") and the call to
 `commit()`. That coordinates the probes. It does not coordinate the two INTERNAL lookups: A
 can run its whole transaction between the barrier opening and B's `SELECT ... FOR UPDATE`,
-and B then takes the ordinary replay branch. Sol reproduced that schedule against the
+and B then takes the ordinary replay branch. The O2 refuter (Astra) reproduced that schedule against the
 candidate with the whole `UniqueViolationError` handler deleted: both tests PASS, zero
 primary-key violations. On M5's own scheduler (PG 17.10 and 15.19, measured 2026-09-12)
 the same mutation kills both tests — the race DOES reach the PK here — but "it happened on

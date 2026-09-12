@@ -218,8 +218,39 @@ refuter:
       nothing on the two hypotheses it was asked to falsify (aborted connection returning
       to the pool; unknown field value).
   round_O3:
-    delta_reviewed: "TO BE FILLED after the run — static, on the O2-cure delta only"
-    verdict: PENDING
+    model_id: gpt-5.6-sol
+    model_id_source: "sol_o3.log:5 and sol_o3b.log:5, `model: gpt-5.6-sol` — the first round on the real Sol door"
+    invocation: "codex exec --sandbox read-only --skip-git-repo-check -m gpt-5.6-sol -c model_reasoning_effort=xhigh"
+    delta_reviewed: "git diff 50aa8127fd e69a08e8b4 — static, no PostgreSQL, no pytest (Sol's own declaration)"
+    duration: >-
+      first run 2026-09-12T11:43:05Z -> 11:50:06Z, exit 0 with NO verdict (context-bridge
+      checkpoints only; a docs commit landed on the worktree mid-run and the seat deferred
+      "to the continuation"). SEAT RULE retry: `codex exec ... resume <session>` on the same
+      session, 11:51:59Z -> 12:00:27Z, 234847 tokens, verdict delivered.
+    verdict: BLOCK
+    findings: "9 — SEVEN marked SAME CAUSE by Sol, two NEW. Itemised in suspension_record."
+suspension_record:
+  decision: "Imperator #34, 2026-09-12 — Builder Contract 1: three refuter rounds reopening the same class; PR2a SUSPENDED, no path (d)"
+  head_at_suspension: "the commit carrying this record, pushed WITHOUT a PR and WITHOUT arming so a fresh out-of-chain author can snapshot it via git archive"
+  recurring_class: >-
+    Pinning a SHAPE and calling it a property. Three rounds, same class: O1 pinned one
+    truncation cut; O2's cure pinned a longer prefix; O3's cure pinned EVERY prefix and
+    missed every suffix. "No row" was called impossible, then called re-occupation, and is
+    neither. The DSN was redacted in the message and left in the exception chain. A limit
+    was declared beside a docstring that says the opposite.
+  sol_o3_findings_with_the_builders_reading:
+    - "1 [P2] A = O2-2 = O1-1. The parametrized property covers only prefixes actor_id[:n]; every suffix actor_id[n:] (1..31) survives because the fixture pair differs in its LAST character, and so does actor_id[1::2]. TRUE — the sentence 'no truncating mutation ... whatever n' is false."
+    - "2 [P2] B = O2-3. 304 permits DELETE past retention_until: true. But 'no row' is NOT re-occupation: a committed re-occupier's row IS found on re-read and yields conflict or False, never RuntimeError. TRUE — store comment, SPEC §2 and brief overstate what RuntimeError covers."
+    - "3 [P2] C = O2-5 = O1-7. ClientConfigurationError now reaches _redacted, but pytest.fail/skip raised INSIDE the except keep it as __context__, and --tb=long renders the chain with the connect frame; the per-database connects at :256 and :284 are outside the redaction entirely. TRUE."
+    - "4 [P2] D = O2-1 = O1-8. The declared limit in the first race test is contradicted by its own docstring ('the PRIMARY KEY ... is the real atomicity boundary this test exercises', 'real interleaving, not sequential calls'), and the brief said 'both tests' docstrings' where one is a body comment. TRUE."
+    - "5 [P1] E = O2-1. SPEC R1's advisory-lock alternative coordinates nothing — commit() never takes that lock — and R2 presumes the seam R1 lets you skip. TRUE."
+    - "6 [P1] E = O2-3. SPEC R5 needs the loser held AFTER its collision and BEFORE the re-read; _after_lookup fires before the INSERT and _on_lost_race is synchronous. TRUE — the spec lacks the control point its own requirement needs."
+    - "7 [P2] E = O2-3. R4(a) WinnerVanished cannot distinguish the original winner from a re-occupier without a generation captured before the purge. TRUE."
+    - "8 [P3] E NEW. The idempotency_retention_interval <= retention_interval CHECK is migration 264's, not 304's, and requires <=, not equality. TRUE, minor."
+    - "9 [P2] F NEW. The judged delta (e69a08e8b4) attributed O2 to Sol/gpt-5.6-sol. The brief was corrected in 75aa361ea3 before this verdict arrived; the test comments and ledger-rows-held.md still said Sol — corrected in the commit carrying this record. TRUE as residual."
+  sol_verified_without_finding: "numstat +44/-1 +419/-0 +851/-0 exact; 19 + 31 = 50 collected; port, canonical order, order test and the second ledger row correct; HISTORICAL labels applied."
+  preserved_as_is: "store code (no finding on behaviour, only prose), 50/50 on PG 17.10 and 15.19, 115/3 lane+router, 14 guilt mutations red on both, canonical replay order in the port, three parked ledger rows, the seat correction."
+  next: "SPEC-v2 by a fresh out-of-chain author, as properties: interleaving harness with an awaitable seam between collision and re-read (R1–R6 rewritten on Sol 5–7); no-row vs re-occupation semantics; report-level redaction (__context__, per-db connects); truncation as a property over ALL subsequences, not prefixes. This lane stays frozen until the Imperator ratifies it."
 perimeter_not_touched: >-
   ONE line, so a reader does not have to infer it from absence: this PR does not touch
   `service_initializer.py`, does not set `app.state.garuda_document_store`, does not touch
