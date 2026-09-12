@@ -141,20 +141,35 @@ const WALKS: readonly WalkCase[] = [
     flags: [],
   },
   {
-    name: "invest · property — HELD: a Second Home shape no purpose can be emitted for (§6 R3)",
+    // Released (PR-D3, D3-1): `investment_vehicle=property` now routes to
+    // Second Home and `mapPurposes` emits SECOND_HOME alone, so neither
+    // `family_sponsor_confirmed` nor `wants_onshore_conversion` is asked any
+    // more — no E33 rule reads either fact. Was "HELD" under §6 R3; see
+    // fact-mapper.ts's `ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS` comment.
+    name: "invest · property — FREED (D3-1): routes to Second Home, SECOND_HOME alone",
     category: "invest",
     tripScope: "single",
     branch: [
       ["sponsor_category", "INVESTMENT"],
       ["investment_vehicle", "property"],
       ["secondhome_property_value_usd", "1200000"],
-      // Both inserted into the invest branch by #5855 — they are the two
-      // facts that turned this walk's NEEDS_INPUT into an answer.
-      ["family_sponsor_confirmed", "yes"],
-      ["wants_onshore_conversion", "no"],
       ["stay_days", "730"],
     ],
-    flags: ["ACTIVITY_BOUNDARY"],
+    flags: [],
+  },
+  {
+    name: "invest · bank_deposit — FREED (D3-1): routes to Second Home, SECOND_HOME alone",
+    category: "invest",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "INVESTMENT"],
+      ["investment_vehicle", "bank_deposit"],
+      ["secondhome_deposit_usd", "150000"],
+      ["secondhome_state_bank", "yes"],
+      ["secondhome_own_name", "yes"],
+      ["stay_days", "730"],
+    ],
+    flags: [],
   },
   {
     name: "retirement · property — HELD: §6 R3 measured the unflagged answer as a wrong NO_PATH",
@@ -302,6 +317,29 @@ const WALKS: readonly WalkCase[] = [
       ["other_paid_activity", "no"],
       // Inserted into the `other` branch by #5855.
       ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "30"],
+      ["entry_pattern", "SINGLE"],
+    ],
+    flags: ["ACTIVITY_BOUNDARY"],
+  },
+  {
+    // D3-2 changes the ENGINE-level route (`other_paid_activity=yes` now
+    // asks the two employment facts `el.e23-employment-support` reads and
+    // `mapPurposes` emits EMPLOYMENT alone), but `other_purpose` ITSELF
+    // stays fully undecidable on purpose (spec: "holds on the
+    // `other_purpose` values stay until each value is mapped") — so this
+    // walk still holds, on the value `other_paid_activity` no longer
+    // contributes to. `disclosed_review_flags` is a boundary flag, not a
+    // per-cause list: removing one undecidable answer cannot un-hold a walk
+    // that another undecidable answer already holds.
+    name: "other · paid activity yes — engine reroutes to employment; other_purpose still holds",
+    category: "other",
+    tripScope: "single",
+    branch: [
+      ["other_purpose", "transit"],
+      ["other_paid_activity", "yes"],
+      ["work_payer", "yes"],
+      ["work_sponsor_confirmed", "yes"],
       ["stay_days", "30"],
       ["entry_pattern", "SINGLE"],
     ],

@@ -230,12 +230,10 @@ describe("question registry -> wire coverage", () => {
     ["trip_scope", "multiple", "MULTI_PURPOSE_TRIP"],
     ["business_activity", "training", "ACTIVITY_BOUNDARY"],
     ["business_activity", "other", "ACTIVITY_BOUNDARY"],
-    ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
     ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
     ["diaspora_connection", "former_citizen", "ACTIVITY_BOUNDARY"],
     ["diaspora_documents", "passport", "ACTIVITY_BOUNDARY"],
     ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
-    ["other_paid_activity", "yes", "ACTIVITY_BOUNDARY"],
   ])(
     "maps an undecidable HUMAN_CONTEXT answer (%s=%s) to a conservative review flag",
     (id, value, flag) => {
@@ -258,6 +256,11 @@ describe("question registry -> wire coverage", () => {
     ["business_activity", "negotiation"],
     ["business_activity", "conference"],
     ["investment_vehicle", "pt_pma"],
+    // Released (PR-D3, D3-1) — `mapPurposes` routes both to SECOND_HOME
+    // alone and the Second Home facts the interview already collects for
+    // them decide E33 on the pack's own terms. See fact-mapper.ts.
+    ["investment_vehicle", "property"],
+    ["investment_vehicle", "bank_deposit"],
     ["retirement_basis", "bank_deposit"],
     ["retirement_basis", "passive_income"],
     // Released 2026-09-12 (NARROW-2) — el.e33f.retirement decides SUPPORT
@@ -281,6 +284,12 @@ describe("question registry -> wire coverage", () => {
     // seq-20 reads `family.sponsor_permit_basis` (HUMAN_CONTEXT only, never
     // wired to a FACT — see `mapFamilySponsorPermitBasis`).
     ["family_sponsor_permit_basis", "EXPERT"],
+    // Released (PR-D3, D3-2) — `mapPurposes` routes `yes` to EMPLOYMENT
+    // (only `el.e23-employment-support` covers it) and `no` stays OTHER
+    // (`el.c6.social` reachable); both are decisive on the pack's own
+    // terms. See fact-mapper.ts.
+    ["other_paid_activity", "yes"],
+    ["other_paid_activity", "no"],
   ])(
     "leaves a decidable answer (%s=%s) unflagged — it must not veto a proven candidate",
     (id, value) => {
