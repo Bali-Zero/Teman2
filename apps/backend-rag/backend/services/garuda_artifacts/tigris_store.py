@@ -109,6 +109,10 @@ _TRANSIENT_BOTOCORE_TYPES = (
     ConnectionClosedError,
     ReadTimeoutError,
     ConnectTimeoutError,
+    # A body cut short on the wire is a wire fault (O3 N6): the GET is
+    # idempotent, so it restarts whole; only after the budget is it a refusal.
+    IncompleteReadError,
+    ResponseStreamingError,
 )
 #: Never retried, whatever HTTP status accompanies them (O2 F9): a 5xx that
 #: carries one of these codes is a contradiction, and the permanent code wins
@@ -165,12 +169,18 @@ def _validate_endpoint(url: str) -> str:
     URL (O2 F2): no userinfo, no port, no path, no query, no fragment. An
     endpoint is a scheme and a host; anything more is a place for a
     confusion to hide."""
-    parts = urlsplit(url)
+    try:
+        parts = urlsplit(url)
+        port = parts.port  # raises ValueError on a malformed port (O3 N8)
+    except ValueError as exc:
+        raise GarudaArtifactsStoreUnavailable(
+            f"garuda artifacts store: {ENDPOINT_URL_ENV} is not a well-formed URL"
+        ) from exc
     host = (parts.hostname or "").lower()
     extras = (
         parts.username,
         parts.password,
-        parts.port,
+        port,
         parts.path.strip("/") or None,
         parts.query or None,
         parts.fragment or None,
@@ -277,23 +287,21 @@ class TigrisArtifactObjectStore:
 
     # ------------------------------------------------------------------- put
 
-    def _head_etag_sync(self, *, key: str) -> str | None:
-        """The stored object's ETag, or None when no object exists under the
-        key. Used twice: before a put, to refuse a live key even on a store
-        that ignores `IfNoneMatch` (O2 F5); and after a 412 on a RETRIED put,
-        to tell our own committed-but-500'd write from someone else's (O2 N1)."""
+    def _head_sync(self, *, key: str) -> tuple[bool, str | None]:
+        """(exists, etag). Used twice: before a put, to refuse a live key even
+        on a store that ignores `IfNoneMatch` (O2 F5); and after a 412 on a
+        RETRIED put, to tell our own committed-but-500'd write from someone
+        else's (O2 N1). A 200 with no ETag is an EXISTING object whose identity
+        cannot be read (O3 N4) -- never mistaken for absence."""
         try:
-            return (
-                str(self._client.head_object(Bucket=self._bucket, Key=key).get("ETag", "")).strip(
-                    '"'
-                )
-                or None
-            )
+            resp = self._client.head_object(Bucket=self._bucket, Key=key)
         except ClientError as exc:
             code = str(exc.response.get("Error", {}).get("Code", ""))
             if code in ("NoSuchKey", "404", "NotFound"):
-                return None
+                return False, None
             raise
+        etag = str(resp.get("ETag") or "").strip('"') or None
+        return True, etag
 
     def _put_sync(self, *, key: str, body: bytes, content_type: str) -> None:
         ref = _key_ref(key)
@@ -303,7 +311,8 @@ class TigrisArtifactObjectStore:
         # (O2 F5) would otherwise overwrite undetected. TOCTOU between HEAD and
         # PUT is closed by layer two on a compliant store and is the declared
         # residual on a non-compliant one.
-        if self._with_retries(lambda: self._head_etag_sync(key=key)) is not None:
+        exists, _ = self._with_retries(lambda: self._head_sync(key=key))
+        if exists:
             logger.error("garuda_artifacts.put_refused_key_exists", extra={"key_ref": ref})
             raise ArtifactAlreadyExists(ref)
         attempt = 0
@@ -332,7 +341,13 @@ class TigrisArtifactObjectStore:
                     # having committed before surfacing a 5xx. Only an ETag
                     # equal to this body's MD5 is ours; anything else is a
                     # real collision.
-                    if attempt > 1 and self._head_etag_sync(key=key) == own_etag:
+                    # MD5 equality proves CONTENT equality, not writer identity
+                    # (O3 N1): identical bytes from another writer are the same
+                    # object under write-once and harmless to report as ours.
+                    # An absent or non-MD5 ETag (multipart, some SSE modes)
+                    # cannot be read either way -> conservative: a collision.
+                    exists_now, etag_now = self._head_sync(key=key)
+                    if attempt > 1 and exists_now and etag_now == own_etag:
                         logger.info(
                             "garuda_artifacts.put_committed_on_earlier_attempt",
                             extra={"key_ref": ref},
@@ -398,26 +413,23 @@ class TigrisArtifactObjectStore:
                 # length itself when a read returns empty, raising
                 # IncompleteReadError on a truncated body -- mapped below to the
                 # same refusal as every other length disagreement.
-                chunks: list[bytes] = []
+                # One growing buffer, no per-chunk list (O3 N5): peak memory is
+                # the buffer plus its final immutable copy, about twice the
+                # ceiling, and that figure is the declared bound -- not "the
+                # ceiling". The loop ends on an EMPTY read, which under the
+                # stream contract IS EOF (so no separate probe, O3 N7), or on
+                # the bound. A stream that returned more than asked would break
+                # the contract; the length checks below still catch it.
+                buf = bytearray()
                 remaining = MAX_ARTIFACT_BYTES + 1
-                try:
-                    while remaining > 0:
-                        chunk = stream.read(remaining)
-                        if not chunk:
-                            break
-                        chunks.append(chunk)
-                        remaining -= len(chunk)
-                    body = b"".join(chunks)
-                    if len(body) <= MAX_ARTIFACT_BYTES and stream.read(1):
-                        logger.error(
-                            "garuda_artifacts.body_longer_than_read", extra={"key_ref": ref}
-                        )
-                        raise ArtifactDigestMismatch(ref)
-                except (IncompleteReadError, ResponseStreamingError) as exc:
-                    logger.error(
-                        "garuda_artifacts.body_truncated_on_the_wire", extra={"key_ref": ref}
-                    )
-                    raise ArtifactDigestMismatch(ref) from exc
+                while remaining > 0:
+                    chunk = stream.read(remaining)
+                    if not chunk:
+                        break
+                    buf += chunk
+                    remaining -= len(chunk)
+                body = bytes(buf)
+                del buf
                 if len(body) > MAX_ARTIFACT_BYTES:
                     logger.error("garuda_artifacts.object_exceeds_ceiling", extra={"key_ref": ref})
                     raise ArtifactDigestMismatch(ref)
@@ -505,19 +517,23 @@ class TigrisArtifactObjectStore:
         so this adapter cannot verify it and says so)."""
         verdict: dict[str, bool | None] = {"public_access_block": None, "policy_status": None}
         try:
-            cfg = self._client.get_public_access_block(Bucket=self._bucket)[
-                "PublicAccessBlockConfiguration"
-            ]
-            blocked = all(
-                bool(cfg.get(k))
-                for k in (
-                    "BlockPublicAcls",
-                    "IgnorePublicAcls",
-                    "BlockPublicPolicy",
-                    "RestrictPublicBuckets",
+            cfg = (
+                self._client.get_public_access_block(Bucket=self._bucket).get(
+                    "PublicAccessBlockConfiguration"
                 )
+                or {}
             )
-            verdict["public_access_block"] = blocked
+            keys = (
+                "BlockPublicAcls",
+                "IgnorePublicAcls",
+                "BlockPublicPolicy",
+                "RestrictPublicBuckets",
+            )
+            values = [cfg.get(k) for k in keys]
+            # Four booleans or UNKNOWN (O3 N3): a malformed answer is never "private".
+            verdict["public_access_block"] = (
+                all(values) if all(isinstance(v, bool) for v in values) else None
+            )
         except ClientError as exc:
             code = str(exc.response.get("Error", {}).get("Code", ""))
             if code not in (
@@ -527,8 +543,12 @@ class TigrisArtifactObjectStore:
             ):
                 raise
         try:
-            status = self._client.get_bucket_policy_status(Bucket=self._bucket)["PolicyStatus"]
-            verdict["policy_status"] = not bool(status.get("IsPublic"))
+            status = (
+                self._client.get_bucket_policy_status(Bucket=self._bucket).get("PolicyStatus") or {}
+            )
+            is_public = status.get("IsPublic")
+            # A malformed answer is UNKNOWN, never "private" (O3 N3).
+            verdict["policy_status"] = (not is_public) if isinstance(is_public, bool) else None
         except ClientError as exc:
             code = str(exc.response.get("Error", {}).get("Code", ""))
             if code not in ("NoSuchBucketPolicy", "NotImplemented", "MethodNotAllowed"):

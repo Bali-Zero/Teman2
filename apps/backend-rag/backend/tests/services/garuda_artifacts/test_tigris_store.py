@@ -84,8 +84,8 @@ class _BytesBody:
         self.read_calls += 1
         # botocore: a short read is legal; on an EMPTY read with amt > 0 the
         # declared length is verified and IncompleteReadError raised.
-        if self._short_reads and amt is not None and amt > 1:
-            amt = max(1, amt // 3)
+        if self._short_reads and amt is not None and amt > 1000:
+            amt = 1000  # a short read: fewer bytes than asked, not EOF
         self.max_amt_requested = (
             amt
             if self.max_amt_requested is None or (amt or 0) > self.max_amt_requested
@@ -128,6 +128,7 @@ class _FakeS3Client:
         honours_if_none_match: bool = True,
         short_reads: bool = False,
         head_failures: list[Exception] | None = None,
+        head_without_etag: bool = False,
         public_access_block: dict | Exception | None = None,
         policy_status: dict | Exception | None = None,
     ) -> None:
@@ -144,6 +145,7 @@ class _FakeS3Client:
         self._honours_if_none_match = honours_if_none_match
         self._short_reads = short_reads
         self._head_failures = list(head_failures or [])
+        self._head_without_etag = head_without_etag
         self.head_calls: list[dict] = []
         self._public_access_block = public_access_block
         self._policy_status = policy_status
@@ -169,6 +171,8 @@ class _FakeS3Client:
             raise self._head_failures.pop(0)
         if kwargs["Key"] not in self._existing_keys:
             raise _client_error("404", status=404, op="HeadObject")
+        if self._head_without_etag:
+            return {}
         etag = hashlib.md5(self.stored[kwargs["Key"]], usedforsecurity=False).hexdigest()
         return {"ETag": f'"{etag}"'}
 
@@ -324,6 +328,7 @@ class TestEndpointAndBucketConfinement:
             "https://fly.storage.tigris.dev?x=1",  # query (O2)
             "https://fly.storage.tigris.dev.",  # trailing dot
             "https://flý.storage.tigris.dev",  # non-ASCII label (O2)
+            "https://fly.storage.tigris.dev:notaport",  # malformed port (O3 N8)
         ],
     )
     def test_non_tigris_or_non_https_endpoint_is_refused(self, monkeypatch, endpoint) -> None:
@@ -390,6 +395,20 @@ class TestBucketPrivacy:
         )
         with pytest.raises(GarudaArtifactsStoreUnavailable):
             await store.assert_private()
+
+    @pytest.mark.asyncio
+    async def test_malformed_probe_answers_are_unknown_not_private(self) -> None:
+        """O3 N3: PolicyStatus={} used to read as verified-private."""
+        store = _store(_FakeS3Client(policy_status={}))
+        with pytest.raises(GarudaArtifactsStoreUnavailable, match="VERIFIED"):
+            await store.assert_private()
+        store = _store(_FakeS3Client(public_access_block={"BlockPublicAcls": True}))
+        with pytest.raises(GarudaArtifactsStoreUnavailable, match="VERIFIED"):
+            await store.assert_private()
+        assert await store.assert_private(require_verified=False) == {
+            "public_access_block": None,
+            "policy_status": None,
+        }
 
     @pytest.mark.asyncio
     async def test_verified_private_returns_both_probes_true(self) -> None:
@@ -492,6 +511,38 @@ class TestPut:
         client.put_object = put_then_500  # type: ignore[method-assign]
         await _store(client).put(key=_SENTINEL_KEY, body=b"A", content_type="application/pdf")
         assert client.stored[_SENTINEL_KEY] == b"A"
+
+    @pytest.mark.asyncio
+    async def test_head_200_without_etag_is_an_existing_object_not_absence(self) -> None:
+        """O3 N4."""
+        client = _FakeS3Client(
+            existing_keys={_SENTINEL_KEY}, honours_if_none_match=False, head_without_etag=True
+        )
+        with pytest.raises(ArtifactAlreadyExists):
+            await _store(client).put(key=_SENTINEL_KEY, body=b"B", content_type="application/pdf")
+        assert client.put_calls == []
+
+    @pytest.mark.asyncio
+    async def test_a_permanent_head_failure_aborts_before_any_put(self) -> None:
+        """O3: the HEAD layer is a new dependency; permanent failures surface as themselves."""
+        client = _FakeS3Client(head_failures=[_client_error("AccessDenied", op="HeadObject")])
+        with pytest.raises(ClientError):
+            await _store(client).put(key=_SENTINEL_KEY, body=b"A", content_type="application/pdf")
+        assert client.put_calls == []
+
+    @pytest.mark.asyncio
+    async def test_a_412_on_a_retry_with_an_unreadable_etag_is_a_collision(self) -> None:
+        """O3 N1: an absent ETag cannot prove the write is ours -> conservative."""
+        client = _FakeS3Client(head_without_etag=True)
+        original_put = client.put_object
+
+        def put_then_500(**kwargs):
+            original_put(**kwargs)
+            raise _client_error("InternalError", status=500)
+
+        client.put_object = put_then_500  # type: ignore[method-assign]
+        with pytest.raises(ArtifactAlreadyExists):
+            await _store(client).put(key=_SENTINEL_KEY, body=b"A", content_type="application/pdf")
 
     @pytest.mark.asyncio
     async def test_a_412_on_a_retry_for_someone_elses_object_is_a_collision(self) -> None:
@@ -742,8 +793,7 @@ class TestFetchAndVerifyBoundedRead:
                 == data
             )
             assert client.bodies[-1].max_amt_requested == MAX_ARTIFACT_BYTES + 1
-            # The EOF probe is a real extra read (O2): drop it and this fails.
-            assert client.bodies[-1].read_calls >= 2
+            assert client.bodies[-1].total_bytes_returned == len(data)
         client = _FakeS3Client(
             get_object_bytes=b"x" * (MAX_ARTIFACT_BYTES + 1), get_object_content_length=None
         )
@@ -757,7 +807,9 @@ class TestFetchAndVerifyBoundedRead:
         """O1 F6, verbatim: declare 100, return 101, digest of the 101 -> refuse."""
         actual = b"y" * 101
         client = _FakeS3Client(get_object_bytes=actual, get_object_content_length=100)
-        with pytest.raises(ArtifactDigestMismatch):
+        with pytest.raises(
+            IncompleteReadError
+        ):  # botocore's own length check, after the retry budget (O3 N6)
             await _store(client).fetch_and_verify(
                 key=_SENTINEL_KEY, expected_digest=_digest(actual), expected_byte_length=100
             )
@@ -768,10 +820,47 @@ class TestFetchAndVerifyBoundedRead:
         IncompleteReadError on the EOF probe -- and the adapter maps it."""
         actual = b"y" * 99
         client = _FakeS3Client(get_object_bytes=actual, get_object_content_length=100)
-        with pytest.raises(ArtifactDigestMismatch):
+        with pytest.raises(
+            IncompleteReadError
+        ):  # botocore's own length check, after the retry budget (O3 N6)
             await _store(client).fetch_and_verify(
                 key=_SENTINEL_KEY, expected_digest=_digest(actual)
             )
+
+    @pytest.mark.asyncio
+    async def test_a_truncated_body_is_retried_then_refused(self) -> None:
+        """O3 N6: a body cut short on the wire is a wire fault -- the GET
+        restarts whole; only an exhausted budget is a refusal."""
+        data = b"y" * 99
+        sleeps: list[float] = []
+        client = _FakeS3Client(get_object_bytes=data, get_object_content_length=100)
+        with pytest.raises(IncompleteReadError):
+            await _store(client, sleeps=sleeps).fetch_and_verify(
+                key=_SENTINEL_KEY, expected_digest=_digest(data)
+            )
+        assert len(client.get_calls) == 3 and sleeps == [2.0, 4.0]
+        assert all(b.closed for b in client.bodies)
+
+    @pytest.mark.asyncio
+    async def test_body_is_closed_on_every_refusal_path(self) -> None:
+        refusals = [
+            _FakeS3Client(
+                get_object_bytes=b"x" * 10, get_object_content_length=MAX_ARTIFACT_BYTES + 1
+            ),
+            _FakeS3Client(
+                get_object_bytes=b"x" * (MAX_ARTIFACT_BYTES + 1), get_object_content_length=None
+            ),
+            _FakeS3Client(get_object_bytes=b"y" * 101, get_object_content_length=100),
+            _FakeS3Client(get_object_bytes=b"y" * 99, get_object_content_length=100),
+            _FakeS3Client(get_object_bytes=b"tampered"),
+        ]
+        for client in refusals:
+            with pytest.raises((ArtifactDigestMismatch, IncompleteReadError)):
+                await _store(client).fetch_and_verify(
+                    key=_SENTINEL_KEY, expected_digest=_digest(b"original")
+                )
+            assert all(b.closed for b in client.bodies)
+        assert refusals[0].bodies[-1].total_bytes_returned == 0
 
     @pytest.mark.asyncio
     async def test_short_reads_are_accumulated_not_mistaken_for_eof(self) -> None:
