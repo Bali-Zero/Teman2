@@ -45,14 +45,20 @@ class ArtifactAlreadyExists(RuntimeError):
 
 
 class ArtifactObjectStorePort(Protocol):
-    """The private artifact bucket -- put, then fetch-verify.
+    """The private artifact bucket -- put, fetch-verify, delete.
 
-    No `delete` member: physical deletion is the retention sweep's own role
-    (spec SS6, decision #7a), not built by this phase. Supersession
-    (decision #13-revision) leaves the superseded row's OBJECT in the
-    bucket -- there is still no delete member here, on purpose -- only the
-    ROW is marked `superseded_at`/`superseded_by` (migration 313); the
-    object waits for that same future retention sweep.
+    `delete` is here because the pinned spec says a superseded artifact's
+    OBJECT is removed immediately ("a withdrawn travel document must stop
+    being retrievable the moment it is withdrawn"); the ROW survives,
+    append-only, as the record that bytes once existed. Decision #39
+    (2026-09-12) read the earlier "leaves the object in the bucket -- on
+    purpose" comment as a misreading of #13 and struck it; decision #7a
+    excluded only the retention SWEEP (an executor and a scheduler, a new
+    organ), not deletion on supersession. WHEN to delete is the service's
+    rule, not this port's: a consumer that reaches this port can delete any
+    key it names, superseded or not -- the port does not know which rows are
+    live. That constraint belongs to the service that ships in S3, and is
+    stated here as a limit rather than implied as a guarantee.
     """
 
     async def put(self, *, key: str, body: bytes, content_type: str) -> None: ...
@@ -78,6 +84,15 @@ class ArtifactObjectStorePort(Protocol):
         verify primitive (spec SS5: "fetch, verify, then emit... one route
         per lane", generalised here to "one verification path per lane").
         """
+
+    async def delete(self, *, key: str) -> None:
+        """Remove ONE object by its exact key. Idempotent: a key that does
+        not resolve to an object is a success, not an error -- the desired
+        state (nothing retrievable under this key) already holds. Never a
+        prefix, never a batch: one call, one key. Transient wire errors
+        retry as `put`/`fetch_and_verify` do; anything else is raised."""
+        ...
+
         ...
 
 

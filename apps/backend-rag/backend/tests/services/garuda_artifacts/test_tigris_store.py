@@ -104,6 +104,7 @@ class _FakeS3Client:
         *,
         put_failures: list[Exception] | None = None,
         get_failures: list[Exception] | None = None,
+        delete_failures: list[Exception] | None = None,
         get_object_bytes: bytes | None = None,
         get_object_content_length: object = _UNSET,
         existing_keys: set[str] | None = None,
@@ -112,6 +113,8 @@ class _FakeS3Client:
     ) -> None:
         self.put_calls: list[dict] = []
         self.get_calls: list[dict] = []
+        self.delete_calls: list[dict] = []
+        self._delete_failures = list(delete_failures or [])
         self._put_failures = list(put_failures or [])
         self._get_failures = list(get_failures or [])
         self._get_object_bytes = get_object_bytes
@@ -134,6 +137,8 @@ class _FakeS3Client:
         self.get_calls.append(kwargs)
         if self._get_failures:
             raise self._get_failures.pop(0)
+        if self._get_object_bytes is None and kwargs["Key"] not in self._existing_keys:
+            raise _client_error("NoSuchKey", op="GetObject")
         data = self._get_object_bytes or b""
         body = _BytesBody(data)
         self.bodies.append(body)
@@ -143,6 +148,15 @@ class _FakeS3Client:
         elif self._get_object_content_length is not None:
             resp["ContentLength"] = self._get_object_content_length
         return resp
+
+    def delete_object(self, **kwargs):
+        self.delete_calls.append(kwargs)
+        if self._delete_failures:
+            raise self._delete_failures.pop(0)
+        if kwargs["Key"] not in self._existing_keys:
+            raise _client_error("NoSuchKey", op="DeleteObject")
+        self._existing_keys.discard(kwargs["Key"])
+        return {}
 
     def get_public_access_block(self, **kwargs):
         if isinstance(self._public_access_block, Exception):
@@ -669,6 +683,71 @@ class TestFetchAndVerifyBoundedRead:
             await _store(client).fetch_and_verify(key=_SENTINEL_KEY, expected_digest=_digest(data))
 
 
+# ----------------------------------------------------------------- delete
+
+
+class TestDelete:
+    """Decision #39: one key, idempotent, hashed in logs, wire-level retry.
+    LIMIT, stated: the adapter cannot tell a superseded key from a live
+    one; a consumer that reaches the port can delete anything it names.
+    That rule is the service's (S3)."""
+
+    @pytest.mark.asyncio
+    async def test_delete_removes_exactly_one_key_and_nothing_else(self, caplog) -> None:
+        client = _FakeS3Client(existing_keys={_SENTINEL_KEY, "artifacts/other/keep"})
+        with caplog.at_level(logging.INFO):
+            await _store(client).delete(key=_SENTINEL_KEY)
+        (call,) = client.delete_calls
+        assert call == {"Bucket": "garuda-voa-artifacts-test", "Key": _SENTINEL_KEY}
+        assert "artifacts/other/keep" in client._existing_keys
+        assert "SENTINEL" not in caplog.text
+        assert "garuda_artifacts.deleted" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_delete_then_fetch_is_missing(self) -> None:
+        client = _FakeS3Client(existing_keys={_SENTINEL_KEY})
+        store = _store(client)
+        await store.delete(key=_SENTINEL_KEY)
+        with pytest.raises(ArtifactObjectMissing):
+            await store.fetch_and_verify(key=_SENTINEL_KEY, expected_digest="0" * 64)
+
+    @pytest.mark.asyncio
+    async def test_delete_of_an_absent_key_is_a_success(self, caplog) -> None:
+        client = _FakeS3Client()
+        with caplog.at_level(logging.INFO):
+            await _store(client).delete(key=_SENTINEL_KEY)
+        assert len(client.delete_calls) == 1
+        assert "delete_already_absent" in caplog.text
+        assert "SENTINEL" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_delete_retries_a_transient_and_raises_a_permanent(self) -> None:
+        sleeps: list[float] = []
+        client = _FakeS3Client(
+            existing_keys={_SENTINEL_KEY}, delete_failures=[_client_error("503", op="DeleteObject")]
+        )
+        await _store(client, sleeps=sleeps).delete(key=_SENTINEL_KEY)
+        assert len(client.delete_calls) == 2 and sleeps == [2.0]
+        client = _FakeS3Client(
+            existing_keys={_SENTINEL_KEY},
+            delete_failures=[_client_error("AccessDenied", op="DeleteObject")],
+        )
+        with pytest.raises(ClientError):
+            await _store(client).delete(key=_SENTINEL_KEY)
+        assert len(client.delete_calls) == 1
+        assert _SENTINEL_KEY in client._existing_keys
+
+    @pytest.mark.asyncio
+    async def test_fake_delete_is_in_parity(self) -> None:
+        fake = InMemoryArtifactObjectStore()
+        await fake.put(key="k", body=b"A", content_type="application/pdf")
+        await fake.delete(key="k")
+        await fake.delete(key="k")  # idempotent
+        with pytest.raises(ArtifactObjectMissing):
+            await fake.fetch_and_verify(key="k", expected_digest=_digest(b"A"))
+        await fake.put(key="k", body=b"B", content_type="application/pdf")  # key is free again
+
+
 # -------------------------------------------------------------- the fake
 
 
@@ -718,6 +797,7 @@ class TestFakeParity:
             p
             for p in root.rglob("*.py")
             if "tests" not in p.parts
-            and "TigrisArtifactObjectStore.for_tests(" in p.read_text(encoding="utf-8", errors="ignore")
+            and "TigrisArtifactObjectStore.for_tests("
+            in p.read_text(encoding="utf-8", errors="ignore")
         ]
         assert hits == [], hits

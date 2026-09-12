@@ -364,6 +364,31 @@ class TigrisArtifactObjectStore:
             raise ArtifactDigestMismatch(_key_ref(key))
         return body
 
+    # ---------------------------------------------------------------- delete
+
+    def _delete_sync(self, *, key: str) -> None:
+        ref = _key_ref(key)
+
+        def _once() -> None:
+            try:
+                self._client.delete_object(Bucket=self._bucket, Key=key)
+            except ClientError as exc:
+                code = str(exc.response.get("Error", {}).get("Code", ""))
+                if code in ("NoSuchKey", "404"):
+                    # Idempotent by decision #39: the object is already not
+                    # retrievable, which is the state a delete exists to reach.
+                    logger.info("garuda_artifacts.delete_already_absent", extra={"key_ref": ref})
+                    return
+                raise
+            logger.info("garuda_artifacts.deleted", extra={"key_ref": ref})
+
+        self._with_retries(_once)
+
+    async def delete(self, *, key: str) -> None:
+        """One object, by exact key, idempotent. WHEN is the service's rule
+        (S3); this adapter cannot tell a superseded key from a live one."""
+        await asyncio.to_thread(self._delete_sync, key=key)
+
     # ---------------------------------------------------------------- probes
 
     def _assert_private_sync(self) -> dict[str, bool | None]:

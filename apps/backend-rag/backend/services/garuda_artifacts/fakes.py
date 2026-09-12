@@ -60,8 +60,13 @@ class InMemoryArtifactObjectStore:
         Bypasses the write-once rule on purpose -- it models tampering."""
         self._objects[key] = replacement
 
+    async def delete(self, *, key: str) -> None:
+        """Port member (decision #39): one key, idempotent -- an absent key
+        is a success. The fake cannot tell a superseded key from a live one
+        any more than the adapter can; that rule is the service's."""
+        self._objects.pop(key, None)
+
     def delete_for_test(self, key: str) -> None:
         """Test hook: simulate an object that vanished from the bucket
-        (bypassing the port, which has no delete member -- see that port's
-        docstring and decision #7a)."""
+        outside the port (a store-side loss, not a service decision)."""
         self._objects.pop(key, None)
