@@ -30,10 +30,7 @@ import pytest
 from backend.db.migration_base import split_migration_sql
 
 MIGRATION = (
-    Path(__file__).resolve().parents[2]
-    / "db"
-    / "migrations_v2"
-    / "313_garuda_practice_artifacts.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "313_garuda_practice_artifacts.sql"
 )
 
 TEST_DSN = os.environ.get("TEST_DATABASE_URL")
@@ -126,12 +123,7 @@ def test_both_halves_carry_the_ownership_privilege_bracket() -> None:
     assert "$garuda_313_rollback_resume_runtime_role$" in rollback
     assume_at = rollback.index("$garuda_313_rollback_assume_owner$")
     first_removal = min(
-        i
-        for i in (
-            rollback.find("DROP TRIGGER"),
-            rollback.find("DROP FUNCTION"),
-            rollback.find("DROP TABLE"),
-        )
+        i for i in (rollback.find("DROP TRIGGER"), rollback.find("DROP FUNCTION"), rollback.find("DROP TABLE"))
         if i != -1
     )
     assert assume_at < first_removal, (
@@ -153,7 +145,7 @@ def _forbidden(dbname: str) -> str | None:
 
 @pytest.fixture
 async def conn():
-    if bad := _forbidden((TEST_DSN or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1]):
+    if (bad := _forbidden((TEST_DSN or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1])):
         pytest.fail(
             f"refusing to apply migration DDL — TEST_DATABASE_URL names a real "
             f"database (matched {bad!r})."
@@ -162,7 +154,7 @@ async def conn():
     connection = await asyncpg.connect(TEST_DSN)
     try:
         actual = await connection.fetchval("SELECT current_database()")
-        if bad := _forbidden(actual or ""):
+        if (bad := _forbidden(actual or "")):
             pytest.fail(
                 f"refusing to apply migration DDL to database {actual!r} — matched {bad!r}."
             )
@@ -348,18 +340,14 @@ class TestRetentionBinding:
             await tx.rollback()
 
     @pytest.mark.asyncio
-    async def test_insert_fails_closed_with_no_active_policy_for_the_environment(
-        self, conn
-    ) -> None:
+    async def test_insert_fails_closed_with_no_active_policy_for_the_environment(self, conn) -> None:
         """No `GARUDA_DOCUMENT` policy is ever seeded for `STAGING` in this
         suite -- the write must fail closed, not default to forever."""
         tx = conn.transaction()
         await tx.start()
         try:
             practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
-            with pytest.raises(
-                asyncpg.PostgresError, match="no active Zero-approved retention policy"
-            ):
+            with pytest.raises(asyncpg.PostgresError, match="no active Zero-approved retention policy"):
                 await _insert_artifact(
                     conn,
                     artifact_id=f"art_{uuid.uuid4().hex[:20]}",
@@ -500,7 +488,9 @@ class TestGuardTriggerAppendOnly:
             await tx.rollback()
 
     @pytest.mark.asyncio
-    async def test_update_setting_the_pair_alongside_another_column_is_refused(self, conn) -> None:
+    async def test_update_setting_the_pair_alongside_another_column_is_refused(
+        self, conn
+    ) -> None:
         """The immutable-columns branch: setting the pair does not license
         changing anything else in the SAME UPDATE."""
         tx = conn.transaction()
@@ -612,7 +602,9 @@ class TestGuardTriggerAppendOnly:
 
             other_practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
             stranger_id = f"art_{uuid.uuid4().hex[:20]}"
-            await _insert_artifact(conn, artifact_id=stranger_id, practice_id=other_practice_id)
+            await _insert_artifact(
+                conn, artifact_id=stranger_id, practice_id=other_practice_id
+            )
 
             # The UPDATE itself is accepted -- the guard trigger has no
             # opinion on WHERE superseded_by points, and cannot have one:
@@ -759,10 +751,8 @@ async def test_the_next_file_can_still_unwind_this_database() -> None:
         unwind_garuda_voa_retention_fk,
     )
 
-    if bad := _forbidden((TEST_DSN or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1]):
-        pytest.fail(
-            f"refusing to unwind migrations — TEST_DATABASE_URL names a real database ({bad!r})."
-        )
+    if (bad := _forbidden((TEST_DSN or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1])):
+        pytest.fail(f"refusing to unwind migrations — TEST_DATABASE_URL names a real database ({bad!r}).")
     connection = await asyncpg.connect(TEST_DSN)
     try:
         forward, _ = split_migration_sql(MIGRATION.read_text())
@@ -778,29 +768,18 @@ async def test_the_next_file_can_still_unwind_this_database() -> None:
         )
 
         async with _seeded_test_retention_policy(connection):
-            assert (
-                await connection.fetchval(
-                    "SELECT count(*) FROM public.visa_decision_retention_policies "
-                    "WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'"
-                )
-                == 1
-            )
+            assert await connection.fetchval(
+                "SELECT count(*) FROM public.visa_decision_retention_policies "
+                "WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'"
+            ) == 1
 
         # What the next file does. Before the cure: CheckViolationError here.
         try:
             unwound = await unwind_garuda_voa_retention_fk(connection)
-            assert unwound, (
-                "unwind found nothing to roll back — 313 was not applied, so this proved nothing"
-            )
-            assert (
-                await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')")
-                is None
-            )
+            assert unwound, "unwind found nothing to roll back — 313 was not applied, so this proved nothing"
+            assert await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')") is None
         finally:
             await restore_garuda_voa_retention_fk(connection)
-        assert (
-            await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')")
-            is not None
-        )
+        assert await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')") is not None
     finally:
         await connection.close()
