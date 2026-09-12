@@ -915,7 +915,6 @@ export default function ClientDetailPage() {
             setEditingDocument(doc);
             setActiveModal("edit_document");
           }}
-          onRefresh={invalidateClient}
         />
       )}
 
