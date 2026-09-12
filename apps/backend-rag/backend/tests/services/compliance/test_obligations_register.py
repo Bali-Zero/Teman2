@@ -16,6 +16,7 @@ import pytest
 
 from backend.db.migration_base import split_migration_sql
 from backend.services.compliance.obligations_register import (
+    ATTRIBUTES,
     CatalogError,
     ClientProfile,
     DueRule,
@@ -24,6 +25,7 @@ from backend.services.compliance.obligations_register import (
     due_dates,
     load_catalog,
     profile_from_rows,
+    profile_inputs,
     propose,
 )
 from backend.services.compliance.obligations_repository import (
@@ -319,6 +321,13 @@ def test_profile_from_rows_missing_custom_fields_gives_defaults(company_type, ex
     assert profile == ClientProfile(company_type=expected)
 
 
+@pytest.mark.parametrize("raw", ["\u00b2", "\u00bd", "12x", " ", "-3"])
+def test_int_attributes_drop_a_non_decimal_string_instead_of_raising(raw):
+    """isdigit() accepts "\u00b2" but int("\u00b2") raises: that ValueError reached the API as a 500."""
+    company = {"company_type": "PT PMA", "custom_fields": {"employee_count": raw}}
+    assert profile_from_rows(None, company) == ClientProfile(company_type="PT_PMA")
+
+
 def test_profile_from_rows_reads_json_text_and_drops_malformed_values():
     company = {
         "company_type": "PT PMA",
@@ -347,6 +356,66 @@ def test_leap_day_fiscal_year_end_is_kept():
 def test_profile_from_rows_survives_unhashable_values():
     company = {"company_type": "PT PMA", "custom_fields": {"investment_stage": [], "pkp": {}}}
     assert profile_from_rows(None, company) == ClientProfile(company_type="PT_PMA")
+
+
+# --------------------------------------------------------------------------- #
+# company_type precedence and the provenance profile_inputs reports (PR M3):
+# compliance_company_type is written by PATCH /profile/{client_id} and must win
+# over the companies.company_type string, which is what lets a reviewer fix a
+# company the string mapping reads as OTHER.
+# --------------------------------------------------------------------------- #
+def test_compliance_company_type_wins_over_an_unrecognised_company_type_string():
+    company = {
+        "company_type": "Yayasan Something Unrecognised",
+        "custom_fields": {"compliance_company_type": "pt_pma"},
+    }
+    inputs = profile_inputs(None, company)
+    assert inputs.profile.company_type == "PT_PMA"
+    assert "compliance_company_type" in inputs.present_keys
+    assert "company_type" not in inputs.missing_attributes
+
+
+def test_compliance_company_type_wins_over_a_recognised_company_type_string_too():
+    company = {"company_type": "PT PMA", "custom_fields": {"compliance_company_type": "CV"}}
+    assert profile_from_rows(None, company).company_type == "CV"
+
+
+@pytest.mark.parametrize("bad", ["PT_XYZ", "", None, 7, ["PT_PMA"], {}])
+def test_invalid_compliance_company_type_falls_back_to_the_string_mapping(bad):
+    company = {"company_type": "PT PMA", "custom_fields": {"compliance_company_type": bad}}
+    assert profile_from_rows(None, company).company_type == "PT_PMA"
+
+
+def test_profile_inputs_reports_present_keys_and_missing_attributes():
+    company = {"company_type": "PT PMA", "custom_fields": {"pkp": "yes", "employee_count": 3}}
+    inputs = profile_inputs({"id": 1}, company)
+    assert set(inputs.present_keys) == {"pkp", "employee_count"}
+    assert "has_employees" not in inputs.missing_attributes  # derived from employee_count > 0
+    assert {"pse_registered", "annual_turnover_idr", "investment_stage"} <= set(
+        inputs.missing_attributes
+    )
+    assert "company_type" not in inputs.missing_attributes  # the string mapped to PT_PMA
+
+
+def test_profile_inputs_lists_company_type_as_missing_when_it_defaulted_to_other():
+    inputs = profile_inputs(None, {"company_type": "Koperasi"})
+    assert inputs.profile.company_type == "OTHER"
+    assert "company_type" in inputs.missing_attributes
+    assert inputs.present_keys == ()
+
+
+def test_profile_inputs_of_a_bare_client_has_every_attribute_missing():
+    inputs = profile_inputs(None, None)
+    assert set(inputs.missing_attributes) == set(ATTRIBUTES)
+    assert inputs.present_keys == ()
+
+
+def test_profile_inputs_counts_the_foreign_platform_flag_as_a_present_key():
+    company = {"company_type": "Foreign co", "custom_fields": {"is_foreign_platform": True}}
+    inputs = profile_inputs(None, company)
+    assert inputs.profile.company_type == "FOREIGN_PLATFORM"
+    assert inputs.present_keys == ("is_foreign_platform",)
+    assert "company_type" not in inputs.missing_attributes
 
 
 @pytest.mark.parametrize(
