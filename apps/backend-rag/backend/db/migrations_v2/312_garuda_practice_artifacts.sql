@@ -427,12 +427,32 @@ $garuda_312_owner_transfer$;
 DO $garuda_312_resume_runtime_role$
 DECLARE
     prior_role text := current_setting('garuda312.prior_role', true);
+    can_restore boolean;
 BEGIN
     -- No-op whenever the session is already where it started (the common
     -- case: nothing had assumed another role in the first place).
     IF prior_role IS NOT NULL AND prior_role <> '' AND prior_role IS DISTINCT FROM current_role THEN
+        -- The SAME fail-safe bracket 304 uses, and for the same reason,
+        -- even though the session demonstrably WAS on this role a moment
+        -- ago: nested IFs rather than one AND-combined expression (operand
+        -- evaluation order is not guaranteed -- Codex #8), `to_regrole`
+        -- rather than a `pg_roles` SELECT, and the privilege probe split
+        -- by server version because PG16 added the `SET` privilege type
+        -- while PG15 and earlier only understand `MEMBER`. Interpolated
+        -- with `format('%I')`, never concatenated (Imperatore decision
+        -- #20, 2026-09-12).
         IF to_regrole(prior_role) IS NOT NULL THEN
-            EXECUTE format('SET ROLE %I', prior_role);
+            IF current_setting('server_version_num')::int >= 160000 THEN
+                can_restore := pg_has_role(session_user, prior_role, 'SET');
+            ELSE
+                can_restore := pg_has_role(session_user, prior_role, 'MEMBER');
+            END IF;
+            IF can_restore THEN
+                EXECUTE format('SET ROLE %I', prior_role);
+            ELSE
+                RAISE NOTICE 'garuda practice artifacts (312): session_user % may no longer assume %, leaving the session on its login role',
+                    session_user, prior_role;
+            END IF;
         END IF;
     END IF;
 END;
@@ -633,12 +653,32 @@ $garuda_312_runtime_grants$;
 DO $garuda_312_resume_runtime_role_after_grants$
 DECLARE
     prior_role text := current_setting('garuda312.prior_role', true);
+    can_restore boolean;
 BEGIN
     -- No-op whenever the session is already where it started (the common
     -- case: nothing had assumed another role in the first place).
     IF prior_role IS NOT NULL AND prior_role <> '' AND prior_role IS DISTINCT FROM current_role THEN
+        -- The SAME fail-safe bracket 304 uses, and for the same reason,
+        -- even though the session demonstrably WAS on this role a moment
+        -- ago: nested IFs rather than one AND-combined expression (operand
+        -- evaluation order is not guaranteed -- Codex #8), `to_regrole`
+        -- rather than a `pg_roles` SELECT, and the privilege probe split
+        -- by server version because PG16 added the `SET` privilege type
+        -- while PG15 and earlier only understand `MEMBER`. Interpolated
+        -- with `format('%I')`, never concatenated (Imperatore decision
+        -- #20, 2026-09-12).
         IF to_regrole(prior_role) IS NOT NULL THEN
-            EXECUTE format('SET ROLE %I', prior_role);
+            IF current_setting('server_version_num')::int >= 160000 THEN
+                can_restore := pg_has_role(session_user, prior_role, 'SET');
+            ELSE
+                can_restore := pg_has_role(session_user, prior_role, 'MEMBER');
+            END IF;
+            IF can_restore THEN
+                EXECUTE format('SET ROLE %I', prior_role);
+            ELSE
+                RAISE NOTICE 'garuda practice artifacts (312): session_user % may no longer assume %, leaving the session on its login role',
+                    session_user, prior_role;
+            END IF;
         END IF;
     END IF;
 END;
@@ -746,12 +786,32 @@ RESET ROLE;
 DO $garuda_312_rollback_resume_runtime_role$
 DECLARE
     prior_role text := current_setting('garuda312.prior_role', true);
+    can_restore boolean;
 BEGIN
     -- No-op whenever the session is already where it started (the common
     -- case: nothing had assumed another role in the first place).
     IF prior_role IS NOT NULL AND prior_role <> '' AND prior_role IS DISTINCT FROM current_role THEN
+        -- The SAME fail-safe bracket 304 uses, and for the same reason,
+        -- even though the session demonstrably WAS on this role a moment
+        -- ago: nested IFs rather than one AND-combined expression (operand
+        -- evaluation order is not guaranteed -- Codex #8), `to_regrole`
+        -- rather than a `pg_roles` SELECT, and the privilege probe split
+        -- by server version because PG16 added the `SET` privilege type
+        -- while PG15 and earlier only understand `MEMBER`. Interpolated
+        -- with `format('%I')`, never concatenated (Imperatore decision
+        -- #20, 2026-09-12).
         IF to_regrole(prior_role) IS NOT NULL THEN
-            EXECUTE format('SET ROLE %I', prior_role);
+            IF current_setting('server_version_num')::int >= 160000 THEN
+                can_restore := pg_has_role(session_user, prior_role, 'SET');
+            ELSE
+                can_restore := pg_has_role(session_user, prior_role, 'MEMBER');
+            END IF;
+            IF can_restore THEN
+                EXECUTE format('SET ROLE %I', prior_role);
+            ELSE
+                RAISE NOTICE 'garuda practice artifacts (312): session_user % may no longer assume %, leaving the session on its login role',
+                    session_user, prior_role;
+            END IF;
         END IF;
     END IF;
 END;
