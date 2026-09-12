@@ -93,9 +93,7 @@ async def _run_wa_outbox_scheduler(app: FastAPI, worker_id: int = 0) -> None:
     logger.info("✅ WA outbox scheduler started (worker=%d poll=%ss)", worker_id, interval)
     while True:
         try:
-            status = await process_outbox_once(
-                pool, whatsapp_service, bot_generate_fn
-            )
+            status = await process_outbox_once(pool, whatsapp_service, bot_generate_fn)
             # Drain fast while sending, but always yield the loop (sleep(0)
             # would not starve asyncio, but a tiny throttle is safer under a
             # full queue per panel 2026-06-04). Back off fully when idle.
@@ -404,9 +402,7 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                             # The log line goes out FIRST and unconditionally:
                             # it is the record that survives an unreachable
                             # Telegram.
-                            logger.error(
-                                "GARUDA outbox alarm: %s", page.replace(chr(10), " | ")
-                            )
+                            logger.error("GARUDA outbox alarm: %s", page.replace(chr(10), " | "))
                             # BOUNDED, because `send_telegram_message` retries 3
                             # times with 1s/3s backoff against a client whose
                             # timeout is 30s — a worst case of roughly 94
@@ -742,12 +738,18 @@ def create_api_app() -> FastAPI:
     # `app_factory.py::create_app()`'s `_openapi_with_visa_decision_conditionals`
     # — chain onto `app.openapi`, never reassign it outright, so a future
     # wrapper here composes instead of clobbering this one.
-    from backend.app.routers.garuda_voa_public import strip_unreachable_validation_errors
+    from backend.app.routers.garuda_voa_public import (
+        mark_idempotency_key_required,
+        strip_unreachable_validation_errors,
+    )
 
     default_openapi = api.openapi
 
     def _openapi_with_garuda_voa_fix() -> dict:
-        return strip_unreachable_validation_errors(default_openapi())
+        # Two scoped GARUDA transforms, composed in one wrapper: the 422
+        # strip, and the `Idempotency-Key` required flag the frozen contract
+        # declares and FastAPI cannot infer from an optional `Header`.
+        return mark_idempotency_key_required(strip_unreachable_validation_errors(default_openapi()))
 
     api.openapi = _openapi_with_garuda_voa_fix
 

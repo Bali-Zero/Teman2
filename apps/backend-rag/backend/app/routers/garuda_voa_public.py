@@ -318,6 +318,94 @@ _NO_VALIDATION_ERROR_OPERATIONS = frozenset(
 )
 
 
+# Every GARUDA VOA mutation the frozen contract governs declares
+# `Idempotency-Key` as `required: true` (`openapi.yaml`'s
+# `components.parameters.IdempotencyKey`, referenced by ten operations —
+# every mutating one except `receivePaymentWebhook`, which the PROVIDER
+# calls and therefore cannot be asked to mint our key). The live schema said
+# `required: false` on all ten, and that was the only lie: each of the five
+# router families already refuses a missing key with the contract's own 400
+# `IDEMPOTENCY_KEY_REQUIRED` envelope before doing any work
+# (`_valid_idempotency_key` here, `_require_idempotency_key` in
+# `garuda_portal_auth.py`, and the inline length check in the orders, staff
+# and documents routers). So SERVED behaviour already matched the contract
+# and only the generated document disagreed — which is why this is a schema
+# transform and not a signature change.
+#
+# Why not `Header(...)` in the signatures, which is the obvious move: a
+# required `Header` makes FastAPI answer its own 422 for the missing header,
+# which is NOT what the frozen contract promises (400, with a code), so it
+# would have to be remapped back by an exception handler — breaking the
+# contract and re-sewing it, with the remap free to catch a 422 that has
+# nothing to do with this header. Same document, far larger blast radius.
+#
+# Why not `openapi_extra`: it MERGES a parameter list, so the operation would
+# carry TWO `Idempotency-Key` entries, one required and one not — a worse
+# defect than the one being cured, and the reason
+# `test_garuda_voa_openapi_parity.py` carried a declared exemption instead of
+# a quick fix.
+_IDEMPOTENCY_KEY_REQUIRED_OPERATIONS = frozenset(
+    {
+        # L1 public funnel (this router)
+        "createEligibilityCheck",
+        "deleteEligibilityResult",
+        # L4 portal auth (`garuda_portal_auth.py`) — `previewMagicLink` is
+        # deliberately absent: it mutates nothing and the contract gives it
+        # no `Idempotency-Key` at all.
+        "requestMagicLink",
+        "exchangeMagicLink",
+        # L5 documents (`garuda_documents_router.py`)
+        "uploadIntakeDocument",
+        # L3 orders (`garuda_orders_router.py`) — `receivePaymentWebhook` is
+        # deliberately absent: the payment provider is the caller.
+        "createOrderFromCheck",
+        "observePaymentBrowserReturn",
+        "resolveLateOrder",
+        # step 8 staff console (`garuda_staff_router.py`)
+        "assignPractice",
+        "transitionPractice",
+    }
+)
+
+_IDEMPOTENCY_KEY_HEADER = "Idempotency-Key"
+
+
+def mark_idempotency_key_required(schema: dict) -> dict:
+    """Set `required: true` on the `Idempotency-Key` HEADER parameter of the
+    ten operations the frozen contract declares it required for, and on
+    nothing else.
+
+    OVERWRITES the entry FastAPI already generated from the handler
+    signature — it never appends a second parameter (see the module-level
+    note above for why that distinction is the whole point). Scoped by
+    `operationId`, so an operation that is not in the set keeps whatever it
+    had, and a parameter that is not this header is never touched. Mutates
+    and returns `schema` for chaining onto an existing `app.openapi`
+    wrapper, exactly like `strip_unreachable_validation_errors`.
+
+    Silent on an operation whose parameter is missing entirely: that is a
+    real defect but a different one, and `test_garuda_voa_openapi_parity.py`
+    asserts presence separately — a transform that invented the parameter
+    would document a header the handler does not read.
+    """
+    for methods in schema.get("paths", {}).values():
+        if not isinstance(methods, dict):
+            continue
+        for op in methods.values():
+            if not isinstance(op, dict):
+                continue
+            if op.get("operationId") not in _IDEMPOTENCY_KEY_REQUIRED_OPERATIONS:
+                continue
+            for param in op.get("parameters", []) or []:
+                if (
+                    isinstance(param, dict)
+                    and param.get("name") == _IDEMPOTENCY_KEY_HEADER
+                    and param.get("in") == "header"
+                ):
+                    param["required"] = True
+    return schema
+
+
 def strip_unreachable_validation_errors(schema: dict) -> dict:
     """Remove the auto-added 422 for the two operations that cannot raise
     one. Scoped strictly by `operationId` — every other operation's
