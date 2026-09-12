@@ -228,9 +228,10 @@ def _resolve_nationality_alpha2(nationality: str) -> str | None:
 
 
 def _default_unknown_facts() -> dict[str, UnknownFact]:
-    """The 45 applicant-collected fact paths (widened 2026-08-23 — three
+    """The 46 applicant-collected fact paths (widened 2026-08-23 — three
     optional/defaulted `family.stepchild_*`/`family.sponsor_permit_basis`
-    keys — and again 2026-08-24, `immigration.renewal_paid`, F4; this
+    keys — again 2026-08-24, `immigration.renewal_paid`, F4, and again
+    2026-09-13, `investment.investment_amount_usd`, PR-D4c-1; this
     function derives its key set from ``APPLICANT_FACT_PATHS`` structurally,
     so it required no code change), each defaulted to
     ``UnknownFact(reason=NOT_ASKED)`` — a Match wizard submission never asked

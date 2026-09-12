@@ -917,7 +917,7 @@ SponsorPermitBasisFact = Annotated[
 
 
 # ---------------------------------------------------------------------------
-# ApplicantFacts (spec §2) — the 45 applicant-collected fact paths, each
+# ApplicantFacts (spec §2) — the 46 applicant-collected fact paths, each
 # typed per its own *Fact union above. Field names use Python-safe
 # identifiers with the dotted wire name as the Pydantic alias (same pattern
 # as ``TimeRange.from_``/``alias="from"``) since a dotted path cannot be a
@@ -979,14 +979,29 @@ _RENEWAL_PAID_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
     status="UNKNOWN", reason="NOT_ASKED"
 )
 
+# Same rollout mechanism again, 2026-09-13, for ``investment.investment_
+# amount_usd`` (PR-D4c-1 — contract-only half of the D4c investment-amount
+# question; D4c-2 adds the mapper and the corpus walks that consume it).
+# This key does not exist on the wire before this PR, so a required field
+# would break BOTH deploy directions the moment either side (backend to
+# Fly, mouth to Vercel) ships first — the same reasoning as every default
+# above, restated in this field's own comment on ``ApplicantFactsData``.
+# The default MUST be this declared UNKNOWN/NOT_ASKED object, never `None`/
+# `0`/`""`: a money fact defaulting to zero would read as "this applicant
+# invests nothing", a fabricated answer, not a missing one.
+_INVESTMENT_AMOUNT_USD_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-    with all keys required except the five transitional fields documented on
+    with all keys required except the six transitional fields documented on
     ``sponsor_type``, the three ``family.stepchild_*``/
-    ``family.sponsor_permit_basis`` fields (2026-08-23), and
-    ``immigration_renewal_paid`` (2026-08-24) below — all the same rollout
-    mechanism. Field order mirrors ``enums.FactPath``'s
+    ``family.sponsor_permit_basis`` fields (2026-08-23),
+    ``immigration_renewal_paid`` (2026-08-24), and ``investment_amount_usd``
+    (2026-09-13, PR-D4c-1) below — all the same rollout mechanism. Field
+    order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
     grouping.
@@ -1067,6 +1082,24 @@ class ApplicantFactsData(BaseModel):
         MoneyFact, Field(alias="investment.paid_up_capital_idr")
     ]
     investment_proposed_role: Annotated[ProposedRoleFact, Field(alias="investment.proposed_role")]
+    # investment.investment_amount_usd — PR-D4c-1, 2026-09-13 (contract-only
+    # half of the D4c investment-amount question). D4c-2 will ask an
+    # investment applicant for an amount in USD; until that question ships
+    # in mouth's flow.ts, no client sends this key. Same rollout-default
+    # treatment as ``immigration_renewal_paid`` above: a required new key
+    # would break whichever side deploys first (backend to Fly, mouth to
+    # Vercel), in both directions.
+    # FOLLOW-UP (remove the default): once the D4c-2 investment-amount
+    # question ships in mouth's flow.ts and no client omits this key, per
+    # ``TestFactVocabularyExtensionRolloutDefaultD4c1`` in
+    # ``test_sponsor_type_rollout.py``.
+    investment_amount_usd: Annotated[
+        MoneyFact,
+        Field(
+            alias="investment.investment_amount_usd",
+            default=_INVESTMENT_AMOUNT_USD_ROLLOUT_DEFAULT,
+        ),
+    ]
     family_relation_to_sponsor: Annotated[RelationFact, Field(alias="family.relation_to_sponsor")]
     family_sponsor_nationalities: Annotated[
         CountrySetFact, Field(alias="family.sponsor_nationalities")
