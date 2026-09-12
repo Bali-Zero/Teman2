@@ -1,11 +1,26 @@
 gear: 3
 gear_override: >-
-  floor 3 by SIZE: research/visa/2026-09-11-review-reason-audit/census.json
-  (1568 generated lines, not excluded — not a lockfile/vendor/fixtures
-  path) plus the other pinned evidence copies drive the diff past the
-  1828-line SIZE threshold (measured with `git diff --numstat
-  origin/main...HEAD`); docs-only content, no apps/** file touched, no
-  rulepack, no migration, no deploy.
+  the audit-copy diff this brief was written for computed floor 3 from the
+  SIZE term (census.json's generated replay lines plus the other pinned
+  copies); it landed as #6301. THIS diff is the follow-up that discharges
+  C1 and C2 of that PR's gate, and its measured floor is 1, source `none`
+  (`evidence_pack_lint.py --print-floor` with `--changed-files-file` and
+  `--numstat-file`). Gear stays 3 because a declared gear above the floor is
+  allowed and this pack's contract does not weaken for a smaller diff.
+  Docs-only either way: no apps/** file touched, no rulepack, no migration,
+  no deploy.
+current_diff:
+  scope:
+    - .secrets.baseline
+    - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o0r2-202609-0a63f32c/brief.yml
+    - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o0r2-202609-0a63f32c/pack.yml
+  note: >-
+    the `scope:` and `objective:` below describe the audit-copy PR this
+    evidence directory was created for (#6301, merge 4de981aebd). They are
+    left as they landed: rewriting them would erase the record of what was
+    gated. A pack and brief in a shared evidence directory are re-read by
+    every PR that touches them, so the two blocks that must always name the
+    diff in front of them — this one and the pack's `diff:` — do.
 task_id: shweb-w-oracle-20260911
 mandate_id: SHWEB-20260911/W-ORACLE/PR-O0
 colour: BLUE
@@ -143,6 +158,43 @@ acceptance:
       research .md files, THEN it SHALL exit 0.
     status: verified
     probe: "python3 scripts/check_adversarial_review.py --files research/visa/2026-09-11-oracle-final-window-spec.md research/visa/2026-09-11-review-reason-audit/README.md"
+  - text: >-
+      C1 discharge. WHEN this brief's review record is counted, THEN rounds
+      7 and 8 SHALL both be present and the on-disk gate SHALL NOT be a
+      numbered round — the ledger's own discharge command, which returns 2.
+    status: verified
+    probe: |
+      F="evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o0r2-202609-0a63f32c/brief.yml"
+      n=$(grep -cE '^  - round: (7|8)$' "$F")
+      [ "$n" = 2 ] || { echo "FAIL: rounds 7+8 present $n times, need 2"; exit 1; }
+      grep -q '^final_gate:' "$F" || { echo "FAIL: the gate is not recorded outside the round list"; exit 1; }
+      grep -qE '^  - round: 7$' "$F" && grep -q 'gpt-6-astra' "$F" || { echo "FAIL: round 7 does not name its seat"; exit 1; }
+      echo "OK: rounds 7 and 8 recorded, gate recorded as final_gate"
+  - text: >-
+      C2 discharge. WHEN the two files that were excluded whole-file are
+      scanned, THEN every finding SHALL be audited in .secrets.baseline and
+      NO exclude regex SHALL name either file — the conversion is live, not
+      cosmetic.
+    status: verified
+    probe: |
+      B=".secrets.baseline"
+      grep -qF 'contract-lock\\.json$' "$B" && { echo "FAIL: a whole-file exclude regex still names contract-lock.json"; exit 1; }
+      grep -qF 'live-browser\\.json$' "$B" && { echo "FAIL: a whole-file exclude regex still names live-browser.json"; exit 1; }
+      python3 - <<'PYEOF'
+      import json, sys
+      d = json.load(open(".secrets.baseline"))
+      want = ["evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o0r2-202609-0a63f32c/contract-lock.json",
+              "research/visa/2026-09-11-review-reason-audit/live-browser.json"]
+      total = 0
+      for p in want:
+          ents = d["results"].get(p)
+          if not ents:
+              print(f"FAIL: {p} has no audited findings"); sys.exit(1)
+          if any("is_secret" not in e for e in ents):
+              print(f"FAIL: {p} carries an unaudited finding"); sys.exit(1)
+          total += len(ents)
+      print(f"OK: {total} findings audited per finding across {len(want)} files")
+      PYEOF
 pii: none
 supersession: >-
   this branch supersedes PR #6295, whose head c2a85b6ced was gated
@@ -290,6 +342,74 @@ adversarial_review:
           — which `adversarial_review_provenance` marks as provenance and
           not as evidence.
   - round: 7
-    refuter: opus
-    model: "claude-opus-5 (fresh session, final on-disk gate)"
-    verdict: pending
+    refuter: "codex exec --sandbox read-only"
+    model: "gpt-6-astra (CODEX_HOME=~/.codex-acct2 — the default account died mid-round on a spent workspace)"
+    head_sha: 69651442d4
+    verdict: REWORK
+    findings:
+      - id: Q1
+        severity: MAJOR
+        summary: "four receipt times were labelled Z but were local WITA, placing every receipt 7h49m-7h52m AFTER the commit that carried it."
+        disposition: >-
+          cured in 4b92705c56: every receipt re-run in the worktree and
+          stamped with the instant it ran plus its offset.
+      - id: Q2
+        severity: MINOR
+        summary: "statements no commit can prove: #6240's CI-red count, the council's absence, a Sonnet implementer for this PR, the receipt seats, round 2's finding text."
+        disposition: "cured in 4b92705c56: each removed, or replaced by the command that proves it."
+      - id: Q3
+        severity: MAJOR
+        summary: "acceptance probe #5 inverted grep with `!`, so the scanner's own error (rc 2) also passed — proven with a stubbed grep."
+        disposition: >-
+          cured in 4b92705c56 (explicit rc branching) and hardened in
+          c2a85b6ced (both pipeline halves read from PIPESTATUS first,
+          since `rc=$?` would itself reset it).
+      - id: Q4
+        severity: MAJOR
+        summary: "P6 was disposed `cured` while those unprovable statements survived."
+        disposition: "cured in 4b92705c56; the disposition now names what was removed."
+  - round: 8
+    refuters: "three seats, one round, outside the contribution chain (codex was not retried: dead on this host on both accounts)"
+    seats:
+      - seat: "gemini-3.1-pro-high (agy, refuter)"
+        verdict: REWORK
+        findings: "5 MAJOR + 1 MINOR"
+      - seat: "kimi-code/k3 (second reader)"
+        verdict: PASS
+        findings: none
+      - seat: "tp1-qwen3.8-max (third seat)"
+        verdict: PASS
+        findings: "1 LOW"
+    head_sha: 4b92705c56
+    verdict: "REWORK by the refuter, PASS by both readers — adjudicated, see below"
+    adjudication: >-
+      four of Gemini's five MAJORs asked to delete `adversarial_review`,
+      `seat_override`, the review `lanes` and the `dissent` seat
+      attributions because they name runs this repository holds no
+      transcript for. `scripts/evidence_pack_lint.py` makes those fields
+      mandatory — rule 2 for `dissent`, rule 8 for `lanes`, and
+      `seat_override` is what the same lint requires when no council journal
+      is declared — so following them would turn the pack lint red and
+      delete the generator-is-not-grader record this contract exists to
+      carry. Rejected by the orchestrator and ruled by the SHWEB imperator
+      as a technical exception. What survived is the residue two seats
+      converged on (Gemini's first MAJOR and qwen's LOW): P6's disposition
+      over-claimed that EVERY surviving statement re-runs or is visible in
+      the commits, which is untrue of the contract's own self-reported
+      fields, and three phrasings asserted where a transcript lives.
+      Gemini's MINOR was taken too. All cured in c2a85b6ced from a spec
+      written before it was applied.
+final_gate:
+  refuter: "fresh Opus 5 xhigh, commissioned by the imperator, outside the contribution chain"
+  head_sha: c2a85b6ced
+  verdict: PASS-WITH-CONDITIONS
+  conditions_ref: "PR #6298 (ledger row)"
+  conditions:
+    - id: C1
+      severity: MAJOR
+      summary: "adversarial_review recorded rounds 1-6 only and numbered the pending gate as round 7, so rounds 7 and 8 and the adjudication lived only in the PR body and the decisions file, neither of which lands on main."
+      disposition: "discharged by this follow-up: rounds 7 and 8 are recorded above and the gate is no longer a numbered round."
+    - id: C2
+      severity: LOW
+      summary: "the two whole-file exclude regexes in .secrets.baseline hold digests today but would not scan a future real secret."
+      disposition: "discharged by this follow-up: both converted to per-finding audits, the cure already used for census.json."
