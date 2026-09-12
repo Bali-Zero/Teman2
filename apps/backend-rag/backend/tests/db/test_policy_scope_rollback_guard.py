@@ -46,19 +46,58 @@ CONSTRAINT = "visa_decision_retention_policies_policy_scope_check"
 KNOWN_REBUILDERS = {"285_garuda_magic_link.sql", "304_garuda_documents.sql"}
 
 _LIST_RE = re.compile(
-    r"ADD\s+CONSTRAINT\s+" + CONSTRAINT + r"\s+CHECK\s*\(\s*policy_scope\s+IN\s*\(([^)]*)\)",
+    r"ADD\s+CONSTRAINT\s+"
+    + CONSTRAINT
+    + r"\s+CHECK\s*\(\s*policy_scope\s+IN\s*\(([^)]*)\)\s*\)(?!\s*NOT\s+VALID)",
     re.IGNORECASE,
 )
-#: The full safe shape: the guard, its THEN branch, its ELSE branch, END IF --
-#: so the ALTER can be required INSIDE the else of THIS guard (Sol O1: textual
-#: precedence alone let a guard in another DO block, a dead branch or a
-#: completed IF followed by an unconditional ALTER pass).
-_GUARDED_RE = re.compile(
+#: The guard's opening. Its ELSE and END IF are then resolved by WALKING the
+#: text with a balanced IF/END IF counter (Sol O2: a non-nesting regex let a
+#: nested IF donate its ELSE, so a rebuild sitting in the guard's THEN arm --
+#: executed precisely while own-scope rows exist -- read as guarded).
+_GUARD_OPEN_RE = re.compile(
     r"IF\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+public\.visa_decision_retention_policies\s+"
-    r"WHERE\s+policy_scope\s*=\s*'(?P<scope>[A-Z_]+)'\s*\)\s*THEN(?P<then>.*?)"
-    r"ELSE(?P<else>.*?)END\s+IF",
+    r"WHERE\s+policy_scope\s*=\s*'(?P<scope>[A-Z_]+)'\s*\)\s*THEN",
+    re.IGNORECASE,
+)
+#: A block OPENER is `IF <condition> THEN` -- `DROP CONSTRAINT IF EXISTS ...`
+#: has no THEN before its `;` and must not count as one (measured: it made the
+#: walker close the guard early on both real files). END IF and ELSIF/ELSE IF
+#: are matched before the bare forms so neither is miscounted.
+_IF_TOKEN_RE = re.compile(
+    r"\b(?P<end>END\s+IF)\b|\b(?P<elsif>ELSIF|ELSE\s+IF)\b[^;]*?\bTHEN\b"
+    r"|\b(?P<open>IF)\b[^;]*?\bTHEN\b|\b(?P<els>ELSE)\b",
     re.IGNORECASE | re.DOTALL,
 )
+
+
+def _guard_spans(text: str, scope: str) -> list[tuple[int, int, int]]:
+    """`(then_start, else_start, else_end)` for every `IF EXISTS` guard on
+    `scope`, with ELSE and END IF taken at the guard's OWN nesting depth. A
+    guard whose ELSE belongs to a nested IF, or that has no ELSE of its own,
+    yields no span."""
+    spans: list[tuple[int, int, int]] = []
+    for g in _GUARD_OPEN_RE.finditer(text):
+        if g.group("scope") != scope:
+            continue
+        depth, else_at = 0, None
+        for t in _IF_TOKEN_RE.finditer(text, g.end()):
+            if t.group("open"):
+                depth += 1
+            elif t.group("elsif"):
+                continue  # same block, not a new one
+            elif t.group("els"):
+                if depth == 0 and else_at is None:
+                    else_at = t.end()
+            elif t.group("end"):
+                if depth == 0:
+                    if else_at is not None:
+                        spans.append((g.end(), else_at, t.start()))
+                    break
+                depth -= 1
+    return spans
+
+
 #: Any executable statement that ADDs a CHECK on policy_scope -- whatever the
 #: constraint name, IN vs = ANY, NOT VALID -- or DROPs/VALIDATEs a constraint
 #: named as the policy_scope check (Sol O1: discovery by the exact safe
@@ -113,6 +152,10 @@ def _executable(sql: str) -> str:
             in_str = True
         out.append(ch)
         i += 1
+    assert not in_str, (
+        "unterminated string literal in the ROLLBACK half: the canary refuses to guess which "
+        "half of the text is executable (Sol O2)"
+    )
     return "".join(out)
 
 
@@ -176,27 +219,46 @@ def test_a_rollback_that_touches_the_check_has_the_full_safe_shape(name: str) ->
     )
 
     alter_at = rebuilds[0].start()
-    owners = [
-        m
-        for m in _GUARDED_RE.finditer(text)
-        if m.group("scope") == own_scope and m.start("else") <= alter_at < m.end("else")
-    ]
+    owners = [sp for sp in _guard_spans(text, own_scope) if sp[1] <= alter_at < sp[2]]
     assert owners, (
-        f"{name}: the CHECK rebuild at offset {alter_at} is not inside the ELSE branch of "
-        f"`IF EXISTS (SELECT 1 FROM public.visa_decision_retention_policies WHERE policy_scope = "
-        f"'{own_scope}') THEN ... ELSE <rebuild> END IF` -- on an append-only table an "
-        "unconditional narrowing raises CheckViolationError the moment one row ever used the "
-        "value (the 2026-08-25 285 bug, the gate-6287c red); a guard elsewhere, in a dead "
-        "branch or before an unconditional ALTER does not count"
+        f"{name}: the CHECK rebuild at offset {alter_at} is not inside the ELSE branch -- at the "
+        f"guard's OWN nesting depth -- of `IF EXISTS (SELECT 1 FROM public."
+        f"visa_decision_retention_policies WHERE policy_scope = '{own_scope}') THEN ... ELSE "
+        "<rebuild> END IF`. On an append-only table an unconditional narrowing raises "
+        "CheckViolationError the moment one row ever used the value (the 2026-08-25 285 bug, the "
+        "gate-6287c red); a guard elsewhere, a nested IF's ELSE, a dead branch, or an ALTER after "
+        "END IF does not count"
     )
-    assert CONSTRAINT.upper() not in owners[0].group("then").upper(), (
+    then_start, else_start, else_end = owners[0]
+    assert not _TOUCH_RE.search(text, then_start, else_start), (
         f"{name}: the THEN branch (rows exist) must not touch the CHECK"
     )
+    # Inside the guarded ELSE: only the canonical DROP and the canonical
+    # rebuild (Sol O2: a second rebuild under another name or `= ANY` beside
+    # the canonical one left `len(rebuilds) == 1` and produced no stray).
+    allowed = re.compile(
+        r"^(?:DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?"
+        + CONSTRAINT
+        + r"\b|ADD\s+CONSTRAINT\s+"
+        + CONSTRAINT
+        + r"\b)",  # `_TOUCH_RE` stops at `policy_scope`; the IN-vs-ANY spelling is
+        # settled by `_LIST_RE` (exactly one canonical rebuild) and by the count below
+        re.IGNORECASE | re.DOTALL,
+    )
+    inside = [m.group(0) for m in _TOUCH_RE.finditer(text, else_start, else_end)]
+    odd = [t[:70] for t in inside if not allowed.match(t)]
+    assert not odd, (
+        f"{name}: inside the guarded ELSE, only the canonical DROP and rebuild of "
+        f"{CONSTRAINT} are a shape this canary can vouch for; found also: {odd}"
+    )
+    assert len(inside) <= 2, (
+        f"{name}: more statements touch the CHECK inside the guarded ELSE than a DROP and an "
+        f"ADD: {[t[:70] for t in inside]}"
+    )
     # Nothing else in the rollback touches the CHECK outside that ELSE branch.
-    else_span = (owners[0].start("else"), owners[0].end("else"))
     strays = [
-        m.group(0)[:60]
+        m.group(0)[:70]
         for m in _TOUCH_RE.finditer(text)
-        if not (else_span[0] <= m.start() < else_span[1])
+        if not (else_start <= m.start() < else_end)
     ]
     assert not strays, f"{name}: statements touching the CHECK outside the guarded ELSE: {strays}"
