@@ -217,7 +217,12 @@ const CURRENT_STATUS_CODES = [
 // boundary for `family.sponsor_status_code` in `mapFamilySponsorStatus`.
 // Not the same list as `CURRENT_STATUS_CODES` above, which is the non-E
 // ITK/visit-class catalogue.
-const SPONSOR_TYPES = [
+// Exported (PR-D4d) as the subject of fact-mapper.test.ts's pack-vocabulary
+// pin: every `sponsor.type` value a production pack compares against must be
+// one this list can send, or that rule is unreachable through the funnel —
+// see that test for the ONE-direction reasoning (`EMPLOYER`/`INVESTMENT` are
+// declared UI-only and are NOT expected to appear in any pack).
+export const SPONSOR_TYPES = [
   "NONE",
   "INDIVIDUAL",
   "EMPLOYER",
