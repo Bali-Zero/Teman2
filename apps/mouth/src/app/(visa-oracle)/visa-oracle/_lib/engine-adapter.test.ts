@@ -806,8 +806,11 @@ describe("review reasons cover every code the current pack can emit", () => {
     // Guard the guard: a glob/parse that silently found nothing would make
     // every assertion below vacuously true. 20 pack (16 HUMAN_REVIEW-stage +
     // 4 HARD_FILTER with on_unknown=HUMAN_REVIEW, PR-O2) + 18
-    // pack-independent = 38, all of them mapped as of PR-O2.
-    expect(allRealCodes.length).toBeGreaterThanOrEqual(32);
+    // pack-independent = 38, all of them mapped as of PR-O2. Floor raised
+    // from 32 to the measured 38 (round-1 refuter finding, Gemini 3.1 Pro +
+    // Kimi K3): 32 would still pass a regression that silently dropped up
+    // to 5 real codes.
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(38);
 
     const unaccounted = allRealCodes.filter(
       (code) =>

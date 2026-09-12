@@ -466,13 +466,20 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // situation — BRIDGING_ADVERSE_HISTORY is the current name for this rule
   // in rulepack-prod-007+. review.bridging.adverse-history fires on ANY of 4
   // distinct violation_history values (OVERSTAY / DEPORTATION / BLACKLIST /
-  // IMMIGRATION_INVESTIGATION) or on that fact being unknown — one code,
-  // several distinct causes with different real-world resolutions. Named all
-  // 4 rather than guessing one; flagged as a split candidate in the PR-O2
-  // report.
+  // IMMIGRATION_INVESTIGATION) OR on that fact being unknown (on_unknown:
+  // "HUMAN_REVIEW") — one code, several distinct causes with different
+  // real-world resolutions. Named all 4 rather than guessing one; flagged as
+  // a split candidate in the PR-O2 report. Round-1 refuter fix (Gemini 3.1
+  // Pro + Kimi K3, converged independently): the first draft asserted the
+  // record "shows" one of the four even on the UNKNOWN-fact trigger path —
+  // false the moment the hold is raised because the record hasn't been
+  // established at all, not because a specific violation was found. Rewritten
+  // to cover both paths without asserting any of the four exists, matching
+  // the "not yet established" pattern already used for the 4 HARD_FILTER
+  // codes above.
   BRIDGING_ADVERSE_HISTORY: text(
-    "Your immigration record while in Indonesia shows one or more of overstay, deportation, blacklist, or an open investigation, so a person needs to check the timing and conditions before the Bridging Visa — Transitional Stay Permit can be confirmed.",
-    "Catatan keimigrasian Anda selama berada di Indonesia menunjukkan satu atau lebih dari overstay, deportasi, daftar hitam (blacklist), atau investigasi yang masih berjalan, sehingga memerlukan pemeriksaan waktu dan ketentuan oleh seseorang sebelum Izin Tinggal Peralihan dapat dipastikan.",
+    "This case is held to check your immigration record while in Indonesia for an overstay, deportation, blacklist entry, or open investigation, or because that record has not been established. Confirming your record is what resolves it before the Bridging Visa — Transitional Stay Permit can be confirmed.",
+    "Kasus ini ditahan untuk memeriksa catatan keimigrasian Anda selama berada di Indonesia terkait overstay, deportasi, entri daftar hitam (blacklist), atau investigasi yang masih berjalan, atau karena catatan tersebut belum dapat dipastikan. Konfirmasi catatan Anda adalah yang akan menyelesaikannya sebelum Izin Tinggal Peralihan dapat dipastikan.",
   ),
   LOCAL_MARKET_ACTIVITY_REVIEW: text(
     "You said your remote work serves Indonesian clients, and the Second Home Visa — Remote Worker (E33G) is for income from outside Indonesia only — a person needs to confirm your work does not cross into locally reserved business.",
@@ -601,17 +608,24 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // `_apply_disclosed_review_flags` (1304-1354): applicant self-disclosures,
   // never a legal eligibility claim — carry no source_refs by design.
   //
-  // Owner-directed wording (D2-bis, deliberately against the example
-  // offered): do NOT assert the sponsor's nationality as the cause. A
-  // parallel PR (D2) is narrowing this code's trigger from "any
+  // Owner-directed wording, revised twice (both rounds deliberately against
+  // an example offered — do NOT assert the sponsor's nationality as the
+  // cause; a parallel PR, D2, is narrowing this code's trigger from "any
   // sponsor-status answer" to "answered unsure about the sponsor, or the
-  // product itself is sponsor-dependent" — naming nationality would go
-  // FALSE the day that merges. "The sponsor's own stay permit could not be
-  // established from the answers given" stays true under both the current
-  // trigger and the narrowed one.
+  // product itself is sponsor-dependent", so anything naming nationality
+  // would go FALSE the day that merges). Round 2 (owner's ruling on a
+  // refuter objection to round 1, ACCEPTED — not dissent, adopted): round
+  // 1's "the sponsor's own stay permit could not be established from the
+  // answers given" implied a permit is needed at all, which is false when
+  // the sponsor is an Indonesian citizen who holds no stay permit and needs
+  // none. "Whether your sponsor holds a stay permit of their own has not
+  // been established HERE" (owner's exact approved phrase) stays true under
+  // the current trigger, the narrowed D2 trigger, AND the Indonesian-sponsor
+  // case — it says the question wasn't settled by this tool, never that a
+  // permit exists or is required.
   DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW: text(
-    "The sponsor's own stay permit could not be established from the answers given, so a person needs to confirm it before this case can be resolved.",
-    "Izin tinggal sponsor itu sendiri tidak dapat dipastikan dari jawaban yang diberikan, sehingga memerlukan konfirmasi oleh seseorang sebelum kasus ini dapat diselesaikan.",
+    "This case is held because whether your sponsor holds a stay permit of their own has not been established here — confirming the sponsor's own stay permit is what resolves it.",
+    "Kasus ini ditahan karena belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri — konfirmasi izin tinggal sponsor tersebut adalah yang akan menyelesaikannya.",
   ),
   DISCLOSED_CRIMINAL_RECORD_REVIEW: text(
     "You flagged a criminal record concern in your disclosures, and a person needs to review the details before any path can be confirmed.",

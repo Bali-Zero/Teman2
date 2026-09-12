@@ -39,10 +39,12 @@ objective: >-
   string, EN and ID — including the 9 pre-existing entries, now in scope — to (1) name the
   specific fact/answer the signed rules cannot decide, in the applicant's own terms, (2) state
   the hold authoritatively rather than generically, and (3) name what resolves it. All 38
-  entries were revised or written to this standard in the same commit (dd1eb0e5c3). One entry
-  (DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW) uses wording the owner specified verbatim rather than the
-  example offered, because a parallel PR (D2) is narrowing that code's trigger and a
-  nationality-based sentence would go false the day it merges.
+  entries were revised or written to this standard in the same commit (dd1eb0e5c3).
+
+  DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW went through two owner-directed wordings — see
+  `review_record` below for both rounds and why the second superseded the first. The string
+  currently in REVIEW_REASON_COPY is the second (owner-approved 2026-09-12): "whether your
+  sponsor holds a stay permit of their own has not been established here."
 constraints:
   - >-
     Perimeter held to exactly what the brief named: REVIEW_REASON_COPY, the test file's
@@ -126,6 +128,31 @@ risks:
     would fail the "never lets a stale key sit in the copy map" test (they would not be in
     allRealCodes). Cross-validated against the brief's own census math (9 existing + 29 new = 38
     total; 8+4+17=29) before making the change, not assumed.
+review_record: |
+  SELF-REPORT (not independently verified evidence — a claim about what reviewers said and how
+  it was resolved, per this brief's own rule that lanes/dissent/the review record are self-reports).
+
+  Round 1 (Gemini 3.1 Pro: REWORK; Kimi K3: REWORK — converged independently on one substantive
+  finding + one hardening item; everything else checked came back clean): BRIDGING_ADVERSE_HISTORY
+  was FALSE on the on_unknown="HUMAN_REVIEW" trigger path — it asserted the record "shows" one of
+  overstay/deportation/blacklist/investigation even when the hold was raised because the record
+  had not been established at all (rule 5/6 violation: an unknown fact written as established).
+  Separately, the exhaustiveness floor (`toBeGreaterThanOrEqual(32)`) sat below the measured 38,
+  so a regression silently dropping up to 5 real codes would still pass it. STATUS: ACCEPTED,
+  applied in THIS commit (self-referential SHA avoided on purpose — this file is part of the same
+  commit as the fix, so its own hash cannot be known while writing it; `git log --oneline -1` on
+  the resulting commit is the re-runnable check) — BRIDGING_ADVERSE_HISTORY rewritten to name both
+  trigger paths (the 4 named causes, or the record not established) without asserting any of the
+  4 exists; floor raised 32 -> 38.
+
+  A separate objection on DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW's round-1 wording ("the sponsor's own
+  stay permit could not be established from the answers given") was escalated to the owner rather
+  than acted on directly. Owner's ruling: ACCEPTED — that wording implied a stay permit is needed
+  at all, which is false when the sponsor is an Indonesian citizen who holds no permit and needs
+  none. Owner supplied the exact replacement clause ("whether your sponsor holds a stay permit of
+  their own has not been established here"), true under the current trigger, the narrowed D2
+  trigger, and the Indonesian-sponsor case alike. Applied in the same commit as the two fixes
+  above.
 grader: |
   Independent gate dispatched separately by the orchestrating (Opus 5) session — generator !=
   grader: this session wrote the diff and this brief, and does not post its own verdict.
