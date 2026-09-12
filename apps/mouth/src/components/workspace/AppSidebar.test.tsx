@@ -106,8 +106,8 @@ describe("AppSidebar", () => {
                 icon: "BarChart3",
               },
               {
-                title: "Tax Pilot",
-                href: "/clients/tax-pilot",
+                title: "Reports",
+                href: "/reports",
                 icon: "Receipt",
               },
             ],
@@ -127,7 +127,7 @@ describe("AppSidebar", () => {
       "Team Activity",
       "Agents",
       "Intelligence Analytics",
-      "Tax Pilot",
+      "Reports",
     ]) {
       expect(screen.getByRole("link", { name: label })).toHaveAttribute(
         "href",
