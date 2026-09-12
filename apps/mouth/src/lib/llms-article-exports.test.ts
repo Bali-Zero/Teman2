@@ -123,3 +123,91 @@ it.each([["0"], ["1"]])(
     }
   },
 );
+
+// The freshness block slices the first five canonical articles off an array built by
+// walking readdirSync. The case that exposes the tie is SIX canonical articles sharing
+// one publishedAt: without a second sort key the excluded one is whatever the filesystem
+// enumerated last, and on this repo's own volume readdirSync returns names in lexical
+// order — so a test that only shuffles CREATION order proves nothing, and a mutant that
+// deletes the sort outright can still look green. These fixtures put each article in a
+// different content folder, because the URL's category comes from the FOLDER while
+// enumeration follows the folder NAME: `business_regulations` enumerates first and
+// serves `/business/`, `tax-legal` enumerates last and serves `/taxes/`, so the
+// enumeration order and the URL order genuinely disagree.
+const SAME_DATE = "2026-09-06";
+// [folder, slug, servedCategory]
+const TIED: Array<[string, string, string]> = [
+  ["business_regulations", "zeta", "business"],
+  ["digital-nomad", "yankee", "living"],
+  ["emerging_trends", "xray", "trends"],
+  ["immigration", "whisky", "visas"],
+  ["property", "victor", "property"],
+  ["tax-legal", "uniform", "taxes"],
+];
+// Date must outrank URL: this one is newer and its URL sorts LAST of all seven.
+const NEWEST: [string, string, string] = ["immigration", "zulu", "visas"];
+
+it.each([
+  [TIED],
+  [[...TIED].reverse()],
+  [[TIED[3], TIED[0], TIED[5], TIED[1], TIED[4], TIED[2]]],
+])(
+  "freshness breaks a same-date tie by URL, not by filesystem order (creation order %#)",
+  (creationOrder) => {
+    const cwd = mkdtempSync(join(tmpdir(), "llms-freshness-"));
+    try {
+      const output = join(cwd, "public");
+      mkdirSync(output, { recursive: true });
+      mkdirSync(join(cwd, "data"));
+      writeFileSync(
+        join(output, "llms.txt"),
+        "# Directory\n## Services\nKeep this section\n",
+      );
+      const write = (
+        [folder, slug]: [string, string, string],
+        date: string,
+      ) => {
+        const dir = join(cwd, "src/content/articles", folder);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(
+          join(dir, `${slug}.mdx`),
+          `---\ntitle: ${slug}\npublishedAt: '${date}'\n---\nBody for ${slug}\n`,
+        );
+      };
+      for (const article of creationOrder) write(article, SAME_DATE);
+      write(NEWEST, "2026-09-07");
+      execFileSync(
+        require.resolve("tsx/cli"),
+        [join(app, "scripts/generate-llms-full.ts")],
+        {
+          cwd,
+          env: { ...process.env, LLMS_GENERATE_ARTICLES_ONLY: "1" },
+          stdio: "pipe",
+        },
+      );
+      const directory = readFileSync(join(output, "llms.txt"), "utf8");
+      // Newest first, then the four tied articles whose URLs sort first:
+      // business < living < property < taxes < trends < visas. `xray` (/trends/) and
+      // `whisky` (/visas/) are the two the slice drops. Under bare filesystem order the
+      // survivors would be the first five FOLDERS instead — business_regulations,
+      // digital-nomad, emerging_trends, immigration, property — which keeps `xray` and
+      // `whisky` and drops `uniform`, so this assertion separates the two behaviours.
+      expect(directory).toContain(
+        [
+          "## Recently Published & Updated (Freshness Signal)",
+          "",
+          "- [zulu](https://balizero.com/visas/zulu) (2026-09-07)",
+          "- [zeta](https://balizero.com/business/zeta) (2026-09-06)",
+          "- [yankee](https://balizero.com/living/yankee) (2026-09-06)",
+          "- [victor](https://balizero.com/property/victor) (2026-09-06)",
+          "- [uniform](https://balizero.com/taxes/uniform) (2026-09-06)",
+          "",
+        ].join("\n"),
+      );
+      expect(directory).not.toContain("xray");
+      expect(directory).not.toContain("whisky");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  },
+);
