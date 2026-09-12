@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef } from "react";
+import { useOcrPolling } from "@/hooks/useOcrPolling";
 import {
   User,
   Users,
@@ -42,51 +43,12 @@ function FamilyMemberUploadButton({
   onRefresh: () => Promise<void> | void;
 }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [ocrPolling, setOcrPolling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const ocrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ocrAbortedRef = useRef(false);
-  const onRefreshRef = useRef(onRefresh);
-  onRefreshRef.current = onRefresh;
 
-  // Cleanup OCR polling timers when component unmounts
-  useEffect(() => {
-    ocrAbortedRef.current = false;
-    return () => {
-      ocrAbortedRef.current = true;
-      if (ocrTimerRef.current) clearTimeout(ocrTimerRef.current);
-    };
-  }, []);
-
-  const pollOcrStatus = useCallback(async () => {
-    setOcrPolling(true);
-    let attempts = 0;
-    const poll = async () => {
-      if (ocrAbortedRef.current) return;
-      try {
-        const status = (await api.request(
-          `/api/crm/clients/${clientId}/ocr-status`,
-        )) as {
-          pending_ocr: number;
-        };
-        if (status.pending_ocr === 0 || attempts >= 10) {
-          if (!ocrAbortedRef.current) {
-            setOcrPolling(false);
-            await onRefreshRef.current();
-          }
-          return;
-        }
-        attempts++;
-        ocrTimerRef.current = setTimeout(poll, 3000);
-      } catch {
-        if (!ocrAbortedRef.current) {
-          setOcrPolling(false);
-          await onRefreshRef.current();
-        }
-      }
-    };
-    ocrTimerRef.current = setTimeout(poll, 2000);
-  }, [clientId]);
+  const { ocrPolling, pollOcrStatus } = useOcrPolling({
+    clientId,
+    onDone: onRefresh,
+  });
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
