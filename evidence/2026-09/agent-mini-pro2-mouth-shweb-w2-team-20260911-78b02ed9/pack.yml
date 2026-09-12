@@ -6,7 +6,13 @@
 # in this directory are brief.yml, contract-lock.json, journal.jsonl, the seat
 # records under reviews/ and the guilt mutants — all authored in this same diff.
 
-brief_ref: evidence/2026-09/agent-mini-pro2-mouth-shweb-w2-team-20260911-78b02ed9/brief.yml
+# MUST be the literal staging path, never this PR's real per-PR path. The harness
+# stages the pack and the brief into a synthetic tree under the CANONICAL names
+# evidence/{pack,brief}.yml and resolves this field against that tree, so the
+# "obviously correct" per-PR value is exactly the trap — it fails with
+# "brief_ref: ... does not resolve to a file on disk", which says nothing about
+# staging. The real file is evidence/2026-09/agent-mini-pro2-mouth-shweb-w2-team-20260911-78b02ed9/brief.yml.
+brief_ref: evidence/brief.yml
 plan_ref:
   "PR #6277 (agent/mini-pro2/mouth/shweb-w2-team-20260911) — SHWEB-20260911 / W2-WEB-TEAM, 2026-09-12.
   Governing package: /Users/nuzantara/Desktop/SHWEB-20260911-mouth-final/pacchetto (FINAL §1 decision
