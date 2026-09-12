@@ -9,7 +9,7 @@ import {
 } from "./engine-adapter";
 import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
 import { translate, type I18nKey } from "./i18n";
-import { QUESTIONS } from "./tree";
+import { QUESTIONS, type OracleFacts } from "./tree";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
   it("shows each source's own dates, not the decision's evaluation clock", () => {
@@ -643,10 +643,10 @@ describe("support reasons are sentences, not machine codes", () => {
     throw new Error(`${ruleId} is absent from the highest-sequence pack`);
   }
 
-  function firstNoPathReason(code: string) {
+  function firstNoPathReason(code: string, facts?: OracleFacts) {
     const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
     response.decision.no_path_reasons[0].code = code;
-    const outcome = buildEngineOutcome(response);
+    const outcome = buildEngineOutcome(response, { facts });
     if (outcome.state !== "NO_SUPPORTED_PATH")
       throw new Error("unexpected state");
     return outcome.noPathReasons[0].message;
@@ -665,6 +665,109 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(message.id).not.toContain(code);
     expect(message.id).toMatch(/sumber di Indonesia/i);
     expect(message.id).toMatch(/jalur kerja/i);
+  });
+
+  // D3-3 gate finding (owner escalation, 2026-09-13): `el.e33.property-basis`
+  // / `el.e33.deposit-basis` are SUPPORT rules — a below-threshold value
+  // makes them silently not fire, so the ENGINE'S only reason is the generic
+  // `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES` (verified against
+  // rulepack-prod-020.source.json: no EXCLUDE rule names this threshold).
+  // The frontend names it instead, from facts it already has.
+  it("names the property threshold when the interview declared a below-threshold property (D3-1 invest route)", () => {
+    const message = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "invest",
+        investment_vehicle: "property",
+        secondhome_property_value_usd: "500000",
+      },
+    );
+    expect(message.en).not.toMatch(/^Verified reason: /);
+    expect(message.en).toMatch(/500,000/);
+    expect(message.en).toMatch(/1,000,000/);
+    expect(message.id).toMatch(/500\.000/);
+    expect(message.id).toMatch(/1\.000\.000/);
+  });
+
+  it("names the deposit threshold when the interview declared a below-threshold deposit (D3-1 invest route)", () => {
+    const message = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "invest",
+        investment_vehicle: "bank_deposit",
+        secondhome_deposit_usd: "50000",
+      },
+    );
+    expect(message.en).toMatch(/50,000/);
+    expect(message.en).toMatch(/130,000/);
+    expect(message.id).toMatch(/50\.000/);
+    expect(message.id).toMatch(/130\.000/);
+  });
+
+  it("names the same thresholds on the direct second_home tile", () => {
+    const property = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "second_home",
+        secondhome_basis: "property",
+        secondhome_property_value_usd: "1",
+      },
+    );
+    expect(property.en).toMatch(/1,000,000/);
+    const deposit = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "second_home",
+        secondhome_basis: "bank_deposit",
+        secondhome_deposit_usd: "1",
+      },
+    );
+    expect(deposit.en).toMatch(/130,000/);
+  });
+
+  it("innocence: falls back to the generic sentence when the facts do not show a below-threshold Second Home basis", () => {
+    const noFacts = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+    );
+    expect(noFacts.en).toBe(
+      SUPPORT_REASON_COPY.OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.en,
+    );
+    // A property/deposit ABOVE threshold must not be misreported as a hold.
+    const aboveThreshold = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "invest",
+        investment_vehicle: "property",
+        secondhome_property_value_usd: "5000000",
+      },
+    );
+    expect(aboveThreshold.en).toBe(
+      SUPPORT_REASON_COPY.OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.en,
+    );
+    // A DIFFERENT code must never be rewritten, even with matching facts.
+    const otherCode = firstNoPathReason(
+      "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
+      {
+        category: "invest",
+        investment_vehicle: "property",
+        secondhome_property_value_usd: "500000",
+      },
+    );
+    expect(otherCode.en).toBe(
+      SUPPORT_REASON_COPY.BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED.en,
+    );
+  });
+
+  // D3-3 (PR-D3): `hf.e33f.sponsor-required` is now reachable — a retirement
+  // walk whose chosen basis fails AND whose sponsor is denied resolves
+  // decisively to NO_SUPPORTED_PATH with this code (previously unreachable
+  // from any corpus walk, so it fell through the raw-code fallback).
+  it("explains hf.e33f.sponsor-required in prose, not a raw code dump", () => {
+    expect("SPONSOR_REQUIRED" in SUPPORT_REASON_COPY).toBe(true);
+    const message = firstNoPathReason("SPONSOR_REQUIRED");
+    expect(message.en).not.toMatch(/^Verified reason: /);
+    expect(message.en).toMatch(/sponsor/i);
+    expect(message.id).toMatch(/sponsor/i);
   });
 });
 

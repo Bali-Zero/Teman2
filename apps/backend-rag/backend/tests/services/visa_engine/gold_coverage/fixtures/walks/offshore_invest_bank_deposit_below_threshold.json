@@ -17,7 +17,7 @@
     "review_gate"
   ],
   "overrides": {
-    "person.birth_date": { "status": "KNOWN", "value": "2000-11-11" },
+    "person.birth_date": { "status": "KNOWN", "value": "1961-11-11" },
     "person.nationalities": { "status": "KNOWN", "value": ["IT"] },
     "person.marital_status": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "immigration.currently_in_indonesia": { "status": "KNOWN", "value": false },
@@ -117,8 +117,8 @@
     },
     "secondhome.bank_deposit_in_own_name": { "status": "KNOWN", "value": true },
     "secondhome.qualifying_property_value_usd": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": 0
     },
     "secondhome.passive_monthly_income_usd": {
       "status": "UNKNOWN",

@@ -352,6 +352,22 @@ describe("AMBIGUOUS_SPONSOR — narrowed to unsure or a sponsor-dependent relati
     ).not.toContain("AMBIGUOUS_SPONSOR");
   });
 
+  // Kills the mutant that re-adds the OLD D2 relation proxy alongside the
+  // new question (e.g. as an extra `||` arm) instead of replacing it: a
+  // foreign, non-unsure `family_sponsor_status_code` on a STEPCHILD relation
+  // is EXACTLY what the old proxy held on regardless of any other answer.
+  // With the permit explicitly confirmed 'yes', this must release — a
+  // reintroduced proxy would hold it and fail this assertion.
+  it("innocence: STEPCHILD with a foreign family_sponsor_status_code releases once the sponsor's permit is confirmed 'yes' — kills the old relation-proxy mutant", () => {
+    expect(
+      mapFacts({
+        family_relation: "STEPCHILD",
+        family_sponsor_status_code: "E23",
+        family_stepchild_sponsor_permit_confirmed: "yes",
+      }).disclosed_review_flags,
+    ).not.toContain("AMBIGUOUS_SPONSOR");
+  });
+
   it("innocence: a non-STEPCHILD relation whose sponsor's permit is answered 'no' releases — the question is STEPCHILD-only", () => {
     for (const relation of [
       "SPOUSE",

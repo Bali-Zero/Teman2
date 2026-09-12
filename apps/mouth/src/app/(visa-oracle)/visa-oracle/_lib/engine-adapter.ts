@@ -122,6 +122,16 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Retirement with passive income of USD 3,000 per month or more and a confirmed sponsor.",
     "Pensiun dengan penghasilan pasif minimal USD 3.000 per bulan dan penjamin terkonfirmasi.",
   ),
+  // `hf.e33f.sponsor-required` (EXCLUDE, `family.sponsor_confirmed == false`)
+  // — reachable via `no_path_reasons` since D3-3's retirement-basis
+  // dead-end fix made a definitively-denied sponsor a decisive
+  // NO_SUPPORTED_PATH outcome instead of leaving it unresolved. Previously
+  // unreachable from any corpus walk, so it fell through `reasonMessage`'s
+  // raw-code fallback with no test to catch it.
+  SPONSOR_REQUIRED: text(
+    "The Second Home Retirement Visa (E33F) requires a confirmed family sponsor, and you told us your sponsor has not confirmed. Confirming the sponsor is what would open this route.",
+    "Visa Rumah Kedua Pensiun (E33F) mensyaratkan sponsor keluarga yang telah dikonfirmasi, dan Anda menyatakan sponsor Anda belum mengonfirmasi. Konfirmasi sponsor adalah yang akan membuka jalur ini.",
+  ),
   E33_DEPOSIT_BASIS_ELIGIBLE: text(
     "Second Home on the deposit basis: USD 130,000 or more held in your own name at a state bank.",
     "Rumah Kedua berbasis deposito: minimal USD 130.000 atas nama sendiri di bank BUMN.",
@@ -386,14 +396,77 @@ function reasonMessage(code: string): LocalizedText {
   );
 }
 
+// D3-3 gate finding, owner escalation 2026-09-13: `el.e33.property-basis` /
+// `el.e33.deposit-basis` are ELIGIBILITY/SUPPORT rules — when their own
+// condition is false (a below-threshold value), the rule simply does not
+// fire and emits NO reason_code of its own (verified against
+// rulepack-prod-020.source.json: only a HARD_FILTER EXCLUDE carries a
+// reason_code, and no such filter exists for this threshold). The engine's
+// only fallback is the generic `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_
+// PURPOSES`, which cannot name a number the pack itself never labeled. The
+// interview's OWN facts already carry the declared basis and its exact
+// value, so this names the threshold in the applicant's own terms instead
+// of leaving the generic catalogue sentence to stand in for it — the same
+// D2-bis move as the STEPCHILD copy above, applied to a NO_SUPPORTED_PATH
+// reason instead of a HUMAN_REVIEW one. Returns `undefined` (falls back to
+// the generic sentence) whenever the facts do not actually show a
+// below-threshold Second Home basis, so a future cause of this same code
+// is never mis-attributed to a threshold it did not fail.
+const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
+const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
+
+function usd(value: number, locale: "en-US" | "id-ID"): string {
+  return `USD ${value.toLocaleString(locale)}`;
+}
+
+function secondHomeBelowThresholdReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  const basis =
+    facts.category === "invest"
+      ? facts.investment_vehicle
+      : facts.category === "second_home"
+        ? facts.secondhome_basis
+        : undefined;
+  if (basis === "property") {
+    const value = Number(facts.secondhome_property_value_usd);
+    if (
+      !Number.isFinite(value) ||
+      value >= SECOND_HOME_PROPERTY_THRESHOLD_USD
+    ) {
+      return undefined;
+    }
+    return text(
+      `You declared a qualifying property worth ${usd(value, "en-US")}. The Second Home Golden Visa requires at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}.`,
+      `Anda menyatakan properti yang memenuhi syarat senilai ${usd(value, "id-ID")}. Visa Rumah Kedua mensyaratkan setidaknya ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}.`,
+    );
+  }
+  if (basis === "bank_deposit") {
+    const value = Number(facts.secondhome_deposit_usd);
+    if (!Number.isFinite(value) || value >= SECOND_HOME_DEPOSIT_THRESHOLD_USD) {
+      return undefined;
+    }
+    return text(
+      `You declared a bank deposit of ${usd(value, "en-US")}. The Second Home Golden Visa requires at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")}.`,
+      `Anda menyatakan deposito bank senilai ${usd(value, "id-ID")}. Visa Rumah Kedua mensyaratkan setidaknya ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")}.`,
+    );
+  }
+  return undefined;
+}
+
 function reason(
   code: string,
   sourceIds: readonly string[],
   trustedIds: ReadonlySet<string>,
+  facts?: OracleFacts,
 ): OutcomeReason {
+  const message =
+    code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+      ? (secondHomeBelowThresholdReason(facts ?? {}) ?? reasonMessage(code))
+      : reasonMessage(code);
   return {
     code,
-    message: reasonMessage(code),
+    message,
     sourceIds: sourceIds.filter((id) => trustedIds.has(id)),
   };
 }
@@ -1183,7 +1256,7 @@ function buildValidatedOutcome(
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
           requireDecisiveRefs(item.source_refs);
-          return reason(item.code, item.source_refs, trustedIds);
+          return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives: [],
       };

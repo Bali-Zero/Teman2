@@ -318,6 +318,13 @@ export function enumerateScenarios(): Scenario[] {
   // C1: half-1's `invest` re-route, below the E33 threshold (walks 2/4,
   // 23-PR-D3-SPEC §walk-list). Above-threshold is already the corpus's
   // existing default for `offshore/invest/property`/`bank_deposit`.
+  // `birth_date` overridden past 55 on BOTH (owner escalation, 2026-09-13
+  // gate finding): at the corpus-wide default age 25, `hf.e33e.age-below-55`
+  // fires independently of the threshold this walk exists to prove, masking
+  // it behind an unrelated AGE_BELOW_55 reason — these two walks are the
+  // ONLY thing that tests the threshold path itself, so they must not be
+  // confounded by it. `RETIREMENT_AGE_64_BIRTH_DATE` is a spine question no
+  // branch reads, same reasoning as the retirement age-64 walks below.
   scenarios.push({
     label: "offshore/invest/property/below_threshold",
     overrides: {
@@ -325,6 +332,7 @@ export function enumerateScenarios(): Scenario[] {
       category: "invest",
       investment_vehicle: "property",
       secondhome_property_value_usd: "500000",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
     },
   });
   scenarios.push({
@@ -334,6 +342,7 @@ export function enumerateScenarios(): Scenario[] {
       category: "invest",
       investment_vehicle: "bank_deposit",
       secondhome_deposit_usd: "50000",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
     },
   });
 

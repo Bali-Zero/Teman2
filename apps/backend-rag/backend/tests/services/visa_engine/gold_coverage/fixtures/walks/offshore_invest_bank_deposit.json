@@ -117,8 +117,8 @@
     },
     "secondhome.bank_deposit_in_own_name": { "status": "KNOWN", "value": true },
     "secondhome.qualifying_property_value_usd": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": 0
     },
     "secondhome.passive_monthly_income_usd": {
       "status": "UNKNOWN",

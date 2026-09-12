@@ -764,6 +764,67 @@ function mapMarriageRegistered(facts: OracleFacts): FactValue<boolean> {
   return booleanFact(facts.family_marriage_registered);
 }
 
+/**
+ * D3-3 gate finding (2026-09-13): `el.e33.deposit-basis` / `el.e33e.
+ * retirement` both read the deposit trio with `on_unknown: NEEDS_INPUT`
+ * (rulepack-prod-020.source.json, verified) — an "all" AND over
+ * `secondhome.bank_deposit_usd >= threshold`, `..._at_state_bank`,
+ * `..._in_own_name`. When the interview has routed to a basis OTHER than
+ * the deposit one for a purpose whose rules read this trio, the trio was
+ * never asked because the CHOSEN basis already answers the question "is
+ * this a deposit case?" — false. Leaving it UNKNOWN made the rule escalate
+ * to NEEDS_INPUT instead of resolving to NOT-SUPPORTED, which is why a
+ * below-threshold property/invest walk, or a retirement walk whose sponsor
+ * fallback also failed, dead-ended on facts belonging to a basis the
+ * applicant never claimed. Emitting KNOWN(0)/KNOWN(false) here is not a
+ * guess: it states exactly what the chosen basis already implies, and
+ * nothing this function does asks the applicant anything new.
+ *
+ * Scoped to the purposes whose signed rules actually read this trio:
+ * SECOND_HOME (the `second_home` tile, and D3-1's `invest` → property/
+ * bank_deposit route) and RETIREMENT (every basis except `bank_deposit`
+ * itself, and `undecided` only once it has resolved to `family_sponsor` —
+ * a genuine "I still can't say" leaves this UNKNOWN on purpose, see
+ * `retirement_undecided_basis`'s tree.ts comment).
+ */
+function depositBasisDecisivelyNotChosen(facts: OracleFacts): boolean {
+  if (facts.category === "second_home") {
+    return facts.secondhome_basis === "property";
+  }
+  if (facts.category === "invest") {
+    return facts.investment_vehicle === "property";
+  }
+  if (facts.category === "retirement") {
+    if (facts.retirement_basis === "undecided") {
+      return facts.retirement_undecided_basis === "family_sponsor";
+    }
+    return (
+      facts.retirement_basis === "property" ||
+      facts.retirement_basis === "passive_income" ||
+      facts.retirement_basis === "family_sponsor"
+    );
+  }
+  return false;
+}
+
+/**
+ * Mirror of `depositBasisDecisivelyNotChosen` for `secondhome.
+ * qualifying_property_value_usd` (`el.e33.property-basis`, same
+ * `on_unknown: NEEDS_INPUT` shape). RETIREMENT purpose has no rule that
+ * reads this fact at all (`el.e33e.retirement`/`el.e33f.retirement`
+ * verified: neither names it), so only the SECOND_HOME-reachable routes
+ * need it decided.
+ */
+function propertyBasisDecisivelyNotChosen(facts: OracleFacts): boolean {
+  if (facts.category === "second_home") {
+    return facts.secondhome_basis === "bank_deposit";
+  }
+  if (facts.category === "invest") {
+    return facts.investment_vehicle === "bank_deposit";
+  }
+  return false;
+}
+
 export interface MapFactsOptions {
   assessmentId: string;
   /** One frozen clock shared by evaluation, dedupe and presentation. */
@@ -847,22 +908,30 @@ export function mapOracleFactsToApplicantFacts(
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),
     "study.sponsor_confirmed": booleanFact(facts.study_sponsor_confirmed),
     "sponsor.type": mapSponsorType(facts),
-    "secondhome.bank_deposit_usd": integerFact(
-      facts.secondhome_deposit_usd,
-      0,
-      Number.MAX_SAFE_INTEGER,
-    ),
-    "secondhome.bank_deposit_at_state_bank": booleanFact(
-      facts.secondhome_state_bank,
-    ),
-    "secondhome.bank_deposit_in_own_name": booleanFact(
-      facts.secondhome_own_name,
-    ),
-    "secondhome.qualifying_property_value_usd": integerFact(
-      facts.secondhome_property_value_usd,
-      0,
-      Number.MAX_SAFE_INTEGER,
-    ),
+    "secondhome.bank_deposit_usd":
+      facts.secondhome_deposit_usd === undefined &&
+      depositBasisDecisivelyNotChosen(facts)
+        ? known(0)
+        : integerFact(facts.secondhome_deposit_usd, 0, Number.MAX_SAFE_INTEGER),
+    "secondhome.bank_deposit_at_state_bank":
+      facts.secondhome_state_bank === undefined &&
+      depositBasisDecisivelyNotChosen(facts)
+        ? known(false)
+        : booleanFact(facts.secondhome_state_bank),
+    "secondhome.bank_deposit_in_own_name":
+      facts.secondhome_own_name === undefined &&
+      depositBasisDecisivelyNotChosen(facts)
+        ? known(false)
+        : booleanFact(facts.secondhome_own_name),
+    "secondhome.qualifying_property_value_usd":
+      facts.secondhome_property_value_usd === undefined &&
+      propertyBasisDecisivelyNotChosen(facts)
+        ? known(0)
+        : integerFact(
+            facts.secondhome_property_value_usd,
+            0,
+            Number.MAX_SAFE_INTEGER,
+          ),
     "secondhome.passive_monthly_income_usd": integerFact(
       facts.secondhome_passive_income_usd,
       0,

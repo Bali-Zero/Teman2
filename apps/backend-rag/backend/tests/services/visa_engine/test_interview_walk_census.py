@@ -273,24 +273,35 @@ class DeadEnd:
 #: ask `family_sponsor_confirmed` too (flow.ts) — measured 2026-09-13,
 #: `offshore/retirement/property/age64` now answers `SUPPORTED_CANDIDATES
 #: [E33F]` and `offshore/retirement/undecided/age64` answers
-#: `SUPPORTED_CANDIDATES [E33E, E33F]`. Five NEW dead ends replace them,
-#: none a re-hash of the old shape:
+#: `SUPPORTED_CANDIDATES [E33E, E33F]`.
 #:
-#: - `offshore/invest/property/below_threshold` and `offshore/retirement/
-#:   property/age64/sponsor_no`: once the CHOSEN basis fails (below
-#:   threshold, or the sponsor fallback denied) with no decisive candidate,
-#:   the evaluator surfaces the DEPOSIT trio as still-missing even though
-#:   this walk's own branch never asks it (D3-1/D3-3 deliberately narrow
-#:   each vehicle/basis to its own evidence) — a genuine `QUESTION_NOT_IN_
-#:   THIS_WALK` dead end, and `engine-adapter.ts`'s `questionForFact` cannot
-#:   offer it as a follow-up either (no OTHER category reaches it without
-#:   ALSO setting the sibling vehicle/basis fact), so the applicant sees the
-#:   generic fallback message, not a named one. Reported as a finding, not
-#:   cured here (see the PR body / implementer report): asking the sibling
-#:   evidence unconditionally would defeat the whole point of narrowing to
-#:   the declared basis.
-#: - `offshore/invest/bank_deposit/below_threshold`: the mirror image —
-#:   `secondhome.qualifying_property_value_usd` missing, same reasoning.
+#: A first pass of D3-3 landed with 5 rows: `family_sponsor_confirmed`'s
+#: cure exposed a TWIN pattern on `offshore/invest/property/below_threshold`,
+#: `offshore/invest/bank_deposit/below_threshold` and `offshore/retirement/
+#: property/age64/sponsor_no` — once the CHOSEN basis fails, `el.e33.
+#: property-basis` / `el.e33.deposit-basis` / `el.e33e.retirement`
+#: (`on_unknown: NEEDS_INPUT`, verified against rulepack-prod-020.
+#: source.json) surface the TWIN, unasked basis's facts as still-missing,
+#: because "unknown AND known" does not short-circuit the way "known-false
+#: AND known" does. Owner ruling 2026-09-13: closed, not allowlisted — a
+#: below-threshold answer on a Second Home base is a definitive negative
+#: ("I did not claim a deposit/property via this route"), not an unresolved
+#: one, so `mapOracleFactsToApplicantFacts` (fact-mapper.ts,
+#: `depositBasisDecisivelyNotChosen` / `propertyBasisDecisivelyNotChosen`)
+#: now emits the twin basis's facts as KNOWN(0)/KNOWN(false) whenever the
+#: interview has decisively routed to the OTHER basis — turning the rule's
+#: own AND definitively false instead of leaving it unknown. Measured
+#: 2026-09-13: all three now answer `NO_SUPPORTED_PATH` with `missing_facts
+#: == []`. The two `invest` walks reach `OPERATIONAL_NO_PRODUCT_MATCHES_
+#: DECLARED_PURPOSES` (the pack has no EXCLUDE-type reason naming this
+#: threshold — a SUPPORT rule that fails to fire emits no reason_code of its
+#: own), which `engine-adapter.ts`'s `secondHomeBelowThresholdReason` now
+#: renders naming the applicant's declared value and the exact USD
+#: threshold instead of the generic catalogue sentence. The retirement walk
+#: reaches the pre-existing, now-reachable-for-the-first-time
+#: `SPONSOR_REQUIRED` (`hf.e33f.sponsor-required`), given real copy in the
+#: same PR. Two rows remain, neither this pattern:
+#:
 #: - `offshore/other/paid/sponsor_unsure`: `work_sponsor_confirmed` IS asked
 #:   on this walk (D3-2's employment route) and the mapper refuses to
 #:   certify "unsure" — `ANSWER_NEVER_CERTIFIED`, correctly nameable as a
@@ -302,52 +313,11 @@ class DeadEnd:
 #:   follow-up (asked unconditionally by the `family`/`diaspora`/`invest`/
 #:   `other` categories, which is what `followUpPrerequisitesMet` checks).
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
-    "offshore/invest/property/below_threshold": (
-        DeadEnd(
-            fact="secondhome.bank_deposit_usd",
-            source_question="secondhome_deposit_usd",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
-        ),
-        DeadEnd(
-            fact="secondhome.bank_deposit_at_state_bank",
-            source_question="secondhome_state_bank",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
-        ),
-        DeadEnd(
-            fact="secondhome.bank_deposit_in_own_name",
-            source_question="secondhome_own_name",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
-        ),
-    ),
-    "offshore/invest/bank_deposit/below_threshold": (
-        DeadEnd(
-            fact="secondhome.qualifying_property_value_usd",
-            source_question="secondhome_property_value_usd",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
-        ),
-    ),
     "offshore/other/paid/sponsor_unsure": (
         DeadEnd(
             fact="work.indonesian_work_sponsor_confirmed",
             source_question="work_sponsor_confirmed",
             why_unaskable=ANSWER_NEVER_CERTIFIED,
-        ),
-    ),
-    "offshore/retirement/property/age64/sponsor_no": (
-        DeadEnd(
-            fact="secondhome.bank_deposit_usd",
-            source_question="secondhome_deposit_usd",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
-        ),
-        DeadEnd(
-            fact="secondhome.bank_deposit_at_state_bank",
-            source_question="secondhome_state_bank",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
-        ),
-        DeadEnd(
-            fact="secondhome.bank_deposit_in_own_name",
-            source_question="secondhome_own_name",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
         ),
     ),
     "offshore/retirement/undecided/age64/still_unsure": (
@@ -421,12 +391,15 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/undecided": ("SUPPORTED_CANDIDATES", ("C2",)),
-    # C1 gate (PR-D3): below-threshold walks for D3-1's re-route. See
-    # WALK_DEAD_END_ALLOWLIST above for why these are NEEDS_INPUT rather than
-    # the NO_SUPPORTED_PATH the spec's walk list expected — measured, not
-    # bent to fit.
-    "offshore/invest/property/below_threshold": ("NEEDS_INPUT", ()),
-    "offshore/invest/bank_deposit/below_threshold": ("NEEDS_INPUT", ()),
+    # C1 gate (PR-D3): below-threshold walks for D3-1's re-route. Owner
+    # ruling 2026-09-13 CLOSED the twin-base dead end this pattern first
+    # produced (see WALK_DEAD_END_ALLOWLIST above) — `fact-mapper.ts` now
+    # emits the twin basis's facts as KNOWN(0)/KNOWN(false), which resolves
+    # `el.e33.property-basis`/`el.e33.deposit-basis` decisively instead of
+    # leaving them unknown. `birth_date` is overridden past 55 on both so the
+    # reason is the actual threshold story, not an unrelated AGE_BELOW_55.
+    "offshore/invest/property/below_threshold": ("NO_SUPPORTED_PATH", ()),
+    "offshore/invest/bank_deposit/below_threshold": ("NO_SUPPORTED_PATH", ()),
     # D3-2 (PR-D3): `other_paid_activity`'s first option is `yes`, so this
     # walk now routes to the two employment facts `el.e23-employment-support`
     # reads and `mapPurposes` emits EMPLOYMENT alone; both facts default to
@@ -464,9 +437,12 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     # D3-3 (PR-D3): CURED — `property` now asks `family_sponsor_confirmed`
     # (default "yes"), so this walk answers E33F instead of dead-ending.
     "offshore/retirement/property/age64": ("SUPPORTED_CANDIDATES", ("E33F",)),
-    # C1 gate (PR-D3): the negative sponsor sub-branch. See
-    # WALK_DEAD_END_ALLOWLIST above for why this stays NEEDS_INPUT.
-    "offshore/retirement/property/age64/sponsor_no": ("NEEDS_INPUT", ()),
+    # C1 gate (PR-D3): the negative sponsor sub-branch. Owner ruling
+    # 2026-09-13 CLOSED this (same twin-base fix as the invest walks above)
+    # — `SPONSOR_REQUIRED` (`hf.e33f.sponsor-required`) now decides it, given
+    # real copy in the same PR (previously unreachable, would have fallen
+    # through to a raw code dump).
+    "offshore/retirement/property/age64/sponsor_no": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/undecided": ("NO_SUPPORTED_PATH", ()),
     # D3-3 (PR-D3): CURED — `undecided` now asks `retirement_undecided_basis`
     # first; its default "deposit_or_income" answer routes through the full
@@ -525,13 +501,11 @@ EXPECTED_STATE_CENSUS: dict[str, int] = dict(
 #: `retirement` branch just doesn't route these two bases to the question
 #: that supplies it.
 #: PR-D3: the old `family.sponsor_confirmed: 2` (property/undecided age64)
-#: is cured; the 5 new dead ends (WALK_DEAD_END_ALLOWLIST above) replace it —
-#: the deposit trio appears twice (once per walk that dead-ends on it).
+#: is cured. The twin-base dead ends (below-threshold invest × 2,
+#: retirement/property/sponsor_no) are CLOSED (owner ruling 2026-09-13, see
+#: WALK_DEAD_END_ALLOWLIST above) rather than allowlisted, so they never
+#: reach NEEDS_INPUT and never appear here. Two facts remain, one each.
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {
-    "secondhome.bank_deposit_usd": 2,
-    "secondhome.bank_deposit_at_state_bank": 2,
-    "secondhome.bank_deposit_in_own_name": 2,
-    "secondhome.qualifying_property_value_usd": 1,
     "work.indonesian_work_sponsor_confirmed": 1,
     "family.sponsor_confirmed": 1,
 }
@@ -738,7 +712,7 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_5_dead_ends_11_no_paths_and_62_answers(
+def test_walk_state_census_is_2_dead_ends_14_no_paths_and_62_answers(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
@@ -747,28 +721,31 @@ def test_walk_state_census_is_5_dead_ends_11_no_paths_and_62_answers(
     36/0/7 on seq-19; 21/0/22 once the signed seq-20 bundle's stay-day
     widening landed; 11/10/22 with PR-2's reorder on top; 0/10/51 over a
     43 → 61 corpus with PR-3's interview; 2/10/55 over a 61 → 67 corpus with
-    PR-5's age dimension on top; 5/11/62 over a 67 → 78 corpus with PR-D3
+    PR-5's age dimension on top; 2/14/62 over a 67 → 78 corpus with PR-D3
     (module docstring). PR-D3 CURES the 2 PR-5 dead ends
     (`offshore/retirement/property/age64` and `.../undecided/age64` both now
-    answer) and adds 11 new walks: 5 NEED_INPUT (the WALK_DEAD_END_ALLOWLIST
-    rows above), 1 NO_SUPPORTED_PATH (`offshore/other/paid/employer_no`), 5
-    SUPPORTED_CANDIDATES. Net: NEEDS_INPUT 2→0→5, NO_SUPPORTED_PATH
-    10→10→11, SUPPORTED_CANDIDATES 55→57→62."""
+    answer) and adds 11 new walks. A first pass left 5 of those 11
+    NEEDS_INPUT; owner ruling 2026-09-13 CLOSED 3 of them (the below-
+    threshold twin-base pattern, WALK_DEAD_END_ALLOWLIST above) to
+    NO_SUPPORTED_PATH instead of allowlisting them. Final split of the 11:
+    2 NEEDS_INPUT, 4 NO_SUPPORTED_PATH (`offshore/other/paid/employer_no`
+    plus the 3 closed dead ends), 5 SUPPORTED_CANDIDATES. Net: NEEDS_INPUT
+    2→0→2, NO_SUPPORTED_PATH 10→10→14, SUPPORTED_CANDIDATES 55→57→62."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     assert census == EXPECTED_STATE_CENSUS == {
-        "NEEDS_INPUT": 5,
-        "NO_SUPPORTED_PATH": 11,
+        "NEEDS_INPUT": 2,
+        "NO_SUPPORTED_PATH": 14,
         "SUPPORTED_CANDIDATES": 62,
     }
-    assert census["NEEDS_INPUT"] == 5
+    assert census["NEEDS_INPUT"] == 2
     # NOT a claim about production. The corpus carries no disclosure flags, so
     # the review arm of `apply_public_policy_adapters` is unreachable from
     # here by construction: this line says the FIXTURES trigger no review, and
     # a regression that adds a disclosure flag passes it invisibly. Bound 1 of
     # the module docstring, with the measurement.
     assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
-    assert census["NO_SUPPORTED_PATH"] == 11
+    assert census["NO_SUPPORTED_PATH"] == 14
 
 
 def test_dead_end_fact_census_matches_the_blocking_fact_table(
@@ -873,26 +850,25 @@ def test_no_walk_dead_ends_outside_the_allowlist(outcomes: dict[str, dict[str, A
     assert not violations, "walk-census invariant broken:\n  " + "\n  ".join(violations)
 
 
-def test_allowlist_has_exactly_the_five_pr_d3_rows() -> None:
+def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
     """PR-3's deliverable — ``len(...) == 0`` — held for exactly one wave;
     PR-5 reopened it with 2 rows; THIS PR (PR-D3) CURES both of PR-5's rows
-    (both retirement age64 walks now answer) and opens it again with 5
-    DIFFERENT rows, none a re-hash of PR-5's shape — see
-    `WALK_DEAD_END_ALLOWLIST`'s module-level comment for each row's reason.
+    (both retirement age64 walks now answer). A first pass opened it again
+    with 5 new rows; owner ruling 2026-09-13 CLOSED 3 of them (the
+    below-threshold twin-base pattern) rather than allowlist them — see
+    `WALK_DEAD_END_ALLOWLIST`'s module-level comment. 2 rows remain, neither
+    a re-hash of PR-5's shape.
 
-    An equality against a named 5-row dict is still not a loosened count in
+    An equality against a named 2-row dict is still not a loosened count in
     the sense PR-3 warned about: it names every row explicitly, and any
     additional row — however well argued — still has to move this literal in
     the PR that adds it."""
 
     assert set(WALK_DEAD_END_ALLOWLIST) == {
-        "offshore/invest/property/below_threshold",
-        "offshore/invest/bank_deposit/below_threshold",
         "offshore/other/paid/sponsor_unsure",
-        "offshore/retirement/property/age64/sponsor_no",
         "offshore/retirement/undecided/age64/still_unsure",
     }
-    assert len(WALK_DEAD_END_ALLOWLIST) == 5
+    assert len(WALK_DEAD_END_ALLOWLIST) == 2
 
 
 def _unaskable_violations(
