@@ -1,0 +1,132 @@
+task_id: shweb-w-oracle-o2-review-reason-copy
+gear: 1
+ts: 2026-09-12T20:58:49+08:00
+gear_reason: >-
+  Computed, not chosen: `git diff --name-only 9233a860d6..HEAD > /tmp/o2-changed.txt &&
+  /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py
+  --changed-files-file /tmp/o2-changed.txt --print-floor` returns 1 (re-runnable; the script is
+  not directly executable on this checkout — verified by first trying it bare and getting
+  "Permission denied", then invoking it through the venv interpreter). Only two files touched,
+  both under apps/mouth/src/app/(visa-oracle)/ — not a HOTZONE_PATTERNS path — and the diff (268
+  insertions / 67 deletions per `git diff --numstat 9233a860d6..HEAD`, this commit's own
+  numstat, not a figure re-typed here as a fact) stays under every size threshold. The same
+  invocation with `--print-floor-source` returns "none".
+l_level: L2
+gate_class: opus
+objective: >-
+  PR-O2 of mandate SHWEB-20260911 / W-ORACLE, decision D1: give dedicated EN/ID copy to the 29
+  Visa Oracle HUMAN_REVIEW reason codes that previously fell back to GENERIC_REVIEW_REASON in
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts's REVIEW_REASON_COPY.
+  25 of the 29 were already named in engine-adapter.test.ts's KNOWN_UNMAPPED_REVIEW_REASON_CODES
+  gap list (8 rulepack-prod-007+ HUMAN_REVIEW-stage codes + 17 pack-independent
+  evaluate_path.py codes); the other 4 (BRIDGING_ONSHORE_ONLY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
+  BRIDGING_TO_BRIDGING_PROHIBITED, VOA_NATIONALITY_ONLY) were not visible to that list at all,
+  because reviewReasonCodesInPack() only scanned stage===HUMAN_REVIEW rules — these 4 are
+  rulepack-prod-020 stage HARD_FILTER rules with on_unknown="HUMAN_REVIEW", which
+  evaluator.py's _partition_unknowns_by_policy + _reason_from_rule (lines 355-410, 741-751)
+  escalate to a HUMAN_REVIEW state using the SAME effect.reason_code when the gating fact is
+  UNKNOWN rather than known-false. Verified by reading rulepack-prod-020.source.json directly
+  (`python -c` one-liner filtering rules by stage/on_unknown, reproduced below) before writing
+  any copy for them. Extended reviewReasonCodesInPack() to also collect
+  stage===HARD_FILTER && on_unknown==="HUMAN_REVIEW" rules, so the exhaustiveness test's
+  allRealCodes now genuinely covers all 38 real codes (20 pack + 18 pack-independent) instead of
+  34. KNOWN_UNMAPPED_REVIEW_REASON_CODES now ends empty, as D1 requires.
+
+  Mid-task, the owner issued a binding follow-up ruling (D2-bis) requiring every HUMAN_REVIEW
+  string, EN and ID — including the 9 pre-existing entries, now in scope — to (1) name the
+  specific fact/answer the signed rules cannot decide, in the applicant's own terms, (2) state
+  the hold authoritatively rather than generically, and (3) name what resolves it. All 38
+  entries were revised or written to this standard in the same commit (dd1eb0e5c3). One entry
+  (DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW) uses wording the owner specified verbatim rather than the
+  example offered, because a parallel PR (D2) is narrowing that code's trigger and a
+  nationality-based sentence would go false the day it merges.
+constraints:
+  - >-
+    Perimeter held to exactly what the brief named: REVIEW_REASON_COPY, the test file's
+    KNOWN_UNMAPPED_REVIEW_REASON_CODES + reviewReasonCodesInPack() (the latter's extension was
+    necessary to keep the exhaustiveness test internally consistent with the 4 newly-copied
+    HARD_FILTER codes — otherwise "never lets a stale key sit in the copy map" fails on them),
+    plus this evidence directory. No change to oracle.css, the question tree, evaluate_path.py,
+    the evaluator, any pack file, or OutcomeSheet.tsx.
+  - >-
+    Product names copied verbatim from each rule's product_version_ids entry in
+    rulepack-prod-020.source.json (names.en / names.id) — never shortened or re-described (the
+    repo's own prior scar: E23V narrowed to "trade representative office" in an earlier round).
+  - >-
+    No new price, no new timeline, no new legal claim. UNKNOWN is never written as an exclusion
+    — the 4 HARD_FILTER/on_unknown codes name the fact as "not yet established", never as
+    ineligibility. DISCLOSED_ACTIVITY_BOUNDARY_REVIEW and DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW do
+    not presuppose D2 (no claim that either hold is too wide, being narrowed, or a defect).
+  - >-
+    Two codes could not honestly carry ONE specific cause without inventing one: names the most
+    specific true statement the code allows and lists as split candidates rather than guessing —
+    BRIDGING_ADVERSE_HISTORY (rule review.bridging.adverse-history fires on any of 4 distinct
+    violation_history values — OVERSTAY/DEPORTATION/BLACKLIST/IMMIGRATION_INVESTIGATION — or on
+    that fact being unknown) and DISCLOSED_ACTIVITY_BOUNDARY_REVIEW (fact-mapper.ts's
+    hasUndecidableActivityAnswer raises this one code from 7 distinct question ids, with no field
+    saying which). DISCLOSED_UNCERTAINTY_REVIEW is the same shape (any interview answer marked
+    "unsure" fires it, no field names which) and is listed alongside them.
+    CONFLICTING_IMMIGRATION_STATUS_REVIEW is a DisclosedReviewFlag with no current
+    fact-mapper.ts trigger at all — named as specifically as the code allows, flagged separately
+    as meaning not fully pinned to a fact pair rather than as a split candidate (there is no
+    second enumerable cause to split out).
+acceptance:
+  - text: >-
+      WHEN the full visa-oracle vitest suite is run THEN every test SHALL pass, including the
+      exhaustiveness test with an empty KNOWN_UNMAPPED_REVIEW_REASON_CODES.
+    probe: |
+      cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)' --maxWorkers=2
+  - text: >-
+      WHEN the review-reasons exhaustiveness describe block is run in isolation THEN all 4 of
+      its tests (exhaustive coverage, no stale copy key, no already-mapped gap entry, no phantom
+      gap entry) SHALL pass.
+    probe: |
+      cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t "review reasons cover every code" --maxWorkers=2
+  - text: WHEN the mouth app is typechecked THEN it SHALL exit 0 with no errors.
+    probe: |
+      cd apps/mouth && npx --no-install tsc --noEmit -p .
+  - text: >-
+      WHEN the 4 HARD_FILTER-with-on_unknown-HUMAN_REVIEW codes are looked up directly in the
+      signed pack THEN exactly BRIDGING_ONSHORE_ONLY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
+      BRIDGING_TO_BRIDGING_PROHIBITED and VOA_NATIONALITY_ONLY SHALL be found, corroborating the
+      objective's traceability claim independently of this PR's own code.
+    probe: |
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "
+      import json
+      data = json.load(open('apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-020.source.json'))
+      hits = sorted(
+          (r['effect']['reason_code'])
+          for r in data['rules']
+          if r.get('stage') == 'HARD_FILTER' and r.get('on_unknown') == 'HUMAN_REVIEW'
+      )
+      expected = ['BRIDGING_FROM_VISIT_ITK_PROHIBITED', 'BRIDGING_ONSHORE_ONLY', 'BRIDGING_TO_BRIDGING_PROHIBITED', 'VOA_NATIONALITY_ONLY']
+      assert hits == expected, hits
+      print('OK', hits)
+      "
+consumer_map:
+  - >-
+    OutcomeSheet.tsx (via engine-adapter.ts's buildEngineOutcome/reviewReason) — the ONLY reader
+    of REVIEW_REASON_COPY: every applicant who lands on a HUMAN_REVIEW_REQUIRED outcome for one
+    of these 29 codes now sees the dedicated sentence in place of the generic fallback, in both
+    languages the UI serves (en/id).
+risks:
+  - >-
+    DECISIVE_*/SAFETY_CRITICAL_* (6 codes) and CONFLICTING_IMMIGRATION_STATUS_REVIEW are not
+    applicant-fact-driven (source-integrity holds or a currently-untriggered disclosed flag) —
+    D2-bis rule 1's "applicant's own terms" framing does not literally fit; named the mechanism
+    (which source / which status conflict) as specifically as each code's own logic allows
+    instead of forcing an applicant-facing frame that would misstate the mechanism.
+  - >-
+    Extending reviewReasonCodesInPack() (test-only, not runtime) goes slightly beyond the
+    file-list's literal "KNOWN_UNMAPPED_REVIEW_REASON_CODES must end EMPTY" framing, but was
+    necessary for internal consistency: without it, adding copy for the 4 HARD_FILTER codes
+    would fail the "never lets a stale key sit in the copy map" test (they would not be in
+    allRealCodes). Cross-validated against the brief's own census math (9 existing + 29 new = 38
+    total; 8+4+17=29) before making the change, not assumed.
+grader: |
+  Independent gate dispatched separately by the orchestrating (Opus 5) session — generator !=
+  grader: this session wrote the diff and this brief, and does not post its own verdict.
+budget: |
+  Single-lane content PR. Flat-subscription seat only (Sonnet 5 IMPLEMENTER); no metered API
+  spend, no external LLM call, no network call.
+pii: none
