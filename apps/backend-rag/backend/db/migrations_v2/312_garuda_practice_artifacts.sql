@@ -796,27 +796,31 @@ DROP FUNCTION IF EXISTS public.bind_garuda_practice_artifact_retention_policy();
 DROP FUNCTION IF EXISTS public.active_garuda_practice_artifact_policy_available(TEXT, TIMESTAMPTZ);
 DROP TABLE IF EXISTS public.garuda_practice_artifacts;
 
--- Narrowing (0)'s widened policy_scope CHECK back is only safe if no row
--- has ever used 'GARUDA_DOCUMENT' -- same reasoning, and the same bug
--- class, as 304's / 285's rollback (visa_decision_retention_policies is
--- append-only; a used scope value can never be removed to make room for a
--- narrower constraint).
-DO $garuda_312_narrow_policy_scope$
+-- (0)'s widened policy_scope CHECK is NOT narrowed back here, and this is
+-- a deliberate change from the version of this file written before 304
+-- merged.
+--
+-- While 304 was unmerged, `GARUDA_DOCUMENT` existed on `main` only because
+-- block (0) put it there, so this rollback owned it and narrowed it back
+-- under an append-only guard (no row may already use the value). 304 is on
+-- `main` and live in production since 2026-09-12 05:20Z, applied as
+-- `backend_rag_v2 (session_user=backend_rag_migrator)`. The scope is now
+-- 304's, and (0) is the idempotent no-op its own comment always promised
+-- it would become -- measured, not assumed: 304's widened list on
+-- `origin/main` and (0)'s are the same five values.
+--
+-- A rollback that narrows anyway is a live defect the moment the guard
+-- does not fire, which is any database where 304 has been APPLIED but no
+-- `GARUDA_DOCUMENT` policy row has been inserted yet: 312's undo would
+-- then remove a value 304's schema depends on, and 304 is not even being
+-- rolled back. Undoing this migration must not reach outside it. Narrowing
+-- the scope belongs to 304's own rollback, which carries the identical
+-- append-only guard for it.
+DO $garuda_312_leave_policy_scope_widened$
 BEGIN
-    IF EXISTS (
-        SELECT 1 FROM public.visa_decision_retention_policies
-         WHERE policy_scope = 'GARUDA_DOCUMENT'
-    ) THEN
-        RAISE NOTICE 'garuda 312 rollback: visa_decision_retention_policies has row(s) with policy_scope = ''GARUDA_DOCUMENT'' -- the append-only guard makes them impossible to remove, so the policy_scope CHECK is left WIDENED (post-(0) state) rather than narrowed back.';
-    ELSE
-        ALTER TABLE public.visa_decision_retention_policies
-            DROP CONSTRAINT IF EXISTS visa_decision_retention_policies_policy_scope_check;
-        ALTER TABLE public.visa_decision_retention_policies
-            ADD CONSTRAINT visa_decision_retention_policies_policy_scope_check
-                CHECK (policy_scope IN ('VISA_DECISION', 'GARUDA_CHECK', 'GARUDA_ORDER', 'GARUDA_MAGIC_LINK'));
-    END IF;
+    RAISE NOTICE 'garuda 312 rollback: policy_scope stays WIDENED -- GARUDA_DOCUMENT belongs to migration 304 (live since 2026-09-12), not to this migration; narrowing it here would break 304 without rolling it back.';
 END;
-$garuda_312_narrow_policy_scope$;
+$garuda_312_leave_policy_scope_widened$;
 
 -- Symmetric close of the bracket opened at the top of this section: leave
 -- the session on the role `migration_base.py` handed us, never on
