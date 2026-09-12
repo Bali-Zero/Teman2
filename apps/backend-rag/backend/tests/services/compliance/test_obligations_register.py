@@ -68,10 +68,29 @@ def _catalog_file(tmp_path: Path, predicate: str, extra: str = "") -> Path:
 
 def test_catalog_loads_and_every_rule_validates(catalog):
     assert len(catalog) >= 15
-    assert not any(rule.verified for rule in catalog.values())
     assert {"lkpm_quarterly", "spt_masa_pph21", "spt_tahunan_badan", "pse_registration"} <= set(
         catalog
     )
+
+
+def test_verified_rules_cite_a_source_url_and_unverified_ones_say_why(catalog):
+    """The 2026-09-12 source sweep: `verified: true` is a claim, so it must carry its URL.
+
+    What this CAN check is that a promotion carries its evidence and that a demotion explains
+    itself. What no unit test can check is whether a cited article really says what the rule
+    claims: that lives in docs/compliance/obligations-catalog-sources-2026-09.md, which holds the
+    verbatim quote behind each of the 21 rows. The count below is a floor on how much of that
+    sweep landed, not a quality score — raise it when a later sweep confirms more, and move a rule
+    back to `false` the moment its source is found wanting, even if that drops the count.
+    """
+    verified = [rule for rule in catalog.values() if rule.verified]
+    assert len(verified) >= 12, [rule.id for rule in verified]
+    for rule in verified:
+        assert "http" in rule.legal_source, rule.id
+        assert "(verify" not in rule.legal_source, rule.id
+    for rule in catalog.values():
+        if not rule.verified:
+            assert rule.needs_review_reason, rule.id
 
 
 def test_unscheduled_rules_name_their_trigger(catalog):
@@ -197,8 +216,21 @@ def test_payment_and_return_are_separate_deadlines(catalog):
 
 
 def test_roll_none_keeps_the_weekend_date(catalog):
+    # expat_tax_residency_review is roll: none — no regulation sets the date, so nothing moves it.
+    # 2026-10-31 is a Saturday and stays one.
+    assert due_dates(catalog["expat_tax_residency_review"], PMA, date(2026, 10, 1), 31) == [
+        ("2026-10", date(2026, 10, 31))
+    ]
+
+
+def test_bpjs_kesehatan_rolls_off_a_saturday_on_its_own_clause(catalog):
+    """Perpres 82/2018 art. 39(4): a 10th falling on a hari libur moves to the next hari kerja.
+
+    Sat 10 Oct 2026 therefore becomes Mon 12 Oct. The first pass of the 2026-09 source sweep had
+    this rule on roll: none, having read only art. 39(1) to (3) — the article straddles a page break.
+    """
     assert due_dates(catalog["bpjs_kesehatan_monthly"], PMA, date(2026, 10, 1), 30) == [
-        ("2026-10", date(2026, 10, 10))
+        ("2026-10", date(2026, 10, 12))
     ]
 
 
@@ -210,11 +242,12 @@ def test_day_31_clamps_to_month_end_then_rolls(catalog):
     ]
 
 
+# Permen Investasi/BKPM 5/2025 art. 286(5) moved the LKPM deadline from the 10th to the 15th.
 LKPM_2026 = [
-    ("2025-Q4", date(2026, 1, 10)),
-    ("2026-Q1", date(2026, 4, 10)),
-    ("2026-Q2", date(2026, 7, 10)),
-    ("2026-Q3", date(2026, 10, 10)),
+    ("2025-Q4", date(2026, 1, 15)),
+    ("2026-Q1", date(2026, 4, 15)),
+    ("2026-Q2", date(2026, 7, 15)),
+    ("2026-Q3", date(2026, 10, 15)),
 ]
 
 
