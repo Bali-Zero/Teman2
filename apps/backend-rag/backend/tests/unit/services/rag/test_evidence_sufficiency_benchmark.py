@@ -29,7 +29,16 @@ _GOLDEN_TEST_PATH = Path(__file__).resolve().parent / "agentic" / "test_evidence
 # after the freeze — a re-labelled case, a reworded span, anything — makes
 # this red. That is the point: the mandatory set is frozen, and B2
 # supplements live in a SEPARATE file (`manifest_supplement_b2.json`).
-MANDATORY_MANIFEST_SHA256 = "9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f"
+#
+# RE-PINNED (RULED I30/I31, provenance-fixture PR): this is the ONE
+# sanctioned exception to the freeze above — the only PR allowed to touch
+# the frozen manifest. Case bs-17806bb4's `provenance_fixture` moved from a
+# legacy literal (score 0.72, score_kind unknown) to a declared dense source
+# (score 0.6146, score_kind dense_formatted, score_raw the one measured
+# cosine on disk for that (query, chunk) pair — 0.373, 2026-09-03); nothing
+# else in the manifest changed. Old pin (until this PR):
+# 9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f.
+MANDATORY_MANIFEST_SHA256 = "d23a66ca27f48d2bf186f941e902a99c6991803ae53c651fedbab201772da745"
 
 _CELLS = ("EN>EN", "EN>ID", "ID>EN", "ID>ID")
 _NEGATIVE_STRATA = (
@@ -259,17 +268,44 @@ def test_two_more_golden_corrections_carry_adjudication(manifest: dict) -> None:
     }, origins
 
 
-def test_the_two_xfail_ref_names_exist_in_the_golden_test_file(manifest: dict) -> None:
+def test_the_xfail_and_cured_ref_names_exist_and_carry_the_right_marker(manifest: dict) -> None:
+    """One name per state, and the STATE is asserted, not just the name.
+
+    Before the provenance-fixture PR both golden references were `xfail_ref`.
+    bs-17806bb4 is now CURED — its test passes because the fixture declares
+    real provenance — so it moved to `cured_ref`, and this test is the
+    tripwire that notices if anyone puts the marker back or lets the other
+    one quietly become a pass.
+    """
     xfail_refs = {c["xfail_ref"] for c in manifest["cases"] if c.get("xfail_ref")}
-    assert xfail_refs == {
-        "test_a_question_naming_no_identifier_is_still_language_blind",
-        "test_one_generic_word_should_not_be_evidence",
-    }, xfail_refs
+    cured_refs = {c["cured_ref"] for c in manifest["cases"] if c.get("cured_ref")}
+    assert xfail_refs == {"test_one_generic_word_should_not_be_evidence"}, xfail_refs
+    assert cured_refs == {
+        "test_a_question_naming_no_identifier_is_still_language_blind"
+    }, cured_refs
+    assert not (xfail_refs & cured_refs), "a case cannot be both xfail and cured"
 
     tree = ast.parse(_GOLDEN_TEST_PATH.read_text(encoding="utf-8"))
-    defined_names = {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+    functions = {
+        node.name: node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    }
+    for ref in xfail_refs | cured_refs:
+        assert ref in functions, f"{ref!r} not found in {_GOLDEN_TEST_PATH}"
+
+    def _is_xfail(node: ast.FunctionDef) -> bool:
+        for decorator in node.decorator_list:
+            for sub in ast.walk(decorator):
+                if isinstance(sub, ast.Attribute) and sub.attr == "xfail":
+                    return True
+        return False
+
     for ref in xfail_refs:
-        assert ref in defined_names, f"{ref!r} not found in {_GOLDEN_TEST_PATH}"
+        assert _is_xfail(functions[ref]), f"{ref!r} is declared xfail_ref but carries no xfail marker"
+    for ref in cured_refs:
+        assert not _is_xfail(functions[ref]), (
+            f"{ref!r} is declared CURED but still carries an xfail marker — "
+            "either the cure was reverted or the manifest is lying"
+        )
 
 
 class TestLabelsNeverSelectInputs:

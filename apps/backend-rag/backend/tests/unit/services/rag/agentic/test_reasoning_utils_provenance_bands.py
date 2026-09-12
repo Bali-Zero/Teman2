@@ -484,6 +484,76 @@ class TestSupportIsFailClosedOnlyInBothDirections:
             sources, self._CONTEXT, self._QUERY, support=verdict
         ) < 0.15
 
+    def test_supported_is_worth_nothing_MID_BAND_too(self) -> None:
+        """The gate finding this test exists for (#6304, cured in the
+        provenance-fixture PR): the two parametrized tests above are
+        SATURATED. Measured with the raise rule temporarily reintroduced,
+        their inputs score 0.7500 either way — the query shares tokens with
+        the context, so the lexical corroboration has already carried the band
+        to the ceiling and one more step cannot move it. They document the
+        rule without defending it.
+
+        This case holds the band strictly BELOW the ceiling: the SAME declared
+        dense source (cosine 0.40 -> MODERATE, one band below STRONG) with an
+        English query that shares NO token with the Indonesian context, so no
+        lexical step lifts it. Measured: 0.5500 with silence and 0.5500 with
+        SUPPORTED on the shipped engine; 0.5500 vs 0.7500 the moment a
+        one-step raise is reintroduced. That difference is this test's guilt.
+        """
+        mid_band_context = [
+            "Pendirian PT PMA — termasuk akta notaris, NPWP dan NIB. Harga: IDR 20.000.000"
+        ]
+        not_consulted = calculate_evidence_score(
+            self._DECLARED, mid_band_context, self._CROSS_LANGUAGE_QUERY
+        )
+        supported = calculate_evidence_score(
+            self._DECLARED,
+            mid_band_context,
+            self._CROSS_LANGUAGE_QUERY,
+            support=SupportVerdict.SUPPORTED,
+        )
+        assert supported == not_consulted, (
+            "SUPPORTED lifted a MID-BAND score — the fail-closed rule (RULED "
+            f"I30) is broken: silence scored {not_consulted}, SUPPORTED "
+            f"scored {supported}"
+        )
+        # And the band really is mid: there IS a step above it to be lifted
+        # into, which is what makes the equality above meaningful.
+        assert 0.15 <= not_consulted < 0.75, (
+            "this fixture stopped being mid-band — re-measure before trusting "
+            f"the equality above (got {not_consulted})"
+        )
+
+    def test_supported_is_worth_nothing_MID_BAND_ON_THE_LEGACY_PATH_too(self) -> None:
+        """F1b — the gap the Codex seat found in F1's own cure (#6326 council,
+        RULING I35). The mid-band case above defends the DECLARED path only.
+        Measured: with a raise applied ONLY to non-declared sources
+        (`elif support is SUPPORTED and not declared and semantic_relevance > 0`)
+        the whole suite stayed green — 206 passed, 1 xfailed, nothing red — so
+        a future edit lifting a LEGACY band on a SUPPORTED verdict would have
+        shipped unnoticed.
+
+        This case is the legacy mirror: a bare-float source (no score_kind, the
+        shape every pre-B1.1 fixture has) against a query sharing ONE token
+        with the context, which lands at 0.3000 — two bands below the 0.8000
+        ceiling the saturated fixtures sit at. Under that legacy-only raise it
+        reads 0.6000 with SUPPORTED against 0.3000 with silence.
+        """
+        legacy_source = [{"score": 0.72}]
+        one_token_query = "NIB timeline for foreign investors"
+        not_consulted = calculate_evidence_score(legacy_source, self._CONTEXT, one_token_query)
+        supported = calculate_evidence_score(
+            legacy_source, self._CONTEXT, one_token_query, support=SupportVerdict.SUPPORTED
+        )
+        assert supported == not_consulted, (
+            "SUPPORTED lifted a MID-BAND score on the LEGACY path — RULING I30 is "
+            f"fail-closed on BOTH paths: silence {not_consulted}, SUPPORTED {supported}"
+        )
+        assert 0.15 <= not_consulted < 0.8, (
+            "this legacy fixture stopped being mid-band (0.8 is the ceiling these "
+            f"fixtures saturate at) — re-measure before trusting the equality (got {not_consulted})"
+        )
+
     def test_supported_cannot_rescue_the_declared_residual(self) -> None:
         """The concrete case the rule was ruled on: `bs-17806bb4`'s shape — an
         English question naming no identifier, Indonesian context that DOES
