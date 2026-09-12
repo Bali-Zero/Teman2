@@ -1,0 +1,159 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19p-w3-5bf0fbaa/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: R19P-W3
+    role: build
+    seat: Claude Opus 5 (1M) — Dux of window r19p-w3, implements directly
+  - lane: R19P-W3-review
+    role: review
+    seat: none available — the codex MCP server (plugin:second-opinion:codex) failed to connect this session (CONNECTION_CLOSED); the adversarial pass was run by this seat against the data contract instead, and every disagreement is recorded under dissent.
+pii_scan: clean
+notes_on_pii: >-
+  Every name, company, reference and figure in the code, the tests and the two screenshots is
+  synthetic (Alex Nusantara, PT Contoh Nusantara, Second Home Visa renewal, BZ-INV-2026-00255,
+  ref 142/98/77). No client record was read, and the local render was fed by Playwright route
+  interception, never by a real portal API.
+decisions:
+  - id: D1
+    decision: >-
+      The mock's "Deadline · Progress · Ref" meta row is rendered as "Ref" + "Type" only.
+      DashboardSummaryAction carries exactly {id, title, type, pending_from_client, status}
+      (apps/mouth/src/lib/api/portal/portal.types.ts:575-581, built by
+      apps/backend-rag/backend/app/routers/portal_dashboard.py::_fetch_open_actions) — there is no
+      progress, no per-matter deadline and no client reference on this payload. Pairing the
+      account-level upcoming_deadlines with the leading matter would have invented an association,
+      so the two absent fields were dropped, per the mission's drop-and-record rule.
+  - id: D2
+    decision: >-
+      The outlined "Open matter" sibling "Upload document" button is omitted: the dashboard has no
+      upload route or handler in scope, and adding one would be a behavioural change.
+  - id: D3
+    decision: >-
+      The status pills are a page-local StatePill (four tones: ok / ours / you / wait) rather than
+      the shared StatusBadge. StatusBadge belongs to window W2 and is being rewritten in parallel;
+      importing it here would couple this PR to another window's in-flight variant map. The pill is
+      the concept's vocabulary expressed with existing tokens only — no new token, no shared file.
+  - id: D4
+    decision: >-
+      The masthead reads "Welcome back." without a first name. The page has no user name in scope,
+      and the only way to get one is a profile hook the acceptance forbids (A1, no new data hook).
+      Recorded as a leftover for the window that owns the header.
+  - id: D5
+    decision: >-
+      The deadlines list, its "Export iCal" link and the unread-messages count — the other two V2
+      hero cards — survive as two quiet hairline blocks under the matter index instead of being
+      deleted. The concept only prescribes what the hero BECOMES; deleting the iCal consumer and the
+      summary.unread_messages read would have been a behavioural change, not a restyle.
+  - id: D6
+    decision: >-
+      The serif is applied with an inline style ({fontFamily: "var(--font-serif)", fontWeight: 450})
+      and not the Tailwind class font-[var(--font-serif)]: under Tailwind v4 a bare arbitrary
+      font-[...] is ambiguous between family and weight, and the inline form is the shape the
+      existing masthead test already asserts.
+receipts:
+  - claim: The worktree is the broker's, on the branch the broker named; the main checkout was never written.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id r19p-w3 ; git -C <wt> branch --show-current
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-r19p-w3 ; branch agent/air-m5/mouth/r19p-w3"
+    exit: 0
+    ts: "2026-09-12T18:45:00Z"
+    seat: Claude Opus 5 (1M)
+  - claim: A1 — the change set is exactly the four files of the perimeter (two sources, two sibling tests), +113 net lines.
+    cmd: git -C <wt> status --porcelain ; git -C <wt> diff --stat
+    result: "4 files modified — page.tsx, page.test.tsx, _components/TimelineItem.tsx, _components/TimelineItem.test.tsx ; 564 insertions, 451 deletions (+113 net). pnpm-workspace.yaml had been touched by a failed `pnpm -F mouth typecheck` (allowBuilds prompt line) and was restored before the commit."
+    exit: 0
+    ts: "2026-09-12T19:30:00Z"
+    seat: Claude Opus 5 (1M)
+  - claim: A1 — no new data hook; the hook-call count in page.tsx is identical to origin/main.
+    cmd: git -C <wt> show origin/main:<page.tsx> | grep -c "useEffect\|use[A-Z][A-Za-z]*(" ; grep -c same <wt>/<page.tsx>
+    result: "origin/main 7 ; worktree 7. The imports from @/hooks are the same three (usePortalDashboard, usePortalDashboardSummary, usePortalTimeline)."
+    exit: 0
+    ts: "2026-09-12T19:31:00Z"
+    seat: Claude Opus 5 (1M)
+  - claim: A2 — every navigation target present on origin/main is still present; one link was added to an existing route.
+    cmd: grep -oE '"/portal/[a-z/]*"|/portal/matters/\$\{id\}|"/api/portal/deadlines/ical"' on both revisions of page.tsx and TimelineItem.tsx
+    result: "origin/main page.tsx — /api/portal/deadlines/ical, /portal/companies, /portal/messages, /portal/process, /portal/taxes, /portal/visa, /portal/matters/${id}. Worktree — the same seven PLUS /portal/vault (the 'Vault' link of the Recent activity head). TimelineItem — /portal/chat on both. action.href is still the row's href, unchanged."
+    exit: 0
+    ts: "2026-09-12T19:32:00Z"
+    seat: Claude Opus 5 (1M)
+  - claim: A3 — the old identity is gone and nothing red was written.
+    cmd: grep -c "crystal-stat-card" ; grep -c "bg-[color-mix(in_srgb,var(--state-danger)" ; grep -Eic red-hex patterns
+    result: "crystal-stat-card 0 in page.tsx and 0 in TimelineItem.tsx (5 and 1 on origin/main) ; the danger color-mix fill 0 ; no hex literal of any kind in either file — every colour is a var() token."
+    exit: 0
+    ts: "2026-09-12T19:33:00Z"
+    seat: Claude Opus 5 (1M)
+  - claim: A4 — both sibling suites are green after the selector rewrite.
+    cmd: cd apps/mouth && ./node_modules/.bin/vitest --run --testTimeout=60000 "src/app/portal/(authenticated)/page.test.tsx" "src/app/portal/(authenticated)/_components/TimelineItem.test.tsx"
+    result: "Test Files 2 passed (2) ; Tests 23 passed (23) ; duration 53.34s. Before the test rewrite the same command reported 11 failed / 9 passed — every failure a changed selector, text or class, none a data-flow break."
+    exit: 0
+    ts: "2026-09-12T19:23:00Z"
+    seat: Claude Opus 5 (1M)
+  - claim: A4 — typecheck green on the whole mouth project, after the test edits.
+    cmd: cd apps/mouth && ../../node_modules/.bin/tsc --noEmit
+    result: "TSC_EXIT=0, no diagnostics. (pnpm -F mouth typecheck cannot be used in a broker worktree — its dep-status check re-runs pnpm install and fails on ERR_PNPM_IGNORED_BUILDS; the binary is invoked directly instead.)"
+    exit: 0
+    ts: "2026-09-12T19:37:00Z"
+    seat: Claude Opus 5 (1M)
+  - claim: A4 — eslint reports 0 errors on the four files; the 4 warnings are the pre-existing window.location.href advisory the page already carried.
+    cmd: cd apps/mouth && ./node_modules/.bin/eslint <the four files>
+    result: "6 problems (0 errors, 6 warnings) — 2 of them 'File ignored because of a matching ignore pattern' for the two test files, 4 the @next/next/no-location-assign-relative-destination advisory. The count of window.location.href call sites is unchanged vs origin/main (4 on the page: process chip, messages chip, action.href, hero unread row — the last replaces the deleted hero 'Open →')."
+    exit: 0
+    ts: "2026-09-12T19:26:00Z"
+    seat: Claude Opus 5 (1M)
+  - claim: A5 — /portal renders the concept-F dashboard locally at 1440 and 390, with the portal APIs route-intercepted.
+    cmd: next dev --webpack -p 3187 in the worktree ; node shot-w3.mjs (chromium channel chrome, bypassCSP, context.route on /.*\/api\/.*/ serving synthetic dashboard + summary + timeline + profile)
+    result: "portal-desktop-1440.png and portal-mobile-390.png written under /Users/balizero/Desktop/R19-PORTAL-RENDERS-20260912/build/r19p-w3/. The desktop capture shows the copper rule + serif 'Welcome back.', the next-move card ('YOUR NEXT MOVE · MATTER 01 OF 03', 'Second Home Visa renewal', the copper 'bank statement, last three months', Ref 142 / Type visa e33, the forest 'Open matter'), index rows 02 and 03 with their outlined pills, the deadlines block with Export iCal, the unread row, the recap, the three hairline status columns (NEEDS YOU / ACTIVE / IN PROGRESS), the two round chips, the three numbered actions with NEEDS YOU / SOON / PENDING, and the activity spine with copper dots on the two client uploads and hollow slate dots on the team events. Turbopack cannot serve a broker worktree (it refuses the node_modules symlink pointing outside the worktree root), and webpack dev mode needs bypassCSP because the app's own CSP forbids unsafe-eval."
+    exit: 0
+    ts: "2026-09-12T19:43:00Z"
+    seat: Claude Opus 5 (1M)
+dissent:
+  - seat: Claude Opus 5 (1M), adversarial pass against the window brief
+    objection: >-
+      The brief's section 2 asks the next-move card for "the existing next_step sentence", the first
+      pending_docs[0], a Deadline, a Progress percentage and a Ref, and the index rows for a 72px
+      progress rule. The dashboard summary does not carry any of those fields — next_step,
+      pending_docs, progress and next_deadline live on PortalMatter / PortalMatterDetail, which is
+      the MATTER page's payload, not the dashboard's.
+    status: CONFIRMED
+    cure: >-
+      Verified on disk (portal.types.ts:575-581 vs 607-616) and against the producing SQL
+      (_fetch_open_actions). The card renders what exists — title, a status sentence derived from
+      the practice status code, pending_from_client in copper, Ref and Type — and the progress rule
+      and deadline are dropped, recorded as leftovers rather than invented.
+  - seat: Claude Opus 5 (1M), adversarial pass against the acceptance
+    objection: >-
+      A1 asks for "≤ 3 files"; the diff has 4.
+    status: CONFIRMED
+    cure: >-
+      The fourth file is the second sibling TEST, which the owned perimeter explicitly allows "where
+      a selector/text changed" — and every selector in both suites changed (the status card is no
+      longer a filled button, the timeline dots replaced the icon chips, the masthead copy changed).
+      Sources touched: 2. Tests touched: 2. No file outside the perimeter is in the diff.
+  - seat: Claude Opus 5 (1M), adversarial pass against the concept
+    objection: >-
+      The four colour meanings are written with the existing --state-success / --state-info tokens,
+      which today resolve to a green (#147a3a) and a blue (#1d4ed8), not to concept-F's forest and
+      slate.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured here, by design: the token VALUES are the token window's perimeter (concept-F build
+      order step 1), and globals.css is off-limits to this window. Writing the meanings against the
+      semantic tokens is what makes that later remap land on this page for free; writing the hexes
+      would have made it permanent. Recorded as a leftover.
+  - seat: Claude Opus 5 (1M), on the local render
+    objection: >-
+      The first screenshot attempt showed only "Loading...", which could have meant the restyled page
+      does not mount.
+    status: RETRACTED
+    cure: >-
+      The cause was the dev harness, not the page: webpack dev mode evaluates its HMR bundle with
+      eval, which the app's own CSP forbids, so React never booted. With bypassCSP the same build
+      renders the full dashboard — the capture above.
+leftovers:
+  - The next-move card has no Deadline, no Progress bar and no client reference, and the index rows have no 72px progress rule — DashboardSummaryAction carries none of those fields. Giving the dashboard a per-matter progress/deadline is an API change, i.e. another mission.
+  - No "Upload document" secondary button — the dashboard owns no upload route or handler.
+  - The masthead says "Welcome back." with no first name; the name would need a profile hook the acceptance forbids. The header window owns the greeting that already renders "Good morning, Alex".
+  - The status pills are a page-local StatePill, not the shared StatusBadge that W2 is rewriting; the two vocabularies should be unified once W2 lands.
+  - --state-success / --state-info still resolve to green/blue until the token window remaps them to forest/slate; the page is written against the tokens, not the values.
+  - The loading skeleton still paints with --glass-rim (the old identity's rim token) and PortalCardSkeleton, both outside this window's perimeter.
+  - Fraunces/Manrope are not wired yet: the serif renders as whatever --font-serif is (Cormorant today); the font swap is the token/font window's.
