@@ -23,8 +23,6 @@ export interface UserProfile {
   team: string;
   avatar?: string;
   isOnline: boolean;
-  clockedInAt?: string;
-  hoursToday?: string;
 }
 
 export interface BreadcrumbItem {

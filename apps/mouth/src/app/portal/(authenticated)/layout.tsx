@@ -301,7 +301,6 @@ export default function PortalLayout({
               ...user,
               role: isPartnerPortal ? "partner" : "client",
               team: isPartnerPortal ? "Partner Portal" : "Client Portal",
-              isOnline: true,
             }}
             navigationConfig={
               isPartnerPortal ? partnerPortalNavigation : portalNavigation
@@ -333,7 +332,6 @@ export default function PortalLayout({
                   ...user,
                   role: isPartnerPortal ? "partner" : "client",
                   team: isPartnerPortal ? "Partner Portal" : "Client Portal",
-                  isOnline: true,
                 }}
                 navigationConfig={
                   isPartnerPortal ? partnerPortalNavigation : portalNavigation
