@@ -333,14 +333,12 @@ export default function NewPracticePage() {
     e.preventDefault();
     setFieldErrors({});
 
-    if (!selectedServiceCode) {
-      setFieldErrors({ service: "Select a service" });
-      return;
-    }
-
+    // Service is optional at Inquiry (Ari, 2026-09-11): with no selection the
+    // backend opens the process against the `open_inquiry` placeholder and
+    // the team picks the real service before Waiting Documents.
     const result = createPracticeSchema.safeParse({
       client_id: formData.client_id,
-      practice_type_code: selectedServiceCode,
+      practice_type_code: selectedServiceCode || undefined,
       notes: formData.title,
       family_member_id: formData.family_member_id
         ? Number(formData.family_member_id)
@@ -376,11 +374,12 @@ export default function NewPracticePage() {
 
       // Duplicate check — may fail with 403 if RBAC denies access (non-admin
       // creating process for a client assigned to someone else). Skip check
-      // on failure rather than blocking creation entirely.
+      // on failure rather than blocking creation entirely. An open inquiry
+      // (no service yet) has nothing to collide with, so it is skipped.
       try {
-        const existingPractices = await api.crm.getClientPractices(
-          result.data.client_id,
-        );
+        const existingPractices = result.data.practice_type_code
+          ? await api.crm.getClientPractices(result.data.client_id)
+          : [];
         // A "duplicate" is the same practice_type AND the same family_member
         // target — one investor KITAS for the sponsor plus three dependent
         // KITAS for Violet/River/Tessa are four distinct processes, not four
@@ -426,7 +425,9 @@ export default function NewPracticePage() {
 
       const backendData = {
         client_id: result.data.client_id,
-        practice_type_code: result.data.practice_type_code,
+        ...(result.data.practice_type_code
+          ? { practice_type_code: result.data.practice_type_code }
+          : {}),
         status: "inquiry",
         priority: formData.priority,
         notes: result.data.notes,
@@ -475,7 +476,7 @@ export default function NewPracticePage() {
       const caseId = createdPractice?.id || 0;
       casesMetrics.trackCaseCreation(
         caseId,
-        result.data.practice_type_code,
+        result.data.practice_type_code ?? "open_inquiry",
         result.data.client_id,
         user.email,
       );
@@ -483,7 +484,9 @@ export default function NewPracticePage() {
 
       toast.success(
         "Process Created",
-        `${selectedService?.name || "Process"} created successfully.`,
+        selectedService
+          ? `${selectedService.name} created successfully.`
+          : "Open inquiry created — pick the service before Waiting Documents.",
       );
       if (preselectedClientId) {
         await invalidatePreselectedClient();
@@ -666,7 +669,10 @@ export default function NewPracticePage() {
           {/* Service Selection — 2 levels */}
           <div className="space-y-4">
             <label className={labelClass}>
-              Service <span className="text-[var(--state-danger)]">*</span>
+              Service{" "}
+              <span className="text-[var(--foreground-muted)] font-normal">
+                (optional at Inquiry — required before Waiting Documents)
+              </span>
             </label>
             {catalogLoading ? (
               <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] py-2">
@@ -748,9 +754,12 @@ export default function NewPracticePage() {
               </div>
             )}
 
-            {fieldErrors.service && (
-              <p className="text-xs text-[var(--state-danger)]">
-                {fieldErrors.service}
+            {!catalogLoading && !selectedServiceCode && (
+              <p className="text-xs text-[var(--foreground-muted)]">
+                No service selected: the process opens as an{" "}
+                <span className="font-medium">open inquiry</span>. The service
+                must be chosen on the process page before it can move to Waiting
+                Documents.
               </p>
             )}
             {fieldErrors.practice_type_code && (

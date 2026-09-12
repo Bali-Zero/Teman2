@@ -1,0 +1,65 @@
+{
+  "s1": {
+    "band": "strong_fit",
+    "productText": "E33",
+    "priceInfo": {
+      "text": "35.000.000 IDR",
+      "fontFamily": "cormorant, \"cormorant Fallback\", ui-serif, Georgia, Cambria, \"Times New Roman\", serif",
+      "fontVariantNumeric": "tabular-nums"
+    },
+    "cormorantLoaded": true
+  },
+  "s2": {
+    "band": "strong_fit",
+    "productText": "E33E",
+    "priceInfo": {
+      "text": "45.000.000 IDR",
+      "fontFamily": "cormorant, \"cormorant Fallback\", ui-serif, Georgia, Cambria, \"Times New Roman\", serif",
+      "fontVariantNumeric": "tabular-nums"
+    },
+    "cormorantLoaded": true
+  },
+  "s3a": {
+    "band": "strong_fit",
+    "productText": "E33F",
+    "priceInfo": {
+      "text": "14.000.000 IDR",
+      "fontFamily": "cormorant, \"cormorant Fallback\", ui-serif, Georgia, Cambria, \"Times New Roman\", serif",
+      "fontVariantNumeric": "tabular-nums"
+    },
+    "cormorantLoaded": true
+  },
+  "s3b": {
+    "band": "strong_fit",
+    "productText": "E33F",
+    "priceInfo": {
+      "text": "16.000.000 IDR",
+      "fontFamily": "cormorant, \"cormorant Fallback\", ui-serif, Georgia, Cambria, \"Times New Roman\", serif",
+      "fontVariantNumeric": "tabular-nums"
+    },
+    "cormorantLoaded": true
+  },
+  "s4": {
+    "band": "edge_case",
+    "productText": null,
+    "priceInfo": null,
+    "cormorantLoaded": true
+  },
+  "s1_extras": {
+    "togglePrice": {
+      "rendered": false
+    },
+    "printPriceInfo": {
+      "fontVariantNumeric": "tabular-nums"
+    },
+    "custodyVisibleInPrint": {
+      "present": true,
+      "display": "grid",
+      "visibility": "visible",
+      "hasRects": true
+    },
+    "saveBarVisible": true,
+    "roundTripBand": "strong_fit",
+    "roundTripMatches": true
+  }
+}

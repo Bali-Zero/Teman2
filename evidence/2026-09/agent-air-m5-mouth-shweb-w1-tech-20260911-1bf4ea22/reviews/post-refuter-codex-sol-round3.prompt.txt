@@ -1,0 +1,24 @@
+This is ROUND 3 (the last; ordered by the imperator after a round-2 rework). You are the POST refuter (Codex Sol, read-only, cross-family) for mission SHWEB-20260911 / W1-SH-TECH, colour BLUE, on PR #6243, HEAD 416e4e09faa5bd562f3cd93867c6f29ed7da9e72 (REFROZEN — it will not move until the gate verdict), base ea50eb262f9ed96ce070cb407b55202002b0dae8. You are outside the contribution chain (patch author: Astra; adopter/Dux: Claude). Default to defective. Do NOT edit anything.
+
+The current working directory is the branch worktree at that HEAD. Judge the committed range `git diff ea50eb262f..HEAD` against:
+- evidence/2026-09/agent-air-m5-mouth-shweb-w1-tech-20260911-1bf4ea22/brief.yml (scope, constraints, declared deltas D1/D2/D3/D4/D5, acceptance)
+- evidence/2026-09/agent-air-m5-mouth-shweb-w1-tech-20260911-1bf4ea22/contract-lock.json (invariantsAtHead, expectedGateOutcomeAtHead, preReview dispositions)
+- the PRE-review you (Codex Sol) gave before BUILD: evidence/.../reviews/pre-review-codex-sol.txt — check its CONDITIONS were actually met, not just claimed.
+
+Find, with evidence (file:line or command + output):
+1. Any change outside the declared scope/deltas, or a delta larger than declared (D1: names/docstring/comment only; D2: whitespace only; D3: frontmatter + appended section, 0 body lines removed).
+2. Any correctness defect in apps/mouth/scripts/generate-llms-full.ts or apps/mouth/src/lib/llms-article-exports.test.ts that the brief's probes would miss (e.g. freshness ordering, canonical detection, ID export content, KBLI skipped, a CI environment where the export test can't resolve tsx or times out at 15 s).
+3. Whether the renamed tests in scripts/ci/test_npm_audit_gate.py still say something false, and whether any claim in research/secondhome/2026-09-11-f7-reverification.md's new "Adversarial review" section misstates what the PRE-review seats actually found (compare with evidence/.../reviews/*.txt).
+4. Any claim in the brief/contract-lock/evidence logs that the logs in the evidence directory do not support (e.g. counts, exit codes, test names).
+5. Anything that would make the Vercel production build (`npm run build` in apps/mouth, see apps/mouth/vercel.json) fail or regress that local vitest cannot show.
+
+Output (plain text):
+VERDICT: PASS | PASS-WITH-CONDITIONS | REWORK
+FINDINGS: numbered, `[BLOCKER|MAJOR|MINOR] claim — evidence — required action`
+UNVERIFIED: what you could not check and why
+
+ROUND 3 specifics. Your round-2 verdict (REWORK on a3e1ee39bd) and the Dux's dispositions are committed:
+- evidence/.../reviews/post-refuter-codex-sol-round2.txt
+- evidence/.../contract-lock.json -> postRefuterRound2.dispositions (F1-F5 accepted) and headFreezes
+New since round 2: 40646c54be (D5: apps/mouth/scripts/generate-llms-full.ts FULL_ONLY guard; apps/mouth/src/lib/llms-article-exports.test.ts it.each on inherited FULL_ONLY 0/1, six canonical articles, exact freshness block, direct ID asserts) and 416e4e09fa (evidence only: rework-round2-proofs.txt, regenerated negative-old-build-flag.txt, preview-verification.md §Round 2, preview-browser-toggle-out.json, lock/brief updates).
+Check specifically: (i) `git diff --check ea50eb262f..HEAD` exits 0; (ii) `git diff --name-only 40646c54be..HEAD` touches only evidence/**, so the Vercel preview dpl_Dxv7wxRwHBVgLJET6V1vjWA7Tawk of 40646c54be is this head's product tree; (iii) D5 is exactly as declared in brief.yml and invariant 6, and generate-llms-full.ts differs from the patch post-image only by the guard (`git diff 08a8905f7a..HEAD -- apps/mouth/scripts/generate-llms-full.ts`); (iv) the test really fails for the three guilt mutants recorded in rework-round2-proofs.txt (reason about the assertions; you may not run vitest in a read-only sandbox — say so under UNVERIFIED if you cannot) and has no new false-green path (e.g. toContain on a block that could match stale text, date/timezone dependence of the freshness dates, readdir order); (v) each round-2 disposition is satisfied by committed files (`git show HEAD:<path>`); (vi) counts in brief.yml size_exception match `git diff --numstat ea50eb262f..HEAD`; (vii) any NEW defect. Do not re-raise items already disposed in rounds 1-2 unless the committed files contradict the disposition. Evaluate the committed tree only.
