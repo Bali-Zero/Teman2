@@ -1,0 +1,65 @@
+gear: 2
+task_id: voa-policy-scope-rollback-canary
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/voa-policy-scope-rollback-canary
+gate_class: opus
+l_level: L2
+# Floor from this PR's changed-file set: 1 (tests only, +149). Gear 2 DECLARED
+# (Imperator decision #45): this is the probe a BLOCK gate of the same day
+# (gate-6287d, mutation (c)) found missing, and it binds the shared
+# visa_engine mechanism every future retention-scope migration inherits.
+objective: >-
+  The fourth row parked in the 313 lane's ledger-rows-held.md, discharged:
+  a text-only canary that makes gate-6287d's mutation (c) red. On the
+  append-only `visa_decision_retention_policies`, a rollback that rebuilds
+  the `policy_scope` CHECK must narrow it ONLY when no row carries the scope
+  that migration added, else leave it widened -- the shape 285 and 304 have,
+  and the shape the gate was able to smuggle into 313's rollback without any
+  test noticing.
+scope:
+  - apps/backend-rag/backend/tests/db/test_policy_scope_rollback_guard.py — new; every migrations_v2/*.sql whose rollback rebuilds the CHECK.
+  - apps/backend-rag/backend/tests/db/test_migration_313_garuda_practice_artifacts.py — one structural test; the file is otherwise byte-identical to main.
+constraints:
+  - Text only, no database, no fixture; runs in the unit shard in ~0.1 s.
+  - >-
+    The canary must not be green by finding nothing: the set of files it
+    finds is asserted to be a superset of {285, 304}.
+  - >-
+    Both SQL forms read the same: 285's inline ALTER and 304's
+    `EXECUTE 'a ' 'b '` with doubled quotes — adjacent literals are joined
+    BEFORE the doubling is undone (the reverse order hides 304's CHECK).
+  - No migration file is modified; the 313 suite's formatting is main's.
+acceptance:
+  - text: "A1: For each rollback that touches the CHECK, its one canonical rebuild sits inside the ELSE, at the guard's own depth, of `IF EXISTS (SELECT 1 FROM public.visa_decision_retention_policies WHERE policy_scope = '<X>') THEN`, X is the one scope the forward added, the rollback list is the forward list minus X, and nothing else touches the CHECK."
+    probe: backend/tests/db/test_policy_scope_rollback_guard.py::test_a_rollback_that_touches_the_check_has_the_full_safe_shape
+  - text: "A2: WHEN the canary scans migrations_v2 it SHALL find at least 285 and 304 among the files whose rollback touches the CHECK, so it cannot be green by finding nothing."
+    probe: backend/tests/db/test_policy_scope_rollback_guard.py::test_the_canary_finds_the_rebuilders_it_was_written_against
+  - text: "A3: WHEN 313's rollback text is read it SHALL contain no DROP or ADD of the policy_scope CHECK, since 313 never widened it."
+    probe: backend/tests/db/test_migration_313_garuda_practice_artifacts.py::test_the_rollback_never_touches_the_policy_scope_check
+  - text: "A4: WHEN gate-6287d's mutation (c) (285's narrowing pasted into 313's rollback) is applied the suite SHALL go red at both levels."
+    probe: guilt mutation (c) below
+limits:
+  - >-
+    The guard protects its OWN scope only: 285's rollback with
+    GARUDA_DOCUMENT rows and no GARUDA_MAGIC_LINK rows still narrows and
+    raises CheckViolationError. That is the shared mechanism's property (the
+    third row parked in the 313 lane), not any file's shape; this canary
+    asserts shape, not sufficiency.
+  - >-
+    Discovery is fail-closed for the shapes the scanner can read: any
+    `ADD [CONSTRAINT <name>] CHECK (... policy_scope ...)` under any name or
+    none, `IN` or `= ANY`, NOT VALID, and any DROP/VALIDATE/RENAME of the
+    canonical check,
+    put a file under the rule; only the one safe spelling gets it out. What
+    remains invisible is a shape `_TOUCH_RE` cannot match at all -- that is
+    the declared residual limit, and the superset assertion only catches a
+    refactor of the two known files, not a novel shape in a new one.
+  - >-
+    Sol O2 reopened all three O1 MAJORs; they were cured and NO third round
+    was run (Imperator decision #46, fix-of-a-fix depth 1: a third round on
+    a canary would be writing the canary's own spec).
+pii: none
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 2

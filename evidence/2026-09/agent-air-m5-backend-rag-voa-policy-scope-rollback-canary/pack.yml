@@ -1,0 +1,216 @@
+task_id: voa-policy-scope-rollback-canary
+gear: 2
+gate_class: opus
+brief_ref: evidence/brief.yml # the canonical staged layout CI lints against; the real file lives beside this pack
+date: 2026-09-12
+machine: air-m5 (M5)
+successor_of: >-
+  The fourth row parked in evidence/2026-09/agent-air-m5-backend-rag-voa-migration-313/ledger-rows-held.md
+  (gate-6287d's mutation (c) on PR #6287, 2026-09-12 12:46Z): "Nothing in
+  #6287's tests would notice if 313's rollback acquired 285's shape."
+  Discharged here. Imperator decisions #45 (gear 2, Sol lean, mutations in a
+  table) and #46/#46-bis (no third round; dollar-quoted bodies read rather
+  than declared blind).
+lanes:
+  - lane: canary-build
+    role: build
+    seat: claude-opus-5 (GARUDA VOA W3A Dux)
+    note: >-
+      GROUND: the rollback halves of 264/281/285/286/304/313 and the two
+      parked rows they belong to. BUILD: the canary, the 313 structural
+      test and every cure below. Authored this pack.
+  - lane: canary-refute
+    role: review
+    seat: codex-gpt-5.6-sol (read-only, outside the contribution chain)
+    note: >-
+      Two rounds, header verified on both logs: O1 BLOCK (3 MAJOR + the
+      requested (Q) table of future rollback shapes) -> O2 BLOCK (all three
+      REOPENED with concrete shapes, plus a NEW MAJOR on nesting). Both
+      rounds cured; no third round (decision #46). Static: the seat reads,
+      it does not execute pytest.
+seat_diversity: exempt
+seat_diversity_note: One build lane; the review seat is a different family (Sol). K3 not required at gear 2.
+council_run: journal.jsonl
+outcome: >-
+  Two levels, text only, no database, ~0.2 s in the unit shard. Level 1:
+  313's rollback must not touch the policy_scope CHECK -- the exact shape
+  gate-6287d smuggled in. Level 2, repo-wide: any migration whose rollback
+  touches that CHECK in any spelling must have exactly one rebuild in the
+  canonical form, inside the ELSE branch -- at the guard's own nesting
+  depth -- of `IF EXISTS (SELECT 1 FROM public.visa_decision_retention_policies
+  WHERE policy_scope = '<its own scope>') THEN`,
+  with the rollback list equal to the forward list minus that scope, no
+  touch in the THEN arm and none outside the guarded ELSE. The set of files
+  found must include 285 and 304, so the canary cannot be green by finding
+  nothing. The SQL is read by a scanner that drops comments outside
+  literals, undoes `''` inside them, joins adjacent literals and reads
+  dollar-quoted bodies recursively; an unterminated literal or body is a
+  hard error, not a guess.
+diff:
+  files: 5
+  net_lines: 593
+pii_scan: clean
+pii_scan_note: Tests and a pack; no client data, no identifiers, no credentials, no database.
+receipts:
+  - probe: A1-A3
+    claim: The canary, its superset assertion and the 313 structural test pass.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/db/test_policy_scope_rollback_guard.py
+      backend/tests/db/test_migration_313_garuda_practice_artifacts.py -p no:cacheprovider
+      -k "rollback_guard or never_touches or safe_shape or finds_the_rebuilders"
+      -- covering the brief's probes:
+      test_policy_scope_rollback_guard.py::test_a_rollback_that_touches_the_check_has_the_full_safe_shape (A1),
+      ::test_the_canary_finds_the_rebuilders_it_was_written_against (A2),
+      test_migration_313_garuda_practice_artifacts.py::test_the_rollback_never_touches_the_policy_scope_check (A3),
+      and the guilt mutation (c) below (A4)
+    result: "4 passed, 18 deselected in 3.10s (285, 304, the superset assertion, and 313's structural test)"
+    exit: 0
+    ts: "2026-09-12T18:55:40Z"
+    seat: claude-opus-5 (build)
+  - probe: scanner
+    claim: >-
+      Decision #46-bis's precondition, measured before committing: no half
+      of any migration file trips the scanner, and the two known rebuilders
+      keep the same number of CHECK touches raw and scanned -- i.e. reading
+      dollar-quoted bodies recursively neither hides nor invents a match.
+    cmd: >-
+      for every migrations_v2/*.sql: split_migration_sql() then _executable() on both halves;
+      and len(_TOUCH_RE.findall(raw)) vs len(_TOUCH_RE.findall(_executable(raw))) for 285 and 304
+    result: "files tripping the scanner: none (191 files); 285: raw=2 scanned=2; 304: raw=2 scanned=2"
+    exit: 0
+    ts: "2026-09-12T18:55:50Z"
+    seat: claude-opus-5 (build)
+  - probe: the rule the Imperator first proposed, measured and dropped
+    claim: >-
+      The blunt form of #46 -- red whenever a migration has a dollar-quote
+      opener and mentions policy_scope -- would be red on main today, on
+      the two files that have the SAFE shape among others.
+    cmd: 'for f in migrations_v2/*.sql: grep -qE ''\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$'' && grep -q policy_scope'
+    result: "8 files: 281, 284, 285, 286, 287, 289, 304, 313 — every migration here uses DO $tag$. Reported before touching; decision #46-bis replaced it with the recursive scanner."
+    exit: 0
+    ts: "2026-09-12T18:46:20Z"
+    seat: claude-opus-5 (build)
+  - probe: the risk that was real
+    claim: >-
+      Dollar-quoted bodies were never invisible; what could desynchronise
+      the literal state machine is a body whose apostrophes do not pair as
+      SQL literals do. Counted, so the cure is aimed at a measured thing.
+    cmd: "count apostrophes inside each $tag$...$tag$ body of every file mentioning policy_scope"
+    result: "7 bodies with an odd count: 281 $$ (11), 284 $func$ (55), 285 $garuda_285_widen_scope_check$ (13), 289 $guardN$ (11) and $guard2$ (3), 313 $func$ (15) and $garuda_313_runtime_grants$ (7). None of them touches the CHECK today; the recursive scanner removes the class."
+    exit: 0
+    ts: "2026-09-12T18:46:30Z"
+    seat: claude-opus-5 (build)
+guilt_mutations:
+  - target: 313's rollback — gate-6287d's mutation (c)
+    mutation: "285's unconditional DROP/ADD of the policy_scope CHECK pasted into 313's rollback."
+    observed: "RED at both levels: the 313 structural test and the repo-wide rule. 2 failed. Restored, md5 identical."
+    ts: "2026-09-12T18:17:10Z"
+  - target: 304's rollback — the guard's scope
+    mutation: "`WHERE policy_scope = 'GARUDA_DOCUMENT'` -> `'GARUDA_MAGIC_LINK'`."
+    observed: "RED: the rebuild is no longer inside a guard on its own scope. 1 failed. Restored."
+    ts: "2026-09-12T18:17:12Z"
+  - target: 304's rollback — the guard emptied
+    mutation: "`WHERE policy_scope = 'GARUDA_DOCUMENT'` -> `WHERE FALSE`."
+    observed: "RED. 1 failed. Restored."
+    ts: "2026-09-12T18:09:54Z"
+  - target: 304's rollback — the ALTER moved after END IF
+    mutation: "Guard kept, ELSE emptied to `NULL;`, the DROP/ADD pair moved after the END IF (unconditional)."
+    observed: "RED: the rebuild is outside every guarded ELSE. 1 failed. Restored."
+    ts: "2026-09-12T18:17:14Z"
+  - target: 304's rollback — another constraint name
+    mutation: "`ADD CONSTRAINT visa_decision_retention_policies_policy_scope_check` -> `ADD CONSTRAINT vdrp_scope_chk`."
+    observed: "RED: touched, with zero rebuilds in the one recognised safe spelling. 1 failed. Restored."
+    ts: "2026-09-12T18:17:15Z"
+  - target: 304's rollback — `= ANY` instead of `IN`
+    mutation: "`CHECK (policy_scope IN (...))` -> `CHECK (policy_scope = ANY (ARRAY[...]))`."
+    observed: "RED, same reason. 1 failed. Restored."
+    ts: "2026-09-12T18:17:16Z"
+  - target: 285's rollback — a decoy guard in a comment
+    mutation: "The whole guarded DO block replaced by a `/* IF EXISTS ... ELSE END IF */` comment and an unconditional DROP/ADD pair."
+    observed: "RED: the scanner drops the comment, so the rebuild has no guard at all. 1 failed. Restored."
+    ts: "2026-09-12T18:17:18Z"
+  - target: 285's rollback — an invented value in the rollback list
+    mutation: "`IN ('VISA_DECISION', 'GARUDA_CHECK', 'GARUDA_ORDER')` -> the same plus `'GARUDA_FUTURE'`."
+    observed: "RED: the rollback list is not the forward list minus the file's own scope. 1 failed. Restored."
+    ts: "2026-09-12T18:17:19Z"
+  - target: 304's rollback — a nested IF donating its ELSE (Sol O2's NEW MAJOR)
+    mutation: "The rebuild moved into the guard's THEN arm, wrapped in `IF true THEN <rebuild> ELSE NULL; END IF`, with the outer ELSE emptied."
+    observed: "RED: the walker resolves ELSE/END IF at the guard's own depth, so the nested arm cannot donate. 1 failed. Restored."
+    ts: "2026-09-12T18:33:49Z"
+  - target: 304's rollback — NOT VALID plus a later VALIDATE
+    mutation: "The canonical rebuild marked `NOT VALID`, with `VALIDATE CONSTRAINT ...` appended after the guarded block."
+    observed: "RED: a NOT VALID rebuild is not the canonical spelling, and the VALIDATE is a touch outside the guarded ELSE. 1 failed. Restored."
+    ts: "2026-09-12T18:33:51Z"
+  - target: 285's rollback — a second rebuild inside the same ELSE
+    mutation: "A second `ADD CONSTRAINT <canonical name> CHECK (policy_scope = ANY (ARRAY['VISA_DECISION']))` added inside the guarded ELSE."
+    observed: "RED: more statements touch the CHECK inside the ELSE than a DROP and an ADD. 1 failed. Restored."
+    ts: "2026-09-12T18:33:52Z"
+  - target: 285's rollback — an unterminated string literal
+    mutation: "`SELECT 'unterminated;` appended."
+    observed: "Collection ERROR, fail closed: the scanner refuses to guess which half of the text is executable. Restored."
+    ts: "2026-09-12T18:33:53Z"
+  - target: 304's rollback — a rebuild inside `EXECUTE $q$ ... $q$` under another name
+    mutation: "A `DO $extra$ ... EXECUTE $q$ALTER ... ADD CONSTRAINT vdrp_scope_chk2 CHECK (policy_scope IN ('VISA_DECISION'))$q$; ... $extra$` block appended."
+    observed: "RED: the recursive scanner reads the dollar-quoted body, so the touch is seen and is not the canonical spelling. 1 failed. Restored."
+    ts: "2026-09-12T18:56:13Z"
+  - target: 304 — an unterminated dollar-quoted body
+    mutation: "`DO $never$ BEGIN PERFORM 1; END;` with no closing tag."
+    observed: "Collection ERROR, fail closed: 'unterminated dollar-quoted body opened by ...'. Restored."
+    ts: "2026-09-12T18:56:45Z"
+  - target: a new file, probe 998 (gate-6363's condition 3)
+    mutation: "A migrations_v2/998_probe.sql whose rollback RENAMEs the canonical check to `vdrp_old` and then runs an unnamed `ADD CHECK (policy_scope IN ('VISA_DECISION'))`."
+    observed: "RED: both statements are touches and there is no canonical rebuild. 1 failed, 3 passed. The previous `_TOUCH_RE` did not see that rollback at all. Probe removed; the canary finds 285 and 304 only."
+    ts: "2026-09-12T20:27:33Z"
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      (O1, 3 MAJOR) The guard was tied to the ALTER by textual precedence
+      only; discovery by the exact safe spelling was green by omission for
+      a new shape; only whole-line `--` comments were removed, so a decoy in
+      a block or trailing comment satisfied both regexes. (O2) All three
+      REOPENED with concrete shapes, plus a NEW MAJOR: a nested IF in the
+      guard's THEN arm can donate its ELSE, so a rebuild executed precisely
+      while own-scope rows exist reads as guarded.
+    status: CONFIRMED
+    disposition: >-
+      All cured, each with a measured mutation: the ELSE and END IF are
+      found by walking the text with a balanced counter whose opener is
+      `IF <cond> THEN` (counting bare `IF` made `DROP CONSTRAINT IF EXISTS`
+      close the guard early -- measured red on both real files); discovery
+      is any touch of the CHECK in any spelling (after gate-6363, an unnamed
+      `ADD CHECK` and a RENAME of the check included), with only the canonical
+      DROP+ADD allowed inside the guarded ELSE and nothing outside it; the
+      scanner is quote-, comment- and dollar-quote-aware and fails closed on
+      an unterminated literal or body. No third round (decision #46).
+  - seat: claude-opus-5
+    objection: >-
+      (own, on Imperator decision #46's first form) Making the canary red
+      whenever a migration has a dollar-quote opener near `policy_scope`
+      would be red on main today.
+    status: CONFIRMED
+    disposition: >-
+      Measured and reported BEFORE touching the file: 8 of the migration
+      files trip it, including the two with the safe shape, because every
+      migration here uses `DO $tag$`; and the premise was wrong -- the
+      bodies were never invisible (raw = scanned = 2 on both). Decision
+      #46-bis replaced the rule with the recursive scanner, which closes the
+      risk that was real (7 bodies whose apostrophes do not pair as SQL
+      literals do).
+  - seat: claude-opus-5
+    objection: >-
+      (own, declared limit) The canary asserts SHAPE for the shapes its
+      matcher can read, not sufficiency.
+    status: CONFIRMED
+    disposition: >-
+      NOT cured, declared in the brief's `limits` and in the PR body. Two
+      parts: a rollback whose touch `_TOUCH_RE` cannot match at all is
+      invisible (the superset assertion catches a refactor of 285/304, not
+      a novel shape in a new file); and the guard protects its OWN scope
+      only -- 285's rollback with GARUDA_DOCUMENT rows and no
+      GARUDA_MAGIC_LINK rows still narrows and raises, which is the third
+      row parked in the 313 lane and a property of the shared mechanism.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 2
+appetite_exceeded: ""
