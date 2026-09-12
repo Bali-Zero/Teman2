@@ -1,4 +1,1498 @@
 {
   "schema_version": 1,
-  "cases": []
+  "supplement_for": "B2.1",
+  "note": "Supplement to the FROZEN manifest_mandatory.json (B1.3). Never pooled with the mandatory set by the harness (each is validated/reported independently); every case here carries a `set` field (B or C) so the two are never confused with each other or with the mandatory manifest.",
+  "sets": {
+    "B": {
+      "name": "ruling I26 mandatory distractor pairs",
+      "source": "evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json",
+      "source_sha256": "9d41ef142374408fe644001382882e40b05e73df08a3ee92c8a3fd0fb02401d0",
+      "pair_count": 4,
+      "case_count": 8,
+      "measures": "Whether the scorer is fooled by a plausible, on-topic amount/duration that belongs to the WRONG line item (basic-licence fee vs all-in price; drafting time vs total time; typical injected capital vs legal minimum; requirements listed elsewhere vs listed here) when the insufficient member's own text explicitly ANNOUNCES its insufficiency (e.g. 'is not stated here', 'the real checklist comes later').",
+      "does_not_measure": "The hard case where the wrong referent is left for the reader to notice unaided — that is Set C's job, not Set B's."
+    },
+    "C": {
+      "name": "D-SETC — hard case: entity present, referent wrong, no meta-commentary",
+      "source": "evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json",
+      "source_sha256": "a55aed9416c6e876efb999c0ad50948b6c805e41a6cfdd5b3f010416c4f25040",
+      "authored_by": "gemini-3.1-pro via agy --effort high, 2026-09-12T09:30Z, second reader (Codex recused: candidate (iii) is its own family); Dux-cured (two supporting_span elisions replaced with true verbatim substrings; one false Dux digit-search flag on two spelled-out durations reverted)",
+      "pair_count": 12,
+      "case_count": 24,
+      "measures": "Whether the scorer/support-signal is fooled by a confident, on-topic amount or duration that names the SAME entity as the question but answers a DIFFERENT question about it (a neighbouring fact, an indirect sufficiency claim, or an internal contradiction) — with NO announcement of insufficiency anywhere in the text. This is the hard case Set A (which deletes the trigger token) and Set B (whose negatives announce their own insufficiency) do not cover.",
+      "does_not_measure": "Cases where the wrong referent is signalled lexically (a negation, a hedge, an explicit 'not stated') — Set B already covers that; and it does not fix a threshold — (iii)/(ii) are measured on Set C BEFORE any threshold is set in B2.2, per the build spec."
+    }
+  },
+  "cases": [
+    {
+      "case_id": "sup-b-070e8c4c",
+      "pair_id": "fp-price",
+      "pair_type": "distractor",
+      "set": "B",
+      "query": "How much is a PT PMA company setup, all in?",
+      "query_lang": "EN",
+      "context": [
+        "The all-in cost for a full PT PMA company setup is IDR 32,000,000, covering notary, OSS registration and the licence package."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set B (ruling I26 mandatory distractors) — probe pair, not from the frozen inventory; provenance held identical across every Set B case so the only thing that varies between pair members is the wording, exactly as authored in fair_pairs_probe.json (original probe pair_id 'fp-price').",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "the all-in price of a PT PMA company setup",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B1.4 robustness probe (ruling I26 mandatory) — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json#fp-price-suf",
+      "supporting_span": "is IDR 32,000,000"
+    },
+    {
+      "case_id": "sup-b-3e6dec88",
+      "pair_id": "fp-price",
+      "pair_type": "distractor",
+      "set": "B",
+      "query": "How much is a PT PMA company setup, all in?",
+      "query_lang": "EN",
+      "context": [
+        "The government fee for the basic licence is IDR 2,000,000, but the all-in cost for a full PT PMA company setup depends on the consultant and is not stated here."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set B (ruling I26 mandatory distractors) — probe pair, not from the frozen inventory; provenance held identical across every Set B case so the only thing that varies between pair members is the wording, exactly as authored in fair_pairs_probe.json (original probe pair_id 'fp-price').",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "the all-in price of a PT PMA company setup",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B1.4 robustness probe (ruling I26 mandatory) — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json#fp-price-ins",
+      "missing_fact_explanation": "An amount is present, but it is the basic-licence government fee, not the all-in setup price the question asks for; the text says the all-in cost is not stated."
+    },
+    {
+      "case_id": "sup-b-19fb084e",
+      "pair_id": "fp-duration",
+      "pair_type": "distractor",
+      "set": "B",
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "Total waktu pendirian PT PMA adalah 4 sampai 6 minggu sejak akta ditandatangani."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set B (ruling I26 mandatory distractors) — probe pair, not from the frozen inventory; provenance held identical across every Set B case so the only thing that varies between pair members is the wording, exactly as authored in fair_pairs_probe.json (original probe pair_id 'fp-duration').",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "the total processing time to establish a PT PMA",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B1.4 robustness probe (ruling I26 mandatory) — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json#fp-duration-suf",
+      "supporting_span": "adalah 4 sampai 6 minggu"
+    },
+    {
+      "case_id": "sup-b-663e3636",
+      "pair_id": "fp-duration",
+      "pair_type": "distractor",
+      "set": "B",
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "Penyusunan draf akta notaris biasanya memakan waktu 3 sampai 4 hari, tetapi total waktu proses pendirian PT PMA tidak disebutkan di sini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set B (ruling I26 mandatory distractors) — probe pair, not from the frozen inventory; provenance held identical across every Set B case so the only thing that varies between pair members is the wording, exactly as authored in fair_pairs_probe.json (original probe pair_id 'fp-duration').",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "the total processing time to establish a PT PMA",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B1.4 robustness probe (ruling I26 mandatory) — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json#fp-duration-ins",
+      "missing_fact_explanation": "A duration is present, but it is the notarial-deed drafting time, not the total establishment time; the text says the total is not stated."
+    },
+    {
+      "case_id": "sup-b-49dc0bb7",
+      "pair_id": "fp-capital",
+      "pair_type": "distractor",
+      "set": "B",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "The minimum paid-up capital required for a PT PMA is IDR 10,000,000,000, and it must be deposited before the licence is issued."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set B (ruling I26 mandatory distractors) — probe pair, not from the frozen inventory; provenance held identical across every Set B case so the only thing that varies between pair members is the wording, exactly as authored in fair_pairs_probe.json (original probe pair_id 'fp-capital').",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "the legal minimum paid-up capital of a PT PMA",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B1.4 robustness probe (ruling I26 mandatory) — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json#fp-capital-suf",
+      "supporting_span": "minimum paid-up capital required for a PT PMA is IDR 10,000,000,000"
+    },
+    {
+      "case_id": "sup-b-f15dcd8f",
+      "pair_id": "fp-capital",
+      "pair_type": "distractor",
+      "set": "B",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "Foreign investors often inject up to IDR 10,000,000,000 in capital to fund operations, though the legal minimum paid-up capital required by BKPM is not detailed in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set B (ruling I26 mandatory distractors) — probe pair, not from the frozen inventory; provenance held identical across every Set B case so the only thing that varies between pair members is the wording, exactly as authored in fair_pairs_probe.json (original probe pair_id 'fp-capital').",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "the legal minimum paid-up capital of a PT PMA",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B1.4 robustness probe (ruling I26 mandatory) — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json#fp-capital-ins",
+      "missing_fact_explanation": "Both an amount and the word capital are present, but they describe what investors typically inject, not the legal minimum; the text says the legal minimum is not detailed."
+    },
+    {
+      "case_id": "sup-b-f8e97675",
+      "pair_id": "fp-req",
+      "pair_type": "distractor",
+      "set": "B",
+      "query": "Apa saja syarat untuk NIB di OSS?",
+      "query_lang": "ID",
+      "context": [
+        "Syarat NIB di OSS: akta pendirian yang sudah disahkan (SK Kemenkumham), NPWP perusahaan, kode KBLI yang dipilih, dan alamat usaha yang sesuai."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set B (ruling I26 mandatory distractors) — probe pair, not from the frozen inventory; provenance held identical across every Set B case so the only thing that varies between pair members is the wording, exactly as authored in fair_pairs_probe.json (original probe pair_id 'fp-req').",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "the checklist of requirements for an OSS NIB",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B1.4 robustness probe (ruling I26 mandatory) — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json#fp-req-suf",
+      "supporting_span": "akta pendirian yang sudah disahkan (SK Kemenkumham), NPWP perusahaan, kode KBLI yang dipilih, dan alamat usaha yang sesuai"
+    },
+    {
+      "case_id": "sup-b-054f5435",
+      "pair_id": "fp-req",
+      "pair_type": "distractor",
+      "set": "B",
+      "query": "Apa saja syarat untuk NIB di OSS?",
+      "query_lang": "ID",
+      "context": [
+        "Pada tahap awal ini Anda belum perlu menyerahkan kode KBLI maupun alamat usaha; daftar syarat NIB yang sebenarnya diberikan kemudian."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set B (ruling I26 mandatory distractors) — probe pair, not from the frozen inventory; provenance held identical across every Set B case so the only thing that varies between pair members is the wording, exactly as authored in fair_pairs_probe.json (original probe pair_id 'fp-req').",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "the checklist of requirements for an OSS NIB",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B1.4 robustness probe (ruling I26 mandatory) — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/fair_pairs_probe.json#fp-req-ins",
+      "missing_fact_explanation": "Two lexicon tokens (KBLI, alamat) are present but under a negation — the text says they are NOT needed yet and that the real checklist comes later."
+    },
+    {
+      "case_id": "sup-c-8421f943",
+      "pair_id": "cp-a1b2c3d4",
+      "pair_type": "neighbouring_fact",
+      "set": "C",
+      "query": "What is the statutory minimum paid-up capital required to register a PT PMA in Indonesia?",
+      "query_lang": "EN",
+      "context": [
+        "To comply with current investment regulations, the statutory minimum paid-up capital for a PT PMA is fixed at IDR 10,000,000,000. This amount must be formally declared in the deed of establishment."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The statutory minimum paid-up capital required for a PT PMA",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-a1b2c3d4:sufficient",
+      "supporting_span": "the statutory minimum paid-up capital for a PT PMA is fixed at IDR 10,000,000,000"
+    },
+    {
+      "case_id": "sup-c-50c08226",
+      "pair_id": "cp-a1b2c3d4",
+      "pair_type": "neighbouring_fact",
+      "set": "C",
+      "query": "What is the statutory minimum paid-up capital required to register a PT PMA in Indonesia?",
+      "query_lang": "EN",
+      "context": [
+        "To ensure operational stability during the first year, foreign founders typically choose to inject an initial working capital of IDR 10,000,000,000. This amount must be formally declared in the company's financial forecast."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The statutory minimum paid-up capital required for a PT PMA",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-a1b2c3d4:relevant_insufficient",
+      "missing_fact_explanation": "The context describes a typical initial working capital injection voluntarily chosen by founders, but fails to state the legal statutory minimum paid-up capital mandated by regulations.",
+      "distractor_note": "It states a plausible IDR 10 billion amount, but characterizes it as an operational choice rather than the statutory requirement."
+    },
+    {
+      "case_id": "sup-c-caa70e8b",
+      "pair_id": "cp-e5f6a7b8",
+      "pair_type": "neighbouring_fact",
+      "set": "C",
+      "query": "Berapa modal disetor minimum yang diwajibkan secara hukum untuk mendaftarkan PT PMA di Indonesia?",
+      "query_lang": "ID",
+      "context": [
+        "Untuk mematuhi peraturan investasi saat ini, modal disetor minimum secara hukum untuk PT PMA ditetapkan sebesar Rp 10.000.000.000. Jumlah ini harus dinyatakan secara resmi dalam akta pendirian."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Modal disetor minimum yang diwajibkan secara hukum untuk PT PMA",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-e5f6a7b8:sufficient",
+      "supporting_span": "modal disetor minimum secara hukum untuk PT PMA ditetapkan sebesar Rp 10.000.000.000"
+    },
+    {
+      "case_id": "sup-c-d4fff2f6",
+      "pair_id": "cp-e5f6a7b8",
+      "pair_type": "neighbouring_fact",
+      "set": "C",
+      "query": "Berapa modal disetor minimum yang diwajibkan secara hukum untuk mendaftarkan PT PMA di Indonesia?",
+      "query_lang": "ID",
+      "context": [
+        "Untuk memastikan stabilitas operasional selama tahun pertama, para pendiri asing biasanya memilih untuk menyuntikkan modal kerja awal sebesar Rp 10.000.000.000. Jumlah ini harus dinyatakan secara resmi dalam perkiraan keuangan perusahaan."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Modal disetor minimum yang diwajibkan secara hukum untuk PT PMA",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-e5f6a7b8:relevant_insufficient",
+      "missing_fact_explanation": "Konteks ini hanya menyebutkan modal kerja yang biasanya dipilih oleh para pendiri, bukan batas minimum yang diwajibkan oleh hukum.",
+      "distractor_note": "Teks ini menyertakan angka Rp 10 miliar yang masuk akal, tetapi menyatakan angka tersebut sebagai pilihan operasional alih-alih sebagai syarat wajib hukum."
+    },
+    {
+      "case_id": "sup-c-30545257",
+      "pair_id": "cp-c9d0e1f2",
+      "pair_type": "neighbouring_fact",
+      "set": "C",
+      "query": "How many working days does the entire PT PMA incorporation process take from start to finish?",
+      "query_lang": "EN",
+      "context": [
+        "Once the founder signs the initial draft documents, the entire PT PMA incorporation process takes 25 working days from start to finish. You can legally commence business operations immediately after this period."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The total end-to-end duration for PT PMA incorporation",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-c9d0e1f2:sufficient",
+      "supporting_span": "the entire PT PMA incorporation process takes 25 working days from start to finish"
+    },
+    {
+      "case_id": "sup-c-4fb0566b",
+      "pair_id": "cp-c9d0e1f2",
+      "pair_type": "neighbouring_fact",
+      "set": "C",
+      "query": "How many working days does the entire PT PMA incorporation process take from start to finish?",
+      "query_lang": "EN",
+      "context": [
+        "Once the founder signs the initial draft documents, the notary's deed drafting and the Ministry of Law approval phase takes 25 working days. You can proceed to the subsequent licensing steps immediately after this period."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The total end-to-end duration for PT PMA incorporation",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-c9d0e1f2:relevant_insufficient",
+      "missing_fact_explanation": "The text only specifies the duration for the notary and ministry approval phase, leaving the duration of the entire end-to-end process unknown.",
+      "distractor_note": "It offers a confident duration of 25 working days, but assigns it to only a subset of the incorporation process rather than the entirety."
+    },
+    {
+      "case_id": "sup-c-7b7c8b8c",
+      "pair_id": "cp-b3c4d5e6",
+      "pair_type": "neighbouring_fact",
+      "set": "C",
+      "query": "Berapa hari kerja yang dibutuhkan untuk seluruh proses pendirian PT PMA dari awal hingga selesai?",
+      "query_lang": "ID",
+      "context": [
+        "Setelah pendiri menandatangani draf dokumen awal, seluruh proses pendirian PT PMA membutuhkan waktu 25 hari kerja dari awal hingga selesai. Anda dapat secara sah memulai operasi bisnis segera setelah periode ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Total durasi waktu untuk seluruh proses pendirian PT PMA",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-b3c4d5e6:sufficient",
+      "supporting_span": "seluruh proses pendirian PT PMA membutuhkan waktu 25 hari kerja dari awal hingga selesai"
+    },
+    {
+      "case_id": "sup-c-65ef1df0",
+      "pair_id": "cp-b3c4d5e6",
+      "pair_type": "neighbouring_fact",
+      "set": "C",
+      "query": "Berapa hari kerja yang dibutuhkan untuk seluruh proses pendirian PT PMA dari awal hingga selesai?",
+      "query_lang": "ID",
+      "context": [
+        "Setelah pendiri menandatangani draf dokumen awal, tahap penyusunan akta notaris dan persetujuan Kementerian Hukum membutuhkan waktu 25 hari kerja. Anda dapat melanjutkan ke langkah perizinan berikutnya segera setelah periode ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Total durasi waktu untuk seluruh proses pendirian PT PMA",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-b3c4d5e6:relevant_insufficient",
+      "missing_fact_explanation": "Teks ini hanya menyatakan durasi untuk tahapan notaris dan kementerian hukum, bukan keseluruhan proses dari awal sampai akhir.",
+      "distractor_note": "Menyajikan durasi 25 hari kerja secara meyakinkan namun hanya menempatkannya pada satu fase pendirian spesifik."
+    },
+    {
+      "case_id": "sup-c-78228ed7",
+      "pair_id": "cp-f7a8b9c0",
+      "pair_type": "indirect_sufficiency",
+      "set": "C",
+      "query": "What is the total all-in agency fee for processing a two-year Investor KITAS?",
+      "query_lang": "EN",
+      "context": [
+        "For the two-year Investor KITAS, if you budget around IDR 25,000,000, that covers absolutely everything including our agency margins, document translations, and all government levies."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The total all-in agency fee for a two-year Investor KITAS",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-f7a8b9c0:sufficient",
+      "supporting_span": "if you budget around IDR 25,000,000, that covers absolutely everything"
+    },
+    {
+      "case_id": "sup-c-2a868a1e",
+      "pair_id": "cp-f7a8b9c0",
+      "pair_type": "indirect_sufficiency",
+      "set": "C",
+      "query": "What is the total all-in agency fee for processing a two-year Investor KITAS?",
+      "query_lang": "EN",
+      "context": [
+        "For the two-year Investor KITAS, the mandatory government levies and the immigration office's non-tax state revenue dues amount to IDR 25,000,000 in total. This must be settled before document translations begin."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The total all-in agency fee for a two-year Investor KITAS",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-f7a8b9c0:relevant_insufficient",
+      "missing_fact_explanation": "The context provides the cost for the government levies and immigration dues but does not provide the total all-in fee including the agency margins.",
+      "distractor_note": "A confident price of IDR 25 million is quoted, but it represents strictly the government side of the costs, leaving the all-in price unstated."
+    },
+    {
+      "case_id": "sup-c-df536aa2",
+      "pair_id": "cp-d1e2f3a4",
+      "pair_type": "indirect_sufficiency",
+      "set": "C",
+      "query": "Berapa total biaya agen all-in untuk memproses KITAS Investor dua tahun?",
+      "query_lang": "ID",
+      "context": [
+        "Untuk KITAS Investor dua tahun, jika Anda menyiapkan anggaran sekitar Rp 25.000.000, itu sudah mencakup semuanya secara mutlak, termasuk margin agen kami, terjemahan dokumen, dan semua pungutan pemerintah."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Total biaya agen all-in untuk KITAS Investor dua tahun",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-d1e2f3a4:sufficient",
+      "supporting_span": "jika Anda menyiapkan anggaran sekitar Rp 25.000.000, itu sudah mencakup semuanya secara mutlak"
+    },
+    {
+      "case_id": "sup-c-cb81806c",
+      "pair_id": "cp-d1e2f3a4",
+      "pair_type": "indirect_sufficiency",
+      "set": "C",
+      "query": "Berapa total biaya agen all-in untuk memproses KITAS Investor dua tahun?",
+      "query_lang": "ID",
+      "context": [
+        "Untuk KITAS Investor dua tahun, pungutan wajib pemerintah dan penerimaan negara bukan pajak dari kantor imigrasi berjumlah total Rp 25.000.000. Ini harus diselesaikan sebelum terjemahan dokumen dimulai."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Total biaya agen all-in untuk KITAS Investor dua tahun",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-d1e2f3a4:relevant_insufficient",
+      "missing_fact_explanation": "Konteks ini hanya merinci besaran biaya resmi pemerintah dan kantor imigrasi, tanpa menyebutkan total keseluruhan biaya yang mencakup jasa agen.",
+      "distractor_note": "Angka Rp 25 juta disebutkan dengan jelas tetapi merujuk hanya pada pajak dan pungutan pemerintah, bukan biaya agen secara menyeluruh."
+    },
+    {
+      "case_id": "sup-c-14437672",
+      "pair_id": "cp-b5c6d7e8",
+      "pair_type": "indirect_sufficiency",
+      "set": "C",
+      "query": "What is the timeframe for obtaining the corporate tax number (NPWP)?",
+      "query_lang": "EN",
+      "context": [
+        "The tax registration is a critical step in the setup phase. After the deed is finalized, allow roughly up to five working days to have the corporate NPWP fully registered and delivered to your office."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The timeframe to obtain the corporate tax number",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-b5c6d7e8:sufficient",
+      "supporting_span": "allow roughly up to five working days to have the corporate NPWP fully registered and delivered"
+    },
+    {
+      "case_id": "sup-c-a1898b97",
+      "pair_id": "cp-b5c6d7e8",
+      "pair_type": "indirect_sufficiency",
+      "set": "C",
+      "query": "What is the timeframe for obtaining the corporate tax number (NPWP)?",
+      "query_lang": "EN",
+      "context": [
+        "The tax registration is a critical step in the setup phase. After the deed is finalized, the corporate NPWP application must be drafted and formally submitted to the local tax office within five working days."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The timeframe to obtain the corporate tax number",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-b5c6d7e8:relevant_insufficient",
+      "missing_fact_explanation": "The text states the deadline for submitting the tax application, not how long it takes to actually obtain the registered tax number.",
+      "distractor_note": "A 'five working days' duration is present and associated with the NPWP, but it governs the submission deadline rather than the processing completion timeframe."
+    },
+    {
+      "case_id": "sup-c-e0efe5cb",
+      "pair_id": "cp-f9a0b1c2",
+      "pair_type": "indirect_sufficiency",
+      "set": "C",
+      "query": "Berapa lama jangka waktu untuk mendapatkan nomor pokok wajib pajak (NPWP) perusahaan?",
+      "query_lang": "ID",
+      "context": [
+        "Pendaftaran pajak adalah langkah penting dalam fase pendirian. Setelah akta diselesaikan, perkirakan waktu kira-kira hingga lima hari kerja agar NPWP perusahaan terdaftar penuh dan dikirimkan ke kantor Anda."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Jangka waktu untuk mendapatkan NPWP perusahaan",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-f9a0b1c2:sufficient",
+      "supporting_span": "perkirakan waktu kira-kira hingga lima hari kerja agar NPWP perusahaan terdaftar penuh dan dikirimkan"
+    },
+    {
+      "case_id": "sup-c-58ce3ac4",
+      "pair_id": "cp-f9a0b1c2",
+      "pair_type": "indirect_sufficiency",
+      "set": "C",
+      "query": "Berapa lama jangka waktu untuk mendapatkan nomor pokok wajib pajak (NPWP) perusahaan?",
+      "query_lang": "ID",
+      "context": [
+        "Pendaftaran pajak adalah langkah penting dalam fase pendirian. Setelah akta diselesaikan, permohonan NPWP perusahaan harus disusun dan diserahkan secara resmi ke kantor pajak setempat dalam waktu lima hari kerja."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Jangka waktu untuk mendapatkan NPWP perusahaan",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-f9a0b1c2:relevant_insufficient",
+      "missing_fact_explanation": "Teks tersebut menjabarkan batas waktu pengajuan formulir aplikasi NPWP, bukan jangka waktu pemrosesan hingga NPWP tersebut terbit dan diterima.",
+      "distractor_note": "Durasi 'lima hari kerja' memang muncul bersama entitas NPWP, tetapi berfungsi sebagai tenggat waktu pengumpulan dokumen."
+    },
+    {
+      "case_id": "sup-c-3d544930",
+      "pair_id": "cp-d3e4f5a6",
+      "pair_type": "contradiction",
+      "set": "C",
+      "query": "How long does it take to process a Dependent Visa once the main KITAS is active?",
+      "query_lang": "EN",
+      "context": [
+        "Following the activation of the primary Investor KITAS, the subsequent Dependent Visa processing will take exactly 14 working days at the immigration office. You can track the progress online."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Processing duration for a Dependent Visa",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-d3e4f5a6:sufficient",
+      "supporting_span": "the subsequent Dependent Visa processing will take exactly 14 working days at the immigration office"
+    },
+    {
+      "case_id": "sup-c-725a39c8",
+      "pair_id": "cp-d3e4f5a6",
+      "pair_type": "contradiction",
+      "set": "C",
+      "query": "How long does it take to process a Dependent Visa once the main KITAS is active?",
+      "query_lang": "EN",
+      "context": [
+        "Following the activation of the primary Investor KITAS, the subsequent Dependent Visa processing will take exactly 14 working days at the immigration office. Please note that all Dependent Visa applications require a processing time of 21 working days at the immigration office."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Processing duration for a Dependent Visa",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-d3e4f5a6:relevant_insufficient",
+      "missing_fact_explanation": "The paragraph confidently states two mutually exclusive processing durations (14 working days and 21 working days) for the same Dependent Visa with no clarification of which applies.",
+      "distractor_note": "Provides two durations for the exact same event, neutralizing the factual value of the context entirely."
+    },
+    {
+      "case_id": "sup-c-c5fe98b2",
+      "pair_id": "cp-b7c8d9e0",
+      "pair_type": "contradiction",
+      "set": "C",
+      "query": "Berapa lama waktu yang dibutuhkan untuk memproses Visa Pengikut setelah KITAS utama aktif?",
+      "query_lang": "ID",
+      "context": [
+        "Setelah aktivasi KITAS Investor utama, pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi. Anda dapat melacak kemajuannya secara daring."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Durasi pemrosesan Visa Pengikut",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-b7c8d9e0:sufficient",
+      "supporting_span": "pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi"
+    },
+    {
+      "case_id": "sup-c-244d993f",
+      "pair_id": "cp-b7c8d9e0",
+      "pair_type": "contradiction",
+      "set": "C",
+      "query": "Berapa lama waktu yang dibutuhkan untuk memproses Visa Pengikut setelah KITAS utama aktif?",
+      "query_lang": "ID",
+      "context": [
+        "Setelah aktivasi KITAS Investor utama, pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi. Harap diperhatikan bahwa semua permohonan Visa Pengikut memerlukan waktu pemrosesan selama 21 hari kerja di kantor imigrasi."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Durasi pemrosesan Visa Pengikut",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-b7c8d9e0:relevant_insufficient",
+      "missing_fact_explanation": "Paragraf ini memuat dua durasi yang saling bertentangan (14 hari kerja dan 21 hari kerja) untuk proses Visa Pengikut tanpa ada penjelasan mana yang berlaku.",
+      "distractor_note": "Mengandung kontradiksi langsung atas fakta yang dicari, sehingga fakta yang sebenarnya tidak dapat ditetapkan dari konteks ini."
+    },
+    {
+      "case_id": "sup-c-394a47a5",
+      "pair_id": "cp-f1a2b3c4",
+      "pair_type": "contradiction",
+      "set": "C",
+      "query": "What is the monthly rental fee for a standard virtual office package in Bali?",
+      "query_lang": "EN",
+      "context": [
+        "Our standard virtual office package in Bali, which perfectly satisfies the domicile requirement for your NIB, is priced at IDR 600,000 per month. This rate is locked in for the first year."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The monthly rental fee for a standard virtual office package",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-f1a2b3c4:sufficient",
+      "supporting_span": "is priced at IDR 600,000 per month"
+    },
+    {
+      "case_id": "sup-c-75d9a21c",
+      "pair_id": "cp-f1a2b3c4",
+      "pair_type": "contradiction",
+      "set": "C",
+      "query": "What is the monthly rental fee for a standard virtual office package in Bali?",
+      "query_lang": "EN",
+      "context": [
+        "Our standard virtual office package in Bali, which perfectly satisfies the domicile requirement for your NIB, is priced at IDR 600,000 per month. The monthly rental fee for the standard virtual office package in Bali is IDR 850,000 per month."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "The monthly rental fee for a standard virtual office package",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-f1a2b3c4:relevant_insufficient",
+      "missing_fact_explanation": "The text lists two completely different monthly rates (IDR 600,000 and IDR 850,000) for the exact same standard virtual office package.",
+      "distractor_note": "Presents an irreconcilable contradiction within adjacent sentences, failing to definitively state the actual fee."
+    },
+    {
+      "case_id": "sup-c-68c82d5d",
+      "pair_id": "cp-d5e6f7a8",
+      "pair_type": "contradiction",
+      "set": "C",
+      "query": "Berapa biaya sewa bulanan untuk paket virtual office standar di Bali?",
+      "query_lang": "ID",
+      "context": [
+        "Paket virtual office standar kami di Bali, yang dengan sempurna memenuhi persyaratan domisili untuk NIB Anda, dihargai Rp 600.000 per bulan. Tarif ini dikunci untuk tahun pertama."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Biaya sewa bulanan untuk paket virtual office standar",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-d5e6f7a8:sufficient",
+      "supporting_span": "dihargai Rp 600.000 per bulan"
+    },
+    {
+      "case_id": "sup-c-5fb1b72f",
+      "pair_id": "cp-d5e6f7a8",
+      "pair_type": "contradiction",
+      "set": "C",
+      "query": "Berapa biaya sewa bulanan untuk paket virtual office standar di Bali?",
+      "query_lang": "ID",
+      "context": [
+        "Paket virtual office standar kami di Bali, yang dengan sempurna memenuhi persyaratan domisili untuk NIB Anda, dihargai Rp 600.000 per bulan. Biaya sewa bulanan untuk paket virtual office standar di Bali adalah Rp 850.000 per bulan."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Biaya sewa bulanan untuk paket virtual office standar",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 D-SETC — hard-case pair (entity present, referent wrong, no meta-commentary) authored by the second reader (Gemini 3.1 Pro via agy --effort high, 2026-09-12T09:30Z; Codex recused, candidate (iii) is its own family), Dux-cured; evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json#cp-d5e6f7a8:relevant_insufficient",
+      "missing_fact_explanation": "Konteks memberikan dua nominal harga bulanan yang berbeda secara berurutan (Rp 600.000 dan Rp 850.000) untuk paket yang sama.",
+      "distractor_note": "Fakta tidak dapat disimpulkan karena adanya klaim harga yang bertolak belakang secara eksplisit dan tanpa klarifikasi."
+    },
+    {
+      "case_id": "sup-d-4be78456",
+      "pair_id": "cp-e5f6a7b8-x",
+      "pair_type": "neighbouring_fact",
+      "set": "D",
+      "query": "What is the minimum legally required paid-up capital to register a PT PMA in Indonesia?",
+      "query_lang": "EN",
+      "context": [
+        "Untuk mematuhi peraturan investasi saat ini, modal disetor minimum secara hukum untuk PT PMA ditetapkan sebesar Rp 10.000.000.000. Jumlah ini harus dinyatakan secara resmi dalam akta pendirian."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Modal disetor minimum yang diwajibkan secara hukum untuk PT PMA",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-caa70e8b",
+      "supporting_span": "modal disetor minimum secara hukum untuk PT PMA ditetapkan sebesar Rp 10.000.000.000"
+    },
+    {
+      "case_id": "sup-d-0c213e1b",
+      "pair_id": "cp-e5f6a7b8-x",
+      "pair_type": "neighbouring_fact",
+      "set": "D",
+      "query": "What is the minimum legally required paid-up capital to register a PT PMA in Indonesia?",
+      "query_lang": "EN",
+      "context": [
+        "Untuk memastikan stabilitas operasional selama tahun pertama, para pendiri asing biasanya memilih untuk menyuntikkan modal kerja awal sebesar Rp 10.000.000.000. Jumlah ini harus dinyatakan secara resmi dalam perkiraan keuangan perusahaan."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Modal disetor minimum yang diwajibkan secara hukum untuk PT PMA",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-d4fff2f6",
+      "missing_fact_explanation": "Konteks ini hanya menyebutkan modal kerja yang biasanya dipilih oleh para pendiri, bukan batas minimum yang diwajibkan oleh hukum.",
+      "distractor_note": "Teks ini menyertakan angka Rp 10 miliar yang masuk akal, tetapi menyatakan angka tersebut sebagai pilihan operasional alih-alih sebagai syarat wajib hukum."
+    },
+    {
+      "case_id": "sup-d-4984a0c2",
+      "pair_id": "cp-b3c4d5e6-x",
+      "pair_type": "neighbouring_fact",
+      "set": "D",
+      "query": "How many working days are needed for the entire PT PMA establishment process from start to finish?",
+      "query_lang": "EN",
+      "context": [
+        "Setelah pendiri menandatangani draf dokumen awal, seluruh proses pendirian PT PMA membutuhkan waktu 25 hari kerja dari awal hingga selesai. Anda dapat secara sah memulai operasi bisnis segera setelah periode ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Total durasi waktu untuk seluruh proses pendirian PT PMA",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-7b7c8b8c",
+      "supporting_span": "seluruh proses pendirian PT PMA membutuhkan waktu 25 hari kerja dari awal hingga selesai"
+    },
+    {
+      "case_id": "sup-d-7a271a10",
+      "pair_id": "cp-b3c4d5e6-x",
+      "pair_type": "neighbouring_fact",
+      "set": "D",
+      "query": "How many working days are needed for the entire PT PMA establishment process from start to finish?",
+      "query_lang": "EN",
+      "context": [
+        "Setelah pendiri menandatangani draf dokumen awal, tahap penyusunan akta notaris dan persetujuan Kementerian Hukum membutuhkan waktu 25 hari kerja. Anda dapat melanjutkan ke langkah perizinan berikutnya segera setelah periode ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Total durasi waktu untuk seluruh proses pendirian PT PMA",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-65ef1df0",
+      "missing_fact_explanation": "Teks ini hanya menyatakan durasi untuk tahapan notaris dan kementerian hukum, bukan keseluruhan proses dari awal sampai akhir.",
+      "distractor_note": "Menyajikan durasi 25 hari kerja secara meyakinkan namun hanya menempatkannya pada satu fase pendirian spesifik."
+    },
+    {
+      "case_id": "sup-d-863ac849",
+      "pair_id": "cp-d1e2f3a4-x",
+      "pair_type": "indirect_sufficiency",
+      "set": "D",
+      "query": "What is the total all-in agency fee to process a two-year Investor KITAS?",
+      "query_lang": "EN",
+      "context": [
+        "Untuk KITAS Investor dua tahun, jika Anda menyiapkan anggaran sekitar Rp 25.000.000, itu sudah mencakup semuanya secara mutlak, termasuk margin agen kami, terjemahan dokumen, dan semua pungutan pemerintah."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Total biaya agen all-in untuk KITAS Investor dua tahun",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-df536aa2",
+      "supporting_span": "jika Anda menyiapkan anggaran sekitar Rp 25.000.000, itu sudah mencakup semuanya secara mutlak"
+    },
+    {
+      "case_id": "sup-d-a6ad9b9c",
+      "pair_id": "cp-d1e2f3a4-x",
+      "pair_type": "indirect_sufficiency",
+      "set": "D",
+      "query": "What is the total all-in agency fee to process a two-year Investor KITAS?",
+      "query_lang": "EN",
+      "context": [
+        "Untuk KITAS Investor dua tahun, pungutan wajib pemerintah dan penerimaan negara bukan pajak dari kantor imigrasi berjumlah total Rp 25.000.000. Ini harus diselesaikan sebelum terjemahan dokumen dimulai."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Total biaya agen all-in untuk KITAS Investor dua tahun",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-cb81806c",
+      "missing_fact_explanation": "Konteks ini hanya merinci besaran biaya resmi pemerintah dan kantor imigrasi, tanpa menyebutkan total keseluruhan biaya yang mencakup jasa agen.",
+      "distractor_note": "Angka Rp 25 juta disebutkan dengan jelas tetapi merujuk hanya pada pajak dan pungutan pemerintah, bukan biaya agen secara menyeluruh."
+    },
+    {
+      "case_id": "sup-d-4d058bdc",
+      "pair_id": "cp-f9a0b1c2-x",
+      "pair_type": "indirect_sufficiency",
+      "set": "D",
+      "query": "How long is the timeframe to obtain a company tax identification number (NPWP)?",
+      "query_lang": "EN",
+      "context": [
+        "Pendaftaran pajak adalah langkah penting dalam fase pendirian. Setelah akta diselesaikan, perkirakan waktu kira-kira hingga lima hari kerja agar NPWP perusahaan terdaftar penuh dan dikirimkan ke kantor Anda."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Jangka waktu untuk mendapatkan NPWP perusahaan",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-e0efe5cb",
+      "supporting_span": "perkirakan waktu kira-kira hingga lima hari kerja agar NPWP perusahaan terdaftar penuh dan dikirimkan"
+    },
+    {
+      "case_id": "sup-d-dd0c1a97",
+      "pair_id": "cp-f9a0b1c2-x",
+      "pair_type": "indirect_sufficiency",
+      "set": "D",
+      "query": "How long is the timeframe to obtain a company tax identification number (NPWP)?",
+      "query_lang": "EN",
+      "context": [
+        "Pendaftaran pajak adalah langkah penting dalam fase pendirian. Setelah akta diselesaikan, permohonan NPWP perusahaan harus disusun dan diserahkan secara resmi ke kantor pajak setempat dalam waktu lima hari kerja."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Jangka waktu untuk mendapatkan NPWP perusahaan",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-58ce3ac4",
+      "missing_fact_explanation": "Teks tersebut menjabarkan batas waktu pengajuan formulir aplikasi NPWP, bukan jangka waktu pemrosesan hingga NPWP tersebut terbit dan diterima.",
+      "distractor_note": "Durasi 'lima hari kerja' memang muncul bersama entitas NPWP, tetapi berfungsi sebagai tenggat waktu pengumpulan dokumen."
+    },
+    {
+      "case_id": "sup-d-eb050265",
+      "pair_id": "cp-b7c8d9e0-x",
+      "pair_type": "contradiction",
+      "set": "D",
+      "query": "How long does it take to process a Dependent Visa after the main KITAS is active?",
+      "query_lang": "EN",
+      "context": [
+        "Setelah aktivasi KITAS Investor utama, pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi. Anda dapat melacak kemajuannya secara daring."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Durasi pemrosesan Visa Pengikut",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-c5fe98b2",
+      "supporting_span": "pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi"
+    },
+    {
+      "case_id": "sup-d-1d738fd7",
+      "pair_id": "cp-b7c8d9e0-x",
+      "pair_type": "contradiction",
+      "set": "D",
+      "query": "How long does it take to process a Dependent Visa after the main KITAS is active?",
+      "query_lang": "EN",
+      "context": [
+        "Setelah aktivasi KITAS Investor utama, pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi. Harap diperhatikan bahwa semua permohonan Visa Pengikut memerlukan waktu pemrosesan selama 21 hari kerja di kantor imigrasi."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Durasi pemrosesan Visa Pengikut",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-244d993f",
+      "missing_fact_explanation": "Paragraf ini memuat dua durasi yang saling bertentangan (14 hari kerja dan 21 hari kerja) untuk proses Visa Pengikut tanpa ada penjelasan mana yang berlaku.",
+      "distractor_note": "Mengandung kontradiksi langsung atas fakta yang dicari, sehingga fakta yang sebenarnya tidak dapat ditetapkan dari konteks ini."
+    },
+    {
+      "case_id": "sup-d-9d4d7acd",
+      "pair_id": "cp-d5e6f7a8-x",
+      "pair_type": "contradiction",
+      "set": "D",
+      "query": "What is the monthly rental cost for a standard virtual office package in Bali?",
+      "query_lang": "EN",
+      "context": [
+        "Paket virtual office standar kami di Bali, yang dengan sempurna memenuhi persyaratan domisili untuk NIB Anda, dihargai Rp 600.000 per bulan. Tarif ini dikunci untuk tahun pertama."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Biaya sewa bulanan untuk paket virtual office standar",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-68c82d5d",
+      "supporting_span": "dihargai Rp 600.000 per bulan"
+    },
+    {
+      "case_id": "sup-d-1f452176",
+      "pair_id": "cp-d5e6f7a8-x",
+      "pair_type": "contradiction",
+      "set": "D",
+      "query": "What is the monthly rental cost for a standard virtual office package in Bali?",
+      "query_lang": "EN",
+      "context": [
+        "Paket virtual office standar kami di Bali, yang dengan sempurna memenuhi persyaratan domisili untuk NIB Anda, dihargai Rp 600.000 per bulan. Biaya sewa bulanan untuk paket virtual office standar di Bali adalah Rp 850.000 per bulan."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": -1,
+        "note": "B2.1 Set C (D-SETC) — synthetic probe pair, not from the frozen inventory; provenance held IDENTICAL across every Set C case (score_kind=unknown, matching Set B's own convention) so only the wording varies between pair members, and so the legacy lexical scoring path is exercised rather than the provenance-primary branch — Set C's target signal is the FUTURE support judge (B2.1 spec sec. 1), not today's provenance-band scorer.",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ]
+      },
+      "requested_fact": "Biaya sewa bulanan untuk paket virtual office standar",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "B2.1 Set D — the cross-language cell of the SAME Set C hard pair: query translated to English by the second reader (Gemini 3.1 Pro, agy --effort high), Indonesian context and label unchanged from sup-c-5fb1b72f",
+      "missing_fact_explanation": "Konteks memberikan dua nominal harga bulanan yang berbeda secara berurutan (Rp 600.000 dan Rp 850.000) untuk paket yang sama.",
+      "distractor_note": "Fakta tidak dapat disimpulkan karena adanya klaim harga yang bertolak belakang secara eksplisit dan tanpa klarifikasi."
+    }
+  ]
 }

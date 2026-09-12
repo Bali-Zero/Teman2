@@ -1,0 +1,335 @@
+{
+  "schema_version": 1,
+  "set": "C",
+  "cases": [
+    {
+      "pair_id": "cp-a1b2c3d4",
+      "pair_type": "neighbouring_fact",
+      "query": "What is the statutory minimum paid-up capital required to register a PT PMA in Indonesia?",
+      "query_lang": "EN",
+      "context": [
+        "To comply with current investment regulations, the statutory minimum paid-up capital for a PT PMA is fixed at IDR 10,000,000,000. This amount must be formally declared in the deed of establishment."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The statutory minimum paid-up capital required for a PT PMA",
+      "stratum": "sufficient",
+      "supporting_span": "the statutory minimum paid-up capital for a PT PMA is fixed at IDR 10,000,000,000"
+    },
+    {
+      "pair_id": "cp-a1b2c3d4",
+      "pair_type": "neighbouring_fact",
+      "query": "What is the statutory minimum paid-up capital required to register a PT PMA in Indonesia?",
+      "query_lang": "EN",
+      "context": [
+        "To ensure operational stability during the first year, foreign founders typically choose to inject an initial working capital of IDR 10,000,000,000. This amount must be formally declared in the company's financial forecast."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The statutory minimum paid-up capital required for a PT PMA",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "The context describes a typical initial working capital injection voluntarily chosen by founders, but fails to state the legal statutory minimum paid-up capital mandated by regulations.",
+      "distractor_note": "It states a plausible IDR 10 billion amount, but characterizes it as an operational choice rather than the statutory requirement."
+    },
+    {
+      "pair_id": "cp-e5f6a7b8",
+      "pair_type": "neighbouring_fact",
+      "query": "Berapa modal disetor minimum yang diwajibkan secara hukum untuk mendaftarkan PT PMA di Indonesia?",
+      "query_lang": "ID",
+      "context": [
+        "Untuk mematuhi peraturan investasi saat ini, modal disetor minimum secara hukum untuk PT PMA ditetapkan sebesar Rp 10.000.000.000. Jumlah ini harus dinyatakan secara resmi dalam akta pendirian."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Modal disetor minimum yang diwajibkan secara hukum untuk PT PMA",
+      "stratum": "sufficient",
+      "supporting_span": "modal disetor minimum secara hukum untuk PT PMA ditetapkan sebesar Rp 10.000.000.000"
+    },
+    {
+      "pair_id": "cp-e5f6a7b8",
+      "pair_type": "neighbouring_fact",
+      "query": "Berapa modal disetor minimum yang diwajibkan secara hukum untuk mendaftarkan PT PMA di Indonesia?",
+      "query_lang": "ID",
+      "context": [
+        "Untuk memastikan stabilitas operasional selama tahun pertama, para pendiri asing biasanya memilih untuk menyuntikkan modal kerja awal sebesar Rp 10.000.000.000. Jumlah ini harus dinyatakan secara resmi dalam perkiraan keuangan perusahaan."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Modal disetor minimum yang diwajibkan secara hukum untuk PT PMA",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "Konteks ini hanya menyebutkan modal kerja yang biasanya dipilih oleh para pendiri, bukan batas minimum yang diwajibkan oleh hukum.",
+      "distractor_note": "Teks ini menyertakan angka Rp 10 miliar yang masuk akal, tetapi menyatakan angka tersebut sebagai pilihan operasional alih-alih sebagai syarat wajib hukum."
+    },
+    {
+      "pair_id": "cp-c9d0e1f2",
+      "pair_type": "neighbouring_fact",
+      "query": "How many working days does the entire PT PMA incorporation process take from start to finish?",
+      "query_lang": "EN",
+      "context": [
+        "Once the founder signs the initial draft documents, the entire PT PMA incorporation process takes 25 working days from start to finish. You can legally commence business operations immediately after this period."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The total end-to-end duration for PT PMA incorporation",
+      "stratum": "sufficient",
+      "supporting_span": "the entire PT PMA incorporation process takes 25 working days from start to finish"
+    },
+    {
+      "pair_id": "cp-c9d0e1f2",
+      "pair_type": "neighbouring_fact",
+      "query": "How many working days does the entire PT PMA incorporation process take from start to finish?",
+      "query_lang": "EN",
+      "context": [
+        "Once the founder signs the initial draft documents, the notary's deed drafting and the Ministry of Law approval phase takes 25 working days. You can proceed to the subsequent licensing steps immediately after this period."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The total end-to-end duration for PT PMA incorporation",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "The text only specifies the duration for the notary and ministry approval phase, leaving the duration of the entire end-to-end process unknown.",
+      "distractor_note": "It offers a confident duration of 25 working days, but assigns it to only a subset of the incorporation process rather than the entirety."
+    },
+    {
+      "pair_id": "cp-b3c4d5e6",
+      "pair_type": "neighbouring_fact",
+      "query": "Berapa hari kerja yang dibutuhkan untuk seluruh proses pendirian PT PMA dari awal hingga selesai?",
+      "query_lang": "ID",
+      "context": [
+        "Setelah pendiri menandatangani draf dokumen awal, seluruh proses pendirian PT PMA membutuhkan waktu 25 hari kerja dari awal hingga selesai. Anda dapat secara sah memulai operasi bisnis segera setelah periode ini."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Total durasi waktu untuk seluruh proses pendirian PT PMA",
+      "stratum": "sufficient",
+      "supporting_span": "seluruh proses pendirian PT PMA membutuhkan waktu 25 hari kerja dari awal hingga selesai"
+    },
+    {
+      "pair_id": "cp-b3c4d5e6",
+      "pair_type": "neighbouring_fact",
+      "query": "Berapa hari kerja yang dibutuhkan untuk seluruh proses pendirian PT PMA dari awal hingga selesai?",
+      "query_lang": "ID",
+      "context": [
+        "Setelah pendiri menandatangani draf dokumen awal, tahap penyusunan akta notaris dan persetujuan Kementerian Hukum membutuhkan waktu 25 hari kerja. Anda dapat melanjutkan ke langkah perizinan berikutnya segera setelah periode ini."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Total durasi waktu untuk seluruh proses pendirian PT PMA",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "Teks ini hanya menyatakan durasi untuk tahapan notaris dan kementerian hukum, bukan keseluruhan proses dari awal sampai akhir.",
+      "distractor_note": "Menyajikan durasi 25 hari kerja secara meyakinkan namun hanya menempatkannya pada satu fase pendirian spesifik."
+    },
+    {
+      "pair_id": "cp-f7a8b9c0",
+      "pair_type": "indirect_sufficiency",
+      "query": "What is the total all-in agency fee for processing a two-year Investor KITAS?",
+      "query_lang": "EN",
+      "context": [
+        "For the two-year Investor KITAS, if you budget around IDR 25,000,000, that covers absolutely everything including our agency margins, document translations, and all government levies."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The total all-in agency fee for a two-year Investor KITAS",
+      "stratum": "sufficient",
+      "supporting_span": "if you budget around IDR 25,000,000, that covers absolutely everything"
+    },
+    {
+      "pair_id": "cp-f7a8b9c0",
+      "pair_type": "indirect_sufficiency",
+      "query": "What is the total all-in agency fee for processing a two-year Investor KITAS?",
+      "query_lang": "EN",
+      "context": [
+        "For the two-year Investor KITAS, the mandatory government levies and the immigration office's non-tax state revenue dues amount to IDR 25,000,000 in total. This must be settled before document translations begin."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The total all-in agency fee for a two-year Investor KITAS",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "The context provides the cost for the government levies and immigration dues but does not provide the total all-in fee including the agency margins.",
+      "distractor_note": "A confident price of IDR 25 million is quoted, but it represents strictly the government side of the costs, leaving the all-in price unstated."
+    },
+    {
+      "pair_id": "cp-d1e2f3a4",
+      "pair_type": "indirect_sufficiency",
+      "query": "Berapa total biaya agen all-in untuk memproses KITAS Investor dua tahun?",
+      "query_lang": "ID",
+      "context": [
+        "Untuk KITAS Investor dua tahun, jika Anda menyiapkan anggaran sekitar Rp 25.000.000, itu sudah mencakup semuanya secara mutlak, termasuk margin agen kami, terjemahan dokumen, dan semua pungutan pemerintah."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Total biaya agen all-in untuk KITAS Investor dua tahun",
+      "stratum": "sufficient",
+      "supporting_span": "jika Anda menyiapkan anggaran sekitar Rp 25.000.000, itu sudah mencakup semuanya secara mutlak"
+    },
+    {
+      "pair_id": "cp-d1e2f3a4",
+      "pair_type": "indirect_sufficiency",
+      "query": "Berapa total biaya agen all-in untuk memproses KITAS Investor dua tahun?",
+      "query_lang": "ID",
+      "context": [
+        "Untuk KITAS Investor dua tahun, pungutan wajib pemerintah dan penerimaan negara bukan pajak dari kantor imigrasi berjumlah total Rp 25.000.000. Ini harus diselesaikan sebelum terjemahan dokumen dimulai."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Total biaya agen all-in untuk KITAS Investor dua tahun",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "Konteks ini hanya merinci besaran biaya resmi pemerintah dan kantor imigrasi, tanpa menyebutkan total keseluruhan biaya yang mencakup jasa agen.",
+      "distractor_note": "Angka Rp 25 juta disebutkan dengan jelas tetapi merujuk hanya pada pajak dan pungutan pemerintah, bukan biaya agen secara menyeluruh."
+    },
+    {
+      "pair_id": "cp-b5c6d7e8",
+      "pair_type": "indirect_sufficiency",
+      "query": "What is the timeframe for obtaining the corporate tax number (NPWP)?",
+      "query_lang": "EN",
+      "context": [
+        "The tax registration is a critical step in the setup phase. After the deed is finalized, allow roughly up to five working days to have the corporate NPWP fully registered and delivered to your office."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The timeframe to obtain the corporate tax number",
+      "stratum": "sufficient",
+      "supporting_span": "allow roughly up to five working days to have the corporate NPWP fully registered and delivered"
+    },
+    {
+      "pair_id": "cp-b5c6d7e8",
+      "pair_type": "indirect_sufficiency",
+      "query": "What is the timeframe for obtaining the corporate tax number (NPWP)?",
+      "query_lang": "EN",
+      "context": [
+        "The tax registration is a critical step in the setup phase. After the deed is finalized, the corporate NPWP application must be drafted and formally submitted to the local tax office within five working days."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The timeframe to obtain the corporate tax number",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "The text states the deadline for submitting the tax application, not how long it takes to actually obtain the registered tax number.",
+      "distractor_note": "A 'five working days' duration is present and associated with the NPWP, but it governs the submission deadline rather than the processing completion timeframe."
+    },
+    {
+      "pair_id": "cp-f9a0b1c2",
+      "pair_type": "indirect_sufficiency",
+      "query": "Berapa lama jangka waktu untuk mendapatkan nomor pokok wajib pajak (NPWP) perusahaan?",
+      "query_lang": "ID",
+      "context": [
+        "Pendaftaran pajak adalah langkah penting dalam fase pendirian. Setelah akta diselesaikan, perkirakan waktu kira-kira hingga lima hari kerja agar NPWP perusahaan terdaftar penuh dan dikirimkan ke kantor Anda."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Jangka waktu untuk mendapatkan NPWP perusahaan",
+      "stratum": "sufficient",
+      "supporting_span": "perkirakan waktu kira-kira hingga lima hari kerja agar NPWP perusahaan terdaftar penuh dan dikirimkan"
+    },
+    {
+      "pair_id": "cp-f9a0b1c2",
+      "pair_type": "indirect_sufficiency",
+      "query": "Berapa lama jangka waktu untuk mendapatkan nomor pokok wajib pajak (NPWP) perusahaan?",
+      "query_lang": "ID",
+      "context": [
+        "Pendaftaran pajak adalah langkah penting dalam fase pendirian. Setelah akta diselesaikan, permohonan NPWP perusahaan harus disusun dan diserahkan secara resmi ke kantor pajak setempat dalam waktu lima hari kerja."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Jangka waktu untuk mendapatkan NPWP perusahaan",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "Teks tersebut menjabarkan batas waktu pengajuan formulir aplikasi NPWP, bukan jangka waktu pemrosesan hingga NPWP tersebut terbit dan diterima.",
+      "distractor_note": "Durasi 'lima hari kerja' memang muncul bersama entitas NPWP, tetapi berfungsi sebagai tenggat waktu pengumpulan dokumen."
+    },
+    {
+      "pair_id": "cp-d3e4f5a6",
+      "pair_type": "contradiction",
+      "query": "How long does it take to process a Dependent Visa once the main KITAS is active?",
+      "query_lang": "EN",
+      "context": [
+        "Following the activation of the primary Investor KITAS, the subsequent Dependent Visa processing will take exactly 14 working days at the immigration office. You can track the progress online."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "Processing duration for a Dependent Visa",
+      "stratum": "sufficient",
+      "supporting_span": "the subsequent Dependent Visa processing will take exactly 14 working days at the immigration office"
+    },
+    {
+      "pair_id": "cp-d3e4f5a6",
+      "pair_type": "contradiction",
+      "query": "How long does it take to process a Dependent Visa once the main KITAS is active?",
+      "query_lang": "EN",
+      "context": [
+        "Following the activation of the primary Investor KITAS, the subsequent Dependent Visa processing will take exactly 14 working days at the immigration office. Please note that all Dependent Visa applications require a processing time of 21 working days at the immigration office."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "Processing duration for a Dependent Visa",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "The paragraph confidently states two mutually exclusive processing durations (14 working days and 21 working days) for the same Dependent Visa with no clarification of which applies.",
+      "distractor_note": "Provides two durations for the exact same event, neutralizing the factual value of the context entirely."
+    },
+    {
+      "pair_id": "cp-b7c8d9e0",
+      "pair_type": "contradiction",
+      "query": "Berapa lama waktu yang dibutuhkan untuk memproses Visa Pengikut setelah KITAS utama aktif?",
+      "query_lang": "ID",
+      "context": [
+        "Setelah aktivasi KITAS Investor utama, pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi. Anda dapat melacak kemajuannya secara daring."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Durasi pemrosesan Visa Pengikut",
+      "stratum": "sufficient",
+      "supporting_span": "pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi"
+    },
+    {
+      "pair_id": "cp-b7c8d9e0",
+      "pair_type": "contradiction",
+      "query": "Berapa lama waktu yang dibutuhkan untuk memproses Visa Pengikut setelah KITAS utama aktif?",
+      "query_lang": "ID",
+      "context": [
+        "Setelah aktivasi KITAS Investor utama, pemrosesan Visa Pengikut selanjutnya akan memakan waktu tepat 14 hari kerja di kantor imigrasi. Harap diperhatikan bahwa semua permohonan Visa Pengikut memerlukan waktu pemrosesan selama 21 hari kerja di kantor imigrasi."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Durasi pemrosesan Visa Pengikut",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "Paragraf ini memuat dua durasi yang saling bertentangan (14 hari kerja dan 21 hari kerja) untuk proses Visa Pengikut tanpa ada penjelasan mana yang berlaku.",
+      "distractor_note": "Mengandung kontradiksi langsung atas fakta yang dicari, sehingga fakta yang sebenarnya tidak dapat ditetapkan dari konteks ini."
+    },
+    {
+      "pair_id": "cp-f1a2b3c4",
+      "pair_type": "contradiction",
+      "query": "What is the monthly rental fee for a standard virtual office package in Bali?",
+      "query_lang": "EN",
+      "context": [
+        "Our standard virtual office package in Bali, which perfectly satisfies the domicile requirement for your NIB, is priced at IDR 600,000 per month. This rate is locked in for the first year."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The monthly rental fee for a standard virtual office package",
+      "stratum": "sufficient",
+      "supporting_span": "is priced at IDR 600,000 per month"
+    },
+    {
+      "pair_id": "cp-f1a2b3c4",
+      "pair_type": "contradiction",
+      "query": "What is the monthly rental fee for a standard virtual office package in Bali?",
+      "query_lang": "EN",
+      "context": [
+        "Our standard virtual office package in Bali, which perfectly satisfies the domicile requirement for your NIB, is priced at IDR 600,000 per month. The monthly rental fee for the standard virtual office package in Bali is IDR 850,000 per month."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "The monthly rental fee for a standard virtual office package",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "The text lists two completely different monthly rates (IDR 600,000 and IDR 850,000) for the exact same standard virtual office package.",
+      "distractor_note": "Presents an irreconcilable contradiction within adjacent sentences, failing to definitively state the actual fee."
+    },
+    {
+      "pair_id": "cp-d5e6f7a8",
+      "pair_type": "contradiction",
+      "query": "Berapa biaya sewa bulanan untuk paket virtual office standar di Bali?",
+      "query_lang": "ID",
+      "context": [
+        "Paket virtual office standar kami di Bali, yang dengan sempurna memenuhi persyaratan domisili untuk NIB Anda, dihargai Rp 600.000 per bulan. Tarif ini dikunci untuk tahun pertama."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Biaya sewa bulanan untuk paket virtual office standar",
+      "stratum": "sufficient",
+      "supporting_span": "dihargai Rp 600.000 per bulan"
+    },
+    {
+      "pair_id": "cp-d5e6f7a8",
+      "pair_type": "contradiction",
+      "query": "Berapa biaya sewa bulanan untuk paket virtual office standar di Bali?",
+      "query_lang": "ID",
+      "context": [
+        "Paket virtual office standar kami di Bali, yang dengan sempurna memenuhi persyaratan domisili untuk NIB Anda, dihargai Rp 600.000 per bulan. Biaya sewa bulanan untuk paket virtual office standar di Bali adalah Rp 850.000 per bulan."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "Biaya sewa bulanan untuk paket virtual office standar",
+      "stratum": "relevant_insufficient",
+      "missing_fact_explanation": "Konteks memberikan dua nominal harga bulanan yang berbeda secara berurutan (Rp 600.000 dan Rp 850.000) untuk paket yang sama.",
+      "distractor_note": "Fakta tidak dapat disimpulkan karena adanya klaim harga yang bertolak belakang secara eksplisit dan tanpa klarifikasi."
+    }
+  ],
+  "authored_by": "gemini-3.1-pro via agy --effort high, 2026-09-12T09:30Z, second reader (Codex recused: candidate (iii) is its own family)",
+  "dux_cures": [
+    "two supporting_span values carried a \"[...]\" elision and were replaced with a true verbatim substring of the same sentence (pairs cp-f1a2b3c4, cp-d5e6f7a8)",
+    "the Dux check that flagged two insufficient members as carrying no value of the requested type was WRONG, not the set: those two spell the duration in words (\"five working days\" / \"lima hari kerja\"). The instrument searched for a digit; the constraint is satisfied."
+  ]
+}

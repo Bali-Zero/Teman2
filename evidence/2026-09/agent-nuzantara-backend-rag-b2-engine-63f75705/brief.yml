@@ -1,0 +1,246 @@
+task_id: backend-rag-b2-engine
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: 50a3d4f76258032e789b379a1b40349486702231 # pragma: allowlist secret
+mandate: B2
+colour: BLUE
+pr: B2.1
+objective: >-
+  B2.1 of mandate B2 (BLUE) — ENGINE. Retrieval provenance becomes the PRIMARY
+  relevance signal in calculate_evidence_score, read through B1's score_kind
+  vocabulary with a band per kind; the support signal chosen by ruling I26
+  (candidate (iii), the Codex seat through the UNCHANGED CodexExecClient.generate
+  adapter, majority of three repetitions, split vote = NOT_SUPPORTED, per-rep
+  votes recorded) decides sufficiency on the requested fact; lexical overlap
+  becomes a corroborating term that can raise a weak band by at most one step
+  and can never create relevance from a zero-retrieval package; the curated
+  synthetic 1.0 raises source quality and never relevance; the top_source_cosine
+  penalty is re-derived for the formatted scale or retired with its reason. The
+  support-negative branch lands BEFORE the broker offer so an unsupported case
+  produces no generation and terminates as stub / hand-off under the UNCHANGED
+  wa_finalize (D8). The five golden rows carrying activates_in B2.1 are
+  activated together with the scorer change. The three debts B1 hands over ship
+  INSIDE this PR.
+appetite:
+  wall_clock_hours: 7
+  adversarial_rounds: 2
+  tokens: 2500000
+generation: 1
+deadline_utc: "2026-09-12T19:30:00Z"
+deadline_authority: >-
+  Root mandate deadline of B2, opened 09:3xZ by the Fable imperator window on M5
+  (session 8933d19d) under Zero's full delegation (Desk I22), generation
+  authority rulings I25-I27, fleet envelope 20260912T091907Z-435d (the B1-ack
+  that triggered wave 2). Hops ceiling 3, this is hop 1. One renewal on request
+  with a checkpoint. Ship reserve zero.
+window:
+  session: b3e7d3f2 # Dux B2, Pro
+  worktree: .worktrees/backend-rag-b2-engine
+  branch: agent/nuzantara/backend-rag/b2-engine
+  open_checkpoint_envelope: 20260912T092307Z-5d21
+  open_checkpoint_ack: "B2-ack 20260912T092352Z-0e42 (Fable imperator M5, 8933d19d), 09:27Z"
+wave_2_conditions:
+  verified_at: "2026-09-12T09:20Z..09:23Z, by this window, on disk, not inherited"
+  a_prs_merged: >-
+    #6200 acfbc10e0c, #6268 3aae6f8359, #6270 b0b10006ef, #6274 03200d5747,
+    #6290 50a3d4f762 (== this base sha), #6291 0826514b2b, #6286 fb39ef3f84 —
+    all state MERGED, read with gh pr view.
+  b_blob_check: >-
+    BLOB, never ancestry: git ls-tree origin/main vs git hash-object in a FRESH
+    worktree of origin/main; Pro's dirty main checkout was NOT pulled. Six MATCH
+    (blob/sha256): test_tripwire_pipeline_variants_guard.py 72eb096d/4ec96c2c,
+    pipeline_score_fixtures.py 8d7f0d0b/36fde60e, manifest_mandatory.json
+    6837972c/9d7ea833, B1-4-support-signal.md a7affda7/aa931972,
+    query_vectors_b1_5.json 8fb6ebf5/0021c327, README.md 231459bf/48661475.
+  c_ack: "B1 FINAL CHECKPOINT 20260912T091812Z-0dbf acked by 20260912T091907Z-435d, B1 CLOSED 09:25Z."
+  d_manifest_frozen: >-
+    manifest_mandatory.json on disk sha256
+    9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f # pragma: allowlist secret
+    == the pin at B1.3 pack.yml:31, and the same pin in B1.4's and B1.5's packs.
+    B1.5 artifact sha256
+    0021c3275b7bd9f812f0ce52fc06da1330e89a9d1c40a4c105ca932720083012 # pragma: allowlist secret
+  e_method_recorded: >-
+    README.md line 54 as merged records ruling I26: (iii) Codex via the unchanged
+    CodexExecClient.generate adapter, majority-of-3, split vote = NOT_SUPPORTED,
+    fallback (ii) local Ollama judge, distractor pairs mandatory in B2.1's
+    supplement, the frozen 16-pair set recorded UNFIT on its own to select.
+  verdict: "all five PASS — B2 proceeds"
+baseline:
+  measured_at: "2026-09-12T09:25Z on this base sha, by this window"
+  command: "PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py"
+  result: >-
+    58 mandatory cases. false_abstention EN>EN 0/4, EN>ID 1/6, ID>EN 0/6,
+    ID>ID 0/4 (both gates). false_acceptance EN>EN 5/9, EN>ID 8/10, ID>EN 7/11,
+    ID>ID 6/8 (both gates) = 26 of 38 negatives accepted. spec_pairs 0/16
+    distinguished at the generation gate. This is the BEFORE; B2.1's acceptance
+    is measured against it and never against a re-run of the cured code alone.
+debts_from_b1:
+  - id: D-C4
+    text: >-
+      #6274 C4 — a TEST that the pinned generic_word_definition rule agrees with
+      every recorded generic_overlap label the moment the rule activates.
+      Ships inside B2.1.
+  - id: D-B15
+    text: >-
+      B1.5 follow-up — a TEST binding the artifact FILE's sha256
+      (query_vectors_b1_5.json) to the value recorded in b1-5-precall.json,
+      today checked only by hand. Ships inside B2.1.
+  - id: D-SETC
+    text: >-
+      A THIRD pair set for the support signal. The frozen set's negatives delete
+      the trigger token; the distractor probe's negatives announce their own
+      insufficiency; neither measures the hard case — entity present, referent
+      wrong, no meta-commentary. Constructed in manifest_supplement_b2.json with
+      one reviewed synthetic Indonesian counterpart per pair, and (iii) plus the
+      fallback (ii) measured on it BEFORE any threshold is fixed (B2.2).
+constraints:
+  - >-
+    calculate_evidence_score stays SYNCHRONOUS and PURE. The support signal is a
+    separate module whose verdict is passed IN; if the chosen method is
+    asynchronous the CONSUMER at the package/generation-gate layer becomes async.
+  - >-
+    The support signal's production input is the package's REDACTED query and
+    capped REDACTED context (wa_package_builder DLP gate), never the raw query
+    argument of the scorer call. No client PII crosses any seat boundary.
+  - >-
+    The Codex seat is reached ONLY through the unchanged CodexExecClient.generate
+    adapter — never a hand-typed codex exec line, never a paid per-token
+    endpoint. The fallback (ii) is local Ollama on 127.0.0.1. No embedding call,
+    no paid call, no WhatsApp send anywhere in B2.1.
+  - >-
+    The B1.3 mandatory manifest stays FROZEN as merged — no label, context or
+    band of it is edited. Set C and the distractor pairs go to
+    manifest_supplement_b2.json (append only), reported separately.
+  - >-
+    Every standing tripwire stays byte-identical with README D5's ONE exception:
+    the label-selected golden loop in test_evidence_cross_language.py is replaced
+    by the fixed-input cases and corrected expectations B1.3 recorded. The two
+    strict xfails become passes and only their xfail markers are removed.
+  - >-
+    CI never calls a seat. The benchmark's CI test replays support verdicts from
+    a frozen record keyed by sha256(query||context) — never by case_id, so no
+    label can be smuggled through the key — and the production path never reads
+    that record. The REAL seat measurement is this window's own run, recorded in
+    pack.yml with per-repetition votes.
+acceptance:
+  - status: measured
+    outcome: >-
+      MET — 16/16 distinguished at the generation gate on this head, against 0/16 on the base.
+    text: >-
+      A1 (spec pairs): the 32 manifest cases tagged spec_pair land within one
+      band of each other across context languages and make the correct decision
+      at both gates — 16/16 pairs distinguished, against 0/16 on the base.
+    probe: "harness.py on this head, per cell, next to the baseline above"
+  - status: measured
+    outcome: >-
+      NOT MET, openly — 0 in three cells, 1/6 in EN>ID (bs-17806bb4, the frozen manifest's own DECLARED RESIDUAL, unchanged from the base). The only cure inside this perimeter is measured to cost a false acceptance in the same cell (pack.yml V1); adjudication requested, never relabelled.
+    text: "A2: 0 observed false abstentions per (query lang x context lang) cell per gate."
+    probe: "harness.py report on this head"
+  - status: measured
+    outcome: >-
+      MET — 0/38 in every cell at both gates across all five negative strata, against 26/38 on the base; the fee-policy column is reported separately in the harness JSON.
+    text: >-
+      A3: 0 observed false acceptances per cell per gate across all five
+      negative strata, with the fee-policy offenders reported as a separate
+      column.
+    probe: "harness.py report on this head"
+  - status: measured
+    outcome: >-
+      PARTIALLY MET — 16/16 frozen manifest pairs and 4/4 Set B distractors distinguished with no case-ID rule; Set C 7/12 and Set D 3/6 are the D-SETC measurement, reported case by case (pack.yml V3), which is what the debt asked for and not a pass it promised.
+    text: >-
+      A4: every counterfactual pair distinguished without case-ID rules or
+      benchmark-specific exceptions, including Set C's hard cases.
+    probe: "the supplement report plus the label-mutation invariance test"
+  - status: measured
+    outcome: >-
+      MET — all 38 mandatory negatives crossed the REAL unchanged wa_finalize with substantive candidate text: 0 substantive releases, 38 stubs with a rag_abstain hand-off, deterministic. Read honestly in pack.yml: it proves D8 honours a correct verdict, not that it would catch a wrong one.
+    text: >-
+      A5 (g1): the mandatory negatives cross the REAL unchanged wa_finalize with
+      substantive synthetic candidate text; identical inputs keep identical
+      outcomes; every unsupported release observed is documented as a
+      vulnerability and never counted as a safety pass.
+    probe: "the frozen direct-finalizer characterization table in pack.yml"
+  - status: measured
+    outcome: >-
+      MET — 6 end-to-end tests: an unsupported case produces no broker offer, no generation, no generation-failure retry classification and terminates as stub/hand-off; the grounded-cautioned positive control still releases.
+    text: >-
+      A6 (g2): end to end through the support-negative branch, an unsupported
+      case produces NO broker offer, NO generation, NO generation-failure retry
+      classification, and terminates as stub / hand-off; the grounded-cautioned
+      positive control (test_wa_finalize.py:521) still releases.
+    probe: "the new branch tests plus the two protected wa_finalize tests green"
+  - status: measured
+    outcome: >-
+      MET — each file run on its own, every one at its origin/main count or better (122+2xf, 29 vs 26, 36 vs 29, 64, 21, 79).
+    text: "A7: the six innocence files green, byte-identical assertions."
+    probe: "pytest on the six files named in B1 §1"
+team:
+  dux:
+    {
+      model: claude-opus-5,
+      effort: xhigh,
+      role: "Dux + release owner",
+      host: Pro,
+    }
+  implementer:
+    {
+      model: claude-sonnet-5,
+      role: "scorer inversion, support module, branch, tests",
+    }
+  grunt: { model: claude-haiku-4-5, role: "mechanical lanes only" }
+  second_reader:
+    {
+      seat: gemini,
+      model: gemini-3.1-pro,
+      effort: high,
+      via: agy,
+      role: "contracts and data; does NOT count toward Gear-3 council quorum",
+    }
+  adversarial_reviewer:
+    {
+      seat: codex,
+      model: gpt-5.6-sol,
+      effort: high,
+      sandbox: read-only,
+      home: "CODEX_HOME=~/.codex-acct2 (account 1 is DEAD by CLI/model mismatch)",
+      note: "RECUSED from judging the support signal itself — (iii) is Codex's own family; Gemini judges that, and tp1-qwen3.8-max is the second quorum seat when Codex is recused",
+    }
+  refuter:
+    {
+      seat: kimi,
+      model: kimi-code/k3,
+      role: "mandatory refuter, never builder",
+    }
+  external_builder:
+    {
+      seat: glm,
+      model: tp1-glm-5.2,
+      role: "prepare-only, bounded to the B2.2 retrieval harness or the B2.3b carrier tests, verified by the Dux",
+    }
+  final_gate: >-
+    a FRESH Opus 5 xhigh session outside this contribution chain, commissioned by
+    the staff room; it signs harness/fable-gate on the real head sha and never
+    arms or alters the candidate.
+sibling_outputs:
+  at: "2026-09-12T09:26:36Z, re-run by this window at open"
+  open_prs_touching_paths: >-
+    Of 100 open PRs, four touch a B2 path: #5337 (SUSPENDED by contract —
+    wa_codex_leg.py, wa_finalize.py, test_wa_finalize.py; serialized, it needs a
+    fresh base after B2.3b), #6287 (migrations_v2/313), #5526
+    (migrations_v2/304), #5037 (migrations_v2/293-295). None touches
+    reasoning_utils.py, _reasoning_evidence.py, _abstain_policy.py,
+    wa_package_builder.py, score_provenance.py or evidence_sufficiency/**.
+    B2.3a's migration number is chosen against fresh main AND these at cut time.
+  agent_start_list: >-
+    b2-engine (this window, TTL 600). The B1 lanes (b1-design-2, b1-2-glm-variants,
+    b1-4-support-signal, b1-4-signal-v2, b1-5-query-vectors, b1-5-vectors-v2) are
+    B1's, now closed, and are not touched by this window.
+  fleet_mailbox: "read at open; the only envelope acted on is the imperator's B2-ack 20260912T092352Z-0e42."
+  ListAgents: "two read-only grounding children dispatched by this window; they write nothing."
+final_gate_note: >-
+  Expect `Harness floor recompute` RED at its "Gear >= 2 — read the real gate
+  verdict" step until the imperator posts harness/fable-gate on this head sha and
+  re-triggers THAT run by id. That is the PENDING state, not a defect, and it is
+  not to be diagnosed. A RED at the pack-lint step IS this window's. A frozen
+  branch is re-triggered by close/reopen from the imperator, never gh run rerun.

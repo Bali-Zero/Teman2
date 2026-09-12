@@ -12,6 +12,7 @@ from __future__ import annotations
 import ast
 import copy
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -44,6 +45,11 @@ def manifest() -> dict:
     return harness.load(_MANDATORY_PATH)
 
 
+@pytest.fixture(scope="module")
+def supplement() -> dict:
+    return harness.load(_SUPPLEMENT_PATH)
+
+
 def test_manifest_sha256_is_frozen() -> None:
     digest = hashlib.sha256(_MANDATORY_PATH.read_bytes()).hexdigest()
     assert digest == MANDATORY_MANIFEST_SHA256, (
@@ -57,9 +63,100 @@ def test_validate_returns_no_error_on_the_mandatory_manifest(manifest: dict) -> 
     assert errors == [], errors
 
 
-def test_supplement_file_exists_and_is_empty() -> None:
-    supplement = harness.load(_SUPPLEMENT_PATH)
-    assert supplement == {"schema_version": 1, "cases": []}
+class TestSupplementIsWellFormedAndNeverPooledWithMandatory:
+    """B2.1 populated `manifest_supplement_b2.json` with Set B (ruling I26's
+    4 mandatory distractor pairs, 8 cases) and Set C (the 12 D-SETC
+    hard-case pairs, 24 cases). This class REPLACES the old
+    `test_supplement_file_exists_and_is_empty`, which pinned the pre-B2.1
+    stub shape `{"schema_version": 1, "cases": []}` — that assertion could
+    only ever describe the state before B2.1's Task 1 filled the file in, so
+    it went stale the moment the task succeeded rather than the moment
+    something broke. This pins the shape B2.1 actually produced instead.
+
+    Two labelling notes belong here because a reader of the supplement will
+    hit them directly, not just the PR that introduced them:
+
+    - `company_prefix` is NOT pinned as a literal string anywhere in the
+      manifest header the way `generic_word_definition` is. It was
+      reverse-engineered for the supplement (identifier-token overlap
+      between query and context, using the same vocabulary as
+      `generic_word_identifiers`) and independently VERIFIED to reproduce
+      all 58 `company_prefix` labels in the frozen mandatory manifest with
+      zero mismatches before the supplement trusted it as a computable
+      rule. Frozen-and-pinned and reconstructed-and-verified are different
+      guarantees — the next reader should not assume this one is written
+      down anywhere but here.
+    - `fee_policy` has NO mechanical rule, pinned or reconstructable. Every
+      lexical hypothesis tried while building the supplement (token overlap
+      on query only / context only / both, an 18-word bilingual
+      fee/price/capital lexicon) fails to reproduce the mandatory
+      manifest's own 8 `fee_policy=true` labels, which turn out to be a
+      hand-picked subgroup rather than a function of the visible text —
+      e.g. "Harga PT PMA berapa all in?" is labelled False while "How much
+      is a PT PMA company, all in?" is labelled True, same topic, same
+      requested fact. The supplement therefore does NOT try to match that
+      hidden rule: it applies its own explicit, documented one instead (a
+      keyword match against `requested_fact`) and says so here rather than
+      presenting a guess as ground truth.
+    """
+
+    def test_parses_and_validates_clean_under_the_harness(self, supplement: dict) -> None:
+        errors = harness.validate(supplement)
+        assert errors == [], errors
+
+    def test_set_b_and_set_c_have_their_declared_case_counts(self, supplement: dict) -> None:
+        by_set: dict[str, int] = {}
+        for case in supplement["cases"]:
+            assert "set" in case, f"{case.get('case_id')}: missing 'set' field"
+            by_set[case["set"]] = by_set.get(case["set"], 0) + 1
+
+        assert by_set.get("B") == 8, by_set  # ruling I26 mandatory distractors: 4 pairs
+        assert by_set.get("C") == 24, by_set  # D-SETC hard-case pairs: 12 pairs
+        # Set D: the cross-language cell of 6 of those hard pairs — English
+        # query, Indonesian context and label unchanged. It is the cell where
+        # a support-driven relevance RAISE would fire, and the only one Set C
+        # (monolingual by construction) never measured.
+        assert by_set.get("D") == 12, by_set
+        assert sum(by_set.values()) == len(supplement["cases"]) == 44
+
+    def test_every_pair_has_one_sufficient_and_one_relevant_insufficient_with_identical_provenance(
+        self, supplement: dict
+    ) -> None:
+        pairs: dict[str, list[dict]] = {}
+        for case in supplement["cases"]:
+            pairs.setdefault(case["pair_id"], []).append(case)
+
+        assert len(pairs) == 22, sorted(pairs)  # 4 (Set B) + 12 (Set C) + 6 (Set D)
+        for pair_id, members in pairs.items():
+            assert len(members) == 2, (pair_id, len(members))
+            strata = sorted(m["stratum"] for m in members)
+            assert strata == ["relevant_insufficient", "sufficient"], (pair_id, strata)
+            sets = {m["set"] for m in members}
+            assert len(sets) == 1, (pair_id, sets)  # never mixes Set B with Set C
+
+            a, b = members
+            assert json.dumps(a["provenance_fixture"], sort_keys=True) == json.dumps(
+                b["provenance_fixture"], sort_keys=True
+            ), f"pair {pair_id}: provenance differs between members"
+
+    def test_no_supplement_case_leaks_into_the_mandatory_report(
+        self, manifest: dict, supplement: dict
+    ) -> None:
+        mandatory_ids = {c["case_id"] for c in manifest["cases"]}
+        supplement_ids = {c["case_id"] for c in supplement["cases"]}
+        assert mandatory_ids.isdisjoint(supplement_ids)
+
+        # report() only ever iterates whatever manifest dict it is handed —
+        # this is a regression guard against a future wiring mistake that
+        # concatenates the two case lists before calling it.
+        result = harness.report(manifest)
+        assert result["mandatory"]["case_count"] == len(manifest["cases"])
+
+        decided_ids = set()
+        for pair in result["mandatory"]["spec_pairs"].values():
+            decided_ids.add(pair["sufficient_case_id"])
+            decided_ids.add(pair["relevant_insufficient_case_id"])
+        assert decided_ids.isdisjoint(supplement_ids)
 
 
 class TestBalancePerCell:
@@ -352,3 +449,37 @@ class TestValidateRejectsMalformedQueryOrContextTypes:
     ) -> None:
         errors = harness.validate(manifest)
         assert not any("query must be" in e or "context must be" in e for e in errors), errors
+
+
+def test_the_replay_key_is_injective_over_query_and_context() -> None:
+    """Round-1 adversarial finding (codex-gpt-5.6-sol), reproduced then cured.
+
+    The first key was `query + "\\x00" + "\\n".join(context)`, under which a
+    two-chunk context and a one-chunk context carrying a newline hash
+    identically. `decide()` raises on a MISSING key, so an uncovered case is
+    safe; a COLLIDING case is not — it reads a verdict measured on different
+    text, silently. The collision was LATENT, never active: the 114 recorded
+    cases produced 114 distinct keys under both derivations, which is why the
+    cure re-keys the record without re-measuring one verdict.
+    """
+    a = harness.support_record_key("a", ["b", "c"])
+    b = harness.support_record_key("a", ["b\nc"])
+    assert a != b
+
+    c = harness.support_record_key("a\x00b", [])
+    d = harness.support_record_key("a", ["b"])
+    assert c != d
+
+    # The frozen record's keys are exactly the keys the current derivation
+    # produces for the cases it covers — no stale key survives the re-keying.
+    record = harness.load_support_record(
+        Path(harness.__file__).resolve().parent / "support_verdicts_b2.json",
+    )
+    manifests = ["manifest_mandatory.json", "manifest_supplement_b2.json", "validation_codex.json"]
+    bench = Path(harness.__file__).resolve().parent
+    keys = {
+        harness.support_record_key(case["query"], case["context"])
+        for name in manifests
+        for case in harness.load(bench / name)["cases"]
+    }
+    assert set(record) == keys, "record keys and manifest-derived keys diverge"

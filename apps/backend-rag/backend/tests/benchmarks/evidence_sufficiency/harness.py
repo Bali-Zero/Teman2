@@ -17,6 +17,7 @@ does, and `report()` is the difference between the two.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -24,11 +25,17 @@ from typing import Any
 
 from backend.core.score_provenance import SCORE_KINDS
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
+from backend.services.rag.agentic._support_signal import SupportVerdict
 from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
 
 _HERE = Path(__file__).resolve().parent
 DEFAULT_MANIFEST = _HERE / "manifest_mandatory.json"
 DEFAULT_VALIDATION = _HERE / "validation_codex.json"
+#: B2.1 §6 — the frozen CI-mode replay record. Empty mapping + a header until
+#: the Dux fills it from a real seat run; `main()` only reads it when
+#: `--support-record` is passed, so the baseline (no flag) run this module's
+#: own verification depends on is untouched by this file's mere existence.
+DEFAULT_SUPPORT_RECORD = _HERE / "support_verdicts_b2.json"
 
 _STRATA = frozenset(
     {
@@ -47,6 +54,47 @@ def load(path: str | Path) -> dict[str, Any]:
     """Read a manifest JSON file from disk."""
     with Path(path).open(encoding="utf-8") as f:
         return json.load(f)
+
+
+def support_record_key(query: str, context: list[str]) -> str:
+    """The B2.1 §6 replay key — `sha256` of a CANONICAL JSON serialization of
+    `[query, context]`, NEVER `case_id`, so no label can be smuggled through
+    the key itself.
+
+    The serialization is JSON and not concatenation because concatenation is
+    NOT INJECTIVE, and a non-injective replay key fails in the one way this
+    record may never fail: silently, with the WRONG verdict rather than a
+    missing one. Found by the adversarial seat (codex-gpt-5.6-sol, round 1)
+    and reproduced before curing — the first version keyed on
+    `query + "\\x00" + "\\n".join(context)`, under which
+
+        ("a", ["b", "c"])   and   ("a", ["b\\nc"])
+
+    hash IDENTICALLY: a two-chunk context and a one-chunk context carrying a
+    newline are indistinguishable once joined. `decide()` raises on a MISSING
+    key, which protects against an uncovered case; nothing protected against
+    a COLLIDING one, and the colliding pair would have read a verdict
+    measured on different text. JSON escapes the separators instead of
+    trusting them to be absent."""
+    payload = json.dumps([query, context], ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def load_support_record(path: str | Path) -> dict[str, str]:
+    """Read a frozen CI-mode support-verdict replay record.
+
+    Shape: `{"_meta": {...}, "verdicts": {<key>: <SupportVerdict value>}}`.
+    Returns the `verdicts` mapping only — `_meta` is documentation, never a
+    lookup target. Raises (loudly, never silently) if the file is malformed:
+    a record that cannot be read is not the same as an empty one."""
+    with Path(path).open(encoding="utf-8") as f:
+        raw = json.load(f)
+    verdicts = raw.get("verdicts")
+    if not isinstance(verdicts, dict):
+        raise ValueError(
+            f"{path}: support record must carry a 'verdicts' object, got {type(verdicts).__name__}",
+        )
+    return verdicts
 
 
 def _cell(case: dict[str, Any]) -> str:
@@ -224,14 +272,35 @@ def validate(manifest: dict[str, Any]) -> list[str]:
     return errors
 
 
-def decide(case: dict[str, Any]) -> dict[str, Any]:
+def decide(
+    case: dict[str, Any],
+    support_record: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Run the REAL scorer + abstain policy on one case's (query, context,
-    sources) — never reads a label field."""
+    sources) — never reads a label field.
+
+    `support_record`, when given (CI mode, B2.1 §6), supplies the support
+    verdict via the frozen replay key (`support_record_key`) — never
+    `case_id`. A missing key is a loud `KeyError`, never a silent `None`:
+    silently treating an unrecorded case as "not consulted" would let a
+    manifest case the Dux's real run never covered pass CI unnoticed."""
     query = case["query"]
     context = case["context"]
     sources = (case.get("provenance_fixture") or {}).get("sources") or []
 
-    score = calculate_evidence_score(sources, context, query)
+    support: SupportVerdict | None = None
+    if support_record is not None:
+        key = support_record_key(query, context)
+        if key not in support_record:
+            raise KeyError(
+                f"support_verdicts record missing key {key!r} for case "
+                f"{case.get('case_id')!r} — the Dux's seat run never covered this "
+                "(query, context) pair, and a missing key must never silently "
+                "read as 'not consulted'",
+            )
+        support = SupportVerdict(support_record[key])
+
+    score = calculate_evidence_score(sources, context, query, support=support)
     policy = build_abstain_policy(query)
     generation = "abstain" if policy.generation_abstains(score) else "pass"
     label = "abstain" if policy.label_abstains(score) else "pass"
@@ -269,7 +338,10 @@ def _accumulate(bucket: dict[str, Any], stratum: str, expected: str, actual: str
         bucket["by_stratum"][stratum][metric_name]["count"] += 1
 
 
-def _report_one(manifest: dict[str, Any]) -> dict[str, Any]:
+def _report_one(
+    manifest: dict[str, Any],
+    support_record: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Run `decide()` on every case in ONE manifest and aggregate
     false-abstention / false-acceptance counts per cell, per gate, per
     stratum, plus a fee_policy column and a spec_pairs view."""
@@ -283,7 +355,7 @@ def _report_one(manifest: dict[str, Any]) -> dict[str, Any]:
     decisions: dict[str, dict[str, Any]] = {}
 
     for case in cases:
-        decision = decide(case)
+        decision = decide(case, support_record)
         decisions[case["case_id"]] = decision
 
         cell = _cell(case)
@@ -350,6 +422,7 @@ def _report_one(manifest: dict[str, Any]) -> dict[str, Any]:
 def report(
     manifest: dict[str, Any],
     validation: dict[str, Any] | None = None,
+    support_record: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Report on the MANDATORY manifest and, separately, on an optional
     VALIDATION manifest. The two sets are never pooled: each is scored by
@@ -359,13 +432,18 @@ def report(
     before the adversarial seat's draws are copied in) reports as `None`
     rather than an all-zero-denominator report.
 
+    `support_record`, when given, is the SAME replay mapping applied to both
+    sets (B2.1 §6 CI mode) — omit it (`None`) for the Dux-mode / baseline
+    measurement, which reads neither record and is unaffected by this
+    parameter's mere existence.
+
     Returns `{"mandatory": <report>, "validation": <report> | None}`.
     """
-    mandatory_report = _report_one(manifest)
+    mandatory_report = _report_one(manifest, support_record)
 
     validation_report: dict[str, Any] | None = None
     if validation is not None and validation.get("cases"):
-        validation_report = _report_one(validation)
+        validation_report = _report_one(validation, support_record)
 
     return {"mandatory": mandatory_report, "validation": validation_report}
 
@@ -392,7 +470,20 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="print the full report as JSON (default: human-readable summary)",
     )
+    parser.add_argument(
+        "--support-record",
+        default=None,
+        help=(
+            "path to a frozen support-verdict replay record (B2.1 §6 CI mode); omit for "
+            "the Dux-mode / baseline measurement, which reads neither record and passes "
+            "support=None (not consulted) for every case"
+        ),
+    )
     args = parser.parse_args(argv)
+
+    support_record: dict[str, str] | None = None
+    if args.support_record is not None:
+        support_record = load_support_record(args.support_record)
 
     manifest = load(args.manifest)
     errors = validate(manifest)
@@ -412,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
         for e in validate(validation_manifest):
             print(f"VALIDATION SET WARNING: {e}", file=sys.stderr)
 
-    result = report(manifest, validation_manifest)
+    result = report(manifest, validation_manifest, support_record)
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
