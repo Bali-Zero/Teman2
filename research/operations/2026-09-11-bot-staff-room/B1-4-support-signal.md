@@ -187,7 +187,7 @@ the finding of this window, so both ship.
 **Set A — the frozen mandatory manifest** (`manifest_mandatory.json`, sha256
 `9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f` at
 measurement time, merged in #6274; re-pinned to
-`240842d97a34c9f1b4230b1b8bb441844eb3f441bb762d6c1ce2052d65211bb7` by the
+`d23a66ca27f48d2bf186f941e902a99c6991803ae53c651fedbab201772da745` by the
 provenance-fixture PR — RULED I30/I31 — which is the one sanctioned exception
 to the freeze and touches only case `bs-17806bb4`'s `provenance_fixture`):
 16 counterfactual pairs carrying a `pair_id` with exactly one

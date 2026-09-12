@@ -445,3 +445,63 @@ pack_lint:
       do the work. Falsifying an evidence pack to pass the check that exists
       to keep evidence packs honest is the one cure that is never available.
       It is declared here instead, and it is the gate's to weigh.
+successor_rework:
+  ruling: "RULING I35 (2026-09-12) — REWORK-BUILD on #6326 at ca1b25ca84, decided before the gate finished."
+  why: >-
+    The council found, and the Dux reproduced on disk, that #6326 re-pinned the
+    frozen manifest's sha while the manifest CONTRADICTED ITSELF: the cured case
+    still carried `label_review` describing it as a strict xfail scoring below
+    the gate, and `xfail_ref` still pointed at a test whose marker the same PR
+    had removed. A manifest that lies about its own case must not merge, and an
+    armed branch is frozen — so the cure is this SUCCESSOR, cut from fresh
+    origin/main, and #6326 is closed by its author.
+  carried_from_the_council:
+    - id: KIMI-1
+      what: "label_review and xfail_ref described the PRE-cure state."
+      cure: >-
+        `xfail_ref` becomes `cured_ref` (the case is no longer an xfail) and
+        `label_review` states the post-cure truth: the lexical bridge is still
+        absent and the legacy literal still scores 0.08; what discharges the
+        residual is the DECLARED provenance, never a relabel; V2 remains OPEN.
+        The benchmark's AST test was extended with it and now asserts the
+        MARKER STATE, not just the name: an `xfail_ref` must carry an xfail
+        decorator and a `cured_ref` must NOT — so re-adding the marker, or
+        letting the other xfail quietly become a pass, goes red.
+    - id: KIMI-2
+      what: "the citation fix was itself off by one — :45, where grep says :46."
+      cure: "the note cites 46, verified by grep AFTER the edit (the line moved because of this PR's own added literal), and the note records both earlier wrong values rather than hiding the correction history."
+    - id: KIMI-3
+      what: "'measured 2026-09-03' is not attested anywhere."
+      cure: >-
+        The note now says exactly what is attested and no more: 0.373 appears
+        in #5618 (commit 2cd3cf84b8, 2026-09-09), whose message dates its OTHER
+        cosines `measured live 2026-09-01` with their text pairs but gives
+        0.373 no measurement date; 2026-09-03 is that commit's ADVERSARIAL
+        REVIEW date; no probe artifact exists on disk. Codex's falsification
+        conditions are written beside it: a re-measurement incompatible at this
+        precision, or any value below the 0.32 boundary, breaks the cure.
+    - id: KIMI-4-boundary-tautology
+      what: >-
+        reasoning_utils.py's own docstring says MODERATE starts at 0.32 BECAUSE
+        0.373 is "the one measured POSITIVE anchor" — so this fixture clears a
+        boundary drawn to admit it, with 0.053 of margin.
+      disposition: "NOT curable by a fixture PR. Named here and carried to B2.2, which owns the threshold question across two judges."
+    - id: KIMI-5-harness-validates-shape-only
+      what: >-
+        harness.validate() checks shape and vocabulary — never that `score` is
+        really the transform of `score_raw`, nor that `score_raw` sits inside
+        the measured anchors. So "the one sanctioned exception" is guaranteed
+        by a comment, not by a mechanism, and a future fixture PR could move a
+        case from abstain to pass by declaration plus a re-pin.
+      disposition: "Accepted as a real structural gap; a B2.3 hardening item, named before anyone uses it rather than after."
+    - id: CODEX-3
+      what: "the fail-closed parity class covered the DECLARED path only."
+      cure: "F1b — a legacy mid-band case (bare-float source, one-token query, 0.3000 against the 0.8000 ceiling). Guilt demonstrated with Codex's own mutation, raise limited to non-declared sources: ONLY the new test went red (1 failed, 10 passed); reverted with an empty engine diff; the file is 55 passed."
+    - id: CODEX-6
+      what: "a figure in the pack was wrong."
+      cure: "corrected here — _DECLARED reads 0.7500 with silence and 0.7500 with SUPPORTED, _UNKNOWN_KIND reads 0.8000 and 0.8000. Both are saturated and both are invariant under the verdict, which was the point; the shared '0.7500' was not true of the second. And the wording: the cured test asserts `< 0.15`, it does not pin 0.08."
+  manifest_sha_after_rework:
+    old_frozen: "9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f # pragma: allowlist secret"
+    intermediate_6326: "240842d97a34c9f1b4230b1b8bb441844eb3f441bb762d6c1ce2052d65211bb7 # pragma: allowlist secret"
+    new: "d23a66ca27f48d2bf186f941e902a99c6991803ae53c651fedbab201772da745 # pragma: allowlist secret"
+    repinned_in: "test_evidence_sufficiency_benchmark.py (MANDATORY_MANIFEST_SHA256) and B1-4-support-signal.md. #6326's intermediate value never merged and is recorded here only so the ledger row can name the full chain."

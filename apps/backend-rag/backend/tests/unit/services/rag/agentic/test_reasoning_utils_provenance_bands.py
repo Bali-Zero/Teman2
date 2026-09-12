@@ -524,6 +524,36 @@ class TestSupportIsFailClosedOnlyInBothDirections:
             f"the equality above (got {not_consulted})"
         )
 
+    def test_supported_is_worth_nothing_MID_BAND_ON_THE_LEGACY_PATH_too(self) -> None:
+        """F1b — the gap the Codex seat found in F1's own cure (#6326 council,
+        RULING I35). The mid-band case above defends the DECLARED path only.
+        Measured: with a raise applied ONLY to non-declared sources
+        (`elif support is SUPPORTED and not declared and semantic_relevance > 0`)
+        the whole suite stayed green — 206 passed, 1 xfailed, nothing red — so
+        a future edit lifting a LEGACY band on a SUPPORTED verdict would have
+        shipped unnoticed.
+
+        This case is the legacy mirror: a bare-float source (no score_kind, the
+        shape every pre-B1.1 fixture has) against a query sharing ONE token
+        with the context, which lands at 0.3000 — two bands below the 0.8000
+        ceiling the saturated fixtures sit at. Under that legacy-only raise it
+        reads 0.6000 with SUPPORTED against 0.3000 with silence.
+        """
+        legacy_source = [{"score": 0.72}]
+        one_token_query = "NIB timeline for foreign investors"
+        not_consulted = calculate_evidence_score(legacy_source, self._CONTEXT, one_token_query)
+        supported = calculate_evidence_score(
+            legacy_source, self._CONTEXT, one_token_query, support=SupportVerdict.SUPPORTED
+        )
+        assert supported == not_consulted, (
+            "SUPPORTED lifted a MID-BAND score on the LEGACY path — RULING I30 is "
+            f"fail-closed on BOTH paths: silence {not_consulted}, SUPPORTED {supported}"
+        )
+        assert 0.15 <= not_consulted < 0.8, (
+            "this legacy fixture stopped being mid-band (0.8 is the ceiling these "
+            f"fixtures saturate at) — re-measure before trusting the equality (got {not_consulted})"
+        )
+
     def test_supported_cannot_rescue_the_declared_residual(self) -> None:
         """The concrete case the rule was ruled on: `bs-17806bb4`'s shape — an
         English question naming no identifier, Indonesian context that DOES
