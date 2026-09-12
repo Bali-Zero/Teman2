@@ -164,8 +164,6 @@ export const routeTitles: Record<string, string> = {
   "/team/calendar": "Team Calendar",
   "/partners": "Partners",
   "/partners/new": "New Partner",
-  "/partners/orphaned": "Orphaned Partners",
-  "/partners/finance": "Finance Queue",
   "/hr": "HR / Payroll",
   "/hr/bonuses": "Bonuses",
   "/hr/payroll": "Payroll",

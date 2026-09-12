@@ -204,13 +204,6 @@ export interface ReassignBody {
   reason: string;
 }
 
-export interface BulkReassignBody {
-  // CRIT-8: partner_ids are UUID strings
-  partner_ids: string[];
-  new_user_id: string;
-  reason: string;
-}
-
 export interface CreateReferralBody {
   // CATA-4: practice_id is INTEGER (production practices.id is INTEGER, not UUID).
   // Serializes as JSON number. Backend ReferralCreate model expects int.
@@ -302,13 +295,6 @@ export const deactivatePartner = (id: string) =>
 export const reassignPartner = (id: string, body: ReassignBody) =>
   api.post<{ success: boolean }>(`${BASE}/${id}/reassign`, body);
 
-/** Bulk reassign multiple orphaned partners */
-export const bulkReassign = (body: BulkReassignBody) =>
-  api.post<{ success: boolean; updated_count: number }>(
-    `${BASE}/bulk-reassign`,
-    body,
-  );
-
 // NOTE: resendWelcomeEmail removed — backend has no /resend-welcome endpoint.
 // v1 welcome email is sent atomically on activation via outbox. v1.1 may add manual resend.
 
@@ -333,20 +319,6 @@ export const listCommissions = (
   api.get<{ commissions: PartnerCommission[]; total: number }>(
     `${BASE}/${partnerId}/commissions${qs(params)}`,
   );
-
-/** List orphaned partners (assigned_to is null or empty) */
-export const listOrphanedPartners = () =>
-  api.get<{ partners: Partner[]; total: number }>(`${BASE}/orphaned`);
-
-/** List all commissions for admin finance queue */
-export const listAllCommissions = (
-  params?: Record<string, string | number | null | undefined>,
-) =>
-  api.get<{
-    commissions: PartnerCommission[];
-    total: number;
-    summary: Record<string, number>;
-  }>(`${BASE}/commissions${qs(params)}`);
 
 /** Approve a commission */
 // CRIT-8: was /api/partner-commissions/{id}/approve — corrected to /api/partners/commissions/{id}/approve
