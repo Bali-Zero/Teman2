@@ -111,6 +111,11 @@ _TOUCH_RE = re.compile(
 )
 
 
+#: `$tag$` / `$$` -- a dollar-quote opener. Only matched OUTSIDE a literal, so
+#: a `$` inside a string is not one.
+_DOLLAR_TAG_RE = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$")
+
+
 def _executable(sql: str) -> str:
     """One pass over the text with a quote-aware state machine (Sol O1: a
     decoy in a block or trailing comment satisfied the regexes, and whole-line
@@ -119,11 +124,30 @@ def _executable(sql: str) -> str:
     `'`, and a literal that ends and is immediately (after whitespace) followed
     by another one is joined -- PL/pgSQL concatenates adjacent literals, which
     is how 304 spells its `EXECUTE 'a ' 'b '`. A `--` inside a literal (the
-    NOTICE messages) is text, not a comment."""
+    NOTICE messages) is text, not a comment. A dollar-quoted body is read as
+    plain text (see below), and an unterminated body -- like an unterminated
+    literal -- is a hard error rather than a guess."""
     out: list[str] = []
     i, n, in_str = 0, len(sql), False
     while i < n:
         ch = sql[i]
+        if not in_str:
+            # Dollar-quoted body (decision #46-bis): its own unit, scanned
+            # RECURSIVELY with these same rules -- it is PL/pgSQL code, so its
+            # literals, its `''` escapes and its adjacent-literal concatenation
+            # (304's `EXECUTE 'a ' 'b '` lives inside one) must be read, and its
+            # quote state must NOT leak in or out of the surrounding text. An
+            # unterminated body is a hard error, like an unterminated literal.
+            tag = _DOLLAR_TAG_RE.match(sql, i)
+            if tag:
+                end = sql.find(tag.group(0), tag.end())
+                assert end != -1, (
+                    f"unterminated dollar-quoted body opened by {tag.group(0)!r}: the canary "
+                    "refuses to guess where it ends"
+                )
+                out.append(_executable(sql[tag.end() : end]))
+                i = end + len(tag.group(0))
+                continue
         if in_str:
             if ch == "'":
                 if sql.startswith("''", i):
