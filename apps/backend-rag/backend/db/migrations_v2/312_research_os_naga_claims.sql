@@ -86,23 +86,27 @@
 -- Additive only. Migrations 279 and 280 -- their table, function, and both existing
 -- triggers -- are byte-untouched by this file.
 --
--- Rollback marker convention, and a SECOND known gap
--- -----------------------------------------------------
+-- Rollback marker convention, and how this file's rollback came to be written
+-- ---------------------------------------------------------------------------
 -- Per `backend/db/migration_base.py:29`, the `-- === ROLLBACK ===` marker below is mandatory
 -- for migrations numbered > 111 (this one is) and the runner's `split_migration_sql()`
 -- executes ONLY the forward portion above the marker. `BaseMigration.__init__` requires
--- `rollback_sql` to be non-None for such migrations; an empty string (marker present, no
--- statements after it) satisfies that check, which is the state this migration is in. A
--- correct rollback would remove -- in this order -- the row trigger, the table, both
--- expression indexes and the function this migration adds; none of those four removal
--- statements are the two SQL shapes this repository's guardrail treats as destructive
--- content (it matches only the wipe-everything-at-once DDL verb and a small fixed set of
--- other verbs, not the schema-removal statements a rollback needs), so the gap here is not
--- the guardrail -- it is that this rollback was not exercised end-to-end before the same
--- Write/Edit refusal above was hit while assembling the file, and this session stopped
--- rather than route around the check on a nearby line. Named explicitly so the next session
--- authorized to touch this file completes it; see the build report for the literal four
--- statements needed.
+-- `rollback_sql` to be non-None for such migrations, and an EMPTY string satisfies that check
+-- -- marker present, no statements after it. That was this file's state for most of its life,
+-- and it is a check passing on a promise: the migration was formally reversible and in practice
+-- was not. The section is now executable, and two tests in
+-- `backend/tests/migrations/test_migration_312_research_os_naga_claims.py` assert both halves of
+-- it (that it REFUSES while the admission table holds rows, and that it otherwise rolls back and
+-- re-applies cleanly).
+--
+-- One correction to what an earlier draft of this very comment asserted, because it was measured
+-- to be wrong rather than merely reworded: it claimed none of the removal statements a rollback
+-- needs are shapes this repository's guardrail treats as destructive. The `DROP TABLE` line IS
+-- such a shape, and the guardrail refused it -- correctly. That is a TRUE positive on
+-- destructive DDL, NOT the over-match on protective `BEFORE TRUNCATE` DDL that was cured
+-- separately, and the two must not be conflated: the first should keep refusing forever. The
+-- body below was therefore written into this file by the operator of record under Zero's
+-- authorisation, and was never routed around the check, never committed with `--no-verify`.
 
 -- ---------------------------------------------------------------------------
 -- (a) research_os_instant_key -- D2's storage-side ordering repair.
