@@ -59,15 +59,19 @@ const ROSTER_GRAPH_MODULES = [
 ];
 
 /**
- * The guard script's chunk exception, pinned from here.
+ * The guard script's chunk exception list, pinned from here — and now EMPTY.
  *
- * It holds exactly one time-boxed entry while C4b is outstanding — see the comment
- * on ALLOWED_CHUNK_PREFIXES in scripts/assert-roster-not-in-public-chunks.mjs. This
- * test fails if the list grows, shrinks to something else, or is quietly reworded:
- * an exception that can be added without a red test is not an exception, it is a
- * hole with a comment.
+ * C4 carried one time-boxed entry, `app/(workspace)/clients/`, while that route
+ * still hardcoded the tax-consultant table. C4b removed the hardcoding (the table
+ * is resolved server-side and passed as a prop), so the entry is gone from
+ * ALLOWED_CHUNK_PREFIXES in scripts/assert-roster-not-in-public-chunks.mjs and
+ * gone from here.
+ *
+ * This test fails if the list grows, shrinks to something else, or is quietly
+ * reworded: an exception that can be added without a red test is not an
+ * exception, it is a hole with a comment.
  */
-const EXPECTED_CHUNK_EXCEPTIONS = ["app/(workspace)/clients/"];
+const EXPECTED_CHUNK_EXCEPTIONS: readonly string[] = [];
 
 /**
  * EMPTY, and that is the assertion.

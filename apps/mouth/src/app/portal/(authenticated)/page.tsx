@@ -5,19 +5,21 @@
  *
  * Usa React Query per caching e ottimizzazione
  *
- * WS3 (GARUDA Day Edition, 2026-07-24): day-theme token alignment.
- * State colors read the semantic --state-* tokens (WS2 AA light overrides),
- * copper accents read --bz-copper / --bz-copper-text (daylight steps armed
- * in globals.css [data-theme="operative-light"]). No hardcoded hexes.
+ * SAETTA-R19P W3 (2026-09-13): concept-F "RAPI" presentation pass. Same data
+ * flow, same seven sections in the same order — paper/hairline dressing:
+ * copper rule + serif masthead, one "next move" band + numbered matter index,
+ * three status columns in one frame, quiet chips, numbered actions whose
+ * priority is a WORD, and a hairline activity spine. Four colour meanings
+ * only: forest = done (--state-success), slate = ours (--state-info), copper =
+ * needs you (--bz-copper*), muted = waiting (--tx-secondary). No filled
+ * danger/warning rows anywhere on this page.
  */
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
-  CheckCircle2,
   AlertTriangle,
-  Clock,
   ChevronRight,
   FileText,
   MessageCircle,
@@ -38,7 +40,6 @@ import {
 import {
   PortalCardSkeleton,
   PortalEmptyState,
-  PortalPageLoader,
   PortalListSkeleton,
   PracticeRecapCard,
 } from "@/components/portal";
@@ -48,6 +49,113 @@ import type { TimelineEntry } from "@/lib/api/types/timeline.types";
 import type { DashboardSummary } from "@/lib/api/portal/portal.types";
 import { DeadlineBadge } from "@balizero/core";
 import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
+
+// ── R19 presentation primitives (page-local, nothing shared is restyled) ──
+const SERIF: React.CSSProperties = {
+  fontFamily: "var(--font-serif)",
+  fontWeight: 450,
+};
+const EYEBROW =
+  "text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--tx-secondary)]";
+const SECTION_H2 = "text-[24px] leading-[1.14] tracking-[-0.02em]";
+const HAIRLINE = "border border-[var(--bz-border)]";
+const CARD = `rounded-lg bg-[var(--bz-surface)] ${HAIRLINE}`;
+const FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]";
+
+type PillTone = "ok" | "ours" | "you" | "wait";
+
+const PILL_TONE: Record<PillTone, string> = {
+  ok: "text-[var(--state-success)] border-[var(--state-success)]",
+  ours: "text-[var(--state-info)] border-[var(--state-info)]",
+  you: "text-[var(--bz-copper-text)] border-[var(--bz-copper)]",
+  wait: "text-[var(--tx-secondary)] border-[var(--bz-border-hover)]",
+};
+
+/** Outlined status pill — one vocabulary, four words, never a filled state. */
+function StatePill({ tone, label }: { tone: PillTone; label: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-[7px] whitespace-nowrap rounded-full border px-[10px] text-[10px] font-semibold uppercase tracking-[0.12em]",
+        PILL_TONE[tone],
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 rounded-full bg-current"
+      />
+      {label}
+    </span>
+  );
+}
+
+function Masthead() {
+  return (
+    <section>
+      <div
+        aria-hidden="true"
+        className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
+      />
+      <h1
+        className="text-[clamp(34px,3.4vw,44px)] leading-[1.06] tracking-[-0.03em] text-[var(--tx-pure)]"
+        style={SERIF}
+      >
+        Welcome back.
+      </h1>
+      <p className="mt-2 text-[var(--tx-secondary)]">
+        Here is your Bali life overview.
+      </p>
+    </section>
+  );
+}
+
+function SectionHead({
+  title,
+  linkLabel,
+  href,
+}: {
+  title: string;
+  linkLabel: string;
+  href: string;
+}) {
+  return (
+    <div className="mb-3.5 flex items-baseline justify-between gap-4">
+      <h2 className={cn(SECTION_H2, "text-[var(--tx-pure)]")} style={SERIF}>
+        {title}
+      </h2>
+      <a
+        href={href}
+        className="text-xs font-semibold text-[var(--bz-copper-text)] hover:text-[var(--tx-pure)] transition-colors"
+      >
+        {linkLabel}
+      </a>
+    </div>
+  );
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** practice status codes (inquiry / in_progress / waiting_documents) as words */
+function matterState(status: string | null, pending: string | null) {
+  if (pending || status === "waiting_documents")
+    return {
+      tone: "you" as PillTone,
+      label: "Needs you",
+      sentence: "Waiting for documents from you.",
+    };
+  if (status === "in_progress")
+    return {
+      tone: "ours" as PillTone,
+      label: "In progress",
+      sentence: "In progress with your team.",
+    };
+  return {
+    tone: "wait" as PillTone,
+    label: "Pending",
+    sentence: "Open with your team.",
+  };
+}
 
 function getStatusCode(error: unknown): number | undefined {
   if (!error || typeof error !== "object") return undefined;
@@ -94,21 +202,7 @@ export default function PortalHomePage() {
   if (clientConnectionMissing) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
-        <section>
-          <div
-            aria-hidden="true"
-            className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
-          />
-          <h1
-            className="text-2xl font-semibold tracking-tight text-[var(--foreground)]"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
-            Welcome Back
-          </h1>
-          <p className="text-[var(--foreground-muted)]">
-            Here is your Bali life overview.
-          </p>
-        </section>
+        <Masthead />
 
         <PortalEmptyState
           icon={UserRoundX}
@@ -159,21 +253,7 @@ export default function PortalHomePage() {
   if (unexpectedError) {
     return (
       <div className="space-y-6">
-        <section>
-          <div
-            aria-hidden="true"
-            className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
-          />
-          <h1
-            className="text-2xl font-semibold tracking-tight text-[var(--foreground)]"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
-            Welcome Back
-          </h1>
-          <p className="text-[var(--foreground-muted)]">
-            Here is your Bali life overview.
-          </p>
-        </section>
+        <Masthead />
 
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -216,36 +296,26 @@ export default function PortalHomePage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Welcome Section — Day masthead (GARUDA Day Edition): copper rule +
-          Cormorant serif headline per concept (--font-serif, wired on <html>);
-          Inter everywhere else. */}
-      <section>
-        <div
-          aria-hidden="true"
-          className="w-14 h-[3px] rounded-sm mb-4 bg-[var(--bz-copper)]"
-        />
-        <h1
-          className="text-3xl font-semibold tracking-tight text-[var(--tx-pure)]"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          Welcome Back
-        </h1>
-        <p className="text-[var(--tx-secondary)] mt-1">
-          Here is your Bali life overview.
-        </p>
-      </section>
+    <div className="space-y-9 animate-in fade-in duration-500">
+      {/* 1 · masthead — copper rule + serif headline + the existing subtitle */}
+      <Masthead />
 
-      {/* V2 Matter-First Hero Cards */}
+      {/* 2 · matters: one next move + the numbered index of the others */}
       <HeroCards
         summary={summary}
         onOpenMatter={(id) => router.push(`/portal/matters/${id}`)}
       />
 
+      {/* 3 · the team's recap sentence */}
       <PracticeRecapCard recap={summary?.recap} />
 
-      {/* Status Cards (Traffic Lights) */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 4 · three status columns inside one hairline frame */}
+      <section
+        className={cn(
+          CARD,
+          "grid grid-cols-1 divide-y divide-[var(--bz-border)] overflow-hidden md:grid-cols-3 md:divide-x md:divide-y-0",
+        )}
+      >
         <StatusCard
           title="Immigration"
           aria-label="Immigration status"
@@ -284,29 +354,24 @@ export default function PortalHomePage() {
         />
       </section>
 
-      {/* Quick Stats Bar */}
+      {/* 5 · quick stats — two quiet chips, same conditions and handlers */}
       {(defaultDashboard.documents.pending > 0 ||
         defaultDashboard.messages.unread > 0) && (
-        <section className="flex flex-wrap gap-3">
+        <section className="flex flex-wrap gap-2.5">
           {defaultDashboard.documents.pending > 0 && (
             <button
               type="button"
               onClick={() => {
                 window.location.href = "/portal/process";
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]"
-              style={{
-                background:
-                  "color-mix(in srgb, var(--state-warning) 7%, transparent)",
-                borderColor:
-                  "color-mix(in srgb, var(--state-warning) 25%, transparent)",
-              }}
+              className={cn(
+                "flex h-10 items-center gap-2 rounded-full border border-[var(--tx-tertiary)] px-4 text-[13px] font-semibold text-[var(--tx-primary)] transition-colors hover:bg-[var(--bz-surface)]",
+                FOCUS,
+              )}
             >
-              <FileText className="w-4 h-4 text-[var(--state-warning)]" />
-              <span className="text-sm font-medium text-[var(--state-warning)]">
-                {defaultDashboard.documents.pending} document
-                {defaultDashboard.documents.pending !== 1 ? "s" : ""} pending
-              </span>
+              <FileText className="h-4 w-4 text-[var(--bz-copper)]" />
+              {defaultDashboard.documents.pending} document
+              {defaultDashboard.documents.pending !== 1 ? "s" : ""} pending
             </button>
           )}
           {defaultDashboard.messages.unread > 0 && (
@@ -315,69 +380,87 @@ export default function PortalHomePage() {
               onClick={() => {
                 window.location.href = "/portal/messages";
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]"
-              style={{
-                background:
-                  "color-mix(in srgb, var(--state-info) 7%, transparent)",
-                borderColor:
-                  "color-mix(in srgb, var(--state-info) 25%, transparent)",
-              }}
+              className={cn(
+                "flex h-10 items-center gap-2 rounded-full border border-[var(--tx-tertiary)] px-4 text-[13px] font-semibold text-[var(--tx-primary)] transition-colors hover:bg-[var(--bz-surface)]",
+                FOCUS,
+              )}
             >
-              <MessageCircle className="w-4 h-4 text-[var(--state-info)]" />
-              <span className="text-sm font-medium text-[var(--state-info)]">
-                {defaultDashboard.messages.unread} unread message
-                {defaultDashboard.messages.unread !== 1 ? "s" : ""}
-              </span>
+              <MessageCircle className="h-4 w-4 text-[var(--bz-copper)]" />
+              {defaultDashboard.messages.unread} unread message
+              {defaultDashboard.messages.unread !== 1 ? "s" : ""}
             </button>
           )}
         </section>
       )}
 
-      {/* Action Items */}
+      {/* 6 · action required — numbered, priority is a word, never a fill */}
       {defaultDashboard.actions.length > 0 && (
-        <section className="space-y-3">
-          <h2
-            className="text-lg font-semibold"
-            style={{ color: "var(--bz-text-1)" }}
-          >
-            Action Required
-          </h2>
-          <div className="space-y-2">
-            {defaultDashboard.actions.map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                onClick={() => {
-                  window.location.href = action.href;
-                }}
-                className={cn(
-                  "flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.01] w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]",
-                  action.priority === "high"
-                    ? "bg-[color-mix(in_srgb,var(--state-danger)_8%,transparent)] border-[color-mix(in_srgb,var(--state-danger)_25%,transparent)] text-[var(--state-danger)]"
-                    : action.priority === "medium"
-                      ? "bg-[color-mix(in_srgb,var(--state-warning)_8%,transparent)] border-[color-mix(in_srgb,var(--state-warning)_25%,transparent)] text-[var(--state-warning)]"
-                      : "bg-[color-mix(in_srgb,var(--state-info)_8%,transparent)] border-[color-mix(in_srgb,var(--state-info)_25%,transparent)] text-[var(--state-info)]",
-                )}
-              >
-                <div>
-                  <h3 className="font-medium">{action.title}</h3>
-                  <p className="text-sm opacity-80">{action.description}</p>
-                </div>
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            ))}
-          </div>
+        <section>
+          <SectionHead
+            title="Action required"
+            linkLabel="All processes"
+            href="/portal/process"
+          />
+          <ol className="flex flex-col gap-2">
+            {defaultDashboard.actions.map((action, i) => {
+              const priority =
+                action.priority === "high"
+                  ? { tone: "you" as PillTone, label: "Needs you" }
+                  : action.priority === "medium"
+                    ? { tone: "ours" as PillTone, label: "Soon" }
+                    : { tone: "wait" as PillTone, label: "Pending" };
+              return (
+                <li key={action.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = action.href;
+                    }}
+                    className={cn(
+                      CARD,
+                      "grid w-full grid-cols-[30px_1fr] items-center gap-3 px-4 py-3.5 text-left transition-colors hover:border-[var(--bz-border-hover)] md:grid-cols-[36px_1fr_auto] md:gap-4 md:px-5 md:py-4",
+                      FOCUS,
+                    )}
+                  >
+                    <span
+                      className="text-[22px] leading-none tabular-nums text-[var(--bz-copper-text)]"
+                      style={SERIF}
+                    >
+                      {pad2(i + 1)}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-[var(--tx-pure)]">
+                        {action.title}
+                      </span>
+                      <span className="block text-[13px] text-[var(--tx-secondary)]">
+                        {action.description}
+                      </span>
+                    </span>
+                    <span className="col-start-2 flex items-center justify-between gap-3.5 md:col-start-3 md:justify-end">
+                      <StatePill tone={priority.tone} label={priority.label} />
+                      <ChevronRight className="h-4 w-4 text-[var(--tx-secondary)]" />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
         </section>
       )}
 
-      {/* The Timeline */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2 text-[var(--tx-primary)] mb-6">
-          <Clock className="w-5 h-5 text-[var(--bz-copper)]" />
-          Timeline
-        </h2>
+      {/* 7 · recent activity — hairline spine, one dot per event */}
+      <section>
+        <SectionHead
+          title="Recent activity"
+          linkLabel="Vault"
+          href="/portal/vault"
+        />
 
-        <div className="relative border-l-2 ml-3 space-y-8 pb-10 border-[var(--glass-rim)]">
+        <div className="relative pl-[22px]">
+          <div
+            aria-hidden="true"
+            className="absolute left-[5px] top-[6px] bottom-[6px] w-px bg-[var(--bz-border-hover)]"
+          />
           {visibleTimeline.map((entry: TimelineEntry, index: number) => (
             <TimelineItem
               key={entry.id}
@@ -387,10 +470,7 @@ export default function PortalHomePage() {
           ))}
 
           {timeline.length === 0 && (
-            <div
-              className="pl-6 py-4 italic"
-              style={{ color: "var(--bz-text-2)" }}
-            >
+            <div className="py-2 text-[var(--tx-secondary)]">
               No activity yet. Your journey starts here.
             </div>
           )}
@@ -398,13 +478,12 @@ export default function PortalHomePage() {
 
         {!showAllTimeline && timeline.length > TIMELINE_PREVIEW_COUNT && (
           <button
+            type="button"
             onClick={() => setShowAllTimeline(true)}
-            className="w-full text-center text-xs py-2 rounded-lg transition-opacity hover:opacity-80"
-            style={{
-              color: "var(--bz-copper-text)",
-              background:
-                "color-mix(in srgb, var(--bz-copper) 8%, transparent)",
-            }}
+            className={cn(
+              "mt-2 text-xs font-semibold text-[var(--bz-copper-text)] transition-colors hover:text-[var(--tx-pure)]",
+              FOCUS,
+            )}
           >
             Show {timeline.length - TIMELINE_PREVIEW_COUNT} more events
           </button>
@@ -448,40 +527,30 @@ function StatusCard({
   "aria-label"?: string;
 }) {
   const { formatDate } = usePortalDateFormat();
-  // Semantic state tokens: WS2 light overrides keep these ≥4.5:1 on paper
-  // (success 4.80, warning 4.78, danger 5.74, info 5.94 — see semantic.css).
-  const getStatusStyle = (s: string) => {
+
+  // One vocabulary for the whole portal: four words, four meanings, no fill.
+  const getState = (s: string): { tone: PillTone; label: string } => {
     switch (s) {
       case "active":
-        return "bg-[color-mix(in_srgb,var(--state-success)_6%,transparent)] text-[var(--state-success)] border-[color-mix(in_srgb,var(--state-success)_25%,transparent)]";
+        return { tone: "ok", label: "Active" };
       case "warning":
       case "attention":
-        return "bg-[color-mix(in_srgb,var(--state-warning)_6%,transparent)] text-[var(--state-warning)] border-[color-mix(in_srgb,var(--state-warning)_25%,transparent)]";
+        return { tone: "you", label: "Needs you" };
       case "expired":
+        return { tone: "you", label: "Expired" };
       case "overdue":
-        return "bg-[color-mix(in_srgb,var(--state-danger)_6%,transparent)] text-[var(--state-danger)] border-[color-mix(in_srgb,var(--state-danger)_25%,transparent)]";
+        return { tone: "you", label: "Overdue" };
+      case "pending":
+      case "upcoming":
+        return { tone: "ours", label: "In progress" };
       default:
-        return "bg-[var(--glass-rim)] text-[var(--tx-secondary)] border-[var(--glass-rim)]";
+        return { tone: "wait", label: "Nothing tracked" };
     }
   };
+  const state = getState(status);
 
-  const getIcon = (s: string) => {
-    switch (s) {
-      case "active":
-        return <CheckCircle2 className="w-5 h-5" />;
-      case "warning":
-      case "attention":
-      case "expired":
-      case "overdue":
-        return <AlertTriangle className="w-5 h-5" />;
-      default:
-        return <Clock className="w-5 h-5" />;
-    }
-  };
-
-  // Expiry tiers consolidated 4→3 for AA on the day theme (WS3): the old
-  // 31–90d tier used yellow-300 (1.17:1 on paper — unreadable); it now
-  // shares the warning step with the ≤30d tier.
+  // Expiry tiers consolidated 4→3 for AA on the day theme (WS3); the copper
+  // step carries every "needs you" case — no red on this surface.
   const getExpiryInfo = () => {
     if (!expiry) return { text: subLabel || "", color: "" };
     const formatted = formatDate(expiry, {
@@ -493,20 +562,20 @@ function StatusCard({
       if (daysRemaining < 0)
         return {
           text: `Expired ${Math.abs(daysRemaining)}d ago`,
-          color: "text-[var(--state-danger)]",
+          color: "text-[var(--bz-copper-text)]",
         };
       if (daysRemaining === 0)
-        return { text: "Expires today", color: "text-[var(--state-danger)]" };
+        return {
+          text: "Expires today",
+          color: "text-[var(--bz-copper-text)]",
+        };
       if (daysRemaining <= 90)
         return {
-          text: `⏰ ${daysRemaining}d left`,
-          color: "text-[var(--state-warning)]",
+          text: `${daysRemaining}d left`,
+          color: "text-[var(--bz-copper-text)]",
         };
     }
-    return {
-      text: `Expires: ${formatted}`,
-      color: "text-[var(--state-success)]",
-    };
+    return { text: `Expires ${formatted}`, color: "" };
   };
   const expiryInfo = getExpiryInfo();
 
@@ -516,22 +585,20 @@ function StatusCard({
       onClick={onClick}
       aria-label={ariaLabel}
       className={cn(
-        "crystal-stat-card cursor-pointer !flex !flex-col border transition-all duration-200 hover:scale-[1.02] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]",
-        getStatusStyle(status),
+        "flex min-h-[150px] cursor-pointer flex-col items-start gap-1.5 px-5 py-5 text-left transition-colors hover:bg-[var(--bz-base)] md:px-6",
+        FOCUS,
       )}
     >
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]">
-          {title}
-        </span>
-        {getIcon(status)}
-      </div>
-      <div className="font-bold text-2xl font-mono text-[var(--tx-pure)] leading-tight truncate">
+      <span className={EYEBROW}>{title}</span>
+      <span
+        className="mt-1 max-w-full truncate text-[24px] leading-[1.14] tracking-[-0.02em] text-[var(--tx-pure)]"
+        style={SERIF}
+      >
         {label}
-      </div>
-      <div
+      </span>
+      <span
         className={cn(
-          "text-[10px] uppercase font-bold tracking-widest mt-2",
+          "text-[13px] tabular-nums text-[var(--tx-secondary)]",
           expiryInfo.color,
         )}
         title={
@@ -545,13 +612,16 @@ function StatusCard({
         }
       >
         {expiryInfo.text}
-      </div>
+      </span>
+      <span className="mt-auto pt-3">
+        <StatePill tone={state.tone} label={state.label} />
+      </span>
     </button>
   );
 }
 
 // ============================================================================
-// V2 Matter-First Hero Cards
+// V2 Matter-First Hero Cards — next move + numbered index
 // ============================================================================
 
 function HeroCards({
@@ -570,96 +640,172 @@ function HeroCards({
 
   if (empty) {
     return (
-      <section className="crystal-stat-card !flex !flex-col items-center justify-center p-8 text-center">
-        <CheckCircle2 className="w-10 h-10 text-[var(--state-success)] mb-3" />
-        <h2 className="text-xl font-bold text-[var(--tx-pure)]">
+      <section
+        className={cn(CARD, "px-6 py-8 text-center")}
+        aria-label="Your matters"
+      >
+        <h2
+          className={cn(SECTION_H2, "text-[var(--state-success)]")}
+          style={SERIF}
+        >
           All caught up
         </h2>
-        <p className="text-sm text-[var(--tx-secondary)] mt-1">
+        <p className="mt-1.5 text-sm text-[var(--tx-secondary)]">
           No open actions, no deadlines in the next 30 days.
         </p>
       </section>
     );
   }
 
+  const total = summary.open_actions.length;
+  const [lead, ...rest] = summary.open_actions;
+
   return (
-    <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
-        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
-          Open Actions
-        </h2>
-        {summary.open_actions.length === 0 ? (
-          <p className="text-sm text-[var(--tx-secondary)] italic">
-            None pending
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {summary.open_actions.slice(0, 5).map((a) => (
+    <section className="space-y-5" aria-label="Your matters">
+      {lead && (
+        <article
+          className={cn(
+            CARD,
+            "grid gap-6 p-6 shadow-[0_10px_30px_rgba(29,44,59,0.045)] md:grid-cols-[1fr_auto] md:items-end md:p-7",
+          )}
+        >
+          <div>
+            <p className={EYEBROW}>
+              Your next move · matter{" "}
+              <span className="tabular-nums">{pad2(1)}</span> of{" "}
+              <span className="tabular-nums">{pad2(total)}</span>
+            </p>
+            <h2
+              className="mt-2.5 max-w-[26ch] text-[26px] leading-[1.12] tracking-[-0.02em] text-[var(--tx-pure)] md:text-[30px]"
+              style={SERIF}
+            >
+              {lead.title}
+            </h2>
+            <p className="mt-2.5 max-w-[56ch] text-[var(--tx-secondary)]">
+              {matterState(lead.status, lead.pending_from_client).sentence}
+              {lead.pending_from_client ? (
+                <>
+                  {" "}
+                  Still needed from you:{" "}
+                  <b className="font-semibold text-[var(--bz-copper-text)]">
+                    {lead.pending_from_client}
+                  </b>
+                  .
+                </>
+              ) : null}
+            </p>
+            <p className="mt-3.5 flex flex-wrap gap-x-[18px] gap-y-2 text-xs text-[var(--tx-secondary)]">
+              <span>
+                Ref{" "}
+                <b className="font-semibold tabular-nums text-[var(--tx-pure)]">
+                  {lead.id}
+                </b>
+              </span>
+              {lead.type && (
+                <span>
+                  Type{" "}
+                  <b className="font-semibold text-[var(--tx-pure)]">
+                    {lead.type.replace(/[_-]+/g, " ")}
+                  </b>
+                </span>
+              )}
+            </p>
+          </div>
+          <Button
+            onClick={() => onOpenMatter(lead.id)}
+            className="h-12 rounded px-[22px] text-[13px] font-semibold tracking-[0.02em] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)]/90 md:min-w-[180px]"
+          >
+            Open matter
+          </Button>
+        </article>
+      )}
+
+      {rest.length > 0 && (
+        <ol className="border-t border-[var(--bz-border)]">
+          {rest.map((a, i) => {
+            const state = matterState(a.status, a.pending_from_client);
+            return (
               <li key={a.id}>
                 <button
                   type="button"
                   onClick={() => onOpenMatter(a.id)}
-                  className="text-left text-sm text-[var(--tx-primary)] hover:text-[var(--bz-copper-text)] transition-colors w-full truncate"
+                  className={cn(
+                    "grid w-full grid-cols-[36px_1fr] items-center gap-3 border-b border-[var(--bz-border)] py-4 text-left md:grid-cols-[44px_1fr_auto] md:gap-4",
+                    FOCUS,
+                  )}
                 >
-                  {a.title}
+                  <span
+                    className="text-[26px] leading-none tabular-nums text-[var(--bz-copper-text)]"
+                    style={SERIF}
+                  >
+                    {pad2(i + 2)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-[var(--tx-pure)]">
+                      {a.title}
+                    </span>
+                    <span className="block truncate text-[13px] text-[var(--tx-secondary)]">
+                      {a.pending_from_client || state.sentence}
+                    </span>
+                  </span>
+                  <span className="col-start-2 flex items-center justify-between gap-3.5 md:col-start-3 md:justify-end">
+                    <StatePill tone={state.tone} label={state.label} />
+                    <ChevronRight className="h-4 w-4 text-[var(--tx-secondary)]" />
+                  </span>
                 </button>
               </li>
-            ))}
-          </ul>
-        )}
-      </article>
+            );
+          })}
+        </ol>
+      )}
 
-      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
-        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
-          Deadlines · Next 30 days
-        </h2>
-        {summary.upcoming_deadlines.length === 0 ? (
-          <p className="text-sm text-[var(--tx-secondary)] italic">
-            No upcoming deadlines
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {summary.upcoming_deadlines.slice(0, 5).map((d) => (
-              <li key={d.id} className="flex items-center gap-2 text-sm">
-                {d.due_date && <DeadlineBadge date={new Date(d.due_date)} />}
-                <span className="text-[var(--tx-primary)] truncate">
-                  {d.label}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <span className={EYEBROW}>Deadlines · next 30 days</span>
         <a
           href="/api/portal/deadlines/ical"
           download
-          className="mt-auto text-[10px] uppercase tracking-widest font-bold text-[var(--bz-copper-text)] hover:text-[var(--tx-pure)] transition-colors"
+          className="text-xs font-semibold text-[var(--bz-copper-text)] hover:text-[var(--tx-pure)] transition-colors"
         >
-          Export iCal →
+          Export iCal
         </a>
-      </article>
+      </div>
+      {summary.upcoming_deadlines.length === 0 ? (
+        <p className="text-[13px] text-[var(--tx-secondary)]">
+          No upcoming deadlines.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {summary.upcoming_deadlines.slice(0, 5).map((d) => (
+            <li key={d.id} className="flex items-center gap-2.5 text-[13px]">
+              {d.due_date && <DeadlineBadge date={new Date(d.due_date)} />}
+              <span className="truncate text-[var(--tx-primary)]">
+                {d.label}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
 
-      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
-        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
-          Team Messages
-        </h2>
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <span className="text-4xl font-bold text-[var(--tx-pure)]">
-            {summary.unread_messages}
-          </span>
-          <span className="text-xs text-[var(--tx-secondary)] mt-1">
-            unread
-          </span>
-        </div>
+      {(summary.unread_messages ?? 0) > 0 && (
         <button
           type="button"
           onClick={() => {
             window.location.href = "/portal/messages";
           }}
-          className="mt-auto text-[10px] uppercase tracking-widest font-bold text-[var(--bz-copper-text)] hover:text-[var(--tx-pure)] transition-colors self-start"
+          className={cn(
+            "flex w-full items-center justify-between gap-4 border-t border-[var(--bz-border)] pt-4 text-left text-[13px] text-[var(--tx-secondary)]",
+            FOCUS,
+          )}
         >
-          Open →
+          <span>
+            <b className="font-semibold tabular-nums text-[var(--tx-pure)]">
+              {summary.unread_messages}
+            </b>{" "}
+            unread from your team
+          </span>
+          <ChevronRight className="h-4 w-4" />
         </button>
-      </article>
+      )}
     </section>
   );
 }

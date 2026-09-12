@@ -59,6 +59,26 @@ def test_the_migration_file_exists_and_declares_a_rollback() -> None:
     assert "DROP TABLE" in joined
 
 
+def test_the_rollback_never_touches_the_policy_scope_check() -> None:
+    """Gate-6287d mutation (c), made red. 313 did not widen the policy_scope
+    CHECK -- GARUDA_DOCUMENT is 304's -- so its rollback has nothing to
+    narrow, and any `DROP`/`ADD CONSTRAINT ..._policy_scope_check` in it is
+    285's shape smuggled in: an unconditional narrowing that raises
+    CheckViolationError whenever a GARUDA_DOCUMENT row exists. The migration
+    suite could not see that mutation (its seed is rolled back, so there was
+    no row for the ALTER to refuse); the text can. The repo-wide shape rule
+    for rollbacks that DO rebuild the CHECK is test_policy_scope_rollback_guard.py."""
+    _, rollback = split_migration_sql(MIGRATION.read_text())
+    assert rollback is not None
+    executable = "\n".join(
+        line for line in rollback.splitlines() if not line.strip().startswith("--")
+    ).upper()
+    for verb in ("ADD CONSTRAINT", "DROP CONSTRAINT"):
+        assert f"{verb} VISA_DECISION_RETENTION_POLICIES_POLICY_SCOPE_CHECK" not in executable, (
+            f"313's rollback must not {verb.lower()} the policy_scope CHECK: it never widened it"
+        )
+
+
 def test_both_halves_carry_the_ownership_privilege_bracket() -> None:
     """Structural guard for Sol findings F8/F9, cured under Imperatore
     decision #16 (2026-09-12). STRUCTURAL is the honest word: it reads the

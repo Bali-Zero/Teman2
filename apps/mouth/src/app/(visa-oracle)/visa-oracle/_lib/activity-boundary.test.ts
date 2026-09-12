@@ -298,14 +298,15 @@ const WALKS: readonly WalkCase[] = [
     flags: [],
   },
   {
-    // NARROW-1 condition (ii): STEPCHILD is, today, the one relation with a
-    // pack product genuinely gated on the sponsor — `el.e31d-stepchild-
-    // support` requires `family.sponsor_confirmed` with `on_unknown:
-    // NEEDS_INPUT`. Held only when the sponsor is foreign (status code
-    // asked at all); the Indonesian-sponsor STEPCHILD walk stays FREED —
-    // see "innocence: STEPCHILD with an Indonesian sponsor" in
-    // fact-mapper.test.ts.
-    name: "family · STEPCHILD, sponsor permit unresolved — HELD (D3-4, replaces NARROW-1 ii's relation proxy): el.e31d-stepchild-support is sponsor-dependent and no rule reads the sponsor's own permit",
+    // D3-4's hold (STEPCHILD held on the sponsor's own KITAS/KITAP) was
+    // REMOVED (owner ruling SHWEB-20260911, 2026-09-13, fresh grader
+    // review): no pack requirement for the sponsor's own permit exists for
+    // E31D (Permenkumham 11/2024 Pasal 33 ayat (2) huruf h names none for
+    // E31D, unlike its E31E neighbour; Pasal 193 makes E31D's guarantor a
+    // WNI, who cannot hold a KITAS/KITAP). The question itself is gone
+    // (tree.ts), so this walk now FREES — same shape as the SPOUSE walk
+    // above.
+    name: "family · STEPCHILD, foreign sponsor — FREED (D3-4 hold removed): no pack rule reads the sponsor's own permit for E31D",
     category: "family",
     tripScope: "single",
     branch: [
@@ -317,11 +318,10 @@ const WALKS: readonly WalkCase[] = [
       ["family_sponsor_permit_basis", "EXPERT"],
       ["family_stepchild_marriage_certificate_confirmed", "yes"],
       ["family_stepchild_birth_certificate_confirmed", "yes"],
-      ["family_stepchild_sponsor_permit_confirmed", "no"],
       ["family_sponsor_confirmed", "yes"],
       ["stay_days", "121"],
     ],
-    flags: ["AMBIGUOUS_SPONSOR"],
+    flags: [],
   },
   {
     name: "other · medical — HELD: no answer here reaches a fact a rule reads",
@@ -340,18 +340,21 @@ const WALKS: readonly WalkCase[] = [
   {
     // D3-2 changes the ENGINE-level route (`other_paid_activity=yes` now
     // asks the two employment facts `el.e23-employment-support` reads and
-    // `mapPurposes` emits EMPLOYMENT alone), but `other_purpose` ITSELF
-    // stays fully undecidable on purpose (spec: "holds on the
+    // `mapPurposes` emits EMPLOYMENT alone), but `other_purpose` still holds
+    // on the 7 values D4a did not release (spec: "holds on the
     // `other_purpose` values stay until each value is mapped") — so this
     // walk still holds, on the value `other_paid_activity` no longer
     // contributes to. `disclosed_review_flags` is a boundary flag, not a
     // per-cause list: removing one undecidable answer cannot un-hold a walk
-    // that another undecidable answer already holds.
+    // that another undecidable answer already holds. Uses `medical`, not
+    // `transit`: D4a (owner ruling SHWEB-20260911) released `transit` —
+    // `mapPurposes` now maps it to a real, pack-decided purpose — so it can
+    // no longer stand in for "an undecidable other_purpose value" here.
     name: "other · paid activity yes — engine reroutes to employment; other_purpose still holds",
     category: "other",
     tripScope: "single",
     branch: [
-      ["other_purpose", "transit"],
+      ["other_purpose", "medical"],
       ["other_paid_activity", "yes"],
       ["work_payer", "yes"],
       ["work_sponsor_confirmed", "yes"],
@@ -418,10 +421,6 @@ describe("ACTIVITY_BOUNDARY — the decision table itself", () => {
       // as undecidable would delete an E33 the signed pack had proven.
       secondhome_basis:
         "engine-inert routing label; the evidence carries the fact",
-      // D3-4 (PR-D3): raises AMBIGUOUS_SPONSOR directly from its own answer
-      // (`mapDisclosedReviewFlags`'s `stepchildSponsorPermitUnresolved`),
-      // never through this table.
-      family_stepchild_sponsor_permit_confirmed: "raises AMBIGUOUS_SPONSOR",
       // D3-3 (PR-D3): same shape as `secondhome_basis` above — this only
       // selects which evidence questions follow (`getCategoryQuestionIds`,
       // flow.ts); the engine reads that evidence, never this label.

@@ -13,7 +13,6 @@ vi.mock("@/hooks/useRoleMetrics", () => ({
         visti_scadenza: 3,
         fatture_overdue: 2,
         agenti_count: 46,
-        fly_uptime: 99.9,
       },
       alerts: [],
     },

@@ -1,0 +1,230 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19p-w2-0a37d1ed/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: R19P-W2
+    role: build
+    seat: Claude Opus 5 (Dux of window r19p-w2, implements directly)
+  - lane: R19P-gate
+    role: review
+    seat: a FRESH session posts harness/fable-gate on the head sha — not this window (generator is never grader)
+pii_scan: clean
+decisions:
+  - id: D1
+    decision: >-
+      The logo is BZLogo variant "full" — packages/core/components/BZLogo.tsx maps
+      it to /assets/logo/balizero-logo-clean.png, the clean wordmark-less asset the
+      brief asked for. It is rendered at 28px WITHOUT rounded-full (the workspace
+      branch keeps its 36px rounded-full rendering byte-identical).
+  - id: D2
+    decision: >-
+      Serif comes from var(--font-serif) — the same slot the portal pages already
+      use inline (page.tsx, settings/notifications, partner/referrals) and the root
+      of --bz-product-heading-font. The sibling token window swaps its value; this
+      window names the slot and never a font family.
+  - id: D3
+    decision: >-
+      The nav section label stays a <div> instead of becoming the mock's <h6>. The
+      brief's rule sheet describes the mock's element; changing the tag is a markup
+      change with an a11y consequence (a heading inside a nav) and the window is
+      presentation-only, so only its type scale changed.
+  - id: D4
+    decision: >-
+      The sidebar "who" block keeps the existing string "Client Portal" for the
+      portal role line. The brand block above it now carries the eyebrow
+      "Client portal", so the second line is redundant — but changing it is a copy
+      decision on a line no mock block covers (the mock shows "Client since March
+      2024", a field the portal profile does not carry). Recorded as a leftover.
+  - id: D5
+    decision: >-
+      StatusBadge keeps reading the semantic --state-* tokens and keeps a 7%
+      color-mix tint (down from 12%) instead of dropping the fill entirely. Six
+      page tests outside this window's perimeter assert
+      `badge.style.color === "var(--state-*)"` and
+      `badge.style.background` contains "color-mix"; the four R19 meanings are
+      produced by the token layer (the sibling window re-aliases success→forest,
+      info→slate, warning/danger→copper), which is also where the concept puts
+      them. The outline (1px border at 35% of the same token), the 6px leading dot
+      and the uppercase 10px label are what this window authored.
+  - id: D6
+    decision: >-
+      The bottom-nav count pip is filled with var(--bz-copper), not
+      var(--state-danger) — the brief's one sanctioned copper fill, because it is a
+      counter and not a button. PortalBottomNav.test.tsx's absence assertion still
+      queries the old .bg-[var(--state-danger)] selector; it passes but is now
+      vacuous. Recorded as a leftover, since that test file is outside the perimeter.
+  - id: D7
+    decision: >-
+      Two tokens the concept names do not exist yet (--bz-wash, --bz-footer). They
+      are written as var(--bz-wash,#EAE3D8) / var(--bz-footer,#EEE9E1) so the
+      surface is right today and inherits the token the moment the sibling token
+      window defines it.
+kita_prime_safety:
+  claim: A2 — every changed line in AppSidebar.tsx sits inside an isPortal conditional; the non-portal branch keeps byte-identical strings.
+  hunks:
+    - hunk: "renderNavItem class/style"
+      justification: >-
+        sharedClassName/sharedStyle were renamed to workspaceClassName/workspaceStyle
+        with their strings unchanged, and the new sharedClassName/sharedStyle are
+        `isPortal ? portal… : workspace…`. With isPortal=false the rendered className
+        and style are the pre-change values, character for character.
+    - hunk: "ExternalLink colour"
+      justification: >-
+        `active ? white : text-3` became `active && !isPortal ? white : text-3`.
+        For isPortal=false the added conjunct is constant-true, so the expression is
+        equivalent; only the portal branch changes.
+    - hunk: "badge span"
+      justification: >-
+        The original span is now guarded by `!isPortal` and is otherwise untouched; a
+        separate portal-only span renders the copper count. No workspace pixel moves.
+    - hunk: "section title"
+      justification: >-
+        className and style became `isPortal ? … : <original>`; the workspace strings
+        are the original ones.
+    - hunk: "aside / brand row / logo / brand text"
+      justification: >-
+        glass-panel-deep, justify-center px-3, height var(--bz-header-height,48px),
+        rounded-full and BZLogo size 36 all survive on the non-portal side of the
+        ternaries; the 64px row, the 28px un-rounded logo and the serif brand block
+        exist only under isPortal.
+    - hunk: "who block (avatar, name, role)"
+      justification: >-
+        Three `isPortal ? … : <original>` ternaries. The workspace gradient avatar,
+        the 11.5px uppercase name and the 9.5px role line are unchanged; note the
+        portal avatar branch is only reachable when user.avatar is undefined, which
+        is always true in the portal (the layout passes avatar: undefined).
+  test_receipt: >-
+    AppSidebar.test.tsx's workspace case — "uses the accessible active-fill token for
+    the current navigation item", which asserts toHaveStyle({background:
+    "var(--bz-sidebar-active-fill)", color: "#fff"}) with isPortal unset — is green in
+    the run below. That is the innocence side; the portal prefetch case is the guilt side.
+receipts:
+  - claim: The window runs in its own broker worktree on the branch the broker named.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id r19p-w2 ; git -C <wt> branch --show-current
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-r19p-w2 ; branch agent/air-m5/mouth/r19p-w2 ; base commit e83615c7f7"
+    exit: 0
+    ts: "2026-09-13T02:39:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: D1 — BZLogo variant "full" is the clean logo asset, and the asset exists under apps/mouth/public.
+    cmd: cat packages/core/components/BZLogo.tsx ; ls -la apps/mouth/public/assets/logo/
+    result: 'SOURCES.full.src = "/assets/logo/balizero-logo-clean.png" (alt "Bali Zero"); balizero-logo-clean.png present, 246k. The other variants are balizero-3-red.png (mark), balizero-logo-circle.png (round), /static/zantara-lotus.png (zantara).'
+    exit: 0
+    ts: "2026-09-13T02:41:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: A3 — the portal and workspace component suites are green after the reskin.
+    cmd: cd apps/mouth && ../../node_modules/.bin/vitest --run src/components/portal src/components/workspace
+    result: "Test Files 29 passed (29) ; Tests 152 passed (152) ; duration 144.20s"
+    exit: 0
+    ts: "2026-09-13T03:04:46+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: A3 — the whole authenticated portal route tree is green, including the six page tests that assert StatusBadge inline styles and the page test that asserts the recap card's "Your update" label.
+    cmd: cd apps/mouth && ../../node_modules/.bin/vitest --run "src/app/portal/(authenticated)"
+    result: "Test Files 29 passed (29) ; Tests 189 passed (189) ; duration 187.23s"
+    exit: 0
+    ts: "2026-09-13T03:08:31+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: A3 — typecheck green over the whole mouth app.
+    cmd: cd apps/mouth && ../../node_modules/.bin/tsc --noEmit
+    result: "no diagnostics ; 33m49s wall (three sibling windows were typechecking on the same machine)"
+    exit: 0
+    ts: "2026-09-13T03:20:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: A3 — eslint on the six touched files reports 0 errors; the 5 warnings are pre-existing patterns (the ref-cleanup warning in the layout's focus trap and the <a href="/privacy">/<a href="/terms"> footer links, which were <a> before this window too).
+    cmd: cd apps/mouth && ../../node_modules/.bin/eslint <the six files>
+    result: "5 problems (0 errors, 5 warnings) ; exit 0"
+    exit: 0
+    ts: "2026-09-13T03:12:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: A4 — no shadow- class survives on PortalHeader; no red hex is authored by this window; the only red-hex string in the perimeter is the pre-existing comment in StatusBadge that documents the neon hexes REMOVED in 2026-07.
+    cmd: grep -c "shadow-" PortalHeader.tsx ; grep -nEi "#(f87171|ef4444|dc2626|e11d48|ff0000|b91c1c)" <the six files> ; git diff | grep "^+" | grep -oE "#[0-9A-Fa-f]{3,8}" | sort -u
+    result: "shadow- count 0 ; the single red-hex line is StatusBadge.tsx:10, a comment; the only hexes added by the diff are #EAE3D8 (wash fallback) and #EEE9E1 (footer fallback)"
+    exit: 0
+    ts: "2026-09-13T03:45:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: A4 — the sidebar brand block renders the BZLogo component and the string "Client portal".
+    cmd: grep -n "BZLogo\|Client portal" apps/mouth/src/components/workspace/AppSidebar.tsx
+    result: 'line 36 import { BZLogo } from "@balizero/core/components/BZLogo" ; line 273 <BZLogo ... /> ; line 285 "Client portal"'
+    exit: 0
+    ts: "2026-09-13T03:45:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: A1 — the change touches only the six scope files plus this evidence pair, and the code net is 56 lines (297 with the pack).
+    cmd: git -C <wt> diff --cached $(git merge-base origin/main HEAD) --stat ; same with --numstat summed ; same restricted to -- apps/mouth
+    result: "8 files changed, 406 insertions(+), 109 deletions(-) — layout.tsx, PortalBottomNav.tsx, PortalHeader.tsx, PracticeRecapCard.tsx, StatusBadge.tsx, AppSidebar.tsx, brief.yml, pack.yml. Code only (apps/mouth): added 165, deleted 109, net 56. Whole change net 297."
+    exit: 0
+    ts: "2026-09-13T03:52:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: A5 — the authenticated /portal shell was NOT rendered locally. The dev server had to run on webpack (turbopack refuses this worktree's symlinked node_modules — "Symlink [project]/apps/mouth/node_modules is invalid, it points out of the filesystem root"), /portal answered HTTP 200 after a 314s first compile, but the route-intercepted client session never left the layout's isLoading state within a 120s wait, so both captures showed only the loading spinner and were deleted rather than passed off as the shell.
+    cmd: next dev --webpack -p 3117 ; curl -o /dev/null -w "%{http_code} %{time_total}" http://127.0.0.1:3117/portal ; node <scratchpad>/w2-shot.mjs (playwright, channel chrome, 1440x900 + 390x844)
+    result: "warmup=200 t=314.688788 ; both screenshots captured the Loading… state ; page.waitForSelector('text=Client portal') timed out at 120000ms ; files removed, declared not rendered"
+    exit: 1
+    ts: "2026-09-13T03:36:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: The implicit `pnpm install` that `pnpm -F mouth typecheck` triggers wrote an allowBuilds line into pnpm-workspace.yaml; it was reverted, so no lockfile-adjacent file rides in this PR.
+    cmd: git -C <wt> diff --cached -- pnpm-workspace.yaml ; git -C <wt> restore --staged --worktree -- pnpm-workspace.yaml ; git -C <wt> status --porcelain
+    result: 'the added line was "''@parcel/watcher'': set this to true or false" under allowBuilds ; after the restore the porcelain lists only the six scope files and the two evidence files'
+    exit: 0
+    ts: "2026-09-13T03:51:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: >-
+      CI red #1 on the first head sha (1af70c1ece) was MINE - "token-lint - no new
+      hardcoded brand hex in redesigned surfaces" convicted the footer fallback
+      #EEE9E1 in apps/mouth/src/app/portal/(authenticated)/layout.tsx:369. The lint
+      scopes apps/mouth/src/app/portal/ and apps/mouth/src/app/(workspace)/, which is
+      why the sidebar's #EAE3D8 was not named. Cured at depth 1 - both literals became
+      token chains in inline styles (var(--bz-footer, var(--bz-base)) and
+      var(--bz-wash, var(--bz-elevated))), so no hex is authored anywhere in the diff.
+    cmd: gh run view --job 103612394350 --log-failed ; git diff | grep "^+" | grep -oE "#[0-9A-Fa-f]{3,8}" | sort -u ; python3 scripts/token_lint.py --base origin/main
+    result: "the job named layout.tsx:369 #EEE9E1, 1 violation in 1 file ; after the cure the added-line hex list is EMPTY and token_lint is clean on the new commit"
+    exit: 0
+    ts: "2026-09-13T04:10:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: >-
+      CI red #2 - "Harness floor recompute" - is HARNESS-caused and is not cured by this
+      window - harness_gate_read reports PENDING because no harness/fable-gate verdict
+      has been posted on the head sha yet. Its own message says "This is NOT a defect".
+      The fresh gate session posts the verdict and the run is re-triggered with
+      `gh run rerun` (never `gh workflow run --ref`).
+    cmd: gh run view --job 103612394641 --log-failed
+    result: "harness_gate_read: PENDING - no harness/fable-gate verdict has been posted yet on this commit ; real head sha = 1af70c1ece77e2fd0572d122ea873573b46e095c"
+    exit: 1
+    ts: "2026-09-13T04:07:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+dissent:
+  - seat: Claude Opus 5 (r19p-w2, self-review against the window brief)
+    objection: >-
+      The brief says "drop the filled backgrounds" on StatusBadge; the shipped pill keeps
+      a 7% color-mix tint of the state token.
+    status: CONFIRMED
+    cure: >-
+      Not fully cured, by constraint rather than by choice: companies/visa/taxes/company[id]
+      and two partner page tests assert `style.background` contains "color-mix" on the badge,
+      and those files are outside this window's perimeter (A1 would fail). The tint was
+      halved (12% → 7%) and the outline + dot + uppercase label were added, so the pill reads
+      as an outlined pill. Recorded as a leftover for the window that owns those tests.
+  - seat: Claude Opus 5 (r19p-w2, self-review)
+    objection: >-
+      The brief's status→colour map is stated as forest/slate/copper/muted, but this window
+      writes --state-success / --state-info / --state-warning / --state-danger instead.
+    status: RETRACTED
+    cure: >-
+      Not a defect. Concept F §3 puts the four meanings in the TOKEN layer ("--state-danger is
+      re-aliased to copper"), which the sibling token window owns. Hardcoding copper here would
+      break two tests AND duplicate the mapping in two places. The one status whose MEANING
+      changed — processing, which is ours-and-moving, not needs-you — was moved from the
+      warning tone to the info (slate) tone in this window, because that is a mapping decision,
+      not a colour value.
+  - seat: Claude Opus 5 (r19p-w2, self-review)
+    objection: >-
+      The notification pip is specified copper in the brief but was not touched.
+    status: CONFIRMED
+    cure: >-
+      Not cured: the pip lives inside PortalNotificationsPopover, which the brief lists as
+      forbidden. Recorded as a leftover.
+leftovers:
+  - StatusBadge keeps a 7% color-mix tint behind the outline; six page tests outside this perimeter (companies, visa, taxes, company/[id], partner/commissions, partner/dashboard) assert style.background contains "color-mix". Dropping the fill needs a window that owns those tests.
+  - PortalBottomNav.test.tsx still queries ".bg-[var(--state-danger)]" to prove the absence of the count pip; the pip is now bg-[var(--bz-copper)], so that assertion passes vacuously. Re-point it when a window owns that test file.
+  - The notification pip and the impersonation bar keep their current styling — PortalNotificationsPopover / SuperuserImpersonationBar are outside this window's perimeter.
+  - The sidebar "who" block still prints "Client Portal" under the user's name, which now repeats the brand eyebrow above it (D4). The mock's line ("Client since March 2024") needs a field the portal profile does not return.
+  - --bz-wash and --bz-footer do not exist yet; they ride as token chains (var(--bz-wash, var(--bz-elevated)) / var(--bz-footer, var(--bz-base))) until the token window defines them, so the footer band and the initials circle are paper/elevated for now instead of the concept's wash.
+  - The authenticated /portal shell is not rendered locally (A5): turbopack refuses the broker worktree's symlinked node_modules, and under webpack the route-intercepted session stayed in the layout's isLoading state. A window with a working portal mock harness (or the deploy preview) should capture it.
+  - The nav section label stayed a <div> instead of the mock's <h6> (D3).

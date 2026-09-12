@@ -55,27 +55,26 @@ const CHUNK_DIR = path.join(".next", "static", "chunks");
 const FORBIDDEN = /faisha|faysha|sahira/i;
 
 /**
- * ONE entry, and it is TIME-BOXED. It is not a design decision — it is a debt with
- * a name and a closing PR.
+ * EMPTY, and keeping it empty is the point.
  *
- * `app/(workspace)/clients/` still hardcodes the tax-consultant address that
- * contains an excluded person's name, because this PR was split: another window's
- * #6329 and #6307 rewrote `clients/[id]/page.tsx` and `components/TaxTab.tsx` while
- * this branch had relocated their contents, and by contract the merged work wins.
- * Redoing that half on top of theirs is **C4b**, from a fresh main — and C4b
- * REMOVES this entry, taking the list back to empty. If you are reading this and
- * C4b has merged, the entry is stale and should be deleted.
+ * C4 landed with ONE time-boxed entry, `app/(workspace)/clients/`, because that
+ * PR had to be split: another window's #6329 and #6307 rewrote
+ * `clients/[id]/page.tsx` and `components/TaxTab.tsx` while this lane had
+ * relocated their contents, and by contract the merged work wins. The debt was
+ * declared with a name and a closing PR rather than left implicit.
  *
- * It is a narrower exposure than the one this guard exists for: `/clients` is in
- * `INTERNAL_ROUTES` (src/proxy.ts), so the public domain answers 301 for it —
- * measured — which is exactly the protection `/lkpm` was missing and now has. The
- * chunk is still fetchable by path on the app domain, which is why this is debt
- * rather than an accepted design.
+ * C4b is that closing PR and this is where it closes: the tax-consultant table
+ * no longer sits in `TaxTab.tsx` as a module constant. It is resolved on the
+ * server in `clients/[id]/page.tsx` and handed to `ClientDetailClient` as a
+ * prop, so the route's static chunk carries no excluded name and needs no
+ * exception. Measured on the built artifact, not assumed.
  *
- * `client-roster-boundary.test.ts` fails if this list contains anything other than
- * this one prefix, so a second exception cannot be slipped in beside it.
+ * An entry here is how a leak becomes legal, so the list is pinned at empty by
+ * `src/lib/client-roster-boundary.test.ts` (EXPECTED_CHUNK_EXCEPTIONS). Adding
+ * one means editing the test in the same commit — a visible decision, never a
+ * quiet one.
  */
-const ALLOWED_CHUNK_PREFIXES = ["app/(workspace)/clients/"];
+const ALLOWED_CHUNK_PREFIXES = [];
 
 /** Where the app's public static files live — served with no session, like chunks. */
 const PUBLIC_DIR = "public";

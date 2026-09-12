@@ -66,17 +66,28 @@ describe("e4-tier-fence — Tier-B lane identity", () => {
   });
 
   it(
-    "Tier-B lanes remain HUMAN_CONTEXT today — the reform has NOT shipped yet " +
-      "(regression tripwire: flipping any of these to a decisional kind without a claim " +
-      "is exactly the §0 failure mode the CP2 pack found: interview behavior with no " +
-      "doctrine behind it)",
+    "the 3 non-sponsor-status Tier-B lanes remain HUMAN_CONTEXT — the E4/E6 reform has NOT " +
+      "shipped for them (regression tripwire: flipping any of these to a decisional kind " +
+      "without a claim is exactly the §0 failure mode the CP2 pack found: interview " +
+      "behavior with no doctrine behind it)",
     () => {
       for (const laneId of TIER_B_LANE_IDS) {
+        if (laneId === FAMILY_SPONSOR_STATUS_LANE_ID) continue; // see the D4a test below
         const question = QUESTIONS[laneId as keyof typeof QUESTIONS];
         expect(question.decisionMapping.kind).toBe("HUMAN_CONTEXT");
       }
     },
   );
+
+  // D4a (owner ruling SHWEB-20260911, 2026-09-13) flipped this ONE Tier-B lane outside the
+  // E4/E6 reform this file otherwise tracks — see `DIVERGENCE_REGISTRY`'s new entry
+  // (e4-tier-fence.ts) and the coupling describe block below, which is the mechanism this
+  // flip actually goes through.
+  it("family_sponsor_status_code is now FACT (D4a), traced in DIVERGENCE_REGISTRY below", () => {
+    expect(QUESTIONS[FAMILY_SPONSOR_STATUS_LANE_ID].decisionMapping.kind).toBe(
+      "FACT",
+    );
+  });
 
   it("isTierBLane distinguishes Tier-B lanes from an arbitrary Tier-A question id", () => {
     for (const laneId of TIER_B_LANE_IDS) {
@@ -110,12 +121,13 @@ describe(
 );
 
 describe(
-  "e4-tier-fence — family_sponsor_status_code never-emit-KNOWN guard " +
-    "(this file does not re-test fact-mapper.ts's mapFamilySponsorStatus — " +
-    "fact-mapper.test.ts already pins that directly; this is a pointer, not a duplicate, " +
-    "confirming the guard this module's ADOPT_LEDGER prohibition exists to protect is real)",
+  "e4-tier-fence — family_sponsor_status_code out-of-catalogue guard (D4a narrowed this " +
+    "from an absolute never-emit-KNOWN to a closed-catalogue one; this file does not " +
+    "re-test fact-mapper.ts's mapFamilySponsorStatus — fact-mapper.test.ts already pins " +
+    "that directly; this is a pointer, not a duplicate, confirming the guard this module's " +
+    "ADOPT_LEDGER prohibition on this lane exists to protect is real)",
   () => {
-    it("a fully-answered sponsor-status interview never emits KNOWN on the wire", () => {
+    it("a plausible-looking but non-catalogue sponsor status never emits KNOWN on the wire", () => {
       const result = mapOracleFactsToApplicantFacts(
         {
           family_sponsor_confirmed: "yes",
@@ -319,11 +331,14 @@ describe("e4-tier-fence — registry-level invariants", () => {
 
 describe("e4-tier-fence — live registry state", () => {
   it(
-    "DIVERGENCE_REGISTRY is currently empty — parity-harness-rescope.md §2 measured zero " +
-      "claims covering interview-branch semantics for any Tier-B lane as of 2026-08-17. " +
-      "Update this test intentionally, in the same PR that adds the first real entry.",
+    "DIVERGENCE_REGISTRY carries exactly the one D4a entry (2026-09-13) — empty from " +
+      "2026-08-17 (parity-harness-rescope.md §2 measured zero claims covering " +
+      "interview-branch semantics for any Tier-B lane) until this, its intentional first " +
+      "real entry. Update this test intentionally, in the same PR that adds the next one.",
     () => {
-      expect(DIVERGENCE_REGISTRY).toEqual([]);
+      expect(DIVERGENCE_REGISTRY.length).toBe(1);
+      expect(DIVERGENCE_REGISTRY[0]?.lane).toBe(FAMILY_SPONSOR_STATUS_LANE_ID);
+      expect(DIVERGENCE_REGISTRY[0]?.disposition).toBe("ESCALATE");
     },
   );
 

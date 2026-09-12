@@ -42,9 +42,13 @@ import {
  * on PR-D3 (2026-09-13): 11 new walks — the two invest-vehicle
  * below-threshold routes, the three declared-paid-activity branches
  * (employer=no / sponsor=unsure / paid=no), the retirement property/
- * bank_deposit/undecided branches that used to dead-end, and the two new
- * STEPCHILD sponsor-permit answers (no/unsure) — see generate-walk-corpus.ts. */
-const EXPECTED_WALK_COUNT = 78;
+ * bank_deposit/undecided branches that used to dead-end, and the two
+ * STEPCHILD sponsor-permit answers (no/unsure) — see generate-walk-corpus.ts.
+ * 78 → 76 on D4a (owner ruling SHWEB-20260911, 2026-09-13): those same two
+ * STEPCHILD sponsor-permit walks are retired — no pack requirement for the
+ * sponsor's own permit exists for E31D (fresh grader review), so the
+ * question and hold they exercised are gone. */
+const EXPECTED_WALK_COUNT = 76;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

@@ -4,7 +4,12 @@
  * language-neutral UI answer keys to that contract.
  */
 import { canonicalCountryCodes } from "./countries";
-import { parseIsoDateUtc, type CategoryKey, type OracleFacts } from "./tree";
+import {
+  parseIsoDateUtc,
+  STAY_PERMIT_CODES,
+  type CategoryKey,
+  type OracleFacts,
+} from "./tree";
 import type {
   VisaOracleApplicantFacts,
   VisaOracleDisclosedReviewFlag,
@@ -204,45 +209,14 @@ const CURRENT_STATUS_CODES = [
   "ITK_FROM_VISIT_D",
   "ITK_PERALIHAN",
 ] as const;
-// 29 real product codes, verbatim from `rulepack-prod-007.source.json`
-// (`products[].product_code`, filtered to `E`-prefix). Only reachable via
-// `stay_permit_code` (tree.ts), gated behind `holds_stay_permit === "yes"`
-// — see `mapCurrentStatusCode` below. Not the same list as
-// `CURRENT_STATUS_CODES` above: that one is the non-E ITK/visit-class
-// catalogue, this one is the ITAS/ITAP catalogue backing
-// `derived.has_active_stay_permit`'s positive branch (fact_registry.py's
-// `^E\d+[A-Z]?$` heuristic).
-const STAY_PERMIT_CODES = [
-  "E23",
-  "E23U",
-  "E23V",
-  "E28A",
-  "E28B",
-  "E28C",
-  "E28D",
-  "E28F",
-  "E30",
-  "E30A",
-  "E30B",
-  "E30E",
-  "E30F",
-  "E31A",
-  "E31B",
-  "E31C",
-  "E31D",
-  "E31E",
-  "E31F",
-  "E31G",
-  "E31H",
-  "E31J",
-  "E33",
-  "E33A",
-  "E33B",
-  "E33C",
-  "E33E",
-  "E33F",
-  "E33G",
-] as const;
+// `STAY_PERMIT_CODES` (imported from tree.ts, single source of truth) is
+// the ITAS/ITAP catalogue backing `derived.has_active_stay_permit`'s
+// positive branch (fact_registry.py's `^E\d+[A-Z]?$` heuristic), reachable
+// via `stay_permit_code` gated behind `holds_stay_permit === "yes"` (see
+// `mapCurrentStatusCode` below), and — D4a — the closed-catalogue trust
+// boundary for `family.sponsor_status_code` in `mapFamilySponsorStatus`.
+// Not the same list as `CURRENT_STATUS_CODES` above, which is the non-E
+// ITK/visit-class catalogue.
 const SPONSOR_TYPES = [
   "NONE",
   "INDIVIDUAL",
@@ -358,6 +332,18 @@ export function mapPurposes(facts: OracleFacts): FactValue<Purpose[]> {
   // uncertainty the NOT_CERTAIN flag already holds on.
   if (category === "other" && facts.other_paid_activity === "yes") {
     return known(["EMPLOYMENT"]);
+  }
+  // D4a (owner ruling SHWEB-20260911): `other_purpose = "transit"` maps to
+  // the TRANSIT purpose. `el.a1.tourism` and the `el.d1-*` rules
+  // (rulepack-prod-020) both cover it — a mouth-side mapping gap, not a
+  // missing pack rule (PR-D4b already established no rule reads
+  // `other_purpose` itself; see `ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS.
+  // other_purpose` below). Deliberately checked AFTER the paid-activity
+  // branch above, not before: a declared paid activity still wins
+  // EMPLOYMENT if both questions are somehow answered, since no purpose in
+  // this catch-all category may claim paid work Pasal 122 excludes.
+  if (category === "other" && facts.other_purpose === "transit") {
+    return known(["TRANSIT"]);
   }
   const purpose = CATEGORY_TO_PURPOSE[category];
   return purpose === undefined ? unknownFact(NOT_APPLICABLE) : known([purpose]);
@@ -520,25 +506,23 @@ export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   // D3-B (PR-D3, owner ruling SHWEB-20260911) investigated pack-outward,
   // NARROW-2 style, whether any of the 8 options (transit/medical/
   // volunteer/religious/arts_sport/journalism/crew/other) is decided by a
-  // seq-20 rule. RESULT: NONE is, and the list stays empty — not a
-  // judgement call, a structural fact. `other_purpose`'s own
-  // `decisionMapping` is `HUMAN_CONTEXT` (tree.ts) — it maps to NO
-  // FactPath at all, and `mapOracleFactsToApplicantFacts` never reads
-  // `facts.other_purpose` anywhere — so no rule in the signed pack can
-  // ever see which of the 8 values was chosen; the wire request is
-  // byte-identical regardless. Verified against rulepack-prod-020.
-  // signed.json: exactly 5 rules cover the OTHER purpose
-  // (`el.c6.social`, the one ELIGIBILITY rule that can grant a product,
-  // plus 4 advisory/BRIDGING-only rules), and `el.c6.social`'s
-  // `required_facts` is `family.sponsor_confirmed` /
-  // `intent.purposes` / `intent.stay_days` alone — nothing derived from
-  // this question. Releasing any value here would therefore not be
-  // "found decidable", it would be inventing a distinction the engine
-  // cannot draw, on a purpose where the wrong side hands a visitor a
-  // visit visa for a legally excluded activity. C6's actual release
-  // (D3-2) rests solely on the `other_paid_activity = no` branch, which
-  // this table already lists below.
-  other_purpose: [],
+  // seq-20 rule. RESULT at the time: none was, and the list stayed empty —
+  // `other_purpose`'s own `decisionMapping` is still `HUMAN_CONTEXT`
+  // (tree.ts, unchanged), and 7 of the 8 values still map to nothing a
+  // rule can see. Releasing any of THOSE 7 here would still be inventing a
+  // distinction the engine cannot draw, on a purpose where the wrong side
+  // hands a visitor a visit visa for a legally excluded activity. C6's
+  // actual release (D3-2) rests solely on the `other_paid_activity = no`
+  // branch, which this table already lists below.
+  //
+  // `transit` is the ONE exception (D4a, owner ruling SHWEB-20260911):
+  // `mapPurposes` above now reads `facts.other_purpose` directly (not via
+  // `decisionMapping`, which stays `HUMAN_CONTEXT` — same idiom as
+  // `other_paid_activity` immediately below) and emits the TRANSIT
+  // purpose, which `el.a1.tourism`/`el.d1-*` (rulepack-prod-020) do decide
+  // on. Verified: those are the only rules in the signed pack whose
+  // `covered_purposes` include `TRANSIT`.
+  other_purpose: ["transit"],
   // `yes`/`no` added (PR-D3, D3-2): `mapPurposes` now routes `yes` to
   // EMPLOYMENT (only `el.e23-employment-support` covers it) and leaves `no`
   // on OTHER (`el.c6.social` stays reachable) — both are decisive on the
@@ -617,26 +601,33 @@ export function mapDisclosedReviewFlags(
   // production pack on disk and fails if the STEPCHILD dependency ever
   // changes.
   //
-  // D3-4 (PR-D3, owner ruling SHWEB-20260911) REPLACES the proxy this
-  // comment used to describe (raising the flag on the mere PRESENCE of
-  // `family_sponsor_status_code` for a STEPCHILD relation, whatever its
-  // value) with the direct question `family_stepchild_sponsor_permit_
-  // confirmed` (tree.ts): "does your sponsor hold a valid KITAS/KITAP of
-  // their own?" `no` holds — no seq-20 rule reads the sponsor's permit, so
-  // the pack itself would still return E31D ELIGIBLE, and fabricating
-  // `family.sponsor_confirmed = false` to force a denial would be exactly
-  // the guessed fact this file exists to refuse (seq-21 candidate
-  // `hf.e31d.sponsor-permit-required` is the pack-side fix, not this).
-  // `unsure` holds for the same reason `family_sponsor_confirmed === "unsure"`
-  // does two lines below: a real disclosed uncertainty. `yes` releases.
-  const stepchildSponsorPermitUnresolved =
-    facts.family_relation === "STEPCHILD" &&
-    facts.family_stepchild_sponsor_permit_confirmed !== undefined &&
-    facts.family_stepchild_sponsor_permit_confirmed !== "yes";
+  // D3-4 (PR-D3, owner ruling SHWEB-20260911) had ADDED a hold here — the
+  // direct question `family_stepchild_sponsor_permit_confirmed` (tree.ts):
+  // "does your sponsor hold a valid KITAS/KITAP of their own?", holding on
+  // `no`/`unsure` — reasoning that E31D might implicitly need it. REMOVED
+  // (owner ruling SHWEB-20260911, 2026-09-13, fresh grader review): that
+  // requirement does not exist for E31D. Permenkumham 11/2024 Pasal 33
+  // ayat (2) huruf h enumerates the family-reunification categories by
+  // sponsor permit; E31D's own entry names NO permit at all, while the
+  // NEIGHBORING E31E entry explicitly requires the sponsor to hold an
+  // "Izin Tinggal Terbatas atau Izin Tinggal Tetap" — the contrast is the
+  // evidence that E31D was deliberately left out. Structurally, Pasal 193
+  // makes E31D's guarantor a *Penanggung Jawab* who must be an Indonesian
+  // citizen (WNI), and a WNI cannot hold a KITAS/KITAP at all — asking
+  // whether E31D's sponsor holds one asks for something the guarantor
+  // category rules out by definition. This was the same OVER-match shape
+  // NARROW-1 (above) cured for the other relations: a hold with no pack
+  // requirement behind it. `el.e31d-stepchild-support` itself is
+  // untouched — it still requires `family.sponsor_confirmed`, which still
+  // holds on `unsure` two lines below; only the SPONSOR'S OWN PERMIT
+  // question and its hold are gone. The door back, if a future pack ever
+  // adds a rule reading `family.sponsor_status_code` for E31D, is THE
+  // PACK — see "no E31D rule reads family.sponsor_status_code"
+  // (fact-mapper.test.ts), which goes red the day that happens; it is not
+  // a reason to re-add this frontend hold.
   if (
     facts.family_sponsor_status_code === "unsure" ||
-    facts.family_sponsor_confirmed === "unsure" ||
-    stepchildSponsorPermitUnresolved
+    facts.family_sponsor_confirmed === "unsure"
   ) {
     flags.add("AMBIGUOUS_SPONSOR");
   }
@@ -703,6 +694,71 @@ export function mapSponsorType(
   return enumFact(facts.sponsor_category, SPONSOR_TYPES);
 }
 
+/**
+ * D4a (owner ruling SHWEB-20260911, 2026-09-13). Nine ELIGIBILITY rules
+ * (`el.e31{b,e,h,j}-*`) read `family.sponsor_status_code`, every one
+ * `on_unknown: NO_EFFECT` — while the UI took the sponsor's permit as free
+ * text and this function forced every answer to UNVERIFIED, those nine
+ * rules contributed nothing, and E31B/E31E/E31H/E31J were invisible (no
+ * SUPPORT, no review, no reason code) rather than merely held.
+ *
+ * This function used to say, verbatim: "even a syntactically plausible
+ * value must never satisfy an engine rule that checks `op: known`." That
+ * was correct THEN: `research/visa/doctrine-factory/cards/E31B.md` §4
+ * documented both `el.e31b-*` rules gating on
+ * `{"fact":"family.sponsor_status_code","op":"known"}` — value-blind, any
+ * non-null value (even a sentinel like `"NONE"`) would satisfy it. A later
+ * fix attempt was HELD HARD
+ * (`research/visa/doctrine-factory/e5/inc6-pack-edits/
+ * HELD-fix4-sponsor-status-2026-08-23.json`): the proposed replacement
+ * enum (`ITAS_ACTIVE`/`ITAP_ACTIVE`/`VITAS_APPROVED`) matched none of the
+ * values the corpus actually carries for this fact ("E23", "NONE", even a
+ * raw human name) — a vocabulary/domain mismatch, not a fix. That note
+ * names two mechanisms a naive fix could reopen:
+ *
+ *  1. A KNOWN value OUTSIDE the pack's accepted set evaluates the rule's
+ *     `op` silently FALSE — the product disappears with no reason code at
+ *     all. Closed here structurally: `enumFact` below can only resolve
+ *     KNOWN for a value inside `STAY_PERMIT_CODES`, the SAME 29-code array
+ *     `stay_permit_code`'s own options use — never a value the pack cannot
+ *     also accept. "sponsor status code catalogue tracks the signed pack"
+ *     (fact-mapper.test.ts) pins the two catalogues to each other
+ *     bidirectionally, so this can't drift silently either. A `"NONE"`-
+ *     style sentinel is not a member of `STAY_PERMIT_CODES` and therefore
+ *     never reaches KNOWN — see "guilt: a sponsor status outside the
+ *     29-code catalogue never reaches KNOWN" below.
+ *  2. UNKNOWN dead-ending into `NEEDS_INPUT` once the rule moved from
+ *     `op:known` to `op:in`. Verified MOOT on the current signed pack
+ *     (`rulepack-prod-020.source.json`): all 9 rules are
+ *     `on_unknown: NO_EFFECT`, not `NEEDS_INPUT` — an unresolved sponsor
+ *     status still yields silence, exactly as before this change.
+ *
+ * Verified live against `rulepack-prod-020.source.json` (signed
+ * 2026-09-06, active in production, owner-signed): all 9 rules already
+ * use `op:"in"` over the identical 29-code set below — the value-blind
+ * `op:known` gate §4 documented is gone from the pack itself, independent
+ * of this frontend change (mechanism 1, closed structurally as above).
+ * Mechanism 2 (UNKNOWN -> NEEDS_INPUT dead end) was already MOOT: every
+ * one of the 9 rules is `on_unknown: NO_EFFECT`, not `NEEDS_INPUT`.
+ *
+ * BOUNDED CLAIM (owner-confirmed, 2026-09-13): nine rules doing `op:in`
+ * over 29 product codes, signed into production, means
+ * `family.sponsor_status_code` IS the sponsor's permit code — de facto,
+ * under the owner's own signature on this pack. The 2026-08-23 HELD note
+ * predates that design and is superseded BY IT for this function; the
+ * broader question of whether the fact should instead model an abstracted
+ * immigration status is a separate, non-blocking data-modelling note for
+ * the E4/E5/E6 track to pick up on its own schedule — this change neither
+ * answers nor depends on that question, only on what the signed pack
+ * already compares against today.
+ *
+ * If the E4/E5/E6 track later disputes this reading, THE PACK is the door
+ * back — author a new `op:in` vocabulary there and re-sign it. Reverting
+ * this function to always-UNVERIFIED does not undo anything the pack
+ * itself now asserts, and re-introducing the old value-blind `op:known`
+ * guard here would not be a fix either: it never checked the pack's
+ * actual predicate, only worked around it.
+ */
 function mapFamilySponsorStatus(facts: OracleFacts): FactValue<string> {
   if (facts.family_sponsor_confirmed === "no") {
     return unknownFact(NOT_APPLICABLE);
@@ -715,12 +771,7 @@ function mapFamilySponsorStatus(facts: OracleFacts): FactValue<string> {
       ? unknownFact(NOT_ASKED)
       : unknownFact(UNVERIFIED);
   }
-  const value = facts.family_sponsor_status_code;
-  if (value === undefined) return unknownFact(NOT_ASKED);
-  // The UI accepts a human-entered status label. It is not backed by the
-  // signed status-code catalogue, so even a syntactically plausible value
-  // must never satisfy an engine rule that checks `op: known`.
-  return unknownFact(UNVERIFIED);
+  return enumFact(facts.family_sponsor_status_code, STAY_PERMIT_CODES);
 }
 
 /**

@@ -1,0 +1,33 @@
+/**
+ * R19 portal typefaces — Fraunces (display serif) and Manrope (UI sans).
+ *
+ * Self-hosted variable binaries, copied byte-identical from the R19 website
+ * branch (apps/website/public/fonts/{fraunces,manrope}/*-variable.ttf) into
+ * apps/mouth/public/fonts/. Licences ship next to them (OFL 1.1).
+ *
+ * Declaring the faces is NOT the same as using them: only the
+ * [data-product="my"] theme blocks in globals.css point --font-serif /
+ * --font-sans at these families, so kita/prime/editorial surfaces are
+ * unaffected by this import. font-display: swap keeps first paint on the
+ * fallback stack instead of blocking it.
+ */
+
+@font-face {
+  font-family: "Fraunces";
+  src:
+    url("/fonts/fraunces-variable.ttf") format("truetype-variations"),
+    url("/fonts/fraunces-variable.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Manrope";
+  src:
+    url("/fonts/manrope-variable.ttf") format("truetype-variations"),
+    url("/fonts/manrope-variable.ttf") format("truetype");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}

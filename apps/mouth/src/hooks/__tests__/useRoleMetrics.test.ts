@@ -38,7 +38,6 @@ describe("useRoleMetrics", () => {
       metrics: {
         assigned_cases: 5,
         prossima_scadenza: null,
-        doc_mancanti: 2,
         clienti_assegnati: 8,
         stalled_count: 1,
       },

@@ -12,15 +12,15 @@ import type {
 } from "@/lib/api/crm/crm.types";
 
 import { AiSummaryCard } from "./AiSummaryCard";
-import { formatCapital } from "./company/editorial-tokens";
-import { EditorialHero } from "./company/EditorialHero";
-import { IdentityRow } from "./company/IdentityRow";
-import { FactBoxes } from "./company/FactBoxes";
-import { DividerLabel } from "./company/DividerLabel";
-import { KeyNumbersColumn } from "./company/KeyNumbersColumn";
-import { PeopleColumn } from "./company/PeopleColumn";
-import { KBLIEditorial } from "./company/KBLIEditorial";
-import { LegalTimeline } from "./company/LegalTimeline";
+import { formatCapital } from "@/components/portal/company/editorial-tokens";
+import { EditorialHero } from "@/components/portal/company/EditorialHero";
+import { IdentityRow } from "@/components/portal/company/IdentityRow";
+import { FactBoxes } from "@/components/portal/company/FactBoxes";
+import { DividerLabel } from "@/components/portal/company/DividerLabel";
+import { KeyNumbersColumn } from "@/components/portal/company/KeyNumbersColumn";
+import { PeopleColumn } from "@/components/portal/company/PeopleColumn";
+import { KBLIEditorial } from "@/components/portal/company/KBLIEditorial";
+import { LegalTimeline } from "@/components/portal/company/LegalTimeline";
 import { CompanyDocUpload } from "./company/CompanyDocUpload";
 import { EditCompanyModal } from "./company/EditCompanyModal";
 import { AddCompanyModal } from "./modals/AddCompanyModal";

@@ -92,7 +92,7 @@ export function PortalHeader({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[var(--portal-header-bg)] backdrop-blur-[24px] border-b border-[var(--bz-border)] shadow-[var(--bz-shell-header-shadow)]">
+    <header className="sticky top-0 z-30 w-full bg-[var(--portal-header-bg)] backdrop-blur-[24px] border-b border-[var(--bz-border)]">
       <div className="flex items-center justify-between h-[var(--bz-header-height,64px)] px-4 md:px-6">
         {/* Left Section */}
         <div className="flex items-center gap-3">
@@ -103,7 +103,7 @@ export function PortalHeader({
               size="icon"
               onClick={onBack}
               aria-label="Go back"
-              className="hover:bg-[var(--background-elevated)]"
+              className="h-10 w-10 rounded-[0.25rem] hover:bg-[var(--background-elevated)]"
             >
               <ChevronLeft className="w-5 h-5 text-[var(--foreground)]" />
             </Button>
@@ -115,7 +115,7 @@ export function PortalHeader({
             type="button"
             onClick={onMobileMenuToggle}
             className={cn(
-              "p-2 rounded-xl hover:bg-[var(--background-elevated)] transition-colors md:hidden",
+              "h-10 w-10 grid place-items-center rounded-[0.25rem] text-[var(--tx-secondary)] hover:bg-[var(--background-elevated)] hover:text-[var(--tx-pure)] transition-colors md:hidden",
             )}
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
             aria-controls="workspace-mobile-nav"
@@ -130,20 +130,23 @@ export function PortalHeader({
 
           {/* Page Title */}
           <div className="hidden sm:block">
-            <h1 className="text-xl font-semibold text-[var(--tx-pure)] tracking-[-0.01em] [font-family:var(--bz-product-heading-font)]">
+            <h1 className="text-[20px] font-medium leading-[1.1] text-[var(--tx-pure)] tracking-[-0.01em] [font-family:var(--font-serif)]">
               {getPageTitle()}
             </h1>
-            <p className="text-xs text-[var(--tx-secondary)] mt-0.5">
-              {formatDate()}{" "}
-              <span aria-hidden="true" className="text-[var(--bz-copper)] px-1">
+            <p className="text-[12px] text-[var(--tx-secondary)] mt-[3px]">
+              {formatDate()}
+              <span
+                aria-hidden="true"
+                className="text-[var(--bz-copper)] px-[5px]"
+              >
                 ·
-              </span>{" "}
+              </span>
               {getGreeting()}, {userName.split(" ")[0] || "there"}
             </p>
           </div>
 
           {/* Mobile Page Title */}
-          <h1 className="sm:hidden text-lg font-semibold text-[var(--tx-pure)] [font-family:var(--bz-product-heading-font)]">
+          <h1 className="sm:hidden text-[18px] font-medium text-[var(--tx-pure)] tracking-[-0.01em] [font-family:var(--font-serif)]">
             {getPageTitle()}
           </h1>
         </div>

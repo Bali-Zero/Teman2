@@ -35,7 +35,7 @@
     "immigration.overstay_days": { "status": "KNOWN", "value": 0 },
     "immigration.violation_history": { "status": "KNOWN", "value": [] },
     "immigration.renewal_paid": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.purposes": { "status": "KNOWN", "value": ["OTHER"] },
+    "intent.purposes": { "status": "KNOWN", "value": ["TRANSIT"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "intent.entry_pattern": { "status": "KNOWN", "value": "SINGLE" },

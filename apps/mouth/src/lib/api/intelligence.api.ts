@@ -62,10 +62,6 @@ export interface SystemMetrics {
   agent_status: "active" | "idle" | "error";
   last_run: string | null;
   items_processed_today: number;
-  avg_response_time_ms: number;
-  qdrant_health: "healthy" | "degraded" | "down";
-  next_scheduled_run: string | null;
-  uptime_percentage: number;
 }
 
 export interface EditStagingItemRequest {
@@ -328,7 +324,6 @@ export const intelligenceApi = {
         action: "get_metrics",
         metadata: {
           agent_status: response.agent_status,
-          qdrant_health: response.qdrant_health,
           items_processed: response.items_processed_today,
         },
       });
