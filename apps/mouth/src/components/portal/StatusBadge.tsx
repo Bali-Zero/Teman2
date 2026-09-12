@@ -9,33 +9,46 @@ import { CheckCircle, Clock, AlertTriangle } from "lucide-react";
  * warning 4.78:1, danger 5.74:1, info 5.94:1 on paper) instead of
  * hardcoded neon hexes (#34d399 / #fbbf24 / #f87171 / #60a5fa). Badge
  * backgrounds are color-mix tints OF the state token, so each theme gets a
- * tint of its own AA step — on dark the mix reproduces the previous
- * rgba(16,185,129,0.12)-style tints exactly (state primitives ARE those
- * hexes). No hardcoded colors.
+ * tint of its own AA step. No hardcoded colors.
+ *
+ * R19 (concept F): the pill is outlined — a hairline of the same state token
+ * at 35%, a 6px leading dot in currentColor and an uppercase 10px label. The
+ * meaning still lives in the token, not here: the four R19 meanings (forest
+ * done / slate moving / copper needs-you / muted waiting) are what the theme
+ * layer aliases --state-success / --state-info / --state-warning +
+ * --state-danger / --tx-secondary to.
  */
 
 type StatusTone = "success" | "warning" | "danger" | "info" | "neutral";
 
-const TONE_STYLES: Record<StatusTone, { bg: string; color: string }> = {
+const TONE_STYLES: Record<
+  StatusTone,
+  { bg: string; color: string; border: string }
+> = {
   success: {
-    bg: "color-mix(in srgb, var(--state-success) 12%, transparent)",
+    bg: "color-mix(in srgb, var(--state-success) 7%, transparent)",
     color: "var(--state-success)",
+    border: "color-mix(in srgb, var(--state-success) 35%, transparent)",
   },
   warning: {
-    bg: "color-mix(in srgb, var(--state-warning) 12%, transparent)",
+    bg: "color-mix(in srgb, var(--state-warning) 7%, transparent)",
     color: "var(--state-warning)",
+    border: "color-mix(in srgb, var(--state-warning) 35%, transparent)",
   },
   danger: {
-    bg: "color-mix(in srgb, var(--state-danger) 12%, transparent)",
+    bg: "color-mix(in srgb, var(--state-danger) 7%, transparent)",
     color: "var(--state-danger)",
+    border: "color-mix(in srgb, var(--state-danger) 35%, transparent)",
   },
   info: {
-    bg: "color-mix(in srgb, var(--state-info) 12%, transparent)",
+    bg: "color-mix(in srgb, var(--state-info) 7%, transparent)",
     color: "var(--state-info)",
+    border: "color-mix(in srgb, var(--state-info) 35%, transparent)",
   },
   neutral: {
-    bg: "var(--bz-border)",
-    color: "var(--bz-text-2)",
+    bg: "color-mix(in srgb, var(--tx-secondary) 5%, transparent)",
+    color: "var(--tx-secondary)",
+    border: "var(--bz-border)",
   },
 };
 
@@ -58,7 +71,8 @@ const STATUS_MAP: Record<
   // Amber group
   applied: { icon: Clock, label: "Applied", tone: "warning" },
   pending: { icon: Clock, label: "Pending", tone: "warning" },
-  processing: { icon: Clock, label: "Processing", tone: "warning" },
+  // R19: work that is ours and moving reads slate (info), not needs-you.
+  processing: { icon: Clock, label: "Processing", tone: "info" },
   attention: { icon: AlertTriangle, label: "Attention", tone: "warning" },
   warning: { icon: AlertTriangle, label: "Expiring", tone: "warning" },
   expiring: { icon: AlertTriangle, label: "Expiring", tone: "warning" },
@@ -110,14 +124,20 @@ export function StatusBadge({
 }) {
   const config = STATUS_MAP[status.toLowerCase()] ?? STATUS_MAP.none;
   const tone = TONE_STYLES[config.tone];
-  const Icon = config.icon;
 
   return (
     <div
-      className={`px-2.5 py-1 rounded-full flex items-center gap-1.5 text-xs font-medium ${className ?? ""}`}
-      style={{ background: tone.bg, color: tone.color }}
+      className={`inline-flex items-center gap-[7px] h-6 pl-[9px] pr-2.5 rounded-full border text-[10px] font-[650] uppercase tracking-[.12em] whitespace-nowrap ${className ?? ""}`}
+      style={{
+        background: tone.bg,
+        color: tone.color,
+        borderColor: tone.border,
+      }}
     >
-      <Icon className="w-3.5 h-3.5" />
+      <span
+        aria-hidden="true"
+        className="w-1.5 h-1.5 rounded-full bg-current shrink-0"
+      />
       {config.label}
     </div>
   );

@@ -115,15 +115,24 @@ export function AppSidebar({
     const badge = item.href === "/review" ? reviewCount : item.badge;
 
     // GARUDA active: AA-safe copper fill + white text, rounded-[12px]
-    const sharedClassName = cn(
+    const workspaceClassName = cn(
       "flex items-center gap-2.5 px-2.5 py-[7px] rounded-[12px] mb-[2px] text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]",
       active
         ? "font-semibold"
         : "hover:bg-[var(--surface-raised)] hover:text-[var(--bz-text-1)]",
     );
-    const sharedStyle = active
+    // R19 portal rail: hairline paper, 40px rows, copper left rule on active.
+    const portalClassName = cn(
+      "flex items-center gap-2.5 h-10 px-2.5 rounded-[0.25rem] mb-[2px] text-[14px] font-medium border-l-2 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]",
+      active
+        ? "text-[var(--tx-pure)] bg-[var(--bz-card)] border-[var(--bz-copper)]"
+        : "text-[var(--tx-secondary)] border-transparent hover:bg-[var(--bz-card)] hover:text-[var(--tx-pure)]",
+    );
+    const sharedClassName = isPortal ? portalClassName : workspaceClassName;
+    const workspaceStyle = active
       ? { background: "var(--bz-sidebar-active-fill)", color: "#fff" }
       : { color: "var(--bz-text-2)" };
+    const sharedStyle = isPortal ? undefined : workspaceStyle;
 
     const sharedContent = (
       <>
@@ -137,12 +146,20 @@ export function AppSidebar({
           <ExternalLink
             size={9}
             style={{
-              color: active ? "rgba(255,255,255,0.5)" : "var(--bz-text-3)",
+              color:
+                active && !isPortal
+                  ? "rgba(255,255,255,0.5)"
+                  : "var(--bz-text-3)",
               opacity: 0.5,
             }}
           />
         )}
-        {badge && badge > 0 && (
+        {badge && badge > 0 && isPortal && (
+          <span className="ml-auto text-[10px] font-[650] text-[var(--bz-copper)] tabular-nums">
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
+        {badge && badge > 0 && !isPortal && (
           <span
             className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
             style={{
@@ -193,8 +210,12 @@ export function AppSidebar({
       {section.title && (
         // More muted section headers — "structure felt not seen"
         <div
-          className="text-[8px] font-semibold uppercase tracking-[1.2px] px-2.5 pt-4 pb-1.5"
-          style={{ color: "var(--bz-text-3)" }}
+          className={
+            isPortal
+              ? "text-[9px] font-[650] uppercase tracking-[.16em] text-[var(--tx-secondary)] px-3 pt-[18px] pb-2"
+              : "text-[8px] font-semibold uppercase tracking-[1.2px] px-2.5 pt-4 pb-1.5"
+          }
+          style={isPortal ? undefined : { color: "var(--bz-text-3)" }}
         >
           {section.title}
         </div>
@@ -215,7 +236,10 @@ export function AppSidebar({
     <aside
       id={id}
       aria-label={ariaLabel}
-      className="fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300 glass-panel-deep"
+      className={cn(
+        "fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300",
+        isPortal ? "bg-[var(--bz-base)]" : "glass-panel-deep",
+      )}
       style={{
         width: "var(--bz-sidebar-width, 216px)",
         borderColor: "var(--bz-border)",
@@ -223,9 +247,14 @@ export function AppSidebar({
     >
       {/* Logo Header */}
       <div
-        className="border-b flex items-center justify-center px-3"
+        className={cn(
+          "border-b flex items-center",
+          isPortal ? "px-[18px]" : "justify-center px-3",
+        )}
         style={{
-          height: "var(--bz-header-height, 48px)",
+          height: isPortal
+            ? "var(--bz-header-height, 64px)"
+            : "var(--bz-header-height, 48px)",
           borderColor: "var(--bz-border)",
         }}
       >
@@ -234,9 +263,29 @@ export function AppSidebar({
           // Apply the same protected-route rule to the workspace home link.
           prefetch={isPortal ? false : undefined}
           aria-label="Bali Zero — workspace home"
-          className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
+          className={cn(
+            "flex items-center transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]",
+            isPortal
+              ? "gap-2.5 rounded-[0.25rem]"
+              : "justify-center rounded-full",
+          )}
         >
-          <BZLogo variant="full" size={36} className="rounded-full" priority />
+          <BZLogo
+            variant="full"
+            size={isPortal ? 28 : 36}
+            className={isPortal ? undefined : "rounded-full"}
+            priority
+          />
+          {isPortal && (
+            <span className="flex flex-col leading-none">
+              <span className="text-[17px] font-medium tracking-[-0.01em] text-[var(--tx-pure)] [font-family:var(--font-serif)]">
+                Bali Zero
+              </span>
+              <span className="mt-[5px] text-[9px] font-[650] uppercase tracking-[.16em] text-[var(--tx-secondary)]">
+                Client portal
+              </span>
+            </span>
+          )}
         </Link>
       </div>
 
@@ -292,11 +341,19 @@ export function AppSidebar({
               />
             ) : (
               <div
-                className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-white"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--bz-accent-warm) 0%, var(--bz-sidebar-active-fill) 100%)",
-                }}
+                className={
+                  isPortal
+                    ? "w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-[650] text-[var(--tx-pure)] bg-[var(--bz-wash,#EAE3D8)]"
+                    : "w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-white"
+                }
+                style={
+                  isPortal
+                    ? undefined
+                    : {
+                        background:
+                          "linear-gradient(135deg, var(--bz-accent-warm) 0%, var(--bz-sidebar-active-fill) 100%)",
+                      }
+                }
               >
                 {user.name?.[0]?.toUpperCase() || "U"}
               </div>
@@ -304,14 +361,22 @@ export function AppSidebar({
           </div>
           <div className="flex-1 min-w-0">
             <div
-              className="text-[11.5px] font-semibold uppercase tracking-[0.3px] truncate"
-              style={{ color: "var(--bz-text-1)" }}
+              className={
+                isPortal
+                  ? "text-[13px] font-semibold leading-[1.2] text-[var(--tx-pure)] truncate"
+                  : "text-[11.5px] font-semibold uppercase tracking-[0.3px] truncate"
+              }
+              style={isPortal ? undefined : { color: "var(--bz-text-1)" }}
             >
               {user.name}
             </div>
             <div
-              className="text-[9.5px] uppercase tracking-[0.5px]"
-              style={{ color: "var(--bz-text-2)" }}
+              className={
+                isPortal
+                  ? "text-[11px] text-[var(--tx-secondary)]"
+                  : "text-[9.5px] uppercase tracking-[0.5px]"
+              }
+              style={isPortal ? undefined : { color: "var(--bz-text-2)" }}
             >
               {isPortal ? "Client Portal" : user.role || user.team || "Team"}
             </div>

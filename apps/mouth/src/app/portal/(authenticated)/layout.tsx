@@ -366,30 +366,16 @@ export default function PortalLayout({
           </main>
 
           {/* Portal Footer */}
-          <footer
-            className="md:ml-0 px-4 py-3 text-xs text-center border-t"
-            style={{
-              color: "var(--text-secondary)",
-              borderColor: "var(--border)",
-            }}
-          >
+          <footer className="md:ml-0 flex flex-col sm:flex-row items-center justify-between gap-2 px-4 md:px-10 py-[18px] text-[12px] border-t border-[var(--bz-border)] bg-[var(--bz-footer,#EEE9E1)] text-[var(--tx-secondary)]">
             <span>© {new Date().getFullYear()} Bali Zero</span>
-            <span className="mx-2">·</span>
-            <a
-              href="/privacy"
-              className="hover:underline"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Privacy Policy
-            </a>
-            <span className="mx-2">·</span>
-            <a
-              href="/terms"
-              className="hover:underline"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Terms of Service
-            </a>
+            <span>
+              <a href="/privacy" className="hover:underline">
+                Privacy Policy
+              </a>
+              <a href="/terms" className="ml-4 hover:underline">
+                Terms of Service
+              </a>
+            </span>
           </footer>
         </div>
 
