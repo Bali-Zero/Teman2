@@ -505,6 +505,27 @@ export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   retirement_basis: ["bank_deposit", "passive_income", "family_sponsor"],
   diaspora_connection: ["former_wni", "descendant", "family"],
   diaspora_documents: ["yes", "no"],
+  // D3-B (PR-D3, owner ruling SHWEB-20260911) investigated pack-outward,
+  // NARROW-2 style, whether any of the 8 options (transit/medical/
+  // volunteer/religious/arts_sport/journalism/crew/other) is decided by a
+  // seq-20 rule. RESULT: NONE is, and the list stays empty — not a
+  // judgement call, a structural fact. `other_purpose`'s own
+  // `decisionMapping` is `HUMAN_CONTEXT` (tree.ts) — it maps to NO
+  // FactPath at all, and `mapOracleFactsToApplicantFacts` never reads
+  // `facts.other_purpose` anywhere — so no rule in the signed pack can
+  // ever see which of the 8 values was chosen; the wire request is
+  // byte-identical regardless. Verified against rulepack-prod-020.
+  // signed.json: exactly 5 rules cover the OTHER purpose
+  // (`el.c6.social`, the one ELIGIBILITY rule that can grant a product,
+  // plus 4 advisory/BRIDGING-only rules), and `el.c6.social`'s
+  // `required_facts` is `family.sponsor_confirmed` /
+  // `intent.purposes` / `intent.stay_days` alone — nothing derived from
+  // this question. Releasing any value here would therefore not be
+  // "found decidable", it would be inventing a distinction the engine
+  // cannot draw, on a purpose where the wrong side hands a visitor a
+  // visit visa for a legally excluded activity. C6's actual release
+  // (D3-2) rests solely on the `other_paid_activity = no` branch, which
+  // this table already lists below.
   other_purpose: [],
   // `yes`/`no` added (PR-D3, D3-2): `mapPurposes` now routes `yes` to
   // EMPLOYMENT (only `el.e23-employment-support` covers it) and leaves `no`

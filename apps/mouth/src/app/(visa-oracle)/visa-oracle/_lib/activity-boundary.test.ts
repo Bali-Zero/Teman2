@@ -188,9 +188,21 @@ const WALKS: readonly WalkCase[] = [
     // retirement` (rulepack-prod-020) decides SUPPORT off
     // `secondhome.passive_monthly_income_usd >= 3000` and `family.
     // sponsor_confirmed == true` alone — it never reads `retirement_basis`
-    // at all — so the table was UNDER-inclusive: this exact profile (age 25
-    // here; age 64 is the same branch replayed, see the corpus) already had
-    // a deterministic SUPPORTED E33F, and the flag deleted it.
+    // at all — so the table was UNDER-inclusive: it deleted a real,
+    // deterministic engine answer regardless of which one it was.
+    // CORRECTED 2026-09-12 (D3-C/C2): this fixture is the YOUNG identity
+    // (age 25, `YOUNG_APPLICANT_BIRTH_DATE`), and at 25 the answer is
+    // NO_SUPPORTED_PATH — `hf.e33f.age-below-55` excludes E33F before
+    // `el.e33f.retirement` is ever reached. SUPPORTED E33F is reached only
+    // by the SAME branch replayed at age 64 in the backend corpus
+    // (`offshore/retirement/family_sponsor/age64`,
+    // `test_interview_walk_census.py`'s `EXPECTED_OUTCOME`); the walk at
+    // this age (`offshore/retirement/family_sponsor`) is pinned
+    // NO_SUPPORTED_PATH there. What NARROW-2 actually fixed is age-blind:
+    // `mapDisclosedReviewFlags` never sees `birth_date`, so the flag was
+    // deleting whichever real verdict the engine reached — a proven
+    // NO_SUPPORTED_PATH at 25, a proven SUPPORTED E33F at 64 — for a fact
+    // (`retirement_basis`) neither verdict depends on.
     name: "retirement · family_sponsor — FREED (NARROW-2): el.e33f.retirement never reads retirement_basis",
     category: "retirement",
     tripScope: "single",
