@@ -12,7 +12,8 @@ objective: >-
   `total` with limit=1, and groups rows by due month when a client filter is set. The table,
   counters, hooks and shared types move under components/ so page.tsx stays under 800 lines
   (680 -> 518). Gear 2 is the computed floor: evidence_pack_lint --print-floor on
-  `git diff --name-only/--numstat origin/main...HEAD` returns 2 (9 files, +1131/-253). The
+  `git diff --name-only/--numstat origin/main...HEAD` returns 2 (10 files, +1368/-253,
+  brief included). The
   imperator may raise it; this brief does not lower anything.
 constraints:
   - >-
@@ -71,7 +72,16 @@ acceptance:
       header before the filter, "October 2026" and "November 2026" after it.
   - text: The screen SHALL keep its existing behaviour — generate, approve, reject, 403 handling.
     probe: >-
-      same vitest run — the four pre-existing tests still pass (11 total, was 5), exit 0.
+      same vitest run — the four pre-existing tests still pass (14 total, was 5), exit 0.
+  - text: >-
+      The three MAJOR defects the Codex spalla found SHALL be fixed, each with a test that fails
+      against the pre-fix code: the StrictMode catalog read, the client-name cache losing an
+      in-flight result, and the counters shown under the wrong client label.
+    probe: >-
+      same vitest run — "reads the catalog once and renders it under StrictMode", "keeps a name
+      resolution that lands after the rows changed", "clears the counters when the client filter
+      changes". Each was run against the reverted hook and observed RED (2 failed / 11 passed, then
+      1 failed / 13 passed) before the fix was restored.
   - text: Lint, types and the production build SHALL be clean.
     probe: >-
       from apps/mouth — npm run lint (exit 0, 0 errors / 150 pre-existing warnings, none in
@@ -101,7 +111,7 @@ risks:
   - "Month grouping assumes the server returns rows in due_date order (it does; the groups are built
     in arrival order, so an unsorted response would produce repeated month headers rather than wrong
     rows)."
-  - "+1131/-253 is above the ~400 net-line guidance, but ~370 of the additions are the table markup
+  - "+1368/-253 is above the ~400 net-line guidance, but ~370 of the additions are the table markup
     MOVED out of page.tsx, which shrank by 162 lines; the new logic is the three hooks and the
     counter strip (~240 lines) plus 238 net lines of tests."
   - "No live observation of a populated table is possible yet: client_obligations has 0 rows on prod
