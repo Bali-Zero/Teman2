@@ -206,6 +206,24 @@ class _Family:
     family_id: str
     members: dict[str, Mapping[str, Any]] = field(default_factory=dict)
     edges: list[Mapping[str, Any]] = field(default_factory=list)
+    #: `claim_id`s seen MORE THAN ONCE while grouping. `members` is keyed by `claim_id`, so a
+    #: repeat would otherwise overwrite the earlier claim and leave no trace: the family would
+    #: look sound, `_current_at` would see one member where two were stored, and `read()` could
+    #: return the SURVIVOR as if it were the only claim with that id. Recorded here so
+    #: `_integrity_reasons` can quarantine instead. Found by the Codex gpt-5.6-sol council seat.
+    duplicate_member_ids: set[str] = field(default_factory=set)
+
+
+class _HashUnrecomputable(Exception):
+    """Hashing a member that DOES declare a `contract_version` raised.
+
+    Distinct from "there is nothing to verify against". The declared-hash fallback below is
+    legitimate ONLY in the second case (R1's reader-shaped minimal rows omit `contract_version`
+    on purpose, and parity with its reference depends on that). Folding a RAISED recompute into
+    the same `None` made integrity trust the declared hash of an object that was supposed to be
+    verifiable — an `Answer` for a claim nobody checked. Found by the Codex gpt-5.6-sol council
+    seat, converging with Kimi K3's own reading of the same fallback.
+    """
 
 
 def _recomputed_hash(member: Mapping[str, Any]) -> str | None:
@@ -222,8 +240,8 @@ def _recomputed_hash(member: Mapping[str, Any]) -> str | None:
         return None
     try:
         return _recompute_object_hash(member)
-    except (ValueError, TypeError):
-        return None
+    except (ValueError, TypeError) as exc:
+        raise _HashUnrecomputable(str(exc)) from exc
 
 
 def _integrity_reasons(family: _Family) -> set[str]:
@@ -267,9 +285,16 @@ def _integrity_reasons(family: _Family) -> set[str]:
 
     outgoing: dict[str | None, set[str | None]] = {}
 
-    recomputed: dict[str, str | None] = {
-        claim_id: _recomputed_hash(member) for claim_id, member in family.members.items()
-    }
+    if family.duplicate_member_ids:
+        reasons.add("duplicate_claim_id")
+
+    recomputed: dict[str, str | None] = {}
+    for claim_id, member in family.members.items():
+        try:
+            recomputed[claim_id] = _recomputed_hash(member)
+        except _HashUnrecomputable:
+            recomputed[claim_id] = None
+            reasons.add("object_hash_unrecomputable")
     for claim_id, member in family.members.items():
         trusted = recomputed[claim_id]
         if trusted is not None and member.get("object_hash") != trusted:
@@ -428,6 +453,8 @@ def _group(
             continue
         family_id = claim["claim_family_id"]
         family = families.setdefault(family_id, _Family(family_id=family_id))
+        if claim["claim_id"] in family.members:
+            family.duplicate_member_ids.add(claim["claim_id"])
         family.members[claim["claim_id"]] = claim
         family_of_member[claim["claim_id"]] = family
     by_registered_name = {

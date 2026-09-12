@@ -250,6 +250,19 @@ async def write_objects(conn: asyncpg.Connection, writes: Sequence[ObjectWrite])
     """
 
     for write in writes:
+        if write.object_kind == _SUCCESSION_EDGE_KIND:
+            # The docstring above says "no succession" -- it now BINDS instead of describing.
+            # `validate_object` checks the hash and the instant grammar; it does not look at
+            # `object_kind`, and it cannot: `write_successor` calls it on the edge it is
+            # legitimately writing. So the fence belongs HERE, on the standalone entry point.
+            # Without it an edge inserted through this path skips every succession invariant at
+            # once -- atomic pairing with its successor, the per-predecessor advisory lock that
+            # makes a fork a rejection instead of a race, the object_kind agreement check, the
+            # family identity check, the classification-lowering refusal and the
+            # recorded_at-strictly-later rule. Found by the Codex gpt-5.6-sol council seat.
+            raise NagaWriteRejected(
+                "succession_requires_write_successor", detail=write.object_id
+            )
         validate_object(write)
     inserted: list[str] = []
     already_present: list[str] = []
@@ -259,6 +272,10 @@ async def write_objects(conn: asyncpg.Connection, writes: Sequence[ObjectWrite])
             (inserted if outcome == "inserted" else already_present).append(write.object_id)
     return WriteResult(inserted_ids=tuple(inserted), already_present_ids=tuple(already_present))
 
+
+#: The one `object_kind` that may never travel through the standalone `write_objects` path: an
+#: edge IS the succession, so it only ever exists as half of a `write_successor` transaction.
+_SUCCESSION_EDGE_KIND = "object_successor_edge"
 
 #: The two object kinds this slice's succession rules are defined over -- `claim` (NAGA's own
 #: ledger) and `evidence` (CONTRACTS.md 3.1 applies the same edge shape to it). Anything else is
