@@ -1,5 +1,5 @@
 task_id: kita-pruning-lots-1-2
-brief_ref: evidence/2026-09/claude-i-tera-surface-analysis-d8zvu3-08e9bf9d/brief.yml
+brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
 gear: 3
 colour: BLUE
 pr: 6296
