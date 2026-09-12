@@ -112,7 +112,7 @@ receipts:
     cmd: "python mutation of 304_garuda_documents.sql, both shapes, file restored with cmp"
     result: >-
       M3 second RESET ROLE removed: D 6 failed. M4 stored-role condition removed: only the superuser-with-roles test
-      failed, D migrator tests passed. M5 MEMBER replaced by an invalid mode: PG15 D 4 failed, PG17 D 8 passed.
+      failed, D migrator tests passed. M5 MEMBER replaced by an invalid mode (re-measured 2026-09-12T01:20Z after the gate named the count): PG15 D 5 failed and 4 passed, PG17 D 9 passed.
       M6 rollback bracket removed: D 5 failed. M1 to_regrole check removed: no test failed (the check is implied by the
       stored-role condition; declared in brief risks). Pre-cure run: to_regrole removal failed the CI shape.
     exit: 0
