@@ -162,6 +162,28 @@ acceptance:
       backend/tests/scripts/visa_engine/test_operational_preflight.py
       backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py
   - text: >-
+      A9: WHEN this file's tests have run against TEST_DATABASE_URL SHALL
+      leave visa_decision_retention_policies with exactly as many
+      TEST/GARUDA_DOCUMENT rows as it had before (zero on a fresh database),
+      so that a visa_engine file running afterwards on the same database can
+      execute unwind_garuda_voa_retention_fk — which runs 304's rollback and
+      re-narrows the policy_scope CHECK — without CheckViolationError. This
+      is gate-6287c's finding: the fixture closed the seeded policy but could
+      not delete it (append-only, 264), 15 rows survived, and CI was green
+      only because xdist --dist loadfile had placed this file and the
+      consumers on different database clones. Proven by (i) the fixture's own
+      exit tripwire, (ii) a reproduction test that runs the fixture
+      lifecycle then the real unwind/restore, (iii) the gate's full set run
+      in the breaking order on one database.
+    probe: >-
+      ci_shape_pg.sh
+      backend/tests/db/test_migration_313_garuda_practice_artifacts.py
+      backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py
+      backend/tests/services/visa_engine/test_shadow_match.py
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py
+      backend/tests/services/visa_engine/test_shadow_evidence.py
+      backend/tests/scripts/visa_engine/test_operational_preflight.py
+  - text: >-
       A6 (Bites, post-merge): WHEN this PR merges — a backend merge IS the
       deploy, release_command applies migrations — `_schema_versions` SHALL
       gain row 313 applied_as `backend_rag_v2

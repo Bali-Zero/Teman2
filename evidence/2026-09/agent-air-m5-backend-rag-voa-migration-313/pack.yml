@@ -1,7 +1,7 @@
 task_id: voa-migration-313-garuda-practice-artifacts
 gear: 3
 gate_class: opus
-brief_ref: evidence/brief.yml
+brief_ref: evidence/brief.yml # the canonical staged layout CI lints against; the real file lives beside this pack — resolved from the repo root this path reads ANOTHER lane's brief (evidence/brief.yml, kbli), which is why a local lint outside a staging tree reports that lane's floor, not this one's
 council_run: council-journal.jsonl
 seat_override: >-
   The ground-truth rule fires on one path in this diff,
@@ -72,6 +72,16 @@ receipts:
     exit: 0
     ts: "2026-09-12T06:55:00Z"
     seat: claude-opus-5 (build)
+  - probe: A1
+    claim: >-
+      Re-measured after the A9 fixture change (transactional seed, exit
+      tripwire, reproduction test): 18 tests now, the 17 above plus
+      test_the_next_file_can_still_unwind_this_database.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py --color=no -p no:randomly
+    result: "18 passed in 4.85s"
+    exit: 0
+    ts: "2026-09-12T11:56:08Z"
+    seat: claude-opus-5 (build)
   - probe: A2
     claim: >-
       Shape D on a real PostgreSQL 17.10 with backend_rag_migrator
@@ -121,7 +131,7 @@ receipts:
     cmd: ci_shape_pg.sh backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_shadow_evidence.py --color=no -p no:randomly
     result: "307 passed in 47.59s"
     exit: 0
-    ts: "2026-09-12T20:12:40Z"
+    ts: "2026-09-12T11:12:30Z"
     seat: claude-opus-5 (build)
   - probe: A7
     claim: >-
@@ -136,7 +146,7 @@ receipts:
       on table garuda_practice_artifacts depends on table
       visa_decision_retention_policies"
     exit: 0
-    ts: "2026-09-12T20:15:10Z"
+    ts: "2026-09-12T11:14:00Z"
     seat: claude-opus-5 (build)
   - probe: A8
     claim: >-
@@ -147,7 +157,29 @@ receipts:
     cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py -p no:cacheprovider
     result: "52 passed in 1.69s"
     exit: 0
-    ts: "2026-09-12T20:02:15Z"
+    ts: "2026-09-12T11:06:30Z"
+    seat: claude-opus-5 (build)
+  - probe: A9
+    claim: >-
+      This file's fixture leaves the database exactly as it found it: with
+      the TEST/GARUDA_DOCUMENT policy seeded inside a transaction the fixture
+      rolls back, the retention-FK canary run AFTER this file on the same
+      database passes — before the cure it failed with CheckViolationError on
+      the policy_scope CHECK, the defect gate-6287c measured.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py --color=no -p no:randomly
+    result: "21 passed in 2.18s (before the cure, same command: 1 failed, 19 passed — asyncpg.exceptions.CheckViolationError: visa_decision_retention_policies_policy_scope_check)"
+    exit: 0
+    ts: "2026-09-12T11:42:11Z"
+    seat: claude-opus-5 (build)
+  - probe: A9
+    claim: >-
+      The whole set gate-6287c ran, in the order that broke it — this file
+      FIRST, then the registry canary, the three unwind/restore consumers and
+      the preflight suite — on ONE database in ONE process.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_shadow_evidence.py backend/tests/scripts/visa_engine/test_operational_preflight.py --color=no -p no:randomly
+    result: "370 passed in 290.19s"
+    exit: 0
+    ts: "2026-09-12T11:49:59Z"
     seat: claude-opus-5 (build)
 guilt_mutations:
   - target: tests/services/visa_engine/conftest.py — the retention-FK registry entry
@@ -163,7 +195,7 @@ guilt_mutations:
       your migration merges, on files that never touch your product at
       all". conftest.py restored from a cp backup, md5 identical before and
       after (02da4e1b9844f03b19ef2397bd2cd661).
-    ts: "2026-09-12T18:47:30Z"
+    ts: "2026-09-12T10:48:00Z"
   - target: scripts/visa_engine/operational_preflight.py — the binder inventory entry
     mutation: >-
       Remove `public.bind_garuda_practice_artifact_retention_policy()` from
@@ -181,7 +213,26 @@ guilt_mutations:
       NEITHER leaves them agreeing and no test fails — that is the missing
       parity canary recorded in A8's declared limit, not a property this
       mutation demonstrates.
-    ts: "2026-09-12T20:05:40Z"
+    ts: "2026-09-12T11:08:30Z"
+  - target: tests/db/test_migration_313_garuda_practice_artifacts.py — the fixture's rollback
+    mutation: >-
+      In `_seeded_test_retention_policy`, `await tx.rollback()` -> `await
+      tx.commit()`: the seeded policy row is committed, exactly the state the
+      earlier close-not-delete teardown left behind. Run this file then the
+      registry canary on one database.
+    observed: >-
+      RED three ways, each naming the chain: 15 fixture tripwires ("this
+      file's fixture left 1 TEST/GARUDA_DOCUMENT retention policy row(s)
+      behind; the next visa_engine file to call
+      unwind_garuda_voa_retention_fk on this database will fail 304's
+      rollback with CheckViolationError"), the reproduction test RED on its
+      stated premise ("15 TEST/GARUDA_DOCUMENT row(s) pre-date this test"),
+      and the registry canary RED with the gate's exact error
+      (CheckViolationError: visa_decision_retention_policies_policy_scope_check
+      ... violated by some row). 2 failed, 19 passed, 15 errors. File
+      restored from a cp backup, md5 identical before and after
+      (3eb0afbab1a56e755ce0bb870ca9c0a8).
+    ts: "2026-09-12T11:43:30Z"
   - target: db/migrations_v2/313_garuda_practice_artifacts.sql (composite deferred FK, F7)
     mutation: >-
       Point `superseded_by` at an artifact belonging to ANOTHER practice and
@@ -303,6 +354,43 @@ dissent:
       PR is measured against, `apply-all` applies every migration, so the
       skewed starting state does not arise there — which is exactly why no
       test catches it.
+  - seat: claude-opus-5
+    objection: >-
+      (gate-6287c, BLOCK, on head 39f2e1d9cb) This file's fixture closed the
+      TEST/GARUDA_DOCUMENT policy at teardown but could not delete it
+      (append-only guard, 264), so 15 rows survived the file; every
+      visa_engine file that then called unwind_garuda_voa_retention_fk on
+      the same database ran 304's rollback, which re-narrows the
+      policy_scope CHECK, and Postgres refused it. CI was green only because
+      xdist --dist loadfile put this file and those on different clones.
+    status: CONFIRMED
+    disposition: >-
+      CURED (A9): the policy is now seeded INSIDE a transaction the fixture
+      rolls back, with the seed's lower bound on transaction_timestamp() so
+      the binder's `effective_period @> created_at` still resolves under a
+      frozen clock; a tripwire compares the row count at exit to the count at
+      entry; a reproduction test runs the fixture lifecycle and then the
+      real unwind/restore on the same connection. DELETE was tried first and
+      refused by the guard — that refusal is why the earlier shape closed
+      instead, and the comment now says so.
+  - seat: claude-opus-5
+    objection: >-
+      (evidence integrity, raised by the Imperator on gate-6287c) The O4
+      council row and five receipt/mutation timestamps written in this window
+      were LATER than the commits carrying them — 19:58Z for a round that
+      ended 11:04Z.
+    status: CONFIRMED
+    disposition: >-
+      CORRECTED, and recorded as a correction rather than silently
+      overwritten. This window continued a timestamp series by hand instead
+      of measuring. Every ts is now derived from a measured anchor: codex log
+      mtimes (O4 10:52:51Z -> 11:04:55Z), cp-backup mtimes for the guilt
+      mutations, shape-cluster mtimes for the pytest runs, and the +08:00
+      commit times as upper bounds. Where an anchor brackets rather than
+      pins a run, the ts is the bracket's midpoint and is within two minutes
+      of the truth. Model headers of all four codex logs were re-read in the
+      same pass: O1, O2, O3, O4 all say `model: gpt-5.6-sol`; the seat names
+      in the journal are true.
   - seat: claude-opus-5
     objection: >-
       (self, on the shape-D test of the privilege bracket) The bracket test
