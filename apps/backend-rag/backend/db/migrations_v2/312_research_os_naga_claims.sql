@@ -319,3 +319,24 @@ BEFORE TRUNCATE ON public.research_os_naga_admission
 FOR EACH STATEMENT EXECUTE FUNCTION public.reject_research_os_objects_mutation();
 
 -- === ROLLBACK ===
+-- Local/CI teardown, not a production rollback step (R-research-os.md R2 s7: production DROP and
+-- trigger removal are not rollback steps). It REFUSES on a non-empty admission table, so a
+-- rollback can never destroy appended admission decisions: preserve and inventory them first.
+DO $$
+DECLARE
+    has_rows boolean := false;
+BEGIN
+    IF to_regclass('public.research_os_naga_admission') IS NOT NULL THEN
+        EXECUTE 'SELECT EXISTS (SELECT 1 FROM public.research_os_naga_admission)' INTO has_rows;
+    END IF;
+    IF has_rows THEN
+        RAISE EXCEPTION 'research_os_naga_admission holds admission decisions; rollback refused';
+    END IF;
+END;
+$$;
+DROP TRIGGER IF EXISTS research_os_naga_admission_no_wipe ON public.research_os_naga_admission;
+DROP TRIGGER IF EXISTS research_os_naga_admission_immutable ON public.research_os_naga_admission;
+DROP TABLE IF EXISTS public.research_os_naga_admission;
+DROP INDEX IF EXISTS public.research_os_objects_valid_to_key_idx;
+DROP INDEX IF EXISTS public.research_os_objects_valid_from_key_idx;
+DROP FUNCTION IF EXISTS public.research_os_instant_key(text);
