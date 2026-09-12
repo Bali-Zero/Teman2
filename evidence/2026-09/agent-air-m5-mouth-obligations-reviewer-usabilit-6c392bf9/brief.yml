@@ -1,0 +1,127 @@
+task_id: obligations-reviewer-usability
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the obligations reviewer screen readable without the catalog and the client book in the
+  reviewer's head. The screen at apps/mouth/src/app/(workspace)/obligations showed rule_id and
+  client_id only. It now labels every row through GET /api/compliance/obligations/catalog (M3,
+  #6330) — rule name, authority, verified/unverified badge, legal_source in the row detail —
+  resolves client_id to a display name through GET /api/crm/clients/{id}, reports
+  proposed/approved/rejected/alerted counts for the current client filter from the list endpoint's
+  `total` with limit=1, and groups rows by due month when a client filter is set. The table,
+  counters, hooks and shared types move under components/ so page.tsx stays under 800 lines
+  (680 -> 518). Gear 2 is the computed floor: evidence_pack_lint --print-floor on
+  `git diff --name-only/--numstat origin/main...HEAD` returns 2 (10 files, +1368/-253,
+  brief included). The
+  imperator may raise it; this brief does not lower anything.
+constraints:
+  - >-
+    No new backend route and no backend change at all. The counters are four parallel limit=1 reads
+    of the list endpoint that already returns `total` for whatever filter it is given.
+  - >-
+    The catalog is never duplicated in the frontend. No rule id, name, authority or legal source is
+    typed into src/; the only rule literals in the diff are two fixtures inside page.test.tsx.
+  - >-
+    PII is an OUTPUT boundary. A resolved client name lives in useClientNames state for the life of
+    the browser tab and nowhere else: not logged (the failure path logs client_id and deliberately
+    drops the thrown error, whose message comes from a client-record read), not persisted, not sent
+    anywhere. The PR body and this pack carry ids and fixtures only.
+  - >-
+    The CRM read chosen is the lightest per-client read that returns a display name:
+    GET /api/crm/clients/{client_id} in crm_clients.py, one clients row plus a lateral
+    last-interaction join. Its gate is verify_client_access(..., allow_assigned=True), which
+    short-circuits to allowed for is_crm_admin — the gate this screen already requires on every
+    obligations route — so no session that can see the queue is denied a name.
+  - >-
+    Month labels are parsed from the ISO date string, never through new Date(...): the backend
+    sends a plain date and a Date parse shifts it by the viewer's UTC offset.
+  - >-
+    No lockfile touched (node_modules in the worktree is a symlink to the main checkout's, so no
+    npm ci was needed). No fly.toml, no .env, no zantara_core.py, no paid endpoint.
+  - >-
+    npm run build regenerates apps/mouth/public/llms*.txt from published content. Those three
+    regenerations were reverted, not committed: they belong to the editorial lane (#6322), not to
+    this concern.
+acceptance:
+  - text: >-
+      WHEN the catalog read succeeds the table SHALL render each row's rule NAME, its authority and
+      a verified or unverified badge, and the row detail SHALL show legal_source; the catalog SHALL
+      be read once per mount, not once per row.
+    probe: >-
+      npx vitest run 'src/app/(workspace)/obligations' — tests "labels each rule with its catalog
+      name, authority and verified badge" (asserts both badges, two DJP cells, exactly one catalog
+      call) and "shows legal_source in the row detail" (absent before the toggle, present after).
+  - text: >-
+      WHEN the CRM client read succeeds the client column SHALL show the display name with the id
+      beneath it, and WHEN it fails the column SHALL fall back to the bare id.
+    probe: >-
+      same vitest run — "resolves the client id to a display name through the CRM read" and "falls
+      back to the client id when the CRM read fails" (ApiError 404, name absent, id visible).
+  - text: >-
+      The four status counters SHALL come from the list endpoint's total with limit=1, one read per
+      status, all four dispatched before any resolves.
+    probe: >-
+      same vitest run — "reads one counter per status with limit=1, all four in parallel" holds all
+      four responses pending, asserts the four statuses were requested, then releases them and
+      asserts the rendered 7/3/1/2.
+  - text: >-
+      Rows SHALL be grouped by due month WHEN a client filter is set and SHALL stay flat otherwise.
+    probe: >-
+      same vitest run — "groups rows by due month only when a client filter is set": no month
+      header before the filter, "October 2026" and "November 2026" after it.
+  - text: The screen SHALL keep its existing behaviour — generate, approve, reject, 403 handling.
+    probe: >-
+      same vitest run — the four pre-existing tests still pass (14 total, was 5), exit 0.
+  - text: >-
+      The three MAJOR defects the Codex spalla found SHALL be fixed, each with a test that fails
+      against the pre-fix code: the StrictMode catalog read, the client-name cache losing an
+      in-flight result, and the counters shown under the wrong client label.
+    probe: >-
+      same vitest run — "reads the catalog once and renders it under StrictMode", "keeps a name
+      resolution that lands after the rows changed", "clears the counters when the client filter
+      changes". Each was run against the reverted hook and observed RED (2 failed / 11 passed, then
+      1 failed / 13 passed) before the fix was restored.
+  - text: Lint, types and the production build SHALL be clean.
+    probe: >-
+      from apps/mouth — npm run lint (exit 0, 0 errors / 150 pre-existing warnings, none in
+      obligations); npx tsc --noEmit (exit 0); npm run build (exit 0).
+  - text: UI copy SHALL carry no forbidden phrase and no "AI" wording.
+    probe: >-
+      python3 scan of the 9 changed files against every backticked phrase in
+      skills/bali-zero-brand/voice/forbidden-phrases.md plus a \bAI\b regex — zero hits.
+consumer_map:
+  - "The tax team on kita.balizero.com/obligations: the screen they work the queue in."
+  - "GET /api/compliance/obligations/catalog (M3, #6330) gains its first caller — until now the
+    endpoint was live with no consumer."
+  - "GET /api/crm/clients/{client_id} (crm_clients.py) gains a caller from the obligations lane."
+  - "U2 (client compliance profile form) mounts its panel on this page and reuses
+    components/types.ts, components/describe-error.ts and the client-filter state added here."
+  - "Not a consumer, checked: nothing else imports from the obligations directory (grep), so the
+    components/ split breaks no other screen."
+risks:
+  - "The client column issues one CRM read per distinct client_id on the page — up to 50 parallel
+    requests on a cross-client page of proposals. Each is a single-row read and ids are attempted
+    once per tab, but a very wide page is a visible burst. Mitigation if it bites: batch through the
+    clients list endpoint instead of per id."
+  - "A failed CRM read is remembered as attempted for the life of the tab, so a transient failure
+    pins that row to its id until the reviewer reloads. Chosen over retrying on every render."
+  - "The four counter reads are four extra list queries per filter change. They are limit=1, but
+    they share the same count_filtered path as the table's own total."
+  - "Month grouping assumes the server returns rows in due_date order (it does; the groups are built
+    in arrival order, so an unsorted response would produce repeated month headers rather than wrong
+    rows)."
+  - "+1368/-253 is above the ~400 net-line guidance, but ~370 of the additions are the table markup
+    MOVED out of page.tsx, which shrank by 162 lines; the new logic is the three hooks and the
+    counter strip (~240 lines) plus 238 net lines of tests."
+  - "No live observation of a populated table is possible yet: client_obligations has 0 rows on prod
+    because the first /generate has never run (owner input: pilot client_id). The live proof is
+    therefore the screen rendering with its counters at zero plus the catalog read succeeding."
+grader: >-
+  The final on-disk gate is a fresh Opus 5 session commissioned by the imperator; this Dux does not
+  post harness/fable-gate. Codex (read-only, reasoning effort high) reviewed the diff as spalla; its
+  verdict is in the PR body under "## Adversarial review".
+budget: Existing subscription only; no paid API calls.
+pii: >-
+  none. Client ids and a synthetic fixture name ("Fixture Client Alpha") only. No real client name
+  appears in the diff, this pack or the PR body.
