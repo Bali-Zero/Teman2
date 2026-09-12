@@ -20,11 +20,11 @@
       "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 11,
       "open_supporting_tier_absent:OK_or_HIGHER_RISK": 90,
       "status:APERTO_BALI_RISCHIO_ALTO": 11,
-      "status:BLOCCATO_CLASSE_RISCHIO": 375,
+      "status:BLOCCATO_CLASSE_RISCHIO": 373,
       "status:BLOCCATO_DIPENDE_SCOPE": 67,
       "status:CHIUSO_BALI": 1,
       "status:CHIUSO_BALI_PROPOSTO": 5,
-      "status:CHIUSO_MORATORIA_BALI": 46,
+      "status:CHIUSO_MORATORIA_BALI": 48,
       "status:CHIUSO_PMA_NO_BESAR": 7,
       "status:CHIUSO_REGOLATORE_SETTORIALE": 2,
       "status:NON_CLASSIFICABILE": 25,
@@ -20334,7 +20334,7 @@
     },
     "93111": {
       "facts_basis": {
-        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
         "confidence": "HIGH",
         "needs_review": false,
@@ -20412,7 +20412,7 @@
     },
     "93119": {
       "facts_basis": {
-        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
         "confidence": "HIGH",
         "needs_review": false,
