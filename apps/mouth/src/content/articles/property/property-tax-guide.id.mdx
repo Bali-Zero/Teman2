@@ -73,22 +73,14 @@ tableOfContents: true
 canonicalUrl: "https://balizero.com/property/property-tax-guide"
 ogImage: "/static/insights/property/property-tax.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "1404b94a17fb8a062d36dce33ddacbbaeef46285386ec366e4b8671c4febdd30"
+source_sha256: "7ef74c7c59d824708f289ff20cfc52fea3f5dff1ab897abff314e4d36bce4e06"
 ---
-
-import {
-  ComparisonTable,
-  Calculator,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
 
 # Pajak Properti Indonesia 2026: Panduan Lengkap
 
-Kepemilikan properti di Indonesia disertai dengan kewajiban pajak. Inilah semua yang perlu Anda ketahui.
+Kepemilikan properti di Indonesia disertai dengan kewajiban pajak. Berikut adalah segala sesuatu yang perlu Anda ketahui.
 
-## Ikhtisar Pajak Properti
+## Gambaran Umum Pajak Properti
 
 <ComparisonTable
   title="Jenis Pajak Properti"
@@ -96,43 +88,43 @@ Kepemilikan properti di Indonesia disertai dengan kewajiban pajak. Inilah semua 
   items={[
     {
       name: "PBB",
-      subtitle: "Pajak bumi/bangunan tahunan",
+      subtitle: "Pajak tahunan atas tanah/bangunan",
       values: {
-        Kapan: "Setiap tahun",
-        Tarif: "~0,1-0,5% dari NJOP",
-        "Dibayar oleh": "Pemilik",
-        "Jatuh tempo": "Akhir Agustus",
+        When: "Setiap tahun",
+        Rate: "~0.1-0.5% dari NJOP",
+        "Paid by": "Pemilik",
+        Due: "Akhir Agustus",
       },
       highlight: true,
     },
     {
       name: "BPHTB",
-      subtitle: "Pajak balik nama/perolehan",
+      subtitle: "Pajak transfer/akuisisi",
       values: {
-        Kapan: "Saat pembelian",
-        Tarif: "5% dari nilai",
-        "Dibayar oleh": "Pembeli",
-        "Jatuh tempo": "Sebelum balik nama",
+        When: "Saat pembelian",
+        Rate: "5% dari nilai",
+        "Paid by": "Pembeli",
+        Due: "Sebelum transfer",
       },
     },
     {
       name: "PPh Final",
       subtitle: "Pajak penghasilan penjual",
       values: {
-        Kapan: "Saat penjualan",
-        Tarif: "2,5% dari nilai",
-        "Dibayar oleh": "Penjual",
-        "Jatuh tempo": "Sebelum balik nama",
+        When: "Saat penjualan",
+        Rate: "2.5% dari nilai",
+        "Paid by": "Penjual",
+        Due: "Sebelum transfer",
       },
     },
     {
-      name: "Penghasilan Sewa",
-      subtitle: "Pajak atas sewa diterima",
+      name: "Rental Income",
+      subtitle: "Pajak atas sewa yang diterima",
       values: {
-        Kapan: "Dari penghasilan sewa",
-        Tarif: "10% final",
-        "Dibayar oleh": "Pemilik",
-        "Jatuh tempo": "Bulanan/tahunan",
+        When: "Atas penghasilan sewa",
+        Rate: "10% final",
+        "Paid by": "Pemilik",
+        Due: "Bulanan/tahunan",
       },
     },
   ]}
@@ -140,16 +132,16 @@ Kepemilikan properti di Indonesia disertai dengan kewajiban pajak. Inilah semua 
 
 ---
 
-## Pajak Bumi dan Bangunan (PBB)
+## Pajak Properti Tahunan (PBB)
 
 ### Apa itu PBB?
 
 <InfoCard variant="note" title="Pajak Bumi dan Bangunan">
-**PBB** adalah:
+**PBB** (Pajak Bumi dan Bangunan) adalah:
 - Pajak tahunan atas kepemilikan properti
-- Berdasarkan nilai taksiran pemerintah (NJOP)
+- Berdasarkan nilai yang dinilai pemerintah (NJOP)
 - Dibayar oleh pemilik properti
-- Jatuh tempo pada bulan Agustus setiap tahun
+- Jatuh tempo pada akhir setiap tahun
 
 Semua pemilik tanah dan bangunan wajib membayar PBB.
 
@@ -157,12 +149,12 @@ Semua pemilik tanah dan bangunan wajib membayar PBB.
 
 ### Perhitungan PBB
 
-| Komponen         | Penjelasan                                   |
-| ---------------- | -------------------------------------------- |
-| NJOP             | Nilai Jual Objek Pajak (taksiran pemerintah) |
-| NJOPTKP          | Ambang batas tidak kena pajak (bervariasi)   |
-| Nilai kena pajak | NJOP dikurangi NJOPTKP                       |
-| Tarif pajak      | 0,1-0,5% (bervariasi menurut wilayah)        |
+| Komponen       | Penjelasan                           |
+| --------------- | ------------------------------------ |
+| NJOP            | Nilai jual objek pajak (penilaian pemerintah) |
+| NJOPTKP         | Batas bebas pajak (berbeda per daerah) |
+| Nilai kena pajak| NJOP dikurangi NJOPTKP              |
+| Tarif pajak     | 0.1-0.5% (berbeda per daerah dan nilai) |
 
 ### Kalkulator PBB
 
@@ -179,7 +171,7 @@ Semua pemilik tanah dan bangunan wajib membayar PBB.
     },
     {
       id: "region",
-      label: "Wilayah",
+      label: "Daerah",
       type: "select",
       options: [
         { value: "jakarta", label: "Jakarta" },
@@ -190,7 +182,7 @@ Semua pemilik tanah dan bangunan wajib membayar PBB.
     }
   ]}
   calculateResult={(values) => {
-    // NJOPTKP bervariasi menurut wilayah
+    // NJOPTKP bervariasi per daerah
     const njoptkp = {
       jakarta: 60000000,
       bali: 50000000,
@@ -200,7 +192,7 @@ Semua pemilik tanah dan bangunan wajib membayar PBB.
     const threshold = njoptkp[values.region];
     const taxable = Math.max(0, values.njop - threshold);
 
-    // Tarif yang disederhanakan (aktual bervariasi menurut bracket)
+    // Tarif disederhanakan (sebenarnya bervariasi per bracket)
     let rate;
     if (values.njop < 1000000000) {
       rate = 0.001; // 0.1%
@@ -216,13 +208,13 @@ Semua pemilik tanah dan bangunan wajib membayar PBB.
       total: Math.round(tax),
       breakdown: [
         { label: "Nilai NJOP", amount: values.njop },
-        { label: "NJOPTKP (ambang batas)", amount: threshold },
+        { label: "NJOPTKP (batas)", amount: threshold },
         { label: "Nilai kena pajak", amount: taxable },
         { label: "Tarif efektif", amount: `${(rate * 100).toFixed(2)}%` },
         { label: "PBB Tahunan", amount: Math.round(tax) }
       ],
       currency: "IDR",
-      note: "Pajak sebenarnya mungkin berbeda berdasarkan peraturan daerah"
+      note: "Pajak aktual dapat bervariasi berdasarkan peraturan lokal"
     };
 
 }}
@@ -230,53 +222,53 @@ Semua pemilik tanah dan bangunan wajib membayar PBB.
 
 ### Membayar PBB
 
-| Metode      | Detail                       |
-| ----------- | ---------------------------- |
-| Bank        | BCA, Mandiri, BNI, dll.      |
-| Online      | Berbagai aplikasi pembayaran |
-| Kantor Pos  | Secara langsung              |
-| Kantor Desa | Titik pembayaran lokal       |
+| Metode         | Detail                    |
+| --------------- | ------------------------- |
+| Bank            | BCA, Mandiri, BNI, dll.   |
+| Online          | Berbagai aplikasi pembayaran |
+| Kantor Pos      | Secara langsung           |
+| Kantor Desa     | Titik pembayaran lokal    |
 
-Simpan SPPT (Surat Pemberitahuan Pajak Terhutang) Anda sebagai referensi pembayaran.
+Simpan SPPT (surat tagihan pajak) sebagai referensi pembayaran.
 
 ---
 
-## Bea Perolehan Hak atas Tanah dan Bangunan (BPHTB)
+## Pajak Transfer/Akuisisi (BPHTB)
 
 ### Apa yang Dibayar Pembeli
 
-<InfoCard variant="warning" title="BPHTB - Pajak Balik Nama 5%">
-**BPHTB** berlaku saat Anda memperoleh properti melalui:
+<InfoCard variant="warning" title="BPHTB - Pajak Transfer 5%">
+**BPHTB** berlaku saat Anda mengakuisisi properti:
 - Pembelian
-- Hibah
+- Hadiah
 - Warisan
-- Tukar menukar
+- Tukar-menukar
 
-**Tarif:** 5% dari nilai perolehan dikurangi NPOPTKP
+**Tarif:** 5% dari nilai transfer dikurangi NJOPTKP
 **Dibayar oleh:** Pembeli/penerima
-**Kapan:** Sebelum balik nama sertifikat
+**Kapan:** Sebelum transfer sertifikat
 
 </InfoCard>
 
 ### Perhitungan BPHTB
 
-| Elemen            | Perhitungan                                   |
-| ----------------- | --------------------------------------------- |
-| Nilai transaksi   | Mana yang lebih tinggi antara harga atau NJOP |
-| Dikurangi NPOPTKP | Ambang batas tidak kena pajak                 |
-| Dasar pajak       | Hasil pengurangan                             |
-| BPHTB             | 5% dari dasar pajak                           |
+| Elemen             | Perhitungan               |
+| ------------------ | -------------------------- |
+| Nilai transaksi    | Yang lebih tinggi antara harga atau NJOP |
+| Kurangi NJOPTKP    | Batas bebas pajak         |
+| Dasar pajak        | Hasil                     |
+| BPHTB              | 5% dari dasar pajak       |
 
 ### Contoh
 
-| Item                    | Jumlah             |
-| ----------------------- | ------------------ |
-| Harga pembelian         | IDR 2.000.000.000  |
-| NJOP                    | IDR 1.500.000.000  |
-| Gunakan nilai tertinggi | IDR 2.000.000.000  |
-| NPOPTKP                 | IDR 60.000.000     |
-| Dasar pajak             | IDR 1.940.000,000  |
-| **BPHTB (5%)**          | **IDR 97.000.000** |
+| Item               | Jumlah                    |
+| ------------------ | ------------------------- |
+| Harga beli         | IDR 2.000.000.000        |
+| NJOP               | IDR 1.500.000.000        |
+| Gunakan nilai lebih tinggi | IDR 2.000.000.000    |
+| NJOPTKP            | IDR 60.000.000           |
+| Dasar pajak        | IDR 1.940.000.000        |
+| **BPHTB (5%)**     | **IDR 97.000.000**       |
 
 ---
 
@@ -284,24 +276,22 @@ Simpan SPPT (Surat Pemberitahuan Pajak Terhutang) Anda sebagai referensi pembaya
 
 ### Apa yang Dibayar Penjual
 
-| Transaksi     | Tarif Pajak               |
-| ------------- | ------------------------- |
-| Jual properti | 2,5% dari nilai transaksi |
-| Jual tanah    | 2,5% dari nilai transaksi |
+| Transaksi         | Tarif Pajak               |
+| ----------------- | ------------------------- |
+| Penjualan properti | 2.5% dari nilai transaksi |
+| Penjualan tanah   | 2.5% dari nilai transaksi |
 
 <InfoCard variant="note" title="Pajak Penjual">
 
-  **PPh Final 2,5%** adalah: - Dibayar oleh penjual - Berdasarkan nilai
-  transaksi (atau NJOP jika lebih tinggi) - Jatuh tempo sebelum balik nama -
-  Final (tidak ada pajak penghasilan tambahan atas keuntungan)
+  **PPh Final 2.5%** adalah: - Dibayar oleh penjual - Berdasarkan nilai transaksi (atau NJOP jika lebih tinggi) - Jatuh tempo sebelum transfer sertifikat - Final (tidak ada pajak penghasilan tambahan atas keuntungan)
 </InfoCard>
 
 ---
 
-## Total Biaya Balik Nama
+## Total Biaya Transfer
 
 <Checklist
-  title="Biaya Balik Nama Properti"
+  title="Biaya Transfer Properti"
   description="Kewajiban pembeli dan penjual"
   persistKey="transfer-costs-checklist"
   items={[
@@ -314,7 +304,7 @@ Simpan SPPT (Surat Pemberitahuan Pajak Terhutang) Anda sebagai referensi pembaya
     },
     {
       id: "notary-buyer",
-      label: "Biaya Notaris (~1%)",
+      label: "Biaya notaris (~1%)",
       description: "Biasanya dibayar pembeli",
       required: true,
       category: "buyer",
@@ -328,15 +318,15 @@ Simpan SPPT (Surat Pemberitahuan Pajak Terhutang) Anda sebagai referensi pembaya
     },
     {
       id: "pph-seller",
-      label: "PPh Final (2,5%)",
+      label: "PPh Final (2.5%)",
       description: "Dibayar penjual",
       required: true,
       category: "seller",
     },
     {
       id: "pbb-clear",
-      label: "Pelunasan tunggakan PBB",
-      description: "Penjual harus melunasi",
+      label: "Lunasi tunggakan PBB",
+      description: "Penjual wajib lunasi",
       required: true,
       category: "seller",
     },
@@ -349,18 +339,18 @@ Simpan SPPT (Surat Pemberitahuan Pajak Terhutang) Anda sebagai referensi pembaya
     },
   ]}
   categories={[
-    { id: "buyer", label: "Pembeli Membayar", color: "blue" },
-    { id: "seller", label: "Penjual Membayar", color: "green" },
+    { id: "buyer", label: "Dibayar Pembeli", color: "blue" },
+    { id: "seller", label: "Dibayar Penjual", color: "green" },
   ]}
   showProgress={false}
 />
 
 ### Ringkasan Total Biaya
 
-| Pihak   | Perkiraan Biaya                           |
-| ------- | ----------------------------------------- |
-| Pembeli | 6-7% dari nilai (BPHTB + notaris + biaya) |
-| Penjual | 2,5-5% dari nilai (PPh + agen jika ada)   |
+| Pihak             | Biaya Sekitar                    |
+| ----------------- | -------------------------------- |
+| Pembeli           | 6-7% dari nilai (BPHTB + notaris + biaya) |
+| Penjual           | 2.5-5% dari nilai (PPh + agen jika ada) |
 
 ---
 
@@ -371,104 +361,104 @@ Simpan SPPT (Surat Pemberitahuan Pajak Terhutang) Anda sebagai referensi pembaya
 <InfoCard variant="note" title="Pajak Final 10%">
 Penghasilan sewa dari properti dikenakan:
 
-**PPh Final 10%** dari total penghasilan sewa bruto
+**PPh Final 10%** atas penghasilan sewa kotor
 
 - Berlaku untuk tanah dan bangunan
-- Tidak ada pengurangan biaya-biaya
+- Tidak ada pengurangan biaya
 - Final (tidak ditambahkan ke penghasilan lain)
-- Harus dipotong oleh penyewa perusahaan
+- Seharusnya dipotong oleh penyewa korporasi
 </InfoCard>
 
 ### Siapa yang Memotong?
 
-| Tipe Penyewa       | Perlakuan Pajak       |
-| ------------------ | --------------------- |
-| Penyewa perusahaan | Wajib memotong 10%    |
-| Penyewa individu   | Pemilik lapor sendiri |
+| Jenis Penyewa       | Perlakuan Pajak            |
+| ------------------- | -------------------------- |
+| Penyewa korporasi   | Wajib memotong 10%        |
+| Penyewa individu    | Pemilik properti menilai sendiri |
 
 ### Pelaporan
 
-| Situasi            | Tindakan                          |
-| ------------------ | --------------------------------- |
-| Penyewa perusahaan | Mereka menerbitkan bukti potong   |
-| Penyewa individu   | Anda melapor dan membayar         |
-| Campuran           | Deklarasikan semua di SPT tahunan |
+| Situasi             | Tindakan                    |
+| ------------------- | --------------------------- |
+| Penyewa korporasi   | Mereka menerbitkan bukti potong |
+| Penyewa individu    | Anda melaporkan dan membayar |
+| Campuran            | Deklarasikan semua dalam SPT tahunan |
 
 ---
 
-## Penjelasan NJOP
+## NJOP Dijelaskan
 
 ### Apa itu NJOP?
 
-<InfoCard variant="note" title="Nilai Jual Objek Pajak">
-**NJOP** adalah:
-- Nilai properti yang ditaksir pemerintah
+<InfoCard variant="note" title="Nilai Penilaian Pemerintah">
+**NJOP** (Nilai Jual Objek Pajak) adalah:
+- Nilai properti yang dinilai pemerintah
 - Digunakan untuk perhitungan pajak
 - Biasanya lebih rendah dari nilai pasar
 - Diperbarui secara berkala
 
-Temukan NJOP Anda di SPPT (surat pajak) atau cek di kantor pajak setempat.
+Temukan NJOP Anda pada SPPT (surat tagihan pajak) atau cek di kantor pajak lokal.
 
 </InfoCard>
 
 ### NJOP vs Nilai Pasar
 
-| Aspek               | NJOP              | Nilai Pasar |
-| ------------------- | ----------------- | ----------- |
-| Ditetapkan oleh     | Pemerintah        | Pasar       |
-| Tingkat tipikal     | 50-80% dari pasar | 100%        |
-| Frekuensi pembaruan | Berkala           | Real-time   |
-| Digunakan untuk     | Pajak             | Transaksi   |
+| Aspek               | NJOP                     | Nilai Pasar   |
+| ------------------- | ------------------------ | ------------- |
+| Ditentukan oleh     | Pemerintah               | Pasar         |
+| Tingkat tipikal     | 50-80% dari nilai pasar  | 100%          |
+| Frekuensi pembaruan | Berkala                 | Real-time     |
+| Digunakan untuk     | Pajak                    | Transaksi     |
 
 ---
 
 ## Tips Perencanaan Pajak
 
-### Cara Legal untuk Meminimalkan
+### Cara Legal untuk Mengurangi
 
-| Strategi              | Cara Kerjanya                        |
-| --------------------- | ------------------------------------ |
-| Waktu akuisisi        | Akhir tahun memungkinkan perencanaan |
-| Struktur kepemilikan  | PT PMA vs pribadi                    |
-| Gunakan NJOPTKP       | Pastikan ambang batas diterapkan     |
-| Bayar PBB tepat waktu | Hindari denda                        |
-| Dokumentasi biaya     | Untuk dasar penjualan masa depan     |
+| Strategi            | Cara Kerjanya                |
+| ------------------- | ----------------------------- |
+| Waktu akuisisi      | Akhir tahun mungkin memungkinkan perencanaan |
+| Struktur kepemilikan | PT PMA vs pribadi            |
+| Gunakan NJOPTKP     | Pastikan batas diterapkan    |
+| Lunasi PBB tepat waktu | Hindari denda               |
+| Dokumentasikan biaya | Untuk dasar penjualan masa depan |
 
 <InfoCard variant="warning" title="Kepatuhan Pajak">
 **Jangan:**
-- Melaporkan nilai transaksi di bawah harga sebenarnya
+- Menurunkan nilai transaksi
 - Menyembunyikan kepemilikan properti
-- Lalai membayar PBB
-- Mengabaikan pajak penghasilan sewa
+- Gagal membayar PBB
+- Mengabaikan penghasilan sewa
 
-Otoritas pajak melakukan verifikasi silang dengan catatan BPN dan notaris. Ketidakpatuhan akan menimbulkan masalah saat Anda ingin menjual properti.
+Otoritas pajak melakukan silang referensi dengan catatan BPN dan notaris. Ketidakpatuhan menciptakan masalah saat Anda ingin menjual.
 
 </InfoCard>
 
 ---
 
-## Properti melalui PT PMA
+## Properti via PT PMA
 
-### Perbedaan Perlakuan
+### Perlakuan Berbeda
 
-| Aspek           | Pribadi    | PT PMA                  |
-| --------------- | ---------- | ----------------------- |
-| PBB             | Sama       | Sama                    |
-| BPHTB           | Sama       | Sama                    |
-| PPh Penjualan   | 2,5% final | Pajak penghasilan badan |
-| Pendapatan Sewa | 10% final  | Pajak penghasilan badan |
-| Depresiasi      | Tidak ada  | Ya, untuk bangunan      |
+| Aspek               | Pribadi   | PT PMA             |
+| ------------------- | --------- | ------------------ |
+| PBB                 | Sama      | Sama               |
+| BPHTB               | Sama      | Sama               |
+| Penjualan PPh       | 2.5% final | Pajak penghasilan perusahaan |
+| Penghasilan sewa    | 10% final | Pajak penghasilan perusahaan |
+| Penyusutan          | Tidak ada | Ya, untuk bangunan |
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Pajak properti Indonesia, PBB, BPHTB, pajak penghasilan sewa, balik nama properti"
+  context="Pajak properti Indonesia, PBB, BPHTB, pajak penghasilan sewa, transfer properti"
   placeholder="Tanya tentang pajak properti..."
   suggestedQuestions={[
-    "Kapan jatuh tempo PBB?",
-    "Berapa biaya pajak balik nama properti?",
+    "Kapan PBB jatuh tempo?",
+    "Berapa banyak pajak transfer pada properti?",
     "Apakah saya membayar pajak atas penghasilan sewa?",
     "Apa yang terjadi jika saya tidak membayar PBB?",
   ]}
@@ -480,4 +470,4 @@ Otoritas pajak melakukan verifikasi silang dengan catatan BPN dan notaris. Ketid
 
 - [Panduan Investasi Properti](/insights/property/property-investment-guide)
 - [Aturan Kepemilikan Tanah](/insights/property/land-ownership-rules)
-- [Panduan Pajak Penghasilan Pribadi](/taxes/pph-21-expat-guide?lang=id)
+- [Panduan Pajak Penghasilan Pribadi](/taxes/pph-21-expat-guide)

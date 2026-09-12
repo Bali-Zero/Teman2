@@ -76,45 +76,38 @@ canonicalUrl: "https://balizero.com/immigration/airport-procedures"
 ogImage: "/static/insights/immigration/airport.jpg"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "665c9485b609a050d7d59b70947283aa0eb3ee5f9a0b82e1ab580a79f38c2eeb"
+source_sha256: "aab0e0293ffb1194eb7ff4b8e08abd59d8e83a2c7dbaa937c42e152c56ae33b9"
 ---
-
-import {
-  JourneyMap,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
 
 # Prosedur Bandara Indonesia 2026: Panduan Kedatangan & Keberangkatan
 
-Apakah Anda mendarat di Bali atau Jakarta, berikut panduan langkah demi langkah untuk menavigasi bandara di Indonesia.
+Baik Anda mendarat di Bali atau Jakarta, berikut adalah panduan langkah demi langkah untuk menavigasi bandara-bandara Indonesia.
 
 ## Proses Kedatangan
 
 <JourneyMap
-  title="Langkah Kedatangan di Bandara"
-  description="Dari mendarat hingga keluar"
+  title="Langkah-langkah Kedatangan Bandara"
+  description="Dari pendaratan hingga keluar"
   estimatedTotal="30-90 menit"
   steps={[
     {
       id: "land",
-      title: "Mendarat & Turun dari Pesawat",
-      description: "Ikuti tanda menuju kedatangan",
+      title: "Mendarat & Turun Pesawat",
+      description: "Ikuti tanda arah ke area kedatangan",
       duration: "10-15 menit",
-      status: "required",
+      status: "wajib",
       tips: [
         "Ikuti tanda 'Arrival'",
         "Siapkan paspor",
-        "Catat nomor carousel bagasi",
+        "Catat nomor karusel bagasi Anda",
       ],
     },
     {
       id: "voa",
-      title: "Kounter VOA (jika diperlukan)",
+      title: "Kasir VOA (jika diperlukan)",
       description: "Beli Visa on Arrival",
       duration: "5-20 menit",
-      status: "optional",
+      status: "opsional",
       tips: [
         "Sebelum imigrasi",
         "IDR 500K atau USD/kartu",
@@ -124,43 +117,43 @@ Apakah Anda mendarat di Bali atau Jakarta, berikut panduan langkah demi langkah 
     {
       id: "immigration",
       title: "Imigrasi",
-      description: "Pemeriksaan paspor",
+      description: "Kontrol paspor",
       duration: "10-45 menit",
-      status: "required",
+      status: "wajib",
       tips: [
-        "Antri untuk warga asing",
+        "Antre untuk orang asing",
         "Paspor + visa/VOA",
-        "Mungkin ditanya pertanyaan",
-        "Dapatkan cap masuk",
+        "Mungkin akan ditanya pertanyaan",
+        "Dapatkan stempel masuk",
       ],
     },
     {
       id: "baggage",
       title: "Pengambilan Bagasi",
-      description: "Ambil barang bawaan Anda",
+      description: "Ambil bagasi Anda",
       duration: "10-30 menit",
-      status: "required",
-      tips: ["Cari carousel Anda", "Periksa tag bagasi", "Laporkan bagasi hilang"],
+      status: "wajib",
+      tips: ["Cari karusel Anda", "Periksa label bagasi", "Laporkan jika bagasi hilang"],
     },
     {
       id: "customs",
-      title: "Bea Cukai",
-      description: "Laporkan jika diperlukan",
+      title: "Pabean",
+      description: "Deklarasikan jika diperlukan",
       duration: "5-15 menit",
-      status: "required",
+      status: "wajib",
       tips: [
-        "Saluran hijau jika tidak ada yang dilaporkan",
-        "Saluran merah untuk melaporkan barang",
+        "Saluran hijau jika tidak ada yang harus dideklarasikan",
+        "Saluran merah untuk mendeklarasikan barang",
         "Mungkin diperiksa secara acak",
       ],
     },
     {
       id: "exit",
-      title: "Keluar ke Area Kedatangan",
+      title: "Keluar ke Lobi Kedatangan",
       description: "Selamat datang di Indonesia!",
       duration: "5 menit",
-      status: "final",
-      tips: ["ATM tersedia", "Kounter SIM card", "Pilihan transportasi"],
+      status: "akhir",
+      tips: ["ATM tersedia", "Kasir kartu SIM", "Opsi transportasi"],
     },
   ]}
 />
@@ -169,17 +162,17 @@ Apakah Anda mendarat di Bali atau Jakarta, berikut panduan langkah demi langkah 
 
 ## Pembayaran VOA
 
-### Di Kounter VOA
+### Di Kasir VOA
 
 <InfoCard variant="note" title="Visa on Arrival">
-**Sebelum imigrasi, bayar VOA:**
+**Sebelum imigrasi, bayar untuk VOA:**
 
 - Biaya: IDR 500.000
 - Pembayaran: Tunai (IDR, USD) atau kartu
-- Bukti: Simpan untuk imigrasi
-- Masa berlaku: 30 hari, dapat diperpanjang
+- Kwitansi: Simpan untuk imigrasi
+- Durasi: 30 hari, dapat diperpanjang
 
-Cari kounter "Visa on Arrival" sebelum antrian imigrasi.
+Cari kasir "Visa on Arrival" sebelum antrean imigrasi.
 
 </InfoCard>
 
@@ -187,71 +180,71 @@ Cari kounter "Visa on Arrival" sebelum antrian imigrasi.
 
 | Metode            | Diterima            |
 | ----------------- | ------------------- |
-| Rupiah Indonesia | Ya                 |
-| Dolar AS         | Ya                 |
-| Kartu Kredit/Debit | Ya (di sebagian besar bandara) |
-| Mata uang lain   | Beberapa diterima  |
+| Rupiah Indonesia  | Ya                  |
+| Dolar Amerika     | Ya                  |
+| Kartu Kredit/Debit| Ya (di sebagian besar bandara) |
+| Mata uang lain    | Sebagian diterima   |
 
 ---
 
 ## Imigrasi
 
-### Apa yang Diharapkan
+### Apa yang Harus Diantisipasi
 
-| Item       | Apa yang Terjadi                       |
+| Item       | Yang Terjadi                       |
 | ---------- | ---------------------------------- |
-| Dokumen    | Tunjukkan paspor + bukti VOA/visa    |
-| Pertanyaan | Mungkin ditanya tujuan, durasi, alamat |
-| Biometrik  | Foto dan sidik jari                    |
-| Cap        | Cap masuk di paspor                    |
-| Durasi     | Bervariasi (bisa cepat atau lambat)    |
+| Dokumen    | Tampilkan paspor + struk VOA/visa  |
+| Pertanyaan | Mungkin ditanyakan tujuan, durasi, alamat |
+| Biometrik  | Foto dan sidik jari               |
+| Stempel    | Stempel masuk di paspor           |
+| Durasi     | Beragam (bisa cepat atau lambat)   |
 
-### Pertanyaan Umum yang Diajukan
+### Pertanyaan Umum yang Ditanyakan
 
-| Pertanyaan          | Jawaban yang Baik                                   |
+| Pertanyaan          | Jawaban Baik                                   |
 | ----------------- | --------------------------------------------- |
-| Tujuan kunjungan? | Wisata / Pertemuan bisnis / Membesuk keluarga     |
-| Berapa lama tinggal? | [Durasi yang direncanakan]                        |
-| Tempat tinggal?   | [Nama hotel dan area]                             |
-| Tiket pulang?     | [Tanggal dan maskapai]                            |
-| Pekerjaan?        | [Pekerjaan/profesi Anda]                          |
+| Tujuan kunjungan? | Wisata / Rapat bisnis / Mengunjungi keluarga |
+| Berapa lama tinggal? | [Durasi rencana Anda]                |
+| Di mana menginap?    | [Nama hotel dan area]                         |
+| Pesawat pulang?    | [Tanggal dan maskapai]                            |
+| Pekerjaan?       | [Pekerjaan/profesi Anda]                         |
 
 <InfoCard variant="tip" title="Tips Imigrasi">
-**Untuk kelancaran:**
+**Untuk perjalanan lancar:**
 
 - Bersikap sopan dan sabar
-- Jawab jujur
+- Jawab dengan jujur
 - Siapkan alamat akomodasi
-- Tahu tanggal keberangkatan
-- Jangan bercanda tentang hal ilegal
+- Pahami tanggal penerbangan pulang Anda
+- Jangan bercanda tentang hal-hal ilegal
 - Berpakaian wajar
 </InfoCard>
 
 ---
 
-## Bea Cukai
+## Pabean
 
-### Apa yang Harus Dilaporkan
+### Apa yang Harus Dideklarasikan
 
-| Laporkan                      | Batas       |
-| ---------------------------- | ----------- |
-| Uang tunai > IDR 100M / USD 10K | Harus dilaporkan    |
-| Rokok > 200 batang           | Harus dilaporkan    |
-| Alkohol > 1 liter            | Harus dilaporkan    |
-| Barang > USD 500 nilai       | Mungkin dikenai bea |
+| Dideklarasikan                      | Kuota         |
+| ---------------------------- | --------------- |
+| Tunai lebih dari IDR 100M / USD 10K | Wajib dideklarasikan    |
+| Rokok lebih dari 200          | Wajib dideklarasikan    |
+| Alkohol lebih dari 1 liter         | Wajib dideklarasikan    |
+| Barang dengan nilai lebih dari USD 500     | Mungkin kena bea        |
 
-### Barang Dilarang
+### Barang Terlarang
 
-<InfoCard variant="warning" title="Jangan Membawa">
+<InfoCard variant="warning" title="Jangan Bawa">
 **Dilarang keras:**
-- Narkotika/obat-obatan (hukuman mati!)
+- Narkotika/narkoba (hukuman mati!)
 - Senjata
-- Porno
+- Pornografi
 - Barang palsu
 - Produk makanan tertentu
 - Barang yang menyinggung agama
 
-Narkotika membawa **hukuman mati** di Indonesia!
+Narkoba membawa **hukuman mati** di Indonesia!
 
 </InfoCard>
 
@@ -259,26 +252,26 @@ Narkotika membawa **hukuman mati** di Indonesia!
 
 | Saluran | Gunakan Saat           |
 | ------- | ------------------ |
-| Hijau   | Tidak ada yang dilaporkan |
-| Merah   | Ada barang yang dilaporkan   |
+| Hijau   | Tidak ada yang harus dideklarasikan |
+| Merah   | Ada barang untuk dideklarasikan   |
 
-Anda masih bisa diperiksa secara acak di saluran hijau.
+Anda masih mungkin diperiksa secara acak di saluran hijau.
 
 ---
 
 ## Proses Keberangkatan
 
 <JourneyMap
-  title="Langkah Keberangkatan di Bandara"
+  title="Langkah-langkah Keberangkatan Bandara"
   description="Meninggalkan Indonesia"
   estimatedTotal="60-120 menit"
   steps={[
     {
       id: "arrive",
-      title: "Tiba di Bandara",
-      description: "Luangkan waktu yang cukup",
-      duration: "Tiba lebih awal",
-      status: "required",
+      title: "Datang ke Bandara",
+      description: "Berikan waktu yang cukup",
+      duration: "Datang lebih awal",
+      status: "wajib",
       tips: [
         "3 jam untuk internasional",
         "2 jam untuk domestik",
@@ -290,43 +283,43 @@ Anda masih bisa diperiksa secara acak di saluran hijau.
       title: "Check-in",
       description: "Dapatkan boarding pass",
       duration: "15-45 menit",
-      status: "required",
+      status: "wajib",
       tips: [
         "Check-in online tersedia",
-        "Kounter atau kios",
-        "Jatuhkan bagasi"
+        "Kasir atau kios",
+        "Serahkan bagasi"
       ]
     },
     {
       id: "immigration-out",
       title: "Imigrasi",
-      description: "Keluar dari pemeriksaan paspor",
+      description: "Keluar kontrol paspor",
       duration: "10-30 menit",
-      status: "required",
+      status: "wajib",
       tips: [
         "Paspor + boarding pass",
-        "Diberikan cap keluar",
-        "Periksa masa berlaku visa!"
+        "Stempel keluar diberikan",
+        "Periksa validitas visa!"
       ]
     },
     {
       id: "security",
-      title: "Pemeriksaan Keamanan",
+      title: "Penyaringan Keamanan",
       description: "X-ray dan pemeriksaan",
       duration: "10-20 menit",
-      status: "required",
+      status: "wajib",
       tips: [
-        "Cairan dalam kantong transparan",
+        "Cairan dalam tas transparan",
         "Laptop dikeluarkan",
-        "Ikatan/sepatu mungkin perlu dilepas"
+        "Sabuk sepatu mungkin perlu dilepas"
       ]
     },
     {
       id: "gate",
-      title: "Gerbang & Pemberangkatan",
+      title: "Gerbang & Penumpang Naik Pesawat",
       description: "Cari gerbang, tunggu, naik pesawat",
-      duration: "Bervariasi",
-      status: "final",
+      duration: "Beragam",
+      status: "akhir",
       tips: [
         "Periksa gerbang di layar",
         "Makanan/belanja tersedia",
@@ -338,18 +331,18 @@ Anda masih bisa diperiksa secara acak di saluran hijau.
 
 ---
 
-## Pemeriksaan Keterlambatan
+## Cek Keterlambatan Visa
 
-<InfoCard variant="warning" title="Periksa Sebelum Keberangkatan">
-**Sebelum ke imigrasi:**
+<InfoCard variant="warning" title="Cek Sebelum Keberangkatan">
+**Sebelum pergi ke imigrasi:**
 
 - Hitung hari Anda di Indonesia
-- Periksa tanggal kedaluwarsa visa
+- Periksa tanggal kadaluarsa visa
 - Keterlambatan = denda IDR 1.000.000 per hari
 - Denda dibayar di imigrasi bandara
-- Dapat menghambat keberangkatan Anda
+- Dapat menunda keberangkatan Anda
 
-Hitung dengan cermat untuk menghindari kejutan!
+Hitung dengan hati-hati untuk menghindari kejutan!
 
 </InfoCard>
 
@@ -361,102 +354,102 @@ Hitung dengan cermat untuk menghindari kejutan!
 
 | Fasilitas       | Lokasi                 |
 | -------------- | ------------------------ |
-| ATM           | Area kedatangan, keberangkatan  |
-| Penukaran uang | Beberapa kounter        |
-| SIM card      | Area kedatangan             |
-| Grab/Gojek    | Area penjemputan              |
-| Taksi         | Kounter resmi         |
-| Porter        | Tersedia (tip diharapkan) |
+| ATM             | Lobi kedatangan, keberangkatan  |
+| Tukar uang      | Beberapa kasir          |
+| Kartu SIM       | Lobi kedatangan         |
+| Grab/Gojek      | Area penjemputan        |
+| Taksi           | Kasir resmi             |
+| Porter          | Tersedia (tip diharapkan) |
 
 ### Jakarta (CGK) - Soekarno-Hatta
 
 | Fasilitas        | Lokasi          |
 | --------------- | ----------------- |
-| ATM            | Sebagai seluruh area        |
-| Penukaran uang  | Beberapa          |
-| SIM card       | Area kedatangan     |
-| Kereta (Railink) | Menuju pusat kota    |
-| Taksi          | Kounter resmi counters |
-| Grab           | Area penjemputan      |
+| ATM             | Seluruh area      |
+| Tukar uang      | Beberapa          |
+| Kartu SIM       | Lobi kedatangan   |
+| Kereta (Railink)| Ke pusat kota     |
+| Taksi           | Kasir resmi       |
+| Grab            | Area penjemputan  |
 
 ---
 
-## Pilihan Transportasi
+## Opsi Transportasi
 
 ### Dari Bandara Bali
 
-| Opsi         | Biaya                | Catatan                     |
+| Pilihan         | Biaya                | Catatan                     |
 | -------------- | ------------------- | ------------------------- |
-| Taksi resmi  | Harga tetap per zona | Aman, alternatif metered |
-| Grab/Gojek     | Bervariasi            | Area penjemputan di luar       |
-| Penjemputan hotel | Sering gratis          | Atur sebelumnya        |
-| Sopir pribadi | IDR 200-400K        | Dipesan sebelumnya                |
+| Taksi resmi    | Harga tetap per zona | Aman, alternatif bermeter |
+| Grab/Gojek     | Beragam             | Area penjemputan di luar   |
+| Penjemputan hotel | Sering gratis          | Atur sebelumnya           |
+| Driver pribadi | IDR 200-400K        | Dipesan sebelumnya         |
 
 ### Dari Bandara Jakarta
 
-| Opsi           | Biaya     | Catatan                |
+| Pilihan           | Biaya     | Catatan                |
 | ---------------- | -------- | -------------------- |
-| Kereta bandara    | IDR 70K  | Ke Sudirman, 45 menit  |
-| Taksi (Blue Bird) | Metered  | IDR 200-400K ke kota |
-| Grab             | Bervariasi | Mungkin lebih murah       |
-| Penjemputan hotel | Bervariasi   | Atur sebelumnya   |
+| Kereta bandara   | IDR 70K  | Ke Sudirman, 45 menit  |
+| Taksi (Blue Bird)| Bermeter | IDR 200-400K ke kota |
+| Grab             | Beragam  | Mungkin lebih murah    |
+| Penjemputan hotel | Beragam   | Atur sebelumnya        |
 
 ---
 
-## Checklist Sebelum Berangkat
+## Daftar Periksa Pra-Penerbangan
 
 <Checklist
-  title="Sebelum Anda Terbang"
-  description="Jangan lupa ini"
+  title="Sebelum Terbang"
+  description="Jangan lupa hal-hal ini"
   persistKey="airport-checklist"
   items={[
     {
       id: "passport",
-      label: "Paspor (masa berlaku 6+ bulan)",
-      description: "Periksa tanggal kedaluwarsa",
+      label: "Paspor (validitas 6+ bulan)",
+      description: "Periksa tanggal kadaluarsa",
       required: true,
-      category: "documents",
+      category: "dokumen",
     },
     {
       id: "visa",
-      label: "Visa atau kelayakan VOA",
-      description: "Tahu jenis masuk Anda",
+      label: "Kelayakan visa atau VOA",
+      description: "Pahami jenis masuk Anda",
       required: true,
-      category: "documents",
+      category: "dokumen",
     },
     {
       id: "return",
-      label: "Tiket pulang/lanjutan",
-      description: "Mungkin diperiksa",
+      label: "Tiket pulang/onward",
+      description: "Mungkin akan diperiksa",
       required: true,
-      category: "travel",
+      category: "penerbangan",
     },
     {
       id: "accommodation",
       label: "Alamat hotel",
       description: "Untuk pertanyaan imigrasi",
       required: true,
-      category: "travel",
+      category: "penerbangan",
     },
     {
       id: "cash",
-      label: "Uang tunai (IDR atau USD)",
+      label: "Tunai (IDR atau USD)",
       description: "Untuk VOA jika diperlukan",
       required: true,
-      category: "money",
+      category: "uang",
     },
     {
       id: "cards",
       label: "Kartu kredit/debit",
       description: "Beritahu bank tentang perjalanan",
       required: false,
-      category: "money",
+      category: "uang",
     },
   ]}
   categories={[
-    { id: "documents", label: "Dokumen", color: "blue" },
-    { id: "travel", label: "Perjalanan", color: "green" },
-    { id: "money", label: "Uang", color: "amber" },
+    { id: "dokumen", label: "Dokumen", color: "blue" },
+    { id: "penerbangan", label: "Penerbangan", color: "green" },
+    { id: "uang", label: "Uang", color: "amber" },
   ]}
   showProgress={true}
 />
@@ -466,13 +459,13 @@ Hitung dengan cermat untuk menghindari kejutan!
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Bandara Indonesia, imigrasi, bea cukai, bandara Bali, bandara Jakarta, VOA"
-  placeholder="Tanyakan tentang prosedur bandara..."
+  context="Bandara Indonesia, imigrasi, pabean, bandara Bali, bandara Jakarta, VOA"
+  placeholder="Tanya tentang prosedur bandara..."
   suggestedQuestions={[
     "Berapa lama proses imigrasi?",
-    "Bisakah saya membayar VOA dengan kartu kredit?",
-    "Apa yang terjadi jika saya terlambat?",
-    "Di mana saya bisa mendapatkan SIM card?",
+    "Apakah saya bisa bayar VOA dengan kartu kredit?",
+    "Bagaimana jika saya keterlambatan visa?",
+    "Di mana saya mendapatkan kartu SIM?",
   ]}
 />
 
@@ -480,6 +473,6 @@ Hitung dengan cermat untuk menghindari kejutan!
 
 ## Artikel Terkait
 
-- [Persyaratan Masuk](/visas/visa-free-vs-evoa-indonesia-comparison?lang=id)
-- [Panduan Perpanjangan VOA](/visas/e-voa-electronic-visa-on-arrival-guide?lang=id)
-- [Pengajuan Bea Cukai](/insights/immigration/customs-declaration)
+- [Syarat Masuk](/visas/visa-free-vs-evoa-indonesia-comparison)
+- [Panduan Perpanjangan VOA](/visas/e-voa-electronic-visa-on-arrival-guide)
+- [Deklarasi Pabean](/insights/immigration/customs-declaration)

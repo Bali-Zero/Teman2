@@ -90,60 +90,380 @@ translatedBy: Gemma3:12b + Gemini 3.1 Pro
 translatedFrom: en
 twitterCard: summary_large_image
 updatedAt: "2026-01-15"
-source_sha256: "45e86cc56cc3592aa9729bc1472db2d7cae1a56fdf07ae82b609bc489dfa8798"
+source_sha256: "a40c69874aaf2d2022342e2bcccbad6eb505a452b304fd69d89165198be9d620"
+locale: "id"
 ---
-
-import {
-  DecisionTree,
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
 
 # Izin Lingkungan Indonesia 2026: Panduan Bisnis
 
-Kepatuhan lingkungan bersifat wajib bagi sebagian besar pelaku usaha di Indonesia. Berikut adalah poin-poin penting yang perlu Anda pahami untuk memastikan operasional bisnis tetap legal.
+Kepatuhan lingkungan bersifat wajib bagi sebagian besar bisnis di Indonesia. Berikut adalah hal-hal yang perlu Anda ketahui.
 
-## Apakah Anda Memerlukan Persetujuan Lingkungan?
+## Apakah Anda Membutuhkan Persetujuan Lingkungan?
 
 <DecisionTree
-  title="Jenis Persetujuan Lingkungan"
-  description="Persetujuan mana yang bisnis Anda butuhkan?"
+  title="Jenis Izin Lingkungan"
+  description="Izin persetujuan mana yang Anda butuhkan?"
   nodes={[
     {
       id: "start",
-      question: "Apa kategori kegiatan usaha Anda?",
+      question: "Apa aktivitas bisnis Anda?",
       options: [
         { label: "Industri besar/dampak signifikan", next: "amdal" },
-        { label: "Usaha menengah/dampak sedang", next: "ukl" },
-        { label: "Usaha kecil/dampak rendah", next: "sppl" },
-        { label: "Hanya kantor/ritel", next: "minimal" },
+        { label: "Bisnis menengah/dampak moderat", next: "ukl" },
+        { label: "Bisnis kecil/dampak rendah", next: "sppl" },
+        { label: "Kantor/ritel saja", next: "minimal" },
       ],
     },
     {
       id: "amdal",
       result: {
-        title: "Wajib AMDAL",
+        title: "AMDAL Diperlukan",
         description:
-          "Analisis Mengenai Dampak Lingkungan (AMDAL) diperlukan. Ini adalah proses perizinan paling komprehensif untuk aktivitas berdampak tinggi seperti manufaktur skala besar, pertambangan, atau pengembangan properti utama.",
+          "Penilaian Dampak Lingkungan diperlukan. Ini adalah proses paling komprehensif untuk aktivitas ber-dampak tinggi seperti manufaktur besar, pertambangan, atau pembangunan utama.",
       },
     },
     {
       id: "ukl",
       result: {
-        title: "Wajib UKL-UPL",
+        title: "UKL-UPL Diperlukan",
         description:
-          "Upaya Pengelolaan Lingkungan dan Upaya Pemantauan Lingkungan (UKL-UPL) diperlukan. Berlaku untuk bisnis berdampak sedang seperti restoran, pabrik kecil, atau proyek konstruksi menengah.",
+          "Upaya Pengelolaan dan Pemantauan Lingkungan diperlukan. Untuk bisnis ber-dampak menengah seperti restoran, pabrik kecil, atau konstruksi moderat.",
       },
     },
     {
       id: "sppl",
       result: {
-        title: "SPPL Mencukupi",
+        title: "SPPL Cukup",
         description:
-          "Surat Pernyataan Kesanggupan Pengelolaan dan Pemantauan Lingkungan Hidup (SPPL) sudah mencukupi. Ini merupakan komitmen pengelolaan lingkungan yang disederhanakan untuk usaha skala mikro dan kecil dengan dampak lingkungan rendah.",
+          "Surat Pernyataan Komitmen Pengelolaan Lingkungan. Bentuk paling sederhana untuk bisnis ber-dampak rendah. Seringkali hanya berupa deklarasi melalui OSS.",
+      },
+    },
+    {
+      id: "minimal",
+      result: {
+        title: "Persyaratan Minimal",
+        description:
+          "Kantor atau ritel standar biasanya tidak memerlukan izin lingkungan terpisah di luar kepatuhan dasar. Periksa melalui OSS untuk KBLI Anda yang spesifik.",
       },
     },
   ]}
 />
+
+---
+
+## Jenis Dokumen Lingkungan
+
+<ComparisonTable
+  title="Persetujuan Lingkungan"
+  description="AMDAL vs UKL-UPL vs SPPL"
+  items={[
+    {
+      name: "AMDAL",
+      subtitle: "Penilaian Dampak Lingkungan",
+      values: {
+        For: "Aktivitas ber-dampak tinggi",
+        Process: "Penilaian lengkap + studi",
+        Time: "6-12 bulan",
+        Cost: "IDR 100M-500M+",
+      },
+    },
+    {
+      name: "UKL-UPL",
+      subtitle: "Pengelolaan & Pemantauan",
+      values: {
+        For: "Aktivitas ber-dampak menengah",
+        Process: "Rencana pengelolaan",
+        Time: "2-4 bulan",
+        Cost: "IDR 20-100M",
+      },
+      highlight: true,
+    },
+    {
+      name: "SPPL",
+      subtitle: "Surat Pernyataan Komitmen",
+      values: {
+        For: "Aktivitas ber-dampak rendah",
+        Process: "Deklarasi saja",
+        Time: "1-2 minggu",
+        Cost: "IDR 1-5M",
+      },
+    },
+  ]}
+/>
+
+---
+
+## AMDAL (Penilaian Dampak Lingkungan)
+
+<InfoCard variant="warning" title="Hanya Proyek Utama">
+**AMDAL diperlukan untuk:**
+- Fasilitas manufaktur besar
+- Operasi pertambangan
+- Proyek infrastruktur utama
+- Pertanian berskala besar
+- Pengembangan lahan signifikan
+- Fasilitas kimia/berbahaya
+
+AMDAL melibatkan konsultasi publik dan penilaian ahli.
+
+</InfoCard>
+
+### Proses AMDAL
+
+| Tahap               | Deskripsi                 | Durasi   |
+| ------------------- | --------------------------- | ---------- |
+| Penapisan           | Menentukan apakah AMDAL diperlukan | 1-2 minggu  |
+| Penentuan Ruang Lingkup | Menentukan ruang lingkup studi          | 2-4 minggu  |
+| Studi AMDAL         | Studi dampak lingkungan     | 3-6 bulan |
+| Konsultasi Publik   | Masukan masyarakat          | 1-2 bulan |
+| Tinjauan            | Penilaian oleh komite       | 1-2 bulan |
+| Persetujuan         | Izin lingkungan diterbitkan | 2-4 minggu  |
+
+### Komponen AMDAL
+
+| Dokumen | Tujuan                       |
+| -------- | ----------------------------- |
+| KA-ANDAL | Kerangka acuan               |
+| ANDAL    | Analisis dampak              |
+| RKL      | Rencana pengelolaan lingkungan |
+| RPL      | Rencana pemantauan lingkungan |
+
+---
+
+## UKL-UPL (Pengelolaan & Pemantauan)
+
+### Kapan UKL-UPL Diperlukan
+
+Sebagian besar bisnis menengah memerlukan UKL-UPL:
+
+- Restoran dan kafe
+- Manufaktur kecil hingga menengah
+- Bengkel dan garasi
+- Konstruksi menengah
+- Hotel (ukuran tertentu)
+
+### Persyaratan UKL-UPL
+
+<Checklist
+  title="Dokumen UKL-UPL"
+  description="Apa yang perlu Anda siapkan"
+  persistKey="ukl-upl-checklist"
+  items={[
+    {
+      id: "form",
+      label: "Formulir aplikasi UKL-UPL",
+      description: "Format standar",
+      required: true,
+      category: "application",
+    },
+    {
+      id: "map",
+      label: "Peta lokasi",
+      description: "Lokasi dan sekitarnya",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "layout",
+      label: "Denah bangunan/fasilitas",
+      description: "Rencana lantai, penempatan peralatan",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "process",
+      label: "Deskripsi alur proses",
+      description: "Detail aktivitas bisnis",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "waste",
+      label: "Rencana pengelolaan limbah",
+      description: "Cara penanganan limbah",
+      required: true,
+      category: "environmental",
+    },
+    {
+      id: "water",
+      label: "Rencana penggunaan air",
+      description: "Sumber dan pengolahan",
+      required: true,
+      category: "environmental",
+    },
+    {
+      id: "monitoring",
+      label: "Rencana pemantauan",
+      description: "Pemeriksaan lingkungan berkelanjutan",
+      required: true,
+      category: "environmental",
+    },
+  ]}
+  categories={[
+    { id: "application", label: "Aplikasi", color: "blue" },
+    { id: "technical", label: "Teknis", color: "green" },
+    { id: "environmental", label: "Lingkungan", color: "amber" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## SPPL (Surat Pernyataan)
+
+<InfoCard variant="tip" title="Pilihan Termudah">
+**SPPL** untuk bisnis ber-dampak rendah:
+- Toko ritel kecil
+- Layanan dasar
+- Aktivitas kantor
+- Operasi berisiko rendah
+
+Seringkali dihasilkan secara otomatis melalui sistem OSS berdasarkan kode KBLI Anda.
+
+</InfoCard>
+
+### Proses SPPL
+
+1. Daftar di sistem OSS
+2. Masukkan detail bisnis
+3. SPPL dihasilkan jika risikonya rendah
+4. Cetak dan simpan sebagai arsip
+5. Patuhi komitmen yang dinyatakan
+
+---
+
+## Pendekatan Berbasis Risiko
+
+### Klasifikasi Risiko OSS
+
+Sistem OSS sekarang menggunakan **pendekatan berbasis risiko**:
+
+| Tingkat Risiko  | Persyaratan Lingkungan      |
+| ----------- | -------------------------- |
+| Rendah         | SPPL (otomatis di OSS)    |
+| Rendah-Sedang  | SPPL atau UKL-UPL disederhanakan |
+| Sedang-Tinggi | UKL-UPL standar           |
+| Tinggi        | AMDAL penilaian lengkap      |
+
+Risiko ditentukan oleh:
+
+- Klasifikasi bisnis KBLI
+- Skala operasi
+- Kerentanan lokasi
+- Potensi dampak lingkungan
+
+---
+
+## Kewajiban Kepatuhan
+
+### Setelah Izin Diperoleh
+
+<Checklist
+  title="Kepatuhan Lingkungan Berkelanjutan"
+  description="Kewajiban rutin"
+  persistKey="env-compliance-checklist"
+  items={[
+    {
+      id: "monitoring",
+      label: "Pemantauan rutin",
+      description: "Sesuai rencana yang disetujui",
+      required: true,
+      category: "monitoring",
+    },
+    {
+      id: "reporting",
+      label: "Pelaporan berkala",
+      description: "Ke lembaga lingkungan",
+      required: true,
+      category: "reporting",
+    },
+    {
+      id: "waste-records",
+      label: "Rekaman pengelolaan limbah",
+      description: "Dokumentasi pembuangan",
+      required: true,
+      category: "records",
+    },
+    {
+      id: "permits-current",
+      label: "Pertahankan izin tetap berlaku",
+      description: "Perbarui sebelum kadaluarsa",
+      required: true,
+      category: "admin",
+    },
+    {
+      id: "changes",
+      label: "Laporkan perubahan signifikan",
+      description: "Jika operasi berubah secara material",
+      required: true,
+      category: "admin",
+    },
+  ]}
+  categories={[
+    { id: "monitoring", label: "Pemantauan", color: "blue" },
+    { id: "reporting", label: "Pelaporan", color: "green" },
+    { id: "records", label: "Rekaman", color: "amber" },
+    { id: "admin", label: "Admin", color: "purple" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Pengelolaan Limbah
+
+### Kategori Limbah
+
+| Kategori       | Contoh                  | Persyaratan               |
+| -------------- | ------------------------- | -------------------------- |
+| B3 (Berbahaya) | Kimia, baterai, minyak    | Pembuangan berlisensi      |
+| Non-B3         | Limbah umum              | Pembuangan yang benar      |
+| Air limbah     | Air proses               | Pengolahan sebelum pelepasan |
+| Emisi udara    | Asap, gas                | Pemantauan, filter        |
+
+<InfoCard variant="warning" title="Limbah B3">
+**Limbah berbahaya (B3)** memerlukan:
+- Penyimpanan terpisah
+- Transporter berlisensi
+- Fasilitas pembuangan berlisensi
+- Dokumentasi manifest
+- Pelaporan rutin
+
+Pelanggaran dapat mengakibatkan sanksi serius.
+
+</InfoCard>
+
+---
+
+## Sanksi untuk Ketidakpatuhan
+
+| Pelanggaran                | Sanksi                    |
+| ------------------------ | -------------------------- |
+| Operasi tanpa izin        | Penutupan + denda          |
+| Melampaui standar         | Peringatan → denda → penutupan |
+| Pembuangan limbah tidak benar | Tuntutan pidana mungkin   |
+| Pelaporan palsu           | Pencabutan izin           |
+| Pelanggaran B3            | Pidana + tanggung jawab perdata |
+
+---
+
+## Pertanyaan Umum
+
+<AskZantara
+  context="Izin lingkungan Indonesia, AMDAL, UKL-UPL, SPPL, kepatuhan bisnis"
+  placeholder="Tanya tentang izin lingkungan..."
+  suggestedQuestions={[
+    "Apakah restoran saya memerlukan AMDAL?",
+    "Berapa lama proses UKL-UPL?",
+    "Bisakah saya beroperasi sambil menunggu izin?",
+    "Apa yang terjadi jika saya tidak mematuhi?",
+  ]}
+/>
+
+---
+
+## Artikel Terkait
+
+- [Ringkasan Izin Bisnis](/insights/business/business-licenses-overview)
+- [Panduan Setup PT PMA](/business/pt-pma-registration-guide)
+- [Panduan Bisnis Manufaktur](/insights/business/manufacturing-business-guide)

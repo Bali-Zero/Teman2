@@ -75,59 +75,52 @@ tags:
 canonicalUrl: "https://balizero.com/id/tax/double-taxation-treaties"
 ogImage: "/static/insights/tax/double-taxation.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "2b1d9b4643534d033137fc6925fa9bc47129198ba9168d1530c0d6b6611eb9f4"
+source_sha256: "6fb54ca7bb5e841902e3f4acef542fa1ea80ee4b962cad2c56b56ccd816aba57"
 ---
 
-import {
-  ComparisonTable,
-  InfoCard,
-  Checklist,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Perjanjian Penghindaran Pajak Ganda Indonesia 2026: Panduan Lengkap
 
-# Perjanjian Pajak Berganda Indonesia 2026: Panduan Lengkap
+Perjanjian pajak membantu mencegah pendapatan yang sama dipungut pajak dua kali. Berikut cara kerja DTA (Double Taxation Agreements) di Indonesia.
 
-Tax treaty membantu mencegah penghasilan yang sama dikenakan pajak dua kali. Berikut adalah cara kerja P3B (Perjanjian Penghindaran Pajak Berganda) di Indonesia.
+## Apa itu Perjanjian Penghindaran Pajak Ganda?
 
-## Apa itu Perjanjian Pajak Berganda?
+<InfoCard variant="note" title="Dasar Perjanjian Pajak">
+Sebuah **Perjanjian Penghindaran Pajak Ganda (DTA)** atau perjanjian pajak adalah kesepakatan antara dua negara untuk:
 
-<InfoCard variant="note" title="Dasar-Dasar Tax Treaty">
-**Perjanjian Penghindaran Pajak Berganda (P3B)** atau *tax treaty* adalah kesepakatan antara dua negara untuk:
-
-- Mencegah penghasilan dikenakan pajak di kedua negara
-- Mengurangi tarif pemotongan pajak (_withholding tax_)
+- Mencegah pendapatan dipungut pajak di kedua negara
+- Mengurangi tarif pemotongan pajak (withholding tax)
 - Menentukan negara mana yang memiliki hak pemajakan
-- Menyediakan mekanisme keringanan pajak
+- Menyediakan mekanisme bantuan
 - Memungkinkan pertukaran informasi perpajakan
 
-Indonesia memiliki P3B dengan lebih dari 70 negara.
+Indonesia memiliki DTA dengan lebih dari 70 negara.
 
 </InfoCard>
 
 ---
 
-## Bagaimana Tax Treaty Membantu Anda
+## Bagaimana Perjanjian Pajak Membantu
 
 <ComparisonTable
-  title="Dengan vs Tanpa Tax Treaty"
+  title="Dengan vs Tanpa Perjanjian Pajak"
   description="Contoh: Dividen dari Indonesia"
   items={[
     {
-      name: "Tanpa Treaty",
-      subtitle: "Negara tanpa P3B",
+      name: "Tanpa Perjanjian",
+      subtitle: "Negara tanpa DTA",
       values: {
         "Tarif Pemotongan": "20%",
-        "Contoh pada Rp1 Miliar": "Pajak Rp200 Juta",
-        Keringanan: "Tidak ada secara otomatis",
+        "Contoh pada IDR 1Miliar": "Pajak IDR 200 Juta",
+        Bantuan: "Tidak ada otomatis",
       },
     },
     {
-      name: "Dengan Treaty (Singapura)",
-      subtitle: "Tarif P3B",
+      name: "Dengan Perjanjian (Singapura)",
+      subtitle: "Tarif DTA",
       values: {
         "Tarif Pemotongan": "10-15%",
-        "Contoh pada Rp1 Miliar": "Pajak Rp100-150 Juta",
-        Keringanan: "Tarif yang dikurangi",
+        "Contoh pada IDR 1Miliar": "Pajak IDR 100-150 Juta",
+        Bantuan: "Tarif yang lebih rendah",
       },
       highlight: true,
     },
@@ -136,90 +129,92 @@ Indonesia memiliki P3B dengan lebih dari 70 negara.
 
 ---
 
-## Tarif Treaty Umum
+## Tarif Perjanjian Umum
 
 ### Negara Terpilih - Dividen
 
-| Negara       | Tarif  | Catatan                   |
-| ------------ | ------ | ------------------------- |
-| Singapura    | 10/15% | 10% jika kepemilikan 25%+ |
-| Jepang       | 10/15% | 10% jika kepemilikan 25%+ |
-| AS           | 10/15% | 10% jika kepemilikan 10%+ |
-| Inggris      | 10/15% | 10% jika kepemilikan 10%+ |
-| Australia    | 15%    | Standar                   |
-| Belanda      | 10/15% | 10% jika kepemilikan 25%+ |
-| Jerman       | 10/15% | 10% jika kepemilikan 25%+ |
-| Tanpa Treaty | 20%    | Tarif default             |
+| Negara     | Tarif   | Catatan                 |
+| ----------- | ------ | --------------------- |
+| Singapura   | 10/15% | 10% jika kepemilikan 25%+ |
+| Jepang      | 10/15% | 10% jika kepemilikan 25%+ |
+| USA         | 10/15% | 10% jika kepemilikan 10%+ |
+| Inggris     | 10/15% | 10% jika kepemilikan 10%+ |
+| Australia   | 15%    | Standar               |
+| Belanda     | 10/15% | 10% jika kepemilikan 25%+ |
+| Jerman      | 10/15% | 10% jika kepemilikan 25%+ |
+| Tanpa Perjanjian | 20%    | Tarif default         |
 
 ### Negara Terpilih - Bunga
 
-| Negara       | Tarif | Catatan            |
-| ------------ | ----- | ------------------ |
-| Singapura    | 10%   | Dikurangi dari 20% |
-| Jepang       | 10%   | Dikurangi dari 20% |
-| AS           | 10%   | Dikurangi dari 20% |
-| Inggris      | 10%   | Dikurangi dari 20% |
-| Australia    | 10%   | Dikurangi dari 20% |
-| Belanda      | 10%   | Dikurangi dari 20% |
-| Jerman       | 10%   | Dikurangi dari 20% |
-| Tanpa Treaty | 20%   | Tarif default      |
+| Negara     | Tarif | Catatan            |
+| ----------- | ---- | ---------------- |
+| Singapura   | 10%  | Diturunkan dari 20% |
+| Jepang      | 10%  | Diturunkan dari 20% |
+| USA         | 10%  | Diturunkan dari 20% |
+| Inggris     | 10%  | Diturunkan dari 20% |
+| Australia   | 10%  | Diturunkan dari 20% |
+| Belanda     | 10%  | Diturunkan dari 20% |
+| Jerman      | 10%  | Diturunkan dari 20% |
+| Tanpa Perjanjian | 20%  | Tarif default     |
 
 ### Negara Terpilih - Royalti
 
-| Negara       | Tarif  | Catatan              |
-| ------------ | ------ | -------------------- |
-| Singapura    | 15%    | Dikurangi dari 20%   |
-| Jepang       | 10%    | Dikurangi dari 20%   |
-| AS           | 10%    | Dikurangi dari 20%   |
-| Inggris      | 15%    | Dikurangi dari 20%   |
-| Australia    | 15%    | Dikurangi dari 20%   |
-| Belanda      | 10%    | Dikurangi dari 20%   |
-| Jerman       | 10/15% | Bervariasi per jenis |
-| Tanpa Treaty | 20%    | Tarif default        |
+| Negara     | Tarif   | Catatan            |
+| ----------- | ------ | ---------------- |
+| Singapura   | 15%    | Diturunkan dari 20% |
+| Jepang      | 10%    | Diturunkan dari 20% |
+| USA         | 10%    | Diturunkan dari 20% |
+| Inggris     | 15%    | Diturunkan dari 20% |
+| Australia   | 15%    | Diturunkan dari 20% |
+| Belanda     | 10%    | Diturunkan dari 20% |
+| Jerman      | 10/15% | Bervariasi per jenis   |
+| Tanpa Perjanjian | 20%    | Tarif default     |
 
 ---
 
-## Menerapkan Manfaat Treaty
+## Menerapkan Manfaat Perjanjian
+
+Untuk panduan langkah demi langkah mengenai klaim manfaat perjanjian, lihat [Perjanjian Penghindaran Pajak: Klaim Manfaat](/tax/double-tax-agreement-claiming-benefits).
 
 <InfoCard variant="warning" title="Sertifikat Diperlukan">
-Untuk menerapkan tarif treaty, penerima asing harus menyediakan:
+Untuk menerapkan tarif perjanjian, penerima asing harus menyediakan:
 
-**Formulir DGT-1** (Surat Keterangan Domisili)
+**Formulir DGT-1** (Sertifikat Domisili)
 
-- Dilengkapi oleh non-residen
-- Disertifikasi oleh otoritas pajak mereka
+- Diisi oleh bukan wajib pajak di Indonesia
+- Disahkan oleh otoritas pajaknya
 - Diberikan kepada pembayar di Indonesia
 - Berlaku selama 12 bulan
 
-Tanpa DGT-1, pemotongan standar 20% berlaku!
+Tanpa DGT-1, tarif pemotongan standar 20% berlaku!
 
 </InfoCard>
 
-### Proses untuk Manfaat Treaty
+### Proses untuk Manfaat Perjanjian
 
 <Checklist
-  title="Penerapan Tarif Treaty"
-  description="Langkah-langkah menerapkan tarif yang dikurangi"
+  title="Penerapan Tarif Perjanjian"
+  description="Langkah-langkah untuk menerapkan tarif yang lebih rendah"
   persistKey="treaty-checklist"
   items={[
     {
       id: "dgt1",
       label: "Dapatkan Formulir DGT-1",
-      description: "Dari kantor pajak Indonesia atau online",
+      description: "Dari kantor pajak Indonesia atau secara online",
       required: true,
       category: "documentation",
     },
     {
       id: "complete",
       label: "Lengkapi formulir",
-      description: "Non-residen mengisi detail",
+      description: "Wajib pajak di luar negeri mengisi detailnya",
       required: true,
       category: "documentation",
     },
     {
       id: "certify",
-      label: "Sertifikasi oleh otoritas pajak asal",
-      description: "Dicap oleh kantor pajak negara asal",
+      label: "Sahkan oleh otoritas pajak negara asal",
+      description: "Kantor pajak negara asal menandatangani/mencap",
       required: true,
       category: "certification",
     },
@@ -232,15 +227,15 @@ Tanpa DGT-1, pemotongan standar 20% berlaku!
     },
     {
       id: "apply",
-      label: "Pembayar menerapkan tarif treaty",
-      description: "Memotong dengan tarif yang dikurangi",
+      label: "Pembayar menerapkan tarif perjanjian",
+      description: "Memotong pajak dengan tarif yang lebih rendah",
       required: true,
       category: "process",
     },
     {
       id: "report",
       label: "Laporkan dalam SPT",
-      description: "Masukkan dalam SPT Masa PPh 26",
+      description: "Sertakan dalam PPh 26 bulanan",
       required: true,
       category: "compliance",
     },
@@ -256,72 +251,71 @@ Tanpa DGT-1, pemotongan standar 20% berlaku!
 
 ---
 
-## Ketentuan Utama Treaty
+## Ketentuan Perjanjian Utama
 
-### Bentuk Usaha Tetap (BUT)
+### Tempat Usaha Tetap
 
-Tax treaty mendefinisikan kapan perusahaan asing dianggap memiliki **Bentuk Usaha Tetap (BUT)** di Indonesia:
+Perjanjian pajak mendefinisikan kapan perusahaan asing menciptakan **Tempat Usaha Tetap (PE)** di Indonesia:
 
-| Menciptakan BUT         | Tidak Menciptakan BUT        |
-| ----------------------- | ---------------------------- |
-| Kantor/cabang           | Kantor perwakilan (terbatas) |
-| Pabrik                  | Gudang (hanya penyimpanan)   |
-| Konstruksi 6+ bulan     | Proyek jangka pendek         |
-| Agen dependen           | Agen independen              |
-| Pemberian jasa 3+ bulan | Kunjungan konsultasi singkat |
+| Menciptakan PE                  | Tidak Menciptakan PE               |
+| --------------------------- | ------------------------------- |
+| Kantor/cabang               | Kantor perwakilan (terbatas) |
+| Pabrik                     | Gudang (hanya penyimpanan)        |
+| Konstruksi 6+ bulan      | Proyek jangka pendek             |
+| Agen yang bergantung       | Agen independen               |
+| Penyediaan jasa 3+ bulan | Kunjungan konsultasi singkat         |
 
-<InfoCard variant="warning" title="Konsekuensi BUT">
+<InfoCard variant="warning" title="Konsekuensi PE">
 
-  Memiliki BUT berarti: - Indonesia dapat memajaki laba usaha - Wajib lapor SPT
-  Tahunan Badan - Kewajiban kepatuhan lokal - Potensi persyaratan pendaftaran
+Menciptakan sebuah PE berarti: - Indonesia dapat memungut pajak atas keuntungan usaha - Wajib filing pajak badan - Kewajiban kepatuhan lokal - Potensi persyaratan pendaftaran
 </InfoCard>
 
 ---
 
-### Penghasilan dari Pekerjaan
+### Pendapatan dari Pekerjaan
 
-Bagi individu yang bekerja di Indonesia:
+Untuk individu yang bekerja di Indonesia:
 
-| Skenario                        | Hak Pemajakan                       |
-| ------------------------------- | ----------------------------------- |
-| Bekerja di Indonesia            | Indonesia memajaki                  |
-| Kunjungan singkat (&lt;183 hari)   | Mungkin bebas jika syarat terpenuhi |
-| Pemberi kerja di luar Indonesia | Aturan treaty berlaku               |
-| Direktur perusahaan Indonesia   | Indonesia selalu memajaki           |
+| Skenario                       | Hak Pemajakan                   |
+| ------------------------------ | ------------------------------- |
+| Bekerja di Indonesia              | Indonesia memungut pajak                 |
+| Kunjungan singkat (&lt;183 hari)       | Mungkin bebas jika syarat terpenuhi |
+| Pemberi kerja di luar Indonesia     | Ketentuan perjanjian berlaku              |
+| Direktur perusahaan Indonesia | Indonesia selalu memungut pajak          |
 
-### Pembebasan Kunjungan Singkat
+### Pengecualian Tinggal Singkat
 
-Umumnya bebas dari pajak Indonesia jika **semua syarat terpenuhi**:
+Umumnya bebas dari pajak Indonesia jika **semua kondisi terpenuhi**:
 
-1. Berada kurang dari 183 hari dalam periode 12 bulan
-2. Dibayar oleh pemberi kerja non-Indonesia
-3. Tidak dibebankan kepada BUT di Indonesia
+1. Hadir kurang dari 183 hari dalam periode 12 bulan
+2. Dibayar oleh pemberi kerja bukan Indonesia
+3. Tidak ditanggung oleh PE Indonesia
 
 ---
 
-## Metode Keringanan
+## Metode Bantuan
 
-### Bagaimana Pajak Berganda Diringankan
+### Bagaimana Penghindaran Pajak Ganda Dilakukan
 
 <ComparisonTable
-  title="Metode Keringanan"
-  description="Bagaimana treaty mencegah pajak berganda"
+  title="Metode Bantuan"
+  description="Bagaimana perjanjian mencegah pajak ganda"
   items={[
     {
       name: "Metode Kredit",
       subtitle: "Paling umum",
       values: {
-        Cara: "Pajak luar negeri dikreditkan terhadap pajak di negara asal",
-        Hasil: "Membayar yang lebih tinggi dari dua tarif",
-        "Digunakan Oleh": "Indonesia (untuk residen)",
+        Cara: "Pajak asing dikreditkan terhadap pajak negara asal",
+        Hasil: "Bayar tarif yang lebih tinggi dari dua tarif",
+        "Digunakan Oleh": "Indonesia (untuk wajib pajak di Indonesia)",
       },
     },
     {
-      name: "Metode Pembebasan",
-      subtitle: "Pembebasan penuh",
+      name: "Metode Pengecualian",
+      subtitle: "Pengecualian penuh",
       values: {
-        Cara: "Penghasilan dibebaskan di satu negara",
-        Hasil: "Dipajaki hanya satu kali",
+        Cara: "Pendapatan bebas pajak di satu negara",
+        Hasil: "Dipajaki hanya sekali",
         "Digunakan Oleh": "Beberapa negara",
       },
     },
@@ -329,8 +323,8 @@ Umumnya bebas dari pajak Indonesia jika **semua syarat terpenuhi**:
       name: "Metode Pengurangan",
       subtitle: "Kurang menguntungkan",
       values: {
-        Cara: "Pajak luar negeri sebagai biaya",
-        Hasil: "Keringanan parsial",
+        Cara: "Pajak asing sebagai biaya",
+        Hasil: "Bantuan parsial",
         "Digunakan Oleh": "Jarang",
       },
     },
@@ -339,33 +333,33 @@ Umumnya bebas dari pajak Indonesia jika **semua syarat terpenuhi**:
 
 ---
 
-## Bagi Residen Indonesia
+## Untuk Wajib Pajak di Indonesia
 
-Jika Anda adalah residen pajak Indonesia yang menerima penghasilan luar negeri:
+Jika Anda adalah wajib pajak Indonesia yang menerima pendapatan asing:
 
-### Cara Klaim Kredit Pajak Luar Negeri
+### Cara Mengklaim Kredit Pajak Asing
 
-1. Bayar pajak luar negeri di negara sumber
-2. Masukkan penghasilan dalam SPT Indonesia
-3. Klaim kredit untuk pajak luar negeri yang telah dibayar
-4. Kredit dibatasi sebesar pajak Indonesia atas penghasilan tersebut
-5. Berikan bukti pembayaran pajak luar negeri
+1. Bayar pajak asing di negara sumber
+2. Sertakan pendapatan dalam SPT Indonesia
+3. Klaim kredit untuk pajak asing yang dibayar
+4. Kredit dibatasi pada pajak Indonesia atas pendapatan tersebut
+5. Berikan bukti pembayaran pajak asing
 
 ---
 
-## Negara-Negara Mitra Treaty
+## Negara Perjanjian
 
-Indonesia memiliki tax treaty komprehensif dengan:
+Indonesia memiliki perjanjian pajak komprehensif dengan:
 
-### Mitra Utama Treaty
+### Mitra Perjanjian Utama
 
 **Asia-Pasifik:** Australia, Tiongkok, Jepang, Korea Selatan, Singapura, Malaysia, Hong Kong, India, Selandia Baru, Thailand, Filipina, Vietnam
 
 **Eropa:** Inggris, Jerman, Belanda, Prancis, Italia, Spanyol, Belgia, Swiss, Austria, Swedia, Norwegia, Denmark, Polandia
 
-**Amerika:** AS, Kanada, Meksiko
+**Amerika:** USA, Kanada, Meksiko
 
-**Timur Tengah:** UEA, Arab Saudi, Kuwait, Qatar
+**Tengah Timur:** UAE, Arab Saudi, Kuwait, Qatar
 
 **Afrika:** Afrika Selatan, Mesir, Maroko
 
@@ -373,26 +367,26 @@ Indonesia memiliki tax treaty komprehensif dengan:
 
 ## Masalah Umum
 
-| Masalah           | Dampak            |
+| Masalah             | Dampak            |
 | ----------------- | ----------------- |
-| Tidak ada DGT-1   | Tarif 20% berlaku |
-| DGT-1 kedaluwarsa | Tarif 20% berlaku |
+| Tidak ada DGT-1 yang diberikan | Berlaku tarif 20%  |
+| DGT-1 kadaluarsa     | Berlaku tarif 20%  |
 | Formulir salah    | Mungkin ditolak   |
-| Treaty shopping   | Mungkin ditantang |
-| Salah tarif       | Risiko audit      |
+| Perdagangan perjanjian (Treaty shopping) | Mungkin ditantang |
+| Tarif diterapkan salah  | Risiko audit        |
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Perjanjian pajak berganda, tax treaty Indonesia, P3B, pengurangan withholding tax"
-  placeholder="Tanyakan tentang tax treaty..."
+  context="Perjanjian penghindaran pajak ganda, perjanjian pajak Indonesia, DTA, pengurangan pajak pemotongan"
+  placeholder="Tanya tentang perjanjian pajak..."
   suggestedQuestions={[
     "Bagaimana cara mendapatkan formulir DGT-1?",
-    "Berapa tarif treaty dengan Singapura?",
-    "Dapatkah saya mengklaim kredit pajak luar negeri?",
-    "Apakah Indonesia memiliki treaty dengan negara saya?",
+    "Berapa tarif perjanjian dengan Singapura?",
+    "Apakah saya bisa mengklaim kredit pajak asing?",
+    "Apakah Indonesia memiliki perjanjian dengan negara saya?",
   ]}
 />
 
@@ -400,6 +394,6 @@ Indonesia memiliki tax treaty komprehensif dengan:
 
 ## Artikel Terkait
 
-- [Panduan Withholding Tax](/insights/tax-legal/withholding-tax-guide)
-- [Panduan Pajak Penghasilan Orang Pribadi](/taxes/pph-21-expat-guide?lang=id)
+- [Panduan Pajak Pemotongan](/insights/tax-legal/withholding-tax-guide)
+- [Panduan Pajak Penghasilan Pribadi](/taxes/pph-21-expat-guide)
 - [Pajak Penghasilan Badan](/insights/tax-legal/corporate-income-tax)

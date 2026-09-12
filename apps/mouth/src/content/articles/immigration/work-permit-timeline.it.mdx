@@ -74,131 +74,122 @@ contentStructure:
 canonicalUrl: "https://balizero.com/it/immigration/work-permit-timeline"
 ogImage: "/static/insights/immigration/timeline.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "b47ef72391877738ee3cb0bd833b4e9ccae96df4b7e7b1bf4e9b0c5f88b9faf5"
+source_sha256: "ae3f76ba2a4364b155bc0175b301cc96923a0b02abdb6a026e189f4f48e7b04b"
 ---
 
-import {
-  JourneyMap,
-  ComparisonTable,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Tempi di Elaborazione del Permesso di Lavoro in Indonesia 2026
 
-# Tempistiche per il permesso di lavoro in Indonesia 2026
+La pianificazione è essenziale. Ecco una cronologia realistica per ottenere il vostro permesso di lavoro in Indonesia.
 
-La pianificazione è essenziale. Ecco una cronologia realistica per ottenere il tuo permesso di lavoro in Indonesia.
+## Panoramica Rapida
 
-## Panoramica rapida
+| Stage          | Duration      | Cumulative |
+| -------------- | ------------- | ---------- |
+| RPTKA approval | 5-14 giorni   | 2 settimane |
+| Notifikasi     | 1-3 giorni    | 2,5 settimane |
+| VITAS          | 3-5 giorni    | 3 settimane |
+| Entry + KITAS  | 5-7 giorni    | 4 settimane |
+| SKTT/Reporting | 7-14 giorni   | 5-6 settimane |
+| **Totale**     | **4-6 settimane** | —          |
 
-| Fase               | Durata            | Cumulativa  |
-| ------------------ | ----------------- | ----------- |
-| Approvazione RPTKA | 5-14 giorni       | 2 settimane |
-| Notifica           | 1-3 giorni        | 2,5 sett.   |
-| VITAS              | 3-5 giorni        | 3 settimane |
-| Ingresso + KITAS   | 5-7 giorni        | 4 settimane |
-| SKTT/Segnalazione  | 7-14 giorni       | 5-6 sett.   |
-| **Totale**         | **4-6 settimane** | —           |
+<InfoCard variant="warning" title="Pianificate per un Periodo Più Lungo">
 
-<InfoCard variant="warning" title="Pianifica un periodo più lungo">
-
-  Sebbene il processo POSSA richiedere 4 settimane, **calcola 6-8 settimane**
-  per tenere conto di: - Documenti incompleti - Ritardi del sistema - Festività
-  pubbliche - Problemi di verifica aziendale
+  Sebbene il processo POSSA richiedere 4 settimane, **pianificate per 6-8 settimane** per tenere conto di: -
+  Documenti incompleti - Ritardi del sistema - Festività pubbliche - Problemi di verifica aziendale
 </InfoCard>
 
 ---
 
-## Cronologia dettagliata
+## Cronologia Dettagliata
 
 <JourneyMap
-  title="Percorso del Permesso di Lavoro"
-  description="Ripartizione settimana per settimana"
+  title="Cronologia Permesso di Lavoro"
+  description="Suddivisione settimana per settimana"
   estimatedTotal="4-8 settimane"
   steps={[
     {
       id: "prep",
       title: "Preparazione Documenti",
-      description: "Raccogli e prepara tutti i documenti",
+      description: "Raccogliete e preparate tutti i documenti",
       duration: "1-2 settimane prima",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Inizia a raccogliere i documenti presto",
-        "Legalizza i documenti stranieri",
-        "Ottieni le traduzioni se necessario",
-        "Prepara le foto formato tessera",
+        "Iniziate a raccogliere i documenti in anticipo",
+        "Legalizzate i documenti esteri",
+        "Ottenete traduzioni se necessario",
+        "Preparate le foto del passaporto",
       ],
     },
     {
       id: "rptka",
-      title: "Domanda RPTKA",
-      description:
-        "Il datore di lavoro presenta il piano per i lavoratori stranieri",
+      title: "Richiesta RPTKA",
+      description: "Il datore di lavoro presenta il piano per l'impiego di lavoratori stranieri",
       duration: "Settimana 1-2",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Il datore di lavoro deve fare domanda",
+        "Il datore di lavoro deve presentare la richiesta",
         "5-14 giorni per l'approvazione",
-        "Pagamento della tassa DKP-TKA",
-        "Potrebbero essere necessari chiarimenti",
+        "Pagate il contributo DKP-TKA",
+        "Potrebbe essere necessaria una chiarificazione",
       ],
     },
     {
       id: "notif",
-      title: "Rilascio Notifica",
-      description: "Viene generata la notifica del permesso di lavoro",
+      title: "Notifica Rilasciata",
+      description: "Generata la notifica del permesso di lavoro",
       duration: "Settimana 2-3",
-      status: "required",
+      status: "richiesto",
       tips: [
         "Generata automaticamente dopo l'RPTKA",
-        "1-3 giorni di elaborazione",
-        "Invia i dati del passaporto del lavoratore",
+        "1-3 giorni per l'elaborazione",
+        "Presentate i dettagli del passaporto del lavoratore",
       ],
     },
     {
       id: "vitas",
-      title: "Domanda VITAS",
-      description: "Richiesta del visto di lavoro",
+      title: "Richiesta VITAS",
+      description: "Presentate domanda per il visto di lavoro",
       duration: "Settimana 3",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Revisione dell'Immigrazione",
-        "In genere 3-5 giorni",
-        "Potrebbero essere richiesti documenti extra",
+        "Revisione da parte dell'Immigrazione",
+        "3-5 giorni tipici",
+        "Potrebbero essere richiesti documenti aggiuntivi",
       ],
     },
     {
       id: "travel",
       title: "Viaggio in Indonesia",
-      description: "Ingresso nel paese con il VITAS",
+      description: "Entrate nel paese con il VITAS",
       duration: "Settimana 3-4",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Prenota i voli dopo l'approvazione VITAS",
-        "Porta tutti i documenti originali",
-        "Entra attraverso un porto designato",
+        "Prenotate i voli dopo l'approvazione del VITAS",
+        "Portate tutti i documenti originali",
+        "Entrate attraverso il porto designato",
       ],
     },
     {
       id: "kitas",
       title: "Rilascio KITAS",
-      description: "Conversione del VITAS in KITAS",
+      description: "Convertire il VITAS in KITAS",
       duration: "Settimana 4-5",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Appuntamento per la biometria",
-        "5-7 giorni di elaborazione",
-        "Rilascio della carta fisica",
+        "Prenotazione per le impronte digitali",
+        "5-7 giorni per l'elaborazione",
+        "Carta fisica rilasciata",
       ],
     },
     {
       id: "sktt",
       title: "Registrazione Post-KITAS",
-      description: "Obblighi di segnalazione locale",
+      description: "Requisiti di segnalazione locale",
       duration: "Settimana 5-6",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "SKTT presso la stazione di polizia/comune",
-        "Segnalazione a RT/RW",
+        "SKTT presso la stazione di polizia",
+        "Segnalate all'RT/RW",
         "Completare entro 14 giorni",
       ],
     },
@@ -207,45 +198,107 @@ La pianificazione è essenziale. Ecco una cronologia realistica per ottenere il 
 
 ---
 
-## Cosa può ritardare la tua domanda?
+## Cosa Può Ritardare la Vostra Domanda?
 
-### Problemi con i documenti (I più comuni)
+### Problemi Documentali (Più Comuni)
 
 <ComparisonTable
-  title="Ritardi Comuni per Documenti"
+  title="Ritardi Comuni nei Documenti"
   description="Problemi che rallentano l'elaborazione"
   items={[
     {
       name: "Validità del passaporto",
       values: {
-        Problema: "Meno di 24 mesi residui",
-        Soluzione: "Rinnova prima il passaporto",
-        Ritardo: "2-4 settimane",
+        Problem: "Meno di 24 mesi rimanenti",
+        Solution: "Rinnovate il passaporto prima",
+        Delay: "2-4 settimane",
       },
       highlight: true,
     },
     {
-      name: "Mancanza di legalizzazione",
+      name: "Legalizzazione mancante",
       values: {
-        Problema: "Documenti non apostillati",
-        Soluzione: "Ottieni la legalizzazione",
-        Ritardo: "1-3 settimane",
+        Problem: "Documenti esteri non apostillati",
+        Solution: "Ottenete la corretta legalizzazione",
+        Delay: "1-3 settimane",
       },
     },
     {
       name: "Specifiche delle foto",
       values: {
-        Problema: "Dimensioni o sfondo errati",
-        Soluzione: "Rifai le foto",
-        Ritardo: "1-2 giorni",
+        Problem: "Dimensioni o sfondo errati",
+        Solution: "Rifate le foto",
+        Delay: "1-2 giorni",
       },
     },
     {
       name: "CV incompleto",
       values: {
-        Problema: "Mancano i 5 anni di esperienza",
-        Soluzione: "Ottieni lettere di referenza",
-        Ritardo: "1-2 settimane",
+        Problem: "Mancanza di 5 anni di esperienza",
+        Solution: "Ottenete lettere di riferimento",
+        Delay: "1-2 settimane",
+      },
+    },
+  ]}
+/>
+
+### Ritardi del Sistema e Tempistica
+
+- **Festività pubbliche** - Nessuna elaborazione durante Lebaran, Natale, ecc.
+- **Manutenzione del sistema** - TKA Online a volte non funziona
+- **Periodi ad alto volume** - Lenti durante i picchi di attività
+- **Verifica aziendale** - Se l'azienda non ha ancora utilizzato il sistema
+
+### Ritardi dal Lato del Datore di Lavoro
+
+- **Richieste di chiarificazione RPTKA** - Il Ministero potrebbe fare domande
+- **Ritardi nei pagamenti** - DKP-TKA deve essere pagato per procedere
+- **Classificazione della posizione errata** - Potrebbe essere necessario rifare la domanda
+- **Documenti aziendali mancanti** - NIB, NPWP, ecc.
+
+---
+
+## Cronologia in Base alla Situazione
+
+<ComparisonTable
+  title="Scenario dei Tempi di Elaborazione"
+  description="Cronologie realistiche per diverse situazioni"
+  items={[
+    {
+      name: "Miglior Caso",
+      subtitle: "Tutto perfetto",
+      values: {
+        Preparation: "Documenti pronti",
+        Processing: "3-4 settimane",
+        Total: "4 settimane",
+      },
+    },
+    {
+      name: "Caso Tipico",
+      subtitle: "Piccoli problemi",
+      values: {
+        Preparation: "1-2 settimane",
+        Processing: "4-5 settimane",
+        Total: "5-7 settimane",
+      },
+      highlight: true,
+    },
+    {
+      name: "Caso Complesso",
+      subtitle: "Nuova azienda, primo lavoratore",
+      values: {
+        Preparation: "2-3 settimane",
+        Processing: "5-6 settimane",
+        Total: "7-9 settimane",
+      },
+    },
+    {
+      name: "Prolungamento",
+      subtitle: "Rinnovo KITAS esistente",
+      values: {
+        Preparation: "Minimo",
+        Processing: "2-3 settimane",
+        Total: "2-3 settimane",
       },
     },
   ]}
@@ -253,58 +306,64 @@ La pianificazione è essenziale. Ecco una cronologia realistica per ottenere il 
 
 ---
 
-## Consigli per la pianificazione
+## Consigli per la Pianificazione
 
-<InfoCard variant="tip" title="Inizia presto">
-  1. **Inizia 3 mesi prima** della data prevista 2. **Prepara i documenti**
-  mentre il datore gestisce l'RPTKA 3. **Non prenotare i voli** finché il VITAS
-  non è approvato 4. **Richiedi il rinnovo** 30 giorni prima della scadenza
+<InfoCard variant="tip" title="Iniziate in Anticipo">
+  1. **Iniziate 3 mesi prima** della data di inizio prevista 2. **Preparate i documenti** mentre
+  il datore di lavoro gestisce l'RPTKA 3. **Non prenotate i voli** fino all'approvazione del VITAS 4.
+  **Presentate domanda per il rinnovo** 30 giorni prima della scadenza
 </InfoCard>
+
+### Scadenze Critiche
+
+| Action                      | Deadline              |
+| --------------------------- | --------------------- |
+| Richiesta di estensione KITAS | 30 giorni prima della scadenza |
+| Uscita in caso di diniego    | Prima della scadenza del visto   |
+| Registrazione SKTT          | 14 giorni dopo il KITAS   |
+| Segnalazione cambio indirizzo | 7 giorni                |
 
 ---
 
-## Puoi accelerare i tempi?
+## Potete Accelerare il Processo?
 
-### Cosa NON PUOI affrettare
+### Cosa NON Possiamo Affrettare
 
-- Revisione RPTKA (ritmi governativi)
+- Revisione RPTKA (il governo fissa i tempi)
 - Tempi di elaborazione del sistema
-- Appuntamenti per la biometria
+- Programmazione delle impronte digitali
 
-### Cosa PUOI ottimizzare
+### Cosa Possiamo Ottimizzare
 
-- Preparazione dei documenti (inizia presto)
-- Scelta dell'agente (esperto = più veloce)
-- Prontezza dell'azienda (aggiorna il NIB in anticipo)
+- Preparazione dei documenti (iniziare in anticipo)
+- Selezione dell'agente (esperienziato = più veloce)
+- Prontezza aziendale (aggiornare il NIB in anticipo)
 - Domanda completa (nessun elemento mancante)
 
-<InfoCard variant="warning" title="Nessun servizio d'urgenza ufficiale">
+<InfoCard variant="warning" title="Nessun Servizio di Urgenza Ufficiale">
 
-  Non esiste un processo ufficiale "express" per il permesso di lavoro. Chiunque
-  prometta tempi garantiti dovrebbe essere guardato con scetticismo. Gli agenti
-  esperti sono più veloci perché evitano errori, non perché hanno accessi
-  speciali.
+  Non esiste un processo ufficiale "espresso" per i permessi di lavoro. Chiunque prometta un'accelerazione garantita dovrebbe essere visto con scetticismo. Gli agenti esperti sono più veloci perché evitano errori, non perché hanno accesso speciale.
 </InfoCard>
 
 ---
 
-## Domande comuni
+## Domande Frequenti
 
 <AskZantara
-  context="Work permit processing time, KITAS timeline, RPTKA duration, immigration delays"
-  placeholder="Chiedi sulle tempistiche del permesso di lavoro..."
+  context="Tempi di elaborazione permessi di lavoro, cronologia KITAS, durata RPTKA, ritardi immigrazione"
+  placeholder="Chiedete informazioni sulla cronologia del permesso di lavoro..."
   suggestedQuestions={[
-    "Posso iniziare a lavorare mentre il KITAS è in fase di elaborazione?",
+    "Posso iniziare a lavorare mentre il KITAS è in elaborazione?",
     "Cosa succede se devo iniziare urgentemente?",
-    "Quanto tempo prima devo richiedere il rinnovo?",
+    "Quanto tempo prima dovrei presentare domanda per il rinnovo?",
     "Cosa succede se l'elaborazione richiede troppo tempo?",
   ]}
 />
 
 ---
 
-## Articoli correlati
+## Articoli Correlati
 
-- [Guida al KITAS di lavoro](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=it)
-- [Costi del permesso di lavoro](/insights/immigration/work-permit-costs)
-- [Errori da evitare col permesso di lavoro](/visas/indonesias-work-permit-maze-what-expats-must-know-before-taking-the-job?lang=it)
+- [Guida al Permesso di Lavoro KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
+- [Costi del Permesso di Lavoro](/insights/immigration/work-permit-costs)
+- [Errori da Evitare nel Permesso di Lavoro](/visas/indonesias-work-permit-maze-what-expats-must-know-before-taking-the-job)

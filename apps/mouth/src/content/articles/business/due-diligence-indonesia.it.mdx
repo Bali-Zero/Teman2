@@ -74,19 +74,12 @@ ogImage: "/static/insights/business/due-diligence-indonesia.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "ef7a814f153661a761d138af8ac0ab99fec0cb87fc385eb89679eeadf2d9bb54"
+source_sha256: "326396e061dc98d7b0ffe0e1a3b2adf4e5a997380016e674e674746f01d666c5"
 ---
 
-import {
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Business Due Diligence Indonesia 2026: Checklist Completa
 
-# Due Diligence Aziendale in Indonesia 2026: Checklist Completo
-
-Che si tratti di un investimento, di un'acquisizione o di un'entrata in una partnership in Indonesia, una due diligence approfondita è essenziale. Ecco la tua guida completa.
+Che si tratti di investire, acquisire un'azienda o entrare in una partnership in Indonesia, una due diligence approfondita è essenziale. Ecco la vostra guida completa.
 
 ## Perché la Due Diligence è Importante
 
@@ -94,13 +87,13 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
 
 **Problemi comuni scoperti nella DD:**
 
-- Responsabilità non dichiarate
+- Passività non dichiarate
 - Irregolarità fiscali
-- Mancanza di licenze
-- Violazioni delle norme sul lavoro
-- Non conformità ambientale
-- Transazioni tra parti correlate
-- Problemi di titolarità terriera
+- Carenze di licenze
+- Violazioni del diritto del lavoro
+- Inosservanza ambientale
+- Operazioni tra parti correlate
+- Problemi di titoli fondiari
 - Azionisti nascosti
 
 **Non saltare mai la due diligence** - i problemi sono comuni e costosi.
@@ -109,7 +102,7 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
 
 ---
 
-## Aree di Focalizzazione della DD
+## Aree di Focus della DD
 
 <ComparisonTable
   title="Categorie di Due Diligence"
@@ -117,9 +110,9 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
   items={[
     {
       name: "Legal DD",
-      subtitle: "Legale e conformità",
+      subtitle: "Aziendale e conformità",
       values: {
-        Focus: "Stato legale, contratti, dispute",
+        Focus: "Stato legale, contratti, controversie",
         Who: "Studio legale",
         Time: "2-4 settimane",
         Priority: "Critico",
@@ -128,9 +121,9 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
     },
     {
       name: "Financial DD",
-      subtitle: "Numeri e prestazioni",
+      subtitle: "Numeri e performance",
       values: {
-        Focus: "Finanze, tasse, flusso di cassa",
+        Focus: "Finanziari, tasse, flussi di cassa",
         Who: "Studio contabile",
         Time: "2-4 settimane",
         Priority: "Critico",
@@ -140,7 +133,7 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
       name: "Tax DD",
       subtitle: "Conformità fiscale",
       values: {
-        Focus: "Tutte le obbligazioni fiscali",
+        Focus: "Tutti gli obblighi fiscali",
         Who: "Consulente fiscale",
         Time: "2-3 settimane",
         Priority: "Critico",
@@ -150,7 +143,7 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
       name: "Operational DD",
       subtitle: "Operazioni aziendali",
       values: {
-        Focus: "Operazioni, sistemi, personale",
+        Focus: "Operazioni, sistemi, persone",
         Who: "Consulenti/interni",
         Time: "2-4 settimane",
         Priority: "Importante",
@@ -165,47 +158,47 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
 
 <Checklist
   title="Checklist DD Legale"
-  description="Verifica legale e aziendale"
+  description="Verifica aziendale e legale"
   persistKey="legal-dd-checklist"
   items={[
     {
       id: "deed",
-      label: "Statuto sociale",
-      description: "Versione attuale, modifiche",
+      label: "Atti Costitutivi",
+      description: "Versione attuale, emendamenti",
       required: true,
       category: "corporate",
     },
     {
       id: "registration",
       label: "Registrazione aziendale",
-      description: "OSS, NIB, AHU",
+      description: "OSS, NIB, registri AHU",
       required: true,
       category: "corporate",
     },
     {
       id: "shareholders",
       label: "Registro azionisti",
-      description: "Registro azioni, trasferimenti",
+      description: "Libro azionistico, trasferimenti",
       required: true,
       category: "corporate",
     },
     {
       id: "directors",
-      label: "Registro amministratori/Commissari",
-      description: "Nomine, autorità",
+      label: "Registro Amministratori/Commissari",
+      description: "Nomine, poteri",
       required: true,
       category: "corporate",
     },
     {
       id: "licenses",
-      label: "Tutte le licenze aziendali",
+      label: "Tutte le licenze commerciali",
       description: "NIB, settoriali, permessi di ubicazione",
       required: true,
       category: "licenses",
     },
     {
       id: "environmental",
-      label: "Permesso ambientale",
+      label: "Permessi ambientali",
       description: "AMDAL/UKL-UPL/SPPL",
       required: true,
       category: "licenses",
@@ -213,20 +206,20 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
     {
       id: "contracts-material",
       label: "Contratti materiali",
-      description: "Accordi principali con clienti/fornitori",
+      description: "Accordi con clienti/fornitori chiave",
       required: true,
       category: "contracts",
     },
     {
       id: "employment",
       label: "Contratti di lavoro",
-      description: "Personale chiave, PKWT/PKWTT",
+      description: "Dipendenti chiave, PKWT/PKWTT",
       required: true,
       category: "labor",
     },
     {
       id: "labor-compliance",
-      label: "Conformità alle norme sul lavoro",
+      label: "Conformità diritto del lavoro",
       description: "BPJS, salario minimo, orari di lavoro",
       required: true,
       category: "labor",
@@ -240,15 +233,15 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
     },
     {
       id: "disputes",
-      label: "Litigi/dispute",
+      label: "Contenziosi/controversie",
       description: "In corso e pendenti",
       required: true,
       category: "disputes",
     },
     {
       id: "property",
-      label: "Proprietà/titoli terrieri",
-      description: "HGB, contratti di affitto",
+      label: "Titoli immobiliari/fondiari",
+      description: "HGB, contratti di locazione",
       required: true,
       category: "property",
     },
@@ -259,8 +252,8 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
     { id: "contracts", label: "Contratti", color: "amber" },
     { id: "labor", label: "Lavoro", color: "purple" },
     { id: "ip", label: "IP", color: "cyan" },
-    { id: "disputes", label: "Dispute", color: "red" },
-    { id: "property", label: "Proprietà", color: "pink" },
+    { id: "disputes", label: "Controversie", color: "red" },
+    { id: "property", label: "Immobiliare", color: "pink" },
   ]}
   showProgress={true}
 />
@@ -276,21 +269,21 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
   items={[
     {
       id: "audited-fs",
-      label: "Stati patrimoniali revisionati",
+      label: "Stati finanziari revisionati",
       description: "3-5 anni",
       required: true,
       category: "statements",
     },
     {
       id: "management-accounts",
-      label: "Conti di gestione",
+      label: "Contabilità di gestione",
       description: "Mensili, recenti",
       required: true,
       category: "statements",
     },
     {
       id: "revenue-analysis",
-      label: "Analisi del fatturato",
+      label: "Scomposizione del ricavo",
       description: "Per cliente, prodotto, regione",
       required: true,
       category: "revenue",
@@ -304,7 +297,7 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
     },
     {
       id: "cost-structure",
-      label: "Analisi struttura costi",
+      label: "Analisi struttura dei costi",
       description: "Fissi vs variabili",
       required: true,
       category: "costs",
@@ -312,7 +305,7 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
     {
       id: "working-capital",
       label: "Capitale circolante",
-      description: "Creditori, debitori, scorte",
+      description: "Crediti, debiti, magazzino",
       required: true,
       category: "balance",
     },
@@ -325,33 +318,33 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
     },
     {
       id: "bank-statements",
-      label: "Stati bancari",
+      label: "Estratti conto bancari",
       description: "Tutti i conti, 12+ mesi",
       required: true,
       category: "cash",
     },
     {
       id: "cash-flow",
-      label: "Analisi flusso di cassa",
-      description: "Operativo, investimento, finanziamento",
+      label: "Analisi flussi di cassa",
+      description: "Operativi, investimenti, finanziamento",
       required: true,
       category: "cash",
     },
     {
       id: "related-party",
-      label: "Transazioni tra parti correlate",
-      description: "Tutte le operazioni interaziendali",
+      label: "Operazioni tra parti correlate",
+      description: "Tutte le transazioni intercompany",
       required: true,
       category: "red-flags",
     },
   ]}
   categories={[
-    { id: "statements", label: "Stati", color: "blue" },
-    { id: "revenue", label: "Fatturato", color: "green" },
+    { id: "statements", label: "Stati Patrimoniali", color: "blue" },
+    { id: "revenue", label: "Ricavi", color: "green" },
     { id: "costs", label: "Costi", color: "amber" },
     { id: "balance", label: "Bilancio", color: "purple" },
     { id: "cash", label: "Cassa", color: "cyan" },
-    { id: "red-flags", label: "Segnali di allarme", color: "red" },
+    { id: "red-flags", label: "Segnali di Allarme", color: "red" },
   ]}
   showProgress={true}
 />
@@ -367,14 +360,14 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
   items={[
     {
       id: "tax-returns",
-      label: "Tutti i modelli dichiarativi (SPT)",
+      label: "Tutte le dichiarazioni fiscali (SPT)",
       description: "PPh, PPN, ritenute",
       required: true,
       category: "filings",
     },
     {
       id: "tax-payments",
-      label: "Ricevute di pagamento delle tasse",
+      label: "Ricevute pagamento tasse",
       description: "SSP, prova di pagamento",
       required: true,
       category: "filings",
@@ -382,41 +375,41 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
     {
       id: "tax-assessments",
       label: "Accertamenti fiscali (SKP)",
-      description: "Risultati di eventuali controlli",
+      description: "Risultati ispezioni eventuali",
       required: true,
       category: "audits",
     },
     {
       id: "tax-disputes",
-      label: "Dispute/obiezioni fiscali",
+      label: "Contenziosi/ricorsi fiscali",
       description: "In corso e pendenti",
       required: true,
       category: "audits",
     },
     {
       id: "transfer-pricing",
-      label: "Documentazione pricing di trasferimento",
-      description: "Se ci sono transazioni tra parti correlate",
+      label: "Documentazione prezzi di trasferimento",
+      description: "Se operazioni tra parti correlate",
       required: true,
       category: "special",
     },
     {
       id: "vat-compliance",
       label: "Conformità IVA",
-      description: "E-Faktur, stato PKP",
+      description: "E-Faktur, status PKP",
       required: true,
       category: "vat",
     },
     {
       id: "withholding",
-      label: "Conformità ritenute d'acconto",
+      label: "Conformità ritenute fiscali",
       description: "PPh 21, 23, 26, 4(2)",
       required: true,
       category: "withholding",
     },
     {
       id: "tax-incentives",
-      label: "Incentivi fiscali/agevolazioni",
+      label: "Incentivi fiscali/periodi di moratoria",
       description: "Se applicabili, conformità",
       required: false,
       category: "special",
@@ -424,7 +417,7 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
   ]}
   categories={[
     { id: "filings", label: "Dichiarazioni", color: "blue" },
-    { id: "audits", label: "Controlli", color: "red" },
+    { id: "audits", label: "Ispezioni", color: "red" },
     { id: "vat", label: "IVA", color: "green" },
     { id: "withholding", label: "Ritenute", color: "amber" },
     { id: "special", label: "Speciale", color: "purple" },
@@ -432,16 +425,16 @@ Che si tratti di un investimento, di un'acquisizione o di un'entrata in una part
   showProgress={true}
 />
 
-<InfoCard variant="warning" title="Rischio di Esposizione Fiscale">
-**Responsabilità fiscali spesso nascoste:**
+<InfoCard variant="warning" title="Rischio Esposizione Fiscale">
+**Passività fiscali spesso nascoste:**
 
 - Ritenute non versate
-- Errori di calcolo IVA
-- Regolamenti pricing di trasferimento
-- Esposizioni da controlli passati
+- Calcoli IVA errati
+- Rettifiche prezzi di trasferimento
+- Esposizioni da ispezioni passate
 - Interessi e sanzioni
 
-I problemi fiscali possono superare il prezzo di acquisto. Fai sempre una DD fiscale approfondita!
+Le questioni fiscali possono superare il prezzo d'acquisto. Effettuate sempre una DD fiscale approfondita!
 
 </InfoCard>
 
@@ -451,165 +444,165 @@ I problemi fiscali possono superare il prezzo di acquisto. Fai sempre una DD fis
 
 ### Aree Chiave
 
-| Area       | Cosa Verificare                        |
+| Area       | Cosa Controllare                        |
 | ---------- | ------------------------------------ |
-| Gestione   | Dipendenza da persona chiave, competenza    |
-| Personale  | Competenze, turnover, dispute           |
-| Sistemi    | IT, processi, scalabilità           |
-| Strutture  | Stato, capacità, conformità      |
-| Fornitori  | Dipendenza, alternative, contratti  |
-| Clienti    | Soddisfazione, fedeltà, concentrazione |
+| Management | Dipendenza da persone chiave, competenza    |
+| Employees  | Competenze, turnover, controversie           |
+| Systems    | IT, processi, scalabilità           |
+| Facilities | Condizione, capacità, conformità      |
+| Suppliers  | Dipendenza, alternative, contratti  |
+| Customers  | Soddisfazione, fedeltà, concentrazione |
 
 ### Segnali di Allarme
 
 | Segnale di Allarme                   | Preoccupazione                   |
 | -------------------------- | ------------------------- |
-| Dipendenza da persona chiave      | Rischio se se ne va        |
-| Alto turnover del personale     | Problemi di cultura/gestione |
-| Tecnologia datata           | Investimento futuro necessario  |
-| Dipendenza da un unico fornitore | Rischio di fornitura               |
-| Concentrazione clienti     | Rischio di fatturato              |
-| Documentazione scarsa         | Debolezze nei controlli        |
+| Dipendenza da persona chiave      | Rischio se lasciano        |
+| Alto turnover dipendenti     | Problemi cultura/gestione |
+| Tecnologia obsoleta           | Investimenti futuri necessari  |
+| Dipendenza da singolo fornitore | Rischio approvvigionamento               |
+| Concentrazione clienti         | Rischio ricavi              |
+| Scarsa documentazione         | Debolezze di controllo        |
 
 ---
 
-## DD Specifica per Settore
+## DD Settoriale
 
 ### Manifatturiero
 
-| Elemento          | Verifica                        |
+| Voce          | Controllo                        |
 | ------------- | ---------------------------- |
-| Attrezzature     | Età, stato, capacità     |
+| Attrezzature     | Età, condizione, capacità     |
 | Ambientale | Conformità, gestione rifiuti |
 | Sicurezza        | Registri, violazioni          |
-| Fornitura  | Input critici              |
+| Catena di approvvigionamento  | Input critici              |
 
-### Retail/Alimentare
+### Retail/F&B
 
-| Elemento          | Verifica                   |
+| Voce          | Controllo                   |
 | ------------- | ----------------------- |
-| Sedi     | Condizioni contratto, rinnovi   |
-| Licenze      | Per ogni sede           |
-| Sanità/sicurezza | Ispezioni, violazioni |
+| Ubicazioni     | Termini locazione, rinnovi   |
+| Licenze      | Per ogni ubicazione           |
+| Sicurezza/igiene | Ispezioni, violazioni |
 | Magazzino     | Valutazione, obsolescenza |
 
 ### Tecnologia
 
-| Elemento            | Verifica                     |
+| Voce            | Controllo                     |
 | --------------- | ------------------------- |
 | Proprietà IP    | Codice, brevetti, marchi |
 | Protezione dati | Conformità, violazioni      |
-| Contratti       | SaaS, condizioni di licenza     |
+| Contratti       | SaaS, termini licenza     |
 | Debito tecnico  | Qualità codice, scalabilità |
 
 ---
 
-## Risultati Comuni della DD
+## Trovate Comuni nella DD
 
 <InfoCard variant="note" title="Problemi Tipici Trovati">
 **Nelle aziende indonesiane:**
 
-1. **Mancanza di licenze** - Permessi mancanti o scaduti
+1. **Carenze di licenze** - Permessi mancanti o scaduti
 2. **Violazioni del lavoro** - BPJS, straordinari, contratti
-3. **Sottopagamento fiscale** - Soprattutto ritenute
-4. **Problemi tra parti correlate** - Non dichiarati, condizioni sfavorevoli
-5. **Problemi di titolarità terriera** - Proprietà non chiara, dispute
-6. **Non conformità ambientale** - Nessun permesso, violazioni
-7. **Responsabilità non dichiarate** - Debiti nascosti, garanzie
-8. **IP non registrato** - Mancato registro di marchi/brevetti
+3. **Sottopagamento tasse** - Soprattutto ritenute
+4. **Problemi parti correlate** - Non dichiarati, termini sfavorevoli
+5. **Problemi titoli fondiari** - Proprietà non chiara, controversie
+6. **Inosservanza ambientale** - Nessun permessi, violazioni
+7. **Passività non dichiarate** - Debiti nascosti, garanzie
+8. **IP non registrato** - Carenze marchi, brevetti
 
 </InfoCard>
 
 ---
 
-## Processo di DD
+## Processo DD
 
 ### Tempistiche
 
 | Fase               | Durata  | Attività                |
 | ------------------- | --------- | ------------------------- |
-| Pianificazione            | 1 settimana    | Ambito, team, accesso       |
+| Pianificazione            | 1 settimana    | Scopo, team, accesso       |
 | Raccolta documenti | 1-2 settimane | Richiesta e ricezione       |
 | Analisi            | 2-4 settimane | Revisione, verifica            |
-| Visite sul campo         | 1 settimana    | Ispezione fisica       |
-| Relazione           | 1 settimana    | Risultati, raccomandazioni |
+| Visite sul posto         | 1 settimana    | Ispezione fisica       |
+| Reportistica           | 1 settimana    | Trovate, raccomandazioni |
 | Q&A                 | 1-2 settimane | Chiarimenti            |
 
 ### Struttura del Team
 
 | Ruolo             | Responsabilità       |
 | ---------------- | -------------------- |
-| Responsabile operazione        | Coordinamento generale |
-| Avvocato    | DD legale             |
-| Contabile       | DD finanziaria         |
-| Consulente fiscale      | DD fiscale               |
-| Esperto settoriale  | DD operativa       |
-| Consulente locale | Aspetti specifici Indonesia   |
+| Deal lead        | Coordinamento generale |
+| Consulente legale    | DD Legale             |
+| Contabile       | DD Finanziaria         |
+| Consulente fiscale      | DD Fiscale               |
+| Esperto settore  | DD Operativa       |
+| Consulente locale | Specifico Indonesia   |
 
 ---
 
-## Gestione dei Risultati
+## Gestione delle Trovate
 
 ### Opzioni di Risposta
 
-| Risultato         | Opzioni                       |
+| Trovata         | Opzioni                       |
 | --------------- | ----------------------------- |
-| Motivo per non procedere    | Abbandonare l'operazione                     |
-| Problema significativo  | Regolamento del prezzo              |
-| Problema risolvibile   | Richiedere una soluzione prima della chiusura |
-| Allocazione del rischio | Indennità nel contratto di vendita              |
-| Problema minore     | Accettare il rischio                   |
+ Deal breaker    | Ritirarsi                     |
+| Problema materiale  | Aggiustamento prezzo              |
+| Problema risolvibile   | Richiedere rimedio prima chiusura |
+| Allocazione rischio | Indennità in SPA              |
+| Problema minore     | Accettare rischio                   |
 
-### Indennità
+### Indennizzo
 
-<InfoCard variant="tip" title="Proteggi Te Stesso">
+<InfoCard variant="tip" title="Proteggere Se Stessi">
 
 **Per i rischi identificati:**
 
-- Indennità specifiche nel contratto di vendita
+- Indennità specifiche nell'accordo di vendita
 - Importi trattenuti in escrow
-- Bonus condizionato alle rappresentazioni
+- Earn-out legato alle rappresentazioni
 - Assicurazione (rappresentazioni e garanzie)
-- Condizioni di chiusura che richiedono una soluzione
+- Condizioni di chiusura che richiedono rimedio
 
-Non accettare solo i rischi - allocali correttamente!
+Non accettare semplicemente i rischi - allocateli correttamente!
 
 </InfoCard>
 
 ---
 
-## Passi Post-DD
+## Passaggi Post-DD
 
 ### Se Si Procede
 
 | Passo                 | Scopo                |
 | -------------------- | ---------------------- |
-| Negoziazione dei risultati   | Regolamento del prezzo/condizioni |
-| Redazione del contratto di vendita (SPA)            | Includere protezioni    |
-| Condizioni di chiusura   | Soluzione richiesta   |
-| Pianificazione dell'integrazione | Basata sui risultati della DD   |
+| Negoziare trovate   | Aggiustamento prezzo/termini |
+| Redigere SPA            | Includere protezioni    |
+| Condizioni chiusura   | Richiesto rimedio   |
+| Pianificazione integrazione | Basato su trovate DD   |
 
 ### Documentazione
 
 | Documento             | Scopo            |
 | -------------------- | ------------------ |
-| Relazione DD            | Risultati formali    |
-| Matrice dei rischi          | Problemi priorizzati |
+| Report DD            | Trovate formali    |
+| Matrice rischi          | Problemi prioritizzati |
 | Raccomandazioni      | Approccio suggerito |
-| Elenco delle dichiarazioni | Per il SPA            |
+| Schede di disclosure | Per SPA            |
 
 ---
 
-## Domande Frequenti
+## Domande Comuni
 
 <AskZantara
-  context="Due diligence Indonesia, acquisizione aziendale, verifica investimento, conformità legale"
+  context="Due diligence Indonesia, acquisizione aziendale, verifica investimenti, conformità legale"
   placeholder="Chiedi sulla due diligence..."
   suggestedQuestions={[
     "Quanto tempo dovrebbe durare la due diligence?",
     "Quali sono i costi tipici della DD?",
-    "Il venditore può rifiutare le richieste di documenti?",
-    "Cosa fare se si scoprono problemi dopo la chiusura?",
+    "Il venditore può rifiutare richieste documenti?",
+    "Cosa succede se trovo problemi dopo la chiusura?",
   ]}
 />
 
@@ -617,6 +610,6 @@ Non accettare solo i rischi - allocali correttamente!
 
 ## Articoli Correlati
 
-- [Guida alla Configurazione di una PT PMA](/business/pt-pma-registration-guide?lang=it)
-- [Contratti secondo la Legge Indonesiana](/insights/business/contracts-indonesian-law)
-- [Proprietà Intellettuale in Indonesia](/insights/business/intellectual-property-indonesia)
+- [Guida Setup PT PMA](/business/pt-pma-registration-guide)
+- [Contratti secondo Diritto Indonesiano](/insights/business/contracts-indonesian-law)
+- [Proprietà Intellettuale Indonesia](/insights/business/intellectual-property-indonesia)
