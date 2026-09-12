@@ -189,10 +189,14 @@ acceptance:
       gain row 313 applied_as `backend_rag_v2
       (session_user=backend_rag_migrator)`, the same shape migration 304
       has shown since 2026-09-12T05:20Z. A merged diff is not a live one;
-      this observation is made before the work is reported done.
+      this observation is made before the work is reported done. Column
+      names in the probe corrected at receipt time: the table has
+      migration_number and executed_at, not version and applied_at — the
+      first draft of this probe had never been run.
     probe: >-
-      scripts/pg.sh -A -F'|' -c "SELECT version, applied_as FROM
-      _schema_versions WHERE version = 313"
+      scripts/pg.sh -A -F'|' -c "SELECT migration_number, applied_as,
+      executed_at, applied_via FROM _schema_versions WHERE migration_number
+      IN (312, 313) ORDER BY migration_number"
 appetite:
   wall_clock_hours: 6
   adversarial_rounds: 3
