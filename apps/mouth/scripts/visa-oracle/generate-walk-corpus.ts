@@ -439,6 +439,95 @@ export function enumerateScenarios(): Scenario[] {
   // requirement for the sponsor's own permit exists for E31D). They would
   // now be byte-identical to the base STEPCHILD walk below.
 
+  // PR-D4d: seq-21 (unsigned — see the PR body's activation caveat) gives
+  // E33A/E33B/E33C/E23U/E23V their first SUPPORT/HARD_FILTER rules on
+  // `sponsor.type`, and every one of them was previously exercised by no
+  // walk at all: the corpus's only reaching-tile walks answer this fact's
+  // FIRST option, `NONE` (`offshore/work` unchanged above). One walk per
+  // product with the value that product's rule requires (evidence brief
+  // table): `el.e33a`/`el.e33b`/`el.e23v` share an IDENTICAL condition
+  // (`intersects EMPLOYMENT AND sponsor.type eq GOVERNMENT`), so a single
+  // `work` walk answering GOVERNMENT exercises all three; `el.e23u` needs
+  // INDIVIDUAL instead (E23U is the diplomat's household assistant, not a
+  // `DIPLOMATIC` sponsor value — no such value exists); `el.e33c` needs
+  // INVESTMENT purpose, not EMPLOYMENT, so it is reached via `invest` with
+  // a non-Second-Home vehicle (`pt_pma`, the corpus's own first vehicle)
+  // instead of `work`.
+  scenarios.push({
+    label: "offshore/work/sponsor_government",
+    overrides: { ...base, category: "work", sponsor_category: "GOVERNMENT" },
+  });
+  scenarios.push({
+    label: "offshore/work/sponsor_individual",
+    overrides: { ...base, category: "work", sponsor_category: "INDIVIDUAL" },
+  });
+  scenarios.push({
+    label: "offshore/invest/pt_pma/sponsor_government",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      sponsor_category: "GOVERNMENT",
+    },
+  });
+
+  // Work item 1 end to end: before this PR, `other_paid_activity === "yes"`
+  // never asked `sponsor_category` at all — `offshore/other/paid/
+  // employer_no` (added PR-D3) is the walk the PR-D4b pre-sign review named
+  // as the one that dead-ended on this exact gap (cured there by widening
+  // `on_unknown` to `NO_EFFECT`, not by adding a question). This walk
+  // answers GOVERNMENT down the branch work item 1 adds — the SECOND
+  // reachable path (besides `work`) into E33A/E33B/E23V — proving the new
+  // question is not just present but actually answerable end to end.
+  scenarios.push({
+    label: "offshore/other/paid/sponsor_government",
+    overrides: {
+      ...base,
+      category: "other",
+      other_paid_activity: "yes",
+      sponsor_category: "GOVERNMENT",
+    },
+  });
+
+  // Work item 2, third/fourth bullets. The honest-negative half (`NONE`
+  // giving a decisive non-hold result) is already proven by `offshore/work`
+  // above — the corpus's own unmodified default walk, sponsor_category's
+  // first option — so it is measured, not duplicated, in the PR body. This
+  // walk proves the other half: leaving the fact genuinely UNRESOLVED
+  // (`unsure` -> UNVERIFIED) on a reaching tile must be silence under
+  // seq-21's `on_unknown: NO_EFFECT` (the D4b cure), never a NEEDS_INPUT
+  // hold.
+  scenarios.push({
+    label: "offshore/work/sponsor_unsure",
+    overrides: { ...base, category: "work", sponsor_category: "unsure" },
+  });
+
+  // C6 regression walk (coordinator-authorised scope addition, 2026-09-13).
+  // PR-D4a changed `other_purpose = "transit"` to map to the TRANSIT
+  // purpose instead of OTHER. The corpus's only `other_purpose` walk,
+  // `offshore/other/no_paid_activity`, answers `transit` by default (first
+  // option) — `test_d4a_transit_purpose_positively_reaches_d1` now pins
+  // exactly that route to D1, so it must not be repurposed here — which
+  // means no walk any longer exercises `el.c6.social` (unchanged, still
+  // SUPPORTED on `intent.purposes ∩ OTHER`). `medical` is the next
+  // `other_purpose` option: no special-case mapping anywhere in
+  // fact-mapper.ts reads it (only `transit` does), so it falls through to
+  // the plain OTHER purpose, and it is a natural, honest interview answer
+  // ("here for medical treatment, not employed"). `other_paid_activity:
+  // "no"` is required too — the branch this PR's work item 1 changed does
+  // NOT touch this one (verified: `other_paid_activity === "yes"` is a
+  // disjoint arm from this walk's "no") — keeping the purpose OTHER (D3-2),
+  // which is what makes `el.c6.social` reachable at all.
+  scenarios.push({
+    label: "offshore/other/no_paid_activity/medical",
+    overrides: {
+      ...base,
+      category: "other",
+      other_paid_activity: "no",
+      other_purpose: "medical",
+    },
+  });
+
   return scenarios;
 }
 

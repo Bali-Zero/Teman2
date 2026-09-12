@@ -47,8 +47,17 @@ import {
  * 78 → 76 on D4a (owner ruling SHWEB-20260911, 2026-09-13): those same two
  * STEPCHILD sponsor-permit walks are retired — no pack requirement for the
  * sponsor's own permit exists for E31D (fresh grader review), so the
- * question and hold they exercised are gone. */
-const EXPECTED_WALK_COUNT = 76;
+ * question and hold they exercised are gone. 76 → 82 on PR-D4d
+ * (2026-09-13): 6 new walks — one per seq-21 product with the sponsor.type
+ * value that product's rule requires (`offshore/work/sponsor_government`
+ * covers E33A/E33B/E23V at once, `offshore/work/sponsor_individual` covers
+ * E23U, `offshore/invest/pt_pma/sponsor_government` covers E33C), one
+ * proving work item 1's new `other`+paid question end to end
+ * (`offshore/other/paid/sponsor_government`), one proving an unresolved
+ * answer is silence not a hold (`offshore/work/sponsor_unsure`), and the
+ * C6 regression walk (`offshore/other/no_paid_activity/medical`) — see
+ * generate-walk-corpus.ts. */
+const EXPECTED_WALK_COUNT = 82;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)
