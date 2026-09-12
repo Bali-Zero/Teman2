@@ -141,6 +141,26 @@ export default function NewPracticePage() {
     loadCatalog();
   }, []);
 
+  // Preselect the service from `?type=` (the command palette's "New KITAS" /
+  // "New PT Setup" shortcuts) once the catalog is loaded — matches either a
+  // category code (e.g. "kitas") or a specific service code within one.
+  useEffect(() => {
+    const typeParam = searchParams?.get("type");
+    if (!typeParam || catalog.length === 0) return;
+    const cat = catalog.find((c) => c.code === typeParam);
+    if (cat) {
+      setSelectedCategory(cat.code);
+      return;
+    }
+    const svcCat = catalog.find((c) =>
+      c.services.some((s) => s.code === typeParam),
+    );
+    if (svcCat) {
+      setSelectedCategory(svcCat.code);
+      setSelectedServiceCode(typeParam);
+    }
+  }, [catalog, searchParams]);
+
   // Map API team options to the format used by the form
   const allTeamMembers = useMemo(
     () => allTeamOptions.map((o) => ({ email: o.value, name: o.label })),
