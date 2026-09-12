@@ -4,8 +4,11 @@ colour: BLUE
 gear: 2
 l_level: L2
 gate_class: opus
-# Deterministic floor for this diff is 1 (compute_floor: no hot-zone path, 167 net lines
-# < the 400-line size term). Gear 2 is DECLARED ABOVE the floor, not imposed by it: the
+# Deterministic floor for this diff is 1 (compute_floor: no hot-zone path, 394 net lines
+# < the 400-line size term). CORRECTED after gate-6281: this comment first said 167, which
+# was the count of the FIRST commit (b426487720) and not of the diff the floor is computed
+# over. Measured on the merged range e4362692424785ff..a49bf81242: +426/-32 = 394 net.
+# Gear 2 is DECLARED ABOVE the floor, not imposed by it: the
 # Imperatore's decision #24 sets a fresh Opus gate for every W1W PR at gear >= 2, and
 # declaring gear 2 is what makes that gate a required verdict on this head sha rather
 # than an optional courtesy.

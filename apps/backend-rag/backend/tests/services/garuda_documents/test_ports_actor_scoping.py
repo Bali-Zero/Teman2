@@ -15,8 +15,13 @@ unenforced. These tests pin the scoping on that implementation directly.
 Guilt, measured rather than asserted. Each mutation below was run against this file:
 
   - `InMemoryDocumentStore` reverted to a single-string key (its shape before actor
-    scoping) -> 2 failed, 3 passed. The three that stay green are the replay, conflict
-    and required-keyword checks; they are not isolation proofs and are not meant to be.
+    scoping) -> 3 failed, 6 passed AGAINST THIS FILE AS IT STANDS. The earlier figure
+    recorded here, 2 failed / 3 passed, was measured against the five tests this module
+    had before the refuter round added four more, and was left uncorrected when they
+    landed; `test_service_does_not_replay_one_actors_outcome_to_another` is the third
+    failure. The six that stay green are the replay, conflict, required-keyword,
+    two-distinct-keys, wrapper-forwarding and single-winner checks; they are not
+    isolation proofs and are not meant to be.
   - the store keyed on `actor_id` ALONE, ignoring the idempotency key ->
     `test_one_actors_two_distinct_keys_stay_independent` red. Without that test the
     mutant passed all five of the original checks.
