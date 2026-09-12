@@ -169,6 +169,26 @@ const WALKS: readonly WalkCase[] = [
     flags: ["ACTIVITY_BOUNDARY"],
   },
   {
+    // NARROW-2 (owner ruling SHWEB-20260911, 2026-09-12): `el.e33f.
+    // retirement` (rulepack-prod-020) decides SUPPORT off
+    // `secondhome.passive_monthly_income_usd >= 3000` and `family.
+    // sponsor_confirmed == true` alone — it never reads `retirement_basis`
+    // at all — so the table was UNDER-inclusive: this exact profile (age 25
+    // here; age 64 is the same branch replayed, see the corpus) already had
+    // a deterministic SUPPORTED E33F, and the flag deleted it.
+    name: "retirement · family_sponsor — FREED (NARROW-2): el.e33f.retirement never reads retirement_basis",
+    category: "retirement",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "NONE"],
+      ["retirement_basis", "family_sponsor"],
+      ["secondhome_passive_income_usd", "5000"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "365"],
+    ],
+    flags: [],
+  },
+  {
     // NAME CORRECTED 2026-09-08, RELEASED SAME DAY. This row used to read
     // "HELD: CATEGORY_TO_PURPOSE emits no purpose for it", and that rationale
     // died when #5855 — merged into this very branch — added
@@ -222,6 +242,56 @@ const WALKS: readonly WalkCase[] = [
       ["stay_days", "365"],
     ],
     flags: ["ACTIVITY_BOUNDARY"],
+  },
+  {
+    // NARROW-1 (owner ruling SHWEB-20260911, 2026-09-12): a foreign sponsor
+    // used to raise AMBIGUOUS_SPONSOR for every relation, on the mere
+    // presence of `family_sponsor_status_code`/`family_sponsor_permit_
+    // basis`. `el.c1.tourism-family` (rulepack-prod-020) reads no sponsor
+    // fact at all, so this deleted a verdict the flag could never affect —
+    // the OVER-match this narrowing exists to cure. SPOUSE stands for
+    // PARENT/CHILD/SIBLING/DEPENDENT/OTHER too: none of their pack products
+    // gate on the sponsor fact with a real (non-NO_EFFECT) effect.
+    name: "family · SPOUSE, foreign sponsor — FREED (NARROW-1): el.c1.tourism-family reads no sponsor fact",
+    category: "family",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "FAMILY"],
+      ["family_relation", "SPOUSE"],
+      ["marital_status", "MARRIED"],
+      ["family_sponsor_nationalities", "IT"],
+      ["family_sponsor_status_code", "E23"],
+      ["family_sponsor_permit_basis", "EXPERT"],
+      ["family_marriage_registered", "yes"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "121"],
+    ],
+    flags: [],
+  },
+  {
+    // NARROW-1 condition (ii): STEPCHILD is, today, the one relation with a
+    // pack product genuinely gated on the sponsor — `el.e31d-stepchild-
+    // support` requires `family.sponsor_confirmed` with `on_unknown:
+    // NEEDS_INPUT`. Held only when the sponsor is foreign (status code
+    // asked at all); the Indonesian-sponsor STEPCHILD walk stays FREED —
+    // see "innocence: STEPCHILD with an Indonesian sponsor" in
+    // fact-mapper.test.ts.
+    name: "family · STEPCHILD, foreign sponsor — HELD (NARROW-1 ii): el.e31d-stepchild-support is sponsor-dependent",
+    category: "family",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "FAMILY"],
+      ["family_relation", "STEPCHILD"],
+      ["marital_status", "SINGLE"],
+      ["family_sponsor_nationalities", "IT"],
+      ["family_sponsor_status_code", "E23"],
+      ["family_sponsor_permit_basis", "EXPERT"],
+      ["family_stepchild_marriage_certificate_confirmed", "yes"],
+      ["family_stepchild_birth_certificate_confirmed", "yes"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "121"],
+    ],
+    flags: ["AMBIGUOUS_SPONSOR"],
   },
   {
     name: "other · medical — HELD: no answer here reaches a fact a rule reads",
