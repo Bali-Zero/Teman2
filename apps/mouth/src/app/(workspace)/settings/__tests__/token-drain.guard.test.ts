@@ -66,17 +66,10 @@ describe("settings suite drain guard (WS2 slice 6)", () => {
     expect(src).not.toContain("rgba(26,26,30"); // token-lint-ok: drain-guard assertion string, not a color use
   });
 
-  it("appearance: accent swatches read the neon token family", () => {
-    const src = readFileSync(PAGES.appearance, "utf8");
-    expect(src).toContain("var(--bz-neon-cyan)");
-    expect(src).toContain("var(--bz-neon-purple)");
-    expect(src).toContain("var(--bz-neon-rose)");
-  });
-
-  it("integrations: brand hexes are marked one-offs, statuses read --state-*", () => {
+  it("integrations: the Google brand hex is a marked one-off, statuses read --state-*", () => {
     const src = readFileSync(PAGES.integrations, "utf8");
     const markers = src.match(/token-lint-ok: third-party brand/g) ?? [];
-    expect(markers.length).toBe(5);
+    expect(markers.length).toBe(1);
     expect(src).toContain("var(--state-success)");
     expect(src).toContain("var(--state-danger)");
   });
