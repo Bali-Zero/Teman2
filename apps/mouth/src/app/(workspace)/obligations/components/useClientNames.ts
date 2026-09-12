@@ -47,7 +47,12 @@ export function useClientNames(clientIds: number[]): Record<number, string> {
     if (ids.length === 0) return;
     ids.forEach((id) => attempted.current.add(id));
 
-    let cancelled = false;
+    // No `cancelled` guard, deliberately. The merge below is per id and
+    // idempotent, so a late response can never be stale: there is no ordering
+    // hazard to protect against. A guard would be actively harmful — the rows
+    // change (a page turn, a filter) while a read is in flight, React runs the
+    // cleanup, the result gets dropped, and the id stays in `attempted`, so
+    // those names would never load again for the life of the tab.
     void (async () => {
       const resolved = await Promise.all(
         ids.map(async (id) => {
@@ -72,7 +77,6 @@ export function useClientNames(clientIds: number[]): Record<number, string> {
           }
         }),
       );
-      if (cancelled) return;
       const found = resolved.filter((pair): pair is readonly [number, string] =>
         Boolean(pair),
       );
@@ -83,10 +87,6 @@ export function useClientNames(clientIds: number[]): Record<number, string> {
         return next;
       });
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [key]);
 
   return names;

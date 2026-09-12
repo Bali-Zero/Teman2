@@ -32,6 +32,10 @@ export function useStatusCounters(
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    // Clear, do not keep. Holding the previous filter's numbers while the new
+    // reads are in flight shows one client's counts under another client's
+    // label — a wrong number the reviewer has no way to spot.
+    setCounts({});
 
     void (async () => {
       const results = await Promise.all(

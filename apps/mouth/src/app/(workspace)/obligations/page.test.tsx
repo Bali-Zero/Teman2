@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/error-handler";
@@ -86,7 +87,11 @@ const CATALOG = [
   },
 ];
 
-const CLIENT_42 = { id: 42, full_name: "Fixture Client Alpha" };
+/** Synthetic names — no real client appears in this fixture. */
+const CLIENT_NAMES: Record<string, string> = {
+  "42": "Fixture Client Alpha",
+  "43": "Fixture Client Beta",
+};
 
 interface Deferred {
   status: string;
@@ -106,6 +111,8 @@ function installApiGet(
     clientFails?: boolean;
     counterTotals?: Record<string, number>;
     deferCounters?: Deferred[];
+    /** Collects one resolver per CRM client read instead of answering at once. */
+    deferClients?: Array<{ id: string; resolve: () => void }>;
   } = {},
 ) {
   const listCalls: string[] = [];
@@ -151,7 +158,20 @@ function installApiGet(
           new ApiError("Client not found", 404, { detail: "Client not found" }),
         );
       }
-      return Promise.resolve(CLIENT_42);
+      const id = url.slice("/api/crm/clients/".length);
+      if (opts.deferClients) {
+        return new Promise((resolve) => {
+          opts.deferClients?.push({
+            id,
+            resolve: () =>
+              resolve({ id: Number(id), full_name: CLIENT_NAMES[id] ?? null }),
+          });
+        });
+      }
+      return Promise.resolve({
+        id: Number(id),
+        full_name: CLIENT_NAMES[id] ?? null,
+      });
     }
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
@@ -256,6 +276,46 @@ describe("ObligationsPage", () => {
     expect(screen.getByText("42")).toBeVisible();
   });
 
+  it("keeps a name resolution that lands after the rows changed", async () => {
+    // Regression: ids are marked attempted when the read STARTS, so a cleanup
+    // that discarded in-flight results (rows changed while the read was open)
+    // left those ids permanently stuck on the id fallback.
+    const deferClients: Array<{ id: string; resolve: () => void }> = [];
+    installApiGet({
+      deferClients,
+      listForClient: {
+        total: 1,
+        limit: 50,
+        offset: 0,
+        items: [{ ...PROPOSED_ROW, id: 103, client_id: 43 }],
+      },
+    });
+
+    render(<ObligationsPage />);
+    await waitFor(() => expect(deferClients.length).toBe(1));
+    expect(deferClients[0].id).toBe("42");
+
+    // Rows change while client 42's read is still open: the effect re-runs for
+    // the new id set and React cleans up the previous run.
+    fireEvent.change(screen.getByPlaceholderText("all clients"), {
+      target: { value: "43" },
+    });
+    await waitFor(() => expect(deferClients.length).toBe(2));
+
+    // Back to the first id set. 42 is already attempted, so no second read.
+    fireEvent.change(screen.getByPlaceholderText("all clients"), {
+      target: { value: "" },
+    });
+    deferClients.forEach((d) => d.resolve());
+
+    expect(await screen.findByText("Fixture Client Alpha")).toBeVisible();
+    expect(
+      apiMock.get.mock.calls.filter(
+        (call: unknown[]) => call[0] === "/api/crm/clients/42",
+      ).length,
+    ).toBe(1);
+  });
+
   it("reads one counter per status with limit=1, all four in parallel", async () => {
     const deferred: Deferred[] = [];
     const { counterCalls } = installApiGet({ deferCounters: deferred });
@@ -280,12 +340,60 @@ describe("ObligationsPage", () => {
     };
     deferred.forEach((d) => d.resolve(totals[d.status] ?? 0));
 
-    expect(await screen.findByTestId("counter-proposed")).toHaveTextContent(
-      "7",
+    // waitFor, not findByTestId: the tiles already exist (showing the loading
+    // placeholder), so findBy* would resolve before the totals land and assert
+    // against the placeholder.
+    await waitFor(() => {
+      expect(screen.getByTestId("counter-proposed")).toHaveTextContent("7");
+      expect(screen.getByTestId("counter-approved")).toHaveTextContent("3");
+      expect(screen.getByTestId("counter-rejected")).toHaveTextContent("1");
+      expect(screen.getByTestId("counter-alerted")).toHaveTextContent("2");
+    });
+  });
+
+  it("clears the counters when the client filter changes", async () => {
+    // Regression: holding the previous filter's totals while the new reads are
+    // in flight showed one client's counts under another client's label.
+    const deferred: Deferred[] = [];
+    installApiGet({ deferCounters: deferred, listForClient: LIST_RESPONSE });
+
+    render(<ObligationsPage />);
+    await waitFor(() => expect(deferred.length).toBe(4));
+    deferred.forEach((d) => d.resolve(9));
+    await waitFor(() =>
+      expect(screen.getByTestId("counter-proposed")).toHaveTextContent("9"),
     );
-    expect(screen.getByTestId("counter-approved")).toHaveTextContent("3");
-    expect(screen.getByTestId("counter-rejected")).toHaveTextContent("1");
-    expect(screen.getByTestId("counter-alerted")).toHaveTextContent("2");
+
+    deferred.length = 0;
+    fireEvent.change(screen.getByPlaceholderText("all clients"), {
+      target: { value: "42" },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("counter-proposed")).not.toHaveTextContent("9"),
+    );
+    expect(screen.getByText("Client 42")).toBeVisible();
+  });
+
+  it("reads the catalog once and renders it under StrictMode", async () => {
+    // Regression: `reactStrictMode` is on, so React runs setup -> cleanup ->
+    // setup in dev. A boolean "already started" guard let the first run fetch,
+    // the cleanup discard the result, and the second run bail out — an empty
+    // catalog with no request left to recover it.
+    render(
+      <StrictMode>
+        <ObligationsPage />
+      </StrictMode>,
+    );
+
+    expect(
+      await screen.findByText("PPh 21 — employee withholding deposit"),
+    ).toBeVisible();
+    expect(
+      apiMock.get.mock.calls.filter(
+        (call: unknown[]) => call[0] === "/api/compliance/obligations/catalog",
+      ).length,
+    ).toBe(1);
   });
 
   it("groups rows by due month only when a client filter is set", async () => {
