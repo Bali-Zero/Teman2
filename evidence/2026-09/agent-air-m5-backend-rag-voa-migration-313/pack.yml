@@ -1,0 +1,477 @@
+task_id: voa-migration-313-garuda-practice-artifacts
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml # the canonical staged layout CI lints against; the real file lives beside this pack — resolved from the repo root this path reads ANOTHER lane's brief (evidence/brief.yml, kbli), which is why a local lint outside a staging tree reports that lane's floor, not this one's
+council_run: council-journal.jsonl
+seat_override: >-
+  The ground-truth rule fires on one path in this diff,
+  apps/backend-rag/backend/scripts/visa_engine/operational_preflight.py, and the
+  change to it is two lines plus a comment adding a Postgres function SIGNATURE
+  to a privilege inventory. It asserts no regulatory fact — no visa rule, no
+  fee, no eligibility condition, no KBLI code — so there is no NotebookLM query
+  a ground_truth lane could hash. Same reason, same file, as the override in
+  evidence/2026-08/agent-air-m5-db-definer-owner-invariant-0830-ed4038d8. The
+  rest of the diff is a migration, its tests and this pack.
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    note: >-
+      Dux of window W3A. GROUND: read migration 287's artifact columns and
+      their CHECK, 304's owner bracket (then unmerged, read via git show on
+      its branch), and PENDING-ARMS row 1847. BUILD: the migration and both
+      test files, including every cure listed under `dissent` below. Took
+      over the file directly after two Sonnet builder seats died mid-task
+      (w3a-builder-shapeD, w3a-builder-f2 lineage) — the shape-D fixture
+      was authored by a Sonnet seat before it hung and was verified,
+      re-run and renumbered by this seat. Authored this pack.
+  - lane: adversarial-refuter
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      Codex CLI, `codex exec -m gpt-5.6-sol -s read-only`, outside the
+      contribution chain, three rounds. NON-ANTHROPIC seat (OpenAI), which
+      is what satisfies the D3 seat-diversity floor here. SEAT-VERDICT
+      round 1: BLOCK, 9 findings. Round 2 (on the cures): BLOCK, 8 CURED,
+      F6 PARTIAL, 2 NEW findings. Round 3 (on the NEW1/NEW2 delta): PASS,
+      no new findings. The seat itself declares round 3's verdict is static
+      call-path/lock/transaction analysis — it could not execute pytest in
+      its read-only sandbox. Round 4 (on the registry-entry + evidence
+      delta added after O3): BLOCK, 2 MAJOR + 1 MINOR + 1 NIT. One MAJOR
+      cured in this PR (A8), one MAJOR declined as out of concern and
+      ledgered; MINOR and NIT both cured. Also static. Round 5 (on the
+      gate-6287c cure, `-m gpt-5.6-sol` explicit, 12:12:44Z->12:22:25Z):
+      MAJOR + MINOR, both confirmed, both cured; the part of the MAJOR
+      that is the shared mechanism's property is declared, not fixed.
+  - lane: contract-second-reader
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      Second reader of a DIFFERENT family (Moonshot), also non-Anthropic,
+      read-only, on the artifact contract fragment against the frozen
+      openapi.yaml and errors.yaml. 4 defects, ALL in the fragment, none in
+      code or in this migration — recorded here for quorum completeness;
+      their cures travel with the contract PR at rebase, not with this PR.
+spend:
+  wall_clock_hours: 6
+  adversarial_rounds: 3
+appetite_exceeded: false
+cloud_ok: true
+pii_scan: clean
+pii_scan_note: >-
+  The diff is DDL plus two test files. Ids are synthetic (`art_<uuid>`,
+  `prc_313fx_<uuid>`), the only document bytes are a literal PDF-shaped
+  string, and the three roles the shape-D fixture provisions are created on
+  a throwaway local cluster and dropped with it. No production database was
+  read or written by this session; no credential appears in the diff.
+receipts:
+  - probe: A1
+    claim: >-
+      The migration suite passes against a disposable PostgreSQL with every
+      migration applied through the real runner, including the F7 guilt
+      test and both structural bracket assertions.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py --color=no -p no:randomly
+    result: "17 passed in 0.58s; migration 313 applied by the real runner on the disposable PG15"
+    exit: 0
+    ts: "2026-09-12T06:55:00Z"
+    seat: claude-opus-5 (build)
+  - probe: A1
+    claim: >-
+      Re-measured after the A9 fixture change (transactional seed, exit
+      tripwire, reproduction test): 18 tests now, the 17 above plus
+      test_the_next_file_can_still_unwind_this_database.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py --color=no -p no:randomly
+    result: "18 passed in 4.85s"
+    exit: 0
+    ts: "2026-09-12T11:56:08Z"
+    seat: claude-opus-5 (build)
+  - probe: A2
+    claim: >-
+      Shape D on a real PostgreSQL 17.10 with backend_rag_migrator
+      (NOSUPERUSER LOGIN), backend_rag_v2 and visa_ledger_owner (NOLOGIN)
+      provisioned: ownership, ACL, guilt mutations, role restore and the
+      rollback all asserted against the live catalogue.
+    cmd: OPTION_D_DISPOSABLE_PG_URL=<disposable PG17.10> pytest backend/tests/db/test_migration_313_owner_bracket.py --color=no -p no:randomly
+    result: "3 passed in 0.93s on the S1 branch in isolation (also 3 passed in 1.15s on the work branch after the renumber)"
+    exit: 0
+    ts: "2026-09-12T06:55:30Z"
+    seat: claude-opus-5 (build)
+  - probe: A3
+    claim: >-
+      Without the shape-D DSN the fixture SKIPS loudly rather than passing
+      quietly, naming the cluster version and the three roles.
+    cmd: pytest backend/tests/db/test_migration_313_owner_bracket.py -rs
+    result: >-
+      "3 skipped" with the reason printed in full for each:
+      "OPTION_D_DISPOSABLE_PG_URL unset: shape D needs a disposable PG17
+      cluster with the three production role names free to provision
+      (backend_rag_migrator, backend_rag_v2, visa_ledger_owner)"
+    exit: 0
+    ts: "2026-09-12T06:52:00Z"
+    seat: claude-opus-5 (build)
+  - probe: A4
+    claim: The migration-number and ROLLBACK-marker lints report zero violations.
+    cmd: python3 scripts/lint_migration_numbers.py
+    result: "✅ migration-numbers lint: 191 files, all unique prefixes; ROLLBACK lint: 186 post-cutoff migrations, all have ROLLBACK marker (pre-commit, same commit)"
+    exit: 0
+    ts: "2026-09-12T06:56:19Z"
+    seat: claude-opus-5 (build)
+  - probe: A5
+    claim: The deterministic floor recomputed from this PR's own changed-file set is 3.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf.txt --numstat-file ns.txt
+    result: "3 (--print-floor-source: both — hot-zone path and blast-radius size; 3 files, 2152 net added lines)"
+    exit: 0
+    ts: "2026-09-12T09:21:00Z"
+    seat: claude-opus-5 (build)
+  - probe: A7
+    claim: >-
+      The retention-FK registry canary passes with 313 declared, and so do
+      ALL THREE visa_engine suites that roll migration 264 back in their own
+      fixtures. The earlier run of this receipt named two and measured 263
+      passed; round O4 (MINOR) pointed out that test_shadow_evidence.py runs
+      the same sequence, so the declared coverage was short by one consumer.
+      Re-measured with the third file included.
+    cmd: ci_shape_pg.sh backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_shadow_evidence.py --color=no -p no:randomly
+    result: "307 passed in 47.59s"
+    exit: 0
+    ts: "2026-09-12T11:12:30Z"
+    seat: claude-opus-5 (build)
+  - probe: A7
+    claim: >-
+      The CI failure this fix answers is a measured event, not an
+      attribution: run 34685812662, job 103532640987 "Backend Shard 3",
+      head ea7c2f7fb1, names the constraint by name.
+    cmd: gh run view --job 103532640987 --log-failed | grep -i DependentObjectsStillExist
+    result: >-
+      "asyncpg.exceptions.DependentObjectsStillExistError: cannot drop table
+      visa_decision_retention_policies because other objects depend on it —
+      DETAIL: constraint garuda_practice_artifacts_retention_policy_id_fkey
+      on table garuda_practice_artifacts depends on table
+      visa_decision_retention_policies"
+    exit: 0
+    ts: "2026-09-12T11:14:00Z"
+    seat: claude-opus-5 (build)
+  - probe: A8
+    claim: >-
+      With 313's SECURITY DEFINER binder registered in both preflight
+      inventories, the preflight suite and the SECURITY DEFINER owner
+      invariant suite are green — including the parity assertion that the
+      module's list and the test's independent authority agree.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py -p no:cacheprovider
+    result: "52 passed in 1.69s"
+    exit: 0
+    ts: "2026-09-12T11:06:30Z"
+    seat: claude-opus-5 (build)
+  - probe: A9
+    claim: >-
+      This file's fixture leaves the database exactly as it found it: with
+      the TEST/GARUDA_DOCUMENT policy seeded inside a transaction the fixture
+      rolls back, the retention-FK canary run AFTER this file on the same
+      database passes — before the cure it failed with CheckViolationError on
+      the policy_scope CHECK, the defect gate-6287c measured.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py --color=no -p no:randomly
+    result: "21 passed in 2.18s (before the cure, same command: 1 failed, 19 passed — asyncpg.exceptions.CheckViolationError: visa_decision_retention_policies_policy_scope_check)"
+    exit: 0
+    ts: "2026-09-12T11:42:11Z"
+    seat: claude-opus-5 (build)
+  - probe: A9
+    claim: >-
+      The whole set gate-6287c ran, in the order that broke it — this file
+      FIRST, then the registry canary, the three unwind/restore consumers and
+      the preflight suite — on ONE database in ONE process.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_shadow_evidence.py backend/tests/scripts/visa_engine/test_operational_preflight.py --color=no -p no:randomly
+    result: "370 passed in 290.19s"
+    exit: 0
+    ts: "2026-09-12T11:49:59Z"
+    seat: claude-opus-5 (build)
+  - probe: A9
+    claim: >-
+      After round O5's cures (restore in a `finally`, 285 named as the
+      narrowing rollback, docstring no longer claiming the shared
+      unwind/restore is state-preserving for other fixtures' rows) this file
+      then the registry canary still pass on one database.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py --color=no -p no:randomly
+    result: "21 passed in 4.47s"
+    exit: 0
+    ts: "2026-09-12T12:24:53Z"
+    seat: claude-opus-5 (build)
+guilt_mutations:
+  - target: tests/services/visa_engine/conftest.py — the retention-FK registry entry
+    mutation: >-
+      Remove the one-line `_GARUDA_VOA_RETENTION_FK_DEPENDENTS` entry for 313
+      and run the canary.
+    observed: >-
+      RED, with the message that is itself the spec: "migration(s)
+      ['313_garuda_practice_artifacts.sql'] add a foreign key onto
+      visa_decision_retention_policies (264) but are not registered ... or
+      this repo's other visa_engine tests that roll 264 back in their
+      fixtures will go red with DependentObjectsStillExistError the moment
+      your migration merges, on files that never touch your product at
+      all". conftest.py restored from a cp backup, md5 identical before and
+      after (02da4e1b9844f03b19ef2397bd2cd661).
+    ts: "2026-09-12T10:48:00Z"
+  - target: scripts/visa_engine/operational_preflight.py — the binder inventory entry
+    mutation: >-
+      Remove `public.bind_garuda_practice_artifact_retention_policy()` from
+      RETENTION_BINDING_TRIGGER_FUNCTIONS, leaving the test file's
+      CANONICAL_SENSITIVE_FUNCTIONS untouched, and run the preflight suite.
+    observed: >-
+      RED on
+      test_preflight_inventory_matches_independently_frozen_schema_authority
+      ("assert set(operational_preflight.SENSITIVE_FUNCTIONS) ==
+      CANONICAL_SENSITIVE_FUNCTIONS" — AssertionError), 1 failed, 44 passed.
+      operational_preflight.py restored from a cp backup, md5 identical
+      before and after (d7649cf8825482c6673a4603baa64659).
+      NOTE, stated because it bounds what this mutation proves: the assertion
+      fires only when the two inventories DISAGREE. An author who updates
+      NEITHER leaves them agreeing and no test fails — that is the missing
+      parity canary recorded in A8's declared limit, not a property this
+      mutation demonstrates.
+    ts: "2026-09-12T11:08:30Z"
+  - target: tests/db/test_migration_313_garuda_practice_artifacts.py — the fixture's rollback
+    mutation: >-
+      In `_seeded_test_retention_policy`, `await tx.rollback()` -> `await
+      tx.commit()`: the seeded policy row is committed, exactly the state the
+      earlier close-not-delete teardown left behind. Run this file then the
+      registry canary on one database.
+    observed: >-
+      RED three ways, each naming the chain: 15 fixture tripwires ("this
+      file's fixture left 1 TEST/GARUDA_DOCUMENT retention policy row(s)
+      behind; the next visa_engine file to call
+      unwind_garuda_voa_retention_fk on this database will fail 304's
+      rollback with CheckViolationError"), the reproduction test RED on its
+      stated premise ("15 TEST/GARUDA_DOCUMENT row(s) pre-date this test"),
+      and the registry canary RED with the gate's exact error
+      (CheckViolationError: visa_decision_retention_policies_policy_scope_check
+      ... violated by some row). 2 failed, 19 passed, 15 errors. File
+      restored from a cp backup, md5 identical before and after
+      (3eb0afbab1a56e755ce0bb870ca9c0a8).
+    ts: "2026-09-12T11:43:30Z"
+  - target: tests/db/test_migration_313_garuda_practice_artifacts.py — the reproduction test's `finally`
+    mutation: >-
+      Force the assertion INSIDE the try (`to_regclass(...) is None` ->
+      `is not None`) so the test fails after unwind and before restore; run
+      this file then the registry canary on one database. Sol O5 asked for
+      exactly this proof.
+    observed: >-
+      The reproduction test FAILS (1 failed, 20 passed) and the registry
+      canary that runs next PASSES all three, including
+      test_restore_only_reapplies_the_entry_that_was_actually_unwound whose
+      first assertion is "281 must be live in the deployed schema" — so
+      restore ran in the `finally` and the stack was put back despite the
+      failure. File restored from a cp backup, md5 identical
+      (f00421b9def7ac40d31ac898ff9e7649).
+    ts: "2026-09-12T12:26:17Z"
+  - target: db/migrations_v2/313_garuda_practice_artifacts.sql (composite deferred FK, F7)
+    mutation: >-
+      Point `superseded_by` at an artifact belonging to ANOTHER practice and
+      force the deferred check inside the transaction.
+    observed: >-
+      asyncpg.ForeignKeyViolationError at SET CONSTRAINTS ALL IMMEDIATE.
+      Before the cure the same sequence was ACCEPTED — the single-column FK
+      resolved, the guard trigger checked only that practice_id did not
+      change, and the partial unique index counts live rows and so cannot
+      see it; the old test passed solely because its rollback ran before
+      the deferred check ever did.
+    ts: "2026-09-12T04:44:00Z"
+  - target: shape D — table emptying and row removal AS backend_rag_v2
+    mutation: Attempt to remove a row and to empty the table as the runtime role.
+    observed: >-
+      "permission denied for table" at the ACL layer. Note the ORDER this
+      established, which the migration's own comments had implied
+      differently: from backend_rag_v2 the guard trigger's DELETE message is
+      UNREACHABLE, because DELETE is not granted at all — ACL refuses first,
+      the guard covers the owner-shaped paths.
+    ts: "2026-09-12T06:55:30Z"
+  - target: shape D — guard trigger and guard function AS backend_rag_v2
+    mutation: >-
+      Disable the trigger, drop the trigger, and CREATE OR REPLACE the guard
+      function's body with one that returns NEW unchanged.
+    observed: >-
+      "must be owner of" for each. This is finding F8 made falsifiable: the
+      same three statements succeeded while backend_rag_v2 owned the table
+      and the function.
+    ts: "2026-09-12T06:55:30Z"
+  - target: shape D — the rollback half
+    mutation: Run the rollback with all three roles present and the migrator non-superuser.
+    observed: >-
+      FOUND A REAL DEFECT on its first run: the rollback aborted with "must
+      be owner of function active_garuda_practice_artifact_policy_available"
+      BEFORE reaching any removal — nothing removed, migration left fully
+      applied, operator told the undo had run. F9's own outcome surviving
+      inside F9's cure, for the single object the transfer list did not
+      enumerate. Fixed (the transfer now walks a list); the same run now
+      removes all four ledger-owned objects and restores the migrator role.
+    ts: "2026-09-12T05:18:00Z"
+dissent:
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O2, PARTIAL) F6 — after the confirming read, a supersession
+      committing between that read and the return still lets the previous
+      row's bytes be emitted; the loop is bounded but two deliberately
+      timed supersessions produce a 404 while a live row exists.
+    status: CONFIRMED
+    disposition: >-
+      Imperator decision #20 (2026-09-12), strada (a). NOT cured, and the
+      docstring says so rather than implying closure: a non-blocking read
+      can promise the bytes were the live row at an instant inside the
+      request, never that they still are on arrival — a lock held across
+      the object-store fetch would only move the window to its release.
+      What the confirming read buys is that bytes KNOWN to be retired are
+      never emitted. Serializing reads against corrections was declined
+      because it holds a database transaction open during network I/O and
+      lets one slow download block every correction on the same practice.
+      Ledgered as a PENDING-ARMS row: the cure is observability (the
+      customer GET naming the digest it served), which is a response header
+      and therefore belongs to the contract PR at rebase. NOTE: F6 lives in
+      `services/garuda_artifacts/service.py`, which is NOT in this PR — it
+      ships in S5. Recorded here because the review round that raised it
+      also judged this migration.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O3) The PASS verdict on the NEW1/NEW2 delta is static analysis: the
+      seat states it could not run pytest under its read-only sandbox.
+    status: CONFIRMED
+    disposition: >-
+      Correct and expected for a read-only refuter, and not restated as an
+      executed proof. The executed evidence for this PR is the build seat's
+      own runs recorded under `receipts` and `guilt_mutations`, not Sol's
+      verdict.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O4, MAJOR) Migration 313's SECURITY DEFINER binder
+      `public.bind_garuda_practice_artifact_retention_policy()` is absent
+      from operational_preflight's RETENTION_BINDING_TRIGGER_FUNCTIONS and
+      from the test file's independent CANONICAL_SENSITIVE_FUNCTIONS. The
+      class-level catalog census checks only ownership; the named checks
+      that would catch an improper EXECUTE grant, or the function being
+      absent entirely, are list-driven and this list was never told the
+      function exists.
+    status: CONFIRMED
+    disposition: >-
+      CURED in this PR — acceptance A8, receipt A8, guilt mutation
+      measured. Verified independently before curing: the list really did
+      omit it, and the comment sitting directly above the entries says
+      "leaving it out is how this blind spot reopens", naming migration
+      285's weeks of 500s as the cost. Registering 313's binder is one line
+      in each of the two inventories and the fake derives its owner map
+      from the module list, so nothing else moved.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O4, MAJOR) `restore_garuda_voa_retention_fk` re-applies every
+      registered entry it finds ABSENT, and `unwind` returns only an
+      aggregate bool — so on a database where 264 and the earlier
+      dependents are applied but 313 is not, the unwind/restore pair hands
+      back a database carrying 313 though it was never live going in. The
+      existing regression test proves "do not re-apply an entry still
+      present", not "do not introduce an entry that was absent".
+    status: CONFIRMED
+    disposition: >-
+      NOT cured here, and the objection is correct on both counts —
+      verified by reading the pair: `restore`'s own docstring claims it
+      "puts back exactly what unwind actually took away, no more, no less",
+      and an absence probe cannot distinguish "absent because unwind
+      removed it" from "absent because it was never there", so the
+      docstring overstates the property the code has. This is a PRE-EXISTING
+      defect of the 2026-08-25 mechanism, identical for all five registered
+      entries; this PR's one-line registration exposes it on a sixth, it
+      does not introduce it. Curing it means changing `unwind`'s return
+      contract to name which entries it took — a change to another
+      product's fixture machinery, outside this PR's concern, and a
+      fix-of-a-fix on a mechanism already corrected once. Ledgered as a
+      PENDING-ARMS row with the reproduction Sol supplied. On the shape this
+      PR is measured against, `apply-all` applies every migration, so the
+      skewed starting state does not arise there — which is exactly why no
+      test catches it.
+  - seat: claude-opus-5
+    objection: >-
+      (gate-6287c, BLOCK, on head 39f2e1d9cb) This file's fixture closed the
+      TEST/GARUDA_DOCUMENT policy at teardown but could not delete it
+      (append-only guard, 264), so 15 rows survived the file; every
+      visa_engine file that then called unwind_garuda_voa_retention_fk on
+      the same database ran 304's rollback, which re-narrows the
+      policy_scope CHECK, and Postgres refused it. CI was green only because
+      xdist --dist loadfile put this file and those on different clones.
+    status: CONFIRMED
+    disposition: >-
+      CURED (A9): the policy is now seeded INSIDE a transaction the fixture
+      rolls back, with the seed's lower bound on transaction_timestamp() so
+      the binder's `effective_period @> created_at` still resolves under a
+      frozen clock; a tripwire compares the row count at exit to the count at
+      entry; a reproduction test runs the fixture lifecycle and then the
+      real unwind/restore on the same connection. DELETE was tried first and
+      refused by the guard — that refusal is why the earlier shape closed
+      instead, and the comment now says so.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O5, MAJOR) The reproduction test is not state-preserving on a shared
+      worker database: unwind rolls the whole 281..313 chain back, 281's
+      rollback DROPS policy_scope, restore re-adds it with its default, so
+      closed GARUDA_ORDER / GARUDA_MAGIC_LINK rows other fixtures left
+      behind come back as VISA_DECISION. And restore was not in a
+      `finally`, so a failed assertion would leave the next file without
+      281..313. The docstring's "leaves this test as it entered" was false.
+    status: CONFIRMED
+    disposition: >-
+      CURED where it is this test's: restore now runs in a `finally`
+      (mutation measured — forced failure inside the try, canary after it
+      still finds 281 live), and the docstring states what "back" means
+      and what it does not. DECLARED where it is the mechanism's: the
+      scope-erasing side effect of 281's rollback + restore is a property
+      of the shared unwind/restore pair, identical for the three
+      visa_engine consumers that call it; this test adds nothing to it and
+      does not fix it. It joins the two rows already parked in
+      ledger-rows-held.md as a third fact about that pair for the
+      visa_engine lane.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O5, MINOR) The comments and tripwire message blamed 304's rollback for
+      re-narrowing the policy_scope CHECK. 304's rollback sees the
+      GARUDA_DOCUMENT rows and leaves the CHECK widened; on a clean database
+      it is 285's rollback, which guards only GARUDA_MAGIC_LINK rows, that
+      rebuilds the four-scope CHECK and raises.
+    status: CONFIRMED
+    disposition: >-
+      CURED — verified by reading both rollback halves (304: "left
+      WIDENED" NOTICE when rows exist; 285: narrows unless
+      GARUDA_MAGIC_LINK rows exist). Attribution corrected in the fixture
+      docstring, the tripwire message and the reproduction test's
+      docstring. The defect and the cure are unchanged; only the name of the
+      statement that raises was wrong.
+  - seat: claude-opus-5
+    objection: >-
+      (evidence integrity, raised by the Imperator on gate-6287c) The O4
+      council row and five receipt/mutation timestamps written in this window
+      were LATER than the commits carrying them — 19:58Z for a round that
+      ended 11:04Z.
+    status: CONFIRMED
+    disposition: >-
+      CORRECTED, and recorded as a correction rather than silently
+      overwritten. This window continued a timestamp series by hand instead
+      of measuring. Every ts is now derived from a measured anchor: codex log
+      mtimes (O4 10:52:51Z -> 11:04:55Z), cp-backup mtimes for the guilt
+      mutations, shape-cluster mtimes for the pytest runs, and the +08:00
+      commit times as upper bounds. Where an anchor brackets rather than
+      pins a run, the ts is the bracket's midpoint and is within two minutes
+      of the truth. Model headers of all four codex logs were re-read in the
+      same pass: O1, O2, O3, O4 all say `model: gpt-5.6-sol`; the seat names
+      in the journal are true.
+  - seat: claude-opus-5
+    objection: >-
+      (self, on the shape-D test of the privilege bracket) The bracket test
+      that ships inside the migration suite is STRUCTURAL — it reads the
+      file, not a database — and says so in its docstring.
+    status: CONFIRMED
+    disposition: >-
+      Held open as a declared gap until shape D existed. It now does, in
+      this same PR, and the behavioural assertions listed under
+      `guilt_mutations` replace the structural claim. The structural test
+      is kept as the cheap guard against drift in the file's shape.
+bites: >-
+  Consumer: `MigrationManager`'s release_command on the promoted commit — a
+  backend merge IS the deploy. `_schema_versions` gains row 313 applied_as
+  `backend_rag_v2 (session_user=backend_rag_migrator)`, the same shape
+  migration 304 has shown since 2026-09-12T05:20Z. Probe: `scripts/pg.sh -A
+  -F'|' -c "SELECT version, applied_as FROM _schema_versions WHERE version =
+  313"`. Observed before the work is reported done; a merged diff is not a
+  live one.

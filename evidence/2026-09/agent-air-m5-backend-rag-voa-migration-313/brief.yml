@@ -1,0 +1,198 @@
+task_id: voa-migration-313-garuda-practice-artifacts
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed for THIS PR's actual changed-file set:
+# `git diff --name-only origin/main...HEAD > cf.txt && git diff --numstat
+# origin/main...HEAD > ns.txt && python3 scripts/evidence_pack_lint.py
+# --print-floor --changed-files-file cf.txt --numstat-file ns.txt` returns 3,
+# --print-floor-source returns `both`: the diff adds a declared hot-zone path
+# (apps/backend-rag/backend/db/migrations_v2/) AND is 2152 net added lines.
+# Gear 3 declared to match the floor exactly.
+objective: >-
+  S1 of the GARUDA VOA W3A phase-2 split: the table a VOA delivery can
+  actually resolve to. `garuda_practices.artifact_id` / `artifact_digest`
+  (migration 287) have had no referent since they were added — no row,
+  bucket or route resolved one to bytes, so `Delivered` recorded an opaque
+  id nobody could verify, which is PENDING-ARMS row 1847 (opened
+  2026-09-02, codex council finding #3). This PR carries ONE concern: the
+  migration and its two test files. The private object store, the service
+  and repository, the staff PUT, both GETs, PR-11's verify-before-deliver
+  and supersession follow as S2..S7, one at a time, after this is live.
+constraints:
+  - >-
+    Append-only is a GRANT, not an adjective. The table and its guard
+    function are owned by `visa_ledger_owner`, not by the runtime role —
+    the deliberate exception among `garuda_*` tables, ruled by the
+    Imperator (decision #16, 2026-09-12) on Sol's finding F8. An earlier
+    draft of this file called the guard trigger "the REAL enforcement"
+    because ACL cannot bind an owner; that sentence undoes itself one step
+    further, since an owner can disable the trigger, replace its body or
+    empty the table before writing whatever it likes. A guard owned by the
+    role it constrains constrains nobody.
+  - >-
+    A successor must belong to the SAME practice, enforced by a composite
+    DEFERRED foreign key rather than by the guard trigger. Deferred is
+    load-bearing, not incidental: `postgres_repository.insert_superseding`
+    marks the old row BEFORE inserting its successor (the partial unique
+    index tolerates no other order), so at BEFORE UPDATE time the successor
+    row does not exist and no trigger could look at it — COMMIT is the
+    first moment both rows are on the table.
+  - >-
+    Every role-conditional branch is fail-safe in BOTH directions: an
+    absent role is a NOTICE and a no-op (CI and laptops never provision
+    these roles), a present role whose transfer is refused is an EXCEPTION,
+    and the verdict is read from the MEASURED owner after the ALTER, never
+    from the ALTER's silence. The role restored at the end of each half is
+    the one measured before that half's reset, never one named literally:
+    `assume_runtime_role` is an unconditional no-op in the single-DSN
+    shape, and a superuser is a member of every role by `pg_has_role`'s
+    definition, so a named restore would leave the session on a role it
+    never entered (Sol O2 finding 2).
+  - >-
+    This migration must not reach outside itself. Its rollback does NOT
+    narrow the `policy_scope` CHECK back: `GARUDA_DOCUMENT` belongs to
+    migration 304, live in production since 2026-09-12T05:20Z. Narrowing
+    would break 304 in any database where 304 is applied but no
+    GARUDA_DOCUMENT policy row exists yet — precisely where the
+    append-only guard does not fire.
+  - >-
+    No PII, no real documents. The migration is DDL; both test files use
+    synthetic ids, a synthetic PDF-shaped byte string and locally
+    provisioned throwaway roles. No production database was read or written
+    by this session.
+  - >-
+    Renumbered from 312 at rebase: `312_research_os_naga_claims.sql`
+    (Research OS lane, 890e731b91) merged first. Measured on fresh
+    origin/main with `git ls-tree`: 307-312 occupied, 313 free; zero
+    `garuda` hits in the other lane's file, so the two are neighbours in
+    number only.
+acceptance:
+  - text: >-
+      A1: WHEN the migration suite runs against a disposable PostgreSQL
+      with every migration applied SHALL pass all cases, including the
+      cross-practice successor refusal forced with SET CONSTRAINTS ALL
+      IMMEDIATE and the structural assertions on both privilege brackets.
+    probe: >-
+      ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py
+  - text: >-
+      A2 (shape D): WHEN migration 313 is applied through the real
+      BaseMigration path on a disposable PostgreSQL 17 with the three
+      production roles provisioned and a NON-superuser migrator SHALL leave
+      table, guard function, retention binder and read helper all owned by
+      visa_ledger_owner; SHALL grant the runtime role exactly SELECT +
+      INSERT + UPDATE(superseded_at, superseded_by) with
+      DELETE/TRUNCATE/REFERENCES/TRIGGER absent; SHALL refuse every guilt
+      mutation attempted AS backend_rag_v2; SHALL end on the role the
+      session started on; and its rollback SHALL remove all four
+      ledger-owned objects.
+    probe: >-
+      OPTION_D_DISPOSABLE_PG_URL=<disposable PG17.10> pytest
+      backend/tests/db/test_migration_313_owner_bracket.py --color=no -p no:randomly
+  - text: >-
+      A3: WHEN the fixture runs with no OPTION_D_DISPOSABLE_PG_URL SHALL
+      SKIP all three tests printing the reason in full, naming the cluster
+      version and the three role names required — a shape-D test that
+      passes because it skipped is how this precondition becomes fiction.
+    probe: >-
+      pytest backend/tests/db/test_migration_313_owner_bracket.py -rs
+  - text: >-
+      A4: WHEN the migration number and ROLLBACK-marker lints run against
+      the tree SHALL report zero violations (313 unique, marker present).
+    probe: >-
+      python3 scripts/lint_migration_numbers.py
+  - text: >-
+      A5: WHEN the deterministic gear floor is recomputed from this PR's
+      own changed-file set SHALL equal 3, matching the declared gear.
+    probe: >-
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file cf.txt --numstat-file ns.txt
+  - text: >-
+      A7: WHEN `test_visa_engine_retention_fk_registry.py` runs with this
+      migration in the tree SHALL pass, and the two visa_engine suites that
+      roll migration 264 back in their own fixtures
+      (test_shadow_match.py, test_evaluate_endpoint.py) SHALL pass with it,
+      and so SHALL test_shadow_evidence.py, a THIRD consumer that runs the
+      same unwind / rollback_264 / restore sequence in its own fixture —
+      named here because the first draft of this criterion claimed two
+      consumers and there are three (round O4, MINOR).
+      This criterion is here because its ABSENCE is what made CI red on the
+      first armed head — run 34685812662, job 103532640987 "Backend Shard 3"
+      on head ea7c2f7fb1, which says verbatim:
+      `asyncpg.exceptions.DependentObjectsStillExistError: cannot drop table
+      visa_decision_retention_policies because other objects depend on it /
+      DETAIL: constraint garuda_practice_artifacts_retention_policy_id_fkey
+      on table garuda_practice_artifacts depends on table
+      visa_decision_retention_policies`. Migration 313 adds the tenth FK onto
+      visa_decision_retention_policies, those fixtures unwind only the
+      dependents REGISTERED in conftest.py's
+      _GARUDA_VOA_RETENTION_FK_DEPENDENTS, and an unregistered table
+      survives the unwind and kills `rollback_264` with
+      DependentObjectsStillExistError — on files belonging to another
+      product entirely. The repo had already institutionalised the lesson;
+      the canary was simply not among this lane's targets.
+    probe: >-
+      ci_shape_pg.sh
+      backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py
+      backend/tests/services/visa_engine/test_shadow_match.py
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py
+      backend/tests/services/visa_engine/test_shadow_evidence.py
+  - text: >-
+      A8: WHEN the SECURITY DEFINER retention binder migration 313 creates,
+      `public.bind_garuda_practice_artifact_retention_policy()`, is present
+      in the tree SHALL also be present in BOTH of the preflight's
+      independently-maintained inventories —
+      operational_preflight.RETENTION_BINDING_TRIGGER_FUNCTIONS and the test
+      file's own CANONICAL_SENSITIVE_FUNCTIONS — so the live
+      `owner:<signature>` and `function:<role>:<signature>` checks name it.
+      This criterion exists because migration 285 is the same construct with
+      the same omission: its binder was left owned by the application role,
+      no inventory knew it existed, and POST /api/visa/voa/auth/magic-links
+      answered 500 from the day it shipped with zero tokens ever minted.
+      313's forward SQL already refuses to record itself as applied while the
+      owner is wrong — but that guard fires ONCE, at apply time; the
+      inventory is what keeps watching afterwards. Found in round O4 (MAJOR).
+      DECLARED LIMIT, not cured here: three sibling binders already on main
+      (281 legacy, 286, 304) are still absent from both inventories, and no
+      parity canary exists between these lists and the migrations that create
+      SECURITY DEFINER binders — the FK registry has one, this does not.
+      Registered in PENDING-ARMS rather than widened into this PR.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/scripts/visa_engine/test_operational_preflight.py
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py
+  - text: >-
+      A9: WHEN this file's tests have run against TEST_DATABASE_URL SHALL
+      leave visa_decision_retention_policies with exactly as many
+      TEST/GARUDA_DOCUMENT rows as it had before (zero on a fresh database),
+      so that a visa_engine file running afterwards on the same database can
+      execute unwind_garuda_voa_retention_fk — which runs 304's rollback and
+      re-narrows the policy_scope CHECK — without CheckViolationError. This
+      is gate-6287c's finding: the fixture closed the seeded policy but could
+      not delete it (append-only, 264), 15 rows survived, and CI was green
+      only because xdist --dist loadfile had placed this file and the
+      consumers on different database clones. Proven by (i) the fixture's own
+      exit tripwire, (ii) a reproduction test that runs the fixture
+      lifecycle then the real unwind/restore, (iii) the gate's full set run
+      in the breaking order on one database.
+    probe: >-
+      ci_shape_pg.sh
+      backend/tests/db/test_migration_313_garuda_practice_artifacts.py
+      backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py
+      backend/tests/services/visa_engine/test_shadow_match.py
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py
+      backend/tests/services/visa_engine/test_shadow_evidence.py
+      backend/tests/scripts/visa_engine/test_operational_preflight.py
+  - text: >-
+      A6 (Bites, post-merge): WHEN this PR merges — a backend merge IS the
+      deploy, release_command applies migrations — `_schema_versions` SHALL
+      gain row 313 applied_as `backend_rag_v2
+      (session_user=backend_rag_migrator)`, the same shape migration 304
+      has shown since 2026-09-12T05:20Z. A merged diff is not a live one;
+      this observation is made before the work is reported done.
+    probe: >-
+      scripts/pg.sh -A -F'|' -c "SELECT version, applied_as FROM
+      _schema_versions WHERE version = 313"
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 3
