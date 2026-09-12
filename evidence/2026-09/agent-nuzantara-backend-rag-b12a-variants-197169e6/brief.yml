@@ -1,0 +1,77 @@
+task_id: b12a-variants
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 70b43c5459 # pragma: allowlist secret
+mandate: B1
+generation: 4
+colour: BLUE
+pr: "B1.2 PR-A (successor of the closed #6266, variants half)"
+supersedes: >-
+  PR #6266, gate verdict BLOCK 2026-09-12T02:10Z (harness/fable-gate=failure on
+  1a7d34092848940805d43c747a126d6f0b0f5d9a). #6266 carried the variants AND the guard in one
+  PR; its counted churn was 2050 lines against the SIZE_GEAR3 threshold of 1828, so the
+  deterministic floor was 3 while the brief declared 2. Gear 3 was not the way — it demands an
+  evidence pack with non-empty receipts and dissent plus the canonical Gemini/Codex/Kimi
+  council, and the kimi and agy seats were TIMEOUT that day. The cure the staff room directed
+  is a SPLIT into two PRs from fresh origin/main, each gear 2 and each under the threshold.
+  This is PR-A. PR-B carries the guard. Merge order: A then B, because the guard's census reads
+  the variants.
+objective: >-
+  Re-base the nine historical "impossible cosine" abstain tripwires by ADDITION, never by edit
+  (README D3/D5): each original stays byte-identical and beside it a pipeline-derived variant
+  feeds the same query, context and assertions with sources minted from a registry of measured
+  cosines. The only real number that exists for these (query, context) texts is rc1a's
+  text-embedding-3-small cosine (prod rag container, 2026-09-10T18:03Z); no hybrid rank was
+  ever measured for them, so every variant declares the DENSE path (B1.1 inventory row 2,
+  score_kind dense_formatted, score_raw = cosine) and the score the REAL result_formatter
+  transform produces from it.
+constraints:
+  - >-
+    Tests only, additions only. Writable: tests/fixtures/pipeline_score_fixtures.py (new) and
+    the four existing tripwire test files. `git diff --numstat origin/main...HEAD` reports 0
+    deletions on every file. Nothing under backend/services/**, backend/core/**, no corner, no
+    zantara_core.py, no wa_codex_leg.py, no migration, no network, no embedding or generation
+    call.
+  - >-
+    The guard that pins this registry is NOT in this PR — it is PR-B, and it lands after this
+    one. That ordering is deliberate (the guard's census reads the variants), and it is the one
+    thing a reader should hold against this PR: between A merging and B merging, the registry is
+    unguarded. B is opened at the same time as A, not "later".
+  - >-
+    Assertions of every variant are identical to its original's (AST), and each variant body is
+    equivalent to its original except the sources literal.
+  - >-
+    Nothing is invented: only the cosines are measured (rc1a). No retrieval rank, list
+    membership, fusion or Qdrant server was ever measured for these texts, so dense_rank0 and
+    qdrant_server are None; formatter_collection, lists and fallback_path are declared
+    simulation inputs (the `simulated` field names them); row 9's source-to-chunk association is
+    unresolved. The tenth regression (a behaviour gap) and the eleventh (named by count, never
+    itemised) stay UNRESOLVED as B1.1's inventory recorded them.
+acceptance:
+  - text: >-
+      A1: WHEN the four touched tripwire files are run per file SHALL each pass at its
+      post-addition count (88 / 29 / 35 / 87 against the base 84 / 26 / 34 / 86), WHERE the nine
+      originals are preserved byte-identical and each added variant is assertion-identical to
+      its original.
+    probe: >-
+      pytest the four files per file on base and head: reasoning_utils 84 -> 88,
+      evidence_scoring_abstain 26 -> 29, abstain_bypass_policy 34 -> 35, reasoning 86 -> 87
+  - text: >-
+      A2: WHEN `git diff --numstat` is read against the merge base SHALL report 0 in the
+      deletions column for every changed file, so no original tripwire body or assertion was
+      edited.
+    probe: git diff --numstat origin/main...HEAD (deletions column 0 on every file)
+  - text: >-
+      A3 (innocence): WHEN the six B1 §4 files are run SHALL report their base counts or better.
+    probe: >-
+      test_evidence_cross_language 122 passed + 2 xfailed; test_evidence_scoring_abstain 29
+      (26 + 3 variants); test_wa_package_builder 29; test_wa_greeting 64;
+      test_curated_qa_government_fee_gate 21; test_wa_finalize 79
+assumptions:
+  - status: verified
+    text: >-
+      The two TestDetectTeamQuery failures seen when the four tripwire files run together in one
+      process are pre-existing and order-dependent: the same combination on a clean base
+      checkout reports 2 failed / 228 passed, and test_reasoning_utils.py alone passes on both
+      base and head.

@@ -52,9 +52,53 @@ def path_matches_template(path: str, template: str) -> bool:
     this shape to decide whether a refused path is a frozen-contract
     operation rather than an arbitrary descendant of its prefix.
 
-    Segment COUNT is what makes `/a/b/` and `/a//b` and `/a/b/c` all fail
-    against `/a/b`: `"".strip("/").split("/")` leaves an empty segment in the
-    double-slash case and drops one in the trailing-slash case.
+    What segment COUNT does and does not reject, measured rather than assumed
+    (the previous wording of this paragraph claimed `/a/b/` fails against
+    `/a/b`; it does not — Kimi K3 caught that by running this function,
+    second-reader review of #6235):
+
+      - `/a//b` FAILS against `/a/b` — the inner double slash survives
+        `strip("/")` and leaves an empty segment, so the counts differ (3 vs 2).
+      - `/a/b/c` FAILS against `/a/b` — one segment too many.
+      - `/a/b/` MATCHES `/a/b`, and so does `//a/b//`. `strip("/")` removes
+        leading and trailing slashes BEFORE splitting, so a trailing slash
+        never produces a segment. That is the long-standing behaviour of
+        every `match="template"` public entry, deliberately left unchanged
+        here: the path is CLASSIFIED as the slash-less operation, which is a
+        statement about THIS function and nothing else.
+
+        Whether the slash-less operation then SERVES it is a routing question
+        this function cannot answer, and no unit test here answers it either:
+        three adversarial rounds established that a test running in the same
+        process as the router it inspects cannot distinguish the contract's
+        operation from a counterfeit installed ahead of it. So the observable
+        half is pinned here — for two paths on `garuda_staff_router` and one on
+        `garuda_orders_router`,
+        `test_a_trailing_slash_answers_307_to_the_slash_less_path_with_the_same_envelope`
+        asserts a 307 to the slash-less path and an identical envelope, and
+        claims nothing about which route produced it — while the claim that
+        those paths ARE the frozen contract's operations is anchored where it
+        has an external reference:
+        `backend/tests/app/routers/test_garuda_voa_openapi_parity.py`, which
+        builds the schema from the deployed `main_api` singleton and compares
+        it operation by operation against the frozen `openapi.yaml`. It runs
+        on every PR inside the required backend shards (`tests.yml` ->
+        `scripts/ci/shard_tests.py`, which globs `backend/tests/**` with no
+        allowlist). Named here as the anchor, not re-proved here.
+
+        NOT `.github/workflows/garuda-contract-parity.yml`, whose NAME invites
+        exactly that mistake: it installs only pytest and pyyaml and its suite
+        (`products/garuda-voa/contracts/tests/`) never imports the app, so it
+        checks the frozen document against itself. That distinction is
+        measured, not assumed -- the parity file's own header records the
+        drift the misreading allowed (2026-08-24/25), and this paragraph named
+        the workflow before the gate on #6275 caught it. Registry-wide
+        behaviour is a ledger row (PENDING-ARMS, #6267 gate condition 2).
+
+        The matching itself is pinned both ways by
+        `test_path_matches_template_trailing_and_inner_slashes` in
+        `tests/unit/middleware/test_public_endpoints_registry.py`, so a
+        future change to it is a decision, not an accident.
     """
     template_parts = template.strip("/").split("/")
     path_parts = path.strip("/").split("/")
