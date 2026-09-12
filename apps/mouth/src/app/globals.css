@@ -517,13 +517,158 @@
   --bz-shell-header-shadow: 0 8px 30px rgba(64, 46, 30, 0.05);
 }
 
-/* My: warm paper, softer depth and more breathing room. */
+/* My: R19 paper. Warm paper ground, ink type, copper for "needs you" and
+   forest for "done" — four meanings, no red anywhere. Every declaration
+   below is a token the /portal/** screens already read (measured with
+   `grep -rhoE "var\(--(bz|tx|state|portal|kbli|background|foreground|surface|border)[a-z0-9-]*"`
+   over apps/mouth/src/app/portal + src/components/portal), so the R19
+   language arrives through the seam with no markup change. Scoped to
+   [data-product="my"]: kita and prime read their own blocks untouched.
+
+   Contrast measured (WCAG 2.1 relative luminance), text on paper #F7F4EE:
+   ink #1D2C3B 12.96:1 · muted #58626B 5.67:1 · copper #A44B36 5.26:1 ·
+   warning #8A5A2B 5.35:1 · forest #253E33 10.54:1 · slate #233D52 10.28:1;
+   paper #FFFCF7 on a forest button 11.3:1. All AA for body text.
+   --tx-tertiary and --bz-text-3 are deliberately NOT redeclared: they are
+   already `var(--tx-secondary)` aliases upstream, and R19's line-strong
+   #A8ACA9 measures 2.09:1 on paper — a line colour, not a text colour. */
 [data-theme="operative-light"][data-product="my"] {
-  --bz-shell-header-shadow: 0 10px 34px rgba(22, 33, 58, 0.06);
-  --bz-bottom-nav-bg: rgba(255, 255, 255, 0.9);
-  --bz-bottom-nav-border: rgba(22, 33, 58, 0.09);
-  --bz-bottom-nav-shadow: 0 -12px 32px rgba(22, 33, 58, 0.08);
-  --bz-bottom-nav-active: rgba(181, 99, 58, 0.1);
+  /* Surfaces — paper ground, warm-white elevated */
+  --bz-base: #f7f4ee;
+  --bz-elevated: #fffcf7;
+  --bz-card: #fffcf7;
+  --bz-card-hover: #f7f4ee;
+  --background: #f7f4ee;
+  --background-elevated: #fffcf7;
+  --surface-raised: #fffcf7;
+  --kbli-bg-base: #f7f4ee;
+  --kbli-bg-card: #fffcf7;
+
+  /* Type colour — ink and muted only */
+  --tx-pure: #1d2c3b;
+  --tx-primary: #1d2c3b;
+  --tx-secondary: #58626b;
+  --bz-text-1: #1d2c3b;
+  --bz-text-2: #58626b;
+  --foreground: #1d2c3b;
+  --foreground-muted: #58626b;
+  --kbli-text-primary: #1d2c3b;
+  --kbli-text-secondary: #58626b;
+  --kbli-text-muted: #58626b;
+
+  /* Lines — hairline, and line-strong only where a line is wanted */
+  --bz-border: #dad8d1;
+  --bz-border-hover: #a8aca9;
+  --bz-border-accent: rgba(164, 75, 54, 0.28);
+  --border: #dad8d1;
+  --kbli-border: #dad8d1;
+
+  /* Copper = needs you. Never a button fill (see block note above). */
+  --bz-copper: #a44b36;
+  --bz-copper-text: #a44b36;
+  --bz-accent: #a44b36;
+  --bz-accent-warm: #a44b36;
+  --bz-on-warm: #fffcf7;
+  --bz-focus-ring: #a44b36;
+  --bz-green: #253e33;
+
+  /* States — four meanings, no red: danger speaks copper */
+  --state-success: #253e33;
+  --state-warning: #8a5a2b;
+  --state-danger: #a44b36;
+  --state-info: #233d52;
+
+  /* Shell — hairline instead of a drop shadow */
+  --portal-header-bg: rgba(255, 252, 247, 0.86);
+  --bz-shell-header-shadow: none;
+  --bz-bottom-nav-bg: rgba(255, 252, 247, 0.94);
+  --bz-bottom-nav-border: #dad8d1;
+  --bz-bottom-nav-active: rgba(164, 75, 54, 0.1);
+  --bz-bottom-nav-shadow: none;
+  --bz-shadow-card: 0 10px 30px rgba(29, 44, 59, 0.045);
+
+  /* Type — Fraunces headlines, Manrope body. The faces are declared in
+     app/portal/r19-fonts.css. --bz-product-heading-font is NOT redeclared:
+     [data-product="my"] already resolves it through var(--font-serif). */
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  /* The base body rule pins "Inter" literally, so the sans token alone
+     cannot reach it. This descendant rule is the only non-custom-property
+     declaration in the block and stays behind the my qualifier. */
+  body {
+    font-family: var(--font-sans);
+  }
+}
+
+/* My, after dark. Same four meanings on an ink ground: copper lifts to
+   #c46a52 for text (4.98:1 on #121016, 4.57:1 on the card), forest lifts
+   through a paper mix so "done" stays legible, and danger is still copper.
+   Raw #a44b36 measures 3.27:1 on the dark base — kept for fills only. */
+[data-theme="operative-dark"][data-product="my"] {
+  /* Surfaces */
+  --bz-base: #121016;
+  --bz-elevated: #1a1a1f;
+  --bz-card: #1a1a1f;
+  --bz-card-hover: rgba(247, 244, 238, 0.07);
+  --background: #121016;
+  --background-elevated: #1a1a1f;
+  --surface-raised: #1a1a1f;
+  --kbli-bg-base: #121016;
+  --kbli-bg-card: #1a1a1f;
+
+  /* Type colour — paper on ink (17.21:1) */
+  --tx-pure: #f7f4ee;
+  --tx-primary: #f7f4ee;
+  --tx-secondary: rgba(247, 244, 238, 0.62);
+  --tx-tertiary: rgba(247, 244, 238, 0.45);
+  --bz-text-1: #f7f4ee;
+  --bz-text-2: rgba(247, 244, 238, 0.62);
+  --bz-text-3: rgba(247, 244, 238, 0.45);
+  --foreground: #f7f4ee;
+  --foreground-muted: rgba(247, 244, 238, 0.62);
+  --kbli-text-primary: #f7f4ee;
+  --kbli-text-secondary: rgba(247, 244, 238, 0.62);
+  --kbli-text-muted: rgba(247, 244, 238, 0.62);
+
+  /* Lines */
+  --bz-border: rgba(247, 244, 238, 0.12);
+  --bz-border-hover: rgba(247, 244, 238, 0.2);
+  --bz-border-accent: rgba(196, 106, 82, 0.35);
+  --border: rgba(247, 244, 238, 0.12);
+  --kbli-border: rgba(247, 244, 238, 0.12);
+
+  /* Copper = needs you; the fill stays raw, the text lifts */
+  --bz-copper: #a44b36;
+  --bz-copper-text: #c46a52;
+  --bz-accent: #c46a52;
+  --bz-accent-warm: #a44b36;
+  --bz-on-warm: #f7f4ee;
+  --bz-focus-ring: #c46a52;
+  --bz-green: color-mix(in srgb, #253e33 40%, #f7f4ee);
+
+  /* States */
+  --state-success: color-mix(in srgb, #253e33 40%, #f7f4ee);
+  --state-warning: color-mix(in srgb, #8a5a2b 45%, #f7f4ee);
+  --state-danger: #c46a52;
+  --state-info: color-mix(in srgb, #233d52 40%, #f7f4ee);
+
+  /* Shell */
+  --portal-header-bg: rgba(18, 16, 22, 0.86);
+  --bz-shell-header-shadow: none;
+  --bz-bottom-nav-bg: rgba(18, 16, 22, 0.94);
+  --bz-bottom-nav-border: rgba(247, 244, 238, 0.12);
+  --bz-bottom-nav-active: rgba(164, 75, 54, 0.22);
+  --bz-bottom-nav-shadow: none;
+  --bz-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.32);
+
+  /* Type */
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  body {
+    font-family: var(--font-sans);
+  }
 }
 
 [data-theme="operative-light"] .glass-panel-deep {

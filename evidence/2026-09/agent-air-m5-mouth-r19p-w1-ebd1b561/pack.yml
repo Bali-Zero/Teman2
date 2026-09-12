@@ -1,0 +1,230 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19p-w1-ebd1b561/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: R19P-W1
+    role: build
+    seat: Claude Opus 5 (1M context) — Dux of window r19p-w1, implements directly
+pii_scan: clean
+decisions:
+  - id: D1
+    decision: >-
+      The brief asked for --tx-tertiary: #A8ACA9 (R19 line-strong). Measured, that colour
+      is 2.09:1 on paper #F7F4EE — it fails AA for text by a wide margin, and the portal
+      reads --tx-tertiary on six text sites. Neither --tx-tertiary nor --bz-text-3 is
+      redeclared in the light block: both are already `var(--tx-secondary)` aliases in the
+      operative-light root, so they follow the R19 muted #58626B (5.67:1) automatically and
+      the tier count is unchanged from today. #A8ACA9 is used where it belongs, as
+      --bz-border-hover (a line, not a text colour).
+  - id: D2
+    decision: >-
+      Primary buttons in the portal do NOT read --bz-accent; they fill with
+      var(--bz-copper-text) (apps/mouth/src/app/portal/{login-upgraded,magic,magic-link}/page.tsx).
+      Per the window contract that mapping is left to a later window, so --bz-accent is set to
+      copper #A44B36 (its consumers — PracticeBaton's "demands attention" foreground,
+      the process-page progress fill, PortalNewsRail — are accent marks, not buttons) rather
+      than forest. Consequence recorded in leftovers: until the button mapping moves, R19's
+      "copper is never a button fill" is violated on the auth screens.
+  - id: D3
+    decision: >-
+      --bz-product-heading-font is NOT redeclared. The pre-existing [data-product="my"] block
+      already defines it as `var(--font-serif), Georgia, serif`, and custom-property
+      substitution resolves it on the same <html> element against the winning --font-serif —
+      verified in the browser as "Fraunces, ui-serif, Georgia, serif, Georgia, serif".
+      Two declarations saved, one source of truth kept.
+  - id: D4
+    decision: >-
+      The brief says to set "the sans variable the body reads". Grounded: the body rule in
+      globals.css pins the literal string "Inter", -apple-system, ... — it reads no variable,
+      so the token alone could never reach it. The blocks therefore carry ONE nested
+      `body { font-family: var(--font-sans); }` rule each. It is the only non-custom-property
+      declaration in either block and it stays behind the [data-product="my"] qualifier, so
+      A6 holds. Verified in the browser — computed body font-family is
+      "Manrope, ui-sans-serif, system-ui, sans-serif" on /portal/login.
+  - id: D5
+    decision: >-
+      Dark-theme values that R19 does not name are derived from R19 hexes rather than invented:
+      "done/healthy", "waiting" and "info" lift through color-mix(in srgb, <R19 hex> 40-45%, #F7F4EE)
+      so they stay legible on the #121016 ground, and translucent paper (rgba(247,244,238,α))
+      carries the muted text and hairline tiers. No hex outside the R19 set appears in either block.
+  - id: D6
+    decision: >-
+      The brief's A4 prescribed a Playwright addInitScript to stamp data-product="my" because
+      "the login page does not set data-product today". Measured, that premise is false: the
+      pre-paint themeInitScript in apps/mouth/src/app/layout.tsx already assigns
+      product = 'my' for any path starting /portal/. The screenshots were taken with NO
+      injection, and the probe read product="my", theme="operative-light" off the live document.
+receipts:
+  - claim: The worktree is the broker's, on the window's own branch, and the only writable surface used.
+    cmd: python3 /Users/balizero/nuzantara/scripts/agent_start.py --lane mouth --task-id r19p-w1 ; git -C <wt> rev-parse --abbrev-ref HEAD
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-r19p-w1 ; branch agent/air-m5/mouth/r19p-w1"
+    exit: 0
+    ts: "2026-09-12T18:39:00Z"
+    seat: Claude Opus 5
+  - claim: Which tokens the portal actually consumes — the block sets only these, nothing invented.
+    cmd: grep -rhoE "var\(--(bz|tx|state|portal)-[a-z0-9-]+" apps/mouth/src/app/portal apps/mouth/src/components/portal | sort | uniq -c | sort -rn ; same for (kbli|background|foreground|surface|border)
+    result: >-
+      Top consumers — --bz-border 215, --bz-text-2 149, --tx-secondary 145, --state-danger 129,
+      --bz-copper 109, --bz-copper-text 101, --bz-card 98, --state-warning 89, --state-success 89,
+      --tx-pure 84, --bz-accent-warm 41, --tx-primary 40, --bz-text-1 40, --bz-text-3 38,
+      --bz-base 34, --state-info 33, --bz-on-warm 23, --bz-elevated 11, --bz-accent 7,
+      --tx-tertiary 6, --bz-bottom-nav-active 4, --bz-border-accent 4, --bz-green 3,
+      --bz-card-hover 3, --bz-border-hover 3, --bz-focus-ring 2, --bz-product-heading-font 2,
+      --portal-header-bg 1, --bz-shell-header-shadow 1, --bz-bottom-nav-{bg,border,shadow} 1 each.
+      Second grep — --kbli-text-muted 17, --kbli-text-secondary 13, --kbli-text-primary 10,
+      --kbli-border 10, --surface-raised 8, --foreground 5, --background-elevated 3,
+      --kbli-bg-card 2, --foreground-muted 2, --border 1.
+    exit: 0
+    ts: "2026-09-12T18:41:00Z"
+    seat: Claude Opus 5
+  - claim: The font binaries are byte-identical to the R19 source blobs and to the independent ground copies.
+    cmd: git cat-file -s origin/codex/website-r19-integrated:apps/website/public/fonts/{fraunces,manrope}/*-variable.ttf ; stat -f '%z' on the extracted files ; md5 -q worktree vs /Users/balizero/Desktop/R19-PORTAL-RENDERS-20260912/00-ground/fonts/
+    result: >-
+      blob sizes 360440 / 165420 = on-disk sizes 360440 / 165420 ;
+      md5 df89c7ab0af2020b3949cf8a4bece47a (fraunces) and c329d9ac3c7bdb891ffa10296eadc08f (manrope)
+      identical in both locations. OFL licences 4391 and 4384 bytes shipped alongside.
+    exit: 0
+    ts: "2026-09-12T18:47:00Z"
+    seat: Claude Opus 5
+  - claim: A2 — no red hex anywhere in the diff, and the block sizes match the precedent set by the kita block.
+    cmd: git diff -U0 | grep -nEi '#(d91e3f|ff2d4c|e11d48|dc2626|ef4444)' | wc -l ; awk block extraction | grep -cE '^\s+--[a-z-]+:'
+    result: "0 red hits. Light my block 42 declarations, dark my block 43, against the [data-theme=operative-light][data-product=kita] precedent of 41."
+    exit: 0
+    ts: "2026-09-12T19:44:00Z"
+    seat: Claude Opus 5
+  - claim: A6 — kita is untouched; the occurrence count of data-product="kita" in globals.css is the same as on origin/main.
+    cmd: grep -c 'data-product="kita"' apps/mouth/src/app/globals.css ; git show origin/main:apps/mouth/src/app/globals.css | grep -c 'data-product="kita"'
+    result: '2 in the working tree, 2 on origin/main. Every declaration added sits inside a selector carrying [data-product="my"].'
+    exit: 0
+    ts: "2026-09-12T18:58:00Z"
+    seat: Claude Opus 5
+  - claim: >-
+      Contrast, computed from WCAG 2.1 relative luminance — every R19 text pairing this window
+      ships is AA for body text.
+    cmd: python3 scratchpad/contrast.py (relative-luminance implementation of WCAG 2.1 SC 1.4.3)
+    result: >-
+      On paper #F7F4EE — ink #1D2C3B 12.96:1 ; muted #58626B 5.67:1 ; copper #A44B36 5.26:1 ;
+      warning #8A5A2B 5.35:1 ; forest #253E33 10.54:1 ; slate #233D52 10.28:1 ;
+      line-strong #A8ACA9 2.09:1 (FAILS — hence D1, it is not used as a text colour).
+      On surface #FFFCF7 — copper 5.64:1, muted 6.08:1. Paper #FFFCF7 on a forest button 11.3:1.
+      On dark base #121016 — paper #F7F4EE 17.21:1 ; copper-light #C46A52 4.98:1 (4.57:1 on the
+      #1A1A1F card) ; raw copper #A44B36 3.27:1, which is why the dark block keeps #A44B36 for
+      fills and lifts text to #C46A52.
+    exit: 0
+    ts: "2026-09-12T18:53:00Z"
+    seat: Claude Opus 5
+  - claim: A3 — typecheck green.
+    cmd: PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm -F mouth typecheck
+    result: "tsc --noEmit, exited with code 0. (The plain `pnpm -F mouth typecheck` first refused with ERR_PNPM_UNSAFE_MODULES_DIR because the broker symlinks node_modules out of the worktree; the env var skips the dep-status check, it does not skip the typecheck.)"
+    exit: 0
+    ts: "2026-09-12T19:26:00Z"
+    seat: Claude Opus 5
+  - claim: A3 — the portal test suites are green, including apps/mouth/src/app/portal/layout.test.tsx which covers the file that gained the import line.
+    cmd: cd apps/mouth && npx vitest --run src/app/portal
+    result: "Test Files 38 passed (38) ; Tests 232 passed (232) ; duration 241.32s."
+    exit: 0
+    ts: "2026-09-12T19:07:00Z"
+    seat: Claude Opus 5
+  - claim: Lint and formatting accept the change.
+    cmd: cd apps/mouth && npx eslint src/app/portal/layout.tsx src/app/globals.css src/app/portal/r19-fonts.css ; npx prettier --write on the three files
+    result: "eslint 0 errors (2 warnings, both 'File ignored because no matching configuration was supplied' for the two .css files — eslint does not lint CSS here). prettier reported all three files 'unchanged'."
+    exit: 0
+    ts: "2026-09-12T19:05:00Z"
+    seat: Claude Opus 5
+  - claim: >-
+      A4 — the seam is live in a real browser. Every R19 token resolves on <html>, both faces
+      report loaded, and the body genuinely renders in Manrope on the R19 paper ground.
+    cmd: next dev --webpack -p 3197 in the worktree ; playwright (channel chrome) goto http://localhost:3197/portal/login, read documentElement dataset + getComputedStyle, document.fonts.check
+    result: >-
+      dataset product="my" theme="operative-light" with NO injection (see D6).
+      --font-serif "Fraunces", ui-serif, Georgia, serif ; --font-sans "Manrope", ui-sans-serif,
+      system-ui, sans-serif ; --bz-base #f7f4ee ; --bz-card #fffcf7 ; --tx-pure #1d2c3b ;
+      --tx-secondary #58626b ; --bz-copper-text #a44b36 ; --state-success #253e33 ;
+      --state-danger #a44b36 ; --state-warning #8a5a2b ; --state-info #233d52 ;
+      --bz-border #dad8d1 ; --kbli-bg-base #f7f4ee ;
+      --bz-product-heading-font "Fraunces", ui-serif, Georgia, serif, Georgia, serif.
+      computed body font-family "Manrope, ui-sans-serif, system-ui, sans-serif" ;
+      body background rgb(247, 244, 238). document.fonts.check Fraunces true, Manrope true.
+      A probe node styled font-family:var(--font-serif) — the exact form every authenticated
+      portal heading uses — computes to "Fraunces, ui-serif, Georgia, serif".
+    exit: 0
+    ts: "2026-09-12T19:35:00Z"
+    seat: Claude Opus 5
+  - claim: >-
+      A4 — painted proof. /portal/register renders the R19 ground and accents at 1440 and 390;
+      /portal/login paints its controls in R19 but its viewport screenshot comes out empty.
+    cmd: playwright screenshot fullPage at 1440x900 and 390x844, deviceScaleFactor 2, into /Users/balizero/Desktop/R19-PORTAL-RENDERS-20260912/build/r19p-w1/
+    result: >-
+      portal-register-1440.png and portal-register-390.png show paper #F7F4EE ground, a copper
+      #A44B36 spinner and Manrope body text in muted #58626B — the seam, painted.
+      portal-login-1440.png / -390.png render the paper ground only: the login screen's own
+      entrance treatment leaves its content unpainted in headless Chrome even with
+      reducedMotion:"reduce" and a 9s settle, though the DOM is there and measures R19 —
+      h1 colour rgb(164,75,54), input ink rgb(29,44,59) on rgb(247,244,238), submit button
+      rgb(164,75,54) with rgb(255,252,247) text, all three in Manrope. Recorded as a leftover,
+      not cured: curing it would mean touching a .tsx outside this window's perimeter.
+    exit: 0
+    ts: "2026-09-12T19:40:00Z"
+    seat: Claude Opus 5
+  - claim: A5 — both faces are served by the app itself, with the byte count they have on disk.
+    cmd: curl -sI http://localhost:3197/fonts/fraunces-variable.ttf ; same for manrope ; stat -f '%z' on both
+    result: "HTTP/1.1 200 OK, Content-Type font/ttf, Content-Length 360440 (fraunces) and 165420 (manrope) — equal to the on-disk sizes."
+    exit: 0
+    ts: "2026-09-12T19:33:00Z"
+    seat: Claude Opus 5
+  - claim: A1 — the branch touches only its perimeter plus this evidence pair.
+    cmd: git -C <wt> diff --stat ; git ls-files --others --exclude-standard
+    result: >-
+      modified apps/mouth/src/app/globals.css (+151 -6) and apps/mouth/src/app/portal/layout.tsx (+2 -0) ;
+      new apps/mouth/src/app/portal/r19-fonts.css (33 lines), apps/mouth/public/fonts/fraunces-variable.ttf,
+      manrope-variable.ttf, fraunces-OFL.txt (93 lines), manrope-OFL.txt (93 lines).
+      No .tsx beyond the one import line, no packages/core, no tailwind config, no root layout,
+      no other CSS block, no PENDING-ARMS.md.
+    exit: 0
+    ts: "2026-09-12T19:45:00Z"
+    seat: Claude Opus 5
+dissent:
+  - seat: Claude Opus 5 (self-adversarial, on the window brief itself)
+    objection: >-
+      The brief prescribes --tx-tertiary: #A8ACA9. Shipping it would push six portal text sites
+      to 2.09:1 on paper — an accessibility regression dressed as a design token, in a file whose
+      own comments record AA work on every prior pass.
+    status: CONFIRMED
+    cure: "D1 — the alias is left in place so tertiary follows R19 muted #58626B at 5.67:1; #A8ACA9 ships as the hairline-hover colour it actually is."
+  - seat: Claude Opus 5 (self-adversarial)
+    objection: >-
+      The brief's mandate says "the token seam alone does it", but the body font-family is a
+      literal "Inter" string in globals.css. A pure-token block would have left every portal
+      body text in Inter and the claim "renders in R19 type" would have been false.
+    status: CONFIRMED
+    cure: "D4 — one nested body rule per block, behind the my qualifier; verified as computed Manrope in the browser."
+  - seat: Claude Opus 5 (self-adversarial)
+    objection: >-
+      A4 asked for Fraunces glyphs on /portal/login. The login screen pins its serif with a
+      next/font className (cormorant), which no custom property can outrank, so the headline
+      there is still Cormorant after this window.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured — the fix is a .tsx edit outside this window's perimeter. What IS proved instead:
+      the face loads (document.fonts.check true), --font-serif computes to Fraunces on <html>,
+      and a node written exactly as the authenticated portal headings are written
+      (style={{fontFamily:"var(--font-serif)"}}) computes to Fraunces. Every authenticated
+      portal headline — dashboard, chat, messages, family, settings, settings/notifications —
+      is written that way and therefore turns Fraunces with this merge.
+    status_note: recorded as a leftover for the window that owns the auth screens
+  - seat: Claude Opus 5 (self-adversarial)
+    objection: >-
+      Setting --bz-copper-text to copper keeps the auth screens' primary buttons filled with
+      copper, and R19 says copper is never a button fill.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured by design — the window contract assigns the button mapping to a later window
+      (D2). The measurement is in the pack so the next window does not have to rediscover it:
+      the fill comes from var(--bz-copper-text), not from --bz-accent.
+leftovers:
+  - The auth screens (login-upgraded, magic, magic-link) fill their primary button with var(--bz-copper-text); under R19 that button should read forest #253E33. The button mapping belongs to the window that owns those screens.
+  - /portal/login-upgraded pins its display serif with a next/font className (cormorant), so its headline does not follow --font-serif. Only a .tsx edit can move it to Fraunces.
+  - /portal/login renders blank in headless Chrome (its own entrance treatment); the DOM measures R19 correctly. A page-level proof for that screen needs the window that owns it.
+  - PortalNotifications.tsx hardcodes color "#0c0c0e" on a var(--bz-accent-warm) fill; with accent-warm now copper that pairing is 4.2:1 and should move to --bz-on-warm.
+  - The dark [data-product="my"] block ships unrendered — no /portal route was screenshotted under operative-dark in this window's time box.
+  - The mocks' 48px control / 52px input / 0.25rem-0.5rem radius geometry and the single next-move-card shadow are component-level and belong to the later windows; only --bz-shadow-card was retuned here.
