@@ -405,3 +405,80 @@ class TestTheWiringActuallyRuns:
         assert getattr(app.state, "garuda_check_store", None) is None, (
             "with no pool the adapters must stay unset and the routes fail closed"
         )
+
+    @pytest.mark.asyncio
+    async def test_calling_the_wiring_puts_a_real_artifact_service_on_app_state(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sol finding F2 (BLOCKER): `garuda_orders_router.py::get_artifact_
+        service` and `garuda_staff_router.py::get_artifact_service` both read
+        `app.state.garuda_artifact_service`, and before the cure nothing in
+        production ever assigned it — every artifact endpoint (customer GET,
+        staff GET, staff PUT) 503'd forever. This calls the REAL production
+        wiring function with synthetic env vars (never a real credential —
+        Builder Contract §3) and asserts the REAL service lands, the same
+        shape `test_calling_the_wiring_puts_real_adapters_on_app_state` above
+        already uses for the other six adapters. No fixture injects the
+        service here — a test that injects and then asserts presence would
+        prove nothing about the wiring itself.
+        """
+        from fastapi import FastAPI
+
+        from backend.app.setup.service_initializer import initialize_garuda_services
+        from backend.services.garuda_artifacts.service import GarudaArtifactService
+
+        # Synthetic only — a fake bucket name and obviously-fake key ids,
+        # never a real credential. `TigrisArtifactObjectStore.__init__`
+        # only checks presence (`bool(os.environ.get(...))`) at this point;
+        # it never makes a network call, so no real Tigris account is
+        # needed for this test to construct the real client.
+        monkeypatch.setenv("GARUDA_ARTIFACTS_BUCKET", "test-bucket")
+        monkeypatch.setenv("GARUDA_ARTIFACTS_ACCESS_KEY_ID", "test-fake-access-key-id")
+        monkeypatch.setenv("GARUDA_ARTIFACTS_SECRET_ACCESS_KEY", "test-fake-secret-access-key")
+
+        app = FastAPI()
+        await initialize_garuda_services(app, None)
+
+        service = getattr(app.state, "garuda_artifact_service", None)
+        assert service is not None, (
+            "initialize_garuda_services ran with the artifact bucket's env vars "
+            "set and left garuda_artifact_service unset — this is the exact "
+            "condition that made every artifact endpoint 503 forever"
+        )
+        assert isinstance(service, GarudaArtifactService)
+
+    @pytest.mark.asyncio
+    async def test_the_artifact_service_stays_unset_without_its_own_env_vars(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`TigrisArtifactObjectStore` is FAIL-CLOSED, OWN CREDENTIALS (see its
+        own module docstring): it deliberately refuses to fall back to the
+        public bucket's credentials, so absent its four env vars this must
+        leave the slot unset — not `None`, not a half-built service — the
+        same fail-closed shape `test_it_never_raises_when_there_is_no_pool`
+        above asserts for `garuda_check_store`. Boot safety, executed rather
+        than argued: this must not raise either.
+
+        `delenv(..., raising=False)` for all three required vars, same
+        defensive pattern `test_tigris_store.py` already uses — this test's
+        premise (the vars are absent) must not depend on what happens to be
+        ambient in whichever environment runs it.
+        """
+        for env_var in (
+            "GARUDA_ARTIFACTS_BUCKET",
+            "GARUDA_ARTIFACTS_ACCESS_KEY_ID",
+            "GARUDA_ARTIFACTS_SECRET_ACCESS_KEY",
+        ):
+            monkeypatch.delenv(env_var, raising=False)
+
+        from fastapi import FastAPI
+
+        from backend.app.setup.service_initializer import initialize_garuda_services
+
+        app = FastAPI()
+        await initialize_garuda_services(app, None)  # must not raise
+
+        assert getattr(app.state, "garuda_artifact_service", None) is None, (
+            "without GARUDA_ARTIFACTS_* env vars the artifact service must "
+            "stay unset so both routers' get_artifact_service fails closed"
+        )

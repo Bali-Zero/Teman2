@@ -1524,6 +1524,77 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
         "not merged yet for garuda_documents — see garuda_documents_router.py docstring)"
     )
 
+    # 5.9 GARUDA VOA — artifact service wiring (Sol finding F2, BLOCKER;
+    # scar family #2 "Esiste≠Armato"). `garuda_orders_router.py::
+    # get_artifact_service` and `garuda_staff_router.py::get_artifact_
+    # service` both read `app.state.garuda_artifact_service` (see either
+    # docstring) -- nothing in production ever assigned it: every
+    # assignment lived under `backend/tests/`. So every artifact endpoint
+    # (customer GET, staff GET, staff PUT) answered 503 SERVICE_UNAVAILABLE
+    # forever, on every environment, from the moment those routers merged.
+    # Verified: `grep -rn "garuda_artifact_service" backend --include=
+    # "*.py" | grep -v /tests/` returned only the two `getattr` reads.
+    #
+    # Unconditional, like 5.5b/5.8 above and UNLIKE 5.5/5.6/5.7 -- this is
+    # a deliberate divergence from those, not an oversight: unlike
+    # `PostgresCheckStore`/`GarudaOrderRepository`, `PostgresArtifactRepository`
+    # takes NO pool at construction (`ArtifactRepositoryPort`'s own
+    # docstring: "never acquires its own connection... the caller's
+    # `pool.acquire()` ... is the unit of atomicity, not this port"); both
+    # routers already acquire their own connection off `garuda_db_pool`
+    # (wired at 5.5 above) per request and pass it into the service's
+    # methods. So this block needs no `db_pool` of its own and gating it
+    # on one would only add a false dependency.
+    #
+    # The real gate is `TigrisArtifactObjectStore`'s OWN four env vars,
+    # which it deliberately refuses to substitute with the public
+    # bucket's credentials (see that class's docstring, "FAIL-CLOSED, OWN
+    # CREDENTIALS") -- constructing it raises `GarudaArtifactsStoreUnavailable`
+    # rather than silently falling back. On that failure this block leaves
+    # `app.state.garuda_artifact_service` UNSET (never assigned `None`):
+    # both routers' `get_artifact_service` already do
+    # `getattr(request.app.state, "garuda_artifact_service", None)` and
+    # 503 on `None`, so an absent attribute and an assigned `None` produce
+    # the identical fail-closed response -- unset is simply the shape
+    # every other non-critical block in this function already uses.
+    try:
+        from backend.services.garuda_artifacts.postgres_repository import (
+            PostgresArtifactRepository,
+        )
+        from backend.services.garuda_artifacts.service import GarudaArtifactService
+        from backend.services.garuda_artifacts.tigris_store import (
+            GarudaArtifactsStoreUnavailable,
+            TigrisArtifactObjectStore,
+        )
+
+        # Same env-var-with-default convention 5.5/5.6/5.7 already use.
+        garuda_environment_for_artifacts = (
+            os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
+        )
+        garuda_artifact_object_store = TigrisArtifactObjectStore()
+        app.state.garuda_artifact_service = GarudaArtifactService(
+            repository=PostgresArtifactRepository(),
+            object_store=garuda_artifact_object_store,
+            environment=garuda_environment_for_artifacts,
+        )
+        logger.info("✅ GARUDA VOA artifact service wired")
+    except GarudaArtifactsStoreUnavailable as e:
+        # `str(e)` is safe to log verbatim here: `TigrisArtifactObjectStore.
+        # __init__` builds this exact message from `', '.join(missing)` --
+        # env var NAMES only, never a value, never a credential (Builder
+        # Contract §3).
+        logger.warning(
+            "⚠️ GARUDA VOA artifact service wiring skipped (non-critical, "
+            "customer/staff artifact routes fail closed): %s",
+            e,
+        )
+    except Exception as e:
+        logger.warning(
+            "⚠️ GARUDA VOA artifact service wiring failed (non-critical, "
+            "artifact routes fail closed): %s",
+            e,
+        )
+
 
 async def initialize_services(app: FastAPI) -> None:
     """
