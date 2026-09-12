@@ -520,3 +520,29 @@ measured_on_the_successor:
     (54 before F1b).
   full_suites: "5119 passed, 42 skipped, 7 xfailed, 0 failed, 0 error — one more than #6326's 5118, which is F1b."
   read_how: "from the task's RAW .output file, never from the background wrapper's exit code."
+council_delta_on_the_successor:
+  state: NOT RUN
+  what_was_asked: >-
+    Both counted seats were asked for a SHORT delta review of the successor
+    diff only — "does this delta answer the finding you raised, or restate it,
+    and is anything in it newly wrong" — not a re-review of what they had
+    already cleared.
+  what_happened: >-
+    The dispatcher acknowledged the request and then produced no seat output.
+    Measured, not assumed: `ps -eo pid,etime,command | grep -E "codex exec|kimi"`
+    returns NOTHING on this machine, so no delta process is in flight, and the
+    dispatcher did not answer which of the three states was true (returned /
+    died / never launched) when asked directly. The FIRST round did run and is
+    fully recorded — Codex 312 s REQUEST_CHANGES with 7 findings, Kimi K3 350 s
+    with git archaeology — and every finding either cured here or named as
+    carried. What is missing is only the confirmation pass on the cure.
+  ruled: >-
+    The imperator ruled not to hold the ship for it (Gear 2, no quorum
+    required; the grader is the fresh independent gate). If either seat returns
+    later its lines go in a PR COMMENT or the ledger row — never a commit on
+    an armed branch.
+  honest_consequence: >-
+    So the cures in this PR were verified by the Dux reproducing each finding
+    on disk BEFORE curing it, and by the gate that follows — not by the seats
+    that raised them. That is weaker than a confirmed delta and it is said
+    here rather than left to be discovered.
