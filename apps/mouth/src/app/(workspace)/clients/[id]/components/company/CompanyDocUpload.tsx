@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef } from "react";
 import { Loader2, Upload, Download, Eye, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { fileToBase64 } from "@/lib/utils";
+import { useOcrPolling } from "@/hooks/useOcrPolling";
 import type { CompanyDocument } from "@/lib/api/crm/crm.types";
 
 export function CompanyDocUpload({
@@ -28,48 +29,18 @@ export function CompanyDocUpload({
   onUploaded?: () => void;
 }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [ocrPolling, setOcrPolling] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const ocrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ocrAbortedRef = useRef(false);
-  const onUploadedRef = useRef(onUploaded);
-  onUploadedRef.current = onUploaded;
 
-  useEffect(() => {
-    ocrAbortedRef.current = false;
-    return () => {
-      ocrAbortedRef.current = true;
-      if (ocrTimerRef.current) clearTimeout(ocrTimerRef.current);
-    };
-  }, []);
-
-  const pollOcrStatus = useCallback(async () => {
-    setOcrPolling(true);
-    let attempts = 0;
-    const poll = async () => {
-      if (ocrAbortedRef.current) return;
-      try {
-        const status = (await api.request(
-          `/api/crm/clients/${clientId}/ocr-status`,
-        )) as {
-          pending_ocr: number;
-        };
-        if (status.pending_ocr === 0 || attempts >= 10) {
-          if (!ocrAbortedRef.current) {
-            setOcrPolling(false);
-            onUploadedRef.current?.();
-          }
-          return;
-        }
-        attempts++;
-        ocrTimerRef.current = setTimeout(poll, 3000);
-      } catch {
-        if (!ocrAbortedRef.current) setOcrPolling(false);
-      }
-    };
-    ocrTimerRef.current = setTimeout(poll, 2000);
-  }, [clientId]);
+  // NOTE: callOnDoneOnError=false / awaitOnDone=false reproduce this copy's
+  // original behaviour — onUploaded is optional, fire-and-forget, and was
+  // never called on the error path. Not changed here (no behaviour change).
+  const { ocrPolling, pollOcrStatus } = useOcrPolling({
+    clientId,
+    onDone: () => onUploaded?.(),
+    callOnDoneOnError: false,
+    awaitOnDone: false,
+  });
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
