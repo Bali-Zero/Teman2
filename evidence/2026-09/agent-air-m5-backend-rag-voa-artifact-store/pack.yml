@@ -129,6 +129,34 @@ receipts:
     exit: 0
     ts: "2026-09-12T14:50:14Z"
     seat: claude-opus-5 (build)
+  - probe: A9
+    claim: >-
+      Bites, observed on the promoted commit and not inferred from "PR
+      merged": the package imports inside the api container, the endpoint
+      and ceiling are the pinned ones, the production constructor takes no
+      client, `key_ref` lives on the port, all four scoped env vars are
+      absent (presence only, no value printed) and construction is REFUSED
+      naming the variables -- the fail-closed branch S2b will wire.
+    cmd: >-
+      fly ssh console -a nuzantara-rag --machine 7817d92c4117d8 -C "sh -c
+      '<base64 read-only script -- import garuda_artifacts, print
+      names/endpoint/ceiling/init signature/key_ref/env presence, try
+      construct>'"
+    result: >-
+      "names ['annotations', 'models', 'ports', 'tigris_store']; endpoint
+      https://fly.storage.tigris.dev ceiling 10485760; init_sig (self) ->
+      'None'; key_ref_on_port 2d711642b726; env_presence {BUCKET: unset,
+      ACCESS_KEY_ID: unset, SECRET_ACCESS_KEY: unset, ENDPOINT_URL: unset};
+      refused: garuda artifacts store: missing env var(s)
+      GARUDA_ARTIFACTS_BUCKET, GARUDA_ARTIFACTS_ACCESS_KEY_ID,
+      GARUDA_ARTIFACTS_SECRET_ACCESS_KEY -- re[fusing to fall back...]" --
+      PR #6334 merged eff08f2394 at 15:24:57Z; /health build_sha
+      c7cc6db48b (contains eff08f2394 by `git merge-base --is-ancestor`)
+      served from 15:44:32Z, machines api 7817d92c4117d8 / rag
+      1781e5eda03438 at v4436; deploy run 34702160669.
+    exit: 0
+    ts: "2026-09-12T15:45:18Z"
+    seat: claude-opus-5 (build)
 guilt_mutations:
   - target: tigris_store.py — the env gate (A2)
     mutation: "`if missing:` -> `if False and missing:` so a missing scoped variable no longer refuses construction."
