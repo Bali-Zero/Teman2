@@ -555,7 +555,7 @@ class TestGetPracticeArtifactCustomer:
 
         async with pool.acquire() as conn:
             # Replace the fixture's 30-day GARUDA_DOCUMENT policy with a
-            # short one. Migration 312's own INSERT trigger
+            # short one. Migration 313's own INSERT trigger
             # (`bind_garuda_practice_artifact_retention_policy`) REFUSES to
             # insert a row whose computed `retention_until` is already in
             # the past ("retention deadline has already elapsed") -- so a
@@ -726,7 +726,7 @@ class TestGetPracticeArtifactCustomer:
         """Guilt test for finding F3 (Sol O1 refutation, 2026-09-11): put
         while Approved, let the artifact age past a short retention
         interval (same manufacturing technique `test_past_retention_is_404`
-        uses -- migration 312's INSERT trigger refuses to insert an
+        uses -- migration 313's INSERT trigger refuses to insert an
         already-expired row, so the row must age after insert), then submit
         PR-11 with the ORIGINAL, correct pair. BEFORE the cure (`get_live_
         for_practice_locked` had no `retention_until > clock_timestamp()`

@@ -1,4 +1,4 @@
-"""Execute migration 312's retention binder and guard trigger against a live
+"""Execute migration 313's retention binder and guard trigger against a live
 Postgres -- same discipline as `test_migration_310_practice_status_log_
 trigger.py`: the defect PENDING-ARMS row 1847 names ("the staff transition
 engine records OPAQUE evidence/artifact ids and never verifies their
@@ -10,7 +10,7 @@ INSERT/UPDATE/DELETE.
 
 Idempotent re-application (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE
 FUNCTION`, `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER`) is what makes this
-safe to run BOTH against CI's freshly-`apply-all`'d database (where 312 is
+safe to run BOTH against CI's freshly-`apply-all`'d database (where 313 is
 already live) and against a developer machine whose local copy is behind --
 same reasoning 310's own test gives for why applying is deliberate rather
 than skipped.
@@ -29,7 +29,7 @@ import pytest
 from backend.db.migration_base import split_migration_sql
 
 MIGRATION = (
-    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "312_garuda_practice_artifacts.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "313_garuda_practice_artifacts.sql"
 )
 
 TEST_DSN = os.environ.get("TEST_DATABASE_URL")
@@ -78,10 +78,10 @@ def test_both_halves_carry_the_ownership_privilege_bracket() -> None:
     # Forward: the table and the guard function leave backend_rag_v2.
     assert "ALTER TABLE %s OWNER TO %I" in forward
     assert "guard_garuda_practice_artifacts_mutation" in forward
-    assert "$garuda_312_table_owner_transfer$" in forward
+    assert "$garuda_313_table_owner_transfer$" in forward
     # ... and the session is handed back to the runtime role afterwards, so
     # the migration does not leave the connection on a role nobody chose.
-    assert "$garuda_312_resume_runtime_role_after_grants$" in forward
+    assert "$garuda_313_resume_runtime_role_after_grants$" in forward
 
     # Neither half may name the role it returns to. `assume_runtime_role`
     # is an unconditional no-op in the single-DSN shape, so the session was
@@ -90,17 +90,17 @@ def test_both_halves_carry_the_ownership_privilege_bracket() -> None:
     # role is answered yes and leaves the session somewhere it never was
     # (Sol O2 new finding 2). The role restored must be the one measured
     # before the reset.
-    assert "set_config('garuda312.prior_role', current_role, false)" in forward
-    assert "current_setting('garuda312.prior_role'" in forward
+    assert "set_config('garuda313.prior_role', current_role, false)" in forward
+    assert "current_setting('garuda313.prior_role'" in forward
     assert "SET ROLE %I', target_role" not in forward, (
         "a resume block must restore the measured prior role, never a named one"
     )
 
     # Rollback: assume the owner BEFORE the removals, resume after.
     assert rollback is not None
-    assert "$garuda_312_rollback_assume_owner$" in rollback
-    assert "$garuda_312_rollback_resume_runtime_role$" in rollback
-    assume_at = rollback.index("$garuda_312_rollback_assume_owner$")
+    assert "$garuda_313_rollback_assume_owner$" in rollback
+    assert "$garuda_313_rollback_resume_runtime_role$" in rollback
+    assume_at = rollback.index("$garuda_313_rollback_assume_owner$")
     first_removal = min(
         i for i in (rollback.find("DROP TRIGGER"), rollback.find("DROP FUNCTION"), rollback.find("DROP TABLE"))
         if i != -1
@@ -110,7 +110,7 @@ def test_both_halves_carry_the_ownership_privilege_bracket() -> None:
     )
 
 
-#: Same guard as 310's own suite, same reasoning: this fixture applies 312
+#: Same guard as 310's own suite, same reasoning: this fixture applies 313
 #: PERMANENTLY (outside any transaction) against whatever TEST_DATABASE_URL
 #: resolves to, so a mistyped DSN must never be allowed to reach a real
 #: database.
@@ -166,7 +166,7 @@ async def _ensure_test_retention_policy(conn: asyncpg.Connection) -> str:
     # policy for the same (environment, scope) violates the EXCLUDE constraint
     # `visa_decision_retention_policies_scope_period_excl` instead, which no
     # ON CONFLICT target covers. Measured, not assumed: run in ONE process
-    # (as CI does) with the migration-312 suite, the previous fixture's
+    # (as CI does) with the migration-313 suite, the previous fixture's
     # policy was still open and 8 tests errored on exactly that constraint.
     await conn.execute(
         """
@@ -176,7 +176,7 @@ async def _ensure_test_retention_policy(conn: asyncpg.Connection) -> str:
            AND upper(effective_period) IS NULL
         """
     )
-    policy_version = f"w3a-312-fixture-{uuid.uuid4().hex[:16]}"
+    policy_version = f"w3a-313-fixture-{uuid.uuid4().hex[:16]}"
     await conn.execute(
         """
         INSERT INTO visa_decision_retention_policies (
@@ -213,9 +213,9 @@ async def _seed_practice(conn: asyncpg.Connection, *, suffix: str) -> str:
     """A real `garuda_orders` -> `garuda_order_journal` (OP-02) ->
     `garuda_practices` chain, matching the FK this table hangs off. Returns
     the minted `practice_id`."""
-    order_id = f"order_312fx_{suffix}"
-    event_id = f"evt_312fx_{suffix}"
-    practice_id = f"prc_312fx_{suffix}"
+    order_id = f"order_313fx_{suffix}"
+    event_id = f"evt_313fx_{suffix}"
+    practice_id = f"prc_313fx_{suffix}"
     await conn.execute(
         """
         INSERT INTO garuda_orders (
@@ -226,7 +226,7 @@ async def _seed_practice(conn: asyncpg.Connection, *, suffix: str) -> str:
                   'P1234567', 790000, 'B1_VOA_ISSUANCE', 'paid')
         """,
         order_id,
-        f"result_312fx_{suffix}",
+        f"result_313fx_{suffix}",
     )
     await conn.execute(
         """
@@ -532,7 +532,7 @@ class TestGuardTriggerAppendOnly:
         deferred FK `(superseded_by, practice_id) -> (artifact_id,
         practice_id)`.
 
-        Before the cure every structure in 312 waved this through: the
+        Before the cure every structure in 313 waved this through: the
         single-column FK resolved (the target row exists), the guard
         trigger checked only that OLD.practice_id did not CHANGE, and the
         partial unique index counts live rows and so cannot see it. The

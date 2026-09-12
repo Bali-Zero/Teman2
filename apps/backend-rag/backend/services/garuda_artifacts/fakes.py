@@ -69,7 +69,7 @@ class InMemoryArtifactRepository:
     real Postgres. `conn` parameters are accepted (protocol conformance) and
     ignored -- this fake has no transaction of its own.
 
-    Models `ux_garuda_practice_artifacts_live` (migration 312's partial
+    Models `ux_garuda_practice_artifacts_live` (migration 313's partial
     unique index) by refusing a second live insert for the same
     `practice_id`, same as the real constraint would.
     """

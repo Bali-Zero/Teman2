@@ -41,7 +41,7 @@ class ArtifactObjectStorePort(Protocol):
     (spec SS6, decision #7a), not built by this phase. Supersession
     (decision #13-revision) leaves the superseded row's OBJECT in the
     bucket -- there is still no delete member here, on purpose -- only the
-    ROW is marked `superseded_at`/`superseded_by` (migration 312); the
+    ROW is marked `superseded_at`/`superseded_by` (migration 313); the
     object waits for that same future retention sweep.
     """
 

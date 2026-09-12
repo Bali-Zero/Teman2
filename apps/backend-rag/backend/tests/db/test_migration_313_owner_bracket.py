@@ -1,18 +1,18 @@
-"""Shape D for migration 312: a disposable PostgreSQL 17 with the three
+"""Shape D for migration 313: a disposable PostgreSQL 17 with the three
 PRODUCTION role names actually provisioned -- `backend_rag_migrator` (the
 migrator LOGIN, explicitly NOT a superuser, a member of the other two),
 `backend_rag_v2` (the runtime role) and `visa_ledger_owner` (the NOLOGIN
 ledger owner).
 
-`test_migration_312_garuda_practice_artifacts.py` runs against a database
-where these roles do NOT exist, so every role-conditional branch in 312 --
+`test_migration_313_garuda_practice_artifacts.py` runs against a database
+where these roles do NOT exist, so every role-conditional branch in 313 --
 the two ownership transfers, the runtime grants, and the guard trigger's
 actual bite against a role that only holds those grants -- has never
 executed under test. This file is that gear-3 precondition (Imperator
-mandate, this window): it applies 312 through the REAL `BaseMigration`
+mandate, this window): it applies 313 through the REAL `BaseMigration`
 path (`backend/db/migration_base.py`), never by pasting SQL, because the
 runner's own role handling -- `assume_runtime_role`'s SET ROLE dance, and
-312's own RESET ROLE / resume brackets -- is exactly what is under test.
+313's own RESET ROLE / resume brackets -- is exactly what is under test.
 
 Model: migration 304's own shape-D suite, `test_migration_304_owner_
 bracket.py` (unmerged, `origin/agent/air-m5/db/voa-304` --
@@ -22,16 +22,16 @@ an earlier pointer to that branch; found by searching every `origin/agent/
 (role names, membership grants, PG16+/PG15 SET-vs-MEMBER split), same
 `_dsn_as` helper, same refusal of any DSN naming a real database.
 
-Two substrate choices diverge from 304's model because 312's own shape
+Two substrate choices diverge from 304's model because 313's own shape
 differs from 304's:
 
-* 312's table (not just its functions) is transferred to `visa_ledger_
+* 313's table (not just its functions) is transferred to `visa_ledger_
   owner` -- Sol's F8 (BLOCKER): a trigger cannot bind an owner, so the
   guard in (3) is a convention, not a boundary, until the table and the
   guard function both leave `backend_rag_v2`. The substrate below builds
-  a MINIMAL stand-in for `garuda_practices` (the one real table 312's own
+  a MINIMAL stand-in for `garuda_practices` (the one real table 313's own
   FK reaches) rather than replaying migrations 284/287/304 in full --
-  312's own SQL only cares that `garuda_practices.practice_id` exists as
+  313's own SQL only cares that `garuda_practices.practice_id` exists as
   a unique TEXT column, and a synthetic substrate that supplies exactly
   that (plus a `visa_decision_retention_policies` with the GARUDA_DOCUMENT
   scope PRE-widened) is what 304's own `_build_substrate` already does
@@ -41,9 +41,9 @@ differs from 304's:
   privilege on `visa_decision_retention_policies`, which this fixture's
   whole point is NOT to hand either `backend_rag_v2` or the migrator, and
   block (0)'s widen-or-skip logic is already proven structurally by
-  `test_migration_312_garuda_practice_artifacts.py::
+  `test_migration_313_garuda_practice_artifacts.py::
   test_both_halves_carry_the_ownership_privilege_bracket`'s sibling in
-  that same file plus 312's own idempotent-no-op design (see 312's module
+  that same file plus 313's own idempotent-no-op design (see 313's module
   header). What is UNPROVEN anywhere else, and is this file's entire
   reason to exist, is what happens once the roles are real.
 
@@ -56,7 +56,7 @@ writes it somewhere that outlives the connection. `_with_role_probes`
 appends exactly one such INSERT to the end of the forward section (before
 the `-- === ROLLBACK ===` marker) and one to the end of the rollback
 section (the very end of the file) -- neither probe touches any object
-312 itself creates or removes, so they cannot perturb the ownership/ACL
+313 itself creates or removes, so they cannot perturb the ownership/ACL
 assertions the rest of this file makes.
 """
 
@@ -87,14 +87,14 @@ pytestmark = pytest.mark.asyncio
 RUNTIME = "backend_rag_v2"
 LEDGER = "visa_ledger_owner"
 MIGRATOR = "backend_rag_migrator"
-SOURCE = BaseMigration.MIGRATIONS_DIR / "312_garuda_practice_artifacts.sql"
+SOURCE = BaseMigration.MIGRATIONS_DIR / "313_garuda_practice_artifacts.sql"
 
 # Same env var 304's own shape-D suite reads (`OPTION_D_DISPOSABLE_PG_URL`):
 # one disposable-cluster convention serves both suites rather than adding a
 # second knob for the identical concept (a local cluster with the three
 # production role names free to provision). What THIS file adds on top is
 # the PG17 floor -- Fly's `nuzantara-postgres` runs postgres-flex 17.7
-# (apps/backend-rag/CLAUDE.md SS11), and nothing about 312's own SQL
+# (apps/backend-rag/CLAUDE.md SS11), and nothing about 313's own SQL
 # requires 17 specifically (its `server_version_num >= 160000` branch
 # degrades correctly on 15), but shape D is the one place fidelity to the
 # real cluster version is cheap, and PG17 was measured present on this
@@ -123,7 +123,7 @@ def _with_role_probes(sql: str) -> str:
     DDL -- the only way to observe a role a since-closed connection can no
     longer report (see module docstring)."""
     match = ROLLBACK_MARKER_RE.search(sql)
-    assert match, "312 must carry the ROLLBACK marker for this fixture to locate the split point"
+    assert match, "313 must carry the ROLLBACK marker for this fixture to locate the split point"
     probe = (
         "\nINSERT INTO {table} (tag, observed_role) VALUES ('{tag}', current_role) "
         "ON CONFLICT (tag) DO UPDATE SET observed_role = EXCLUDED.observed_role;\n"
@@ -134,13 +134,13 @@ def _with_role_probes(sql: str) -> str:
 
 
 def _migration(tmp_path: Path) -> BaseMigration:
-    """Returns a BaseMigration for a role-probed COPY of 312's real file,
-    written into tmp_path under 312's own filename (BaseMigration requires
+    """Returns a BaseMigration for a role-probed COPY of 313's real file,
+    written into tmp_path under 313's own filename (BaseMigration requires
     the file to exist under `_sql_dir`)."""
     sql = _with_role_probes(SOURCE.read_text(encoding="utf-8"))
     (tmp_path / SOURCE.name).write_text(sql, encoding="utf-8")
     return BaseMigration(
-        312,
+        313,
         SOURCE.name,
         "garuda practice artifacts (shape D)",
         rollback_sql=split_migration_sql(sql)[1],
@@ -151,16 +151,16 @@ def _migration(tmp_path: Path) -> BaseMigration:
 async def _build_substrate(admin_url: str) -> str:
     """Creates a throwaway database with a MINIMAL `garuda_practices` stand-in
     and an ALREADY-widened `visa_decision_retention_policies` -- the two
-    upstream objects 312's own DDL reaches via FK/trigger -- owned exactly
+    upstream objects 313's own DDL reaches via FK/trigger -- owned exactly
     as production splits them: `backend_rag_v2` owns `garuda_practices`
-    (matching 312's module header: every OTHER garuda_* table is "otherwise
+    (matching 313's module header: every OTHER garuda_* table is "otherwise
     owned by backend_rag_v2"), `visa_ledger_owner` owns the retention
     authority (304's own split, replicated because 304 is unmerged), with
     `backend_rag_v2` granted SELECT+REFERENCES on it -- the FK from
     `garuda_practice_artifacts.retention_policy_id` needs exactly that, no
     more. See the module docstring for why this is synthetic rather than
     284/287/304 replayed in full."""
-    name = f"m312_{uuid.uuid4().hex[:12]}"
+    name = f"m313_{uuid.uuid4().hex[:12]}"
     admin = await asyncpg.connect(admin_url)
     try:
         await admin.execute(f'CREATE DATABASE "{name}"')
@@ -223,14 +223,14 @@ async def _drop_database(admin_url: str, dsn: str) -> None:
 
 
 async def _owners(conn: asyncpg.Connection) -> dict[str, str | None]:
-    """Reads the REAL owner of 312's table and its THREE transferred
+    """Reads the REAL owner of 313's table and its THREE transferred
     functions from the catalogue (`pg_class.relowner` / `pg_proc.proowner`),
     never inferred from the migration's own claims. `helper` --
     `active_garuda_practice_artifact_policy_available` -- joined the loop in
     (3bis) after this fixture's own first run found it left behind (Sol
     F9's own outcome surviving inside F9's cure); asserting its owner here,
     alongside the other three, is the regression lock: a fourth function
-    added to 312 tomorrow without joining that loop should fail HERE, not
+    added to 313 tomorrow without joining that loop should fail HERE, not
     surface as a production rollback that aborts with "must be owner of"."""
     row = await conn.fetchrow(
         "SELECT "
@@ -325,13 +325,13 @@ async def disposable_cluster() -> AsyncIterator[str]:
         await admin.close()
 
 
-async def test_312_applies_through_the_dedicated_migrator_with_the_full_privilege_bracket(
+async def test_313_applies_through_the_dedicated_migrator_with_the_full_privilege_bracket(
     disposable_cluster: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """FORWARD, dedicated migrator -- Option D's real `assume_runtime_role`
     path, not a no-op: `backend_rag_migrator` connects, is refused if it
     were superuser or the runtime role itself, then genuinely `SET ROLE
-    backend_rag_v2`s before a single statement of 312 runs.
+    backend_rag_v2`s before a single statement of 313 runs.
 
     Proves, against the real catalogue and the real ACL:
       1. the table and BOTH transferred functions end up owned by
@@ -505,7 +505,7 @@ async def test_312_applies_through_the_dedicated_migrator_with_the_full_privileg
         await _drop_database(disposable_cluster, dsn)
 
 
-async def test_312_forward_restores_the_measured_prior_role_never_a_named_one(
+async def test_313_forward_restores_the_measured_prior_role_never_a_named_one(
     disposable_cluster: str, tmp_path: Path
 ) -> None:
     """Sol O2's new finding 2: a resume block that asks 'may I become
@@ -513,7 +513,7 @@ async def test_312_forward_restores_the_measured_prior_role_never_a_named_one(
     including a role that never left its own login to begin with. Single-
     DSN shape (`dedicated=False`, matching CI / a laptop / Fly before the
     dedicated secret exists): the migrator connects DIRECTLY, `assume_
-    runtime_role` never fires, and nothing in 312's own file ever moves
+    runtime_role` never fires, and nothing in 313's own file ever moves
     `current_role` away from the migrator's login -- every `RESET ROLE` is
     a true no-op and every resume block's `prior_role IS DISTINCT FROM
     current_role` guard is false, so the `SET ROLE` inside it never even
@@ -548,14 +548,14 @@ async def test_312_forward_restores_the_measured_prior_role_never_a_named_one(
         await _drop_database(disposable_cluster, dsn)
 
 
-async def test_312_rollback_removes_all_four_ledger_owned_objects_and_restores_the_migrator(
+async def test_313_rollback_removes_all_four_ledger_owned_objects_and_restores_the_migrator(
     disposable_cluster: str, tmp_path: Path
 ) -> None:
     """Sol F9's own outcome, surviving inside F9's cure, for the one object
     (3bis)'s original loop did not enumerate -- found by THIS fixture's
-    first run, now cured in 312.sql itself (Imperatore, this window).
+    first run, now cured in 313.sql itself (Imperatore, this window).
 
-    What broke: `$garuda_312_rollback_assume_owner$` switches the session to
+    What broke: `$garuda_313_rollback_assume_owner$` switches the session to
     `visa_ledger_owner` UNCONDITIONALLY, once, before every removal
     statement in the rollback. The table and two of the three transferred
     functions were fine under that -- but `active_garuda_practice_artifact_
@@ -567,18 +567,18 @@ async def test_312_rollback_removes_all_four_ledger_owned_objects_and_restores_t
     rollback transaction aborted before reaching `DROP TABLE`, the forward
     migration stayed fully applied, and the caller was told an undo had
     run. Measured directly against real PG17 with all three roles present
-    -- this file's `test_312_rollback_currently_aborts_on_the_
+    -- this file's `test_313_rollback_currently_aborts_on_the_
     untransferred_helper_function` watched it happen before the cure.
 
     The cure adds the helper function to (3bis)'s transfer loop, so every
-    object 312 creates now has ONE owner regime instead of two, and the
+    object 313 creates now has ONE owner regime instead of two, and the
     rollback's blanket assume-owner switch is correct for all of them. This
     test is the property that holds now that it's cured: the single-DSN
     migrator (never having left its own login role, `assume_runtime_role`
-    being a no-op in this shape) can roll 312 all the way back, remove
+    being a no-op in this shape) can roll 313 all the way back, remove
     every one of the four ledger-owned objects, and land back on its own
     role -- not stuck on `visa_ledger_owner`, which the assume-owner
-    bracket's own resume block (`$garuda_312_rollback_resume_runtime_
+    bracket's own resume block (`$garuda_313_rollback_resume_runtime_
     role$`) is what guarantees.
     """
     migration = _migration(tmp_path)

@@ -133,7 +133,7 @@ async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_versi
 
 async def _ensure_garuda_document_test_policy(conn: asyncpg.Connection) -> str:
     """The retention binder `putPracticeArtifact` writes through
-    (migration 312, `bind_garuda_practice_artifact_retention_policy`) needs
+    (migration 313, `bind_garuda_practice_artifact_retention_policy`) needs
     a live `GARUDA_DOCUMENT` policy. `ON CONFLICT DO NOTHING` keyed on the
     table's own `UNIQUE (environment, policy_scope, policy_version)` makes
     this safe to call once per test module."""

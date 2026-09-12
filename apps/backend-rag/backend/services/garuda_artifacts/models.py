@@ -1,6 +1,6 @@
 """Wire-independent shapes for a GARUDA VOA delivered artifact.
 
-Mirrors `garuda_practice_artifacts` (migration 312) exactly -- one dataclass
+Mirrors `garuda_practice_artifacts` (migration 313) exactly -- one dataclass
 per row, never a customer- or staff-facing JSON shape (that translation
 lives in the routers, same discipline as `PracticeView` /
 `_staff_practice_view` in the neighbouring modules).
@@ -20,7 +20,7 @@ class ArtifactRecord:
     index (`ux_garuda_practice_artifacts_live`) allows per `practice_id`.
     `superseded_by` is the artifact_id of the row that replaced this one --
     always set together with `superseded_at` (decision #13-revision, DB
-    CHECK + guard trigger in migration 312 enforce the pair).
+    CHECK + guard trigger in migration 313 enforce the pair).
     """
 
     artifact_id: str

@@ -125,7 +125,7 @@ async def _ensure_garuda_document_test_policy(conn: asyncpg.Connection) -> str:
     """Verbatim copy of `test_staff_router_put_practice_artifact.py`'s own
     helper -- see that file for the full self-heal reasoning. PR-11's own
     tests need this too, now that delivery goes through `putPracticeArtifact`
-    for real (migration 312's `bind_garuda_practice_artifact_retention_
+    for real (migration 313's `bind_garuda_practice_artifact_retention_
     policy` `BEFORE INSERT` trigger fails the row closed without an active
     `GARUDA_DOCUMENT` policy)."""
     await conn.execute(

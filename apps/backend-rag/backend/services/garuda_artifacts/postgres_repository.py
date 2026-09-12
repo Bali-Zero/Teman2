@@ -1,4 +1,4 @@
-"""The one real reader/writer of `garuda_practice_artifacts` (migration 312).
+"""The one real reader/writer of `garuda_practice_artifacts` (migration 313).
 
 `retention_policy_id` / `retention_until` are never supplied by this module
 -- the migration's `BEFORE INSERT` trigger

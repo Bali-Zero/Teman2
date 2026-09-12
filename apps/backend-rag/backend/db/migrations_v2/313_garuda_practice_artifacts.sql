@@ -1,5 +1,5 @@
 -- ============================================================================
--- 312_garuda_practice_artifacts.sql
+-- 313_garuda_practice_artifacts.sql
 -- GARUDA VOA W3A phase 2 -- the artifact: one immutable file, at most one
 -- live per practice.
 --
@@ -11,12 +11,17 @@
 -- `artifact_digest` (287) have had no referent at all until this table:
 -- no row, bucket or route resolved one to bytes.
 --
--- NUMBERING: 310 and 311 are taken on origin/main (310_practice_status_log.sql,
--- 311_practice_types_open_inquiry.sql -- Imperatore decision #11, 2026-09-11,
--- measured with `git ls-tree` on origin/main, not on this branch's older base).
--- Renumber again at rebase if a later 312 lands first (cicatrix W40) --
--- `scripts/lint_migration_numbers.py` catches a collision only against the
--- tree it runs on, so run it AFTER the rebase, never before.
+-- NUMBERING: this file was 312 until the rebase, and 312 is now taken --
+-- `312_research_os_naga_claims.sql` (Research OS lane, merged 2026-09-12
+-- 06:4xZ as 890e731b91) landed while this branch was in review. That is
+-- cicatrix W40 arriving exactly where it was predicted to: a migration
+-- number is not reserved by writing it, only by merging it, and
+-- `scripts/lint_migration_numbers.py` can only measure the tree it runs
+-- on -- which is why it runs AFTER the rebase and never before. Measured
+-- on fresh `origin/main` with `git ls-tree`: 307-312 occupied, 313 free.
+-- The other lane's 312 was checked for overlap with this one and has none
+-- (`grep -i garuda` on it: zero hits) -- different tables, roles and
+-- scopes, so the two are neighbours in number only.
 --
 -- OWNERSHIP: created while the session holds `backend_rag_v2`
 -- (`assume_runtime_role`, migration_base.py), then handed to
@@ -76,7 +81,7 @@
 -- duplicates 304's own block instead of assuming 304 has landed.
 -- ----------------------------------------------------------------------------
 
-DO $garuda_312_widen_scope_check$
+DO $garuda_313_widen_scope_check$
 DECLARE
     scope_check_name text;
     scope_check_def text;
@@ -88,7 +93,7 @@ BEGIN
        AND contype = 'c'
        AND pg_get_constraintdef(oid) LIKE 'CHECK ((policy_scope = ANY (ARRAY[%';
     IF scope_check_name IS NULL THEN
-        RAISE EXCEPTION 'garuda practice artifacts (312): could not locate the policy_scope enum CHECK to widen';
+        RAISE EXCEPTION 'garuda practice artifacts (313): could not locate the policy_scope enum CHECK to widen';
     END IF;
 
     IF scope_check_def LIKE '%GARUDA_DOCUMENT%' THEN
@@ -106,7 +111,7 @@ BEGIN
         'ADD CONSTRAINT visa_decision_retention_policies_policy_scope_check '
         'CHECK (policy_scope IN (''VISA_DECISION'', ''GARUDA_CHECK'', ''GARUDA_ORDER'', ''GARUDA_MAGIC_LINK'', ''GARUDA_DOCUMENT''))';
 END;
-$garuda_312_widen_scope_check$;
+$garuda_313_widen_scope_check$;
 
 -- ----------------------------------------------------------------------------
 -- (1) garuda_practice_artifacts -- one row per artifact version.
@@ -353,9 +358,9 @@ FOR EACH ROW EXECUTE FUNCTION public.bind_garuda_practice_artifact_retention_pol
 -- was. Sol's O2 (2026-09-12, new finding 2, MAJOR) traced that to the
 -- migration manager's own next statement running under a role nobody
 -- chose. Restoring what was measured cannot have that failure mode.
-SELECT set_config('garuda312.prior_role', current_role, false);
+SELECT set_config('garuda313.prior_role', current_role, false);
 RESET ROLE;
-DO $garuda_312_owner_transfer$
+DO $garuda_313_owner_transfer$
 DECLARE
     ledger_owner constant text := 'visa_ledger_owner';
     signature constant text := 'public.bind_garuda_practice_artifact_retention_policy()';
@@ -363,14 +368,14 @@ DECLARE
     current_owner text;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ledger_owner) THEN
-        RAISE NOTICE 'garuda practice artifacts (312): role % absent -- skipping ownership transfer, same convention as 251/253/268/281/301/304',
+        RAISE NOTICE 'garuda practice artifacts (313): role % absent -- skipping ownership transfer, same convention as 251/253/268/281/301/304',
             ledger_owner;
         RETURN;
     END IF;
 
     fn := to_regprocedure(signature);
     IF fn IS NULL THEN
-        RAISE NOTICE 'garuda practice artifacts (312): % not present -- nothing to transfer', signature;
+        RAISE NOTICE 'garuda practice artifacts (313): % not present -- nothing to transfer', signature;
         RETURN;
     END IF;
 
@@ -381,7 +386,7 @@ BEGIN
             EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
         EXCEPTION
             WHEN insufficient_privilege THEN
-                RAISE NOTICE 'garuda practice artifacts (312): ALTER denied (current owner %) -- this session is neither superuser nor a member of %',
+                RAISE NOTICE 'garuda practice artifacts (313): ALTER denied (current owner %) -- this session is neither superuser nor a member of %',
                     current_owner, ledger_owner;
         END;
         SELECT pg_get_userbyid(proowner) INTO current_owner FROM pg_proc WHERE oid = fn;
@@ -389,11 +394,11 @@ BEGIN
 
     IF current_owner IS DISTINCT FROM ledger_owner THEN
         RAISE EXCEPTION
-            'garuda practice artifacts (312): % is still owned by % -- the SECURITY DEFINER trigger cannot take its FOR SHARE lock on visa_decision_retention_policies, so putPracticeArtifact would answer 500 on write. Refusing to record this migration as applied while that is true: run the ALTER on a superuser connection, then re-apply.',
+            'garuda practice artifacts (313): % is still owned by % -- the SECURITY DEFINER trigger cannot take its FOR SHARE lock on visa_decision_retention_policies, so putPracticeArtifact would answer 500 on write. Refusing to record this migration as applied while that is true: run the ALTER on a superuser connection, then re-apply.',
             signature, current_owner;
     END IF;
 END;
-$garuda_312_owner_transfer$;
+$garuda_313_owner_transfer$;
 
 -- MEASURED DEVIATION from 304's literal patch: an unconditional `SET ROLE
 -- backend_rag_v2` aborts this migration's OWN real-Postgres test with
@@ -424,9 +429,9 @@ $garuda_312_owner_transfer$;
 -- than a literal `EXECUTE 'SET ROLE backend_rag_v2'`, matching the
 -- `format(...)`/`%I` convention the owner-transfer block above already
 -- uses for `ALTER FUNCTION ... OWNER TO`.
-DO $garuda_312_resume_runtime_role$
+DO $garuda_313_resume_runtime_role$
 DECLARE
-    prior_role text := current_setting('garuda312.prior_role', true);
+    prior_role text := current_setting('garuda313.prior_role', true);
     can_restore boolean;
 BEGIN
     -- No-op whenever the session is already where it started (the common
@@ -450,13 +455,13 @@ BEGIN
             IF can_restore THEN
                 EXECUTE format('SET ROLE %I', prior_role);
             ELSE
-                RAISE NOTICE 'garuda practice artifacts (312): session_user % may no longer assume %, leaving the session on its login role',
+                RAISE NOTICE 'garuda practice artifacts (313): session_user % may no longer assume %, leaving the session on its login role',
                     session_user, prior_role;
             END IF;
         END IF;
     END IF;
 END;
-$garuda_312_resume_runtime_role$;
+$garuda_313_resume_runtime_role$;
 
 -- ----------------------------------------------------------------------------
 -- (3) The guard trigger -- the REAL "append-only, one mutable column"
@@ -556,9 +561,9 @@ FOR EACH ROW EXECUTE FUNCTION public.guard_garuda_practice_artifacts_mutation();
 -- was. Sol's O2 (2026-09-12, new finding 2, MAJOR) traced that to the
 -- migration manager's own next statement running under a role nobody
 -- chose. Restoring what was measured cannot have that failure mode.
-SELECT set_config('garuda312.prior_role', current_role, false);
+SELECT set_config('garuda313.prior_role', current_role, false);
 RESET ROLE;
-DO $garuda_312_table_owner_transfer$
+DO $garuda_313_table_owner_transfer$
 DECLARE
     ledger_owner constant text := 'visa_ledger_owner';
     guard_signature constant text := 'public.guard_garuda_practice_artifacts_mutation()';
@@ -571,7 +576,7 @@ DECLARE
     extra_owner text;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ledger_owner) THEN
-        RAISE NOTICE 'garuda practice artifacts (312): role % absent -- skipping table/guard ownership transfer, same convention as (2)',
+        RAISE NOTICE 'garuda practice artifacts (313): role % absent -- skipping table/guard ownership transfer, same convention as (2)',
             ledger_owner;
         RETURN;
     END IF;
@@ -585,7 +590,7 @@ BEGIN
             EXECUTE format('ALTER TABLE %s OWNER TO %I', tbl, ledger_owner);
         EXCEPTION
             WHEN insufficient_privilege THEN
-                RAISE NOTICE 'garuda practice artifacts (312): table owner change denied (current owner %) -- this session is neither superuser nor a member of %',
+                RAISE NOTICE 'garuda practice artifacts (313): table owner change denied (current owner %) -- this session is neither superuser nor a member of %',
                     table_owner, ledger_owner;
         END;
         SELECT pg_get_userbyid(relowner) INTO table_owner
@@ -616,7 +621,7 @@ BEGIN
     LOOP
         extra_fn := to_regprocedure(extra_signature);
         IF extra_fn IS NULL THEN
-            RAISE EXCEPTION 'garuda practice artifacts (312): % is not present -- refusing to continue',
+            RAISE EXCEPTION 'garuda practice artifacts (313): % is not present -- refusing to continue',
                 extra_signature;
         END IF;
         SELECT pg_get_userbyid(proowner) INTO extra_owner FROM pg_proc WHERE oid = extra_fn;
@@ -625,21 +630,21 @@ BEGIN
                 EXECUTE format('ALTER FUNCTION %s OWNER TO %I', extra_signature, ledger_owner);
             EXCEPTION
                 WHEN insufficient_privilege THEN
-                    RAISE NOTICE 'garuda practice artifacts (312): owner change denied for % (current owner %)',
+                    RAISE NOTICE 'garuda practice artifacts (313): owner change denied for % (current owner %)',
                         extra_signature, extra_owner;
             END;
             SELECT pg_get_userbyid(proowner) INTO extra_owner FROM pg_proc WHERE oid = extra_fn;
         END IF;
         IF extra_owner IS DISTINCT FROM ledger_owner THEN
             RAISE EXCEPTION
-                'garuda practice artifacts (312): % is owned by %, expected % -- the rollback assumes the ledger owner before removing it and would abort with "must be owner of", leaving this migration applied while reporting an undo. Refusing to record it as applied.',
+                'garuda practice artifacts (313): % is owned by %, expected % -- the rollback assumes the ledger owner before removing it and would abort with "must be owner of", leaving this migration applied while reporting an undo. Refusing to record it as applied.',
                 extra_signature, extra_owner, ledger_owner;
         END IF;
     END LOOP;
 
     guard_fn := to_regprocedure(guard_signature);
     IF guard_fn IS NULL THEN
-        RAISE EXCEPTION 'garuda practice artifacts (312): % is not present after (3) created it -- refusing to continue',
+        RAISE EXCEPTION 'garuda practice artifacts (313): % is not present after (3) created it -- refusing to continue',
             guard_signature;
     END IF;
     SELECT pg_get_userbyid(proowner) INTO guard_owner FROM pg_proc WHERE oid = guard_fn;
@@ -648,7 +653,7 @@ BEGIN
             EXECUTE format('ALTER FUNCTION %s OWNER TO %I', guard_signature, ledger_owner);
         EXCEPTION
             WHEN insufficient_privilege THEN
-                RAISE NOTICE 'garuda practice artifacts (312): guard function owner change denied (current owner %) -- this session is neither superuser nor a member of %',
+                RAISE NOTICE 'garuda practice artifacts (313): guard function owner change denied (current owner %) -- this session is neither superuser nor a member of %',
                     guard_owner, ledger_owner;
         END;
         SELECT pg_get_userbyid(proowner) INTO guard_owner FROM pg_proc WHERE oid = guard_fn;
@@ -656,11 +661,11 @@ BEGIN
 
     IF table_owner IS DISTINCT FROM ledger_owner OR guard_owner IS DISTINCT FROM ledger_owner THEN
         RAISE EXCEPTION
-            'garuda practice artifacts (312): table is owned by % and the guard function by %, expected % for both -- the runtime role could still disable the trigger, rewrite the guard body or empty the table, so the append-only boundary this migration publishes would not exist. Refusing to record it as applied: run the two owner changes on a superuser connection, then re-apply.',
+            'garuda practice artifacts (313): table is owned by % and the guard function by %, expected % for both -- the runtime role could still disable the trigger, rewrite the guard body or empty the table, so the append-only boundary this migration publishes would not exist. Refusing to record it as applied: run the two owner changes on a superuser connection, then re-apply.',
             table_owner, guard_owner, ledger_owner;
     END IF;
 END;
-$garuda_312_table_owner_transfer$;
+$garuda_313_table_owner_transfer$;
 
 -- ----------------------------------------------------------------------------
 -- (4) Runtime grants -- documents the intended boundary; see the module
@@ -676,7 +681,7 @@ $garuda_312_table_owner_transfer$;
 -- block on `pg_roles` for the identical reason.
 -- ----------------------------------------------------------------------------
 
-DO $garuda_312_runtime_grants$
+DO $garuda_313_runtime_grants$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'backend_rag_v2') THEN
         -- PL/pgSQL has no direct GRANT statement -- EXECUTE, same as
@@ -685,7 +690,7 @@ BEGIN
         EXECUTE 'GRANT UPDATE (superseded_at, superseded_by) ON TABLE public.garuda_practice_artifacts TO backend_rag_v2';
     END IF;
 END;
-$garuda_312_runtime_grants$;
+$garuda_313_runtime_grants$;
 
 -- (3bis) left the session on its own login role so the grants above could
 -- be issued by the table's new owner. Hand it back to the runtime role,
@@ -695,9 +700,9 @@ $garuda_312_runtime_grants$;
 -- can-actually-assume checks stay in NESTED ifs rather than one
 -- `AND`-combined expression (Codex #8's refutation: operand evaluation
 -- order is not guaranteed).
-DO $garuda_312_resume_runtime_role_after_grants$
+DO $garuda_313_resume_runtime_role_after_grants$
 DECLARE
-    prior_role text := current_setting('garuda312.prior_role', true);
+    prior_role text := current_setting('garuda313.prior_role', true);
     can_restore boolean;
 BEGIN
     -- No-op whenever the session is already where it started (the common
@@ -721,13 +726,13 @@ BEGIN
             IF can_restore THEN
                 EXECUTE format('SET ROLE %I', prior_role);
             ELSE
-                RAISE NOTICE 'garuda practice artifacts (312): session_user % may no longer assume %, leaving the session on its login role',
+                RAISE NOTICE 'garuda practice artifacts (313): session_user % may no longer assume %, leaving the session on its login role',
                     session_user, prior_role;
             END IF;
         END IF;
     END IF;
 END;
-$garuda_312_resume_runtime_role_after_grants$;
+$garuda_313_resume_runtime_role_after_grants$;
 
 -- === ROLLBACK ===
 
@@ -761,9 +766,9 @@ $garuda_312_resume_runtime_role_after_grants$;
 -- was. Sol's O2 (2026-09-12, new finding 2, MAJOR) traced that to the
 -- migration manager's own next statement running under a role nobody
 -- chose. Restoring what was measured cannot have that failure mode.
-SELECT set_config('garuda312.prior_role', current_role, false);
+SELECT set_config('garuda313.prior_role', current_role, false);
 RESET ROLE;
-DO $garuda_312_rollback_assume_owner$
+DO $garuda_313_rollback_assume_owner$
 DECLARE
     ledger_owner constant text := 'visa_ledger_owner';
     can_assume boolean;
@@ -777,12 +782,12 @@ BEGIN
         IF can_assume THEN
             EXECUTE format('SET ROLE %I', ledger_owner);
         ELSE
-            RAISE NOTICE 'garuda practice artifacts (312) rollback: session_user % cannot assume % -- the removals below will only succeed if this session is superuser',
+            RAISE NOTICE 'garuda practice artifacts (313) rollback: session_user % cannot assume % -- the removals below will only succeed if this session is superuser',
                 session_user, ledger_owner;
         END IF;
     END IF;
 END;
-$garuda_312_rollback_assume_owner$;
+$garuda_313_rollback_assume_owner$;
 
 DROP TRIGGER IF EXISTS trg_guard_garuda_practice_artifacts_mutation ON public.garuda_practice_artifacts;
 DROP FUNCTION IF EXISTS public.guard_garuda_practice_artifacts_mutation();
@@ -811,16 +816,16 @@ DROP TABLE IF EXISTS public.garuda_practice_artifacts;
 --
 -- A rollback that narrows anyway is a live defect the moment the guard
 -- does not fire, which is any database where 304 has been APPLIED but no
--- `GARUDA_DOCUMENT` policy row has been inserted yet: 312's undo would
+-- `GARUDA_DOCUMENT` policy row has been inserted yet: 313's undo would
 -- then remove a value 304's schema depends on, and 304 is not even being
 -- rolled back. Undoing this migration must not reach outside it. Narrowing
 -- the scope belongs to 304's own rollback, which carries the identical
 -- append-only guard for it.
-DO $garuda_312_leave_policy_scope_widened$
+DO $garuda_313_leave_policy_scope_widened$
 BEGIN
-    RAISE NOTICE 'garuda 312 rollback: policy_scope stays WIDENED -- GARUDA_DOCUMENT belongs to migration 304 (live since 2026-09-12), not to this migration; narrowing it here would break 304 without rolling it back.';
+    RAISE NOTICE 'garuda 313 rollback: policy_scope stays WIDENED -- GARUDA_DOCUMENT belongs to migration 304 (live since 2026-09-12), not to this migration; narrowing it here would break 304 without rolling it back.';
 END;
-$garuda_312_leave_policy_scope_widened$;
+$garuda_313_leave_policy_scope_widened$;
 
 -- Symmetric close of the bracket opened at the top of this section: leave
 -- the session on the role `migration_base.py` handed us, never on
@@ -832,9 +837,9 @@ $garuda_312_leave_policy_scope_widened$;
 -- record `visa_ledger_owner` as the role to return to and hand it straight
 -- back. Only the reset belongs here.
 RESET ROLE;
-DO $garuda_312_rollback_resume_runtime_role$
+DO $garuda_313_rollback_resume_runtime_role$
 DECLARE
-    prior_role text := current_setting('garuda312.prior_role', true);
+    prior_role text := current_setting('garuda313.prior_role', true);
     can_restore boolean;
 BEGIN
     -- No-op whenever the session is already where it started (the common
@@ -858,10 +863,10 @@ BEGIN
             IF can_restore THEN
                 EXECUTE format('SET ROLE %I', prior_role);
             ELSE
-                RAISE NOTICE 'garuda practice artifacts (312): session_user % may no longer assume %, leaving the session on its login role',
+                RAISE NOTICE 'garuda practice artifacts (313): session_user % may no longer assume %, leaving the session on its login role',
                     session_user, prior_role;
             END IF;
         END IF;
     END IF;
 END;
-$garuda_312_rollback_resume_runtime_role$;
+$garuda_313_rollback_resume_runtime_role$;

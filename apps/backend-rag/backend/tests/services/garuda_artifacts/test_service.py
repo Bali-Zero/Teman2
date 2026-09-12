@@ -1,7 +1,7 @@
 """`GarudaArtifactService` unit tests, over the in-memory fakes -- no
 Postgres, no Tigris. The migration's own constraints (partial unique index,
 digest CHECK, guard trigger) are exercised separately against a real
-Postgres in `tests/db/test_migration_312_garuda_practice_artifacts.py`;
+Postgres in `tests/db/test_migration_313_garuda_practice_artifacts.py`;
 this file is the service ORCHESTRATION layer (spec SS5's put/serve/resolve
 logic) in isolation.
 """
