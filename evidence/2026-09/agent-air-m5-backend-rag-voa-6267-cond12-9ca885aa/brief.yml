@@ -65,14 +65,25 @@ acceptance:
       paths disagree.
   - text: >-
       WHERE the claim is that these paths ARE the frozen contract's operations,
-      THE SYSTEM SHALL anchor it to the `garuda-contract-parity` check rather
-      than to a unit test.
+      THE SYSTEM SHALL anchor it to the frozen-vs-live parity suite
+      `backend/tests/app/routers/test_garuda_voa_openapi_parity.py` rather than
+      to a unit test -- and NOT to the `garuda-contract-parity` workflow, whose
+      name says it compares the two and whose job does not.
     status: verified
     probe: >-
-      .github/workflows/garuda-contract-parity.yml exists and runs on PRs
-      (verified by reading the workflow: name garuda-contract-parity, job
-      garuda-contract-parity); public_endpoints.py names it as the anchor and
-      does not re-prove it.
+      the parity file builds the schema from the deployed `main_api` singleton
+      (`_live_operations`) and compares it operation by operation against the
+      frozen openapi.yaml; it is enumerated by scripts/ci/shard_tests.py
+      (ROOTS includes "backend/tests/", no allowlist, and its only exclusion is
+      EXCLUDED_DIRS = ("backend/tests/e2e",), which does not contain this file)
+      and therefore runs in the required backend shards on every PR. The FIRST version of this row named
+      .github/workflows/garuda-contract-parity.yml instead and its probe only
+      checked that the workflow EXISTS: that workflow installs pytest+pyyaml
+      only and its suite never imports the app (grep for fastapi / main_api /
+      app_factory under products/garuda-voa/contracts/tests/ = 0 hits), so it
+      checks the frozen document against itself. Caught by the on-disk gate on
+      head 48cf44357a (REWORK-BUILD) -- existence was measured, behaviour was
+      not.
 anchor_note: >-
   Decision #19 (Imperatore, in force of Zero's 04:30Z autonomous-conduct
   ruling, revocable by Zero) moved the operation-identity claim OUT of the unit
@@ -81,8 +92,9 @@ anchor_note: >-
   the frozen contract's operation from a counterfeit installed ahead of it
   (refuter defeated, in turn, a path-string comparison, a `route.matches`
   scope without a Host header, and identity by `operation_id`, which is
-  reusable). The identity claim now lives with `garuda-contract-parity`, which
-  compares the frozen contract against the live singleton and has an anchor
+  reusable). The identity claim now lives with
+  `backend/tests/app/routers/test_garuda_voa_openapi_parity.py`, which compares
+  the frozen contract against the live `main_api` singleton and has an anchor
   outside the process under test.
 pii: none
 local_evidence: >-

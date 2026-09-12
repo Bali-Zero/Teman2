@@ -39,9 +39,10 @@ outcome:
   third parametrized case was added on `garuda_orders_router` (late-resolution), so both routers
   that carry frozen staff operations are covered. (2) `path_matches_template`''s docstring
   no longer claims a trailing slash "never reaches a different operation": it states what
-  is observed for the three pinned paths, names `garuda-contract-parity` as the external anchor
-  for the operation-identity claim, and defers registry-wide behaviour to the ledger row.
-  Condition 3 of the #6267 gate is untouched by ruling.'
+  is observed for the three pinned paths, names the frozen-vs-live parity suite `backend/tests/app/routers/test_garuda_voa_openapi_parity.py`
+  as the external anchor for the operation-identity claim -- and says explicitly that the
+  similarly named `garuda-contract-parity` workflow is NOT that anchor -- and defers registry-wide
+  behaviour to the ledger row. Condition 3 of the #6267 gate is untouched by ruling.'
 diff:
   files: 5
   net_lines:
@@ -152,17 +153,50 @@ receipts:
       -k trailing_slash_answers_307 (3 cases: two on garuda_staff_router, one on garuda_orders_router''s
       late-resolution) Probe 3 — two guilt mutations, each restored afterwards: a route redirecting
       the trailing-slash path to https://elsewhere.invalid, and contract_401_envelope made to
-      return None for a trailing slash so the two paths disagree. Probe 4 — .github/workflows/garuda-contract-parity.yml
-      exists and runs on PRs (verified by reading the workflow: name garuda-contract-parity,
-      job garuda-contract-parity); public_endpoints.py names it as the anchor and does not re-prove
-      it.'
+      return None for a trailing slash so the two paths disagree. Probe 4 — the parity file
+      builds the schema from the deployed `main_api` singleton (`_live_operations`) and compares
+      it operation by operation against the frozen openapi.yaml; it is enumerated by scripts/ci/shard_tests.py
+      (ROOTS includes "backend/tests/", no allowlist, and its only exclusion is EXCLUDED_DIRS
+      = ("backend/tests/e2e",), which does not contain this file) and therefore runs in the
+      required backend shards on every PR. The FIRST version of this row named .github/workflows/garuda-contract-parity.yml
+      instead and its probe only checked that the workflow EXISTS: that workflow installs pytest+pyyaml
+      only and its suite never imports the app (grep for fastapi / main_api / app_factory under
+      products/garuda-voa/contracts/tests/ = 0 hits), so it checks the frozen document against
+      itself. Caught by the on-disk gate on head 48cf44357a (REWORK-BUILD) -- existence was
+      measured, behaviour was not.'
     result:
       "probe 1: zero hits for all four greps on the changed test file. probe 2: 3 passed,
       27 deselected. probe 3: (a) 1 of 3 failed, (b) 3 of 3 failed, innocence 3 passed before
-      and after, public_endpoints.py byte-identical afterwards. probe 4: the workflow file exists
-      and declares name and job garuda-contract-parity, read at this head."
-    ts: "2026-09-12T04:41:00Z"
+      and after, public_endpoints.py byte-identical afterwards. probe 4: 0 hits for fastapi/main_api/app_factory
+      under products/garuda-voa/contracts/tests/; the parity file's _live_operations builds
+      the schema from the deployed main_api singleton; scripts/ci/shard_tests.py ROOTS contains
+      backend/tests/ with the single exclusion backend/tests/e2e, which does not contain it
+      — all four re-measured at this head."
+    ts: "2026-09-12T05:40:00Z"
     seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim:
+      on-disk gate on head 48cf44357a returned REWORK-BUILD, one finding, cured in the
+      head that follows it — the docstring's new external anchor named a check that does not
+      do what the docstring said it does.
+    cmd:
+      grep -rn "fastapi|main_api|app_factory|import backend" products/garuda-voa/contracts/tests/*.py;
+      read .github/workflows/garuda-contract-parity.yml; read the header of backend/tests/app/routers/test_garuda_voa_openapi_parity.py;
+      grep -n "backend/tests" scripts/ci/shard_tests.py
+    result:
+      '0 hits for the app imports under products/garuda-voa/contracts/tests/ — that workflow
+      installs pytest+pyyaml only and its suite yaml.safe_loads the frozen file, so it checks
+      the frozen document against itself and never sees the live schema; the frozen-vs-live
+      comparison lives in backend/tests/app/routers/test_garuda_voa_openapi_parity.py, which
+      builds the schema from the deployed main_api singleton and is enumerated by scripts/ci/shard_tests.py
+      (ROOTS contains "backend/tests/", no allowlist) so it runs in the required backend shards
+      on every PR. The cure repoints the docstring, the brief row and this pack at that file
+      and names the workflow as the trap. Innocence on the code: 59 passed (the changed test
+      file plus the parity suite) at the rejected head, unchanged by a docstring edit.'
+    ts: "2026-09-12T05:35:00Z"
+    seat:
+      claude-opus-5 (GARUDA VOA W3C session 2/4, fresh context, outside the chain that produced
+      48cf44357a)
     exit: 0
 dissent:
   - seat: codex-gpt-5.6-sol
@@ -193,9 +227,11 @@ dissent:
       "ACCEPTED as decisive rather than cured. Three rounds on one cause established
       that a unit test sharing a process with the router it inspects cannot distinguish the
       contract's operation from a counterfeit installed ahead of it. Decision #19 moved the
-      identity claim to `garuda-contract-parity`, which compares the frozen contract against
-      the live singleton and has an anchor outside the process under test, and reduced the unit
-      test to 307 + Location + envelope."
+      identity claim to `backend/tests/app/routers/test_garuda_voa_openapi_parity.py`, which
+      compares the frozen contract against the live `main_api` singleton and has an anchor outside
+      the process under test, and reduced the unit test to 307 + Location + envelope. (The first
+      head of this PR named the `garuda-contract-parity` WORKFLOW instead; the on-disk gate
+      rejected that head -- see the REWORK-BUILD receipt below.)"
   - seat: codex-gpt-5.6-sol
     status: CONFIRMED
     objection:

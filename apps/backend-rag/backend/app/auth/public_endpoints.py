@@ -78,11 +78,22 @@ def path_matches_template(path: str, template: str) -> bool:
         asserts a 307 to the slash-less path and an identical envelope, and
         claims nothing about which route produced it — while the claim that
         those paths ARE the frozen contract's operations is anchored where it
-        has an external reference: the `garuda-contract-parity` check
-        (`.github/workflows/garuda-contract-parity.yml`), which compares the
-        frozen `openapi.yaml` against the live singleton on every PR. Named
-        here as the anchor, not re-proved here. Registry-wide behaviour is a
-        ledger row (PENDING-ARMS, #6267 gate condition 2).
+        has an external reference:
+        `backend/tests/app/routers/test_garuda_voa_openapi_parity.py`, which
+        builds the schema from the deployed `main_api` singleton and compares
+        it operation by operation against the frozen `openapi.yaml`. It runs
+        on every PR inside the required backend shards (`tests.yml` ->
+        `scripts/ci/shard_tests.py`, which globs `backend/tests/**` with no
+        allowlist). Named here as the anchor, not re-proved here.
+
+        NOT `.github/workflows/garuda-contract-parity.yml`, whose NAME invites
+        exactly that mistake: it installs only pytest and pyyaml and its suite
+        (`products/garuda-voa/contracts/tests/`) never imports the app, so it
+        checks the frozen document against itself. That distinction is
+        measured, not assumed -- the parity file's own header records the
+        drift the misreading allowed (2026-08-24/25), and this paragraph named
+        the workflow before the gate on #6275 caught it. Registry-wide
+        behaviour is a ledger row (PENDING-ARMS, #6267 gate condition 2).
 
         The matching itself is pinned both ways by
         `test_path_matches_template_trailing_and_inner_slashes` in
