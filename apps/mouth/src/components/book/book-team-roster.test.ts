@@ -74,7 +74,13 @@ describe("book team grid (/book, /book/team)", () => {
       "technology",
       "contact",
     ]);
-    expect(STATS.teamSize).toBe(22);
+    // STATS.teamSize is deliberately NOT asserted. It reads 22, which disagreed
+    // with the 20-person roster before this change and now disagrees with the
+    // 18-person public grid. Pinning it here would make this suite a guardian of
+    // a number nobody has decided is right; deriving it from publicRoster() would
+    // silently rewrite customer-facing copy, which is the owner's call and not a
+    // presentation window's. It is recorded as declared debt in the evidence pack
+    // and in the PR body instead (RULED by the SHWEB imperator, 2026-09-12).
     expect(CONTACTS.email).toBe("info@balizero.com");
   });
 });

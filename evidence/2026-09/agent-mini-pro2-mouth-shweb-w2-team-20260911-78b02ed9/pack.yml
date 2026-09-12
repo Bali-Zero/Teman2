@@ -1,0 +1,320 @@
+# Evidence Pack — SHWEB-20260911 / W2-WEB-TEAM (PR #6277)
+#
+# The per-task pack, at the path scripts/ci/evidence_paths.py resolves for this
+# branch. NOT evidence/pack.yml: that root path is deprecated precisely because it
+# makes any two Gear>=2 PRs mutually exclusive in the merge queue. Its companions
+# in this directory are brief.yml, contract-lock.json, journal.jsonl, the seat
+# records under reviews/ and the guilt mutants — all authored in this same diff.
+
+brief_ref: evidence/2026-09/agent-mini-pro2-mouth-shweb-w2-team-20260911-78b02ed9/brief.yml
+plan_ref:
+  "PR #6277 (agent/mini-pro2/mouth/shweb-w2-team-20260911) — SHWEB-20260911 / W2-WEB-TEAM, 2026-09-12.
+  Governing package: /Users/nuzantara/Desktop/SHWEB-20260911-mouth-final/pacchetto (FINAL §1 decision
+  D = D-B, W2-web-team.md, addendum topic 5). Colour BLUE, Gear 3 by SIZE."
+
+gear: 3
+gear_floor_source:
+  "size — `python3 scripts/evidence_pack_lint.py --print-floor` = 3 and `--print-floor-source` = size
+  on this PR's real changed-file list. No hot-zone path is touched; the floor is volume alone."
+
+lanes:
+  - lane: build
+    role: build
+    seat: >-
+      claude-opus-5 (the conducting session — code AND tests, one seat. Declared as ONE build lane
+      because that is what happened: no external seat wrote any of this code, and a second build lane
+      would be a fiction invented to satisfy a diversity rule. The diversity here is on the REVIEW
+      side, where three non-Anthropic families read the candidate.)
+  - lane: review-second-reader
+    role: review
+    seat: >-
+      kimi-code/k3 (PRE on the plan, then POST on the frozen head — the rosterBySlug consumer census,
+      the book filter, and the soundness of this window's own probes)
+  - lane: review-refuter
+    role: review
+    seat: >-
+      gemini-3.1-pro (PRE on the built candidate, then POST on the frozen head; leak paths, filter
+      shape, D-B containment, perimeter)
+  - lane: review-council-core
+    role: review
+    seat: >-
+      tp1-qwen3.8-max (the filter module in full, its tests, every consumer call site — the piece
+      where a defect is worst)
+
+seat_diversity: satisfied
+seat_diversity_note:
+  "One build lane, so D3's build-lane diversity math does not apply — and it is not being dodged:
+  three separate non-Anthropic families (Kimi, Gemini, qwen) reviewed this diff, and between them
+  they found five real defects in it, four of which were in the guard and the probes this window
+  itself wrote. Generator was never grader. Codex Sol is DEAD on Mini (acct1 'workspace out of
+  credits' with exit 0, acct2 tool-router timeout — both recorded); the SHWEB imperator runs that
+  seat from M5 against the frozen head."
+
+diff: >-
+  net_lines:
+    "Measured by `git diff --numstat` against base 70b43c5459: roughly a third of the added lines
+    are the evidence directory itself. Five existing consumers modified; added are one filter
+    module, two CSS modules, six test files and one e2e spec. Zero backend, zero workflow, zero
+    migration, no lockfile, no frozen surface."
+  behaviour_change:
+    "Two things. (1) The public /team directory and a founder band on the home take the R19
+    reference's composition — grids, rhythm, type scale, 44/48px targets — in apps/mouth's CURRENT
+    colours and fonts. (2) Two people the owner ordered off public pages stop appearing on them:
+    /team goes from 20 published names to 18 and /book/team from 20 to 18, while the roster record
+    itself is byte-identical and rosterBySlug still resolves both people for internal surfaces.
+    /v2's SocialProof default render is unchanged — the founder band is an opt-in prop."
+
+pii_scan: clean
+pii_scan_note:
+  "The only personal data here is the PUBLIC staff roster already published on balizero.com/team —
+  names, role labels, portrait paths. No client PII, no OSINT, no email address and no credential
+  enters the diff, the tests or this pack. The two excluded people are named by slug in one module
+  and by name in assertions that prove their ABSENCE, which is the opposite of publishing them.
+  Nothing reached a paid per-token endpoint: the review seats were sent this repo's own diff."
+
+receipts:
+  - claim: >-
+      The deterministic gear floor recomputed from THIS PR's actual changed-file list is 3, matching
+      the declared gear and the `Harness floor recompute` message that demanded this file
+    cmd: >-
+      git diff --name-only 70b43c5459..HEAD > /tmp/w2-changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/w2-changed.txt --numstat-file /tmp/w2-numstat.txt
+    result: 3 (--print-floor-source = size; churn 4,123 lines over the 1,828 threshold)
+    exit: 0
+    ts: 2026-09-12T04:48Z
+    seat: session (Mini)
+  - claim: >-
+      THE CENTRAL RECEIPT — the two excluded people are published on production TODAY and are absent
+      from every public route of this candidate, portrait paths included
+    cmd: >-
+      curl https://balizero.com/api/health (served commit), then curl each of /team /book/team / /v2
+      /v2/company/about /book on production AND on this candidate's own `npm run build && next start`,
+      counting 'faisha|faysha|sahira' and the two /static/team portrait paths in the DECODED HTML
+    result:
+      "production (2150e4a00d): /team Faisha x20 + Sahira x20 and portraits faisha.jpg x16 +
+      sahira.jpg x16; /book/team x5 + x5. candidate: 0 on all six routes and 0 for both portraits.
+      /, /v2, /v2/company/about were already 0 and stay 0."
+    exit: 0
+    ts: 2026-09-12T04:51Z
+    seat: session (Mini)
+  - claim: >-
+      The public roster drops exactly the two ordered people and keeps the other eighteen with the
+      role label they carry today; the non-roster "Zero" entry survives
+    cmd: npx tsx (print TEAM_ROSTER, PUBLIC_ROSTER and publicRoster() as a per-name table)
+    result:
+      "TEAM_ROSTER 20 | PUBLIC_ROSTER 20 | publicRoster() 18 | removed exactly faisha, sahira |
+      isPublicSlug('faisha')=false ('sahira')=false | an unrelated unknown slug still passes"
+    exit: 0
+    ts: 2026-09-12T04:39Z
+    seat: session (Mini)
+  - claim: >-
+      The roster SSOT is byte-identical at the gated head, and the frozen surfaces are provably
+      untouched — their recorded hashes recompute exactly
+    cmd: shasum -a 256 on apps/mouth/src/data/team-roster.ts, globals.css, layout.tsx, rumahVars.ts, package-lock.json
+    result:
+      "roster 947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e, unchanged; the four
+      frozen-surface hashes in contract-lock.json all recompute to the byte"
+    exit: 0
+    ts: 2026-09-12T05:08Z
+    seat: session (Mini)
+  - claim: The repo checks are green on the candidate
+    cmd: npx vitest --run (the five W2 test files); npx tsc --noEmit; npx eslint (the six touched sources); npm run build
+    result:
+      "Tests 38 passed (38); tsc 0 diagnostics; eslint 6 problems (0 errors, 6 warnings — all
+      pre-existing on base and only renumbered by this diff, verified line by line against HEAD);
+      build exit 0"
+    exit: 0
+    ts: 2026-09-12T05:20Z
+    seat: session (Mini)
+  - claim: >-
+      The browser walk passes, and its probes are no longer vacuous — each one now fails if the thing
+      it measures is absent rather than merely clean
+    cmd: BZ_E2E_PORT=3111 npx playwright test -c playwright.config.ts --project=chromium e2e/shweb-team.spec.ts
+    result:
+      "24 passed — the exclusions on six routes, the R19 measures (container min(1320px,90%), the
+      three-column directory, the 78x94 founder portrait, radius 48px 48px 3px 3px, the >=48px band
+      link), five viewports on /team AND on the home band, keyboard focus proven by a style delta,
+      measured contrast, portraits decoded after a lazy-load walk, and both tool links followed to a
+      real page"
+    exit: 0
+    ts: 2026-09-12T05:25Z
+    seat: session (Mini)
+  - claim: >-
+      Every consumer probe is LOAD-BEARING, not decorative — each mutant turns a specific test red
+      and the file is restored byte-identical after every one
+    cmd: >-
+      six mutants applied in turn (publicEntries dropped from SocialProof's two call sites; the
+      slug-less name guard dropped; the slug-first short-circuit restored; norm() reduced to the
+      identity; EXCLUDED_NAMES dropped from isPublicSlug), each followed by vitest and a restore
+    result:
+      "2 failed | 6 passed; 1 failed | 7 passed; 1 failed | 9 passed; 2 failed | 8 passed;
+      1 failed | 12 passed — and all-green after each restore"
+    exit: 0
+    ts: 2026-09-12T05:17Z
+    seat: session (Mini)
+  - claim: >-
+      The consumer census is a RESULT, not an assumption — the complete set of roster consumers,
+      re-measured on the frozen head
+    cmd: >-
+      grep every importer of @/data/team-roster across apps/mouth/src, list the symbols each imports,
+      and grep sitemap.ts / robots.ts / JSON-LD blocks / OG routes for roster references
+    result:
+      "the only importers of a LISTING symbol are the four public consumers (all routed through the
+      filter), the filter module, its tests and the roster itself; (workspace)/process imports only
+      initialsOf; sitemap.ts and robots.ts have ZERO roster references; no JSON-LD block is
+      roster-derived; the two names appear elsewhere only in authenticated (workspace) surfaces, in
+      generated schema.d.ts (erased at build, in no static chunk) and in lib/hr/bonus-aggregation.ts,
+      reached only by (workspace)/hr/bonuses"
+    exit: 0
+    ts: 2026-09-12T05:10Z
+    seat: session (Mini)
+  - claim: >-
+      No frozen file is in the changeset, and no R19 Direction-A colour or font enters as a VALUE
+    cmd: >-
+      git status --porcelain piped through a grep for every frozen path; then grep -ic for each of the
+      eight banned hexes plus Fraunces/Manrope over the whole candidate, and grep every hex literal
+      and font-family in the two new CSS modules
+    result:
+      "no frozen path matches. The ten D-A tokens match only inside COMMENTS that declare them
+      absent; every CSS colour is a neutral or var(--rp-*, <fallback>) whose fallback is
+      byte-identical to the live RUMAH_VARS value; the only font declaration is var(--font-serif)"
+    exit: 1
+    ts: 2026-09-12T04:37Z
+    seat: session (Mini)
+  - claim: >-
+      The 47 Hex-High-Entropy findings this pack introduced are content hashes and git SHAs, not
+      credentials — audited as such rather than suppressed
+    cmd: >-
+      detect-secrets scan --baseline .secrets.baseline (the pack files), then the four frozen-surface
+      hashes recomputed with shasum -a 256, then scripts/detect_secrets_check_unaudited.py
+      # pragma: allowlist secret
+    result:
+      "1 finding in brief.yml carries an inline allowlist pragma; 46 in contract-lock.json (JSON
+      cannot carry a comment) are recorded in .secrets.baseline as is_secret:false, additively —
+      531 -> 532 files and 8,160 -> 8,206 findings, nothing pruned. Checker: all findings audited."
+    exit: 0
+    ts: 2026-09-12T05:22Z
+    seat: session (Mini)
+
+council_run: journal.jsonl
+
+dissent:
+  - seat: gemini-3.1-pro (refuter, PRE on the built candidate and POST on the frozen head)
+    objection:
+      'BLOCKER — "the roster reaches the public client JS bundle, so the two excluded people are
+      fetchable on every public route; the exclusion is defeated for anyone who opens the bundle."
+      And, in the POST round: "an unknown slug is allowed through, so { slug: ''faysha'' } misses the
+      roster, falls back to printing the SLUG as the display name, and bypasses the filter entirely."'
+    status: CONFIRMED
+    resolution:
+      "Two findings, both true, handled differently and deliberately. The BUNDLE one is real and
+      MEASURED — every public route ships a chunk carrying both names — but it is PRE-EXISTING:
+      SocialProof.tsx is 'use client' at line 1 and imports rosterBySlug at line 5 OF THE BASE
+      COMMIT, and production today already ships chunk 9807-96d60b31ba444894.js with the same names.
+      This window neither caused it nor worsens it, and the cure edits /v2/page.tsx, outside the five
+      declared consumers. Declared as a partial exclusion under FINAL §2.18, ruled by the SHWEB
+      imperator, with the follow-up PR's perimeter granted in advance. The UNKNOWN-SLUG one was a
+      genuine hole and is FIXED: two consumers resolve `rosterBySlug(slug)?.name ?? slug`, so an
+      unknown slug is allowed but is NOT anonymous — isPublicSlug now rejects a slug matching an
+      excluded name or alias, with a test and a red mutant. Three further claims were REFUTED with
+      evidence rather than accepted: that the names reach the rendered HTML (measured 0 on all six
+      routes); that `initials` is an undefined type hole (TeamMember declares it at line 33 and
+      resolve() computes it at line 56, and tsc is clean); and that contract-lock.json is a disguised
+      second lockfile (it is this pack's freeze record, in evidence/, read by no package manager)."
+  - seat: kimi-code/k3 (second reader, PRE on the plan and POST on the frozen head)
+    objection:
+      'F1/BLOCKER in the PRE round — "the guilt-mutant acceptance is undetectable for two of the four
+      consumers, whose spec lists contain neither excluded person, so deleting the filter changes zero
+      rendered output and the acceptance fails its own proof." Then, in the POST round: "the e2e leak
+      check can snapshot the HTML before the team section exists — a probe that cannot distinguish
+      ''section absent'' from ''section clean'' is vacuous"; "the name guard misses the alternate
+      spelling the module itself documents (faysha)"; "the photo probe hardcodes guessed paths"; and
+      "the focus predicate is trivially satisfied by links that always carry a border-bottom."'
+    status: CONFIRMED
+    resolution:
+      "Every one accepted and fixed, and the last three were defects in the probes this window wrote
+      — the review caught the proof, not the product. (1) Each consumer probe now INJECTS an excluded
+      slug into a roster that consumer really renders, so 'delete the filter' goes red on a person
+      that consumer actually publishes; mutant-verified. (2) The sweep now waits for a per-route
+      presence marker — somebody who must be visible — before it reads the document, so it cannot
+      pass by measuring an empty page. (3) 'faysha' — the owner's own spelling and the roster email
+      prefix — is now in a separate alias list folded into the NAME set (it cannot go in the slug
+      list, which is pinned to real roster slugs), with a test. (4) The portrait paths are now DERIVED
+      from the roster and matched against the DECODED document: measured on the served page, a
+      portrait reaches the HTML 15 times URL-ENCODED through next/image against 1 literal time, so
+      the old literal-string assertion was very nearly vacuous. The same defect was then found in the
+      'portraits decoded' filter, which matched nothing on a built page; fixed, and it immediately
+      caught real lazy-loading behaviour, so the probe now walks the page before asserting. (5) Focus
+      is proven by a computed-style DELTA focused vs blurred, which the old predicate could not do.
+      One finding REFUTED with its source: #e3e1da is not a Direction-A tone, it is the live value of
+      --border-default and --rp-card-border in rumahVars.ts:37,38,44."
+  - seat: tp1-qwen3.8-max (council, the filter module and every consumer call site)
+    objection:
+      'MAJOR — "`if (e.slug) return isPublicSlug(e.slug);` short-circuits on the slug, so an entry like
+      { slug: "kadek", nameOverride: "Faisha" } carries an allowed slug, never has its name inspected,
+      and republishes the excluded person under the override the consumer renders." MINOR — "EXCLUDED.has
+      is case-sensitive, so isPublicSlug(''Faisha'') misses the set, falls through to a roster lookup
+      that returns undefined, and returns true."'
+    status: CONFIRMED
+    resolution:
+      "Both true, both fixed, and the first is the most instructive finding of the round: it was a hole
+      created BY the fix for Gemini's slug-less finding — one seat's correction became the next seat's
+      defect, which is the argument for a second family rather than a second opinion. publicEntries
+      now checks nameOverride FIRST, with or without a slug; and every comparison in the module goes
+      through one norm() (NFKC, then Cf-stripping, then trim and lowercase) applied to BOTH sides, so
+      the guard no longer depends on the caller being careful. Zero-width characters are stripped too
+      — they survive NFKC and are invisible on the page, so 'Fai<ZWSP>sha' would have read as the
+      excluded person to a visitor and as a different string to a Set. Tests for each, each
+      mutant-verified red. One claim REFUTED: the home does not bypass the filter — its entire change
+      is one line, <SocialProof /> -> <SocialProof variant='founder-band' />, and it never imports the
+      roster; the seat inferred the gap from an input that deliberately showed it only the four files
+      that DO call the filter."
+  - seat: self (the conducting session, reviewing the build it inherited)
+    objection:
+      "The trust-pill stars had been changed from #d4a017, the colour on base, to #b8860b — a colour
+      change under a decision (D-B) whose whole content is that colours stay as they are."
+    status: CONFIRMED
+    resolution:
+      "Reverted to #d4a017. No probe had demanded it: the contrast test samples the section nav, the
+      group heading, the group description, a role label and the Studio link, and never the stars. The
+      pre-existing contrast of the star glyphs against paper is left exactly as found and named in
+      debt_out_of_scope rather than silently 'improved' under cover of a redesign."
+  - seat: codex-gpt-5.6-sol (POST, frozen head, run from M5 by the imperator)
+    objection: >-
+      Seven findings, NO-GO. The two that were neither already-known nor already-fixed: a
+      `photoOverride` and an email-shaped field on an entry with a PERFECTLY ALLOWED slug both
+      stayed KEPT, publishing an excluded person's face and address under a clean slug; and
+      isPublicSlug normalised the excluded SET but called rosterBySlug with the RAW string, so a
+      padded or fullwidth spelling missed the roster, resolved to undefined, and took the
+      "unknown slug is allowed" branch — the branch that would publish a publicListed:false member.
+    status: CONFIRMED
+    resolution: >-
+      Both cured. The filter now judges EVERY string an entry carries against EXCLUDED_MARKERS —
+      slug, name, alias, portrait path and email, every one derived from the roster record rather
+      than hand-listed — because a name is not the only way to publish somebody. Mutant (revert to
+      the name-only check) turns the new test red. The roster lookup now receives the normalised key
+      as well. That second cure is DEFENSIVE and its limit is stated in the test rather than dressed
+      up: no mutant can turn it red today, because no roster member carries publicListed:false —
+      the very fact this module exists to work around. Of the remaining five: the client bundle is
+      the already-declared partial exclusion; the missing pack.yml was true of the head it read and
+      is authored in this push; the e2e hydration and focus-delta defects are the same two Kimi
+      raised; and the directly-addressable portrait files are pre-existing and recorded as debt.
+      This seat is ok:false in the journal because it is DEAD ON MINI — acct1 answers "workspace out
+      of credits" with exit 0, acct2 times out in the tool router — not because the review is absent.
+
+partial_exclusion: # FINAL §2.18
+  what:
+    "The two excluded people remain readable in the PUBLIC client JS bundle — one shared chunk on
+    every public route — because the roster is imported by a 'use client' component."
+  why_not_here:
+    "The fix edits apps/mouth/src/app/v2/page.tsx, outside this window's five declared consumers,
+    and a window may not widen its own perimeter. One PR, one concern."
+  pre_existing:
+    "Measured on the served commit 2150e4a00d BEFORE this work: balizero.com/team and /v2 already
+    ship chunk 9807-96d60b31ba444894.js containing both names. The candidate neither improves nor
+    worsens this; the rendered HTML is 0 on all six routes, which is what this PR claims."
+  ruled_by: "SHWEB imperator, 2026-09-12 (mailbox key shweb-imp-w2-g1-ruling)"
+  follow_up:
+    "Perimeter granted in advance for a separate PR from a fresh main, after this one is SERVED:
+    /v2/page.tsx + SocialProof.tsx, resolving the roster server-side and passing props so that no
+    'use client' file imports team-roster.ts. Its Bites is a grep over the built public chunks."

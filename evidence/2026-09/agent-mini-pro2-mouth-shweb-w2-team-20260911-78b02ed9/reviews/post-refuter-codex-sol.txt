@@ -1,0 +1,44 @@
+# POST refuter record — Codex Sol (GPT-5.6), on the FROZEN head 9842793f49
+
+seat: codex-gpt-5.6-sol
+round: POST
+ok: false
+verdict: NO-GO (7 findings)
+host: run from M5 by the SHWEB imperator (codex exec --sandbox read-only, CODEX_HOME=~/.codex-acct2)
+
+## Why ok:false
+
+The seat is DEAD ON MINI and could not be run by the authoring session: account 1 answers
+"workspace out of credits" WITH EXIT 0 — a zero exit carrying no review, which is the trap — and
+account 2 times out in the tool router. Both attempts are recorded verbatim in this directory
+(pre-review-codex-sol-acct1-out-of-credits.txt, pre-review-codex-sol-attempt2-toolrouter-timeout.txt).
+`ok: false` records the seat being unavailable TO THIS HOST, not the review being absent: the
+imperator ran it from M5 against the frozen head and delivered the findings by fleet mailbox, and
+all seven are disposed one by one in the pack's dissent.
+
+## The seven findings, and what happened to each
+
+1. The roster reaches the public client JS bundle — the already-adjudicated G1. Declared partial
+   exclusion (FINAL §2.18) with measurements on both sides; NOT cured here by ruling, because the
+   fix edits a file outside this window's perimeter. Follow-up PR perimeter granted in advance.
+2. pack.yml missing at the head it reviewed — true of 9842793f49, which carried brief.yml but no
+   pack.yml. Cured in this push, at the per-task path scripts/ci/evidence_paths.py resolves
+   (NOT evidence/pack.yml, whose root path the linter rejects as deprecated).
+3. A `photoOverride` and an email-shaped field on an entry with a PERFECTLY ALLOWED slug both
+   stayed KEPT, publishing an excluded person's face and address under a clean slug. CURED: the
+   filter now judges every string an entry carries against EXCLUDED_MARKERS — slug, name, alias,
+   portrait path and email, all derived from the roster record. Test "drops an allowed slug that
+   carries an excluded person's PHOTO or EMAIL"; mutant (revert to the name-only check) turns it red.
+4. faisha.jpg and sahira.jpg remain directly addressable under public/static/team/. PRE-EXISTING
+   and NOT this PR's: internal surfaces use those files, and removing them or putting them behind
+   auth is the owner's decision. Registered as declared debt; the imperator carries it to Zero.
+5. isPublicSlug normalised the excluded SET but called rosterBySlug with the RAW string, so a
+   padded or fullwidth spelling missed the roster, resolved to undefined, and took the
+   "unknown slug is allowed" branch — the branch that would publish a publicListed:false member.
+   CURED: the lookup receives the normalised key too. STATED LIMIT: this cure is defensive and no
+   mutant can turn it red today, because no roster member carries publicListed:false — the very
+   fact this module exists to work around. The test says so in place of implying a proof.
+6. e2e hydration and focus-delta — the same two defects Kimi raised, already cured in this push.
+   "page.content() only sees HTML" is finding 1 restated.
+7. Stale counts in the pack. Recomputed against this push: unit 38, e2e 24, and the file-count
+   prose dropped in favour of the numbers the linter recomputes itself.

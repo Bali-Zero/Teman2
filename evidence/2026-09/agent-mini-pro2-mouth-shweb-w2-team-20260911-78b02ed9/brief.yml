@@ -78,7 +78,7 @@ acceptance:
       none of them, and every other person live today (Kadek, Rina, the Zero entry, Ruslana, Surya,
       Ari, Damar, Subhi, Asya, Angel, Dewa Ayu, Veronika, Adit, Krisna, Dea, Candra, Vino, Zainal,
       Heru) SHALL still appear with the role label they carry today.
-    probe: "npx vitest --run (the five W2 test files) — 32 passed; npx tsx per-name table: PUBLIC_ROSTER 20 -> publicRoster() 18"
+    probe: "npx vitest --run (the five W2 test files) — 38 passed; npx tsx per-name table: PUBLIC_ROSTER 20 -> publicRoster() 18"
     status: PASS
   - text: >-
       WHEN /book and /book/team render, THEN the book team grid SHALL NOT contain Faisha or Sahira
@@ -161,6 +161,19 @@ spend:
   adversarial_rounds: 2 # round 1 Kimi (plan), round 2 Gemini + qwen (built candidate); Codex from M5 is the imperator's POST round on the frozen head
 budget_enforcement: "scripts/mandate_budget.py absent on base 70b43c5459: ledger + imperator mailbox checkpoints only, no invented flag"
 debt_out_of_scope:
+  - >-
+    public/static/team/faisha.jpg and sahira.jpg remain directly addressable on the public origin.
+    Raised by Codex Sol in the POST round. PRE-EXISTING and not this PR's to change: internal
+    surfaces use those files, so deleting them or putting them behind auth is the owner's decision.
+    No public page links them any more — measured 16 -> 0 on /team — but the bytes are still
+    fetchable by anyone who knows the path. RULED to debt by the SHWEB imperator, who carries it to Zero.
+  - >-
+    book-data.ts STATS.teamSize reads 22 while the roster holds 20 and the public book grid now
+    shows 18. The first disagreement PRE-DATES this window (22 vs 20); this window widens it to
+    22 vs 18. Raised by Kimi K3 in the POST round. Not fixed here because the number is customer-
+    facing copy and belongs to the owner, not to a presentation window — and deriving it from
+    publicRoster() would silently change a published figure. The test asserts 22 to prove STATS
+    was not touched, with a comment saying exactly that.
   - "Home/team metadata disagree on the founding year ('since 2020' in home metadata and SocialProof vs 'since 2006' on /team): a content lane matter, named by the R19 map §4.1, not fixed here."
   - "/v2/company/about says 'Founded 2019' while the home says 'since 2020' — same content lane, not W2's mandate."
   - "rosterBySlug ignoring publicListed stays as-is by order; if Zero ever wants the flag to be the single gate, that is a roster-owner change, not a presentation one."
@@ -404,6 +417,53 @@ dissent:
       else; the roster never enters it. The seat inferred the gap from its own input, which was a
       grep of the four files that DO call the filter — the home's involvement is prop-only, so it
       correctly had no call site to show. Recorded because the inference was sound on what it saw.
+  - seat: gemini-3.1-pro (POST, frozen head)
+    objection: >-
+      BLOCKER — an UNKNOWN slug is allowed through, so `{ slug: "faysha" }` misses the roster and
+      the consumer falls back to using the slug itself as the display name, bypassing the filter.
+    status: CONFIRMED
+    disposition: >-
+      TRUE and FIXED. Verified in the two consumers that do it: `v2/company/about/page.tsx:35` and
+      `v2/_components/SocialProof.tsx:44` both resolve `rosterBySlug(slug)?.name ?? e.slug`. (On
+      /team the fallback is "" so no name leaks there — the hole was real in exactly two places.)
+      isPublicSlug now rejects a slug matching an excluded NAME or alias as well as the slug list:
+      an unknown slug is allowed, but it is not anonymous. Test "drops an UNKNOWN slug that spells
+      an excluded person"; mutant (drop EXCLUDED_NAMES from isPublicSlug) turns it red.
+  - seat: gemini-3.1-pro (POST, frozen head)
+    objection: >-
+      MAJOR — `member.initials` is undefined: the TeamMember interface lacks it and resolve() never
+      computes it, so the initials fallback renders blank. Plus: contract-lock.json is a disguised
+      second lockfile bypassing the package-lock freeze.
+    status: RETRACTED
+    disposition: >-
+      Both refuted by the files. `TeamMember` declares `initials: string` at team/page.tsx:33 and
+      `resolve()` sets `initials: initialsOf(name)` at line 56 — and tsc reports 0 diagnostics,
+      which a missing required property could not survive. contract-lock.json is this evidence
+      pack's freeze record (sha256 of the frozen surfaces), lives under evidence/, and is read by no
+      package manager; the seat matched on the filename. package-lock.json is untouched and its
+      recorded hash recomputes to the byte.
+  - seat: kimi-code/k3 (POST, frozen head)
+    objection: >-
+      Three MAJOR — the leak sweep can read the document BEFORE the people section renders, so it
+      cannot tell "section absent" from "section clean"; the name guard misses "faysha", the
+      alternate spelling the module's own comment documents; and the photo probe compares hardcoded
+      literal paths. Plus MINOR — the focus predicate is trivially true for links that always carry
+      a border-bottom, and the home founder band is never measured at 360px.
+    status: CONFIRMED
+    disposition: >-
+      All accepted and fixed; every one was a defect in this window's own PROOF, not in the product,
+      which is the argument for a POST round on a frozen head. The sweep now waits for a per-route
+      presence marker (somebody who must be visible) before reading the document. "faysha" now lives
+      in PUBLIC_EXCLUDED_NAME_ALIASES, folded into the NAME set — it cannot go in the slug list,
+      which is pinned to real roster slugs. Portrait paths are DERIVED from the roster and matched
+      against the DECODED document: measured on the served page, a portrait appears 15 times
+      URL-encoded through next/image against 1 literal time, so the old assertion was very nearly
+      vacuous. The same defect was then found in the "portraits decoded" filter, which matched
+      nothing on a built page — fixed, and it immediately failed on real lazy-loading, so the probe
+      now walks the page before asserting and 24/24 pass. Focus is proven by a computed-style delta
+      focused vs blurred. The home band now has its own five-viewport overflow sweep. One finding
+      REFUTED with its source: #e3e1da is the live value of --border-default and --rp-card-border in
+      rumahVars.ts:37,38,44, not a Direction-A tone.
 
 partial_exclusion: # FINAL §2.18
   what: >-
@@ -425,7 +485,7 @@ partial_exclusion: # FINAL §2.18
 receipts:
   - claim: "the five W2 test files pass, the filter's negatives and every consumer probe included"
     cmd: "npx vitest --run src/lib/team-public-listing.test.ts 'src/app/(blog)/team/team.test.tsx' src/app/v2/_components/SocialProof.test.tsx src/app/v2/company/about/about.test.tsx src/components/book/book-team-roster.test.ts"
-    result: "Test Files 5 passed (5) | Tests 32 passed (32)"
+    result: "Test Files 5 passed (5) | Tests 38 passed (38)"
     exit: 0
     ts: "2026-09-12T04:59:04Z"
     seat: claude-opus-5
@@ -443,13 +503,13 @@ receipts:
     seat: claude-opus-5
   - claim: "the roster SSOT is byte-identical to the frozen hash at this head"
     cmd: "shasum -a 256 apps/mouth/src/data/team-roster.ts"
-    result: "947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e"
+    result: "947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e" # pragma: allowlist secret - sha256 of a tracked source file, recomputable
     exit: 0
     ts: "2026-09-12T04:53:42Z"
     seat: claude-opus-5
   - claim: "the browser walk passes: the exclusions on six routes, the R19 measures, five viewports, keyboard focus, measured contrast, both tool links"
     cmd: "BZ_E2E_PORT=3111 npx playwright test -c playwright.config.ts --project=chromium e2e/shweb-team.spec.ts"
-    result: "19 passed (41.6s)"
+    result: "24 passed (46.3s)"
     exit: 0
     ts: "2026-09-12T04:46:00Z"
     seat: claude-opus-5

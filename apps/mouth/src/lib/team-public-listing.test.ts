@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { TEAM_ROSTER, PUBLIC_ROSTER, rosterBySlug } from "@/data/team-roster";
 import {
   PUBLIC_EXCLUDED_SLUGS,
+  PUBLIC_EXCLUDED_NAME_ALIASES,
   isPubliclyListed,
   isPublicSlug,
   publicEntries,
@@ -112,6 +113,103 @@ describe("team public listing filter", () => {
     // and the people who stay, stay
     expect(isPublicSlug("Kadek")).toBe(true);
     expect(isPublicSlug("RINA")).toBe(true);
+  });
+
+  it("drops the documented alternate spelling the roster itself carries", () => {
+    // The module's own comment records it: the slug is "faisha" but the owner
+    // writes "Faysha" and the roster email is faysha.tax@. A name guard that
+    // knows only the slug and the roster name lets the owner's own spelling
+    // through — and the alias cannot go in PUBLIC_EXCLUDED_SLUGS, because the
+    // test above pins every entry there to a REAL roster slug.
+    expect(PUBLIC_EXCLUDED_NAME_ALIASES).toContain("faysha");
+    expect(publicEntries([{ nameOverride: "Faysha" }])).toEqual([]);
+    expect(publicEntries([{ nameOverride: "faysha" }])).toEqual([]);
+    expect(publicEntries([{ slug: "kadek", nameOverride: "Faysha" }])).toEqual(
+      [],
+    );
+    // and it does not over-match a real person
+    expect(publicEntries([{ nameOverride: "Asya Nadia" }])).toHaveLength(1);
+  });
+
+  it("sees through zero-width characters, which are invisible on the page", () => {
+    // NFKC leaves format characters (Cf) alone, so "Fai<ZWSP>sha" renders as the
+    // excluded person to a reader while hashing as a different string.
+    expect(publicEntries([{ nameOverride: "Fai\u200Bsha" }])).toEqual([]);
+    expect(publicEntries([{ nameOverride: "\uFEFFsahira" }])).toEqual([]);
+    expect(isPublicSlug("fai\u200Dsha")).toBe(false);
+  });
+
+  it("drops an UNKNOWN slug that spells an excluded person", () => {
+    // Two consumers resolve `rosterBySlug(slug)?.name ?? slug`, so an entry
+    // spelled `{ slug: "faysha" }` misses the roster and then PRINTS THE SLUG.
+    // An unknown slug is allowed, but it is not anonymous.
+    expect(isPublicSlug("faysha")).toBe(false);
+    expect(publicEntries([{ slug: "faysha" }])).toEqual([]);
+    expect(publicEntries([{ slug: "FAYSHA" }])).toEqual([]);
+    // a genuinely unrelated unknown slug still passes
+    expect(isPublicSlug("someone-new")).toBe(true);
+    expect(publicEntries([{ slug: "someone-new" }])).toHaveLength(1);
+  });
+
+  it("drops an allowed slug that carries an excluded person's PHOTO or EMAIL", () => {
+    // Codex finding #3: a name is not the only way to publish somebody. These two
+    // entries carry a perfectly allowed slug, so a name-only guard keeps them —
+    // and then the consumer renders the excluded person's face, or their address.
+    const photoOfExcluded = rosterBySlug("faisha")?.photo;
+    const emailOfExcluded = rosterBySlug("sahira")?.email;
+    expect(photoOfExcluded).toBeTruthy();
+    expect(emailOfExcluded).toBeTruthy();
+
+    expect(
+      publicEntries([{ slug: "kadek", photoOverride: photoOfExcluded }]),
+    ).toEqual([]);
+    expect(publicEntries([{ slug: "kadek", email: emailOfExcluded }])).toEqual(
+      [],
+    );
+    // the same shape pointing at somebody who IS public stays
+    expect(
+      publicEntries([
+        { slug: "kadek", photoOverride: rosterBySlug("adit")?.photo },
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it("normalises the slug on BOTH sides, including before the roster lookup", () => {
+    // Codex finding #5: the excluded SET was normalised while the roster lookup
+    // still got the raw string, so a padded or fullwidth slug missed the roster,
+    // resolved to undefined, and took the "an unknown slug is allowed" branch —
+    // which is the branch that would have published a publicListed:false member.
+    //
+    // HONEST LIMIT, stated rather than dressed up: the cure is DEFENSIVE and no
+    // mutant can turn this red today, because no roster member carries
+    // publicListed:false (the fact this whole module exists to work around). What
+    // IS falsifiable is that the padded and fullwidth spellings resolve to a real
+    // roster person instead of falling through as unknown, and that the excluded
+    // ones are refused whatever their spelling.
+    expect(isPublicSlug(" faisha ")).toBe(false);
+    expect(isPublicSlug("\uFF46\uFF41\uFF49\uFF53\uFF48\uFF41")).toBe(false);
+    expect(isPubliclyListed({ slug: "KADEK" })).toBe(true);
+    expect(isPubliclyListed({ slug: "kadek", publicListed: false })).toBe(
+      false,
+    );
+    expect(publicEntries([{ slug: " kadek " }])).toHaveLength(1);
+  });
+
+  it("keeps the mandated order of the list it is given", () => {
+    // The filter must never reorder: /team's sections are an editorial sequence.
+    const entries = [
+      { slug: "vino" },
+      { slug: "faisha" },
+      { slug: "angel" },
+      { nameOverride: "Zero" },
+      { slug: "kadek" },
+    ];
+    expect(publicEntries(entries)).toEqual([
+      { slug: "vino" },
+      { slug: "angel" },
+      { nameOverride: "Zero" },
+      { slug: "kadek" },
+    ]);
   });
 
   it("keeps an unknown slug (not a roster person, not this module's decision)", () => {

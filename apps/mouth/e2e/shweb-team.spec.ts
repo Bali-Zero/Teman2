@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { rosterBySlug } from "../src/data/team-roster";
+import { PUBLIC_EXCLUDED_SLUGS } from "../src/lib/team-public-listing";
 
 /**
  * SHWEB-20260911 / W2-WEB-TEAM — the browser half of the acceptance.
@@ -13,10 +15,30 @@ import { test, expect, type Page } from "@playwright/test";
  */
 
 const EXCLUDED = /faisha|faysha|sahira/i;
-const EXCLUDED_PHOTOS = [
-  "/static/team/faisha.jpg",
-  "/static/team/sahira.jpg",
-] as const;
+
+/**
+ * The portrait paths come from the ROSTER, not from a guess. Measured on the
+ * served page: a portrait reaches the HTML through `next/image`, i.e.
+ * `src="/_next/image?url=%2Fstatic%2Fteam%2Ffaisha.jpg&w=1920..."` — 15
+ * URL-ENCODED occurrences against 1 literal one. A probe that only looked for
+ * the literal path would pass while the face ships, so every assertion below
+ * runs against the DECODED document.
+ */
+const EXCLUDED_PHOTOS = PUBLIC_EXCLUDED_SLUGS.map(
+  (slug) => rosterBySlug(slug)?.photo,
+).filter((photo): photo is string => Boolean(photo));
+
+/** `%2Fstatic%2Fteam%2Ffaisha.jpg` and `&amp;` must not hide a match. */
+function decoded(html: string): string {
+  const out = html.replace(/&amp;/g, "&");
+  try {
+    return decodeURIComponent(out);
+  } catch {
+    // A stray `%` in page copy makes the whole document undecodable; fall back
+    // to the separators next/image actually emits.
+    return out.replace(/%2F/gi, "/");
+  }
+}
 
 const VIEWPORTS = [
   { name: "360", width: 360, height: 780 },
@@ -52,6 +74,19 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(overflow, "horizontal overflow in px").toBeLessThanOrEqual(1);
 }
 
+/**
+ * Per route, a person who must be visible there. Asserting this FIRST is what
+ * gives the absence assertion below any meaning.
+ */
+const PRESENCE_MARKER: Record<string, string> = {
+  "/team": "Zainal Abidin",
+  "/": "Zainal Abidin",
+  "/v2": "Zainal Abidin",
+  "/v2/company/about": "Zainal Abidin",
+  "/book/team": "Ruslana",
+  "/book": "Bali Zero",
+};
+
 test.describe("W2 — the two excluded people are on no public surface", () => {
   for (const path of [
     "/team",
@@ -64,15 +99,17 @@ test.describe("W2 — the two excluded people are on no public surface", () => {
     test(`${path} publishes neither of them`, async ({ page }) => {
       const response = await page.goto(path, { waitUntil: "domcontentloaded" });
       expect(response?.status(), `${path} did not answer 200`).toBe(200);
-      // Hydration, not the network: these pages keep a long-poll open, so
-      // `networkidle` never settles and would time the sweep out instead of
-      // measuring it.
-      await page
-        .locator("main, body > div")
-        .first()
-        .waitFor({ state: "attached" });
+      // A probe that cannot tell "the people section is absent" from "the people
+      // section is clean" is vacuous, and `networkidle` is unusable here (these
+      // pages hold a long-poll open, so it never settles). So wait for a marker
+      // that EXISTS ONLY once the roster-bearing section has rendered: somebody
+      // who must still be on the page.
+      await expect(
+        page.getByText(PRESENCE_MARKER[path], { exact: false }).first(),
+        `${path} never rendered its people section — the sweep would be vacuous`,
+      ).toBeVisible({ timeout: 15_000 });
 
-      const html = await page.content();
+      const html = decoded(await page.content());
       expect(html, `${path} still names one of them`).not.toMatch(EXCLUDED);
       for (const photo of EXCLUDED_PHOTOS) {
         expect(html, `${path} still links ${photo}`).not.toContain(photo);
@@ -228,14 +265,71 @@ test.describe("W2 — /team at every viewport", () => {
 
       await expectNoHorizontalOverflow(page);
 
-      // every portrait that has a photo actually decoded
-      const broken = await page.evaluate(() =>
-        Array.from(document.images)
-          .filter((img) => img.src.includes("/static/team/"))
-          .filter((img) => !img.complete || img.naturalWidth === 0)
-          .map((img) => img.src),
-      );
-      expect(broken, "portraits that did not decode").toEqual([]);
+      // Portraits are lazy-loaded, so a below-the-fold <img> is legitimately
+      // `complete === false` until it enters the viewport — asserting without
+      // scrolling would report working lazy-loading as a broken image. Walk the
+      // page first, then wait for every portrait to settle.
+      await page.evaluate(async () => {
+        const step = window.innerHeight;
+        for (let y = 0; y < document.body.scrollHeight; y += step) {
+          window.scrollTo(0, y);
+          await new Promise((r) => setTimeout(r, 120));
+        }
+        window.scrollTo(0, 0);
+      });
+      await page
+        .waitForFunction(
+          () =>
+            Array.from(document.images)
+              .filter((img) => {
+                const src = img.currentSrc || img.src;
+                const dec = (() => {
+                  try {
+                    return decodeURIComponent(src);
+                  } catch {
+                    return src.replace(/%2F/gi, "/");
+                  }
+                })();
+                return dec.includes("/static/team/");
+              })
+              .every((img) => img.complete),
+          null,
+          { timeout: 20_000 },
+        )
+        .catch(() => {
+          // fall through — the assertion below names the ones still unloaded
+        });
+
+      // Every portrait that HAS a photo actually decoded. The filter has to match
+      // the URL next/image really emits — `/_next/image?url=%2Fstatic%2Fteam%2F…`
+      // — because `src.includes("/static/team/")` matches nothing on a built page
+      // and would make this assertion vacuous.
+      const portraits = await page.evaluate(() => {
+        const isPortrait = (src: string) => {
+          const decodedSrc = (() => {
+            try {
+              return decodeURIComponent(src);
+            } catch {
+              return src.replace(/%2F/gi, "/");
+            }
+          })();
+          return decodedSrc.includes("/static/team/");
+        };
+        const imgs = Array.from(document.images).filter((img) =>
+          isPortrait(img.currentSrc || img.src),
+        );
+        return {
+          total: imgs.length,
+          broken: imgs
+            .filter((img) => !img.complete || img.naturalWidth === 0)
+            .map((img) => img.currentSrc || img.src),
+        };
+      });
+      expect(
+        portraits.total,
+        "no portrait <img> was found at all — this probe would be vacuous",
+      ).toBeGreaterThan(0);
+      expect(portraits.broken, "portraits that did not decode").toEqual([]);
 
       // interactive targets inside the directory
       const small = await page.evaluate(() => {
@@ -255,6 +349,29 @@ test.describe("W2 — /team at every viewport", () => {
     });
   }
 
+  // K9 (Kimi, POST): the band is NEW layout on `/`, and the viewport sweep above
+  // only ever visited /team — the 401-700px window, where the portrait steps
+  // 78 -> 60px inside a narrowing column, was unmeasured on the page the band
+  // actually lives on.
+  for (const vp of VIEWPORTS) {
+    test(`${vp.name}px: the home founder band does not overflow`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      await expect(
+        page.getByText("Zainal Abidin").first(),
+        "the founder band never rendered — this probe would be vacuous",
+      ).toBeVisible({ timeout: 15_000 });
+
+      await expectNoHorizontalOverflow(page);
+
+      const link = page.getByRole("link", { name: /Meet the team/i });
+      const box = await link.boundingBox();
+      expect(box?.height, "band link target height").toBeGreaterThanOrEqual(44);
+    });
+  }
+
   test("keyboard reaches the directory and focus stays visible", async ({
     page,
   }) => {
@@ -264,17 +381,35 @@ test.describe("W2 — /team at every viewport", () => {
     const seen: string[] = [];
     for (let i = 0; i < 40; i++) {
       await page.keyboard.press("Tab");
+      // The focus proof is a DELTA. Several of these links carry a PERMANENT
+      // border-bottom, so "has a border" is true whether or not a focus style
+      // exists — that predicate would stay green under `:focus { outline: none }`.
+      // Compare the element's computed style focused against the same style
+      // blurred instead.
       const info = await page.evaluate(() => {
         const el = document.activeElement as HTMLElement | null;
         if (!el || el === document.body) return null;
-        const s = getComputedStyle(el);
+        const snap = (e: HTMLElement) => {
+          const s = getComputedStyle(e);
+          return [
+            s.outlineStyle,
+            s.outlineWidth,
+            s.outlineColor,
+            s.boxShadow,
+            s.borderBottomColor,
+            s.borderBottomWidth,
+            s.backgroundColor,
+            s.textDecorationLine,
+          ].join("|");
+        };
+        const focused = snap(el);
+        el.blur();
+        const blurred = snap(el);
+        el.focus();
         return {
           tag: el.tagName,
           href: el.getAttribute("href") ?? "",
-          outlined:
-            s.outlineStyle !== "none" ||
-            s.boxShadow !== "none" ||
-            s.borderBottomColor !== "rgba(0, 0, 0, 0)",
+          outlined: focused !== blurred,
         };
       });
       if (!info) continue;
