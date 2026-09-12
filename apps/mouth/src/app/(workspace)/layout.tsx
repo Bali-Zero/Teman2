@@ -58,8 +58,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     role: "",
     team: "",
     avatar: undefined as string | undefined,
-    isOnline: false,
-    hoursToday: undefined as string | undefined,
   });
 
   // INTAKE login gate (spec §3/§5). `gateChecked` stays false until the first
@@ -113,8 +111,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           role: storedProfile.role || "Member",
           team: storedProfile.team || "Team",
           avatar: storedProfile.avatar,
-          isOnline: true,
-          hoursToday: undefined,
         });
         return;
       }
@@ -128,8 +124,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         role: profile.role || "Member",
         team: profile.team || "Team",
         avatar: profile.avatar,
-        isOnline: true,
-        hoursToday: undefined,
       });
     } catch (error) {
       // A 401 here is NOT a fault — it is this gate working. An anonymous
@@ -253,8 +247,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               role: "admin",
               team: "Management",
               avatar: undefined,
-              isOnline: true,
-              hoursToday: undefined,
             });
             // No backend in local dev — treat the gate as cleared so the
             // workspace is inspectable.
@@ -289,8 +281,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               role: "Member",
               team: "Team",
               avatar: undefined,
-              isOnline: true,
-              hoursToday: undefined,
             });
             await refetchGate();
             return;
