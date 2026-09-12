@@ -157,6 +157,72 @@ receipts:
     exit: 1
     ts: 2026-09-12T01:52Z
     seat: session (M5, successor window)
+  - claim: On the tree merged with origin/main after PR-B0 #6306 (main's `_truncated_section_matches_reviewed_prefix` taken over the branch's own copy), the backend PMA-sync file that binds the dataset bytes to the editorial registry is fully green — the registry is re-certified on the v11.0 canonical (19cd5e43b3)
+    cmd: (cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/scripts/test_kbli_qdrant_pma_sync.py -p no:cacheprovider) 2>&1 | tail -1
+    result: "55 passed in 19.16s (merge commit ec0eab9620; git diff origin/main on kbli_qdrant_pma_sync.py and its test file = 0 lines)"
+    exit: 0
+    ts: 2026-09-12T12:06Z
+    seat: session (M5, successor window 3)
+  - claim: PR-B0 #6306 is merged and its deploy is live before PR-B is armed for the gate (mandate move 1)
+    cmd: gh pr view 6306 --json state,mergedAt --jq '{state,mergedAt}'; gh run view 34692201170 --json status,conclusion; fly status -a nuzantara-rag; curl -s https://nuzantara-rag.fly.dev/health
+    result: "MERGED 2026-09-12T11:53:10Z; 'Deploy Backend to Fly.io' run 34692201170 completed/success; machines api+rag at v4430 (12:03Z); /health status=healthy build_sha=a5e31817be (main head after the merge)"
+    exit: 0
+    ts: 2026-09-12T12:13Z
+    seat: session (M5, successor window 3)
+  - claim: The 'antidotes' required check was red on d0c3b5335e because the two PR-B ledger rows had 2 pipe segments (need >= 3, owner unanchored → MALFORMED), not because of any product code; the rows are completed and the real-ledger tests pass
+    cmd: python3 -m pytest scripts/tests/test_pending_arms_report.py -p no:cacheprovider -k real_ledger 2>&1 | tail -1
+    result: "6 passed, 121 deselected (before the cure: 2 failed — test_real_ledger_has_zero_malformed, test_real_ledger_has_zero_malformed_after_conflict_marker_cure; a first attempt with owner operator[editorial] was flagged PHANTOM-OPERATOR — editorial is not a true-operator category — and re-owned to operator[business])"
+    exit: 0
+    ts: 2026-09-12T12:20Z
+    seat: session (M5, successor window 3)
+  - claim: The 'Detect Secrets' red on d0c3b5335e was this pack's own `query_hash` (the public OSS vault manifest sha256, line 31), a Hex High Entropy String with no auto-approval rule; audited as non-secret in .secrets.baseline with no other change
+    cmd: git diff --stat origin/main -- .secrets.baseline; python3 scripts/detect_secrets_check_unaudited.py
+    result: "1 file changed, 10 insertions(+); ✅ All findings audited (8226 total)"
+    exit: 0
+    ts: 2026-09-12T12:11Z
+    seat: session (M5, successor window 3)
+  - claim: The 'kbli-filiera-vault-compilers' red on d0c3b5335e was the perpres locators artifact drifting on 93119 (besar absent → observed after the code gained scope in the September vault); re-emitted by its owner script and matched
+    cmd: python3 scripts/kbli_filiera/perpres_body_default_relation.py --emit && python3 scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact; (cd apps/mouth && npx vitest run src/lib/kbli-perpres-locator.test.ts)
+    result: "wrote apps/mouth/data/perpres-locators.json (1559 codes); matches the instrument (1559 codes); diff = 2 lines on 93119 (bucket residual-besar-absent → residual-besar-observed); Tests 9 passed (9)"
+    exit: 0
+    ts: 2026-09-12T12:08Z
+    seat: session (M5, successor window 3)
+  - claim: Kimi K3 MEDIUM 3 (dirty OSS jangka copied verbatim on a scope-matched row) has no effect on the shipped v11.0 bytes, so findings 3–6 can go in a code-only follow-up without touching this data PR
+    cmd: python3 - <<'PY' (per_skala rows keyed by (scope_uraian, skala, tier), origin/main canonical vs branch canonical, count jangka_waktu == "-") PY
+    result: "dirty '-' rows old: 0, new: 0, introduced by PR-B: 0; jangka_waktu_source counts unchanged in kind (PP28_rule_risk_class 3520, None 4687, special regimes)"
+    exit: 0
+    ts: 2026-09-12T12:22Z
+    seat: session (M5, successor window 3)
+  - claim: Council round 2 (codex + kimi, both read-only, on the cured merge-policy diff at 3f7834e47a) is journalled with raw-output digests — both BLOCKING, converging on one HIGH (donor allocation order) plus codex's second HIGH (verdict transitions)
+    cmd: codex exec --sandbox read-only "$(cat task_codex.txt)"; env -i HOME=$HOME PATH=$PATH TERM=dumb ~/.kimi-code/bin/kimi -m kimi-code/k3 -p "$(cat task_kimi.md)"; tail -2 council-journal.jsonl
+    result: "codex 7m50s VERDICT BLOCKING (2 HIGH, 3 MED); kimi 5m36s VERDICT BLOCKING (1 HIGH, 2 MED, 3 LOW); journal entries 4-5 carry file:line and the sha256-16 of each raw output"
+    exit: 0
+    ts: 2026-09-12T12:23Z
+    seat: session (M5, successor window 3) over codex-gpt-6-astra + kimi-code/k3
+  - claim: HIGH-1 (input-order-dependent donor allocation, both seats) does not change a byte of the shipped September output — a two-pass allocation (scope-identity claims first, tier fallback second, everything else identical) replays to the same bytes
+    cmd: for R in A B; do cp <origin/main canonical> root$R/{data/source_documents,apps/mouth/data}/KBLI_2025_FINAL_CLEAN.json; done; python3 scripts/build_kbli_l2_oss_risk.py --root rootA <September flags>; python3 build_twopass.py --root rootB <same flags>; shasum -a 256 root{A,B}/data/source_documents/KBLI_2025_FINAL_CLEAN.json
+    result: "both runs SUMMARY changed_codes=1303 rows_carried=7558 rows_carried_tier=985 rows_fresh=211, APPLIED 36252917 bytes; sha256 a35b74725752698c… == a35b74725752698c… (identical); build_twopass.py differs from the transform only in merge_per_skala's allocation (claims list, two passes)"
+    exit: 0
+    ts: 2026-09-12T17:05Z
+    seat: session (M5, successor window 3)
+  - claim: HIGH-2 (OPEN<->AMBIGUOUS transitions suppressed) and Kimi's MEDIUM (cure-owned NO_BESAR+blocked codes flipped) have no instance on the shipped bytes; and l4_verdict_moved DOES compare `verdict` when the key exists (:221-228), so the suppression codex describes is confined to cure-owned blocks without a verdict key — by design (H2 cure)
+    cmd: python3 - (import besar_block_verdict from the transform; for every non-quarantined code with per_skala on the branch canonical compare its computed verdict with l4_bali.verdict; count OPEN/AMBIGUOUS disagreements; count origin/main codes with verdict NO_BESAR + blocked true + a cure status and whether their l4_bali changed on the branch)
+    result: "suppressed OPEN<->AMBIGUOUS on shipped bytes: 0; cure-owned NO_BESAR+blocked codes on main: 14, changed in PR-B: 0"
+    exit: 0
+    ts: 2026-09-12T17:08Z
+    seat: session (M5, successor window 3)
+  - claim: The whole scripts/kbli_filiera test suite is green on the final tree
+    cmd: python3 -m pytest scripts/kbli_filiera/tests -q -p no:cacheprovider
+    result: "1351 passed in 1375.14s"
+    exit: 0
+    ts: 2026-09-12T12:45Z
+    seat: session (M5, successor window 3)
+  - claim: On head 3f7834e47a every check is green except 'Harness floor recompute', which reads the harness/fable-gate status this window does not post (the fresh gate does)
+    cmd: gh pr checks 6269 | awk -F'\t' '$2!="pass"&&$2!="skipping"'
+    result: "fail  Harness floor recompute — only line; antidotes, Detect Secrets, kbli-filiera-vault-compilers, Backend Tests (Python), Frontend Tests (mouth) all pass"
+    exit: 0
+    ts: 2026-09-12T12:40Z
+    seat: session (M5, successor window 3)
 pii_scan: clean
 pii_scan_note:
   "Public classification data only (KBLI codes, OSS risk tiers, licence names, authority names).
@@ -198,7 +264,7 @@ dissent:
       _truncated_section_matches_reviewed_prefix accept a cap that falls after the whole
       certified block (21022). Both are Zero's call; the PR is opened with auto-merge armed and
       says so in its body. Vercel would serve v11.0 while the RAG serves the June L2 until the
-      resync runs."
+      resync runs. Successor window 3 (2026-09-12T12Z): (a) is done in 19cd5e43b3 — all 66 fingerprints recompute byte-identical on the v11.0 canonical, sourceDatasetSha256 + reviewedAt bumped — with the editorial re-read of 47221 and 50122 (the only certified codes whose tier-set moved) still Zero's, ledgered under operator[business]; (b) shipped as PR-B0 #6306, merged 11:53Z and live (v4430), and origin/main merged into this branch with main's version of the fix; test_kbli_qdrant_pma_sync.py 55 passed."
   - seat: codex GPT-5.6 (refuter, read-only sandbox)
     objection:
       "No HIGH. MED: merge key on scope_index carried curated fields across a scope split; setdefault
@@ -247,4 +313,8 @@ dissent:
       pins → mouth derivatives) must be re-run under the corrected policy, rule 4 and rule 5
       re-measured, and codex/kimi re-convened on the corrected diff; MEDIUM 3-4 and LOW 5-6 are
       folded in that window. Second correction of the same policy = fix-of-a-fix depth 1 reached:
-      the next red on this surface writes the spec, not a third patch."
+      the next red on this surface writes the spec, not a third patch. Successor window 3: the regeneration under the cured policy is committed (e222dc0826 data, 1eeac011e4 owner emitters, 8cbf5bc8f3 receipts — rule 4 changed_codes=0, rule 5 the predicted set); MEDIUM 3–4 and LOW 5–6 are NOT folded here — MEDIUM 3 measured with zero effect on the shipped bytes (0 dirty jangka rows in either canonical) and the other three never touch data — they are ledgered in PENDING-ARMS as a code-only follow-up, keeping this PR a data PR at fix-of-a-fix depth 1. Council round 2 (codex + kimi on the cured diff): see council-journal.jsonl entries dated 2026-09-12T12Z and dissent[7]."
+  - seat: codex-gpt-6-astra + kimi-code/k3 (council round 2 on the cured diff, blind cross-family, 2026-09-12T12Z)
+    objection: "BLOCKING from both seats. Shared HIGH: donor allocation in merge_per_skala is input-order-dependent — the tier-only fallback consumes a canonical donor before a later OSS row with the identical scope_uraian can claim it by scope identity (OSS order [Sub A, Seluruh]), and test_a_tier_donor_is_never_reused_by_scope_identity asserts that wrong winner. codex HIGH 2: with blocked=False on both sides an OPEN<->AMBIGUOUS move is not rewritten. Kimi MED: 20 cure-owned NO_BESAR+blocked codes would be flipped by a new Besar row. Plus MED/LOW on absence episodes, --fetched, a non-hermetic test, the AUTOMATIC jangka branch, vault_tier_changeset's missing-evidence path."
+    status: CONFIRMED
+    resolution: "Mechanism confirmed by reading the code; effect on the shipped bytes measured, not argued: HIGH-1 replayed with a two-pass allocation gives the byte-identical canonical (sha256 a35b74725752698c… both runs); HIGH-2 has 0 instances (and the guard does compare `verdict` when the key exists — the suppression is confined to cure-owned blocks, the H2 cure's intent); the 14 cure-owned NO_BESAR+blocked codes are unchanged. So the DATA this PR ships is the same under the corrected policy, and the defects are latent code paths. Fix-of-a-fix depth 1 on the merge policy was already reached, so per the Builder Contract this window wrote the spec instead of a third patch: docs/specs/2026-09-12-kbli-l2-merge-policy-v2-spec.md (DRAFT, §2 two-pass allocation invariant, §5 verdict-transition rule, §6 absence episodes, §8 test contract incl. the two tests that pass for the wrong reason, §9 byte-identity proof for the follow-up, §10 one open question for Zero). The code-only follow-up PR that implements it is ledgered in PENDING-ARMS; this PR stays a data PR. The named dissent stands: the transform as merged is order-dependent, and any FUTURE snapshot whose OSS order differs could misallocate until the follow-up lands."
