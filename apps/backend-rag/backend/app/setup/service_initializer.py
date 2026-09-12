@@ -1551,6 +1551,17 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
     # O1): boto3 may echo an endpoint, a bucket or a key id into one. Only our
     # own `GarudaArtifactsStoreUnavailable` is formatted, and its message is
     # ours — variable NAMES only (S2a, test_exception_message_never_carries_a_value).
+    # Re-entry is fail-closed too (Sol O2): a second wiring on the same app
+    # starts from nothing, so an earlier publication cannot outlive a probe
+    # that now says public. One call per process in production; the rule
+    # costs three lines and removes a class of argument.
+    for _stale in (
+        "garuda_artifact_store",
+        "garuda_artifact_privacy",
+        "garuda_artifact_store_pending",
+    ):
+        if hasattr(app.state, _stale):
+            delattr(app.state, _stale)
     try:
         from backend.services.garuda_artifacts import tigris_store as _garuda_tigris
     except Exception as e:  # pragma: no cover - import failure is a broken build
@@ -1594,6 +1605,13 @@ async def probe_garuda_artifact_bucket(app: FastAPI) -> None:
     not one to serve passports from. Never raises. The verdict is published as
     `app.state.garuda_artifact_privacy` beside the store so S3's reader can
     require both. SDK exception messages are not logged (type name only).
+
+    CONSTRAINT FOR S3 (decision #44): the reader that serves artifact bytes
+    must resolve `garuda_artifact_store` AND `garuda_artifact_privacy`, and
+    refuse when either is absent -- that is the contract this two-step wiring
+    hands forward, not a detail. Both entry points await this function on the
+    statement after `initialize_garuda_services`;
+    `test_both_entry_points_await_the_probe_right_after_the_wiring` pins it.
     """
     pending = getattr(app.state, "garuda_artifact_store_pending", None)
     if pending is None:

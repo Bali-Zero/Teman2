@@ -16,11 +16,14 @@ by both entry points. `_wire` below runs the pair the way the entry points do.
 
 from __future__ import annotations
 
+import ast
+import inspect
 import logging
 
 import pytest
 from fastapi import FastAPI
 
+from backend.app.setup import service_initializer
 from backend.app.setup.service_initializer import (
     initialize_garuda_services,
     probe_garuda_artifact_bucket,
@@ -239,3 +242,90 @@ class TestArtifactStoreWiring:
         assert not hasattr(app.state, "garuda_artifact_store_pending")
         records = _wiring_records(caplog)
         assert len(records) == 1 and records[0].levelno == logging.WARNING
+
+
+class TestBothEntryPointsProbe:
+    """Decision #44: the probe is the only publisher of the store, so an entry
+    point that forgets to await it ships a process with no artifact store and
+    no log saying why. AST guard, same shape as the readiness one: in BOTH
+    entry points the `await probe_garuda_artifact_bucket(app)` statement is
+    the one right after `await initialize_garuda_services(...)`."""
+
+    @pytest.mark.parametrize("entry", ["initialize_services", "initialize_services_light"])
+    def test_both_entry_points_await_the_probe_right_after_the_wiring(self, entry: str) -> None:
+        tree = ast.parse(inspect.getsource(service_initializer))
+        fn = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == entry)
+
+        def _awaited_name(stmt: ast.stmt) -> str | None:
+            """Name of the awaited call, only if its FIRST positional argument is
+            the entry point's own `app` (Sol O2: `probe(FastAPI())` must not pass)."""
+            if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Await):
+                call = stmt.value.value
+                if (
+                    isinstance(call, ast.Call)
+                    and isinstance(call.func, ast.Name)
+                    and call.args
+                    and isinstance(call.args[0], ast.Name)
+                    and call.args[0].id == "app"
+                ):
+                    return call.func.id
+            return None
+
+        hits = []
+        for node in ast.walk(fn):
+            body = getattr(node, "body", None)
+            if not isinstance(body, list):
+                continue
+            for a, b in zip(body, body[1:], strict=False):
+                if _awaited_name(a) == "initialize_garuda_services":
+                    hits.append(_awaited_name(b))
+        assert hits == ["probe_garuda_artifact_bucket"], (
+            f"{entry}: the statement after `await initialize_garuda_services(...)` must be "
+            f"`await probe_garuda_artifact_bucket(app)`; found {hits}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_rewiring_starts_from_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Sol O2 (S2b): an earlier publication must not outlive a probe that
+        now says public -- a second wiring clears store, verdict and pending."""
+
+        class _Private:
+            async def assert_private(self, *, require_verified: bool = True) -> dict:
+                return {"public_access_block": True, "policy_status": None}
+
+        class _NowPublic:
+            async def assert_private(self, *, require_verified: bool = True) -> dict:
+                raise GarudaArtifactsStoreUnavailable("PUBLIC")
+
+        app = FastAPI()
+        monkeypatch.setattr(tigris_store, "TigrisArtifactObjectStore", _Private)
+        await _wire(app)
+        assert isinstance(app.state.garuda_artifact_store, _Private)
+
+        monkeypatch.setattr(tigris_store, "TigrisArtifactObjectStore", _NowPublic)
+        await initialize_garuda_services(app, None)
+        assert not hasattr(app.state, "garuda_artifact_store"), "cleared before the new probe"
+        assert not hasattr(app.state, "garuda_artifact_privacy")
+        await probe_garuda_artifact_bucket(app)
+        assert not hasattr(app.state, "garuda_artifact_store")
+        assert not hasattr(app.state, "garuda_artifact_store_pending")
+
+    @pytest.mark.asyncio
+    async def test_the_probe_never_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Decision #44 mutation: a probe that raises instead of not publishing
+        would turn one product's missing bucket into a process that does not
+        boot. Executed: every failure shape returns, none propagates."""
+
+        class _Raises:
+            async def assert_private(self, *, require_verified: bool = True) -> dict:
+                raise GarudaArtifactsStoreUnavailable("PUBLIC")
+
+        class _Explodes:
+            async def assert_private(self, *, require_verified: bool = True) -> dict:
+                raise OSError("network")
+
+        for stub in (_Raises, _Explodes):
+            app = FastAPI()
+            app.state.garuda_artifact_store_pending = stub()
+            await probe_garuda_artifact_bucket(app)  # must not raise
+            assert not hasattr(app.state, "garuda_artifact_store")
