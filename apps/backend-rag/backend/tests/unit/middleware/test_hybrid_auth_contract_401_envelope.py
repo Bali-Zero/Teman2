@@ -220,20 +220,28 @@ def test_privacy_headers_match_the_staff_router_they_stand_in_for() -> None:
 
 
 @pytest.mark.parametrize(
-    ("method", "path"),
+    ("method", "path", "router_module"),
     [
-        ("GET", "/api/visa/voa/staff/practices/"),
-        ("POST", "/api/visa/voa/staff/practices/prc_abc123/transitions/"),
+        ("GET", "/api/visa/voa/staff/practices/", "garuda_staff_router"),
+        ("POST", "/api/visa/voa/staff/practices/prc_abc123/transitions/", "garuda_staff_router"),
+        (
+            "POST",
+            "/api/visa/voa/staff/orders/ord_abc123/late-resolution/",
+            "garuda_orders_router",
+        ),
     ],
 )
-def test_a_trailing_slash_past_the_middleware_redirects_to_the_same_operation(
-    method: str, path: str
+def test_a_trailing_slash_answers_307_to_the_slash_less_path_with_the_same_envelope(
+    method: str, path: str, router_module: str
 ) -> None:
-    """Asserts 307, Location == "http://testserver" + path.rstrip("/"), equal envelopes."""
+    """Asserts the app built here answers 307 with Location == "http://testserver" + the slash-less
+    path, and that both paths carry the same contract envelope. Nothing else."""
+    import importlib
+
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from backend.app.routers.garuda_staff_router import router
+    router = importlib.import_module(f"backend.app.routers.{router_module}").router
 
     app = FastAPI()
     app.include_router(router)
