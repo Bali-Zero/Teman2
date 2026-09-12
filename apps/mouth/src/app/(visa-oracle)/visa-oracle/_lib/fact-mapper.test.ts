@@ -232,8 +232,6 @@ describe("question registry -> wire coverage", () => {
     ["business_activity", "other", "ACTIVITY_BOUNDARY"],
     ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
     ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
-    ["family_sponsor_status_code", "FOO", "AMBIGUOUS_SPONSOR"],
-    ["family_sponsor_permit_basis", "EXPERT", "AMBIGUOUS_SPONSOR"],
     ["diaspora_connection", "former_citizen", "ACTIVITY_BOUNDARY"],
     ["diaspora_documents", "passport", "ACTIVITY_BOUNDARY"],
     ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
@@ -245,6 +243,16 @@ describe("question registry -> wire coverage", () => {
     },
   );
 
+  // NARROW-1 (owner ruling SHWEB-20260911, 2026-09-12): `family_sponsor_
+  // status_code`/`family_sponsor_permit_basis` USED to be pinned in the
+  // "must flag" table above, on the mere presence of either fact — i.e.
+  // because the sponsor is foreign, regardless of whether any candidate the
+  // pack had proven actually reads it. Measured: `el.c1.tourism-family`
+  // (rulepack-prod-020) reads no sponsor fact at all, so that was the
+  // OVER-match shape (guard #3) — deleting a verdict the flag cannot affect.
+  // The pair moves to the must-NOT-flag table below, replaced by the
+  // narrower guilt cases in "AMBIGUOUS_SPONSOR — narrowed to unsure or a
+  // sponsor-dependent relation" beneath it.
   it.each([
     ["business_activity", "meetings"],
     ["business_activity", "negotiation"],
@@ -252,6 +260,10 @@ describe("question registry -> wire coverage", () => {
     ["investment_vehicle", "pt_pma"],
     ["retirement_basis", "bank_deposit"],
     ["retirement_basis", "passive_income"],
+    // Released 2026-09-12 (NARROW-2) — el.e33f.retirement decides SUPPORT
+    // off `secondhome.passive_monthly_income_usd`/`family.sponsor_confirmed`
+    // alone, never `retirement_basis` itself. See fact-mapper.ts.
+    ["retirement_basis", "family_sponsor"],
     // Engine-inert: no rule reads a work role (owner ruling, decision 6).
     // All five options are swept in `activity-boundary.test.ts`.
     ["work_role", "specialist"],
@@ -261,12 +273,202 @@ describe("question registry -> wire coverage", () => {
     ["diaspora_connection", "family"],
     ["diaspora_documents", "yes"],
     ["diaspora_documents", "no"],
+    // Released 2026-09-12 (NARROW-1) — no relation is set, so there is no
+    // pack product this presence can be protecting. See the describe block
+    // below for the STEPCHILD (relation-dependent) counter-case.
+    ["family_sponsor_status_code", "FOO"],
+    // Dropped from the trigger entirely, for every relation: no rule in
+    // seq-20 reads `family.sponsor_permit_basis` (HUMAN_CONTEXT only, never
+    // wired to a FACT — see `mapFamilySponsorPermitBasis`).
+    ["family_sponsor_permit_basis", "EXPERT"],
   ])(
     "leaves a decidable answer (%s=%s) unflagged — it must not veto a proven candidate",
     (id, value) => {
       expect(mapFacts({ [id]: value }).disclosed_review_flags).toEqual([]);
     },
   );
+});
+
+describe("AMBIGUOUS_SPONSOR — narrowed to unsure or a sponsor-dependent relation (NARROW-1)", () => {
+  it("guilt: an unsure family_sponsor_status_code answer holds, for any relation", () => {
+    expect(
+      mapFacts({
+        family_relation: "SPOUSE",
+        family_sponsor_status_code: "unsure",
+      }).disclosed_review_flags,
+    ).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("guilt: an unsure family_sponsor_confirmed answer holds, for any relation", () => {
+    expect(
+      mapFacts({
+        family_relation: "OTHER",
+        family_sponsor_confirmed: "unsure",
+      }).disclosed_review_flags,
+    ).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("guilt: STEPCHILD with a foreign (non-unsure) sponsor status still holds — el.e31d-stepchild-support is the one relation with a sponsor-dependent product", () => {
+    expect(
+      mapFacts({
+        family_relation: "STEPCHILD",
+        family_sponsor_status_code: "E23",
+      }).disclosed_review_flags,
+    ).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("innocence: a non-STEPCHILD relation with a resolved (non-unsure) foreign sponsor status releases — C1 reads no sponsor fact", () => {
+    for (const relation of [
+      "SPOUSE",
+      "CHILD",
+      "PARENT",
+      "SIBLING",
+      "DEPENDENT",
+      "OTHER",
+    ]) {
+      expect(
+        mapFacts({
+          family_relation: relation,
+          family_sponsor_status_code: "E23",
+        }).disclosed_review_flags,
+      ).not.toContain("AMBIGUOUS_SPONSOR");
+    }
+  });
+
+  it("innocence: STEPCHILD with an Indonesian sponsor (status code never asked) releases", () => {
+    expect(
+      mapFacts({
+        family_relation: "STEPCHILD",
+      }).disclosed_review_flags,
+    ).not.toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("innocence: a resolved family_sponsor_permit_basis never holds, even for STEPCHILD — dropped from the trigger entirely", () => {
+    expect(
+      mapFacts({
+        family_relation: "STEPCHILD",
+        family_sponsor_permit_basis: "EXPERT",
+      }).disclosed_review_flags,
+    ).not.toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  /**
+   * Pins the hardcoded relation set inside `mapDisclosedReviewFlags`
+   * (`RELATIONS_WITH_SPONSOR_DEPENDENT_PRODUCT`) against every production
+   * pack on disk — not just the active one, same reasoning as
+   * `engine-adapter.test.ts`'s "support reasons are sentences" tripwire: a
+   * pack is written before it is activated. For each relation named on a
+   * `family.relation_to_sponsor eq` rule, this collects every OTHER
+   * `family.sponsor_*` fact that relation's rules read, together with that
+   * rule's `on_unknown`. A relation counts as sponsor-dependent only when at
+   * least one such read has a real effect (`on_unknown` other than
+   * `NO_EFFECT`) — `family.sponsor_nationalities` is excluded on purpose,
+   * it is the directly-answered, trusted fact that decides whether the
+   * self-declared ones get asked at all, not one of the ambiguous facts
+   * AMBIGUOUS_SPONSOR exists to guard.
+   *
+   * Goes RED the moment the pack stops matching the code's belief: STEPCHILD
+   * loses its dependency, or a new one appears elsewhere (SPOUSE/PARENT/
+   * CHILD/SIBLING/DEPENDENT/OTHER) — either is a signal to revisit
+   * `RELATIONS_WITH_SPONSOR_DEPENDENT_PRODUCT` in fact-mapper.ts.
+   */
+  it("AMBIGUOUS_SPONSOR relation proxy tracks the signed pack", () => {
+    const PACKS_DIR = path.resolve(
+      REPO_ROOT,
+      "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+    );
+
+    // Reads only the HIGHEST-`sequence` pack on disk, deliberately NOT every
+    // pack file (same posture as `engine-adapter.test.ts`'s
+    // `latestProductionPackFile`): the FAMILY relation rules have been
+    // reshaped across the pack's history (STEPCHILD/E31D itself only landed
+    // 2026-07-24), so globbing every file on disk would resurrect
+    // superseded rule shapes as permanent, unfixable "dependencies" no
+    // current interview can ever produce.
+    function latestProductionPackFile(): string {
+      const files = fs
+        .readdirSync(PACKS_DIR)
+        .filter((name) => /^rulepack-prod-\d+\.source\.json$/.test(name));
+      if (files.length === 0) {
+        throw new Error(`no production packs found under ${PACKS_DIR}`);
+      }
+      let best: { file: string; sequence: number } | null = null;
+      for (const name of files) {
+        const full = path.join(PACKS_DIR, name);
+        const payload = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+          sequence?: unknown;
+        };
+        if (typeof payload.sequence !== "number") continue;
+        if (best === null || payload.sequence > best.sequence) {
+          best = { file: full, sequence: payload.sequence };
+        }
+      }
+      if (best === null) {
+        throw new Error(`no pack under ${PACKS_DIR} had a numeric sequence`);
+      }
+      return best.file;
+    }
+
+    const NON_AMBIGUOUS_SPONSOR_FACTS = new Set([
+      "family.sponsor_nationalities",
+    ]);
+
+    function factsAndRelations(when: unknown): {
+      facts: Array<{ fact: string; onUnknown: unknown }>;
+      relations: Set<string>;
+    } {
+      const facts: Array<{ fact: string; onUnknown: unknown }> = [];
+      const relations = new Set<string>();
+      const walk = (node: unknown): void => {
+        if (Array.isArray(node)) {
+          node.forEach(walk);
+          return;
+        }
+        if (node === null || typeof node !== "object") return;
+        const record = node as Record<string, unknown>;
+        if (typeof record.fact === "string") {
+          if (
+            record.fact === "family.relation_to_sponsor" &&
+            record.op === "eq" &&
+            typeof record.value === "string"
+          ) {
+            relations.add(record.value);
+          }
+          facts.push({ fact: record.fact, onUnknown: undefined });
+        }
+        for (const value of Object.values(record)) walk(value);
+      };
+      walk(when);
+      return { facts, relations };
+    }
+
+    const pack = JSON.parse(
+      fs.readFileSync(latestProductionPackFile(), "utf-8"),
+    ) as {
+      rules?: Array<{ when?: unknown; on_unknown?: unknown }>;
+    };
+    expect(pack.rules?.length ?? 0).toBeGreaterThan(0);
+
+    const dependentRelations = new Set<string>();
+    for (const rule of pack.rules ?? []) {
+      const { facts, relations } = factsAndRelations(rule.when);
+      if (relations.size === 0) continue;
+      const sponsorFacts = facts
+        .map((f) => f.fact)
+        .filter(
+          (fact) =>
+            fact.startsWith("family.sponsor_") &&
+            !NON_AMBIGUOUS_SPONSOR_FACTS.has(fact),
+        );
+      if (sponsorFacts.length === 0) continue;
+      if (rule.on_unknown === "NO_EFFECT") continue;
+      for (const relation of relations) {
+        dependentRelations.add(relation);
+      }
+    }
+
+    expect(dependentRelations).toEqual(new Set(["STEPCHILD"]));
+  });
 });
 
 describe("mapOracleFactsToApplicantFacts — discriminated-union validity (acceptance test 2)", () => {
@@ -804,7 +1006,11 @@ describe("family sponsor status — unverified human context", () => {
       status: "UNKNOWN",
       reason: "UNVERIFIED",
     });
-    expect(result.disclosed_review_flags).toContain("AMBIGUOUS_SPONSOR");
+    // NARROW-1 (2026-09-12): staying UNVERIFIED, not KNOWN, is unchanged —
+    // whether that UNVERIFIED-ness also HOLDS the decision is now a
+    // relation-level question, no `family_relation` is set here, and "FOO"
+    // is not `unsure`, so it does not. See "AMBIGUOUS_SPONSOR — narrowed…".
+    expect(result.disclosed_review_flags).not.toContain("AMBIGUOUS_SPONSOR");
   });
 
   // 2026-08-23: `family.sponsor_permit_basis` shipped in PR #4650 wired to
@@ -820,7 +1026,9 @@ describe("family sponsor status — unverified human context", () => {
       status: "UNKNOWN",
       reason: "UNVERIFIED",
     });
-    expect(result.disclosed_review_flags).toContain("AMBIGUOUS_SPONSOR");
+    // NARROW-1 (2026-09-12): dropped from the trigger entirely — no rule in
+    // seq-20 reads `family.sponsor_permit_basis` at all.
+    expect(result.disclosed_review_flags).not.toContain("AMBIGUOUS_SPONSOR");
   });
 
   it("resolves NOT_APPLICABLE for both sponsor facts when no sponsor is confirmed", () => {

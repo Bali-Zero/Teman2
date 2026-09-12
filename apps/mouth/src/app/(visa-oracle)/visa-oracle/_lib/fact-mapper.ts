@@ -463,7 +463,17 @@ const REVIEW_FLAG_MAP: Readonly<
 export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   business_activity: ["meetings", "negotiation", "conference"],
   investment_vehicle: ["pt_pma"],
-  retirement_basis: ["bank_deposit", "passive_income"],
+  // `family_sponsor` added 2026-09-12 (NARROW-2, owner ruling SHWEB-20260911:
+  // hold is the exception, a deterministic pack answer is not). `el.e33f.
+  // retirement` (rulepack-prod-020) decides SUPPORT for E33F off
+  // `secondhome.passive_monthly_income_usd >= 3000` and `family.
+  // sponsor_confirmed == true` alone — it never reads `retirement_basis` at
+  // all — so this table was UNDER-inclusive: an applicant who answers
+  // `family_sponsor` and clears both of those facts already has a signed,
+  // deterministic SUPPORTED E33F, and raising ACTIVITY_BOUNDARY here only
+  // deletes it. `property` and `undecided` stay undecidable: no pack rule
+  // grants either an E33F path, so holding them loses nothing proven.
+  retirement_basis: ["bank_deposit", "passive_income", "family_sponsor"],
   diaspora_connection: ["former_wni", "descendant", "family"],
   diaspora_documents: ["yes", "no"],
   other_purpose: [],
@@ -503,9 +513,50 @@ export function mapDisclosedReviewFlags(
   if (hasUndecidableActivityAnswer(facts)) {
     flags.add("ACTIVITY_BOUNDARY");
   }
+  // NARROW-1 (owner ruling SHWEB-20260911, 2026-09-12 20:35 WITA): the flag
+  // used to fire on the mere PRESENCE of `family_sponsor_status_code` /
+  // `family_sponsor_permit_basis` — i.e. because the sponsor is foreign, not
+  // because any candidate the pack had proven actually needs that fact. That
+  // is the OVER-match shape (guard #3): `el.c1.tourism-family` (rulepack-
+  // prod-020) reads no sponsor fact at all, so a foreign sponsor deleted a
+  // verdict it cannot affect. `family_sponsor_permit_basis` is dropped from
+  // the trigger entirely: no rule in seq-20 reads `family.sponsor_permit_
+  // basis` (it is HUMAN_CONTEXT only, never wired to a FACT — see
+  // `mapFamilySponsorPermitBasis`, below), so it could never have been the
+  // fact a held candidate needed.
+  //
+  // Hold now only when:
+  //  (i) the applicant said `unsure` — a real disclosed uncertainty, not a
+  //      derived one; or
+  //  (ii) the relation answered has a pack product that genuinely depends on
+  //       the sponsor being resolved. `_apply_disclosed_review_flags`
+  //       (evaluate_path.py) is monotone over the WHOLE decision, so a
+  //       per-candidate hold is not available here — this is the frontend,
+  //       interview-time, RELATION-level proxy the constraint allows.
+  //
+  // Today exactly one relation qualifies for (ii): STEPCHILD.
+  // `el.e31d-stepchild-support` requires `family.sponsor_confirmed` with
+  // `on_unknown: NEEDS_INPUT` — the only family-relation product whose
+  // ELIGIBILITY is gated (not merely annotated) by a sponsor fact. SPOUSE /
+  // PARENT / CHILD / SIBLING each have a "*-sponsor-itas-itap" rule reading
+  // `family.sponsor_status_code`, but every one of them is `on_unknown:
+  // NO_EFFECT` — an unresolved sponsor status changes nothing they decide,
+  // so holding on their behalf would delete a proven verdict for no reason,
+  // the exact defect this narrowing exists to cure. Pinned against pack
+  // drift by "AMBIGUOUS_SPONSOR relation proxy tracks the signed pack" in
+  // fact-mapper.test.ts, which reads every production pack on disk and
+  // fails if that set of relations ever changes.
+  const RELATIONS_WITH_SPONSOR_DEPENDENT_PRODUCT: ReadonlySet<string> = new Set(
+    ["STEPCHILD"],
+  );
+  const sponsorRelationUnresolved =
+    facts.family_sponsor_status_code !== undefined &&
+    facts.family_relation !== undefined &&
+    RELATIONS_WITH_SPONSOR_DEPENDENT_PRODUCT.has(facts.family_relation);
   if (
-    facts.family_sponsor_status_code !== undefined ||
-    facts.family_sponsor_permit_basis !== undefined
+    facts.family_sponsor_status_code === "unsure" ||
+    facts.family_sponsor_confirmed === "unsure" ||
+    sponsorRelationUnresolved
   ) {
     flags.add("AMBIGUOUS_SPONSOR");
   }
