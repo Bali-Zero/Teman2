@@ -193,6 +193,36 @@ class PostgresArtifactRepository:
     async def get_live_for_order(
         self, conn: asyncpg.Connection, *, order_id: str, result_id_ref: str
     ) -> ArtifactRecord | None:
+        # Every condition the customer read depends on lives in THIS one
+        # query -- ownership, release and identity together. An earlier
+        # shape carried only ownership + liveness, and Sol's O1 refutation
+        # (2026-09-11, finding F1) built the scenario it allows: staff PUT
+        # while the practice is still Approved, and the magic-link session
+        # downloads a grant the practice has not released yet. `putPractice
+        # Artifact` deliberately does NOT require Delivered (spec SS3's
+        # ordering is put, THEN deliver), so the artifact row exists well
+        # before the customer may see it -- which makes "is it released?"
+        # this query's business, not the caller's.
+        #
+        #   p.state = 'Delivered'      -- PR-11 ran (287:105's CHECK makes
+        #                                 state and artifact_id/_digest one
+        #                                 fact, but say it in the predicate
+        #                                 rather than lean on the CHECK).
+        #   p.artifact_available       -- the contract's own release flag
+        #                                 (287:80-86: a separate boolean on
+        #                                 purpose, never "artifact_id IS NOT
+        #                                 NULL"), so a future state that
+        #                                 un-publishes without un-delivering
+        #                                 closes this read too.
+        #   a.artifact_id = p.artifact_id AND a.artifact_digest =
+        #   p.artifact_digest          -- the bytes served are the exact
+        #                                 pair PR-11 verified, not merely
+        #                                 "the live row for this practice".
+        #                                 A supersession that moved the
+        #                                 practice pointer and one that did
+        #                                 not are then distinguishable here
+        #                                 instead of silently serving the
+        #                                 newer row.
         row = await conn.fetchrow(
             """
             SELECT a.artifact_id, a.practice_id, a.storage_key, a.artifact_digest,
@@ -205,6 +235,10 @@ class PostgresArtifactRepository:
                AND o.result_id_ref = $2
                AND a.superseded_at IS NULL
                AND a.retention_until > clock_timestamp()
+               AND p.state = 'Delivered'
+               AND p.artifact_available
+               AND a.artifact_id = p.artifact_id
+               AND a.artifact_digest = p.artifact_digest
             """,
             order_id,
             result_id_ref,
@@ -228,15 +262,27 @@ class PostgresArtifactRepository:
     async def get_live_for_practice_locked(
         self, conn: asyncpg.Connection, *, practice_id: str
     ) -> ArtifactRecord | None:
-        # No `retention_until` filter here, deliberately: PR-11 delivers the
+        # `retention_until > clock_timestamp()` is here for the same reason
+        # it is on the two read paths, and it was NOT here until Sol's O1
+        # refutation (2026-09-11, finding F3) falsified the argument that
+        # used to stand in its place. That argument was: "PR-11 delivers the
         # artifact `putPracticeArtifact` just produced (spec SS3's ordering
-        # -- put, THEN deliver), so an artifact freshly inserted is never
-        # already past its 30-day retention. Filtering here would just be a
-        # second place the same rule could drift from (2)'s trigger.
+        # -- put, THEN deliver), so a freshly inserted artifact is never
+        # already past its 30-day retention." The ordering is real; the
+        # ADJACENCY is not. Nothing forces PR-11 to follow the put closely:
+        # put while the practice is Approved, leave it, submit the original
+        # pair past the retention horizon, and delivery used to succeed --
+        # `garuda_practices` reaching Delivered with `artifact_available =
+        # TRUE` while `get_live_for_order`, which DOES filter retention,
+        # answers 404 to the customer the delivery mail just wrote to.
+        # Asymmetric filters are what produced that; the filter belongs on
+        # every path that resolves a live row, without exception.
         row = await conn.fetchrow(
             f"""
             SELECT {_SELECT_COLUMNS} FROM garuda_practice_artifacts
-             WHERE practice_id = $1 AND superseded_at IS NULL
+             WHERE practice_id = $1
+               AND superseded_at IS NULL
+               AND retention_until > clock_timestamp()
              FOR UPDATE
             """,
             practice_id,

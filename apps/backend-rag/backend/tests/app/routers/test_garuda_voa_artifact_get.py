@@ -423,7 +423,13 @@ class TestGetPracticeArtifactCustomer:
         )
         practice_id = await _practice_id_for(pool, order_id)
         await _seed_session(pool, raw_secret="secret-getok-0000000000000000", result_id="result-getok-00000000000")
-        await _put_artifact(client, practice_id, "getok-put-key-00000000001")
+        # F1 (Sol O1 refutation, 2026-09-11): the customer read now REQUIRES
+        # Delivered + artifact_available + the practice's own pointer to
+        # match the live row -- a bare `_put_artifact` leaves the practice
+        # Approved, which is exactly the premature-download scenario F1
+        # forbids. Drive the real PR-02 -> PR-11 chain so this "happy path"
+        # actually proves the state the route is meant to serve.
+        await _deliver(client, practice_id, key_prefix="getok")
 
         resp = await client.get(
             f"/api/visa/voa/orders/{order_id}/artifact",
@@ -441,7 +447,10 @@ class TestGetPracticeArtifactCustomer:
         )
         practice_id = await _practice_id_for(pool, order_id)
         await _seed_session(pool, raw_secret="secret-getfor-000000000000000", result_id="result-getfor-00000000000")
-        await _put_artifact(client, practice_id, "getfor-put-key-00000000001")
+        # F1: deliver first, so this 404 proves "not your order" and not
+        # merely "not delivered yet" -- a negative test whose subject is
+        # unreachable for a SECOND, unrelated reason proves nothing.
+        await _deliver(client, practice_id, key_prefix="getfor")
         await _seed_session(pool, raw_secret="secret-getstranger-00000000000", result_id="result-getstranger-0000000")
 
         resp = await client.get(
@@ -473,35 +482,62 @@ class TestGetPracticeArtifactCustomer:
         assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
     async def test_superseded_is_404(self, pool, order_repository, client) -> None:
-        """A row marked superseded with no OTHER live row on ITS OWN
-        practice reads as gone to the customer -- exercised here via a
-        direct manual mark (real `putPracticeArtifact` supersession always
-        inserts a replacement for the SAME practice in the SAME
-        transaction, decision #13-revision; this test is about the raw
-        invariant at the SQL layer, not that end-to-end flow, which
-        `TestArtifactSupersession` below covers separately)."""
+        """A row marked superseded with no live row that the PRACTICE'S OWN
+        POINTER resolves to reads as gone to the customer. The Dux is
+        concurrently constraining `superseded_by` to reference an artifact
+        on the SAME practice (finding F7) -- unlike the old version of this
+        test, whose `superseded_by` pointed at an artifact belonging to an
+        UNRELATED practice, which F7 forbids. The successor row below is
+        therefore inserted directly at the SQL layer on THIS practice
+        (real `putPracticeArtifact` supersession always does the same --
+        one row superseded, one inserted, same transaction, same practice,
+        decision #13-revision -- but it would ALSO move the Delivered
+        practice's own artifact_id/artifact_digest pointer onto the
+        successor, which `TestArtifactSupersession` below covers
+        end-to-end; this test is about the raw invariant, not that flow).
+        Because the practice's pointer here still names the FIRST
+        (now-superseded) pair, `get_live_for_order`'s join finds no row:
+        the superseded row fails `a.superseded_at IS NULL`, and the live
+        successor fails `a.artifact_id = p.artifact_id` -- gone either
+        way."""
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-getsup-000000000000", provider_event_id="evt-getsup-1"
         )
         practice_id = await _practice_id_for(pool, order_id)
         await _seed_session(pool, raw_secret="secret-getsup-0000000000000000", result_id="result-getsup-000000000000")
-        artifact = await _put_artifact(client, practice_id, "getsup-put-key-00000000001")
+        artifact = await _deliver(client, practice_id, key_prefix="getsup")
 
-        # superseded_by is now a required, FK-checked partner column -- give
-        # it a real (unrelated) artifact_id to point at, same guard trigger
-        # shape `test_migration_312_...`'s own pair tests use.
-        elsewhere_order_id = await _create_and_pay_order(
-            order_repository, result_id="result-getsup-elsewhere-0000", provider_event_id="evt-getsup-elsewhere-1"
-        )
-        elsewhere_practice_id = await _practice_id_for(pool, elsewhere_order_id)
-        elsewhere = await _put_artifact(client, elsewhere_practice_id, "getsup-elsewhere-put-key-01")
-
-        await pool.execute(
-            "UPDATE garuda_practice_artifacts SET superseded_at = clock_timestamp(), superseded_by = $2 "
-            "WHERE artifact_id = $1",
-            artifact["artifact_id"],
-            elsewhere["artifact_id"],
-        )
+        # `ux_garuda_practice_artifacts_live` allows only one LIVE row per
+        # practice_id -- inserting the successor before marking the first
+        # row superseded would transiently give the practice two live rows
+        # and fail immediately (measured: `UniqueViolationError`). Same
+        # ORDER `insert_superseding` itself uses (postgres_repository.py):
+        # UPDATE the old row's superseded_at/superseded_by FIRST, inside
+        # ONE transaction, THEN INSERT the successor -- `superseded_by`'s
+        # FK is DEFERRABLE INITIALLY DEFERRED exactly so this order is
+        # legal (the referenced row does not exist yet when the UPDATE
+        # runs, only by the time the transaction commits).
+        successor_artifact_id = f"getsup-successor-{uuid.uuid4().hex[:16]}"
+        async with pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                "UPDATE garuda_practice_artifacts SET superseded_at = clock_timestamp(), superseded_by = $2 "
+                "WHERE artifact_id = $1",
+                artifact["artifact_id"],
+                successor_artifact_id,
+            )
+            await conn.execute(
+                """
+                INSERT INTO garuda_practice_artifacts
+                    (artifact_id, practice_id, storage_key, artifact_digest,
+                     byte_length, content_type, produced_by, environment)
+                VALUES ($1, $2, $3, $4, $5, 'application/pdf', 'zero-test-approver', 'TEST')
+                """,
+                successor_artifact_id,
+                practice_id,
+                f"artifacts/TEST/{practice_id}/{successor_artifact_id}",
+                hashlib.sha256(b"getsup-successor-placeholder-bytes").hexdigest(),
+                len(_SYNTHETIC_PDF),
+            )
 
         resp = await client.get(
             f"/api/visa/voa/orders/{order_id}/artifact",
@@ -518,15 +554,26 @@ class TestGetPracticeArtifactCustomer:
         await _seed_session(pool, raw_secret="secret-getexp-0000000000000000", result_id="result-getexp-000000000000")
 
         async with pool.acquire() as conn:
-            # Replace the fixture's 30-day GARUDA_DOCUMENT policy with one
-            # whose interval is 2 seconds. Migration 312's own INSERT
-            # trigger (`bind_garuda_practice_artifact_retention_policy`)
-            # REFUSES to insert a row whose computed `retention_until` is
-            # already in the past ("retention deadline has already
-            # elapsed") -- so a microsecond interval cannot be used to
-            # manufacture an already-expired row at insert time; the row
-            # must be inserted while still live and then actually age past
-            # it, which is what the sleep below does.
+            # Replace the fixture's 30-day GARUDA_DOCUMENT policy with a
+            # short one. Migration 312's own INSERT trigger
+            # (`bind_garuda_practice_artifact_retention_policy`) REFUSES to
+            # insert a row whose computed `retention_until` is already in
+            # the past ("retention deadline has already elapsed") -- so a
+            # microsecond interval cannot be used to manufacture an
+            # already-expired row at insert time; the row must be inserted
+            # while still live and then actually age past it, which is what
+            # the sleep below does.
+            #
+            # 9 seconds, not the original 2: F3's cure (`get_live_for_
+            # practice_locked` now also filters `retention_until >
+            # clock_timestamp()`) means PR-11 itself refuses an expired pair
+            # (see `test_pr11_refuses_expired_pair_and_leaves_practice_
+            # approved` below) -- so THIS test must drive the whole
+            # PR-02 -> PR-04 -> PR-06 -> put -> PR-11 chain to completion,
+            # over real HTTP through the ASGI transport, BEFORE the row
+            # ages out. 9s is comfortable margin over that chain's five
+            # round-trips; 2s was already margin-free for a single PUT and
+            # would flake constantly for five sequential calls.
             await conn.execute(
                 """
                 UPDATE public.visa_decision_retention_policies
@@ -537,13 +584,16 @@ class TestGetPracticeArtifactCustomer:
             )
             tiny_policy_version = await _ensure_garuda_document_test_policy(
                 conn,
-                retention_interval="INTERVAL '2 seconds'",
+                retention_interval="INTERVAL '9 seconds'",
                 idempotency_retention_interval="INTERVAL '1 second'",
             )
-        await _put_artifact(client, practice_id, "getexp-put-key-00000000001")
+        # Deliver (not just put) BEFORE the row ages -- F3 means an expired
+        # pair never reaches Delivered at all, so the expired-but-Delivered
+        # row this test wants to exercise only exists if PR-11 lands first.
+        await _deliver(client, practice_id, key_prefix="getexp")
         async with pool.acquire() as conn:
             await _close_garuda_document_test_policy(conn, tiny_policy_version)
-        await asyncio.sleep(2.5)
+        await asyncio.sleep(9.5)
 
         resp = await client.get(
             f"/api/visa/voa/orders/{order_id}/artifact",
@@ -567,7 +617,11 @@ class TestGetPracticeArtifactCustomer:
         )
         practice_id = await _practice_id_for(pool, order_id)
         await _seed_session(pool, raw_secret="secret-getmis-0000000000000000", result_id="result-getmis-000000000000")
-        artifact = await _put_artifact(client, practice_id, "getmis-put-key-00000000001")
+        # F1: deliver first so the row actually resolves through
+        # `get_live_for_order` -- PR-11 itself verifies the digest at
+        # delivery time, so the corruption below must happen AFTER
+        # delivery, never before it.
+        artifact = await _deliver(client, practice_id, key_prefix="getmis")
         storage_key = await pool.fetchval(
             "SELECT storage_key FROM garuda_practice_artifacts WHERE artifact_id = $1",
             artifact["artifact_id"],
@@ -587,6 +641,161 @@ class TestGetPracticeArtifactCustomer:
         # reaches the wire.
         assert "%PDF" not in resp.text
         assert "tampered" not in resp.text
+
+    async def test_put_without_pr11_is_404_not_the_old_200(
+        self, pool, order_repository, client
+    ) -> None:
+        """Guilt test for finding F1 (Sol O1 refutation, 2026-09-11): a
+        magic-link session could download the grant right after the staff
+        PUT, while the practice was still Approved and nothing had been
+        released. BEFORE the cure, `get_live_for_order` carried only
+        ownership + liveness -- this exact sequence (PUT, no PR-11, owning
+        session GETs) answered 200 with the PDF right here. AFTER the cure
+        (`p.state = 'Delivered'` AND `p.artifact_available` required in the
+        same query), it is 404."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-getf1-0000000000000", provider_event_id="evt-getf1-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        await _seed_session(
+            pool, raw_secret="secret-getf1-00000000000000000", result_id="result-getf1-0000000000000"
+        )
+        await _transition(client, practice_id, "getf1-pr02", {"transition_id": "PR-02"})
+        await _transition(
+            client,
+            practice_id,
+            "getf1-pr04",
+            {"transition_id": "PR-04", "evidence_id": "evidence_filing_getf1_0001"},
+        )
+        await _transition(
+            client,
+            practice_id,
+            "getf1-pr06",
+            {"transition_id": "PR-06", "evidence_id": "evidence_approval_getf1_0001"},
+        )
+        # PR-11 deliberately NOT run -- the practice stays Approved, exactly
+        # the window F1 named.
+        await _put_artifact(client, practice_id, "getf1-put-key-00000000001")
+
+        resp = await client.get(
+            f"/api/visa/voa/orders/{order_id}/artifact",
+            cookies={_SESSION_COOKIE: "secret-getf1-00000000000000000"},
+        )
+        assert resp.status_code == 404
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
+
+    async def test_practice_pointer_digest_mismatch_is_404(
+        self, pool, order_repository, client
+    ) -> None:
+        """Guilt test: the bytes served must be the EXACT pair PR-11
+        verified, not merely "the live row for this practice". BEFORE the
+        cure, `get_live_for_order` never compared `a.artifact_digest`
+        against `p.artifact_digest` -- a practice pointer corrupted (or
+        left stale by an unrelated bug) would still resolve to whatever
+        live row existed for the practice. AFTER the cure, a mismatched
+        pointer is 404, never a fallback resolution onto the live row."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-getf1b-000000000000", provider_event_id="evt-getf1b-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        await _seed_session(
+            pool, raw_secret="secret-getf1b-00000000000000000", result_id="result-getf1b-000000000000"
+        )
+        await _deliver(client, practice_id, key_prefix="getf1b")
+
+        # Break the practice's own pointer directly at the SQL layer --
+        # state stays Delivered, artifact_available stays true, but
+        # artifact_digest no longer names the pair PR-11 actually verified.
+        bogus_digest = hashlib.sha256(b"getf1b-bogus-pointer-digest").hexdigest()
+        await pool.execute(
+            "UPDATE garuda_practices SET artifact_digest = $2 WHERE practice_id = $1",
+            practice_id,
+            bogus_digest,
+        )
+
+        resp = await client.get(
+            f"/api/visa/voa/orders/{order_id}/artifact",
+            cookies={_SESSION_COOKIE: "secret-getf1b-00000000000000000"},
+        )
+        assert resp.status_code == 404
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
+
+    async def test_pr11_refuses_expired_pair_and_leaves_practice_approved(
+        self, pool, order_repository, client
+    ) -> None:
+        """Guilt test for finding F3 (Sol O1 refutation, 2026-09-11): put
+        while Approved, let the artifact age past a short retention
+        interval (same manufacturing technique `test_past_retention_is_404`
+        uses -- migration 312's INSERT trigger refuses to insert an
+        already-expired row, so the row must age after insert), then submit
+        PR-11 with the ORIGINAL, correct pair. BEFORE the cure (`get_live_
+        for_practice_locked` had no `retention_until > clock_timestamp()`
+        filter), this delivered SUCCESSFULLY -- the practice reached
+        Delivered, a delivery mail went out promising a download, and
+        `get_live_for_order` (which DOES filter retention) answered 404 on
+        that same order from the very next request. AFTER the cure, PR-11
+        itself is refused -- 422 INVALID_REQUEST, the same `ArtifactDelivery
+        Rejected` path B3/B4 already cover for a fabricated pair -- and the
+        practice never leaves Approved."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-getf3-0000000000000", provider_event_id="evt-getf3-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        await _transition(client, practice_id, "getf3-pr02", {"transition_id": "PR-02"})
+        await _transition(
+            client,
+            practice_id,
+            "getf3-pr04",
+            {"transition_id": "PR-04", "evidence_id": "evidence_filing_getf3_0001"},
+        )
+        await _transition(
+            client,
+            practice_id,
+            "getf3-pr06",
+            {"transition_id": "PR-06", "evidence_id": "evidence_approval_getf3_0001"},
+        )
+
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE public.visa_decision_retention_policies
+                   SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
+                 WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'
+                   AND upper(effective_period) IS NULL
+                """
+            )
+            tiny_policy_version = await _ensure_garuda_document_test_policy(
+                conn,
+                retention_interval="INTERVAL '9 seconds'",
+                idempotency_retention_interval="INTERVAL '1 second'",
+            )
+        artifact = await _put_artifact(client, practice_id, "getf3-put-key-00000000001")
+        async with pool.acquire() as conn:
+            await _close_garuda_document_test_policy(conn, tiny_policy_version)
+        await asyncio.sleep(9.5)
+
+        resp = await client.post(
+            f"/api/visa/voa/staff/practices/{practice_id}/transitions",
+            headers={
+                "Authorization": _bearer(_ADMIN, "admin"),
+                "Idempotency-Key": "getf3-pr11-with-expired-pair-01",
+            },
+            json={
+                "transition_id": "PR-11",
+                "artifact_id": artifact["artifact_id"],
+                "artifact_digest": artifact["artifact_digest"],
+            },
+        )
+        assert resp.status_code == 422, resp.text
+        assert resp.json()["code"] == "INVALID_REQUEST"
+
+        # The practice never became Delivered off the expired pair.
+        row = await pool.fetchrow(
+            "SELECT state, artifact_available FROM garuda_practices WHERE practice_id = $1",
+            practice_id,
+        )
+        assert row["state"] == "Approved"
+        assert row["artifact_available"] is False
 
 
 @pytest.mark.asyncio
