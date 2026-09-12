@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import fields as dataclass_fields
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -261,6 +262,86 @@ def test_horizon_start_is_inclusive_and_end_exclusive(catalog):
     assert due_dates(rule, PMA, date(2026, 11, 16), 0) == []
     with pytest.raises(ValueError):
         due_dates(rule, PMA, date(2026, 11, 16), -1)
+
+
+def test_due_on_a_libur_nasional_moves_to_the_next_business_day():
+    # No 2026 catalog date lands on a decreed WEEKDAY, so this case needs a synthetic rule: due on
+    # the 17th means Mon 2026-08-17, Proklamasi Kemerdekaan, a holiday that is not also a weekend.
+    rule = ObligationRule(
+        "synthetic_17", "n", "a", "s", False, (), DueRule("monthly", 17, None, 0, "none", "fiscal")
+    )
+    rolling = replace(rule, due=replace(rule.due, roll="next_business_day"))
+    assert due_dates(rule, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 17))]
+    assert due_dates(rolling, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 18))]
+
+
+def test_due_on_a_cuti_bersama_moves_to_the_next_business_day(catalog):
+    # Fri 2026-03-20 is cuti bersama Idulfitri and the block runs to Tue 24 Mar -> Wed 25 Mar.
+    assert due_dates(catalog["spt_masa_pph21"], PMA, date(2026, 3, 1), 31) == [
+        ("2026-02", date(2026, 3, 25))
+    ]
+
+
+def test_due_on_a_weekend_skips_the_monday_holiday_too(catalog):
+    # The PPh 21 DEPOSIT deadline (Pasal 94: the 15th) for Masa Pajak 2026-01 is Sun 15 Feb. The
+    # old weekend-only roll stopped on Mon 16 Feb, which is cuti bersama Imlek; Tue 17 Feb is Imlek
+    # itself. Wed 18 Feb is the first day the deposit can actually be made.
+    assert due_dates(catalog["pph21_payment"], PMA, date(2026, 2, 1), 28) == [
+        ("2026-01", date(2026, 2, 18))
+    ]
+    # The RETURN for the same month is a different deadline (Pasal 171: the 20th) and does not
+    # move: Fri 20 Feb 2026 is a business day. Conflating the two is the easy mistake here.
+    assert due_dates(catalog["spt_masa_pph21"], PMA, date(2026, 2, 1), 28) == [
+        ("2026-01", date(2026, 2, 20))
+    ]
+
+
+def test_a_catalog_roll_none_rule_ignores_the_holiday_block_after_it(catalog):
+    # BPJS Ketenagakerjaan for 2026-07 is due Sat 15 Aug with roll: none. The next business day is
+    # Tue 18 Aug (Sun 16, then Independence Day on Mon 17), and none of that reaches this rule.
+    assert due_dates(catalog["bpjs_ketenagakerjaan_monthly"], PMA, date(2026, 8, 1), 30) == [
+        ("2026-07", date(2026, 8, 15))
+    ]
+
+
+def test_a_year_without_a_holiday_table_rolls_weekends_only_and_says_so(catalog):
+    # 2028 has no decree yet (they are issued ~September of the preceding year). Sat 2028-01-15
+    # therefore rolls on the weekend alone, to Mon 17 Jan, and the proposal says the date is
+    # unfinished instead of presenting it as computed.
+    rule = catalog["pph21_payment"]
+    assert due_dates(rule, PMA, date(2028, 1, 1), 31) == [("2027-12", date(2028, 1, 17))]
+    [proposed] = propose([rule], PMA, date(2028, 1, 1), 31)
+    assert proposed.needs_review_reason == "holiday calendar for 2028 not loaded"
+
+
+def test_the_holiday_gap_is_flagged_per_proposal_not_per_run(catalog):
+    # One horizon straddles the decreed year and the undecreed one, so the flag cannot be a
+    # property of the run: 2026-11 is due inside 2026 and says nothing, 2026-12 lands in 2027.
+    reasons = {
+        (p.period_key, p.due_date): p.needs_review_reason
+        for p in propose([catalog["spt_masa_ppn"]], PMA, date(2026, 12, 1), 75)
+    }
+    assert reasons == {
+        ("2026-11", date(2026, 12, 31)): None,
+        ("2026-12", date(2027, 2, 1)): "holiday calendar for 2027 not loaded",
+    }
+
+
+def test_the_holiday_gap_reason_appends_to_the_rules_own_reason(catalog):
+    rule = catalog["pph25_installment"]
+    assert rule.needs_review_reason  # the rule already has one; the gap must not replace it
+    [proposed] = propose([rule], PMA, date(2027, 1, 10), 10)
+    assert proposed.needs_review_reason == (
+        f"{rule.needs_review_reason}; holiday calendar for 2027 not loaded"
+    )
+
+
+def test_a_roll_none_rule_is_not_flagged_for_an_undecreed_year(catalog):
+    # Nothing about an unknown holiday table can change a date that never moves.
+    rule = catalog["bpjs_kesehatan_monthly"]
+    [proposed] = propose([rule], PMA, date(2027, 1, 1), 15)
+    assert proposed.due_date == date(2027, 1, 10)
+    assert proposed.needs_review_reason == rule.needs_review_reason
 
 
 def test_one_time_and_event_rules_produce_nothing(catalog):
