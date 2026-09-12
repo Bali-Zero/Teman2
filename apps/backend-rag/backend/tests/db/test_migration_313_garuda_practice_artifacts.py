@@ -157,11 +157,14 @@ async def _seeded_test_retention_policy(conn: asyncpg.Connection):
     on DELETE), which is why the first shape of this fixture CLOSED the row
     at teardown instead. Closing satisfied the EXCLUDE constraint and left the
     row behind -- and every visa_engine file that later calls
-    `unwind_garuda_voa_retention_fk` on the same database runs 304's rollback,
-    which re-narrows the `policy_scope` CHECK to a list without
-    GARUDA_DOCUMENT; Postgres refuses that ALTER while rows with the scope
-    exist (`CheckViolationError: ..._policy_scope_check ... violated by some
-    row`). CI was green only because xdist `--dist loadfile` happened to put
+    `unwind_garuda_voa_retention_fk` on the same database rolls the registered
+    dependents back in reverse order, and one of them re-narrows the
+    `policy_scope` CHECK to a list without GARUDA_DOCUMENT -- NOT 304's own
+    rollback, which sees the rows and leaves the CHECK widened, but 285's,
+    which guards only GARUDA_MAGIC_LINK rows and on a clean database rebuilds
+    the four-scope CHECK (round O5 corrected this attribution). Postgres
+    refuses that ALTER while rows with the scope exist
+    (`CheckViolationError: ..._policy_scope_check ... violated by some row`). CI was green only because xdist `--dist loadfile` happened to put
     this file and those on different database clones. A row that was never
     committed satisfies the re-narrowed CHECK, the EXCLUDE constraint and the
     append-only guard alike.
@@ -228,8 +231,9 @@ async def _seeded_test_retention_policy(conn: asyncpg.Connection):
         assert residue == baseline, (
             f"this file's fixture left {residue - baseline} TEST/GARUDA_DOCUMENT retention "
             "policy row(s) behind; the next visa_engine file to call "
-            "unwind_garuda_voa_retention_fk on this database will fail 304's rollback "
-            "with CheckViolationError on the policy_scope CHECK"
+            "unwind_garuda_voa_retention_fk on this database will fail a dependent's "
+            "rollback (285's, on a clean database) with CheckViolationError on the "
+            "policy_scope CHECK"
         )
 
 
@@ -692,12 +696,22 @@ async def test_the_next_file_can_still_unwind_this_database() -> None:
     """The defect gate-6287c measured, reproduced on one database in one
     process: run this file's fixture lifecycle (seed the TEST/GARUDA_DOCUMENT
     policy, tear down), then do what every visa_engine file does before
-    rolling 264 back -- `unwind_garuda_voa_retention_fk`, which runs 304's
-    rollback and re-narrows the `policy_scope` CHECK. With the earlier
-    teardown (CLOSE the row, leave it) this raised `CheckViolationError:
-    visa_decision_retention_policies_policy_scope_check ... violated by some
-    row`; with a rolled-back seed it passes. `restore` then puts the stack
-    back so the database leaves this test as it entered.
+    rolling 264 back -- `unwind_garuda_voa_retention_fk`, whose reverse walk
+    reaches 285's rollback, which re-narrows the `policy_scope` CHECK. With
+    the earlier teardown (CLOSE the row, leave it) this raised
+    `CheckViolationError: visa_decision_retention_policies_policy_scope_check
+    ... violated by some row`; with a rolled-back seed it passes. `restore`
+    then puts the MIGRATION STACK back, in a `finally` so a failed assertion
+    cannot leave the next file without 281..313.
+
+    What "back" does and does not mean, stated because round O5 caught the
+    docstring overclaiming: the shared unwind/restore pair is not
+    state-preserving for OTHER fixtures' committed rows -- 281's rollback
+    drops the `policy_scope` column and restore re-adds it with its default,
+    so a closed GARUDA_ORDER or GARUDA_MAGIC_LINK row another file left
+    behind comes back as VISA_DECISION. That is the mechanism's property,
+    identical for the three visa_engine consumers that call it, and this
+    test adds nothing to it; it is recorded here, not fixed here.
 
     Deliberately NOT using the `conn` fixture: the point is the state AFTER
     its teardown, and this test must own the connection to observe it. It
@@ -705,10 +719,12 @@ async def test_the_next_file_can_still_unwind_this_database() -> None:
     shipped code path.
 
     Premise, asserted rather than assumed: the database carries no
-    TEST/GARUDA_DOCUMENT row before this test. On CI's per-worker clone that
-    is always true; on a local database dirtied by an OLDER run of this file
-    it is not, those rows cannot be removed (append-only), and this test
-    says so instead of blaming the cure.
+    TEST/GARUDA_DOCUMENT row before this test. Nothing else on this database
+    seeds that scope today, and a worker's clone starts empty -- but a
+    worker reuses one clone across files, so this is a pollution tripwire,
+    not a law. On a database dirtied by an OLDER run of this file the rows
+    cannot be removed (append-only), and this test says so instead of
+    blaming the cure.
     """
     from backend.tests.services.visa_engine.conftest import (
         restore_garuda_voa_retention_fk,
@@ -738,10 +754,12 @@ async def test_the_next_file_can_still_unwind_this_database() -> None:
             ) == 1
 
         # What the next file does. Before the cure: CheckViolationError here.
-        unwound = await unwind_garuda_voa_retention_fk(connection)
-        assert unwound, "unwind found nothing to roll back — 313 was not applied, so this proved nothing"
-        assert await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')") is None
-        await restore_garuda_voa_retention_fk(connection)
+        try:
+            unwound = await unwind_garuda_voa_retention_fk(connection)
+            assert unwound, "unwind found nothing to roll back — 313 was not applied, so this proved nothing"
+            assert await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')") is None
+        finally:
+            await restore_garuda_voa_retention_fk(connection)
         assert await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')") is not None
     finally:
         await connection.close()
