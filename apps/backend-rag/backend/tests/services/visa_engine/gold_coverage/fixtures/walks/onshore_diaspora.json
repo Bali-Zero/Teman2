@@ -85,10 +85,7 @@
     "investment.proposed_role": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "family.relation_to_sponsor": { "status": "KNOWN", "value": "SPOUSE" },
     "family.sponsor_nationalities": { "status": "KNOWN", "value": ["IT"] },
-    "family.sponsor_status_code": {
-      "status": "UNKNOWN",
-      "reason": "UNVERIFIED"
-    },
+    "family.sponsor_status_code": { "status": "KNOWN", "value": "E23" },
     "family.marriage_registered": { "status": "KNOWN", "value": true },
     "family.stepchild_marriage_certificate_confirmed": {
       "status": "UNKNOWN",

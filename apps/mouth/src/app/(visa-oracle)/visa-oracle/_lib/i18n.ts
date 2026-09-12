@@ -344,12 +344,11 @@ const en = {
   "why.family_sponsor_nationalities":
     "Sponsor nationality is a separate engine fact and is never copied from your own passports.",
   "q.family_sponsor_status_code":
-    "What status code appears on your sponsor’s current permit?",
+    "Which stay permit does your sponsor currently hold?",
   "q.family_sponsor_status_code.hint":
-    "Enter the printed product code, for example E31. Use Not sure if you cannot verify it.",
-  "q.family_sponsor_status_code.label": "Sponsor permit code",
+    "Choose the option printed on your sponsor’s KITAS/KITAP card — this asks about your sponsor’s permit, not your own status. Choose “I’m not sure” if you cannot confirm it.",
   "why.family_sponsor_status_code":
-    "The code is sent exactly as typed. The interface does not translate a description into a permit code.",
+    "Confirms your sponsor already holds a qualifying stay permit before we name a family visa product for you.",
   "q.family_sponsor_permit_basis":
     "What is the basis of your sponsor's own stay permit?",
   "q.family_sponsor_permit_basis.hint":
@@ -389,12 +388,6 @@ const en = {
     "The birth certificate should show the biological parent who is part of the mixed marriage.",
   "why.family_stepchild_birth_certificate_confirmed":
     "Birth-certificate evidence is sent as its own boolean decision fact.",
-  "q.family_stepchild_sponsor_permit_confirmed":
-    "Does your sponsor hold a valid KITAS/KITAP of their own?",
-  "q.family_stepchild_sponsor_permit_confirmed.hint":
-    "This asks about the sponsor's own stay permit, separate from the marriage and birth certificates above.",
-  "why.family_stepchild_sponsor_permit_confirmed":
-    "The signed rules for this route do not check the sponsor's own permit; this establishes that fact directly instead of leaving it assumed.",
   "q.family_sponsor_confirmed":
     "Has the family sponsor confirmed they will support the process?",
   "q.family_sponsor_confirmed.hint":
@@ -1184,12 +1177,11 @@ const id: Record<Keys, string> = {
   "why.family_sponsor_nationalities":
     "Kewarganegaraan sponsor adalah fakta mesin terpisah dan tidak pernah disalin dari paspor Anda.",
   "q.family_sponsor_status_code":
-    "Kode status apa yang tercantum pada izin sponsor saat ini?",
+    "Izin tinggal apa yang saat ini dimiliki sponsor Anda?",
   "q.family_sponsor_status_code.hint":
-    "Masukkan kode produk yang tercetak, misalnya E31. Pilih Tidak yakin jika tidak dapat memverifikasinya.",
-  "q.family_sponsor_status_code.label": "Kode izin sponsor",
+    "Pilih opsi yang tertera di kartu KITAS/KITAP sponsor Anda — ini menanyakan izin sponsor Anda, bukan status Anda sendiri. Pilih “Saya tidak yakin” jika tidak dapat memastikannya.",
   "why.family_sponsor_status_code":
-    "Kode dikirim persis seperti yang diketik. Antarmuka tidak menerjemahkan deskripsi menjadi kode izin.",
+    "Memastikan sponsor Anda sudah memiliki izin tinggal yang memenuhi syarat sebelum kami menyebutkan produk visa keluarga untuk Anda.",
   "q.family_sponsor_permit_basis":
     "Apa dasar izin tinggal sponsor Anda sendiri?",
   "q.family_sponsor_permit_basis.hint":
@@ -1228,12 +1220,6 @@ const id: Record<Keys, string> = {
     "Akta lahir sebaiknya menunjukkan orang tua kandung yang merupakan bagian dari pernikahan campuran.",
   "why.family_stepchild_birth_certificate_confirmed":
     "Bukti akta lahir dikirim sebagai fakta keputusan boolean tersendiri.",
-  "q.family_stepchild_sponsor_permit_confirmed":
-    "Apakah sponsor Anda memiliki KITAS/KITAP yang sah atas nama sendiri?",
-  "q.family_stepchild_sponsor_permit_confirmed.hint":
-    "Ini menanyakan izin tinggal sponsor sendiri, terpisah dari akta nikah dan akta lahir di atas.",
-  "why.family_stepchild_sponsor_permit_confirmed":
-    "Aturan yang telah disahkan untuk jalur ini tidak memeriksa izin tinggal sponsor sendiri; pertanyaan ini memastikan fakta tersebut secara langsung, bukan diasumsikan.",
   "q.family_sponsor_confirmed":
     "Apakah sponsor keluarga sudah mengonfirmasi dukungan proses?",
   "q.family_sponsor_confirmed.hint":
