@@ -154,7 +154,20 @@ const makeProfile = (
   },
 });
 
-describe("ClientDetailPage", () => {
+/**
+ * Synthetic, and deliberately not the real table.
+ *
+ * The component takes the tax team as a prop precisely so the values are not
+ * baked into the client bundle; a fixture that copied the production addresses
+ * back into a "use client" test would not fail anything, but it would reintroduce
+ * the habit this change exists to break.
+ */
+const CONSULTANTS = [
+  { value: "consultant.one@example.test", label: "Consultant One" },
+  { value: "consultant.two@example.test", label: "Consultant Two" },
+];
+
+describe("ClientDetailClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseClientDetail.mockReturnValue({
@@ -171,8 +184,8 @@ describe("ClientDetailPage", () => {
 
   it("selects a status with the mouse and patches the authoritative client", async () => {
     const user = userEvent.setup();
-    const { default: ClientDetailPage } = await import("./page");
-    render(<ClientDetailPage />);
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
 
     await user.click(
       screen.getByRole("button", { name: "Change client status" }),
@@ -197,8 +210,8 @@ describe("ClientDetailPage", () => {
       isLoading: false,
       error: null,
     });
-    const { default: ClientDetailPage } = await import("./page");
-    render(<ClientDetailPage />);
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
 
     expect(
       screen.getByRole("button", { name: "Process (0)" }),
