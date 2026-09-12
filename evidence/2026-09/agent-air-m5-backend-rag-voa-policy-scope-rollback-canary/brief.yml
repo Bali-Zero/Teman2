@@ -31,8 +31,8 @@ constraints:
     BEFORE the doubling is undone (the reverse order hides 304's CHECK).
   - No migration file is modified; the 313 suite's formatting is main's.
 acceptance:
-  - text: "A1: For each rebuilder, the rollback's ALTER is preceded by `IF EXISTS (... WHERE policy_scope = '<X>')`, X is the one scope the forward added, and the rollback list is the forward list minus X."
-    probe: backend/tests/db/test_policy_scope_rollback_guard.py::test_a_rollback_that_rebuilds_the_check_is_guarded_on_its_own_scope
+  - text: "A1: For each rollback that touches the CHECK, its one canonical rebuild sits inside the ELSE, at the guard's own depth, of `IF EXISTS (SELECT 1 FROM public.visa_decision_retention_policies WHERE policy_scope = '<X>') THEN`, X is the one scope the forward added, the rollback list is the forward list minus X, and nothing else touches the CHECK."
+    probe: backend/tests/db/test_policy_scope_rollback_guard.py::test_a_rollback_that_touches_the_check_has_the_full_safe_shape
   - text: "A2: WHEN the canary scans migrations_v2 it SHALL find at least 285 and 304 among the files whose rollback touches the CHECK, so it cannot be green by finding nothing."
     probe: backend/tests/db/test_policy_scope_rollback_guard.py::test_the_canary_finds_the_rebuilders_it_was_written_against
   - text: "A3: WHEN 313's rollback text is read it SHALL contain no DROP or ADD of the policy_scope CHECK, since 313 never widened it."
@@ -48,8 +48,9 @@ limits:
     asserts shape, not sufficiency.
   - >-
     Discovery is fail-closed for the shapes the scanner can read: any
-    `ADD CONSTRAINT ... CHECK (... policy_scope ...)` under any name, `IN`
-    or `= ANY`, NOT VALID, and any DROP/VALIDATE of the canonical check,
+    `ADD [CONSTRAINT <name>] CHECK (... policy_scope ...)` under any name or
+    none, `IN` or `= ANY`, NOT VALID, and any DROP/VALIDATE/RENAME of the
+    canonical check,
     put a file under the rule; only the one safe spelling gets it out. What
     remains invisible is a shape `_TOUCH_RE` cannot match at all -- that is
     the declared residual limit, and the superset assertion only catches a

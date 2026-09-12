@@ -37,7 +37,8 @@ outcome: >-
   gate-6287d smuggled in. Level 2, repo-wide: any migration whose rollback
   touches that CHECK in any spelling must have exactly one rebuild in the
   canonical form, inside the ELSE branch -- at the guard's own nesting
-  depth -- of `IF EXISTS (... WHERE policy_scope = '<its own scope>')`,
+  depth -- of `IF EXISTS (SELECT 1 FROM public.visa_decision_retention_policies
+  WHERE policy_scope = '<its own scope>') THEN`,
   with the rollback list equal to the forward list minus that scope, no
   touch in the THEN arm and none outside the guarded ELSE. The set of files
   found must include 285 and 304, so the canary cannot be green by finding
@@ -46,8 +47,8 @@ outcome: >-
   dollar-quoted bodies recursively; an unterminated literal or body is a
   hard error, not a guess.
 diff:
-  files: 4
-  net_lines: 308
+  files: 5
+  net_lines: 593
 pii_scan: clean
 pii_scan_note: Tests and a pack; no client data, no identifiers, no credentials, no database.
 receipts:
@@ -157,6 +158,10 @@ guilt_mutations:
     mutation: "`DO $never$ BEGIN PERFORM 1; END;` with no closing tag."
     observed: "Collection ERROR, fail closed: 'unterminated dollar-quoted body opened by ...'. Restored."
     ts: "2026-09-12T18:56:45Z"
+  - target: a new file, probe 998 (gate-6363's condition 3)
+    mutation: "A migrations_v2/998_probe.sql whose rollback RENAMEs the canonical check to `vdrp_old` and then runs an unnamed `ADD CHECK (policy_scope IN ('VISA_DECISION'))`."
+    observed: "RED: both statements are touches and there is no canonical rebuild. 1 failed, 3 passed. The previous `_TOUCH_RE` did not see that rollback at all. Probe removed; the canary finds 285 and 304 only."
+    ts: "2026-09-12T20:27:33Z"
 dissent:
   - seat: codex-gpt-5.6-sol
     objection: >-
@@ -173,7 +178,8 @@ dissent:
       found by walking the text with a balanced counter whose opener is
       `IF <cond> THEN` (counting bare `IF` made `DROP CONSTRAINT IF EXISTS`
       close the guard early -- measured red on both real files); discovery
-      is any touch of the CHECK in any spelling, with only the canonical
+      is any touch of the CHECK in any spelling (after gate-6363, an unnamed
+      `ADD CHECK` and a RENAME of the check included), with only the canonical
       DROP+ADD allowed inside the guarded ELSE and nothing outside it; the
       scanner is quote-, comment- and dollar-quote-aware and fails closed on
       an unterminated literal or body. No third round (decision #46).
