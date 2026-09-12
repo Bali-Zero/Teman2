@@ -1,0 +1,78 @@
+task_id: voa-store-wiring
+mandate_id: garuda-voa-w1w
+colour: BLUE
+gear: 2
+l_level: L2
+gate_class: opus
+# Deterministic floor for this diff is 1 (compute_floor: no hot-zone path, 167 net lines
+# < the 400-line size term). Gear 2 is DECLARED ABOVE the floor, not imposed by it: the
+# Imperatore's decision #24 sets a fresh Opus gate for every W1W PR at gear >= 2, and
+# declaring gear 2 is what makes that gate a required verdict on this head sha rather
+# than an optional courtesy.
+objective: >-
+  GARUDA VOA W1W, PR 1 of 4. Make `actor_id` a required, non-defaulted keyword on
+  `DocumentStorePort` (`ports.py`) and thread it from the router through
+  `DocumentIntakeService.submit_document` to the store, so no store implementation can key
+  an outcome on the client-supplied Idempotency-Key string alone. An `Idempotency-Key` is
+  chosen by the CLIENT: two different customers can pick the same literal value, and a
+  store that ignored the actor would let one read or displace the other's committed
+  outcome. This PR carries NO storage implementation — it is the port-shape change the
+  Postgres store (PR 2a) is written against, landed first so the adapter arrives against a
+  port that already enforces the scoping.
+  Spec: docs/plans/2026-09-11-garuda-voa-final-spec.md §3 row W1W. Source of the work:
+  `agent/air-m5/ops/garuda-voa-store-wiring` @ 7cc6878f07, re-applied semantically from
+  fresh main (never merged — that branch is based on c52a04c9ee, 10 days stale).
+scope:
+  - apps/backend-rag/backend/services/garuda_documents/ports.py
+  - apps/backend-rag/backend/services/garuda_documents/service.py
+  - apps/backend-rag/backend/app/routers/garuda_documents_router.py
+  - apps/backend-rag/backend/tests/services/garuda_documents/test_ports_actor_scoping.py
+  - apps/backend-rag/backend/tests/services/garuda_documents/test_service_journeys.py
+  - apps/backend-rag/backend/tests/services/garuda_documents/test_service_concurrency.py
+  - evidence/2026-09/agent-air-m5-backend-rag-voa-store-wiring-23492b6e/
+constraints:
+  - >-
+    No migration. 304 is already applied in production (measured this session:
+    _schema_versions.applied_as = 'backend_rag_v2 (session_user=backend_rag_migrator)').
+  - >-
+    No fly.toml, no .env*, no zantara_core.py, no
+    products/garuda-voa/contracts/openapi.yaml (that file belongs to W3C). The OpenAPI
+    contract is untouched by this PR and cannot be affected by it: it describes the HTTP
+    surface, not this internal Protocol.
+  - >-
+    No storage implementation here. `ReadyOutcomeValueNotPersisted` and the lost-race
+    reconciliation that the Postgres store's PII boundary requires are deliberately NOT in
+    this PR — they have no meaning until a store exists that cannot rehydrate a value.
+  - No PII in any output, log, test fixture or evidence file.
+acceptance:
+  - text: >-
+      A1: WHEN two different actors commit under the SAME literal idempotency key, THEN both
+      SHALL win their own commit, and neither SHALL be able to read the other's outcome —
+      `get_existing` for the other actor SHALL return None, not the outcome and not
+      IdempotencyConflictError (a conflict would confirm the key exists, an enumeration
+      oracle across customers).
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py"
+  - text: >-
+      A2 (innocence): WHEN the SAME actor replays the same key with the same payload, THEN
+      the original outcome SHALL still be returned; with a DIFFERENT payload it SHALL still
+      raise IdempotencyConflictError. Actor scoping must not break a genuine replay.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py -k same_actor"
+  - text: >-
+      A3: WHEN `actor_id` is omitted at a call site, THEN the call SHALL raise TypeError
+      rather than silently dropping the scoping — the keyword is required, never defaulted.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py -k required_not_defaulted"
+  - text: >-
+      A4 (the router's two Protocol-shaped fakes keep their documented error shape): WHEN no
+      store is wired, THEN uploadIntakeDocument SHALL still answer 503
+      PERSISTENCE_POLICY_UNAVAILABLE and listIntakeDocuments 503 SERVICE_UNAVAILABLE — NOT
+      the app's generic 500, which is what a fake missing the new required keyword produces
+      (TypeError at the call site, before its body raises).
+    probe: "PYTHONPATH=. pytest backend/tests/app/routers/test_garuda_documents_router.py -k '503'"
+  - text: >-
+      A5 (whole-lane regression): the garuda_documents service and router suites SHALL pass
+      unchanged apart from the actor_id argument threaded into each call.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/ backend/tests/app/routers/test_garuda_documents_router.py"
+guilt_mutations:
+  - "InMemoryDocumentStore keyed on idempotency_key alone (its shape before this PR) -> A1 red"
+  - "_UnconfiguredDocumentStore.get_existing without the actor_id keyword -> A4 red (500, not 503)"
+  - "upload_intake_document dropping actor_id=actor -> A5 red (TypeError)"
