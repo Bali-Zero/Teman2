@@ -162,6 +162,22 @@ measured:
     artifacts:
       - g1_direct_finalizer_characterization.json
       - g1_characterize.py
+  full_suites:
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/rag | backend/tests/unit/services/rag | backend/tests/unit/services/integrations"
+    at: "2026-09-12T10:45Z"
+    result: "1714 passed / 12 skipped · 3046 passed / 30 skipped / 8 xfailed · 347 passed. 0 failed, 0 error."
+    what_it_caught: >-
+      THE REASON IT WAS RUN. The first pass came back 1 FAILED, and it was a
+      real integration break no targeted run could see:
+      `test_score_contract_crossing.py::test_10_scorer_projection_carries_score_kind_on_every_element`
+      — B1.1's own producer-to-consumer crossing test — monkeypatches
+      `calculate_evidence_score` with a fake whose signature refuses B2.1's
+      additive `support=` keyword, so the builder's call raised TypeError.
+      Not an assertion failure: the contract grew and the test that crosses
+      it broke. Cured by teaching the fake the keyword AND recording it, plus
+      an assertion that the keyword actually arrives — a bare `**kwargs`
+      would have swallowed a typo in its name and left the test merely
+      tolerant instead of honest.
   suite:
     cmd: "PYTHONPATH=. .venv/bin/python -m pytest <the 11 files this PR touches or must not break>"
     result: "673 passed, 2 xfailed, 0 failed, 0 error"
