@@ -3,19 +3,20 @@
 import { useState } from "react";
 import Image from "next/image";
 import { LazyMotion, domAnimation, m } from "framer-motion";
-import {
-  TEAM_MEMBERS,
-  TRANSLATIONS,
-  type TeamMember,
-  type Locale,
-} from "./book-data";
+import { TRANSLATIONS, type TeamMember, type Locale } from "./book-data";
 import { TeamModal } from "./TeamModal";
 
 interface TeamGridProps {
   locale?: Locale;
+  /**
+   * Resolved on the SERVER by `bookTeamMembers()` and threaded down from the
+   * route. Required: importing the roster here would ship every staff record in
+   * the public chunk this page loads, which is the defect this prop replaces.
+   */
+  members: TeamMember[];
 }
 
-export function TeamGrid({ locale = "en" }: TeamGridProps) {
+export function TeamGrid({ locale = "en", members }: TeamGridProps) {
   const [selected, setSelected] = useState<TeamMember | null>(null);
   const t = TRANSLATIONS[locale];
 
@@ -23,7 +24,7 @@ export function TeamGrid({ locale = "en" }: TeamGridProps) {
     <LazyMotion features={domAnimation}>
       <div className="px-8 md:px-16 py-12">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {TEAM_MEMBERS.map((member, i) => (
+          {members.map((member, i) => (
             <m.button
               key={member.name}
               onClick={() => setSelected(member)}

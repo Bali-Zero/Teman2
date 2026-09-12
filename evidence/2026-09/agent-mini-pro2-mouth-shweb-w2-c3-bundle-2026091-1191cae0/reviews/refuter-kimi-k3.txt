@@ -1,0 +1,77 @@
+# POST refuter — Kimi K3 on the C3 diff
+
+seat: kimi-code/k3
+cmd: kimi -m kimi-code/k3 -p <self-contained packet: mandate + full diff inline>
+ok: true
+verdict: GO-WITH-CONDITIONS (2 BLOCKER, 2 MAJOR, 2 MINOR, 2 NIT)
+
+## Verbatim
+
+• ## Findings
+
+  **1. BLOCKER — `isClientModule` is defeated by this repo's own house style.**
+  File: `apps/mouth/src/lib/client-roster-boundary.test.ts`
+  > `return /^\s*(?:\/\*[\s\S]*?\*\/\s*)?["']use client["']/.test(source);`
+
+  The regex tolerates one optional *block* comment before the directive, but not a *line* comment. Every new file in this very diff opens with a `//` header (`// apps/mouth/src/app/v2/_components/socialProofRoster.ts` — same for `book-team.ts` and `team-initials.ts`). A client component written in that house style — `// path comment\n"use client";\nimport { rosterBySlug } from "@/data/team-roster";` — is perfectly valid Next.js (comments before a directive are legal) yet `isClientModule` returns `false`, the offenders list stays empty, the guilt probes are unaffected, and both names ship in the chunk with every test green.
+  Smallest fix: strip comments before the directive check, or extend the prefix group to `(?:(?:\/\*[\s\S]*?\*\/|\/\/[^\n]*)\s*)*`.
+
+  **2. BLOCKER — `importsRoster` requires the literal word `from`.**
+  File: `apps/mouth/src/lib/client-roster-boundary.test.ts`
+  > `` new RegExp(`from\\s+["'][^"']*${hint.replace("@/", "")}["']`) ``
+
+  Four import shapes carry the roster and match nothing: `import "@/data/team-roster";` (side-effect, no `from`), `await import("@/data/team-roster")`, `require("@/data/team-roster")`, and whitespace-free `import{x}from"@/data/team-roster"` (valid JS; `\s+` fails). Any of these in an existing client module — say `NavWhatsAppCTA.tsx`, which the walker does visit — leaks with the tripwire green. Note the asymmetry: the tripwire itself admits prose is a hazard (`stripComments` exists), yet this check runs on raw source, so it simultaneously misses real imports *and* can be false-tripped by a comment like `// never import { x } from "@/data/team-roster" here`.
+  Smallest fix: run `importsRoster(stripComments(src))` and match `(?:from\s*|import\s*\(?\s*|require\s*\(\s*)["'][^"']*data/team-roster["']`.
+
+  **3. MAJOR — the tripwire guards only the direct edge; the transitive edges it just created are unguarded.**
+  File: `apps/mouth/src/lib/client-roster-boundary.test.ts`
+  > `const ROSTER_MODULE_HINTS = ["@/data/team-roster", "data/team-roster"];`
+
+  This diff's whole design is two new server modules that import the roster — and their own headers confess the unenforced rule. `book-team.ts`:
+  > `// So the rule: ... A client module importing this file would put them straight back.`
+
+  A `"use client"` module importing `./socialProofRoster`, `./book-team`, or `@/lib/team-public-listing` (which itself resolves via `rosterBySlug`) ships the entire roster and matches neither hint. This is not hypothetical — it is *exactly* the original bug class (book-data imported `team-public-listing`, not the roster). `SocialProof.tsx` currently holds the line only via `import type { SocialProofMember } from "./socialProofRoster"`; dropping the `type` keyword is a one-word, compiles-clean, all-tests-green regression.
+  Smallest fix: add `"team-public-listing"`, `"socialProofRoster"`, and `"book-team"` to `ROSTER_MODULE_HINTS`; better, also add `import "server-only"` to the two resolvers so the bundler itself refuses.
+
+  **4. MAJOR — the moved guilt probes prove filtering, not wiring; the only artifact-level check is manual.**
+  File: `apps/mouth/src/app/v2/_components/SocialProof.test.tsx`
+  > `render(<SocialProof {...(props ?? {})} {...socialProofRoster()} />);`
+
+  The probe now asserts that `socialProofRoster()` drops the injected person and that the component renders what it is fed. It no longer touches any data path the component owns — because the component owns none. So the entire leak surface is guarded solely by the tripwire of findings 1–3: probes green + tripwire bypassed = both names in a public chunk with zero red tests. The one check that would catch it (the chunk scan quoted in the premise: `75947-*.js`, `94651-*.js`) is a manual measurement, not a test.
+  Smallest fix: fix findings 1–3, and add a CI assertion that greps the built `.next/static/chunks` for the two excluded names on the six public routes — that is the check that actually corresponds to the incident.
+
+  **5. MINOR — `stripComments` truncates strings containing `//`, which games the `not.toContain` assertions.**
+  File: `apps/mouth/src/lib/client-roster-boundary.test.ts`
+  > `.replace(/(^|[^:])\/\/.*$/gm, "$1");`
+
+  The `[^:]` guard protects `https://` but nothing else. `const s = "see // rosterBySlug"; realOffence(rosterBySlug)` strips from the `//` onward, deleting real code after the string on that line — and since the spot checks (`team-initials.ts` must not contain `rosterBySlug`/`TEAM_ROSTER`, `book-data.ts` must not contain `publicRoster`/`TEAM_MEMBERS`) assert absence on the stripped text, over-stripping only ever makes them *easier* to pass.
+  Smallest fix: for absence assertions, check the raw source for the identifier and use the stripped source only where prose false-positives actually occurred (the `TEAM_ROSTER` mention).
+
+  **6. MINOR — the frozen file's data is provably intact, but the re-export keeps the footgun loaded.**
+  File: `apps/mouth/src/data/team-roster.ts`
+  > `export { initialsOf } from "@/lib/team-initials";`
+
+  Within the diff, the roster array is untouched; the `TeamDept` reformat (`"leadership" | "setup" | "tax" | "accounting" | "support"`) is a semantically identical union, and the helper body was copied verbatim (`.map((w) => w[0] ?? "")` … `.toUpperCase()`). No cycle: `team-initials.ts` imports nothing. *But* the re-export means a future client-side `import { initialsOf } from "@/data/team-roster"` still compiles and still leaks, with only the flawed tripwire (findings 1–2) between it and production. The diff migrated the two known consumers; the remaining value of the re-export is exactly its danger.
+  Smallest fix: delete the re-export once consumers are migrated, turning any missed/future client import into a build error instead of a silent chunk.
+
+  **7. NIT — dead rename aliases in the component.**
+  File: `apps/mouth/src/app/v2/_components/SocialProof.tsx`
+  > `const FOUNDERS = founders;` / `const TEAM = team;`
+
+  Leftovers preserving the old module-scope constant names; harmless, but they suggest mutation points that no longer exist. Use the props directly or rename the JSX usages.
+
+  **8. NIT — required-prop change is safe only because it fails loudly.**
+  File: `apps/mouth/src/app/v2/_components/SocialProof.tsx`
+  > `founders: SocialProofMember[];` / `team: SocialProofMember[];`
+
+  Previously `({ ... } = {})` allowed `<SocialProof />`; now any unlisted call site (a story, a test, `/v2/company/about` if it renders the band) breaks the typecheck. That's the right kind of failure and the two in-diff call sites are updated — but the diff doesn't show that no other render site exists, and the green-suite claim rests on it. Same for `teamMembers: TeamMember[]` in `BookPageProps`.
+
+  ## Checked and clean
+
+  - **Type-only boundary import**: `import type { SocialProofMember } from "./socialProofRoster"` is erased by SWC regardless of `isolatedModules`/`verbatimModuleSyntax` — no leak (but see finding 3 for the one-word regression).
+  - **Flight payload**: `{...socialProofRoster()}` on `/` and `/v2` serializes only `publicEntries`-filtered rows; per-render call on the server is cheap and identity is irrelevant across the RSC boundary.
+  - **Default render / hydration / 360px**: `FOUNDERS_SPEC`/`TEAM_SPEC` were copied verbatim, `resolveSP` fallback (`r?.name ?? e.slug`) unchanged, `TeamGrid` keeps `grid-cols-2` and `key={member.name}`; nothing a visitor can notice changed.
+  - **Guilt-probe mechanics**: the mock still wraps `importOriginal` and the resolver reads `extraExcluded` at call time, so the moved probes genuinely exercise the production filter.
+
+  VERDICT: GO-WITH-CONDITIONS — the server-side move itself is correct and internally consistent, but the tripwire that is supposed to make the fix non-regressable has three concrete, all-tests-green bypasses (findings 1–3), so merge only after the scanner matches line-comment-led directives, `from`-less imports, and the transitive server modules.
+

@@ -1,0 +1,41 @@
+# POST refuter — Gemini 3.1 Pro on the C3 diff
+
+seat: gemini-3.1-pro
+cmd: agy --model gemini-3.1-pro --effort high -p <self-contained packet: mandate + full diff inline>
+ok: true
+verdict: NO-GO (2 BLOCKER, 1 MAJOR, 1 MINOR, 1 NIT)
+
+## Verbatim
+
+1. **SEVERITY: BLOCKER** (Vector 2: THE TRIPWIRE)
+   - **File**: `apps/mouth/src/lib/client-roster-boundary.test.ts`
+   - **Line**: `return /^\s*(?:\/\*[\s\S]*?\*\/\s*)?["']use client["']/.test(source);`
+   - **Scenario**: The regex used in `isClientModule` completely fails if a file begins with a single-line comment (e.g., `// Copyright 2026`) before the `"use client"` directive, because `\s*` does not match `//`. Any such client component will be silently ignored by the walker and bypass the tripwire. Furthermore, `importsRoster` only checks for the exact string `"data/team-roster"` with a `from` clause, meaning transitive leaks via `import { publicEntries } from "@/lib/team-public-listing"` or relative imports like `../../data/team-roster` are invisible to it.
+   - **Smallest fix**: Execute `stripComments(source)` *before* testing for `"use client"`, and expand `ROSTER_MODULE_HINTS` to explicitly include `@/lib/team-public-listing`.
+
+2. **SEVERITY: BLOCKER** (Vector 6: CORRECTNESS)
+   - **File**: `apps/mouth/src/app/v2/_components/SocialProof.tsx`
+   - **Line**: `founders: SocialProofMember[];`
+   - **Scenario**: `SocialProof` was updated to require `founders` and `team` as props, replacing its internal data resolution. While `/` and `/v2` were updated to pass `{...socialProofRoster()}`, the PR description states this chunk was also loaded on `/team` and `/v2/company/about`. If those pages (or any others) render `<SocialProof />` and are unmigrated, they will pass `undefined`, leading to a hard TypeScript build failure or a runtime crash (`Cannot read properties of undefined`) when the component tries to map the arrays.
+   - **Smallest fix**: Provide a default empty array fallback (`founders = [], team = []`) in the component parameters, or ensure all consumers across the codebase are explicitly updated to pass the resolver props.
+
+3. **SEVERITY: MAJOR** (Vector 5: THE GUILT PROBES)
+   - **File**: `apps/mouth/src/components/book/book-team-roster.test.ts`
+   - **Line**: `return bookTeamMembers();`
+   - **Scenario**: By moving the test assertion to purely unit-test the server resolver (`bookTeamMembers()`) rather than rendering the client component itself, the guilt probe is now entirely blind to the client boundary. If a developer accidentally imports the roster directly into `TeamGrid.tsx`, this probe will still happily pass because it never evaluates the client module graph, rendering it useless for catching client-side leaks.
+   - **Smallest fix**: Render the actual client component (e.g., `<TeamGrid members={await teamMembers()} />`) in the test and assert on the rendered output or module graph, rather than just unit-testing the server resolver.
+
+4. **SEVERITY: MINOR** (Vector 3: BEHAVIOUR)
+   - **File**: `apps/mouth/src/app/v2/_components/socialProofRoster.ts`
+   - **Line**: `return { founders: publicEntries(FOUNDERS_SPEC).map(resolveSP), team: publicEntries(TEAM_SPEC).map(resolveSP), };`
+   - **Scenario**: `socialProofRoster()` maps the arrays and generates completely new object references every time it is called. Because it is called per render on the server (`{...socialProofRoster()}`), any client components relying on reference equality (like `React.memo` or effect dependencies down the tree) will break or trigger unnecessary renders when receiving the updated RSC payload upon server navigations.
+   - **Smallest fix**: Move the array creation outside the function scope so references remain stable across renders, or wrap the function in React's `cache()`.
+
+5. **SEVERITY: NIT** (Vector 4: THE FROZEN FILE)
+   - **File**: `apps/mouth/src/data/team-roster.ts`
+   - **Line**: `export { initialsOf } from "@/lib/team-initials";`
+   - **Scenario**: Re-exporting `initialsOf` from the frozen roster file means any Server component (or legacy code) still importing it via `@/data/team-roster` will pull the full 170-line array into its module evaluation graph anyway. While it doesn't break client bundles, it defeats the memory and evaluation separation of extracting the helper.
+   - **Smallest fix**: Remove the re-export entirely and force all consumers to update their import paths directly to `@/lib/team-initials`.
+
+VERDICT: NO-GO. 
+The structural fix succeeds at moving the roster to the server, but it introduces a major required-prop regression for unmigrated consumers of `SocialProof` and relies on a broken tripwire test that can easily be bypassed by a single-line comment.

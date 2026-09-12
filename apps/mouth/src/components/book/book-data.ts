@@ -7,7 +7,6 @@
 // (apps/mouth/src/data/team-roster.ts). Do NOT hardcode team photos/roles here —
 // edit the roster instead.
 
-import { publicRoster } from "@/lib/team-public-listing";
 import { getPricingSnapshotEntry } from "@/lib/pricing-snapshot";
 
 export interface Chapter {
@@ -123,19 +122,12 @@ export const CHAPTERS: Chapter[] = [
   },
 ];
 
-// DERIVED from the team roster SSOT (apps/mouth/src/data/team-roster.ts).
-// To change a member/photo/role → edit the roster, NOT this file.
-//
-// `publicRoster()` (src/lib/team-public-listing.ts), not `PUBLIC_ROSTER`: the book
-// is a PUBLIC surface (/book, /book/team), and `PUBLIC_ROSTER` only reads the
-// roster's `publicListed` flag, which no member carries — so it published the two
-// people the owner excluded. The roster itself is unchanged.
-export const TEAM_MEMBERS: TeamMember[] = publicRoster().map((m) => ({
-  name: m.name,
-  role: m.role,
-  department: m.dept,
-  photo: m.photo,
-}));
+// The book's team grid is NOT here any more: it is derived on the SERVER in
+// `book-team.ts` (`bookTeamMembers()`) and reaches the client components as
+// props. This module is imported by seven "use client" components, so a
+// roster-derived constant at its module scope shipped every staff record — the
+// two people the owner excluded included — into the public chunk /book and
+// /book/team load. Keep this file roster-free.
 
 // Source: competitor intelligence report — verified March 2026
 export const COMPETITORS: CompetitorStat[] = [
