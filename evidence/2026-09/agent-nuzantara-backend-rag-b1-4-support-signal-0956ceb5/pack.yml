@@ -1,0 +1,120 @@
+task_id: backend-rag-b1-4-support-signal
+mandate: B1
+colour: BLUE
+pr: B1.4
+base_sha: a5ddcd0d1bf419a5c86be8a7e7355ab484def8d7 # pragma: allowlist secret
+brief_ref: evidence/brief.yml
+gear: 3
+spend:
+  {
+    wall_clock_hours: 2,
+    adversarial_rounds: 1,
+    tokens: 700000,
+    children: 1,
+    child_depth: 1,
+  }
+result: >-
+  Four candidate support signals measured offline on two sets, and the two sets
+  rank them in OPPOSITE order. On the frozen 16 pairs the deterministic span
+  check scores 16/16; on four distractor pairs whose insufficient member keeps
+  the entity it scores 0/4, as does the control. The two LLM judges invert:
+  13/16 and 15/16 on the frozen set, 4/4 on the distractors. Under the rule the
+  staff room fixed before the numbers existed, candidate (iii) is the only
+  qualifier and was chosen (ruling I26) with its instability recorded.
+measured:
+  set_a:
+    file: support_probe_receipts.json
+    manifest: manifest_mandatory.json
+    manifest_sha256: 9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f # pragma: allowlist secret
+    pairs: 16
+    calls: 384
+    outcomes: "all ok; no UNAVAILABLE, no failure"
+    results:
+      {
+        i: "16/16, 0 unstable",
+        ii: "13/16, 0 unstable",
+        iii: "15/16, 1 unstable",
+        iv: "0/16",
+      }
+  set_b:
+    file: fair_pairs_receipts.json
+    probe: fair_pairs_probe.json
+    probe_sha256: 9d41ef142374408fe644001382882e40b05e73df08a3ee92c8a3fd0fb02401d0 # pragma: allowlist secret
+    pairs: 4
+    calls: 96
+    outcomes: "all ok"
+    results:
+      { i: "0/4", ii: "4/4, 0 unstable", iii: "4/4, 0 unstable", iv: "0/4" }
+    construction: >-
+      The insufficient member KEEPS the entity class the query asks about and
+      still fails to answer — the government fee instead of the all-in price,
+      the notary's days instead of the total, what investors inject instead of
+      the legal minimum, a requirements lexicon under a negation. Written from
+      the second reader's own text, so the author of the hard cases is not the
+      author of any method. Provenance held identical (0.72) between members.
+  host: mini-pro2
+  pins: "adapter file sha256 a24ee0c951db0dec..., codex-cli 0.154.0, CODEX_HOME basename .codex-acct2, ollama digest 5642e97495e1..."
+  no_label_leakage: >-
+    Verified by reading the harness before running it: decide-time inputs are
+    query, context and provenance_fixture.sources only; stratum is read in
+    _score() after every decision exists.
+pii_scan: clean
+receipts:
+  - "support_probe_receipts.json — 384 calls, per-pair decisions, meta pins"
+  - "fair_pairs_receipts.json — 96 calls on the distractor probe"
+  - "fair_pairs_probe.json — the four distractor pairs themselves"
+  - "support_probe.py + B1-4-build-spec.md — the harness and its spec"
+council_run: council-journal.jsonl
+bites:
+  consumer: >-
+    B2.1, which cannot open until the staff room has chosen a support-signal
+    method (README §Sequencing item (e)), and the README line this PR adds is
+    where that choice is recorded.
+  observation: >-
+    The chosen method's number is on disk and reproducible: candidate (iii)
+    4/4 with 0 unstable on fair_pairs_receipts.json and 15/16 on
+    support_probe_receipts.json, both measured on Mini before this PR opened,
+    with the decision rule fixed by ruling I25 BEFORE the measurement.
+adversarial:
+  - {
+      seat: gemini-3.1-pro,
+      round: 1,
+      verdict: TRIVIAL,
+      disposition: "ACCEPTED - it overturned the provisional choice of (i) and its constructions became Set B",
+    }
+  - {
+      seat: kimi-code/k3,
+      round: 1,
+      verdict: ACCEPT-WITH-FINDINGS,
+      findings: 4,
+      accepted: 3,
+      rejected: 1,
+    }
+dissent:
+  - seat: "claude-opus-5 (Dux) vs the frozen benchmark"
+    status: CONFIRMED
+    objection: >-
+      The Dux records that B1.3's frozen 16-pair set, merged in #6274 and
+      unchanged by this PR, is UNFIT ON ITS OWN to select a support signal: its
+      insufficient members are built by deleting the trigger token, which
+      rewards pattern matching and punishes caution. This is dissent against
+      this window's own earlier product, not against a reviewer, and it is the
+      reason distractor pairs are mandatory in B2.1's supplement.
+  - seat: "claude-opus-5 (Dux) vs kimi-code/k3"
+    status: CONFIRMED
+    objection: >-
+      Kimi raised a family-conflict finding on the ground that the Dux is a
+      Codex-family session recommending a Codex-family seat. The premise is
+      wrong - this Dux is Claude Opus 5 - so the finding is rejected as stated.
+      The half that survives, that the seat which wrote Set B also reads (iii)
+      verdicts, is recorded in the note's residuals. Rejected findings are
+      written down here rather than dropped.
+  - seat: "claude-opus-5 (Dux), unprompted, against this PR own result"
+    status: OPEN
+    objection: >-
+      Set B is not a cure for Set A, only its mirror: Set A negatives lack the
+      trigger token, Set B negatives carry an explicit disclaimer, and the hard
+      case - entity present, referent wrong, no meta-commentary - is measured by
+      neither. The 4/4 of (ii) and (iii) therefore shows they are not fooled by
+      a distractor, NOT that they reason about sufficiency. A Set C is owed in
+      B2.1 supplement before anyone treats the chosen signal as validated.
