@@ -14,7 +14,8 @@
     "trip_scope",
     "other_purpose",
     "other_paid_activity",
-    "family_sponsor_confirmed",
+    "work_payer",
+    "work_sponsor_confirmed",
     "stay_days",
     "entry_pattern",
     "review_gate"
@@ -36,7 +37,7 @@
     "immigration.overstay_days": { "status": "KNOWN", "value": 0 },
     "immigration.violation_history": { "status": "KNOWN", "value": [] },
     "immigration.renewal_paid": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.purposes": { "status": "KNOWN", "value": ["OTHER"] },
+    "intent.purposes": { "status": "KNOWN", "value": ["EMPLOYMENT"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "intent.entry_pattern": { "status": "KNOWN", "value": "SINGLE" },
@@ -48,10 +49,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "work.employer_is_indonesian_entity": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "work.employer_is_indonesian_entity": { "status": "KNOWN", "value": true },
     "work.serves_indonesian_clients": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -61,8 +59,8 @@
       "reason": "NOT_ASKED"
     },
     "work.indonesian_work_sponsor_confirmed": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": true
     },
     "investment.pt_pma_committed": {
       "status": "UNKNOWN",
@@ -105,7 +103,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
+    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },

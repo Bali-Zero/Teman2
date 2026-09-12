@@ -335,6 +335,30 @@ export function mapPurposes(facts: OracleFacts): FactValue<Purpose[]> {
   if (facts.category === undefined) return unknownFact(NOT_ASKED);
   if (facts.category === "unsure") return unknownFact(UNVERIFIED);
   const category = facts.category as CategoryKey;
+  // D3-1 (owner ruling SHWEB-20260911, PR-D3): an `invest` applicant whose
+  // vehicle is a property purchase or a bank deposit is a Second Home
+  // applicant, not an investor — `getCategoryQuestionIds` already serves the
+  // Second Home question set for these two vehicles. SECOND_HOME ALONE,
+  // never joined with INVESTMENT: `hit_policy.eligibility =
+  // COVER_ALL_DECLARED_PURPOSES` drops E33 the moment a second purpose is
+  // declared (owner ruling 3, 2026-09-06 — same reasoning as the
+  // `second_home` tile's own entry above).
+  if (
+    category === "invest" &&
+    (facts.investment_vehicle === "property" ||
+      facts.investment_vehicle === "bank_deposit")
+  ) {
+    return known(["SECOND_HOME"]);
+  }
+  // D3-2 (owner ruling SHWEB-20260911, PR-D3): declared paid activity is
+  // employment, not a generic OTHER purpose — `el.c1/c2/c6` all exclude paid
+  // activity (UU 6/2011 Pasal 122) and only `el.e23-employment-support`
+  // covers it. `no` and `unsure` fall through to OTHER unchanged: `no` is
+  // the honest negative (C6 stays reachable) and `unsure` is a disclosed
+  // uncertainty the NOT_CERTAIN flag already holds on.
+  if (category === "other" && facts.other_paid_activity === "yes") {
+    return known(["EMPLOYMENT"]);
+  }
   const purpose = CATEGORY_TO_PURPOSE[category];
   return purpose === undefined ? unknownFact(NOT_APPLICABLE) : known([purpose]);
 }
@@ -462,7 +486,12 @@ const REVIEW_FLAG_MAP: Readonly<
  */
 export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   business_activity: ["meetings", "negotiation", "conference"],
-  investment_vehicle: ["pt_pma"],
+  // `property`/`bank_deposit` added (PR-D3, D3-1): `mapPurposes` now routes
+  // both to SECOND_HOME alone, and `el.e33.property-basis`/`el.e33.
+  // deposit-basis` decide E33 off the Second Home facts the interview
+  // already collects for these two vehicles — holding them discarded a
+  // deterministic answer the same way `family_sponsor` did above.
+  investment_vehicle: ["pt_pma", "property", "bank_deposit"],
   // `family_sponsor` added 2026-09-12 (NARROW-2, owner ruling SHWEB-20260911:
   // hold is the exception, a deterministic pack answer is not). `el.e33f.
   // retirement` (rulepack-prod-020) decides SUPPORT for E33F off
@@ -476,8 +505,36 @@ export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   retirement_basis: ["bank_deposit", "passive_income", "family_sponsor"],
   diaspora_connection: ["former_wni", "descendant", "family"],
   diaspora_documents: ["yes", "no"],
+  // D3-B (PR-D3, owner ruling SHWEB-20260911) investigated pack-outward,
+  // NARROW-2 style, whether any of the 8 options (transit/medical/
+  // volunteer/religious/arts_sport/journalism/crew/other) is decided by a
+  // seq-20 rule. RESULT: NONE is, and the list stays empty — not a
+  // judgement call, a structural fact. `other_purpose`'s own
+  // `decisionMapping` is `HUMAN_CONTEXT` (tree.ts) — it maps to NO
+  // FactPath at all, and `mapOracleFactsToApplicantFacts` never reads
+  // `facts.other_purpose` anywhere — so no rule in the signed pack can
+  // ever see which of the 8 values was chosen; the wire request is
+  // byte-identical regardless. Verified against rulepack-prod-020.
+  // signed.json: exactly 5 rules cover the OTHER purpose
+  // (`el.c6.social`, the one ELIGIBILITY rule that can grant a product,
+  // plus 4 advisory/BRIDGING-only rules), and `el.c6.social`'s
+  // `required_facts` is `family.sponsor_confirmed` /
+  // `intent.purposes` / `intent.stay_days` alone — nothing derived from
+  // this question. Releasing any value here would therefore not be
+  // "found decidable", it would be inventing a distinction the engine
+  // cannot draw, on a purpose where the wrong side hands a visitor a
+  // visit visa for a legally excluded activity. C6's actual release
+  // (D3-2) rests solely on the `other_paid_activity = no` branch, which
+  // this table already lists below.
   other_purpose: [],
-  other_paid_activity: [],
+  // `yes`/`no` added (PR-D3, D3-2): `mapPurposes` now routes `yes` to
+  // EMPLOYMENT (only `el.e23-employment-support` covers it) and leaves `no`
+  // on OTHER (`el.c6.social` stays reachable) — both are decisive on the
+  // pack's own terms, so holding either discarded a deterministic answer.
+  // `unsure` is not listed: it stays undecidable, and the generic
+  // `NOT_CERTAIN` flag (a disclosed uncertainty, not a derived one) already
+  // holds on it.
+  other_paid_activity: ["yes", "no"],
 } as const satisfies Readonly<Record<string, readonly string[]>>;
 
 /** Question ids the ACTIVITY_BOUNDARY table classifies. */
