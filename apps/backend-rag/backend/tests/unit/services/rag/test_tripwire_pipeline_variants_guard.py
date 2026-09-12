@@ -1,9 +1,15 @@
-"""Guard for the nine tripwire pipeline variants (B1.2, spec §3, G1-G11).
+"""Guard for the nine tripwire pipeline variants (B1.2, spec §3, G1-G13).
 
-Purely static/pure-function checks: parses the four original tripwire test files with `ast`
-(paths resolved relative to THIS file's own location, never a hardcoded absolute path) and
-exercises the pure `pipeline_sources`/`format_search_results` functions. No network, no app
-init.
+G1-G10 are static/pure-function checks: they parse the four original tripwire test files with
+`ast` (paths resolved relative to THIS file's own location, never a hardcoded absolute path) and
+exercise the pure `pipeline_sources`/`format_search_results` functions. No network, no app init.
+
+G11-G13 are NOT purely static, and the round-3 cure says so instead of letting the paragraph
+above read as if they were: they `importlib.import_module` the four tripwire test modules, which
+executes those modules' own top-level code. That is the price of checking what pytest actually
+RUNS rather than what the guard parsed. Module identity is pinned rather than assumed — G12
+asserts `module.__file__` resolves to the file the guard parsed, so a shadow copy earlier on
+`sys.path` cannot let the two halves disagree. Still no network and no app init.
 
 The nine `_pipeline_variant` functions ship in the same PR, each beside its preserved original.
 G1-G3 pin the registry (shape, live-transform values, key set, original existence); G4/G5 pin
@@ -35,6 +41,19 @@ Added in the B1.2 round-2 cure (Codex BLOCK, finding 1):
     rebinds a protected name to a different object while every AST-based check above stays
     green — pytest runs whatever the class attribute is bound to, not the `def` the guard
     inspected).
+
+Added in the B1.2 round-3 cure (Codex BLOCK, 2 blockers + 1 minor), each MEASURED against the
+reviewer's own bypass before being accepted as a defect rather than argued away:
+  * G12 — the runtime code OBJECT, digested structurally, is what the parsed `def` compiles to
+    (blocker 1: every field G11 compares is metadata, and a function compiled by `exec`/`compile`
+    under the original `co_filename` with a padded `co_firstlineno` and a copied `__qualname__`
+    takes all eight of G11's assertions green while running an empty body).
+  * G13 — pytest's own collected item runs the class-body def, and the conftest chain defines no
+    undeclared collection hook (blocker 2: G11/G12 read `cls.__dict__[name]`, while pytest runs
+    the callable cached on the `pytest.Function` item, which a `pytest_collection_modifyitems`
+    hook can replace without touching the class).
+  * The docstring above (minor 3): this module no longer calls itself purely static, and
+    `module.__file__` is checked against the parsed path.
 """
 
 from __future__ import annotations
@@ -42,6 +61,7 @@ from __future__ import annotations
 import ast
 import copy
 import dataclasses
+import functools
 import hashlib
 import importlib
 import inspect
@@ -49,6 +69,7 @@ from pathlib import Path
 from typing import Any, Final
 
 import pytest
+from _pytest.assertion.rewrite import rewrite_asserts
 
 from backend.core import score_provenance
 from backend.services.misc.result_formatter import format_search_results
@@ -876,3 +897,247 @@ def test_g11_runtime_binding_matches_the_parsed_def(node_id: str) -> None:
             "one this guard inspected (G11); a later class-body rebinding (assignment, "
             "class decorator, setattr) replaced the runtime binding"
         )
+
+
+# ============================================================================
+# G12 — the runtime code OBJECT is the one the parsed `def` compiles to.
+#
+# Finding 1 (Codex round 3): G11 compares function METADATA — name, qualname,
+# co_filename, co_firstlineno — and every one of those is forgeable. A function
+# compiled with `exec(compile(padding + "def name(self): pass", original
+# co_filename, "exec"))` whose `__qualname__` is copied from the original
+# satisfies the whole of G11 while pytest runs an empty body. MEASURED: the
+# round-3 bypass takes all eight of G11's assertions green.
+#
+# G12 does not trust metadata. It compiles the parsed `def` ALONE, in
+# isolation, and compares a STRUCTURAL DIGEST of the two code objects —
+# opcodes, constants, names, locals, signature, flags, and recursively the
+# digests of nested code objects. The two fields the bypass forges
+# (co_filename, co_firstlineno) are deliberately NOT part of the digest: G11
+# already pins them, and a digest that included them would be satisfied by the
+# same forgery. What cannot be forged without writing the real body is the
+# body's own bytecode.
+# ============================================================================
+
+CodeDigest = tuple[Any, ...]
+
+
+def _code_digest(code: Any) -> CodeDigest:
+    """Structural fingerprint of a code object, nested code objects included.
+
+    Excludes `co_filename` and `co_firstlineno` on purpose — those are what the
+    round-3 bypass forges, and G11 pins them separately.
+    """
+    nested = tuple(_code_digest(const) for const in code.co_consts if hasattr(const, "co_code"))
+    flat_consts = tuple(const for const in code.co_consts if not hasattr(const, "co_code"))
+    return (
+        code.co_code,
+        flat_consts,
+        code.co_names,
+        code.co_varnames,
+        code.co_argcount,
+        code.co_kwonlyargcount,
+        code.co_flags,
+        nested,
+    )
+
+
+@functools.cache
+def _pytest_compiled_module(rel_path: str) -> Any:
+    """Compile a tripwire test file THE WAY PYTEST COMPILES IT, and return its code object.
+
+    Measured, and the reason this helper exists at all: a plain `compile()` of the parsed
+    `def` disagrees with the runtime code object on all 18 protected names, because pytest
+    REWRITES assert statements at import time (`_pytest.assertion.rewrite`) — the runtime
+    bytecode builds `@py_assert*` temporaries and calls `@pytest_ar._call_reprcompare`, which
+    no ordinary compile produces. Comparing against an un-rewritten compile would have been a
+    guard that is red on an honest tree: a trade, not a cure.
+
+    Compiling the WHOLE module (rather than the def in isolation) also makes the file's own
+    `from __future__ import annotations` apply by itself, with no flag bookkeeping.
+    """
+    file_path = _file_path(rel_path)
+    source = file_path.read_bytes()
+    tree = ast.parse(source, filename=str(file_path))
+    rewrite_asserts(tree, source, str(file_path), None)
+    return compile(tree, str(file_path), "exec", dont_inherit=True)
+
+
+def _nested_code(parent: Any, name: str) -> Any | None:
+    for const in parent.co_consts:
+        if hasattr(const, "co_code") and const.co_name == name:
+            return const
+    return None
+
+
+def _expected_code_digest(rel_path: str, class_name: str, protected_name: str) -> CodeDigest | None:
+    """The digest of `protected_name` as pytest's own compile of `rel_path` produces it."""
+    class_code = _nested_code(_pytest_compiled_module(rel_path), class_name)
+    if class_code is None:
+        return None
+    func_code = _nested_code(class_code, protected_name)
+    return None if func_code is None else _code_digest(func_code)
+
+
+@pytest.mark.parametrize("node_id", NODE_IDS)
+def test_g12_runtime_code_object_is_the_compiled_parsed_def(node_id: str) -> None:
+    rel_path, class_name, func_name, _module_node, class_node = _locate_original(node_id)
+    assert class_node is not None, f"{node_id}: class {class_name!r} not found in {rel_path}"
+
+    module = importlib.import_module(_module_dotted_name(rel_path))
+    file_path = _file_path(rel_path)
+
+    assert module.__file__ is not None and Path(module.__file__).resolve() == file_path.resolve(), (
+        f"{node_id}: the imported module {module.__name__!r} is loaded from "
+        f"{module.__file__!r}, not from the file this guard parsed ({file_path}) — "
+        "a shadow copy on sys.path would let G11/G12 inspect one file while pytest "
+        "runs another (G12)"
+    )
+
+    for protected_name in (func_name, f"{func_name}_pipeline_variant"):
+        obj = getattr(module, class_name).__dict__[protected_name]
+        func_node = _find_function(class_node, protected_name)
+        assert func_node is not None, (
+            f"{node_id}: {protected_name!r} not found as a def in class {class_name!r} "
+            f"of {rel_path} — G12 has nothing to compile"
+        )
+        assert obj.__globals__ is module.__dict__, (
+            f"{node_id}: {class_name}.{protected_name} closes over a DIFFERENT module "
+            "namespace than the module this guard parsed — the function was defined "
+            "elsewhere and rebound here (G12)"
+        )
+        expected = _expected_code_digest(rel_path, class_name, protected_name)
+        assert expected is not None, (
+            f"{node_id}: {class_name}.{protected_name} has no code object in the guard's own "
+            f"pytest-style compile of {rel_path} — G12 has nothing to compare against"
+        )
+        assert _code_digest(obj.__code__) == expected, (
+            f"{node_id}: {class_name}.{protected_name} runs bytecode that is NOT what "
+            f"its parsed def in {rel_path} compiles to — the runtime object carries the "
+            "right name, qualname, file and first line but a different body (G12); a "
+            "forged-metadata clone (exec/compile under the original co_filename with "
+            "padded co_firstlineno) replaced the binding"
+        )
+
+
+# ============================================================================
+# G13 — pytest runs the class-body def, and nothing in scope can replace the
+# collected item afterwards.
+#
+# Finding 2 (Codex round 3): G11 and G12 inspect `cls.__dict__[name]`. pytest
+# executes the callable cached on the collected `pytest.Function` item, and a
+# `pytest_collection_modifyitems` hook can set `item._obj` to anything at all
+# without touching the class. MEASURED: with such a hook in a conftest, G11
+# stays green while the protected test body never runs.
+#
+# G13 binds on both sides and neither side is a silent skip:
+#   * leg A, dynamic — for every protected name PRESENT in this session, the
+#     collected item's callable IS the class-body def (identity, not metadata).
+#     Names absent from the session are reported by name, not ignored: running
+#     this guard file alone collects none of them, and that is a fact the test
+#     states rather than a hole it hides.
+#   * leg B, static — a CENSUS of every collection hook defined in the conftest
+#     chain that applies to the four tripwire files, compared against an
+#     expected literal set. The census binds in every session regardless of
+#     what was collected, and a newly added hook makes this test red until it
+#     is examined and declared.
+# ============================================================================
+
+COLLECTION_HOOKS_THAT_CAN_REPLACE_AN_ITEM: Final[frozenset[str]] = frozenset(
+    {
+        "pytest_collection_modifyitems",
+        "pytest_itemcollected",
+        "pytest_collection_finish",
+        "pytest_pycollect_makeitem",
+        "pytest_pyfunc_call",
+        "pytest_runtest_protocol",
+        "pytest_generate_tests",
+    }
+)
+
+# No conftest in the chain defines any of them today. A hook added later is not
+# forbidden — it is UNDECLARED, and this empty table is what makes it visible.
+EXPECTED_COLLECTION_HOOKS: Final[frozenset[tuple[str, str]]] = frozenset()
+
+
+def _conftest_chain() -> list[Path]:
+    """Every conftest.py from the tests root down to each tripwire file's directory."""
+    tests_root = _tests_root()
+    chain: list[Path] = []
+    for rel_path in sorted({node_id.split("::")[0] for node_id in NODE_IDS}):
+        directory = _file_path(rel_path).parent
+        while True:
+            candidate = directory / "conftest.py"
+            if candidate.is_file() and candidate not in chain:
+                chain.append(candidate)
+            if directory == tests_root:
+                break
+            directory = directory.parent
+    guard_conftest = Path(__file__).resolve().parent / "conftest.py"
+    if guard_conftest.is_file() and guard_conftest not in chain:
+        chain.append(guard_conftest)
+    return chain
+
+
+def test_g13_no_undeclared_collection_hook_in_the_conftest_chain() -> None:
+    chain = _conftest_chain()
+    assert chain, (
+        "the conftest chain census found NO conftest.py at all above the four tripwire "
+        "files — the census is vacuous and would pass for the wrong reason (G13)"
+    )
+
+    census: set[tuple[str, str]] = set()
+    for conftest in chain:
+        tree = ast.parse(conftest.read_text(), filename=str(conftest))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name in COLLECTION_HOOKS_THAT_CAN_REPLACE_AN_ITEM
+            ):
+                census.add((str(conftest.relative_to(_tests_root())), node.name))
+
+    assert census == EXPECTED_COLLECTION_HOOKS, (
+        f"the conftest chain applying to the tripwire files defines collection hooks "
+        f"{sorted(census)!r}, expected {sorted(EXPECTED_COLLECTION_HOOKS)!r} — a hook "
+        "that can replace a collected item's callable (pytest runs item._obj, not the "
+        "class attribute G11/G12 inspect) must be examined and declared in "
+        "EXPECTED_COLLECTION_HOOKS, never merely tolerated (G13)"
+    )
+
+
+def test_g13_collected_items_run_the_class_body_def(request: pytest.FixtureRequest) -> None:
+    protected: dict[str, Any] = {}
+    for node_id in NODE_IDS:
+        rel_path, class_name, func_name, _module_node, _class_node = _locate_original(node_id)
+        module = importlib.import_module(_module_dotted_name(rel_path))
+        cls = getattr(module, class_name)
+        for protected_name in (func_name, f"{func_name}_pipeline_variant"):
+            protected[f"{rel_path}::{class_name}::{protected_name}"] = cls.__dict__[protected_name]
+
+    assert len(protected) == 2 * len(NODE_IDS), (
+        f"expected {2 * len(NODE_IDS)} protected names, resolved {len(protected)} (G13)"
+    )
+
+    checked: list[str] = []
+    for item in request.session.items:
+        if not isinstance(item, pytest.Function):
+            continue
+        for key, expected in protected.items():
+            rel_path, class_name, protected_name = key.split("::")
+            if item.name != protected_name or item.cls is None or item.cls.__name__ != class_name:
+                continue
+            collected = getattr(item.obj, "__func__", item.obj)
+            assert collected is expected, (
+                f"{key}: pytest collected {collected!r} for this test, which is NOT the "
+                f"class-body def {expected!r} that G11/G12 inspected — a collection hook "
+                "replaced the item's cached callable (G13)"
+            )
+            checked.append(key)
+
+    not_collected = sorted(set(protected) - set(checked))
+    # Stated, never swallowed: selecting only this guard file collects none of the
+    # protected names, so leg A has nothing to compare and leg B is what binds.
+    print(
+        f"G13 leg A: {len(checked)} of {len(protected)} protected items collected in this "
+        f"session and verified; not collected: {not_collected}"
+    )
