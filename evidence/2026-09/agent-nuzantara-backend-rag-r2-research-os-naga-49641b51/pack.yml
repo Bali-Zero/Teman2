@@ -282,6 +282,30 @@ pii_scan_incident: >-
   mailbox envelope or PR body carries it. Rotation is the owner's call and was escalated on a
   dedicated mailbox key; it is not discharged by this pack. Saved as a fleet-wide shell trap.
 
+# Bites (RULED Zero 2026-09-04: the contract lives HERE, not in the PR body -- the body's line is
+# a pointer for humans). Prose two-field shape, the same one R1 shipped and was gated on in this
+# tranche, NOT the executable consumer/where/observe/expect form: `observe:` admits only
+# `python3 scripts/<path>.py` or a read-only `fly` subcommand, and neither can express "the
+# post-deploy migration job applied 312" or "the backfill CLI read production read-only". Stated
+# plainly so the gate rules on a declared choice rather than an omission.
+bites:
+  consumer: >-
+    TWO, both shipping or already live rather than promised. (1) `naga_backfill.py`, in this PR,
+    is the consumer of the reader/admission/persistence surface -- and it has ALREADY consumed
+    production, read-only. (2) the post-deploy migration job
+    (run-sql-v2-migrations-post-deploy, NOT run-migrations, which runs the old image) is the
+    consumer of migration 312; it exists on main today and this PR hands it the file.
+  observation: >-
+    Made BEFORE reporting the work done: `naga_backfill --cohort legacy_naga_claims --dry-run`
+    against production through the read-only proxy, SET default_transaction_read_only=on, read
+    3119 legacy rows and admitted 0 -- every one excluded with reason statement_not_from_source,
+    per kind all zero, manifest_hash 1b8825df0e47d2a0, source_snapshot_hash a8291de88ea78a6d, and
+    0 rows written. That is exactly D4's predicted honest zero-admission outcome on today's legacy
+    corpus, measured on production rather than on a fixture. AFTER merge, as a SEPARATE proof and
+    not as "merged": the line `Migration 312_research_os_naga_claims applied successfully` from
+    migration_base.py in the post-deploy job's log, plus fly-split-brain-verify. fly-deploy.yml's
+    own applied_count grep looks for a string migrate.py never prints and is NOT the proof.
+
 deferred_by_name:
   - "statement atomizer (naga_statement_atomizer)"
   - "invalidation / transition / review-queue services, and the invalidation/01 fixture's effects"
