@@ -616,7 +616,7 @@
       },
       "rule_id": "review.e28b.usd-threshold-manual",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
@@ -651,7 +651,7 @@
       },
       "rule_id": "review.e28c.usd-threshold-manual",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
@@ -686,7 +686,7 @@
       },
       "rule_id": "review.e28d.usd-threshold-turnover-manual",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
@@ -721,7 +721,7 @@
       },
       "rule_id": "review.e28f.ikn-threshold-manual",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
@@ -1087,7 +1087,7 @@
       },
       "rule_id": "review.e33a.central-government-invitation",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
@@ -1122,7 +1122,7 @@
       },
       "rule_id": "review.e33b.expertise-qualification",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
@@ -1157,7 +1157,7 @@
       },
       "rule_id": "review.e33c.central-government-invitation",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
@@ -6095,7 +6095,7 @@
       },
       "rule_id": "review.e23u.requested-product",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
@@ -6130,7 +6130,7 @@
       },
       "rule_id": "review.e23v.requested-product",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
