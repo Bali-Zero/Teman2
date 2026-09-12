@@ -426,8 +426,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // list membership outright, false on that path. Worded to be true on
   // both without losing the list's own specificity.
   CALLING_VISA_REVIEW: text(
-    "This case is held because your nationality is on Indonesia's Calling Visa list, or because your nationality has not been established. The calling-visa clearance that list requires is what resolves it before any visa can be confirmed.",
-    "Kasus ini ditahan karena kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, atau karena kewarganegaraan Anda belum dapat dipastikan. Proses persetujuan calling visa yang disyaratkan oleh daftar tersebut adalah yang akan menyelesaikannya sebelum visa dapat dikonfirmasi.",
+    "This case is held because your nationality is on Indonesia's Calling Visa list, or because your nationality has not been established. Confirming your nationality, and the calling-visa clearance that list requires if it applies, is what resolves it before any visa can be confirmed.",
+    "Kasus ini ditahan karena kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, atau karena kewarganegaraan Anda belum dapat dipastikan. Konfirmasi kewarganegaraan Anda, beserta proses persetujuan calling visa yang disyaratkan oleh daftar tersebut apabila berlaku, adalah yang akan menyelesaikannya sebelum visa apa pun dapat dikonfirmasi.",
   ),
   ACTIVE_OVERSTAY: text(
     "You reported active overstay days on your immigration record, so a person needs to review it — clearing the overstay is what resolves it.",
