@@ -419,9 +419,15 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // that the signed rules cannot decide, (2) state authoritatively that the
   // case is held deliberately for that named reason, and (3) name what
   // resolves it. Applies to these 9 pre-existing entries too, revised below.
+  // review.calling-visa carries on_unknown: "HUMAN_REVIEW" (verified in
+  // rulepack-prod-020.signed.json), so the identical code fires when
+  // nationality itself is UNKNOWN, not only when it is confirmed on the
+  // list — the round-2 refuter gate caught the first draft asserting the
+  // list membership outright, false on that path. Worded to be true on
+  // both without losing the list's own specificity.
   CALLING_VISA_REVIEW: text(
-    "Your nationality is on Indonesia's Calling Visa list, so this case is held for the calling-visa clearance that nationality requires before any visa can be confirmed.",
-    "Kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, sehingga kasus ini ditahan untuk proses persetujuan calling visa yang disyaratkan bagi kewarganegaraan tersebut sebelum visa dapat dikonfirmasi.",
+    "This case is held because your nationality is on Indonesia's Calling Visa list, or because your nationality has not been established. The calling-visa clearance that list requires is what resolves it before any visa can be confirmed.",
+    "Kasus ini ditahan karena kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, atau karena kewarganegaraan Anda belum dapat dipastikan. Proses persetujuan calling visa yang disyaratkan oleh daftar tersebut adalah yang akan menyelesaikannya sebelum visa dapat dikonfirmasi.",
   ),
   ACTIVE_OVERSTAY: text(
     "You reported active overstay days on your immigration record, so a person needs to review it — clearing the overstay is what resolves it.",
@@ -430,13 +436,16 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // Renamed from CITIZENSHIP_EVIDENCE_CONFLICT (QW-4a, 2026-08-17): that key
   // named no code in any pack from seq-6 onward. CITIZENSHIP_LIST_DIVERGENCE
   // is its current name (services/visa_engine/contracts/packs/
-  // rulepack-prod-007.source.json). Fires only when the declared
-  // nationalities themselves span two different eligibility categories
-  // (rule.when, review.citizenship-conflict) — single cause, revised for
-  // D2-bis below.
+  // rulepack-prod-007.source.json). review.citizenship-conflict ALSO carries
+  // on_unknown: "HUMAN_REVIEW" (verified in rulepack-prod-020.signed.json),
+  // so the identical code fires when nationality is entirely UNKNOWN, not
+  // only when multiple declared nationalities are known to diverge — the
+  // round-2 refuter gate caught the first draft asserting "you declared
+  // more than one nationality" outright, false on the unknown path. Worded
+  // to be true on both without losing the known-path specificity.
   CITIZENSHIP_LIST_DIVERGENCE: text(
-    "You declared more than one nationality, and they fall into different eligibility categories — a person needs to confirm which passport you will use to apply.",
-    "Anda mencantumkan lebih dari satu kewarganegaraan yang termasuk dalam kategori kelayakan yang berbeda — diperlukan konfirmasi oleh seseorang mengenai paspor mana yang akan Anda gunakan untuk mengajukan permohonan.",
+    "This case is held because you declared more than one nationality that falls into different eligibility categories, or because your nationality has not been established. Confirming which passport you will use to apply is what resolves it.",
+    "Kasus ini ditahan karena Anda mencantumkan lebih dari satu kewarganegaraan yang termasuk dalam kategori kelayakan yang berbeda, atau karena kewarganegaraan Anda belum dapat dipastikan. Konfirmasi paspor mana yang akan Anda gunakan untuk mengajukan permohonan adalah yang akan menyelesaikannya.",
   ),
   // review.minor-without-guardian: derived.is_minor == true AND
   // family.sponsor_confirmed == false — confirming the sponsor is the fact

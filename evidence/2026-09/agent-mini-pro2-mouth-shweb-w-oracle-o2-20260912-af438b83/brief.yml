@@ -9,11 +9,23 @@ gear_reason: >-
   returns 2, source `size` — the diff crosses SIZE_GEAR2_THRESHOLD (400). Declaring 1 against a
   floor of 2 is exactly why #6240 was rejected; declared 2 here. Re-run both invocations to
   check. Only frontend files touched, both under apps/mouth/src/app/(visa-oracle)/ — not a
-  HOTZONE_PATTERNS path — plus this brief.
+  HOTZONE_PATTERNS path — plus this brief and the e2e spec F2 added (PR-O2 round 3).
+
+  On the per-file churn figure specifically (F3, PR-O2 round 3): do not trust a number typed
+  here — this file is itself in the diff it would be describing, so any digit written into it is
+  stale the moment a later commit (this one included) touches the described file again. The
+  re-runnable, self-correcting command is:
+  `git diff --numstat 9233a860d6..HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts'`
+  — run it against the actual HEAD at read time, not against a figure quoted from an earlier
+  round of this same PR.
 scope:
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
   - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o2-20260912-af438b83/brief.yml
+  # Added PR-O2 round 3 (F2, gate #6318 REWORK-BUILD): the fullstack e2e's own
+  # assertion referenced the generic fallback text this PR replaced. Perimeter
+  # growth authorized by the orchestrator, not a scope violation.
+  - apps/mouth/e2e/visa-oracle-fullstack.spec.ts
 l_level: L2
 gate_class: opus
 objective: >-
@@ -108,6 +120,22 @@ acceptance:
       assert hits == expected, hits
       print('OK', hits)
       "
+  - text: >-
+      WHEN every rule in the signed pack with `on_unknown == "HUMAN_REVIEW"` (any stage) is
+      enumerated THEN it SHALL be exactly the 7 codes this PR has already worded for the unknown
+      path — the on_unknown sweep from gate #6318's F1, re-run against rulepack-prod-020.signed.json
+      (the same file the gate itself cited) rather than the .source.json this PR read earlier, to
+      close any doubt the two could diverge.
+    probe: |
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "
+      import json
+      data = json.load(open('apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-020.signed.json'))
+      rules = data['payload']['rules']
+      hits = sorted(r['effect']['reason_code'] for r in rules if r.get('on_unknown') == 'HUMAN_REVIEW')
+      expected = ['BRIDGING_ADVERSE_HISTORY', 'BRIDGING_FROM_VISIT_ITK_PROHIBITED', 'BRIDGING_ONSHORE_ONLY', 'BRIDGING_TO_BRIDGING_PROHIBITED', 'CALLING_VISA_REVIEW', 'CITIZENSHIP_LIST_DIVERGENCE', 'VOA_NATIONALITY_ONLY']
+      assert hits == expected, hits
+      print('OK', hits)
+      "
 consumer_map:
   - >-
     OutcomeSheet.tsx (via engine-adapter.ts's buildEngineOutcome/reviewReason) — the ONLY reader
@@ -153,6 +181,47 @@ review_record: |
   their own has not been established here"), true under the current trigger, the narrowed D2
   trigger, and the Indonesian-sponsor case alike. Applied in the same commit as the two fixes
   above.
+
+  Round 3 (fresh on-disk gate, #6318: REWORK-BUILD — 36/38 strings conform, 13/13 product names
+  verbatim, narrow finding): F1 (HIGH) — CALLING_VISA_REVIEW and CITIZENSHIP_LIST_DIVERGENCE are
+  HUMAN_REVIEW-stage rules that ALSO carry on_unknown="HUMAN_REVIEW" (verified independently
+  against rulepack-prod-020.signed.json), so both fired the identical code on an UNKNOWN
+  nationality while their strings stated the fact outright. STATUS: ACCEPTED — both rewritten to
+  the "held because X, or because the fact has not been established" pattern already used for
+  BRIDGING_ADVERSE_HISTORY, keeping the known-path specificity (the named list, the named
+  eligibility-category divergence). Full on_unknown sweep run against ALL 109 rules in both
+  rulepack-prod-020.signed.json and .source.json (identical result from each): exactly 7 codes
+  carry on_unknown="HUMAN_REVIEW" — BRIDGING_ADVERSE_HISTORY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
+  BRIDGING_ONSHORE_ONLY, BRIDGING_TO_BRIDGING_PROHIBITED, CALLING_VISA_REVIEW,
+  CITIZENSHIP_LIST_DIVERGENCE, VOA_NATIONALITY_ONLY. 5 of the 7 were already correctly worded (4
+  HARD_FILTER codes from PR-O2's first commit, BRIDGING_ADVERSE_HISTORY from round 1); F1's 2 are
+  the only ones the sweep found needing this fix. No pack-independent (evaluate_path.py) code
+  carries an equivalent unknown-escalation-with-the-same-code mechanism: the DISCLOSED_* codes are
+  explicit applicant checkbox disclosures (not an UNKNOWN-fact escalation), MINOR_GUARDIAN_PRIVACY_
+  REVIEW's is_minor==UNKNOWN path routes to a DIFFERENT state (NEEDS_INPUT, not this code — read
+  `_apply_minor_privacy_hold`, evaluate_path.py:1043-1069) before this code's own check even runs,
+  and DECISIVE_*/SAFETY_CRITICAL_* codes ARE themselves the "fact is unknown" case already (their
+  strings already say "could not be established" / "currency could not be established
+  automatically"). Swept; found none beyond the 2 named in F1.
+
+  F2 (HIGH) — apps/mouth/e2e/visa-oracle-fullstack.spec.ts:246-257 asserted the pre-PR-O2 generic
+  fallback sentence for DECISIVE_SOURCE_FRESHNESS_UNKNOWN and its own comment said the code had no
+  curated copy yet. STATUS: ACCEPTED — perimeter growth into this one e2e file is per the
+  orchestrator's own authorization in the F2 finding. Assertion tightened to the curated EN string;
+  comment rewritten to state the code now has curated copy. Not runnable locally by this
+  implementer seat (VISA_ORACLE_FULLSTACK=1 needs a disposable Postgres DB this seat cannot raise,
+  and apps/mouth's node_modules/.bin has no local playwright binary under the --no-install
+  constraint this seat operates under) — verified instead via `tsc --noEmit` (exit 0, the file
+  type-checks) and by grep confirming no other file in apps/mouth/ still references the generic
+  fallback text for this code.
+
+  F3 (LOW) — a per-file numstat figure for engine-adapter.ts, cited by the gate as wrong
+  (+259/-28, not +257/-26), was not found anywhere in the CURRENT brief.yml by this implementer
+  (checked via `git log --all -p` over this file's full history — no match for those digits at
+  any point) — it likely lived in PR-body text the orchestrator authored separately from this
+  brief. STATUS: ACCEPTED as a standing discipline regardless of where the stale digit lived —
+  added an explicit re-runnable `git diff --numstat` command to gear_reason above instead of any
+  static figure, since this file is itself in the diff it would be describing.
 grader: |
   Independent gate dispatched separately by the orchestrating (Opus 5) session — generator !=
   grader: this session wrote the diff and this brief, and does not post its own verdict.
