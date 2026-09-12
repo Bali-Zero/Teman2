@@ -46,6 +46,8 @@ spend:
       record: prereview/second-reader.txt
       verdict: 6 findings, all applied at 65850ec8a6
 
+appetite_exceeded: "adversarial_rounds: ceiling 2, observed 3. The third round was not indecision and not a fourth opinion sought until one agreed — it was the THIRD BLOCK from the same seat on the SAME cause (the claim guard is evadable), which is exactly the condition the repo's rule of three names: the PR suspends instead of taking a fourth round, and a fix-of-a-fix that is itself wrong means the surface is under-specified, so it gets a spec. That round is therefore the event that CLOSED the surface rather than an overrun of it: findings 7-9 were cured here, findings 1-6 became the requirements R1-R6 of research/secondhome/probe-guard-spec-v2.md for PR-1b under a different seat, and the probe ships labelled in its own docstring as a measurement instrument whose regression protection is partial. Spending the third round is what made the split truthful; declaring 2 and running 3 without saying so is what this field exists to prevent, and the declared-vs-observed gap only became visible when the author corrected spend.adversarial_rounds from a false 2 to the measured 3."
+
 # D3. ONE build lane: this window is a single-writer mandate on a frozen head, and the
 # seat-diversity clause applies from two build lanes up. The non-Anthropic seats here are
 # review seats, deliberately — a refuter that also writes is not a refuter.
