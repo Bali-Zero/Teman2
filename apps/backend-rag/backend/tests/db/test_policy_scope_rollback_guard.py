@@ -49,61 +49,120 @@ _LIST_RE = re.compile(
     r"ADD\s+CONSTRAINT\s+" + CONSTRAINT + r"\s+CHECK\s*\(\s*policy_scope\s+IN\s*\(([^)]*)\)",
     re.IGNORECASE,
 )
-_GUARD_RE = re.compile(
+#: The full safe shape: the guard, its THEN branch, its ELSE branch, END IF --
+#: so the ALTER can be required INSIDE the else of THIS guard (Sol O1: textual
+#: precedence alone let a guard in another DO block, a dead branch or a
+#: completed IF followed by an unconditional ALTER pass).
+_GUARDED_RE = re.compile(
     r"IF\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+public\.visa_decision_retention_policies\s+"
-    r"WHERE\s+policy_scope\s*=\s*'([A-Z_]+)'\s*\)",
-    re.IGNORECASE,
+    r"WHERE\s+policy_scope\s*=\s*'(?P<scope>[A-Z_]+)'\s*\)\s*THEN(?P<then>.*?)"
+    r"ELSE(?P<else>.*?)END\s+IF",
+    re.IGNORECASE | re.DOTALL,
+)
+#: Any executable statement that ADDs a CHECK on policy_scope -- whatever the
+#: constraint name, IN vs = ANY, NOT VALID -- or DROPs/VALIDATEs a constraint
+#: named as the policy_scope check (Sol O1: discovery by the exact safe
+#: spelling was green by omission for a new shape). A rollback that touches
+#: and does not match the safe shape is RED. Dropping the COLUMN (281's
+#: rollback) is not a touch: no CHECK survives to narrow anything.
+_TOUCH_RE = re.compile(
+    r"\bADD\s+CONSTRAINT\b[^;]*?\bCHECK\s*\([^;]*?\bpolicy_scope\b"
+    r"|\b(?:DROP|VALIDATE)\s+CONSTRAINT\b[^;,]*?policy_scope_check\b",
+    re.IGNORECASE | re.DOTALL,
 )
 
 
 def _executable(sql: str) -> str:
-    """Comment-free text normalised so the inline form (285) and the dynamic
-    `EXECUTE 'a ' 'b '` form (304) read the same: adjacent string literals
-    are joined first (PL/pgSQL concatenates them), THEN the `''` doubling
-    inside a literal is undone. Order matters -- undoing first would turn a
-    literal boundary `' '` into a lone quote and hide the CHECK from the
-    regex, which is exactly the "green by finding nothing" this file's
-    superset assertion guards against."""
-    lines = [ln for ln in sql.splitlines() if not ln.strip().startswith("--")]
-    text = "\n".join(lines)
-    text = re.sub(r"'\s*\n\s*'", "", text)  # 'a '\n'b ' -> 'a b '
-    return text.replace("''", "'")
+    """One pass over the text with a quote-aware state machine (Sol O1: a
+    decoy in a block or trailing comment satisfied the regexes, and whole-line
+    stripping was the only comment handling). Outside a literal: `-- ...` to
+    end of line and `/* ... */` are dropped. Inside a literal: `''` becomes
+    `'`, and a literal that ends and is immediately (after whitespace) followed
+    by another one is joined -- PL/pgSQL concatenates adjacent literals, which
+    is how 304 spells its `EXECUTE 'a ' 'b '`. A `--` inside a literal (the
+    NOTICE messages) is text, not a comment."""
+    out: list[str] = []
+    i, n, in_str = 0, len(sql), False
+    while i < n:
+        ch = sql[i]
+        if in_str:
+            if ch == "'":
+                if sql.startswith("''", i):
+                    out.append("'")
+                    i += 2
+                    continue
+                j = i + 1
+                while j < n and sql[j] in " \t\r\n":
+                    j += 1
+                if j < n and sql[j] == "'":  # 'a ' 'b ' -> 'a b '
+                    i = j + 1
+                    continue
+                in_str = False
+            out.append(ch)
+            i += 1
+            continue
+        if sql.startswith("--", i):
+            while i < n and sql[i] != "\n":
+                i += 1
+            continue
+        if sql.startswith("/*", i):
+            end = sql.find("*/", i + 2)
+            i = n if end < 0 else end + 2
+            continue
+        if ch == "'":
+            in_str = True
+        out.append(ch)
+        i += 1
+    return "".join(out)
 
 
 def _lists(sql: str) -> list[list[str]]:
     return [re.findall(r"'([A-Z_]+)'", m.group(1)) for m in _LIST_RE.finditer(_executable(sql))]
 
 
-def _rebuilders() -> dict[str, tuple[str, str]]:
+def _touchers() -> dict[str, tuple[str, str]]:
     found: dict[str, tuple[str, str]] = {}
     for path in sorted(MIGRATIONS_DIR.glob("*.sql")):
         forward, rollback = split_migration_sql(path.read_text())
-        if rollback and _LIST_RE.search(_executable(rollback)):
+        if rollback and _TOUCH_RE.search(_executable(rollback)):
             found[path.name] = (forward, rollback)
     return found
 
 
-REBUILDERS = _rebuilders()
+TOUCHERS = _touchers()
 
 
 def test_the_canary_finds_the_rebuilders_it_was_written_against() -> None:
-    missing = KNOWN_REBUILDERS - set(REBUILDERS)
+    missing = KNOWN_REBUILDERS - set(TOUCHERS)
     assert not missing, (
         f"{sorted(missing)} rebuild the policy_scope CHECK in their rollback but the canary's "
         "regex no longer sees them -- fix the regex, do not shrink KNOWN_REBUILDERS"
     )
 
 
-@pytest.mark.parametrize("name", sorted(REBUILDERS), ids=lambda n: n.split("_")[0])
-def test_a_rollback_that_rebuilds_the_check_is_guarded_on_its_own_scope(name: str) -> None:
-    forward, rollback = REBUILDERS[name]
+@pytest.mark.parametrize("name", sorted(TOUCHERS), ids=lambda n: n.split("_")[0])
+def test_a_rollback_that_touches_the_check_has_the_full_safe_shape(name: str) -> None:
+    """Fail-closed: touching the CHECK in any spelling puts a file here; only
+    the one safe shape gets it out -- one rebuild under the canonical name,
+    with the canonical `IN (...)` list, inside the ELSE of an `IF EXISTS`
+    guard on the file's own scope, and nothing else touching the CHECK."""
+    forward, rollback = TOUCHERS[name]
+    text = _executable(rollback)
+
+    rebuilds = list(_LIST_RE.finditer(text))
+    assert len(rebuilds) == 1, (
+        f"{name}: the rollback touches the policy_scope CHECK "
+        f"({[m.group(0)[:60] for m in _TOUCH_RE.finditer(text)]}) but has {len(rebuilds)} "
+        f"rebuild(s) in the one recognised safe spelling -- a different constraint name, "
+        "`= ANY`, NOT VALID, VALIDATE or a dynamically built list is not a shape this canary "
+        "can vouch for; use the 285/304 spelling"
+    )
     forward_lists = _lists(forward)
     assert len(forward_lists) == 1, (
         f"{name}: expected exactly one CHECK rebuild in the forward half"
     )
-    rollback_lists = _lists(rollback)
-    assert len(rollback_lists) == 1, f"{name}: expected exactly one CHECK rebuild in the rollback"
-    forward_list, rollback_list = forward_lists[0], rollback_lists[0]
+    forward_list = forward_lists[0]
+    rollback_list = re.findall(r"'([A-Z_]+)'", rebuilds[0].group(1))
 
     added = set(forward_list) - set(rollback_list)
     assert len(added) == 1, (
@@ -116,14 +175,28 @@ def test_a_rollback_that_rebuilds_the_check_is_guarded_on_its_own_scope(name: st
         f"got {rollback_list}"
     )
 
-    text = _executable(rollback)
-    alter_at = _LIST_RE.search(text).start()  # type: ignore[union-attr]
-    guards = [(m.start(), m.group(1)) for m in _GUARD_RE.finditer(text)]
-    own_guards = [pos for pos, scope in guards if scope == own_scope and pos < alter_at]
-    assert own_guards, (
-        f"{name}: the CHECK rebuild at offset {alter_at} is not preceded by "
+    alter_at = rebuilds[0].start()
+    owners = [
+        m
+        for m in _GUARDED_RE.finditer(text)
+        if m.group("scope") == own_scope and m.start("else") <= alter_at < m.end("else")
+    ]
+    assert owners, (
+        f"{name}: the CHECK rebuild at offset {alter_at} is not inside the ELSE branch of "
         f"`IF EXISTS (SELECT 1 FROM public.visa_decision_retention_policies WHERE policy_scope = "
-        f"'{own_scope}')` -- on an append-only table an unconditional narrowing raises "
-        "CheckViolationError the moment one row ever used the value (the 2026-08-25 285 bug, "
-        f"the gate-6287c red); guards found: {guards}"
+        f"'{own_scope}') THEN ... ELSE <rebuild> END IF` -- on an append-only table an "
+        "unconditional narrowing raises CheckViolationError the moment one row ever used the "
+        "value (the 2026-08-25 285 bug, the gate-6287c red); a guard elsewhere, in a dead "
+        "branch or before an unconditional ALTER does not count"
     )
+    assert CONSTRAINT.upper() not in owners[0].group("then").upper(), (
+        f"{name}: the THEN branch (rows exist) must not touch the CHECK"
+    )
+    # Nothing else in the rollback touches the CHECK outside that ELSE branch.
+    else_span = (owners[0].start("else"), owners[0].end("else"))
+    strays = [
+        m.group(0)[:60]
+        for m in _TOUCH_RE.finditer(text)
+        if not (else_span[0] <= m.start() < else_span[1])
+    ]
+    assert not strays, f"{name}: statements touching the CHECK outside the guarded ELSE: {strays}"
