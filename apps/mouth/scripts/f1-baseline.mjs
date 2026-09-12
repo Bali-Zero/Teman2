@@ -21,7 +21,7 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const ART_DIR = path.join(REPO_ROOT, ".artifacts", "f1-baseline");
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
 
-// 14 workspace top-level routes (entry pages)
+// 11 workspace top-level routes (entry pages)
 const ROUTES = [
   "/admin",
   "/clients",
@@ -32,10 +32,7 @@ const ROUTES = [
   "/notifications",
   "/omnichannel",
   "/process",
-  "/revenue/analytics",
   "/settings",
-  "/team/analytics",
-  "/team-management",
   "/terminal",
 ];
 

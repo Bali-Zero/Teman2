@@ -205,7 +205,6 @@ export const routeTitles: Record<string, string> = {
   "/agents": "Agents",
   "/intelligence/analytics": "Intelligence Analytics",
   "/clients/tax-pilot": "Tax Pilot",
-  "/team/analytics": "Team Analytics",
   "/settings": "Settings",
   // Portal routes
   "/portal": "Dashboard",

@@ -18,7 +18,6 @@ const INTERNAL_ROUTES = [
   "/process",
   "/second-home",
   "/settings",
-  "/team-management", // workspace team management (not /team which is public)
   "/lkpm", // workspace LKPM batch — answered 200 on the public domain until 2026-09-12
   "/admin",
   "/agents",
