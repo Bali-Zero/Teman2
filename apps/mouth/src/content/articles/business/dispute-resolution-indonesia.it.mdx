@@ -74,35 +74,27 @@ ogImage: "/static/insights/business/dispute-resolution-indonesia.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "57f5cf4e77e7f36682f9eb9f30632ce3958957d907bb2d553a73f1bef220653b"
+source_sha256: "a7788704a0e6beaa19a208d6e1ca7d08a5b6e7f65da60832e294196ceca8dfe9"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  JourneyMap,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Risoluzione delle Controversie Commerciali in Indonesia 2026: Opzioni Legali
 
-# Risoluzione delle Controversie Commerciali Indonesia 2026: Opzioni Legali
-
-Quando i rapporti commerciali vanno male, è necessario conoscere le proprie opzioni. Ecco come funziona la risoluzione delle controversie in Indonesia.
+Quando le relazioni commerciali vanno storte, è necessario conoscere le proprie opzioni. Ecco come funziona la risoluzione delle controversie in Indonesia.
 
 ## Opzioni di Risoluzione
 
 <DecisionTree
-  title="Which Path?"
-  description="Find the right resolution method"
+  title="Quale Percorso?"
+  description="Trova il metodo di risoluzione corretto"
   nodes={[
     {
       id: "start",
       question: "Qual è la situazione?",
       options: [
-        { label: "Voglio preservare il rapporto", next: "preserve" },
-        { label: "Necessito di una risoluzione rapida", next: "quick" },
+        { label: "Voglio preservare la relazione", next: "preserve" },
+        { label: "Ho bisogno di una risoluzione rapida", next: "quick" },
         { label: "Richiesta monetaria elevata", next: "large" },
-        { label: "L'altra parte non è collaborativa", next: "uncooperative" },
+        { label: "L'altra parte non collabora", next: "uncooperative" },
       ],
     },
     {
@@ -110,15 +102,15 @@ Quando i rapporti commerciali vanno male, è necessario conoscere le proprie opz
       result: {
         title: "Negoziazione o Mediazione",
         description:
-          "Discussione diretta o mediazione facilitata. Ideale per preservare i rapporti commerciali. Flessibile, confidenziale ed economicamente vantaggiosa.",
+          "Discussione diretta o mediazione facilitata. Ideale per preservare le relazioni commerciali. Flessibile, confidenziale ed economicamente vantaggiosa.",
       },
     },
     {
       id: "quick",
-      question: "C'è una clausola arbitrale?",
+      question: "C'è una clausola di arbitrato?",
       options: [
         { label: "Sì, nel contratto", next: "arbitration" },
-        { label: "No, o incerto", next: "consider-arb" },
+        { label: "No, o non sono sicuro", next: "consider-arb" },
       ],
     },
     {
@@ -126,31 +118,31 @@ Quando i rapporti commerciali vanno male, è necessario conoscere le proprie opz
       result: {
         title: "Arbitrato (BANI o SIAC)",
         description:
-          "Per controversie commerciali significative. Arbitri esperti, decisioni vincolanti, applicabili a livello internazionale. Ideale per questioni commerciali complesse.",
+          "Per controversie commerciali significative. Arbitri esperti, decisioni vincolanti e internazionalmente esecutabili. Ideale per questioni aziendali complesse.",
       },
     },
     {
       id: "uncooperative",
       result: {
-        title: "Contenzioso o Arbitrato",
+        title: "Litigio o Arbitrato",
         description:
-          "Quando l'altra parte non si impegna in buona fede, potrebbero essere necessarie procedure formali. Considerare l'arbitrato se esiste una clausola, altrimenti il contenzioso giudiziario.",
+          "Quando l'altra parte non si impegna in buona fede, potrebbero essere necessarie procedure formali. Valuta l'arbitrato se esiste una clausola, altrimenti ricorri al contenzioso giudiziario.",
       },
     },
     {
       id: "arbitration",
       result: {
-        title: "Arbitrato Richiesto",
+        title: "Arbitrato Obbligatorio",
         description:
-          "Il tuo contratto specifica l'arbitrato. Devi utilizzare l'istituzione specificata (BANI, SIAC, ecc.). I tribunali si atterranno alla clausola arbitrale.",
+          "Il tuo contratto specifica l'arbitrato. Devi utilizzare l'istituzione specificata (BANI, SIAC, ecc.). I tribunali deferreranno alla clausola arbitrale.",
       },
     },
     {
       id: "consider-arb",
       result: {
-        title: "Considera Tutte le Opzioni",
+        title: "Valuta Tutte le Opzioni",
         description:
-          "Senza una clausola arbitrale, puoi scegliere: negoziazione, mediazione o contenzioso giudiziario. Considera di aggiungere una clausola arbitrale per futuri contratti.",
+          "Senza clausola arbitrale, puoi scegliere: negoziazione, mediazione o contenzioso giudiziario. Valuta di aggiungere una clausola arbitrale per i contratti futuri.",
       },
     },
   ]}
@@ -158,55 +150,55 @@ Quando i rapporti commerciali vanno male, è necessario conoscere le proprie opz
 
 ---
 
-## Metodi a Confronto
+## Metodi Confrontati
 
 <ComparisonTable
-  title="Dispute Resolution Methods"
-  description="Pros and cons of each"
+  title="Metodi di Risoluzione delle Controversie"
+  description="Vantaggi e svantaggi di ciascuno"
   items={[
     {
       name: "Negoziazione",
       subtitle: "Discussione diretta",
       values: {
-        Cost: "Basso",
-        Time: "Giorni o settimane",
-        Binding: "Se si raggiunge un accordo",
-        Confidential: "Sì",
-        Relationship: "Preservato",
+        Costo: "Basso",
+        Tempo: "Giorni a settimane",
+        Vincolante: "Se raggiunto l'accordo",
+        Confidenziale: "Sì",
+        Relazione: "Preservata",
       },
     },
     {
       name: "Mediazione",
       subtitle: "Discussione facilitata",
       values: {
-        Cost: "Basso-Medio",
-        Time: "Settimane",
-        Binding: "Se si raggiunge un accordo",
-        Confidential: "Sì",
-        Relationship: "Solitamente preservato",
+        Costo: "Basso-Medio",
+        Tempo: "Settimane",
+        Vincolante: "Se raggiunto l'accordo",
+        Confidenziale: "Sì",
+        Relazione: "Di solito preservata",
       },
     },
     {
       name: "Arbitrato",
       subtitle: "Tribunale privato",
       values: {
-        Cost: "Medio-Alto",
-        Time: "6-12 mesi",
-        Binding: "Sì",
-        Confidential: "Sì",
-        Relationship: "Spesso termina",
+        Costo: "Medio-Alto",
+        Tempo: "6-12 mesi",
+        Vincolante: "Sì",
+        Confidenziale: "Sì",
+        Relazione: "Spesso termina",
       },
       highlight: true,
     },
     {
-      name: "Contenzioso",
-      subtitle: "Procedimenti giudiziari",
+      name: "Litigio",
+      subtitle: "Procedure giudiziarie",
       values: {
-        Cost: "Medio-Alto",
-        Time: "1-3+ anni",
-        Binding: "Sì",
-        Confidential: "No (pubblico)",
-        Relationship: "Solitamente termina",
+        Costo: "Medio-Alto",
+        Tempo: "1-3+ anni",
+        Vincolante: "Sì",
+        Confidenziale: "No (pubblico)",
+        Relazione: "Di solito termina",
       },
     },
   ]}
@@ -216,25 +208,25 @@ Quando i rapporti commerciali vanno male, è necessario conoscere le proprie opz
 
 ## Negoziazione
 
-### Quando Usare
+### Quando Utilizzarla
 
-| Ideale Per                      | Non Ideale Per             |
-| ------------------------------- | -------------------------- |
-| Rapporti in corso               | Parti in mala fede         |
-| Controversie minori             | Questioni legali complesse |
-| Necessità di risoluzione rapida | Grandi somme in gioco      |
-| Entrambe le parti collaborative | Questioni penali           |
+| Ideale Per                     | Non Ideale Per               |
+| ------------------------------- | ----------------------------- |
+| Relazioni in corso             | Parti che agiscono in mala fede |
+| Controversie minori            | Questioni legali complesse     |
+| Necessità di risoluzione rapida | Importi elevati in gioco      |
+| Entrambe le parti cooperative   | Questioni penali              |
 
 ### Consigli per una Negoziazione Efficace
 
-| Consiglio                             | Perché                        |
-| ------------------------------------- | ----------------------------- |
-| Preparati a fondo                     | Conosci la tua posizione      |
-| Comprendi i loro interessi            | Trova un terreno comune       |
-| Documenta tutto                       | Evita incomprensioni          |
-| Stabilisci scadenze                   | Previeni discussioni infinite |
-| Sii disposto a scendere a compromessi | Raggiungi una risoluzione     |
-| Prepara il BATNA                      | Conosci le alternative        |
+| Consiglio                      | Perché                          |
+| ------------------------------- | --------------------------------- |
+| Preparati a fondo              | Conosci la tua posizione         |
+| Capisci i loro interessi       | Trova terreno comune             |
+| Documenta tutto                | Evita incomprensioni             |
+| Fissa scadenze                 | Previene discussioni infinite    |
+ | Sii disposto a comprometterti  | Raggiungi una risoluzione        |
+| Tieni pronta la BATNA          | Conosci le alternative           |
 
 ---
 
@@ -243,69 +235,61 @@ Quando i rapporti commerciali vanno male, è necessario conoscere le proprie opz
 ### Come Funziona
 
 <JourneyMap
-  title="Mediation Process"
-  description="Typical mediation flow"
-  estimatedTotal="2-8 weeks"
+  title="Processo di Mediazione"
+  description="Flusso tipico della mediazione"
+  estimatedTotal="2-8 settimane"
   steps={[
     {
       id: "agree",
-      title: "Accordo per Mediare",
+      title: "Accetta la Mediazione",
       description: "Entrambe le parti acconsentono",
-      duration: "1 week",
-      status: "required",
-      tips: [
-        "Selezionare il mediatore",
-        "Firmare l'accordo di mediazione",
-        "Stabilire il programma",
-      ],
+      duration: "1 settimana",
+      status: "richiesto",
+      tips: ["Seleziona un mediatore", "Firma l'accordo di mediazione", "Stabilisci una schedulazione"],
     },
     {
       id: "prepare",
       title: "Preparazione",
-      description: "Presentare memorie di posizione",
-      duration: "1-2 weeks",
-      status: "required",
+      description: "Presenta documenti sulla posizione",
+      duration: "1-2 settimane",
+      status: "richiesto",
       tips: [
-        "Scambiare documenti",
-        "Identificare le questioni chiave",
-        "Preparare la dichiarazione di apertura",
+        "Scambio di documenti",
+        "Identifica le questioni chiave",
+        "Prepara l'intervento iniziale",
       ],
     },
     {
       id: "session",
       title: "Sessioni di Mediazione",
       description: "Discussioni facilitate",
-      duration: "1-3 days",
-      status: "required",
+      duration: "1-3 giorni",
+      status: "richiesto",
       tips: [
-        "Dichiarazioni di apertura",
+        "Interventi iniziali",
         "Sessioni congiunte e private",
-        "Esplorare soluzioni",
+        "Esplora soluzioni",
       ],
     },
     {
       id: "agreement",
-      title: "Accordo di Composizione",
-      description: "Se si raggiunge una risoluzione",
-      duration: "1 week",
-      status: "final",
-      tips: [
-        "Redigere l'accordo",
-        "Revisione legale",
-        "Firmare un accordo vincolante",
-      ],
+      title: "Accordo di Transazione",
+      description: "Se è stata raggiunta una risoluzione",
+      duration: "1 settimana",
+      status: "finale",
+      tips: ["Redigi l'accordo", "Revisione legale", "Firma la transazione vincolante"],
     },
   ]}
 />
 
 ### Fornitori di Mediazione
 
-| Fornitore         | Tipo                             |
-| ----------------- | -------------------------------- |
-| Mediazione BANI   | Istituzione indonesiana          |
+| Fornitore          | Tipo                        |
+| ----------------- | --------------------------- |
+| BANI Mediation    | Istituto indonesiano        |
 | PMN               | Centro di Mediazione Indonesiano |
-| Mediatori privati | Esperti del settore              |
-| SIAC Med          | Con sede a Singapore             |
+| Mediatori privati | Esperti del settore         |
+| SIAC Med          | Basato a Singapore          |
 
 ---
 
@@ -313,15 +297,15 @@ Quando i rapporti commerciali vanno male, è necessario conoscere le proprie opz
 
 ### Perché l'Arbitrato?
 
-<InfoCard variant="tip" title="Benefits of Arbitration">
+<InfoCard variant="tip" title="Vantaggi dell'Arbitrato">
 **Per le controversie commerciali:**
 
 - **Arbitri esperti** - Conoscenza del settore
 - **Confidenziale** - Nessun registro pubblico
-- **Più rapido** - Rispetto ai tribunali solitamente
-- **Applicabile** - Trattati internazionali
+- **Più veloce** - Rispetto ai tribunali di solito
+- **Esecutibile** - Trattati internazionali
 - **Flessibile** - Le parti scelgono il processo
-- **Definitivo** - Motivi di ricorso limitati
+- **Definitivo** - Limitate basi per appello
 
 La maggior parte dei contratti commerciali significativi include clausole arbitrali.
 
@@ -329,68 +313,68 @@ La maggior parte dei contratti commerciali significativi include clausole arbitr
 
 ### BANI (Arbitrato Indonesiano)
 
-| Aspetto       | Dettagli                                  |
-| ------------- | ----------------------------------------- |
-| Nome completo | Badan Arbitrase Nasional Indonesia        |
-| Sede          | Jakarta, Surabaya                         |
-| Regole        | BANI Rules                                |
-| Lingua        | Indonesiano o Inglese                     |
-| Costi         | Tassa di deposito + onorari degli arbitri |
-| Tempistica    | 6-12 mesi tipici                          |
+| Aspetto    | Dettagli                            |
+| --------- | ---------------------------------- |
+| Nome completo | Badan Arbitrase Nasional Indonesia |
+| Sede      | Jakarta, Surabaya                  |
+| Regole    | Regole BANI                        |
+| Lingua    | Indonesiano o Inglese              |
+| Costi     | Tassa di deposito + onorari arbitri |
+| Tempistiche  | 6-12 mesi tipici                   |
 
 ### Opzioni Internazionali
 
-| Istituzione      | Quando Usato                      |
-| ---------------- | --------------------------------- |
-| SIAC (Singapore) | Contratti internazionali          |
-| ICC              | Grandi affari internazionali      |
-| HKIAC            | Focus Asia-Pacifico               |
-| LCIA             | Questioni relative al Regno Unito |
+| Istituzione      | Quando Usata                 |
+| ---------------- | ------------------------- |
+| SIAC (Singapore) | Contratti internazionali   |
+| ICC              | Grandi affari internazionali |
+| HKIAC            | Focus Asia-Pacifico        |
+| LCIA             | Questioni legate al Regno Unito        |
 
-<InfoCard variant="note" title="Arbitration Clause">
+<InfoCard variant="note" title="Clausola Arbitrale">
 **Clausola arbitrale standard:**
 
-"Any dispute arising out of or in connection with this agreement shall be finally resolved by arbitration under the BANI Rules. The seat of arbitration shall be Jakarta. The language of arbitration shall be English."
+"Qualsiasi controversia derivante da o in connessione con il presente accordo sarà definitivamente risolta tramite arbitrato secondo le Regole BANI. La sede dell'arbitrato sarà Jakarta. La lingua dell'arbitrato sarà l'inglese."
 
-Includila nei tuoi contratti!
+Includi questo nei tuoi contratti!
 
 </InfoCard>
 
 ---
 
-## Contenzioso
+## Litigio
 
 ### Sistema Giudiziario Indonesiano
 
-| Livello                | Funzione                            |
-| ---------------------- | ----------------------------------- |
-| Tribunale Distrettuale | Prima istanza                       |
-| Alta Corte             | Appelli                             |
-| Corte Suprema          | Appelli finali                      |
-| Tribunale Commerciale  | Bancarotta, Proprietà Intellettuale |
+| Livello            | Funzione       |
+| ------------------ | -------------- |
+| Tribunale Distrettuale   | Primo grado    |
+| Corte d'Appello        | Appelli        |
+| Corte Suprema          | Ultimi appelli |
+| Corte Commerciale      | Fallimenti, Proprietà Intellettuale |
 
-### Processo di Contenzioso
+### Processo di Litigio
 
-| Fase                        | Durata       |
-| --------------------------- | ------------ |
-| Presentazione della domanda | Immediata    |
-| Risposta del convenuto      | 14 giorni    |
-| Esame                       | 3-12 mesi    |
-| Decisione di prima istanza  | 6-18 mesi    |
-| Appello                     | 6-12 mesi    |
-| Corte Suprema               | 12+ mesi     |
-| **Totale potenziale**       | **2-4 anni** |
+| Fase                   | Durata      |
+| ----------------------- | ------------- |
+| Deposito della richiesta            | Immediata     |
+| Risposta del convenuto      | 14 giorni       |
+| Istruzione             | 3-12 mesi   |
+| Decisione di primo grado | 6-18 mesi   |
+| Appello                  | 6-12 mesi   |
+| Corte Suprema           | 12+ mesi    |
+| **Totale potenziale**     | **2-4 anni** |
 
 ### Sfide nei Tribunali Indonesiani
 
-| Sfida             | Spiegazione                       |
-| ----------------- | --------------------------------- |
-| Tempo             | I casi possono richiedere anni    |
-| Incertezza        | Esiti variabili                   |
-| Registro pubblico | Nessuna confidenzialità           |
-| Lingua            | Procedimenti in indonesiano       |
-| Complessità       | Requisiti procedurali             |
-| Esecuzione        | L'esecuzione può essere difficile |
+| Sfida     | Spiegazione                |
+| ------------- | -------------------------- |
+| Tempo          | I casi possono durare anni       |
+| Incertezza   | Esiti variabili          |
+| Registro pubblico | Nessuna confidenzialità         |
+| Lingua      | Procedure in indonesiano     |
+| Complessità    | Requisiti procedurali    |
+| Esecuzione   | L'esecuzione può essere difficile |
 
 ---
 
@@ -398,65 +382,65 @@ Includila nei tuoi contratti!
 
 ### Esecuzione dei Lodi Arbitrali
 
-<InfoCard variant="note" title="International Enforcement">
+<InfoCard variant="note" title="Esecuzione Internazionale">
 **L'Indonesia è parte di:**
 - Convenzione di New York (1958)
 - Convenzione ICSID
 
-I lodi arbitrali stranieri sono applicabili in Indonesia tramite un processo di registrazione presso il tribunale (tipicamente 2-4 mesi).
+I lodi arbitrali stranieri sono esecutibili in Indonesia tramite il processo di registrazione presso i tribunali (tipicamente 2-4 mesi).
 
-I lodi BANI indonesiani sono direttamente applicabili.
+I lodi BANI indonesiani sono direttamente esecutivi.
 
 </InfoCard>
 
-### Esecuzione delle Sentenze Giudiziarie
+### Esecuzione delle Sentenze dei Tribunali
 
-| Situazione           | Processo                             |
-| -------------------- | ------------------------------------ |
-| Sentenza indonesiana | Esecuzione diretta                   |
-| Sentenza straniera   | Deve essere ri-litigata in Indonesia |
+| Situazione           | Processo                       |
+| ------------------- | ----------------------------- |
+| Sentenza indonesiana | Esecuzione diretta              |
+| Sentenza straniera    | Deve essere riesaminata in Indonesia |
 
-Le sentenze dei tribunali stranieri **non sono direttamente applicabili** - è necessario avviare nuovamente un'azione legale nei tribunali indonesiani.
+Le sentenze dei tribunali stranieri **non sono direttamente esecutibili** - è necessario citare in giudizio nuovamente nei tribunali indonesiani.
 
 ---
 
 ## Costi
 
-### Range di Costi Tipici
+### Tipici Range di Costo
 
-| Metodo         | Costo Stimato            |
-| -------------- | ------------------------ |
-| Negoziazione   | Solo spese legali        |
-| Mediazione     | IDR 10-50M + legali      |
-| Arbitrato BANI | IDR 50-500M+             |
-| Arbitrato SIAC | USD 50,000+              |
-| Contenzioso    | IDR 50-200M+ per livello |
+| Metodo           | Costo Stimato         |
+| ---------------- | ---------------------- |
+| Negoziazione      | Solo onorari legali        |
+| Mediazione        | IDR 10-50M + legali     |
+| Arbitrato BANI    | IDR 50-500M+           |
+| Arbitrato SIAC    | USD 50.000+            |
+| Litigio       | IDR 50-200M+ per livello |
 
 ### Fattori di Costo
 
-| Fattore                 | Impatto                                  |
-| ----------------------- | ---------------------------------------- |
-| Complessità             | Più questioni = più costi                |
-| Importo in controversia | Maggiore = maggiori onorari              |
-| Durata                  | Più lunga = più ore fatturabili          |
-| Esperti                 | Le questioni tecniche richiedono esperti |
-| Volume dei documenti    | Costi di scoperta                        |
+| Fattore            | Impatto                         |
+| ----------------- | ------------------------------ |
+| Complessità        | Più questioni = più costi        |
+| Importo in disputa | Maggiore = onorari più alti           |
+| Durata          | Più lunga = più ore fatturabili   |
+| Esperti           | Le questioni tecniche richiedono esperti |
+| Volume documenti   | Costi di scoperta               |
 
 ---
 
 ## Consigli per la Prevenzione
 
-<InfoCard variant="tip" title="Avoid Disputes">
+<InfoCard variant="tip" title="Evita le Controversie">
 **Migliori pratiche:**
 
-1.  **Contratti chiari** - Termini dettagliati e inequivocabili
-2.  **Clausola di controversia** - Includere un meccanismo di risoluzione
-3.  **Comunicazione** - Affrontare i problemi tempestivamente
-4.  **Documentazione** - Mantenere registri
-5.  **Due diligence** - Prima di stipulare accordi
-6.  **Consulenza professionale** - In caso di dubbio
+1. **Contratti chiari** - Termini dettagliati e non ambigui
+2. **Clausola di controversia** - Includi un meccanismo di risoluzione
+3. **Comunicazione** - Affronta le questioni presto
+4. **Documentazione** - Tieni traccia dei record
+5. **Diligenza dovuta** - Prima di entrare in accordi
+6. **Consulenza professionale** - Quando hai dubbi
 
-La prevenzione è più economica della risoluzione!
+La prevenzione costa meno della risoluzione!
 
 </InfoCard>
 
@@ -466,36 +450,36 @@ La prevenzione è più economica della risoluzione!
 
 ### Cosa Cercare
 
-| Criteri                    | Perché Importante     |
-| -------------------------- | --------------------- |
+| Criterio           | Perché Importante       |
+| ------------------ | ------------------- |
 | Esperienza in controversie | Conosce il processo   |
-| Conoscenza del settore     | Comprende il contesto |
-| Competenza linguistica     | Comunicazione         |
-| Storico                    | Risultati comprovati  |
-| Trasparenza delle tariffe  | Nessuna sorpresa      |
-| Risorse                    | Capacità del team     |
+| Conoscenza del settore | Comprende il contesto |
+| Capacità linguistica   | Comunicazione       |
+| Track record       | Risultati provati      |
+| Trasparenza delle tariffe   | Nessuna sorpresa        |
+| Risorse          | Capacità del team     |
 
-### Modalità di Compenso
+### Arrangiamenti per le Tariffe
 
-| Tipo          | Descrizione                    |
-| ------------- | ------------------------------ |
-| Orario        | Pagamento per il tempo         |
-| Tariffa fissa | Importo fisso per la questione |
-| Contingenza   | Percentuale del recupero       |
-| Ibrido        | Combinazione                   |
+| Tipo        | Descrizione            |
+| ----------- | ---------------------- |
+| Orario      | Paghi in base al tempo           |
+| Fee fissa   | Importo fisso per la materia  |
+| Contingency | Percentuale del recupero |
+| Ibrido      | Combinazione            |
 
 ---
 
-## Domande Frequenti
+## Domande Comuni
 
 <AskZantara
-  context="Dispute resolution Indonesia, arbitration, litigation, BANI, business disputes"
-  placeholder="Ask about dispute resolution..."
+  context="Risoluzione delle controversie Indonesia, arbitrato, litigio, BANI, controversie commerciali"
+  placeholder="Chiedi sulla risoluzione delle controversie..."
   suggestedQuestions={[
-    "L'arbitrato è migliore del tribunale?",
+    "L'arbitrato è meglio del tribunale?",
     "Quanto tempo richiede l'arbitrato BANI?",
-    "Posso far valere una sentenza straniera in Indonesia?",
-    "Quanto costa un contenzioso commerciale?",
+    "Posso eseguire una sentenza straniera in Indonesia?",
+    "Quanto costa il contenzioso commerciale?",
   ]}
 />
 
@@ -503,6 +487,6 @@ La prevenzione è più economica della risoluzione!
 
 ## Articoli Correlati
 
-- [Contratti Secondo la Legge Indonesiana](/insights/business/contracts-indonesian-law)
-- [Due Diligence Indonesia](/insights/business/due-diligence-indonesia)
-- [Guida alla Costituzione di PT PMA](/business/pt-pma-registration-guide?lang=it)
+- [Contratti secondo la legge indonesiana](/insights/business/contracts-indonesian-law)
+- [Diligenza dovuta in Indonesia](/insights/business/due-diligence-indonesia)
+- [Guida alla costituzione di PT PMA](/business/pt-pma-registration-guide)

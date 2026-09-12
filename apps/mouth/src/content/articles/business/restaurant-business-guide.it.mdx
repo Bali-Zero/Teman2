@@ -75,89 +75,80 @@ ogImage: "/static/insights/business/restaurant-business-guide.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "f2119659dd2d7f706614c15baf44e68678446b53deba284181833d393e1be35d"
+source_sha256: "106b31e481cc43afe036aec79fdd8c1a52528f1f0c8e81029621865a930eca0e"
 ---
 
-import {
-  JourneyMap,
-  Calculator,
-  Checklist,
-  ComparisonTable,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Apertura di un Ristorante in Indonesia 2026: Guida Completa per Stranieri
 
-# Apertura di un ristorante in Indonesia 2026: Guida completa per stranieri
+Aprire un ristorante in Indonesia come straniero è assolutamente possibile, ma richiede una struttura e licenze appropriate. Ecco la tua guida completa.
 
-Aprire un ristorante in Indonesia come straniero è assolutamente possibile, ma richiede una struttura e una licenza appropriate. Ecco la tua guida completa.
+## Gli Stranieri Possono Aprire Ristoranti?
 
-## Gli stranieri possono aprire ristoranti?
+<InfoCard variant="note" title="Sì, Ma Con Requisiti">
 
-<InfoCard variant="note" title="Sì, ma con requisiti">
-
-Gli stranieri possono possedere ristoranti in Indonesia attraverso una **PT PMA** (azienda con investimento straniero). Requisiti principali: - Investimento minimo: IDR 10 miliardi (~USD 625.000) - Non possono essere piccoli warung/cibo di strada - Deve essere un'istituzione ristorativa formale - Necessitano di diversi permessi e licenze
+Gli stranieri possono possedere ristoranti in Indonesia attraverso una **PT PMA** (società per investimenti esteri). Requisiti chiave: - Investimento minimo: IDR 10 miliardi (~USD 625.000) - Non può essere un piccolo warung/cibo di strada - Deve essere un'istituzione formale di ristorante - Necessità di diversi permessi e licenze
 
 </InfoCard>
 
 ---
 
-## Opzioni di struttura aziendale
+## Opzioni di Struttura Aziendale
 
 <ComparisonTable
-  title="Opzioni di proprietà del ristorante"
-  description="Modi in cui gli stranieri possono gestire ristoranti"
+  title="Opzioni di Proprietà del Ristorante"
+  description="Modalità in cui gli stranieri possono gestire ristoranti"
   items={[
     {
       name: "PT PMA (Diretta)",
-      subtitle: "Azienda di proprietà straniera",
+      subtitle: "Società a proprietà straniera",
       values: {
-        "Proprietà straniera": "100%",
-        Investimento: "Minimo IDR 10B",
-        Controllo: "Controllo totale",
-        "Migliore per": "Ristoranti grandi, catene",
+        "Foreign Ownership": "100%",
+        Investment: "IDR 10B minimo",
+        Control: "Controllo totale",
+        "Best For": "Grandi ristoranti, catene",
       },
       highlight: true,
     },
     {
-      name: "PT Locale + Nomina",
-      subtitle: "Azienda locale (rischiosa)",
+      name: "PT Locale + Nomine",
+      subtitle: "Società locale (rischioso)",
       values: {
-        "Proprietà straniera": "0% ufficiale",
-        Investimento: "Minore",
-        Controllo: "Accordo rischioso",
-        "Migliore per": "Non consigliato",
+        "Foreign Ownership": "0% ufficiale",
+        Investment: "Minore",
+        Control: "Accordo rischioso",
+        "Best For": "Non raccomandato",
       },
     },
     {
       name: "Franchising",
-      subtitle: "Licenza di un marchio indonesiano",
+      subtitle: "Licenza per marchio indonesiano",
       values: {
-        "Proprietà straniera": "Varia",
-        Investimento: "Varia",
-        Controllo: "Condiviso",
-        "Migliore per": "Concetti noti",
+        "Foreign Ownership": "Variabile",
+        Investment: "Variabile",
+        Control: "Condiviso",
+        "Best For": "Concept noti",
       },
     },
   ]}
 />
 
-<InfoCard variant="warning" title="Evitare gli accordi con nomina">
+<InfoCard variant="warning" title="Evita Accordi con Nominee">
 
-L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se scoperto, puoi perdere tutto. Utilizza la struttura appropriata PT PMA.
+Utilizzare un nominativo indonesiano per detenere quote è illegale e rischioso. Se scoperto, puoi perdere tutto. Utilizza la struttura PT PMA appropriata.
 
 </InfoCard>
 
 ---
 
-## Calcolatore di investimento
+## Calcolatore di Investimento
 
 <Calculator
-  title="Stima dell'investimento per il ristorante"
+  title="Stima dell'Investimento del Ristorante"
   description="Calcola l'investimento totale necessario"
   fields={[
     {
       id: "location",
-      label: "Tipo di ubicazione",
+      label: "Tipo di Localizzazione",
       type: "select",
       options: [
         { value: "bali-premium", label: "Bali - Premium (Seminyak, Canggu)" },
@@ -169,7 +160,7 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
     },
     {
       id: "size",
-      label: "Dimensione del ristorante",
+      label: "Dimensioni del Ristorante",
       type: "select",
       options: [
         { value: "small", label: "Piccolo (20-40 posti)" },
@@ -180,19 +171,19 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
     },
     {
       id: "concept",
-      label: "Tipo di concetto",
+      label: "Tipo di Concept",
       type: "select",
       options: [
-        { value: "casual", label: "Ristorante informale" },
-        { value: "fine", label: "Ristorante raffinato" },
-        { value: "cafe", label: "Caffè/caffetteria" },
+        { value: "casual", label: "Ristorazione informale" },
+        { value: "fine", label: "Fine dining" },
+        { value: "cafe", label: "Café/negozio di caffè" },
         { value: "bar", label: "Bar/ristorante" }
       ],
       defaultValue: "casual"
     }
   ]}
   calculateResult={(values) => {
-    // Costi di base per ubicazione
+    // Costi base di allestimento per localizzazione
     const locationCosts = {
       "bali-premium": 4000000000,
       "bali-standard": 2500000000,
@@ -200,14 +191,14 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
       "jakarta-standard": 3000000000
     };
 
-    // Moltiplicatori di dimensione
+    // Moltiplicatori per dimensione
     const sizeMultipliers = {
       "small": 0.6,
       "medium": 1.0,
       "large": 1.8
     };
 
-    // Aggiunte per concetto
+    // Aggiunte per concept
     const conceptAdditions = {
       "casual": 0,
       "fine": 1500000000,
@@ -218,25 +209,25 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
     const base = locationCosts[values.location];
     const multiplier = sizeMultipliers[values.size];
     const addition = conceptAdditions[values.concept];
-    const companySetup = 100000000; // Formazione PT PMA
-    const workingCapital = 1000000000; // 6 mesi di operazioni
+    const companySetup = 100000000; // Allestimento PT PMA
+    const workingCapital = 1000000000; // Operazioni di 6 mesi
 
     const setupCost = (base * multiplier) + addition;
     const total = setupCost + companySetup + workingCapital;
 
-    // Assicurarsi del minimo IDR 10B per PMA
+    // Assicurarsi minimo IDR 10B per PMA
     const finalTotal = Math.max(total, 10000000000);
 
     return {
       total: finalTotal,
       breakdown: [
-        { label: "Setup ristorante", amount: setupCost },
+        { label: "Allestimento Ristorante", amount: setupCost },
         { label: "Formazione PT PMA", amount: companySetup },
-        { label: "Capitale di funzionamento (6 mesi)", amount: workingCapital },
-        { label: "Investimento totale", amount: finalTotal }
+        { label: "Capitale di Lavoro (6 mesi)", amount: workingCapital },
+        { label: "Investimento Totale", amount: finalTotal }
       ],
       currency: "IDR",
-      note: `Rispetta il minimo PMA IDR 10B: ${finalTotal >= 10000000000 ? "Sì ✅" : "Necessario investimento aggiuntivo"}`
+      note: `Rispetta il minimo PMA di IDR 10B: ${finalTotal >= 10000000000 ? "Sì ✅" : "Serve investimento aggiuntivo"}`
     };
 
 }}
@@ -244,30 +235,30 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
 
 ---
 
-## Licenze richieste
+## Licenze Richieste
 
 <Checklist
-  title="Checklist delle licenze per il ristorante"
+  title="Elenco Verifica Licenze Ristorante"
   description="Tutti i permessi necessari per operare legalmente"
   persistKey="restaurant-license-checklist"
   items={[
     {
       id: "nib",
-      label: "NIB (ID aziendale)",
+      label: "NIB (ID Aziendale)",
       description: "Attraverso il sistema OSS",
       required: true,
       category: "company",
     },
     {
       id: "izin-usaha",
-      label: "Izin Usaha (Licenza d'attività)",
-      description: "Licenza per l'attività ristorativa",
+      label: "Izin Usaha (Licenza di Attività)",
+      description: "Licenza per attività ristorante",
       required: true,
       category: "company",
     },
     {
       id: "tdup",
-      label: "TDUP (Licenza per attività turistica)",
+      label: "TDUP (Licenza Attività Turistica)",
       description: "Se in zona turistica (Bali)",
       required: false,
       category: "industry",
@@ -282,42 +273,42 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
     {
       id: "bpom",
       label: "Registrazione BPOM",
-      description: "Per cibi confezionati/trasformati",
+      description: "Per alimenti confezionati/elaborati",
       required: false,
       category: "industry",
     },
     {
       id: "liquor",
-      label: "SIUP-MB (Licenza per alcolici)",
+      label: "SIUP-MB (Licenza Bevande Alcoliche)",
       description: "Se si servono alcolici",
       required: false,
       category: "special",
     },
     {
       id: "imb",
-      label: "IMB/PBG (Permesso edilizio)",
-      description: "Per l'ubicazione fisica",
+      label: "IMB/PBG (Permesso di Costruzione)",
+      description: "Per la località fisica",
       required: true,
       category: "location",
     },
     {
       id: "slo",
-      label: "SLO (Idoneità operativa)",
+      label: "SLO (Adeguatezza Operativa)",
       description: "Conformità alla sicurezza",
       required: true,
       category: "location",
     },
     {
       id: "amdal",
-      label: "Documento ambientale",
-      description: "SPPL, UKL-UPL, o AMDAL",
+      label: "Documento Ambientale",
+      description: "SPPL, UKL-UPL o AMDAL",
       required: true,
       category: "location",
     },
     {
       id: "health",
-      label: "Permesso del dipartimento sanitario",
-      description: "Ispezione sulla sicurezza alimentare",
+      label: "Permesso Dipartimento Sanità",
+      description: "Ispezione sicurezza alimentare",
       required: true,
       category: "health",
     },
@@ -326,7 +317,7 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
     { id: "company", label: "Azienda", color: "blue" },
     { id: "industry", label: "Industria", color: "green" },
     { id: "special", label: "Speciale", color: "purple" },
-    { id: "location", label: "Ubicazione", color: "amber" },
+    { id: "location", label: "Localizzazione", color: "amber" },
     { id: "health", label: "Sanità", color: "red" },
   ]}
   showProgress={true}
@@ -334,101 +325,101 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
 
 ---
 
-## Processo di setup
+## Processo di Allestimento
 
 <JourneyMap
-  title="Journey di setup del ristorante"
+  title="Viaggio di Allestimento del Ristorante"
   description="Dall'idea all'apertura"
   estimatedTotal="4-6 mesi"
   steps={[
     {
       id: "plan",
-      title: "Pianificazione aziendale",
-      description: "Concetto, ubicazione, budget",
+      title: "Pianificazione Aziendale",
+      description: "Concept, localizzazione, budget",
       duration: "2-4 settimane",
       status: "required",
       tips: [
-        "Definisci il concetto del ristorante",
-        "Ricerca le opzioni di ubicazione",
+        "Definisci il concept del ristorante",
+        "Ricerca opzioni di localizzazione",
         "Crea un budget dettagliato",
         "Identifica il mercato target"
       ]
     },
     {
       id: "company",
-      title: "Stabilimento PT PMA",
-      description: "Formazione aziendale",
+      title: "Istituzione PT PMA",
+      description: "Formazione dell'azienda",
       duration: "4-6 settimane",
       status: "required",
       tips: [
-        "Scegli i codici KBLI per F&B",
+        "Scegli codici KBLI per F&B",
         "Investimento minimo IDR 10B",
-        "Registrazione attraverso OSS"
+        "Registrati tramite OSS"
       ]
     },
     {
       id: "location",
-      title: "Assicurazione dell'ubicazione",
+      title: "Acquisisci Localizzazione",
       description: "Affitto e permessi",
       duration: "2-4 settimane",
       status: "required",
       tips: [
-        "Negozia i termini dell'affitto",
-        "Verifica che la zonizzazione permetta il ristorante",
+        "Negozia termini di affitto",
+        "Verifica che la zonizzazione permetta un ristorante",
         "Controlla i permessi edilizi",
-        "Rivedi i problemi del precedente inquilino"
+        "Rivedi problemi del precedente inquilino"
       ]
     },
     {
       id: "licenses",
-      title: "Ottenimento delle licenze",
+      title: "Ottieni Licenze",
       description: "Tutti i permessi richiesti",
       duration: "4-8 settimane",
       status: "required",
       tips: [
-        "NIB attraverso OSS",
-        "Permessi specifici per l'industria",
-        "Ispezione del dipartimento sanitario",
-        "Licenza per alcolici se necessaria"
+        "NIB tramite OSS",
+        "Permissioni specifici per settore",
+        "Ispezione dipartimento sanità",
+        "Licenza alcolici se necessario"
       ]
     },
     {
       id: "build",
-      title: "Ristrutturazione",
-      description: "Ristrutturazione e attrezzature",
+      title: "Allestimento",
+      description: "Ristruttura e attrezzatura",
       duration: "6-12 settimane",
       status: "required",
       tips: [
-        "Progettazione della cucina e attrezzature",
+        "Design cucina e attrezzature",
         "Design interno",
         "Sistemi di sicurezza",
-        "Permesso per i segnali"
+        "Permessi segnaletica"
       ]
     },
     {
       id: "staff",
-      title: "Assunzione e formazione del personale",
+      title: "Assumi e Forma Staff",
       description: "Costruisci il tuo team",
       duration: "4-6 settimane",
       status: "required",
       tips: [
         "Assumi prima dell'apertura",
-        "Forma sul concetto e il servizio",
-        "Registra con BPJS",
-        "Crea le SOP"
+        "Forma sul concept e servizio",
+        "Registrati con BPJS",
+        "Crea SOP"
       ]
     },
     {
       id: "open",
-      title: "Apertura soft",
-      description: "Test delle operazioni",
+      title: "Soft Opening",
+      description: "Test operazioni",
       duration: "2-4 settimane",
       status: "final",
       tips: [
-        "Inizia con orari/menu limitati",
+        "Inizia con orari e menu limitati",
         "Raccogli feedback",
         "Risolvi problemi operativi",
-        "Apertura ufficiale quando pronto"
+        "Grande apertura quando pronto"
       ]
     }
   ]}
@@ -436,84 +427,84 @@ L'uso di un nominato indonesiano per detenere azioni è illegale e rischioso. Se
 
 ---
 
-## Licenza per alcolici (SIUP-MB)
+## Licenza Alcolica (SIUP-MB)
 
-Se desideri servire alcolici:
+Se vuoi servire alcolici:
 
-<InfoCard variant="warning" title="La licenza per alcolici è complessa">
-Le licenze per alcolici in Indonesia sono:
-- Regolate in modo rigoroso
-- Dipendenti dall'ubicazione (alcune aree vietano)
+<InfoCard variant="warning" title="La Licenza per Alcol è Complessa">
+Le licenze per alcol in Indonesia sono:
+- Fortemente regolate
+- Dipendenti dalla localizzazione (alcune aree vietano)
 - Costose da ottenere
-- Soggette a revisioni periodiche
+- Soggette a revisione periodica
 
-A Bali, le licenze sono più accessibili. In altre aree, potrebbe essere impossibile.
+A Bali, le licenze sono più accessibili. In altre aree, possono essere impossibili.
 
 </InfoCard>
 
-### Tipi di licenza
+### Tipi di Licenza
 
 | Tipo      | Descrizione                               | Dove               |
 | --------- | ----------------------------------------- | ------------------- |
-| SIUP-MB A | Bevande alcoliche (birra, vino, spiriti) | Hotel, ristoranti |
-| SIUP-MB B | Solo birra                                | Bar, ristoranti   |
-| SIUP-MB C | Vendita al dettaglio                      | Negozi con licenza  |
+| SIUP-MB A | Bevande alcoliche (birra, vino, spiriti) | Hotel, ristoranti   |
+| SIUP-MB B | Solo birra                                 | Bar, ristoranti     |
+| SIUP-MB C | Vendita al dettaglio                       | Negozi con licenza  |
 
 ---
 
-## Requisiti per il personale
+## Requisiti di Personale
 
-### Personale indonesiano
+### Personale Indonesiano
 
-- Devi assumere personale indonesiano
-- Registrazione con BPJS (assicurazione sanitaria e occupazionale)
-- Segui il salario minimo (UMR) per la regione
+- Deve assumere lavoratori indonesiani
+- Registrati con BPJS (assicurazione sanitaria e lavorativa)
+- Rispetta il salario minimo (UMR) per regione
 - Fornisci contratti di lavoro
 
-### Personale straniero
+### Personale Straniero
 
-- Limitato a determinate posizioni (chef, manager)
+- Limitato a certe posizioni (chef, manager)
 - Richiede RPTKA e KITAS
-- Deve formare un collega indonesiano
+- Deve formare il corrispettivo indonesiano
 - Costi aggiuntivi (DKP-TKA)
 
-<InfoCard variant="tip" title="Assunzione di chef stranieri">
+<InfoCard variant="tip" title="Assunzione di Chef Stranieri">
 
-Gli chef stranieri sono comuni in Indonesia ma richiedono: - Permesso di lavoro (RPTKA + KITAS) - Giustificazione per cui non è adatto un chef indonesiano - Un sous chef indonesiano per imparare da loro
+I chef stranieri sono comuni in Indonesia ma richiedono: - Permesso di lavoro (RPTKA + KITAS) - Giustificazione del perché un chef indonesiano non sia adatto - Un sous-chef indonesiano per imparare da loro
 
 </InfoCard>
 
 ---
 
-## Sfide comuni
+## Sfide Comuni
 
-1. **Alto investimento minimo** - IDR 10B è sostanzioso
-2. **Concorrenza per l'ubicazione** - Posti premium costosi
-3. **Complessità delle licenze** - Coinvolgono molte agenzie
-4. **Gestione del personale** - Formazione e retention
-5. **Business stagionale** - Soprattutto in aree turistiche
-6. **Restrizioni sull'alcol** - Limitanti in alcune aree
+1. **Minimo di investimento alto** - IDR 10B è sostanzioso
+2. **Competizione sulla localizzazione** - Luoghi premium costosi
+3. **Complessità delle licenze** - Coinvolti molteplici enti
+4. **Gestione del personale** - Formazione e fidelizzazione
+5. **Attività stagionale** - Soprattutto in zone turistiche
+6. **Restrizioni sull'alcol** - Limitato in alcune aree
 
 ---
 
-## Domande comuni
+## Domande Comuni
 
 <AskZantara
-  context="Business ristorante Indonesia, licenza F&B, ristorante PT PMA, aprire ristorante a Bali"
-  placeholder="Chiedi sul business ristorante..."
+  context="Business ristorante Indonesia, licenza F&B, ristorante PT PMA, aprire ristorante Bali"
+  placeholder="Chiedi sul business del ristorante..."
   suggestedQuestions={[
-    "Posso aprire un piccolo caffè con un investimento minore?",
-    "Quanto è difficile ottenere una licenza per alcolici a Bali?",
-    "Qual è il ROI tipico per i ristoranti?",
-    "Posso utilizzare le mie ricette senza problemi?",
+    "Posso aprire un piccolo caffè con meno investimento?",
+    "Quanto è difficile ottenere una licenza per alcol a Bali?",
+    "Qual è il tipico ROI per i ristoranti?",
+    "Posso usare le mie ricette senza problemi?",
   ]}
 />
 
 ---
 
-## Articoli correlati
+## Articoli Correlati
 
-- [Guida alla registrazione PT PMA](/insights/business/pt-pma-registration-guide)
-- [NIB spiegato](/insights/business/nib-explained)
-- [Guida alla residenza aziendale](/insights/business/company-domicile-guide)
-- [Permesso di lavoro per i dipendenti](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=it)
+- [Guida alla Registrazione PT PMA](/insights/business/pt-pma-registration-guide)
+- [NIB Spiegato](/insights/business/nib-explained)
+- [Guida alla Domiciliazione Aziendale](/insights/business/company-domicile-guide)
+- [Permesso di Lavoro per Dipendenti](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
