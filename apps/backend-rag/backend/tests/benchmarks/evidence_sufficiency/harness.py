@@ -110,6 +110,22 @@ def validate(manifest: dict[str, Any]) -> list[str]:
                 f"{tag}: context_lang must be EN or ID, got {case.get('context_lang')!r}",
             )
 
+        # `query` must be a str and `context` a list whose every element is
+        # a str. A bare string `context` (e.g. "foo" instead of ["foo"])
+        # still iterates and " ".join()s downstream (decide(), the
+        # supporting_span substring check above) — it produces a legible
+        # joined string from single characters instead of raising, so it
+        # silently passed validate() before this check named the field
+        # (Dux ruling K5).
+        if "query" in case and not isinstance(case["query"], str):
+            errors.append(f"{tag}: query must be a str, got {type(case['query']).__name__}")
+        if "context" in case:
+            context_val = case["context"]
+            if not isinstance(context_val, list) or not all(
+                isinstance(item, str) for item in context_val
+            ):
+                errors.append(f"{tag}: context must be a list of str")
+
         stratum = case.get("stratum")
         if stratum not in _STRATA:
             errors.append(f"{tag}: unknown stratum {stratum!r}")

@@ -28,7 +28,7 @@ _GOLDEN_TEST_PATH = Path(__file__).resolve().parent / "agentic" / "test_evidence
 # after the freeze — a re-labelled case, a reworded span, anything — makes
 # this red. That is the point: the mandatory set is frozen, and B2
 # supplements live in a SEPARATE file (`manifest_supplement_b2.json`).
-MANDATORY_MANIFEST_SHA256 = "9a46a96b2dbce31218a51c9b53679384c3c277cc014068c09f6c5016b0b178d2"
+MANDATORY_MANIFEST_SHA256 = "9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f"
 
 _CELLS = ("EN>EN", "EN>ID", "ID>EN", "ID>ID")
 _NEGATIVE_STRATA = (
@@ -325,3 +325,30 @@ class TestValidateRejectsMalformedNuisanceBooleansAndProvenance:
             mutated["cases"][0]["provenance_fixture"]["note"] = bad_note
         errors = harness.validate(mutated)
         assert any("provenance_fixture.note" in e for e in errors), errors
+
+
+class TestValidateRejectsMalformedQueryOrContextTypes:
+    """Dux ruling K5: `validate()` now type-checks `query` (must be a str)
+    and `context` (must be a list whose every element is a str). Before
+    this check existed, a bare-string `context` (e.g. "foo" instead of
+    ["foo"]) still iterated and `" ".join()`d downstream — one character at
+    a time — and a list `query` still `.lower()`d nowhere near validate(),
+    so both silently passed."""
+
+    def test_bare_string_context_is_rejected(self, manifest: dict) -> None:
+        mutated = copy.deepcopy(manifest)
+        mutated["cases"][0]["context"] = "this is a bare string, not a list"
+        errors = harness.validate(mutated)
+        assert any("context" in e for e in errors), errors
+
+    def test_list_query_is_rejected(self, manifest: dict) -> None:
+        mutated = copy.deepcopy(manifest)
+        mutated["cases"][0]["query"] = ["not", "a", "string"]
+        errors = harness.validate(mutated)
+        assert any("query" in e for e in errors), errors
+
+    def test_checked_in_manifest_validates_clean_under_the_new_type_checks(
+        self, manifest: dict
+    ) -> None:
+        errors = harness.validate(manifest)
+        assert not any("query must be" in e or "context must be" in e for e in errors), errors
