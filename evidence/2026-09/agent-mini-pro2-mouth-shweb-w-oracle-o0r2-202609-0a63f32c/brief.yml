@@ -3,9 +3,16 @@ gear_override: >-
   the audit-copy diff this brief was written for computed floor 3 from the
   SIZE term (census.json's generated replay lines plus the other pinned
   copies); it landed as #6301. THIS diff is the follow-up that discharges
-  C1 and C2 of that PR's gate, and its measured floor is 1, source `none`
-  (`evidence_pack_lint.py --print-floor` with `--changed-files-file` and
-  `--numstat-file`). Gear stays 3 because a declared gear above the floor is
+  C1 and C2 of that PR's gate, and its measured floor is 2, source `size`:
+  the diff crosses SIZE_GEAR2_THRESHOLD (400). It was 1, source `none`, at
+  45e8952032 (churn 314) and still at 860605553f (churn 359); the Detect
+  Secrets cure crossed the threshold, measured 404 at b87f74f20a. An exact
+  churn figure written INTO a file that is itself in the diff is stale the
+  moment it is written — so the durable statement here is the floor and its
+  source, and every number above carries the head it was measured at.
+  Measured with `evidence_pack_lint.py --print-floor` and
+  `--print-floor-source`, both with `--changed-files-file` and
+  `--numstat-file`. Gear stays 3 because a declared gear above the floor is
   allowed and this pack's contract does not weaken for a smaller diff.
   Docs-only either way: no apps/** file touched, no rulepack, no migration,
   no deploy.
