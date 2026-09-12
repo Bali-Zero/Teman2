@@ -1,0 +1,79 @@
+gear: 3
+task_id: voa-6275b-prose
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/voa-6275b-prose
+gate_class: opus
+l_level: L2
+objective: >-
+  GARUDA VOA W3C. Cures conditions 1 and 2 of `gate-6275b`, the third-party
+  post-merge gate on #6275 (PASS-WITH-CONDITIONS, head `1d27977fe2`), ledgered
+  in `.claude/skills/modus/PENDING-ARMS.md` by #6280. Both conditions are the
+  SAME defect class #6275 itself existed to cure — prose asserting more than was
+  measured — surviving in the two sentences #6275 wrote as the cure.
+  (1) The docstring says the contracts workflow's suite "never imports the app".
+  That is FALSE: `products/garuda-voa/contracts/tests/test_contract_invariants.py:53`
+  executes `from backend.services.garuda_flow.eligibility import DeclineCode`
+  inside a function, after a `sys.path` insert. The CONCLUSION survives — that
+  suite never builds the live schema — but the sentence supporting it does not.
+  (2) The docstring says the parity suite "runs on every PR inside the required
+  backend shards". It names as REQUIRED something that is not the required
+  context, and as UNCONDITIONAL a job the change-map can skip.
+scope:
+  - >-
+    apps/backend-rag/backend/app/auth/public_endpoints.py — the docstring of
+    `path_matches_template` ONLY. This is the `app/auth/**` HOT ZONE, which
+    raises the deterministic floor to 3; no executable line changes.
+constraints:
+  - Prose only. No served behaviour, no router, middleware, service or migration.
+  - >-
+    Does NOT touch `.claude/skills/modus/PENDING-ARMS.md` — the ledger rows for
+    these two conditions already landed in #6280, and a second append would
+    re-trigger the `merge=union` duplication that #6280 had to cure.
+  - products/garuda-voa/contracts/openapi.yaml is NOT modified.
+  - No fly.toml, no .env*, no zantara_core.py. No PII.
+acceptance:
+  - text: >-
+      WHERE the docstring describes what the contracts workflow's suite does,
+      THE SYSTEM SHALL state the narrower verb that is true — never imports
+      FastAPI, never builds the live schema — and SHALL NOT claim that suite
+      imports nothing from the application.
+    status: verified
+    probe: >-
+      `grep -rn "never imports the app" apps/backend-rag` returns nothing;
+      `grep -rn "from backend\.|import backend" products/garuda-voa/contracts/tests/`
+      returns exactly one hit, `test_contract_invariants.py:53`; and
+      `grep -rn "fastapi|main_api|app_factory" products/garuda-voa/contracts/tests/`
+      returns 0 hits, so the surviving conclusion is still measured.
+  - text: >-
+      WHERE the docstring says where the parity suite RUNS, THE SYSTEM SHALL
+      state what is measured — that `shard_tests.py enumerate` lists it, that the
+      shards are change-map gated, and that the required context is the fan-in
+      job — and SHALL NOT call the shards themselves required, nor promise "every
+      PR".
+    status: verified
+    probe: >-
+      `python3 scripts/ci/shard_tests.py enumerate` (run from apps/backend-rag)
+      emits 1607 paths and lists
+      `backend/tests/app/routers/test_garuda_voa_openapi_parity.py` as entry 26;
+      `chunk --shards 3 --shard 2` contains it; `EXCLUDED_DIRS` at
+      `scripts/ci/shard_tests.py:82` is `("backend/tests/e2e",)`;
+      `tests.yml:875` opens `backend-shard` whose `if:` at `:907` reads
+      `needs.changes.outputs.run_backend_tests != 'false'`; `tests.yml:1197-1198`
+      is the job `backend-tests` named `Backend Tests (Python)`; and the GitHub
+      branch-protection API reports exactly one required context on `main`,
+      `"Backend Tests (Python)"`.
+  - text: >-
+      IF this change altered any executable behaviour, THEN it would be out of
+      scope and the gate SHALL reject it.
+    status: verified
+    probe: >-
+      the docstring-stripped AST of `public_endpoints.py` is IDENTICAL to
+      `origin/main`'s (compared with `ast.dump` after removing every docstring
+      node), while the raw text differs; `ruff check` and `ruff format --check`
+      pass; 233 tests pass across `backend/tests/unit/middleware/` and the
+      frozen-vs-live parity suite.
+pii: none
+local_evidence: >-
+  233 passed (middleware directory + `test_garuda_voa_openapi_parity.py`);
+  ruff check and ruff format clean; docstring-stripped AST identical to main.
