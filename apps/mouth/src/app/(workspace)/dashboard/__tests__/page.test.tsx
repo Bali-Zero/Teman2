@@ -85,31 +85,6 @@ vi.mock("@/components/dashboard", () => ({
       {isLoading ? "Loading..." : `${cases.length} cases`}
     </div>
   ),
-  WhatsAppPreview: ({
-    messages,
-    isLoading,
-    onDelete,
-  }: {
-    messages: unknown[];
-    isLoading: boolean;
-    onDelete: (id: string) => void;
-  }) => (
-    <div data-testid="whatsapp-preview">
-      {isLoading ? (
-        "Loading..."
-      ) : (
-        <>
-          <span>{messages.length} messages</span>
-          <button
-            onClick={() => onDelete("1")}
-            data-testid="delete-message-btn"
-          >
-            Delete
-          </button>
-        </>
-      )}
-    </div>
-  ),
   AiPulseWidget: () => <div data-testid="ai-pulse-widget">AI Pulse</div>,
   FinancialRealityWidget: ({
     revenue,
