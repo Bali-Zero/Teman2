@@ -18,6 +18,7 @@ than skipped.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
 import uuid
@@ -139,74 +140,97 @@ async def conn():
             )
         forward, _ = split_migration_sql(MIGRATION.read_text())
         await connection.execute(forward)
-        # Seeded HERE, autocommitted before any test's own transaction
-        # starts -- not inside a test's `tx`, or the policy row's
-        # `clock_timestamp()`-derived effective_period lower bound and the
-        # artifact row's `NOW()` (frozen at the SAME transaction's start,
-        # therefore EARLIER) would race, and the retention binder would
-        # measure the artifact as created before its own policy began.
-        policy_version = await _ensure_test_retention_policy(connection)
-        try:
+        async with _seeded_test_retention_policy(connection):
             yield connection
-        finally:
-            await _close_garuda_document_test_policy(connection, policy_version)
     finally:
         await connection.close()
 
 
-async def _ensure_test_retention_policy(conn: asyncpg.Connection) -> str:
-    """One `GARUDA_DOCUMENT` / `TEST` policy, open-ended, 30 days -- shared
-    across every test in this file (idempotent: `ON CONFLICT DO NOTHING`
-    keyed by the table's own `UNIQUE (environment, policy_scope,
-    policy_version)`, widened by 281)."""
-    # Self-heal first, the same shape `test_garuda_orders_ownership.py`'s
-    # `_ensure_garuda_order_test_policy` uses for GARUDA_ORDER. An
-    # `ON CONFLICT (environment, policy_scope, policy_version)` target only
-    # absorbs an IDENTICAL version: a second, differently-named open-ended
-    # policy for the same (environment, scope) violates the EXCLUDE constraint
-    # `visa_decision_retention_policies_scope_period_excl` instead, which no
-    # ON CONFLICT target covers. Measured, not assumed: run in ONE process
-    # (as CI does) with the migration-313 suite, the previous fixture's
-    # policy was still open and 8 tests errored on exactly that constraint.
-    await conn.execute(
-        """
-        UPDATE public.visa_decision_retention_policies
-           SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
-         WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'
-           AND upper(effective_period) IS NULL
-        """
+@contextlib.asynccontextmanager
+async def _seeded_test_retention_policy(conn: asyncpg.Connection):
+    """One `GARUDA_DOCUMENT` / `TEST` policy, open-ended, 30 days, seeded
+    INSIDE a transaction this context rolls back -- so the database leaves
+    exactly as it entered, which is the property gate-6287c found missing.
+
+    The row cannot be deleted: `visa_decision_retention_policies` is
+    append-only by 264's guard trigger (`RAISE EXCEPTION ... is append-only`
+    on DELETE), which is why the first shape of this fixture CLOSED the row
+    at teardown instead. Closing satisfied the EXCLUDE constraint and left the
+    row behind -- and every visa_engine file that later calls
+    `unwind_garuda_voa_retention_fk` on the same database runs 304's rollback,
+    which re-narrows the `policy_scope` CHECK to a list without
+    GARUDA_DOCUMENT; Postgres refuses that ALTER while rows with the scope
+    exist (`CheckViolationError: ..._policy_scope_check ... violated by some
+    row`). CI was green only because xdist `--dist loadfile` happened to put
+    this file and those on different database clones. A row that was never
+    committed satisfies the re-narrowed CHECK, the EXCLUDE constraint and the
+    append-only guard alike.
+
+    Clock discipline, because the earlier shape's comment warned about it and
+    the warning was right for the shape it described: the binder demands
+    `created_at = transaction_timestamp()` and resolves the policy with
+    `effective_period @> created_at`. Inside this outer transaction every
+    test's own `conn.transaction()` is a savepoint, so `transaction_timestamp()`
+    is ONE frozen instant for the seed and for every artifact row -- the
+    policy's lower bound is therefore that same instant (not
+    `clock_timestamp()`, which would run AHEAD of it and make the binder find
+    no policy active at `created_at`). `[lower, NULL)` contains its own lower
+    bound; the binder finds the policy.
+
+    The self-heal that closes any still-open TEST/GARUDA_DOCUMENT row is
+    kept, inside the same transaction: it is what lets the seed satisfy the
+    EXCLUDE constraint on a database dirtied by an OLDER run of this file (the
+    closed-not-deleted rows that run left cannot be removed by anyone). On a
+    fresh database -- CI clones one per worker -- it is a no-op.
+
+    The tripwire at exit compares the row count to the count at entry, so a
+    shape that ever commits again fails HERE, where the causal chain is one
+    function long, rather than in another product's file three shards away.
+    """
+    baseline = await conn.fetchval(
+        "SELECT count(*) FROM public.visa_decision_retention_policies "
+        "WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'"
     )
-    policy_version = f"w3a-313-fixture-{uuid.uuid4().hex[:16]}"
-    await conn.execute(
-        """
-        INSERT INTO visa_decision_retention_policies (
-            environment, policy_scope, policy_version, retention_interval,
-            idempotency_retention_interval, legal_hold_review_interval,
-            retention_anchor, effective_period, approved_by, approval_reference
-        ) VALUES (
-            'TEST', 'GARUDA_DOCUMENT', $1, INTERVAL '30 days',
-            INTERVAL '1 hour', INTERVAL '30 days',
-            'CREATED_AT', tstzrange(clock_timestamp(), NULL, '[)'),
-            'zero-test-approver', 'ZERO-GARUDA-DOCUMENT-RETENTION-TEST-APPROVAL'
+    tx = conn.transaction()
+    await tx.start()
+    try:
+        await conn.execute(
+            """
+            UPDATE public.visa_decision_retention_policies
+               SET effective_period = tstzrange(lower(effective_period), transaction_timestamp(), '[)')
+             WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'
+               AND upper(effective_period) IS NULL
+               AND lower(effective_period) < transaction_timestamp()
+            """
         )
-        """,
-        policy_version,
-    )
-    return policy_version
-
-
-async def _close_garuda_document_test_policy(conn: asyncpg.Connection, policy_version: str) -> None:
-    """Teardown twin: close the policy this module opened, so the next module's
-    self-heal has nothing left to close and no open row outlives the run."""
-    await conn.execute(
-        """
-        UPDATE public.visa_decision_retention_policies
-           SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
-         WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'
-           AND policy_version = $1 AND upper(effective_period) IS NULL
-        """,
-        policy_version,
-    )
+        await conn.execute(
+            """
+            INSERT INTO visa_decision_retention_policies (
+                environment, policy_scope, policy_version, retention_interval,
+                idempotency_retention_interval, legal_hold_review_interval,
+                retention_anchor, effective_period, approved_by, approval_reference
+            ) VALUES (
+                'TEST', 'GARUDA_DOCUMENT', $1, INTERVAL '30 days',
+                INTERVAL '1 hour', INTERVAL '30 days',
+                'CREATED_AT', tstzrange(transaction_timestamp(), NULL, '[)'),
+                'zero-test-approver', 'ZERO-GARUDA-DOCUMENT-RETENTION-TEST-APPROVAL'
+            )
+            """,
+            f"w3a-313-fixture-{uuid.uuid4().hex[:16]}",
+        )
+        yield
+    finally:
+        await tx.rollback()
+        residue = await conn.fetchval(
+            "SELECT count(*) FROM public.visa_decision_retention_policies "
+            "WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'"
+        )
+        assert residue == baseline, (
+            f"this file's fixture left {residue - baseline} TEST/GARUDA_DOCUMENT retention "
+            "policy row(s) behind; the next visa_engine file to call "
+            "unwind_garuda_voa_retention_fk on this database will fail 304's rollback "
+            "with CheckViolationError on the policy_scope CHECK"
+        )
 
 
 async def _seed_practice(conn: asyncpg.Connection, *, suffix: str) -> str:
@@ -661,3 +685,63 @@ class TestColumnChecks:
                 )
         finally:
             await tx.rollback()
+
+
+@pytest.mark.asyncio
+async def test_the_next_file_can_still_unwind_this_database() -> None:
+    """The defect gate-6287c measured, reproduced on one database in one
+    process: run this file's fixture lifecycle (seed the TEST/GARUDA_DOCUMENT
+    policy, tear down), then do what every visa_engine file does before
+    rolling 264 back -- `unwind_garuda_voa_retention_fk`, which runs 304's
+    rollback and re-narrows the `policy_scope` CHECK. With the earlier
+    teardown (CLOSE the row, leave it) this raised `CheckViolationError:
+    visa_decision_retention_policies_policy_scope_check ... violated by some
+    row`; with a rolled-back seed it passes. `restore` then puts the stack
+    back so the database leaves this test as it entered.
+
+    Deliberately NOT using the `conn` fixture: the point is the state AFTER
+    its teardown, and this test must own the connection to observe it. It
+    enters the fixture's own seeding context, not a copy, so it measures the
+    shipped code path.
+
+    Premise, asserted rather than assumed: the database carries no
+    TEST/GARUDA_DOCUMENT row before this test. On CI's per-worker clone that
+    is always true; on a local database dirtied by an OLDER run of this file
+    it is not, those rows cannot be removed (append-only), and this test
+    says so instead of blaming the cure.
+    """
+    from backend.tests.services.visa_engine.conftest import (
+        restore_garuda_voa_retention_fk,
+        unwind_garuda_voa_retention_fk,
+    )
+
+    if (bad := _forbidden((TEST_DSN or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1])):
+        pytest.fail(f"refusing to unwind migrations — TEST_DATABASE_URL names a real database ({bad!r}).")
+    connection = await asyncpg.connect(TEST_DSN)
+    try:
+        forward, _ = split_migration_sql(MIGRATION.read_text())
+        await connection.execute(forward)
+        pre_existing = await connection.fetchval(
+            "SELECT count(*) FROM public.visa_decision_retention_policies "
+            "WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'"
+        )
+        assert pre_existing == 0, (
+            f"{pre_existing} TEST/GARUDA_DOCUMENT row(s) pre-date this test on this database "
+            "(an older run of this file left them; they are append-only and cannot be removed) "
+            "-- this reproduction needs a fresh database, as CI provides"
+        )
+
+        async with _seeded_test_retention_policy(connection):
+            assert await connection.fetchval(
+                "SELECT count(*) FROM public.visa_decision_retention_policies "
+                "WHERE environment = 'TEST' AND policy_scope = 'GARUDA_DOCUMENT'"
+            ) == 1
+
+        # What the next file does. Before the cure: CheckViolationError here.
+        unwound = await unwind_garuda_voa_retention_fk(connection)
+        assert unwound, "unwind found nothing to roll back — 313 was not applied, so this proved nothing"
+        assert await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')") is None
+        await restore_garuda_voa_retention_fk(connection)
+        assert await connection.fetchval("SELECT to_regclass('public.garuda_practice_artifacts')") is not None
+    finally:
+        await connection.close()
