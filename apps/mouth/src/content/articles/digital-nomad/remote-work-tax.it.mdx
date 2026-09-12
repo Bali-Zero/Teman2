@@ -73,30 +73,22 @@ tags:
 canonicalUrl: "https://balizero.com/it/digital-nomad/remote-work-tax"
 ogImage: "/static/insights/lifestyle/remote-work-tax.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "5a68d9297572390556475621b29a8880251533e96d63074038e890b3ea171fd3"
+source_sha256: "a11fc823562ddaf4546c9a3cb6c5fe2f3789e949f429eb0934bc77cae8c4eed1"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  Calculator,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Remote Work Tax Indonesia 2026: Guida Fiscale per Digital Nomad
 
-# Tasse Lavoro Remoto Indonesia 2026: Guida per Digital Nomad
-
-I lavoratori da remoto e i digital nomad affrontano questioni fiscali uniche. Ecco come funziona la tassazione quando sei indipendente dalla posizione geografica in Indonesia.
+I lavoratori remoti e i digital nomad affrontano domande fiscali uniche. Ecco come funziona la tassazione quando siete indipendenti dal luogo di residenza in Indonesia.
 
 ## La Domanda Chiave
 
 <DecisionTree
-  title="Sei un Residente Fiscale?"
-  description="Determina il tuo stato"
+  title="Sei Residente Fiscale?"
+  description="Determina il tuo status"
   nodes={[
     {
       id: "start",
-      question: "Quanto tempo hai trascorso in Indonesia quest'anno?",
+      question: "Quanti giorni in Indonesia quest'anno?",
       options: [
         { label: "Meno di 183 giorni", next: "nonresident" },
         { label: "183 giorni o più", next: "resident-check" },
@@ -104,18 +96,18 @@ I lavoratori da remoto e i digital nomad affrontano questioni fiscali uniche. Ec
     },
     {
       id: "resident-check",
-      question: "Hai intenzione di stabilirti in Indonesia?",
+      question: "Intendi rimanere in Indonesia?",
       options: [
         { label: "Sì, vivo qui", next: "resident" },
-        { label: "Solo un soggiorno prolungato", next: "complex" },
+        { label: "Solo prolungamento del soggiorno", next: "complex" },
       ],
     },
     {
       id: "nonresident",
       result: {
-        title: "Stato Non-Residente",
+        title: "Status Non-Residente",
         description:
-          "Sotto i 183 giorni generalmente significa nessuna residenza fiscale indonesiana. I tuoi obblighi fiscali dipendono dalle regole del tuo paese d'origine e da dove proviene il tuo reddito.",
+          "Meno di 183 giorni significa generalmente nessun'assoggettamento fiscale in Indonesia. Le tue obbligazioni fiscali dipendono dalle regole del tuo paese d'origine e da dove provengono i tuoi redditi.",
       },
     },
     {
@@ -123,15 +115,15 @@ I lavoratori da remoto e i digital nomad affrontano questioni fiscali uniche. Ec
       result: {
         title: "Residente Fiscale",
         description:
-          "Oltre 183 giorni con intenzione di restare significa residenza fiscale indonesiana. Sei soggetto a tassazione sul reddito mondiale. Necessiti di NPWP e dichiarazione dei redditi annuale.",
+          "Più di 183 giorni con l'intenzione di rimanere significa residenza fiscale in Indonesia. Sei soggetto a tassazione sui redditi mondiali. Necessario NPWP e dichiarazione annuale delle tasse.",
       },
     },
     {
       id: "complex",
       result: {
-        title: "Situazione Variabile",
+        title: "Situazione Dipende",
         description:
-          "Area grigia che richiede analisi. I fattori includono: intenzione, legami con l'Indonesia, tipo di visto, dove vieni pagato. Considera una consulenza professionale.",
+          "Zona grigia che richiede analisi. I fattori includono: intenzione, legami con l'Indonesia, tipo di visto, dove ricevi il pagamento. Valuta un consiglio fiscale professionale.",
       },
     },
   ]}
@@ -139,21 +131,21 @@ I lavoratori da remoto e i digital nomad affrontano questioni fiscali uniche. Ec
 
 ---
 
-## La Residenza Fiscale Spiegata
+## Residenza Fiscale Spiegata
 
 <InfoCard variant="warning" title="La Regola dei 183 Giorni">
-**Cosa attiva la residenza fiscale indonesiana:**
+**Attivatori della residenza fiscale in Indonesia:**
 
-1. Presenza in Indonesia per **183+ giorni** in 12 mesi, OPPURE
-2. Residenza in Indonesia con **intenzione di restare**
+1. Presente in Indonesia **183+ giorni** in 12 mesi, OPPURE
+2. Residente in Indonesia con **intenzione di rimanere**
 
-**Se sei residente fiscale:**
+**Se residente fiscalmente:**
 
-- Tassato sul reddito mondiale
-- Devi possedere un NPWP
-- Devi presentare la dichiarazione dei redditi annuale (SPT)
+- Tassato sui redditi mondiali
+- Deve possedere NPWP
+- Deve presentare dichiarazione annuale delle tasse
 
-Questo si applica indipendentemente dal tipo di visto!
+Ciò si applica indipendentemente dal tipo di visto!
 
 </InfoCard>
 
@@ -170,40 +162,40 @@ Questo si applica indipendentemente dal tipo di visto!
       subtitle: "< 183 giorni",
       values: {
         "Residente Fiscale Indo": "No",
-        "Tasse Indo Dovute": "Solo su reddito di fonte Indo",
-        "Tasse Paese Origine": "Solitamente ancora applicabili",
-        "Azione Necessaria": "Segui le regole del tuo paese",
+        "Tasse Indo Dovute": "Solo su redditi di fonte indonesiana",
+        "Tasse Paese d'Origine": "Di solito si applica ancora",
+        "Azione Richiesta": "Segui le regole del paese d'origine",
       },
     },
     {
-      name: "Nomad Prolungato",
-      subtitle: "183+ giorni, senza intenzione",
+      name: "Nomad Esteso",
+      subtitle: "183+ giorni, nessuna intenzione",
       values: {
-        "Residente Fiscale Indo": "Possibile",
-        "Tasse Indo Dovute": "Poco chiaro - chiedi consulenza",
-        "Tasse Paese Origine": "Potrebbero ancora applicarsi",
-        "Azione Necessaria": "Cerca consulenza fiscale",
+        "Residente Fiscale Indo": "Possibilmente",
+        "Tasse Indo Dovute": "Non chiaro - chiedi consiglio",
+        "Tasse Paese d'Origine": "Potrebbe ancora applicarsi",
+        "Azione Richiesta": "Cerca consulenza fiscale",
       },
       highlight: true,
     },
     {
-      name: "Expat Stabilito",
+      name: "Espatriato Insediato",
       subtitle: "Vive in Indonesia",
       values: {
         "Residente Fiscale Indo": "Sì",
-        "Tasse Indo Dovute": "Reddito mondiale",
-        "Tasse Paese Origine": "Controlla i trattati",
-        "Azione Necessaria": "NPWP + dichiarazione annuale",
+        "Tasse Indo Dovute": "Redditi mondiali",
+        "Tasse Paese d'Origine": "Controlla le regole del trattato",
+        "Azione Richiesta": "NPWP + dichiarazione annuale",
       },
     },
     {
-      name: "Titolare di KITAS",
+      name: "Detentore KITAS",
       subtitle: "Permesso di lavoro",
       values: {
         "Residente Fiscale Indo": "Sì",
-        "Tasse Indo Dovute": "Reddito mondiale",
-        "Tasse Paese Origine": "Controlla i trattati",
-        "Azione Necessaria": "NPWP + mensile + annuale",
+        "Tasse Indo Dovute": "Redditi mondiali",
+        "Tasse Paese d'Origine": "Controlla le regole del trattato",
+        "Azione Richiesta": "NPWP + mensile + annuale",
       },
     },
   ]}
@@ -211,23 +203,23 @@ Questo si applica indipendentemente dal tipo di visto!
 
 ---
 
-## Lavorare con Visto Turistico
+## Lavoro con Visto da Turista
 
-<InfoCard variant="warning" title="L'Area Grigia">
+<InfoCard variant="warning" title="La Zona Grigia">
 **Tecnicamente:**
-- Visto turistico = nessun lavoro permesso
-- Lavorare da remoto per clienti esteri = area grigia
-- L'Indonesia non ha applicato sanzioni attive sui lavoratori remoti
-- Ma le regole potrebbero essere fatte valere
+- Visto turistico = nessun lavoro consentito
+- Lavoro remoto per clienti esteri = zona grigia
+- L'Indonesia non ha attivamente applicato le regole ai lavoratori remoti
+- Ma le regole potrebbero essere applicate
 
 **La realtà:**
 
-- Molti digital nomad lavorano con visti turistici
-- Tecnicamente non legale se si "lavora"
-- Applicazione delle norme attualmente bassa
-- Il rischio è a carico dell'individuo
+- Molti digital nomad lavorano con visti da turista
+- Non è tecnicamente legale se si sta "lavorando"
+- Bassa applicazione delle norme attualmente
+- Il rischio spetta a te da valutare
 
-Per una piena conformità, considera il visto E33G Digital Nomad (Visto per lavoratori remoti).
+Per una piena conformità, considera il Visto Digital Nomad E33G (Visto per Lavoratori Remoti).
 
 </InfoCard>
 
@@ -235,21 +227,21 @@ Per una piena conformità, considera il visto E33G Digital Nomad (Visto per lavo
 
 ## Se Sei Residente Fiscale
 
-### I Tuoi Obblighi
+### Le Tue Obbligazioni
 
-| Obbligo                          | Dettagli                          |
-| -------------------------------- | --------------------------------- |
-| Ottenere il NPWP                 | Numero di identificazione fiscale |
-| Dichiarare reddito mondiale      | Tutte le fonti globali            |
-| Presentare dichiarazione annuale | Entro il 31 marzo                 |
-| Pagare le tasse dovute           | Aliquote progressive fino al 35%  |
-| Dichiarare asset esteri          | Se applicabile                    |
+| Obbligo              | Dettagli                     |
+| ----------------------- | --------------------------- |
+| Ottieni NPWP                | Numero di ID fiscale         |
+| Comunica redditi mondiali | Tutte le fonti globali       |
+| Presenta dichiarazione annuale      | Entro il 31 marzo           |
+| Paga le tasse dovute             | Aliquote progressive fino al 35% |
+| Comunica attività finanziarie estere   | Se applicabile              |
 
 ### Calcolatore Fiscale
 
 <Calculator
-  title="Stima dell'Imposta sul Reddito"
-  description="Tasse indonesiane su reddito remoto"
+  title="Stima Tasse sul Reddito"
+  description="Tassazione indonesiana sui redditi remoti"
   fields={[
     {
       id: "monthly",
@@ -260,7 +252,7 @@ Per una piena conformità, considera il visto E33G Digital Nomad (Visto per lavo
     },
     {
       id: "resident",
-      label: "Stato",
+      label: "Status",
       type: "select",
       options: [
         { value: "resident", label: "Residente Fiscale" },
@@ -271,7 +263,7 @@ Per una piena conformità, considera il visto E33G Digital Nomad (Visto per lavo
   ]}
   calculateResult={(values) => {
     const annual = values.monthly * 12;
-    const ptkp = 54000000; // Deduzione standard
+    const ptkp = 54000000; // Detrazione standard
 
     let taxable, tax;
 
@@ -291,7 +283,7 @@ Per una piena conformità, considera il visto E33G Digital Nomad (Visto per lavo
         tax = 3000000 + 28500000 + 62500000 + 1350000000 + (taxable - 5000000000) * 0.35;
       }
     } else {
-      // Aliquota flat non residenti
+      // Tassa fissa per non-residenti
       taxable = annual;
       tax = annual * 0.20;
     }
@@ -300,12 +292,12 @@ Per una piena conformità, considera il visto E33G Digital Nomad (Visto per lavo
       total: Math.round(tax),
       breakdown: [
         { label: "Reddito annuale", amount: annual },
-        { label: values.resident === "resident" ? "Dopo deduzione PTKP" : "Imponibile (aliquota flat)", amount: Math.round(taxable) },
-        { label: "Tassa annuale stimata", amount: Math.round(tax) },
-        { label: "Equivalente tassa mensile", amount: Math.round(tax / 12) }
+        { label: values.resident === "resident" ? "Dopo detrazione PTKP" : "Tassabile (tassa fissa)", amount: Math.round(taxable) },
+        { label: "Tasse stimate annuali", amount: Math.round(tax) },
+        { label: "Equivalente mensile delle tasse", amount: Math.round(tax / 12) }
       ],
       currency: "IDR",
-      note: values.resident === "resident" ? "Aliquote progressive 5-35%" : "Flat 20% per non residenti"
+      note: values.resident === "resident" ? "Aliquote progressive 5-35%" : "Tassa fissa 20% per non-residenti"
     };
 
 }}
@@ -313,85 +305,85 @@ Per una piena conformità, considera il visto E33G Digital Nomad (Visto per lavo
 
 ---
 
-## Tasse nel Paese d'Origine
+## Tasse del Paese d'Origine
 
 ### Non Dimenticare Casa
 
 <InfoCard variant="note" title="Rischio Doppia Tassazione">
-**Potresti ancora dover pagare tasse nel tuo paese:**
+**Potresti comunque dover pagare tasse a casa:**
 
-- Cittadini USA: Tassati sul reddito mondiale indipendentemente dalla residenza
-- Molti paesi: I residenti fiscali pagano le tasse in patria
-- Trattati: Possono ridurre ma non eliminare gli obblighi
-- Dichiarazioni: Potrebbe essere necessario dichiarare il reddito estero
+- Cittadini USA: Tassati sui redditi mondiali indipendentemente da tutto
+- La maggior parte dei paesi: I residenti fiscali pagano le tasse a casa
+- Trattati: Possono ridurre ma non eliminare
+- Segnalazione: Potrebbe essere necessario segnalare redditi esteri
 
-**Verifica con il tuo paese d'origine!**
+**Controlla con il tuo paese d'origine!**
 
-- Regole di residenza fiscale locali
-- Dichiarazione dei redditi esteri
-- Benefici dei trattati fiscali
-- Crediti d'imposta per tasse pagate all'estero
+- Regole di residenza fiscale lì
+- Segnalazione dei redditi esteri
+- Benefici del trattato fiscale
+- Crediti per le tasse estere
 </InfoCard>
 
 ### Paesi d'Origine Comuni
 
-| Paese       | Se te ne vai             |
-| ----------- | ------------------------ |
-| USA         | Tassato come cittadino   |
-| UK          | Puoi restare residente   |
-| Australia   | Si applica il test 183gg |
-| Canada      | Dipende dai legami       |
-| Paesi Bassi | Devi uscire formalmente  |
-| Germania    | Dipende dai legami       |
+| Paese     | Se Esiti            |
+| ----------- | ----------------------- |
+| USA         | Tassato ancora come cittadino  |
+| UK          | Potresti rimanere residente fiscale |
+| Australia   | Si applica il test dei 183 giorni    |
+| Canada      | Dipende dai legami         |
+| Paesi Bassi | Devi uscire formalmente     |
+| Germania     | Dipende dai legami         |
 
 ---
 
 ## Trattati Fiscali
 
-### Come Aiutano i Trattati
+### Come i Trattati Aiutano
 
-L'Indonesia ha trattati fiscali con molti paesi per:
+L'Indonesia ha trattati fiscali con molti paesi che:
 
-- Prevenire la doppia tassazione
-- Determinare quale paese tassa cosa
-- Consentire crediti d'imposta esteri
-- Ridurre potenzialmente le aliquote
+- Prevengono la doppia tassazione
+- Determinano quale paese tassa cosa
+- Consentono crediti per le tasse estere
+- Possono ridurre le aliquote
 
 ### Benefici Chiave dei Trattati
 
-| Tipo di Reddito   | Beneficio del Trattato          |
-| ----------------- | ------------------------------- |
-| Lavoro dipendente | Solitamente tassato dove svolto |
-| Lavoro autonomo   | Dipende dalla sede fissa (PE)   |
-| Dividendi         | Aliquote ridotte                |
-| Interessi         | Aliquote ridotte                |
-| Royalties         | Aliquote ridotte                |
+| Tipo di Reddito     | Beneficio del Trattato                |
+| --------------- | ----------------------------- |
+| Impiego      | Di solito tassato dove svolto |
+| Lavoro autonomo | Dipende dalla PE (Stabile Organizzazione)                 |
+| Dividendi       | Aliquote ridotte                 |
+| Interessi        | Aliquote ridotte                 |
+| Royalties       | Aliquote ridotte                 |
 
 ---
 
 ## Opzioni di Strutturazione
 
-### Per un Lavoro Remoto in Regola
+### Per Lavoro Remoto Conforme
 
-| Opzione               | Come Funziona                          |
-| --------------------- | -------------------------------------- |
-| PT PMA                | Società indonesiana, tu come direttore |
-| Società estera        | Resti impiegato da entità estera       |
-| Freelance con NPWP    | Lavoratore autonomo in Indonesia       |
-| Restare non-residente | Sotto i 183 giorni                     |
+| Opzione              | Come Funziona                        |
+| ------------------- | ----------------------------------- |
+| PT PMA              | Azienda indonesiana, tu come amministratore delegato |
+| Azienda estera     | Rimani impiegato da un'entità estera   |
+| Freelance con NPWP | Lavori autonomo in Indonesia          |
+| Rimani non-residente   | Meno di 183 giorni                      |
 
-<InfoCard variant="tip" title="Per Soggiorni Lunghi">
-**Se resti a lungo termine:**
+<InfoCard variant="tip" title="Per Soggiorni Lungi">
+**Se rimani a lungo termine:**
 
 Considera la struttura **PT PMA**:
 
 - Autorizzazione legale al lavoro
 - Posizione fiscale chiara
-- Possibilità di fatturare ai clienti
-- Accesso a conti bancari locali
-- Stato professionale
+- Puoi emettere fatture ai clienti
+- Accesso a conto bancario
+- Status professionale
 
-Sì, comporta costi e complessità, ma fornisce massima chiarezza.
+Sì, ci sono costi e complessità, ma fornisce chiarezza.
 
 </InfoCard>
 
@@ -401,49 +393,49 @@ Sì, comporta costi e complessità, ma fornisce massima chiarezza.
 
 ### Se Diventi Residente Fiscale
 
-| Passaggio         | Quando                           |
-| ----------------- | -------------------------------- |
-| Ottenere NPWP     | Quando residente, prima di marzo |
-| Tracciare redditi | Durante tutto l'anno             |
-| Calcolare tasse   | Entro la fine dell'anno          |
-| Presentare SPT    | Entro il 31 marzo                |
-| Pagare il saldo   | Entro il 31 marzo                |
+| Passo             | Quando                               |
+| ---------------- | ---------------------------------- |
+| Ottieni NPWP         | Quando residente, prima della dichiarazione di marzo |
+| Traccia tutti i redditi | Durante l'anno                    |
+| Calcola le tasse    | Entro la fine dell'anno            |
+| Presenta SPT         | Entro il 31 marzo                  |
+| Paga eventuali saldi   | Entro il 31 marzo                  |
 
 ### Documentazione da Conservare
 
-| Documento           | Scopo                            |
-| ------------------- | -------------------------------- |
-| Giorni in Indo      | Provare lo stato di residenza    |
-| Record dei redditi  | Tutte le fonti                   |
-| Tasse pagate estero | Per crediti d'imposta            |
-| Estratti conto      | Supporto alla dichiarazione      |
-| Contratti           | Evidenza degli accordi di lavoro |
+| Documento          | Scopo                 |
+| ----------------- | ----------------------- |
+| Giorni in Indonesia | Dimostrare status di residenza  |
+| Registri dei redditi    | Tutte le fonti             |
+| Tasse estere pagate  | Per i crediti             |
+| Estratti conto bancari   | Supporto per rivendicazioni sui redditi   |
+| Contratti         | Prova dell'accordo        |
 
 ---
 
 ## Errori Comuni
 
-| Errore                              | Rischio                                |
-| ----------------------------------- | -------------------------------------- |
-| Ignorare la regola dei 183gg        | Responsabilità fiscale inattesa        |
-| Pensare: visto turistico = no tasse | La residenza fiscale non funziona così |
-| Non dichiarare redditi esteri       | Evasione fiscale                       |
-| Doppia tassazione                   | Non utilizzo dei trattati              |
-| Assenza di documentazione           | Problemi in fase di audit              |
+| Errore                        | Rischio                        |
+| ------------------------------ | --------------------------- |
+| Ignorare la regola dei 183 giorni          | Responsabilità fiscale inaspettata    |
+| Assumere che visto turistico = nessuna tassa | Non è come funziona la residenza fiscale |
+| Non segnalare redditi esteri   | Evasione fiscale                 |
+| Doppia tassazione                | Non uso dei trattati            |
+| Nessuna documentazione               | Problemi di audit              |
 
 ---
 
-## Quando Chiedere Aiuto
+## Quando Ottenere Aiuto
 
-<InfoCard variant="warning" title="Cerca una Consulenza Professionale Se:">
+<InfoCard variant="warning" title="Cerca Consulenza Professionale Se:">
 - Sei oltre i 183 giorni
-- Hai un reddito significativo
-- Sei incerto sulla tua residenza fiscale
-- Hai molteplici fonti di reddito
-- Il tuo paese ha regole complesse
-- Vuoi strutturare correttamente la tua attività
+- Hai redditi significativi
+- Non sei sicuro della residenza fiscale
+- Hai più fonti di reddito
+- Il paese d'origine ha regole complesse
+- Vuoi strutturare correttamente
 
-Gli errori fiscali sono costosi. Una buona consulenza vale l'investimento.
+Gli errori fiscali sono costosi. Un buon consiglio vale la pena.
 
 </InfoCard>
 
@@ -455,9 +447,9 @@ Gli errori fiscali sono costosi. Una buona consulenza vale l'investimento.
   context="Remote work tax Indonesia, digital nomad tax, tax residency, freelancer tax"
   placeholder="Chiedi sulle tasse per il lavoro remoto..."
   suggestedQuestions={[
-    "Devo pagare tasse se ho un visto turistico?",
-    "Posso restare meno di 183 giorni per evitare le tasse?",
-    "Ho bisogno del NPWP come digital nomad?",
+    "Devo pagare tasse se sono con visto da turista?",
+    "Posso rimanere sotto i 183 giorni per evitare le tasse?",
+    "Ho bisogno di NPWP come digital nomad?",
     "Come funzionano i trattati fiscali?",
   ]}
 />
@@ -466,6 +458,6 @@ Gli errori fiscali sono costosi. Una buona consulenza vale l'investimento.
 
 ## Articoli Correlati
 
-- [Lavorare come Freelance in Regola in Indonesia](/it/insights/lifestyle/freelancing-legally-indonesia)
-- [Visto Digital Nomad Indonesia](/visas/e33g-remote-worker-visa-guide?lang=it)
-- [Guida all'Imposta sul Reddito delle Persone Fisiche](/taxes/pph-21-expat-guide?lang=it)
+- [Freelancing Legalmente in Indonesia](/insights/lifestyle/freelancing-legally-indonesia)
+- [Visto Digital Nomad Indonesia](/visas/e33g-remote-worker-visa-guide)
+- [Guida alle Tasse sul Reddito Personale](/taxes/pph-21-expat-guide)

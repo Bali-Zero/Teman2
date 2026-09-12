@@ -77,19 +77,19 @@ canonicalUrl: "https://balizero.com/immigration/global-citizenship-indonesia"
 ogImage: "/static/blog/global-citizenship.jpg"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "2fdf5e5af93d3998b6e2ab3e3da4c5bdefbc544180a1ea59484cfc5ee0a7ce04"
+source_sha256: "921f724cdd8d176d3fd8b40cdfb5da274a0a3fa36a477d2be8431a184a24a72f"
 ---
 
 # Cittadinanza Globale dell'Indonesia: L'Atteso Accoglimento
 
-Per decenni, l'Indonesia ha detto ai suoi figli all'estero: _scegliere_. Noi o loro. Il passaporto rosso o quello straniero. Nessun compromesso. Milioni hanno scelto — spesso con il cuore pesante — di costruire la propria vita altrove, lasciando non solo un documento, ma una parte di chi erano.
+Per decenni, l'Indonesia ha detto ai suoi figli all'estero: _scegliete_. Noi o loro. Il passaporto rosso o quello straniero. Nessun compromesso. Milioni hanno scelto — spesso con il cuore pesante — di costruire la propria vita altrove, lasciando non solo un documento, ma una parte di chi erano.
 
 Il **19 novembre 2025**, qualcosa è cambiato.
 
 <InfoCard variant="highlight" title="Cos'è la GCI?">
-Il governo ha lanciato la **Cittadinanza Globale dell'Indonesia (GCI)**: non la doppia cittadinanza (che rimane costituzionalmente proibita), ma qualcosa di straordinariamente simile.
+Il governo ha lanciato la **Cittadinanza Globale dell'Indonesia (GCI)**: non la doppia cittadinanza (che rimane proibita dalla costituzione), ma qualcosa di straordinariamente simile.
 
-Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun sponsor necessario. Un abbraccio tardivo, ma reale.
+Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun sponsor necessario. Un abbraccio tardivo, ma vero.
 
 </InfoCard>
 
@@ -99,7 +99,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
 
 <DecisionTree
   title="Sono Elegibile per la GCI?"
-  description="Rispondi a queste domande per verificare la tua elegibilità"
+  description="Risponde a queste domande per verificare la tua elegibilità"
   nodes={[
     {
       id: "start",
@@ -119,7 +119,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
     },
     {
       id: "eligible-former",
-      question: "Hai documentazione che prova la tua ex cittadinanza?",
+      question: "Hai documentazione che prova la cittadinanza precedente?",
       options: [
         {
           label: "Sì (vecchio KTP, certificato di nascita, passaporto)",
@@ -148,7 +148,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
     },
     {
       id: "docs-check",
-      question: "Hai almeno 2.000 USD di fondi?",
+      question: "Hai un minimo di 2.000 USD in fondi?",
       options: [
         { label: "Sì", nextId: "likely-eligible" },
         { label: "No", nextId: "funds-needed" },
@@ -169,7 +169,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
       result: {
         title: "La GCI Potrebbe Non Essere Disponibile",
         description:
-          "La GCI è specificamente per coloro che hanno origini o legami familiari indonesiani. Tuttavia, potresti qualificarti per altri visti a lungo termine come Second Home Visa, Retirement KITAS, o Investor KITAS.",
+          "La GCI è specificamente per coloro che hanno origini indonesiane o legami familiari. Tuttavia, potresti qualificarti per altri visti a lungo termine come Second Home Visa, Retirement KITAS o Investor KITAS.",
         variant: "warning",
         cta: { label: "Esplora Altre Opzioni", href: "/insights/immigration" },
       },
@@ -189,7 +189,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
       result: {
         title: "Requisito Finanziario Non Soddisfatto",
         description:
-          "La GCI richiede la prova di almeno 2.000 USD di fondi. È una soglia relativamente bassa - considera di risparmiare prima di presentare la domanda.",
+          "La GCI richiede la prova di un minimo di 2.000 USD in fondi. Si tratta di una soglia relativamente bassa - considera di risparmiare prima di fare domanda.",
         variant: "warning",
       },
     },
@@ -201,7 +201,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
 ## Cosa Ti Serve?
 
 <Checklist
-  title="Requisiti per la Domanda di GCI"
+  title="Requisiti per la Domanda GCI"
   description="Documenti e requisiti per la Cittadinanza Globale"
   persistKey="gci-requirements-checklist"
   items={[
@@ -214,7 +214,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
     },
     {
       id: "heritage-proof",
-      label: "Prova del legame indonesiano",
+      label: "Prova del legame con l'Indonesia",
       description:
         "Vecchio KTP, certificato di nascita, diploma scolastico, documenti familiari",
       required: true,
@@ -237,14 +237,14 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
     {
       id: "family-tree",
       label: "Documentazione dell'albero genealogico",
-      description: "Se si applica tramite legame con genitore/nonno",
+      description: "Se si richiede tramite legame con genitore/nonno",
       required: false,
       category: "heritage",
     },
     {
       id: "marriage-cert",
       label: "Certificato di matrimonio",
-      description: "Se si applica come coniuge di cittadino indonesiano",
+      description: "Se si richiede come coniuge di cittadino indonesiano",
       required: false,
       category: "heritage",
     },
@@ -263,7 +263,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
 
 <ComparisonTable
   title="Opzioni di Residenza Permanente Confrontate"
-  description="Come la GCI si confronta con altri percorsi"
+  description="Come la GCI si confronta con altre vie d'accesso"
   items={[
     {
       name: "GCI (Cittadinanza Globale)",
@@ -271,8 +271,8 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
       values: {
         Eligibility: "Origini indonesiane",
         Duration: "Permanente (senza scadenza)",
-        "Work Rights": "Non si può lavorare localmente",
-        Cost: "IDR 50.000.000 (il nostro servizio)",
+        "Work Rights": "Non può lavorare localmente",
+        Cost: "IDR 50.000.000 (servizio nostro)",
         Renewals: "Nessuno richiesto",
       },
       highlight: true,
@@ -290,7 +290,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
     },
     {
       name: "Second Home Visa",
-      subtitle: "Persone benestanti",
+      subtitle: "Persone ricche",
       values: {
         Eligibility: "Fondi di oltre 130.000 USD",
         Duration: "5 anni (rinnovabile fino a 10 cumulativi)",
@@ -315,7 +315,7 @@ Un **permesso di residenza permanente senza scadenza**. Nessun rinnovo. Nessun s
 
 ---
 
-## Cosa la GCI NON È
+## Di Cosa NON È la GCI
 
 <InfoCard variant="warning" title="Limitazioni Importanti">
 Siate chiari: **questo non è cittadinanza**.
@@ -323,45 +323,45 @@ Siate chiari: **questo non è cittadinanza**.
 - **Non si può votare** nelle elezioni indonesiane
 - **Non si può acquistare terra a titolo libero** (Hak Milik)
 - **Non si può lavorare come dipendente** per aziende indonesiane
-- Nessun salario locale, nessun contratto di lavoro
+- Niente stipendio locale, nessun contratto di lavoro
 
 Ma tu PUOI:
 
 - Vivere qui permanentemente
 - Investire e gestire aziende estere da remoto
-- Gestire i tuoi asset
+- Gestire i tuoi beni
 - Ritirarti tra i campi di riso
-- Andare e tornare senza preoccupazioni per i visti
+- Andare e tornare senza preoccupazioni per il visto
 </InfoCard>
 
 ---
 
-## La Restrizione al Lavoro: La Nostra Opinione
+## La Restrizione sul Lavoro: Il Nostro Punto di Vista
 
-<InfoCard variant="note" title="Opinione Editoriale">
+<InfoCard variant="note" title="Parere Editoriale">
 La legge è esplicita — i titolari della GCI **non possono ricevere stipendi da entità indonesiane**.
 
-Per i pensionati, gli investitori e i lavoratori remoti, questo non cambia nulla. Ma per i professionisti della diaspora che sognavano di tornare a lavorare a Giacarta o a Surabaya? È una porta ancora mezzo chiusa.
+Per pensionati, investitori e lavoratori remoti, questo non cambia nulla. Ma per professionisti della diaspora che sognavano di tornare a lavorare a Giacarta o Surabaya? È una porta ancora mezzo chiusa.
 
-**La nostra onesta opinione**: Questa restrizione ha senso per ora. L'Indonesia sta testando le acque. Il programma è modellato sulla OCI dell'India, che limita anche l'occupazione locale.
+**La nostra onesta opinione**: Questa restrizione ha senso per ora. L'Indonesia sta testando le acque. Il programma è modellato sull'OCI dell'India, che limita anche l'occupazione locale.
 
-Se la GCI si rivela un successo e la diaspora dimostra valore senza spostare i lavoratori locali, non saremmo sorpresi di vedere questa regola ammorbidita in future revisioni. Per ora, pianifica di conseguenza.
+Se la GCI si rivela un successo e la diaspora dimostra valore senza sostituire lavoratori locali, non saremmo sorpresi di vedere questa regola ammorbidita in future revisioni. Per ora, pianifica di conseguenza.
 
 </InfoCard>
 
 ---
 
-## Processo di Applicazione
+## Processo di Domanda
 
 <JourneyMap
-  title="Percorso di Applicazione per la GCI"
+  title="Percorso di Domanda GCI"
   description="Dalla verifica dell'elegibilità alla residenza permanente"
   estimatedTotal="Tempistiche da definire - programma nuovo"
   steps={[
     {
       id: "assessment",
       title: "Valutazione dell'Elegibilità",
-      description: "Verifica il tuo legame indonesiano",
+      description: "Verifica il tuo legame con l'Indonesia",
       duration: "1-2 giorni",
       status: "required",
       tips: [
@@ -380,22 +380,22 @@ Se la GCI si rivela un successo e la diaspora dimostra valore senza spostare i l
     },
     {
       id: "application",
-      title: "Sottomissione sul Portale e-Visa",
+      title: "Invio tramite Portale e-Visto",
       description: "Domanda online tramite portale ufficiale",
       duration: "Da definire",
       status: "required",
-      tips: ["Sistema ancora in fase di finalizzazione", "Gestiamo la sottomissione per te"],
+      tips: ["Sistema ancora in fase di finalizzazione", "Gestiamo noi l'invio per te"],
       warnings: ["Il portale potrebbe avere problemi tecnici inizialmente"],
     },
     {
       id: "processing",
-      title: "Elaborazione da parte dell'Imмиграzione",
+      title: "Elaborazione da parte dell'Imigrazione",
       description: "Revisione e approvazione",
       duration: "Da definire",
       status: "required",
       tips: [
         "Tempi ufficiali non ancora annunciati",
-        "Aspetta chiarezza nei primi mesi del 2026",
+        "Aspetta chiarezza all'inizio del 2026",
       ],
     },
     {
@@ -411,20 +411,20 @@ Se la GCI si rivela un successo e la diaspora dimostra valore senza spostare i l
 
 ---
 
-## Il Nosso Servizio
+## Il Nostro Servizio
 
 | Voce                 | Costo                                                                |
 | -------------------- | ------------------------------------------------------------------- |
-| Servizio GCI Completa | **IDR 50.000.000**                                                  |
-| Include              | Valutazione dell'elegibilità, preparazione dei documenti, sottomissione, follow-up |
-| Tasse governative    | Incluse                                                              |
-| Supporto tempistiche | Fino all'approvazione                                                |
+| Servizio GCI Completo | **IDR 50.000.000**                                                  |
+| Include              | Valutazione dell'elegibilità, preparazione documenti, invio, follow-up |
+| Tasse governative    | Incluse                                                             |
+| Supporto tempistiche | Fino all'approvazione                                               |
 
 ---
 
 ## Il Quadro Più Ampio
 
-C'è un detto giavanese: _"Pisang tidak akan jatuh jauh dari pohonnya"_ — il banana non cade mai lontano dall'albero.
+C'è un proverbio giavanese: _"Pisang tidak akan jatuh jauh dari pohonnya"_ — la banana non cade mai lontano dall'albero.
 
 Dopo decenni di porte chiuse, l'Indonesia ha finalmente costruito un percorso a casa per coloro che vogliono tornare alle loro radici. Non come turisti. **Come famiglia**.
 
@@ -433,12 +433,12 @@ Dopo decenni di porte chiuse, l'Indonesia ha finalmente costruito un percorso a 
 ## Domande?
 
 <AskZantara
-  context="Cittadinanza Globale Indonesia, GCI, diaspora, residenza permanente, origini indonesiane, restrizioni al lavoro"
-  placeholder="Chiedi riguardo all'elegibilità per la GCI..."
+  context="Cittadinanza Globale Indonesia, GCI, diaspora, residenza permanente, origini indonesiane, restrizioni sul lavoro"
+  placeholder="Chiedi sull'elegibilità della GCI..."
   suggestedQuestions={[
     "Posso lavorare da remoto con la GCI?",
-    "Cosa succede se ho perso i miei documenti indonesiani?",
-    "Possono anche i miei figli ottenere la GCI?",
+    "E se ho perso i miei documenti indonesiani?",
+    "I miei figli possono anche ottenere la GCI?",
     "In che modo la GCI è diversa dal KITAP?",
   ]}
 />
@@ -448,5 +448,5 @@ Dopo decenni di porte chiuse, l'Indonesia ha finalmente costruito un percorso a 
 ## Articoli Correlati
 
 - [Visto per Pensionati Indonesia](/insights/immigration/retirement-visa-indonesia)
-- [Second Home Visa](/visas/second-home-visa-indonesia?lang=it)
+- [Second Home Visa](/visas/second-home-visa-indonesia)
 - [Guida Investor KITAS](/insights/immigration/investor-kitas-guide)

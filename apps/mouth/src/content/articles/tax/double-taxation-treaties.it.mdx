@@ -75,59 +75,52 @@ tags:
 canonicalUrl: "https://balizero.com/it/tax/double-taxation-treaties"
 ogImage: "/static/insights/tax/double-taxation.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "2b1d9b4643534d033137fc6925fa9bc47129198ba9168d1530c0d6b6611eb9f4"
+source_sha256: "6fb54ca7bb5e841902e3f4acef542fa1ea80ee4b962cad2c56b56ccd816aba57"
 ---
 
-import {
-  ComparisonTable,
-  InfoCard,
-  Checklist,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Accordi contro la doppia imposizione per l'Indonesia 2026: Guida Completa
 
-# Trattati contro le Doppie Imposizioni Indonesia 2026: Guida Completa
+Gli accordi fiscali aiutano a evitare che lo stesso reddito venga tassato due volte. Ecco come funzionano gli accordi dell'Indonesia.
 
-I trattati fiscali aiutano a prevenire che lo stesso reddito venga tassato due volte. Ecco come funzionano i DTA (Double Taxation Agreements) in Indonesia.
+## Cos'è un Accordo contro la Doppia Imposizione?
 
-## Cos'è un Accordo contro le Doppie Imposizioni?
+<InfoCard variant="note" title="Basi degli Accordi Fiscali">
+Un **Accordo contro la Doppia Imposizione (DTA)** o accordo fiscale è un patto tra due paesi per:
 
-<InfoCard variant="note" title="Basi dei Trattati Fiscali">
-Un **Accordo contro le Doppie Imposizioni (DTA)** o trattato fiscale è un accordo tra due paesi per:
+- Prevenire che il reddito venga tassato in entrambi i paesi
+- Ridurre le aliquote di ritenuta alla fonte
+- Definire quale paese ha il diritto di tassazione
+- Fornire meccanismi di sollievo
+- Abilitare lo scambio di informazioni fiscali
 
-- Impedire che il reddito venga tassato in entrambi i paesi
-- Ridurre le aliquote della ritenuta d'acconto (_withholding tax_)
-- Definire quale paese ha i diritti di tassazione
-- Fornire meccanismi di sgravio
-- Consentire lo scambio di informazioni fiscali
-
-L'Indonesia ha DTA con oltre 70 paesi.
+L'Indonesia ha accordi con oltre 70 paesi.
 
 </InfoCard>
 
 ---
 
-## Come Aiutano i Trattati Fiscali
+## Come gli Accordi Fiscali Aiutano
 
 <ComparisonTable
-  title="Con vs Senza Trattato Fiscale"
+  title="Con e Senza Accordo Fiscale"
   description="Esempio: Dividendi dall'Indonesia"
   items={[
     {
-      name: "Senza Trattato",
+      name: "Senza Accordo",
       subtitle: "Paese senza DTA",
       values: {
         "Aliquota Ritenuta": "20%",
-        "Esempio su 1 mld IDR": "200 mln IDR di tasse",
-        Sgravio: "Nessuno automatico",
+        "Esempio su IDR 1Miliardo": "Tassa di IDR 200M",
+        Sollievo: "Nessuno automatico",
       },
     },
     {
-      name: "Con Trattato (Italia)",
+      name: "Con Accordo (Singapore)",
       subtitle: "Aliquota DTA",
       values: {
         "Aliquota Ritenuta": "10-15%",
-        "Esempio su 1 mld IDR": "100-150 mln IDR di tasse",
-        Sgravio: "Aliquota ridotta",
+        "Esempio su IDR 1Miliardo": "Tassa di IDR 100-150M",
+        Sollievo: "Aliquota ridotta",
       },
       highlight: true,
     },
@@ -136,61 +129,60 @@ L'Indonesia ha DTA con oltre 70 paesi.
 
 ---
 
-## Aliquote Comuni dei Trattati
+## Aliquote Comuni negli Accordi
 
 ### Paesi Selezionati - Dividendi
 
-| Paese       | Aliquota | Note                  |
-| ----------- | -------- | --------------------- |
-| Italia      | 10/15%   | 10% se possesso > 25% |
-| Singapore   | 10/15%   | 10% se possesso > 25% |
-| Giappone    | 10/15%   | 10% se possesso > 25% |
-| USA         | 10/15%   | 10% se possesso > 10% |
-| UK          | 10/15%   | 10% se possesso > 10% |
-| Australia   | 15%      | Standard              |
-| Paesi Bassi | 10/15%   | 10% se possesso > 25% |
-| Germania    | 10/15%   | 10% se possesso > 25% |
-| No Trattato | 20%      | Aliquota predefinita  |
+| Paese       | Aliquota   | Note                   |
+| ----------- | ---------- | ---------------------- |
+| Singapore   | 10/15%     | 10% se proprietà 25%+  |
+| Giappone    | 10/15%     | 10% se proprietà 25%+  |
+| USA         | 10/15%     | 10% se proprietà 10%+  |
+| Regno Unito | 10/15%     | 10% se proprietà 10%+  |
+| Australia   | 15%        | Standard               |
+| Paesi Bassi | 10/15%     | 10% se proprietà 25%+  |
+| Germania    | 10/15%     | 10% se proprietà 25%+  |
+| Nessun Accordo | 20%      | Aliquota di default    |
 
 ### Paesi Selezionati - Interessi
 
-| Paese       | Aliquota | Note                 |
-| ----------- | -------- | -------------------- |
-| Italia      | 10%      | Ridotta dal 20%      |
-| Singapore   | 10%      | Ridotta dal 20%      |
-| Giappone    | 10%      | Ridotta dal 20%      |
-| USA         | 10%      | Ridotta dal 20%      |
-| UK          | 10%      | Ridotta dal 20%      |
-| Australia   | 10%      | Ridotta dal 20%      |
-| Paesi Bassi | 10%      | Ridotta dal 20%      |
-| Germania    | 10%      | Ridotta dal 20%      |
-| No Trattato | 20%      | Aliquota predefinita |
+| Paese       | Aliquota | Note                   |
+| ----------- | -------- | ---------------------- |
+| Singapore   | 10%      | Ridotta da 20%         |
+| Giappone    | 10%      | Ridotta da 20%         |
+| USA         | 10%      | Ridotta da 20%         |
+| Regno Unito | 10%      | Ridotta da 20%         |
+| Australia   | 10%      | Ridotta da 20%         |
+| Paesi Bassi | 10%      | Ridotta da 20%         |
+| Germania    | 10%      | Ridotta da 20%         |
+| Nessun Accordo | 20%   | Aliquota di default    |
 
-### Paesi Selezionati - Royalty
+### Paesi Selezionati - Royalties
 
-| Paese       | Aliquota | Note                 |
-| ----------- | -------- | -------------------- |
-| Italia      | 10/15%   | Varia per tipo       |
-| Singapore   | 15%      | Ridotta dal 20%      |
-| Giappone    | 10%      | Ridotta dal 20%      |
-| USA         | 10%      | Ridotta dal 20%      |
-| UK          | 15%      | Ridotta dal 20%      |
-| Australia   | 15%      | Ridotta dal 20%      |
-| Paesi Bassi | 10%      | Ridotta dal 20%      |
-| Germania    | 10/15%   | Varia per tipo       |
-| No Trattato | 20%      | Aliquota predefinita |
+| Paese       | Aliquota   | Note                   |
+| ----------- | ---------- | ---------------------- |
+| Singapore   | 15%        | Ridotta da 20%         |
+| Giappone    | 10%        | Ridotta da 20%         |
+| USA         | 10%        | Ridotta da 20%         |
+| Regno Unito | 15%        | Ridotta da 20%         |
+| Australia   | 15%        | Ridotta da 20%         |
+| Paesi Bassi | 10%        | Ridotta da 20%         |
+| Germania    | 10/15%     | Varia in base al tipo  |
+| Nessun Accordo | 20%   | Aliquota di default    |
 
 ---
 
-## Applicazione dei Benefici del Trattato
+## Applicazione dei Benefici dell'Accordo
+
+Per una guida passo-passo su come richiedere i benefici dell'accordo, vedi [Accordo contro la Doppia Imposizione: Richiesta Benefici](/tax/double-tax-agreement-claiming-benefits).
 
 <InfoCard variant="warning" title="Certificato Richiesto">
-Per applicare le aliquote del trattato, il destinatario straniero deve fornire:
+Per applicare le aliquote degli accordi, il beneficiario straniero deve fornire:
 
 **Modulo DGT-1** (Certificato di Domicilio)
 
 - Compilato dal non residente
-- Certificato dalla propria autorità fiscale
+- Certificato dall'autorità fiscale del loro paese
 - Fornito al pagatore indonesiano
 - Valido per 12 mesi
 
@@ -198,52 +190,52 @@ Senza DGT-1, si applica la ritenuta standard del 20%!
 
 </InfoCard>
 
-### Processo per i Benefici del Trattato
+### Procedura per i Benefici dell'Accordo
 
 <Checklist
-  title="Applicazione Aliquota Trattato"
-  description="Passaggi per applicare l'aliquota ridotta"
+  title="Richiesta Aliquota Accordo"
+  description="Passaggi per richiedere l'aliquota ridotta"
   persistKey="treaty-checklist"
   items={[
     {
       id: "dgt1",
-      label: "Ottieni il Modulo DGT-1",
+      label: "Ottenere il Modulo DGT-1",
       description: "Dall'ufficio fiscale indonesiano o online",
       required: true,
       category: "documentation",
     },
     {
       id: "complete",
-      label: "Compila il modulo",
-      description: "Il non residente inserisce i dettagli",
+      label: "Compilare il modulo",
+      description: "Il non residente compila i dettagli",
       required: true,
       category: "documentation",
     },
     {
       id: "certify",
-      label: "Certifica dall'autorità fiscale",
-      description: "Timbro dell'ufficio fiscale del paese d'origine",
+      label: "Certificare dall'autorità fiscale del paese d'origine",
+      description: "L'ufficio fiscale del paese d'origine timbra",
       required: true,
       category: "certification",
     },
     {
       id: "provide",
-      label: "Fornisci al pagatore indonesiano",
-      description: "Prima che venga effettuato il pagamento",
+      label: "Fornire al pagatore indonesiano",
+      description: "Prima dell'effettuazione del pagamento",
       required: true,
       category: "process",
     },
     {
       id: "apply",
-      label: "Il pagatore applica l'aliquota",
-      description: "Trattiene all'aliquota ridotta",
+      label: "Il pagatore applica l'aliquota dell'accordo",
+      description: "Ritenuta all'aliquota ridotta",
       required: true,
       category: "process",
     },
     {
       id: "report",
-      label: "Riporta nella dichiarazione",
-      description: "Includi nella PPh 26 mensile",
+      label: "Segnalare nella dichiarazione dei redditi",
+      description: "Includere nel PPh 26 mensile",
       required: true,
       category: "compliance",
     },
@@ -259,65 +251,63 @@ Senza DGT-1, si applica la ritenuta standard del 20%!
 
 ---
 
-## Disposizioni Chiave dei Trattati
+## Disposizioni Chiave degli Accordi
 
-### Stabile Organizzazione
+### Stabilimento Fisso
 
-I trattati fiscali definiscono quando una società straniera crea una **Stabile Organizzazione (PE)** in Indonesia:
+Gli accordi fiscali definiscono quando un'azienda straniera crea uno **Stabilimento Fisso (PE)** in Indonesia:
 
-| Crea una PE                  | Non Crea una PE                 |
-| ---------------------------- | ------------------------------- |
-| Ufficio/filiale              | Ufficio di rappresentanza (lim) |
-| Fabbrica                     | Magazzino (solo stoccaggio)     |
-| Costruzione > 6 mesi         | Progetti a breve termine        |
-| Agente dipendente            | Agente indipendente             |
-| Prestazione servizi > 3 mesi | Brevi visite di consulenza      |
+| Crea PE                  | Non Crea PE               |
+| ------------------------ | ------------------------- |
+| Ufficio/sede             | Ufficio di rappresentanza (limitato) |
+| Fabbrica                 | Magazzino (solo stoccaggio) |
+| Costruzione 6+ mesi      | Progetti a breve termine   |
+| Agente dipendente        | Agente indipendente        |
+| Fornitura servizi 3+ mesi | Visite di consulenza brevi |
 
-<InfoCard variant="warning" title="Conseguenze PE">
+<InfoCard variant="warning" title="Conseguenze dello Stabilimento Fisso">
 
-  Creare una PE significa: - L'Indonesia può tassare i profitti aziendali -
-  Obbligo di dichiarazione dei redditi societari - Obblighi di conformità locali
-  - Potenziali requisiti di registrazione
+  Creare un PE significa: - L'Indonesia può tassare i profitti aziendali - Obbligo di dichiarazione delle imposte societarie - Obblighi di conformità locali - Possibili requisiti di registrazione
 </InfoCard>
 
 ---
 
-### Reddito da Lavoro Dipendente
+### Redditi da Lavoro
 
-Per le persone fisiche che lavorano in Indonesia:
+Per gli individui che lavorano in Indonesia:
 
-| Scenario                         | Diritti di Tassazione             |
-| -------------------------------- | --------------------------------- |
-| Lavoro in Indonesia              | Tassa l'Indonesia                 |
-| Brevi visite (&lt;183 giorni)       | Può essere esente se ok requisiti |
-| Datore di lavoro fuori Indonesia | Si applicano le regole DTA        |
-| Direttore società indonesiana    | Tassa sempre l'Indonesia          |
+| Scenario                       | Diritti di Tassazione                   |
+| ------------------------------ | ---------------------------------------- |
+| Lavorare in Indonesia          | L'Indonesia tassa                       |
+| Visite brevi (&lt;183 giorni)       | Potrebbero essere esenti se soddisfatte le condizioni |
+| Datore di lavoro all'estero    | Si applicano le regole dell'accordo     |
+| Amministratore delegato azienda indonesiana | L'Indonesia tassa sempre           |
 
 ### Esenzione per Soggiorni Brevi
 
-Generalmente esenti dalle tasse indonesiane se **tutti i requisiti sono soddisfatti**:
+Generalmente esente dalle imposte indonesiane se **tutte le condizioni sono soddisfatte**:
 
-1. Presenza inferiore a 183 giorni in un periodo di 12 mesi
-2. Pagato da un datore di lavoro non indonesiano
-3. Non a carico di una PE indonesiana
+1. Presente meno di 183 giorni in un periodo di 12 mesi
+2. Pagato da datore di lavoro non indonesiano
+3. Non sostenuto da uno stabilimento fisso indonesiano
 
 ---
 
-## Metodi di Sgravio
+## Metodi di Sollievo
 
-### Come viene Alleviata la Doppia Imposizione
+### Come viene Eliminata la Doppia Imposizione
 
 <ComparisonTable
-  title="Metodi di Sgravio"
-  description="Come i trattati prevengono la doppia tassazione"
+  title="Metodi di Sollievo"
+  description="Come gli accordi prevengono la doppia imposizione"
   items={[
     {
       name: "Metodo del Credito",
-      subtitle: "Il più comune",
+      subtitle: "Più comune",
       values: {
-        Come: "Imposta estera accreditata contro imposta nazionale",
-        Risultato: "Si paga la più alta delle due aliquote",
-        "Usato da": "Indonesia (per i residenti)",
+        Come: "Imposta estera accreditata contro l'imposta nazionale",
+        Risultato: "Pagare il tasso più alto dei due",
+        "Utilizzato Da": "Indonesia (per i residenti)",
       },
     },
     {
@@ -326,7 +316,7 @@ Generalmente esenti dalle tasse indonesiane se **tutti i requisiti sono soddisfa
       values: {
         Come: "Reddito esente in un paese",
         Risultato: "Tassato una sola volta",
-        "Usato da": "Alcuni paesi",
+        "Utilizzato Da": "Alcuni paesi",
       },
     },
     {
@@ -334,8 +324,8 @@ Generalmente esenti dalle tasse indonesiane se **tutti i requisiti sono soddisfa
       subtitle: "Meno favorevole",
       values: {
         Come: "Imposta estera come spesa",
-        Risultato: "Sgravio parziale",
-        "Usato da": "Raramente",
+        Risultato: "Sollievo parziale",
+        "Utilizzato Da": "Raramente",
       },
     },
   ]}
@@ -345,27 +335,27 @@ Generalmente esenti dalle tasse indonesiane se **tutti i requisiti sono soddisfa
 
 ## Per i Residenti Indonesiani
 
-Se sei un residente fiscale indonesiano che riceve reddito dall'estero:
+Se siete un residente fiscale indonesiano che riceve redditi esteri:
 
-### Come Richiedere il Credito d'Imposta Estero
+### Come Richiedere il Credito per Imposta Estera
 
-1. Paga l'imposta estera nel paese di fonte
-2. Includi il reddito nella dichiarazione indonesiana
-3. Richiedi il credito per l'imposta estera pagata
-4. Credito limitato all'imposta indonesiana su quel reddito
-5. Fornisci la prova del pagamento dell'imposta estera
+1. Pagare l'imposta estera nel paese di origine
+2. Includere il reddito nella dichiarazione indonesiana
+3. Richiedere il credito per l'imposta estera pagata
+4. Il credito è limitato all'imposta indonesiana su quel reddito
+5. Fornire prova del pagamento dell'imposta estera
 
 ---
 
-## Paesi del Trattato
+## Paesi degli Accordi
 
-L'Indonesia ha trattati fiscali completi con:
+L'Indonesia ha accordi fiscali completi con:
 
-### Principali Partner del Trattato
+### Principali Partner degli Accordi
 
 **Asia-Pacifico:** Australia, Cina, Giappone, Corea del Sud, Singapore, Malesia, Hong Kong, India, Nuova Zelanda, Thailandia, Filippine, Vietnam
 
-**Europa:** Italia, Regno Unito, Germania, Paesi Bassi, Francia, Spagna, Belgio, Svizzera, Austria, Svezia, Norvegia, Danimarca, Polonia
+**Europa:** Regno Unito, Germania, Paesi Bassi, Francia, Italia, Spagna, Belgio, Svizzera, Austria, Svezia, Norvegia, Danimarca, Polonia
 
 **Americhe:** USA, Canada, Messico
 
@@ -377,26 +367,26 @@ L'Indonesia ha trattati fiscali completi con:
 
 ## Problemi Comuni
 
-| Problema             | Impatto                   |
-| -------------------- | ------------------------- |
-| Nessun DGT-1 fornito | Si applica l'aliquota 20% |
-| DGT-1 scaduto        | Si applica l'aliquota 20% |
-| Modulo errato        | Può essere rifiutato      |
-| Treaty shopping      | Può essere contestato     |
-| Aliquote errate      | Rischio di audit          |
+| Problema             | Impatto            |
+| --------------------- | ------------------ |
+| DGT-1 non fornito     | Si applica l'aliquota del 20% |
+| DGT-1 scaduto         | Si applica l'aliquota del 20% |
+| Modulo errato         | Potrebbe essere rifiutato   |
+| Shopping fiscale      | Potrebbe essere sfidato    |
+| Aliquote mal applicate | Rischio di audit     |
 
 ---
 
-## Domande Frequenti
+## Domande Comuni
 
 <AskZantara
-  context="Trattato contro le doppie imposizioni, trattato fiscale Indonesia, DTA, riduzione ritenuta d'acconto"
-  placeholder="Chiedi sui trattati fiscali..."
+  context="Accordo contro la doppia imposizione, accordo fiscale Indonesia, DTA, riduzione ritenuta alla fonte"
+  placeholder="Chiedi sugli accordi fiscali..."
   suggestedQuestions={[
     "Come ottengo il modulo DGT-1?",
-    "Qual è l'aliquota del trattato con l'Italia?",
-    "Posso richiedere il credito d'imposta estero?",
-    "L'Indonesia ha un trattato con il mio paese?",
+    "Qual è l'aliquota dell'accordo con Singapore?",
+    "Posso richiedere il credito per imposta estera?",
+    "L'Indonesia ha un accordo con il mio paese?",
   ]}
 />
 
@@ -404,6 +394,6 @@ L'Indonesia ha trattati fiscali completi con:
 
 ## Articoli Correlati
 
-- [Guida alla Ritenuta d'Acconto](/insights/tax-legal/withholding-tax-guide)
-- [Guida all'Imposta sul Reddito delle Persone Fisiche](/taxes/pph-21-expat-guide?lang=it)
+- [Guida alla Ritenuta alla Fonte](/insights/tax-legal/withholding-tax-guide)
+- [Guida alle Imposte sul Reddito Personale](/taxes/pph-21-expat-guide)
 - [Imposta sul Reddito delle Società](/insights/tax-legal/corporate-income-tax)

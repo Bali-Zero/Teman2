@@ -70,58 +70,58 @@ canonicalUrl: "https://balizero.com/tax/withholding-tax-guide"
 ogImage: "/static/insights/tax/withholding-tax.jpg"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "31e686ad38b4693769c373aafa837a979344a3b04fe44dfdfbb2ede525f09adf"
+source_sha256: "ec8ff8220c1e1c981bbc6cadcd49a0c3ff69cc754b824a3c08b3daffb5ae7755"
 ---
 
-# Pajak Penghasilan (PPh) Tahap Final 2026: Panduan Lengkap
+# Pajak Penghasilan Indonesia 2026: Panduan Lengkap PPh
 
-Indonesia menggunakan sistem pajak penghasilan (PPh) yang luas. Sebagai bisnis, Anda seringkali diwajibkan untuk memotong dan menyetorkan pajak atas berbagai pembayaran.
+Indonesia menggunakan sistem pemotongan pajak yang ekstensif. Sebagai bisnis, Anda sering kali diwajibkan memotong dan menyetor pajak atas berbagai pembayaran.
 
-## Ikhtisar PPh Tahap Final
+## Gambaran Umum Pajak Pemotongan
 
 <ComparisonTable
-  title="Jenis Pajak Penghasilan Tahap Final"
-  description="Kategori utama PPh tahap final"
+  title="Jenis-Jenis Pajak Pemotongan"
+  description="Kategori utama pemotongan PPh"
   items={[
     {
       name: "PPh 21",
-      subtitle: "Pendapatan kerja",
+      subtitle: "Penghasilan kerja",
       values: {
         On: "Gaji, upah, honorarium",
         Rate: "Progresif 5-35%",
         Remit: "Bulanan",
-        Deadline: "10 tanggal bulan berikutnya",
+        Deadline: "Tanggal 10 bulan berikutnya",
       },
       highlight: true,
     },
     {
       name: "PPh 23",
-      subtitle: "Jasa & royalti",
+      subtitle: "Layanan & royalti",
       values: {
-        On: "Jasa, dividen, bunga",
+        On: "Layanan, dividen, bunga",
         Rate: "2-15%",
         Remit: "Bulanan",
-        Deadline: "10 tanggal bulan berikutnya",
+        Deadline: "Tanggal 10 bulan berikutnya",
       },
     },
     {
       name: "PPh 26",
       subtitle: "Pembayaran ke luar negeri",
       values: {
-        On: "Pembayaran kepada non-residen",
+        On: "Pembayaran kepada non-tetap",
         Rate: "20% (atau tarif perjanjian)",
         Remit: "Bulanan",
-        Deadline: "10 tanggal bulan berikutnya",
+        Deadline: "Tanggal 10 bulan berikutnya",
       },
     },
     {
       name: "PPh 4(2)",
-      subtitle: "Pajak akhir",
+      subtitle: "Pajak final",
       values: {
         On: "Sewa, konstruksi, dll.",
-        Rate: "Berbagai (akhir)",
+        Rate: "Berbagai (final)",
         Remit: "Bulanan",
-        Deadline: "10 tanggal bulan berikutnya",
+        Deadline: "Tanggal 10 bulan berikutnya",
       },
     },
   ]}
@@ -129,42 +129,42 @@ Indonesia menggunakan sistem pajak penghasilan (PPh) yang luas. Sebagai bisnis, 
 
 ---
 
-## PPh 21: Pajak Penghasilan Karyawan
+## PPh 21: Pajak Penghasilan Kerja
 
 ### Apa itu PPh 21?
 
-<InfoCard variant="note" title="Pemotongan Penghasilan Karyawan">
+<InfoCard variant="note" title="Pemotongan Karyawan">
 **PPh 21** adalah pajak penghasilan yang dipotong dari kompensasi karyawan:
 
 - Gaji dan upah
 - Bonus dan tunjangan
 - Pembayaran pesangon
-- Biaya direktur
-- Biaya konsultan (individu)
+- Honorarium direktur
+- Honorarium konsultan (perorangan)
 
-Pemberi kerja memotong dan menyetorkan ke kantor pajak.
+Pengusaha memotong dan menyetorkan ke kantor pajak.
 
 </InfoCard>
 
 ### Tarif PPh 21 (Progresif)
 
-| Pendapatan Kena Pajak (IDR/tahun) | Tarif |
-| --------------------------------- | ----- |
-| 0 - 60 juta                       | 5%    |
-| 60 juta - 250 juta                | 15%   |
-| 250 juta - 500 juta               | 25%   |
-| 500 juta - 5 miliar               | 30%   |
-| Lebih dari 5 miliar               | 35%   |
+| Penghasilan Kena Pajak (IDR/tahun) | Tarif |
+| ------------------------- | ---- |
+| 0 - 60 juta               | 5%   |
+| 60 Juta - 250 juta        | 15%  |
+| 250 Juta - 500 juta       | 25%  |
+| 500 Juta - 5 miliar       | 30%  |
+| Di atas 5 miliar          | 35%  |
 
 ### Kalkulator PPh 21
 
 <Calculator
-  title="Estimasi PPh 21 Bulanan"
-  description="Estimasi pemotongan penghasilan karyawan bulanan"
+  title="Estimasi Bulanan PPh 21"
+  description="Estimasi pemotongan karyawan bulanan"
   fields={[
     {
       id: "gross",
-      label: "Gaji Kotor Bulanan (IDR)",
+      label: "Gaji Kasar Bulanan (IDR)",
       type: "number",
       defaultValue: 25000000,
       min: 0,
@@ -176,8 +176,8 @@ Pemberi kerja memotong dan menyetorkan ke kantor pajak.
       label: "Status Perkawinan",
       type: "select",
       options: [
-        { value: "tk0", label: "Lajang, tidak memiliki tanggungan (TK/0)" },
-        { value: "k0", label: "Menikah, tidak memiliki anak (K/0)" },
+        { value: "tk0", label: "Lajang, tidak ada tanggungan (TK/0)" },
+        { value: "k0", label: "Menikah, tidak punya anak (K/0)" },
         { value: "k1", label: "Menikah, 1 anak (K/1)" },
         { value: "k2", label: "Menikah, 2 anak (K/2)" },
         { value: "k3", label: "Menikah, 3 anak (K/3)" }
@@ -189,7 +189,7 @@ Pemberi kerja memotong dan menyetorkan ke kantor pajak.
     const monthly = Number(values.gross);
     const annual = monthly * 12;
 
-    // PTKP (Penghasilan Tidak Kena Pajak) untuk 2024
+    // PTKP (Penghasilan tidak kena pajak) untuk 2024
     const ptkp = {
       "tk0": 54000000,
       "k0": 58500000,
@@ -198,10 +198,10 @@ Pemberi kerja memotong dan menyetorkan ke kantor pajak.
       "k3": 72000000
     };
 
-    // Biaya Jabatan (maks 5% 6 juta/tahun)
+    // Biaya Jabatan (maksimal 5% atau 6M/tahun)
     const biayaJabatan = Math.min(annual * 0.05, 6000000);
 
-    // Pendapatan Kena Pajak
+    // Penghasilan kena pajak
     const taxable = Math.max(0, annual - biayaJabatan - ptkp[values.status]);
 
     // Perhitungan pajak progresif
@@ -237,10 +237,10 @@ Pemberi kerja memotong dan menyetorkan ke kantor pajak.
     return {
       total: Math.round(monthlyTax),
       breakdown: [
-        { label: "Tahunan Kotor", amount: annual },
+        { label: "Gaji Tahunan", amount: annual },
         { label: "Biaya Jabatan", amount: biayaJabatan },
         { label: "PTKP", amount: ptkp[values.status] },
-        { label: "Pendapatan Kena Pajak", amount: Math.max(0, taxable) },
+        { label: "Penghasilan Kena Pajak", amount: Math.max(0, taxable) },
         { label: "PPh 21 Tahunan", amount: Math.round(tax) },
         { label: "PPh 21 Bulanan", amount: Math.round(monthlyTax) }
       ],
@@ -253,21 +253,21 @@ Pemberi kerja memotong dan menyetorkan ke kantor pajak.
 
 ---
 
-## PPh 23: Pajak Jasa & Royalti
+## PPh 23: Pajak Layanan & Royalti
 
 ### Tarif PPh 23
 
-| Jenis Pembayaran | Tarif |
-| ---------------- | ----- |
-| Dividen          | 15%   |
-| Bunga            | 15%   |
-| Royalti          | 15%   |
-| Jasa teknis      | 2%    |
-| Jasa manajemen   | 2%    |
-| Jasa konsultan   | 2%    |
-| Jasa lainnya     | 2%    |
+| Jenis Pembayaran        | Tarif |
+| ----------------------- | ----- |
+| Dividen                 | 15%   |
+| Bunga                   | 15%   |
+| Royalti                 | 15%   |
+| Jasa teknis             | 2%    |
+| Jasa manajemen          | 2%    |
+| Jasa konsultan          | 2%    |
+| Layanan lainnya         | 2%    |
 
-### Kapan Memotong PPh 23
+### Kapan Harus Memotong PPh 23
 
 <Checklist
   title="PPh 23 Berlaku Untuk"
@@ -276,8 +276,8 @@ Pemberi kerja memotong dan menyetorkan ke kantor pajak.
   items={[
     {
       id: "tech-services",
-      label: "Jasa/konsultasi teknis",
-      description: "Kepada perusahaan/individu Indonesia",
+      label: "Jasa teknis/konsultasi",
+      description: "Kepada perusahaan/perorangan Indonesia",
       required: false,
       category: "services",
     },
@@ -305,7 +305,7 @@ Pemberi kerja memotong dan menyetorkan ke kantor pajak.
     {
       id: "management",
       label: "Biaya manajemen",
-      description: "Jasa antar perusahaan",
+      description: "Layanan antar perusahaan",
       required: false,
       category: "services",
     },
@@ -318,69 +318,70 @@ Pemberi kerja memotong dan menyetorkan ke kantor pajak.
     },
   ]}
   categories={[
-    { id: "services", label: "Jasa (2%)", color: "blue" },
-    { id: "passive", label: "Pendapatan Pasif (15%)", color: "amber" },
+    { id: "services", label: "Layanan (2%)", color: "blue" },
+    { id: "passive", label: "Penghasilan Pasif (15%)", color: "amber" },
   ]}
   showProgress={false}
 />
 
 ---
 
-## PPh 26: Pajak Non-Residen
+## PPh 26: Pajak Non-Tetap
 
 ### Apa itu PPh 26?
 
-<InfoCard variant="warning" title="Pembayaran Kepada Orang Asing">
-**PPh 26** berlaku untuk pembayaran kepada **non-residen** (orang atau badan hukum asing):
+<InfoCard variant="warning" title="Pembayaran ke Orang Asing">
+**PPh 26** berlaku untuk pembayaran yang dilakukan kepada **non-tetap** (orang asing atau entitas):
 
 - Tarif standar: **20%**
 - Dapat dikurangi oleh **perjanjian pajak**
-- Berlaku untuk: jasa, dividen, bunga, royalti
+- Berlaku untuk: layanan, dividen, bunga, royalti
 - Dipotong oleh pembayar Indonesia
+
 </InfoCard>
 
-### Tarif Perjanjian Pajak yang Umum
+### Tarif Perjanjian Umum
 
-| Negara           | Jasa | Dividen | Bunga | Royalti |
-| ---------------- | ---- | ------- | ----- | ------- |
-| Singapura        | 15%  | 10/15%  | 10%   | 15%     |
-| AS               | 15%  | 10/15%  | 10%   | 10%     |
-| Inggris          | 15%  | 10/15%  | 10%   | 15%     |
-| Australia        | 15%  | 15%     | 10%   | 15%     |
-| Jepang           | 15%  | 10/15%  | 10%   | 10%     |
-| Tanpa perjanjian | 20%  | 20%     | 20%   | 20%     |
+| Negara   | Layanan | Dividen | Bunga | Royalti |
+| --------- | -------- | ------- | ----- | ------- |
+| Singapore | 15%      | 10/15%  | 10%   | 15%     |
+| USA       | 15%      | 10/15%  | 10%   | 10%     |
+| UK        | 15%      | 10/15%  | 10%   | 15%     |
+| Australia | 15%      | 15%     | 10%   | 15%     |
+| Jepang    | 15%      | 10/15%  | 10%   | 10%     |
+| Tidak ada perjanjian | 20%      | 20%     | 20%   | 20%     |
 
-### Sertifikat Tempat Tinggal (SKD)
+### Surat Keterangan Domisili (SKD)
 
 Untuk menerapkan tarif perjanjian, penerima asing harus menyediakan:
 
-- **Formulir DGT-1** (Sertifikat Tempat Tinggal)
+- **Formulir DGT-1** (Surat Keterangan Domisili)
 - Diisi oleh penerima
-- Disertifikasi oleh otoritas pajak
+- Disahkan oleh otoritas pajak
 - Berlaku selama 12 bulan
 
 ---
 
-## PPh 4(2): Pajak Akhir
+## PPh 4(2): Pajak Final
 
-### Tarif Pajak Akhir
+### Tarif Pajak Final
 
-| Transaksi                | Tarif | Catatan                 |
-| ------------------------ | ----- | ----------------------- |
-| Sewa tanah/bangunan      | 10%   | Final                   |
-| Jasa konstruksi          | 2-4%  | Berdasarkan sertifikasi |
-| Penjualan tanah/bangunan | 2,5%  | Final                   |
-| Dividen kepada individu  | 10%   | Final                   |
-| Bunga bank               | 20%   | Final                   |
-| Hadiah lotre             | 25%   | Final                   |
+| Transaksi               | Tarif | Catatan                  |
+| ----------------------- | ----- | ------------------------ |
+| Sewa tanah/bangunan     | 10%   | Final                    |
+| Jasa konstruksi         | 2-4%  | Berdasarkan sertifikasi  |
+| Penjualan tanah/bangunan| 2,5%  | Final                    |
+| Dividen ke perorangan   | 10%   | Final                    |
+| Bunga bank              | 20%   | Final                    |
+| Hadiah lotre            | 25%   | Final                    |
 
 ### Detail Jasa Konstruksi
 
-| Jenis Kontraktor            | Tarif |
-| --------------------------- | ----- |
-| Sertifikasi besar           | 2%    |
-| Sertifikasi sedang          | 3%    |
-| Sertifikasi kecil/tidak ada | 4%    |
+| Jenis Kontraktor        | Tarif |
+| ----------------------- | ----- |
+| Sertifikasi besar       | 2%    |
+| Sertifikasi menengah    | 3%    |
+| Tidak ada sertifikasi   | 4%    |
 
 ---
 
@@ -389,38 +390,38 @@ Untuk menerapkan tarif perjanjian, penerima asing harus menyediakan:
 ### Kewajiban Bulanan
 
 <ComparisonTable
-  title="Batas Waktu Pajak Penghasilan"
+  title="Jatuh Tempo Pajak Pemotongan"
   description="Kalender kepatuhan bulanan"
   items={[
     {
       name: "PPh 21",
       values: {
-        Payment: "10 tanggal bulan berikutnya",
-        Reporting: "20 tanggal bulan berikutnya",
+        Payment: "Tanggal 10 bulan berikutnya",
+        Reporting: "Tanggal 20 bulan berikutnya",
         Form: "SPT Masa PPh 21",
       },
     },
     {
       name: "PPh 23",
       values: {
-        Payment: "10 tanggal bulan berikutnya",
-        Reporting: "20 tanggal bulan berikutnya",
+        Payment: "Tanggal 10 bulan berikutnya",
+        Reporting: "Tanggal 20 bulan berikutnya",
         Form: "SPT Masa PPh 23/26",
       },
     },
     {
       name: "PPh 26",
       values: {
-        Payment: "10 tanggal bulan berikutnya",
-        Reporting: "20 tanggal bulan berikutnya",
+        Payment: "Tanggal 10 bulan berikutnya",
+        Reporting: "Tanggal 20 bulan berikutnya",
         Form: "SPT Masa PPh 23/26",
       },
     },
     {
       name: "PPh 4(2)",
       values: {
-        Payment: "10 tanggal bulan berikutnya",
-        Reporting: "20 tanggal bulan berikutnya",
+        Payment: "Tanggal 10 bulan berikutnya",
+        Reporting: "Tanggal 20 bulan berikutnya",
         Form: "SPT Masa PPh 4(2)",
       },
     },
@@ -429,14 +430,14 @@ Untuk menerapkan tarif perjanjian, penerima asing harus menyediakan:
 
 ---
 
-## Bukti Potong
+## Sertifikat Pemotongan
 
-### Memberikan Kepada Penerima
+### Diberikan kepada Penerima
 
-Saat Anda memotong pajak, Anda harus memberikan **Bukti Potong**:
+Ketika Anda memotong pajak, Anda harus memberikan **Bukti Potong** (sertifikat pemotongan):
 
-| Jenis Pajak | Bukti Potong            |
-| ----------- | ----------------------- |
+| Jenis Pajak | Sertifikat               |
+| ----------- | ------------------------ |
 | PPh 21      | Bukti Potong 1721-A1/A2 |
 | PPh 23      | Bukti Potong PPh 23     |
 | PPh 26      | Bukti Potong PPh 26     |
@@ -445,44 +446,44 @@ Saat Anda memotong pajak, Anda harus memberikan **Bukti Potong**:
 Penerima menggunakan ini untuk:
 
 - Mengklaim kredit pajak
-- Mengajukan pengembalian pajak mereka
+- Melaporkan SPT mereka sendiri
 - Mendukung pengurangan biaya
 
 ---
 
 ## Kesalahan Umum
 
-| Kesalahan                    | Dampak                                   |
-| ---------------------------- | ---------------------------------------- |
-| Pemotongan kurang            | Denda keterlambatan + bunga              |
-| Tarif salah diterapkan       | Kelebihan/kekurangan pembayaran          |
-| Tidak memberikan sertifikat  | Masalah bagi penerima                    |
-| Formalitas perjanjian kurang | Tarif 20% berlaku bukan tarif perjanjian |
-| NPWP salah                   | Masalah sertifikat                       |
+| Kesalahan                    | Dampak                             |
+| ---------------------------- | ---------------------------------- |
+| Lupa memotong                | Sanksi keterlambatan + bunga       |
+| Tarif yang salah diterapkan  | Pembayaran kurang/lebih            |
+| Tidak memberikan sertifikat  | Masalah bagi penerima              |
+| Formalitas perjanjian hilang | Tarif 20% berlaku, bukan tarif perjanjian |
+| NPWP tidak benar             | Masalah sertifikat                 |
 
 ---
 
 ## Sanksi
 
-| Pelanggaran                  | Sanksi              |
-| ---------------------------- | ------------------- |
-| Keterlambatan pembayaran     | 2% per bulan        |
-| Keterlambatan pelaporan      | IDR 100K-1M per SPT |
-| Tidak memotong               | Pajak + denda 100%  |
-| Tidak menerbitkan sertifikat | Denda administrasi  |
+| Pelanggaran                | Sanksi                |
+| -------------------------- | --------------------- |
+| Keterlambatan pembayaran   | 2% per bulan          |
+| Keterlambatan pelaporan    | IDR 100K-1M per laporan |
+| Tidak memotong             | Pajak + sanksi 100%   |
+| Keterlambatan penerbitan sertifikat | Sanksi administratif |
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="pajak penghasilan tahap final Indonesia, PPh 21, PPh 23, PPh 26, PPh 4(2), kepatuhan pajak"
-  placeholder="Tanyakan tentang pajak penghasilan..."
+  context="Pajak pemotongan Indonesia, PPh 21, PPh 23, PPh 26, PPh 4(2), kepatuhan pajak"
+  placeholder="Tanyakan tentang pajak pemotongan..."
   suggestedQuestions={[
-    "Kapan saya harus memotong PPh 23?",
+    "Kapan saya perlu memotong PPh 23?",
     "Bagaimana cara menerapkan tarif perjanjian pajak?",
-    "Apa batas waktu PPh 21?",
-    "Apakah sewa dikenakan PPh?",
+    "Berapa batas waktu untuk PPh 21?",
+    "Apakah sewa dikenai pemotongan?",
   ]}
 />
 
@@ -490,6 +491,6 @@ Penerima menggunakan ini untuk:
 
 ## Artikel Terkait
 
-- [Pajak Penghasilan Badan](/taxes/corporate-income-tax?lang=id)
-- [Panduan Pajak Penghasilan Pribadi](/taxes/pph-21-expat-guide?lang=id)
-- [Panduan PPN](/taxes/vat-ppn-guide?lang=id)
+- [Pajak Penghasilan Badan](/insights/tax-legal/corporate-income-tax)
+- [Panduan Pajak Penghasilan Perorangan](/taxes/pph-21-expat-guide)
+- [Panduan PPN (VAT)](/insights/tax-legal/vat-ppn-guide)

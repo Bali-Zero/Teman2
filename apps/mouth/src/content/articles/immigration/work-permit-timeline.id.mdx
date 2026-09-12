@@ -74,130 +74,122 @@ contentStructure:
 canonicalUrl: "https://balizero.com/id/immigration/work-permit-timeline"
 ogImage: "/static/insights/immigration/timeline.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "b47ef72391877738ee3cb0bd833b4e9ccae96df4b7e7b1bf4e9b0c5f88b9faf5"
+source_sha256: "ae3f76ba2a4364b155bc0175b301cc96923a0b02abdb6a026e189f4f48e7b04b"
 ---
 
-import {
-  JourneyMap,
-  ComparisonTable,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Waktu Pemrosesan Izin Kerja di Indonesia 2026
 
-# Linimasa Pemrosesan Izin Kerja di Indonesia 2026
+Perencanaan sangat penting. Berikut adalah garis waktu realistis untuk mendapatkan izin kerja Anda di Indonesia.
 
-Perencanaan sangatlah penting. Berikut adalah linimasa realistis untuk mendapatkan izin kerja Anda di Indonesia.
+## Gambaran Singkat
 
-## Ringkasan Cepat
-
-| Tahapan           | Durasi         | Kumulatif  |
-| ----------------- | -------------- | ---------- |
-| Persetujuan RPTKA | 5-14 hari      | 2 minggu   |
-| Notifikasi        | 1-3 hari       | 2,5 minggu |
-| VITAS             | 3-5 hari       | 3 minggu   |
-| Masuk + KITAS     | 5-7 hari       | 4 minggu   |
-| SKTT/Pelaporan    | 7-14 hari      | 5-6 minggu |
-| **Total**         | **4-6 minggu** | —          |
+| Tahap          | Durasi         | Kumulatif   |
+| -------------- | -------------- | ----------- |
+| Persetujuan RPTKA | 5-14 hari      | 2 minggu    |
+| Notifikasi     | 1-3 hari       | 2,5 minggu  |
+| VITAS          | 3-5 hari       | 3 minggu    |
+| Kedatangan + KITAS | 5-7 hari      | 4 minggu    |
+| SKTT/Laporan   | 7-14 hari      | 5-6 minggu  |
+| **Total**      | **4-6 minggu** | —           |
 
 <InfoCard variant="warning" title="Rencanakan Lebih Lama">
 
-  Meskipun proses BISA memakan waktu 4 minggu, **rencanakan untuk 6-8 minggu**
-  untuk mengantisipasi: - Dokumen tidak lengkap - Penundaan sistem - Hari libur
-  nasional - Masalah verifikasi perusahaan
+  Meskipun prosesnya BISA memakan waktu 4 minggu, **rencanakan untuk 6-8 minggu** untuk mengakomodasi: -
+  Dokumen tidak lengkap - Keterlambatan sistem - Libur nasional - Masalah verifikasi perusahaan
 </InfoCard>
 
 ---
 
-## Linimasa Detail
+## Garis Waktu Detail
 
 <JourneyMap
-  title="Linimasa Izin Kerja"
-  description="Rincian minggu demi minggu"
+  title="Garis Waktu Izin Kerja"
+  description="Rincian mingguan"
   estimatedTotal="4-8 minggu"
   steps={[
     {
       id: "prep",
-      title: "Penyiapan Dokumen",
+      title: "Persiapan Dokumen",
       description: "Kumpulkan dan siapkan semua dokumen",
-      duration: "1-2 minggu sebelum",
+      duration: "1-2 minggu sebelumnya",
       status: "required",
       tips: [
         "Mulai mengumpulkan dokumen lebih awal",
-        "Legalisasi dokumen asing",
-        "Dapatkan terjemahan jika perlu",
-        "Siapkan pas foto",
+        "Legalisir dokumen luar negeri",
+        "Dapatkan terjemahan jika diperlukan",
+        "Siapkan foto paspor",
       ],
     },
     {
       id: "rptka",
       title: "Aplikasi RPTKA",
-      description: "Pemberi kerja mengajukan rencana tenaga kerja asing",
+      description: "Pemberi kerja mengajukan rencana pekerja asing",
       duration: "Minggu 1-2",
       status: "required",
       tips: [
         "Pemberi kerja harus mengajukan",
         "5-14 hari untuk persetujuan",
         "Bayar biaya DKP-TKA",
-        "Mungkin perlu klarifikasi",
+        "Mungkin memerlukan klarifikasi",
       ],
     },
     {
       id: "notif",
-      title: "Notifikasi Terbit",
-      description: "Notifikasi izin kerja dihasilkan",
+      title: "Notifikasi Diterbitkan",
+      description: "Pemberitahuan izin kerja dibuatkan",
       duration: "Minggu 2-3",
       status: "required",
       tips: [
-        "Dihasilkan otomatis setelah RPTKA",
-        "1-3 hari pemrosesan",
+        "Otomatis setelah RPTKA",
+        "Pemrosesan 1-3 hari",
         "Serahkan detail paspor pekerja",
       ],
     },
     {
       id: "vitas",
       title: "Aplikasi VITAS",
-      description: "Mengajukan visa kerja",
+      description: "Ajukan visa kerja",
       duration: "Minggu 3",
       status: "required",
       tips: [
-        "Tinjauan imigrasi",
-        "Tipikal 3-5 hari",
+        "Imigrasi meninjau",
+        "3-5 hari biasanya",
         "Mungkin memerlukan dokumen tambahan",
       ],
     },
     {
       id: "travel",
       title: "Perjalanan ke Indonesia",
-      description: "Masuk ke negara dengan VITAS",
+      description: "Masuk negara dengan VITAS",
       duration: "Minggu 3-4",
       status: "required",
       tips: [
-        "Pesan tiket setelah VITAS disetujui",
+        "Pesan penerbangan setelah VITAS disetujui",
         "Bawa semua dokumen asli",
-        "Masuk melalui pelabuhan yang ditentukan",
+        "Masuk melalui pintu yang ditunjuk",
       ],
     },
     {
       id: "kitas",
       title: "Penerbitan KITAS",
-      description: "Konversi VITAS ke KITAS",
+      description: "Ubah VITAS menjadi KITAS",
       duration: "Minggu 4-5",
       status: "required",
       tips: [
         "Janji temu biometrik",
-        "5-7 hari pemrosesan",
+        "Pemrosesan 5-7 hari",
         "Kartu fisik diterbitkan",
       ],
     },
     {
       id: "sktt",
-      title: "Registrasi Pasca-KITAS",
+      title: "Pendaftaran Pasca-KITAS",
       description: "Persyaratan pelaporan lokal",
       duration: "Minggu 5-6",
       status: "required",
       tips: [
-        "SKTT di kantor polisi/dukcapil",
-        "Lapor ke RT/RW",
+        "SKTT di kantor polisi",
+        "Laporkan ke RT/RW",
         "Selesaikan dalam 14 hari",
       ],
     },
@@ -206,7 +198,7 @@ Perencanaan sangatlah penting. Berikut adalah linimasa realistis untuk mendapatk
 
 ---
 
-## Apa yang Dapat Menunda Aplikasi Anda?
+## Apa Yang Dapat Menunda Aplikasi Anda?
 
 ### Masalah Dokumen (Paling Umum)
 
@@ -215,36 +207,98 @@ Perencanaan sangatlah penting. Berikut adalah linimasa realistis untuk mendapatk
   description="Masalah yang memperlambat pemrosesan"
   items={[
     {
-      name: "Masa berlaku paspor",
+      name: "Kedaluwarsa paspor",
       values: {
-        Masalah: "Tersisa kurang dari 24 bulan",
-        Solusi: "Perbarui paspor terlebih dahulu",
-        Penundaan: "2-4 minggu",
+        Problem: "Sisa kurang dari 24 bulan",
+        Solution: "Perbarui paspor terlebih dahulu",
+        Delay: "2-4 minggu",
       },
       highlight: true,
     },
     {
-      name: "Kurang legalisasi",
+      name: "Legalisasi hilang",
       values: {
-        Masalah: "Dokumen asing tidak diapostille",
-        Solusi: "Dapatkan legalisasi yang tepat",
-        Penundaan: "1-3 minggu",
+        Problem: "Dokumen luar negeri tidak diapostilkan",
+        Solution: "Dapatkan legalisasi yang tepat",
+        Delay: "1-3 minggu",
       },
     },
     {
       name: "Spesifikasi foto",
       values: {
-        Masalah: "Ukuran atau latar belakang salah",
-        Solusi: "Ambil foto ulang",
-        Penundaan: "1-2 hari",
+        Problem: "Ukuran atau latar belakang salah",
+        Solution: "Ambil foto ulang",
+        Delay: "1-2 hari",
       },
     },
     {
       name: "CV tidak lengkap",
       values: {
-        Masalah: "Kurang pengalaman 5 tahun",
-        Solusi: "Dapatkan surat referensi",
-        Penundaan: "1-2 minggu",
+        Problem: "Kurang pengalaman 5 tahun",
+        Solution: "Dapatkan surat referensi",
+        Delay: "1-2 minggu",
+      },
+    },
+  ]}
+/>
+
+### Penundaan Sistem & Waktu
+
+- **Libur nasional** - Tidak ada pemrosesan selama Lebaran, Natal, dll.
+- **Pemeliharaan sistem** - TKA Online kadang mati
+- **Periode volume tinggi** - Lebih lambat saat puncak
+- **Verifikasi perusahaan** - Jika perusahaan belum pernah menggunakan sistem sebelumnya
+
+### Penundaan Pihak Pemberi Kerja
+
+- **Permintaan klarifikasi RPTKA** - Kementerian mungkin mengajukan pertanyaan
+- **Keterlambatan pembayaran** - DKP-TKA harus dibayar untuk melanjutkan
+- **Klasifikasi posisi salah** - Mungkin perlu mendaftar ulang
+- **Dokumen perusahaan hilang** - NIB, NPWP, dll.
+
+---
+
+## Garis Waktu Berdasarkan Situasi
+
+<ComparisonTable
+  title="Skenario Waktu Pemrosesan"
+  description="Garis waktu realistis untuk situasi berbeda"
+  items={[
+    {
+      name: "Kasus Terbaik",
+      subtitle: "Semua sempurna",
+      values: {
+        Preparation: "Dokumen siap",
+        Processing: "3-4 minggu",
+        Total: "4 minggu",
+      },
+    },
+    {
+      name: "Kasus Tipikal",
+      subtitle: "Masalah kecil",
+      values: {
+        Preparation: "1-2 minggu",
+        Processing: "4-5 minggu",
+        Total: "5-7 minggu",
+      },
+      highlight: true,
+    },
+    {
+      name: "Kasus Kompleks",
+      subtitle: "Perusahaan baru, pekerja pertama",
+      values: {
+        Preparation: "2-3 minggu",
+        Processing: "5-6 minggu",
+        Total: "7-9 minggu",
+      },
+    },
+    {
+      name: "Perpanjangan",
+      subtitle: "Perbarui KITAS yang ada",
+      values: {
+        Preparation: "Minimal",
+        Processing: "2-3 minggu",
+        Total: "2-3 minggu",
       },
     },
   ]}
@@ -254,35 +308,41 @@ Perencanaan sangatlah penting. Berikut adalah linimasa realistis untuk mendapatk
 
 ## Tips Perencanaan
 
-<InfoCard variant="tip" title="Mulai Lebih Awal">
-  1. **Mulai 3 bulan sebelum** rencana tanggal mulai 2. **Siapkan dokumen** saat
-  pemberi kerja mengurus RPTKA 3. **Jangan pesan tiket** sampai VITAS disetujui
-  4. **Ajukan perpanjangan** 30 hari sebelum kedaluwarsa
+<InfoCard variant="tip" title="Mulai Dini">
+  1. **Mulai 3 bulan sebelum** tanggal rencana mulai 2. **Siapkan dokumen** saat
+  pemberi kerja menangani RPTKA 3. **Jangan pesan penerbangan** sampai VITAS disetujui 4.
+  **Ajukan perpanjangan** 30 hari sebelum kedaluwarsa
 </InfoCard>
+
+### Batas Waktu Kritis
+
+| Aksi                      | Batas Waktu              |
+| --------------------------- | --------------------- |
+| Aplikasi perpanjangan KITAS | 30 hari sebelum kedaluwarsa |
+| Keluar jika izin ditolak       | Sebelum visa kadaluarsa   |
+| Pendaftaran SKTT           | 14 hari setelah KITAS   |
+| Laporkan perubahan alamat    | 7 hari                   |
 
 ---
 
 ## Bisakah Anda Mempercepatnya?
 
-### Apa yang TIDAK BISA diburu-buru
+### Apa Yang TIDAK BISA Anda Desak
 
-- Tinjauan RPTKA (pemerintah yang menentukan kecepatan)
+- Tinjauan RPTKA (pemerintah menetapkan kecepatan)
 - Waktu pemrosesan sistem
 - Penjadwalan biometrik
 
-### Apa yang BISA Anda Optimalkan
+### Apa Yang BISA Dioptimalkan
 
-- Penyiapan dokumen (mulai lebih awal)
-- Pemilihan agen (berpengalaman = lebih cepat)
+- Persiapan dokumen (mulai lebih awal)
+- Pemilihan agen (pengalaman = lebih cepat)
 - Kesiapan perusahaan (perbarui NIB sebelumnya)
-- Aplikasi lengkap (tidak ada item yang kurang)
+- Aplikasi lengkap (tidak ada item yang hilang)
 
-<InfoCard variant="warning" title="Tidak Ada Layanan Kilat Resmi">
+<InfoCard variant="warning" title="Tidak Ada Layanan Desak Resmi">
 
-  Tidak ada proses izin kerja "express" resmi. Siapa pun yang menjanjikan
-  jaminan jalur cepat harus dipandang dengan skeptis. Agen berpengalaman lebih
-  cepat karena mereka menghindari kesalahan, bukan karena mereka memiliki akses
-  khusus.
+  Tidak ada proses izin kerja "ekspres" resmi. Siapa pun yang menjanjikan percepatan terjamin harus dipandang dengan skeptisisme. Agen berpengalaman lebih cepat karena mereka menghindari kesalahan, bukan karena mereka memiliki akses khusus.
 </InfoCard>
 
 ---
@@ -290,13 +350,13 @@ Perencanaan sangatlah penting. Berikut adalah linimasa realistis untuk mendapatk
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Work permit processing time, KITAS timeline, RPTKA duration, immigration delays"
-  placeholder="Tanya tentang linimasa izin kerja..."
+  context="Waktu pemrosesan izin kerja, garis waktu KITAS, durasi RPTKA, penundaan imigrasi"
+  placeholder="Tanya tentang garis waktu izin kerja..."
   suggestedQuestions={[
-    "Dapatkah saya mulai bekerja saat KITAS sedang diproses?",
-    "Bagaimana jika saya harus mulai mendesak?",
-    "Berapa lama sebelumnya saya harus mengajukan perpanjangan?",
-    "Apa yang terjadi jika pemrosesan memakan waktu terlalu lama?",
+    "Bisakah saya mulai bekerja saat KITAS sedang diproses?",
+    "Bagaimana jika saya perlu memulai secara mendesak?",
+    "Seberapa jauh sebelumnya saya harus mengajukan perpanjangan?",
+    "Apa yang terjadi jika pemrosesan memakan terlalu lama?",
   ]}
 />
 
@@ -304,6 +364,6 @@ Perencanaan sangatlah penting. Berikut adalah linimasa realistis untuk mendapatk
 
 ## Artikel Terkait
 
-- [Panduan KITAS Kerja](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=id)
+- [Panduan Izin Kerja KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
 - [Biaya Izin Kerja](/insights/immigration/work-permit-costs)
-- [Kesalahan Izin Kerja yang Harus Dihindari](/visas/indonesias-work-permit-maze-what-expats-must-know-before-taking-the-job?lang=id)
+- [Kesalahan Izin Kerja Yang Harus Dihindari](/visas/indonesias-work-permit-maze-what-expats-must-know-before-taking-the-job)

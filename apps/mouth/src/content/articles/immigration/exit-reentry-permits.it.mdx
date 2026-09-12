@@ -62,21 +62,14 @@ faq:
     answer: "Il costo governativo per il MERP è solitamente incluso nei pacchetti KITAS o ammonta a circa 1.000.000 - 1.500.000 IDR a seconda della durata."
   - question: "Posso richiedere il permesso di rientro in aeroporto?"
     answer: "Solo in casi di emergenza estrema e non è garantito. È sempre consigliabile ottenerlo presso l'ufficio immigrazione locale prima della partenza."
-source_sha256: "9a4a71fec049c57848add57df19cb8787f4b3c920940ef6e6f77cb7f0e6b1dcb"
+source_sha256: "5bead864857460b5b6f5c281129787e1cbd47b1ea989599b9129b78f5b2d57b7"
 ---
 
-import {
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Permessi di Uscita e Rientro in Indonesia 2026: Guida per Titolari di KITAS
 
-# Permessi di Uscita e Rientro Indonesia 2026: Guida per Titolari di KITAS
+Se possiedi un KITAS e hai bisogno di viaggiare all'estero, dovrai comprendere le regole relative ai permessi di uscita e rientro. Ecco la tua guida.
 
-Se possiedi un KITAS e devi recarti all'estero, è fondamentale comprendere le regole sui permessi di uscita e rientro per evitare l'annullamento involontario del tuo status di residenza.
-
-## Tipi di Permesso
+## Tipi di Permessi
 
 <ComparisonTable
   title="Tipi di Permesso Uscita/Rientro"
@@ -86,10 +79,10 @@ Se possiedi un KITAS e devi recarti all'estero, è fondamentale comprendere le r
       name: "MERP",
       subtitle: "Multiple Exit Re-Entry",
       values: {
-        Viaggi: "Illimitati",
-        Durata: "Pari al KITAS",
-        Costo: "1-1,5M IDR",
-        "Ideale per": "Viaggiatori frequenti",
+        Trips: "Illimitate",
+        Duration: "Corrisponde alla validità del KITAS",
+        Cost: "IDR 1-1.5M",
+        "Best for": "Viaggiatori regolari",
       },
       highlight: true,
     },
@@ -97,20 +90,20 @@ Se possiedi un KITAS e devi recarti all'estero, è fondamentale comprendere le r
       name: "SERP",
       subtitle: "Single Exit Re-Entry",
       values: {
-        Viaggi: "Un solo viaggio",
-        Durata: "Periodo fisso",
-        Costo: "~500K IDR",
-        "Ideale per": "Viaggio singolo",
+        Trips: "Un viaggio",
+        Duration: "Periodo stabilito",
+        Cost: "~IDR 500K",
+        "Best for": "Viaggi occasionali",
       },
     },
     {
       name: "EPO",
       subtitle: "Exit Permit Only",
       values: {
-        Viaggi: "Solo uscita (no rientro)",
-        Durata: "N/A",
-        Costo: "~500K IDR",
-        "Ideale per": "Partenza definitiva",
+        Trips: "Solo uscita (nessun ritorno)",
+        Duration: "N/A",
+        Cost: "~IDR 500K",
+        "Best for": "Abbandono permanente",
       },
     },
   ]}
@@ -122,15 +115,102 @@ Se possiedi un KITAS e devi recarti all'estero, è fondamentale comprendere le r
 
 ### Cos'è il MERP?
 
-<InfoCard variant="note" title="La Scelta più Comune">
-**Il MERP permette di:**
+<InfoCard variant="note" title="Scelta Più Comune">
+**Il MERP permette:**
 
-- Uscire e rientrare in Indonesia quante volte vuoi.
-- Restare valido per l'intera durata del tuo KITAS.
-- Evitare di dover richiedere un permesso per ogni singolo viaggio.
-- È la soluzione più pratica per chi lavora o viaggia spesso.
+- Uscite e rientri illimitati
+- Validità pari a quella del KITAS
+- Nessuna necessità di richiedere ogni viaggio
+- Molto comodo per i viaggiatori d'affari
 
-La maggior parte dei titolari di KITAS ottiene il MERP contestualmente al rilascio del visto.
+La maggior parte dei titolari di KITAS ottiene il MERP fin dall'inizio.
+
+</InfoCard>
+
+### Dettagli del MERP
+
+| Caratteristica       | Dettagli                       |
+| ------------- | ----------------------------- |
+| Validità      | Identica a quella del KITAS        |
+| Viaggi consentiti | Illimitati                     |
+| Richiesta   | Solitamente con l'elaborazione del KITAS |
+| Costo          | IDR 1-1.5M tipicamente          |
+| Elaborazione    | 3-5 giorni lavorativi              |
+
+### Come richiedere il MERP
+
+<Checklist
+  title="Richiesta MERP"
+  description="Cosa ti serve"
+  persistKey="merp-checklist"
+  items={[
+    {
+      id: "kitas",
+      label: "KITAS valido",
+      description: "Carta adesiva o timbro KITAS attuale",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "passport",
+      label: "Passaporto",
+      description: "Originale + copia",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "form",
+      label: "Modulo di domanda",
+      description: "Modulo dell'Immigration",
+      required: true,
+      category: "application",
+    },
+    {
+      id: "photo",
+      label: "Foto passaporto",
+      description: "Foto recente",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "fee",
+      label: "Pagamento",
+      description: "Tassa governativa",
+      required: true,
+      category: "payment",
+    },
+  ]}
+  categories={[
+    { id: "documents", label: "Documenti", color: "blue" },
+    { id: "application", label: "Domanda", color: "green" },
+    { id: "payment", label: "Pagamento", color: "amber" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## SERP (Single Exit Re-Entry Permit)
+
+### Quando Utilizzarlo
+
+| Caso d'uso         | Il SERP ha senso     |
+| ---------------- | -------------------- |
+| Un viaggio pianificato | Validità KITAS breve |
+| Attenzione al budget | Risparmia rispetto al MERP  |
+| Viaggi rari      | Non viaggi spesso   |
+
+### Limitazioni del SERP
+
+<InfoCard variant="warning" title="Solo Un Viaggio">
+**Il SERP permette solo UNA uscita e un rientro:**
+
+- Si esaurisce dopo un viaggio
+- Deve essere richiesto nuovamente per il prossimo viaggio
+- Meno comodo rispetto al MERP
+- Valuta il MERP se potresti viaggiare di più
+
+Se è probabile che tu debba viaggiare più volte, il MERP offre un migliore rapporto qualità-prezzo.
 
 </InfoCard>
 
@@ -140,51 +220,144 @@ La maggior parte dei titolari di KITAS ottiene il MERP contestualmente al rilasc
 
 ### Cos'è l'EPO?
 
-| Scopo              | Dettagli                               |
-| ------------------ | -------------------------------------- |
-| Partenza finale    | Lasciare l'Indonesia per sempre        |
-| Annullamento KITAS | Obbligatorio a fine contratto          |
-| Nessun rientro     | Non puoi rientrare con lo stesso KITAS |
+| Scopo           | Dettagli                         |
+| ----------------- | ------------------------------- |
+| Partenza definitiva   | Abbandono permanente dell'Indonesia   |
+| Cancellazione KITAS | Solitamente accompagna la cancellazione |
+| Nessun ritorno         | Impossibile rientrare con lo stesso KITAS   |
 
-### Quando è necessario l'EPO?
+### Quando è Richiesto l'EPO
 
 <InfoCard variant="warning" title="Uscita Permanente">
-**L'EPO serve quando:**
+**L'EPO è necessario quando:**
 
-- Termini il tuo rapporto di lavoro in Indonesia.
-- Decidi di non rinnovare il KITAS.
-- Cambi tipo di visto (es. da KITAS a B211).
-- Ti trasferisci definitivamente all'estero.
+- Si conclude il rapporto di lavoro in Indonesia
+- Non si rinnova il KITAS
+- Si cambia tipo di visto
+- Si lascia l'Indonesia permanentemente
 
-L'EPO cancella ufficialmente il tuo record di KITAS dal sistema dell'immigrazione.
+L'EPO cancella efficacemente il tuo KITAS.
+
+</InfoCard>
+
+### Processo EPO
+
+| Passo | Azione                       |
+| ---- | ---------------------------- |
+| 1    | Presentare la richiesta di cancellazione del KITAS |
+| 2    | Richiedere l'EPO                |
+| 3    | Pagare le tasse                     |
+| 4    | Ricevere l'EPO                  |
+| 5    | Deve partire entro 7 giorni    |
+
+---
+
+## Considerazioni Pratiche
+
+### Prima di Viaggiare
+
+| Controllo                | Azione                   |
+| -------------------- | ------------------------ |
+| Validità MERP        | Assicurarsi che sia ancora valido       |
+| Validità KITAS       | Deve coprire il periodo del viaggio |
+| Validità passaporto    | Solitamente 6+ mesi        |
+| Rientro entro il permesso | Non superare la durata del soggiorno all'estero    |
+
+### All'Immigration
+
+| Uscita        | Rientro            |
+| ---------------- | ----------------- |
+| Mostrare passaporto    | Mostrare passaporto     |
+| KITAS scansionato    | KITAS scansionato     |
+| MERP verificato    | MERP verificato     |
+| Timbro di uscita dato | Timbro di ingresso dato |
+
+### Problemi Comuni
+
+| Problema                   | Soluzione                    |
+| ----------------------- | --------------------------- |
+| Nessun MERP                 | Richiedere prima del viaggio         |
+| MERP scaduto            | Rinnovare o ottenere un SERP           |
+| KITAS perso all'estero       | Contattare immediatamente l'ambasciata |
+| KITAS scaduto all'estero | Contattare immigration/agente   |
+
+---
+
+## Riepilogo dei Costi
+
+| Permesso | Tassa Governativa | Tassa Agenzia    | Totale       |
+| ------ | -------------- | ------------ | ----------- |
+| MERP   | IDR 800K-1M    | IDR 500K-1M  | IDR 1.3-2M  |
+| SERP   | IDR 300-500K   | IDR 300-500K | IDR 600K-1M |
+| EPO    | IDR 300-500K   | IDR 300-500K | IDR 600K-1M |
+
+---
+
+## Titolari di KITAP
+
+<InfoCard variant="note" title="KITAP Diverso">
+**I titolari di KITAP:**
+
+- Il MERP è solitamente incluso automaticamente
+- Validità più lunga (5 anni)
+- Meno oneri amministrativi
+- Stessa libertà di viaggio
+
+Il KITAP è più comodo per i viaggiatori frequenti.
 
 </InfoCard>
 
 ---
 
-## Consigli di Viaggio
+## Consigli per Viaggiare
 
-### Per i titolari di KITAS
+### Per Titolari di KITAS
 
-| Consiglio              | Perché                                      |
-| ---------------------- | ------------------------------------------- |
-| Ottieni il MERP subito | Per essere pronto a partire in ogni momento |
-| Tieni delle copie      | Di passaporto, KITAS e MERP                 |
-| Controlla la validità  | Il passaporto deve avere almeno 6 mesi      |
-| Usa un agente          | Per i rinnovi rapidi e senza errori         |
+| Consiglio               | Perché                     |
+| ----------------- | ----------------------- |
+| Ottieni il MERP presto    | Non aspettare fino al viaggio   |
+| Conserva copie       | Passaporto, KITAS, MERP   |
+| Monitora la validità    | Imposta promemoria sul calendario  |
+| Usa un agente         | Per i rinnovi            |
+| Conosci il tuo sponsor | Potrebbe essere necessaria la loro approvazione |
+
+### Situazioni di Emergenza
+
+| Situazione                  | Azione                        |
+| -------------------------- | ----------------------------- |
+| Passaporto perso all'estero       | Ambasciata indonesiana            |
+| KITAS scaduto mentre si è all'estero | Contattare sponsor/agente         |
+| Emergenza medica          | Assistenza dell'ambasciata            |
+| Emergenza familiare           | Si può viaggiare, ordinare il permesso in seguito |
 
 ---
 
-## Domande Frequenti
+## Cambiamenti nel 2024/2026
+
+<InfoCard variant="note" title="Aggiornamenti Recenti">
+**Cambiamenti recenti:**
+
+- Il MERP digitale è sempre più comune
+- Alcuni sistemi di integrazione con i visti
+- L'elaborazione potrebbe essere più veloce
+- Controlla sempre i requisiti attuali
+
+I requisiti possono cambiare - verifica prima del viaggio.
+
+</InfoCard>
+
+---
+
+## Domande Comuni
 
 <AskZantara
-  context="Exit permit, re-entry permit, MERP, KITAS travel, EPO Indonesia"
+  context="Permesso di uscita, permesso di rientro, MERP, viaggi KITAS, EPO Indonesia"
   placeholder="Chiedi sui permessi di uscita/rientro..."
   suggestedQuestions={[
     "Ho bisogno del MERP per ogni viaggio?",
-    "Cosa succede se il KITAS scade mentre sono all'estero?",
-    "Quanto tempo serve per processare il MERP?",
-    "Posso annullare un EPO?",
+    "Cosa succede se il mio KITAS scade mentre sono all'estero?",
+    "Quanto tempo impiega l'elaborazione del MERP?",
+    "Posso annullare l'EPO e rimanere?",
   ]}
 />
 
@@ -192,6 +365,6 @@ L'EPO cancella ufficialmente il tuo record di KITAS dal sistema dell'immigrazion
 
 ## Articoli Correlati
 
-- [Guida al KITAS di Lavoro](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=it)
-- [Tabella Comparativa Visti](/visas/indonesia-visa-timeline-comparison?lang=it)
-- [Sanzioni per Overstay](/visas/visa-overstay-penalties-indonesia-guide?lang=it)
+- [Guida al Permesso di Lavoro per KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
+- [Tabella di Confronto dei Visti](/visas/indonesia-visa-timeline-comparison)
+- [Sanzioni per Soggiorno Irregolare](/visas/visa-overstay-penalties-indonesia-guide)

@@ -88,38 +88,29 @@ ogImage: /static/insights/business/hiring-indonesian-employees.jpg
 ogType: article
 twitterCard: summary_large_image
 status: published
-source_sha256: "446f16551e4d55ad5599073ad21dbe894ea61c500fa178708fb50fb6694f37f6"
+source_sha256: "d3b9c6eba7c352e31914d51841c6f5db17d9a8b193a227b9366de27d197378a6"
 ---
 
-import {
-  JourneyMap,
-  ComparisonTable,
-  Calculator,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Assunzione di Dipendenti Indonesiani 2026: Guida Completa
 
-# Assunzione di dipendenti in Indonesia 2026: Guida completa
+L'assunzione in Indonesia richiede la comprensione dei requisiti locali. Ecco la tua guida passo dopo passo.
 
-L'assunzione in Indonesia richiede di comprendere i requisiti locali. Ecco la tua guida passo dopo passo.
-
-## Panoramica del processo di assunzione
+## Panoramica del Processo di Assunzione
 
 <JourneyMap
-  title="Journey di assunzione"
-  description="Dalla selezione alla formazione"
+  title="Percorso di Assunzione"
+  description="Dalla ricerca alla formazione iniziale"
   estimatedTotal="2-4 settimane"
   steps={[
     {
       id: "recruit",
-      title: "Selezione",
-      description: "Trova candidati",
+      title: "Reclutamento",
+      description: "Trovare candidati",
       duration: "1-4 settimane",
       status: "richiesto",
       tips: [
         "Portali di lavoro (JobStreet, LinkedIn)",
-        "Agenzie di selezione",
+        "Agenzie di reclutamento",
         "Raccomandazioni",
         "Partnership con università",
       ],
@@ -127,63 +118,63 @@ L'assunzione in Indonesia richiede di comprendere i requisiti locali. Ecco la tu
     {
       id: "interview",
       title: "Selezione",
-      description: "Intervista e valutazione",
+      description: "Colloquio e valutazione",
       duration: "1-2 settimane",
       status: "richiesto",
       tips: [
-        "Selezione iniziale",
-        "Interviste tecniche",
-        "Valutazione della cultura aziendale",
-        "Verifica delle referenze",
+        "Screening iniziale",
+        "Colloqui tecnici",
+        "Valutazione della compatibilità culturale",
+        "Verifica dei referenti",
       ],
     },
     {
       id: "offer",
-      title: "Offerta di lavoro",
-      description: "Estendi l'offerta formale",
+      title: "Offerta di Lavoro",
+      description: "Presentare offerta formale",
       duration: "2-3 giorni",
       status: "richiesto",
       tips: [
-        "Lettera di offerta scritta",
-        "Dettagli dello stipendio e dei benefici",
+        "Lettera di assunzione scritta",
+        "Dettaglio stipendio e benefit",
         "Data di inizio",
-        "Termini di prova (se PKWTT)",
+        "Termini del periodo di prova (se PKWTT)",
       ],
     },
     {
       id: "contract",
-      title: "Contratto di lavoro",
-      description: "Firma l'accordo legale",
+      title: "Contratto di Lavoro",
+      description: "Firmare accordo legale",
       duration: "1-2 giorni",
       status: "richiesto",
       documents: [
         "Contratto di lavoro (bilingue)",
-        "Descrizione del lavoro",
+        "Descrizione del ruolo",
         "Regolamenti aziendali",
         "Accordo di riservatezza",
       ],
     },
     {
       id: "registration",
-      title: "Registrazione BPJS",
-      description: "Registra per i benefici obbligatori",
+      title: "Iscrizione BPJS",
+      description: "Iscriversi ai benefici obbligatori",
       duration: "1-5 giorni",
       status: "richiesto",
       tips: [
-        "BPJS Kesehatan (salute)",
+        "BPJS Kesehatan (sanità)",
         "BPJS Ketenagakerjaan (lavoro)",
         "Entro 30 giorni dall'inizio",
       ],
     },
     {
       id: "onboard",
-      title: "Formazione",
+      title: "Formazione Iniziale",
       description: "Benvenuto e orientamento",
       duration: "1-5 giorni",
       status: "finale",
       tips: [
         "Orientamento aziendale",
-        "Introduzione al team",
+        "Presentazione del team",
         "Accesso ai sistemi",
         "Formazione",
       ],
@@ -193,33 +184,33 @@ L'assunzione in Indonesia richiede di comprendere i requisiti locali. Ecco la tu
 
 ---
 
-## Requisiti pre-assunzione
+## Requisiti Pre-Assunzione
 
 <Checklist
-  title="Documenti per il nuovo dipendente"
+  title="Documenti per Nuovi Assunti"
   description="Cosa raccogliere dai dipendenti"
   persistKey="new-hire-docs-checklist"
   items={[
     {
       id: "ktp",
-      label: "KTP (Carta d'identità)",
-      description: "Copia dell'ID nazionale",
+      label: "KTP (Carta d'Identità)",
+      description: "Copia della carta d'identità nazionale",
       required: true,
-      category: "identity",
+      category: "identità",
     },
     {
       id: "kk",
       label: "Kartu Keluarga",
-      description: "Copia della carta familiare",
+      description: "Copia della tessera familiare",
       required: true,
-      category: "identity",
+      category: "identità",
     },
     {
       id: "npwp",
-      label: "NPWP (Codice fiscale)",
-      description: "Numero di tassa personale",
+      label: "NPWP (Codice Fiscale)",
+      description: "Numero fiscale personale",
       required: true,
-      category: "tax",
+      category: "tasse",
     },
     {
       id: "bpjs-card",
@@ -230,68 +221,68 @@ L'assunzione in Indonesia richiede di comprendere i requisiti locali. Ecco la tu
     },
     {
       id: "education",
-      label: "Certificati di studio",
-      description: "Diploma, trascrizione",
+      label: "Certificati di istruzione",
+      description: "Diploma, trascrizione voti",
       required: true,
-      category: "qualification",
+      category: "qualifica",
     },
     {
       id: "skck",
       label: "SKCK (Certificato di polizia)",
-      description: "Controllo penale",
+      description: "Controllo del casellario giudiziale",
       required: false,
-      category: "background",
+      category: "antecedenti",
     },
     {
       id: "photos",
-      label: "Fototessere",
+      label: "Foto passaporto",
       description: "Per scopi di registrazione",
       required: true,
-      category: "identity",
+      category: "identità",
     },
     {
       id: "bank",
-      label: "Dettagli del conto bancario",
+      label: "Dettagli conto bancario",
       description: "Per il pagamento dello stipendio",
       required: true,
-      category: "payment",
+      category: "pagamento",
     },
   ]}
   categories={[
-    { id: "identity", label: "Identità", color: "blue" },
-    { id: "tax", label: "Tasse", color: "green" },
+    { id: "identità", label: "Identità", color: "blue" },
+    { id: "tasse", label: "Tasse", color: "green" },
     { id: "bpjs", label: "BPJS", color: "amber" },
-    { id: "qualification", label: "Qualifiche", color: "purple" },
-    { id: "background", label: "Background", color: "red" },
-    { id: "payment", label: "Pagamento", color: "cyan" },
+    { id: "qualifica", label: "Qualifica", color: "purple" },
+    { id: "antecedenti", label: "Antecedenti", color: "red" },
+    { id: "pagamento", label: "Pagamento", color: "cyan" },
   ]}
   showProgress={true}
 />
 
 ---
 
-## Struttura dello stipendio
+## Struttura dello Stipendio
 
-### Componenti tipiche dello stipendio
+### Componenti Tipiche dello Stipendio
 
 | Componente          | Descrizione                 | Tassabile |
 | ------------------ | --------------------------- | ------- |
-| Stipendio base       | Compensazione principale (min 75%) | Sì     |
-| Allowance fissa   | Trasporto, pasti            | Sì     |
-| Allowance per posizione | Basata sul ruolo                  | Sì     |
-| Bonus per prestazione  | Variabile                    | Sì     |
-| THR                | Bonus per festività religiose     | Sì     |
-| Overtime           | Pagamento per ore straordinarie             | Sì     |
+| Stipendio base       | Compensazione di base (min 75%) | Sì     |
+| Indennità fisse   | Trasporti, pasti            | Sì     |
+| Indennità di posizione | Basata sul ruolo                  | Sì     |
+| Bonus per le prestazioni  | Variabile                    | Sì     |
+| THR                | Bonus festività religiose     | Sì     |
+| Ore straordinarie           | Pagamento ore extra             | Sì     |
 
-### Calcolatore di costi
+### Calcolatore dei Costi
 
 <Calculator
-  title="Costo totale del lavoro"
-  description="Stima il costo totale per il datore di lavoro"
+  title="Costo Totale dell'Assunzione"
+  description="Stima del costo totale per il datore di lavoro"
   fields={[
     {
       id: "gross",
-      label: "Stipendio mensile lordo (IDR)",
+      label: "Stipendio Mensile Lordo (IDR)",
       type: "number",
       defaultValue: 15000000,
       min: 0,
@@ -300,7 +291,7 @@ L'assunzione in Indonesia richiede di comprendere i requisiti locali. Ecco la tu
     },
     {
       id: "thr",
-      label: "Includi la provvista THR",
+      label: "Includere Provvedimento THR",
       type: "select",
       options: [
         { value: "yes", label: "Sì" },
@@ -312,16 +303,16 @@ L'assunzione in Indonesia richiede di comprendere i requisiti locali. Ecco la tu
   calculateResult={(values) => {
     const gross = Number(values.gross);
 
-    // Contributi BPJS del datore di lavoro
-    const bpjsKesehatan = gross * 0.04; // 4% salute
-    const bpjsJKK = gross * 0.0024; // 0.24% min infortunio sul lavoro
-    const bpjsJKM = gross * 0.003; // 0.3% decesso
-    const bpjsJHT = gross * 0.037; // 3.7% fondo pensione
+    // Contributi datori di lavoro BPJS
+    const bpjsKesehatan = gross * 0.04; // 4% sanità
+    const bpjsJKK = gross * 0.0024; // 0,24% infortuni sul lavoro min
+    const bpjsJKM = gross * 0.003; // 0,3% decesso
+    const bpjsJHT = gross * 0.037; // 3,7% fondo pensione
     const bpjsJP = gross * 0.02; // 2% pensione
 
     const totalBPJS = bpjsKesehatan + bpjsJKK + bpjsJKM + bpjsJHT + bpjsJP;
 
-    // Provvista THR (1 mese dilazionato in 12)
+    // Provvedimento THR (1 mese distribuito su 12)
     const thrProvision = values.thr === "yes" ? gross / 12 : 0;
 
     const totalMonthly = gross + totalBPJS + thrProvision;
@@ -329,17 +320,17 @@ L'assunzione in Indonesia richiede di comprendere i requisiti locali. Ecco la tu
     return {
       total: Math.round(totalMonthly),
       breakdown: [
-        { label: "Stipendio lordo", amount: gross },
+        { label: "Stipendio Lordo", amount: gross },
         { label: "BPJS Kesehatan (4%)", amount: Math.round(bpjsKesehatan) },
-        { label: "BPJS JKK (0.24%)", amount: Math.round(bpjsJKK) },
-        { label: "BPJS JKM (0.3%)", amount: Math.round(bpjsJKM) },
-        { label: "BPJS JHT (3.7%)", amount: Math.round(bpjsJHT) },
+        { label: "BPJS JKK (0,24%)", amount: Math.round(bpjsJKK) },
+        { label: "BPJS JKM (0,3%)", amount: Math.round(bpjsJKM) },
+        { label: "BPJS JHT (3,7%)", amount: Math.round(bpjsJHT) },
         { label: "BPJS JP (2%)", amount: Math.round(bpjsJP) },
-        { label: "Provvista THR", amount: Math.round(thrProvision) },
-        { label: "Costo mensile totale", amount: Math.round(totalMonthly) }
+        { label: "Provvedimento THR", amount: Math.round(thrProvision) },
+        { label: "Costo Mensile Totale", amount: Math.round(totalMonthly) }
       ],
       currency: "IDR",
-      note: `Contributi BPJS datore di lavoro: ~10.24% dello stipendio`
+      note: `Contributi BPJS Datore di Lavoro: ~10,24% dello stipendio`
     };
 
 }}
@@ -347,113 +338,113 @@ L'assunzione in Indonesia richiede di comprendere i requisiti locali. Ecco la tu
 
 ---
 
-## Registrazione BPJS
+## Iscrizione BPJS
 
-### BPJS Kesehatan (Salute)
+### BPJS Kesehatan (Sanità)
 
-<InfoCard variant="note" title="Assicurazione sanitaria">
+<InfoCard variant="note" title="Assicurazione Sanitaria">
 **Contributi:**
 - Totale: 5% dello stipendio
 - Datore di lavoro: 4%
 - Dipendente: 1%
 
-**Limite:** Stipendio base di IDR 12 milioni
+**Limite:** Stipendio base IDR 12 milioni
 
 **Copertura:**
 
 - Dipendente
 - Coniuge
 - Fino a 3 figli
-- Membri familiari aggiuntivi: +1% ciascuno
+- Familiari aggiuntivi: +1% ciascuno
 
 </InfoCard>
 
 ### BPJS Ketenagakerjaan (Lavoro)
 
-| Programma             | Datore di lavoro   | Dipendente | Totale  |
+| Programma             | Datore di Lavoro   | Dipendente | Totale  |
 | ------------------- | ---------- | -------- | ------ |
-| JKK (Infortunio sul lavoro) | 0.24-1.74% | 0%       | Varies |
-| JKM (Decesso)         | 0.30%      | 0%       | 0.30%  |
-| JHT (Fondo pensione)  | 3.70%      | 2%       | 5.70%  |
+| JKK (Infortunio sul lavoro) | 0,24-1,74% | 0%       | Variabile |
+| JKM (Decesso)         | 0,30%      | 0%       | 0,30%  |
+| JHT (Fondo Pensione)  | 3,70%      | 2%       | 5,70%  |
 | JP (Pensione)        | 2%         | 1%       | 3%     |
 
 ---
 
-## Elementi essenziali del contratto di lavoro
+## Elementi Essenziali del Contratto di Lavoro
 
 <ComparisonTable
-  title="Tipi di contratto"
-  description="Scegli il contratto giusto"
+  title="Tipi di Contratto"
+  description="Scegliere il contratto giusto"
   items={[
     {
-      name: "PKWTT (Permanente)",
+      name: "PKWTT (Indefinito)",
       values: {
-        Durata: "Indeterminata",
-        Prova: "Massimo 3 mesi",
-        Terminazione: "Causa + indennità",
-        "Quando Usare": "Ruoli core/continuativi",
+        Durata: "Indefinita",
+        Prova: "Max 3 mesi",
+        Recesso: "Causa + indennità",
+        "Quando Usare": "Ruoli core/permanenti",
       },
       highlight: true,
     },
     {
-      name: "PKWT (A termine)",
+      name: "PKWT (A tempo determinato)",
       values: {
-        Durata: "Massimo 5 anni",
+        Durata: "Max 5 anni",
         Prova: "Non consentito",
-        Terminazione: "Alla data di fine",
+        Recesso: "Alla scadenza",
         "Quando Usare": "Progetti/temporanei",
       },
     },
   ]}
 />
 
-### Checklist del contratto
+### Checklist Contratto
 
-- Dettagli del datore di lavoro e del dipendente
-- Titolo del lavoro e descrizione
+- Dettagli del dipendente e del datore di lavoro
+- Titolo e descrizione del ruolo
 - Luogo di lavoro
 - Orari di lavoro
 - Stipendio e componenti
-- Benefici
+- Benefit
 - Data di inizio (e data di fine per PKWT)
-- Termini di prova (solo PKWTT)
-- Disposizioni per la terminazione
-- Firma da entrambe le parti
+- Termini del periodo di prova (solo PKWTT)
+- Clausole di recesso
+- Firmato da entrambe le parti
 
 ---
 
-## Periodo di prova
+## Periodo di Prova
 
-<InfoCard variant="warning" title="Regole di prova">
-**Per PKWTT (Permanente) solo:**
+<InfoCard variant="warning" title="Regole sulla Prova">
+**Solo per PKWTT (Indefinito):**
 - Massimo 3 mesi
 - Deve essere scritto
-- Stipendio pieno durante il periodo di prova
-- Può essere terminato con preavviso durante il periodo di prova
-- Nessuna indennità se terminato durante il periodo di prova
+- Stipendio pieno durante la prova
+- Possibilità di recesso con preavviso durante la prova
+- Nessun indennità in caso di recesso durante la prova
 
-**Per PKWT (A termine):**
+**Per PKWT (A tempo determinato):**
 
-- Periodo di prova NON consentito
-- Qualsiasi clausola di prova è nulla
+- Prova NON consentita
+- Qualsiasi clausola sulla prova è nulla
 
 </InfoCard>
 
 ---
 
-## Considerazioni sulle buste paga
+## Considerazioni sul Payroll
 
-### Requisiti di pagamento
+### Requisiti di Pagamento
 
 | Requisito | Dettaglio                |
 | ----------- | --------------------- |
 | Frequenza   | Mensile (più comune) |
-| Metodo      | Trasferimento bancario         |
+| Metodo      | Bonifico bancario         |
 | Valuta    | IDR                   |
 | Busta paga    | Obbligatoria              |
 | Trattenute  | BPJS, PPh 21, prestiti   |
 
-### Ritenuta d'acconto (PPh 21)
+### Trattenuta Fiscale (PPh 21)
 
 Il datore di lavoro deve:
 
@@ -461,15 +452,15 @@ Il datore di lavoro deve:
 2. Trattenere dallo stipendio
 3. Versare entro il 10 del mese successivo
 4. Dichiarare entro il 20 del mese successivo
-5. Emettere la busta paga annuale (1721-A1)
+5. Emettere cedolare annua (1721-A1)
 
 ---
 
-## Best practices per la formazione
+## Best Practice per la Formazione Iniziale
 
 <Checklist
-  title="Checklist di formazione"
-  description="Configurare i nuovi dipendenti"
+  title="Checklist Formazione Iniziale"
+  description="Configurazione nuovi dipendenti"
   persistKey="onboarding-checklist"
   items={[
     {
@@ -477,92 +468,92 @@ Il datore di lavoro deve:
       label: "Benvenuto e orientamento",
       description: "Panoramica aziendale, cultura",
       required: true,
-      category: "orientation",
+      category: "orientamento",
     },
     {
       id: "workspace",
-      label: "Configurazione dello spazio di lavoro",
+      label: "Configurazione postazione",
       description: "Scrivania, attrezzature, accesso",
       required: true,
-      category: "logistics",
+      category: "logistica",
     },
     {
       id: "systems",
       label: "Accesso ai sistemi",
       description: "Email, software, strumenti",
       required: true,
-      category: "logistics",
+      category: "logistica",
     },
     {
       id: "team",
-      label: "Introduzione al team",
+      label: "Presentazione del team",
       description: "Incontrare i colleghi",
       required: true,
-      category: "orientation",
+      category: "orientamento",
     },
     {
       id: "training",
-      label: "Formazione sul lavoro",
+      label: "Formazione sul ruolo",
       description: "Formazione specifica per il ruolo",
       required: true,
-      category: "development",
+      category: "sviluppo",
     },
     {
       id: "policies",
-      label: "Revisione delle politiche",
+      label: "Revisione politiche",
       description: "Regolamenti aziendali",
       required: true,
-      category: "compliance",
+      category: "conformità",
     },
     {
       id: "buddy",
-      label: "Assegna un buddy/mentore",
+      label: "Assegnare mentore/buddy",
       description: "Persona di supporto",
       required: false,
-      category: "development",
+      category: "sviluppo",
     },
   ]}
   categories={[
-    { id: "orientation", label: "Orientamento", color: "blue" },
-    { id: "logistics", label: "Logistica", color: "green" },
-    { id: "development", label: "Sviluppo", color: "amber" },
-    { id: "compliance", label: "Conformità", color: "red" },
+    { id: "orientamento", label: "Orientamento", color: "blue" },
+    { id: "logistica", label: "Logistica", color: "green" },
+    { id: "sviluppo", label: "Sviluppo", color: "amber" },
+    { id: "conformità", label: "Conformità", color: "red" },
   ]}
   showProgress={true}
 />
 
 ---
 
-## Errori comuni
+## Errori Comuni
 
 | Errore                        | Impatto                 |
 | ------------------------------ | ---------------------- |
-| Nessun contratto scritto            | Default a PKWTT      |
-| Registrazione BPJS ritardata         | Multe e sanzioni    |
-| Utilizzo di PKWT per ruoli permanenti | Contratto diventa PKWTT |
-| Periodo di prova in PKWT              | Clausola è nulla         |
-| Non raccogliere l'NPWP            | Problemi nella dichiarazione delle tasse   |
-| Manca la ritenuta d'acconto        | Responsabilità del datore di lavoro     |
+| Nessun contratto scritto            | Si applica PKWTT      |
+| Iscrizione BPJS tardiva         | Multe e sanzioni    |
+| Uso di PKWT per ruoli permanenti | Contratto diventa PKWTT |
+| Prova in PKWT              | Clausola è nulla         |
+| Mancata raccolta NPWP            | Problemi report fiscali   |
+| Mancata trattenuta fiscale        | Responsabilità datore di lavoro     |
 
 ---
 
-## Domande frequenti
+## Domande Frequenti
 
 <AskZantara
-  context="Assunzione in Indonesia, selezione, contratti di lavoro, registrazione BPJS, formazione"
-  placeholder="Chiedi sulla selezione..."
+  context="Assunzione Indonesia, reclutamento, contratti di lavoro, iscrizione BPJS, formazione iniziale"
+  placeholder="Chiedi sull'assunzione..."
   suggestedQuestions={[
-    "Quanto dura il processo di registrazione BPJS?",
+    "Quanto dura il processo di iscrizione BPJS?",
     "Posso assumere senza NPWP?",
-    "Qual è il preavviso minimo per la terminazione durante il periodo di prova?",
-    "Come devo dichiarare i nuovi dipendenti a BPJS?",
+    "Qual è il preavviso minimo per la fine della prova?",
+    "Come dichiaro i nuovi dipendenti a BPJS?",
   ]}
 />
 
 ---
 
-## Articoli correlati
+## Articoli Correlati
 
-- [Guida alla legge del lavoro](/insights/business/labor-law-guide)
-- [Terminazione & Indennità](/insights/business/termination-severance)
-- [Guida all'installazione PT PMA](/business/pt-pma-registration-guide?lang=it)
+- [Guida al Diritto del Lavoro](/insights/business/labor-law-guide)
+- [Recesso e Indennità](/insights/business/termination-severance)
+- [Guida alla Configurazione PT PMA](/business/pt-pma-registration-guide)

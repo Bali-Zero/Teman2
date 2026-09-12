@@ -84,248 +84,252 @@ ogImage: "/static/insights/business/starting-a-business-in-indonesia-complete-gu
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "290b74468f56baea36128f60dfb93fc2241ea0a5d3ee3b1402f272d24e8eb349"
+source_sha256: "9a4f2d10db9461842e3fc0e1dcd438c8244c0c2d674dfdadf0a9dfe60dd4d64e"
 ---
 
-# Avvio di un'attività in Indonesia: la guida completa 2026
+# Avviare un'attività in Indonesia: La Guida Completa 2026
 
-L'economia indonesiana è tra le più in rapida crescita del Sud-Est asiatico, con un PIL di oltre 1,3 trilioni di dollari e una popolazione di 275 milioni. Per gli imprenditori stranieri, l'opportunità è enorme, ma lo è anche la complessità della costituzione di un'entità giuridica.
+L'economia dell'Indonesia è una delle più veloci in crescita del Sud-est asiatico, con un PIL superiore a 1,3 trilioni di dollari e una popolazione di 275 milioni di abitanti. Per gli imprenditori stranieri, le opportunità sono immense — ma lo stesso vale per la complessità nell'istituire un'entità legale.
 
-Questa guida ti guiderà attraverso tutto ciò che devi sapere per avviare un'attività in Indonesia, dalla scelta della struttura aziendale corretta all'ottenimento dei tuoi permessi operativi.
+Questa guida ti accompagnerà attraverso tutto ciò che devi sapere sull'avvio di un'attività in Indonesia, dalla scelta della struttura societaria corretta all'ottenimento delle tue autorizzazioni operative.
 
 <ConfidenceMeter
-  title="Livello di confidenza delle informazioni"
+  title="Livello di Fiducia delle Informazioni"
   items={[
     {
-      label: "Tipi e strutture aziendali",
+      label: "Tipi e Strutture Societarie",
       confidence: 98,
-      source: "Regolamenti OSS e BKPM 2024",
+      source: "Regolamenti OSS & BKPM 2024",
     },
     {
-      label: "Requisiti di capitale",
+      label: "Requisiti di Capitale",
       confidence: 95,
-      source: "Investment Coordinating Board",
+      source: "Consiglio Coordinatore per gli Investimenti",
     },
+    { label: "Processo di Registrazione", confidence: 92, source: "Sistema OSS RBA" },
     {
-      label: "Processo di registrazione",
-      confidence: 92,
-      source: "OSS RBA System",
-    },
-    {
-      label: "Tempi di elaborazione",
+      label: "Tempi di Elaborazione",
       confidence: 85,
       source: "Dati aggregati dei clienti 2024",
     },
     {
-      label: "Costi e onorari",
+      label: "Costi e Tasse",
       confidence: 88,
-      source: "Tariffe governative + tariffe di mercato",
+      source: "Elenco tasse governative + tassi di mercato",
     },
   ]}
 />
 
 ---
 
-## Quale struttura aziendale è giusta per te?
+## Quale Struttura Societaria fa al Caso Tuo?
 
-La prima e più importante decisione è scegliere l'entità giuridica corretta. L'Indonesia offre diverse opzioni, ma per gli investitori stranieri, le scelte sono più limitate.
+La prima e più importante decisione è scegliere l'entità legale corretta. L'Indonesia offre diverse opzioni, ma per gli investitori stranieri le scelte sono più limitate.
 
 <DecisionTree
-  title="Trova la tua struttura aziendale ideale"
-  description="Rispondi a qualche domanda per scoprire quale entità aziendale indonesiana si adatta alla tua situazione"
+  title="Trova la Tua Struttura Societaria Ideale"
+  description="Rispondi a poche domande per scoprire quale entità aziendale indonesiana si adatta alla tua situazione"
   nodes={[
     {
-      id: 'start',
-      question: 'Sei un cittadino straniero o una società straniera?',
+      id: "start",
+      question: "Sei un cittadino straniero o una società straniera?",
       options: [
-        { label: "Sì, sono straniero", nextNodeId: 'foreign-ownership' },
-        { label: "No, sono indonesiano", nextNodeId: 'local-options' },
+        { label: "Sì, sono straniero", nextNodeId: "foreign-ownership" },
+        { label: "No, sono indonesiano", nextNodeId: "local-options" },
       ],
     },
     {
-      id: 'foreign-ownership',
-      question: 'Quale livello di proprietà ti serve?',
+      id: "foreign-ownership",
+      question: "Quale livello di proprietà ti serve?",
       options: [
-        { label: 'Proprietà straniera al 100%', nextNodeId: 'check-sector' },
-        { label: 'Joint venture con partner locale', nextNodeId: 'jv-option' },
-        { label: 'Quota di minoranza solo', nextNodeId: 'local-majority' },
+        { label: "100% proprietà straniera", nextNodeId: "check-sector" },
+        { label: "Joint venture con partner locale", nextNodeId: "jv-option" },
+        { label: "Solo partecipazione minoritaria", nextNodeId: "local-majority" },
       ],
     },
     {
-      id: 'check-sector',
-      question: 'In quale settore opererai?',
+      id: "check-sector",
+      question: "In quale settore opererai?",
       options: [
-        { label: 'Tech/Digitale/Software', nextNodeId: 'result-pma-tech' },
-        { label: 'Commercio/Import-Export', nextNodeId: 'result-pma-trading' },
-        { label: 'F&B/Ristorante/Ospitalità', nextNodeId: 'result-pma-fnb' },
-        { label: 'Manifatturiero', nextNodeId: 'result-pma-manufacturing' },
-        { label: 'Servizi professionali', nextNodeId: 'result-pma-services' },
+        { label: "Tech/Digitale/Software", nextNodeId: "result-pma-tech" },
+        { label: "Commercio/Import-Export", nextNodeId: "result-pma-trading" },
+        { label: "F&B/Ristorazione/Ospitalità", nextNodeId: "result-pma-fnb" },
+        { label: "Produzione", nextNodeId: "result-pma-manufacturing" },
+        { label: "Servizi Professionali", nextNodeId: "result-pma-services" },
       ],
     },
     {
-      id: 'jv-option',
-      question: 'Hai un partner indonesiano di fiducia?',
+      id: "jv-option",
+      question: "Hai un partner indonesiano di fiducia?",
       options: [
-        { label: 'Sì, ho un partner', nextNodeId: 'result-jv' },
-        { label: 'No, ne sto cercando uno', nextNodeId: 'result-find-partner' },
+        { label: "Sì, ho un partner", nextNodeId: "result-jv" },
+        { label: "No, ne sto cercando uno", nextNodeId: "result-find-partner" },
       ],
     },
     {
-      id: 'local-options',
-      question: 'Che tipo di attività commerciale vuoi avviare?',
+      id: "local-options",
+      question: "Che tipo di attività vuoi avviare?",
       options: [
         {
-          label: 'Piccola impresa (< IDR 500M di fatturato)',
-          nextNodeId: 'result-cv',
+          label: "Piccola impresa (< 500 milioni IDR di ricavi)",
+          nextNodeId: "result-cv",
         },
-        { label: 'PT PMDN di medie-grandi dimensioni', nextNodeId: 'result-pt-pmdn' },
+        { label: "PT Medio-Grande", nextNodeId: "result-pt-pmdn" },
       ],
     },
     {
-      id: 'local-majority',
+      id: "local-majority",
       question: "Qual è il tuo livello di investimento?",
       options: [
-        { label: 'Oltre IDR 10 miliardi', nextNodeId: 'result-pma-minority' },
-        { label: 'Sotto IDR 10 miliardi', nextNodeId: 'result-nominee-warning' },
+        { label: "Oltre 10 miliardi IDR", nextNodeId: "result-pma-minority" },
+        { label: "Sotto 10 miliardi IDR", nextNodeId: "result-nominee-warning" },
       ],
     },
     {
-      id: 'result-pma-tech',
+      id: "result-pma-tech",
       isResult: true,
-      title: 'PT PMA - Settore tecnologico',
-      description: 'Le aziende tecnologiche possono essere di proprietà straniera al 100% nella maggior parte delle categorie KBLI.',
+      title: "PT PMA - Settore Tecnologico",
+      description:
+        "Le aziende tech possono essere al 100% di proprietà straniera nella maggior parte delle categorie KBLI.",
       recommendation:
-        'Puoi costituire una PT PMA interamente di proprietà straniera. Investimento minimo: IDR 10 miliardi. Il settore tecnologico generalmente non ha restrizioni sulla proprietà straniera.',
+        "Puoi istituire una PT PMA interamente di proprietà straniera. Investimento minimo: 10 miliardi IDR. Il settore tech generalmente non ha restrizioni sulla proprietà straniera.",
       nextSteps: [
-        'Verificare i codici KBLI specifici',
-        'Preparare il piano di investimento',
-        'Ingaggiare un corporate secretary',
+        "Controlla i codici KBLI specifici",
+        "Prepara il piano di investimento",
+        "Coinvolgi un segretario societario",
       ],
     },
     {
-      id: 'result-pma-trading',
+      id: "result-pma-trading",
       isResult: true,
-      title: 'PT PMA - Settore commerciale',
-      description: 'Le aziende commerciali hanno requisiti specifici e alcune restrizioni.',
+      title: "PT PMA - Settore Commerciale",
+      description:
+        "Le società commerciali hanno requisiti specifici e alcune restrizioni.",
       recommendation:
-        'PT PMA per il commercio richiede un investimento minimo di IDR 10 miliardi. Alcune attività commerciali possono avere un limite di proprietà straniera del 67%. Il commercio su larga scala (importazione) richiede licenze aggiuntive.',
+        "La PT PMA per il commercio richiede un investimento minimo di 10 miliardi IDR. Alcune attività commerciali possono avere un limite del 67% per la proprietà straniera. Il commercio su larga scala (importazione) richiede licenze aggiuntive.",
       nextSteps: [
-        'Verificare le restrizioni KBLI',
-        'Richiedere una licenza di importatore (API)',
-        'Considerare le esigenze di magazzinaggio',
+        "Verifica le restrizioni KBLI",
+        "Richiedi la licenza di importatore (API)",
+        "Valuta le esigenze di magazzinaggio",
       ],
     },
     {
-      id: 'result-pma-fnb',
+      id: "result-pma-fnb",
       isResult: true,
-      title: 'PT PMA - Ristorazione e ospitalità',
-      description: 'Ristoranti e attività di ospitalità possono essere di proprietà straniera a determinate condizioni.',
+      title: "PT PMA - Food & Beverage",
+      description:
+        "Ristoranti e ospitalità possono essere di proprietà straniera con condizioni.",
       recommendation:
-        "PT PMA F&B/Ristorante richiede un investimento di IDR 10 miliardi. Deve essere un'operazione 'su larga scala'. I piccoli ristoranti sono riservati alle PMI locali.",
+        "La PT PMA per F&B/Ristorazione richiede un investimento di 10 miliardi IDR. Deve essere un'operazione 'su larga scala'. I piccoli ristoranti sono riservati alle PMI locali (MSME).",
       nextSteps: [
-        'Pianificare un'operazione su larga scala',
-        'Ubicazione e permessi',
-        'BPOM e certificati sanitari',
+        "Pianifica un'operazione su larga scala",
+        "Sede e permessi",
+        "Certificati BPOM e sanitari",
       ],
     },
     {
-      id: 'result-pma-manufacturing',
+      id: "result-pma-manufacturing",
       isResult: true,
-      title: 'PT PMA - Manifatturiero',
-      description: 'Il settore manifatturiero è generalmente aperto alla proprietà straniera al 100%.',
+      title: "PT PMA - Produzione",
+      description: "La produzione è generalmente aperta al 100% di proprietà straniera.",
       recommendation:
-        'PT PMA manifatturiero con proprietà straniera al 100% è possibile. Sono necessari permessi ambientali aggiuntivi (AMDAL/UKL-UPL). Considerare le posizioni nelle zone industriali.',
+        "È possibile una PT PMA manifatturiera con il 100% di proprietà straniera. Richiesti permessi ambientali aggiuntivi (AMDAL/UKL-UPL). Valuta le sedi nelle zone industriali.",
       nextSteps: [
-        'Valutazione ambientale',
-        'Ubicazione in zona industriale',
-        'Licenze di importazione ed esportazione se necessario',
+        "Valutazione ambientale",
+        "Sede in zona industriale",
+        "Licenze import-export se necessario",
       ],
     },
     {
-      id: 'result-pma-services',
+      id: "result-pma-services",
       isResult: true,
-      title: 'PT PMA - Servizi professionali',
-      description: 'Le società di servizi possono essere di proprietà straniera al 100% nella maggior parte delle categorie.',
+      title: "PT PMA - Servizi Professionali",
+      description:
+        "Le società di servizi possono essere al 100% di proprietà straniera nella maggior parte delle categorie.",
       recommendation:
-        'PT PMA per i servizi professionali consente la proprietà straniera al 100%. Investimento minimo di IDR 10 miliardi. Alcune professioni regolamentate possono avere restrizioni.',
+        "La PT PMA per servizi professionali consente il 100% di proprietà straniera. Investimento minimo 10 miliardi IDR. Alcune professioni regolamentate possono avere restrizioni.",
       nextSteps: [
-        'Verificare i requisiti di licenza professionale',
-        'Domicilio dell'ufficio',
-        'Permessi di lavoro per il personale straniero',
+        "Controlla i requisiti per le licenze professionali",
+        "Sede operativa",
+        "Permessi di lavoro per il personale straniero",
       ],
     },
     {
-      id: 'result-jv',
+      id: "result-jv",
       isResult: true,
-      title: 'Joint Venture PT PMA',
-      description: 'Collabora con una società o un individuo indonesiano.',
+      title: "Joint Venture PT PMA",
+      description: "Partnera con una società o un individuo indonesiano.",
       recommendation:
-        'Una joint venture può ridurre i requisiti di capitale e fornire conoscenze del mercato locale. Assicurati un accordo tra azionisti chiaro e clausole di uscita.',
+        "La joint venture può ridurre i requisiti di capitale e fornire conoscenze del mercato locale. Assicurati che l'accordo tra soci sia chiaro e includa clausole di uscita.",
       nextSteps: [
-        'Due diligence sul partner',
-        'Accordo tra azionisti',
-        'Termini chiari di distribuzione degli utili',
+        "Due diligence sul partner",
+        "Accordo tra soci",
+        "Termini chiari per la distribuzione degli utili",
       ],
     },
     {
-      id: 'result-find-partner',
+      id: "result-find-partner",
       isResult: true,
-      title: 'Trovare un partner locale',
-      description: 'Devi prima trovare un partner indonesiano di fiducia.',
+      title: "Trovare un Partner Locale",
+      description: "Devi prima trovare un partner indonesiano affidabile.",
       recommendation:
-        "Fai molta attenzione agli accordi di prestanome: sono illegali e possono comportare la confisca dei beni. Considera i servizi di matchmaking aziendale, le camere di commercio o le reti professionali.",
+        "Sii estremamente cauto con gli accordi di nomina — sono illegali. Considera servizi di matchmaking aziendale, camere di commercio o reti professionali.",
       nextSteps: [
-        'Fare rete attraverso le camere di commercio',
-        'Servizi di matchmaking professionali',
-        'Due diligence legale',
+        "Networking tramite camere di commercio",
+        "Servizi professionali di matchmaking",
+        "Due diligence legale",
       ],
     },
     {
-      id: 'result-cv',
+      id: "result-cv",
       isResult: true,
-      title: 'CV (Società in partecipazione)',
-      description: 'Struttura di partnership per piccole imprese indonesiane.',
+      title: "CV (Commanditaire Vennootschap)",
+      description: "Struttura societaria per piccole imprese indonesiane.",
       recommendation:
-        'CV è adatta per piccole imprese locali. Non disponibile per gli investitori stranieri. Struttura semplice con responsabilità limitata solo per i soci silenti.',
+        "Il CV è adatto alle piccole imprese locali. Non disponibile per investitori stranieri. Struttura semplice con responsabilità limitata solo per i soci silenziosi.",
       nextSteps: [
-        'Registrati presso un notaio locale',
-        'Ottieni NIB tramite OSS',
-        'Considera l'aggiornamento a PT in seguito',
+        "Registrati presso un notaio locale",
+        "Ottieni il NIB tramite OSS",
+        "Considera di passare a PT in futuro",
       ],
     },
     {
-      id: 'result-pt-pmdn',
+      id: "result-pt-pmdn",
       isResult: true,
-      title: 'PT PMDN (PT locale)',
-      description: 'Standard società a responsabilità limitata indonesiana.',
+      title: "PT PMDN (PT Locale)",
+      description: "Società per azioni a responsabilità limitata indonesiana standard.",
       recommendation:
-        'PT PMDN per la proprietà indonesiana al 100%. Requisiti di capitale inferiori. Può successivamente essere convertita in PT PMA se si verifica un investimento straniero.',
-      nextSteps: ['2 azionisti minimi', 'Capitale minimo di IDR 50 milioni', 'Registrazione NIB'],
-    },
-    {
-      id: 'result-pma-minority',
-      isResult: true,
-      title: 'PT PMA con quota di proprietà straniera di minoranza',
-      description: 'Azionista straniero di minoranza in una società indonesiana.',
-      recommendation:
-        'Se investi più di IDR 10 miliardi come quota di minoranza, puoi unirti a una PT esistente o formare una nuova PT PMA. È possibile un direttore straniero.',
+        "PT PMDN per il 100% di proprietà indonesiana. Requisiti di capitale inferiori. Può essere convertita in PT PMA successivamente se arriva investimento straniero.",
       nextSteps: [
-        'Negoziare un accordo tra azionisti',
-        'Posizioni di direttore/commissario',
-        'Documentazione di investimento',
+        "Minimo 2 soci",
+        "Capitale minimo di 50 milioni IDR",
+        "Registrazione NIB",
       ],
     },
     {
-      id: 'result-nominee-warning',
+      id: "result-pma-minority",
       isResult: true,
-      title: 'Avviso: Accordi di prestanome',
-      description: 'La proprietà straniera con bassi investimenti è molto limitata.',
+      title: "PT PMA con Partecipazione Minoritaria Straniera",
+      description: "Socio straniero minoritario in società indonesiana.",
       recommendation:
-        'Gli accordi di prestanome (utilizzare un nome indonesiano per detenere azioni) sono ILLEGALI e possono comportare la confisca dei beni. L'investimento minimo per PT PMA è di IDR 10 miliardi.',
+        "Se investi oltre 10 miliardi IDR come minoritario, puoi unirti a una PT esistente o formare una nuova PT PMA. È possibile avere un direttore straniero.",
       nextSteps: [
-        'Considera di soddisfare l\'investimento minimo',
-        'Esplora opzioni di joint venture legali',
-        'Consulta un avvocato specializzato in immigrazione',
+        "Negozia l'accordo tra soci",
+        "Ruoli di direttore/commissario",
+        "Documentazione dell'investimento",
+      ],
+    },
+    {
+      id: "result-nominee-warning",
+      isResult: true,
+      title: "Attenzione: Accordi di Nomina",
+      description: "La proprietà straniera con investimenti bassi è molto limitata.",
+      recommendation:
+        "Gli accordi di nomina (uso del nome indonesio per detenere azioni) sono ILLEGALI e possono portare alla confisca dei beni. L'investimento minimo per la PT PMA è 10 miliardi IDR.",
+      nextSteps: [
+        "Considera di soddisfare l'investimento minimo",
+        "Esplora opzioni legali JV",
+        "Consulta un avvocato per l'immigrazione",
       ],
     },
   ]}
@@ -333,71 +337,71 @@ La prima e più importante decisione è scegliere l'entità giuridica corretta. 
 
 ---
 
-## Comprendere i tipi di società indonesiane
+## Comprendere i Tipi di Azienda Indonesiana
 
 <ComparisonTable
-  title="Confronto delle strutture aziendali"
-  description="Confronta i tipi principali di entità giuridiche disponibili in Indonesia"
+  title="Confronto Strutture Societarie"
+  description="Confronta i principali tipi di entità aziendali disponibili in Indonesia"
   items={[
     {
       name: "PT PMA",
-      subtitle: "Società di investimento straniero",
+      subtitle: "Società per Investimento Straniero",
       values: {
-        "Proprietà straniera": "Fino al 100%",
-        "Investimento minimo": "IDR 10 miliardi (~625.000 USD)",
-        "Capitale sociale minimo": "IDR 10 miliardi",
-        "Azionisti minimi": "2 (possono essere stranieri)",
-        "Direttori minimi": "1 (possono essere stranieri)",
-        "Commissari minimi": "1 (possono essere stranieri)",
-        Liability: "Limitato al capitale",
-        "Permessi di lavoro": "Può sponsorizzare",
-        "Ideale per": "Investitori stranieri",
+        "Proprietà Straniera": "Fino al 100%",
+        "Investimento Minimo": "10 miliardi IDR (~625.000 USD)",
+        "Capitale Versato Minimo": "10 miliardi IDR",
+        "Soci Minimi": "2 (possono essere stranieri)",
+        "Direttori Minimi": "1 (può essere straniero)",
+        "Commissari Minimi": "1 (può essere straniero)",
+        Responsabilità: "Limitata al capitale",
+        "Permessi di Lavoro": "Può sponsorizzare",
+        "Ideale Per": "Investitori stranieri",
       },
       highlight: true,
     },
     {
       name: "PT PMDN",
-      subtitle: "Società di investimento locale",
+      subtitle: "Società per Investimento Locale",
       values: {
-        "Proprietà straniera": "0%",
-        "Investimento minimo": "Nessuno",
-        "Capitale sociale minimo": "IDR 50 milioni",
-        "Azionisti minimi": "2 (solo indonesiani)",
-        "Direttori minimi": "1 (indonesiano)",
-        "Commissari minimi": "Nessuno richiesto",
-        Liability: "Limitato al capitale",
-        "Permessi di lavoro": "Non può sponsorizzare",
-        "Ideale per": "Imprenditori indonesiani",
+        "Proprietà Straniera": "0%",
+        "Investimento Minimo": "Nessuno",
+        "Capitale Versato Minimo": "50 milioni IDR",
+        "Soci Minimi": "2 (solo indonesiani)",
+        "Direttori Minimi": "1 (indonesiano)",
+        "Commissari Minimi": "Non richiesti",
+        Responsabilità: "Limitata al capitale",
+        "Permessi di Lavoro": "Non può sponsorizzare",
+        "Ideale Per": "Imprenditori indonesiani",
       },
     },
     {
       name: "CV",
-      subtitle: "Società in partecipazione",
+      subtitle: "Società in Comandita",
       values: {
-        "Proprietà straniera": "0%",
-        "Investimento minimo": "Nessuno",
-        "Capitale sociale minimo": "Nessuno",
-        "Azionisti minimi": "2 partner",
-        "Direttori minimi": "Partner gestore",
-        "Commissari minimi": "N/A",
-        Liability: "Illimitata per il partner attivo",
-        "Permessi di lavoro": "Non può sponsorizzare",
-        "Ideale per": "Piccola attività commerciale locale",
+        "Proprietà Straniera": "0%",
+        "Investimento Minimo": "Nessuno",
+        "Capitale Versato Minimo": "Nessuno",
+        "Soci Minimi": "2 partner",
+        "Direttori Minimi": "Partner amministratore",
+        "Commissari Minimi": "N/A",
+        Responsabilità: "Illimitata per il partner attivo",
+        "Permessi di Lavoro": "Non può sponsorizzare",
+        "Ideale Per": "Piccola impresa locale",
       },
     },
     {
-      name: "Ufficio di rappresentanza",
+      name: "Ufficio Rappresentanza",
       subtitle: "KPPA/KP3A",
       values: {
-        "Proprietà straniera": "100%",
-        "Investimento minimo": "Nessuno",
-        "Capitale sociale minimo": "Nessuno",
-        "Azionisti minimi": "Società madre",
-        "Direttori minimi": "Rappresentante capo",
-        "Commissari minimi": "N/A",
-        Liability: "Società madre",
-        "Permessi di lavoro": "Limitati",
-        "Ideale per": "Solo ricerca di mercato",
+        "Proprietà Straniera": "100%",
+        "Investimento Minimo": "Nessuno",
+        "Capitale Versato Minimo": "Nessuno",
+        "Soci Minimi": "Società madre",
+        "Direttori Minimi": "Rappresentante capo",
+        "Commissari Minimi": "N/A",
+        Responsabilità: "Società madre",
+        "Permessi di Lavoro": "Limitati",
+        "Ideale Per": "Solo ricerca di mercato",
       },
     },
   ]}
@@ -405,206 +409,205 @@ La prima e più importante decisione è scegliere l'entità giuridica corretta. 
     {
       id: "ownership",
       label: "Proprietà",
-      fields: ["Proprietà straniera", "Azionisti minimi"],
+      fields: ["Proprietà Straniera", "Soci Minimi"],
     },
     {
       id: "capital",
       label: "Capitale",
-      fields: ["Investimento minimo", "Capitale sociale minimo"],
+      fields: ["Investimento Minimo", "Capitale Versato Minimo"],
     },
     {
       id: "structure",
       label: "Struttura",
-      fields: ["Direttori minimi", "Commissari minimi", "Responsabilità"],
+      fields: ["Direttori Minimi", "Commissari Minimi", "Responsabilità"],
     },
     {
       id: "operations",
       label: "Operazioni",
-      fields: ["Permessi di lavoro", "Ideale per"],
+      fields: ["Permessi di Lavoro", "Ideale Per"],
     },
   ]}
 />
 
-<InfoCard variant="important" title="Importante: Il requisito di IDR 10 miliardi">
-L'investimento minimo per PT PMA è di **IDR 10 miliardi** (~625.000 USD). Ciò non significa che devi depositare questo importo immediatamente: è l'investimento totale pianificato durante la vita dell'azienda, incluso:
-- Capitale sociale versato
+<InfoCard variant="important" title="Importante: Il Requisito dei 10 Miliardi IDR">
+L'investimento minimo per la PT PMA è **10 miliardi IDR** (~625.000 USD). Questo non significa che devi depositare questa somma immediatamente — è l'investimento totale pianificato durante la vita della società, includendo:
+- Capitale azionario versato
 - Prestiti alla società
-- Attività fisse e attrezzature
+- Beni fissi e attrezzature
 - Capitale circolante
 
-Il tuo **capitale versato** (denaro contante depositato) deve essere di IDR 10 miliardi come minimo.
+Il tuo **capitale versato** (contanti effettivamente depositati) deve essere anch'esso minimo 10 miliardi IDR.
 
 </InfoCard>
 
 ---
 
-## Termini chiave che incontrerai
+## Termini Chiave che Incontrerai
 
-Prima di addentrarti nel processo di registrazione, comprendiamo la terminologia essenziale:
+Prima di addentrarsi nel processo di registrazione, capiamo la terminologia essenziale:
 
 <LegalDecoder
-  title="Termini di registrazione aziendale indonesiani"
-  documentRef="Varie normative"
+  title="Termini di Registrazione Aziendale Indonesiana"
+  documentRef="Vari Regolamenti"
   documentType="Altro"
   status="attivo"
-  summary="Comprendere questi termini è essenziale per navigare nella registrazione aziendale indonesiana."
+  summary="Comprendere questi termini è essenziale per navigare la registrazione aziendale in Indonesia."
   sections={[
     {
-      id: 'nib',
+      id: "nib",
       original:
-        'Nomor Induk Berusaha (NIB) adalah identitas pelaku usaha yang diterbitkan oleh Lembaga OSS setelah pelaku usaha melakukan pendaftaran.',
+        "Nomor Induk Berusaha (NIB) adalah identitas pelaku usaha yang diterbitkan oleh Lembaga OSS setelah pelaku usaha melakukan pendaftaran.",
       explanation:
-        "NIB (Numero di identificazione dell'impresa) è l'identificativo univoco della tua azienda, come una 'ID aziendale'. Viene generato automaticamente quando ti registri tramite il sistema OSS e funge da tua licenza aziendale di base.",
+        "Il NIB (Business Identification Number) è l'identificativo univoco della tua azienda, come una 'carta d'identità' aziendale. Viene generato automaticamente quando ti registri tramite il sistema OSS e funge da licenza di base per le attività commerciali.",
       keyPoints: [
-        'Sostituisce molte licenze precedenti (TDP, API-U, ecc.)',
-        'Richiesto per TUTTE le attività commerciali',
-        'Generato automaticamente tramite OSS',
-        'Valido per l'intera durata dell\'azienda',
+        "Sostituisce molteplici vecchie licenze (TDP, API-U, ecc.)",
+        "Richiesto per TUTTE le attività commerciali",
+        "Generato automaticamente tramite OSS",
+        "Valido per l'intera vita dell'azienda",
       ],
       impact:
-        "Non puoi operare legalmente senza NIB. È la prima cosa che otterrai dopo la costituzione aziendale.",
-      severity: 'alto',
-      reference: 'PP 28/2025',
+        "Non puoi operare legalmente senza NIB. È la prima cosa che otterrai dopo l'istituzione della società.",
+      severity: "alto",
+      reference: "PP 28/2025",
     },
     {
-      id: 'kbli',
+      id: "kbli",
       original:
-        'Klasifikasi Baku Lapangan Usaha Indonesia (KBLI) adalah klasifikasi rujukan yang digunakan untuk mengklasifikasikan aktivitas/kegiatan ekonomi Indonesia.',
+        "Klasifikasi Baku Lapangan Usaha Indonesia (KBLI) adalah klasifikasi rujukan yang digunakan untuk mengklasifikasikan aktivitas/kegiatan ekonomi Indonesia.",
       explanation:
-        "I codici KBLI sono numeri di classificazione a 5 cifre che definiscono quali attività aziendali puoi svolgere. Pensa a essi come 'licenze di attività commerciale': puoi fare solo ciò che i tuoi codici KBLI consentono.",
+        "I codici KBLI sono numeri di classificazione a 5 cifre che definiscono quali attività commerciali la tua azienda può svolgere. Pensali come 'licenze per attività commerciali' — puoi fare solo ciò che i tuoi codici KBLI permettono.",
       keyPoints: [
-        'Codici a 5 cifre (ad esempio, 62010 per software)',
-        'Determina i limiti di proprietà straniera',
-        'Puoi aggiungere più codici a una società',
-        'Alcuni codici sono soggetti a restrizioni o divieti per gli stranieri',
+        "Codici a 5 cifre (es. 62010 per software)",
+        "Determina i limiti di proprietà straniera",
+        "Puoi aggiungere più codici alla stessa azienda",
+        "Alcuni codici sono restrittivi o proibiti per gli stranieri",
       ],
       impact:
-        'Una selezione errata dei codici KBLI può limitare le tue attività commerciali o la percentuale di proprietà straniera.',
-      severity: 'alto',
-      reference: 'KBLI 2020',
+        "Una scelta errata dei codici KBLI può limitare le tue attività commerciali o la percentuale di proprietà straniera.",
+      severity: "alto",
+      reference: "KBLI 2020",
     },
     {
-      id: 'oss',
+      id: "oss",
       original:
-        'Online Single Submission (OSS) adalah sistem perizinan berusaha terintegrasi secara elektronik yang dikelola oleh Lembaga OSS.',
+        "Online Single Submission (OSS) adalah sistem perizinan berusaha terintegrasi secara elektronik yang dikelola oleh Lembaga OSS.",
       explanation:
-        "OSS (Presentazione online unica) è il portale online del governo in cui VENGONO ELABORATI TUTTI i permessi aziendali. È uno sportello unico che ha sostituito dozzine di diverse agenzie di licenza.",
+        "OSS (Online Single Submission) è il portale online del governo dove vengono elaborati TUTTI i permessi commerciali. È un punto unico d'accesso che ha sostituito decine di diverse agenzie di licenziamento.",
       keyPoints: [
-        'Portale unico per tutti i permessi aziendali',
-        'Sistema basato sul rischio (RBA)',
-        'Generazione automatica di NIB',
-        'Traccia lo stato del permesso online',
-      ],
-      impact: 'Tutti i tuoi permessi passano attraverso OSS. Impara a navigare o assumi qualcuno che possa farlo.',
-      severity: 'medio',
-      reference: 'PP 28/2025',
-    },
-    {
-      id: 'rba',
-      original:
-        'Perizinan Berusaha Berbasis Risiko adalah perizinan berusaha berdasarkan tingkat risiko kegiatan usaha.',
-      explanation:
-        'RBA (Approccio basato sul rischio) categorizza le aziende in base al livello di rischio: Basso, Medio-Basso, Medio-Alto e Alto. Il tuo livello di rischio determina quali permessi ti servono: un rischio basso potrebbe richiedere solo un NIB, mentre un rischio elevato richiede licenze complete.',
-      keyPoints: [
-        'Rischio basso: NIB solo',
-        'Rischio medio-basso: NIB + Certificato standard',
-        'Rischio medio-alto: NIB + Certificato standard + Ispezione',
-        'Rischio elevato: Licenza completa + Audit regolari',
+        "Portale unico per tutte le licenze commerciali",
+        "Sistema Risk-Based Approach (RBA)",
+        "Generazione automatica del NIB",
+        "Traccia lo stato dei permessi online",
       ],
       impact:
-        'Rischio più elevato = più permessi = più tempo e costi. La maggior parte delle attività PT PMA è di rischio medio-alto.',
-      severity: 'medio',
-      reference: 'PP 28/2025',
+        "Tutti i tuoi permessi passano attraverso OSS. Impara a navigarlo o assumi qualcuno che sappia farlo.",
+      severity: "medio",
+      reference: "PP 28/2025",
+    },
+    {
+      id: "rba",
+      original:
+        "Perizinan Berusaha Berbasis Risiko adalah perizinan berusaha berdasarkan tingkat risiko kegiatan usaha.",
+      explanation:
+        "L'approccio RBA (Risk-Based Approach) classifica le aziende in base al livello di rischio: Basso, Medio-Basso, Medio-Alto e Alto. Il tuo livello di rischio determina quali permessi ti servono — il rischio basso potrebbe richiedere solo il NIB, mentre l'alto richiede licenze operative complete.",
+      keyPoints: [
+        "Rischio Basso: Solo NIB",
+        "Medio-Basso: NIB + Certificato Standard",
+        "Medio-Alto: NIB + Certificato Standard + Ispezione",
+        "Alto: Licenza completa + Audit regolari",
+      ],
+      impact:
+        "Rischio più alto = più permessi = più tempo e costi. La maggior parte delle attività PT PMA è a rischio medio o alto.",
+      severity: "medio",
+      reference: "PP 28/2025",
     },
   ]}
 />
 
 ---
 
-## Processo di registrazione PT PMA
+## Processo di Registrazione PT PMA
 
-Ecco il percorso completo dalla decisione all'operatività:
+Ecco il viaggio completo dalla decisione all'operatività:
 
 <JourneyMap
-  title="Viaggio di registrazione PT PMA"
+  title="Viaggio di Registrazione PT PMA"
   description="Cronologia completa dalla pianificazione iniziale all'operatività aziendale"
   estimatedTotal="4-8 settimane"
   steps={[
     {
       id: "planning",
-      title: "Pianificazione aziendale",
+      title: "Pianificazione Aziendale",
       description:
-        "Definisci il tuo modello di business, i codici KBLI e la struttura di investimento",
+        "Definisci il tuo modello di business, codici KBLI e struttura dell'investimento",
       duration: "1-2 settimane",
       status: "richiesto",
       documents: [
         "Business plan",
-        "Selezione dei codici KBLI",
-        "Piano di investimento (IDR 10B+)",
-        "Struttura degli azionisti",
+        "Selezione codice KBLI",
+        "Piano di investimento (10B+ IDR)",
+        "Struttura dei soci",
       ],
       tips: [
-        "Ricerca approfondita dei codici KBLI: determinano tutto",
+        "Ricerca approfonditamente i codici KBLI — determinano tutto",
         "Pianifica un orizzonte di investimento di 3 anni",
-        "Decidi attentamente le percentuali degli azionisti",
+        "Decidi attentamente le percentuali dei soci",
       ],
       warnings: [
         "Alcuni codici KBLI hanno limiti di proprietà straniera",
-        "Modificare i codici KBLI in seguito richiede modifiche",
+        "Cambiare codici KBLI in seguito richiede modifiche",
       ],
     },
     {
       id: "notary",
-      title: "Processo notarile",
-      description:
-        "Redigere ed eseguire l'atto costitutivo aziendale con un notaio indonesiano",
+      title: "Processo Notarile",
+      description: "Redigi ed esegui l'atto societario con un notaio indonesiano",
       duration: "3-5 giorni",
       status: "richiesto",
       documents: [
-        "Copia del passaporto (di tutti gli azionisti)",
-        "Copia di KITAS (se già in Indonesia)",
-        "Prova di indirizzo (di tutti gli azionisti)",
-        "Opzioni di nome aziendale (3 opzioni)",
-        "Bozza dello statuto",
+        "Copia passaporti (tutti i soci)",
+        "Copie KITAS/visato (se in Indonesia)",
+        "Prova di indirizzo (tutti i soci)",
+        "Scelte nome azienda (3 opzioni)",
+        "Bozza statuto",
       ],
       tips: [
         "Prepara 3 opzioni di nome aziendale",
         "I nomi devono essere in indonesiano (2+ parole)",
-        "Tariffe notarili: IDR 10-20 milioni",
+        "Tasse notarili: 10-20 milioni IDR",
       ],
       warnings: [
-        "Tutti gli azionisti devono firmare o fornire una procura",
+        "Tutti i soci devono firmare o fornire procura",
         "Potrebbero essere richiesti documenti originali",
       ],
     },
     {
       id: "kemenkumham",
-      title: "Approvazione del Ministero della Giustizia",
-      description:
-        "Approvazione dell'atto costitutivo e stato di entità giuridica",
+      title: "Approvazione Ministero della Giustizia",
+      description: "Approvazione dell'atto societario e status di entità legale",
       duration: "3-7 giorni",
       status: "richiesto",
       documents: [
-        "Atto costitutivo notarile",
-        "Prenotazione del nome aziendale",
-        "SK Kemenkumham application",
+        "Atto notarile di istituzione",
+        "Riservazione nome azienda",
+        "Richiesta SK Kemenkumham",
       ],
       tips: [
-        "Gestito dal notaio",
-        "Il nome deve essere univoco (controllato nel database)",
-        "Risulta in SK Kemenkumham (certificato di entità giuridica)",
+        "Il notaio gestisce questo processo",
+        "Il nome deve essere unico (controllato nel database)",
+        "Risulta in SK Kemenkumham (certificato entità legale)",
       ],
     },
     {
       id: "npwp",
-      title: "Registrazione fiscale (NPWP)",
-      description: "Registrare l'azienda per la tassazione",
+      title: "Registrazione Fiscale (NPWP)",
+      description: "Registra la società per la tassazione",
       duration: "1-3 giorni",
       status: "richiesto",
       documents: [
         "SK Kemenkumham",
-        "Atto costitutivo aziendale",
-        "ID/passaporto del direttore",
+        "Atto societario",
+        "ID/Direttore passaporto",
         "Lettera di domicilio",
       ],
       tips: [
@@ -615,214 +618,317 @@ Ecco il percorso completo dalla decisione all'operatività:
     },
     {
       id: "oss",
-      title: "Registrazione OSS e NIB",
-      description: "Registrati nel sistema OSS e ottieni NIB",
+      title: "Registrazione OSS & NIB",
+      description: "Registrati nel sistema OSS e ottieni il NIB",
       duration: "1-3 giorni",
       status: "richiesto",
-      documents: [
-        "SK Kemenkumham",
-        "Atto costitutivo aziendale",
-        "NPWP",
-        "Elenco dei codici KBLI",
-      ],
+      documents: ["SK Kemenkumham", "Atto societario", "NPWP", "Elenco codici KBLI"],
       tips: [
         "Account OSS collegato al NIK/passaporto del direttore",
         "NIB emesso automaticamente al completamento",
-        "Aggiungi tutti i codici KBLI richiesti in questa fase",
+        "Aggiungi tutti i codici KBLI richiesti a questa fase",
       ],
       warnings: [
-        "Il sistema OSS può essere lento o buggato",
-        "Potrebbe essere necessario riprovare in caso di errori di sistema",
+        "Il sistema OSS può essere lento o buggy",
+        "Potrebbe essere necessario riprovare in caso di errori del sistema",
       ],
     },
     {
       id: "bkpm",
-      title: "Registrazione degli investimenti (BKPM)",
-      description:
-        "Registra il piano di investimento presso l'Investment Board",
+      title: "Registrazione Investimento (BKPM)",
+      description: "Registrare il piano di investimento presso la Commissione per gli Investimenti",
       duration: "3-7 giorni",
       status: "richiesto",
       documents: [
         "NIB",
         "Piano di investimento",
-        "Numeri di impiego previsti",
-        "Ripartizione della struttura del capitale",
+        "Numero stimato di occupazione",
+        "Scomposizione struttura capitale",
       ],
       tips: [
-        "Fatto tramite il sistema OSS",
+        "Fatto tramite sistema OSS",
         "Il piano di investimento è un impegno",
-        "Includere attrezzature, terreni, capitale circolante",
+        "Includi attrezzature, terre, capitale circolante",
       ],
     },
     {
       id: "bank",
-      title: "Apertura conto bancario",
-      description: "Apri un conto bancario aziendale e deposita il capitale",
+      title: "Apertura Conto Bancario",
+      description: "Apri conto bancario aziendale e deposita il capitale",
       duration: "1-2 settimane",
       status: "richiesto",
       documents: [
         "SK Kemenkumham",
-        "Atto costitutivo aziendale",
+        "Atto societario",
         "NPWP",
         "NIB",
-        "Passaporto e KITAS del direttore",
+        "Passaporto Direttore + KITAS",
       ],
       tips: [
         "Grandi banche: BCA, Mandiri, CIMB Niaga",
-        "Deposita il capitale versato",
-        "Ottieni una lettera di conferma del deposito",
+        "Deposita capitale versato",
+        "Ottieni lettera di conferma del deposito",
       ],
       warnings: [
-        "Alcune banche richiedono che il direttore si presenti di persona",
+        "Alcune banche richiedono la presenza fisica del direttore",
         "Il processo KYC può richiedere tempo",
       ],
     },
     {
       id: "permits",
-      title: "Permessi operativi",
-      description:
-        "Ottieni permessi specifici per settore in base al livello di rischio KBLI",
+      title: "Permessi Operativi",
+      description: "Ottieni permessi specifici per settore in base al livello di rischio KBLI",
       duration: "1-4 settimane",
       status: "condizionale",
       documents: [
         "NIB",
-        "Risultati della valutazione del rischio",
-        "Requisiti specifici del settore",
+        "Risultati valutazione rischi",
+        "Requisiti specifici per settore",
       ],
       tips: [
-        "Rischio basso: è sufficiente NIB",
-        "Rischio medio: è richiesto un certificato standard",
-        "Rischio elevato: è richiesta una licenza completa",
+        "Rischio basso: NIB è sufficiente",
+        "Rischio medio: Richiesto Certificato Standard",
+        "Rischio alto: Richiesta licenza completa (Izin)",
       ],
       warnings: [
         "Alcuni permessi richiedono ispezioni",
-        "La tempistica varia in base al settore e alla regione",
+        "I tempi variano per settore e regione",
       ],
     },
     {
       id: "operation",
-      title: "Inizia le operazioni",
-      description: "Inizia le tue attività commerciali",
-      duration: "In corso",
+      title: "Inizia Operazioni",
+      description: "Avvia le tue attività commerciali",
+      duration: "Continuo",
       status: "finale",
       documents: [
-        "Tutte le licenze in atto",
+        "Tutte le licenze in regola",
         "Conto bancario operativo",
-        "Configurazione della conformità fiscale",
+        "Setup conformità fiscale",
       ],
       tips: [
-        "Imposta la contabilità fin dal primo giorno",
-        "Registrati per l'IVA se il fatturato > IDR 4,8 miliardi",
-        "Presenta dichiarazioni fiscali mensili",
+        "Imposta la contabilità dal primo giorno",
+        "Registrati per l'IVA se i ricavi > 4,8 miliardi IDR",
+        "Presenta report fiscali mensili",
       ],
     },
   ]}
   showFastTrack={true}
-  fastTrackNote="Utilizzare un corporate secretary professionale può ridurre i tempi totali a 3-4 settimane"
+  fastTrackNote="Utilizzando un segretario societario professionale si può ridurre il totale dei tempi a 3-4 settimane"
 />
 
 ---
 
-## Lista di controllo pre-registrazione
+## Calcolatore Costi
+
+<Calculator
+  title="Stimatore Costi Setup PT PMA"
+  description="Stima i tuoi totali costi di setup in base alla tua situazione specifica"
+  fields={[
+    {
+      id: "service-level",
+      label: "Livello Servizio",
+      type: "select",
+      options: [
+        { value: "diy", label: "DIY (auto-gestito)" },
+        { value: "basic", label: "Servizio agente base" },
+        { value: "full", label: "Segretario societario full-service" }
+      ],
+      defaultValue: "basic"
+    },
+    {
+      id: "capital",
+      label: "Capitale Versato (IDR)",
+      type: "number",
+      defaultValue: 10000000000,
+      min: 10000000000,
+      step: 1000000000,
+      suffix: "IDR"
+    },
+    {
+      id: "virtual-office",
+      label: "Servizio Ufficio Virtuale?",
+      type: "checkbox",
+      defaultValue: true
+    },
+    {
+      id: "location",
+      label: "Sede Azienda",
+      type: "select",
+      options: [
+        { value: "jakarta", label: "Jakarta" },
+        { value: "bali", label: "Bali" },
+        { value: "surabaya", label: "Surabaya" },
+        { value: "other", label: "Altre città" }
+      ],
+      defaultValue: "bali"
+    },
+    {
+      id: "directors",
+      label: "Numero Direttori Stranieri",
+      type: "number",
+      defaultValue: 1,
+      min: 0,
+      max: 5
+    },
+    {
+      id: "work-permits",
+      label: "Permessi di Lavoro Necessari?",
+      type: "checkbox",
+      defaultValue: true
+    }
+  ]}
+  calculateResult={(values) => {
+    let total = 0;
+    const breakdown = [];
+
+    // Notary fees
+    const notaryFee = 15000000;
+    total += notaryFee;
+    breakdown.push({ label: "Spese Notarili e Legali", amount: notaryFee });
+
+    // Service fees based on level
+    let serviceFee = 0;
+    if (values['service-level'] === 'basic') {
+      serviceFee = 25000000;
+    } else if (values['service-level'] === 'full') {
+      serviceFee = 45000000;
+    }
+    if (serviceFee > 0) {
+      total += serviceFee;
+      breakdown.push({ label: "Servizio Segretario Societario", amount: serviceFee });
+    }
+
+    // Government fees
+    const govFees = 5000000;
+    total += govFees;
+    breakdown.push({ label: "Tasse Governative (Kemenkumham, OSS)", amount: govFees });
+
+    // Virtual office
+    if (values['virtual-office']) {
+      const voFee = values.location === 'jakarta' ? 15000000 : 12000000;
+      total += voFee;
+      breakdown.push({ label: "Ufficio Virtuale (1 anno)", amount: voFee });
+    }
+
+    // Work permits
+    if (values['work-permits'] && values.directors > 0) {
+      const wpCost = values.directors * 35000000;
+      total += wpCost;
+      breakdown.push({ label: `Permessi di Lavoro (${values.directors} persone)`, amount: wpCost });
+    }
+
+    return {
+      total,
+      breakdown,
+      currency: "IDR",
+      note: "Esclude capitale versato e costi operativi continuativi"
+    };
+
+}}
+ctaText="Richiedi Preventivo Dettagliato"
+ctaAction={() => window.open('/contact?service=pt-pma', '\_blank')}
+/>
+
+---
+
+## Checklist Pre-Registrazione
 
 <Checklist
-  title="Lista di controllo dei documenti PT PMA"
+  title="Checklist Documenti PT PMA"
   description="Raccogli questi documenti prima di iniziare il processo di registrazione"
   persistKey="pt-pma-checklist"
   items={[
     {
       id: "passport",
-      label: "Copie del passaporto (di tutti gli azionisti)",
-      description: "Scansioni a colori, valide per 18+ mesi",
+      label: "Copia passaporti (tutti i soci)",
+      description: "Scansioni a colori, validi per 18+ mesi",
       required: true,
       category: "identità",
     },
     {
       id: "photo",
-      label: "Foto del passaporto (4x6, sfondo rosso)",
-      description: "Foto recenti per tutti gli azionisti e i direttori",
+      label: "Foto passaporto (4x6, sfondo rosso)",
+      description: "Foto recenti per tutti i soci e direttori",
       required: true,
       category: "identità",
     },
     {
       id: "address-proof",
-      label: "Prova di indirizzo (di tutti gli azionisti)",
-      description:
-        "Bolletta dei servizi pubblici, estratto conto bancario o documento d'identità governativo",
+      label: "Prova indirizzo (tutti i soci)",
+      description: "Bolletta, estratto conto bancario o ID governativo",
       required: true,
       category: "identità",
     },
     {
       id: "kitas",
-      label: "Copia di KITAS (se già in Indonesia)",
-      description:
-        "Per azionisti/direttori con permessi di soggiorno esistenti",
+      label: "Copia KITAS (se già in Indonesia)",
+      description: "Per soci/direttori con permessi di soggiorno esistenti",
       required: false,
       category: "identità",
     },
     {
       id: "company-names",
-      label: "3 opzioni di nome aziendale",
-      description: "Nomi indonesiani, 2+ parole, univoci",
+      label: "3 opzioni nome azienda",
+      description: "Nomi indonesiani, 2+ parole, unici",
       required: true,
       category: "azienda",
     },
     {
       id: "business-plan",
-      label: "Sommario del business plan",
-      description:
-        "Attività, mercato di riferimento, cronologia degli investimenti",
+      label: "Riassunto business plan",
+      description: "Attività, mercato target, tempistiche investimento",
       required: true,
       category: "azienda",
     },
     {
       id: "kbli-list",
-      label: "Elenco dei codici KBLI",
-      description: "Tutte le attività che intendi svolgere",
+      label: "Elenco codici KBLI",
+      description: "Tutte le attività commerciali che pianifichi di svolgere",
       required: true,
       category: "azienda",
     },
     {
       id: "shareholder-structure",
-      label: "Bozza dell'accordo tra azionisti",
-      description: "Percentuali di proprietà, ruoli, contributo di capitale",
+      label: "Bozza accordo soci",
+      description: "Percentuali proprietà, ruoli, contributo capitale",
       required: true,
       category: "azienda",
     },
     {
       id: "investment-plan",
-      label: "Piano di investimento (IDR 10B+)",
-      description: "Ripartizione: capitale, attrezzature, capitale circolante",
+      label: "Piano di investimento (10B+ IDR)",
+      description: "Scomposizione: capitale, attrezzature, capitale circolante",
       required: true,
       category: "finanziario",
     },
     {
       id: "source-funds",
-      label: "Documentazione sulla fonte dei fondi",
-      description: "Estratti conto bancari, conferma di investimento",
+      label: "Documentazione fonte fondi",
+      description: "Estratti conto bancari, conferma investimento",
       required: true,
       category: "finanziario",
     },
     {
       id: "domicile",
-      label: "Indirizzo dell'ufficio organizzato",
-      description: "Contratto di virtual office o contratto di locazione",
+      label: "Indirizzo ufficio organizzato",
+      description: "Contratto ufficio virtuale o accordo di locazione",
       required: true,
       category: "operativo",
     },
     {
       id: "poa",
-      label: "Procura (se non presente)",
-      description: "Procura notarile per la firma di documenti a distanza",
+      label: "Procura (se non presenti)",
+      description: "POA notarile per firmare documenti a distanza",
       required: false,
       category: "operativo",
     },
   ]}
   categories={[
-    { id: "identity", label: "Documenti d'identità", color: "blue" },
-    { id: "company", label: "Informazioni aziendali", color: "purple" },
-    { id: "financial", label: "Documenti finanziari", color: "green" },
-    { id: "operational", label: "Impostazione operativa", color: "amber" },
+    { id: "identity", label: "Documenti Identità", color: "blue" },
+    { id: "company", label: "Informazioni Azienda", color: "purple" },
+    { id: "financial", label: "Documenti Finanziari", color: "green" },
+    { id: "operational", label: "Setup Operativo", color: "amber" },
   ]}
   showProgress={true}
   allowExport={true}
@@ -830,140 +936,136 @@ Ecco il percorso completo dalla decisione all'operatività:
 
 ---
 
-## Comprendere i codici KBLI
+## Comprendere i Codici KBLI
 
 <GlossaryTerm
   term="KBLI"
-  definition="Klasifikasi Baku Lapangan Usaha Indonesia - il sistema di classificazione indonesiano standard per settore utilizzando codici a 5 cifre."
+  definition="Klasifikasi Baku Lapangan Usaha Indonesia - il sistema di classificazione industriale standard indonesiano che utilizza codici a 5 cifre."
   indonesian="Klasifikasi Baku Lapangan Usaha Indonesia"
   relatedTerms={["NIB", "OSS", "DNI"]}
 >
   I codici KBLI
-</GlossaryTerm>
-sono forse l'elemento più importante della tua costituzione PT PMA. Determinano:
+</GlossaryTerm> sono forse l'elemento più importante del tuo setup PT PMA. Determinano:
 
-- **Quali attività puoi legalmente svolgere**
+- **Quali attività puoi svolgere legalmente**
 - **Se gli stranieri possono possedere il 100%** (o meno)
 - **Quali permessi ti servono**
-- **La tua classificazione del rischio**
+- **La tua classificazione di rischio**
 
-<InfoCard variant="tip" title="Suggerimenti per la selezione dei codici KBLI">
-  1. **Sii completo** - Aggiungi tutte le attività che potresti svolgere,
-  comprese le attività di supporto 2. **Controlla l'elenco DNI** - Alcuni codici
-  hanno limiti di proprietà straniera 3. **Primario vs secondario** - Il tuo
-  codice principale influisce sul trattamento fiscale 4. **A prova di futuro** -
-  L'aggiunta di codici in seguito richiede modifiche (costi e tempo)
+<InfoCard variant="tip" title="Consigli Selezione KBLI">
+  1. **Sii completo** - Aggiungi tutte le attività che potresti svolgere, incluse le attività di supporto 2. **Controlla l'elenco DNI** - Alcuni codici hanno limiti di proprietà straniera 3. **Primario vs secondario** - Il tuo codice principale influenza il trattamento fiscale 4.
+  **Prepara il futuro** - Aggiungere codici in seguito richiede modifiche (costi e tempo)
 </InfoCard>
 
-### Codici KBLI popolari per aziende straniere
+### Codici KBLI Popolari per Società Straniere
 
-| Codice | Attività                        | Proprietà straniera |
-| ------ | ------------------------------- | ------------------- |
-| 62010  | Programmazione informatica      | 100%                |
-| 62020  | Consulenza IT                   | 100%                |
-| 70201  | Consulenza aziendale            | 100%                |
-| 46100  | Commercio all'ingrosso (agente) | 100%                |
-| 55111  | Hotel 5 stelle                  | 100%                |
-| 56101  | Ristorante (su larga scala)     | 100%                |
-| 73100  | Pubblicità                      | 100%                |
-| 74100  | Attività di progettazione       | 100%                |
-| 73100  | Pubblicità                      | 100%                |
+| Codice  | Attività                 | Proprietà Straniera |
+| ----- | ------------------------ | ----------------- |
+| 62010 | Programmazione Computer     | 100%              |
+| 62020 | Consulenza IT            | 100%              |
+| 70201 | Consulenza Aziendale      | 100%              |
+| 46100 | Commercio all'ingrosso (agente)  | 100%              |
+| 55111 | Hotel 5 Stelle             | 100%              |
+| 56101 | Ristorante (su larga scala) | 100%              |
+| 73100 | Pubblicità                | 100%              |
+| 74100 | Attività di Design        | 100%              |
 
-<InfoCard variant="warning" title="Attività ristrette">
+<InfoCard variant="warning" title="Attività Restrette">
 Alcune attività sono **chiuse** agli investimenti stranieri o hanno limiti di proprietà:
-- Commercio al dettaglio piccolo (riservato alle PMI)
+- Retail piccolo (riservato alle PMI)
 - Ristoranti piccoli (riservati alle PMI)
-- Agenzie di viaggio (limite di proprietà straniera del 49%)
-- Alcuni media e trasmissione
-- Trasporto terrestre
+- Agenzie di viaggio (limite 49% proprietà straniera)
+- Alcuni media e broadcasting
+- Trasporti su terra
 
-Verifica sempre lo stato attuale dell'elenco negativo degli investimenti (DNI) prima di finalizzare i codici KBLI.
-
----
-
-## Errori comuni da evitare
-
-<InfoCard variant="error" title="Errori critici">
-**1. Accordi di prestanome**
-Utilizzare il nome di un indonesiano per detenere azioni è **illegale**. Il vero proprietario può perdere tutto e il prestanome può rivendicare i beni.
-
-**2. Sottostimare il capitale**
-L'IDR 10 miliardi non è solo un numero: devi dimostrare l'attività di investimento. Pianifica un dispendio di capitale realistico.
-
-**3. Codici KBLI errati**
-Scegliere codici senza verificare le restrizioni può limitare la tua attività o la percentuale di proprietà straniera.
-
-**4. Saltare i permessi**
-Operare senza licenze adeguate può comportare multe, chiusure o cancellazione del visto.
-
-**5. Mancanza di conformità fiscale**
-L'Indonesia tiene traccia delle aziende straniere a stretto contatto. Ritardi nei pagamenti = sanzioni. Mancanza di presentazione = grossi problemi.
+Verifica sempre lo status attuale dell'elenco DNI (Negative Investment List) prima di finalizzare i codici KBLI.
 
 </InfoCard>
 
 ---
 
-## Conformità continua dopo la registrazione
+## Errori Comuni da Evitare
+
+<InfoCard variant="error" title="Errori Critici">
+**1. Accordi di Nomina**
+Usare il nome di un indonesiano per detenere azioni è **illegale**. Il vero proprietario può perdere tutto e il nominatario può rivendicare i beni.
+
+**2. Sottostimare il Capitale**
+I 10 miliardi IDR non sono solo un numero — devi mostrare attività di investimento. Pianifica un dispiegamento di capitale realistico.
+
+**3. Codici KBLI Errati**
+Scegliere codici senza verificare le restrizioni può limitare la tua attività o percentuale di proprietà.
+
+**4. Saltare i Permessi**
+Operare senza licenze appropriate può comportare multe, chiusura o cancellazione del visto.
+
+**5. Non Conformità Fiscale**
+L'Indonesia traccia attentamente le società straniere. Presentazioni tardive = sanzioni. Nessuna presentazione = grandi problemi.
+
+</InfoCard>
+
+---
+
+## Dopo la Registrazione: Conformità Continua
 
 <Checklist
-  title="Conformità mensile e annuale"
+  title="Conformità Mensile e Annuale"
   description="Mantieni la tua PT PMA in regola con questi requisiti regolari"
   persistKey="pt-pma-compliance"
   items={[
     {
       id: "pph21",
-      label: "PPh 21 (Tasse sui dipendenti)",
-      description: "Ritenuta mensile sulle retribuzioni",
+      label: "PPh 21 (Tasse Dipendenti)",
+      description: "Tassa di ritenuta mensile sugli stipendi",
       required: true,
       category: "mensile",
     },
     {
       id: "ppn",
       label: "Report PPN (IVA)",
-      description: "Report IVA mensile (se registrato come PKP)",
+      description: "Reporting IVA mensile (se registrato PKP)",
       required: false,
       category: "mensile",
     },
     {
       id: "pph23",
       label: "PPh 23/26 (Ritenuta)",
-      description: "Ritenuta mensile su servizi, affitti, dividendi",
+      description: "Tassa mensile su servizi, affitti, dividendi",
       required: true,
       category: "mensile",
     },
     {
       id: "bpjs",
       label: "Contributi BPJS",
-      description: "Pagamenti mensili di sicurezza sociale",
+      description: "Pagamenti previdenziali mensili",
       required: true,
       category: "mensile",
     },
     {
       id: "spt-badan",
       label: "SPT Tahunan Badan",
-      description:
-        "Dichiarazione dei redditi aziendale annuale (scadenza di aprile)",
+      description: "Dichiarazione fiscale annuale (scadenza aprile)",
       required: true,
       category: "annuale",
     },
     {
       id: "lkpm",
       label: "Report LKPM",
-      description: "Report trimestrale sull'attività di investimento a BKPM",
+      description: "Report trimestrale attività investimenti a BKPM",
       required: true,
       category: "trimestrale",
     },
     {
       id: "rups",
-      label: "Riunione generale degli azionisti (RUPS)",
-      description: "Riunione annuale degli azionisti e verbali",
+      label: "Adunazione Generale Annuale (RUPS)",
+      description: "Incontro annuale soci e verbali",
       required: true,
       category: "annuale",
     },
     {
       id: "fs-audit",
-      label: "Revisione del bilancio",
-      description: "Richiesto per aziende al di sopra della soglia",
+      label: "Audit Stato Finanziario",
+      description: "Richiesto per società sopra la soglia",
       required: false,
       category: "annuale",
     },
@@ -978,39 +1080,36 @@ L'Indonesia tiene traccia delle aziende straniere a stretto contatto. Ritardi ne
 
 ---
 
-## Hai bisogno di aiuto?
+## Hai Bisogno di Aiuto?
 
-Avviare un'attività in Indonesia è complesso, ma è assolutamente realizzabile con la giusta guida. Se hai domande specifiche sulla tua situazione:
+Avviare un'attività in Indonesia è complesso, ma è assolutamente raggiungibile con la giusta guida. Se hai domande specifiche sulla tua situazione:
 
 <AskZantara
-  context="Costituzione di PT PMA, codici KBLI, registrazione OSS, investimento straniero in Indonesia"
-  placeholder="Chiedi informazioni sulla costituzione aziendale, sui codici KBLI, sui requisiti di investimento..."
+  context="Istituzione società PT PMA, codici KBLI, registrazione OSS, investimenti stranieri in Indonesia"
+  placeholder="Chiedi su istituzione società, codici KBLI, requisiti investimento..."
   suggestedQuestions={[
     "Quale codice KBLI mi serve per una società di consulenza IT?",
-    "Un cittadino straniero può possedere il 100% di un ristorante a Bali?",
-    "Quanto tempo ci vuole per la registrazione di PT PMA?",
-    "Qual è la differenza tra PT PMA e ufficio di rappresentanza?",
-    "Devo essere in Indonesia per costituire una PT PMA?",
+    "Uno straniero può possedere il 100% di un ristorante a Bali?",
+    "Quanto tempo impiega la registrazione PT PMA?",
+    "Qual è la differenza tra PT PMA e ufficio rappresentanza?",
+    "Devo essere in Indonesia per istituire una PT PMA?",
   ]}
 />
 
 ---
 
-## Articoli correlati
+## Articoli Correlati
 
-- [PT PMA vs PT PMDN: Qual è la scelta giusta per te?](/insights/business/pt-pma-vs-pt-pmdn-comparison)
-- [Codici KBLI spiegati: riferimento completo](/kbli)
-- [KITAS per investitori: visto per proprietari di attività](/insights/immigration/investor-kitas-guide)
-- [Tassazione aziendale in Indonesia: cosa pagano le società straniere](/taxes/corporate-income-tax?lang=it)
-- [Assunzione di dipendenti in Indonesia](/business/hiring-indonesian-employees?lang=it)
+- [PT PMA vs PT PMDN: Quale fa al Caso Tuo?](/insights/business/pt-pma-vs-pt-pmdn-comparison)
+- [Codici KBLI Spiegati: Riferimento Completo](/kbli)
+- [Investor KITAS: Visto per Proprietari di Attività](/insights/immigration/investor-kitas-guide)
+- [Tasse Societarie in Indonesia: Cosa Pagano le Società Straniere](/taxes/corporate-income-tax)
+- [Assunzione Dipendenti in Indonesia](/business/hiring-indonesian-employees)
 
 ---
 
-<InfoCard variant="note" title="Dichiarazione di non responsabilità">
+<InfoCard variant="note" title="Disclaimer">
 
-Questa guida è solo a scopo informativo e non costituisce una consulenza
-legale o fiscale. Le normative cambiano frequentemente: verifica sempre i
-requisiti correnti con fonti ufficiali o professionisti qualificati. Ultimo
-aggiornamento: gennaio 2026.
+Questa guida è a scopo informativo solo e non costituisce consulenza legale o fiscale. I regolamenti cambiano frequentemente — verifica sempre i requisiti attuali con fonti ufficiali o professionisti qualificati. Aggiornato l'ultima volta: Gennaio 2026.
 
 </InfoCard>

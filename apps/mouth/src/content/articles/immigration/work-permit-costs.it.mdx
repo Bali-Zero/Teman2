@@ -75,29 +75,22 @@ contentStructure:
 canonicalUrl: "https://balizero.com/it/immigration/work-permit-costs"
 ogImage: "/static/insights/immigration/permit-costs.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "b1f8222d4cab569898fb818ee836024f8b0f345ea37f238b55f5e96cc7d9dd07"
+source_sha256: "2769682fd5e5065ff21fbe8766782ee13a363cf72447cdfdcbc1b1be58c5acca"
 ---
 
-import {
-  Calculator,
-  ComparisonTable,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Costi del Permesso di Lavoro in Indonesia 2026: Dettaglio Completo delle Tasse
 
-# Costi del permesso di lavoro in Indonesia 2026: Ripartizione completa delle tariffe
+Ottenere un permesso di lavoro in Indonesia comporta diverse spese. Ecco esattamente cosa pagherete voi (o il vostro datore di lavoro).
 
-Ottenere un permesso di lavoro in Indonesia comporta diverse spese. Ecco esattamente cosa pagherai tu (o il tuo datore di lavoro).
-
-## Calcolatore dei costi
+## Calcolatore dei Costi
 
 <Calculator
-  title="Stimatore dei costi del permesso di lavoro"
+  title="Stima dei Costi del Permesso di Lavoro"
   description="Calcola i costi totali del permesso di lavoro"
   fields={[
     {
       id: "duration",
-      label: "Durata del permesso",
+      label: "Durata del Permesso",
       type: "select",
       options: [
         { value: "6", label: "6 mesi" },
@@ -108,7 +101,7 @@ Ottenere un permesso di lavoro in Indonesia comporta diverse spese. Ecco esattam
     },
     {
       id: "useAgent",
-      label: "Utilizzi un'agenzia di immigrazione?",
+      label: "Utilizzo di un Agente per l'Immigrazione?",
       type: "checkbox",
       defaultValue: true
     },
@@ -122,21 +115,21 @@ Ottenere un permesso di lavoro in Indonesia comporta diverse spese. Ecco esattam
   calculateResult={(values) => {
     const months = Number(values.duration);
 
-    // Tasse governative
-    const dkpTka = months * 100; // 100 USD/mese
+    // Government fees
+    const dkpTka = months * 100; // USD 100/month
     const kitasFee = 2000000; // IDR
     const vitasFee = 1500000; // IDR
     const stm = 200000; // IDR
     const biometrics = 100000; // IDR
 
-    // Tariffe agenzia (range tipico)
+    // Agent fees (typical range)
     const agentBase = values.useAgent ? 15000000 : 0; // IDR
     const agentPremium = values.newCompany ? 5000000 : 0; // IDR
 
-    // Conversione in IDR (cambio approssimativo)
+    // Convert to IDR (approx rate)
     const dkpTkaIdr = dkpTka * 16000;
 
-    // Totali
+    // Totals
     const govtTotal = kitasFee + vitasFee + stm + biometrics + dkpTkaIdr;
     const agentTotal = agentBase + agentPremium;
     const grandTotal = govtTotal + agentTotal;
@@ -145,11 +138,11 @@ Ottenere un permesso di lavoro in Indonesia comporta diverse spese. Ecco esattam
       total: grandTotal,
       breakdown: [
         { label: `DKP-TKA (${months} mesi)`, amount: dkpTkaIdr },
-        { label: "Tassa KITAS", amount: kitasFee },
-        { label: "Tassa VITAS", amount: vitasFee },
+        { label: "Vista del KITAS", amount: kitasFee },
+        { label: "Vista del VITAS", amount: vitasFee },
         { label: "STM + Biometria", amount: stm + biometrics },
-        { label: "Tariffa servizio agenzia", amount: agentBase },
-        { label: "Supplemento nuova azienda", amount: agentPremium }
+        { label: "Commissione di Servizio dell'Agente", amount: agentBase },
+        { label: "Supplemento per Nuova Azienda", amount: agentPremium }
       ],
       currency: "IDR",
       note: `Equivalente in USD: ~$${Math.round(grandTotal / 16000)}`
@@ -160,9 +153,9 @@ Ottenere un permesso di lavoro in Indonesia comporta diverse spese. Ecco esattam
 
 ---
 
-## Ripartizione delle tariffe per categoria
+## Dettaglio delle Spese per Categoria
 
-### 1. Tasse governative
+### 1. Tasse Governative
 
 <ComparisonTable
   title="Tasse Governative/Ufficiali"
@@ -172,123 +165,181 @@ Ottenere un permesso di lavoro in Indonesia comporta diverse spese. Ecco esattam
       name: "DKP-TKA",
       subtitle: "Fondo di compensazione",
       values: {
-        Importo: "100 USD/mese",
-        "Pagato da": "Datore di lavoro",
-        "Totale 12 mesi": "1.200 USD",
+        Amount: "100 USD/mese",
+        "Pagato Da": "Datore di Lavoro",
+        "Totale 12 Mesi": "1.200 USD",
       },
       highlight: true,
     },
     {
-      name: "Tassa VITAS",
-      subtitle: "Approvazione del visto",
+      name: "Vista del VITAS",
+      subtitle: "Approvazione visto",
       values: {
-        Importo: "1.500.000 IDR",
-        "Pagato da": "Datore/Lavoratore",
-        "Totale 12 mesi": "~95 USD",
+        Amount: "1.500.000 IDR",
+        "Pagato Da": "Datore di Lavoro/Lavoratore",
+        "Totale 12 Mesi": "~95 USD",
       },
     },
     {
-      name: "Tassa KITAS",
+      name: "Vista del KITAS",
       subtitle: "Permesso di soggiorno",
       values: {
-        Importo: "2.000.000 IDR",
-        "Pagato da": "Datore/Lavoratore",
-        "Totale 12 mesi": "~125 USD",
+        Amount: "2.000.000 IDR",
+        "Pagato Da": "Datore di Lavoro/Lavoratore",
+        "Totale 12 Mesi": "~125 USD",
       },
     },
     {
-      name: "STM e Biometria",
+      name: "STM & Biometria",
       subtitle: "Spese di elaborazione",
       values: {
-        Importo: "300.000 IDR",
-        "Pagato da": "Datore/Lavoratore",
-        "Totale 12 mesi": "~20 USD",
+        Amount: "300.000 IDR",
+        "Pagato Da": "Datore di Lavoro/Lavoratore",
+        "Totale 12 Mesi": "~20 USD",
       },
     },
   ]}
 />
 
-<InfoCard variant="note" title="Il DKP-TKA è il costo principale">
+<InfoCard variant="note" title="Il Fondo DKP-TKA è la Spesa Principale">
 
-  Il **fondo di compensazione di 100 USD al mese** è la tassa governativa più
-  elevata. Per un permesso di 2 anni, sono **2.400 USD** pagati anticipatamente
-  e non rimborsabili.
+  Il **fondo di compensazione di 100 USD/mese** rappresenta la più grande tassa governativa. Per un permesso di 2 anni, si tratta di **2.400 USD** in anticipo, non rimborsabili.
 </InfoCard>
 
 ---
 
-### 2. Tariffe dell'agenzia
+### 2. Tasse per Agenti/Elaborazione
 
-La maggior parte delle aziende utilizza agenzie di immigrazione. Tariffe tipiche:
+La maggior parte delle aziende utilizza agenti per l'immigrazione. Tipiche tariffe:
 
-| Servizio                    | Range di costo (IDR) | Note                           |
-| --------------------------- | -------------------- | ------------------------------ |
-| Elaborazione KITAS completa | 15-25 milioni        | Tutto incluso                  |
-| Solo RPTKA                  | 5-8 milioni          | Se gestisci il KITAS da solo   |
-| Rinnovo KITAS               | 8-15 milioni         | Più semplice della prima volta |
-| Procedura d'urgenza         | +30-50%              | Non sempre possibile           |
+| Servizio               | Intervallo Costo (IDR) | Note                        |
+| --------------------- | ---------------- | ---------------------------- |
+| Elaborazione completa KITAS | 15-25 milioni    | Incluso tutto                |
+| Solo RPTKA            | 5-8 milioni      | Se gestite voi il KITAS      |
+| Elaborazione rinnovo  | 8-15 milioni     | Più semplice della nuova domanda |
+| Elaborazione urgente  | +30-50%          | Non sempre possibile         |
 
----
+<InfoCard variant="tip" title="Selezione dell'Agente">
 
-### 3. Costi nascosti o aggiuntivi
-
-Non dimenticare queste spese:
-
-| Voce                     | Costo stimato        | Note                                   |
-| ------------------------ | -------------------- | -------------------------------------- |
-| Legalizzazione documenti | 1-3 milioni IDR      | Laurea, certificati                    |
-| Traduzione               | 500k-1,5 milioni IDR | Se i documenti non sono in indonesiano |
-| Foto                     | 50-100k IDR          | Requisiti specifici                    |
-| Visita medica            | 500k-1 milione IDR   | A volte richiesta                      |
+  Scegliete agenti che: - Hanno prezzi chiari (nessuna tassa nascosta) - Forniscono accordo di servizio scritto - Hanno un track record verificabile - Sono reattivi alle domande
+</InfoCard>
 
 ---
 
-## Chi paga?
+### 3. Costi Nascosti/Aggiuntivi
+
+Non dimenticate queste spese:
+
+| Voce                  | Costo Stimato       | Note                             |
+| --------------------- | -------------------- | --------------------------------- |
+| Legalizzazione documenti | 1-3 milioni IDR      | Laurea, certificati              |
+| Traduzione           | 500k-1.5 milioni IDR | Se i documenti non sono in indonesiano    |
+| Foto                | 50-100k IDR          | Requisiti specifici             |
+| Visita medica        | 500k-1 milione IDR   | A volte richiesta                |
+| Viaggio per biometria | Variabile           | Potrebbe essere necessario visitare un ufficio specifico |
+
+---
+
+## Scenari di Costo Totale
+
+<ComparisonTable
+  title="Esempi di Costi Totali"
+  description="Budget realistico per diverse situazioni"
+  items={[
+    {
+      name: "Dipendente (1 anno)",
+      subtitle: "L'azienda gestisce tutto",
+      values: {
+        "DKP-TKA": "1.200 USD",
+        "Tasse Governative": "~4 milioni IDR",
+        Agente: "~18 milioni IDR",
+        Totale: "~40 milioni IDR (~2.500 USD)",
+      },
+    },
+    {
+      name: "Direttore (2 anni)",
+      subtitle: "Propria PT PMA",
+      values: {
+        "DKP-TKA": "2.400 USD",
+        "Tasse Governative": "~4 milioni IDR",
+        Agente: "~25 milioni IDR",
+        Totale: "~68 milioni IDR (~4.250 USD)",
+      },
+      highlight: true,
+    },
+    {
+      name: "Rinnovo (1 anno)",
+      subtitle: "KITAS esistente",
+      values: {
+        "DKP-TKA": "1.200 USD",
+        "Tasse Governative": "~3 milioni IDR",
+        Agente: "~12 milioni IDR",
+        Totale: "~34 milioni IDR (~2.100 USD)",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Chi Paga?
 
 Legalmente, il **datore di lavoro** è responsabile della maggior parte dei costi del permesso di lavoro. Nella pratica:
 
-### Il datore di lavoro solitamente paga:
+### Il Datore di Lavoro Solitamente Paga
 
-- DKP-TKA (obbligo legale del datore)
+- DKP-TKA (obbligo obbligatorio per il datore di lavoro)
 - Elaborazione RPTKA
-- Tariffe dell'agenzia
+- Tasse degli agenti
 
-### Spesso negoziati:
+### Spesso Negoziabile
 
 - Tasse KITAS
-- Costi di rinnovo
+- Costi del rinnovo
 - Preparazione dei documenti
 
-<InfoCard variant="warning" title="Controlla il tuo contratto">
-Prima di accettare un lavoro, chiarisci:
-- Chi paga per il permesso di lavoro iniziale?
-- Chi paga per i rinnovi?
-- Cosa succede se ti dimetti in anticipo?
+<InfoCard variant="warning" title="Verifica il Contratto">
+Prima di accettare un lavoro, chiarite:
+- Chi paga il permesso di lavoro iniziale?
+- Chi paga i rinnovi?
+- Cosa succede se lasciate il lavoro prima del tempo?
 - I costi vengono detratti dallo stipendio?
 
-Assicurati che sia scritto nel tuo contratto di lavoro.
+Ottenetelo per iscritto nel contratto di lavoro.
 
 </InfoCard>
 
 ---
 
-## Domande comuni
+## Risparmio sui Costi
+
+Consigli per ridurre le spese:
+
+1. **Utilizzate lo staff interno dell'azienda** - Alcune grandi aziende hanno personale dedicato all'immigrazione
+2. **Permessi multi-anno** - I permessi di 2 anni costano meno all'anno rispetto a quelli di 1 anno
+3. **Pacchetto con altri** - Gli agenti possono offrire sconti per più lavoratori
+4. **Confrontate gli agenti** - I prezzi variano significativamente
+5. **Preparate i documenti correttamente** - Evitate spese di rielaborazione
+
+---
+
+## Domande Frequenti
 
 <AskZantara
-  context="Work permit costs, KITAS fees, DKP-TKA, immigration agent fees Indonesia"
+  context="Costi permessi di lavoro, tasse KITAS, DKP-TKA, tasse agenti immigrazione Indonesia"
   placeholder="Chiedi sui costi del permesso di lavoro..."
   suggestedQuestions={[
-    "Il DKP-TKA è rimborsabile se mi dimetto prima?",
-    "Posso detrarre i costi del permesso dalle tasse?",
-    "Perché le tariffe delle agenzie variano così tanto?",
-    "Esistono esenzioni dalle tasse?",
+    "Il fondo DKP-TKA è rimborsabile se lascio il lavoro prima?",
+    "Posso detrarre i costi del permesso di lavoro dalle tasse?",
+    "Perché le tariffe degli agenti variano così tanto?",
+    "Ci sono esenzioni da alcune tasse?",
   ]}
 />
 
 ---
 
-## Articoli correlati
+## Articoli Correlati
 
-- [Guida al KITAS di lavoro](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=it)
-- [RPTKA e IMTA spiegati](/insights/immigration/rptka-imta-explained)
-- [Tempistiche per il permesso di lavoro](/insights/immigration/work-permit-timeline)
+- [Guida al Permesso di Lavoro KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
+- [RPTKA & IMTA Spiegati](/insights/immigration/rptka-imta-explained)
+- [Cronologia del Permesso di Lavoro](/insights/immigration/work-permit-timeline)

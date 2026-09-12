@@ -61,72 +61,65 @@ faq:
     answer: "L'elaborazione tipica richiede da 3 a 6 mesi, includendo la verifica dell'investimento e i controlli di sicurezza."
   - question: "I titolari di Golden Visa possono lavorare in Indonesia?"
     answer: "Sì, il visto garantisce diritti di residenza e gestione degli investimenti. Per ruoli operativi specifici potrebbe essere necessario integrare un KITAS di lavoro."
-source_sha256: "6f6298191797f0146047a04307fb806143b37a74739264962edbd227c81eed2e"
+source_sha256: "0f57bca029dfc1893e86f3e84b5d17bf31a8b9708553174f6665b4559b72bc6a"
 ---
-
-import {
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
 
 # Golden Visa 2026: Un Anno Dopo
 
-L'Indonesia ha lanciato il suo programma **Golden Visa** alla fine del 2024, promettendo una corsia preferenziale per la residenza a lungo termine per investitori e individui con patrimoni elevati. Dopo 12 mesi, abbiamo dati sufficienti per valutare cosa funziona e se l'investimento ha senso.
+L'Indonesia ha lanciato il suo programma **Golden Visa** alla fine del 2024, promettendo una via rapida per la residenza a lungo termine per individui ad alto patrimonio e investitori. Dopo 12 mesi, abbiamo dati sufficienti per valutare cosa funziona, cosa no, e se l'investimento ne vale la pena.
 
 ---
 
-## I Numeri ad Oggi
+## I Numeri Finora
 
 <InfoCard variant="highlight" title="Statistiche del Primo Anno">
-A gennaio 2026, i dati preliminari suggeriscono:
+A gennaio 2026, i primi dati suggeriscono:
 
-- **Approvazioni**: Diverse centinaia emesse (cifre esatte non divulgate ufficialmente)
-- **Tempo medio di elaborazione**: 4-8 settimane per le domande complete
-- **Principali richiedenti**: Investitori da Singapore, Australia, Cina ed Europa
-- **Settori di investimento**: Immobiliare, ospitalità, startup tecnologiche
+- **Approvazioni**: diverse centinaia emesse (dati esatti non divulgati pubblicamente)
+- **Tempo medio di elaborazione**: 2-4 settimane per le domande complete
+- **Principali richiedenti**: Investitori da Singapore, Australia, Cina e Europa
+- **Settori di investimento principali**: Immobili, ospitalità, startup tecnologiche
 </InfoCard>
 
 ---
 
-## Opzioni di Investimento
+## Livelli di Investimento Spiegati
 
 <ComparisonTable
-  title="Opzioni Golden Visa"
-  description="Confronta i percorsi per la Golden Visa indonesiana"
+  title="Opzioni di Investimento per il Golden Visa"
+  description="Confronta le diverse vie per ottenere il Golden Visa dell'Indonesia"
   items={[
     {
-      name: "Tier 1 - Individuale",
+      name: "Livello 1 - Individuale",
       subtitle: "Investimento personale",
       values: {
-        "Investimento Minimo": "350.000 USD",
+        "Investimento Minimo": "USD 350.000",
         Durata: "5 anni",
         "Diritti di Lavoro": "Sì (con KITAS)",
         "Famiglia Inclusa": "Coniuge + figli",
-        "Percorso Rinnovo": "Rinnovabile",
+        "Percorso per Estensione": "Rinnovabile",
       },
     },
     {
-      name: "Tier 2 - Premium",
-      subtitle: "Investimento elevato",
+      name: "Livello 2 - Premium",
+      subtitle: "Investimento più elevato",
       values: {
-        "Investimento Minimo": "700.000 USD",
+        "Investimento Minimo": "USD 700.000",
         Durata: "10 anni",
         "Diritti di Lavoro": "Sì (con KITAS)",
         "Famiglia Inclusa": "Coniuge + figli",
-        "Percorso Rinnovo": "Rinnovabile",
+        "Percorso per Estensione": "Rinnovabile",
       },
     },
     {
-      name: "Direttore Corporate",
-      subtitle: "Percorso business",
+      name: "Direttore Aziendale",
+      subtitle: "Via d'impresa",
       values: {
-        "Investimento Minimo": "Capitale sociale > 2.5M USD",
+        "Investimento Minimo": "Azienda con capitale di USD 2,5M+",
         Durata: "5 anni",
-        "Diritti di Lavoro": "Sì (KITAS Direttore)",
+        "Diritti di Lavoro": "Sì (KITAS per Direttore)",
         "Famiglia Inclusa": "Coniuge + figli",
-        "Percorso Rinnovo": "Legato all'azienda",
+        "Percorso per Estensione": "Legato all'azienda",
       },
     },
   ]}
@@ -134,17 +127,147 @@ A gennaio 2026, i dati preliminari suggeriscono:
 
 ---
 
-## Considerazioni Finali
+## Cosa Ti Serve Davvero
 
-<InfoCard variant="success" title="Il Verdetto">
-La Golden Visa mantiene le promesse: **stabilità a lungo termine e diritti operativi per investitori seri**.
+<Checklist
+  title="Requisiti per il Golden Visa"
+  description="Checklist completa per gli investitori individuali"
+  persistKey="golden-visa-checklist"
+  items={[
+    {
+      id: "passport",
+      label: "Passaporto valido (24+ mesi)",
+      description: "Da paese idoneo",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "investment-proof",
+      label: "Prova dell'investimento",
+      description: "Estratti conto bancari, titoli di proprietà o certificati azionari",
+      required: true,
+      category: "financial",
+    },
+    {
+      id: "funds",
+      label: "Investimento di USD 350.000+ in Indonesia",
+      description: "Immobili, obbligazioni governative o azioni aziendali",
+      required: true,
+      category: "financial",
+    },
+    {
+      id: "health-insurance",
+      label: "Copertura assicurativa sanitaria",
+      description: "Valida per l'Indonesia",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "clean-record",
+      label: "Certificato di casellario giudiziale",
+      description: "Dal paese di residenza",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "cv",
+      label: "Curriculum vitae",
+      description: "Antecedenti professionali",
+      required: true,
+      category: "documents",
+    },
+  ]}
+  categories={[
+    { id: "documents", label: "Documenti", color: "blue" },
+    { id: "financial", label: "Finanziario", color: "green" },
+  ]}
+  showProgress={true}
+/>
 
-Vale i 350.000 USD? Dipende interamente dalla tua situazione:
+---
 
-- Se avevi comunque intenzione di investire, **sì**.
-- Se cerchi solo un modo per restare, esistono opzioni più economiche (come il Second Home Visa).
+## La Valutazione Onesta
 
-Il programma è legittimo e le procedure sono in costante miglioramento.
+<InfoCard variant="warning" title="Cosa Non Ti Diccono">
+**I 350.000$ sono solo l'inizio.**
+
+I costi reali includono spesso:
+
+- **Commissioni di acquisto immobiliare**: 5-10% in più sul prezzo di acquisto
+- **Spese legali e notarili**: IDR 50-100 milioni
+- **Tasse annuali sugli immobili**: 0,5% del valore NJOP
+- **Commissioni per il rilascio del visto**: IDR 10-20 milioni
+- **Commissioni ad agente/consulente**: IDR 30-100 milioni
+
+Il costo totale del primo anno può raggiungere **$380.000-$420.000** a seconda della tua configurazione.
+
+</InfoCard>
+
+---
+
+## A Chi Dovrebbe Interessarsi?
+
+Il Golden Visa ha senso se:
+
+1. **Hai già pianificato di investire** in immobili o imprese indonesiane
+2. **Hai bisogno di stabilità a lungo termine** senza rinnovi annuali
+3. **Desideri autorizzazione al lavoro** (inclusa nella conversione KITAS)
+4. **Valuti l'inclusione familiare** in un unico pacchetto
+5. **Pianifichi di passare molto tempo** in Indonesia
+
+---
+
+## A Chi Cercare Altrove?
+
+<InfoCard variant="note" title="Esistono Alternative Migliori">
+Considera altre opzioni se:
+
+- **Il budget è limitato**: Il Second Home Visa richiede solo la prova di disponibilità di 130.000$ (non un investimento)
+- **Hai più di 55 anni**: Il KITAS per pensionati è più semplice ed economico
+- **Non ti serve lavorare**: Un VOA con estensioni o il visto D12 Business potrebbero bastare
+- **Hai origini indonesiane**: Il nuovo programma GCI offre la residenza permanente
+
+Il Golden Visa ha un prezzo premium per una flessibilità premium. Se non ti servono tutte le funzionalità, non pagarle.
+
+</InfoCard>
+
+---
+
+## Realtà dell'Elaborazione
+
+| Fase                   | Tempistica Ufficiale | Esperienza Reale |
+| ----------------------- | --------------------- | ----------------- |
+| Preparazione documenti    | 1-2 settimane         | 2-4 settimane     |
+| Sottomissione iniziale      | Immediata             | 1-3 giorni        |
+| Revisione immigrazione      | 5 giorni lavorativi   | 1-2 settimane     |
+| Verifica dell'investimento | Variabile             | 1-3 settimane     |
+| Rilascio del visto         | 3 giorni lavorativi   | 3-5 giorni        |
+| **Totale**               | **~3 settimane**      | **4-8 settimane** |
+
+---
+
+## Il Nostro Servizio
+
+| Voce                         | Costo                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| Servizio Completo Golden Visa | **IDR 75.000.000**                                                          |
+| Include                     | Preparazione documenti, consulenza strutturazione investimenti, sottomissione, follow-up |
+| Spese governative              | Aggiuntive (variano in base al livello)                                    |
+| Consulenza investimenti          | Rinvio a partner abilitati                                                  |
+
+---
+
+## Il Verdetto Finale
+
+<InfoCard variant="success" title="Verdetto di un Anno">
+Il Golden Visa consegna ciò che promette: **stabilità a lungo termine e diritti di lavoro per investitori seri**.
+
+Ne vale la pena 350.000$+? Dipende interamente dalla tua situazione:
+
+- Se investivi comunque, **sì**.
+- Se stai comprando un visto, **probabilmente no** — esistono opzioni più economiche.
+
+Il programma è legittimo, l'elaborazione sta migliorando e le approvazioni avvengono. Ma approccia con aspettative realistiche sui costi e sulle tempistiche.
 
 </InfoCard>
 
@@ -153,13 +276,13 @@ Il programma è legittimo e le procedure sono in costante miglioramento.
 ## Domande?
 
 <AskZantara
-  context="Golden Visa Indonesia, visto investitori, residenza lungo termine, investimento 350k, requisiti visto"
-  placeholder="Chiedi sulla Golden Visa..."
+  context="Golden Visa Indonesia, investment visa, long-term residency, $350K investment, visa requirements"
+  placeholder="Chiedi sul Golden Visa..."
   suggestedQuestions={[
-    "Quali investimenti sono validi?",
-    "Posso comprare una villa per la Golden Visa?",
-    "Differenza tra Golden Visa e Second Home?",
-    "Quanto costa la consulenza Bali Zero?",
+    "Cosa conta come investimento qualificante?",
+    "Posso acquistare immobili per il Golden Visa?",
+    "Golden Visa vs Second Home Visa?",
+    "Quanto tempo ci vuole per l'approvazione?",
   ]}
 />
 
@@ -167,6 +290,6 @@ Il programma è legittimo e le procedure sono in costante miglioramento.
 
 ## Articoli Correlati
 
-- [Global Citizenship Indonesia](/insights/immigration/global-citizenship-indonesia)
-- [Guida KITAS Investitori](/insights/immigration/investor-kitas-guide)
-- [Visto Second Home](/visas/second-home-visa-indonesia?lang=it)
+- [Cittadinanza Globale Indonesia](/insights/immigration/global-citizenship-indonesia)
+- [Guida Investor KITAS](/insights/immigration/investor-kitas-guide)
+- [Second Home Visa](/visas/second-home-visa-indonesia)
