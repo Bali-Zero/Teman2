@@ -330,9 +330,16 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // here rather than guessed.
   // D3c/C-D5: no rule in the signed pack carries this reason code at all
   // (verified: no `E33G_INCOME_60K_ADVISOR_CHECK` reason_code anywhere, and
-  // no income fact exists to hold a `gte` threshold), so the figure is
-  // dropped — same "confirm the current figure" template already used by
-  // the three sibling advisor checks below, for the same reason.
+  // no fact anywhere holds an ANNUAL income threshold). Narrowed (PR-D3d,
+  // 2026-09-13, fresh grader review): the pack's only income fact —
+  // `secondhome.passive_monthly_income_usd`, gte 3000, on
+  // `el.e33e.age-55-59-disputed-band` / `el.e33e.retirement` /
+  // `el.e33f.retirement` — is a MONTHLY figure backing E33E/E33F retirement,
+  // a different quantity from E33G's USD 60,000 PER YEAR; it does not back
+  // this reason code and does not contradict "no income fact exists" as
+  // broadly as the prior wording claimed. The conclusion is unchanged: this
+  // figure is dropped — same "confirm the current figure" template already
+  // used by the three sibling advisor checks below, for the same reason.
   E33G_INCOME_60K_ADVISOR_CHECK: text(
     "This route has a minimum annual income threshold. We confirm the current figure and your evidence with one of our advisors.",
     "Jalur ini memiliki ambang penghasilan tahunan minimum. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",

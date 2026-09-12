@@ -845,9 +845,16 @@ describe("support reasons are sentences, not machine codes", () => {
 
   // Mirror image: these SUPPORT reasons named a dollar figure on `main` with
   // NO backing rule anywhere in the signed pack (verified: no fact for
-  // proof-of-funds, living cost or an income threshold exists in ANY rule's
-  // `when` tree). Per the same rule as the anchor test above, an unbacked
-  // figure may not be stated — this pins that the fix stays applied.
+  // proof-of-funds or living cost exists in ANY rule's `when` tree, and no
+  // fact anywhere holds an ANNUAL income threshold). Narrowed (PR-D3d,
+  // 2026-09-13, fresh grader review): the pack does carry ONE income fact —
+  // `secondhome.passive_monthly_income_usd`, gte 3000 — but it is a MONTHLY
+  // figure backing `el.e33e.retirement`/`el.e33f.retirement` (pinned by
+  // `FIGURE_BACKED_BY_RULE` above), a different quantity from
+  // `E33G_INCOME_60K_ADVISOR_CHECK`'s USD 60,000 PER YEAR below; it backs no
+  // key in this list. Per the same rule as the anchor test above, an
+  // unbacked figure may not be stated — this pins that the fix stays
+  // applied.
   it("states no figure for SUPPORT reasons the signed pack has no rule to back", () => {
     const NO_BACKING_KEYS = [
       "PROOF_OF_FUNDS_D1",
