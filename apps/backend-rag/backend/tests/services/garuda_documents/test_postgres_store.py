@@ -35,6 +35,7 @@ import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 import pytest
 
@@ -62,11 +63,45 @@ from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 pytestmark = pytest.mark.asyncio
 
-_ADMIN_URL = (
+_CONFIGURED_DSN = (
     os.environ.get("GARUDA_DOCUMENTS_TEST_DSN")
     or os.environ.get("INTAKE_TEST_DSN")
     or "postgresql://localhost:5432/nuzantara_test"
-).rsplit("/", 1)[0] + "/postgres"
+)
+
+
+def _with_database(dsn: str, database: str) -> str:
+    """Replace ONLY the database component of a DSN.
+
+    Not `rsplit("/", 1)`. That splits on the last slash ANYWHERE in the string, and a
+    perfectly legal DSN can carry one after the database name -- e.g.
+    `postgresql://host/nuzantara_test?application_name=garuda/ci`, where the last slash is
+    inside the query. `rsplit` then rewrites `application_name` and leaves the database
+    untouched, so a suite that believes it is building a disposable database would run its
+    DDL against the SHARED one and drop something else in teardown. Parsing the URL makes
+    the substitution structural instead of textual.
+    """
+    parts = urlsplit(dsn)
+    return urlunsplit((parts.scheme, parts.netloc, f"/{database}", parts.query, parts.fragment))
+
+
+def _redacted(dsn: str) -> str:
+    """A DSN safe to put in a skip/fail message, a pytest report or a CI log.
+
+    `_ADMIN_URL` can carry a password (CI's does: `postgresql://test:test@...`), and an
+    f-string -- `!r` included -- prints it verbatim. Skip and fail reasons end up in JUnit
+    XML and in job logs, so interpolating the raw DSN publishes the credential to anyone
+    who can read a build. Only scheme, user, host and database survive here; the password
+    is replaced by a fixed marker, never by a length-revealing mask.
+    """
+    parts = urlsplit(dsn)
+    user = f"{parts.username}:***@" if parts.password else (f"{parts.username}@" if parts.username else "")
+    host = parts.hostname or ""
+    port = f":{parts.port}" if parts.port else ""
+    return f"{parts.scheme}://{user}{host}{port}{parts.path}"
+
+
+_ADMIN_URL = _with_database(_CONFIGURED_DSN, "postgres")
 
 _MIGRATION_304 = (
     Path(__file__).resolve().parents[3] / "db" / "migrations_v2" / "304_garuda_documents.sql"
@@ -115,6 +150,14 @@ CREATE TABLE public.visa_decision_retention_policies (
 
 _ENV = "TEST"
 
+# Real actors are `result_id`s: 32 hex characters, and two of a customer's sessions can
+# share a long prefix. Short literals like "actor-1"/"actor-2" let a length-truncating
+# mutation -- `actor_id[:8]` in the hash -- keep every key in this suite byte-identical
+# and stay GREEN while cross-actor isolation is gone. These two share their first 16
+# characters on purpose, so any truncation shorter than the full id collides them.
+_ACTOR_1 = "0123456789abcdef" + "1" * 16
+_ACTOR_2 = "0123456789abcdef" + "2" * 16
+
 
 def _doc_id(label: str) -> str:
     """A valid `document_id` (migration 304's CHECK requires 32 lowercase hex chars,
@@ -125,7 +168,7 @@ def _doc_id(label: str) -> str:
 
 
 def _db_url_for(db_name: str) -> str:
-    return _ADMIN_URL.rsplit("/", 1)[0] + f"/{db_name}"
+    return _with_database(_ADMIN_URL, db_name)
 
 
 def _migration_304_forward(ledger_role: str) -> str:
@@ -155,22 +198,35 @@ async def sandbox() -> AsyncIterator[_Sandbox]:
     try:
         is_superuser = await admin.fetchval("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")
         if not is_superuser:
-            pytest.skip(
-                f"connecting role for {_ADMIN_URL!r} is not a superuser -- this suite "
-                "creates cluster roles and cannot proceed"
+            # In CI this is a FAILURE, not a skip. `pytest.skip` raises `Skipped`, which is
+            # neither `OSError` nor `PostgresError`, so it flies straight past the CI branch
+            # in the `except` below: the reachable-but-unprivileged case would leave 12
+            # database tests skipped, 2 pure tests passing, and pytest exiting 0 -- a green
+            # check for a persistence layer nothing exercised. That is exactly the outcome
+            # the `except` branch's own message says must never happen, so the same rule is
+            # enforced here where the case actually arises.
+            unprivileged = (
+                f"the connecting role for {_redacted(_ADMIN_URL)} is not a superuser -- this "
+                "suite creates cluster roles and cannot proceed"
             )
+            if os.environ.get("CI"):
+                pytest.fail(
+                    f"{unprivileged}. In CI this must not be skipped: this file is the only "
+                    "thing exercising the store against a real database."
+                )
+            pytest.skip(unprivileged)
         await admin.execute(f'CREATE DATABASE "{db_name}"')
         await admin.execute(f'CREATE ROLE "{ledger}" NOLOGIN')
         await admin.execute(f'CREATE ROLE "{app}" NOLOGIN')
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(
-                f"CI has no reachable/superuser Postgres for GARUDA_DOCUMENTS_TEST_DSN "
-                f"(or INTAKE_TEST_DSN override) -- {_ADMIN_URL!r}: {exc}. This file gates "
-                f"a persistence layer that touches the shared retention authority; it "
+                f"CI has no reachable Postgres for GARUDA_DOCUMENTS_TEST_DSN "
+                f"(or INTAKE_TEST_DSN override) -- {_redacted(_ADMIN_URL)}: {exc}. This file "
+                f"gates a persistence layer that touches the shared retention authority; it "
                 f"must never silently pass by skipping."
             )
-        pytest.skip(f"no local superuser Postgres reachable at {_ADMIN_URL}: {exc}")
+        pytest.skip(f"no local superuser Postgres reachable at {_redacted(_ADMIN_URL)}: {exc}")
     finally:
         await admin.close()
 
@@ -265,26 +321,26 @@ def _ready(document_id: str) -> ReadyOutcome:
 
 async def test_exact_replay_returns_the_original_low_confidence_outcome(store: PostgresDocumentStore):
     outcome = _low_confidence(_doc_id("doc-replay-0000000000000001"))
-    won = await store.commit("key-replay-1", "aa" * 32, outcome, actor_id="actor-1")
+    won = await store.commit("key-replay-1", "aa" * 32, outcome, actor_id=_ACTOR_1)
     assert won is True
 
-    replayed = await store.get_existing("key-replay-1", "aa" * 32, actor_id="actor-1")
+    replayed = await store.get_existing("key-replay-1", "aa" * 32, actor_id=_ACTOR_1)
     assert replayed == outcome
 
 
 async def test_exact_replay_does_not_create_a_second_row(store: PostgresDocumentStore, pool: asyncpg.Pool):
     outcome = _low_confidence(_doc_id("doc-replay-0000000000000002"))
-    await store.commit("key-replay-2", "bb" * 32, outcome, actor_id="actor-1")
+    await store.commit("key-replay-2", "bb" * 32, outcome, actor_id=_ACTOR_1)
     # A second commit call under the identical key+payload — the shape
     # `service.py` takes when `get_existing` is skipped or races.
-    won_again = await store.commit("key-replay-2", "bb" * 32, outcome, actor_id="actor-1")
+    won_again = await store.commit("key-replay-2", "bb" * 32, outcome, actor_id=_ACTOR_1)
     assert won_again is False
 
     async with pool.acquire() as conn:
         count = await conn.fetchval(
             "SELECT count(*) FROM public.garuda_documents WHERE key_sha256 = $1",
             _scoped_key_sha256(
-                actor_id="actor-1",
+                actor_id=_ACTOR_1,
                 operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT,
                 environment=_ENV,
                 idempotency_key="key-replay-2",
@@ -301,23 +357,36 @@ async def test_ready_outcome_replay_raises_documented_value_gap_instead_of_fabri
     loudly rather than return a placeholder that looks like real passport data.
     """
     outcome = _ready(_doc_id("doc-ready-0000000000000001"))
-    won = await store.commit("key-ready-1", "cc" * 32, outcome, actor_id="actor-1")
+    won = await store.commit("key-ready-1", "cc" * 32, outcome, actor_id=_ACTOR_1)
     assert won is True
 
-    with pytest.raises(ReadyOutcomeValueNotPersisted):
-        await store.get_existing("key-ready-1", "cc" * 32, actor_id="actor-1")
+    with pytest.raises(ReadyOutcomeValueNotPersisted) as raised:
+        await store.get_existing("key-ready-1", "cc" * 32, actor_id=_ACTOR_1)
+
+    # The TYPE alone proves almost nothing: an implementation raising
+    # `ReadyOutcomeValueNotPersisted("0" * 32, ())` -- wrong document, no fields --
+    # satisfies `pytest.raises` and is useless to the caller this payload exists for.
+    # The exception is the only channel through which the persisted STRUCTURE reaches a
+    # caller that cannot be given the values, so the structure is what gets asserted.
+    assert raised.value.document_id == outcome.document_id
+    assert raised.value.persisted_fields == tuple(
+        (field.field_path, field.confirmation_required) for field in outcome.review_fields
+    )
+    for field_path, confirmation_required in raised.value.persisted_fields:
+        assert isinstance(field_path, PassportReviewFieldName), "field_path stays the enum member"
+        assert isinstance(confirmation_required, bool)
 
 
 async def test_processing_and_unreadable_outcomes_replay_faithfully(store: PostgresDocumentStore):
     """Innocence companions to the READY gap above — these two outcome kinds carry no
     review fields at all, so nothing is lost persisting or rehydrating them."""
     processing = ProcessingOutcome(document_id=_doc_id("doc-processing-000000000001"))
-    await store.commit("key-processing-1", "dd" * 32, processing, actor_id="actor-1")
-    assert await store.get_existing("key-processing-1", "dd" * 32, actor_id="actor-1") == processing
+    await store.commit("key-processing-1", "dd" * 32, processing, actor_id=_ACTOR_1)
+    assert await store.get_existing("key-processing-1", "dd" * 32, actor_id=_ACTOR_1) == processing
 
     unreadable = UnreadableOutcome(document_id=_doc_id("doc-unreadable-000000000001"))
-    await store.commit("key-unreadable-1", "ee" * 32, unreadable, actor_id="actor-1")
-    assert await store.get_existing("key-unreadable-1", "ee" * 32, actor_id="actor-1") == unreadable
+    await store.commit("key-unreadable-1", "ee" * 32, unreadable, actor_id=_ACTOR_1)
+    assert await store.get_existing("key-unreadable-1", "ee" * 32, actor_id=_ACTOR_1) == unreadable
 
 
 # ---------------------------------------------------------------------------
@@ -330,11 +399,11 @@ async def test_commit_with_a_different_payload_under_the_same_key_raises_conflic
     store: PostgresDocumentStore, pool: asyncpg.Pool
 ):
     first = _low_confidence(_doc_id("doc-conflict-0000000000000001"))
-    await store.commit("key-conflict-1", "11" * 32, first, actor_id="actor-1")
+    await store.commit("key-conflict-1", "11" * 32, first, actor_id=_ACTOR_1)
 
     second = _low_confidence(_doc_id("doc-conflict-0000000000000002"))
     with pytest.raises(IdempotencyConflictError):
-        await store.commit("key-conflict-1", "22" * 32, second, actor_id="actor-1")
+        await store.commit("key-conflict-1", "22" * 32, second, actor_id=_ACTOR_1)
 
     async with pool.acquire() as conn:
         count = await conn.fetchval("SELECT count(*) FROM public.garuda_documents")
@@ -345,10 +414,10 @@ async def test_get_existing_with_a_different_payload_under_the_same_key_raises_c
     store: PostgresDocumentStore,
 ):
     outcome = _low_confidence(_doc_id("doc-conflict-0000000000000003"))
-    await store.commit("key-conflict-2", "33" * 32, outcome, actor_id="actor-1")
+    await store.commit("key-conflict-2", "33" * 32, outcome, actor_id=_ACTOR_1)
 
     with pytest.raises(IdempotencyConflictError):
-        await store.get_existing("key-conflict-2", "44" * 32, actor_id="actor-1")
+        await store.get_existing("key-conflict-2", "44" * 32, actor_id=_ACTOR_1)
 
 
 # ---------------------------------------------------------------------------
@@ -370,9 +439,33 @@ async def test_two_concurrent_commits_same_key_exactly_one_wins(
     outcome_a = _low_confidence(_doc_id("doc-race-a-00000000000001"))
     outcome_b = _low_confidence(_doc_id("doc-race-b-00000000000001"))
 
+    # `asyncio.gather` alone does NOT force the interleaving this test is named for. If
+    # acquiring the second pool connection delays B past A's INSERT, B's own `SELECT ...
+    # FOR UPDATE` finds the row already there and takes the ordinary replay branch: every
+    # assertion below still passes, and so does a mutant with the `UniqueViolationError`
+    # handler deleted. A barrier makes the property deterministic instead of scheduler-
+    # dependent: both coroutines must have observed the key ABSENT before either inserts.
+    both_looked = asyncio.Barrier(2)
+    original_scoped_key = _scoped_key_sha256
+
+    async def commit_after_both_saw_nothing(store, outcome):
+        async with pool.acquire() as probe:
+            found = await probe.fetchval(
+                "SELECT count(*) FROM public.garuda_documents WHERE key_sha256 = $1",
+                original_scoped_key(
+                    actor_id=_ACTOR_1,
+                    operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT,
+                    environment=_ENV,
+                    idempotency_key="key-race-1",
+                ),
+            )
+        assert found == 0, "the barrier must open with the key still absent for both racers"
+        await both_looked.wait()
+        return await store.commit("key-race-1", "55" * 32, outcome, actor_id=_ACTOR_1)
+
     results = await asyncio.gather(
-        store_a.commit("key-race-1", "55" * 32, outcome_a, actor_id="actor-1"),
-        store_b.commit("key-race-1", "55" * 32, outcome_b, actor_id="actor-1"),
+        commit_after_both_saw_nothing(store_a, outcome_a),
+        commit_after_both_saw_nothing(store_b, outcome_b),
     )
 
     assert sorted(results) == [False, True], f"expected exactly one winner: {results!r}"
@@ -386,8 +479,8 @@ async def test_second_sequential_commit_of_an_already_committed_key_returns_fals
     store: PostgresDocumentStore,
 ):
     outcome = _low_confidence(_doc_id("doc-sequential-0000000000001"))
-    first = await store.commit("key-sequential-1", "66" * 32, outcome, actor_id="actor-1")
-    second = await store.commit("key-sequential-1", "66" * 32, outcome, actor_id="actor-1")
+    first = await store.commit("key-sequential-1", "66" * 32, outcome, actor_id=_ACTOR_1)
+    second = await store.commit("key-sequential-1", "66" * 32, outcome, actor_id=_ACTOR_1)
     assert first is True
     assert second is False
 
@@ -405,7 +498,7 @@ async def test_commit_fails_closed_with_no_active_policy_for_the_environment(poo
     outcome = _low_confidence(_doc_id("doc-nopolicy-00000000000001"))
 
     with pytest.raises(PersistencePolicyUnavailable):
-        await staging_store.commit("key-nopolicy-1", "77" * 32, outcome, actor_id="actor-1")
+        await staging_store.commit("key-nopolicy-1", "77" * 32, outcome, actor_id=_ACTOR_1)
 
     async with pool.acquire() as conn:
         count = await conn.fetchval(
@@ -428,18 +521,18 @@ async def test_commit_fails_closed_with_no_active_policy_for_the_environment(poo
 async def test_same_idempotency_key_different_actor_does_not_collide(
     store: PostgresDocumentStore, pool: asyncpg.Pool
 ):
-    outcome_alice = _low_confidence(_doc_id("doc-actor-alice-0000000001"))
-    outcome_bob = _low_confidence(_doc_id("doc-actor-bob-00000000001"))
+    outcome_first = _low_confidence(_doc_id("doc-actor-alice-0000000001"))
+    outcome_second = _low_confidence(_doc_id("doc-actor-bob-00000000001"))
 
-    won_alice = await store.commit("shared-literal-key", "aa" * 32, outcome_alice, actor_id="alice")
-    won_bob = await store.commit("shared-literal-key", "aa" * 32, outcome_bob, actor_id="bob")
+    won_first = await store.commit("shared-literal-key", "aa" * 32, outcome_first, actor_id=_ACTOR_1)
+    won_second = await store.commit("shared-literal-key", "aa" * 32, outcome_second, actor_id=_ACTOR_2)
 
     # Both actors' commits win -- a real collision would have made bob's
     # commit a replay (won=False) or, worse, an IdempotencyConflictError
     # (same key bound to what bob's INSERT would see as "another" payload
     # under alice's row).
-    assert won_alice is True
-    assert won_bob is True
+    assert won_first is True
+    assert won_second is True
 
     async with pool.acquire() as conn:
         count = await conn.fetchval("SELECT count(*) FROM public.garuda_documents")
@@ -449,17 +542,17 @@ async def test_same_idempotency_key_different_actor_does_not_collide(
 async def test_same_idempotency_key_different_actor_cannot_read_the_other_actors_document(
     store: PostgresDocumentStore,
 ):
-    outcome_alice = _low_confidence(_doc_id("doc-actor-alice-0000000002"))
-    await store.commit("another-shared-key", "bb" * 32, outcome_alice, actor_id="alice")
+    outcome_first = _low_confidence(_doc_id("doc-actor-alice-0000000002"))
+    await store.commit("another-shared-key", "bb" * 32, outcome_first, actor_id=_ACTOR_1)
 
     # bob has never submitted anything under this key -- get_existing for bob
     # must see a first-time submission (None), never alice's row.
-    bob_view = await store.get_existing("another-shared-key", "bb" * 32, actor_id="bob")
-    assert bob_view is None
+    second_actor_view = await store.get_existing("another-shared-key", "bb" * 32, actor_id=_ACTOR_2)
+    assert second_actor_view is None
 
     # alice's own replay still works, unaffected by bob's absent binding.
-    alice_view = await store.get_existing("another-shared-key", "bb" * 32, actor_id="alice")
-    assert alice_view == outcome_alice
+    first_actor_view = await store.get_existing("another-shared-key", "bb" * 32, actor_id=_ACTOR_1)
+    assert first_actor_view == outcome_first
 
 
 async def test_same_actor_same_key_same_environment_replay_still_hits_the_same_row(
@@ -469,10 +562,10 @@ async def test_same_actor_same_key_same_environment_replay_still_hits_the_same_r
     also break the ordinary single-actor replay every other test in this file relies on.
     """
     outcome = _low_confidence(_doc_id("doc-actor-replay-000000001"))
-    won = await store.commit("actor-replay-key", "cc" * 32, outcome, actor_id="alice")
+    won = await store.commit("actor-replay-key", "cc" * 32, outcome, actor_id=_ACTOR_1)
     assert won is True
 
-    replayed = await store.get_existing("actor-replay-key", "cc" * 32, actor_id="alice")
+    replayed = await store.get_existing("actor-replay-key", "cc" * 32, actor_id=_ACTOR_1)
     assert replayed == outcome
 
 
@@ -498,8 +591,8 @@ def test_scoped_key_hash_is_not_ambiguous_across_component_boundaries():
     assert hash_1 != hash_2, "different component boundaries must never hash identically"
 
     # Same shift, one boundary over, across the operation/environment pair.
-    hash_3 = _scoped_key_sha256(actor_id="alice", operation="opTEST", environment="", idempotency_key=same_key)
-    hash_4 = _scoped_key_sha256(actor_id="alice", operation="op", environment="TEST", idempotency_key=same_key)
+    hash_3 = _scoped_key_sha256(actor_id=_ACTOR_1, operation="opTEST", environment="", idempotency_key=same_key)
+    hash_4 = _scoped_key_sha256(actor_id=_ACTOR_1, operation="op", environment="TEST", idempotency_key=same_key)
     assert hash_3 != hash_4, "different component boundaries must never hash identically"
 
     # THE CASE THAT ACTUALLY KILLS A SEPARATOR-JOINED ENCODING: a component that
@@ -518,22 +611,22 @@ def test_scoped_key_hash_is_not_ambiguous_across_component_boundaries():
         )
 
     # And the un-shifted baseline really is deterministic and stable.
-    hash_5 = _scoped_key_sha256(actor_id="alice", operation=same_op, environment=same_env, idempotency_key=same_key)
-    hash_6 = _scoped_key_sha256(actor_id="alice", operation=same_op, environment=same_env, idempotency_key=same_key)
+    hash_5 = _scoped_key_sha256(actor_id=_ACTOR_1, operation=same_op, environment=same_env, idempotency_key=same_key)
+    hash_6 = _scoped_key_sha256(actor_id=_ACTOR_1, operation=same_op, environment=same_env, idempotency_key=same_key)
     assert hash_5 == hash_6
 
 
 def test_scoped_key_hash_differs_by_actor_and_matches_for_the_same_tuple():
     hash_alice = _scoped_key_sha256(
-        actor_id="alice", operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
+        actor_id=_ACTOR_1, operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
     )
     hash_bob = _scoped_key_sha256(
-        actor_id="bob", operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
+        actor_id=_ACTOR_2, operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
     )
     assert hash_alice != hash_bob
 
     hash_alice_again = _scoped_key_sha256(
-        actor_id="alice", operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
+        actor_id=_ACTOR_1, operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
     )
     assert hash_alice == hash_alice_again, "same (actor, operation, environment, key) must replay to the same hash"
 
@@ -548,3 +641,127 @@ def test_scoped_key_hash_differs_by_actor_and_matches_for_the_same_tuple():
 # Both are one concern each and each carries its own mutations; splitting them
 # out keeps THIS PR to the adapter and the idempotency/race contract it owns.
 # ---------------------------------------------------------------------------
+
+
+async def test_lost_race_with_a_different_payload_is_a_conflict_not_a_lost_race(
+    pool: asyncpg.Pool,
+):
+    """Losing the INSERT race says NOTHING about whose payload won.
+
+    Two callers, same actor and key, DIFFERENT payloads, both past their `SELECT ... FOR
+    UPDATE` before either inserts. One wins. The loser's INSERT hits the primary key --
+    and at that moment it has never compared payloads, because when it looked there was no
+    row to compare against. Reporting `False` there tells the caller "you merely lost a
+    race, the committed outcome is yours to read", which is a lie: the committed outcome
+    belongs to a DIFFERENT document. The contract's answer is IDEMPOTENCY_CONFLICT.
+    """
+    store_a = PostgresDocumentStore(pool, environment=_ENV)
+    store_b = PostgresDocumentStore(pool, environment=_ENV)
+    key_hash = _scoped_key_sha256(
+        actor_id=_ACTOR_1,
+        operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT,
+        environment=_ENV,
+        idempotency_key="key-conflict-race",
+    )
+
+    both_looked = asyncio.Barrier(2)
+
+    async def commit_after_both_saw_nothing(store, payload_hash, outcome):
+        async with pool.acquire() as probe:
+            assert await probe.fetchval(
+                "SELECT count(*) FROM public.garuda_documents WHERE key_sha256 = $1", key_hash
+            ) == 0
+        await both_looked.wait()
+        return await store.commit("key-conflict-race", payload_hash, outcome, actor_id=_ACTOR_1)
+
+    results = await asyncio.gather(
+        commit_after_both_saw_nothing(store_a, "aa" * 32, _low_confidence(_doc_id("doc-conflict-a"))),
+        commit_after_both_saw_nothing(store_b, "bb" * 32, _low_confidence(_doc_id("doc-conflict-b"))),
+        return_exceptions=True,
+    )
+
+    winners = [r for r in results if r is True]
+    conflicts = [r for r in results if isinstance(r, IdempotencyConflictError)]
+    assert len(winners) == 1, f"exactly one caller must win: {results!r}"
+    assert len(conflicts) == 1, (
+        f"the loser carried a DIFFERENT payload and must be told IDEMPOTENCY_CONFLICT, "
+        f"never False: {results!r}"
+    )
+
+
+async def test_a_duplicate_document_id_is_not_reported_as_a_lost_race(store: PostgresDocumentStore):
+    """Migration 304 carries TWO unique constraints, and only one of them means "someone
+    won your key".
+
+    `UNIQUE(document_id)` firing means the document id this call minted already exists
+    under some OTHER key. Nobody won THIS key. Returning False would send `service.py` to
+    re-read a key that was never committed, where its `assert winning_outcome is not None`
+    fires — a 500 whose stack trace names the wrong thing entirely. It must propagate.
+    """
+    shared_document = _doc_id("doc-shared-across-two-keys")
+    assert await store.commit("key-first-0000000001", "aa" * 32, _low_confidence(shared_document), actor_id=_ACTOR_1)
+
+    with pytest.raises(asyncpg.UniqueViolationError) as raised:
+        await store.commit("key-second-000000001", "bb" * 32, _low_confidence(shared_document), actor_id=_ACTOR_1)
+    assert raised.value.constraint_name == "garuda_documents_document_id_key"
+
+    # And the key really was never committed — which is exactly why False would have lied.
+    assert await store.get_existing("key-second-000000001", "bb" * 32, actor_id=_ACTOR_1) is None
+
+
+async def test_low_confidence_replay_returns_the_fields_in_the_original_order(
+    store: PostgresDocumentStore,
+):
+    """"Replays the original outcome" has to include the ORDER.
+
+    `confidence.py` emits uncertain fields by iterating `PassportReviewFieldName`, so the
+    enum's declaration order is the original. The store reads them back `ORDER BY
+    field_path`, which is deterministic but alphabetical — a different sequence, and a
+    different serialized body for the customer. This pair is chosen so the two orders
+    DISAGREE: in the enum `passport_number` precedes `nationality`, alphabetically it does
+    not. A fixture whose fields happen to be alphabetical hides the whole defect.
+    """
+    fields = (
+        UncertainReviewField(field_path=PassportReviewFieldName.PASSPORT_NUMBER, confirmation_required=True),
+        UncertainReviewField(field_path=PassportReviewFieldName.NATIONALITY, confirmation_required=True),
+    )
+    enum_order = [f.value for f in PassportReviewFieldName]
+    assert enum_order.index(PassportReviewFieldName.PASSPORT_NUMBER.value) < enum_order.index(
+        PassportReviewFieldName.NATIONALITY.value
+    ), "this test is only meaningful while the enum disagrees with alphabetical order"
+    assert PassportReviewFieldName.NATIONALITY.value < PassportReviewFieldName.PASSPORT_NUMBER.value
+
+    outcome = LowConfidenceOutcome(document_id=_doc_id("doc-order-0000000000001"), uncertain_fields=fields)
+    assert await store.commit("key-order-000000001", "dd" * 32, outcome, actor_id=_ACTOR_1)
+
+    replayed = await store.get_existing("key-order-000000001", "dd" * 32, actor_id=_ACTOR_1)
+
+    assert replayed == outcome, "a replay must equal the original, order included"
+
+
+def test_a_dsn_password_never_reaches_a_skip_or_fail_message():
+    """Skip and fail reasons land in JUnit XML and in CI job logs. CI's own DSN carries a
+    password (`postgresql://test:test@...`), and an f-string — `!r` included — prints it
+    verbatim. A synthetic sentinel proves the redaction rather than trusting the shape.
+    """
+    sentinel = "s3ntinel-never-log-this"
+    dsn = f"postgresql://ci_user:{sentinel}@db.internal:5432/nuzantara_test"
+
+    redacted = _redacted(dsn)
+
+    assert sentinel not in redacted
+    assert "ci_user" in redacted and "db.internal" in redacted and "nuzantara_test" in redacted
+
+
+def test_the_database_component_is_replaced_structurally_not_textually():
+    """`rsplit("/", 1)` on a DSN whose QUERY contains a slash rewrites the query and leaves
+    the database in place — the isolation promise silently inverted, DDL landing on the
+    shared database while teardown drops a disposable one created elsewhere.
+    """
+    dsn = "postgresql://host:5432/nuzantara_test?application_name=garuda/ci"
+
+    swapped = _with_database(dsn, "nuzantara_test_gdoc_abc123")
+
+    assert "/nuzantara_test_gdoc_abc123" in swapped
+    assert "application_name=garuda/ci" in swapped, "the query must survive untouched"
+    assert "/nuzantara_test?" not in swapped

@@ -33,10 +33,10 @@ lost. For ``ReadyOutcome`` it is NOT faithful -- ``ReviewField.value`` has no co
 round-trip through, and ``get_existing()`` raises ``ReadyOutcomeValueNotPersisted`` rather
 than fabricate a placeholder that would look like real data to a caller.
 
-This gap is narrower than it may sound. ``service.py::submit_document`` only ever calls
-``get_existing()`` BEFORE running OCR, to detect a replay; when it commits a FRESH
-outcome, it returns the in-memory object it just built directly -- never through this
-store. So a first-time submission of a document that turns out READY_FOR_REVIEW is
+This gap is narrower than it may sound. ``service.py::submit_document`` calls
+``get_existing()`` BEFORE running OCR to detect a replay -- and, on one other path, AFTER
+losing a ``commit()`` race (its ``if not won:`` branch). When it commits a FRESH outcome it
+returns the in-memory object it just built directly, never through this store. So a first-time submission of a document that turns out READY_FOR_REVIEW is
 completely unaffected: the customer sees the real extracted values immediately, and they
 never touch this table. The gap is exactly one path: an exact idempotent REPLAY (same
 Idempotency-Key AND the same payload, submitted again) of an ALREADY-READY document.
@@ -51,7 +51,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import UTC, datetime
 
 import asyncpg
 
@@ -92,11 +91,11 @@ _STATE_UNREADABLE = "UNREADABLE"
 # ``confirmation_required`` flags, never a value) alongside ``document_id``, so a
 # storage-agnostic caller holding its OWN independently-derived ``ReadyOutcome`` for the
 # identical bytes (``service.py``'s commit-race loser) can verify agreement and recover
-# without the store ever handing back -- or fabricating -- a value. See ``service.py``'s
-# ``_reconcile_lost_race_ready_replay`` for the one caller that does this; an ordinary
-# sequential replay (no independent outcome to reconcile against) still lets this
-# propagate, which is the "genuinely unpersisted" case ``ReadyOutcomeValueNotPersisted``'s
-# own docstring discusses.
+# without the store ever handing back -- or fabricating -- a value. NO SUCH CALLER EXISTS
+# YET: the reconciliation that would use it is deliberately deferred to its own PR, so
+# today EVERY replay of a READY document -- race-loser or ordinary sequential retry --
+# lets this propagate. The structure is carried now so the exception's shape does not have
+# to change when that caller arrives.
 
 # The single operation this store's `key_sha256` namespace belongs to. A store-level
 # constant, not a caller-supplied parameter: this table backs exactly one endpoint
@@ -105,6 +104,11 @@ _STATE_UNREADABLE = "UNREADABLE"
 # operation") and so a FUTURE second operation sharing this table would not silently
 # collide with this one's key space.
 _OPERATION_UPLOAD_INTAKE_DOCUMENT = "upload_intake_document"
+
+# Migration 304 puts TWO unique constraints on `garuda_documents`, and `commit()` must
+# not treat them alike -- see the `UniqueViolationError` handler. Read live from
+# production before being written here (`pg_constraint`), not guessed from the DDL.
+_PK_KEY_SHA256 = "garuda_documents_pkey"
 
 
 def _scoped_key_sha256(*, actor_id: str, operation: str, environment: str, idempotency_key: str) -> bytes:
@@ -119,11 +123,17 @@ def _scoped_key_sha256(*, actor_id: str, operation: str, environment: str, idemp
     key submitted under TEST and PRODUCTION would also collide on this table's single
     `key_sha256` primary key.
 
-    Length-prefixed, never separator-joined: `"|".join((actor_id, operation, ...))` would
-    let `("ab", "c")` and `("a", "bc")` hash identically -- exactly the ambiguity this
-    scoping fix exists to close, just moved one layer down. Each component is prefixed
-    with its own big-endian uint32 byte length, so no component's content can ever be
-    reinterpreted as a length prefix or as another component's boundary.
+    Length-prefixed, never separator-joined -- and the example that claim is usually made
+    with is WRONG, so here is the right one. `"|".join(...)` does NOT make `("ab", "c")`
+    and `("a", "bc")` collide: they render `"ab|c"` and `"a|bc"`. A separator-joined
+    encoding is ambiguous exactly when a COMPONENT CONTAINS THE SEPARATOR: `("a|b", "c")`
+    and `("a", "b|c")` both render `"a|b|c"`, so any actor able to put that byte in its id
+    could forge another actor's key. Each component here is prefixed with its own
+    big-endian uint32 byte length, so no component's content can be reinterpreted as a
+    length prefix or as another component's boundary, whatever bytes it contains.
+    (`test_scoped_key_hash_is_not_ambiguous_across_component_boundaries` pins this with the
+    collision above, for seven candidate separators. Measured: the `("ab","c")` pair alone
+    leaves a separator-joined implementation GREEN.)
     """
     buf = bytearray()
     for part in (actor_id, operation, environment, idempotency_key):
@@ -159,6 +169,21 @@ def _decompose(outcome: DocumentOutcome) -> tuple[str, list[tuple[PassportReview
     raise TypeError(f"unrecognized DocumentOutcome variant: {outcome!r}")  # pragma: no cover - exhaustive union
 
 
+# `ORDER BY field_path` in the SQL gives a DETERMINISTIC read, which is necessary and not
+# sufficient: alphabetical order is not the order the outcome was built in. `confidence.py`
+# emits review fields by iterating `PassportReviewFieldName`, so that enum's declaration
+# order is the canonical one, and a replay that promises "the original outcome" has to
+# return it. Re-sorted here rather than in SQL so the one definition of canonical order
+# stays in the one place that defines the enum.
+_CANONICAL_FIELD_ORDER: dict[PassportReviewFieldName, int] = {
+    field: index for index, field in enumerate(PassportReviewFieldName)
+}
+
+
+def _in_canonical_order(field_rows: list[asyncpg.Record]) -> list[asyncpg.Record]:
+    return sorted(field_rows, key=lambda row: _CANONICAL_FIELD_ORDER[PassportReviewFieldName(row["field_path"])])
+
+
 def _rehydrate(
     document_id: str,
     processing_state: str,
@@ -176,7 +201,7 @@ def _rehydrate(
                     field_path=PassportReviewFieldName(row["field_path"]),
                     confirmation_required=row["confirmation_required"],
                 )
-                for row in field_rows
+                for row in _in_canonical_order(field_rows)
             ),
         )
     if processing_state == _STATE_READY_FOR_REVIEW:
@@ -187,7 +212,8 @@ def _rehydrate(
             document_id,
         )
         persisted_fields = tuple(
-            (PassportReviewFieldName(row["field_path"]), row["confirmation_required"]) for row in field_rows
+            (PassportReviewFieldName(row["field_path"]), row["confirmation_required"])
+            for row in _in_canonical_order(field_rows)
         )
         raise ReadyOutcomeValueNotPersisted(document_id, persisted_fields)
     raise ValueError(f"unrecognized processing_state column value: {processing_state!r}")  # pragma: no cover
@@ -252,8 +278,18 @@ class PostgresDocumentStore:
         # issues an explicit ROLLBACK on its way out, rather than relying on Postgres'
         # implicit-rollback-on-COMMIT-of-an-aborted-transaction behaviour, which is
         # correct but a strictly harder property to read from this call site.
+        #
+        # `payload_checked` records whether the winner's payload hash was actually
+        # compared against ours before we concluded we lost. On the `SELECT ... FOR
+        # UPDATE` path it was. On the INSERT-violation path it was NOT -- the row did
+        # not exist when we looked, so there was nothing to compare, and the aborted
+        # transaction cannot read it now. Reporting False there would tell a caller
+        # with a DIFFERENT payload that it merely lost a race, when the honest answer
+        # is IDEMPOTENCY_CONFLICT.
         class _LostRace(Exception):
-            pass
+            def __init__(self, *, payload_checked: bool) -> None:
+                super().__init__()
+                self.payload_checked = payload_checked
 
         try:
             async with self._pool.acquire() as conn, conn.transaction():
@@ -270,8 +306,9 @@ class PostgresDocumentStore:
                     if bytes(existing["canonical_payload_sha256"]) != payload_hash_bytes:
                         raise IdempotencyConflictError(idempotency_key)
                     # Already committed by a previous call -- this call is not the
-                    # winner. `service.py` re-reads via `get_existing` for the outcome.
-                    raise _LostRace()
+                    # winner, and we compared the payload to know it. `service.py`
+                    # re-reads via `get_existing` for the outcome.
+                    raise _LostRace(payload_checked=True)
 
                 # `SELECT ... FOR UPDATE` above only locks a row that already exists --
                 # for a genuinely NEW key, there is nothing to lock, and two concurrent
@@ -280,11 +317,19 @@ class PostgresDocumentStore:
                 # `UniqueViolationError`, caught and turned into `_LostRace` the same
                 # way, never a raw asyncpg exception escaping this method's `bool`
                 # contract.
-                now = datetime.now(UTC)
+                # `transaction_timestamp()`, NOT `datetime.now(UTC)`. Migration 304's
+                # BEFORE INSERT binder resolves the policy for `NEW.created_at`, which
+                # defaults to the transaction timestamp -- so a guard reading a DIFFERENT
+                # instant can answer "a policy is active" for a moment the binder will not
+                # accept. The window is real without any clock skew at all: a policy whose
+                # `effective_period` opens between the transaction's start and this
+                # round-trip passes here and then fails inside the trigger, surfacing as an
+                # untranslated `asyncpg.RaiseError` instead of the documented
+                # `PersistencePolicyUnavailable`. Asking the database for its own
+                # transaction timestamp makes both reads name one instant.
                 if not await conn.fetchval(
-                    "SELECT public.active_garuda_document_policy_available($1, $2)",
+                    "SELECT public.active_garuda_document_policy_available($1, transaction_timestamp())",
                     self._environment,
-                    now,
                 ):
                     raise PersistencePolicyUnavailable("no active GARUDA_DOCUMENT retention policy")
 
@@ -302,7 +347,19 @@ class PostgresDocumentStore:
                         processing_state,
                     )
                 except asyncpg.UniqueViolationError as exc:
-                    raise _LostRace() from exc
+                    # WHICH constraint fired decides what happened, and the two are not
+                    # interchangeable. `garuda_documents_pkey` is on `key_sha256`: another
+                    # caller won THIS key, which is the lost race this method reports as
+                    # False. `garuda_documents_document_id_key` is UNIQUE(document_id): the
+                    # document id this call minted already exists under some OTHER key.
+                    # Nobody won this key, `get_existing()` for it will return None, and
+                    # reporting False would send `service.py` to re-read a key that was
+                    # never committed -- its `assert winning_outcome is not None` then
+                    # fires. That is a caller bug or a uuid4 collision, not a race, and it
+                    # is allowed to propagate rather than be disguised as one.
+                    if exc.constraint_name != _PK_KEY_SHA256:
+                        raise
+                    raise _LostRace(payload_checked=False) from exc
 
                 for field_path, confirmation_required in fields:
                     await conn.execute(
@@ -315,6 +372,33 @@ class PostgresDocumentStore:
                         field_path.value,
                         confirmation_required,
                     )
-        except _LostRace:
+        except _LostRace as lost:
+            if lost.payload_checked:
+                return False
+            # The INSERT lost to a concurrent one on `garuda_documents_pkey`. Our
+            # transaction is gone, so read the winner on a fresh connection and let the
+            # three possible answers stay three, rather than collapsing them into False:
+            #   same payload   -> a genuine lost race, which IS False
+            #   other payload  -> IDEMPOTENCY_CONFLICT, the caller must be told
+            #   no row at all  -> nobody holds this key, so "you lost" is not true of
+            #                     anything; 304 forbids DELETE on this table, so this is
+            #                     an invariant breach and is raised, never swallowed.
+            async with self._pool.acquire() as conn:
+                winner = await conn.fetchrow(
+                    """
+                    SELECT canonical_payload_sha256
+                      FROM public.garuda_documents
+                     WHERE key_sha256 = $1
+                    """,
+                    key_hash,
+                )
+            if winner is None:
+                raise RuntimeError(
+                    "garuda_documents: the INSERT reported a primary-key collision but no "
+                    "row holds that key -- the table's DELETE guard should make this "
+                    "unreachable"
+                )
+            if bytes(winner["canonical_payload_sha256"]) != payload_hash_bytes:
+                raise IdempotencyConflictError(idempotency_key)
             return False
         return True

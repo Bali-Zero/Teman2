@@ -100,11 +100,70 @@ acceptance:
       green.
     probe: "pytest backend/tests/services/garuda_documents/ backend/tests/app/routers/test_garuda_documents_router.py"
 guilt_mutations:
-  - "scoped key built with actor_id replaced by an empty string (the 'accepts it and ignores it' store) -> A1 red, 3 failed"
-  - "length-prefixed encoding replaced by '|'.join -> A2 red, 1 failed"
-  - "the active-policy check removed from commit() -> A5 red, 1 failed"
-  - "_rehydrate fabricating an empty-valued ReadyOutcome instead of raising -> A6 red, 1 failed (DID NOT RAISE)"
-  - "the UniqueViolationError catch removed -> A4 red, 1 failed (raw asyncpg error reaches the caller)"
+  - "actor_id replaced by an empty string in the scoped key (the 'accepts it and ignores it' store) -> 3 failed"
+  - "actor_id TRUNCATED to actor_id[:8] -> 3 failed. Sol's finding 1: this one SURVIVED at first, because every actor literal in the suite was 7 characters or fewer and truncation changed no key. Cured by giving the tests 32-hex ids sharing a 16-character prefix, the shape a real result_id has."
+  - "length-prefixed encoding replaced by '|'.join -> 1 failed"
+  - "the active-policy check removed from commit() -> 1 failed"
+  - "_rehydrate fabricating a valueless ReadyOutcome instead of raising -> 1 failed"
+  - "the UniqueViolationError catch removed entirely -> 1 failed"
+  - "the INSERT-path loser reported as payload_checked=True (Sol finding 2 reverted) -> 1 failed"
+  - "every UniqueViolationError treated as a lost race, document_id included (Sol finding 3 reverted) -> 1 failed"
+  - "_in_canonical_order dropped, SQL order kept (Sol finding 10 reverted) -> 1 failed"
+  - "_with_database reverted to rsplit('/', 1) (Sol finding 5 reverted) -> 1 failed"
+  - "_redacted returning the DSN unchanged (Sol finding 7 reverted) -> 1 failed"
+refuter:
+  seat: codex Sol
+  model_id: gpt-5.6-sol
+  invocation: "codex exec --sandbox read-only -c model_reasoning_effort=xhigh"
+  round: O1
+  duration: "6m01s (2026-09-12T09:37:07Z -> 09:43:08Z), 130217 tokens"
+  verdict: BLOCK
+  self_declared_limit: >-
+    Sol stated its own: "non ho rieseguito la suite PostgreSQL" — it worked from in-memory
+    mutations of the candidate code and of the assertions, not from a live run. Recorded
+    because it bounds what the verdict covers.
+  findings: >-
+    11, all accepted, none disputed, all cured. FOUR were real CODE defects, not test gaps.
+    (2) commit() told a loser carrying a DIFFERENT payload that it merely lost a race:
+    on the INSERT path no payload was ever compared, because when it looked there was no
+    row. Now the sentinel records whether the comparison happened, and an unverified loss
+    re-reads the winner on a fresh connection and splits three ways — same payload False,
+    different payload IdempotencyConflictError, no row at all a raised invariant breach.
+    (3) migration 304 carries UNIQUE(document_id) as well as the primary key, and every
+    UniqueViolationError was read as "someone won your key"; a duplicate document id was
+    therefore reported as a lost race for a key nobody held, sending service.py to an
+    assert. Now discriminated by constraint name, read live from pg_constraint.
+    (4) the Python guard read datetime.now(UTC) while migration 304's binder resolves the
+    policy for NEW.created_at = transaction_timestamp(): two instants, so a policy opening
+    between them passed the guard and failed inside the trigger as an untranslated
+    asyncpg.RaiseError. The guard now asks the database for its own transaction timestamp.
+    (10) a LOW_CONFIDENCE replay returned fields in ORDER BY field_path, which is
+    deterministic but not the order confidence.py built them in — so "replays the original
+    outcome" was false. Rehydration now restores the enum's canonical order.
+    Two were secret/isolation defects in the harness. (7) the DSN — CI's carries a password
+    — was interpolated whole into skip and fail reasons, which land in JUnit XML and job
+    logs; now redacted, pinned by a synthetic sentinel. (5) the database component was
+    swapped with rsplit('/', 1), which on a legal DSN carrying a slash in its query rewrites
+    the query and leaves the shared database in place — the isolation promise inverted; now
+    urlsplit/urlunsplit, pinned by that exact DSN.
+    Four were test gaps: (1) the actor-truncation mutant survived; (6) a reachable
+    non-superuser role in CI called pytest.skip, which is neither OSError nor PostgresError
+    and so flew past the CI fail branch — 12 DB tests skipped, exit 0, a green check for a
+    persistence layer nothing exercised; (8) the concurrency test's race was not forced, so
+    a mutant with the UniqueViolationError handler deleted could survive the scheduling;
+    (9) A6 asserted only the exception TYPE and passed with a wrong document_id and empty
+    fields. And (11) three prose claims, one of them the same separator-join example this
+    brief already recorded as wrong in the test file and had left uncorrected in the store.
+  cures_without_a_behavioural_test: >-
+    Declared rather than glossed. TWO of the eleven cures carry no test of their own.
+    (4) transaction_timestamp: the window it closes is the sub-millisecond gap between a
+    transaction's start and a round-trip, and forcing a policy to become effective inside
+    it is not deterministically reproducible; the cure is structural — one instant instead
+    of two — rather than conditional, and is offered as such.
+    (6) CI-fails-instead-of-skips: the branch lives inside the fixture and asserting it
+    would mean driving pytest's own skip/fail machinery from within a test that uses it.
+    Both are named here so a reader does not infer coverage from the mutation table's
+    silence.
 perimeter_not_touched: >-
   ONE line, so a reader does not have to infer it from absence: this PR does not touch
   `service_initializer.py`, does not set `app.state.garuda_document_store`, does not touch
@@ -140,8 +199,8 @@ measurements:
     PostgreSQL 17.10 (Homebrew, local): 14 passed. Disposable PostgreSQL 15.19 (Homebrew,
     `initdb` into the session scratchpad, port 15433, dropped after): 14 passed.
   results: >-
-    test_postgres_store.py 14 passed on PG17.10 and 14 passed on PG15.19. Whole lane +
-    router: 79 passed, 3 skipped (the 3 skips are pre-existing: 2 live-Ollama tests gated on
+    test_postgres_store.py 19 passed on PG17.10 and 19 passed on PG15.19 (14 before the
+    refuter round, plus 5 that pin its cures). Whole lane + router: 84 passed, 3 skipped (the 3 skips are pre-existing: 2 live-Ollama tests gated on
     RUN_OLLAMA_LIVE=1, 1 defensively unreachable ProcessingOutcome branch).
 notes:
   - >-
