@@ -2,19 +2,20 @@ task_id: r2-research-os-naga-engine
 mandate: R2
 colour: BLUE
 pr: R2 ENGINE (P06 slice 2 — NAGA claim ledger)
-head_sha: 3f750d0a82 # pragma: allowlist secret — candidate at pack time; re-stated at freeze
-code_sha: 3f750d0a82 # pragma: allowlist secret — last commit touching apps/
+head_sha: 20ec62c593 # pragma: allowlist secret — freeze candidate: the rollback commit. The commit that carries THIS pack edit is its child and is named in the R2-checkpoint envelope instead, because a sha written here cannot name the commit that writes it
+code_sha: 20ec62c593 # pragma: allowlist secret — last commit touching apps/ (migration 312's rollback section)
 base_sha: 2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed # pragma: allowlist secret
-brief_ref: evidence/brief.yml # the staging literal harness-floor.yml lints against; the real brief sits beside this pack
+brief_ref: evidence/2026-09/agent-nuzantara-backend-rag-r2-research-os-naga-49641b51/brief.yml # THIS mission's brief, not the root literal: rule 6 loads the brief through THIS field, so a pack pointing at evidence/brief.yml is judged against whatever mission last staged there (measured: it held KBLI PR-A's gear 2 and failed this pack at floor 3), and rule 12 deprecates the root path anyway
 gear: 3
 gear_floor_measured: 3
 gear_floor_source: both # hot-zone hit AND churn >= threshold; floor agrees with the mandate's declared gear
 
 spend:
-  # Five generations on one mandate. g1-g4 died (window jumps, context guard, an 8h imperator
-  # outage); g5 is this window. Wall clock is the sum over all five, not this window's alone.
-  wall_clock_hours: 9.5
-  appetite_exceeded: >-
+  # Six generations on one mandate. g1-g4 died (window jumps, context guard, an 8h imperator
+  # outage), g5 hit the context guard, g6 froze it. Wall clock is the sum over all six, not one
+  # window's.
+  wall_clock_hours: 10
+  appetite_exceeded_reason_see_pack_level: >-
     The brief declared appetite.wall_clock_hours 6. Exceeded, and the reason is not the work:
     ~3h of g5 alone were spent BLOCKED, not building — first on a guardrail cure that was on
     disk and unarmed (the daemon had compiled the old pattern at start), then on a hard deadlock
@@ -25,6 +26,18 @@ spend:
   tokens: not measured # no single counter spans five windows
   children: 2 # g5: one council-extraction attempt (refused by the budget hook), one acceptance runner
   child_depth: 1
+
+# Rule 14 reads this at PACK level, not under `spend:` — it was nested there and therefore
+# invisible to the check that exists to stop an overrun being absorbed in silence.
+appetite_exceeded: >-
+  The brief declared appetite.wall_clock_hours 6; observed 10 across six generations. The reason
+  is not the work: ~3h of g5 alone were spent BLOCKED, not building — first on a guardrail cure
+  that was on disk and unarmed (the daemon had compiled the old pattern at start), then on a hard
+  deadlock between two hooks, orchestrate_gate demanding a subagent dispatch while the expired
+  mandate ledger forbade creating one. A further hour went to migration 312's rollback section,
+  which an agent Edit cannot write at all: the DROP TABLE line is a TRUE guardrail positive, so it
+  waited for the operator of record rather than being routed around. None of that is build time
+  and none of it was recoverable from inside the window. Declared rather than quietly absorbed.
 
 result: >-
   Migration 312 applies and is additive: research_os_instant_key is IMMUTABLE by construction
@@ -50,19 +63,45 @@ measured:
   - "innocence: research_os.cli fixtures --check = {checked: 218, failures: [], valid: true}"
   - "innocence: Consul's own suite = 42 passed"
   - "production, read-only via scripts/pg.sh: research_os_objects = 0 rows, naga_claims = 3119 rows"
-  - "gear floor: evidence_pack_lint.py --print-floor over the mission numstat = 3, source 'both' (18 files, +7148/-0)"
+  - "gear floor: evidence_pack_lint.py --print-floor over the mission numstat = 3, source 'both'. Measured at 20ec62c593 (19 files, +7406/-0) -- anchored to a commit that already exists, because the freeze commit adds this pack edit and the council journal to the same numstat and a figure naming its own commit cannot be re-measured by a reader."
   - "migration head re-measured on origin/main at pack time: 311, so 312 is still free"
 
 # ---------------------------------------------------------------------------
 # Receipts — commands actually run in the window that reports them.
 # ---------------------------------------------------------------------------
 receipts:
-  - claim: "the acceptance suite is green except the rollback pair"
+  - claim: "the acceptance suite was green except the rollback pair -- the state BEFORE the rollback section landed, kept because that is what the exit 1 below measures"
     cmd: "TEST_DATABASE_URL=postgresql://test:test@localhost:55435/nuzantara_test apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/ apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py apps/backend-rag/backend/tests/unit/research_os/ apps/backend-rag/backend/tests/db/test_research_os_valid_time_is_not_text_orderable.py apps/backend-rag/backend/tests/services/research_os/ apps/backend-rag/backend/tests/migrations/"
     exit: 1
     ts: "2026-09-12T04:28:00Z"
     seat: claude-opus-5
     note: "re-run by the Dux from the repo root AFTER the child reported the same numbers — generator is not grader"
+
+  - claim: "with migration 312's rollback section executable, the whole acceptance suite is green -- no failure, no error, no xfail, and no skip inside the R2 surface"
+    cmd: "TEST_DATABASE_URL=postgresql://test:test@localhost:55435/nuzantara_test apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/ apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py apps/backend-rag/backend/tests/unit/research_os/ apps/backend-rag/backend/tests/db/test_research_os_valid_time_is_not_text_orderable.py apps/backend-rag/backend/tests/services/research_os/ apps/backend-rag/backend/tests/migrations/"
+    exit: 0
+    ts: "2026-09-12T04:48:00Z"
+    seat: claude-opus-5
+    note: >-
+      1110 passed, 17 skipped, 0 failed, 0 error. The two previously red migration-312 tests
+      (rollback_refuses_while_admission_rows_exist, rolls_back_cleanly_and_reapplies) now pass;
+      the 17 skips are the pre-existing DUAL_CONSUL_TEST_DSN gates in Consul's own integration
+      file, untouched by this PR. Re-run from the repo root by the Dux after the freeze commit,
+      never from a child's report.
+
+  - claim: "the rollback body the operator pasted is byte-identical to the text this lane proposed, and the file carries exactly ONE rollback marker"
+    cmd: 'cd apps/backend-rag && .venv/bin/python -c "import pathlib,hashlib;from backend.db.migration_base import split_migration_sql as s, ROLLBACK_MARKER_RE as r;t=pathlib.Path(''backend/db/migrations_v2/312_research_os_naga_claims.sql'').read_text();print(''markers'',len(list(r.finditer(t))));print(''rollback_sha256'',hashlib.sha256(s(t)[1].strip().encode()).hexdigest())"'
+    exit: 0
+    ts: "2026-09-12T04:45:00Z"
+    seat: claude-opus-5
+    note: >-
+      Printed `markers 1` and rollback_sha256
+      106769ba02b8990ba9c14ede1ccce08a358e79166c5bdb2db158e90b39c4fc8c  # pragma: allowlist secret
+      . One marker, at line 320: line 91 quotes the marker inside a comment and the anchored regex
+      does not match it, so a substring count reading 2 is the wrong instrument. The rollback half
+      differs from the proposal by the marker line alone, which the split excludes by construction.
+      The DROP TABLE line is a TRUE guardrail positive, so the operator of record pasted it and it
+      was never routed around.
 
   - claim: "the backfill dry-run admits nothing on today's production corpus and writes nothing"
     cmd: "PGPASSWORD=<from keychain, never printed> NAGA_BACKFILL_DSN=postgresql://nuzantara_readonly@127.0.0.1:15432/nuzantara_rag apps/backend-rag/.venv/bin/python -m backend.services.research_os.naga_backfill --cohort legacy_naga_claims --dry-run"
@@ -95,7 +134,12 @@ receipts:
 # ---------------------------------------------------------------------------
 # Council — Gear 3, declared for the PRODUCTION EFFECT (D8), both seats review-only.
 # ---------------------------------------------------------------------------
-council_run:
+# R9 reads `council_run` as a PATH to a JSONL journal beside this pack, not as an inline list --
+# the inline list below was invisible to it, so the quorum read as zero seats. Both now exist: the
+# journal is the machine's input, the prose keeps the reasoning.
+council_run: council-journal.jsonl
+
+council_run_entries:
   - seat: kimi-code/k3
     role: refuter
     mode: read-only
@@ -121,6 +165,21 @@ council_run:
       seat rather than suspending it: a seat that does not answer is an invocation problem until
       the whole role cascade is exhausted.
 
+  - seat: codex-gpt-5.6-sol
+    role: red-team
+    mode: read-only
+    account: O2
+    ok: true
+    ts: "2026-09-12T04:34:00Z"
+    verdict: "Scope-narrowed second round on the same seat, after the first returned a non-judgement. Delivered findings, no BLOCKER."
+    disposition: >-
+      Three were real defects and are cured in 37cc18ede2, each reproduced by the Dux first: a
+      repeated claim_id silently overwrote its sibling inside a family (`members` is keyed by
+      claim_id) and the family still read as sound; a hash recompute that RAISED was folded into
+      the same `None` as "nothing to verify against", so integrity trusted the declared hash of an
+      object meant to be verifiable; and `write_objects` admitted a succession edge, skipping every
+      succession invariant at once. This is the round that makes the quorum two distinct seats.
+
 quorum:
   required: 2
   met: false
@@ -137,7 +196,8 @@ dissent:
       Python, while migration 312 spells them POSIX [0-9]. An instant whose FRACTION alone carries
       a non-ASCII digit was therefore admitted by the writer and keyed NULL by the storage
       function — a row present in the store and invisible to both D2 index predicates forever.
-    status: "ACCEPTED and CURED in 37e5ace51e — the Dux reproduced it on both sides before curing. The writer now spells digits exactly as the key does."
+    status: CONFIRMED
+    disposition: "ACCEPTED and CURED in 37e5ace51e — the Dux reproduced it on both sides before curing. The writer now spells digits exactly as the key does."
 
   - seat: kimi-code/k3
     objection: >-
@@ -145,21 +205,24 @@ dissent:
       of quarantining it. D3 allows exactly two non-answers, abstention and quarantine; an
       exception is neither, and it takes read() down for the whole subject_key including sound
       families. Reachable because research_os_objects has a second writer and no payload-shape CHECK.
-    status: "ACCEPTED and CURED in 3f750d0a82 — structure is checked first and returns early; two new quarantine reasons, malformed_member and malformed_edge, plus an innocence test proving a sound family still Answers."
+    status: CONFIRMED
+    disposition: "ACCEPTED and CURED in 3f750d0a82 — structure is checked first and returns early; two new quarantine reasons, malformed_member and malformed_edge, plus an innocence test proving a sound family still Answers."
 
   - seat: kimi-code/k3
     objection: >-
       test_naga_backfill_unit.py carried `assert manifest_hash not in text or True` — a disjunction
       with a true literal, i.e. an assertion true for every input, sitting inside the test that
       claims to enforce the Law 2 output boundary.
-    status: "ACCEPTED and CURED in c72d306b4a — the real contract is the opposite (the manifest hash IS expected in the report), so it now asserts presence; the sentinel-absence assertions are untouched."
+    status: CONFIRMED
+    disposition: "ACCEPTED and CURED in c72d306b4a — the real contract is the opposite (the manifest hash IS expected in the report), so it now asserts presence; the sentinel-absence assertions are untouched."
 
   - seat: kimi-code/k3
     objection: >-
       Two plain CREATE INDEX (not CONCURRENTLY) on the live research_os_objects run inside the
       migration transaction, blocking writers for the duration of two index builds; the header
       explains why CONCURRENTLY is impossible but never addresses the write-block window.
-    status: "ACCEPTED as accurate, NOT cured — measured cost is near zero: research_os_objects holds 0 rows in production (read-only measurement above). CONCURRENTLY cannot run inside the transaction the migration runner wraps every forward execute() in. Named in the PR body rather than silently dropped."
+    status: CONFIRMED
+    disposition: "ACCEPTED as accurate, NOT cured — measured cost is near zero: research_os_objects holds 0 rows in production (read-only measurement above). CONCURRENTLY cannot run inside the transaction the migration runner wraps every forward execute() in. Named in the PR body rather than silently dropped."
 
   - seat: kimi-code/k3
     objection: >-
@@ -167,22 +230,57 @@ dissent:
       unavailable; a NULL valid_from being unkeyable so index and _covers would disagree;
       `eligible` meaning different things in dry-run and apply; and the AST write-fence scan
       seeing only literal first arguments of conn.execute.
-    status: "NAMED, NOT CURED in this slice — each is unreachable through this slice's own CLI on the production cohort. Carried into the PR body by name so the next slice inherits them stated, not discovered."
+    status: CONFIRMED
+    disposition: "NAMED, NOT CURED in this slice — each is unreachable through this slice's own CLI on the production cohort. Carried into the PR body by name so the next slice inherits them stated, not discovered."
 
-pii_scan:
-  clean: true
-  note: >-
-    The admission and backfill reports carry counts and hashes only; the manifest hashes every
-    legacy column value before it enters the hash input, and the row id stays in the clear as an
-    opaque identifier. A dedicated test asserts a sentinel claim text reaches neither the text nor
-    the JSON report.
-  incident: >-
-    ONE incident, self-reported the moment it happened and NOT scrubbed from this record: at
-    00:43Z the Dux printed the production read-only PostgreSQL password in cleartext into its own
-    session transcript, using `${VAR:+SET}${VAR:-EMPTY}` as a presence probe — the second form
-    expands to the VALUE when the variable is set. No repo file, commit, diff, evidence file,
-    mailbox envelope or PR body carries it. Rotation is the owner's call and was escalated on a
-    dedicated mailbox key; it is not discharged by this pack. Saved as a fleet-wide shell trap.
+# ---------------------------------------------------------------------------
+# Lanes (D3). ONE build lane by construction: every seat that wrote a line of
+# this PR is Anthropic-family, so there is no non-Anthropic builder to claim
+# and none is claimed. Cross-family independence here is on the REVIEW side.
+# ---------------------------------------------------------------------------
+lanes:
+  - lane: "engine build, lanes A-D (migration 312, reader/admission/persistence/backfill, tests)"
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      One builder seat across the lane-A..D dispatches (`model: "sonnet"` pinned in every Agent
+      call, so no child inherited the Dux's model). The Dux (claude-opus-5 xhigh) wrote the cures
+      itself and re-ran every measurement.
+  - lane: "adversarial council, rounds 1 and 2"
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      codex exec -m gpt-5.6-sol --sandbox read-only on account O2 (O1 out of credits). Round 1
+      died on its own context threshold with no final report; round 2 completed and produced the
+      three defects cured in 37cc18ede2.
+  - lane: "adversarial council, second seat"
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      10 findings, each verified on disk by the Dux; three were real and are cured in 37e5ace51e,
+      3f750d0a82 and c72d306b4a. The index-lock finding measured to near-zero cost.
+  - lane: "non-quorum long read of the whole candidate"
+    role: read
+    seat: gemini-3.1-pro
+    note: "via agy, read-only, no vote; returned COUNCIL BLOCK on the two items since closed."
+  - lane: "reproduction of every finding, and re-execution of every receipt, before the freeze"
+    role: read
+    seat: claude-opus-5
+    note: "generator is not grader: no seat's claim entered this pack unreproduced by the Dux."
+
+pii_scan: clean
+pii_scan_note: >-
+  The admission and backfill reports carry counts and hashes only; the manifest hashes every
+  legacy column value before it enters the hash input, and the row id stays in the clear as an
+  opaque identifier. A dedicated test asserts a sentinel claim text reaches neither the text nor
+  the JSON report.
+pii_scan_incident: >-
+  ONE incident, self-reported the moment it happened and NOT scrubbed from this record: at
+  00:43Z the Dux printed the production read-only PostgreSQL password in cleartext into its own
+  session transcript, using `${VAR:+SET}${VAR:-EMPTY}` as a presence probe — the second form
+  expands to the VALUE when the variable is set. No repo file, commit, diff, evidence file,
+  mailbox envelope or PR body carries it. Rotation is the owner's call and was escalated on a
+  dedicated mailbox key; it is not discharged by this pack. Saved as a fleet-wide shell trap.
 
 deferred_by_name:
   - "statement atomizer (naga_statement_atomizer)"
