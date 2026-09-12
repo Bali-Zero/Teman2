@@ -1,0 +1,181 @@
+task_id: kita-pruning-lots-1-2
+brief_ref: evidence/2026-09/claude-i-tera-surface-analysis-d8zvu3-08e9bf9d/brief.yml
+gear: 3
+colour: BLUE
+pr: 6296
+base_sha: 4ad7761552adbde94450b663ed23a1ed78d3337f # pragma: allowlist secret
+spend:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 1
+  tokens: 1300000
+  children: 9
+  child_depth: 1
+result: >-
+  Lots 1 and 2 of the kita pruning are on the branch as 8 single-concern commits plus one
+  cure commit after the adversarial round. Typecheck, the mouth unit suite and
+  the production build are green on this head; the pre-push consumer-map gate was read row by
+  row and its one real consumer (the journey sentinel's required-spec floor) was fixed inside
+  the PR.
+gear_floor_note: >-
+  Declared 3 because the deterministic floor IS 3, measured with the repo's own function on the
+  merge-base three-dot diff: compute_floor(files, numstat) = 3, compute_floor_source = "size",
+  churn 23,991. The churn is deletions: staying under the threshold would have meant slicing
+  pure deletions into a dozen PRs, which lowers no review burden. Gear 3's demands are met where
+  this sandbox can meet them (receipts, an independent refuter, a Bites observation) and named
+  where it cannot (seat_override below, gate_pending below).
+seat_override: >-
+  R9 council: the council seats (codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max) are
+  NOT_INSTALLED / CRED_UNAVAILABLE in this remote sandbox (SessionStart arsenal probe,
+  2026-09-12). The independent refuter here is a fresh claude-opus-5 subagent (a different model
+  from the author's claude-fable-5-1, no shared context) — one adversarial round, findings and
+  dissent recorded below. A second, non-Anthropic council seat is owed before merge and is the
+  owner's call from a machine that has the seats.
+gate_pending: >-
+  harness/fable-gate: this sandbox has no gh CLI and no seat outside the contribution chain, so
+  the verdict cannot be posted from here. Procedure for the fresh seat: run the on-disk gate on
+  head sha, post via scripts/harness_fable_gate.py --sha <head>, then `gh run rerun <the
+  pull_request run of Harness floor recompute>` (never workflow_dispatch — see
+  scripts/ci/harness_gate_read.py).
+pii_scan: clean
+diff:
+  summary: >-
+    All under apps/mouth except scripts/journey_sentinel.sh (one list entry). Counts are
+    derived by the linter from numstat, not narrated here.
+  commits:
+    - "delete dead analytics pages and API module"
+    - "delete partners finance and orphaned pages"
+    - "delete orphan prototype and scaffold routes"
+    - "remove components, hooks and API clients with no importer"
+    - "delete Next API routes nothing calls"
+    - "drop ghost route titles, an unused import and stray summaries"
+    - "delete settings pages that persisted nothing"
+    - "reduce settings pages to the controls that persist"
+    - "cure the refuter's findings on the pruning PR"
+lanes:
+  - { lane: audit-and-prune, role: build, seat: claude-fable-5-1 }
+  - { lane: adversarial-review, role: review, seat: claude-opus-5 }
+bites:
+  consumer: >-
+    kita.balizero.com operators (the sidebar, settings hub and the routes they open) and the
+    Frontend Live Sentinel that compares kita's /api/health commit against the newest commit
+    touching apps/mouth/**.
+  observation: >-
+    After deploy: `curl -fsS https://kita.balizero.com/api/health` reports a commit descending
+    from the merge SHA; /settings/api, /analytics, /partners/finance and /dream answer 404;
+    /settings shows three cards; Integrations -> Disconnect issues POST
+    /api/integrations/google-drive/disconnect (was a client-side no-op). Not yet observed — this
+    PR is not merged; the pre-merge observation is the green build, suite and typecheck below.
+receipts:
+  - claim: >-
+      apps/mouth typecheck is clean on this head (tsc --noEmit exit 0).
+    cmd: "cd apps/mouth && npx tsc --noEmit"
+    exit: 0
+    ts: "2026-09-12T10:11:21Z"
+    seat: claude-fable-5-1
+  - claim: >-
+      The mouth unit suite, run with its own config, passes: 469 of 470 files green on the first
+      full run, the one red being analytics/__tests__/token-drain.guard.test.ts reading the
+      deleted analytics page; trimmed to the surviving funnel page and re-run green (9 tests).
+    cmd: "cd apps/mouth && npx vitest --run --root apps/mouth --config apps/mouth/vitest.config.ts; npx vitest --run 'src/app/(workspace)/analytics'"
+    exit: 0
+    ts: "2026-09-12T09:56:54Z"
+    seat: claude-fable-5-1
+  - claim: >-
+      The production build completes on this head: `next build --webpack` compiled and
+      scripts/assert-public-login-bundle.mjs printed PUBLIC_LOGIN_BUNDLE_OK (exit 0).
+    cmd: "cd apps/mouth && npm run build"
+    exit: 0
+    ts: "2026-09-12T09:54:29Z"
+    seat: claude-fable-5-1
+  - claim: >-
+      The deterministic floor of this diff is 3 with source size (churn 23,991); no hot-zone,
+      PII or ground-truth path is touched and the diff is not 100 percent mechanical — probed
+      with evidence_pack_lint's own compute_floor, compute_floor_source, _any_path_matches and
+      compute_seat_floor on the merge-base numstat and file list.
+    cmd: "git diff --no-renames --numstat origin/main HEAD > numstat.txt && python3 -c 'import evidence_pack_lint as L; ...compute_floor(files, ns)...'"
+    exit: 0
+    ts: "2026-09-12T10:10:10Z"
+    seat: claude-fable-5-1
+  - claim: >-
+      The consumer-map gate lists 715 LIVE rows for this diff; grouped by basename they are
+      README.md 388, index.ts 231, error.tsx 27, loading.tsx 18, page.test.tsx 17, types.ts 10,
+      client.ts 9, route.test.ts 6, video.mp4 4, dream.spec.ts 2 (a historical evidence pack),
+      Sidebar.tsx 2 (admin-dashboard's own), FeedbackWidget.tsx 1 (a print string) — none a
+      consumer of a deleted file. The push used PREPUSH_SKIP_CONSUMER_MAP=1 after that reading.
+    cmd: "python3 scripts/prepush_classify.py --check-consumers --base origin/main | grep ' | LIVE$' | awk -F' | ' '{print $3}' | sort | uniq -c"
+    exit: 1
+    ts: "2026-09-12T10:05:41Z"
+    seat: claude-fable-5-1
+  - claim: >-
+      The branch landed on origin at the same SHA as local HEAD after the detached push
+      (PUSH_RC=0; ls-remote matched).
+    cmd: "PREPUSH_SKIP_CONSUMER_MAP=1 git push -u origin claude/i-tera-surface-analysis-d8zvu3; git ls-remote --heads origin claude/i-tera-surface-analysis-d8zvu3"
+    exit: 0
+    ts: "2026-09-12T10:06:02Z"
+    seat: claude-fable-5-1
+adversarial:
+  - {
+      seat: claude-opus-5,
+      round: 1,
+      verdict: REWORK,
+      findings: 10,
+      block: 1,
+      rework: 2,
+      note: 7,
+      cured: 8,
+      accepted_as_residual: 2,
+    }
+dissent:
+  - seat: "claude-opus-5 (refuter) vs claude-fable-5-1 (author)"
+    status: CONFIRMED
+    objection: >-
+      The PR's one behaviour change armed an irreversible Google OAuth revocation
+      (POST /api/integrations/google-drive/disconnect -> token revoke + DELETE grant)
+      behind a status the backend hardcodes: /api/drive/status is the Team-Drive
+      service-account router and returns "connected" as a literal whenever the SA is
+      configured (team_drive.py:328), so every user would have been shown Disconnect
+      and the Connect branch was unreachable. CONFIRMED on read of team_drive.py and
+      google_drive_service.py:306-327. Cured in the cure commit: the card now reads the
+      per-user grant from /api/integrations/google-drive/status, offers Connect only,
+      and no longer calls disconnect(); DriveApi.disconnect() is removed (no caller).
+  - seat: "claude-opus-5 (refuter) vs claude-fable-5-1 (author)"
+    status: CONFIRMED
+    objection: >-
+      bulkReassign() was deleted as "a helper only the dead page called", but
+      POST /api/partners/bulk-reassign is a live backend route (partners.py:695);
+      the deletion removed a capability, not dead code, and the commit message did
+      not say so. CONFIRMED; the helper is restored with a comment naming the live
+      route and where a bulk action would attach (/partners ?orphaned= filter).
+      Residual, stated: the helper has no UI caller until that action is built.
+  - seat: "claude-opus-5 (refuter) vs claude-fable-5-1 (author)"
+    status: CONFIRMED
+    objection: >-
+      Dropping the "/team" routeTitles entry regressed the header of the live
+      /team/analytics page from "Team" to "Workspace" (prefix matcher in
+      layout.tsx:37-41). CONFIRMED by the refuter's measurement on both sides;
+      cured with an explicit "/team/analytics" entry.
+  - seat: "claude-opus-5 (refuter) vs claude-fable-5-1 (author)"
+    status: PLAUSIBLE
+    objection: >-
+      Commit 7's phrase "had no backend" is imprecise: /api/team/status and
+      /api/auth/revoke-all exist. The refuter agreed neither is a regression (the
+      deleted security page never called revoke-all; the live wiring is in the
+      portal's SecuritySettings; /api/team/status is already rendered by /admin) and
+      the deletion is defensible. Kept as PLAUSIBLE: the commit message is not
+      rewritten (branch already under review); the pack and PR body carry the
+      correction instead.
+  - seat: "claude-opus-5 (refuter) vs claude-fable-5-1 (author)"
+    status: RETRACTED
+    objection: >-
+      "git diff origin/main HEAD shows PENDING-ARMS.md losing a ledger row." The
+      refuter itself retracted it as a two-dot artifact of a moved base: the
+      merge-base three-dot diff does not touch the file. Recorded so nobody
+      "fixes" it.
+residuals:
+  - >-
+    scripts/ci/change_map.py coupling census is stale on main already (scripts/pg.sh);
+    not touched here (one concern per PR).
+  - >-
+    The Vercel preview of this branch sits behind Deployment Protection (302 on every
+    path from this sandbox), so the pre-merge Bites observation is the green build,
+    suite and typecheck; the live observation is owed after deploy.
