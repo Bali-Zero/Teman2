@@ -401,19 +401,16 @@ class TestParseDomainThresholdOverrides:
     def test_none_input_returns_empty_dict(self):
         assert _parse_domain_threshold_overrides(None) == {}
 
-    def test_entry_without_colon_is_skipped(self):
-        result = _parse_domain_threshold_overrides("tax:0.10,broken,kbli:0.20")
-        assert result == {"tax": 0.10, "kbli": 0.20}
+    def test_entry_without_colon_rejects_whole_spec(self):
+        # RULING I41: a malformed entry no longer gets skipped while its
+        # siblings survive — the WHOLE spec is rejected (fail-closed on
+        # configuration), so the caller falls back to the strict thresholds.
+        with pytest.raises(ValueError, match="malformed entry 'broken'"):
+            _parse_domain_threshold_overrides("tax:0.10,broken,kbli:0.20")
 
-    def test_non_numeric_value_is_skipped_and_warned(self, caplog):
-        import logging
-
-        with caplog.at_level(logging.WARNING):
-            result = _parse_domain_threshold_overrides("kbli:notanumber")
-        assert result == {}
-        assert any(
-            "notanumber" in r.message or "skipping" in r.message.lower() for r in caplog.records
-        )
+    def test_non_numeric_value_raises(self):
+        with pytest.raises(ValueError, match="non-numeric value"):
+            _parse_domain_threshold_overrides("kbli:notanumber")
 
     def test_uppercase_keys_normalized_to_lowercase(self):
         result = _parse_domain_threshold_overrides("TAX:0.10,KBLI:0.20")
@@ -432,12 +429,9 @@ class TestParseDomainThresholdOverrides:
         result = _parse_domain_threshold_overrides("default:1.0")
         assert result == {"default": 1.0}
 
-    def test_extra_colon_in_value_is_skipped(self, caplog):
-        import logging
-
-        with caplog.at_level(logging.WARNING):
-            result = _parse_domain_threshold_overrides("tax:0.10:extra")
-        assert result == {}
+    def test_extra_colon_in_value_raises(self):
+        with pytest.raises(ValueError, match="non-numeric value"):
+            _parse_domain_threshold_overrides("tax:0.10:extra")
 
 
 # ===========================================================================

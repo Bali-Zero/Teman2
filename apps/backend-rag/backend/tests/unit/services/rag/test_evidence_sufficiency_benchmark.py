@@ -170,6 +170,61 @@ class TestSupplementIsWellFormedAndNeverPooledWithMandatory:
         assert decided_ids.isdisjoint(supplement_ids)
 
 
+def _repo_root() -> Path:
+    p = Path(__file__).resolve()
+    while p != p.parent:
+        if (p / "apps").is_dir():
+            return p
+        p = p.parent
+    raise AssertionError("repo root (dir containing apps/) not found from test file")
+
+
+class TestSupplementSourceShaPinsVerifyAgainstFileBytes:
+    """B2.2 — both `sets.*.source_sha256` pins in `manifest_supplement_b2.json`
+    must verify against their named evidence file's real BYTES
+    (`harness.source_sha256()`), never an in-memory `json.dumps()`
+    re-serialization of the parsed content.
+
+    Set C's pin was wrong for exactly that reason (2026-09-13): the
+    recorded value was `sha256(json.dumps(data, indent=2))`, which silently
+    drops the file's own trailing newline. `shasum -a 256` on the real file
+    never agreed with it. Re-pinned to the file-bytes hash in this same PR;
+    this test is the regression guard against that class of drift recurring
+    for Set B, Set C, or any future set."""
+
+    def test_set_b_and_set_c_source_pins_verify_against_file_bytes(
+        self, supplement: dict
+    ) -> None:
+        repo_root = _repo_root()
+        # Non-vacuity, found by the council round (codex-gpt-5.6-sol, P2): with
+        # `sets` emptied this loop asserted nothing and stayed green, and
+        # `harness.validate()` stayed green too. Name the sets that MUST be
+        # pinned, so deleting one fails here instead of passing silently.
+        # Every set that APPEARS IN THE CASES must be accounted for — council
+        # round 1 (kimi-code/k3, R12): 12 cases carried set=D while the metadata
+        # named only B and C, so an unpinned set slipped past a guard that only
+        # walked the metadata.
+        sets_in_cases = {c.get("set") for c in supplement["cases"]} - {None}
+        assert sets_in_cases <= set(supplement["sets"]), (
+            sets_in_cases,
+            set(supplement["sets"]),
+        )
+        assert set(supplement["sets"]) >= {"B", "C"}, supplement["sets"].keys()
+        for set_name, entry in supplement["sets"].items():
+            if "source" not in entry:
+                # A derived set carries no file of its own; it must SAY so and
+                # name the set whose pin covers it, rather than simply lack one.
+                assert entry.get("derived_from") in supplement["sets"], entry
+                continue
+            source_path = repo_root / entry["source"]
+            assert source_path.is_file(), f"set {set_name}: {source_path} does not exist"
+            actual = harness.source_sha256(source_path)
+            assert actual == entry["source_sha256"], (
+                f"set {set_name}: recorded source_sha256 {entry['source_sha256']!r} "
+                f"does not match {source_path}'s real file-bytes hash {actual!r}"
+            )
+
+
 class TestBalancePerCell:
     """Balance contract (B1-3-build-spec.md): per cell >= 3 sufficient and
     >= 1 of each of the four negative strata."""

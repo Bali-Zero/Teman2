@@ -481,20 +481,32 @@ class TestDomainAbstainThresholds:
         # Unmodified domains keep defaults
         assert get_abstain_threshold("KITAS cost") == 0.12
 
-    def test_malformed_env_override_logged_and_skipped(self, monkeypatch, caplog):
+    def test_malformed_env_override_rejects_whole_spec_and_falls_back_strict(
+        self, monkeypatch, caplog
+    ):
+        # RULING I41: a malformed entry anywhere in the spec no longer lets
+        # its valid siblings land — the WHOLE spec is untrusted, so
+        # `_build_domain_thresholds` logs at ERROR and returns the STRICT
+        # fallback (every relief lifted to `default` 0.15, anything already
+        # stricter — kbli 0.20 — kept), never a partial merge and never the
+        # permissive defaults.
         monkeypatch.setenv(
             "DOMAIN_ABSTAIN_THRESHOLDS",
             "tax:0.05,broken_no_value,kbli:notanumber,pricing:0.18",
         )
         import backend.services.rag.agentic.reasoning_utils as mod
 
-        with caplog.at_level("WARNING"):
+        with caplog.at_level("ERROR"):
             thresholds = mod._build_domain_thresholds()
 
-        # Valid entries land
-        assert thresholds["tax"] == 0.05
-        assert thresholds["pricing"] == 0.18
-        # Malformed entries skipped, defaults preserved
-        assert thresholds["kbli"] == 0.20
-        # And we logged a warning about the bad entry
-        assert any("notanumber" in msg or "skipping" in msg.lower() for msg in caplog.messages)
+        assert thresholds == {
+            "tax": 0.15,
+            "visa": 0.15,
+            "pricing": 0.15,
+            "kbli": 0.20,
+            "default": 0.15,
+        }
+        # And we logged the failure at ERROR, naming the bad entry
+        assert any(
+            "broken_no_value" in msg or "malformed entry" in msg for msg in caplog.messages
+        )
