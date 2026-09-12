@@ -89,6 +89,22 @@ const PUBLIC_ID = /^[a-z0-9]{16,20}$/;
  * of surfacing it. (The REVIEW map above chooses the opposite fallback on
  * purpose — there, a wrong-sounding specific is worse than a safe generic.)
  */
+function usd(value: number, locale: "en-US" | "id-ID"): string {
+  return `USD ${value.toLocaleString(locale)}`;
+}
+
+// Exported so `engine-adapter.test.ts` can pin these against the signed
+// pack's own `el.e33.property-basis` / `el.e33.deposit-basis` `gte` values
+// (same technique as fact-mapper.test.ts's "AMBIGUOUS_SPONSOR relation
+// proxy tracks the signed pack") — a second copy of a number the pack owns
+// is a silent-drift risk with a seq-21 threshold revision already in
+// preparation, and a wrong VERDICT is caught by other tests while a stale
+// NUMBER INSIDE A SENTENCE is not. Declared ahead of `SUPPORT_REASON_COPY`
+// (D3c/C-D5, 2026-09-13) because the E33 Second Home entries below
+// interpolate them instead of restating the digits a third time.
+export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
+export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
+
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
@@ -133,12 +149,12 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa Rumah Kedua Pensiun (E33F) mensyaratkan sponsor keluarga yang telah dikonfirmasi, dan Anda menyatakan sponsor Anda belum mengonfirmasi. Konfirmasi sponsor adalah yang akan membuka jalur ini.",
   ),
   E33_DEPOSIT_BASIS_ELIGIBLE: text(
-    "Second Home on the deposit basis: USD 130,000 or more held in your own name at a state bank.",
-    "Rumah Kedua berbasis deposito: minimal USD 130.000 atas nama sendiri di bank BUMN.",
+    `Second Home on the deposit basis: ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank.`,
+    `Rumah Kedua berbasis deposito: minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama sendiri di bank BUMN.`,
   ),
   E33_PROPERTY_BASIS_ELIGIBLE: text(
-    "Second Home on the property basis: qualifying property valued at USD 1,000,000 or more.",
-    "Rumah Kedua berbasis properti: properti memenuhi syarat senilai minimal USD 1.000.000.",
+    `Second Home on the property basis: qualifying property valued at ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")} or more.`,
+    `Rumah Kedua berbasis properti: properti memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}.`,
   ),
   REMOTE_WORK_ELIGIBLE: text(
     "You work remotely for a non-Indonesian employer, serve no Indonesian clients, and take no Indonesian-source compensation.",
@@ -177,25 +193,36 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Your passport must be valid for at least 6 months on the date you enter.",
     "Paspor Anda harus berlaku minimal 6 bulan pada tanggal Anda masuk.",
   ),
+  // D3c/C-D5 (2026-09-13): no fact in the signed pack models a proof-of-funds
+  // amount at all (`el.d1-funds-usd-2000`/`el.d2-funds-usd-2000`/
+  // `el.e31a-funds-2000`/`el.d12-funds-usd-5000`'s `when` trees test only
+  // purpose/stay-days/entry-pattern — verified, no `gte` node on any funds
+  // fact exists anywhere in the pack). A dollar figure with nothing tying it
+  // to the pack is the same class of risk the pinned Second Home thresholds
+  // guard against, so it is not stated here — same treatment as
+  // `CV_REQUIRED`/`ITINERARY_REQUIRED` above, which never claimed a number
+  // either.
   PROOF_OF_FUNDS_D1: text(
-    "You will need to show proof of funds of USD 2,000 or more.",
-    "Anda perlu menunjukkan bukti dana minimal USD 2.000.",
+    "You will need to show proof of funds.",
+    "Anda perlu menunjukkan bukti dana.",
   ),
   PROOF_OF_FUNDS_D2: text(
-    "You will need to show proof of funds of USD 2,000 or more.",
-    "Anda perlu menunjukkan bukti dana minimal USD 2.000.",
+    "You will need to show proof of funds.",
+    "Anda perlu menunjukkan bukti dana.",
   ),
   PROOF_OF_FUNDS_D12: text(
-    "You will need to show proof of funds of USD 5,000 or more.",
-    "Anda perlu menunjukkan bukti dana minimal USD 5.000.",
+    "You will need to show proof of funds.",
+    "Anda perlu menunjukkan bukti dana.",
   ),
   REQ_FUNDS_2000: text(
-    "You will need to show proof of funds of USD 2,000 or more.",
-    "Anda perlu menunjukkan bukti dana minimal USD 2.000.",
+    "You will need to show proof of funds.",
+    "Anda perlu menunjukkan bukti dana.",
   ),
+  // D3c/C-D5: same reasoning — `el.e30-living-cost-2000.*`'s `when` trees
+  // test only purpose/admission/sponsor facts, no living-cost fact exists.
   LIVING_COST_USD2000: text(
-    "You will need to show living costs of USD 2,000 or more for your studies.",
-    "Anda perlu menunjukkan biaya hidup minimal USD 2.000 untuk masa studi Anda.",
+    "You will need to show living costs for your studies.",
+    "Anda perlu menunjukkan biaya hidup untuk masa studi Anda.",
   ),
   REQ_SPONSOR_ITAS_ITAP: text(
     "Your sponsor must hold a valid ITAS or ITAP.",
@@ -301,9 +328,14 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // so. Zero's ruling (2026-08-09): offer the route and name the check.
   // Where the figure is not in the rule itself it is deliberately NOT stated
   // here rather than guessed.
+  // D3c/C-D5: no rule in the signed pack carries this reason code at all
+  // (verified: no `E33G_INCOME_60K_ADVISOR_CHECK` reason_code anywhere, and
+  // no income fact exists to hold a `gte` threshold), so the figure is
+  // dropped — same "confirm the current figure" template already used by
+  // the three sibling advisor checks below, for the same reason.
   E33G_INCOME_60K_ADVISOR_CHECK: text(
-    "This route asks for annual income of USD 60,000 or more. We confirm the figure and the evidence with one of our advisors.",
-    "Jalur ini mensyaratkan penghasilan tahunan minimal USD 60.000. Kami memastikan angka dan buktinya bersama konsultan kami.",
+    "This route has a minimum annual income threshold. We confirm the current figure and your evidence with one of our advisors.",
+    "Jalur ini memiliki ambang penghasilan tahunan minimum. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
   ),
   E28B_USD_THRESHOLD_ADVISOR_CHECK: text(
     "This Golden Visa route has a minimum investment threshold in USD. We confirm the current figure and your evidence with one of our advisors.",
@@ -412,20 +444,6 @@ function reasonMessage(code: string): LocalizedText {
 // the generic sentence) whenever the facts do not actually show a
 // below-threshold Second Home basis, so a future cause of this same code
 // is never mis-attributed to a threshold it did not fail.
-// Exported so `engine-adapter.test.ts` can pin these against the signed
-// pack's own `el.e33.property-basis` / `el.e33.deposit-basis` `gte` values
-// (same technique as fact-mapper.test.ts's "AMBIGUOUS_SPONSOR relation
-// proxy tracks the signed pack") — a second copy of a number the pack owns
-// is a silent-drift risk with a seq-21 threshold revision already in
-// preparation, and a wrong VERDICT is caught by other tests while a stale
-// NUMBER INSIDE A SENTENCE is not.
-export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
-export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
-
-function usd(value: number, locale: "en-US" | "id-ID"): string {
-  return `USD ${value.toLocaleString(locale)}`;
-}
-
 function secondHomeBelowThresholdReason(
   facts: OracleFacts,
 ): LocalizedText | undefined {
