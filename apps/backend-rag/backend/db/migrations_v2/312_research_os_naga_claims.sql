@@ -63,10 +63,16 @@
 -- (280's header proves it), so the row trigger alone would leave this whole table erasable
 -- in one statement. The same function is therefore bound a second time, to a STATEMENT-level
 -- BEFORE trigger on that event, named `research_os_naga_admission_no_wipe` -- 280's shape.
--- An earlier generation of this file could not write that statement: the local guardrails
--- daemon's SQL-content pattern matched the verb followed by ANY word, including the keyword
--- ON of this protective DDL (superscar family #3, guard over-match). Zero authorized the cure
--- at the source on 2026-09-12 (the pattern now excludes ON/OR); no bypass was used.
+-- Two earlier generations of this file could not write that statement: the local guardrails
+-- daemon's SQL-content pattern matched the wipe verb followed by ANY word, including the
+-- keyword ON of this protective DDL (superscar family #3, guard over-match). Zero authorized
+-- the cure at the source; the pattern now carries a negative lookahead for ON/OR. The cure
+-- then sat ON DISK AND UNARMED for hours -- the daemon had compiled the old pattern at start
+-- and the static fallback copy was never patched (superscar family #2 sitting on top of #3)
+-- -- so a generation that read the cured file still had its write refused. It was armed on
+-- 2026-09-12 by reloading the daemon and bringing the static mirror to byte-parity, and only
+-- then was this statement written. Guilt was re-probed after arming and still blocks every
+-- genuinely destructive shape; no bypass was used at any point.
 --
 -- PostgreSQL 15 compatibility -- the same feature set 279/280 already used on this same
 -- server target (BIGSERIAL, TEXT, TIMESTAMPTZ, CHAR(64), TEXT[], CHECK with a POSIX regex
@@ -294,14 +300,22 @@ CREATE TABLE public.research_os_naga_admission (
 COMMENT ON TABLE public.research_os_naga_admission IS
     'D5 projection: NAGA legacy-claim admission decisions '
     '(Admitted | Excluded(reason)), one row per (run_id, legacy_claim_id). '
-    'Append-only guard: row UPDATE/DELETE rejected (migrations 279/280 '
-    'precedent); the statement-level wipe-guard trigger 280 also carries is '
-    'NOT yet present here, see the header note above.';
+    'Append-only guard: row UPDATE/DELETE rejected and the whole-table wipe '
+    'statement rejected, both binding migration 279''s function verbatim '
+    '(migrations 279/280 precedent).';
 
--- Append-only guard, reusing 279's function verbatim (see header). Row-level only; see the
--- header's KNOWN GAP note for the missing statement-level guard.
+-- Append-only guard, reusing 279's function verbatim (see header). Two bindings of the SAME
+-- function, because one event class alone does not close the table:
+--   * FOR EACH ROW on UPDATE/DELETE -- the per-row mutation path;
+--   * FOR EACH STATEMENT on the wipe-everything-at-once event, which PostgreSQL never fires a
+--     ROW-level trigger for (migration 280 proved this on research_os_objects itself). Without
+--     it the row guard above would leave the whole table erasable in a single statement.
 CREATE TRIGGER research_os_naga_admission_immutable
 BEFORE UPDATE OR DELETE ON public.research_os_naga_admission
 FOR EACH ROW EXECUTE FUNCTION public.reject_research_os_objects_mutation();
+
+CREATE TRIGGER research_os_naga_admission_no_wipe
+BEFORE TRUNCATE ON public.research_os_naga_admission
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_research_os_objects_mutation();
 
 -- === ROLLBACK ===
