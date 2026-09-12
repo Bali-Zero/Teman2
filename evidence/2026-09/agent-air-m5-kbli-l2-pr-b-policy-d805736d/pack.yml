@@ -1,0 +1,244 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref:
+  "docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md — PR-B (data, Gear 3), §2 rules
+  6-8, §6 ruling 3, §7 outcome. Predecessor PR-A #6241 (adapter + flags), merged 2026-09-11."
+lanes:
+  - lane: kbli/l2-pr-b-policy
+    role: build
+    seat: >-
+      claude-fable-5-1 (conducting session — merge policy, NO_BESAR/quarantine supersessions,
+      regeneration, owner emitters, spec §7, this pack; one scoped Sonnet 5 subagent under it
+      re-measured the seven count pins in three test files with each test's own helper).
+      Successor window 2026-09-12 (claude-fable-5-1, session 7efe8d88): ran the full apps/mouth
+      suite the first window had not, cured its 17 reds by re-measuring pins and prose aggregates
+      (commit df78dc6122), regenerated public/llms-kbli.txt, measured the backend and
+      scripts/tests guards, and journalled the council seats that actually answered
+  - lane: guard-classifier
+    role: review
+    seat:
+      claude-sonnet-5 (read-only subagent — classified the 25 failing kbli_filiera guards and found
+      the withdrawn-inference doctrine bug in the first NO_BESAR port, dissent[0])
+  - lane: guard-classifier-2
+    role: review
+    seat:
+      claude-sonnet-5 (read-only subagent — classified the scripts/tests + backend guards, found the
+      per_skala quarantine and the human-owned certification gate, dissent[1], dissent[2])
+  - lane: kbli-l2-ground-truth
+    role: ground_truth
+    seat: session (M5) — L0 evidence is the frozen OSS vault, not a notebook
+    nb: "OSS gw.oss.go.id v2 (ruang-lingkup/{uuid}) — frozen snapshot ~/nuzantara-vault-20260911, chmod a-w, 1559/1559 codes; July baseline ~/nuzantara-vault (2026-07-17)"
+    query_hash: "e18a5cf3fb99e99de81cc4ea502c96ccb4cbc759f08195d7069a171df8bfb955"
+    note: >-
+      The ground truth of this PR is the OSS portal's own risk data, captured once and hashed
+      (vault_manifest.py --out; the sha is quoted in metadata.l2_snapshot.manifest_sha256 of the
+      regenerated dataset). No NotebookLM query applies to a mechanical re-ingestion; the
+      doctrine checks (withdrawn inference, quarantine, Lampiran II) are the repo's own tests.
+  - lane: kimi-refuter
+    role: review
+    seat:
+      kimi-code/k3 (kimi CLI, read-only prompt over the frozen code diff — VERDICT BLOCKING, two
+      HIGH both verified on the live run and cured, dissent[6])
+  - lane: codex-refuter
+    role: review
+    seat:
+      codex GPT-5.6 (codex exec, read-only sandbox, no network — six findings on the merge policy,
+      all folded, dissent[3])
+seat_diversity: not_applicable
+seat_diversity_note:
+  "Build lanes are Anthropic seats (conducting session + one scoped pin-updater + the successor
+  window). Review is cross-family and independent — codex-gpt-5.6-sol (OpenAI, codex exec
+  --sandbox read-only) and kimi-code/k3 (Moonshot, kimi CLI), both against the frozen code diff
+  with no access to this pack/brief, journalled in council-journal.jsonl; tp1-qwen3.8-max timed
+  out three times and is journalled ok:false with no verdict. Every data claim is settled by a
+  probe (rule 4 = 0 changed codes, rule 5 = predicted set, 1348 tests), not by a seat's opinion."
+diff:
+  net_lines:
+    "Measured by the harness from git diff --numstat at check time (the 36 MB canonical in three
+    tracked copies dominates: tens of thousands of lines each way, net negative because OSS
+    de-duplicated the kewenangan lists). Besides the data: the sidecar, four kbli-filiera
+    artifacts, five cure specs, one transform, one new script, one new test file, three
+    re-measured tests, the spec, the ledger, this evidence directory."
+  behaviour_change:
+    "balizero.com/kbli pages and the navigator dataset serve OSS risk tiers/licence rows from the
+    2026-09-11 snapshot on ~1300 codes (tier-set changes on 183); 13 codes carry
+    absent_pending_corroboration; l4_bali moved on 27 codes; metadata v11.0-L2-oss-risk-20260911,
+    source PP28_2025. The three locales of the honest-map article and public/llms-kbli.txt follow
+    the canonical (519 blocked / 1,040 open / 33.3%). The RAG's Qdrant copy is NOT resynced by this
+    PR (certification gate, see dissent[2] and PENDING-ARMS)."
+receipts:
+  - claim: Deterministic gear floor on this PR's actual changed-file list is 3 (size)
+    cmd: git diff --name-only origin/main...HEAD > /tmp/l2b/changed_files.txt && git diff --numstat origin/main...HEAD > /tmp/l2b/numstat.txt && python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file /tmp/l2b/changed_files.txt --numstat-file /tmp/l2b/numstat.txt
+    result: "3 / size (22 files at pack time; the count is the harness's, re-measured at check time)"
+    exit: 0
+    ts: 2026-09-11T16:52Z
+    seat: session (M5)
+  - claim: Rule 4 — the v10.0 canonical reproduces from the frozen July vault under the merge policy with zero changed codes
+    cmd: git show origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json > /tmp/l2b/root/data/source_documents/KBLI_2025_FINAL_CLEAN.json && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2b/root --raw /tmp/l2b/july.jsonl | grep '^SUMMARY'
+    result: "SUMMARY changed_codes=0 no_oss_risk=104 per_skala_changed=0 l4_changed=0 l4_rewritten=0 absent_pending=0 quarantined_skipped=119 rows_carried=9078 rows_carried_tier=0 no_evidence=0 rows_jangka_preserved=4321 rows_fresh=0"
+    exit: 0
+    ts: 2026-09-11T16:41Z
+    seat: session (M5, after the codex round)
+  - claim: The pinned-triple change set between the frozen vaults is 181 codes, identical to the set measured at PR-A gate time
+    cmd: python3 scripts/kbli_filiera/vault_tier_changeset.py --old ~/nuzantara-vault --new ~/nuzantara-vault-20260911 --out /tmp/l2b/changed_pinned.txt && diff <(cat /tmp/l2b/changed_pinned.txt) <(cat /tmp/l2b/changed_pinned.txt)
+    result: "both=1325 changed=181 old_only=13 new_only=9; identical to /tmp/l2/changed_pinned.txt except a trailing newline"
+    exit: 0
+    ts: 2026-09-11T15:40Z
+    seat: session (M5)
+  - claim: Rule 5 — predicted diff = measured diff; every top-level cell inside pinned ∪ new-only ∪ old-only
+    cmd: python3 /tmp/l2b/field_diff_b.py /tmp/l2b/main_canonical.json data/source_documents/KBLI_2025_FINAL_CLEAN.json /tmp/l2b/changed_pinned.txt /tmp/l2b/field_diff_sept4.md
+    result: "tier-set changed 183 = pinned 181 − {20111 (quarantined)} + {93111, 93112, 93119}; absent_pending codes == old_only True; skala_usaha/kategori_risiko/scope_index 0 on matched rows; fiktif_positif/jangka_waktu_source dropped 0; top-level outside-set count 0 on every field"
+    exit: 0
+    ts: 2026-09-11T16:41Z
+    seat: session (M5)
+  - claim: The adapter output for the September vault is byte-identical to the one produced at PR-A gate time (vault frozen, adapter pure)
+    cmd: python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault-20260911 --out /tmp/l2b/sept.jsonl && cmp /tmp/l2b/sept.jsonl /tmp/l2/sept.jsonl
+    result: identical
+    exit: 0
+    ts: 2026-09-11T15:31Z
+    seat: session (M5)
+  - claim: derive_fiktif_positif.py is idempotent on the v10.0 canonical and, after --apply, touches only the fresh rows
+    cmd: python3 scripts/derive_fiktif_positif.py --dry-run; then on the applied copy — rows changed by derive vs rows_fresh
+    result: "v10.0: codes touched 0. Applied copy (first policy): 369 rows changed, 76 codes, 0 non-fiktif changes, 0 rows still lacking fiktif_positif. Final policy: 44 codes touched (199 fresh rows)."
+    exit: 0
+    ts: 2026-09-11T15:50Z
+    seat: session (M5)
+  - claim: The worktree regeneration is deterministic — byte-identical to the same pipeline run on a /tmp copy
+    cmd: cmp data/source_documents/KBLI_2025_FINAL_CLEAN.json /tmp/l2b/root/data/source_documents/KBLI_2025_FINAL_CLEAN.json
+    result: identical (first policy run; the final run reused the same frozen inputs)
+    exit: 0
+    ts: 2026-09-11T15:55Z
+    seat: session (M5)
+  - claim: The whole scripts/kbli_filiera suite is green with the re-emitted artifacts and the re-measured pins
+    cmd: python3 -m pytest scripts/kbli_filiera/tests -q -p no:cacheprovider | tail -1
+    result: 1348 passed in 99.38s
+    exit: 0
+    ts: 2026-09-11T16:42Z
+    seat: session (M5)
+  - claim: Sidecar sha == committed dataset and the five copies are identical
+    cmd: (cd apps/mouth && npx vitest run src/lib/kbli-dataset-version.test.ts) && scripts/sync_kbli_dataset.sh --check
+    result: "Tests 1 passed; All KBLI dataset consumers are in sync with canonical."
+    exit: 0
+    ts: 2026-09-11T16:42Z
+    seat: session (M5)
+  - claim: The seven count pins were re-measured with each test's own helper, not guessed
+    cmd: python3 -m pytest scripts/kbli_filiera/tests/test_perpres_body_default.py scripts/kbli_filiera/tests/test_gold_risk_dispute.py scripts/kbli_filiera/tests/test_emit_batch_membership.py -q -p no:cacheprovider
+    result: "101 passed; residual-besar 877→878, besar axis {1319,23,217}, citation-absent 24→23, barred-but-open 19→18, disputes 33→35, 46100 tiers {Rendah,Tinggi}, batch-A population 221→218"
+    exit: 0
+    ts: 2026-09-11T16:33Z
+    seat: claude-sonnet-5 (pin-updater)
+  - claim: The kewenangan drift on ~1290 codes is OSS de-duplicating authority lists, not a parser change
+    cmd: row classification of old vs new kewenangan on matched rows (python snippet in session)
+    result: "4928 rows same-set (order/dup), 1355 subset, 29 superset, 19 different; parse_per_skala untouched since PR-A"
+    exit: 0
+    ts: 2026-09-11T15:48Z
+    seat: session (M5)
+  - claim: The whole apps/mouth vitest suite (the required 'Frontend Tests (Next.js) (mouth, true)' check) is green on the final tree, including the 17 tests the first window had left red
+    cmd: (cd apps/mouth && npx vitest run) 2>&1 | grep -E 'Tests |Test Files'
+    result: "Test Files 481 passed (481); Tests 5159 passed (5159) — before commit df78dc6122: 5 files / 17 tests red (kbli-bali-block, kbli-prose-pins, kbli-llms-corpus, kbli-risk-dispute, kbli-faq)"
+    exit: 0
+    ts: 2026-09-12T02:05Z
+    seat: session (M5, successor window)
+  - claim: The backend KBLI test files are green except the two that bind the dataset bytes to the human-owned editorial registry (required check 'Backend Tests (Python)' will be RED until they are cured — dissent[2])
+    cmd: (cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/scripts/test_kbli_qdrant_pma_sync.py backend/tests/scripts/test_kbli_qdrant_risk_clear.py backend/tests/unit/scripts/test_kbli_documents_cure.py backend/tests/unit/scripts/test_kbli_documents_phantom_cure.py backend/tests/unit/scripts/test_kbli_payload_contract.py backend/tests/unit/services/test_kbli_pma_disclosure.py backend/tests/unit/services/test_kbli_permit_name_verdict.py backend/tests/routers/test_kbli_risk_profile.py backend/tests/unit/routers/test_kbli_bali_verdict_reaches_the_model.py backend/tests/unit/routers/test_kbli_inherited_licensing_reaches_the_model.py -p no:cacheprovider --tb=line)
+    result: "414 passed, 2 failed: test_dataset_bytes_are_bound_to_the_registry_before_any_target_is_built (pma-editorial-certifications.json.sourceDatasetSha256 still pins the 2026-08-15 bytes) and test_the_prose_repair_matches_the_real_generator_on_real_canonical_records (21022: fresh embedding text 16,606 → 20,013 chars, the generator cap now falls AFTER the whole 8-line certified Intelligence block — actual prefix 9 lines — and _truncated_section_matches_reviewed_prefix refuses it; certification itself still matches, certified_intelligence_block returns 8 lines on both trees)"
+    exit: 1
+    ts: 2026-09-12T01:58Z
+    seat: session (M5, successor window)
+  - claim: The nightly-only scripts/tests KBLI sweep (scripts-tests-sweep.yml, not a required check) has exactly the literal innocence pins dissent[4] predicted red, nothing else
+    cmd: apps/backend-rag/.venv/bin/python -m pytest scripts/tests -p no:cacheprovider -k kbli --continue-on-collection-errors --tb=line
+    result: "1172 passed, 941 skipped, 9 failed: test_kbli_lot2_56101_metadata_cure (3: 56101/56102 hashes, diff-vs-origin/main tripwire), test_kbli_metadata_fixes_registry::test_per_skala_row_count_invariant[46100] (4 copies), test_kbli_metadata_residuals_52101_10433 (2 tripwires)"
+    exit: 1
+    ts: 2026-09-12T01:52Z
+    seat: session (M5, successor window)
+pii_scan: clean
+pii_scan_note:
+  "Public classification data only (KBLI codes, OSS risk tiers, licence names, authority names).
+  No client, applicant or personal data exists in the inputs, the outputs, the tests or this pack."
+dissent:
+  - seat: claude-sonnet-5 (guard-classifier, read-only)
+    objection:
+      "The first NO_BESAR port (spec §6 ruling 2, backend mapping) re-wrote 55201's l4_bali.reason
+      with the withdrawn 'no Usaha Besar row → reserved for UMKM' inference; that sentence is
+      published to Qdrant as bali_reason and read aloud by the chat channel, and the repo's
+      test_withdrawn_umkm_inference_absent.py forbids it. The closure of those codes belongs to the
+      Perpres Lampiran II layer."
+    status: CONFIRMED
+    resolution:
+      "Ruling 2 superseded (spec §7): a NO_BESAR verdict never rewrites l4_bali; neither copy's
+      mapping is ported. Guarded by test_no_besar_never_rewrites_l4 and the canonical check."
+  - seat: claude-sonnet-5 (guard-classifier-2, read-only)
+    objection:
+      "119 codes carry per_skala_disputed_* markers (PP28 collision / false-friend quarantine).
+      20111 and 49213 are among them: spec §6 ruling 4 ('resync 49213, 20111 gains 12 rows') would
+      overwrite a per-ancestor restore pinned verbatim in cure_specs/restore_49213.json."
+    status: CONFIRMED
+    resolution:
+      "Ruling 4 superseded (spec §7): quarantined per_skala is skipped (119 codes, including six of
+      the nine new-only 93xxx codes). A-PSK-0001 stays open on the quarantine lane."
+  - seat: claude-sonnet-5 (guard-classifier-2, read-only)
+    objection:
+      "data/kbli-filiera/pma-editorial-certifications.json.sourceDatasetSha256 is a fail-closed,
+      human-owned publication gate; 21022's regenerated PMA prose is not in rewrite_pma_prose's
+      repair table. Neither can be mechanically re-hashed."
+    status: CONFIRMED
+    resolution:
+      "Measured 2026-09-12 by the successor window: this is not only the resync — two tests in
+      backend/tests/scripts/test_kbli_qdrant_pma_sync.py are RED on the v11.0 bytes and sit in the
+      required 'Backend Tests (Python)' check (the change map runs every job for this diff), so the
+      PR cannot land until (a) the editorial owner re-certifies the registry against v11.0
+      (sourceDatasetSha256 + reviewedAt; the 66 certified fingerprints still match — the gate is
+      the dataset hash, by design human-owned) and (b) a backend PR (its merge deploys) lets
+      _truncated_section_matches_reviewed_prefix accept a cap that falls after the whole
+      certified block (21022). Both are Zero's call; the PR is opened with auto-merge armed and
+      says so in its body. Vercel would serve v11.0 while the RAG serves the June L2 until the
+      resync runs."
+  - seat: codex GPT-5.6 (refuter, read-only sandbox)
+    objection:
+      "No HIGH. MED: merge key on scope_index carried curated fields across a scope split; setdefault
+      kept one donor for duplicate keys; any non-200 became an absence with a probe date; a 200 kept
+      stale absent_probes. LOW: --snapshot-codes-changed alone wrote no l2_snapshot; the canonical
+      NO_BESAR test accepted OK_or_HIGHER_RISK."
+    status: CONFIRMED
+    resolution:
+      "All six folded in commit 'fix(kbli): merge by scope identity…' with a test per finding; the
+      data was regenerated under the corrected policy (rule 4 still changed_codes=0; rule 5 set
+      unchanged; rows_carried_tier=997 now carries only tier-level facts across splits)."
+  - seat: session (declared limit, unresolved)
+    objection:
+      "Innocence pins of historic lots in scripts/tests/ (46100 row count 15→12, 56101/56102 record
+      hashes, 10419, and the 'diff vs origin/main is exactly …' tripwires) go red on the nightly
+      report-only sweep after this merge. They are advisory and not required checks, and the
+      sanctioned extension (a cure_specs manifest registering the L2 footprint) is its own PR."
+    status: PLAUSIBLE
+    resolution: "Ledgered in PENDING-ARMS with the sanctioned path; not silently re-pinned here."
+  - seat: session (successor window 2026-09-12, declared limit)
+    objection:
+      "The first window's receipts covered the sidecar test only; the whole apps/mouth suite — a
+      required check — had 17 reds on this branch (published aggregates 518→519, population pins
+      448→449/447→448, 46100 dispute tiers 4→2, the crosswalk-pending FAQ subject gone, a stale
+      public/llms-kbli.txt), and no backend test had been run."
+    status: CONFIRMED
+    resolution:
+      "Cured in commit df78dc6122 by re-measuring each pin with the test's own helper and a dated
+      reason, updating the three article locales' aggregates (numbers only — no editorial
+      rewrite), and regenerating the committed llms derivative; the backend and scripts/tests
+      guards are measured and receipted above, the backend reds are dissent[2]'s gate."
+  - seat: kimi-code/k3 (refuter, blind cross-family, 2026-09-12)
+    objection:
+      "BLOCKING. H1: a scope-matched canonical row is still in the tier pool and donates a second
+      time to a split row of the same tier (fiktif_positif, sourced jangka_waktu). H2: l4_moved
+      compares against a missing `verdict` key on the 237 cure-owned l4_bali blocks and rewrites
+      their status/reason. Plus 2 MEDIUM (dirty jangka carried verbatim; a NO_BESAR test passing
+      for the wrong reason) and 2 LOW (absent_probes not appended without --fetched; stale
+      absent_probes on an empty 200)."
+    status: CONFIRMED
+    resolution:
+      "Both HIGH measured on the September run (32 double donations on 8 codes; 93111/93119 cure
+      labels clobbered) and cured in the transform with a guilt+innocence test each (21/21 green,
+      0 double donations re-measured). NOT SHIPPED: the committed v11.0 data predates the cure, so
+      the regeneration chain (apply → derive_fiktif_positif → sync → sidecar → owner emitters →
+      pins → mouth derivatives) must be re-run under the corrected policy, rule 4 and rule 5
+      re-measured, and codex/kimi re-convened on the corrected diff; MEDIUM 3-4 and LOW 5-6 are
+      folded in that window. Second correction of the same policy = fix-of-a-fix depth 1 reached:
+      the next red on this surface writes the spec, not a third patch."
