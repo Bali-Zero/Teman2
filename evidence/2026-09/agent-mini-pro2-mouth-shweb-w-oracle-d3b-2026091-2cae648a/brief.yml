@@ -1,0 +1,96 @@
+gear: 2
+gear_reason: >-
+  Measured the way CI measures it — `--changed-files-file` AND `--numstat-file`, because taking it
+  without the numstat under-reports the floor and has been rejected twice in this mandate:
+  `scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <n>` returns
+  2 and `--print-floor-source` returns `size`. Re-run both to check; no digit is typed here, because
+  four PRs in this mandate have been corrected for a count that went stale the moment it was written.
+task_id: shweb-w-oracle-d3b-20260912
+mandate_id: SHWEB-20260911/W-ORACLE/PR-D3-half-2
+colour: BLUE
+l_level: L1
+gate_class: opus
+objective: >-
+  PR-D3 half-2: the interview questions half-1 owed. Retirement branches that dead-ended now ask
+  `family_sponsor_confirmed` — including `bank_deposit`, which the funnel-wide reachability census
+  found is the LARGEST dead end (30 walks) and which the 67-walk corpus never touched. STEPCHILD
+  gains the sponsor-permit question, which closes the condition the PR-D2 gate left open. Eleven new
+  walks with EXPECTED_OUTCOME rows close the gate's C1 and C2 on half-1. Frontend only; the rule
+  pack is untouched.
+scope:
+  - apps/mouth — the visa-oracle interview (questions, flow, fact mapping) and its tests
+  - apps/backend-rag/backend/tests/services/visa_engine — the walk corpus fixtures and their census
+  - this brief
+constraints:
+  - Frontend only. No rule-pack change, no evaluate_path.py, no evaluator, no per-candidate hold.
+  - >-
+    The STEPCHILD "sponsor holds no KITAS/KITAP" branch keeps its hold and does NOT fabricate
+    `sponsor_confirmed=false`: no seq-20 rule reads the sponsor's permit, so the pack still returns
+    E31D ELIGIBLE. Faking the fact would move the census number by lying to the engine. The missing
+    rule is reported as a seq-21 candidate instead.
+  - No client PII in any file added or edited.
+acceptance:
+  - text: >-
+      WHEN the visa-oracle frontend suite runs, THEN every test SHALL pass — the questions, the
+      fact mapping and the flow changes included.
+    status: verified
+    probe: "cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)' --maxWorkers=2"
+  - text: WHEN the project typechecks, THEN it SHALL succeed.
+    status: verified
+    probe: "cd apps/mouth && npx --no-install tsc --noEmit -p ."
+  - text: >-
+      WHEN the backend walk-census test runs, THEN every walk SHALL match its EXPECTED_OUTCOME —
+      the eleven new walks included.
+    status: verified
+    probe: "cd apps/backend-rag && PYTHONPATH=. /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -q -o addopts=''"
+  - text: >-
+      WHEN the corpus is counted, THEN it SHALL carry more walks than the 67 it had before this PR,
+      and the STEPCHILD sponsor-permit branches SHALL both be present — the walks are what turn a
+      new question into evidence.
+    status: verified
+    probe: |
+      n=$(ls apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/*.json | wc -l | tr -d ' ')
+      [ "$n" -gt 67 ] || { echo "FAIL: corpus is $n walks, not grown"; exit 1; }
+      for b in sponsor_permit_no sponsor_permit_unsure; do
+        ls apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/ | grep -q "$b" || { echo "FAIL: missing STEPCHILD branch $b"; exit 1; }
+      done
+      echo "OK: corpus is $n walks and both STEPCHILD sponsor-permit branches exist"
+pii: none
+census_measured:
+  method: >-
+    `npx --no-install tsx research/visa/2026-09-11-review-reason-audit/inputs.mts`, then from
+    apps/backend-rag `PYTHONPATH=. python -m pytest
+    ../../research/visa/2026-09-11-review-reason-audit/test_census.py`, which writes
+    /tmp/visaoracle-audit-20260911/census.json. Re-run independently by the orchestrator.
+  walks: 78
+  with_real_flags:
+    SUPPORTED_CANDIDATES: 54
+    NO_SUPPORTED_PATH: 10
+    NEEDS_INPUT: 4
+    HUMAN_REVIEW_REQUIRED: 10
+  target_not_met: >-
+    The spec asks HUMAN_REVIEW <= 4. It is 10, and the shortfall is NOT a defect of this PR: 3 are
+    `invest` merit/family/undecided (D3-5, deferred), 2 are the STEPCHILD holds this PR创 deliberately
+    keeps, and 5 are the entire `other` tile — which no frontend change can release, because
+    `other_purpose` is never read as a fact and no seq-20 rule can see it. That last group makes
+    <= 4 unreachable frontend-only; it needs a seq-21 rule.
+deferred:
+  - D3-5 (indeterminate `investment_vehicle` options) — complexity, not net lines.
+  - D3-6 (trigger-aware copy for the three parameter-less codes).
+  - item (c) inherited from PR-D2 (the non-blocking note on a released C1).
+  - C3 (the D3-1 re-route sentence).
+seq21_candidates:
+  - >-
+    `hf.e31d.sponsor-permit-required` — would make the STEPCHILD sponsor-permit answer decisive
+    instead of held.
+  - >-
+    `el.e33.property-basis` / `el.e33.deposit-basis` / `el.e33e`/`el.e33f` escalate to NEEDS_INPUT on
+    the SIBLING unasked basis rather than NO_SUPPORTED_PATH when the chosen basis fails; the frontend
+    cannot name a reachable follow-up for it. Allowlisted here, not cured.
+  - >-
+    A rule that reads the disclosed `other_purpose` value — without one the whole `other` tile stays
+    held no matter what the interview asks.
+self_report:
+  note: >-
+    `deferred`, `seq21_candidates` and this note are this session's record, not machine-verified
+    facts. The census block IS reproducible with the method above.

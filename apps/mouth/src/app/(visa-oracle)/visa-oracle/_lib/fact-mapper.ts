@@ -335,6 +335,30 @@ export function mapPurposes(facts: OracleFacts): FactValue<Purpose[]> {
   if (facts.category === undefined) return unknownFact(NOT_ASKED);
   if (facts.category === "unsure") return unknownFact(UNVERIFIED);
   const category = facts.category as CategoryKey;
+  // D3-1 (owner ruling SHWEB-20260911, PR-D3): an `invest` applicant whose
+  // vehicle is a property purchase or a bank deposit is a Second Home
+  // applicant, not an investor — `getCategoryQuestionIds` already serves the
+  // Second Home question set for these two vehicles. SECOND_HOME ALONE,
+  // never joined with INVESTMENT: `hit_policy.eligibility =
+  // COVER_ALL_DECLARED_PURPOSES` drops E33 the moment a second purpose is
+  // declared (owner ruling 3, 2026-09-06 — same reasoning as the
+  // `second_home` tile's own entry above).
+  if (
+    category === "invest" &&
+    (facts.investment_vehicle === "property" ||
+      facts.investment_vehicle === "bank_deposit")
+  ) {
+    return known(["SECOND_HOME"]);
+  }
+  // D3-2 (owner ruling SHWEB-20260911, PR-D3): declared paid activity is
+  // employment, not a generic OTHER purpose — `el.c1/c2/c6` all exclude paid
+  // activity (UU 6/2011 Pasal 122) and only `el.e23-employment-support`
+  // covers it. `no` and `unsure` fall through to OTHER unchanged: `no` is
+  // the honest negative (C6 stays reachable) and `unsure` is a disclosed
+  // uncertainty the NOT_CERTAIN flag already holds on.
+  if (category === "other" && facts.other_paid_activity === "yes") {
+    return known(["EMPLOYMENT"]);
+  }
   const purpose = CATEGORY_TO_PURPOSE[category];
   return purpose === undefined ? unknownFact(NOT_APPLICABLE) : known([purpose]);
 }
@@ -462,12 +486,67 @@ const REVIEW_FLAG_MAP: Readonly<
  */
 export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   business_activity: ["meetings", "negotiation", "conference"],
-  investment_vehicle: ["pt_pma"],
-  retirement_basis: ["bank_deposit", "passive_income"],
+  // `property`/`bank_deposit` added (PR-D3, D3-1): `mapPurposes` now routes
+  // both to SECOND_HOME alone, and `el.e33.property-basis`/`el.e33.
+  // deposit-basis` decide E33 off the Second Home facts the interview
+  // already collects for these two vehicles — holding them discarded a
+  // deterministic answer the same way `family_sponsor` did above.
+  investment_vehicle: ["pt_pma", "property", "bank_deposit"],
+  // `family_sponsor` added 2026-09-12 (NARROW-2, owner ruling SHWEB-20260911:
+  // hold is the exception, a deterministic pack answer is not). `el.e33f.
+  // retirement` (rulepack-prod-020) decides SUPPORT for E33F off
+  // `secondhome.passive_monthly_income_usd >= 3000` and `family.
+  // sponsor_confirmed == true` alone — it never reads `retirement_basis` at
+  // all — so this table was UNDER-inclusive: an applicant who answers
+  // `family_sponsor` and clears both of those facts already has a signed,
+  // deterministic SUPPORTED E33F, and raising ACTIVITY_BOUNDARY here only
+  // deletes it.
+  // `property`/`undecided` added (PR-D3, D3-3): both used to stay
+  // undecidable because "no pack rule grants either an E33F path" — that was
+  // only true because `getCategoryQuestionIds` (flow.ts) never asked
+  // `family_sponsor_confirmed` on these two branches. Now both do (`property`
+  // unconditionally as a fallback; `undecided` via `retirement_undecided_
+  // basis`), so both are exactly as decidable as `family_sponsor` was above,
+  // for the identical reason.
+  retirement_basis: [
+    "bank_deposit",
+    "passive_income",
+    "family_sponsor",
+    "property",
+    "undecided",
+  ],
   diaspora_connection: ["former_wni", "descendant", "family"],
   diaspora_documents: ["yes", "no"],
+  // D3-B (PR-D3, owner ruling SHWEB-20260911) investigated pack-outward,
+  // NARROW-2 style, whether any of the 8 options (transit/medical/
+  // volunteer/religious/arts_sport/journalism/crew/other) is decided by a
+  // seq-20 rule. RESULT: NONE is, and the list stays empty — not a
+  // judgement call, a structural fact. `other_purpose`'s own
+  // `decisionMapping` is `HUMAN_CONTEXT` (tree.ts) — it maps to NO
+  // FactPath at all, and `mapOracleFactsToApplicantFacts` never reads
+  // `facts.other_purpose` anywhere — so no rule in the signed pack can
+  // ever see which of the 8 values was chosen; the wire request is
+  // byte-identical regardless. Verified against rulepack-prod-020.
+  // signed.json: exactly 5 rules cover the OTHER purpose
+  // (`el.c6.social`, the one ELIGIBILITY rule that can grant a product,
+  // plus 4 advisory/BRIDGING-only rules), and `el.c6.social`'s
+  // `required_facts` is `family.sponsor_confirmed` /
+  // `intent.purposes` / `intent.stay_days` alone — nothing derived from
+  // this question. Releasing any value here would therefore not be
+  // "found decidable", it would be inventing a distinction the engine
+  // cannot draw, on a purpose where the wrong side hands a visitor a
+  // visit visa for a legally excluded activity. C6's actual release
+  // (D3-2) rests solely on the `other_paid_activity = no` branch, which
+  // this table already lists below.
   other_purpose: [],
-  other_paid_activity: [],
+  // `yes`/`no` added (PR-D3, D3-2): `mapPurposes` now routes `yes` to
+  // EMPLOYMENT (only `el.e23-employment-support` covers it) and leaves `no`
+  // on OTHER (`el.c6.social` stays reachable) — both are decisive on the
+  // pack's own terms, so holding either discarded a deterministic answer.
+  // `unsure` is not listed: it stays undecidable, and the generic
+  // `NOT_CERTAIN` flag (a disclosed uncertainty, not a derived one) already
+  // holds on it.
+  other_paid_activity: ["yes", "no"],
 } as const satisfies Readonly<Record<string, readonly string[]>>;
 
 /** Question ids the ACTIVITY_BOUNDARY table classifies. */
@@ -503,9 +582,61 @@ export function mapDisclosedReviewFlags(
   if (hasUndecidableActivityAnswer(facts)) {
     flags.add("ACTIVITY_BOUNDARY");
   }
+  // NARROW-1 (owner ruling SHWEB-20260911, 2026-09-12 20:35 WITA): the flag
+  // used to fire on the mere PRESENCE of `family_sponsor_status_code` /
+  // `family_sponsor_permit_basis` — i.e. because the sponsor is foreign, not
+  // because any candidate the pack had proven actually needs that fact. That
+  // is the OVER-match shape (guard #3): `el.c1.tourism-family` (rulepack-
+  // prod-020) reads no sponsor fact at all, so a foreign sponsor deleted a
+  // verdict it cannot affect. `family_sponsor_permit_basis` is dropped from
+  // the trigger entirely: no rule in seq-20 reads `family.sponsor_permit_
+  // basis` (it is HUMAN_CONTEXT only, never wired to a FACT — see
+  // `mapFamilySponsorPermitBasis`, below), so it could never have been the
+  // fact a held candidate needed.
+  //
+  // Hold now only when:
+  //  (i) the applicant said `unsure` — a real disclosed uncertainty, not a
+  //      derived one; or
+  //  (ii) the relation answered has a pack product that genuinely depends on
+  //       the sponsor being resolved. `_apply_disclosed_review_flags`
+  //       (evaluate_path.py) is monotone over the WHOLE decision, so a
+  //       per-candidate hold is not available here — this is the frontend,
+  //       interview-time, RELATION-level proxy the constraint allows.
+  //
+  // Today exactly one relation qualifies for (ii): STEPCHILD.
+  // `el.e31d-stepchild-support` requires `family.sponsor_confirmed` with
+  // `on_unknown: NEEDS_INPUT` — the only family-relation product whose
+  // ELIGIBILITY is gated (not merely annotated) by a sponsor fact. SPOUSE /
+  // PARENT / CHILD / SIBLING each have a "*-sponsor-itas-itap" rule reading
+  // `family.sponsor_status_code`, but every one of them is `on_unknown:
+  // NO_EFFECT` — an unresolved sponsor status changes nothing they decide,
+  // so holding on their behalf would delete a proven verdict for no reason,
+  // the exact defect this narrowing exists to cure. The RELATION this
+  // applies to is pinned against pack drift by "AMBIGUOUS_SPONSOR relation
+  // proxy tracks the signed pack" in fact-mapper.test.ts, which reads every
+  // production pack on disk and fails if the STEPCHILD dependency ever
+  // changes.
+  //
+  // D3-4 (PR-D3, owner ruling SHWEB-20260911) REPLACES the proxy this
+  // comment used to describe (raising the flag on the mere PRESENCE of
+  // `family_sponsor_status_code` for a STEPCHILD relation, whatever its
+  // value) with the direct question `family_stepchild_sponsor_permit_
+  // confirmed` (tree.ts): "does your sponsor hold a valid KITAS/KITAP of
+  // their own?" `no` holds — no seq-20 rule reads the sponsor's permit, so
+  // the pack itself would still return E31D ELIGIBLE, and fabricating
+  // `family.sponsor_confirmed = false` to force a denial would be exactly
+  // the guessed fact this file exists to refuse (seq-21 candidate
+  // `hf.e31d.sponsor-permit-required` is the pack-side fix, not this).
+  // `unsure` holds for the same reason `family_sponsor_confirmed === "unsure"`
+  // does two lines below: a real disclosed uncertainty. `yes` releases.
+  const stepchildSponsorPermitUnresolved =
+    facts.family_relation === "STEPCHILD" &&
+    facts.family_stepchild_sponsor_permit_confirmed !== undefined &&
+    facts.family_stepchild_sponsor_permit_confirmed !== "yes";
   if (
-    facts.family_sponsor_status_code !== undefined ||
-    facts.family_sponsor_permit_basis !== undefined
+    facts.family_sponsor_status_code === "unsure" ||
+    facts.family_sponsor_confirmed === "unsure" ||
+    stepchildSponsorPermitUnresolved
   ) {
     flags.add("AMBIGUOUS_SPONSOR");
   }
@@ -633,6 +764,67 @@ function mapMarriageRegistered(facts: OracleFacts): FactValue<boolean> {
   return booleanFact(facts.family_marriage_registered);
 }
 
+/**
+ * D3-3 gate finding (2026-09-13): `el.e33.deposit-basis` / `el.e33e.
+ * retirement` both read the deposit trio with `on_unknown: NEEDS_INPUT`
+ * (rulepack-prod-020.source.json, verified) — an "all" AND over
+ * `secondhome.bank_deposit_usd >= threshold`, `..._at_state_bank`,
+ * `..._in_own_name`. When the interview has routed to a basis OTHER than
+ * the deposit one for a purpose whose rules read this trio, the trio was
+ * never asked because the CHOSEN basis already answers the question "is
+ * this a deposit case?" — false. Leaving it UNKNOWN made the rule escalate
+ * to NEEDS_INPUT instead of resolving to NOT-SUPPORTED, which is why a
+ * below-threshold property/invest walk, or a retirement walk whose sponsor
+ * fallback also failed, dead-ended on facts belonging to a basis the
+ * applicant never claimed. Emitting KNOWN(0)/KNOWN(false) here is not a
+ * guess: it states exactly what the chosen basis already implies, and
+ * nothing this function does asks the applicant anything new.
+ *
+ * Scoped to the purposes whose signed rules actually read this trio:
+ * SECOND_HOME (the `second_home` tile, and D3-1's `invest` → property/
+ * bank_deposit route) and RETIREMENT (every basis except `bank_deposit`
+ * itself, and `undecided` only once it has resolved to `family_sponsor` —
+ * a genuine "I still can't say" leaves this UNKNOWN on purpose, see
+ * `retirement_undecided_basis`'s tree.ts comment).
+ */
+function depositBasisDecisivelyNotChosen(facts: OracleFacts): boolean {
+  if (facts.category === "second_home") {
+    return facts.secondhome_basis === "property";
+  }
+  if (facts.category === "invest") {
+    return facts.investment_vehicle === "property";
+  }
+  if (facts.category === "retirement") {
+    if (facts.retirement_basis === "undecided") {
+      return facts.retirement_undecided_basis === "family_sponsor";
+    }
+    return (
+      facts.retirement_basis === "property" ||
+      facts.retirement_basis === "passive_income" ||
+      facts.retirement_basis === "family_sponsor"
+    );
+  }
+  return false;
+}
+
+/**
+ * Mirror of `depositBasisDecisivelyNotChosen` for `secondhome.
+ * qualifying_property_value_usd` (`el.e33.property-basis`, same
+ * `on_unknown: NEEDS_INPUT` shape). RETIREMENT purpose has no rule that
+ * reads this fact at all (`el.e33e.retirement`/`el.e33f.retirement`
+ * verified: neither names it), so only the SECOND_HOME-reachable routes
+ * need it decided.
+ */
+function propertyBasisDecisivelyNotChosen(facts: OracleFacts): boolean {
+  if (facts.category === "second_home") {
+    return facts.secondhome_basis === "bank_deposit";
+  }
+  if (facts.category === "invest") {
+    return facts.investment_vehicle === "bank_deposit";
+  }
+  return false;
+}
+
 export interface MapFactsOptions {
   assessmentId: string;
   /** One frozen clock shared by evaluation, dedupe and presentation. */
@@ -716,22 +908,30 @@ export function mapOracleFactsToApplicantFacts(
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),
     "study.sponsor_confirmed": booleanFact(facts.study_sponsor_confirmed),
     "sponsor.type": mapSponsorType(facts),
-    "secondhome.bank_deposit_usd": integerFact(
-      facts.secondhome_deposit_usd,
-      0,
-      Number.MAX_SAFE_INTEGER,
-    ),
-    "secondhome.bank_deposit_at_state_bank": booleanFact(
-      facts.secondhome_state_bank,
-    ),
-    "secondhome.bank_deposit_in_own_name": booleanFact(
-      facts.secondhome_own_name,
-    ),
-    "secondhome.qualifying_property_value_usd": integerFact(
-      facts.secondhome_property_value_usd,
-      0,
-      Number.MAX_SAFE_INTEGER,
-    ),
+    "secondhome.bank_deposit_usd":
+      facts.secondhome_deposit_usd === undefined &&
+      depositBasisDecisivelyNotChosen(facts)
+        ? known(0)
+        : integerFact(facts.secondhome_deposit_usd, 0, Number.MAX_SAFE_INTEGER),
+    "secondhome.bank_deposit_at_state_bank":
+      facts.secondhome_state_bank === undefined &&
+      depositBasisDecisivelyNotChosen(facts)
+        ? known(false)
+        : booleanFact(facts.secondhome_state_bank),
+    "secondhome.bank_deposit_in_own_name":
+      facts.secondhome_own_name === undefined &&
+      depositBasisDecisivelyNotChosen(facts)
+        ? known(false)
+        : booleanFact(facts.secondhome_own_name),
+    "secondhome.qualifying_property_value_usd":
+      facts.secondhome_property_value_usd === undefined &&
+      propertyBasisDecisivelyNotChosen(facts)
+        ? known(0)
+        : integerFact(
+            facts.secondhome_property_value_usd,
+            0,
+            Number.MAX_SAFE_INTEGER,
+          ),
     "secondhome.passive_monthly_income_usd": integerFact(
       facts.secondhome_passive_income_usd,
       0,

@@ -1,0 +1,39 @@
+mandate: >
+  M1 of the compliance-stack second wave (spec docs/plans/2026-09-12-compliance-stack-engine-ui-windows.md):
+  make the obligations register roll a statutory due date off Indonesian national holidays and cuti
+  bersama, not just off Saturday and Sunday. Adds backend/data/id_holidays.py (the full 2026 SKB 3
+  Menteri table, 17 libur nasional + 8 cuti bersama, the single place such a date may be typed) and
+  backend/services/compliance/business_days.py (is_business_day, next_business_day,
+  holiday_years_loaded); routes roll=next_business_day through it; attaches
+  "holiday calendar for <year> not loaded" to a proposal whose year has no decreed table; rewires
+  garuda_flow/operating_calendar.py to read the same table instead of carrying four hand-typed dates.
+gear: 2
+gear_reason: >
+  Deterministic floor 2 as printed by scripts/evidence_pack_lint.py --print-floor on
+  git diff --name-only/--numstat origin/main...HEAD. Churn is about 520 lines across six files in
+  apps/backend-rag, of which roughly 280 are the decree table and new tests. Pure functions only:
+  no migration, no router, no schema, no workflow, no guard, no lockfile, no secret, no CODEOWNERS
+  path. One shared module (garuda_flow/operating_calendar.py) changes hands, which is the reason the
+  adversarial round was pointed at behaviour parity for the VOA gate rather than at the arithmetic.
+origin: >
+  Measured gap, not a report: due_dates() rolled weekends only, so the register proposed dates on
+  decreed closed days (for a PT PMA with employees and PKP, five of 39 proposals in the first 120
+  days of 2026, including 2026-02-16, cuti bersama Imlek). PMK 81/2024 moves them: Pasal 100 for
+  payment (referencing Pasal 94) and Pasal 173 for SPT Masa reporting (referencing Pasal 171/172),
+  each defining hari libur as Saturday, Sunday, libur nasional, election days and cuti bersama in
+  its own ayat (2). Both articles read verbatim off the regulation PDF on peraturan.bpk.go.id; the
+  25 dates come from Sekretariat Negara's publication of the decree's own tables.
+instruction_to_the_grader: >
+  Three things deserve attack. (1) Parity: OPERATING_CALENDAR is now derived and clipped to
+  [COVERAGE_START, COVERAGE_END] — prove the VOA gate's answers did not move, ideally by comparing
+  is_open and last_open_day_before against origin/main over the whole covered range rather than by
+  reading the clip expression. (2) Honesty of coverage: DECREED_YEARS is written, not derived, and
+  the claim it makes is that 2026 is materialized IN FULL — check the 25 dates against the decree,
+  and check that an undecreed year under-rolls and says so rather than silently passing as clean.
+  (3) Scope of the entitlement: the annual corporate return rolls because the CATALOG says roll:
+  next_business_day, and Pasal 173 does not name it. That is recorded as an open finding for the
+  catalog-source pass, not fixed here; verify the PR does not quietly claim the annual roll is
+  grounded, and that no catalog file was touched. Election days are deliberately unmodelled.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

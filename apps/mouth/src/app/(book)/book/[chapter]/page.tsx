@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CHAPTERS } from "@/components/book/book-data";
 import { chapterTitleMetadata } from "@/components/book/book-title";
 import { BookPage } from "../BookPage";
+import { bookTeamMembers } from "@/components/book/book-team";
 
 interface Props {
   params: Promise<{ chapter: string }>;
@@ -44,5 +45,7 @@ export default async function BookChapterPage({ params }: Props) {
   const chapter = CHAPTERS.find((c) => c.id === chapterId);
   if (!chapter) notFound();
 
-  return <BookPage initialChapter={chapterId} />;
+  return (
+    <BookPage teamMembers={bookTeamMembers()} initialChapter={chapterId} />
+  );
 }

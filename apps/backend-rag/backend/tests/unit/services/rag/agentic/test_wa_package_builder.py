@@ -45,13 +45,14 @@ import ast
 import logging
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from backend.core import score_provenance
 from backend.services.rag.agentic import wa_package_builder as wpb_module
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
+from backend.services.rag.agentic._support_signal import SupportDecision, SupportVerdict
 from backend.services.rag.agentic.wa_package_builder import (
     ContextPackage,
     PackageUnbuildable,
@@ -692,6 +693,174 @@ class TestHashDeterminism:
 # ============================================================================
 # 6. Evidence freeze against the abstain-policy SSOT
 # ============================================================================
+
+
+def _support_decision(
+    verdict: SupportVerdict = SupportVerdict.SUPPORTED,
+    *,
+    judge: str = "codex:gpt-5.6-terra",
+    fallback_used: bool = False,
+) -> SupportDecision:
+    return SupportDecision(
+        verdict=verdict,
+        votes=(verdict, verdict, verdict),
+        judge=judge,
+        fallback_used=fallback_used,
+        latency_s=0.01,
+        detail="",
+    )
+
+
+class TestSupportSignalWiring:
+    """B2.1 §4 B2.1 "Input wiring (PII)" — the support signal's production
+    input is the package's REDACTED query and capped REDACTED context,
+    never the raw `query` argument and never the reversal map."""
+
+    async def test_support_signal_receives_redacted_query_and_chunks_never_raw_or_reversal_map(
+        self,
+    ) -> None:
+        # test.user@example.com is a synthetic, non-real-looking address on
+        # an RFC 2606 reserved domain — used only to prove the redactor's
+        # PLACEHOLDER, not the original text, reaches the judge.
+        raw_query = "My email is test.user@example.com, what visa fits me?"
+        mock_evaluate = AsyncMock(return_value=_support_decision())
+        with patch.object(wpb_module, "evaluate_support", mock_evaluate):
+            package = await build_context_package(
+                query=raw_query,
+                history=[],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+                dlp=True,
+            )
+
+        mock_evaluate.assert_awaited_once()
+        called_query, called_context = mock_evaluate.await_args.args
+        assert "test.user@example.com" not in called_query
+        assert "[PII-EMAIL-" in called_query
+        assert called_query == package.history[-1]["content"]
+        assert called_context == "\n\n".join(chunk["text"] for chunk in package.chunks)
+        assert "test.user@example.com" not in called_context
+        # Never the reversal map, in any shape (positional or keyword).
+        assert "reversal_map" not in mock_evaluate.await_args.kwargs
+        assert all("reversal_map" not in str(a) for a in mock_evaluate.await_args.args)
+        assert package.reversal_map  # the redaction actually fired on this build
+
+    async def test_support_verdict_flows_into_evidence_inputs_additively(self) -> None:
+        decision = _support_decision(
+            SupportVerdict.NOT_SUPPORTED,
+            judge="ollama:qwen3.8:27b-mlx",
+            fallback_used=True,
+        )
+        mock_evaluate = AsyncMock(return_value=decision)
+        with patch.object(wpb_module, "evaluate_support", mock_evaluate):
+            package = await build_context_package(
+                query=VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+                dlp=True,
+            )
+
+        assert package.evidence_inputs["support_verdict"] == "NOT_SUPPORTED"
+        assert package.evidence_inputs["support_votes"] == [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+        ]
+        assert package.evidence_inputs["support_judge"] == "ollama:qwen3.8:27b-mlx"
+        assert package.evidence_inputs["support_fallback_used"] is True
+        # Additive: none of the pre-existing keys disappear.
+        assert set(package.evidence_inputs) >= {
+            "evidence_score",
+            "context_length",
+            "domain",
+            "label_threshold",
+            "abstain",
+            "dlp",
+        }
+
+    async def test_dlp_false_never_consults_the_support_seat(self) -> None:
+        """Decision (documented at the call site): a build with dlp=False
+        has no redaction to hand an external seat, and evaluate_support's
+        Codex judge reaches the SAME seat DLP exists to protect against on
+        an unredacted build — so the seat is not consulted at all here,
+        never consulted with raw text."""
+        mock_evaluate = AsyncMock(return_value=_support_decision())
+        with patch.object(wpb_module, "evaluate_support", mock_evaluate):
+            package = await build_context_package(
+                query=VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+            )
+
+        mock_evaluate.assert_not_awaited()
+        assert package.evidence_inputs["support_verdict"] is None
+        assert package.evidence_inputs["support_votes"] == []
+        assert package.evidence_inputs["support_judge"] == "absent"
+        assert package.evidence_inputs["support_fallback_used"] is False
+
+
+class TestContextLengthMeaningUnchanged:
+    """`context_length` KEEPS its meaning exactly (B2.1 §3): len of sealed
+    chunks including curated, excluding the pricing block — pinned across
+    package shapes now that support-signal wiring runs alongside it."""
+
+    async def test_empty_package_context_length_zero(self) -> None:
+        mock_evaluate = AsyncMock(return_value=_support_decision())
+        with patch.object(wpb_module, "evaluate_support", mock_evaluate):
+            package = await build_context_package(
+                query=VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=FakeRetriever({}),
+            )
+        assert package.evidence_inputs["context_length"] == 0
+        assert package.chunks == []
+
+    async def test_curated_only_package_context_length_counts_curated(self) -> None:
+        mock_evaluate = AsyncMock(return_value=_support_decision())
+        with patch.object(wpb_module, "evaluate_support", mock_evaluate):
+            package = await build_context_package(
+                query=VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=FakeRetriever({}),
+                curated_qa_block="[CURATED · vetted 2026-08-01]\nKITAS basics.",
+            )
+        assert package.evidence_inputs["context_length"] == 1
+        assert len(package.chunks) == 1
+
+    async def test_vector_only_package_context_length_counts_retrieved(self) -> None:
+        mock_evaluate = AsyncMock(return_value=_support_decision())
+        with patch.object(wpb_module, "evaluate_support", mock_evaluate):
+            package = await build_context_package(
+                query=VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+            )
+        assert package.evidence_inputs["context_length"] == len(package.chunks)
+        assert package.evidence_inputs["context_length"] == 2
+
+    async def test_pricing_only_package_excludes_pricing_block_from_context_length(
+        self,
+    ) -> None:
+        fake_pricing = FakePricingService(_real_pricing_result(PRICING_VISA_QUERY))
+        mock_evaluate = AsyncMock(return_value=_support_decision())
+        with (
+            patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing),
+            patch.object(wpb_module, "evaluate_support", mock_evaluate),
+        ):
+            package = await build_context_package(
+                query=PRICING_VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=FakeRetriever({}),
+            )
+        assert package.pricing_block is not None
+        assert package.evidence_inputs["context_length"] == 0
+        assert package.chunks == []
 
 
 class TestEvidenceFreeze:

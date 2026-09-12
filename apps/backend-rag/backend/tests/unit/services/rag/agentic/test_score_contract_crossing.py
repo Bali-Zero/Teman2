@@ -387,8 +387,22 @@ async def test_10_scorer_projection_carries_score_kind_on_every_element(
 ) -> None:
     captured: dict[str, list] = {}
 
-    def fake_calculate_evidence_score(*, sources, context_gathered, query):
+    # `support` is B2.1's additive keyword — the builder passes the support
+    # verdict IN so the scorer can stay synchronous and pure. A fake that
+    # refuses it makes THIS crossing test the thing that breaks when the
+    # contract grows, which is what happened on B2.1's first full-suite run;
+    # accepting it and RECORDING it keeps the test honest instead of merely
+    # tolerant (a bare **kwargs would have swallowed a typo in the name).
+    #
+    # `support` carries NO DEFAULT, deliberately (#6304 gate finding F2, cured
+    # in the provenance-fixture PR). With `support=None` the assertion below
+    # proved only that the KEY exists: a builder that stopped passing the
+    # keyword would still leave `captured["support"] == [None]` and the test
+    # would stay green. Required-keyword means an omission raises TypeError at
+    # the call, so this test now fails for the reason it claims to guard.
+    def fake_calculate_evidence_score(*, sources, context_gathered, query, support):
         captured["sources"] = sources
+        captured["support"] = [support]
         return 0.5
 
     monkeypatch.setattr(wpb_module, "calculate_evidence_score", fake_calculate_evidence_score)
@@ -401,6 +415,10 @@ async def test_10_scorer_projection_carries_score_kind_on_every_element(
     )
 
     assert captured.get("sources"), "expected at least one source handed to the scorer"
+    assert "support" in captured, (
+        "the builder must hand the scorer a `support` keyword — `None` when the "
+        "signal was not consulted, never an omitted argument"
+    )
     for source in captured["sources"]:
         assert score_provenance.SCORE_KIND_KEY in source
     # Presence alone is not enough: stamping every element UNKNOWN would also

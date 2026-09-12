@@ -35,7 +35,9 @@ from __future__ import annotations
 import pytest
 
 from backend.app.core.constants import EvidenceScoreConstants
+from backend.core import score_provenance
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
+from backend.services.rag.agentic._support_signal import SupportVerdict
 from backend.services.rag.agentic.reasoning_utils import (
     _SHORT_IDENTIFIERS,
     calculate_evidence_score,
@@ -43,6 +45,36 @@ from backend.services.rag.agentic.reasoning_utils import (
 
 RETRIEVAL = [{"score": 0.72}]
 POOR_RETRIEVAL = [{"score": 0.18}]
+
+# V1 (RULED I31) — a DECLARED dense source for the one measured cosine on
+# disk for this (query, chunk) pair: 0.373 on `text-embedding-3-small`.
+# What is ATTESTED, and nothing more (aligned to the manifest's own wording
+# under gate condition C3 of #6338): 0.373 appears in #5618 (commit
+# 2cd3cf84b8, 2026-09-09), whose message records its OTHER cosines as
+# `measured live 2026-09-01` with their text pairs but states this one with
+# NO measurement date of its own; the `2026-09-03` this comment used to
+# attach to it is that commit's ADVERSARIAL REVIEW date, not a measurement
+# receipt. No probe artifact for this cosine exists anywhere on disk, and
+# none is invented here. `score` is the REAL
+# transform of that cosine through the live `format_search_results`
+# (`backend/services/misc/result_formatter.py`), not hand arithmetic:
+#   PYTHONPATH=. .venv/bin/python -c "
+#   from backend.services.misc.result_formatter import format_search_results
+#   from backend.core import score_provenance
+#   raw = {'ids': ['v1'], 'documents': ['x'], 'distances': [1 - 0.373], 'metadatas': [{}]}
+#   print(format_search_results(raw, 'kbli_2025_final_hybrid',
+#       score_kind=score_provenance.DENSE_FORMATTED)[0]['score'])"
+# -> 0.6146. RETRIEVAL and POOR_RETRIEVAL above stay byte-identical (D3/D5,
+# see `pipeline_score_fixtures.py`'s own docstring for the pattern this
+# mirrors) — this is an ADDITIONAL literal, read only by the test below that
+# names it.
+RETRIEVAL_DECLARED_DENSE = [
+    {
+        "score": 0.6146,
+        "score_kind": score_provenance.DENSE_FORMATTED,
+        "score_raw": 0.373,
+    }
+]
 
 EN_CONTEXT = [
     "PT PMA company setup — foreign-owned limited liability company "
@@ -192,54 +224,141 @@ GOLDEN: list[tuple[str, str, bool]] = [
 ]
 
 
-def test_the_golden_set_abstain_rate_is_reported_per_language() -> None:
-    """Criterion 4. A single blended abstain rate hides exactly this defect — an
-    over-cautious gate and a healthy one post the same number — so the two
-    subsets are asserted SEPARATELY.
+# D5 exception (build spec §8; staff-room RULING 2026-09-12 02:05 WITA,
+# decision I13; extended 3→5 by reviewer agreement). These five GOLDEN
+# queries carry `activates_in: "B2.1"` in `manifest_mandatory.json`
+# (case_ids bs-30ca5e5a, bs-6cd7df49, bs-3d3b5229, bs-a3a7f1ca, bs-dd6ff12d,
+# origin `test_evidence_cross_language.py:182/183/185/186/187` — exactly the
+# five rows below). B1.3's two reviewers (Gemini 3.1 Pro + Codex gpt-5.6-sol)
+# RATIFIED them `relevant_insufficient`, not `sufficient`: the crossed
+# context lists company-setup COMPONENTS (deed, ministry approval, NPWP, NIB
+# via OSS) but never explicitly states the specific requested fact — the
+# NIB/OSS requirements themselves, the paid-up-capital figure, or the
+# registration duration. They were CONTESTABLE `sufficient` at freeze; this
+# is B1.3's correction, activated together with the B2.1 scorer change.
+#
+# GOLDEN's own `answerable=True` for these five is therefore STALE. It is
+# kept in the tuple literal below (every OTHER row's shape is frozen) and
+# overridden here rather than edited in place, because flipping `answerable`
+# to `False` in the tuple would ALSO flip which fixture the crossing logic
+# selects (RETRIEVAL, score 0.72 -> POOR_RETRIEVAL, score 0.18) — exactly the
+# label-selected defect this override exists to remove: the fixture the
+# manifest actually records (RETRIEVAL) must stay FIXED while only the
+# expectation corrects.
+#
+# MEASURED, not assumed: on the frozen legacy path (this fixture declares no
+# score_kind), all five share "PMA" with their crossed context, which alone
+# clears every abstain gate through the ordinary keyword/source-quality path
+# (0.3-0.8 measured per case) — provenance/lexical signals cannot make any of
+# these five abstain, which is exactly build spec §0's own point: "provenance
+# ... CANNOT separate a counterfactual pair, by construction ... the SUPPORT
+# SIGNAL is what decides sufficiency." So each of these five calls supplies
+# `support=SupportVerdict.NOT_SUPPORTED` — the verdict a real judge would
+# return given each case's own `missing_fact_explanation` (the context lists
+# setup components but never states the specific requested fact) — which
+# fail-closed-zeroes relevance (build spec §2.5) regardless of the band or
+# the keyword ratio. This also removes what looked like a collision with
+# `TestTheCrossLanguageCasesThatCarryAnIdentifier.CASES` above (two of these
+# five queries — "Apa saja syarat NIB dan OSS?", "What are the NIB and OSS
+# requirements?" — are also members of that frozen, untouched test): CASES's
+# own call never passes `support`, so it is a DIFFERENT call to the same pure
+# function with a different keyword argument, not the same call asserted on
+# twice. `calculate_evidence_score` is pure but `support` is part of its
+# input, so the two assertions do not contradict each other.
+_D5_CORRECTED_INSUFFICIENT: frozenset[str] = frozenset(
+    {
+        "Apa saja syarat NIB dan OSS?",
+        "Berapa modal disetor minimum PT PMA?",
+        "What are the NIB and OSS requirements?",
+        "What is the minimum paid-up capital for a PT PMA?",
+        "How long does PT PMA registration take?",
+    }
+)
 
-    Every question is run against the OPPOSITE language's context on purpose:
-    the claim under test is not "the scorer is right", it is "the scorer does
-    not decide by language".
+
+def test_the_golden_set_abstain_rate_is_reported_per_language() -> None:
+    """Criterion 4, with the D5 exception (build spec §8) folded in. A single
+    blended abstain rate hides exactly this defect — an over-cautious gate
+    and a healthy one post the same number — so the two subsets are still
+    computed and reported SEPARATELY, per case, against the CORRECTED ground
+    truth.
+
+    Every question is still run against the OPPOSITE language's context on
+    purpose (still deliberately crossed) for every row — the D5 five are the
+    only ones whose (sources, context) are pinned directly to the manifest's
+    fixture rather than re-derived, the only ones that pass a `support`
+    verdict, and the only ones whose expectation flips to ABSTAIN. The claim
+    under test is still "the scorer does not decide by language" — checked
+    per case, since after the correction the five D5 flips land
+    2-on-Indonesian/3-on-English (bs-30ca5e5a, bs-6cd7df49 vs bs-3d3b5229,
+    bs-a3a7f1ca, bs-dd6ff12d), so the two languages' TRUE rates now
+    legitimately differ and a same-rate-across-languages assertion would be
+    asserting something false about the corrected data rather than testing
+    the scorer.
     """
     policy = build_abstain_policy("default")
     by_lang: dict[str, list[bool]] = {}
+    expected_by_lang: dict[str, list[bool]] = {}
 
     for query, lang, answerable in GOLDEN:
-        if answerable:
+        expect_abstain = not answerable
+        support: SupportVerdict | None = None
+        if query in _D5_CORRECTED_INSUFFICIENT:
+            # Fixed input, pinned to the manifest's own provenance_fixture
+            # (RETRIEVAL, score 0.72, declares no score_kind) — never
+            # derived from the (corrected) expectation below.
+            sources, context = RETRIEVAL, (ID_CONTEXT if lang == "en" else EN_CONTEXT)
+            support = SupportVerdict.NOT_SUPPORTED
+            expect_abstain = True
+        elif answerable:
             # deliberately crossed: Indonesian question -> English chunk
             sources, context = RETRIEVAL, (ID_CONTEXT if lang == "en" else EN_CONTEXT)
         else:
             sources, context = POOR_RETRIEVAL, UNRELATED_CONTEXT
-        score = calculate_evidence_score(sources, context, query)
+        score = calculate_evidence_score(sources, context, query, support=support)
         abstained = policy.label_abstains(score)
         by_lang.setdefault(lang, []).append(abstained)
-        assert abstained is not answerable, (
-            f"{lang} {query!r}: answerable={answerable} but abstain={abstained} "
-            f"(score {score})"
+        expected_by_lang.setdefault(lang, []).append(expect_abstain)
+        assert abstained is expect_abstain, (
+            f"{lang} {query!r}: expected abstain={expect_abstain} but got "
+            f"abstain={abstained} (score {score})"
         )
 
     rates = {lang: sum(v) / len(v) for lang, v in by_lang.items()}
-    assert rates["id"] == rates["en"], (
-        f"Indonesian and English abstain at different rates on crossed-language "
-        f"evidence: {rates}"
+    expected_rates = {lang: sum(v) / len(v) for lang, v in expected_by_lang.items()}
+    assert rates == expected_rates, (
+        f"per-language abstain rates diverge from the corrected ground truth "
+        f"the per-case loop above already checked: measured {rates}, "
+        f"expected {expected_rates}"
     )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "DECLARED RESIDUAL, measured not guessed: a question that names NO "
-        "identifier has nothing to bridge the languages with, so the lexical "
-        "ratio still reads 0. 'What is the price of new company setup?' against "
-        "Indonesian context scores 0.08. Its real embedding cosine against that "
-        "same chunk is 0.373 (measured 2026-09-03), comfortably above a 0.32 "
-        "band — so the retrieval signal WOULD cure it. That half of the spec is "
-        "withdrawn until the nine tripwires pinned to impossible cosines are "
-        "corrected in their own PR. This xfail is the marker that it is open."
-    ),
-    strict=True,
-)
 def test_a_question_naming_no_identifier_is_still_language_blind() -> None:
-    score = calculate_evidence_score(RETRIEVAL, ID_CONTEXT, "What is the price of new company setup?")
+    """CURED (RULED I31, this PR): a question that names NO identifier still
+    has nothing to bridge the languages LEXICALLY — the legacy literal
+    (`RETRIEVAL`, score_kind unknown) still scores 0.08 here, unchanged. What
+    cures it is declaring the provenance this source actually has: its real
+    embedding cosine against this chunk is 0.373 (attested in #5618, no
+    measurement date of its own), which
+    lands in B2.1's dense MODERATE band (>=0.32,
+    `reasoning_utils.py::_dense_band_index`) and no longer needs a lexical
+    bridge at all. `RETRIEVAL_DECLARED_DENSE` (declared above) scores 0.55.
+    This was the nine-tripwires-pinned-to-impossible-cosines blocker the
+    former xfail named as open — those nine were corrected in B1.2/B2.1
+    ahead of this PR, so only this one declaration was left."""
+    query = "What is the price of new company setup?"
+
+    # The first half of the sentence in this test's name, ASSERTED and not
+    # merely asserted in prose: the legacy literal is still language-blind.
+    legacy = calculate_evidence_score(RETRIEVAL, ID_CONTEXT, query)
+    assert legacy < 0.15, (
+        "the lexical bridge must still be absent — if this rises, the cure "
+        f"below is measuring something other than provenance (got {legacy})"
+    )
+
+    # The second half: declaring the provenance the source actually has is
+    # what carries it over the gate.
+    score = calculate_evidence_score(RETRIEVAL_DECLARED_DENSE, ID_CONTEXT, query)
     assert score >= 0.15
 
 

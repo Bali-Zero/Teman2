@@ -1,0 +1,231 @@
+task_id: shweb-w-oracle-o2-review-reason-copy
+gear: 2
+ts: 2026-09-12T21:20:00+08:00
+gear_reason: >-
+  Computed with the SAME inputs CI uses, which is where the first measurement went wrong: the
+  floor was taken with `--changed-files-file` only and returned 1 / source `none`. CI's harness
+  step passes `--numstat-file` as well, and with it
+  `scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <n>`
+  returns 2, source `size` — the diff crosses SIZE_GEAR2_THRESHOLD (400). Declaring 1 against a
+  floor of 2 is exactly why #6240 was rejected; declared 2 here. Re-run both invocations to
+  check. Only frontend files touched, both under apps/mouth/src/app/(visa-oracle)/ — not a
+  HOTZONE_PATTERNS path — plus this brief and the e2e spec F2 added (PR-O2 round 3).
+
+  On the per-file churn figure specifically (F3, PR-O2 round 3): do not trust a number typed
+  here — this file is itself in the diff it would be describing, so any digit written into it is
+  stale the moment a later commit (this one included) touches the described file again. The
+  re-runnable, self-correcting command is:
+  `git diff --numstat 9233a860d6..HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts'`
+  — run it against the actual HEAD at read time, not against a figure quoted from an earlier
+  round of this same PR.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o2-20260912-af438b83/brief.yml
+  # Added PR-O2 round 3 (F2, gate #6318 REWORK-BUILD): the fullstack e2e's own
+  # assertion referenced the generic fallback text this PR replaced. Perimeter
+  # growth authorized by the orchestrator, not a scope violation.
+  - apps/mouth/e2e/visa-oracle-fullstack.spec.ts
+l_level: L2
+gate_class: opus
+objective: >-
+  PR-O2 of mandate SHWEB-20260911 / W-ORACLE, decision D1: give dedicated EN/ID copy to the 29
+  Visa Oracle HUMAN_REVIEW reason codes that previously fell back to GENERIC_REVIEW_REASON in
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts's REVIEW_REASON_COPY.
+  25 of the 29 were already named in engine-adapter.test.ts's KNOWN_UNMAPPED_REVIEW_REASON_CODES
+  gap list (8 rulepack-prod-007+ HUMAN_REVIEW-stage codes + 17 pack-independent
+  evaluate_path.py codes); the other 4 (BRIDGING_ONSHORE_ONLY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
+  BRIDGING_TO_BRIDGING_PROHIBITED, VOA_NATIONALITY_ONLY) were not visible to that list at all,
+  because reviewReasonCodesInPack() only scanned stage===HUMAN_REVIEW rules — these 4 are
+  rulepack-prod-020 stage HARD_FILTER rules with on_unknown="HUMAN_REVIEW", which
+  evaluator.py's _partition_unknowns_by_policy + _reason_from_rule (lines 355-410, 741-751)
+  escalate to a HUMAN_REVIEW state using the SAME effect.reason_code when the gating fact is
+  UNKNOWN rather than known-false. Verified by reading rulepack-prod-020.source.json directly
+  (`python -c` one-liner filtering rules by stage/on_unknown, reproduced below) before writing
+  any copy for them. Extended reviewReasonCodesInPack() to also collect
+  stage===HARD_FILTER && on_unknown==="HUMAN_REVIEW" rules, so the exhaustiveness test's
+  allRealCodes now genuinely covers all 38 real codes (20 pack + 18 pack-independent) instead of
+  34. KNOWN_UNMAPPED_REVIEW_REASON_CODES now ends empty, as D1 requires.
+
+  Mid-task, the owner issued a binding follow-up ruling (D2-bis) requiring every HUMAN_REVIEW
+  string, EN and ID — including the 9 pre-existing entries, now in scope — to (1) name the
+  specific fact/answer the signed rules cannot decide, in the applicant's own terms, (2) state
+  the hold authoritatively rather than generically, and (3) name what resolves it. All 38
+  entries were revised or written to this standard in the same commit (dd1eb0e5c3).
+
+  DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW went through two owner-directed wordings — see
+  `review_record` below for both rounds and why the second superseded the first. The string
+  currently in REVIEW_REASON_COPY is the second (owner-approved 2026-09-12): "whether your
+  sponsor holds a stay permit of their own has not been established here."
+constraints:
+  - >-
+    Perimeter held to exactly what the brief named: REVIEW_REASON_COPY, the test file's
+    KNOWN_UNMAPPED_REVIEW_REASON_CODES + reviewReasonCodesInPack() (the latter's extension was
+    necessary to keep the exhaustiveness test internally consistent with the 4 newly-copied
+    HARD_FILTER codes — otherwise "never lets a stale key sit in the copy map" fails on them),
+    plus this evidence directory. No change to oracle.css, the question tree, evaluate_path.py,
+    the evaluator, any pack file, or OutcomeSheet.tsx.
+  - >-
+    Product names copied verbatim from each rule's product_version_ids entry in
+    rulepack-prod-020.source.json (names.en / names.id) — never shortened or re-described (the
+    repo's own prior scar: E23V narrowed to "trade representative office" in an earlier round).
+  - >-
+    No new price, no new timeline, no new legal claim. UNKNOWN is never written as an exclusion
+    — the 4 HARD_FILTER/on_unknown codes name the fact as "not yet established", never as
+    ineligibility. DISCLOSED_ACTIVITY_BOUNDARY_REVIEW and DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW do
+    not presuppose D2 (no claim that either hold is too wide, being narrowed, or a defect).
+  - >-
+    Two codes could not honestly carry ONE specific cause without inventing one: names the most
+    specific true statement the code allows and lists as split candidates rather than guessing —
+    BRIDGING_ADVERSE_HISTORY (rule review.bridging.adverse-history fires on any of 4 distinct
+    violation_history values — OVERSTAY/DEPORTATION/BLACKLIST/IMMIGRATION_INVESTIGATION — or on
+    that fact being unknown) and DISCLOSED_ACTIVITY_BOUNDARY_REVIEW (fact-mapper.ts's
+    hasUndecidableActivityAnswer raises this one code from 7 distinct question ids, with no field
+    saying which). DISCLOSED_UNCERTAINTY_REVIEW is the same shape (any interview answer marked
+    "unsure" fires it, no field names which) and is listed alongside them.
+    CONFLICTING_IMMIGRATION_STATUS_REVIEW is a DisclosedReviewFlag with no current
+    fact-mapper.ts trigger at all — named as specifically as the code allows, flagged separately
+    as meaning not fully pinned to a fact pair rather than as a split candidate (there is no
+    second enumerable cause to split out).
+acceptance:
+  - text: >-
+      WHEN the full visa-oracle vitest suite is run THEN every test SHALL pass, including the
+      exhaustiveness test with an empty KNOWN_UNMAPPED_REVIEW_REASON_CODES.
+    probe: |
+      cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)' --maxWorkers=2
+  - text: >-
+      WHEN the review-reasons exhaustiveness describe block is run in isolation THEN all 4 of
+      its tests (exhaustive coverage, no stale copy key, no already-mapped gap entry, no phantom
+      gap entry) SHALL pass.
+    probe: |
+      cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t "review reasons cover every code" --maxWorkers=2
+  - text: WHEN the mouth app is typechecked THEN it SHALL exit 0 with no errors.
+    probe: |
+      cd apps/mouth && npx --no-install tsc --noEmit -p .
+  - text: >-
+      WHEN the 4 HARD_FILTER-with-on_unknown-HUMAN_REVIEW codes are looked up directly in the
+      signed pack THEN exactly BRIDGING_ONSHORE_ONLY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
+      BRIDGING_TO_BRIDGING_PROHIBITED and VOA_NATIONALITY_ONLY SHALL be found, corroborating the
+      objective's traceability claim independently of this PR's own code.
+    probe: |
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "
+      import json
+      data = json.load(open('apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-020.source.json'))
+      hits = sorted(
+          (r['effect']['reason_code'])
+          for r in data['rules']
+          if r.get('stage') == 'HARD_FILTER' and r.get('on_unknown') == 'HUMAN_REVIEW'
+      )
+      expected = ['BRIDGING_FROM_VISIT_ITK_PROHIBITED', 'BRIDGING_ONSHORE_ONLY', 'BRIDGING_TO_BRIDGING_PROHIBITED', 'VOA_NATIONALITY_ONLY']
+      assert hits == expected, hits
+      print('OK', hits)
+      "
+  - text: >-
+      WHEN every rule in the signed pack with `on_unknown == "HUMAN_REVIEW"` (any stage) is
+      enumerated THEN it SHALL be exactly the 7 codes this PR has already worded for the unknown
+      path — the on_unknown sweep from gate #6318's F1, re-run against rulepack-prod-020.signed.json
+      (the same file the gate itself cited) rather than the .source.json this PR read earlier, to
+      close any doubt the two could diverge.
+    probe: |
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "
+      import json
+      data = json.load(open('apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-020.signed.json'))
+      rules = data['payload']['rules']
+      hits = sorted(r['effect']['reason_code'] for r in rules if r.get('on_unknown') == 'HUMAN_REVIEW')
+      expected = ['BRIDGING_ADVERSE_HISTORY', 'BRIDGING_FROM_VISIT_ITK_PROHIBITED', 'BRIDGING_ONSHORE_ONLY', 'BRIDGING_TO_BRIDGING_PROHIBITED', 'CALLING_VISA_REVIEW', 'CITIZENSHIP_LIST_DIVERGENCE', 'VOA_NATIONALITY_ONLY']
+      assert hits == expected, hits
+      print('OK', hits)
+      "
+consumer_map:
+  - >-
+    OutcomeSheet.tsx (via engine-adapter.ts's buildEngineOutcome/reviewReason) — the ONLY reader
+    of REVIEW_REASON_COPY: every applicant who lands on a HUMAN_REVIEW_REQUIRED outcome for one
+    of these 29 codes now sees the dedicated sentence in place of the generic fallback, in both
+    languages the UI serves (en/id).
+risks:
+  - >-
+    DECISIVE_*/SAFETY_CRITICAL_* (6 codes) and CONFLICTING_IMMIGRATION_STATUS_REVIEW are not
+    applicant-fact-driven (source-integrity holds or a currently-untriggered disclosed flag) —
+    D2-bis rule 1's "applicant's own terms" framing does not literally fit; named the mechanism
+    (which source / which status conflict) as specifically as each code's own logic allows
+    instead of forcing an applicant-facing frame that would misstate the mechanism.
+  - >-
+    Extending reviewReasonCodesInPack() (test-only, not runtime) goes slightly beyond the
+    file-list's literal "KNOWN_UNMAPPED_REVIEW_REASON_CODES must end EMPTY" framing, but was
+    necessary for internal consistency: without it, adding copy for the 4 HARD_FILTER codes
+    would fail the "never lets a stale key sit in the copy map" test (they would not be in
+    allRealCodes). Cross-validated against the brief's own census math (9 existing + 29 new = 38
+    total; 8+4+17=29) before making the change, not assumed.
+review_record: |
+  SELF-REPORT (not independently verified evidence — a claim about what reviewers said and how
+  it was resolved, per this brief's own rule that lanes/dissent/the review record are self-reports).
+
+  Round 1 (Gemini 3.1 Pro: REWORK; Kimi K3: REWORK — converged independently on one substantive
+  finding + one hardening item; everything else checked came back clean): BRIDGING_ADVERSE_HISTORY
+  was FALSE on the on_unknown="HUMAN_REVIEW" trigger path — it asserted the record "shows" one of
+  overstay/deportation/blacklist/investigation even when the hold was raised because the record
+  had not been established at all (rule 5/6 violation: an unknown fact written as established).
+  Separately, the exhaustiveness floor (`toBeGreaterThanOrEqual(32)`) sat below the measured 38,
+  so a regression silently dropping up to 5 real codes would still pass it. STATUS: ACCEPTED,
+  applied in THIS commit (self-referential SHA avoided on purpose — this file is part of the same
+  commit as the fix, so its own hash cannot be known while writing it; `git log --oneline -1` on
+  the resulting commit is the re-runnable check) — BRIDGING_ADVERSE_HISTORY rewritten to name both
+  trigger paths (the 4 named causes, or the record not established) without asserting any of the
+  4 exists; floor raised 32 -> 38.
+
+  A separate objection on DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW's round-1 wording ("the sponsor's own
+  stay permit could not be established from the answers given") was escalated to the owner rather
+  than acted on directly. Owner's ruling: ACCEPTED — that wording implied a stay permit is needed
+  at all, which is false when the sponsor is an Indonesian citizen who holds no permit and needs
+  none. Owner supplied the exact replacement clause ("whether your sponsor holds a stay permit of
+  their own has not been established here"), true under the current trigger, the narrowed D2
+  trigger, and the Indonesian-sponsor case alike. Applied in the same commit as the two fixes
+  above.
+
+  Round 3 (fresh on-disk gate, #6318: REWORK-BUILD — 36/38 strings conform, 13/13 product names
+  verbatim, narrow finding): F1 (HIGH) — CALLING_VISA_REVIEW and CITIZENSHIP_LIST_DIVERGENCE are
+  HUMAN_REVIEW-stage rules that ALSO carry on_unknown="HUMAN_REVIEW" (verified independently
+  against rulepack-prod-020.signed.json), so both fired the identical code on an UNKNOWN
+  nationality while their strings stated the fact outright. STATUS: ACCEPTED — both rewritten to
+  the "held because X, or because the fact has not been established" pattern already used for
+  BRIDGING_ADVERSE_HISTORY, keeping the known-path specificity (the named list, the named
+  eligibility-category divergence). Full on_unknown sweep run against ALL 109 rules in both
+  rulepack-prod-020.signed.json and .source.json (identical result from each): exactly 7 codes
+  carry on_unknown="HUMAN_REVIEW" — BRIDGING_ADVERSE_HISTORY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
+  BRIDGING_ONSHORE_ONLY, BRIDGING_TO_BRIDGING_PROHIBITED, CALLING_VISA_REVIEW,
+  CITIZENSHIP_LIST_DIVERGENCE, VOA_NATIONALITY_ONLY. 5 of the 7 were already correctly worded (4
+  HARD_FILTER codes from PR-O2's first commit, BRIDGING_ADVERSE_HISTORY from round 1); F1's 2 are
+  the only ones the sweep found needing this fix. No pack-independent (evaluate_path.py) code
+  carries an equivalent unknown-escalation-with-the-same-code mechanism: the DISCLOSED_* codes are
+  explicit applicant checkbox disclosures (not an UNKNOWN-fact escalation), MINOR_GUARDIAN_PRIVACY_
+  REVIEW's is_minor==UNKNOWN path routes to a DIFFERENT state (NEEDS_INPUT, not this code — read
+  `_apply_minor_privacy_hold`, evaluate_path.py:1043-1069) before this code's own check even runs,
+  and DECISIVE_*/SAFETY_CRITICAL_* codes ARE themselves the "fact is unknown" case already (their
+  strings already say "could not be established" / "currency could not be established
+  automatically"). Swept; found none beyond the 2 named in F1.
+
+  F2 (HIGH) — apps/mouth/e2e/visa-oracle-fullstack.spec.ts:246-257 asserted the pre-PR-O2 generic
+  fallback sentence for DECISIVE_SOURCE_FRESHNESS_UNKNOWN and its own comment said the code had no
+  curated copy yet. STATUS: ACCEPTED — perimeter growth into this one e2e file is per the
+  orchestrator's own authorization in the F2 finding. Assertion tightened to the curated EN string;
+  comment rewritten to state the code now has curated copy. Not runnable locally by this
+  implementer seat (VISA_ORACLE_FULLSTACK=1 needs a disposable Postgres DB this seat cannot raise,
+  and apps/mouth's node_modules/.bin has no local playwright binary under the --no-install
+  constraint this seat operates under) — verified instead via `tsc --noEmit` (exit 0, the file
+  type-checks) and by grep confirming no other file in apps/mouth/ still references the generic
+  fallback text for this code.
+
+  F3 (LOW) — a per-file numstat figure for engine-adapter.ts, cited by the gate as wrong
+  (+259/-28, not +257/-26), was not found anywhere in the CURRENT brief.yml by this implementer
+  (checked via `git log --all -p` over this file's full history — no match for those digits at
+  any point) — it likely lived in PR-body text the orchestrator authored separately from this
+  brief. STATUS: ACCEPTED as a standing discipline regardless of where the stale digit lived —
+  added an explicit re-runnable `git diff --numstat` command to gear_reason above instead of any
+  static figure, since this file is itself in the diff it would be describing.
+grader: |
+  Independent gate dispatched separately by the orchestrating (Opus 5) session — generator !=
+  grader: this session wrote the diff and this brief, and does not post its own verdict.
+budget: |
+  Single-lane content PR. Flat-subscription seat only (Sonnet 5 IMPLEMENTER); no metered API
+  spend, no external LLM call, no network call.
+pii: none

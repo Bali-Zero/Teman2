@@ -18,6 +18,7 @@
     "secondhome_state_bank",
     "secondhome_own_name",
     "secondhome_passive_income_usd",
+    "family_sponsor_confirmed",
     "stay_days",
     "review_gate"
   ],
@@ -107,7 +108,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },

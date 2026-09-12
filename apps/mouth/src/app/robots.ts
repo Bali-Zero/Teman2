@@ -29,7 +29,6 @@ const DISALLOW = [
   "/settings",
   "/analytics",
   "/intelligence",
-  "/whatsapp",
   "/email",
   "/documents",
   "/knowledge",

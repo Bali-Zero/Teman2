@@ -247,6 +247,7 @@ describe("retirement evidence branches", () => {
         "secondhome_state_bank",
         "secondhome_own_name",
         "secondhome_passive_income_usd",
+        "family_sponsor_confirmed",
         "stay_days",
       ],
     ],
@@ -290,6 +291,7 @@ describe("retirement evidence branches", () => {
         ["secondhome_state_bank", "yes"],
         ["secondhome_own_name", "yes"],
         ["secondhome_passive_income_usd", "3000"],
+        ["family_sponsor_confirmed", "yes"],
         ["stay_days", "365"],
       ],
     },
@@ -1430,6 +1432,10 @@ describe("PR-3 · the second_home branch (owner ruling 3)", () => {
       "sponsor_category",
       "retirement_basis",
       "secondhome_property_value_usd",
+      // Added (PR-D3, D3-3): `property` now asks the same E33F fallback
+      // pair every other retirement basis does — see flow.ts.
+      "secondhome_passive_income_usd",
+      "family_sponsor_confirmed",
       "stay_days",
     ]);
   });

@@ -1,4 +1,22 @@
 {
+  "commandPalette": {
+    "actions": {
+      "goInbox": "Inbox",
+      "goClients": "Clients",
+      "goProcess": "Process",
+      "goPrime": "Prime (external)",
+      "createKitas": "New KITAS Process",
+      "createPtSetup": "New PT Setup Process",
+      "exportLkpm": "LKPM",
+      "openAnalytics": "Analytics"
+    },
+    "groups": {
+      "navigation": "Navigation",
+      "cases": "Create Case",
+      "tax": "Tax",
+      "analytics": "Analytics"
+    }
+  },
   "common": {
     "nav": {
       "news": "Notizie",

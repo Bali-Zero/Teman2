@@ -3,8 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin, ArrowUpRight, BadgeCheck } from "lucide-react";
-import { rosterBySlug, initialsOf } from "@/data/team-roster";
-import { publicEntries } from "@/lib/team-public-listing";
+import type { SocialProofMember } from "./socialProofRoster";
 import {
   GOOGLE_MAPS_URL,
   ratingWithReviews,
@@ -17,86 +16,15 @@ import styles from "./SocialProof.module.css";
 // `department` caption + accent + role overrides. `department` here is a marketing
 // caption, NOT the SSOT dept.
 //
-// WHO IS SHOWN goes through `publicEntries()` (src/lib/team-public-listing.ts) —
-// the roster keeps every record, this component publishes only the people the
-// owner lists publicly, so adding a slug below is never enough to publish them.
+// WHO IS SHOWN is decided in `socialProofRoster.ts`, on the server: it applies
+// `publicEntries()` and hands this component the finished rows. The specs no longer
+// live below, so there is no slug here to add — and that is the point, because a
+// constant naming staff in a "use client" file ships to the browser.
 //
 // VARIANTS. `default` is what /v2 renders and is unchanged. `founder-band` is
 // opt-in and used only by the home: the founders alone, in the R19 band rhythm.
-interface TeamMember {
-  name: string;
-  role: string;
-  department: string;
-  photo?: string;
-  initials: string;
-  accent: string;
-}
-
-interface SPEntry {
-  slug: string;
-  department: string;
-  accent: string;
-  roleOverride?: string;
-}
-
-function resolveSP(e: SPEntry): TeamMember {
-  const r = rosterBySlug(e.slug);
-  const name = r?.name ?? e.slug;
-  return {
-    name,
-    role: e.roleOverride ?? r?.role ?? "",
-    department: e.department,
-    photo: r?.photo,
-    initials: initialsOf(name),
-    accent: e.accent,
-  };
-}
-
-// Founders — shown first and larger. The two men who started Bali Zero
-// and still run it. Friends for 30 years, partners in the business.
-const FOUNDERS_SPEC: SPEntry[] = [
-  {
-    slug: "zainal",
-    roleOverride: "CEO",
-    department: "Founder · Since the beginning",
-    accent: "#ff2d4c",
-  },
-  {
-    slug: "heru",
-    roleOverride: "Komisaris",
-    department: "Founder · Partner for 30 years",
-    accent: "#a78bfa",
-  },
-];
-const FOUNDERS: TeamMember[] = publicEntries(FOUNDERS_SPEC).map(resolveSP);
-
-const TEAM_SPEC: SPEntry[] = [
-  {
-    slug: "ruslana",
-    roleOverride: "Special Advisory",
-    department: "Leadership",
-    accent: "#a78bfa",
-  },
-  {
-    slug: "veronika",
-    roleOverride: "Manager",
-    department: "Leadership",
-    accent: "#06b6d4",
-  },
-  {
-    slug: "adit",
-    roleOverride: "Supervisor Lead",
-    department: "Setup",
-    accent: "#f59e0b",
-  },
-  {
-    slug: "angel",
-    roleOverride: "Supervisor",
-    department: "Tax",
-    accent: "#22c55e",
-  },
-];
-const TEAM: TeamMember[] = publicEntries(TEAM_SPEC).map(resolveSP);
+/** Rows resolved on the server by `socialProofRoster()` — see that file for why. */
+type TeamMember = SocialProofMember;
 
 // Curated review snippets — canonical across homepage + (blog)/_components/GoogleReviewsBlock.
 const REVIEWS = [
@@ -141,10 +69,21 @@ export type SocialProofVariant = "default" | "founder-band";
 
 export function SocialProof({
   variant = "default",
+  founders,
+  team,
 }: {
   /** Opt-in only. Omitted → the default render, unchanged, which /v2 uses. */
   variant?: SocialProofVariant;
-} = {}) {
+  /**
+   * The people to show, resolved on the SERVER by `socialProofRoster()`.
+   * Required, and deliberately so: a default of `[]` here would let a caller
+   * that forgot them render a silently empty band, and an import-time default
+   * would put the roster back in this client bundle — which is the whole defect
+   * this prop exists to fix.
+   */
+  founders: SocialProofMember[];
+  team: SocialProofMember[];
+}) {
   const founderBand = variant === "founder-band";
   return (
     <section
@@ -351,7 +290,7 @@ export function SocialProof({
               <>
                 {/* R19 band rhythm: the two founders, then the one link out. */}
                 <div className={styles.founderBand}>
-                  {FOUNDERS.map((f) => (
+                  {founders.map((f) => (
                     <figure className={styles.founder} key={f.name}>
                       <div
                         className={styles.founderPortrait}
@@ -393,7 +332,7 @@ export function SocialProof({
               <>
                 {/* Founders — portraits side by side, prominent */}
                 <div className="grid grid-cols-2 gap-3 mb-5">
-                  {FOUNDERS.map((f) => (
+                  {founders.map((f) => (
                     <div
                       key={f.name}
                       className="relative rounded-2xl overflow-hidden"
@@ -448,7 +387,7 @@ export function SocialProof({
                 </div>
 
                 <ul className="flex flex-col gap-3 flex-1 list-none p-0 m-0">
-                  {TEAM.map((m) => (
+                  {team.map((m) => (
                     <li
                       key={m.name}
                       className="flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors"

@@ -100,6 +100,11 @@ vi.mock("@/hooks/useTeamMembers", () => ({
         label: "Zero Tester",
         avatar: null,
       },
+      {
+        value: "asya@balizero.com",
+        label: "Asya",
+        avatar: null,
+      },
     ],
   }),
 }));
@@ -316,8 +321,12 @@ describe("CaseDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(mocks.back).toHaveBeenCalledTimes(1);
 
+    // The breadcrumb's client link was removed (kita-prune lot 6): the
+    // Client Information card's "Client Name" button is now the single
+    // instance, and it navigates without the `?tab=process` query param
+    // the other three duplicate instances never carried either.
     await user.click(screen.getAllByRole("button", { name: "John Doe" })[0]);
-    expect(mocks.push).toHaveBeenCalledWith("/clients/7?tab=process");
+    expect(mocks.push).toHaveBeenCalledWith("/clients/7");
     expect(mocks.trackButtonClick).toHaveBeenCalledWith(
       "Back to Process",
       "CasesDetailPage",
@@ -431,10 +440,14 @@ describe("CaseDetailPage", () => {
   });
 
   it("uses the canonical update response without a stale reload or losing joined labels", async () => {
+    // The Edit modal was reduced to status + assignee + start date
+    // (kita-prune lot 6: priority/payment/price already have their own
+    // inline editors), so this exercises the surviving assignee + start
+    // date fields instead of the removed priority + quoted-price ones.
     const original = makePractice();
     const canonicalUpdateResponse = makePractice({
-      priority: "urgent",
-      quoted_price: 2_000_000,
+      assigned_to: "asya@balizero.com",
+      start_date: "2026-03-15T00:00:00.000Z",
     });
     delete canonicalUpdateResponse.client_name;
     delete canonicalUpdateResponse.client_email;
@@ -463,28 +476,26 @@ describe("CaseDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const modal = screen.getByRole("heading", { name: "Edit Process #42" })
       .parentElement?.parentElement as HTMLElement;
-    await user.click(within(modal).getByRole("button", { name: "🔥 Urgent" }));
-    const quotedInput = within(modal).getByDisplayValue("1500000");
-    await user.clear(quotedInput);
-    await user.type(quotedInput, "2000000");
+    await user.selectOptions(
+      within(modal).getAllByRole("combobox")[1],
+      "asya@balizero.com",
+    );
+    fireEvent.change(within(modal).getByDisplayValue("2026-02-01"), {
+      target: { value: "2026-03-15" },
+    });
     await user.click(
       within(modal).getByRole("button", { name: "Save Changes" }),
     );
 
     await waitFor(() => {
       expect(mocks.updatePractice).toHaveBeenCalledWith(42, {
-        priority: "urgent",
-        quoted_price: 2_000_000,
+        assigned_to: "asya@balizero.com",
+        start_date: "2026-03-15",
       });
     });
     expect(mocks.getPractice).toHaveBeenCalledTimes(1);
     expect(mocks.invalidateClient).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole("button", { name: "Cycle priority" }),
-    ).toHaveTextContent("urgent");
-    expect(
-      screen.getByRole("button", { name: "Edit quoted price" }),
-    ).toHaveTextContent("Rp 2.000.000");
+    expect(screen.getByText("Asya")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "KITAS APPLICATION #42" }),
     ).toBeInTheDocument();
@@ -494,7 +505,7 @@ describe("CaseDetailPage", () => {
     ).toHaveAttribute("href", "mailto:john@example.com");
     expect(mocks.trackCaseUpdate).toHaveBeenCalledWith(
       42,
-      ["priority", "quoted_price"],
+      ["assigned_to", "start_date"],
       "details",
       profile.email,
     );
@@ -515,7 +526,7 @@ describe("CaseDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const modal = screen.getByRole("heading", { name: "Edit Process #42" })
       .parentElement?.parentElement as HTMLElement;
-    await user.selectOptions(within(modal).getAllByRole("combobox")[2], "");
+    await user.selectOptions(within(modal).getAllByRole("combobox")[1], "");
     await user.clear(within(modal).getByDisplayValue("2026-02-01"));
     await user.click(
       within(modal).getByRole("button", { name: "Save Changes" }),
@@ -580,7 +591,10 @@ describe("CaseDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const modal = screen.getByRole("heading", { name: "Edit Process #42" })
       .parentElement?.parentElement as HTMLElement;
-    await user.click(within(modal).getByRole("button", { name: "↑ High" }));
+    await user.selectOptions(
+      within(modal).getAllByRole("combobox")[1],
+      "asya@balizero.com",
+    );
     await user.click(
       within(modal).getByRole("button", { name: "Save Changes" }),
     );
@@ -600,7 +614,10 @@ describe("CaseDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const modal = screen.getByRole("heading", { name: "Edit Process #42" })
       .parentElement?.parentElement as HTMLElement;
-    await user.click(within(modal).getByRole("button", { name: "↑ High" }));
+    await user.selectOptions(
+      within(modal).getAllByRole("combobox")[1],
+      "asya@balizero.com",
+    );
     await user.click(
       within(modal).getByRole("button", { name: "Save Changes" }),
     );
@@ -613,7 +630,10 @@ describe("CaseDetailPage", () => {
     });
   });
 
-  it("offers copy/contact actions and deletes a confirmed process", async () => {
+  it("offers a copy-link action and deletes a confirmed process", async () => {
+    // WhatsApp/Email/profile were removed from this menu (kita-prune lot 6):
+    // the Client Information card is now the single instance for all three,
+    // covered by the "renders process, client and assigned-team data" test.
     const user = await renderLoaded();
 
     await user.click(screen.getByRole("button", { name: "More options" }));
@@ -622,13 +642,6 @@ describe("CaseDetailPage", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       "Copied",
       "Process link copied to clipboard",
-    );
-
-    await user.click(screen.getByRole("button", { name: "More options" }));
-    await user.click(screen.getByRole("button", { name: "WhatsApp client" }));
-    expect(window.open).toHaveBeenCalledWith(
-      "https://wa.me/62812345?text=Hi John Doe, regarding your process...",
-      "_blank",
     );
 
     await user.click(screen.getByRole("button", { name: "More options" }));

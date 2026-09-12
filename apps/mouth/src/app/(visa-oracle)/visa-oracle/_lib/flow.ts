@@ -666,13 +666,13 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
     "stay_days",
   ],
   diaspora: [],
+  // `other`'s real sequence is computed dynamically in
+  // `getCategoryQuestionIds` (D3-2, PR-D3): a declared paid activity
+  // branches to the employment facts instead of this fixed list. Kept here,
+  // unreached, only so this Record stays total over `CategoryKey`.
   other: [
     "other_purpose",
     "other_paid_activity",
-    // `family_sponsor_confirmed` added 2026-09-06: `el.c6.social` is the
-    // one rule that covers the `OTHER` purpose and it requires
-    // `family.sponsor_confirmed == true`, so this branch could not reach a
-    // candidate without it.
     "family_sponsor_confirmed",
     "stay_days",
     "entry_pattern",
@@ -690,6 +690,14 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
 
   if (category === "invest") {
     const branch = facts.investment_vehicle;
+    // D3-1 (owner ruling SHWEB-20260911): `property`/`bank_deposit` route to
+    // Second Home (`mapPurposes` emits SECOND_HOME alone), and no E33 rule
+    // reads `sponsor.type` or `family.sponsor_confirmed` — same reasoning as
+    // the `second_home` tile's own branch below. Asking either question here
+    // would only add review volume (an `unsure` answer trips `NOT_CERTAIN`)
+    // for a fact no rule this route reaches ever consults.
+    const isSecondHomeRoute =
+      branch === "property" || branch === "bank_deposit";
     const branchQuestions =
       branch === "pt_pma"
         ? [
@@ -711,30 +719,39 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
       "sponsor_category",
       "investment_vehicle",
       ...branchQuestions,
-      // `family_sponsor_confirmed` added 2026-09-06: `el.c2.business` is
-      // the rule that covers a declared INVESTMENT purpose and it requires
-      // `family.sponsor_confirmed == true`. Already asked in the family
-      // and retirement branches — same question, same fact, new branch.
-      "family_sponsor_confirmed",
-      // `wants_onshore_conversion` added 2026-09-06, OFFSHORE ONLY. Onshore
-      // the spine already asks it (`computeNextNode`'s `overstay_days`
-      // case), so adding it here would ask it twice. Offshore it was
-      // structurally unaskable, which is exactly where
-      // `hf.d12-onshore-conversion-excluded`
-      // (`on_unknown: NEEDS_INPUT`, `safety_critical`) bites: D12's own
-      // target population is offshore. Measured 2026-09-06 on signed
-      // seq-19: with the answer supplied, offshore/invest/PT-PMA returns
-      // `SUPPORTED_CANDIDATES [D12]` on "no" and `NO_SUPPORTED_PATH` on
-      // "yes" — decisive both ways.
-      //
-      // ASKED, never derived. Deriving `false` from "offshore and holding
-      // no permit" was measured as a fail-open on this exact persona: the
-      // fact is forward-looking INTENT ("are you asking to change status
-      // without leaving Indonesia?"), so an investor planning "enter on
-      // D12, then alih status onshore" answers TRUE, and a derived `false`
-      // returns a confident D12 recommendation with zero review reasons
-      // for a visa that by regulation cannot be converted onshore.
-      ...(facts.in_indonesia === "no" ? ["wants_onshore_conversion"] : []),
+      ...(isSecondHomeRoute
+        ? []
+        : [
+            // `family_sponsor_confirmed` added 2026-09-06: `el.c2.business`
+            // is the rule that covers a declared INVESTMENT purpose and it
+            // requires `family.sponsor_confirmed == true`. Already asked in
+            // the family and retirement branches — same question, same
+            // fact, new branch.
+            "family_sponsor_confirmed",
+            // `wants_onshore_conversion` added 2026-09-06, OFFSHORE ONLY.
+            // Onshore the spine already asks it (`computeNextNode`'s
+            // `overstay_days` case), so adding it here would ask it twice.
+            // Offshore it was structurally unaskable, which is exactly
+            // where `hf.d12-onshore-conversion-excluded`
+            // (`on_unknown: NEEDS_INPUT`, `safety_critical`) bites: D12's
+            // own target population is offshore. Measured 2026-09-06 on
+            // signed seq-19: with the answer supplied,
+            // offshore/invest/PT-PMA returns `SUPPORTED_CANDIDATES [D12]`
+            // on "no" and `NO_SUPPORTED_PATH` on "yes" — decisive both
+            // ways.
+            //
+            // ASKED, never derived. Deriving `false` from "offshore and
+            // holding no permit" was measured as a fail-open on this exact
+            // persona: the fact is forward-looking INTENT ("are you asking
+            // to change status without leaving Indonesia?"), so an investor
+            // planning "enter on D12, then alih status onshore" answers
+            // TRUE, and a derived `false` returns a confident D12
+            // recommendation with zero review reasons for a visa that by
+            // regulation cannot be converted onshore.
+            ...(facts.in_indonesia === "no"
+              ? ["wants_onshore_conversion"]
+              : []),
+          ]),
       "stay_days",
     ];
   }
@@ -760,6 +777,16 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
 
   if (category === "retirement") {
     const branch = facts.retirement_basis;
+    // D3-3 (PR-D3, owner ruling SHWEB-20260911): the funnel census found
+    // `bank_deposit` the LARGEST dead end (30 walks ending NEEDS_INPUT on
+    // `family.sponsor_confirmed` because it was never asked on this branch)
+    // and `property`/`undecided` were allowlisted for the same reason.
+    // `family.sponsor_confirmed` is `el.e33f.retirement`'s fact, independent
+    // of the financial basis chosen — a below-threshold deposit or property
+    // may still have a confirmed family sponsor — so every basis that can
+    // reach E33F now asks it as a fallback, not only the two bases whose
+    // NAME says "sponsor".
+    const undecidedChoice = facts.retirement_undecided_basis;
     const branchQuestions =
       branch === "bank_deposit"
         ? [
@@ -767,14 +794,53 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
             "secondhome_state_bank",
             "secondhome_own_name",
             "secondhome_passive_income_usd",
+            "family_sponsor_confirmed",
           ]
         : branch === "property"
-          ? ["secondhome_property_value_usd"]
+          ? [
+              "secondhome_property_value_usd",
+              // `el.e33f.retirement` needs BOTH `secondhome.
+              // passive_monthly_income_usd >= 3000` AND `family.
+              // sponsor_confirmed == true` (fact-mapper.ts's
+              // ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS comment) — measured
+              // 2026-09-13: without asking passive income too, a `property`
+              // walk that answers `family_sponsor_confirmed = no` still
+              // dead-ends NEEDS_INPUT on the passive-income fact instead of
+              // resolving to NO_SUPPORTED_PATH, because the rule's AND does
+              // not short-circuit on the known-false sponsor conjunct.
+              "secondhome_passive_income_usd",
+              "family_sponsor_confirmed",
+            ]
           : branch === "passive_income"
             ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
             : branch === "family_sponsor"
               ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
-              : [];
+              : branch === "undecided"
+                ? [
+                    "retirement_undecided_basis",
+                    ...(undecidedChoice === "deposit_or_income"
+                      ? [
+                          "secondhome_deposit_usd",
+                          "secondhome_state_bank",
+                          "secondhome_own_name",
+                          "secondhome_passive_income_usd",
+                          "family_sponsor_confirmed",
+                        ]
+                      : undecidedChoice === "family_sponsor"
+                        ? [
+                            "secondhome_passive_income_usd",
+                            "family_sponsor_confirmed",
+                          ]
+                        : // `still_unsure` (or not yet answered): no evidence
+                          // question follows. `family.sponsor_confirmed`
+                          // stays genuinely UNKNOWN, and the applicant is
+                          // never asked for evidence supporting a basis they
+                          // just said they cannot name — that would be
+                          // exactly the dead end this PR cures, worn as a
+                          // false choice.
+                          []),
+                  ]
+                : [];
     return [
       "sponsor_category",
       "retirement_basis",
@@ -801,6 +867,26 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
       "diaspora_connection",
       "diaspora_documents",
       ...familyQuestionIds(facts),
+    ];
+  }
+
+  // D3-2 (owner ruling SHWEB-20260911): a declared paid activity is
+  // employment, not a generic OTHER purpose — `mapPurposes` emits
+  // EMPLOYMENT for `yes`, so the interview asks the two facts
+  // `el.e23-employment-support` actually reads (`work.
+  // employer_is_indonesian_entity`, `work.indonesian_work_sponsor_confirmed`)
+  // instead of holding on a bare ACTIVITY_BOUNDARY flag. `no` and `unsure`
+  // keep today's `family_sponsor_confirmed` question: `el.c6.social` (the
+  // OTHER-purpose rule) still needs it, and neither branch changes purpose.
+  if (category === "other") {
+    return [
+      "other_purpose",
+      "other_paid_activity",
+      ...(facts.other_paid_activity === "yes"
+        ? ["work_payer", "work_sponsor_confirmed"]
+        : ["family_sponsor_confirmed"]),
+      "stay_days",
+      "entry_pattern",
     ];
   }
 
@@ -845,6 +931,10 @@ function familyQuestionIds(facts: OracleFacts): readonly string[] {
       ? [
           "family_stepchild_marriage_certificate_confirmed",
           "family_stepchild_birth_certificate_confirmed",
+          // D3-4 (PR-D3): the sponsor's own KITAS/KITAP becomes a fact the
+          // applicant answers, replacing the D2 relation-proxy hold — see
+          // tree.ts and `mapDisclosedReviewFlags` (fact-mapper.ts).
+          "family_stepchild_sponsor_permit_confirmed",
         ]
       : []),
     "family_sponsor_confirmed",

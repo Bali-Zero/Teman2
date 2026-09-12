@@ -143,6 +143,19 @@ type SortField =
   | "updated_at";
 type SortOrder = "asc" | "desc";
 
+// Practice type catalog — mirrors GET /api/crm/practices/types/catalog
+// (same shape consumed by process/new/page.tsx and SelectServiceCard.tsx).
+interface CatalogService {
+  code: string;
+  name: string;
+}
+
+interface CatalogCategory {
+  code: string;
+  label: string;
+  services: CatalogService[];
+}
+
 interface FilterState {
   status: string;
   type: string;
@@ -233,6 +246,9 @@ export default function PratichePage() {
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
+  // Process Type filter options — live catalog, replacing the migration-066
+  // legacy codes that used to empty the list on selection (kita-prune lot 6).
+  const [typeCatalog, setTypeCatalog] = useState<CatalogCategory[]>([]);
 
   // Context Menu State
   const [selectedPractice, setSelectedPractice] = useState<Practice | null>(
@@ -323,6 +339,22 @@ export default function PratichePage() {
 
     loadPractices();
   }, [selectedMonth]);
+
+  useEffect(() => {
+    // Live "Process Type" filter options — same catalog endpoint the
+    // process-creation form uses, so the dropdown never lists a code the
+    // state machine has retired.
+    api.crm
+      .getPracticeTypesCatalog()
+      .then((data) => setTypeCatalog(data.categories))
+      .catch((err: unknown) => {
+        logger.error(
+          "[Process] Failed to load practice types catalog",
+          { component: "Process", action: "loadTypeCatalog" },
+          toError(err),
+        );
+      });
+  }, []);
 
   // Track + persist view mode changes
   useEffect(() => {
@@ -807,22 +839,9 @@ export default function PratichePage() {
           // raw `+` would string-concat and corrupt the running sum to NaN.
           const amountOf = (p: Practice) =>
             Number(p.actual_price ?? p.quoted_price ?? 0);
-          const unpaidRevenue = filteredPractices
-            .filter(
-              (p) =>
-                p.payment_status === "unpaid" || p.payment_status === "partial",
-            )
-            .reduce((s, p) => s + amountOf(p), 0);
           const totalRevenue = filteredPractices
             .filter((p) => p.payment_status === "paid")
             .reduce((s, p) => s + Number(p.paid_amount ?? amountOf(p)), 0);
-          const expiringCount = practices.filter((p) => {
-            if (!p.expiry_date) return false;
-            const d = Math.ceil(
-              (new Date(p.expiry_date).getTime() - Date.now()) / 86400000,
-            );
-            return d >= 0 && d <= 30;
-          }).length;
           return (
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--surface-raised)] border border-[var(--bz-border)] text-[var(--bz-text-2)]">
@@ -850,40 +869,6 @@ export default function PratichePage() {
                   aria-label="Filter paid practices"
                 >
                   <Money compact value={totalRevenue} /> paid
-                </button>
-              )}
-              {unpaidRevenue > 0 && (
-                <button
-                  onClick={() =>
-                    setFilters((f) => ({
-                      ...f,
-                      payment_filter:
-                        f.payment_filter === "unpaid" ? "" : "unpaid",
-                    }))
-                  }
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
-                    filters.payment_filter === "unpaid"
-                      ? "bg-[color-mix(in_srgb,var(--state-danger)_25%,transparent)] border-[color-mix(in_srgb,var(--state-danger)_50%,transparent)] text-[var(--state-danger)]"
-                      : "bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] border-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)] hover:bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)]"
-                  }`}
-                  title="Click to filter unpaid practices"
-                  aria-label="Filter unpaid practices"
-                >
-                  <Money compact value={unpaidRevenue} /> unpaid
-                </button>
-              )}
-              {expiringCount > 0 && (
-                <button
-                  onClick={() =>
-                    setFilters((f) => ({ ...f, expiring: !f.expiring }))
-                  }
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
-                    filters.expiring
-                      ? "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] border-[color-mix(in_srgb,var(--state-warning)_40%,transparent)] text-[var(--state-warning)]"
-                      : "bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)] border-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] hover:bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)]"
-                  }`}
-                >
-                  ⏰ {expiringCount} expiring
                 </button>
               )}
             </div>
@@ -1057,10 +1042,7 @@ export default function PratichePage() {
               <option value="inquiry">Inquiry</option>
               <option value="waiting_documents">Waiting Documents</option>
               <option value="sending_invoice">Sending Invoice</option>
-              <option value="waiting_payment">Waiting Payment</option>
               <option value="on_process">On Process</option>
-              <option value="submitted_to_gov">Submitted to Gov</option>
-              <option value="approved">Approved</option>
               <option value="completed">Completed</option>
             </FilterSelect>
             <FilterSelect
@@ -1071,14 +1053,15 @@ export default function PratichePage() {
               selectClassName={FILTER_SELECT_CLASS}
             >
               <option value="">All types</option>
-              <option value="kitas">KITAS Work Permit</option>
-              <option value="extension_kitas">KITAS Extension</option>
-              <option value="visa">Visa</option>
-              <option value="extension_visa">Visa Extension</option>
-              <option value="new_pt">PT PMA Setup</option>
-              <option value="revision_pt">PT Revision</option>
-              <option value="tax">Tax Consulting</option>
-              <option value="accessories">Accessories</option>
+              {typeCatalog.map((cat) => (
+                <optgroup key={cat.code} label={cat.label}>
+                  {cat.services.map((svc) => (
+                    <option key={svc.code} value={svc.code}>
+                      {svc.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
             </FilterSelect>
             <FilterSelect
               id="assigned-to-filter"

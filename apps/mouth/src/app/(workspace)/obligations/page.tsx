@@ -21,97 +21,48 @@
  * stale row (already decided by someone else, or re-clicked) comes back 409
  * with the current status in the message; that message is shown verbatim.
  *
+ * Reviewer usability (U1): the table labels each row through the catalog read
+ * `GET /obligations/catalog` (M3) — rule name, authority, verified badge, and
+ * `legal_source` in the row detail — and resolves `client_id` to a display
+ * name through `GET /api/crm/clients/{id}`. The catalog is never copied into
+ * the frontend and a resolved client name never leaves the browser tab: no
+ * log, no storage, no other request carries it (see `useClientNames`).
+ *
+ * Client profile (U2): with a client filter set, `ClientProfilePanel` reads
+ * `GET /obligations/profile/{client_id}` and lets the reviewer fill in the
+ * attributes the engine reads out of `companies.custom_fields`. A save PATCHes
+ * only the touched keys — see that component for why sending the whole profile
+ * back would destroy the `missing_keys` signal.
+ *
  * Auth + transport reuse the shared `api` client (httpOnly cookie + bearer),
- * same as `(workspace)/review/page.tsx`. No client join / no PII beyond what
- * the API already returns (ids only — this page never fetches client names).
+ * same as `(workspace)/review/page.tsx`.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
-import { ApiError } from "@/lib/api/error-handler";
 import { logger } from "@/lib/logger";
 
-// ── API contract (local types — review/page.tsx also calls `api.get`/`api.post`
-//    with plain interfaces rather than the generated `schema.d.ts` typed paths,
-//    so this page follows the same convention; see PR notes for why no
-//    `npm run generate:openapi` regen was needed). ─────────────────────────
-type ObligationStatus =
-  "proposed" | "approved" | "rejected" | "alerted" | "done";
-
-const STATUS_FILTER_OPTIONS = [
-  "proposed",
-  "approved",
-  "rejected",
-  "alerted",
-  "done",
-  "all",
-] as const;
-type StatusFilter = (typeof STATUS_FILTER_OPTIONS)[number];
-
-interface ObligationOut {
-  id: number;
-  client_id: number;
-  rule_id: string;
-  period_key: string;
-  due_date: string;
-  status: ObligationStatus;
-  needs_review_reason: string | null;
-  reviewer_email: string | null;
-  reviewed_at: string | null;
-  review_note: string | null;
-  alert_id: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
-
-interface ObligationListOut {
-  total: number;
-  limit: number;
-  offset: number;
-  items: ObligationOut[];
-}
-
-interface GenerateOut {
-  client_id: number;
-  inserted_count: number;
-  company_type: string;
-  needs_manual_classification: boolean;
-  warning: string | null;
-  rows: ObligationOut[];
-}
-
-interface ApproveOut {
-  obligation: ObligationOut;
-  alert_id: string;
-}
+import { ClientProfilePanel } from "./components/ClientProfilePanel";
+import { ObligationsTable } from "./components/ObligationsTable";
+import { StatusCounters } from "./components/StatusCounters";
+import { describeError } from "./components/describe-error";
+import {
+  CARD,
+  INPUT_STYLE,
+  STATUS_FILTER_OPTIONS,
+  type ApproveOut,
+  type GenerateOut,
+  type ObligationListOut,
+  type ObligationOut,
+  type StatusFilter,
+} from "./components/types";
+import { useClientNames } from "./components/useClientNames";
+import { useObligationsCatalog } from "./components/useObligationsCatalog";
+import { useStatusCounters } from "./components/useStatusCounters";
 
 const LIMIT = 50;
-
-const CARD = {
-  borderColor: "var(--bz-border)",
-  background: "var(--bz-card, var(--bz-surface))",
-} as const;
-
-const INPUT_STYLE = {
-  borderColor: "var(--bz-border)",
-  background: "var(--bz-surface)",
-  color: "var(--bz-text-1)",
-} as const;
-
-/** Turn a thrown api error into the exact text a reviewer should see. */
-function describeError(e: unknown, fallback: string): string {
-  if (e instanceof ApiError) {
-    if (e.statusCode === 401 || e.statusCode === 403) return "Admin only.";
-    if (e.statusCode === 404) return e.message || "Not found.";
-    if (e.statusCode === 409)
-      return e.message || "Conflict — this row was already decided.";
-    return e.message || fallback;
-  }
-  if (e instanceof Error) return e.message || fallback;
-  return fallback;
-}
 
 export default function ObligationsPage() {
   const router = useRouter();
@@ -123,6 +74,8 @@ export default function ObligationsPage() {
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Bumped after every write so the counter strip follows the register.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   // ── filters ─────────────────────────────────────────────────────────────
   const [filterClientId, setFilterClientId] = useState("");
@@ -141,6 +94,19 @@ export default function ObligationsPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [rowError, setRowError] = useState<Record<number, string>>({});
+
+  // ── catalog, client names, counters ────────────────────────────────────
+  const catalog = useObligationsCatalog();
+  const clientIds = useMemo(() => items.map((row) => row.client_id), [items]);
+  const clientNames = useClientNames(clientIds);
+  const trimmedClientFilter = filterClientId.trim();
+  const { counts, loading: countsLoading } = useStatusCounters(
+    trimmedClientFilter,
+    refreshTick,
+  );
+  // Grouping by due month only makes sense for one client's calendar; across
+  // clients the flat, server-ordered table is what the reviewer works through.
+  const groupByMonth = trimmedClientFilter !== "";
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -182,39 +148,49 @@ export default function ObligationsPage() {
     setOffset(0);
   }, [filterClientId, filterStatus]);
 
-  const handleGenerate = useCallback(async () => {
-    setGenerateError(null);
-    const cid = Number(genClientId);
-    if (!genClientId.trim() || !Number.isInteger(cid) || cid <= 0) {
-      setGenerateError("Enter a valid client id.");
-      return;
-    }
-    const horizon = Number(genHorizonDays);
-    if (!Number.isInteger(horizon) || horizon < 1 || horizon > 730) {
-      setGenerateError("Horizon days must be an integer between 1 and 730.");
-      return;
-    }
-    setGenerating(true);
-    setGenerateResult(null);
-    setNotice(null);
-    try {
-      const res = await api.post<GenerateOut>(
-        "/api/compliance/obligations/generate",
-        { client_id: cid, horizon_days: horizon },
-      );
-      setGenerateResult(res);
-      await loadList();
-    } catch (e) {
-      logger.error(
-        "obligations generate failed",
-        { component: "ObligationsPage", action: "generate" },
-        e instanceof Error ? e : new Error(String(e)),
-      );
-      setGenerateError(describeError(e, "Could not generate proposals."));
-    } finally {
-      setGenerating(false);
-    }
-  }, [genClientId, genHorizonDays, loadList]);
+  /**
+   * `clientIdOverride` lets the profile panel (U2) reuse this exact path after a
+   * save instead of owning a second generate implementation: same validation,
+   * same result banner, same list refresh. Omitted, it reads the form field.
+   */
+  const handleGenerate = useCallback(
+    async (clientIdOverride?: string) => {
+      setGenerateError(null);
+      const rawClientId = clientIdOverride ?? genClientId;
+      const cid = Number(rawClientId);
+      if (!rawClientId.trim() || !Number.isInteger(cid) || cid <= 0) {
+        setGenerateError("Enter a valid client id.");
+        return;
+      }
+      const horizon = Number(genHorizonDays);
+      if (!Number.isInteger(horizon) || horizon < 1 || horizon > 730) {
+        setGenerateError("Horizon days must be an integer between 1 and 730.");
+        return;
+      }
+      setGenerating(true);
+      setGenerateResult(null);
+      setNotice(null);
+      try {
+        const res = await api.post<GenerateOut>(
+          "/api/compliance/obligations/generate",
+          { client_id: cid, horizon_days: horizon },
+        );
+        setGenerateResult(res);
+        setRefreshTick((t) => t + 1);
+        await loadList();
+      } catch (e) {
+        logger.error(
+          "obligations generate failed",
+          { component: "ObligationsPage", action: "generate" },
+          e instanceof Error ? e : new Error(String(e)),
+        );
+        setGenerateError(describeError(e, "Could not generate proposals."));
+      } finally {
+        setGenerating(false);
+      }
+    },
+    [genClientId, genHorizonDays, loadList],
+  );
 
   const handleApprove = useCallback(
     async (row: ObligationOut) => {
@@ -230,6 +206,7 @@ export default function ObligationsPage() {
           body,
         );
         setNotice(`✓ Obligation #${row.id} approved → alert ${res.alert_id}.`);
+        setRefreshTick((t) => t + 1);
         await loadList();
       } catch (e) {
         logger.error(
@@ -273,6 +250,7 @@ export default function ObligationsPage() {
           reason,
         });
         setNotice(`Obligation #${row.id} rejected.`);
+        setRefreshTick((t) => t + 1);
         await loadList();
       } catch (e) {
         logger.error(
@@ -294,6 +272,10 @@ export default function ObligationsPage() {
     },
     [notes, loadList],
   );
+
+  const handleNoteChange = useCallback((id: number, value: string) => {
+    setNotes((prev) => ({ ...prev, [id]: value }));
+  }, []);
 
   const pageStart = total === 0 ? 0 : offset + 1;
   const pageEnd = Math.min(offset + LIMIT, total);
@@ -417,6 +399,33 @@ export default function ObligationsPage() {
         )}
       </section>
 
+      {/* ── Client profile (U2) ──────────────────────────────────────────
+          Only meaningful for ONE client, so it follows the client filter the
+          same way the counter strip does. It sits under the generate card
+          because its "Generate proposals" action reports into that card. */}
+      {trimmedClientFilter !== "" && (
+        <ClientProfilePanel
+          // `key` on the client id, deliberately: the panel holds an unsaved
+          // DRAFT. Without a remount, switching the filter from one client to
+          // another keeps the previous client's edits on screen and a save would
+          // write them to the new client. Remounting throws the draft away with
+          // the client it belonged to.
+          key={trimmedClientFilter}
+          clientId={trimmedClientFilter}
+          generating={generating}
+          onGenerate={(cid) => void handleGenerate(cid)}
+        />
+      )}
+
+      {/* ── Status counters ──────────────────────────────────────────── */}
+      <StatusCounters
+        counts={counts}
+        loading={countsLoading}
+        clientId={trimmedClientFilter}
+        activeStatus={filterStatus}
+        onSelect={setFilterStatus}
+      />
+
       {/* ── Filters ──────────────────────────────────────────────────── */}
       <section className="mb-4 flex flex-wrap items-end gap-3">
         <label className="text-xs" style={{ color: "var(--bz-text-3)" }}>
@@ -448,7 +457,10 @@ export default function ObligationsPage() {
         </label>
         <button
           type="button"
-          onClick={() => void loadList()}
+          onClick={() => {
+            setRefreshTick((t) => t + 1);
+            void loadList();
+          }}
           disabled={loading}
           className="rounded-md border px-3 py-1.5 text-sm"
           style={{ borderColor: "var(--bz-border)", color: "var(--bz-text-2)" }}
@@ -456,6 +468,12 @@ export default function ObligationsPage() {
           {loading ? "Refreshing…" : "Refresh"}
         </button>
       </section>
+
+      {catalog.error && (
+        <p className="mb-3 text-xs" style={{ color: "var(--state-warning)" }}>
+          {catalog.error}
+        </p>
+      )}
 
       {listError && (
         <div
@@ -477,164 +495,18 @@ export default function ObligationsPage() {
         <p style={{ color: "var(--bz-text-3)" }}>No obligations found.</p>
       ) : (
         !listError && (
-          <div className="overflow-auto rounded-xl border" style={CARD}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr
-                  className="border-b text-left"
-                  style={{ borderColor: "var(--bz-border)" }}
-                >
-                  {[
-                    "ID",
-                    "Client",
-                    "Rule",
-                    "Period",
-                    "Due date",
-                    "Needs review",
-                    "Status",
-                    "Reviewer",
-                    "Actions",
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="px-3 py-2 text-xs font-medium"
-                      style={{ color: "var(--bz-text-3)" }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b last:border-b-0"
-                    style={{ borderColor: "var(--bz-border)" }}
-                  >
-                    <td
-                      className="px-3 py-2"
-                      style={{ color: "var(--bz-text-1)" }}
-                    >
-                      {row.id}
-                    </td>
-                    <td
-                      className="px-3 py-2"
-                      style={{ color: "var(--bz-text-1)" }}
-                    >
-                      {row.client_id}
-                    </td>
-                    <td
-                      className="px-3 py-2"
-                      style={{ color: "var(--bz-text-1)" }}
-                    >
-                      {row.rule_id}
-                    </td>
-                    <td
-                      className="px-3 py-2"
-                      style={{ color: "var(--bz-text-1)" }}
-                    >
-                      {row.period_key}
-                    </td>
-                    <td
-                      className="px-3 py-2"
-                      style={{ color: "var(--bz-text-1)" }}
-                    >
-                      {row.due_date}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-xs"
-                      style={{ color: "var(--bz-text-3)" }}
-                    >
-                      {row.needs_review_reason ?? "—"}
-                    </td>
-                    <td
-                      className="px-3 py-2"
-                      style={{ color: "var(--bz-text-1)" }}
-                    >
-                      {row.status}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-xs"
-                      style={{ color: "var(--bz-text-3)" }}
-                    >
-                      {row.reviewer_email ? (
-                        <>
-                          {row.reviewer_email}
-                          {row.reviewed_at
-                            ? ` · ${new Date(row.reviewed_at).toLocaleString()}`
-                            : ""}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      {row.status === "proposed" ? (
-                        <div className="flex flex-col gap-1">
-                          <input
-                            aria-label={`Note for obligation ${row.id}`}
-                            className="w-40 rounded border px-2 py-1 text-xs"
-                            style={INPUT_STYLE}
-                            placeholder="note (required to reject)"
-                            value={notes[row.id] ?? ""}
-                            onChange={(e) =>
-                              setNotes((prev) => ({
-                                ...prev,
-                                [row.id]: e.target.value,
-                              }))
-                            }
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              disabled={busyId === row.id}
-                              onClick={() => void handleApprove(row)}
-                              className="rounded-md px-3 py-1 text-xs font-medium text-white"
-                              style={{
-                                background: "var(--state-success)",
-                                opacity: busyId === row.id ? 0.6 : 1,
-                              }}
-                            >
-                              {busyId === row.id ? "…" : "Approve"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busyId === row.id}
-                              onClick={() => void handleReject(row)}
-                              className="rounded-md px-3 py-1 text-xs font-medium text-white"
-                              style={{
-                                background: "var(--state-danger)",
-                                opacity: busyId === row.id ? 0.6 : 1,
-                              }}
-                            >
-                              {busyId === row.id ? "…" : "Reject"}
-                            </button>
-                          </div>
-                          {rowError[row.id] && (
-                            <p
-                              role="alert"
-                              className="text-xs"
-                              style={{ color: "var(--state-danger)" }}
-                            >
-                              {rowError[row.id]}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <span
-                          className="text-xs"
-                          style={{ color: "var(--bz-text-3)" }}
-                        >
-                          {row.alert_id ? `alert ${row.alert_id}` : "—"}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ObligationsTable
+            items={items}
+            catalog={catalog.byId}
+            clientNames={clientNames}
+            groupByMonth={groupByMonth}
+            notes={notes}
+            rowError={rowError}
+            busyId={busyId}
+            onNoteChange={handleNoteChange}
+            onApprove={(row) => void handleApprove(row)}
+            onReject={(row) => void handleReject(row)}
+          />
         )
       )}
 

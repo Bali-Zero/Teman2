@@ -269,15 +269,58 @@ class DeadEnd:
 #: Never add a row without an anchor showing the fact is genuinely unaskable
 #: in that walk — and prefer curing it, which is what every row before THIS
 #: PR became.
+#: PR-D3 (D3-3) cures BOTH rows above by making `property` and `undecided`
+#: ask `family_sponsor_confirmed` too (flow.ts) — measured 2026-09-13,
+#: `offshore/retirement/property/age64` now answers `SUPPORTED_CANDIDATES
+#: [E33F]` and `offshore/retirement/undecided/age64` answers
+#: `SUPPORTED_CANDIDATES [E33E, E33F]`.
+#:
+#: A first pass of D3-3 landed with 5 rows: `family_sponsor_confirmed`'s
+#: cure exposed a TWIN pattern on `offshore/invest/property/below_threshold`,
+#: `offshore/invest/bank_deposit/below_threshold` and `offshore/retirement/
+#: property/age64/sponsor_no` — once the CHOSEN basis fails, `el.e33.
+#: property-basis` / `el.e33.deposit-basis` / `el.e33e.retirement`
+#: (`on_unknown: NEEDS_INPUT`, verified against rulepack-prod-020.
+#: source.json) surface the TWIN, unasked basis's facts as still-missing,
+#: because "unknown AND known" does not short-circuit the way "known-false
+#: AND known" does. Owner ruling 2026-09-13: closed, not allowlisted — a
+#: below-threshold answer on a Second Home base is a definitive negative
+#: ("I did not claim a deposit/property via this route"), not an unresolved
+#: one, so `mapOracleFactsToApplicantFacts` (fact-mapper.ts,
+#: `depositBasisDecisivelyNotChosen` / `propertyBasisDecisivelyNotChosen`)
+#: now emits the twin basis's facts as KNOWN(0)/KNOWN(false) whenever the
+#: interview has decisively routed to the OTHER basis — turning the rule's
+#: own AND definitively false instead of leaving it unknown. Measured
+#: 2026-09-13: all three now answer `NO_SUPPORTED_PATH` with `missing_facts
+#: == []`. The two `invest` walks reach `OPERATIONAL_NO_PRODUCT_MATCHES_
+#: DECLARED_PURPOSES` (the pack has no EXCLUDE-type reason naming this
+#: threshold — a SUPPORT rule that fails to fire emits no reason_code of its
+#: own), which `engine-adapter.ts`'s `secondHomeBelowThresholdReason` now
+#: renders naming the applicant's declared value and the exact USD
+#: threshold instead of the generic catalogue sentence. The retirement walk
+#: reaches the pre-existing, now-reachable-for-the-first-time
+#: `SPONSOR_REQUIRED` (`hf.e33f.sponsor-required`), given real copy in the
+#: same PR. Two rows remain, neither this pattern:
+#:
+#: - `offshore/other/paid/sponsor_unsure`: `work_sponsor_confirmed` IS asked
+#:   on this walk (D3-2's employment route) and the mapper refuses to
+#:   certify "unsure" — `ANSWER_NEVER_CERTIFIED`, correctly nameable as a
+#:   follow-up since the question is already in this walk's own history.
+#: - `offshore/retirement/undecided/age64/still_unsure`: the honest
+#:   non-answer D3-3 asks for — no evidence question follows a genuine "I
+#:   still can't say", so `family.sponsor_confirmed` stays unknown exactly
+#:   as it did pre-cure, but `family_sponsor_confirmed` IS nameable as a
+#:   follow-up (asked unconditionally by the `family`/`diaspora`/`invest`/
+#:   `other` categories, which is what `followUpPrerequisitesMet` checks).
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
-    "offshore/retirement/property/age64": (
+    "offshore/other/paid/sponsor_unsure": (
         DeadEnd(
-            fact="family.sponsor_confirmed",
-            source_question="family_sponsor_confirmed",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
+            fact="work.indonesian_work_sponsor_confirmed",
+            source_question="work_sponsor_confirmed",
+            why_unaskable=ANSWER_NEVER_CERTIFIED,
         ),
     ),
-    "offshore/retirement/undecided/age64": (
+    "offshore/retirement/undecided/age64/still_unsure": (
         DeadEnd(
             fact="family.sponsor_confirmed",
             source_question="family_sponsor_confirmed",
@@ -320,25 +363,100 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/family/SPOUSE/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/family/STEPCHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31D")),
     "offshore/family/STEPCHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1", "E31D")),
+    # D3-4 (PR-D3): the sponsor-permit question is HUMAN_CONTEXT — no seq-20
+    # rule reads it, so these two walks carry the IDENTICAL wire facts as
+    # the "yes" walk above and answer identically at THIS (backend, no-flag)
+    # layer. The frontend-only AMBIGUOUS_SPONSOR hold this question raises
+    # for `no`/`unsure` is verified separately in fact-mapper.test.ts /
+    # activity-boundary.test.ts — this file cannot see disclosed flags at
+    # all (module docstring, bound 1).
+    "offshore/family/STEPCHILD/spNat=ID/sponsor_permit_no": (
+        "SUPPORTED_CANDIDATES",
+        ("C1", "E31D"),
+    ),
+    "offshore/family/STEPCHILD/spNat=ID/sponsor_permit_unsure": (
+        "SUPPORTED_CANDIDATES",
+        ("C1", "E31D"),
+    ),
     "offshore/holdsPermit/current/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
-    "offshore/invest/bank_deposit": ("SUPPORTED_CANDIDATES", ("C2",)),
+    # D3-1 (PR-D3, owner ruling SHWEB-20260911): `property`/`bank_deposit`
+    # now route to Second Home — `mapPurposes` emits SECOND_HOME alone, never
+    # joined with INVESTMENT (owner ruling 3) — and the corpus's canned
+    # numeric answer (1_000_000_000, `generate-walk-corpus.ts::answerFor`)
+    # clears both E33 thresholds (USD 1,000,000 property / USD 130,000
+    # deposit), so both walks answer E33 instead of C2.
+    "offshore/invest/bank_deposit": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/family": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/merit": ("SUPPORTED_CANDIDATES", ("C2",)),
-    "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/undecided": ("SUPPORTED_CANDIDATES", ("C2",)),
-    "offshore/other": ("SUPPORTED_CANDIDATES", ("C6",)),
+    # C1 gate (PR-D3): below-threshold walks for D3-1's re-route. Owner
+    # ruling 2026-09-13 CLOSED the twin-base dead end this pattern first
+    # produced (see WALK_DEAD_END_ALLOWLIST above) — `fact-mapper.ts` now
+    # emits the twin basis's facts as KNOWN(0)/KNOWN(false), which resolves
+    # `el.e33.property-basis`/`el.e33.deposit-basis` decisively instead of
+    # leaving them unknown. `birth_date` is overridden past 55 on both so the
+    # reason is the actual threshold story, not an unrelated AGE_BELOW_55.
+    "offshore/invest/property/below_threshold": ("NO_SUPPORTED_PATH", ()),
+    "offshore/invest/bank_deposit/below_threshold": ("NO_SUPPORTED_PATH", ()),
+    # D3-2 (PR-D3): `other_paid_activity`'s first option is `yes`, so this
+    # walk now routes to the two employment facts `el.e23-employment-support`
+    # reads and `mapPurposes` emits EMPLOYMENT alone; both facts default to
+    # `yes`/true (`answerFor`'s first-option rule), so E23 answers instead of
+    # C6.
+    # C2 gate (PR-D3): the `paid = no` walk that must actually yield C6 —
+    # `offshore/other`'s own default now answers `yes` (D3-2, EMPLOYMENT/E23,
+    # comment above), so this is the walk that proves C6 is deliverable.
+    "offshore/other/no_paid_activity": ("SUPPORTED_CANDIDATES", ("C6",)),
+    # C1 gate (PR-D3): the two negative D3-2 facts.
+    "offshore/other": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "offshore/other/paid/employer_no": ("NO_SUPPORTED_PATH", ()),
+    "offshore/other/paid/sponsor_unsure": ("NEEDS_INPUT", ()),
     "offshore/remote": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
-    "offshore/retirement/bank_deposit/age64": ("SUPPORTED_CANDIDATES", ("E33E",)),
+    # D3-3 (PR-D3): now ALSO asks `family_sponsor_confirmed` (default "yes"),
+    # and the corpus's canned passive-income default clears E33F's own
+    # USD 3,000 floor too, so both products answer together.
+    "offshore/retirement/bank_deposit/age64": (
+        "SUPPORTED_CANDIDATES",
+        ("E33E", "E33F"),
+    ),
+    # D3-3 (PR-D3): the funnel census's LARGEST dead end (30 production
+    # walks) — below both E33 thresholds, cured only by the family-sponsor
+    # fallback `property`/`bank_deposit`/`undecided` now all ask.
+    "offshore/retirement/bank_deposit/age64/below_threshold": (
+        "SUPPORTED_CANDIDATES",
+        ("E33F",),
+    ),
     "offshore/retirement/family_sponsor": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/family_sponsor/age64": ("SUPPORTED_CANDIDATES", ("E33F",)),
     "offshore/retirement/passive_income": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/passive_income/age64": ("SUPPORTED_CANDIDATES", ("E33F",)),
     "offshore/retirement/property": ("NO_SUPPORTED_PATH", ()),
-    "offshore/retirement/property/age64": ("NEEDS_INPUT", ()),
+    # D3-3 (PR-D3): CURED — `property` now asks `family_sponsor_confirmed`
+    # (default "yes"), so this walk answers E33F instead of dead-ending.
+    "offshore/retirement/property/age64": ("SUPPORTED_CANDIDATES", ("E33F",)),
+    # C1 gate (PR-D3): the negative sponsor sub-branch. Owner ruling
+    # 2026-09-13 CLOSED this (same twin-base fix as the invest walks above)
+    # — `SPONSOR_REQUIRED` (`hf.e33f.sponsor-required`) now decides it, given
+    # real copy in the same PR (previously unreachable, would have fallen
+    # through to a raw code dump).
+    "offshore/retirement/property/age64/sponsor_no": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/undecided": ("NO_SUPPORTED_PATH", ()),
-    "offshore/retirement/undecided/age64": ("NEEDS_INPUT", ()),
+    # D3-3 (PR-D3): CURED — `undecided` now asks `retirement_undecided_basis`
+    # first; its default "deposit_or_income" answer routes through the full
+    # deposit-basis evidence set, clearing E33E, AND `family_sponsor_confirmed`
+    # (default "yes") clears E33F too — both answer.
+    "offshore/retirement/undecided/age64": (
+        "SUPPORTED_CANDIDATES",
+        ("E33E", "E33F"),
+    ),
+    "offshore/retirement/undecided/age64/family_sponsor": (
+        "SUPPORTED_CANDIDATES",
+        ("E33F",),
+    ),
+    "offshore/retirement/undecided/age64/still_unsure": ("NEEDS_INPUT", ()),
     "offshore/second_home/bank_deposit": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/second_home/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
@@ -350,10 +468,15 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "onshore/holdsPermit/current/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "onshore/holdsPermit/expired/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "onshore/invest": ("SUPPORTED_CANDIDATES", ("C2",)),
-    "onshore/other": ("SUPPORTED_CANDIDATES", ("C6",)),
+    # D3-2 (PR-D3): same route change as `offshore/other` above.
+    "onshore/other": ("SUPPORTED_CANDIDATES", ("E23",)),
     "onshore/remote": ("NO_SUPPORTED_PATH", ()),
     "onshore/retirement": ("NO_SUPPORTED_PATH", ()),
-    "onshore/retirement/age64": ("SUPPORTED_CANDIDATES", ("E33E",)),
+    # D3-3 (PR-D3): this walk never overrides `retirement_basis`, so it
+    # answers via the tree's own first-option default ("bank_deposit") —
+    # same shape and same fix as `offshore/retirement/bank_deposit/age64`
+    # above.
+    "onshore/retirement/age64": ("SUPPORTED_CANDIDATES", ("E33E", "E33F")),
     "onshore/second_home": ("SUPPORTED_CANDIDATES", ("E33",)),
     "onshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
     "onshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
@@ -377,7 +500,15 @@ EXPECTED_STATE_CENSUS: dict[str, int] = dict(
 #: `WALK_DEAD_END_ALLOWLIST` above) — this pack's rules still ask for it, the
 #: `retirement` branch just doesn't route these two bases to the question
 #: that supplies it.
-EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {"family.sponsor_confirmed": 2}
+#: PR-D3: the old `family.sponsor_confirmed: 2` (property/undecided age64)
+#: is cured. The twin-base dead ends (below-threshold invest × 2,
+#: retirement/property/sponsor_no) are CLOSED (owner ruling 2026-09-13, see
+#: WALK_DEAD_END_ALLOWLIST above) rather than allowlisted, so they never
+#: reach NEEDS_INPUT and never appear here. Two facts remain, one each.
+EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {
+    "work.indonesian_work_sponsor_confirmed": 1,
+    "family.sponsor_confirmed": 1,
+}
 
 
 def _load_walks() -> dict[str, dict[str, Any]]:
@@ -553,19 +684,23 @@ def outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return _evaluate_walks(walks)
 
 
-def test_corpus_is_the_67_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_corpus_is_the_78_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
-    43 before PR-3, 61 before THIS PR. PR-5's 6 new walks are the 5 offshore
-    `retirement` bases plus the onshore neutral `retirement` walk, each
-    replayed with `birth_date` overridden to `RETIREMENT_AGE_64_BIRTH_DATE`
-    (age 64 on `CORPUS_TODAY`) instead of the corpus-wide default 25 — the
-    generator's own age dimension, not a new tree branch. Every OTHER walk in
-    the corpus is unchanged, byte-for-byte, because `birth_date` is a spine
-    question no branch reads."""
+    43 before PR-3, 61 before PR-5, 67 before PR-D3. PR-5's 6 new walks are
+    the 5 offshore `retirement` bases plus the onshore neutral `retirement`
+    walk, each replayed with `birth_date` overridden to
+    `RETIREMENT_AGE_64_BIRTH_DATE` (age 64 on `CORPUS_TODAY`) instead of the
+    corpus-wide default 25 — the generator's own age dimension, not a new
+    tree branch. PR-D3's 11 new walks are real new branches: the two
+    invest-vehicle below-threshold routes, the three declared-paid-activity
+    branches, the retirement property/bank_deposit/undecided branches that
+    used to dead-end, and the two new STEPCHILD sponsor-permit answers — see
+    `generate-walk-corpus.ts`. Every OTHER walk in the corpus is unchanged,
+    byte-for-byte."""
 
-    assert len(walks) == 67, f"expected 67 interview walks, found {len(walks)}"
+    assert len(walks) == 78, f"expected 78 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -577,7 +712,7 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_2_dead_ends_10_no_paths_and_55_answers(
+def test_walk_state_census_is_2_dead_ends_14_no_paths_and_62_answers(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
@@ -586,18 +721,23 @@ def test_walk_state_census_is_2_dead_ends_10_no_paths_and_55_answers(
     36/0/7 on seq-19; 21/0/22 once the signed seq-20 bundle's stay-day
     widening landed; 11/10/22 with PR-2's reorder on top; 0/10/51 over a
     43 → 61 corpus with PR-3's interview; 2/10/55 over a 61 → 67 corpus with
-    THIS PR's age dimension on top (module docstring). The 2 NEEDS_INPUT are
-    new walks, not moved ones: `offshore/retirement/property/age64` and
-    `offshore/retirement/undecided/age64`, both allowlisted above."""
+    PR-5's age dimension on top; 2/14/62 over a 67 → 78 corpus with PR-D3
+    (module docstring). PR-D3 CURES the 2 PR-5 dead ends
+    (`offshore/retirement/property/age64` and `.../undecided/age64` both now
+    answer) and adds 11 new walks. A first pass left 5 of those 11
+    NEEDS_INPUT; owner ruling 2026-09-13 CLOSED 3 of them (the below-
+    threshold twin-base pattern, WALK_DEAD_END_ALLOWLIST above) to
+    NO_SUPPORTED_PATH instead of allowlisting them. Final split of the 11:
+    2 NEEDS_INPUT, 4 NO_SUPPORTED_PATH (`offshore/other/paid/employer_no`
+    plus the 3 closed dead ends), 5 SUPPORTED_CANDIDATES. Net: NEEDS_INPUT
+    2→0→2, NO_SUPPORTED_PATH 10→10→14, SUPPORTED_CANDIDATES 55→57→62."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     assert census == EXPECTED_STATE_CENSUS == {
         "NEEDS_INPUT": 2,
-        "NO_SUPPORTED_PATH": 10,
-        "SUPPORTED_CANDIDATES": 55,
+        "NO_SUPPORTED_PATH": 14,
+        "SUPPORTED_CANDIDATES": 62,
     }
-    # No longer stated as an absence: THIS PR is the one that puts NEEDS_INPUT
-    # back in the census, on exactly the 2 walks the allowlist above names.
     assert census["NEEDS_INPUT"] == 2
     # NOT a claim about production. The corpus carries no disclosure flags, so
     # the review arm of `apply_public_policy_adapters` is unreachable from
@@ -605,10 +745,7 @@ def test_walk_state_census_is_2_dead_ends_10_no_paths_and_55_answers(
     # a regression that adds a disclosure flag passes it invisibly. Bound 1 of
     # the module docstring, with the measurement.
     assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
-    # The 10 NO_SUPPORTED_PATH walks are PR-2's, unmoved: this PR only ever
-    # adds NEW walks that either answer or dead-end, and no existing walk's
-    # state changed.
-    assert census["NO_SUPPORTED_PATH"] == 10
+    assert census["NO_SUPPORTED_PATH"] == 14
 
 
 def test_dead_end_fact_census_matches_the_blocking_fact_table(
@@ -713,30 +850,23 @@ def test_no_walk_dead_ends_outside_the_allowlist(outcomes: dict[str, dict[str, A
     assert not violations, "walk-census invariant broken:\n  " + "\n  ".join(violations)
 
 
-def test_allowlist_has_exactly_the_two_age64_rows_so_the_invariant_is_conditional_again() -> None:
-    """PR-3's deliverable — ``len(...) == 0``, the strongest form this table
-    can take — held for exactly one wave. THIS PR is the one that reopens it.
-
-    The invariant is no longer unconditional: it now reads "no walk may end
-    NEEDS_INPUT on a fact for which the interview has no reachable question
-    in that walk's own history, OR the walk is one of these 2 named rows,
-    each checked against its own `asked` history below." That is a WEAKER
-    claim than PR-3 shipped, on purpose — `offshore/retirement/property/age64`
-    and `offshore/retirement/undecided/age64` are the first walks able to
-    clear `hf.e33e.age-below-55` / `hf.e33f.age-below-55` and reach
-    `el.e33e.retirement` / `el.e33f.retirement` on the facts, and neither
-    retirement sub-branch asks `family_sponsor_confirmed`. Curing `flow.ts` so
-    they do would restore `len(...) == 0`, but it is a second concern (see
-    `WALK_DEAD_END_ALLOWLIST`'s module-level comment) and not this PR's.
+def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
+    """PR-3's deliverable — ``len(...) == 0`` — held for exactly one wave;
+    PR-5 reopened it with 2 rows; THIS PR (PR-D3) CURES both of PR-5's rows
+    (both retirement age64 walks now answer). A first pass opened it again
+    with 5 new rows; owner ruling 2026-09-13 CLOSED 3 of them (the
+    below-threshold twin-base pattern) rather than allowlist them — see
+    `WALK_DEAD_END_ALLOWLIST`'s module-level comment. 2 rows remain, neither
+    a re-hash of PR-5's shape.
 
     An equality against a named 2-row dict is still not a loosened count in
-    the sense PR-3 warned about: it names both rows explicitly, and any
-    THIRD row — however well argued — still has to move this literal in the
-    PR that adds it."""
+    the sense PR-3 warned about: it names every row explicitly, and any
+    additional row — however well argued — still has to move this literal in
+    the PR that adds it."""
 
     assert set(WALK_DEAD_END_ALLOWLIST) == {
-        "offshore/retirement/property/age64",
-        "offshore/retirement/undecided/age64",
+        "offshore/other/paid/sponsor_unsure",
+        "offshore/retirement/undecided/age64/still_unsure",
     }
     assert len(WALK_DEAD_END_ALLOWLIST) == 2
 

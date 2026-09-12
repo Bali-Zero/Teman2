@@ -7,6 +7,7 @@ import { HeroBlueprint } from "../v2/_components/HeroBlueprint";
 import { PersonaDoors } from "../v2/_components/PersonaDoors";
 import { NavWhatsAppCTA } from "../v2/_components/NavWhatsAppCTA";
 import { SocialProof } from "../v2/_components/SocialProof";
+import { socialProofRoster } from "../v2/_components/socialProofRoster";
 import { TopicPills } from "../v2/_components/TopicPills";
 import { NewsHero } from "../v2/_components/NewsHero";
 import { LatestNews } from "../v2/_components/LatestNews";
@@ -117,7 +118,7 @@ export default async function HomePage() {
             founders in the R19 band rhythm — while /v2 keeps SocialProof's
             default render. Opt-in, so the default is unchanged for everyone
             else. */}
-        <SocialProof variant="founder-band" />
+        <SocialProof variant="founder-band" {...socialProofRoster()} />
         <NewsHero articles={heroArticles} />
         <TopicPills />
         <LatestNews articles={latest} />

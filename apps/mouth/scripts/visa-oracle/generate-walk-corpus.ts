@@ -310,6 +310,152 @@ export function enumerateScenarios(): Scenario[] {
     },
   });
 
+  // D3-3/D3-4 (PR-D3, owner ruling SHWEB-20260911): a walk per new branch
+  // (spec §3), covering the gate conditions half-1 (D3-1/D3-2) owed and the
+  // two new questions this PR adds.
+  const base = { in_indonesia: "no", holds_stay_permit: "no" } as const;
+
+  // C1: half-1's `invest` re-route, below the E33 threshold (walks 2/4,
+  // 23-PR-D3-SPEC §walk-list). Above-threshold is already the corpus's
+  // existing default for `offshore/invest/property`/`bank_deposit`.
+  // `birth_date` overridden past 55 on BOTH (owner escalation, 2026-09-13
+  // gate finding): at the corpus-wide default age 25, `hf.e33e.age-below-55`
+  // fires independently of the threshold this walk exists to prove, masking
+  // it behind an unrelated AGE_BELOW_55 reason — these two walks are the
+  // ONLY thing that tests the threshold path itself, so they must not be
+  // confounded by it. `RETIREMENT_AGE_64_BIRTH_DATE` is a spine question no
+  // branch reads, same reasoning as the retirement age-64 walks below.
+  scenarios.push({
+    label: "offshore/invest/property/below_threshold",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "property",
+      secondhome_property_value_usd: "500000",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/bank_deposit/below_threshold",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "bank_deposit",
+      secondhome_deposit_usd: "50000",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+    },
+  });
+
+  // C1: half-1's declared-paid-activity route (D3-2), the two negative facts
+  // and the negative branch C2 says should deliver C6.
+  scenarios.push({
+    label: "offshore/other/paid/employer_no",
+    overrides: {
+      ...base,
+      category: "other",
+      other_paid_activity: "yes",
+      work_payer: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/other/paid/sponsor_unsure",
+    overrides: {
+      ...base,
+      category: "other",
+      other_paid_activity: "yes",
+      work_payer: "yes",
+      work_sponsor_confirmed: "unsure",
+    },
+  });
+  // C2: the `paid = no` walk that must actually yield C6 (13 → 14 distinct
+  // products) — `offshore/other`'s own default now answers `yes` (D3-2), so
+  // this is a NEW walk, not a rewording of the existing one.
+  scenarios.push({
+    label: "offshore/other/no_paid_activity",
+    overrides: { ...base, category: "other", other_paid_activity: "no" },
+  });
+
+  // D3-3: retirement branches that used to dead-end. `property`'s negative
+  // sponsor answer (the age64/sponsor=yes walk is already the corpus's
+  // regenerated default for `offshore/retirement/property/age64`).
+  scenarios.push({
+    label: "offshore/retirement/property/age64/sponsor_no",
+    overrides: {
+      ...base,
+      category: "retirement",
+      retirement_basis: "property",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+      family_sponsor_confirmed: "no",
+    },
+  });
+  // `bank_deposit` was the funnel census's LARGEST dead end (30 production
+  // walks) — below both the deposit and passive-income thresholds, cured
+  // only by the family-sponsor fallback this PR adds.
+  scenarios.push({
+    label: "offshore/retirement/bank_deposit/age64/below_threshold",
+    overrides: {
+      ...base,
+      category: "retirement",
+      retirement_basis: "bank_deposit",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+      secondhome_deposit_usd: "1000",
+      // Above el.e33f.retirement's own USD 3,000 floor (fact-mapper.ts
+      // comment on ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS.retirement_basis) —
+      // deliberately NOT below it, so this walk proves the E33F fallback
+      // cures the deposit-below-threshold dead end rather than merely
+      // failing both products.
+      secondhome_passive_income_usd: "5000",
+      family_sponsor_confirmed: "yes",
+    },
+  });
+  // `undecided` becomes a real question. `deposit_or_income` is already the
+  // corpus's regenerated default for `offshore/retirement/undecided/age64`
+  // (first option); these are its other two answers.
+  scenarios.push({
+    label: "offshore/retirement/undecided/age64/family_sponsor",
+    overrides: {
+      ...base,
+      category: "retirement",
+      retirement_basis: "undecided",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+      retirement_undecided_basis: "family_sponsor",
+    },
+  });
+  scenarios.push({
+    label: "offshore/retirement/undecided/age64/still_unsure",
+    overrides: {
+      ...base,
+      category: "retirement",
+      retirement_basis: "undecided",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+      retirement_undecided_basis: "still_unsure",
+    },
+  });
+
+  // D3-4: STEPCHILD sponsor-permit answers. `yes` is already the corpus's
+  // regenerated default for the existing STEPCHILD walks (first option);
+  // these are `no` and `unsure`.
+  scenarios.push({
+    label: "offshore/family/STEPCHILD/spNat=ID/sponsor_permit_no",
+    overrides: {
+      ...base,
+      category: "family",
+      family_relation: "STEPCHILD",
+      family_sponsor_nationalities: "ID",
+      family_stepchild_sponsor_permit_confirmed: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/family/STEPCHILD/spNat=ID/sponsor_permit_unsure",
+    overrides: {
+      ...base,
+      category: "family",
+      family_relation: "STEPCHILD",
+      family_sponsor_nationalities: "ID",
+      family_stepchild_sponsor_permit_confirmed: "unsure",
+    },
+  });
+
   return scenarios;
 }
 

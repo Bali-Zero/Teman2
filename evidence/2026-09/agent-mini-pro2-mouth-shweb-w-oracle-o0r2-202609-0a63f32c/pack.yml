@@ -27,12 +27,16 @@ lanes:
     seat: "kimi-k3 (kimi -r session_dbb009de-85fd-4d72-952c-7d21df829beb — see brief.yml adversarial_review round 3)"
 
 diff:
-  files: 15
+  files: 3
   churn: >-
-    15 files; churn far above the 1828 SIZE threshold (measured with
-    `git diff --numstat origin/main...HEAD`), dominated by census.json
-    (1568 generated lines) and the other pinned evidence copies required
-    by spec §3.
+    this pack now describes the FOLLOW-UP that discharges C1 and C2 of the
+    #6301 gate: .secrets.baseline plus this brief and this pack, measured
+    with `git diff --numstat origin/main...HEAD`. The audit-copy shape this
+    pack was originally written for is history, not a claim about the
+    current diff — it landed as #6301 (merge 4de981aebd) and its own
+    measurements are in that PR. A pack in a shared evidence directory is
+    re-read by every PR that touches it, so this block always names the diff
+    in front of it.
 
 pii_scan: clean
 
@@ -87,6 +91,35 @@ receipts:
     exit: 0
     ts: "2026-09-12T17:41:02+08:00"
     seat: "claude-opus-5 (this session, o0r2-build lane — the seat the commits name in their Co-Authored-By trailer)"
+
+  - claim: >-
+      C2's conversion is load-bearing, not cosmetic: with the 17 audit
+      decisions present every finding in the two formerly-excluded files is
+      audited, and with them removed the same scan fails on exactly those 17
+      findings and nothing else.
+    cmd: |
+      # committed arm, then a control copy with the 17 audits removed; both scanned
+      # against a SCRATCH baseline, never the real file (a diff-mode scan prunes the
+      # audited entries of every file it is not given)
+      detect-secrets scan --baseline <scratch>/committed/.secrets.baseline <the 3 files>
+      python3 scripts/detect_secrets_check_unaudited.py   # in the committed scratch dir
+      detect-secrets scan --baseline <scratch>/control/.secrets.baseline <the 3 files>
+      python3 scripts/detect_secrets_check_unaudited.py   # in the control scratch dir
+    result: >-
+      committed exit 0 / control exit 1 on exactly those 17 findings. NOTE the
+      file list matters and this receipt's list is NOT the CI job's: it scans
+      the three C2 files, which is the right experiment for the conversion but
+      the wrong one for the gate. The Detect Secrets job scans THIS PR's changed
+      files (.secrets.baseline, brief.yml, pack.yml) with the baseline at its
+      own relative path, and a diff-mode scan prunes the audited entries of
+      every file it is not given — so its check sees only the changed files'
+      findings. Reproduced in CI's exact shape at this head: scan -> auto-triage
+      --apply -> check = exit 0, "All findings audited (2 total)", those two
+      being the brief's own round head_sha values, now audited; with those two
+      audit decisions removed the same sequence exits 1 on exactly them.
+    exit: 0
+    ts: "2026-09-12T19:12:00+08:00"
+    seat: "claude-opus-5 (this session, o0-followup lane — the seat the commits name in their Co-Authored-By trailer)"
 
   - claim: >-
       Stripping the frontmatter block and the appended "## Adversarial

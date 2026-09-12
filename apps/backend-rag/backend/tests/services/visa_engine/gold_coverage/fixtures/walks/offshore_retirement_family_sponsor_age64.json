@@ -109,17 +109,14 @@
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.type": { "status": "KNOWN", "value": "NONE" },
-    "secondhome.bank_deposit_usd": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "secondhome.bank_deposit_usd": { "status": "KNOWN", "value": 0 },
     "secondhome.bank_deposit_at_state_bank": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": false
     },
     "secondhome.bank_deposit_in_own_name": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": false
     },
     "secondhome.qualifying_property_value_usd": {
       "status": "UNKNOWN",

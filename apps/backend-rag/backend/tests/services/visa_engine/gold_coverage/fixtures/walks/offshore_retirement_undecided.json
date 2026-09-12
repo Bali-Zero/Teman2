@@ -10,6 +10,12 @@
     "trip_scope",
     "sponsor_category",
     "retirement_basis",
+    "retirement_undecided_basis",
+    "secondhome_deposit_usd",
+    "secondhome_state_bank",
+    "secondhome_own_name",
+    "secondhome_passive_income_usd",
+    "family_sponsor_confirmed",
     "stay_days",
     "review_gate"
   ],
@@ -102,30 +108,24 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.type": { "status": "KNOWN", "value": "NONE" },
-    "secondhome.bank_deposit_usd": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "secondhome.bank_deposit_usd": { "status": "KNOWN", "value": 1000000000 },
     "secondhome.bank_deposit_at_state_bank": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": true
     },
-    "secondhome.bank_deposit_in_own_name": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "secondhome.bank_deposit_in_own_name": { "status": "KNOWN", "value": true },
     "secondhome.qualifying_property_value_usd": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
     "secondhome.passive_monthly_income_usd": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": 1000000000
     },
     "process.application_channel": {
       "status": "UNKNOWN",

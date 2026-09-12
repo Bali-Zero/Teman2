@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { PUBLIC_ROSTER } from "@/data/team-roster";
 
-// The book derives its team grid at MODULE LOAD, so each case sets
-// `extraExcluded` and imports fresh. Empty set → the real filter.
+// The grid is derived by `bookTeamMembers()` in `book-team.ts` — it used to be a
+// module-scope constant in `book-data.ts`, which seven "use client" components
+// import, so the roster rode along into the public chunk /book and /book/team
+// load. The derivation and this probe moved together; the filter is still the
+// thing under test. Each case sets `extraExcluded` and imports fresh.
 const extraExcluded = new Set<string>();
 
 vi.mock("@/lib/team-public-listing", async (importOriginal) => {
@@ -16,8 +19,8 @@ vi.mock("@/lib/team-public-listing", async (importOriginal) => {
 });
 
 async function teamMembers() {
-  const { TEAM_MEMBERS } = await import("./book-data");
-  return TEAM_MEMBERS;
+  const { bookTeamMembers } = await import("./book-team");
+  return bookTeamMembers();
 }
 
 beforeEach(() => {

@@ -42,18 +42,18 @@ legal name before concluding.
 
 ## 2. Company-level fields (shared by every system)
 
-| Field                   | Value                                                                                     | Source                                         |
-| ----------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Legal entity            | PT PMA, legal name as on the akta (to confirm)                                            | `apps/mouth/src/app/terms/page.tsx` ("PT PMA") |
-| NIB                     | Active NIB number (to confirm)                                                            | owner / accounting                             |
-| KBLI                    | KBLI on the NIB that covers the electronic systems below (to confirm)                     | owner / accounting                             |
-| NPWP                    | Company NPWP (to confirm)                                                                 | owner / accounting                             |
-| Akta and SK Kemenkumham | Deed of establishment and ministry decree (to confirm)                                    | owner / accounting                             |
-| Responsible officer     | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com` | owner ruling 2026-09-11                        |
-| Data-protection contact | privacy@balizero.com (role address published in the privacy policy)                       | `apps/mouth/src/app/privacy/page.tsx`          |
-| Privacy policy          | https://balizero.com/privacy                                                              | `apps/mouth/src/app/privacy/page.tsx`          |
-| Terms of service        | https://balizero.com/terms                                                                | `apps/mouth/src/app/terms/page.tsx`            |
-| Registration fee        | None (no PNBP fee)                                                                        | prep-check §3                                  |
+| Field                   | Value                                                                                                                                                                                                                                                                                                                                                                                                                                 | Source                                                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Legal entity            | PT BAYU BALI NOL, PT PMDN (penanaman modal dalam negeri), skala usaha kecil; office in Kerobokan, Kuta Utara, Badung, Bali                                                                                                                                                                                                                                                                                                            | NIB detail from the OSS profile, read by the owner 2026-09-13 (the terms page's "PT PMA" wording is wrong and is a separate fix) |
+| NIB                     | Active; issued 2025-03-25, third amendment 2026-08-26. The number is on the OSS profile and is not reproduced here (public repository)                                                                                                                                                                                                                                                                                                | OSS profile PT BAYU BALI NOL, 2026-09-13                                                                                         |
+| KBLI                    | 79121 Aktivitas Biro Perjalanan Wisata (risk menengah rendah, Sertifikat Standar issued automatically) and 79129 Aktivitas Biro Perjalanan Lainnya (risk rendah). No ICT KBLI on the NIB: the TD-PSE Lingkup Privat is a Komdigi PB-UMKU tied to the electronic system, not to a KBLI, so it is requested from the 79121 project (verify on the live OSS UMKU list; if PSE is absent there, screenshot the list before adding a KBLI) | NIB attachment B.1, 2026-09-13                                                                                                   |
+| NPWP                    | On the NIB and the OSS profile; not reproduced here (public repository)                                                                                                                                                                                                                                                                                                                                                               | OSS profile, 2026-09-13                                                                                                          |
+| Akta and SK Kemenkumham | On file with the owner (upload from the OSS document vault if the form asks)                                                                                                                                                                                                                                                                                                                                                          | owner                                                                                                                            |
+| Responsible officer     | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                                                                                                                                                                                                                                             | owner ruling 2026-09-11                                                                                                          |
+| Data-protection contact | privacy@balizero.com (role address published in the privacy policy)                                                                                                                                                                                                                                                                                                                                                                   | `apps/mouth/src/app/privacy/page.tsx`                                                                                            |
+| Privacy policy          | https://balizero.com/privacy                                                                                                                                                                                                                                                                                                                                                                                                          | `apps/mouth/src/app/privacy/page.tsx`                                                                                            |
+| Terms of service        | https://balizero.com/terms                                                                                                                                                                                                                                                                                                                                                                                                            | `apps/mouth/src/app/terms/page.tsx`                                                                                              |
+| Registration fee        | None (no PNBP fee)                                                                                                                                                                                                                                                                                                                                                                                                                    | prep-check §3                                                                                                                    |
 
 The privacy policy states it follows UU PDP No. 27/2022 and lists the data categories,
 legal bases, storage locations and retention periods reused in section 3.
@@ -89,7 +89,7 @@ policy:
 | Data categories     | Newsletter email address; inquiry contact details (name, email, phone, message); Visa Oracle answers held in the browser session (`evaluation-identity-store.ts`); web analytics (Google Analytics, per the CSP in `apps/mouth/next.config.ts`) |
 | Privacy policy      | https://balizero.com/privacy; Visa Oracle has its own notice at https://balizero.com/visa-oracle/privacy                                                                                                                                        |
 | Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                                                       |
-| KBLI                | To confirm                                                                                                                                                                                                                                      |
+| KBLI                | Not KBLI-bound (Komdigi PB-UMKU under NIB KBLI 79121)                                                                                                                                                                                           |
 
 ### 3.2 kita.balizero.com
 
@@ -103,7 +103,7 @@ policy:
 | Data categories     | Staff accounts and roles; client records: identity (name, nationality, date of birth, gender, address), passport data, contact details, family members, company data; case and permit status; client documents (passport, KTP, NPWP scans); message history across channels; financial data for visa applications |
 | Privacy policy      | https://balizero.com/privacy                                                                                                                                                                                                                                                                                      |
 | Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                                                                                                                         |
-| KBLI                | To confirm                                                                                                                                                                                                                                                                                                        |
+| KBLI                | Not KBLI-bound (Komdigi PB-UMKU under NIB KBLI 79121)                                                                                                                                                                                                                                                             |
 
 ### 3.3 my.balizero.com
 
@@ -117,7 +117,7 @@ policy:
 | Data categories     | Client account and session cookie; profile; family members; company data; visa and permit status; tax and LKPM data; document vault (passport, KTP, NPWP scans); messages and chat; billing records; privacy settings |
 | Privacy policy      | https://balizero.com/privacy                                                                                                                                                                                          |
 | Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                             |
-| KBLI                | To confirm                                                                                                                                                                                                            |
+| KBLI                | Not KBLI-bound (Komdigi PB-UMKU under NIB KBLI 79121)                                                                                                                                                                 |
 
 ### 3.4 zantara.balizero.com
 
@@ -131,7 +131,7 @@ policy:
 | Data categories     | Chat messages and conversation history; account and session                                                                                                                                                                                    |
 | Privacy policy      | https://balizero.com/privacy                                                                                                                                                                                                                   |
 | Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                                                      |
-| KBLI                | To confirm                                                                                                                                                                                                                                     |
+| KBLI                | Not KBLI-bound (Komdigi PB-UMKU under NIB KBLI 79121)                                                                                                                                                                                          |
 
 ### 3.5 tax.balizero.com
 
@@ -145,7 +145,7 @@ policy:
 | Data categories     | No input form found in the route group on 2026-09-11: public content only, plus web analytics |
 | Privacy policy      | https://balizero.com/privacy                                                                  |
 | Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`     |
-| KBLI                | To confirm                                                                                    |
+| KBLI                | Not KBLI-bound (Komdigi PB-UMKU under NIB KBLI 79121)                                         |
 
 DNS setup for this host: [tax-balizero-dns-setup.md](tax-balizero-dns-setup.md).
 
@@ -161,7 +161,7 @@ DNS setup for this host: [tax-balizero-dns-setup.md](tax-balizero-dns-setup.md).
 | Data categories     | Chat questions forwarded to the backend API; property proposal pages reached by token link                                         |
 | Privacy policy      | https://balizero.com/privacy                                                                                                       |
 | Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                          |
-| KBLI                | To confirm                                                                                                                         |
+| KBLI                | Not KBLI-bound (Komdigi PB-UMKU under NIB KBLI 79121)                                                                              |
 
 ### 3.7 Backend API: Fly app nuzantara-rag
 
@@ -174,7 +174,7 @@ DNS setup for this host: [tax-balizero-dns-setup.md](tax-balizero-dns-setup.md).
 | Data categories     | All categories in 3.1 to 3.6; stores listed in the table at the start of section 3                                        |
 | Privacy policy      | https://balizero.com/privacy                                                                                              |
 | Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                 |
-| KBLI                | To confirm                                                                                                                |
+| KBLI                | Not KBLI-bound (Komdigi PB-UMKU under NIB KBLI 79121)                                                                     |
 
 The API answers `GET` only: `curl -I` (HEAD) returns 404 on `/health` while `GET /health`
 returns 200. Probe it with GET.
@@ -184,7 +184,7 @@ returns 200. Probe it with GET.
 Channel: OSS-RBA (https://oss.go.id), integrated with the Komdigi PSE portal
 (https://pse.komdigi.go.id). Output: an electronic TD-PSE certificate.
 
-- [ ] Active NIB with a KBLI coherent with the systems in section 3 (KBLI to confirm)
+- [x] Active NIB (PT BAYU BALI NOL, PMDN, skala kecil; KBLI 79121 and 79129). The PSE UMKU is not KBLI-bound: request it from the 79121 project and screenshot the UMKU list if it is not offered
 - [ ] Akta pendirian and SK Kemenkumham
 - [ ] Company NPWP
 - [ ] Responsible officer: `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`, with position and a reachable contact
@@ -214,8 +214,9 @@ render for a fetch. Check the live OSS-RBA form before relying on the list.
 ## 5. Open items for the owner
 
 1. Name the responsible officer.
-2. Confirm the legal name, NIB, KBLI and NPWP, then re-run the section 1 search with the
-   legal name.
+2. Legal name, NIB, KBLI and NPWP confirmed from the NIB detail on 2026-09-13; the section 1
+   search re-run the same day with "PT Bayu Bali Nol", "Bayu Bali Nol", "Bali Zero" and
+   "balizero.com": 0 rows each (not located). Remaining: file the UMKU on OSS-RBA.
 3. Confirm in Vercel which project owns zantara.balizero.com (section 3.4).
 4. Confirm the storage locations in the privacy policy still hold (Qdrant Cloud region
    stated as US).

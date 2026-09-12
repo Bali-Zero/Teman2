@@ -498,6 +498,12 @@ _GARUDA_VOA_RETENTION_FK_DEPENDENTS: tuple[tuple[int, str, str, str], ...] = (
         "retention_policy_id",
     ),
     (304, "304_garuda_documents.sql", "garuda_documents", "retention_policy_id"),
+    (
+        313,
+        "313_garuda_practice_artifacts.sql",
+        "garuda_practice_artifacts",
+        "retention_policy_id",
+    ),
 )
 
 

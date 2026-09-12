@@ -48,7 +48,7 @@ export function ZeroRoleWidget({ metrics }: Props) {
               className="text-[var(--state-danger)] flex-shrink-0"
             />
             <span className="text-[10px] font-semibold text-[var(--state-danger)]">
-              {metrics.visti_scadenza} visti &lt; 7gg
+              {metrics.visti_scadenza} visti &lt; 30gg
             </span>
           </div>
         )}

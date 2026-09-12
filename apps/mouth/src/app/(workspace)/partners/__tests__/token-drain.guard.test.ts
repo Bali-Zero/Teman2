@@ -17,7 +17,16 @@ const PARTNERS_DIR = join(__dirname, "..");
 const WORKSPACE_DIR = join(PARTNERS_DIR, "..");
 
 const TOUCHED: Record<string, string> = {
-  teamManagement: join(WORKSPACE_DIR, "team-management", "page.tsx"),
+  // The markup lives in TeamManagementClient.tsx, not page.tsx: the route was
+  // split so the roster table could be resolved on the server, leaving page.tsx a
+  // thin wrapper with no tokens in it. This guard pins the DRAIN of the rendered
+  // surface, so it has to read the file the surface is actually in — otherwise it
+  // passes by reading a file that has nothing to assert about.
+  teamManagement: join(
+    WORKSPACE_DIR,
+    "team-management",
+    "TeamManagementClient.tsx",
+  ),
   partnersList: join(PARTNERS_DIR, "page.tsx"),
   partnerDetail: join(PARTNERS_DIR, "[id]", "page.tsx"),
   partnerNew: join(PARTNERS_DIR, "new", "page.tsx"),
