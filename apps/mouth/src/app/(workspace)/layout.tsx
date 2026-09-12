@@ -208,18 +208,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             return;
           }
 
-          // /inbox is owner-only (Zero). Non-owners hitting it via direct URL
-          // get bounced to /dashboard — the backend 403s them regardless, this
-          // just avoids rendering a broken page. Keep in sync with
-          // workspace_inbox.INBOX_OWNER_EMAILS (backend SSOT).
-          if (
-            pathname === "/inbox" &&
-            (profile?.email || "").toLowerCase() !== "zero@balizero.com"
-          ) {
-            router.push("/dashboard");
-            return;
-          }
-
           // INTAKE gate probe alongside the profile load (spec §5). Awaited so
           // the loading state stays up until clearance is known — never flash
           // the workspace before the gate decision.
@@ -457,7 +445,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           <div className="hidden md:block">
             <AppSidebar
               user={user}
-              unreadWhatsApp={0}
               reviewCount={gateStatus?.sections?.documents?.count ?? 0}
               onLogout={handleLogout}
               onZantaraToggle={() => setIsZantaraOpen((prev) => !prev)}
@@ -485,7 +472,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                 <AppSidebar
                   id="workspace-mobile-nav"
                   user={user}
-                  unreadWhatsApp={0}
                   reviewCount={gateStatus?.sections?.documents?.count ?? 0}
                   onLogout={handleLogout}
                   onZantaraToggle={() => setIsZantaraOpen((prev) => !prev)}
@@ -502,7 +488,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               userName={user.name}
               onMobileMenuToggle={handleMobileMenuToggle}
               isMobileMenuOpen={isMobileMenuOpen}
-              whatsappUnread={0}
               mobileMenuToggleRef={mobileMenuToggleRef}
             />
 

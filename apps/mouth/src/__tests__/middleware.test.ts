@@ -470,14 +470,6 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("x-pathname")).toBe("/clients");
     });
 
-    it("should allow /whatsapp route", () => {
-      const request = createRequest("https://kita.balizero.com/whatsapp");
-      const response = proxy(request);
-
-      expect(response.status).not.toBe(307);
-      expect(response.headers.get("x-pathname")).toBe("/whatsapp");
-    });
-
     it("should preserve query params when redirecting to public domain", () => {
       const request = createRequest(
         "https://kita.balizero.com/immigration?lang=en",
