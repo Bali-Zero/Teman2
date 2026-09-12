@@ -777,6 +777,16 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
 
   if (category === "retirement") {
     const branch = facts.retirement_basis;
+    // D3-3 (PR-D3, owner ruling SHWEB-20260911): the funnel census found
+    // `bank_deposit` the LARGEST dead end (30 walks ending NEEDS_INPUT on
+    // `family.sponsor_confirmed` because it was never asked on this branch)
+    // and `property`/`undecided` were allowlisted for the same reason.
+    // `family.sponsor_confirmed` is `el.e33f.retirement`'s fact, independent
+    // of the financial basis chosen — a below-threshold deposit or property
+    // may still have a confirmed family sponsor — so every basis that can
+    // reach E33F now asks it as a fallback, not only the two bases whose
+    // NAME says "sponsor".
+    const undecidedChoice = facts.retirement_undecided_basis;
     const branchQuestions =
       branch === "bank_deposit"
         ? [
@@ -784,14 +794,53 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
             "secondhome_state_bank",
             "secondhome_own_name",
             "secondhome_passive_income_usd",
+            "family_sponsor_confirmed",
           ]
         : branch === "property"
-          ? ["secondhome_property_value_usd"]
+          ? [
+              "secondhome_property_value_usd",
+              // `el.e33f.retirement` needs BOTH `secondhome.
+              // passive_monthly_income_usd >= 3000` AND `family.
+              // sponsor_confirmed == true` (fact-mapper.ts's
+              // ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS comment) — measured
+              // 2026-09-13: without asking passive income too, a `property`
+              // walk that answers `family_sponsor_confirmed = no` still
+              // dead-ends NEEDS_INPUT on the passive-income fact instead of
+              // resolving to NO_SUPPORTED_PATH, because the rule's AND does
+              // not short-circuit on the known-false sponsor conjunct.
+              "secondhome_passive_income_usd",
+              "family_sponsor_confirmed",
+            ]
           : branch === "passive_income"
             ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
             : branch === "family_sponsor"
               ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
-              : [];
+              : branch === "undecided"
+                ? [
+                    "retirement_undecided_basis",
+                    ...(undecidedChoice === "deposit_or_income"
+                      ? [
+                          "secondhome_deposit_usd",
+                          "secondhome_state_bank",
+                          "secondhome_own_name",
+                          "secondhome_passive_income_usd",
+                          "family_sponsor_confirmed",
+                        ]
+                      : undecidedChoice === "family_sponsor"
+                        ? [
+                            "secondhome_passive_income_usd",
+                            "family_sponsor_confirmed",
+                          ]
+                        : // `still_unsure` (or not yet answered): no evidence
+                          // question follows. `family.sponsor_confirmed`
+                          // stays genuinely UNKNOWN, and the applicant is
+                          // never asked for evidence supporting a basis they
+                          // just said they cannot name — that would be
+                          // exactly the dead end this PR cures, worn as a
+                          // false choice.
+                          []),
+                  ]
+                : [];
     return [
       "sponsor_category",
       "retirement_basis",
@@ -882,6 +931,10 @@ function familyQuestionIds(facts: OracleFacts): readonly string[] {
       ? [
           "family_stepchild_marriage_certificate_confirmed",
           "family_stepchild_birth_certificate_confirmed",
+          // D3-4 (PR-D3): the sponsor's own KITAS/KITAP becomes a fact the
+          // applicant answers, replacing the D2 relation-proxy hold — see
+          // tree.ts and `mapDisclosedReviewFlags` (fact-mapper.ts).
+          "family_stepchild_sponsor_permit_confirmed",
         ]
       : []),
     "family_sponsor_confirmed",

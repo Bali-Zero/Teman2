@@ -500,9 +500,21 @@ export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   // all — so this table was UNDER-inclusive: an applicant who answers
   // `family_sponsor` and clears both of those facts already has a signed,
   // deterministic SUPPORTED E33F, and raising ACTIVITY_BOUNDARY here only
-  // deletes it. `property` and `undecided` stay undecidable: no pack rule
-  // grants either an E33F path, so holding them loses nothing proven.
-  retirement_basis: ["bank_deposit", "passive_income", "family_sponsor"],
+  // deletes it.
+  // `property`/`undecided` added (PR-D3, D3-3): both used to stay
+  // undecidable because "no pack rule grants either an E33F path" — that was
+  // only true because `getCategoryQuestionIds` (flow.ts) never asked
+  // `family_sponsor_confirmed` on these two branches. Now both do (`property`
+  // unconditionally as a fallback; `undecided` via `retirement_undecided_
+  // basis`), so both are exactly as decidable as `family_sponsor` was above,
+  // for the identical reason.
+  retirement_basis: [
+    "bank_deposit",
+    "passive_income",
+    "family_sponsor",
+    "property",
+    "undecided",
+  ],
   diaspora_connection: ["former_wni", "descendant", "family"],
   diaspora_documents: ["yes", "no"],
   // D3-B (PR-D3, owner ruling SHWEB-20260911) investigated pack-outward,
@@ -599,21 +611,32 @@ export function mapDisclosedReviewFlags(
   // `family.sponsor_status_code`, but every one of them is `on_unknown:
   // NO_EFFECT` — an unresolved sponsor status changes nothing they decide,
   // so holding on their behalf would delete a proven verdict for no reason,
-  // the exact defect this narrowing exists to cure. Pinned against pack
-  // drift by "AMBIGUOUS_SPONSOR relation proxy tracks the signed pack" in
-  // fact-mapper.test.ts, which reads every production pack on disk and
-  // fails if that set of relations ever changes.
-  const RELATIONS_WITH_SPONSOR_DEPENDENT_PRODUCT: ReadonlySet<string> = new Set(
-    ["STEPCHILD"],
-  );
-  const sponsorRelationUnresolved =
-    facts.family_sponsor_status_code !== undefined &&
-    facts.family_relation !== undefined &&
-    RELATIONS_WITH_SPONSOR_DEPENDENT_PRODUCT.has(facts.family_relation);
+  // the exact defect this narrowing exists to cure. The RELATION this
+  // applies to is pinned against pack drift by "AMBIGUOUS_SPONSOR relation
+  // proxy tracks the signed pack" in fact-mapper.test.ts, which reads every
+  // production pack on disk and fails if the STEPCHILD dependency ever
+  // changes.
+  //
+  // D3-4 (PR-D3, owner ruling SHWEB-20260911) REPLACES the proxy this
+  // comment used to describe (raising the flag on the mere PRESENCE of
+  // `family_sponsor_status_code` for a STEPCHILD relation, whatever its
+  // value) with the direct question `family_stepchild_sponsor_permit_
+  // confirmed` (tree.ts): "does your sponsor hold a valid KITAS/KITAP of
+  // their own?" `no` holds — no seq-20 rule reads the sponsor's permit, so
+  // the pack itself would still return E31D ELIGIBLE, and fabricating
+  // `family.sponsor_confirmed = false` to force a denial would be exactly
+  // the guessed fact this file exists to refuse (seq-21 candidate
+  // `hf.e31d.sponsor-permit-required` is the pack-side fix, not this).
+  // `unsure` holds for the same reason `family_sponsor_confirmed === "unsure"`
+  // does two lines below: a real disclosed uncertainty. `yes` releases.
+  const stepchildSponsorPermitUnresolved =
+    facts.family_relation === "STEPCHILD" &&
+    facts.family_stepchild_sponsor_permit_confirmed !== undefined &&
+    facts.family_stepchild_sponsor_permit_confirmed !== "yes";
   if (
     facts.family_sponsor_status_code === "unsure" ||
     facts.family_sponsor_confirmed === "unsure" ||
-    sponsorRelationUnresolved
+    stepchildSponsorPermitUnresolved
   ) {
     flags.add("AMBIGUOUS_SPONSOR");
   }

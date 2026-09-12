@@ -1,5 +1,5 @@
 {
-  "label": "offshore/retirement/undecided",
+  "label": "offshore/retirement/property/age64/sponsor_no",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -10,17 +10,14 @@
     "trip_scope",
     "sponsor_category",
     "retirement_basis",
-    "retirement_undecided_basis",
-    "secondhome_deposit_usd",
-    "secondhome_state_bank",
-    "secondhome_own_name",
+    "secondhome_property_value_usd",
     "secondhome_passive_income_usd",
     "family_sponsor_confirmed",
     "stay_days",
     "review_gate"
   ],
   "overrides": {
-    "person.birth_date": { "status": "KNOWN", "value": "2000-11-11" },
+    "person.birth_date": { "status": "KNOWN", "value": "1961-11-11" },
     "person.nationalities": { "status": "KNOWN", "value": ["IT"] },
     "person.marital_status": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "immigration.currently_in_indonesia": { "status": "KNOWN", "value": false },
@@ -90,7 +87,7 @@
     },
     "family.sponsor_status_code": {
       "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "reason": "NOT_APPLICABLE"
     },
     "family.marriage_registered": {
       "status": "UNKNOWN",
@@ -106,22 +103,28 @@
     },
     "family.sponsor_permit_basis": {
       "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "reason": "NOT_APPLICABLE"
     },
-    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
+    "family.sponsor_confirmed": { "status": "KNOWN", "value": false },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.type": { "status": "KNOWN", "value": "NONE" },
-    "secondhome.bank_deposit_usd": { "status": "KNOWN", "value": 1000000000 },
-    "secondhome.bank_deposit_at_state_bank": {
-      "status": "KNOWN",
-      "value": true
-    },
-    "secondhome.bank_deposit_in_own_name": { "status": "KNOWN", "value": true },
-    "secondhome.qualifying_property_value_usd": {
+    "secondhome.bank_deposit_usd": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
+    },
+    "secondhome.bank_deposit_at_state_bank": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.bank_deposit_in_own_name": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.qualifying_property_value_usd": {
+      "status": "KNOWN",
+      "value": 1000000000
     },
     "secondhome.passive_monthly_income_usd": {
       "status": "KNOWN",

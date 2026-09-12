@@ -1,5 +1,5 @@
 {
-  "label": "offshore/retirement/undecided",
+  "label": "offshore/other/paid/employer_no",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -8,15 +8,12 @@
     "birth_date",
     "category",
     "trip_scope",
-    "sponsor_category",
-    "retirement_basis",
-    "retirement_undecided_basis",
-    "secondhome_deposit_usd",
-    "secondhome_state_bank",
-    "secondhome_own_name",
-    "secondhome_passive_income_usd",
-    "family_sponsor_confirmed",
+    "other_purpose",
+    "other_paid_activity",
+    "work_payer",
+    "work_sponsor_confirmed",
     "stay_days",
+    "entry_pattern",
     "review_gate"
   ],
   "overrides": {
@@ -39,10 +36,10 @@
     "immigration.overstay_days": { "status": "KNOWN", "value": 0 },
     "immigration.violation_history": { "status": "KNOWN", "value": [] },
     "immigration.renewal_paid": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.purposes": { "status": "KNOWN", "value": ["RETIREMENT"] },
+    "intent.purposes": { "status": "KNOWN", "value": ["EMPLOYMENT"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.entry_pattern": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "intent.entry_pattern": { "status": "KNOWN", "value": "SINGLE" },
     "intent.requested_product_code": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -51,10 +48,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "work.employer_is_indonesian_entity": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "work.employer_is_indonesian_entity": { "status": "KNOWN", "value": false },
     "work.serves_indonesian_clients": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -64,8 +58,8 @@
       "reason": "NOT_ASKED"
     },
     "work.indonesian_work_sponsor_confirmed": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": true
     },
     "investment.pt_pma_committed": {
       "status": "UNKNOWN",
@@ -108,24 +102,30 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
+    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "sponsor.type": { "status": "KNOWN", "value": "NONE" },
-    "secondhome.bank_deposit_usd": { "status": "KNOWN", "value": 1000000000 },
-    "secondhome.bank_deposit_at_state_bank": {
-      "status": "KNOWN",
-      "value": true
+    "sponsor.type": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "secondhome.bank_deposit_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
-    "secondhome.bank_deposit_in_own_name": { "status": "KNOWN", "value": true },
+    "secondhome.bank_deposit_at_state_bank": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "secondhome.bank_deposit_in_own_name": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "secondhome.qualifying_property_value_usd": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
     "secondhome.passive_monthly_income_usd": {
-      "status": "KNOWN",
-      "value": 1000000000
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "process.application_channel": {
       "status": "UNKNOWN",

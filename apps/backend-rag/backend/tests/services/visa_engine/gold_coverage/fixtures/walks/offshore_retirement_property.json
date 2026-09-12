@@ -11,6 +11,8 @@
     "sponsor_category",
     "retirement_basis",
     "secondhome_property_value_usd",
+    "secondhome_passive_income_usd",
+    "family_sponsor_confirmed",
     "stay_days",
     "review_gate"
   ],
@@ -103,7 +105,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
@@ -125,8 +127,8 @@
       "value": 1000000000
     },
     "secondhome.passive_monthly_income_usd": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": 1000000000
     },
     "process.application_channel": {
       "status": "UNKNOWN",

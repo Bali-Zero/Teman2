@@ -915,6 +915,33 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.family_stepchild_birth_certificate_confirmed" },
     notSure: { mode: "human-review" },
   },
+  // D3-4 (PR-D3, owner ruling SHWEB-20260911): the sponsor's OWN KITAS/KITAP
+  // becomes a fact the applicant can answer, replacing the D2 relation-proxy
+  // hold (which fired on the mere presence of `family_sponsor_status_code`
+  // for a STEPCHILD relation). HUMAN_CONTEXT, not FACT: no seq-20 rule reads
+  // the sponsor's permit at all (`el.e31d-stepchild-support` reads relation +
+  // `family.sponsor_confirmed` + the two certificates above, never this), so
+  // there is no FactPath to wire it to — same posture as
+  // `family_sponsor_permit_basis` immediately below. `no` and `unsure` both
+  // hold (see `mapDisclosedReviewFlags`, fact-mapper.ts): `no` because a
+  // sponsor without a stay permit of their own cannot sponsor E31D and the
+  // pack has no rule that says so (seq-21 candidate
+  // `hf.e31d.sponsor-permit-required`), `unsure` because the fact is
+  // genuinely unresolved. `yes` releases — no hold.
+  family_stepchild_sponsor_permit_confirmed: {
+    id: "family_stepchild_sponsor_permit_confirmed",
+    i18nKey: "q.family_stepchild_sponsor_permit_confirmed",
+    kind: "branch",
+    group: "details",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    sensitive: true,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: "why.family_stepchild_sponsor_permit_confirmed" },
+    notSure: { mode: "human-review" },
+  },
   // Sponsor permit basis (2026-08-23 owner ruling — Permenkumham 11/2024
   // Pasal 33 ayat (7) blocks family-reunification chaining for four
   // specific ayat (2) huruf h categories; `family.sponsor_status_code` is
@@ -1020,6 +1047,40 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     ],
     whyWeAsk: { i18nKey: "why.retirement_basis" },
     notSure: { mode: "human-review" },
+  },
+  // D3-3 (PR-D3, owner ruling SHWEB-20260911): `undecided` stopped being a
+  // dead end. Instead of holding on the bare label, this presents the two
+  // bases the pack can actually decide (`el.e33e.retirement`'s deposit/
+  // passive-income facts, `el.e33f.retirement`'s family-sponsor fact) and
+  // routes to whichever's evidence questions. `still_unsure` is a REAL third
+  // option, not the generic NotSure affordance (deliberately absent here):
+  // choosing it asks no further evidence question, so `family.
+  // sponsor_confirmed` stays genuinely UNKNOWN and the engine's own
+  // `on_unknown: NEEDS_INPUT` on `el.e33f.retirement` fires — NEEDS_INPUT,
+  // never HUMAN_REVIEW, and `engine-adapter.ts`'s `questionForFact` already
+  // names `family_sponsor_confirmed`'s own question in that message.
+  retirement_undecided_basis: {
+    id: "retirement_undecided_basis",
+    i18nKey: "q.retirement_undecided_basis",
+    kind: "choice",
+    group: "details",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    sensitive: false,
+    options: [
+      {
+        key: "deposit_or_income",
+        labelI18nKey: "q.retirement_undecided_basis.opt.deposit_or_income",
+      },
+      {
+        key: "family_sponsor",
+        labelI18nKey: "q.retirement_undecided_basis.opt.family_sponsor",
+      },
+      {
+        key: "still_unsure",
+        labelI18nKey: "q.retirement_undecided_basis.opt.still_unsure",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.retirement_undecided_basis" },
   },
   // Router for the `second_home` category (owner ruling 3, 2026-09-06).
   // HUMAN_CONTEXT on purpose, exactly like its `retirement_basis` sibling:

@@ -38,8 +38,13 @@ import {
  * replacing one). 61 → 67 on PR-5 (2026-09-07): the 5 offshore `retirement`
  * bases plus the onshore neutral `retirement` walk, each replayed a second
  * time at `RETIREMENT_AGE_64_BIRTH_DATE` (age 64) instead of the corpus-wide
- * default 25 — no new tree branch, the same 6 walks answered twice. */
-const EXPECTED_WALK_COUNT = 67;
+ * default 25 — no new tree branch, the same 6 walks answered twice. 67 → 78
+ * on PR-D3 (2026-09-13): 11 new walks — the two invest-vehicle
+ * below-threshold routes, the three declared-paid-activity branches
+ * (employer=no / sponsor=unsure / paid=no), the retirement property/
+ * bank_deposit/undecided branches that used to dead-end, and the two new
+ * STEPCHILD sponsor-permit answers (no/unsure) — see generate-walk-corpus.ts. */
+const EXPECTED_WALK_COUNT = 78;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)
