@@ -505,3 +505,18 @@ successor_rework:
     intermediate_6326: "240842d97a34c9f1b4230b1b8bb441844eb3f441bb762d6c1ce2052d65211bb7 # pragma: allowlist secret"
     new: "d23a66ca27f48d2bf186f941e902a99c6991803ae53c651fedbab201772da745 # pragma: allowlist secret"
     repinned_in: "test_evidence_sufficiency_benchmark.py (MANDATORY_MANIFEST_SHA256) and B1-4-support-signal.md. #6326's intermediate value never merged and is recorded here only so the ledger row can name the full chain."
+measured_on_the_successor:
+  at: "2026-09-12T14:52:26Z"
+  by: "the Dux (claude-opus-5), re-run on the successor head — nothing inherited from the #6326 measurement"
+  harness: >-
+    Unchanged by the rework, as it must be (the rework touched prose, one field
+    name, one test and the pack): EN>EN 0/4 · EN>ID 0/6 · ID>EN 0/6 · ID>ID 0/4
+    false_abstention and 0/9 · 0/10 · 0/11 · 0/8 false_acceptance = 0 of 38,
+    both gates; spec_pairs 16/16.
+  files: >-
+    test_evidence_sufficiency_benchmark 72 · test_evidence_cross_language 123 +
+    1 xfailed · test_b2_supplement_and_b1_debts 72 ·
+    test_score_contract_crossing 18 · test_reasoning_utils_provenance_bands 55
+    (54 before F1b).
+  full_suites: "5119 passed, 42 skipped, 7 xfailed, 0 failed, 0 error — one more than #6326's 5118, which is F1b."
+  read_how: "from the task's RAW .output file, never from the background wrapper's exit code."
