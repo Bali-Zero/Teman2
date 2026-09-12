@@ -111,9 +111,19 @@ acceptance:
       A7: WHEN `test_visa_engine_retention_fk_registry.py` runs with this
       migration in the tree SHALL pass, and the two visa_engine suites that
       roll migration 264 back in their own fixtures
-      (test_shadow_match.py, test_evaluate_endpoint.py) SHALL pass with it.
+      (test_shadow_match.py, test_evaluate_endpoint.py) SHALL pass with it,
+      and so SHALL test_shadow_evidence.py, a THIRD consumer that runs the
+      same unwind / rollback_264 / restore sequence in its own fixture —
+      named here because the first draft of this criterion claimed two
+      consumers and there are three (round O4, MINOR).
       This criterion is here because its ABSENCE is what made CI red on the
-      first armed head: migration 313 adds the tenth FK onto
+      first armed head — run 34685812662, job 103532640987 "Backend Shard 3"
+      on head ea7c2f7fb1, which says verbatim:
+      `asyncpg.exceptions.DependentObjectsStillExistError: cannot drop table
+      visa_decision_retention_policies because other objects depend on it /
+      DETAIL: constraint garuda_practice_artifacts_retention_policy_id_fkey
+      on table garuda_practice_artifacts depends on table
+      visa_decision_retention_policies`. Migration 313 adds the tenth FK onto
       visa_decision_retention_policies, those fixtures unwind only the
       dependents REGISTERED in conftest.py's
       _GARUDA_VOA_RETENTION_FK_DEPENDENTS, and an unregistered table
@@ -126,6 +136,31 @@ acceptance:
       backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py
       backend/tests/services/visa_engine/test_shadow_match.py
       backend/tests/services/visa_engine/test_evaluate_endpoint.py
+      backend/tests/services/visa_engine/test_shadow_evidence.py
+  - text: >-
+      A8: WHEN the SECURITY DEFINER retention binder migration 313 creates,
+      `public.bind_garuda_practice_artifact_retention_policy()`, is present
+      in the tree SHALL also be present in BOTH of the preflight's
+      independently-maintained inventories —
+      operational_preflight.RETENTION_BINDING_TRIGGER_FUNCTIONS and the test
+      file's own CANONICAL_SENSITIVE_FUNCTIONS — so the live
+      `owner:<signature>` and `function:<role>:<signature>` checks name it.
+      This criterion exists because migration 285 is the same construct with
+      the same omission: its binder was left owned by the application role,
+      no inventory knew it existed, and POST /api/visa/voa/auth/magic-links
+      answered 500 from the day it shipped with zero tokens ever minted.
+      313's forward SQL already refuses to record itself as applied while the
+      owner is wrong — but that guard fires ONCE, at apply time; the
+      inventory is what keeps watching afterwards. Found in round O4 (MAJOR).
+      DECLARED LIMIT, not cured here: three sibling binders already on main
+      (281 legacy, 286, 304) are still absent from both inventories, and no
+      parity canary exists between these lists and the migrations that create
+      SECURITY DEFINER binders — the FK registry has one, this does not.
+      Registered in PENDING-ARMS rather than widened into this PR.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/scripts/visa_engine/test_operational_preflight.py
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py
   - text: >-
       A6 (Bites, post-merge): WHEN this PR merges — a backend merge IS the
       deploy, release_command applies migrations — `_schema_versions` SHALL

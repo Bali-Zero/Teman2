@@ -3,6 +3,15 @@ gear: 3
 gate_class: opus
 brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
+seat_override: >-
+  The ground-truth rule fires on one path in this diff,
+  apps/backend-rag/backend/scripts/visa_engine/operational_preflight.py, and the
+  change to it is two lines plus a comment adding a Postgres function SIGNATURE
+  to a privilege inventory. It asserts no regulatory fact — no visa rule, no
+  fee, no eligibility condition, no KBLI code — so there is no NotebookLM query
+  a ground_truth lane could hash. Same reason, same file, as the override in
+  evidence/2026-08/agent-air-m5-db-definer-owner-invariant-0830-ed4038d8. The
+  rest of the diff is a migration, its tests and this pack.
 lanes:
   - lane: build
     role: build
@@ -27,7 +36,10 @@ lanes:
       F6 PARTIAL, 2 NEW findings. Round 3 (on the NEW1/NEW2 delta): PASS,
       no new findings. The seat itself declares round 3's verdict is static
       call-path/lock/transaction analysis — it could not execute pytest in
-      its read-only sandbox.
+      its read-only sandbox. Round 4 (on the registry-entry + evidence
+      delta added after O3): BLOCK, 2 MAJOR + 1 MINOR + 1 NIT. One MAJOR
+      cured in this PR (A8), one MAJOR declined as out of concern and
+      ledgered; MINOR and NIT both cured. Also static.
   - lane: contract-second-reader
     role: review
     seat: kimi-code/k3
@@ -101,12 +113,41 @@ receipts:
   - probe: A7
     claim: >-
       The retention-FK registry canary passes with 313 declared, and so do
-      the two visa_engine suites that roll migration 264 back in their own
-      fixtures — the suites CI found red.
-    cmd: ci_shape_pg.sh backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_evaluate_endpoint.py --color=no -p no:randomly
-    result: "263 passed in 50.72s"
+      ALL THREE visa_engine suites that roll migration 264 back in their own
+      fixtures. The earlier run of this receipt named two and measured 263
+      passed; round O4 (MINOR) pointed out that test_shadow_evidence.py runs
+      the same sequence, so the declared coverage was short by one consumer.
+      Re-measured with the third file included.
+    cmd: ci_shape_pg.sh backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_shadow_evidence.py --color=no -p no:randomly
+    result: "307 passed in 47.59s"
     exit: 0
-    ts: "2026-09-12T18:46:33Z"
+    ts: "2026-09-12T20:12:40Z"
+    seat: claude-opus-5 (build)
+  - probe: A7
+    claim: >-
+      The CI failure this fix answers is a measured event, not an
+      attribution: run 34685812662, job 103532640987 "Backend Shard 3",
+      head ea7c2f7fb1, names the constraint by name.
+    cmd: gh run view --job 103532640987 --log-failed | grep -i DependentObjectsStillExist
+    result: >-
+      "asyncpg.exceptions.DependentObjectsStillExistError: cannot drop table
+      visa_decision_retention_policies because other objects depend on it —
+      DETAIL: constraint garuda_practice_artifacts_retention_policy_id_fkey
+      on table garuda_practice_artifacts depends on table
+      visa_decision_retention_policies"
+    exit: 0
+    ts: "2026-09-12T20:15:10Z"
+    seat: claude-opus-5 (build)
+  - probe: A8
+    claim: >-
+      With 313's SECURITY DEFINER binder registered in both preflight
+      inventories, the preflight suite and the SECURITY DEFINER owner
+      invariant suite are green — including the parity assertion that the
+      module's list and the test's independent authority agree.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py -p no:cacheprovider
+    result: "52 passed in 1.69s"
+    exit: 0
+    ts: "2026-09-12T20:02:15Z"
     seat: claude-opus-5 (build)
 guilt_mutations:
   - target: tests/services/visa_engine/conftest.py — the retention-FK registry entry
@@ -123,6 +164,24 @@ guilt_mutations:
       all". conftest.py restored from a cp backup, md5 identical before and
       after (02da4e1b9844f03b19ef2397bd2cd661).
     ts: "2026-09-12T18:47:30Z"
+  - target: scripts/visa_engine/operational_preflight.py — the binder inventory entry
+    mutation: >-
+      Remove `public.bind_garuda_practice_artifact_retention_policy()` from
+      RETENTION_BINDING_TRIGGER_FUNCTIONS, leaving the test file's
+      CANONICAL_SENSITIVE_FUNCTIONS untouched, and run the preflight suite.
+    observed: >-
+      RED on
+      test_preflight_inventory_matches_independently_frozen_schema_authority
+      ("assert set(operational_preflight.SENSITIVE_FUNCTIONS) ==
+      CANONICAL_SENSITIVE_FUNCTIONS" — AssertionError), 1 failed, 44 passed.
+      operational_preflight.py restored from a cp backup, md5 identical
+      before and after (d7649cf8825482c6673a4603baa64659).
+      NOTE, stated because it bounds what this mutation proves: the assertion
+      fires only when the two inventories DISAGREE. An author who updates
+      NEITHER leaves them agreeing and no test fails — that is the missing
+      parity canary recorded in A8's declared limit, not a property this
+      mutation demonstrates.
+    ts: "2026-09-12T20:05:40Z"
   - target: db/migrations_v2/313_garuda_practice_artifacts.sql (composite deferred FK, F7)
     mutation: >-
       Point `superseded_by` at an artifact belonging to ANOTHER practice and
@@ -198,6 +257,52 @@ dissent:
       executed proof. The executed evidence for this PR is the build seat's
       own runs recorded under `receipts` and `guilt_mutations`, not Sol's
       verdict.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O4, MAJOR) Migration 313's SECURITY DEFINER binder
+      `public.bind_garuda_practice_artifact_retention_policy()` is absent
+      from operational_preflight's RETENTION_BINDING_TRIGGER_FUNCTIONS and
+      from the test file's independent CANONICAL_SENSITIVE_FUNCTIONS. The
+      class-level catalog census checks only ownership; the named checks
+      that would catch an improper EXECUTE grant, or the function being
+      absent entirely, are list-driven and this list was never told the
+      function exists.
+    status: CONFIRMED
+    disposition: >-
+      CURED in this PR — acceptance A8, receipt A8, guilt mutation
+      measured. Verified independently before curing: the list really did
+      omit it, and the comment sitting directly above the entries says
+      "leaving it out is how this blind spot reopens", naming migration
+      285's weeks of 500s as the cost. Registering 313's binder is one line
+      in each of the two inventories and the fake derives its owner map
+      from the module list, so nothing else moved.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O4, MAJOR) `restore_garuda_voa_retention_fk` re-applies every
+      registered entry it finds ABSENT, and `unwind` returns only an
+      aggregate bool — so on a database where 264 and the earlier
+      dependents are applied but 313 is not, the unwind/restore pair hands
+      back a database carrying 313 though it was never live going in. The
+      existing regression test proves "do not re-apply an entry still
+      present", not "do not introduce an entry that was absent".
+    status: CONFIRMED
+    disposition: >-
+      NOT cured here, and the objection is correct on both counts —
+      verified by reading the pair: `restore`'s own docstring claims it
+      "puts back exactly what unwind actually took away, no more, no less",
+      and an absence probe cannot distinguish "absent because unwind
+      removed it" from "absent because it was never there", so the
+      docstring overstates the property the code has. This is a PRE-EXISTING
+      defect of the 2026-08-25 mechanism, identical for all five registered
+      entries; this PR's one-line registration exposes it on a sixth, it
+      does not introduce it. Curing it means changing `unwind`'s return
+      contract to name which entries it took — a change to another
+      product's fixture machinery, outside this PR's concern, and a
+      fix-of-a-fix on a mechanism already corrected once. Ledgered as a
+      PENDING-ARMS row with the reproduction Sol supplied. On the shape this
+      PR is measured against, `apply-all` applies every migration, so the
+      skewed starting state does not arise there — which is exactly why no
+      test catches it.
   - seat: claude-opus-5
     objection: >-
       (self, on the shape-D test of the privilege bracket) The bracket test
