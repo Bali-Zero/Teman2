@@ -895,41 +895,114 @@ DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT: dict[str, float] = {
 
 
 def _parse_domain_threshold_overrides(spec: str) -> dict[str, float]:
-    """Parse `DOMAIN_ABSTAIN_THRESHOLDS=tax:0.10,kbli:0.20` env var format."""
+    """Parse `DOMAIN_ABSTAIN_THRESHOLDS=tax:0.10,kbli:0.20` env var format.
+
+    RULING I40(d) — fail-closed applies to configuration too. This raises
+    `ValueError` on the FIRST malformed entry, out-of-range value, or
+    unknown domain key it finds, rather than skipping the bad entry and
+    silently keeping the rest. The old behaviour let a spec like
+    `{"tax":0.15,"visa":0.15}` (a JSON typo, not the `key:value,...` format)
+    split into a garbage key (`'{"tax"'` -> 0.15) that silently entered the
+    live threshold dict while the caller only ever logged a warning — a
+    partially-applied, silently-wrong override. The caller
+    (`_build_domain_thresholds`) treats any raise here as "reject the WHOLE
+    spec, use the defaults in full" — never a partial override.
+
+    An empty/blank spec (the default — `DOMAIN_ABSTAIN_THRESHOLDS` unset) is
+    NOT an error: it means "no override" and returns `{}`.
+    """
+    spec = (spec or "").strip()
+    if not spec:
+        return {}
+
+    known_domains = set(DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT)
     out: dict[str, float] = {}
-    for raw in (spec or "").split(","):
+    for raw in spec.split(","):
         raw = raw.strip()
-        if not raw or ":" not in raw:
+        if not raw:
+            # a stray trailing/doubled comma is formatting noise, not an
+            # entry — nothing to validate or apply
             continue
+        if ":" not in raw:
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: malformed entry {raw!r} (expected key:value)",
+            )
         key, _, val = raw.partition(":")
+        key = key.strip().lower()
         try:
             value = float(val)
-        except ValueError:
-            logger.warning(
-                "DOMAIN_ABSTAIN_THRESHOLDS: skipping malformed entry %r",
-                raw,
+        except ValueError as exc:
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: non-numeric value in entry {raw!r}",
+            ) from exc
+        if key not in known_domains:
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: unknown domain {key!r} in entry {raw!r} "
+                f"(known domains: {sorted(known_domains)})",
             )
-            continue
         # Evidence scores live in [0.0, 1.0]; an override outside that range
         # (including nan/inf, which fail this comparison) would silently
-        # disable or force the abstain gate for a whole domain — skip it.
+        # disable or force the abstain gate for a whole domain.
         if not (0.0 <= value <= 1.0):
-            logger.warning(
-                "DOMAIN_ABSTAIN_THRESHOLDS: skipping out-of-range entry %r",
-                raw,
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: out-of-range value in entry {raw!r} "
+                "(must be within [0.0, 1.0])",
             )
-            continue
-        out[key.strip().lower()] = value
+        # Refuted in council round 1 (kimi-code/k3, R10): `tax:0.10,tax:0.20`
+        # used to apply silently with last-wins. An ambiguous spec is not a
+        # spec — reject it whole rather than pick a winner.
+        if key in out:
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: duplicate domain {key!r} in entry {raw!r}",
+            )
+        out[key] = value
     return out
 
 
+def _strict_fallback_thresholds() -> dict[str, float]:
+    """The thresholds to use when the override spec cannot be trusted.
+
+    Refuted and corrected in council round 1 (kimi-code/k3, R9): falling back
+    to the DEFAULTS is not fail-closed for THIS gate. The defaults carry the
+    domain RELIEFS (`tax` 0.10, `visa` 0.12), which are the most PERMISSIVE
+    values in the dict — so an operator tightening a threshold during an
+    incident who mistypes the spec would silently get the relieved gate back.
+    For an abstain gate, closed means STRICT: no domain may sit below the
+    `default` threshold when the configuration is untrusted, so every relief
+    is lifted to `default` and any value already stricter is kept as it is.
+    """
+    baseline = DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT["default"]
+    return {
+        domain: max(value, baseline)
+        for domain, value in DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT.items()
+    }
+
+
 def _build_domain_thresholds() -> dict[str, float]:
+    """Merge `DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT` with the env override.
+
+    RULING I40(d): the override is all-or-nothing. If
+    `_parse_domain_threshold_overrides` raises, this logs the reason at
+    ERROR and falls back to the DEFAULTS IN FULL — never a partial merge.
+    This function itself must never raise: it runs at import time
+    (`_DOMAIN_THRESHOLDS = _build_domain_thresholds()` immediately below),
+    and an uncaught exception here would stop the whole app from booting
+    over a bad env var.
+    """
+    raw_spec = os.environ.get("DOMAIN_ABSTAIN_THRESHOLDS", "")
+    try:
+        overrides = _parse_domain_threshold_overrides(raw_spec)
+    except ValueError as exc:
+        logger.error(
+            "DOMAIN_ABSTAIN_THRESHOLDS=%r is invalid (%s) — falling back to the "
+            "defaults in full, no partial override applied",
+            raw_spec,
+            exc,
+        )
+        return _strict_fallback_thresholds()
+
     merged = dict(DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT)
-    merged.update(
-        _parse_domain_threshold_overrides(
-            os.environ.get("DOMAIN_ABSTAIN_THRESHOLDS", ""),
-        ),
-    )
+    merged.update(overrides)
     return merged
 
 

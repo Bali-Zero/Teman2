@@ -56,6 +56,25 @@ def load(path: str | Path) -> dict[str, Any]:
         return json.load(f)
 
 
+def source_sha256(path: str | Path) -> str:
+    """The `source_sha256` pin for a benchmark evidence source (Set B/Set C/
+    ... in `manifest_supplement_b2.json`'s `sets` block).
+
+    ALWAYS hashes the FILE's raw bytes (`Path(path).read_bytes()`) — never
+    an in-memory `json.dumps(data)` re-serialization of its parsed content.
+    The two differ whenever the file's own bytes carry something a
+    round-trip through `json.loads`/`json.dumps` does not reproduce
+    byte-for-byte — a trailing newline being the concrete case found
+    2026-09-13: Set C's recorded pin (`a55aed94...`) was
+    `sha256(json.dumps(data, indent=2))`, i.e. the writer hashed the
+    in-memory string it was about to write rather than the bytes the file
+    ended up holding once the write appended a final `\n`. A pin computed
+    this way verifies against nothing any `shasum -a 256 <file>` will ever
+    produce. Use this helper for every future `source_sha256` this
+    benchmark records, so that class of drift cannot recur."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
 def support_record_key(query: str, context: list[str]) -> str:
     """The B2.1 §6 replay key — `sha256` of a CANONICAL JSON serialization of
     `[query, context]`, NEVER `case_id`, so no label can be smuggled through
