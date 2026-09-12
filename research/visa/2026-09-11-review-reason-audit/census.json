@@ -1,0 +1,1568 @@
+{
+  "pack": {
+    "sequence": 20,
+    "version": "2026.9.6",
+    "rule_pack_id": "ac0a792d-a38d-512e-9ead-54a5d008fb68"
+  },
+  "taxonomy": {
+    "pack": [
+      "ACTIVE_OVERSTAY",
+      "BRIDGING_ADVERSE_HISTORY",
+      "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+      "BRIDGING_ONSHORE_ONLY",
+      "BRIDGING_TO_BRIDGING_PROHIBITED",
+      "CALLING_VISA_REVIEW",
+      "CITIZENSHIP_LIST_DIVERGENCE",
+      "E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW",
+      "E23V_TRADE_OFFICE_STAFF_REVIEW",
+      "E28B_USD_THRESHOLD_MANUAL_CHECK",
+      "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
+      "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",
+      "E28F_IKN_THRESHOLD_MANUAL_CHECK",
+      "E33B_EXPERTISE_QUALIFICATION_CHECK",
+      "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
+      "E33_WORK_RANGKAP_KEGIATAN_GATED",
+      "GOVT_INVITATION_REQUIRED",
+      "LOCAL_MARKET_ACTIVITY_REVIEW",
+      "MINOR_WITHOUT_CONFIRMED_GUARDIAN",
+      "VOA_NATIONALITY_ONLY"
+    ],
+    "backend": [
+      "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
+      "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+      "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+      "DECISIVE_SOURCE_STALE",
+      "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+      "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+      "DISCLOSED_CRIMINAL_RECORD_REVIEW",
+      "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
+      "DISCLOSED_HEALTH_CONCERN_REVIEW",
+      "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
+      "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
+      "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
+      "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
+      "DISCLOSED_UNCERTAINTY_REVIEW",
+      "MINOR_GUARDIAN_PRIVACY_REVIEW",
+      "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
+      "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+      "SAFETY_CRITICAL_SOURCE_STALE"
+    ],
+    "mapped": [
+      "ACTIVE_OVERSTAY",
+      "BRIDGING_ADVERSE_HISTORY",
+      "CALLING_VISA_REVIEW",
+      "CITIZENSHIP_LIST_DIVERGENCE",
+      "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+      "E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW",
+      "E23V_TRADE_OFFICE_STAFF_REVIEW",
+      "LOCAL_MARKET_ACTIVITY_REVIEW",
+      "MINOR_WITHOUT_CONFIRMED_GUARDIAN"
+    ],
+    "unmapped": [
+      "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+      "BRIDGING_ONSHORE_ONLY",
+      "BRIDGING_TO_BRIDGING_PROHIBITED",
+      "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
+      "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+      "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+      "DECISIVE_SOURCE_STALE",
+      "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+      "DISCLOSED_CRIMINAL_RECORD_REVIEW",
+      "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
+      "DISCLOSED_HEALTH_CONCERN_REVIEW",
+      "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
+      "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
+      "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
+      "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
+      "DISCLOSED_UNCERTAINTY_REVIEW",
+      "E28B_USD_THRESHOLD_MANUAL_CHECK",
+      "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
+      "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",
+      "E28F_IKN_THRESHOLD_MANUAL_CHECK",
+      "E33B_EXPERTISE_QUALIFICATION_CHECK",
+      "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
+      "E33_WORK_RANGKAP_KEGIATAN_GATED",
+      "GOVT_INVITATION_REQUIRED",
+      "MINOR_GUARDIAN_PRIVACY_REVIEW",
+      "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
+      "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+      "SAFETY_CRITICAL_SOURCE_STALE",
+      "VOA_NATIONALITY_ONLY"
+    ],
+    "stale_map_keys": []
+  },
+  "clocks": {
+    "signed_at": {
+      "as_of": "2026-09-06T14:59:27.320080+00:00",
+      "baseline_census": {
+        "SUPPORTED_CANDIDATES": 55,
+        "NO_SUPPORTED_PATH": 10,
+        "NEEDS_INPUT": 2
+      },
+      "public_census": {
+        "SUPPORTED_CANDIDATES": 31,
+        "NO_SUPPORTED_PATH": 7,
+        "HUMAN_REVIEW_REQUIRED": 29
+      },
+      "review_frequency": {
+        "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW": 13,
+        "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW": 16
+      },
+      "rows": [
+        {
+          "label": "offshore/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/business",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/work",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/pt_pma",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/property",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/bank_deposit",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/merit",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/family",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/undecided",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/remote",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/SPOUSE/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/SPOUSE/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/CHILD/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/CHILD/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/PARENT/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/PARENT/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/SIBLING/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/SIBLING/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/DEPENDENT/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/DEPENDENT/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/STEPCHILD/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/STEPCHILD/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/OTHER/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/OTHER/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/bank_deposit",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/property",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/passive_income",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/family_sponsor",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/undecided",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/bank_deposit/age64",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/property/age64",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NEEDS_INPUT",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/passive_income/age64",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/family_sponsor/age64",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/undecided/age64",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NEEDS_INPUT",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/second_home/bank_deposit",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/second_home/property",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/study",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/SPOUSE/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/SPOUSE/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/CHILD/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/CHILD/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/PARENT/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/PARENT/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/SIBLING/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/SIBLING/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/DEPENDENT/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/DEPENDENT/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/STEPCHILD/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/STEPCHILD/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/OTHER/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/OTHER/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/other",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/business",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/work",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/invest",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/remote",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/family",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/retirement",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/retirement/age64",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/second_home",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/study",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/diaspora",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/other",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/holdsPermit/expired/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/holdsPermit/current/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/holdsPermit/current/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/tourism/unsure",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/tourism/unsure-answer",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/bridging/unknown-location",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "HUMAN_REVIEW_REQUIRED",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "BRIDGING_ONSHORE_ONLY",
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/bridging/unknown-status",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "HUMAN_REVIEW_REQUIRED",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+            "BRIDGING_TO_BRIDGING_PROHIBITED",
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/voa/unknown-nationality",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "HUMAN_REVIEW_REQUIRED",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "CALLING_VISA_REVIEW",
+            "CITIZENSHIP_LIST_DIVERGENCE",
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        }
+      ]
+    },
+    "current": {
+      "as_of": "2026-09-10T17:26:35.956903+00:00",
+      "baseline_census": {
+        "SUPPORTED_CANDIDATES": 55,
+        "NO_SUPPORTED_PATH": 10,
+        "NEEDS_INPUT": 2
+      },
+      "public_census": {
+        "SUPPORTED_CANDIDATES": 31,
+        "NO_SUPPORTED_PATH": 7,
+        "HUMAN_REVIEW_REQUIRED": 29
+      },
+      "review_frequency": {
+        "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW": 13,
+        "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW": 16
+      },
+      "rows": [
+        {
+          "label": "offshore/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/business",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/work",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/pt_pma",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/property",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/bank_deposit",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/merit",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/family",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/invest/undecided",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/remote",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/SPOUSE/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/SPOUSE/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/CHILD/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/CHILD/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/PARENT/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/PARENT/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/SIBLING/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/SIBLING/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/DEPENDENT/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/DEPENDENT/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/STEPCHILD/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/STEPCHILD/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/OTHER/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/family/OTHER/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/bank_deposit",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/property",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/passive_income",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/family_sponsor",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/undecided",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/bank_deposit/age64",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/property/age64",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NEEDS_INPUT",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/passive_income/age64",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/family_sponsor/age64",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/retirement/undecided/age64",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "NEEDS_INPUT",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/second_home/bank_deposit",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/second_home/property",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/study",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/SPOUSE/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/SPOUSE/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/CHILD/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/CHILD/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/PARENT/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/PARENT/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/SIBLING/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/SIBLING/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/DEPENDENT/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/DEPENDENT/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/STEPCHILD/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/STEPCHILD/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/OTHER/spNat=IT",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/diaspora/OTHER/spNat=ID",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/other",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/business",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/work",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/invest",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/remote",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/family",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/retirement",
+          "flags": [],
+          "baseline_state": "NO_SUPPORTED_PATH",
+          "state": "NO_SUPPORTED_PATH",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/retirement/age64",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/second_home",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/study",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/diaspora",
+          "flags": [
+            "AMBIGUOUS_SPONSOR"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/other",
+          "flags": [
+            "ACTIVITY_BOUNDARY"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/holdsPermit/expired/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "onshore/holdsPermit/current/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "offshore/holdsPermit/current/tourism",
+          "flags": [],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "SUPPORTED_CANDIDATES",
+          "review_codes": [],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/tourism/unsure",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/tourism/unsure-answer",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "SUPPORTED_CANDIDATES",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/bridging/unknown-location",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "HUMAN_REVIEW_REQUIRED",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "BRIDGING_ONSHORE_ONLY",
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/bridging/unknown-status",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "HUMAN_REVIEW_REQUIRED",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+            "BRIDGING_TO_BRIDGING_PROHIBITED",
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        },
+        {
+          "label": "edge/voa/unknown-nationality",
+          "flags": [
+            "NOT_CERTAIN"
+          ],
+          "baseline_state": "HUMAN_REVIEW_REQUIRED",
+          "state": "HUMAN_REVIEW_REQUIRED",
+          "review_codes": [
+            "CALLING_VISA_REVIEW",
+            "CITIZENSHIP_LIST_DIVERGENCE",
+            "DISCLOSED_UNCERTAINTY_REVIEW"
+          ],
+          "missing_facts": []
+        }
+      ]
+    }
+  }
+}
