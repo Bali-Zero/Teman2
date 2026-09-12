@@ -51,13 +51,30 @@ scope:
   - apps/mouth/src/app/(workspace)/lkpm/LkpmBatchClient.tsx # the client page, moved out; takes the list as a prop
   - apps/mouth/src/app/(workspace)/team-management/page.tsx # now a server wrapper
   - apps/mouth/src/app/(workspace)/team-management/TeamManagementClient.tsx # moved out; takes the photo map as a prop
-  - apps/mouth/src/app/(workspace)/clients/[id]/page.tsx # now a server wrapper
-  - apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx # moved out; threads the list to TaxTab
-  - apps/mouth/src/app/(workspace)/clients/[id]/components/TaxTab.tsx # takes the list as a prop, incl. its TaxConsultantSelector
   - apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs # tightened: scans EVERY chunk, allowlist pinned empty
   - apps/mouth/package.json # scripts.build only — the guard now runs on every build
   - apps/mouth/src/lib/client-roster-boundary.test.ts # the new server module added to the roster graph
   - apps/mouth/src/app/v2/_components/SocialProof.tsx # one stale comment, declared
+
+split:
+  what: >-
+    clients/[id] came OUT of this PR entirely — page.tsx and components/TaxTab.tsx revert to main's
+    versions byte-for-byte, and the ClientDetailClient.tsx this branch had added is deleted.
+  why: >-
+    Another window's #6329 ("clients/[id] - remove the dead tax upload and duplicated overview
+    blocks") and #6307 merged onto exactly those two files after this branch's base, rewriting
+    TaxTab.tsx by 616 lines (-557) while this branch had relocated their contents. By contract the
+    merged work wins and this one rebases; redoing that half on top of theirs is a re-do, not a
+    mechanical resolution, and doing it inside this PR invites a third collision on the same files.
+  consequence_stated_plainly: >-
+    main's TaxTab.tsx still hardcodes the address containing an excluded person's name, so the
+    chunk for app/(workspace)/clients/ still carries it. With the allowlist empty the guard would
+    fail the build, so the guard carries ONE declared, time-boxed exception naming C4b as the PR
+    that removes it, and a test fails if that list holds anything else or loses the C4b reference.
+    It is narrower than the hole this guard exists for — /clients is in INTERNAL_ROUTES and the
+    public domain answers 301 for it, measured — but the chunk is still fetchable by path on the
+    app domain, which is why it is debt and not an accepted design.
+  closed_by: C4b, from a fresh origin/main after this PR merges.
 
 constraints:
   - >-
@@ -206,9 +223,12 @@ debt_out_of_scope:
       right call.
 
 receipts:
-  - claim: "THE C4 BITES — every chunk of the build is clean, internal routes included"
+  - claim: "THE C4 BITES — every chunk this PR still owns is clean; one remains, declared and time-boxed"
     cmd: "npm run build; then grep -rli 'faisha|sahira' over every .js under .next/static/chunks"
-    result: "530 chunks, 0 carrying either name. Before: 3 — clients/[id], lkpm and team-management route chunks."
+    result: >-
+      530 chunks, 1 carrying either name — app/(workspace)/clients/[id]/page-*.js, held by the
+      declared time-boxed exception. Before: 3 (clients/[id], lkpm, team-management). The two this
+      PR still owns are clean.
     exit: 0
     ts: "2026-09-12T14:02:00Z"
     seat: claude-opus-5

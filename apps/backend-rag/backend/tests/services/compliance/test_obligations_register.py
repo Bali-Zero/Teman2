@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import fields as dataclass_fields
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -16,6 +17,7 @@ import pytest
 
 from backend.db.migration_base import split_migration_sql
 from backend.services.compliance.obligations_register import (
+    ATTRIBUTES,
     CatalogError,
     ClientProfile,
     DueRule,
@@ -24,6 +26,7 @@ from backend.services.compliance.obligations_register import (
     due_dates,
     load_catalog,
     profile_from_rows,
+    profile_inputs,
     propose,
 )
 from backend.services.compliance.obligations_repository import (
@@ -65,10 +68,29 @@ def _catalog_file(tmp_path: Path, predicate: str, extra: str = "") -> Path:
 
 def test_catalog_loads_and_every_rule_validates(catalog):
     assert len(catalog) >= 15
-    assert not any(rule.verified for rule in catalog.values())
     assert {"lkpm_quarterly", "spt_masa_pph21", "spt_tahunan_badan", "pse_registration"} <= set(
         catalog
     )
+
+
+def test_verified_rules_cite_a_source_url_and_unverified_ones_say_why(catalog):
+    """The 2026-09-12 source sweep: `verified: true` is a claim, so it must carry its URL.
+
+    What this CAN check is that a promotion carries its evidence and that a demotion explains
+    itself. What no unit test can check is whether a cited article really says what the rule
+    claims: that lives in docs/compliance/obligations-catalog-sources-2026-09.md, which holds the
+    verbatim quote behind each of the 21 rows. The count below is a floor on how much of that
+    sweep landed, not a quality score — raise it when a later sweep confirms more, and move a rule
+    back to `false` the moment its source is found wanting, even if that drops the count.
+    """
+    verified = [rule for rule in catalog.values() if rule.verified]
+    assert len(verified) >= 12, [rule.id for rule in verified]
+    for rule in verified:
+        assert "http" in rule.legal_source, rule.id
+        assert "(verify" not in rule.legal_source, rule.id
+    for rule in catalog.values():
+        if not rule.verified:
+            assert rule.needs_review_reason, rule.id
 
 
 def test_unscheduled_rules_name_their_trigger(catalog):
@@ -194,8 +216,21 @@ def test_payment_and_return_are_separate_deadlines(catalog):
 
 
 def test_roll_none_keeps_the_weekend_date(catalog):
+    # expat_tax_residency_review is roll: none — no regulation sets the date, so nothing moves it.
+    # 2026-10-31 is a Saturday and stays one.
+    assert due_dates(catalog["expat_tax_residency_review"], PMA, date(2026, 10, 1), 31) == [
+        ("2026-10", date(2026, 10, 31))
+    ]
+
+
+def test_bpjs_kesehatan_rolls_off_a_saturday_on_its_own_clause(catalog):
+    """Perpres 82/2018 art. 39(4): a 10th falling on a hari libur moves to the next hari kerja.
+
+    Sat 10 Oct 2026 therefore becomes Mon 12 Oct. The first pass of the 2026-09 source sweep had
+    this rule on roll: none, having read only art. 39(1) to (3) — the article straddles a page break.
+    """
     assert due_dates(catalog["bpjs_kesehatan_monthly"], PMA, date(2026, 10, 1), 30) == [
-        ("2026-10", date(2026, 10, 10))
+        ("2026-10", date(2026, 10, 12))
     ]
 
 
@@ -207,11 +242,12 @@ def test_day_31_clamps_to_month_end_then_rolls(catalog):
     ]
 
 
+# Permen Investasi/BKPM 5/2025 art. 286(5) moved the LKPM deadline from the 10th to the 15th.
 LKPM_2026 = [
-    ("2025-Q4", date(2026, 1, 10)),
-    ("2026-Q1", date(2026, 4, 10)),
-    ("2026-Q2", date(2026, 7, 10)),
-    ("2026-Q3", date(2026, 10, 10)),
+    ("2025-Q4", date(2026, 1, 15)),
+    ("2026-Q1", date(2026, 4, 15)),
+    ("2026-Q2", date(2026, 7, 15)),
+    ("2026-Q3", date(2026, 10, 15)),
 ]
 
 
@@ -259,6 +295,86 @@ def test_horizon_start_is_inclusive_and_end_exclusive(catalog):
     assert due_dates(rule, PMA, date(2026, 11, 16), 0) == []
     with pytest.raises(ValueError):
         due_dates(rule, PMA, date(2026, 11, 16), -1)
+
+
+def test_due_on_a_libur_nasional_moves_to_the_next_business_day():
+    # No 2026 catalog date lands on a decreed WEEKDAY, so this case needs a synthetic rule: due on
+    # the 17th means Mon 2026-08-17, Proklamasi Kemerdekaan, a holiday that is not also a weekend.
+    rule = ObligationRule(
+        "synthetic_17", "n", "a", "s", False, (), DueRule("monthly", 17, None, 0, "none", "fiscal")
+    )
+    rolling = replace(rule, due=replace(rule.due, roll="next_business_day"))
+    assert due_dates(rule, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 17))]
+    assert due_dates(rolling, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 18))]
+
+
+def test_due_on_a_cuti_bersama_moves_to_the_next_business_day(catalog):
+    # Fri 2026-03-20 is cuti bersama Idulfitri and the block runs to Tue 24 Mar -> Wed 25 Mar.
+    assert due_dates(catalog["spt_masa_pph21"], PMA, date(2026, 3, 1), 31) == [
+        ("2026-02", date(2026, 3, 25))
+    ]
+
+
+def test_due_on_a_weekend_skips_the_monday_holiday_too(catalog):
+    # The PPh 21 DEPOSIT deadline (Pasal 94: the 15th) for Masa Pajak 2026-01 is Sun 15 Feb. The
+    # old weekend-only roll stopped on Mon 16 Feb, which is cuti bersama Imlek; Tue 17 Feb is Imlek
+    # itself. Wed 18 Feb is the first day the deposit can actually be made.
+    assert due_dates(catalog["pph21_payment"], PMA, date(2026, 2, 1), 28) == [
+        ("2026-01", date(2026, 2, 18))
+    ]
+    # The RETURN for the same month is a different deadline (Pasal 171: the 20th) and does not
+    # move: Fri 20 Feb 2026 is a business day. Conflating the two is the easy mistake here.
+    assert due_dates(catalog["spt_masa_pph21"], PMA, date(2026, 2, 1), 28) == [
+        ("2026-01", date(2026, 2, 20))
+    ]
+
+
+def test_a_catalog_roll_none_rule_ignores_the_holiday_block_after_it(catalog):
+    # BPJS Ketenagakerjaan for 2026-07 is due Sat 15 Aug with roll: none. The next business day is
+    # Tue 18 Aug (Sun 16, then Independence Day on Mon 17), and none of that reaches this rule.
+    assert due_dates(catalog["bpjs_ketenagakerjaan_monthly"], PMA, date(2026, 8, 1), 30) == [
+        ("2026-07", date(2026, 8, 15))
+    ]
+
+
+def test_a_year_without_a_holiday_table_rolls_weekends_only_and_says_so(catalog):
+    # 2028 has no decree yet (they are issued ~September of the preceding year). Sat 2028-01-15
+    # therefore rolls on the weekend alone, to Mon 17 Jan, and the proposal says the date is
+    # unfinished instead of presenting it as computed.
+    rule = catalog["pph21_payment"]
+    assert due_dates(rule, PMA, date(2028, 1, 1), 31) == [("2027-12", date(2028, 1, 17))]
+    [proposed] = propose([rule], PMA, date(2028, 1, 1), 31)
+    assert proposed.needs_review_reason == "holiday calendar for 2028 not loaded"
+
+
+def test_the_holiday_gap_is_flagged_per_proposal_not_per_run(catalog):
+    # One horizon straddles the decreed year and the undecreed one, so the flag cannot be a
+    # property of the run: 2026-11 is due inside 2026 and says nothing, 2026-12 lands in 2027.
+    reasons = {
+        (p.period_key, p.due_date): p.needs_review_reason
+        for p in propose([catalog["spt_masa_ppn"]], PMA, date(2026, 12, 1), 75)
+    }
+    assert reasons == {
+        ("2026-11", date(2026, 12, 31)): None,
+        ("2026-12", date(2027, 2, 1)): "holiday calendar for 2027 not loaded",
+    }
+
+
+def test_the_holiday_gap_reason_appends_to_the_rules_own_reason(catalog):
+    rule = catalog["pph25_installment"]
+    assert rule.needs_review_reason  # the rule already has one; the gap must not replace it
+    [proposed] = propose([rule], PMA, date(2027, 1, 10), 10)
+    assert proposed.needs_review_reason == (
+        f"{rule.needs_review_reason}; holiday calendar for 2027 not loaded"
+    )
+
+
+def test_a_roll_none_rule_is_not_flagged_for_an_undecreed_year(catalog):
+    # Nothing about an unknown holiday table can change a date that never moves.
+    rule = catalog["bpjs_kesehatan_monthly"]
+    [proposed] = propose([rule], PMA, date(2027, 1, 1), 15)
+    assert proposed.due_date == date(2027, 1, 10)
+    assert proposed.needs_review_reason == rule.needs_review_reason
 
 
 def test_one_time_and_event_rules_produce_nothing(catalog):
@@ -319,6 +435,13 @@ def test_profile_from_rows_missing_custom_fields_gives_defaults(company_type, ex
     assert profile == ClientProfile(company_type=expected)
 
 
+@pytest.mark.parametrize("raw", ["\u00b2", "\u00bd", "12x", " ", "-3"])
+def test_int_attributes_drop_a_non_decimal_string_instead_of_raising(raw):
+    """isdigit() accepts "\u00b2" but int("\u00b2") raises: that ValueError reached the API as a 500."""
+    company = {"company_type": "PT PMA", "custom_fields": {"employee_count": raw}}
+    assert profile_from_rows(None, company) == ClientProfile(company_type="PT_PMA")
+
+
 def test_profile_from_rows_reads_json_text_and_drops_malformed_values():
     company = {
         "company_type": "PT PMA",
@@ -347,6 +470,66 @@ def test_leap_day_fiscal_year_end_is_kept():
 def test_profile_from_rows_survives_unhashable_values():
     company = {"company_type": "PT PMA", "custom_fields": {"investment_stage": [], "pkp": {}}}
     assert profile_from_rows(None, company) == ClientProfile(company_type="PT_PMA")
+
+
+# --------------------------------------------------------------------------- #
+# company_type precedence and the provenance profile_inputs reports (PR M3):
+# compliance_company_type is written by PATCH /profile/{client_id} and must win
+# over the companies.company_type string, which is what lets a reviewer fix a
+# company the string mapping reads as OTHER.
+# --------------------------------------------------------------------------- #
+def test_compliance_company_type_wins_over_an_unrecognised_company_type_string():
+    company = {
+        "company_type": "Yayasan Something Unrecognised",
+        "custom_fields": {"compliance_company_type": "pt_pma"},
+    }
+    inputs = profile_inputs(None, company)
+    assert inputs.profile.company_type == "PT_PMA"
+    assert "compliance_company_type" in inputs.present_keys
+    assert "company_type" not in inputs.missing_attributes
+
+
+def test_compliance_company_type_wins_over_a_recognised_company_type_string_too():
+    company = {"company_type": "PT PMA", "custom_fields": {"compliance_company_type": "CV"}}
+    assert profile_from_rows(None, company).company_type == "CV"
+
+
+@pytest.mark.parametrize("bad", ["PT_XYZ", "", None, 7, ["PT_PMA"], {}])
+def test_invalid_compliance_company_type_falls_back_to_the_string_mapping(bad):
+    company = {"company_type": "PT PMA", "custom_fields": {"compliance_company_type": bad}}
+    assert profile_from_rows(None, company).company_type == "PT_PMA"
+
+
+def test_profile_inputs_reports_present_keys_and_missing_attributes():
+    company = {"company_type": "PT PMA", "custom_fields": {"pkp": "yes", "employee_count": 3}}
+    inputs = profile_inputs({"id": 1}, company)
+    assert set(inputs.present_keys) == {"pkp", "employee_count"}
+    assert "has_employees" not in inputs.missing_attributes  # derived from employee_count > 0
+    assert {"pse_registered", "annual_turnover_idr", "investment_stage"} <= set(
+        inputs.missing_attributes
+    )
+    assert "company_type" not in inputs.missing_attributes  # the string mapped to PT_PMA
+
+
+def test_profile_inputs_lists_company_type_as_missing_when_it_defaulted_to_other():
+    inputs = profile_inputs(None, {"company_type": "Koperasi"})
+    assert inputs.profile.company_type == "OTHER"
+    assert "company_type" in inputs.missing_attributes
+    assert inputs.present_keys == ()
+
+
+def test_profile_inputs_of_a_bare_client_has_every_attribute_missing():
+    inputs = profile_inputs(None, None)
+    assert set(inputs.missing_attributes) == set(ATTRIBUTES)
+    assert inputs.present_keys == ()
+
+
+def test_profile_inputs_counts_the_foreign_platform_flag_as_a_present_key():
+    company = {"company_type": "Foreign co", "custom_fields": {"is_foreign_platform": True}}
+    inputs = profile_inputs(None, company)
+    assert inputs.profile.company_type == "FOREIGN_PLATFORM"
+    assert inputs.present_keys == ("is_foreign_platform",)
+    assert "company_type" not in inputs.missing_attributes
 
 
 @pytest.mark.parametrize(

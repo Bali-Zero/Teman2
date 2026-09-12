@@ -1,0 +1,53 @@
+task_id: obligations-profile-api
+gear: 2
+objective: >-
+  M3 of the compliance-stack second wave (docs/plans/2026-09-12-compliance-stack-engine-ui-windows.md):
+  give the obligations reviewer the two things it cannot compute itself. Before this PR the queue
+  could only render a bare rule_id, and no client carried the companies.custom_fields keys the
+  engine reads — so profile_from_rows collapsed every client to the ClientProfile defaults and
+  applies() proposed the statutory minimum. Three admin-gated routes: GET /catalog (the 21 rules
+  with name, authority, legal_source and verified — no client data, no connection acquired),
+  GET /profile/{client_id} (the computed profile plus present_keys / missing_keys /
+  company_type_raw / needs_manual_classification) and PATCH /profile/{client_id} (any subset of
+  the engine ATTRIBUTES, merged into companies.custom_fields). No migration.
+
+  Gear 2 by SIZE, deterministically: scripts/evidence_pack_lint.py --print-floor reports 2 on a
+  net churn of 636 lines over four files, of which 357 are tests.
+constraints:
+  - >-
+    ONE parse path, not two. profile_inputs() now owns the custom_fields parsing and
+    profile_from_rows() delegates to it, so the present_keys/missing_keys report the API returns
+    cannot drift from what the engine actually reads. A router-side re-derivation of the same
+    rules would have been a guard-over-match waiting to happen (cicatrix family #3).
+  - >-
+    company_type precedence is documented at the single place that implements it
+    (profile_inputs' docstring): custom_fields.compliance_company_type wins over the
+    companies.company_type string, which is what lets a reviewer classify a company the string
+    mapping reads as OTHER.
+  - >-
+    The PATCH creates nothing. 409 when the client has no client_company_links row, 404 when the
+    client does not exist, and the write is the JSONB merge crm_enhanced.py already uses
+    (COALESCE(custom_fields,'{}'::jsonb) || $1::text::jsonb) so unrelated keys survive and no
+    read-modify-write can drop one.
+  - >-
+    Route ordering is load-bearing: /catalog and /profile/{client_id} are registered BEFORE
+    /{obligation_id}, which FastAPI matches in registration order and would answer 422 for both.
+  - >-
+    Logs name the patched KEYS and never the values; 422 details name the rejected key and its
+    allowed domain, never the submitted value. Client ids only.
+acceptance:
+  - text: >-
+      The three routes answer for an admin and 403 for a non-admin; the PATCH merges without
+      wiping unrelated custom_fields keys, rejects an unknown key and an invalid value with 422,
+      and answers 409 for a client with no company row. 42 router tests.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/unit/app/routers/test_compliance_obligations.py
+  - text: >-
+      compliance_company_type wins over the company_type string, an invalid value falls back to
+      the string mapping, and the existing engine behaviour is unchanged. 86 engine tests.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/services/compliance/test_obligations_register.py
+  - text: >-
+      The whole compliance surface stays green: 422 passed, against 383 on origin/main.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/unit/app/routers/test_compliance_obligations.py backend/tests/services/compliance
+  - text: The app still imports with the new routes registered.
+    probe: PYTHONPATH=.:../crm-cell python -c "from backend.app.main_cloud import app"
+pii_scan: clean

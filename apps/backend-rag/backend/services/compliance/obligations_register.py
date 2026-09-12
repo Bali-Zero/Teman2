@@ -16,8 +16,12 @@ A `day` past the end of a month means that month's last day. Fiscal years are mo
 the MM of fiscal_year_end is the closing month. Period keys: "YYYY-MM" (monthly), "YYYY-Qn"
 (calendar quarter), "FYyyyy-Qn" (fiscal quarter), "FYyyyy" (annual), where yyyy is the calendar
 year in which the fiscal year ends.
-roll=next_business_day moves a Saturday or Sunday to the following Monday. Indonesian national
-holidays and cuti bersama are NOT modelled in v1: a due date on a holiday does not move.
+roll=next_business_day moves a date that is not an Indonesian business day to the first one after
+it: Saturday, Sunday, libur nasional and cuti bersama all push it (`business_days.py`, PMK
+81/2024 Pasal 100 for payment and Pasal 173 for reporting). When the due date's year has no
+decreed holiday table the roll degrades to weekends only, and `propose` attaches
+"holiday calendar for <year> not loaded" to that proposal's needs_review_reason so the reviewer
+sees a date the engine could not finish computing. roll=none never moves, holiday or not.
 The horizon window is [start, start + horizon_days): start inclusive, end exclusive, after rolling.
 """
 
@@ -33,6 +37,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from backend.services.compliance.business_days import holiday_years_loaded, next_business_day
 
 DEFAULT_CATALOG_PATH = Path(__file__).resolve().parents[2] / "data" / "obligations_catalog.yaml"
 
@@ -345,17 +351,29 @@ def due_dates(
     out = []
     for key, due in _periods(rule, profile, range(start.year - span, end.year + 2)):
         if rule.due.roll == "next_business_day":
-            due += timedelta(days=max(0, 7 - due.weekday()) if due.weekday() >= 5 else 0)
+            due = next_business_day(due)
         if start <= due < end:
             out.append((key, due))
     return sorted(out, key=lambda kd: (kd[1], kd[0]))
+
+
+def _review_reason(rule: ObligationRule, due: date) -> str | None:
+    """The rule's own reason, plus the holiday gap when this date's year has no decreed table.
+
+    Only a rolling rule can be wrong for that reason: a roll=none date never moved in the first
+    place, so an undecreed year tells the reviewer nothing about it.
+    """
+    if rule.due.roll != "next_business_day" or due.year in holiday_years_loaded():
+        return rule.needs_review_reason
+    gap = f"holiday calendar for {due.year} not loaded"
+    return f"{rule.needs_review_reason}; {gap}" if rule.needs_review_reason else gap
 
 
 def propose(
     rules: Iterable[ObligationRule], profile: ClientProfile, start: date, horizon_days: int
 ) -> list[ProposedObligation]:
     out = [
-        ProposedObligation(rule.id, key, due, rule.needs_review_reason)
+        ProposedObligation(rule.id, key, due, _review_reason(rule, due))
         for rule in rules
         if applies(rule, profile)
         for key, due in due_dates(rule, profile, start, horizon_days)
@@ -382,7 +400,10 @@ def _as_int(value: Any) -> int | None:
         return int(value)
     if isinstance(value, float) and value.is_integer() and value >= 0:
         return int(value)
-    if isinstance(value, str) and value.strip().isdigit():
+    # isdecimal(), NOT isdigit(): "\u00b2".isdigit() is True but int("\u00b2") raises, which turned a
+    # malformed custom_fields value into a 500 (Codex spalla, PR M3). Every isdecimal()
+    # string — including Arabic-Indic digits — int() parses.
+    if isinstance(value, str) and value.strip().isdecimal():
         return int(value.strip())
     return None
 
@@ -397,41 +418,98 @@ def _custom_fields(row: Mapping[str, Any] | None) -> dict[str, Any]:
     return dict(raw) if isinstance(raw, Mapping) else {}
 
 
-def profile_from_rows(
-    client_row: Mapping[str, Any] | None, company_row: Mapping[str, Any] | None
-) -> ClientProfile:
-    """Build a profile from a clients row and a companies row.
+@dataclass(frozen=True)
+class ProfileInputs:
+    """A computed profile plus WHICH custom_fields keys produced it.
 
-    company_type comes from companies.company_type ("PT PMA" -> PT_PMA, "PT Perorangan"/"PT" ->
-    PT_PMDN, "CV" -> CV); anything else is OTHER, or FOREIGN_PLATFORM when custom_fields has
-    is_foreign_platform true. Every other attribute is read from custom_fields under its own name
-    (companies.custom_fields wins over clients.custom_fields); missing or malformed values fall
-    back to the ClientProfile defaults. has_employees is true if set or if employee_count > 0.
+    ``present_keys``: engine-recognised custom_fields keys that carried a value the engine could
+    parse, so they actually shaped the profile. ``missing_attributes``: engine ATTRIBUTES left at
+    their ClientProfile default because nothing valid was supplied (``company_type`` is listed
+    when it fell back to OTHER without an explicit ``compliance_company_type``).
+    """
+
+    profile: ClientProfile
+    present_keys: tuple[str, ...]
+    missing_attributes: tuple[str, ...]
+
+
+def profile_inputs(
+    client_row: Mapping[str, Any] | None, company_row: Mapping[str, Any] | None
+) -> ProfileInputs:
+    """Build a profile from a clients row and a companies row, with its provenance.
+
+    company_type precedence, highest first:
+    1. ``custom_fields["compliance_company_type"]`` when it is one of COMPANY_TYPES. This key is
+       written by PATCH /api/compliance/obligations/profile/{client_id} and WINS over the
+       companies.company_type string, so a reviewer can classify a company whose string spelling
+       the map below reads as OTHER.
+    2. the companies.company_type string mapped through _COMPANY_TYPE_MAP ("PT PMA" -> PT_PMA,
+       "PT Perorangan"/"PT" -> PT_PMDN, "CV" -> CV); anything unrecognised is OTHER.
+    3. FOREIGN_PLATFORM, when 2. yielded OTHER and custom_fields has is_foreign_platform true.
+
+    Every other attribute is read from custom_fields under its own name (companies.custom_fields
+    wins over clients.custom_fields); missing or malformed values fall back to the ClientProfile
+    defaults. has_employees is true if set or if employee_count > 0.
     """
     custom = {**_custom_fields(client_row), **_custom_fields(company_row)}
-    raw_type = str((company_row or {}).get("company_type") or "").upper()
-    raw_type = " ".join(re.sub(r"\(.*?\)|\.", " ", raw_type).split())  # "PT. PMA (Persero)"
-    company_type = _COMPANY_TYPE_MAP.get(raw_type, "OTHER")
-    if company_type == "OTHER" and _as_bool(custom.get("is_foreign_platform")):
-        company_type = "FOREIGN_PLATFORM"
+    present: list[str] = []
+    supplied: set[str] = set()
+
+    explicit = custom.get("compliance_company_type")
+    company_type = explicit.strip().upper() if isinstance(explicit, str) else ""
+    if company_type in COMPANY_TYPES:
+        present.append("compliance_company_type")
+        supplied.add("company_type")
+    else:
+        raw_type = str((company_row or {}).get("company_type") or "").upper()
+        raw_type = " ".join(re.sub(r"\(.*?\)|\.", " ", raw_type).split())  # "PT. PMA (Persero)"
+        company_type = _COMPANY_TYPE_MAP.get(raw_type, "OTHER")
+        if company_type != "OTHER":
+            supplied.add("company_type")
+        elif _as_bool(custom.get("is_foreign_platform")):
+            company_type = "FOREIGN_PLATFORM"
+            present.append("is_foreign_platform")
+            supplied.add("company_type")
+
     kwargs: dict[str, Any] = {"company_type": company_type}
     for name in BOOL_ATTRS:
         flag = _as_bool(custom.get(name))
         if flag is not None:
             kwargs[name] = flag
+            present.append(name)
+            supplied.add(name)
     for name in INT_ATTRS:
         number = _as_int(custom.get(name))
         if number is not None:
             kwargs[name] = number
+            present.append(name)
+            supplied.add(name)
     stage = custom.get("investment_stage")
     if isinstance(stage, str) and stage in INVESTMENT_STAGES:
         kwargs["investment_stage"] = stage
+        present.append("investment_stage")
+        supplied.add("investment_stage")
     if _valid_fye(custom.get("fiscal_year_end")):
         kwargs["fiscal_year_end"] = custom["fiscal_year_end"]
+        present.append("fiscal_year_end")
+        supplied.add("fiscal_year_end")
     kwargs["has_employees"] = (
         bool(kwargs.get("has_employees")) or kwargs.get("employee_count", 0) > 0
     )
-    return ClientProfile(**kwargs)
+    if kwargs["has_employees"]:  # explicit, or derived from a positive employee_count
+        supplied.add("has_employees")
+    return ProfileInputs(
+        profile=ClientProfile(**kwargs),
+        present_keys=tuple(sorted(present)),
+        missing_attributes=tuple(sorted(ATTRIBUTES - supplied)),
+    )
+
+
+def profile_from_rows(
+    client_row: Mapping[str, Any] | None, company_row: Mapping[str, Any] | None
+) -> ClientProfile:
+    """The profile only. See ``profile_inputs`` for the company_type precedence it applies."""
+    return profile_inputs(client_row, company_row).profile
 
 
 __all__ = [
@@ -443,10 +521,12 @@ __all__ = [
     "DueRule",
     "ObligationRule",
     "Predicate",
+    "ProfileInputs",
     "ProposedObligation",
     "applies",
     "due_dates",
     "load_catalog",
     "profile_from_rows",
+    "profile_inputs",
     "propose",
 ]

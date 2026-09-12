@@ -1,8 +1,5 @@
 "use client";
 
-import React from "react";
-import { MessageCircle, Mail, Phone, Calendar, FileText } from "lucide-react";
-
 // Country codes with flags for phone input
 export const COUNTRY_CODES = [
   { code: "+62", country: "Indonesia", flag: "\u{1F1EE}\u{1F1E9}" },
@@ -288,15 +285,4 @@ export const getVisaAlertStatus = (
     bgClass: "",
     textClass: "",
   };
-};
-
-export const INTERACTION_ICONS: Record<string, React.ReactNode> = {
-  chat: React.createElement(MessageCircle, { className: "w-4 h-4" }),
-  email: React.createElement(Mail, { className: "w-4 h-4" }),
-  whatsapp: React.createElement(MessageCircle, {
-    className: "w-4 h-4 text-green-500",
-  }),
-  call: React.createElement(Phone, { className: "w-4 h-4" }),
-  meeting: React.createElement(Calendar, { className: "w-4 h-4" }),
-  note: React.createElement(FileText, { className: "w-4 h-4" }),
 };

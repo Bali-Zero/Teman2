@@ -59,6 +59,17 @@ const ROSTER_GRAPH_MODULES = [
 ];
 
 /**
+ * The guard script's chunk exception, pinned from here.
+ *
+ * It holds exactly one time-boxed entry while C4b is outstanding — see the comment
+ * on ALLOWED_CHUNK_PREFIXES in scripts/assert-roster-not-in-public-chunks.mjs. This
+ * test fails if the list grows, shrinks to something else, or is quietly reworded:
+ * an exception that can be added without a red test is not an exception, it is a
+ * hole with a comment.
+ */
+const EXPECTED_CHUNK_EXCEPTIONS = ["app/(workspace)/clients/"];
+
+/**
  * EMPTY, and that is the assertion.
  *
  * There used to be one declared exception: `book-data.ts` derived the book team
@@ -253,6 +264,21 @@ describe("the roster does not cross the client boundary", () => {
     // The filter has to be here, or the exclusion is applied nowhere for these
     // two surfaces.
     expect(src).toContain("publicEntries");
+  });
+
+  it("the guard's chunk exception is exactly the one declared, time-boxed entry", () => {
+    // Read the guard's source rather than importing it: the script exits the
+    // process on failure, which a test runner should never invite.
+    const guard = readFileSync(
+      join(SRC, "..", "scripts", "assert-roster-not-in-public-chunks.mjs"),
+      "utf8",
+    );
+    const m = guard.match(/const ALLOWED_CHUNK_PREFIXES = (\[[^\]]*\]);/);
+    expect(m, "ALLOWED_CHUNK_PREFIXES not found in the guard").toBeTruthy();
+    const listed: string[] = JSON.parse(m![1].replace(/'/g, '"'));
+    expect(listed).toEqual(EXPECTED_CHUNK_EXCEPTIONS);
+    // and the entry has to carry its closing PR, or it is not time-boxed
+    expect(guard).toContain("C4b");
   });
 
   it("the initials helper carries no roster data of its own", () => {

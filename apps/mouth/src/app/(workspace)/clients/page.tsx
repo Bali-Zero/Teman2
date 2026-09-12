@@ -561,9 +561,6 @@ function ClientsListContent() {
             {hasMore && " (scroll for more)"}
             {activeFiltersCount > 0 &&
               ` • filtered from ${isMounted ? visibleClients.length.toLocaleString("en-US") : visibleClients.length}`}
-            {stats && (
-              <span className="ml-2 text-xs">• {stats.totalClients} total</span>
-            )}
             {statsError && (
               <span
                 className="ml-2 text-xs"
@@ -720,9 +717,7 @@ function ClientsListContent() {
       {/* Health Awareness Bar — global counts from backend stats */}
       {isMounted &&
         stats &&
-        (stats.passportExpired > 0 ||
-          stats.passportExpiringSoon > 0 ||
-          stats.silent30d > 0) && (
+        (stats.passportExpired > 0 || stats.passportExpiringSoon > 0) && (
           <div className="flex flex-wrap gap-2 text-xs">
             {stats.passportExpired > 0 && (
               <button
@@ -759,22 +754,6 @@ function ClientsListContent() {
               >
                 <AlertCircle className="w-3 h-3" />
                 {stats.passportExpiringSoon} expiring in 90d
-              </button>
-            )}
-            {stats.silent30d > 0 && (
-              <button
-                onClick={() => setSilentFilter(silentFilter === 30 ? null : 30)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
-                style={{
-                  background:
-                    "color-mix(in srgb, var(--bz-neon-purple) 15%, transparent)",
-                  color: "var(--bz-neon-purple)",
-                  border:
-                    "1px solid color-mix(in srgb, var(--bz-neon-purple) 25%, transparent)",
-                }}
-              >
-                <AlertCircle className="w-3 h-3" />
-                {stats.silent30d} silent 30d+
               </button>
             )}
           </div>
@@ -921,34 +900,6 @@ function ClientsListContent() {
             </FilterSelect>
             <FilterSelect
               label="Assigned To"
-              labelExtra={
-                currentUserEmail ? (
-                  <button
-                    onClick={() =>
-                      setFilters({
-                        ...filters,
-                        assigned_to:
-                          filters.assigned_to === currentUserEmail
-                            ? ""
-                            : currentUserEmail,
-                      })
-                    }
-                    className="text-xs px-2 py-0.5 rounded-full transition-colors"
-                    style={{
-                      background:
-                        filters.assigned_to === currentUserEmail
-                          ? "var(--bz-accent)"
-                          : "var(--bz-surface)",
-                      color:
-                        filters.assigned_to === currentUserEmail
-                          ? "var(--bz-text-pure)"
-                          : "var(--bz-text-2)",
-                    }}
-                  >
-                    My Clients
-                  </button>
-                ) : undefined
-              }
               value={filters.assigned_to}
               onChange={(v) => setFilters({ ...filters, assigned_to: v })}
               selectClassName="transition-all duration-300"
@@ -1336,9 +1287,7 @@ function ClientsListContent() {
                   className="p-4 text-center text-xs"
                   style={{ color: "var(--bz-text-2)" }}
                 >
-                  {isLoadingMore
-                    ? "Loading more..."
-                    : `${clients.length} of ${clients.length} loaded`}
+                  {isLoadingMore && "Loading more..."}
                 </div>
               )}
             </div>

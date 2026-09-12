@@ -65,26 +65,6 @@ interface RevenueGrowthResponse {
   }>;
 }
 
-/**
- * Mark interaction read response
- */
-interface MarkReadResponse {
-  success: boolean;
-  interaction_id: number;
-  read_receipt: boolean;
-  read_at: string;
-  read_by: string;
-}
-
-/**
- * Batch mark read response
- */
-interface BatchMarkReadResponse {
-  success: boolean;
-  updated_count: number;
-  read_by: string;
-}
-
 export class CrmApi {
   constructor(private client: IApiClient) {}
 
@@ -270,38 +250,6 @@ export class CrmApi {
         method: "POST",
         body: JSON.stringify({ dry_run: dryRun, limit }),
       },
-    );
-  }
-
-  /**
-   * Mark an interaction as read
-   */
-  async markInteractionRead(
-    interactionId: number,
-    readBy: string,
-  ): Promise<MarkReadResponse> {
-    return this.client.request<MarkReadResponse>(
-      `/api/crm/interactions/${interactionId}/mark-read?read_by=${encodeURIComponent(readBy)}`,
-      { method: "PATCH" },
-    );
-  }
-
-  /**
-   * Mark multiple interactions as read (batch)
-   */
-  async markInteractionsReadBatch(
-    interactionIds: number[],
-    readBy: string,
-  ): Promise<BatchMarkReadResponse> {
-    const queryParams = new URLSearchParams();
-    interactionIds.forEach((id) =>
-      queryParams.append("interaction_ids", id.toString()),
-    );
-    queryParams.append("read_by", readBy);
-
-    return this.client.request<BatchMarkReadResponse>(
-      `/api/crm/interactions/mark-read-batch?${queryParams.toString()}`,
-      { method: "PATCH" },
     );
   }
 
@@ -936,116 +884,6 @@ export class CrmApi {
   }
 
   /**
-   * Google Drive Folder Management
-   */
-
-  /**
-   * Create standardized Google Drive folder structure for a client
-   */
-  async createDriveFolder(clientId: number): Promise<{
-    success: boolean;
-    root_folder_id: string;
-    root_folder_url: string;
-    root_folder_name: string;
-    folders: Record<string, { id: string; url: string }>;
-    created_count: number;
-  }> {
-    return this.client.request(`/api/clients/${clientId}/create-drive-folder`, {
-      method: "POST",
-    });
-  }
-
-  /**
-   * Get Google Drive folder information for a client
-   */
-  async getDriveFolder(clientId: number): Promise<{
-    client_id: number;
-    folder_id: string | null;
-    folder_url: string | null;
-    exists: boolean;
-    message?: string;
-  }> {
-    return this.client.request(`/api/clients/${clientId}/drive-folder`);
-  }
-
-  /**
-   * Unlink Google Drive folder from client (does NOT delete the folder)
-   */
-  async unlinkDriveFolder(clientId: number): Promise<{
-    success: boolean;
-    message: string;
-    note: string;
-  }> {
-    return this.client.request(`/api/clients/${clientId}/drive-folder`, {
-      method: "DELETE",
-    });
-  }
-
-  /**
-   * Get complete folder structure with file counts
-   */
-  async getDriveFolderStructure(clientId: number): Promise<{
-    root_folder_id: string;
-    folders: Array<{
-      name: string;
-      id: string;
-      file_count: number;
-      total_size_bytes: number;
-      last_modified: string | null;
-    }>;
-    total_files: number;
-    total_size_bytes: number;
-  }> {
-    return this.client.request(
-      `/api/clients/${clientId}/drive-folder/structure`,
-    );
-  }
-
-  /**
-   * List files in a subfolder
-   */
-  async listFolderFiles(
-    clientId: number,
-    folderName: string,
-    options?: {
-      limit?: number;
-      offset?: number;
-      search?: string;
-    },
-  ): Promise<{
-    folder_name: string;
-    folder_id: string;
-    files: Array<{
-      id: string;
-      name: string;
-      mime_type: string;
-      size_bytes: number | null;
-      created_time: string;
-      modified_time: string;
-      thumbnail_url: string | null;
-      download_url: string;
-      is_folder: boolean;
-    }>;
-    total: number;
-    limit: number;
-    offset: number;
-    has_more: boolean;
-  }> {
-    const params = new URLSearchParams();
-    if (options?.limit) params.append("limit", options.limit.toString());
-    if (options?.offset) params.append("offset", options.offset.toString());
-    if (options?.search) params.append("search", options.search);
-
-    const query = params.toString();
-    return this.client.request(
-      `/api/clients/${clientId}/drive-folder/${folderName}/files${query ? `?${query}` : ""}`,
-    );
-  }
-
-  /**
-   * Upload file to a subfolder
-   */
-  /**
    * Upload a client avatar image to storage (Tigris) and set avatar_url to the
    * returned public URL. Replaces the legacy base64-into-avatar_url path that
    * bloated the clients list. Backend: POST /api/crm/clients/{id}/avatar.
@@ -1060,54 +898,6 @@ export class CrmApi {
       method: "POST",
       body: formData,
     });
-  }
-
-  async uploadFileToFolder(
-    clientId: number,
-    folderName: string,
-    file: File,
-  ): Promise<{
-    success: boolean;
-    folder_name: string;
-    folder_id: string;
-    file_id: string;
-    file_name: string;
-    size_bytes: number;
-    download_url: string;
-  }> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    // Client now handles FormData correctly (no Content-Type header)
-    return this.client.request(
-      `/api/clients/${clientId}/drive-folder/${folderName}/upload`,
-      {
-        method: "POST",
-        body: formData,
-        // Headers will be set by client (CSRF token, etc.)
-        // Content-Type will NOT be set for FormData
-      },
-    );
-  }
-
-  /**
-   * Get folder statistics
-   */
-  async getDriveFolderStats(clientId: number): Promise<{
-    total_files: number;
-    total_size_bytes: number;
-    total_size_mb: number;
-    last_synced: string;
-    by_category: Record<
-      string,
-      {
-        files: number;
-        size_bytes: number;
-        size_mb: number;
-      }
-    >;
-  }> {
-    return this.client.request(`/api/clients/${clientId}/drive-folder/stats`);
   }
 
   // ============================================
