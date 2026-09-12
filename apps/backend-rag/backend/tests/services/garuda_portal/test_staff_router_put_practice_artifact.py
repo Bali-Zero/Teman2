@@ -31,9 +31,14 @@ from jose import jwt as jose_jwt
 
 from backend.app.core.database import init_asyncpg_connection
 from backend.app.routers import garuda_staff_router
+from backend.app.routers.garuda_staff_router import _read_bounded_body
 from backend.services.garuda_artifacts.fakes import InMemoryArtifactObjectStore
 from backend.services.garuda_artifacts.postgres_repository import PostgresArtifactRepository
-from backend.services.garuda_artifacts.service import GarudaArtifactService
+from backend.services.garuda_artifacts.service import (
+    MAX_ARTIFACT_BYTES,
+    ArtifactTooLarge,
+    GarudaArtifactService,
+)
 from backend.services.garuda_flow.intake import CaseType
 from backend.services.garuda_orders.idempotency import canonical_payload_sha256, scoped_key_sha256
 from backend.services.garuda_orders.models import Applicant
@@ -660,3 +665,131 @@ class TestPutPracticeArtifactHappyPathAndValidation:
         assert len(live) == 1, "the partial unique index must leave exactly ONE live row"
         assert len(superseded) == 1
         assert superseded[0]["superseded_by"] == live[0]["artifact_id"]
+
+
+@pytest.mark.asyncio
+class TestReadBoundedBody:
+    """Unit tests for `_read_bounded_body` (finding F4, Sol's O1, MAJOR).
+    No ASGI app, no Postgres: a fake stream stands in for `Request.
+    stream()` so the guilt is directly observable -- the pre-cure
+    `request.body()` design fully drains whatever it is given before
+    anything can check its size; the cure must stop consuming FAR short of
+    that, the instant `ceiling + 1` bytes have been seen."""
+
+    async def test_oversize_stream_is_rejected_before_the_stream_is_drained(self) -> None:
+        ceiling = 1024
+        chunk_size = 256
+        total_chunks = 100  # 100 * 256 = 25_600 bytes, far past `ceiling`
+        produced: list[int] = []
+
+        class _FakeRequest:
+            async def stream(self):
+                for i in range(total_chunks):
+                    produced.append(i)
+                    yield b"x" * chunk_size
+
+        with pytest.raises(ArtifactTooLarge):
+            await _read_bounded_body(_FakeRequest(), ceiling=ceiling)
+
+        # The guilt: a full-buffer-then-check design would have consumed
+        # EVERY chunk before raising anything. The cure stops as soon as
+        # the running total crosses `ceiling` -- here, after 5 chunks
+        # (5 * 256 = 1280 > 1024) -- nowhere near `total_chunks`.
+        assert len(produced) < total_chunks
+
+    async def test_body_within_the_ceiling_is_returned_whole(self) -> None:
+        class _FakeRequest:
+            async def stream(self):
+                yield b"%PDF-1.4\n"
+                yield b"rest of a small body"
+
+        body = await _read_bounded_body(_FakeRequest(), ceiling=MAX_ARTIFACT_BYTES)
+        assert body == b"%PDF-1.4\nrest of a small body"
+
+    async def test_body_exactly_at_the_ceiling_is_not_rejected(self) -> None:
+        ceiling = 100
+
+        class _FakeRequest:
+            async def stream(self):
+                yield b"y" * ceiling
+
+        body = await _read_bounded_body(_FakeRequest(), ceiling=ceiling)
+        assert len(body) == ceiling
+
+    async def test_a_single_chunk_larger_than_the_ceiling_is_rejected_without_growing_past_it(
+        self,
+    ) -> None:
+        """A malicious or misbehaving client is not obligated to send small
+        chunks -- one giant chunk must be caught the same way a stream of
+        many small ones is, and the helper must never hold more than
+        `ceiling + 1` bytes even transiently."""
+        ceiling = 100
+
+        class _FakeRequest:
+            async def stream(self):
+                yield b"z" * (ceiling * 10)
+
+        with pytest.raises(ArtifactTooLarge):
+            await _read_bounded_body(_FakeRequest(), ceiling=ceiling)
+
+
+@pytest.mark.asyncio
+class TestPutPracticeArtifactOversizeBody:
+    """Integration coverage for F4's cure over the real ASGI stack: the
+    oversize contract (status/code) must be EXACTLY what the pre-cure
+    `request.body()` + service-side `ArtifactTooLarge` path already
+    produced, and authorization must still win over it -- same ordering
+    guarantee `test_visibility_is_checked_before_the_body_is_read` proves
+    for a merely-invalid (not oversize) body."""
+
+    async def test_oversize_body_is_422_invalid_request_same_as_the_in_memory_ceiling(
+        self, pool, order_repository, artifact_service
+    ) -> None:
+        order_id = await _create_and_pay_order(
+            order_repository,
+            result_id="result-putoversize-000000",
+            provider_event_id="evt-putoversize-1",
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool, artifact_service=artifact_service)
+        transport = ASGITransport(app=app)
+        oversize_body = b"%" * (MAX_ARTIFACT_BYTES + 1024)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.put(
+                f"/api/visa/voa/staff/practices/{practice_id}/artifact",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "putoversize-key-0000000001",
+                },
+                content=oversize_body,
+            )
+        assert resp.status_code == 422
+        assert resp.json()["code"] == "INVALID_REQUEST"
+
+    async def test_visibility_is_checked_before_an_oversize_body_is_read(
+        self, pool, order_repository, artifact_service
+    ) -> None:
+        """Same ordering guarantee as the non-pdf case, now for the
+        oversize case: an actor without visibility on the practice must
+        get 403, never the 422 an oversize body would otherwise produce --
+        proving `visible_or_403` still runs before `_read_bounded_body`."""
+        order_id = await _create_and_pay_order(
+            order_repository,
+            result_id="result-putoversize403-00",
+            provider_event_id="evt-putoversize403-1",
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool, artifact_service=artifact_service)
+        transport = ASGITransport(app=app)
+        oversize_body = b"%" * (MAX_ARTIFACT_BYTES + 1024)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.put(
+                f"/api/visa/voa/staff/practices/{practice_id}/artifact",
+                headers={
+                    "Authorization": _bearer(_TEAM_A, "Team Leader"),
+                    "Idempotency-Key": "putoversize403-key-001",
+                },
+                content=oversize_body,
+            )
+        assert resp.status_code == 403
+        assert resp.json()["code"] == "ACCESS_DENIED"

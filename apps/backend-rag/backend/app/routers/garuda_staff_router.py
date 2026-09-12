@@ -48,6 +48,7 @@ from backend.services.garuda_artifacts.ports import (
     ArtifactObjectMissing,
 )
 from backend.services.garuda_artifacts.service import (
+    MAX_ARTIFACT_BYTES,
     ArtifactTooLarge,
     GarudaArtifactService,
     InvalidArtifactContent,
@@ -635,6 +636,39 @@ async def transition_practice(
     return response_body
 
 
+async def _read_bounded_body(request: Request, *, ceiling: int) -> bytes:
+    """Reads `request`'s ASGI body stream directly -- never `request.
+    body()`, which buffers the WHOLE body before anything downstream can
+    check its size (finding F4, Sol's O1, MAJOR: an authenticated staff
+    session could send an arbitrarily large chunked body and the
+    service's `MAX_ARTIFACT_BYTES` ceiling never got a chance to run,
+    because the buffering happened first, unconditionally).
+
+    Accumulates at most `ceiling + 1` bytes -- never more, regardless of
+    how large the underlying stream actually is or how big any single
+    chunk is -- and raises `ArtifactTooLarge` (service.py's own type) the
+    instant that bound is crossed, before the rest of the stream is
+    drained. One exception type either way means the caller's existing
+    `except (InvalidArtifactContent, ArtifactTooLarge)` -> 422
+    `INVALID_REQUEST` mapping needs no change at all.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        if not chunk:
+            continue
+        remaining = ceiling + 1 - total
+        if remaining <= 0:
+            raise ArtifactTooLarge(total)
+        if len(chunk) > remaining:
+            chunk = chunk[:remaining]
+        chunks.append(chunk)
+        total += len(chunk)
+        if total > ceiling:
+            raise ArtifactTooLarge(total)
+    return b"".join(chunks)
+
+
 #: Same reasoning as `_STAFF_SESSION_SECURITY` -- no `fastapi.security.*`
 #: dependency for FastAPI to introspect on this operation either.
 @router.put(
@@ -678,7 +712,20 @@ async def put_practice_artifact(
         # Body read stays AFTER authorization so an actor without visibility
         # on this practice never gets a 422 (or any parsing feedback) for a
         # resource it cannot see -- the 403 must win regardless of payload.
-        body = await request.body()
+        #
+        # `_read_bounded_body`, not `request.body()` (finding F4): the
+        # latter buffers the ENTIRE body before `MAX_ARTIFACT_BYTES` is
+        # ever checked. The bounded reader raises the SAME `ArtifactTooLarge`
+        # the service already raises for an over-ceiling in-memory body, so
+        # it is mapped to the SAME 422 `INVALID_REQUEST` right here --
+        # before idempotency reservation even starts, exactly where the
+        # unbounded read used to sit.
+        try:
+            body = await _read_bounded_body(request, ceiling=MAX_ARTIFACT_BYTES)
+        except ArtifactTooLarge as exc:
+            raise HTTPException(
+                status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
+            ) from exc
         payload_digest = idempotency.canonical_payload_sha256(
             {"practice_id": practice_id, "body_sha256": hashlib.sha256(body).hexdigest()}
         )

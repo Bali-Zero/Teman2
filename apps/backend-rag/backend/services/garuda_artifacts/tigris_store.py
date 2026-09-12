@@ -38,6 +38,7 @@ from backend.services.garuda_artifacts.ports import (
     ArtifactDigestMismatch,
     ArtifactObjectMissing,
 )
+from backend.services.garuda_artifacts.service import MAX_ARTIFACT_BYTES
 
 logger = logging.getLogger(__name__)
 
@@ -126,18 +127,65 @@ class TigrisArtifactObjectStore:
     async def put(self, *, key: str, body: bytes, content_type: str) -> None:
         await asyncio.to_thread(self._put_sync, key=key, body=body, content_type=content_type)
 
-    def _get_bytes_sync(self, *, key: str) -> bytes:
+    def _get_bytes_sync(self, *, key: str, expected_byte_length: int | None) -> bytes:
         try:
             resp: dict[str, Any] = self._client.get_object(Bucket=self._bucket, Key=key)
-            return resp["Body"].read()
+            # F5 cure (Sol's O1, MAJOR): a row whose private object has been
+            # replaced with a multi-gigabyte value used to reach `.read()`
+            # unbounded, and the digest check below -- the ONLY thing that
+            # was supposed to catch a tampered object -- ran too late to
+            # protect this worker's memory; it only ever protected the
+            # caller's trust in the bytes it had ALREADY fully buffered.
+            # `ContentLength` is metadata the GetObject response carries
+            # before a single body byte is read, so refuse HERE, before
+            # `.read()`, when it already disagrees with the row's own
+            # expectation or this store's ceiling.
+            content_length = resp.get("ContentLength")
+            if content_length is not None and (
+                content_length > MAX_ARTIFACT_BYTES
+                or (
+                    expected_byte_length is not None
+                    and content_length != expected_byte_length
+                )
+            ):
+                logger.error(
+                    "garuda_artifacts.declared_size_refused",
+                    extra={"storage_key": key, "content_length": content_length},
+                )
+                raise ArtifactDigestMismatch(key)
+            # Bounded read even so: `ContentLength` is metadata the object
+            # (or a misbehaving/older store) could lie about or omit. Reading
+            # at most `ceiling + 1` bytes means a lying object is still
+            # caught by the length check right below, and this worker's
+            # memory never grows past that bound regardless of what the
+            # object claims or how large it actually is.
+            body = resp["Body"].read(MAX_ARTIFACT_BYTES + 1)
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
             if code in ("NoSuchKey", "404"):
                 raise ArtifactObjectMissing(key) from exc
             raise
+        if len(body) > MAX_ARTIFACT_BYTES:
+            logger.error(
+                "garuda_artifacts.object_exceeds_ceiling",
+                extra={"storage_key": key},
+            )
+            raise ArtifactDigestMismatch(key)
+        return body
 
-    async def fetch_and_verify(self, *, key: str, expected_digest: str) -> bytes:
-        body = await asyncio.to_thread(self._get_bytes_sync, key=key)
+    async def fetch_and_verify(
+        self, *, key: str, expected_digest: str, expected_byte_length: int | None = None
+    ) -> bytes:
+        """`expected_byte_length` is an OPTIONAL cross-check against the
+        row's own `byte_length` column (finding F5) -- `None` for any
+        caller that does not pass it (today, every caller in `service.py`,
+        which this module must not edit in this window) still gets the
+        ceiling-only refusal above; a caller that DOES pass it gets the
+        stronger row-agreement check too. Either way this method never
+        reads more than `MAX_ARTIFACT_BYTES + 1` bytes."""
+        body = await asyncio.to_thread(
+            self._get_bytes_sync, key=key, expected_byte_length=expected_byte_length
+        )
         actual = hashlib.sha256(body).hexdigest()
         if actual != expected_digest:
             logger.error(
