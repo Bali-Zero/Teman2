@@ -52,9 +52,28 @@ def path_matches_template(path: str, template: str) -> bool:
     this shape to decide whether a refused path is a frozen-contract
     operation rather than an arbitrary descendant of its prefix.
 
-    Segment COUNT is what makes `/a/b/` and `/a//b` and `/a/b/c` all fail
-    against `/a/b`: `"".strip("/").split("/")` leaves an empty segment in the
-    double-slash case and drops one in the trailing-slash case.
+    What segment COUNT does and does not reject, measured rather than assumed
+    (the previous wording of this paragraph claimed `/a/b/` fails against
+    `/a/b`; it does not — Kimi K3 caught that by running this function,
+    second-reader review of #6235):
+
+      - `/a//b` FAILS against `/a/b` — the inner double slash survives
+        `strip("/")` and leaves an empty segment, so the counts differ (3 vs 2).
+      - `/a/b/c` FAILS against `/a/b` — one segment too many.
+      - `/a/b/` MATCHES `/a/b`, and so does `//a/b//`. `strip("/")` removes
+        leading and trailing slashes BEFORE splitting, so a trailing slash
+        never produces a segment. That is the long-standing behaviour of
+        every `match="template"` public entry, deliberately left unchanged
+        here: the path is CLASSIFIED as the slash-less operation. It is not
+        SERVED by it — past the middleware FastAPI's default
+        `redirect_slashes` answers 307 to the slash-less path (measured on
+        `garuda_staff_router`, pinned by
+        `test_a_trailing_slash_past_the_middleware_redirects_to_the_same_operation`),
+        so a trailing slash never reaches a different operation. The matching
+        itself is pinned both ways by
+        `test_path_matches_template_trailing_and_inner_slashes` in
+        `tests/unit/middleware/test_public_endpoints_registry.py`, so a
+        future change to it is a decision, not an accident.
     """
     template_parts = template.strip("/").split("/")
     path_parts = path.strip("/").split("/")
