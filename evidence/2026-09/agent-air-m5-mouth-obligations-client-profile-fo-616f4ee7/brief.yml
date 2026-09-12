@@ -1,0 +1,76 @@
+task: >-
+  U2 of the compliance-stack second wave: give the tax team a place to fill in the client
+  attributes the obligations engine reads. `profile_from_rows` reads company attributes out of
+  `companies.custom_fields`, no client carries them, so every profile collapses to the
+  ClientProfile defaults and `applies()` proposes the minimum — the PPh 21, BPJS and LKPM rules
+  the compliance offer sells never reach the reviewer queue. M3 shipped the endpoints
+  (`GET`/`PATCH /api/compliance/obligations/profile/{client_id}`) and U1 split the reviewer
+  screen into components; this PR adds the panel that uses them. It renders the computed
+  profile with `missing_keys` flagged, `company_type_raw` and the OTHER-classification warning,
+  edits the twelve engine ATTRIBUTES, and PATCHes ONLY the keys the reviewer touched — sending
+  the whole computed profile back would write every default as an asserted value and empty
+  `missing_keys` on the first save, destroying the "nothing is known about this client" signal.
+lane: mouth/obligations-client-profile-form
+machine: M5
+date: 2026-09-13
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `scripts/evidence_pack_lint.py --print-floor` over the
+  staged diff (1085+/37- across 6 files plus this brief) printed 2. No hot-zone path: one Next.js workspace route
+  and its components, no router, no migration, no ingestion. One concern — the profile panel —
+  and the bulk is a twelve-attribute form plus its fixtures.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    With a client filter set, the panel reads the profile once and flags every attribute the
+    engine read as a default; the one attribute on file is not flagged, and
+    `needs_manual_classification` plus `company_type_raw` are shown when set.
+    probe: >-
+      cd apps/mouth && npx vitest run 'src/app/(workspace)/obligations'
+  A2: >-
+    A save PATCHes exactly the touched keys and nothing else (asserted as an exact object, not a
+    subset), booleans as booleans and counts as numbers; a malformed fiscal year end is refused
+    before the round-trip.
+    probe: >-
+      cd apps/mouth && npx vitest run 'src/app/(workspace)/obligations'
+  A3: >-
+    409 reads as "No company on file for this client" rather than the register's "already
+    decided" conflict copy, 422 shows the server detail verbatim, 401/403 read "Admin only." —
+    all through the single `describeError` mapping, which now takes per-status overrides.
+    probe: >-
+      cd apps/mouth && npx vitest run 'src/app/(workspace)/obligations'
+  A4: >-
+    A successful save re-reads the profile from the server rather than trusting local state, the
+    draft is cleared, and the page's own generate path is offered for the filtered client.
+    probe: >-
+      cd apps/mouth && npx vitest run 'src/app/(workspace)/obligations'
+  A5: >-
+    The U1 tests stay green and the screen still builds: 26 tests in the obligations suite,
+    `npm run lint`, `npx tsc --noEmit`, `npm run build` all exit 0.
+    probe: >-
+      cd apps/mouth && npm run lint && npx tsc --noEmit && npm run build
+
+adversarial_findings_disposed: >-
+  Codex spalla, read-only, high effort. P1 draft surviving a client change: fixed before the
+  review landed with `key={trimmedClientFilter}` on the panel plus a regression test. P1
+  out-of-order profile reads: fixed with a sequence number in `useClientProfile`, newest read
+  wins. P1 a successful save wiping an edit made while the PATCH was open: fixed — only the keys
+  still at the value that was SENT are cleared, with a test using a deferred PATCH. P2
+  `Number()` past 2^53 storing a rounded turnover: fixed with a `Number.isSafeInteger` refusal
+  and a test. P3 the "not set" marker not reaching a screen reader: the field group is now named
+  "<label>, not set" / "<label>, on file", leaving the control's own accessible name alone.
+
+out_of_scope: >-
+  Clearing an attribute: PATCH only ever SETS a key (the endpoint's JSONB merge never removes
+  one), so the panel refuses an empty investment stage with that explanation instead of
+  round-tripping a 422 it cannot satisfy. Creating a company row for a client that has none —
+  the endpoint answers 409 by design and the panel says so. Writing the pilot client's real
+  attributes: that is the imperator's observation after Zero names the client_id. Serving
+  COMPANY_TYPES / INVESTMENT_STAGES from an endpoint so the selects stop mirroring the engine's
+  frozensets — no route exposes them today, and the 422 detail names the allowed set when they
+  drift.

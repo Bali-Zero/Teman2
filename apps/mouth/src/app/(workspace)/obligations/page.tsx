@@ -28,6 +28,12 @@
  * the frontend and a resolved client name never leaves the browser tab: no
  * log, no storage, no other request carries it (see `useClientNames`).
  *
+ * Client profile (U2): with a client filter set, `ClientProfilePanel` reads
+ * `GET /obligations/profile/{client_id}` and lets the reviewer fill in the
+ * attributes the engine reads out of `companies.custom_fields`. A save PATCHes
+ * only the touched keys — see that component for why sending the whole profile
+ * back would destroy the `missing_keys` signal.
+ *
  * Auth + transport reuse the shared `api` client (httpOnly cookie + bearer),
  * same as `(workspace)/review/page.tsx`.
  */
@@ -38,6 +44,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
+import { ClientProfilePanel } from "./components/ClientProfilePanel";
 import { ObligationsTable } from "./components/ObligationsTable";
 import { StatusCounters } from "./components/StatusCounters";
 import { describeError } from "./components/describe-error";
@@ -141,40 +148,49 @@ export default function ObligationsPage() {
     setOffset(0);
   }, [filterClientId, filterStatus]);
 
-  const handleGenerate = useCallback(async () => {
-    setGenerateError(null);
-    const cid = Number(genClientId);
-    if (!genClientId.trim() || !Number.isInteger(cid) || cid <= 0) {
-      setGenerateError("Enter a valid client id.");
-      return;
-    }
-    const horizon = Number(genHorizonDays);
-    if (!Number.isInteger(horizon) || horizon < 1 || horizon > 730) {
-      setGenerateError("Horizon days must be an integer between 1 and 730.");
-      return;
-    }
-    setGenerating(true);
-    setGenerateResult(null);
-    setNotice(null);
-    try {
-      const res = await api.post<GenerateOut>(
-        "/api/compliance/obligations/generate",
-        { client_id: cid, horizon_days: horizon },
-      );
-      setGenerateResult(res);
-      setRefreshTick((t) => t + 1);
-      await loadList();
-    } catch (e) {
-      logger.error(
-        "obligations generate failed",
-        { component: "ObligationsPage", action: "generate" },
-        e instanceof Error ? e : new Error(String(e)),
-      );
-      setGenerateError(describeError(e, "Could not generate proposals."));
-    } finally {
-      setGenerating(false);
-    }
-  }, [genClientId, genHorizonDays, loadList]);
+  /**
+   * `clientIdOverride` lets the profile panel (U2) reuse this exact path after a
+   * save instead of owning a second generate implementation: same validation,
+   * same result banner, same list refresh. Omitted, it reads the form field.
+   */
+  const handleGenerate = useCallback(
+    async (clientIdOverride?: string) => {
+      setGenerateError(null);
+      const rawClientId = clientIdOverride ?? genClientId;
+      const cid = Number(rawClientId);
+      if (!rawClientId.trim() || !Number.isInteger(cid) || cid <= 0) {
+        setGenerateError("Enter a valid client id.");
+        return;
+      }
+      const horizon = Number(genHorizonDays);
+      if (!Number.isInteger(horizon) || horizon < 1 || horizon > 730) {
+        setGenerateError("Horizon days must be an integer between 1 and 730.");
+        return;
+      }
+      setGenerating(true);
+      setGenerateResult(null);
+      setNotice(null);
+      try {
+        const res = await api.post<GenerateOut>(
+          "/api/compliance/obligations/generate",
+          { client_id: cid, horizon_days: horizon },
+        );
+        setGenerateResult(res);
+        setRefreshTick((t) => t + 1);
+        await loadList();
+      } catch (e) {
+        logger.error(
+          "obligations generate failed",
+          { component: "ObligationsPage", action: "generate" },
+          e instanceof Error ? e : new Error(String(e)),
+        );
+        setGenerateError(describeError(e, "Could not generate proposals."));
+      } finally {
+        setGenerating(false);
+      }
+    },
+    [genClientId, genHorizonDays, loadList],
+  );
 
   const handleApprove = useCallback(
     async (row: ObligationOut) => {
@@ -382,6 +398,24 @@ export default function ObligationsPage() {
           </div>
         )}
       </section>
+
+      {/* ── Client profile (U2) ──────────────────────────────────────────
+          Only meaningful for ONE client, so it follows the client filter the
+          same way the counter strip does. It sits under the generate card
+          because its "Generate proposals" action reports into that card. */}
+      {trimmedClientFilter !== "" && (
+        <ClientProfilePanel
+          // `key` on the client id, deliberately: the panel holds an unsaved
+          // DRAFT. Without a remount, switching the filter from one client to
+          // another keeps the previous client's edits on screen and a save would
+          // write them to the new client. Remounting throws the draft away with
+          // the client it belonged to.
+          key={trimmedClientFilter}
+          clientId={trimmedClientFilter}
+          generating={generating}
+          onGenerate={(cid) => void handleGenerate(cid)}
+        />
+      )}
 
       {/* ── Status counters ──────────────────────────────────────────── */}
       <StatusCounters
