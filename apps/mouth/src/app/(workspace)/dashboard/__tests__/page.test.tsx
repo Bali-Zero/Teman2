@@ -59,32 +59,6 @@ vi.mock("next/link", () => ({
 }));
 // Mock dashboard components
 vi.mock("@/components/dashboard", () => ({
-  StatsCard: ({
-    title,
-    value,
-    href,
-  }: {
-    title: string;
-    value: string | number;
-    href: string;
-  }) => (
-    <div data-testid={`stats-card-${title.toLowerCase().replaceAll(" ", "-")}`}>
-      <a href={href}>
-        {title}: {value}
-      </a>
-    </div>
-  ),
-  CasesPreview: ({
-    cases,
-    isLoading,
-  }: {
-    cases: unknown[];
-    isLoading: boolean;
-  }) => (
-    <div data-testid="cases-preview">
-      {isLoading ? "Loading..." : `${cases.length} cases`}
-    </div>
-  ),
   AiPulseWidget: () => <div data-testid="ai-pulse-widget">AI Pulse</div>,
   FinancialRealityWidget: ({
     revenue,
@@ -106,19 +80,6 @@ vi.mock("@/components/dashboard", () => ({
   ),
   MiniSparkline: ({ data }: { data: unknown[] }) => (
     <div data-testid="mini-sparkline">{data?.length ?? 0} points</div>
-  ),
-  DashboardStatCard: ({
-    label,
-    value,
-  }: {
-    label: string;
-    value: string | number;
-  }) => (
-    <div
-      data-testid={`dash-stat-card-${label.toLowerCase().replaceAll(" ", "-")}`}
-    >
-      {label}: {value}
-    </div>
   ),
   RoleWidget: ({ role }: { role: string }) => (
     <div data-testid="role-widget">{role}</div>
