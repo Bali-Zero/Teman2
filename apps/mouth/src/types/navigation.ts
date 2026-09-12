@@ -174,7 +174,6 @@ export const routeTitles: Record<string, string> = {
   "/analytics/funnel": "Funnel Analytics",
   "/settings": "Settings",
   "/settings/users": "User Management",
-  "/dream": "Dream Room",
   // Portal routes
   "/portal": "Dashboard",
   "/portal/process": "Process",
