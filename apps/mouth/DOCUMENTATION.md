@@ -212,9 +212,7 @@ apps/mouth/
 │   │   ├── chat/                     # Chat UI
 │   │   │   ├── ChatHeader.tsx
 │   │   │   ├── ChatInputBar.tsx
-│   │   │   ├── ChatMessageList.tsx
-│   │   │   ├── ChatSourcesPanel.tsx
-│   │   │   ├── FeedbackWidget.tsx
+│   │   │   ├── ChatMessageListVirtualized.tsx
 │   │   │   ├── MessageBubble.tsx
 │   │   │   └── ThinkingIndicator.tsx
 │   │   ├── dashboard/                # Dashboard widgets
@@ -450,7 +448,6 @@ API Routes:
 ├── /api/[...path]          → Proxy universale al backend
 ├── /api/blog/articles      → Lista articoli
 ├── /api/blog/articles/[category]/[slug]  → Articolo singolo
-├── /api/blog/articles/[category]/[slug]/views  → Track views
 ├── /api/blog/newsletter    → Subscribe newsletter
 └── /api/blog/newsletter/confirm  → Conferma email
 ```
@@ -485,9 +482,8 @@ App
 │       │       │   └── ComplianceWidget
 │       │       ├── ChatPage
 │       │       │   ├── ChatHeader
-│       │       │   ├── ChatMessageList
+│       │       │   ├── ChatMessageListVirtualized
 │       │       │   │   └── MessageBubble[]
-│       │       │   ├── ChatSourcesPanel
 │       │       │   └── ChatInputBar
 │       │       └── ...
 │       └── BlogLayout
@@ -501,15 +497,13 @@ App
 
 ### Componenti Chat
 
-| Componente          | File                         | Props                                     | Descrizione                |
-| ------------------- | ---------------------------- | ----------------------------------------- | -------------------------- |
-| `ChatHeader`        | `chat/ChatHeader.tsx`        | sessionId, onNewChat                      | Header con info sessione   |
-| `ChatInputBar`      | `chat/ChatInputBar.tsx`      | input, isLoading, onSend, onImageGenerate | Input multimodale          |
-| `ChatMessageList`   | `chat/ChatMessageList.tsx`   | messages, onFollowUp                      | Lista messaggi scrollabile |
-| `MessageBubble`     | `chat/MessageBubble.tsx`     | message, isLast, onFollowUp               | Singolo messaggio          |
-| `ChatSourcesPanel`  | `chat/ChatSourcesPanel.tsx`  | sources, isOpen                           | Panel sorgenti laterale    |
-| `ThinkingIndicator` | `chat/ThinkingIndicator.tsx` | status                                    | Indicatore elaborazione    |
-| `FeedbackWidget`    | `chat/FeedbackWidget.tsx`    | messageId, onSubmit                       | Feedback thumbs            |
+| Componente                   | File                                  | Props                                     | Descrizione                |
+| ---------------------------- | ------------------------------------- | ----------------------------------------- | -------------------------- |
+| `ChatHeader`                 | `chat/ChatHeader.tsx`                 | sessionId, onNewChat                      | Header con info sessione   |
+| `ChatInputBar`               | `chat/ChatInputBar.tsx`               | input, isLoading, onSend, onImageGenerate | Input multimodale          |
+| `ChatMessageListVirtualized` | `chat/ChatMessageListVirtualized.tsx` | messages, onFollowUp                      | Lista messaggi scrollabile |
+| `MessageBubble`              | `chat/MessageBubble.tsx`              | message, isLast, onFollowUp               | Singolo messaggio          |
+| `ThinkingIndicator`          | `chat/ThinkingIndicator.tsx`          | status                                    | Indicatore elaborazione    |
 
 ### Componenti Blog
 
@@ -696,21 +690,6 @@ const {
 
 // useMemoryContext - User memory
 const { profileFacts, summary, counters, refresh } = useMemoryContext(userId);
-
-// useWebSocket - Real-time
-const { isConnected, connect, disconnect, send, subscribe } = useWebSocket();
-```
-
-### Providers
-
-```typescript
-// WebSocket Provider
-<WebSocketProvider url={wsUrl}>
-  <App />
-</WebSocketProvider>
-
-// Usage in components
-const { send, subscribe } = useWebSocketContext();
 ```
 
 ### Local Storage Keys
@@ -822,15 +801,14 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
 
 ### API Endpoints Blog
 
-| Endpoint                                | Method | Descrizione               |
-| --------------------------------------- | ------ | ------------------------- |
-| `/api/blog/articles`                    | GET    | Lista articoli con filtri |
-| `/api/blog/articles?category=X`         | GET    | Filtra per categoria      |
-| `/api/blog/articles?featured=true`      | GET    | Solo featured             |
-| `/api/blog/articles?q=search`           | GET    | Cerca articoli            |
-| `/api/blog/articles/[cat]/[slug]`       | GET    | Singolo articolo          |
-| `/api/blog/articles/[cat]/[slug]/views` | POST   | Track view                |
-| `/api/blog/newsletter`                  | POST   | Subscribe                 |
+| Endpoint                           | Method | Descrizione               |
+| ---------------------------------- | ------ | ------------------------- |
+| `/api/blog/articles`               | GET    | Lista articoli con filtri |
+| `/api/blog/articles?category=X`    | GET    | Filtra per categoria      |
+| `/api/blog/articles?featured=true` | GET    | Solo featured             |
+| `/api/blog/articles?q=search`      | GET    | Cerca articoli            |
+| `/api/blog/articles/[cat]/[slug]`  | GET    | Singolo articolo          |
+| `/api/blog/newsletter`             | POST   | Subscribe                 |
 
 ---
 
