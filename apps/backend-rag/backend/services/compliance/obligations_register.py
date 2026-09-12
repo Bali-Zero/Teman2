@@ -11,7 +11,14 @@ Due-date semantics (v1):
   last month.
 - annual: the period is the fiscal year; due on `day` of the month `months_after_period_end`
   after its last month, or on the first `month`/`day` after the fiscal year end when `month` is set.
-- one_time / event: nothing is scheduled in v1; the rule names its `trigger` instead.
+- one_time: ONE proposal per client, period_key "once". The due date is the generation date
+  (`start`) unless the rule states `due.fixed_date`, the one statutory deadline an unscheduled
+  rule can carry: a fixed_date at or after `start` becomes the due date, a fixed_date already
+  past leaves the generation date and says so in needs_review_reason. The reviewer sets the real
+  deadline. UNIQUE (client_id, rule_id, "once") makes the row appear once and stay, so a later
+  run never duplicates it and never moves it either.
+- event: nothing is scheduled; the dates are per person or per event (each expat's KITAS, each
+  data change), so the rule names its `trigger` instead.
 A `day` past the end of a month means that month's last day. Fiscal years are month-granular:
 the MM of fiscal_year_end is the closing month. Period keys: "YYYY-MM" (monthly), "YYYY-Qn"
 (calendar quarter), "FYyyyy-Qn" (fiscal quarter), "FYyyyy" (annual), where yyyy is the calendar
@@ -43,6 +50,10 @@ from backend.services.compliance.business_days import holiday_years_loaded, next
 DEFAULT_CATALOG_PATH = Path(__file__).resolve().parents[2] / "data" / "obligations_catalog.yaml"
 
 COMPANY_TYPES = frozenset({"PT_PMA", "PT_PMDN", "CV", "KP3A", "KPPA", "FOREIGN_PLATFORM", "OTHER"})
+ONE_TIME_PERIOD_KEY = "once"
+ONE_TIME_REVIEW_NOTE = (
+    "one_time: due date is the generation date, set the statutory deadline on review"
+)
 BOOL_ATTRS = frozenset(
     {
         "has_employees",
@@ -65,9 +76,12 @@ _RULE_KEYS = frozenset(
     {"id", "name", "authority", "legal_source", "verified", "applies_if", "due"}
     | {"needs_review_reason", "trigger", "notes"}
 )
-_DUE_KEYS = frozenset({"frequency", "day", "month", "months_after_period_end", "roll", "basis"})
+_DUE_KEYS = frozenset(
+    {"frequency", "day", "month", "months_after_period_end", "roll", "basis", "fixed_date"}
+)
 _RULE_ID_RE = re.compile(r"^[a-z0-9_]{3,64}$")
 _FYE_RE = re.compile(r"^\d{2}-\d{2}$")
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _COMPANY_TYPE_MAP = {
     "PT PMA": "PT_PMA",
     "PT PMDN": "PT_PMDN",
@@ -146,6 +160,7 @@ class DueRule:
     months_after_period_end: int
     roll: str
     basis: str
+    fixed_date: date | None = None  # one_time only: the statutory deadline, when there is one
 
 
 @dataclass(frozen=True)
@@ -217,6 +232,26 @@ def _value_ok(attr: str, value: Any) -> bool:
     return isinstance(value, str) and value in domain
 
 
+def _parse_fixed_date(raw: Any, frequency: str, where: str) -> date | None:
+    """The optional statutory deadline of a one_time rule: YYYY-MM-DD, or a YAML date scalar.
+
+    Only one_time rules take it. A scheduled rule computes its dates from the period, and an
+    event rule's dates are per person or per event, so in both cases a fixed_date would be a
+    value nothing reads — the catalog fails to load instead of carrying a dead key.
+    """
+    if raw is None:
+        return None
+    _require(frequency == "one_time", where, "fixed_date is only for one_time rules")
+    if type(raw) is date:  # an unquoted 2026-10-17 in the YAML is already a date scalar
+        return raw
+    ok = isinstance(raw, str) and bool(_ISO_DATE_RE.match(raw))
+    _require(ok, where, f"fixed_date must be YYYY-MM-DD, got {raw!r}")
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        raise CatalogError(f"{where}: impossible fixed_date {raw!r}") from None
+
+
 def _parse_due(raw: Any, where: str) -> DueRule:
     _require(isinstance(raw, Mapping), where, "due must be a mapping")
     extra = set(raw) - _DUE_KEYS
@@ -234,7 +269,8 @@ def _parse_due(raw: Any, where: str) -> DueRule:
         _require(day is None, where, f"{freq} rules take no day")
     month_ok = month is None or (freq == "annual" and _is_int(month) and 1 <= month <= 12)
     _require(month_ok, where, "month must be null, or 1..12 on annual rules")
-    return DueRule(freq, day, month, after, roll, basis)
+    fixed_date = _parse_fixed_date(raw.get("fixed_date"), freq, where)
+    return DueRule(freq, day, month, after, roll, basis, fixed_date)
 
 
 def _parse_rule(raw: Any, index: int) -> ObligationRule:
@@ -357,6 +393,11 @@ def due_dates(
     return sorted(out, key=lambda kd: (kd[1], kd[0]))
 
 
+def _with_note(reason: str | None, note: str) -> str:
+    """Append a note to a rule's own needs_review_reason, keeping both."""
+    return f"{reason}; {note}" if reason else note
+
+
 def _review_reason(rule: ObligationRule, due: date) -> str | None:
     """The rule's own reason, plus the holiday gap when this date's year has no decreed table.
 
@@ -365,19 +406,53 @@ def _review_reason(rule: ObligationRule, due: date) -> str | None:
     """
     if rule.due.roll != "next_business_day" or due.year in holiday_years_loaded():
         return rule.needs_review_reason
-    gap = f"holiday calendar for {due.year} not loaded"
-    return f"{rule.needs_review_reason}; {gap}" if rule.needs_review_reason else gap
+    return _with_note(rule.needs_review_reason, f"holiday calendar for {due.year} not loaded")
+
+
+def _one_time_proposal(rule: ObligationRule, start: date) -> ProposedObligation:
+    """The single proposal a one_time rule makes, dated as well as the catalog can date it.
+
+    The horizon does not gate it: a one_time obligation is already live the moment the rule
+    applies — that is what `trigger` says — so withholding it until some window contains a date
+    the engine does not have is exactly the silence M2 exists to end. What the engine cannot do
+    is invent a deadline, so an undated one_time proposal carries the generation date and a
+    reason that tells the reviewer the date is a placeholder, not a computed deadline.
+    """
+    fixed = rule.due.fixed_date
+    if fixed is None:
+        reason = _with_note(rule.needs_review_reason, ONE_TIME_REVIEW_NOTE)
+        return ProposedObligation(rule.id, ONE_TIME_PERIOD_KEY, start, reason)
+    if fixed >= start:  # a statutory date the catalog knows: no placeholder note, it IS the date
+        return ProposedObligation(rule.id, ONE_TIME_PERIOD_KEY, fixed, rule.needs_review_reason)
+    passed = f"fixed statutory date {fixed.isoformat()} already passed"
+    return ProposedObligation(
+        rule.id, ONE_TIME_PERIOD_KEY, start, _with_note(rule.needs_review_reason, passed)
+    )
 
 
 def propose(
     rules: Iterable[ObligationRule], profile: ClientProfile, start: date, horizon_days: int
 ) -> list[ProposedObligation]:
-    out = [
-        ProposedObligation(rule.id, key, due, _review_reason(rule, due))
-        for rule in rules
-        if applies(rule, profile)
-        for key, due in due_dates(rule, profile, start, horizon_days)
-    ]
+    """Every obligation an applicable rule puts on this client in [start, start + horizon_days).
+
+    Scheduled rules contribute one proposal per period whose due date falls in the window;
+    one_time rules contribute exactly one "once" proposal (see `_one_time_proposal`); event
+    rules contribute nothing, because their dates live per person or per event and not in any
+    profile attribute.
+    """
+    if horizon_days < 0:
+        raise ValueError("horizon_days must be >= 0")
+    out: list[ProposedObligation] = []
+    for rule in rules:
+        if not applies(rule, profile):
+            continue
+        if rule.due.frequency == "one_time":
+            out.append(_one_time_proposal(rule, start))
+            continue
+        out.extend(
+            ProposedObligation(rule.id, key, due, _review_reason(rule, due))
+            for key, due in due_dates(rule, profile, start, horizon_days)
+        )
     return sorted(out, key=lambda p: (p.due_date, p.rule_id, p.period_key))
 
 
@@ -516,6 +591,8 @@ __all__ = [
     "ATTRIBUTES",
     "COMPANY_TYPES",
     "DEFAULT_CATALOG_PATH",
+    "ONE_TIME_PERIOD_KEY",
+    "ONE_TIME_REVIEW_NOTE",
     "CatalogError",
     "ClientProfile",
     "DueRule",
