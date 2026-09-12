@@ -66,6 +66,7 @@ async def test_corrupt_upload_returns_unreadable_document_outcome(store, monkeyp
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="key-corrupt-1",
+        actor_id="actor-1",
     )
     assert isinstance(outcome, UnreadableOutcome)
 
@@ -93,12 +94,14 @@ async def test_corrupt_upload_retry_same_key_replays_without_second_outcome(stor
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="key-corrupt-retry",
+        actor_id="actor-1",
     )
     second = await svc.submit_document(
         raw_bytes=payload,
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="key-corrupt-retry",
+        actor_id="actor-1",
     )
     assert first == second
     assert isinstance(first, UnreadableOutcome)
@@ -113,6 +116,7 @@ async def test_low_confidence_fields_are_never_silently_accepted_as_verified(sto
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="key-lowconf-1",
+        actor_id="actor-1",
     )
     assert isinstance(outcome, LowConfidenceOutcome)
     assert len(outcome.uncertain_fields) == len(CONFIDENT_VALUES)
@@ -138,12 +142,14 @@ async def test_low_confidence_retry_same_event_produces_no_second_mutation(store
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="key-lowconf-retry",
+        actor_id="actor-1",
     )
     await svc.submit_document(
         raw_bytes=payload,
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="key-lowconf-retry",
+        actor_id="actor-1",
     )
     assert work_item_calls == ["key-lowconf-retry"]  # exactly one, not two
 
@@ -156,6 +162,7 @@ async def test_confident_upload_returns_ready_document(store, monkeypatch):
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="key-ready-1",
+        actor_id="actor-1",
     )
     assert isinstance(outcome, ReadyOutcome)
     assert len(outcome.review_fields) == len(CONFIDENT_VALUES)
@@ -178,6 +185,7 @@ async def test_ready_document_never_fires_the_work_item_hook(store, monkeypatch)
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="key-ready-no-workitem",
+        actor_id="actor-1",
     )
     assert calls == []
 
@@ -190,6 +198,7 @@ async def test_different_payload_under_same_idempotency_key_conflicts(store, mon
         declared_media_type="image/png",
         document_kind=DocumentKind.PASSPORT_BIODATA,
         idempotency_key="shared-key",
+        actor_id="actor-1",
     )
     with pytest.raises(IdempotencyConflictError):
         await svc.submit_document(
@@ -197,6 +206,7 @@ async def test_different_payload_under_same_idempotency_key_conflicts(store, mon
             declared_media_type="image/png",
             document_kind=DocumentKind.PASSPORT_BIODATA,
             idempotency_key="shared-key",
+            actor_id="actor-1",
         )
 
 
@@ -213,7 +223,8 @@ async def test_ocr_pipeline_unavailable_raises_and_persists_nothing(store, monke
             declared_media_type="image/png",
             document_kind=DocumentKind.PASSPORT_BIODATA,
             idempotency_key="key-unavailable",
+            actor_id="actor-1",
         )
     # No outcome was ever committed for this key — a later retry once OCR is back up
     # must be free to succeed, not replay a failure.
-    assert await store.get_existing("key-unavailable", "irrelevant") is None
+    assert await store.get_existing("key-unavailable", "irrelevant", actor_id="actor-1") is None
