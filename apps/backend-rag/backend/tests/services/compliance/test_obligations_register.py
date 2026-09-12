@@ -73,7 +73,12 @@ def test_catalog_loads_and_every_rule_validates(catalog):
 def test_verified_rules_cite_a_source_url_and_unverified_ones_say_why(catalog):
     """The 2026-09-12 source sweep: `verified: true` is a claim, so it must carry its URL.
 
-    docs/compliance/obligations-catalog-sources-2026-09.md holds the quote behind each row.
+    What this CAN check is that a promotion carries its evidence and that a demotion explains
+    itself. What no unit test can check is whether a cited article really says what the rule
+    claims: that lives in docs/compliance/obligations-catalog-sources-2026-09.md, which holds the
+    verbatim quote behind each of the 21 rows. The count below is a floor on how much of that
+    sweep landed, not a quality score — raise it when a later sweep confirms more, and move a rule
+    back to `false` the moment its source is found wanting, even if that drops the count.
     """
     verified = [rule for rule in catalog.values() if rule.verified]
     assert len(verified) >= 12, [rule.id for rule in verified]
@@ -208,8 +213,21 @@ def test_payment_and_return_are_separate_deadlines(catalog):
 
 
 def test_roll_none_keeps_the_weekend_date(catalog):
+    # expat_tax_residency_review is roll: none — no regulation sets the date, so nothing moves it.
+    # 2026-10-31 is a Saturday and stays one.
+    assert due_dates(catalog["expat_tax_residency_review"], PMA, date(2026, 10, 1), 31) == [
+        ("2026-10", date(2026, 10, 31))
+    ]
+
+
+def test_bpjs_kesehatan_rolls_off_a_saturday_on_its_own_clause(catalog):
+    """Perpres 82/2018 art. 39(4): a 10th falling on a hari libur moves to the next hari kerja.
+
+    Sat 10 Oct 2026 therefore becomes Mon 12 Oct. The first pass of the 2026-09 source sweep had
+    this rule on roll: none, having read only art. 39(1) to (3) — the article straddles a page break.
+    """
     assert due_dates(catalog["bpjs_kesehatan_monthly"], PMA, date(2026, 10, 1), 30) == [
-        ("2026-10", date(2026, 10, 10))
+        ("2026-10", date(2026, 10, 12))
     ]
 
 
