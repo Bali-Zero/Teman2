@@ -75,10 +75,10 @@ receipts:
     seat: session (M5)
   - claim: Rule 4 — the v10.0 canonical reproduces from the frozen July vault under the merge policy with zero changed codes
     cmd: git show origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json > /tmp/l2b/root/data/source_documents/KBLI_2025_FINAL_CLEAN.json && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2b/root --raw /tmp/l2b/july.jsonl | grep '^SUMMARY'
-    result: "SUMMARY changed_codes=0 no_oss_risk=104 per_skala_changed=0 l4_changed=0 l4_rewritten=0 absent_pending=0 quarantined_skipped=119 rows_carried=9078 rows_carried_tier=0 no_evidence=0 rows_jangka_preserved=4321 rows_fresh=0"
+    result: "SUMMARY changed_codes=0 no_oss_risk=104 empty_oss_risk=0 needs_review=0 per_skala_changed=0 l4_changed=0 l4_rewritten=0 absent_pending=0 quarantined_skipped=119 rows_carried=9078 rows_carried_tier=0 no_evidence=0 rows_jangka_preserved=4321 rows_fresh=0"
     exit: 0
-    ts: 2026-09-11T16:41Z
-    seat: session (M5, after the codex round)
+    ts: 2026-09-12T02:13Z
+    seat: session (M5, re-measured under the Kimi-round policy, 4eb72fa83d)
   - claim: The pinned-triple change set between the frozen vaults is 181 codes, identical to the set measured at PR-A gate time
     cmd: python3 scripts/kbli_filiera/vault_tier_changeset.py --old ~/nuzantara-vault --new ~/nuzantara-vault-20260911 --out /tmp/l2b/changed_pinned.txt && diff <(cat /tmp/l2b/changed_pinned.txt) <(cat /tmp/l2b/changed_pinned.txt)
     result: "both=1325 changed=181 old_only=13 new_only=9; identical to /tmp/l2/changed_pinned.txt except a trailing newline"
@@ -86,11 +86,11 @@ receipts:
     ts: 2026-09-11T15:40Z
     seat: session (M5)
   - claim: Rule 5 — predicted diff = measured diff; every top-level cell inside pinned ∪ new-only ∪ old-only
-    cmd: python3 /tmp/l2b/field_diff_b.py /tmp/l2b/main_canonical.json data/source_documents/KBLI_2025_FINAL_CLEAN.json /tmp/l2b/changed_pinned.txt /tmp/l2b/field_diff_sept4.md
-    result: "tier-set changed 183 = pinned 181 − {20111 (quarantined)} + {93111, 93112, 93119}; absent_pending codes == old_only True; skala_usaha/kategori_risiko/scope_index 0 on matched rows; fiktif_positif/jangka_waktu_source dropped 0; top-level outside-set count 0 on every field"
+    cmd: python3 /tmp/l2b/field_diff_b.py /tmp/l2b/main_canonical.json data/source_documents/KBLI_2025_FINAL_CLEAN.json /tmp/l2b/changed_pinned.txt /tmp/l2b/field_diff_final.md
+    result: "tier-set changed 183 = pinned 181 − {20111 (quarantined)} + {93111, 93112, 93119}; absent_pending codes == old_only True; skala_usaha/kategori_risiko/scope_index 0 on matched rows; fiktif_positif/jangka_waktu_source dropped 0; top-level outside-set count 0 on every field (re-measured on the final v11.0 regeneration, per_skala changed=1303, row-count changed=107)"
     exit: 0
-    ts: 2026-09-11T16:41Z
-    seat: session (M5)
+    ts: 2026-09-12T02:13Z
+    seat: session (M5, re-measured under the Kimi-round policy, 4eb72fa83d)
   - claim: The adapter output for the September vault is byte-identical to the one produced at PR-A gate time (vault frozen, adapter pure)
     cmd: python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault-20260911 --out /tmp/l2b/sept.jsonl && cmp /tmp/l2b/sept.jsonl /tmp/l2/sept.jsonl
     result: identical
@@ -99,10 +99,10 @@ receipts:
     seat: session (M5)
   - claim: derive_fiktif_positif.py is idempotent on the v10.0 canonical and, after --apply, touches only the fresh rows
     cmd: python3 scripts/derive_fiktif_positif.py --dry-run; then on the applied copy — rows changed by derive vs rows_fresh
-    result: "v10.0: codes touched 0. Applied copy (first policy): 369 rows changed, 76 codes, 0 non-fiktif changes, 0 rows still lacking fiktif_positif. Final policy: 44 codes touched (199 fresh rows)."
+    result: "v10.0: codes touched 0. Applied copy (first policy): 369 rows changed, 76 codes, 0 non-fiktif changes, 0 rows still lacking fiktif_positif. Kimi-round policy (final, shipped): 46 codes touched — 70 set True, 141 set False, 2 preserved True on Otomatis scales, 8650 unchanged, 0 corrected orphans."
     exit: 0
-    ts: 2026-09-11T15:50Z
-    seat: session (M5)
+    ts: 2026-09-12T02:13Z
+    seat: session (M5, re-measured under the Kimi-round policy, 4eb72fa83d)
   - claim: The worktree regeneration is deterministic — byte-identical to the same pipeline run on a /tmp copy
     cmd: cmp data/source_documents/KBLI_2025_FINAL_CLEAN.json /tmp/l2b/root/data/source_documents/KBLI_2025_FINAL_CLEAN.json
     result: identical (first policy run; the final run reused the same frozen inputs)
@@ -111,16 +111,22 @@ receipts:
     seat: session (M5)
   - claim: The whole scripts/kbli_filiera suite is green with the re-emitted artifacts and the re-measured pins
     cmd: python3 -m pytest scripts/kbli_filiera/tests -q -p no:cacheprovider | tail -1
-    result: 1348 passed in 99.38s
+    result: 1351 passed in 53.21s
     exit: 0
-    ts: 2026-09-11T16:42Z
-    seat: session (M5)
+    ts: 2026-09-12T02:13Z
+    seat: session (M5, re-measured under the Kimi-round policy, 4eb72fa83d)
   - claim: Sidecar sha == committed dataset and the five copies are identical
     cmd: (cd apps/mouth && npx vitest run src/lib/kbli-dataset-version.test.ts) && scripts/sync_kbli_dataset.sh --check
-    result: "Tests 1 passed; All KBLI dataset consumers are in sync with canonical."
+    result: "Tests 1 passed; All KBLI dataset consumers are in sync with canonical. datasetSha256=sha256:c69a260dba597d6b172996da7b99460f1498c3bb9d9df6f2ca6c9e4f782b2b40, lastModified=2026-09-12."
     exit: 0
-    ts: 2026-09-11T16:42Z
-    seat: session (M5)
+    ts: 2026-09-12T02:13Z
+    seat: session (M5, re-measured under the Kimi-round policy, 4eb72fa83d)
+  - claim: The v11.0 data was regenerated under the Kimi-round transform (4eb72fa83d), so rules 4/5 and every downstream pin are measured on the shipped policy
+    cmd: python3 scripts/build_kbli_l2_oss_risk.py --root . --raw /tmp/l2b/sept.jsonl --apply --version v11.0-L2-oss-risk-20260911 --fetched 2026-09-11 --snapshot-vault nuzantara-vault-20260911 --snapshot-manifest-sha256 e18a5cf3fb99e99de81cc4ea502c96ccb4cbc759f08195d7069a171df8bfb955 --snapshot-codes-changed 181 --source-fix PP28_2024 PP28_2025
+    result: "SUMMARY changed_codes=1303 no_oss_risk=101 empty_oss_risk=0 needs_review=0 per_skala_changed=1303 l4_changed=7 l4_rewritten=24 absent_pending=13 quarantined_skipped=119 rows_carried=7558 rows_carried_tier=985 no_evidence=0 rows_jangka_preserved=4088 rows_fresh=211"
+    exit: 0
+    ts: 2026-09-12T02:13Z
+    seat: session (M5, successor window — final v11.0 regeneration under the Kimi-round policy)
   - claim: The seven count pins were re-measured with each test's own helper, not guessed
     cmd: python3 -m pytest scripts/kbli_filiera/tests/test_perpres_body_default.py scripts/kbli_filiera/tests/test_gold_risk_dispute.py scripts/kbli_filiera/tests/test_emit_batch_membership.py -q -p no:cacheprovider
     result: "101 passed; residual-besar 877→878, besar axis {1319,23,217}, citation-absent 24→23, barred-but-open 19→18, disputes 33→35, 46100 tiers {Rendah,Tinggi}, batch-A population 221→218"
