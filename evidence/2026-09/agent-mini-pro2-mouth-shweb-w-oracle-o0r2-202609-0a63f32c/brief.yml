@@ -12,9 +12,8 @@ colour: BLUE
 l_level: L1
 gate_class: opus
 objective: >-
-  PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE. Replaces #6240 (closed
-  unmerged; its three CI reds are on that PR). #6240's reviewed content is
-  carried unchanged on 9 paths (the 7 byte-identical research copies,
+  PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE. Replaces PR #6240, whose
+  reviewed content is carried unchanged on 9 paths (the 7 byte-identical research copies,
   SKILL.md, live-state-log.md) and inside the R1 wrapper on the 2 research
   .md files (body segment = pin); brief.yml, contract-lock.json and
   pack.yml are authored for this PR; .secrets.baseline gains 2
@@ -118,22 +117,35 @@ acceptance:
       if [ "$n" -lt 3 ]; then echo "MISSING: retroactive disclaimer occurs $n times, need >= 3"; exit 1; fi
       echo "OK: all entries present, disclaimer x$n"
   - text: >-
-      WHEN the full diff against origin/main is grepped for PII shapes
-      (emails, +62 phone numbers, passport/KTP/NPWP-like tokens), THEN no
-      match SHALL be found — the probe exits 0 only when grep itself finds
-      nothing (grep's own exit 1-on-no-match is inverted with `!`), and
-      exits non-zero (fails closed) if `git diff` itself fails rather than
-      silently passing on an empty diff.
+      WHEN the full diff against origin/main is scanned for PII shapes
+      (emails, +62 phone numbers, KTP/NPWP/passport-like tokens), THEN the
+      probe SHALL exit 0 on exactly one outcome — the scanner ran and
+      matched nothing (rc 1). Every other outcome fails closed: a match
+      (rc 0) exits 1, a scanner error (rc 2 — a bad pattern, an unreadable
+      input) exits 2, and a failing `git diff` exits 2. The earlier
+      `!`-inverted form turned a scanner error into a pass; this one cannot.
     status: verified
     probe: |
       d="$(git diff origin/main...HEAD)" || exit 2
-      ! printf '%s\n' "$d" | grep -inE '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|\+62[0-9]{8,13}|\b[0-9]{16}\b|\b[a-zA-Z][0-9]{7}\b'
+      printf '%s\n' "$d" | grep -inE '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|\+62[0-9]{8,13}|\b[0-9]{16}\b|\b[a-zA-Z][0-9]{7}\b'
+      rc=$?
+      case "$rc" in
+        0) echo "FAIL: PII-shaped match in the diff"; exit 1 ;;
+        1) echo "OK: scanner ran and matched nothing"; exit 0 ;;
+        *) echo "FAIL: scanner exited $rc (error, not a clean diff)"; exit 2 ;;
+      esac
   - text: >-
       WHEN scripts/check_adversarial_review.py is run against the two
       research .md files, THEN it SHALL exit 0.
     status: verified
     probe: "python3 scripts/check_adversarial_review.py --files research/visa/2026-09-11-oracle-final-window-spec.md research/visa/2026-09-11-review-reason-audit/README.md"
 pii: none
+adversarial_review_provenance: >-
+  every round below is this session's record of a run whose transcript is
+  outside this repository; it is provenance, not evidence. What a reader can
+  verify from the commits is the CHANGE each round produced — `git log
+  4cc1b03edc..HEAD` for rounds 1 and 4-6, and the README's appended
+  "## Adversarial review" section for round 3.
 adversarial_review:
   - round: 1
     refuter: "codex exec --sandbox read-only"
@@ -157,11 +169,13 @@ adversarial_review:
     model: "gpt-6-astra (account default)"
     head_sha: 82d08445b3
     verdict: PASS-WITH-FINDINGS
-    findings:
-      - id: F-op1
-        severity: MINOR
-        summary: "operational nit on the round-1 fix, not a correctness defect."
-        disposition: accepted as-is
+    findings: []
+    findings_note: >-
+      the round's findings are not reproduced here: their text lives only in
+      the seat transcript, which is outside this repository, so nothing in
+      the commits evidences it. What the commits do show is that no change
+      to the reviewed skill files followed this round — `git diff
+      82d08445b3 3b2f5e09e9 -- .agents/skills/visaoracle` is empty.
   - round: 3
     refuter: kimi
     model: "kimi-k3 (kimi -r session_dbb009de-85fd-4d72-952c-7d21df829beb)"
@@ -247,7 +261,13 @@ adversarial_review:
       - id: P6
         severity: MINOR
         summary: "several fields stated historical facts (CI-red counts, seat runtimes, budget compliance, checkout mechanics, gate commissioning) not provable from the commits alone."
-        disposition: cured by the evidence-pack rewrite
+        disposition: >-
+          cured in the r3 commit, which removed the ones that survived the
+          rewrite: the #6240 CI-red count (brief objective, pack plan_ref),
+          the council and seat attributions (pack seat_override, build-lane
+          seat, receipt seats) and round 2's finding text. Every statement
+          left either re-runs as a command in `receipts:` or is visible in
+          the commits.
   - round: 7
     refuter: opus
     model: "claude-opus-5 (fresh session, final on-disk gate)"
