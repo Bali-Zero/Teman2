@@ -1,0 +1,70 @@
+task_id: kita-prune-lot3-dashboard
+gear: 2
+gear_reason: >-
+  The deterministic floor for this diff is 2, source `size`. Churn 772 lines over 13
+  files (41 added, 731 deleted) in apps/mouth/src, above SIZE_GEAR2_THRESHOLD=400 and
+  below SIZE_GEAR3_THRESHOLD=1828. No hot-zone path (all touched files are under
+  apps/mouth/src, none match HOTZONE_PATTERNS). Reproduced with
+  `git diff --no-renames --numstat <base>...HEAD` fed to
+  `python3 scripts/evidence_pack_lint.py --changed-files-file <list>
+  --numstat-file <numstat> --print-floor` (prints 2) and `--print-floor-source`
+  (prints size).
+l_level: L1
+gate_class: opus
+objective: >-
+  Lot 3 of the kita.balizero.com dead-surface pruning (audit
+  kita-dead-surface-audit-2026-09-12.md section D, plan items 12-15), on top of PR
+  #6296 (lots 1-2). Removes the dashboard's purely decorative/dead-data blocks:
+  HeroLiveWindow (marketing-article carousel duplicating the Intelligence Feed on the
+  same page), ZantaraPortalCard (animated banner wrapping one external link, replaced
+  by a plain link row so the link itself is kept), LiveActivityFeed (fake "LIVE"
+  feed whose timestamp is always "now" and whose realtime subscription never fires),
+  the orphaned `dash-liquid-bg` CSS class (had no rule at all) and its two duplicate,
+  now-unused `lotusPulse`/`liquidShift` keyframe blocks. Corrects the four mislabels
+  named in the audit item 13 by reading the actual backend query windows in
+  dashboard_summary.py (read-only): the "visti < 7gg" alert in ZeroRoleWidget is
+  fed by a 30-day expiry window (renamed "< 30gg"); the "stalled >14d" alert in
+  TeamRoleWidget is fed by a 7-day staleness window (renamed ">7d"); the dashboard
+  metric-bar "Stalled · >14 days" tile shows `criticalDeadlines`, a 7-day expiry
+  count, not a stalled-duration count (relabeled "Expiring · <= 7 days"); the
+  "Unread · messages" tile sums a raw whatsapp-interaction count with the real
+  email-unread count (relabeled "Messages · whatsapp + unread email"); and
+  AccountingRoleWidget's overdue total was hand-formatted with a literal "$...K" on
+  an IDR value (now uses the same formatIDRCompact() ZeroRoleWidget already uses).
+  Item 14: removes TeamActivityPanel's hardcoded 7-name exclusion list (pure
+  deletion, the panel now shows every member the parent passes it) and the
+  artificial 800ms setTimeout gating the team-stats query in dashboard/page.tsx
+  (pure deletion of a timer wrapper; the query's own `enabled: Boolean(identity)`
+  check already existed). Item 15 (System Pulse / /admin/system): left untouched,
+  per the gate's own 401-not-404 live measurement on backend build c8a07f1c77.
+constraints:
+  - >-
+    Deletions, relabels and one timer removal only — no new feature, no redesign, no
+    backend change. apps/backend-rag/** was read-only (grepped to confirm the four
+    mislabels' actual query windows, dashboard_summary.py:96-115 and :540-565, never
+    edited).
+  - >-
+    HeroLiveWindow, ZantaraPortalCard and LiveActivityFeed were grep-verified to have
+    zero importers in apps/mouth/src besides dashboard/page.tsx, their own barrel
+    export and their own __tests__ file before deletion.
+  - >-
+    Colour-by-index (ROW_ACCENTS) and the fixed top-performer thresholds
+    (isTopPerformer) in TeamActivityPanel were named by the audit but NOT removed:
+    unlike the exclusion list and the setTimeout, removing them changes the panel's
+    visual design and needs a product decision, not a pure deletion — reported to
+    the gate, not built.
+  - >-
+    No client PII in this diff, the PR body or any log.
+acceptance:
+  - >-
+    WHEN `tsc --noEmit` runs in apps/mouth on this head THEN it exits 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - >-
+    WHEN the mouth unit suite runs with its own config on this head THEN it passes,
+    including the dashboard page test file updated for the three deleted components.
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - >-
+    WHEN `npm run build` runs in apps/mouth on this head THEN it completes `next
+    build` and prints PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+pii_scan: clean
