@@ -266,6 +266,33 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(message.en).not.toContain("Verified reason:");
   });
 
+  it("gives a STEPCHILD walk the same ambiguous-sponsor copy as anyone else — the dead sponsor-permit fact no longer branches it", () => {
+    // D3-4 (PR-D3, owner ruling SHWEB-20260911) had `reviewReason` special-
+    // case a STEPCHILD applicant's `family_stepchild_sponsor_permit_
+    // confirmed` answer here. That question was REMOVED from tree.ts (owner
+    // ruling SHWEB-20260911, 2026-09-13, fresh grader review; no such
+    // requirement exists for E31D) and PR-D3d retired the now-unreachable
+    // branch. `facts` below still carries the fact's old key — nothing in
+    // the current interview can set it any more, but the adapter must not
+    // resurrect the special case if a stale value ever showed up in it.
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW";
+    const facts: OracleFacts = {
+      family_relation: "STEPCHILD",
+      family_stepchild_sponsor_permit_confirmed: "no",
+    };
+
+    const outcome = buildEngineOutcome(response, { facts });
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(outcome.reviewReasons[0].message).toEqual(
+      REVIEW_REASON_COPY.DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW,
+    );
+    expect(outcome.reviewReasons[0].message.en).not.toContain("KITAS/KITAP");
+  });
+
   it("falls back to an honest generic sentence for an unmapped review-reason code", () => {
     const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
     response.decision.review_reasons[0].code = "SOME_FUTURE_RULE_CODE";
