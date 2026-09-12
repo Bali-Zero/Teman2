@@ -322,12 +322,15 @@ receipts:
       numstat supplied, local agrees with CI at 3 (source "size"); CI's arithmetic is the raw
       numstat 2369+1266 = 3635 > SIZE_GEAR3 1828. Cured by declaring gear 3 + gear_floor_note.
       RED 2 "Detect Secrets": 2 unaudited findings, brief.yml:22 and pack.yml:22, both
-      "Base64 High Entropy String", both hashed_secret 95ea023288715c765e3c198ea4e7a7aa1fe31384.
-      PROVEN not to be a secret rather than asserted: that hash is exactly
-      sha1("agent/mini-pro2/mouth/shweb-w2-c4b-clients-20260913"), the BRANCH NAME, which
+      "Base64 High Entropy String", and the scanner recorded the same 40-hex hash field for both
+      (prefix 95ea0232). The full value is deliberately NOT pasted here: writing it out is what
+      made this receipt trip the scanner in the first place — see the lesson below.
+      PROVEN not to be a secret rather than asserted: that hash is the sha1 of THIS PR's branch
+      name — the value of the `branch:` field at the top of this pack — which
       `git ls-remote --heads origin` shows published on the remote and which appears in the PR URL.
-      Cured by auditing each finding is_secret:false — never a whole-file exclude, never a regex,
-      and no pragma. BOTH BRANCHES: with the audit, a CI-shaped scan keeps is_secret=False on both
+      It is named by reference and not re-quoted here, for the reason in the lesson below.
+      Cured by auditing each finding as not-a-secret — never a whole-file exclude, never a regex,
+      and no pragma. BOTH BRANCHES: with the audit, a CI-shaped scan keeps that decision on both
       and the gate prints "All findings audited (8256 total)", exit 0; with the 20 lines removed,
       the gate exits 1 naming EXACTLY those two findings and nothing else.
     exit: 0
@@ -360,6 +363,17 @@ lesson:
     what they were handed, and Kimi's substitution finding was worth the whole round — it is to make
     the frame explicit and checkable: contiguous excerpts, and diffs against the merge-base, never
     against a ref that moves.
+  and_one_more_of_the_same_family: >-
+    The receipt written to DOCUMENT the detect-secrets audit made the check red again. Explaining
+    the fix meant pasting the 40-hex hash next to the words the scanner keys on in
+    `keyword: value` shape, which is three new findings per file — a Base64/Hex high-entropy hit
+    plus two Secret Keyword hits — reported at the line that opens the folded scalar. Nothing new
+    was exposed: the value is the sha1 of a branch name that is published on the remote and sits in
+    this PR's own URL. But it is a real lesson and not a curiosity: PROSE ABOUT A SCANNER IS INPUT
+    TO THAT SCANNER. The cure is the prose, not a second audit — auditing my own explanation would
+    grow the baseline with findings that exist only because I wrote them down. So the hash is
+    referred to by a short prefix and the decision is described in words, and the two genuine
+    branch-name findings stay audited, which is what the ruling actually asked for.
 
 residuals: # unchanged, and NOT touched here by order
   - id: R-A
