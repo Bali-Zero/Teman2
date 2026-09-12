@@ -1,18 +1,28 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Star, MapPin, ArrowUpRight, BadgeCheck } from "lucide-react";
 import { rosterBySlug, initialsOf } from "@/data/team-roster";
+import { publicEntries } from "@/lib/team-public-listing";
 import {
   GOOGLE_MAPS_URL,
   ratingWithReviews,
   reviewCount,
 } from "@/lib/trust-figures";
+import styles from "./SocialProof.module.css";
 
 // Top team members for the homepage. name/role/photo come from the roster SSOT
 // (apps/mouth/src/data/team-roster.ts); this component keeps only the editorial
 // `department` caption + accent + role overrides. `department` here is a marketing
 // caption, NOT the SSOT dept.
+//
+// WHO IS SHOWN goes through `publicEntries()` (src/lib/team-public-listing.ts) —
+// the roster keeps every record, this component publishes only the people the
+// owner lists publicly, so adding a slug below is never enough to publish them.
+//
+// VARIANTS. `default` is what /v2 renders and is unchanged. `founder-band` is
+// opt-in and used only by the home: the founders alone, in the R19 band rhythm.
 interface TeamMember {
   name: string;
   role: string;
@@ -58,7 +68,7 @@ const FOUNDERS_SPEC: SPEntry[] = [
     accent: "#a78bfa",
   },
 ];
-const FOUNDERS: TeamMember[] = FOUNDERS_SPEC.map(resolveSP);
+const FOUNDERS: TeamMember[] = publicEntries(FOUNDERS_SPEC).map(resolveSP);
 
 const TEAM_SPEC: SPEntry[] = [
   {
@@ -86,7 +96,7 @@ const TEAM_SPEC: SPEntry[] = [
     accent: "#22c55e",
   },
 ];
-const TEAM: TeamMember[] = TEAM_SPEC.map(resolveSP);
+const TEAM: TeamMember[] = publicEntries(TEAM_SPEC).map(resolveSP);
 
 // Curated review snippets — canonical across homepage + (blog)/_components/GoogleReviewsBlock.
 const REVIEWS = [
@@ -127,7 +137,15 @@ const REVIEWS = [
   },
 ];
 
-export function SocialProof() {
+export type SocialProofVariant = "default" | "founder-band";
+
+export function SocialProof({
+  variant = "default",
+}: {
+  /** Opt-in only. Omitted → the default render, unchanged, which /v2 uses. */
+  variant?: SocialProofVariant;
+} = {}) {
+  const founderBand = variant === "founder-band";
   return (
     <section
       className="py-12 md:py-20 px-5 md:px-10"
@@ -317,128 +335,177 @@ export function SocialProof() {
                   Zainal & Heru
                 </div>
               </div>
-              <a
-                href="/team"
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
-                style={{ color: "var(--rp-accent, #5c8aff)" }}
-              >
-                All 18+
-                <ArrowUpRight size={13} strokeWidth={2} />
-              </a>
-            </div>
-
-            {/* Founders — portraits side by side, prominent */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              {FOUNDERS.map((f) => (
-                <div
-                  key={f.name}
-                  className="relative rounded-2xl overflow-hidden"
-                  style={{
-                    aspectRatio: "3 / 4",
-                    background: `linear-gradient(135deg, ${f.accent} 0%, color-mix(in srgb, ${f.accent} 40%, #000) 100%)`,
-                    border: `1px solid color-mix(in srgb, ${f.accent} 35%, transparent)`,
-                  }}
+              {founderBand ? null : (
+                <a
+                  href="/team"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                  style={{ color: "var(--rp-accent, #5c8aff)" }}
                 >
-                  {f.photo && (
-                    <Image
-                      src={f.photo}
-                      alt={`${f.name} — ${f.role}`}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 200px"
-                      style={{ objectFit: "cover" }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  )}
-                  {/* Bottom gradient for caption legibility */}
-                  <div
-                    className="absolute inset-x-0 bottom-0 pt-8 pb-3 px-3"
-                    style={{
-                      background:
-                        "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 100%)",
-                    }}
-                  >
-                    <div
-                      className="text-[13px] font-extrabold tracking-tight leading-tight"
-                      style={{ color: "#fff" }}
-                    >
-                      {f.name}
-                    </div>
-                    <div
-                      className="text-[10px] mt-0.5"
-                      style={{ color: "rgba(255,255,255,0.75)" }}
-                    >
-                      {f.role} · {f.department.replace("Founder · ", "")}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  All 18+
+                  <ArrowUpRight size={13} strokeWidth={2} />
+                </a>
+              )}
             </div>
 
-            <div
-              className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2.5"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              The team behind them
-            </div>
-
-            <ul className="flex flex-col gap-3 flex-1 list-none p-0 m-0">
-              {TEAM.map((m) => (
-                <li
-                  key={m.name}
-                  className="flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors"
-                  style={{
-                    background: "var(--rp-row-bg, rgba(255, 255, 255, 0.03))",
-                    border:
-                      "1px solid var(--rp-card-border, rgba(255, 255, 255, 0.08))",
-                  }}
-                >
-                  {/* Photo or initials disc */}
-                  <div
-                    className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-                    style={{
-                      background: `linear-gradient(135deg, ${m.accent} 0%, color-mix(in srgb, ${m.accent} 50%, #000) 100%)`,
-                    }}
-                  >
-                    {m.photo ? (
-                      <Image
-                        src={m.photo}
-                        alt={m.name}
-                        fill
-                        sizes="44px"
-                        style={{ objectFit: "cover" }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
+            {founderBand ? (
+              <>
+                {/* R19 band rhythm: the two founders, then the one link out. */}
+                <div className={styles.founderBand}>
+                  {FOUNDERS.map((f) => (
+                    <figure className={styles.founder} key={f.name}>
+                      <div
+                        className={styles.founderPortrait}
+                        style={{
+                          background: `linear-gradient(135deg, ${f.accent} 0%, color-mix(in srgb, ${f.accent} 40%, #000) 100%)`,
                         }}
-                      />
-                    ) : (
-                      <span
-                        className="text-[13px] font-extrabold"
-                        style={{ color: "#ffffff" }}
                       >
-                        {m.initials}
-                      </span>
-                    )}
-                  </div>
+                        {f.photo ? (
+                          <Image
+                            src={f.photo}
+                            alt={`${f.name} — ${f.role}`}
+                            fill
+                            sizes="(max-width: 700px) 60px, 78px"
+                          />
+                        ) : (
+                          <span
+                            className={styles.founderInitials}
+                            aria-hidden="true"
+                          >
+                            {f.initials}
+                          </span>
+                        )}
+                      </div>
+                      <figcaption className={styles.founderCaption}>
+                        <strong className={styles.founderName}>{f.name}</strong>
+                        <span className={styles.founderRole}>
+                          {f.role} · {f.department.replace("Founder · ", "")}
+                        </span>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+                <Link href="/team" className={styles.bandLink}>
+                  Meet the team
+                  <ArrowUpRight size={14} strokeWidth={2} aria-hidden="true" />
+                </Link>
+              </>
+            ) : (
+              <>
+                {/* Founders — portraits side by side, prominent */}
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  {FOUNDERS.map((f) => (
+                    <div
+                      key={f.name}
+                      className="relative rounded-2xl overflow-hidden"
+                      style={{
+                        aspectRatio: "3 / 4",
+                        background: `linear-gradient(135deg, ${f.accent} 0%, color-mix(in srgb, ${f.accent} 40%, #000) 100%)`,
+                        border: `1px solid color-mix(in srgb, ${f.accent} 35%, transparent)`,
+                      }}
+                    >
+                      {f.photo && (
+                        <Image
+                          src={f.photo}
+                          alt={`${f.name} — ${f.role}`}
+                          fill
+                          sizes="(max-width: 768px) 50vw, 200px"
+                          style={{ objectFit: "cover" }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      )}
+                      {/* Bottom gradient for caption legibility */}
+                      <div
+                        className="absolute inset-x-0 bottom-0 pt-8 pb-3 px-3"
+                        style={{
+                          background:
+                            "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 100%)",
+                        }}
+                      >
+                        <div
+                          className="text-[13px] font-extrabold tracking-tight leading-tight"
+                          style={{ color: "#fff" }}
+                        >
+                          {f.name}
+                        </div>
+                        <div
+                          className="text-[10px] mt-0.5"
+                          style={{ color: "rgba(255,255,255,0.75)" }}
+                        >
+                          {f.role} · {f.department.replace("Founder · ", "")}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className="text-[14px] font-bold tracking-tight truncate"
-                      style={{ color: "var(--text-primary)" }}
+                <div
+                  className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2.5"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  The team behind them
+                </div>
+
+                <ul className="flex flex-col gap-3 flex-1 list-none p-0 m-0">
+                  {TEAM.map((m) => (
+                    <li
+                      key={m.name}
+                      className="flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors"
+                      style={{
+                        background:
+                          "var(--rp-row-bg, rgba(255, 255, 255, 0.03))",
+                        border:
+                          "1px solid var(--rp-card-border, rgba(255, 255, 255, 0.08))",
+                      }}
                     >
-                      {m.name}
-                    </div>
-                    <div
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {m.role} · {m.department}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      {/* Photo or initials disc */}
+                      <div
+                        className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                        style={{
+                          background: `linear-gradient(135deg, ${m.accent} 0%, color-mix(in srgb, ${m.accent} 50%, #000) 100%)`,
+                        }}
+                      >
+                        {m.photo ? (
+                          <Image
+                            src={m.photo}
+                            alt={m.name}
+                            fill
+                            sizes="44px"
+                            style={{ objectFit: "cover" }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <span
+                            className="text-[13px] font-extrabold"
+                            style={{ color: "#ffffff" }}
+                          >
+                            {m.initials}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div
+                          className="text-[14px] font-bold tracking-tight truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {m.name}
+                        </div>
+                        <div
+                          className="text-[11px] truncate"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {m.role} · {m.department}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         </div>
 

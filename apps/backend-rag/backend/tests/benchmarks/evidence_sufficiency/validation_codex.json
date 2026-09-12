@@ -1,0 +1,369 @@
+{
+  "schema_version": 1,
+  "drawn_by": {
+    "seat": "codex",
+    "model": "gpt-5.6-sol",
+    "effort": "high",
+    "sandbox": "read-only",
+    "at": "2026-09-11T17:46:50Z/17:55:14Z",
+    "ref": "evidence/2026-09/agent-nuzantara-backend-rag-b1-3-benchmark-8c81ecfa/codex-label-review-b1-3.md"
+  },
+  "cases": [
+    {
+      "case_id": "bv-a1c4e709",
+      "query": "Which report must a PT PMA submit every quarter through OSS?",
+      "query_lang": "EN",
+      "context": [
+        "A PT PMA must submit the LKPM investment activity report every quarter through OSS."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the name of the quarterly report submitted by a PT PMA through OSS",
+      "supporting_span": "A PT PMA must submit the LKPM investment activity report every quarter through OSS.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-b82d6f13",
+      "query": "Where is an Indonesian e-Visa approval delivered?",
+      "query_lang": "EN",
+      "context": [
+        "Persetujuan e-Visa Indonesia dikirim secara elektronik ke alamat email yang didaftarkan pemohon."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the delivery destination for an Indonesian e-Visa approval",
+      "supporting_span": "Persetujuan e-Visa Indonesia dikirim secara elektronik ke alamat email yang didaftarkan pemohon.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-c03a91de",
+      "query": "Dokumen apa yang diberikan pemberi kerja sebagai bukti pemotongan PPh 21?",
+      "query_lang": "ID",
+      "context": [
+        "The employer provides a PPh 21 withholding slip as evidence that employee income tax was withheld."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the document proving that an employer withheld PPh 21",
+      "supporting_span": "The employer provides a PPh 21 withholding slip as evidence that employee income tax was withheld.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-d7e2458b",
+      "query": "Dokumen apa yang membuktikan pengesahan badan hukum perseroan?",
+      "query_lang": "ID",
+      "context": [
+        "Pengesahan badan hukum perseroan dibuktikan dengan Surat Keputusan Menteri Hukum."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the document evidencing approval of a company's legal-entity status",
+      "supporting_span": "Pengesahan badan hukum perseroan dibuktikan dengan Surat Keputusan Menteri Hukum.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-e9163ac4",
+      "query": "Which documents are needed to change the sponsor on a KITAS?",
+      "query_lang": "EN",
+      "context": [
+        "A KITAS sponsor change requires a new immigration application, but this summary does not list the required documents."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the document list required for a KITAS sponsor change",
+      "missing_fact_explanation": "The context confirms that an application is required but explicitly omits the requested document list.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-f4b07d2e",
+      "query": "By what date must a PKP issue a VAT tax invoice?",
+      "query_lang": "EN",
+      "context": [
+        "PKP wajib menerbitkan faktur pajak untuk penyerahan kena pajak, tetapi ringkasan ini tidak menyebutkan batas waktunya."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the deadline for a PKP to issue a VAT tax invoice",
+      "missing_fact_explanation": "The context confirms the invoicing obligation but expressly omits its deadline.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-1a6fd953",
+      "query": "Di portal mana laporan tahunan perseroan diajukan?",
+      "query_lang": "ID",
+      "context": [
+        "Indonesian companies have annual reporting obligations, but this summary does not identify the submission portal."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the portal used to submit a company's annual report",
+      "missing_fact_explanation": "The context confirms annual reporting obligations but does not identify the submission portal.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-2c8e4b71",
+      "query": "Berapa lama izin masuk kembali tetap berlaku?",
+      "query_lang": "ID",
+      "context": [
+        "Izin masuk kembali memiliki masa berlaku yang harus diperiksa sebelum bepergian, tetapi durasinya tidak dicantumkan di sini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the validity period of a re-entry permit",
+      "missing_fact_explanation": "The context discusses the permit's validity but gives no duration.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-3d95a0cf",
+      "query": "Name the monthly employee withholding-tax form.",
+      "query_lang": "EN",
+      "context": ["Sunrise over rice fields appears before clouds."],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "the form used for monthly employee withholding-tax reporting",
+      "missing_fact_explanation": "The context describes a landscape and has no topical, lexical, or identifier overlap with the tax question.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-4e17bc62",
+      "query": "Can an Indonesian visa application be submitted online?",
+      "query_lang": "EN",
+      "context": [
+        "Tiket konser dapat dibeli online melalui situs penyelenggara."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "whether an Indonesian visa application can be submitted online",
+      "missing_fact_explanation": "The context concerns concert-ticket purchasing; only the generic token 'online' overlaps.",
+      "stratum": "generic_overlap",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-5f2a8d90",
+      "query": "Bagaimana cara memperbarui data PT PMA di OSS?",
+      "query_lang": "ID",
+      "context": [
+        "PT Contoh Sintetis, NIB 0000000000000, rents bicycles near a public park and provides helmets with every rental."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "the procedure for updating PT PMA data in OSS",
+      "missing_fact_explanation": "The context is an unrelated synthetic bicycle-rental listing whose PT/NIB prefixes do not describe an OSS update procedure.",
+      "stratum": "company_prefix_chunk",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    },
+    {
+      "case_id": "bv-6b43e1a7",
+      "query": "Syarat dokumen pengembalian pajak badan?",
+      "query_lang": "ID",
+      "context": ["Tarif PNBP tiket museum berubah setiap musim."],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "the documents required for a corporate tax-refund request",
+      "missing_fact_explanation": "The context states a museum-entry PNBP tariff and contains no fact or nuisance overlap relevant to a corporate tax refund.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed:codex-validation"
+    }
+  ]
+}

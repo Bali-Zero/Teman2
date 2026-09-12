@@ -7,6 +7,74 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-09-11 (Mini, Codex verification — decisiveness/review-reason coverage): **The public
+  explanation mechanism exists and renders, but the requested 100% coverage does not hold.**
+  Audit at `be45266252f4e1ccbaf19d2b81c73f03af676e05`, Pro/Mini synchronized.
+  Fresh offline replay of the current **67** generated walks against signed seq-20:
+  **55 SUPPORTED / 10 NO_SUPPORTED_PATH / 2 NEEDS_INPUT** without disclosure flags;
+  **31 SUPPORTED / 7 NO_SUPPORTED_PATH / 29 HUMAN_REVIEW** with the real frontend flags.
+  Results match at `signed_at` and the current clock; sample, not exhaustive coverage or
+  production traffic. The two retirement age-64 NEEDS_INPUT cases become activity reviews
+  with flags, not successfully answered follow-ups. Of the 29 reviews, **13 have mapped
+  visible copy; 16 use generic copy**, all `DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW`.
+  `REVIEW_REASON_COPY` has 9 entries; the existing exhaustiveness test explicitly admits
+  25 unmapped codes. It also scans only HUMAN_REVIEW-stage rules, missing hard filters with
+  `on_unknown=HUMAN_REVIEW`: **three additional BRIDGING codes actually emitted** in edge
+  probes, plus `VOA_NATIONALITY_ONLY` structurally eligible but not emitted by the nationality
+  probe (global reviews precede it). Backend-defined code inventory re-derived from source.
+  **LIVE evidence:** public Chromium page + synthetic API response, HTTP 200, ENGINE,
+  seq-20 v2026.9.6; `DISCLOSED_UNCERTAINTY_REVIEW` displays the generic sentence instead of
+  explaining the uncertain answer. All probes marked `synthetic_driver`; no client sends.
+  Validation: existing census 15 passed; existing frontend suites 181 passed; fresh replay
+  probe 1 passed; real adapter/component EN/ID probes 4 passed. Evidence, screenshot,
+  limitations and proposed bar: `research/visa/2026-09-11-review-reason-audit/README.md`.
+  This is an audit artifact, **not a shipped fix**. No runtime/copy/pack/ENFORCE changes;
+  DPIA, gold-persona replay and manual sign-off residual risks unchanged.
+
+- 2026-09-09 (Pro, builder — PR #6051 "PR-5 — gold personas, option-matrix replay and the CI
+  gates"): per the PR body, the last PR of the decisiveness wave, test-only. Three gate moves:
+  a 20-persona gold replay floor re-derived from each persona's own legal description
+  (`matches >= 17`, unexplained divergences exactly personas {1, 9, 10}); `gold_coverage_replay`
+  18/18 → 20/20 (adds E33G and the 121-day D2 persona); a new F7 bounded option-matrix replay
+  (3 branches × 4 fact-permutations = 12, fixed seed `9062026`, pinned to the pack's own
+  `signed_at`). E33 (second home) intentionally excluded, no owner GO recorded. Seven
+  historical seq-18/seq-19 regressions fixed as a scoping bug (`test_seq19_pack.py` 66/66,
+  unchanged assertions); full suite 1 failed / 2497 passed / 1 skipped / 31 errors, the 31
+  errors reproduced identically on `origin/main`. Merge commit `befb71ba00`
+  (2026-09-09T19:11:38Z). Appended retroactively on 2026-09-11 by W-ORACLE PR-O0 from the PR
+  body; not re-measured here.
+
+- 2026-09-08 (M5, builder — PR #5918 "give the interview an age dimension for retirement
+  walks"): per the PR body, every interview-walk-corpus fixture answered `birth_date` with the
+  same 2000-11-11 identity, so all 6 `retirement` walks were excluded by the age-below-55 hard
+  filter before either product's own eligibility rule ran; in production on 2026-09-07, 6 of 10
+  `NO_SUPPORTED_PATH` walks carried `AGE_BELOW_55` as their only reason and E33E/E33F were never
+  reached by any retirement walk. The generator adds 6 walks replayed at age 64 via the existing
+  `overrides` mechanism, corpus 61 → 67; census 0/10/51 → 2/10/55. 4 of 6 new walks reach
+  `SUPPORTED_CANDIDATES` (E33E, E33F); the other 2 end `NEEDS_INPUT` on
+  `family.sponsor_confirmed`, added to `WALK_DEAD_END_ALLOWLIST` as honest dead ends, not a
+  defect this PR cures. Merge commit `b574397452` (2026-09-08T02:31:30Z). Appended
+  retroactively on 2026-09-11 by W-ORACLE PR-O0 from the PR body; not re-measured here.
+
+- 2026-09-07 (M5, builder — PR #5855 "ask the facts the engine still needs, and follow up
+  instead of dead-ending"): per the PR body, frontend-only (no engine/pack/migration change),
+  implementing owner rulings 3/4/6: asks `wants_onshore_conversion`/`family_sponsor_confirmed`/
+  `work_payer` on branches that previously could not ask them, adds a `second_home` category,
+  maps `diaspora` to FAMILY (previously unreachable `UNKNOWN`), deletes the unused `work_role`
+  question that was silently suppressing E23 for every employment interview, adds the STEPCHILD
+  option row (E31D previously unreachable), and appends a follow-up question on `NEEDS_INPUT`
+  instead of resetting the interview. With `origin/main` merged in (a merge commit, not a
+  rebase) so the seq-20 wave was in, census moved 11/10/22 over 43 walks → **0/10/51 over 61
+  walks, `WALK_DEAD_END_ALLOWLIST` empty** — the PR
+  body stresses this `51` is engine-level with `disclosed_review_flags=()` and is not 51 users
+  seeing a recommendation with no human review; supplying the diaspora `ACTIVITY_BOUNDARY` flag
+  alone gives 10/15/36. Independent adversarial review (codex) returned BLOCKER with 4 findings;
+  the census's blindness to disclosure flags was ruled pre-existing/out of scope, one guilt-test
+  regression was cured, the sampling limit was documented as a stated bound, and the
+  `ASK_FOLLOW_UP` prerequisite re-check was left for the gate as defence-in-depth. Merge commit
+  `f4ee72133d` (2026-09-07T09:04:40Z). Appended retroactively on 2026-09-11 by W-ORACLE PR-O0
+  from the PR body; not re-measured here.
+
 - 2026-09-06 (M5, consul session — seq-20 SIGNED + ACTIVATED): **SEQ-20 IS THE ACTIVE PRODUCTION
   PACK, under ENFORCE.** seq-20 = seq-19 + the five decisiveness edits of fold PR #5854
   (`dc7189f4`): stay-day caps raised to the lawful extendable total on 22 rules,

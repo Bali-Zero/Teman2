@@ -1,0 +1,85 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/nuzantara/nuzantara/.worktrees/mouth-shweb-w2-team-20260911
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 01a093af-f623-77f2-b8da-9a21a24ca8d9
+--------
+user
+# PRE-review request — SHWEB-20260911 / W2-WEB-TEAM (state BOZZA, before BUILD)
+
+You are an adversarial PRE-review seat from a family OTHER than the author (the author is a Claude
+Opus 5 session; you are not). Nothing has been implemented yet: you are reviewing a **plan and its
+freeze record**, in a read-only checkout. Default to "this plan is defective"; your job is to find
+what will make the candidate fail its own acceptance, exceed its perimeter, or publish something it
+must not.
+
+## What to read (all paths relative to the repo root of this checkout)
+
+1. `evidence/2026-09/agent-mini-pro2-mouth-shweb-w2-team-20260911-78b02ed9/brief.yml`
+2. `evidence/2026-09/agent-mini-pro2-mouth-shweb-w2-team-20260911-78b02ed9/contract-lock.json`
+3. The files the plan will change, as they are today:
+   - `apps/mouth/src/app/(blog)/team/page.tsx`
+   - `apps/mouth/src/app/(marketing)/page.tsx`
+   - `apps/mouth/src/app/v2/_components/SocialProof.tsx`
+   - `apps/mouth/src/app/v2/company/about/page.tsx`
+   - `apps/mouth/src/components/book/book-data.ts` (and `src/components/book/TeamGrid.tsx`, which must NOT change)
+   - `apps/mouth/src/data/team-roster.ts` — **READ-ONLY in this window**, frozen at sha256 `947b181a…`
+4. The R19 design reference, readable ONLY with `git show 6603d2913e:<path>`:
+   - `apps/website/src/components/Team.tsx`, `apps/website/src/components/Team.module.css`,
+     `apps/website/src/app/team/page.tsx`, `apps/website/src/content/team.ts`
+5. `research/design/2026-09-11-r19-design-reuse-map-apps-mouth.md` §4.1, §4.2, §7
+
+## The mandate in one paragraph
+
+Bring the R19 **composition and rhythm only** (grids, spacing, type scale, 44/48px targets) to the
+public `/team` directory and to a founder band on the home, keeping apps/mouth's CURRENT colours and
+fonts (decision D-B: R19 Direction A colours/fonts belong to a later window, W7, and are forbidden
+here). Make the two owner-ordered public exclusions (Faysha/Faisha and Sahira) structural in EVERY
+public consumer of the roster, proven by one test per consumer, WITHOUT editing the roster SSOT and
+without deleting or rewriting any internal record. Keep Kadek, Rina and the "Zero" entry. Give Ari a
+link to the Second Home Studio and Surya a link to E-VOA using real URLs. The SocialProof variant is
+opt-in so `/v2` stays unchanged. Reviews, other profiles and role labels are preserved.
+
+## Specific questions I want attacked
+
+1. **Census completeness.** `contract-lock.json.rosterBySlugCensus` claims exactly three public
+   `rosterBySlug` consumers plus the book (`PUBLIC_ROSTER`), and claims that no W4/W7 surface
+   consumes the roster. Re-run the search yourself. Is there a public surface that publishes a
+   roster person and is NOT in that list — including through the backend, a sitemap, a JSON-LD
+   block, an OG image route, an API route, a generated export (`llms*.txt`), a static file, or a
+   page that renders a person's name from somewhere other than the roster?
+2. **Is a shared presentation-filter module the right shape,** or does it create a second source of
+   truth next to `publicListed`? The roster has ZERO members with `publicListed: false`, and the
+   window may not edit the roster — so a filter that keys only on `publicListed` would exclude
+   nobody. Attack the design: where should the owner's instruction live so that it cannot drift, and
+   what is the failure mode of the chosen place?
+3. **The negative tests.** One mutant per consumer is planned (remove the filter → that consumer's
+   test must go red). Can you construct a way for a consumer to still leak one of the two people
+   while all four tests stay green?
+4. **Default preservation.** The plan says SocialProof's default render stays unchanged for `/v2`.
+   What would make that claim false but unnoticed by the planned probes?
+5. **Perimeter.** Is any planned change a disguised edit of a frozen surface (`globals.css`, root
+   `layout.tsx`, `packages/core/**`, `team-roster.ts`, `visa/**`, `kbli/**`, lockfile), or of a file
+   owned by another window (NewsHero/LatestNews/NewsPageClient = W4; Footer/MobileNav/NavShell/
+   HeroBlueprint/PersonaDoors = W7)?
+6. **D-B containment.** Name any concrete way the planned work could smuggle R19 Direction A
+   identity (the colours #F7F4EE / #233D52 / #A44B36 / #1D2C3B / #58626B / #DAD8D1 / #FFFCF7 /
+   #EAE3D8, or Fraunces/Manrope) into the diff while looking like "rhythm".
+7. **Acceptance falsifiability.** Read `brief.yml.acceptance`. Which of those statements can pass
+   while the user-visible outcome is still wrong? Which one is unfalsifiable as written?
+
+## Output format
+
+A numbered finding list. For each: `Fn SEVERITY (BLOCKER | MAJOR | MINOR)` — one-line claim, the
+file:line or command that proves it, and the smallest correction. Then a final line:
+`VERDICT: GO | GO-WITH-CONDITIONS | REWORK`. Do not write code and do not modify any file.
+codex
+[Mini] Verifico il piano, il freeze e tutti i canali pubblici che potrebbero esporre i nomi esclusi. Uso la skill `design` per controllare il confine tra composizione R19 e identità visiva; la revisione resta in sola lettura.
+
+2026-09-12T03:36:59.496490Z ERROR codex_core::tools::router: error=timed out negotiating with the code-mode host

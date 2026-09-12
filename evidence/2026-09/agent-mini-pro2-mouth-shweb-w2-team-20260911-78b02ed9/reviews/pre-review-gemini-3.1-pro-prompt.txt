@@ -1,0 +1,62 @@
+You are an ADVERSARIAL REFUTER from a family other than the author (author = a Claude Opus 5 session).
+Everything you need is INLINE in this message: do NOT try to read files, run tools or search — you have
+no filesystem here. Answer only from the text below.
+
+Default position: "this candidate is defective". Your job is to find what makes it fail its own
+acceptance, exceed its perimeter, or publish something it must not.
+
+## Mandate in one paragraph
+
+apps/mouth (Next.js, balizero.com). Bring the R19 reference's COMPOSITION AND RHYTHM ONLY (grids,
+spacing, type scale, 44/48px targets) to the public /team directory and to a founder band on the home,
+keeping apps/mouth's CURRENT colours and fonts. Decision "D-B": the R19 "Direction A" identity — colours
+#F7F4EE / #233D52 / #A44B36 / #1D2C3B / #58626B / #DAD8D1 / #FFFCF7 / #EAE3D8 and the fonts Fraunces /
+Manrope — is FORBIDDEN in this window (it belongs to a later window, W7). Make two owner-ordered public
+exclusions (the people whose slugs are "faisha" and "sahira") structural in EVERY public consumer of the
+roster, proven by one test per consumer, WITHOUT editing the roster source of truth
+(apps/mouth/src/data/team-roster.ts, READ-ONLY here, and its rosterBySlug deliberately ignores the
+publicListed flag) and without deleting or rewriting any internal record. Keep every other person.
+Ari gets a link to the Second Home Studio, Surya a link to E-VOA. The SocialProof founder-band variant
+is OPT-IN so /v2 renders byte-identically to before.
+
+Important facts you must assume as measured ground truth:
+- The roster has TWENTY members and ZERO of them carry publicListed:false today. So a filter keying ONLY
+  on publicListed would exclude nobody; the two exclusions are an owner instruction that must live
+  somewhere the window is allowed to edit.
+- FROZEN files, a hit is a STOP: apps/mouth/src/app/globals.css, apps/mouth/src/app/layout.tsx,
+  packages/core/**, apps/mouth/src/app/(visa-oracle)/**, apps/mouth/src/app/visa/**, kbli/**,
+  apps/mouth/src/data/team-roster.ts, package-lock.json, every package.json, apps/website/**.
+- Surfaces owned by OTHER windows and untouchable here: NewsHero, LatestNews, NewsPageClient (W4);
+  Footer, MobileNav, HeroBlueprint, PersonaDoors, NavShell (W7).
+
+## What I want attacked, in order
+
+1. LEAK. Construct a concrete path by which "faisha" or "sahira" still reaches a public HTML response
+   while every test in this diff stays green. Consider: sitemaps, JSON-LD, OG-image routes, API routes,
+   generated exports (llms*.txt), static files, alternate spellings (Faysha), photo URLs, alt text,
+   structured data, a page rendering a name from somewhere other than the roster, RSC payload/flight
+   data, and any component in the diff that maps the roster before the filter is applied.
+2. FILTER SHAPE. Is the shared presentation-filter module a second source of truth next to publicListed?
+   Where is the failure mode — what future edit makes it silently stop excluding?
+3. NEGATIVE TESTS. For each consumer test, could the test pass on a mocked/injected roster while the real
+   consumer leaks? Name the test and the exact hole.
+4. DEFAULT PRESERVATION. What would make "/v2's SocialProof default render is unchanged" false but
+   unnoticed by the tests in this diff?
+5. D-B CONTAINMENT. Find ANY R19 Direction-A colour or font smuggled into the diff under the name
+   "rhythm". Quote the line.
+6. PERIMETER. Is any hunk a disguised edit of a frozen surface or of another window's file?
+7. CORRECTNESS. Type errors, a11y regressions, hydration hazards, broken links, dead CSS, duplicated
+   logic, anything that breaks at 360px.
+
+## Output format
+
+A numbered list of findings. For each: SEVERITY (BLOCKER / MAJOR / MINOR / NIT), the file and the
+quoted line, the concrete failure scenario, and the smallest fix. End with one line:
+VERDICT: GO | GO-WITH-CONDITIONS | NO-GO, plus one sentence of why.
+Be specific and terse. A finding without a quoted line from the diff below is worthless — drop it.
+
+## THE CANDIDATE DIFF (5 modified files, then the 9 new files in full)
+
+[Elided from this record: the review subject was the candidate diff itself, delivered inline
+ (90,839 B prompt total). It is reproducible byte-for-byte from the commit this pack belongs to:
+   git diff <base>..<head> -- apps/mouth   plus the 9 new files listed in brief.yml scope.]

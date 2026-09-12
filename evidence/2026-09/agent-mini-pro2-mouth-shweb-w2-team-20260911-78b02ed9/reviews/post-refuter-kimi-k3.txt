@@ -1,0 +1,172 @@
+# POST refuter record — Kimi K3, on the FROZEN head 9842793f491b2d0f831cb4785dfc663f8eca1f0a
+
+seat: kimi-code/k3
+cmd: kimi -m kimi-code/k3 -p <self-contained packet: mandate + frozen diff inline>
+round: POST
+ok: true
+verdict: GO-WITH-CONDITIONS (3 MAJOR, 4 MINOR, 2 NIT)
+note: >-
+  Six findings accepted and fixed; one (F8, '#e3e1da is a Direction-A tone') refuted with its
+  source — it is the live value of --border-default and --rp-card-border in rumahVars.ts:37,38,44.
+  Three of the accepted findings were defects in this window's own PROBES, not in the product:
+  the leak sweep could read the document before the people section rendered; the portrait
+  assertion compared a literal path against an HTML that carries it URL-encoded 15 times to 1;
+  and the focus predicate was satisfied by links that always carry a border-bottom.
+
+## Verbatim response
+
+• Review of `9842793f49`, as adversarial refuter. Findings only; everything below is quoted from the diff.
+
+  ---
+
+  **1. MAJOR — The exclusion is not proven for every public consumer; sitemap, OG, JSON-LD and the frozen visa pages have no probe at all**
+
+  File: `apps/mouth/e2e/shweb-team.spec.ts`
+
+  > ```
+  > for (const path of [
+  >     "/team",
+  >     "/",
+  >     "/v2",
+  >     "/v2/company/about",
+  >     "/book/team",
+  >     "/book",
+  >   ]) {
+  > ```
+
+  The mandate (b) is "structural in EVERY public consumer, proven by one probe per consumer." This diff probes exactly four consumers and never demonstrates they are the complete set. Any existing consumer outside these four — a `sitemap.ts` or `opengraph-image` route enumerating `PUBLIC_ROSTER`, an Organization JSON-LD block with an `employee` list, or any page under the frozen `visa/**` / `kbli/**` trees that renders a consultant card from the roster — continues to publish both names while every test in this diff is green. Worse, those frozen files cannot be fixed inside this window, so if one of them reads the roster, the exclusions are unshippable as designed and nothing here detects it.
+  Smallest fix: enumerate every importer of `team-roster` / `team-public-listing` in the repo, assert in CI that each public one routes through `publicEntries`/`publicRoster`, and add `/sitemap.xml` plus any OG/JSON-LD route to the sweep.
+
+  **2. MAJOR — The e2e leak check can snapshot the HTML before the team section exists**
+
+  File: `apps/mouth/e2e/shweb-team.spec.ts`
+
+  > ```
+  > await page
+  >   .locator("main, body > div")
+  >   .first()
+  >   .waitFor({ state: "attached" });
+  > const html = await page.content();
+  > expect(html, `${path} still names one of them`).not.toMatch(EXCLUDED);
+  > ```
+
+  The only synchronization before the regex is "`main` (or any top-level div) is attached." Nothing proves the roster-bearing section made it into the captured document. If any of these surfaces renders its people post-hydration (a `useEffect` fetch, a Suspense boundary, a client-only flip-book grid on `/book` — a plausible shape for that UI), the snapshot is taken in the pre-render window, the names arrive a tick later, and the probe passes forever while the page leaks. A probe that cannot distinguish "section absent" from "section clean" is vacuous.
+  Smallest fix: before `page.content()`, wait for a marker that only exists when the roster section rendered (e.g. `page.getByText("Zainal Abidin")` on `/` and `/v2`, an h3 count on `/team` and `/book/team`), then assert the names are absent.
+
+  **3. MAJOR — The name guard misses the alternate spelling the module itself documents**
+
+  File: `apps/mouth/src/lib/team-public-listing.ts`
+
+  > ```
+  > const EXCLUDED_NAMES: ReadonlySet<string> = new Set(
+  >   PUBLIC_EXCLUDED_SLUGS.flatMap((slug) => {
+  >     const member = rosterBySlug(slug);
+  >     return member ? [norm(slug), norm(member.name)] : [norm(slug)];
+  >   }),
+  > );
+  > ```
+
+  and, from the same file's own comment:
+
+  > ```
+  >  * NOTE the spelling: the roster slug is `faisha` (the email prefix is `faysha.tax`),
+  > ```
+
+  `EXCLUDED_NAMES` ends up as `{faisha, sahira}` plus whatever `roster.name` says — i.e. still just `{faisha, sahira}`. The name check exists precisely to stop a hand-written editorial entry from re-publishing an excluded person by spelling their name, yet the one alternate spelling the codebase itself acknowledges (`faysha`) sails through: `{ nameOverride: "Faysha" }` is kept by `publicEntries`, every unit test stays green (they only exercise "Faisha", "sahira", and the fullwidth forms), and only the e2e regex — which does include `faysha` — would catch it, on six paths only. The unit-level guarantee the module advertises is unsound for the documented alias.
+  Smallest fix: make the exclusion list carry aliases (`["faisha", "faysha", "sahira"]` folded into both sets), and pin `"faysha"` in `team-public-listing.test.ts` the same way the slugs are pinned.
+
+  **4. MINOR — The focus-visibility probe is trivially satisfied by links that always have a border-bottom**
+
+  Files: `apps/mouth/e2e/shweb-team.spec.ts` and `apps/mouth/src/app/(blog)/team/team.module.css`
+
+  > ```
+  > outlined:
+  >   s.outlineStyle !== "none" ||
+  >   s.boxShadow !== "none" ||
+  >   s.borderBottomColor !== "rgba(0, 0, 0, 0)",
+  > ```
+
+  > ```
+  > .groupNav a {
+  >   ...
+  >   border-bottom: 1px solid var(--border-default);
+  > }
+  > ```
+
+  Every `.groupNav a` carries a *permanent* `border-bottom` (as does `.bandLink` and the `.projectLink` hover state). For those elements the `outlined` predicate is true whether or not any focus style exists — the tab-walk test would stay green even with `:focus { outline: none }` globally. The a11y proof this window ships is weaker than it claims for exactly the new interactive elements it introduces.
+  Smallest fix: compare computed style before vs. after focus (style *delta*), or exclude elements whose border-bottom is present in the unfocused state.
+
+  **5. MINOR — The photo-leak probe hardcodes guessed paths instead of the roster's real ones**
+
+  File: `apps/mouth/e2e/shweb-team.spec.ts`
+
+  > ```
+  > const EXCLUDED_PHOTOS = [
+  >   "/static/team/faisha.jpg",
+  >   "/static/team/sahira.jpg",
+  > ] as const;
+  > ```
+
+  If the roster's actual `photo` for either person is a different path or extension (`faysha-tax.jpg`, `.webp`, an `/_next/image?url=%2F...` encoded URL in the served HTML), this loop checks two strings that appear nowhere and a photo-path leak goes unseen — the face ships without the name.
+  Smallest fix: derive the list from the source of truth (`rosterBySlug("faisha")?.photo`, `rosterBySlug("sahira")?.photo`) at test time, and match against the URL-decoded HTML.
+
+  **6. MINOR — `norm()` does not strip format characters, so a zero-width-obfuscated name defeats both the filter and the probe**
+
+  File: `apps/mouth/src/lib/team-public-listing.ts`
+
+  > ```
+  > const norm = (value: string): string =>
+  >   value.normalize("NFKC").trim().toLowerCase();
+  > ```
+
+  NFKC folds fullwidth/compatibility forms but leaves Cf characters intact. `nameOverride: "Fai\u200Bsha"` passes `EXCLUDED_NAMES.has(...)` *and* fails to match the e2e regex `/faisha|faysha|sahira/i` — one editorial entry (malicious or pasted from a word processor) leaks the person invisibly with the entire suite green.
+  Smallest fix: extend `norm()` with `.replace(/[\u200B-\u200F\uFEFF]/g, "")` (or a general `\p{Cf}` class).
+
+  **7. MINOR — The book's own stat now contradicts its filtered grid, and the test pins the contradiction**
+
+  File: `apps/mouth/src/components/book/book-team-roster.test.ts`
+
+  > ```
+  > expect(STATS.teamSize).toBe(22);
+  > ```
+
+  The same diff cuts the book's team grid to 18 people (`PUBLIC_ROSTER.length - 2`) while pinning "team of 22" in the same chapter. A reader of `/book/team` sees a headline number that matches nothing on the page; the probe enshrines the inconsistency instead of flagging it.
+  Smallest fix: derive the stat (`teamSize: publicRoster().length`) or adjust the copy, and update the assertion accordingly.
+
+  **8. NIT — A Direction-A-flavoured warm neutral enters as a literal fallback value**
+
+  File: `apps/mouth/src/app/(blog)/team/team.module.css`
+
+  > ```
+  > border: 1px solid var(--rp-card-border, #e3e1da);
+  > ```
+
+  Not one of the eight forbidden hexes, but `#e3e1da` is a warm off-white from exactly the `#EAE3D8` / `#DAD8D1` family, introduced where the old code used `rgba(255,255,255,0.14)`. If `--rp-card-border` is ever undefined on this page, the rendered hairline is a Direction A tone, and the D-B "no smuggled values" rule is about values, not variable names. No Fraunces/Manrope or forbidden hex found anywhere else in the diff — fonts and other colours are clean.
+  Smallest fix: use the neutral the Rumah theme actually ships (or `currentColor`-derived alpha) as the fallback.
+
+  **9. NIT — The new founder band on `/` is never probed at 360px**
+
+  File: `apps/mouth/e2e/shweb-team.spec.ts`
+
+  > ```
+  > await page.setViewportSize({ width: vp.width, height: vp.height });
+  > await page.goto("/team", { waitUntil: "domcontentloaded" });
+  > ```
+
+  The overflow sweep visits only `/team`, yet this diff also adds new layout to `/`:
+
+  > ```
+  > .founderBand {
+  >   display: grid;
+  >   grid-template-columns: 1fr 1fr;
+  > ```
+
+  with fixed 78px portraits that only collapse below 400px. The 401–700px window (portrait 78→60px, name at 22px in a narrowing column) is completely unmeasured on the page where the band actually lives.
+  Smallest fix: add `/` to the viewport loop (or a single 360px overflow assertion on `/`).
+
+  ---
+
+  Checked and clear, so not findings: the perimeter is clean (no frozen file touched; `(marketing)/page.tsx` gets only the opt-in prop; `team-roster.ts`, globals.css, `package*.json` untouched); the default SocialProof render is structurally preserved in the `{founderBand ? … : …}` split with the "All 18+" link kept on the default branch; the declared client-bundle exposure is not made worse (book-data already imported `PUBLIC_ROSTER`; no new roster import enters any client boundary); the guilt probes genuinely exercise the real filter path via `importOriginal`; D-B is otherwise clean.
+
+  **VERDICT: GO-WITH-CONDITIONS** — no proven leak in the four wired consumers, but the merge gate should hold until the `faysha` alias is folded into the exclusion sets, the e2e probes wait on a rendered-section marker and derive photo paths from the roster, and the consumer census (finding 1) is produced, because right now "every public consumer" is an assumption, not a result.
+

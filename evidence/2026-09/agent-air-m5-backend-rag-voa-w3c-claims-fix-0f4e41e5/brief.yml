@@ -1,0 +1,82 @@
+gear: 3
+task_id: voa-w3c-claims-fix
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/voa-w3c-claims-fix
+gate_class: opus
+l_level: L2
+objective: >-
+  GARUDA VOA W3C follow-up to #6235 (residual 1 of 4, already merged and proven
+  live at 3313c26e5a). Window colour BLUE, Dux = Claude Opus 5 xhigh. Cures two
+  FALSE CLAIMS that shipped in #6235's own prose, one concern: text attributing
+  to the code a property the code does not have. (A)
+  test_privacy_headers_match_the_staff_router_they_stand_in_for claimed to
+  compare router and middleware privacy headers "in BOTH directions", but
+  filtered the router side down to names the middleware already had, so a
+  fourth header added to garuda_staff_router._privacy_headers passed silently
+  (gate condition 2 on #6235, ledgered by #6244). (B) the docstring of
+  public_endpoints.path_matches_template claimed "/a/b/" fails against "/a/b";
+  it MATCHES, because strip("/") removes leading and trailing slashes before
+  splitting (found by Kimi K3 executing the function, second reader on #6235).
+scope:
+  - >-
+    apps/backend-rag/backend/app/auth/public_endpoints.py (docstring of
+    path_matches_template only — this is the `app/auth/**` HOT ZONE touch that
+    raises the deterministic floor to 3; behaviour unchanged on purpose)
+  - apps/backend-rag/backend/tests/unit/middleware/test_hybrid_auth_contract_401_envelope.py
+  - apps/backend-rag/backend/tests/unit/middleware/test_public_endpoints_registry.py
+constraints:
+  - products/garuda-voa/contracts/openapi.yaml is NOT modified by this PR.
+  - No served behaviour changes — no router, middleware, service or migration file.
+  - No fly.toml, no .env*, no zantara_core.py.
+  - No PII anywhere in code, tests, or this pack.
+  - No seed in prod.
+acceptance:
+  - text: >-
+      IF garuda_staff_router._privacy_headers adds a header the middleware's
+      contract-401 envelope does not serve, THEN the privacy-header test SHALL
+      fail (and symmetrically for a header only the middleware serves).
+    status: verified
+    probe: >-
+      guilt mutations on _privacy_headers, each rerunning
+      test_privacy_headers_match_the_staff_router_they_stand_in_for: fourth
+      header, deleted content-length, duplicated Cache-Control pair — all
+      FAIL; unmutated tree PASS.
+  - text: >-
+      WHEN path_matches_template receives a leading/trailing-slash variant of a
+      template, THE SYSTEM SHALL match it, and an inner double slash, an extra
+      or missing segment, or an empty {param} SHALL NOT match — exactly as the
+      rewritten docstring states.
+    status: verified
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/middleware/test_public_endpoints_registry.py -k
+      test_path_matches_template_trailing_and_inner_slashes (10 cases)
+  - text: >-
+      WHEN an unauthenticated request reaches a real staff operation with a
+      trailing slash, THE SYSTEM SHALL answer with the same contract
+      SESSION_REQUIRED envelope as the slash-less operation.
+    status: verified
+    probe: >-
+      the two trailing-slash entries added to _STAFF_PATHS in
+      test_hybrid_auth_contract_401_envelope.py pass; post-merge on the promoted
+      commit: curl -s https://nuzantara-rag.fly.dev/api/visa/voa/staff/practices
+      | grep -c SESSION_REQUIRED == 1 (unchanged from #6235)
+risks:
+  - >-
+    (a) The trailing-slash MATCH is now pinned by a test rather than merely
+    undocumented. Changing it later remains allowed, but it becomes a decision
+    that turns a test red, not an accident — that is the point.
+  - >-
+    (b) The refuter took three rounds on this PR, and every defect it found
+    after round 1 was PROSE in a test docstring claiming more than its
+    assertion checked. Closed by Zero's ruling B (2026-09-11 14:08Z, relayed
+    by the GARUDA VOA Imperatore): every touched test docstring is one line
+    stating exactly what its assertion checks, no Sol O4, and a fresh gate
+    verifies prose <= assertion line by line.
+pii: none
+local_evidence: >-
+  268 passed across backend/tests/unit/middleware/ + the two mounted canary
+  suites + test_garuda_voa_flag_ordering.py +
+  test_garuda_staff_actor_async_verifier.py + test_garuda_voa_openapi_parity.py.
+  ruff check and ruff format --check clean on the three changed files.

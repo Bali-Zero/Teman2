@@ -1,0 +1,56 @@
+SECOND READER — independent re-read of the five corrected sources
+seat:      claude-sonnet-5, spalla-review subagent `w3-second-reader`
+scope:     apps/mouth/src/content/articles/immigration/second-home-visa-indonesia{,.it,.id,.ru,.fr}.mdx
+against:   research/secondhome/e33-fact-registry.json (sha256
+           c056bb86d7bf710d5eea764f525ab5b67e717301ac91323893bbe09239821716)
+round:     2 (round 1 was codex-sol's PRE-review BLOCK, 5 conditions, all met before the first edit)
+verdict:   6 findings, all applied at 65850ec8a6
+
+Four of the six are one defect with one shape: a claim was cured in the ENGLISH
+source and not mirrored into the four translations, so the translated file ended
+up contradicting its own body two sections later. Neither `--sources` (amount
+occurrences) nor `--claims` as it stood could see that, because both asked each
+file the same questions and both got the same answers — the contradiction lived
+BETWEEN the English file and its translations, and nothing was reading across them.
+
+1. ENTRY WINDOW — it/id/ru/fr, steps 16 and 18.
+   Asserted "90 days" for the approval letter's validity and for the entry
+   deadline. `entry_window_90d_and_force_majeure` is `pending`: no public source
+   fixes that number. EN had already been cured. APPLIED: all four now point at
+   the window printed on the approval letter itself.
+
+2. KITAP — it/id/ru/fr, "what you cannot do" list.
+   Asserted that SHV time "does not count" toward the 3-year KITAS requirement.
+   `itap_after_3y_criteria` is `unknown`, and the same files already hedged the
+   question in their own FAQ at line 58/59 — the article contradicted itself.
+   The owner ruling forbids marketing the conversion in either direction.
+   APPLIED: all four now say the question is not settled in public regulation
+   and name the established KITAS route.
+
+3. DEPENDENT CODES — .id:191 and .ru:193.
+   Promised sponsorship for spouse and children, while the comparison table at
+   .id:213 / .ru:215 said the dependent codes are not confirmed in writing.
+   EN/IT/FR carried the hedge; these two had lost it. APPLIED: hedge restored.
+
+4. .ru — missing the final CTA bullet ([balizero.com/visa/second-home]) that the
+   other four locales end on. APPLIED.
+
+5. it.mdx:209 — "basata sul KITES sottostante". KITES is a different instrument;
+   the row is about KITAP's work authorisation resting on the underlying KITAS.
+   APPLIED: KITES -> KITAS.
+
+6. fr.mdx — alternated between "visa Seconde Résidence" and "visa Second Home"
+   for one product across headings, table and CTA. APPLIED: settled on the
+   official product name; also "Indonesia" -> "Indonésie" on the line rewritten
+   at (1).
+
+CORRECTION TO THE READER'S OWN NOTE. It attributed a transient red it saw from
+`--claims` to a cross-session sibling race on the shared worktree. That is not
+what happened: my own commits 2fa1a67e31 and c08e0ad8a1 landed in that worktree
+while it was reading. One writer, two readers — no race.
+
+WHAT CHANGED IN THE GUARD BECAUSE OF THIS ROUND. `--claims` now carries a
+per-locale positive check for the corrected entry-window and KITAP wording, so a
+cure applied to 1 of 5 files fails the probe instead of reporting green. That is
+the finding that outlives this PR: the probe measured each file against the
+registry and never measured the files against EACH OTHER.

@@ -1,0 +1,92 @@
+{
+  "meta": {
+    "manifest_path": "manifest_mandatory.json",
+    "manifest_sha256": "9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f",
+    "base_sha": null,
+    "backend_root": "/Users/nuzantara/nuzantara/apps/backend-rag",
+    "backend_root_git_sha": "b0b10006ef0a60a396a9251a902d8e42383ccb7b",
+    "host": "mini-pro2",
+    "utc_start": "2026-09-12T04:48:56.651006+00:00",
+    "utc_end": "2026-09-12T04:49:08.802404+00:00",
+    "candidates_run": [
+      "iii"
+    ],
+    "reps": 1,
+    "limit_pairs": 1,
+    "pairs_measured": [
+      "bp-09230f67"
+    ],
+    "model_ids": {
+      "ii": "qwen3.8:27b-mlx",
+      "iii": "gpt-5.6-terra"
+    },
+    "adapter_file_sha256": "a24ee0c951db0dec23cb649cd75d75aba4f2fe8b2a122f9bb9017ca3eb3cff5e",
+    "codex_version": "codex-cli 0.154.0",
+    "codex_home_basename": ".codex-acct2",
+    "ollama_url": "http://127.0.0.1:11434",
+    "ollama_model_digest": null
+  },
+  "calls": [
+    {
+      "candidate": "iii",
+      "pair_id": "bp-09230f67",
+      "case_id": "bs-6b1f7df4",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.43355270801112,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9432.593709032517
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "bp-09230f67",
+      "case_id": "bs-65886be1",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.304743417014834,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 8303.721125004813
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "candidate": "iii",
+      "pair_id": "bp-09230f67",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "bs-65886be1": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED"
+          ]
+        },
+        "bs-6b1f7df4": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED"
+          ]
+        }
+      }
+    }
+  ],
+  "summary": [
+    {
+      "candidate": "iii",
+      "total_pairs": 1,
+      "distinguished_pairs": 1,
+      "unstable_pairs": 0,
+      "qualifies": true
+    }
+  ]
+}

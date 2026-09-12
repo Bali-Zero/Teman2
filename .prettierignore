@@ -129,6 +129,13 @@ apps/organism/organism/organs_registry.yaml
 # discipline as PENDING-ARMS.md and the cicatrix scar records below (W112).
 docs/plans/2026-08-24-garuda-voa-live/GATE-CONDITIONS-4959.md
 
+# B1.4: machine-written receipts and a probe file whose sha256 is recorded in
+# pack.yml — reformatting them would rewrite evidence and break that record.
+# Placed HERE, beside the other evidence-record entries, rather than at the tail
+# of this file: B1.5's sibling PR appends there, and the merge queue runs no
+# merge driver, so two tail appends would collide add/add by construction.
+evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/*.json
+
 # Cicatrix scar records — the exact bytes are load-bearing, and Prettier rewrites them.
 # Measured 2026-07-30 on origin/main: inside these long paragraphs Prettier parsed literal
 # text as emphasis delimiters and SWAPPED them, silently corrupting three tokens of the W104
@@ -158,3 +165,7 @@ docs/plans/mouth-final-20260911/README.md
 docs/plans/mouth-final-20260911/LAUNCH.md
 docs/plans/mouth-final-20260911/W[0-7]-*.md
 docs/plans/mouth-final-20260911/evidence/**
+
+# B1.5: the embedding artifact is IMMUTABLE — its sha256 is committed to in
+# evidence/.../b1-5-precall.json, and reformatting it would break that receipt.
+apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/query_vectors_b1_5.json

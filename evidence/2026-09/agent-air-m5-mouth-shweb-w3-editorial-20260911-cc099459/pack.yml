@@ -1,0 +1,344 @@
+gear: 3
+mission: SHWEB-20260911
+window: W3-SH-EDITORIAL
+colour: BLUE
+verdict: PENDING_GATE
+base_sha: 70b43c5459489ce9c8d524eefc94d53a7009866d
+# MUST be the literal staging path, never the real per-PR one: harness-floor stages the
+# pack and the brief as evidence/{pack,brief}.yml in a synthetic tree and resolves this
+# field against THAT root (harness-floor.yml, "THE brief_ref CONTRACT"). The per-PR value
+# is the trap the staging layout exists to remove, and it is what turned this check red.
+brief_ref: evidence/brief.yml
+pii_scan: clean
+
+churn:
+  measured_with: "git diff --numstat 70b43c5459 8ba4b4f1ed | awk '{a+=$1;d+=$2} END {print a+d}' — measured at the FINAL head: 29 files, +4220 -531. This number was wrong twice before, and both corrections are recorded rather than overwritten: 4373 was a transposition by the author; 4749 was a real measurement taken before the third commit landed, which is why the gate on 8ba4b4f1ed read 2 more. The growth over the 3902 of the pre-refuter head is the rebuilt guard (+146 probe lines), the guard spec written instead of a fourth cure round (99 lines), and the census/disposition rows three refuter rounds and a second reader demanded."
+  total_lines: 4751
+  ceiling_named_in_the_mandate: 1828
+  gear_override: >-
+    Declared, per the mandate's own alternative ("churn under 1828 OR a coherent Gear-3
+    declaration"). The excess is one artifact: research/secondhome/editorial-disposition.json,
+    1402 lines, the census of 128 article families with the evidence lines that justify each
+    disposition. It was already compacted twice — the 104 families with no defect are one
+    string each instead of a 25-line object, and the evidence is capped at 5 lines per family
+    with `evidenceTruncatedFrom` recording what was cut. What remains is the part a reviewer
+    needs in order to disagree with a disposition, which is the whole point of a census whose
+    central risk is a blind substitution. The code and content half of this PR is ~900 lines:
+    five MDX sources (~832 added+deleted after the POST refuter's second cure round), a probe
+    (340), a test (102), the generator tie-break, the i18n claim-ratchet baseline delta (40) and
+    one deleted backend fixture (14).
+
+spend:
+  # Measured, not estimated: first Dux transcript event (02:13:26Z) to the commit of the final
+  # head 8ba4b4f1ed (08:26:47Z). It EXCLUDES the independent gate session and the three council
+  # seats, which are not this lane's spend, and it does not grow after the merge. The two Dux
+  # sessions overlap by 0.62h across the handover, so summing their spans (8.47) would count the
+  # same time twice; the union to the final head is what is recorded. The field previously read
+  # `~2.5`, which YAML parses as a STRING — so the lint treated the dimension as unmeasured and
+  # never compared it to the ceiling of 8 in brief.yml. It was an estimate of the first session
+  # alone, and false for the mandate.
+  wall_clock_hours: 6.2
+  adversarial_rounds: 3
+  seats:
+    - name: codex-sol
+      role: PRE-review (cross-family, outside the contribution chain)
+      invocation: "CODEX_HOME=~/.codex-acct2 codex exec --sandbox read-only -c model_reasoning_effort=high"
+      verdict: BLOCK with 5 conditions
+      record: prereview/codex-sol-prereview-round1.txt
+    - name: gemini-3.1-pro-high
+      role: long-context read of the 5 sources against the fact registry
+      invocation: 'agy -p "<prompt>" --model "Gemini 3.1 Pro (High)"'
+      record: prereview/gemini-3.1-pro-claim-table.txt
+    - name: claude-sonnet-5 (spalla-review subagent, w3-second-reader)
+      role: second independent reader of the corrected sources
+      record: prereview/second-reader.txt
+      verdict: 6 findings, all applied at 65850ec8a6
+
+appetite_exceeded: "adversarial_rounds: ceiling 2, observed 3. The third round was not indecision and not a fourth opinion sought until one agreed — it was the THIRD BLOCK from the same seat on the SAME cause (the claim guard is evadable), which is exactly the condition the repo's rule of three names: the PR suspends instead of taking a fourth round, and a fix-of-a-fix that is itself wrong means the surface is under-specified, so it gets a spec. That round is therefore the event that CLOSED the surface rather than an overrun of it: findings 7-9 were cured here, findings 1-6 became the requirements R1-R6 of research/secondhome/probe-guard-spec-v2.md for PR-1b under a different seat, and the probe ships labelled in its own docstring as a measurement instrument whose regression protection is partial. Spending the third round is what made the split truthful; declaring 2 and running 3 without saying so is what this field exists to prevent, and the declared-vs-observed gap only became visible when the author corrected spend.adversarial_rounds from a false 2 to the measured 3."
+
+# D3. ONE build lane: this window is a single-writer mandate on a frozen head, and the
+# seat-diversity clause applies from two build lanes up. The non-Anthropic seats here are
+# review seats, deliberately — a refuter that also writes is not a refuter.
+lanes:
+  - lane: mouth/shweb-w3-editorial-20260911
+    role: build
+    seat: claude-opus-5 (dux, M5, BLUE)
+  - lane: prereview-cross-family
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: registry-claim-table
+    role: read
+    seat: gemini-3.1-pro-high
+  - lane: second-reader
+    role: review
+    seat: claude-sonnet-5 (spalla-review subagent)
+  - lane: post-refuter
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: language-reread-id-en
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: fact-registry
+    role: ground_truth
+    seat: research/secondhome/e33-fact-registry.json (SSOT, frozen)
+
+council_run: council.jsonl
+
+prereview_conditions:
+  - id: 1
+    condition: "the probe measures tokens, not claims — fix the over/under-matches"
+    met: >-
+      THRESHOLD no longer accepts IDR 20B (`2(?![\d.,]*\d)`), and now catches
+      `IDR 2 000 000 000`, `2 à 5 milliards IDR`, `IDR 2B-5B`, `two billion`,
+      `due miliardi`, `deux milliards`, `два миллиарда`, `Rp2M`. `--selftest` carries
+      16 guilt cases and 6 innocence cases and reports 0 failures.
+  - id: 2
+    condition: "state the property rewrite with completed unit, USD 1,000,000, and title/validation unresolved"
+    met: "Path 2 rewritten in all five locales; no qualifying title is named, and the ledger records why."
+  - id: 3
+    condition: "remove the decomposition, the totals and the residual fees; point at the service page without introducing a price"
+    met: "Costs Breakdown and the two comparison-table cost/time rows are gone in all five locales. No price value appears in the diff."
+  - id: 4
+    condition: "put positive and contradiction checks beside the zeros"
+    met: >-
+      `--claims` asserts what each locale must SAY and must NOT say. It caught two residual
+      `Hak Pakai` mentions in the .id and .ru sources AFTER the amount check already read 0.
+  - id: 5
+    condition: "define M3 as the removal of the real enArticles.sort and test the exact output"
+    met: "M1 2 failed, M2 2 failed, M3 5 failed (all 5 tests), baseline and restored tree 5 passed."
+
+# `ts` is a DATE and not a clock time, by the mandate's own rule for receipts.
+# `exit` is the process exit status of `cmd`, re-runnable on the head it names.
+receipts:
+  - claim: "a real npm run build of apps/mouth compiles every MDX in the family, including the two files whose missing component import the second reader found"
+    cmd: "cd apps/mouth && npm run build"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    note: "Compiled successfully in 38.6s; 1769 static pages generated"
+  - claim: "the export written by that real build carries ZERO superseded-threshold lines inside this family's article blocks; the 24 that remain belong to the 14 queued-pr2 families"
+    cmd: "python3 - <<attribute every hit in apps/mouth/public/llms-full.txt to the URL header above it>>"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    before: "canonical-family hits at the base commit: 68"
+    after: "canonical-family 0, other-family 24, file 450,488 lines"
+  - claim: "the TEN named mutations listed in build-receipts/guard-mutation-run.txt each turn the probe red, and the four documented generator mutants die"
+    cmd: "sandbox copy of the five MDX + probe --claims per mutation; vitest per generator mutant"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    note: "10 probe mutations red (M1-M10), 4 generator mutants red, recorded in build-receipts/guard-mutation-run.txt; the sandbox was green before and after each. This claim is a MEASURED LIST and deliberately not the universal 'every cure can be turned red', which this pack retracts in the codex dissent block below and which the gate on 8ba4b4f1ed proved false with an eighth evasion (answerSnippet unanchored for duration). The receipt's header said 9 while its body listed ten; ten is the measured number and the header is corrected in the same patch as this line."
+  - claim: "two council seats reviewed the final tree and neither returned BLOCK"
+    cmd: "python3 scripts/tp1_call.py --model qwen3.8-max --task-file <core> ; kimi -m kimi-code/k3 -p <scoped prompt>"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    note: "both CONCERNS; 11 second-reader findings and 6 language findings all acted on, see council.jsonl and prereview/kimi-second-reader.txt"
+  - claim: "no source in the family carries the superseded threshold any more"
+    cmd: "python3 research/secondhome/probe-superseded-threshold.py --sources"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    before: 68
+    after: 0
+  - claim: "each locale SAYS the registry's confirmed facts and does NOT say the forbidden ones"
+    cmd: "python3 research/secondhome/probe-superseded-threshold.py --claims"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: "0 failures across 5 files"
+  - claim: "the probe is honest in both directions — it convicts the guilty and acquits the innocent"
+    cmd: "python3 research/secondhome/probe-superseded-threshold.py --selftest"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: "0 failures — 16 guilt cases, 6 innocence cases"
+  - claim: "the freshness tie-break is a function of the content, not of the filesystem"
+    cmd: "npx vitest run src/lib/llms-article-exports.test.ts"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: "5 passed"
+  - claim: "that suite kills the mutants, M3 included"
+    cmd: "mutants M1/M2/M3 applied to apps/mouth/scripts/generate-llms-full.ts, suite re-run each time"
+    exit: 1
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: "2 failed / 2 failed / 5 failed — all RED; tree restored, 5 passed"
+  - claim: "a real build regenerates llms-full.txt with zero superseded-threshold lines in this family"
+    cmd: "npm run build (apps/mouth), then the co-occurrence probe on the generated public/llms-full.txt"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    caveat: >-
+      Stated because it would otherwise be a hidden approximation: the generator runs FIRST
+      inside `npm run build`, and the export was measured as soon as it was written. The three
+      tracked artifacts were then restored from git while `next build` was still compiling, so
+      the .next output carries the committed exports rather than the freshly generated ones.
+      That affects nothing measured here — the artifact under test is the generator's output,
+      and the same build run returned exit 0 — but the two are not the same instant.
+    after: >-
+      0 superseded-threshold lines inside the 4 records of this family. 24 lines remain
+      across the other families — 23 of them are PR-2's by the imperator's scope split, and
+      1 is a Russian translation that landed on main after the served baseline was taken.
+      Evidence: build-receipts/llms-full-cooccurrence.txt. RE-MEASURED on the final head
+      65850ec8a6 after the six cross-locale cures moved the sources: 2559 records, 14 of them
+      this family, 0 superseded-threshold lines inside them.
+      Evidence: build-receipts/final-head-remeasure.txt.
+  - claim: "the regenerated freshness block lists five DISTINCT canonical URLs"
+    cmd: "diff the freshness block of the committed llms.txt against the regenerated one"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: >-
+      5 distinct canonical URLs, all sharing publishedAt 2026-09-11, ordered by URL. The
+      committed artifact listed two of its URLs twice. Evidence:
+      build-receipts/freshness-before-after.txt.
+  - claim: "every censused canonical URL serves itself, and the noIndex set is absent from the sitemap"
+    cmd: "live census of 128 canonical URLs + sitemap.xml (HTTP + served-canonical comparison)"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: "128/128 HTTP 200 with a served canonical equal to the requested URL; 121 index,follow and in the sitemap; 7 noindex,nofollow and absent."
+  - claim: "the POST refuter's four probe counterexamples are each judged correctly now"
+    cmd: "python3 -B -c 'runpy the probe; offending_match(<the four strings>, require_product=False)'"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: >-
+      `IDR 2000000000` HIT, `2.000.000.000 IDR` HIT (both were misses), `IDR 2 billion` inside a
+      sentence that retires it CLEAN, `IDR 2,000,000,000,000` CLEAN (both were wrong convictions).
+      `--claims`: "Whether Hak Pakai qualifies for E33 remains unknown" CLEAN, "The qualifying
+      title for the E33 property route is Hak Pakai" FLAGGED.
+  - claim: "a tie-break comparing only the category segment is now killed by the suite"
+    cmd: 'apply a.url.split("/")[3].localeCompare(...) to generate-llms-full.ts, re-run the suite'
+    exit: 1
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: "3 failed / 2 passed; tree restored, 5 passed. The fixture that kills it is the same-category pair visas/alpha + immigration/zulu."
+  - claim: "the backend E33 claim guard is green after the dead fixture is deleted"
+    cmd: "python3 -m pytest backend/tests/services/visa_check/test_e33_forbidden_claims.py (apps/backend-rag)"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: "75 passed. The fixture pinned a processing time the registry does not support and this window removed; its synthetic twin still covers the innocence."
+  - claim: "the i18n claim ratchet is green and its delta touches only the five canonical family files"
+    cmd: "npx vitest run src/i18n/secondhome-article-claims.test.ts (apps/mouth)"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: >-
+      12 passed. Baseline 267 -> 275: 6 stale removed, 14 new added, every one traced to a
+      rewritten line and justified as lexical in the census. The other nine families are untouched.
+  - claim: "the content suites that read this family stay green"
+    cmd: "npx vitest run src/content/description-fields-integrity.test.ts src/i18n/secondhome-forbidden-claims.test.ts src/lib/llms-article-exports.test.ts"
+    exit: 0
+    ts: "2026-09-12"
+    seat: claude-opus-5 (dux, M5)
+    after: "31 passed"
+
+# harness-v2 §5: mandatory, and non-empty at Gear 3. These are objections that were
+# RAISED AGAINST THIS WORK by a seat that did not write it, recorded with what became
+# of them — not a list of things I decided to mention.
+dissent:
+  - seat: codex-sol (PRE-review, cross-family, outside the contribution chain)
+    objection: >-
+      BLOCK before any edit, 5 conditions. The load-bearing one: the probe measured TOKENS
+      and not CLAIMS — it convicted `IDR 20B` and acquitted `IDR 2 000 000 000`,
+      `2 à 5 milliards IDR`, `two billion` and `Rp2M`, so its zeros would have been a
+      measurement of the regex, not of the corpus.
+    status: CONFIRMED
+    disposition: >-
+      All 5 conditions met before the first content edit. The probe was rewritten around
+      `2(?![\d.,]*\d)` plus unit and spelled-out forms, and now carries a `--selftest`
+      with guilt AND innocence cases. Record: prereview/codex-sol-prereview-round1.txt.
+  - seat: gemini-3.1-pro-high (long-context read of the 5 sources against the registry)
+    objection: >-
+      The property route named a qualifying title that the registry does not confirm —
+      `e33_base_property_title_type` is `unknown` and `property_validation_standard` is
+      `unknown`, so naming Hak Pakai or SHM Sarusun states as settled what nobody has settled.
+    status: CONFIRMED
+    disposition: >-
+      Path 2 rewritten in all five locales: completed strata unit, USD 1,000,000, no
+      qualifying title named, and the unresolved status said out loud. `--claims` now
+      FORBIDS both titles; it caught two residual `Hak Pakai` mentions in .id and .ru
+      after the amount check already read 0. Record: prereview/gemini-3.1-pro-claim-table.txt.
+  - seat: claude-sonnet-5 (spalla-review subagent `w3-second-reader`, second independent reader)
+    objection: >-
+      Four claims were cured in the ENGLISH source and left standing in the four
+      translations, so each translated file contradicted its own body: the "90 days" entry
+      window against a `pending` fact, "SHV time does not count toward KITAP" against an
+      `unknown` one and against the file's own FAQ, and the dependent-codes hedge missing
+      from .id/.ru while their own comparison table two sections later still carried it.
+    status: CONFIRMED
+    disposition: >-
+      All 6 findings applied at 65850ec8a6. The guard changed too: `--claims` now carries a
+      per-locale positive check for the corrected wording, so a cure applied to 1 of 5 files
+      fails the probe instead of reporting green. Record: prereview/second-reader.txt.
+  - seat: claude-opus-5 (dux, self-refutation of a measurement, recorded because it nearly shipped)
+    objection: >-
+      The first census test asked whether the served body contained "Article not found" and
+      reported 128/128 healthy. Every page on this site carries that string inside its client
+      bundle, so the test could not have failed — a guard that cannot go red measures nothing.
+    status: CONFIRMED
+    disposition: >-
+      Replaced by a test with a real failure mode: the served canonical must EQUAL the
+      requested URL. 128/128 pass under the sound test. Both the trap and the replacement
+      are written into research/secondhome/2026-09-12-e33-editorial-census.md.
+
+  - seat: codex-sol (POST refuter, round 3, outside the contribution chain)
+    objection: >-
+      BLOCK, 9 findings, and the THIRD BLOCK on one cause. Seven of the nine defeat the
+      REBUILT guard, by execution, not by argument: (1) the currency rule reads only what
+      precedes the amount, so `2 billion USD` and `two billion dollars` are convicted;
+      (2) `Rp. 2.000.000.000` and `IDR 2.0 billion` are not matched at all; (3) an
+      allowlisted line keeps its allowance when the line ABOVE it reverses the meaning
+      (`It is false that` + an allowed retirement sentence => --claims 0, stale empty);
+      (4) the comparison table's `Financial requirement` row is unanchored, so dropping
+      own-name and completed-unit from it leaves --claims at 0; (5) the literal pins cover
+      the BASE commit's wording, not the wording removed in the INTERMEDIATE rounds, so
+      restoring the frozen head's proof headings passes; (6) the 180-day figure removed in
+      the last round was never pinned; (7) deleting `idArticles.sort(...)` left the suite
+      green because the ID fixture had one publishable article. (8) the census still
+      described the deleted marker mechanism as current; (9) the SKTT annual renewal was
+      still prescribed while the census admitted the source did not support it.
+    status: CONFIRMED
+    disposition: >-
+      The rule of three fired and PR-1 was SUSPENDED with no fourth guard cure. The
+      imperator then SPLIT the concern (2026-09-12, shweb-imp-w3s-suspend-ruling): the
+      failing surface is the GUARD, not the content, and a fix-of-a-fix stops at depth 1.
+      So 1-6 are now REQUIREMENTS in research/secondhome/probe-guard-spec-v2.md, to be
+      implemented by another seat in PR-1b, and the probe ships labelled as a MEASUREMENT
+      instrument whose regression protection is partial and evadable — the claim that every
+      cure can turn it red is deleted from the disposition and from the probe's own
+      docstring. 7 is CURED here (two ID translations whose dates run against filesystem
+      order; the mutant is now red). 8 is CURED (both passages marked SUPERSEDED). 9 is
+      CURED with a source this session fetched (HTTP 200): the Dukcapil procedure states the
+      SKTT follows the ITAS validity and gives 14 days from ITAS issue, so the false annual
+      renewal is gone and the deadline is back, cited, in all five locales.
+  - seat: tp1-qwen3.8-max (adversarial language, rounds 1-3 + final pass)
+    objection: >-
+      CONCERNS. Two sentences had passed from honesty into INACTIONABILITY (the SKTT
+      deadline and the absence threshold), the Indonesian carried eight calqued or broken
+      constructions — including `sumberkan`, which is not a verb — and the phrase "not
+      settled in public regulation" appears nine times, which the seat reads as a register
+      that has tipped from precise to defensive for a high-net-worth audience.
+    status: CONFIRMED
+    disposition: >-
+      The inactionability and the language defects are CURED: the SKTT now carries a sourced
+      deadline and says we file it, the absence paragraph tells the reader to warn us so the
+      absence is documented, `sumberkan` and seven calques are rewritten, and the official
+      name is reconciled in the comparison table of all five locales. The REGISTER finding is
+      adjudicated AGAINST the seat and stands as its recorded dissent: the number of
+      uncertainty statements is a direct consequence of the ruling that forbids publishing a
+      figure without a verbatim source, so it does not go down. Only the VOICE changed, in two
+      places: "we do not publish an amount we cannot source" became "we ask the office in
+      writing and put the answer in your file".
+not_done_and_why:
+  - "The 14 queued-pr2 families still publish the superseded threshold. One PR, one concern (imperator disposition 2026-09-12T02:24Z)."
+  - "The 4 noIndex E33 families are censused and untouched: rewrite-or-delete needs Zero's ruling."
+  - "The tracked apps/mouth/public/llms*.txt are NOT regenerated into the commit — they are build outputs (322k lines of churn) and W1 took the same disposition. They were regenerated by the real build, measured, and restored from git."
+  - "The inert `canonicalUrl` frontmatter field still reads /immigration/ in this family. Documented, not touched — it moves in PR-2 with the proof that no consumer reads it."
+
+pii: none

@@ -1,0 +1,127 @@
+gear: 3
+task_id: shweb-w3-editorial-20260911
+mission: SHWEB-20260911
+window: W3-SH-EDITORIAL
+colour: BLUE
+l_level: L2
+gate_class: opus
+host: Air-M5
+worktree: .worktrees/mouth-shweb-w3-editorial-20260911
+branch: agent/air-m5/mouth/shweb-w3-editorial-20260911
+base_sha: 70b43c5459489ce9c8d524eefc94d53a7009866d
+deadline_utc: "2026-09-12T10:30:00Z"
+objective: >-
+  The canonical Second Home page https://balizero.com/visas/second-home-visa-indonesia is
+  served index,follow and is in the sitemap, and it repeats a SUPERSEDED eligibility
+  threshold ("IDR 2B") that the fact registry replaced with USD 130,000 held in the
+  applicant's OWN NAME at a state-owned (BUMN) Indonesian bank, or USD 1,000,000 of
+  qualifying completed strata-title property. W3 corrects that family in all five locales
+  (en, it, id, ru, fr) including metadata, description, seo fields and FAQ; corrects every
+  other article whose claim presents the superseded threshold as the Second Home
+  requirement; and writes a claim-per-claim editorial census on CANONICAL urls
+  (/<normalized category>/<slug>, never /blog/<slug>) into research/secondhome/.
+scope:
+  - apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.mdx
+  - apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.it.mdx
+  - apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.id.mdx
+  - apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.ru.mdx
+  - apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.fr.mdx
+  - research/secondhome/editorial-disposition.json
+  - research/secondhome/2026-09-12-e33-editorial-census.md
+  - research/secondhome/probe-superseded-threshold.py
+  - apps/mouth/scripts/generate-llms-full.ts
+  - apps/mouth/src/lib/llms-article-exports.test.ts
+scope_split_ruling: >-
+  Imperator disposition 2026-09-12T02:24Z (technical, no Zero ruling involved): ONE PR = ONE
+  concern. PR-1 (this branch) is the canonical second-home-visa-indonesia family in all five
+  locales, fr included. The 25 superseded-threshold claims in the 9 OTHER families move to
+  PR-2, a separate branch from origin/main opened after PR-1 is armed, line by line with a
+  ledger disposition. The inert `canonicalUrl` frontmatter field is documented here and
+  aligned in PR-2 with the proof that no consumer reads it. The four noIndex E33 slugs are
+  censused and stop there, pending Zero's ruling.
+spec_corrections_by_measurement:
+  - claim: "FINAL 2.13: fr is already free of the superseded threshold"
+    measured: "fr carries 12 lines with it; en 14, it 14, id 14, ru 14 (68 total)"
+    command: "python3 research/secondhome/probe-superseded-threshold.py --sources"
+  - claim: "FINAL 2.1: the served llms-full.txt re-emits it in 12 Second Home lines"
+    measured: "27 lines across 10 article families, with a co-occurrence probe over every locale spelling"
+    command: "curl -sS https://balizero.com/llms-full.txt | python3 research/secondhome/probe-superseded-threshold.py /dev/stdin"
+  - claim: "the MDX frontmatter canonicalUrl carries the page's canonical"
+    measured: "no consumer in apps/mouth reads that field; the served canonical is computed by articleUrl(); this family's field says /immigration/ while the page serves /visas/"
+    command: "grep -rn canonicalUrl apps/mouth/src apps/mouth/scripts"
+  - evidence/2026-09/agent-air-m5-mouth-shweb-w3-editorial-20260911-cc099459/**
+constraints:
+  - >-
+    Never a blind substitution of "2B". The superseded threshold is corrected only where a
+    claim presents it AS the Second Home / E33 requirement. An IDR 2 billion figure that is
+    a paid-up capital, a property price or another product's threshold is left alone and
+    recorded in the census as such.
+  - >-
+    E33 facts come only from research/secondhome/e33-fact-registry.json, never from memory.
+    The registry and the letter tracker are FROZEN: no reply has arrived, 16 facts stay
+    pending, and nothing is promoted to confirmed to remove a disclaimer.
+  - >-
+    Prices come only from PricingTool. No decomposition of a client-facing price into PNBP +
+    service fee (owner ruling 2026-07-23). Invented fee tables are removed, not restated.
+  - >-
+    E33G belongs to the Second Home family (Visa Rumah Kedua) — the correction is to stop
+    naming the HNW instrument with the remote-worker code, never to deny the family.
+  - >-
+    No noIndex is removed and no article is deleted in this PR. The four noIndex E33
+    families stay as they are, listed with a proposed disposition, pending Zero's ruling.
+  - >-
+    apps/mouth/scripts/generate-llms-full.ts is W1's file. The ONLY change is the freshness
+    tie-break named in contract-lock.json (C5 debt of PR #6243) plus its test.
+  - >-
+    The tracked public/llms*.txt artifacts are not regenerated into the commit (W1's
+    disposition, and 450k lines would swamp the diff). They are build-generated; the proof
+    is the artifact the real build writes, measured and then restored from git.
+acceptance:
+  - text: >-
+      The five MDX sources of the second-home-visa-indonesia family contain 0 occurrences of
+      the superseded threshold in any locale spelling (IDR 2B / IDR 2 billion / Rp 2 miliar /
+      2 млрд / 2 milliards).
+    status: pending
+    probe: "research/secondhome/probe-superseded-threshold.py --sources"
+  - text: >-
+      A real `npm run build` of apps/mouth writes a public/llms-full.txt with 0 lines that
+      carry BOTH a Second Home marker and the superseded threshold IN THIS FAMILY's records
+      (served baseline for the family: 4 lines). The other 9 families keep their 23 lines
+      until PR-2 is served; the PR body says so rather than implying a clean corpus.
+    status: pending
+    probe: "npm run build && python3 research/secondhome/probe-superseded-threshold.py apps/mouth/public/llms-full.txt"
+  - text: >-
+      The canonical page rendered from the PR's Vercel preview serves the corrected claims,
+      still index,follow, canonical /visas/second-home-visa-indonesia.
+    status: pending
+    probe: "curl the preview URL; grep the threshold, the USD 130,000 BUMN own-name formulation, the robots and canonical tags"
+  - text: >-
+      Freshness determinism: with >=6 canonical articles sharing one publishedAt and a
+      shuffled input order, the freshness list is stable; removing the sort turns the test RED
+      (mutant M3), as do M1 and M2.
+    status: pending
+    probe: "npx vitest run llms-article-exports; then re-run with each mutant applied"
+  - text: >-
+      Every E33-touching family has a disposition row with its canonical URL, robots, sitemap
+      membership, claims and action; /blog/<slug> appears nowhere as an article URL.
+    status: pending
+    probe: "jq over research/secondhome/editorial-disposition.json; grep -c '/blog/' == 0"
+  - text: >-
+      SERVITA: curl on https://balizero.com/visas/second-home-visa-indonesia and on
+      /llms-full.txt of the promoted commit returns the same zeros.
+    status: pending
+    probe: "curl prod after the merge is promoted by Vercel"
+risks:
+  - >-
+    Blind substitution is the main failure mode of this window and is explicitly forbidden;
+    the census is the instrument that makes each replacement individually defensible.
+  - >-
+    Correcting a claim in an article outside the canonical family widens the diff. Those
+    edits are line-level and named one by one in the disposition ledger.
+  - >-
+    The build regenerates tracked artifacts. They are restored from git before commit; the
+    commit must show no public/llms*.txt path.
+pii: none
+appetite:
+  wall_clock_hours: 8
+  adversarial_rounds: 2

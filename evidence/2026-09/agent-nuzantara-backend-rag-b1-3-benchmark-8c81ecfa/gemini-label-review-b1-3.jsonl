@@ -1,0 +1,61 @@
+{"case_id": "bs-07dda8f1", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly states the all-in price, matching the requested fact."}
+{"case_id": "bs-62289ee3", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly states the complete setup price."}
+{"case_id": "bs-30ca5e5a", "verdict": "DISAGREE", "field": "stratum", "proposed": "relevant_insufficient", "reason": "The context lists NIB and OSS as inclusions in a company setup package, but does not state the prerequisites for obtaining them."}
+{"case_id": "bs-6cd7df49", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions setup but omits any paid-up capital figure."}
+{"case_id": "bs-57978a96", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly states the total all-in price."}
+{"case_id": "bs-3d3b5229", "verdict": "DISAGREE", "field": "stratum", "proposed": "relevant_insufficient", "reason": "The context lists NIB and OSS as inclusions in a company setup package, but does not state the prerequisites for obtaining them."}
+{"case_id": "bs-a3a7f1ca", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions setup but omits any paid-up capital figure."}
+{"case_id": "bs-dd6ff12d", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions setup but lacks a timeframe."}
+{"case_id": "bs-e42f4b0d", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is completely unrelated to surfing in Bali."}
+{"case_id": "bs-38ed9327", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is completely unrelated to activities in Ubud."}
+{"case_id": "bs-95e82de0", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The query is nonsensical and shares no words with the context."}
+{"case_id": "bs-f6687bb2", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The query is nonsensical and shares no words with the context."}
+{"case_id": "bs-17806bb4", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the requested setup price."}
+{"case_id": "bs-2641bf9a", "verdict": "AGREE", "field": null, "proposed": null, "reason": "They share the generic word 'harga' but the context is off-topic for motorbike rental."}
+{"case_id": "bs-01bf2a65", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the requested all-in price."}
+{"case_id": "bs-86c7963f", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context discusses the price but explicitly omits the actual figure."}
+{"case_id": "bs-ebef4f3e", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the requested all-in price."}
+{"case_id": "bs-71ce8130", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context discusses the price but explicitly omits the actual figure."}
+{"case_id": "bs-0912abc7", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the requested all-in price."}
+{"case_id": "bs-25e7c342", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context discusses the price but explicitly omits the actual figure."}
+{"case_id": "bs-6309899f", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the requested all-in price."}
+{"case_id": "bs-8e5a0135", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context discusses the price but explicitly omits the actual figure."}
+{"case_id": "bs-37a4d621", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly lists the prerequisites (deed, ministry approval, NPWP) for obtaining NIB."}
+{"case_id": "bs-f8fb6909", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions NIB registration but omits the actual requirements."}
+{"case_id": "bs-7cd45469", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly lists the prerequisites for obtaining NIB."}
+{"case_id": "bs-5d3e92ff", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions NIB registration but omits the actual requirements."}
+{"case_id": "bs-cfd6fca4", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly lists the prerequisites for obtaining NIB."}
+{"case_id": "bs-e896eab7", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions NIB registration but omits the actual requirements."}
+{"case_id": "bs-cc8e039c", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly lists the prerequisites for obtaining NIB."}
+{"case_id": "bs-5b935617", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions NIB registration but omits the actual requirements."}
+{"case_id": "bs-713c5c75", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the minimum paid-up capital."}
+{"case_id": "bs-3d9ad45b", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context discusses paid-up capital but omits the specific figure."}
+{"case_id": "bs-3edd5ce2", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the minimum paid-up capital."}
+{"case_id": "bs-7734b413", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context discusses paid-up capital but omits the specific figure."}
+{"case_id": "bs-b96e2f5d", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the minimum paid-up capital."}
+{"case_id": "bs-86211518", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context discusses paid-up capital but omits the specific figure."}
+{"case_id": "bs-47392f91", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the minimum paid-up capital."}
+{"case_id": "bs-bcbd34e0", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context discusses paid-up capital but omits the specific figure."}
+{"case_id": "bs-b762b369", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the timeframe for PT PMA registration."}
+{"case_id": "bs-5d6af55b", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions the registration duration but omits a specific timeframe."}
+{"case_id": "bs-b980e91b", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the timeframe for PT PMA registration."}
+{"case_id": "bs-eaeff9b4", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions the registration duration but omits a specific timeframe."}
+{"case_id": "bs-65886be1", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the timeframe for PT PMA registration."}
+{"case_id": "bs-6b1f7df4", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions the registration duration but omits a specific timeframe."}
+{"case_id": "bs-11f72d22", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context explicitly provides the timeframe for PT PMA registration."}
+{"case_id": "bs-4eb281c7", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context mentions the registration duration but omits a specific timeframe."}
+{"case_id": "bs-c0693a25", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is off-topic for a ferry schedule and carries a fee deferral notice."}
+{"case_id": "bs-dd593d7a", "verdict": "AGREE", "field": null, "proposed": null, "reason": "They share the generic word 'processing' but the context is off-topic for visa extensions."}
+{"case_id": "bs-b2266ec0", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is off-topic but carries company identifiers (PT, NIB)."}
+{"case_id": "bs-c64a7b17", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is off-topic for a ferry schedule and carries a fee deferral notice."}
+{"case_id": "bs-e234b992", "verdict": "DISAGREE", "field": "generic_overlap", "proposed": false, "reason": "The English query and Indonesian context share no literal generic words; 'processing' and 'proses' do not match lexically."}
+{"case_id": "bs-b3d343f6", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is off-topic but carries company identifiers (PT, NIB)."}
+{"case_id": "bs-19c40235", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is off-topic for a ferry schedule and carries a fee deferral notice."}
+{"case_id": "bs-2ae24f1c", "verdict": "DISAGREE", "field": "generic_overlap", "proposed": false, "reason": "The Indonesian query and English context share no literal generic words; 'proses' and 'processing' do not match lexically."}
+{"case_id": "bs-5bab1cbe", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is off-topic but carries company identifiers (PT, NIB)."}
+{"case_id": "bs-88096955", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is off-topic but carries company identifiers (PT, NIB)."}
+{"summary": {"agree": 52, "disagree": 4, "undecidable": 0}}
+{"note": "second call 2026-09-11 ~17:50Z for the two cases the first call (17:44:08Z-17:46:21Z) did not answer; model gemini-3.1-pro effort high via agy"}
+{"case_id": "bs-a4e66d32", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is completely off-topic from the query and mentions a government fee, correctly aligning with the irrelevant stratum and fee_policy being true."}
+{"case_id": "bs-797ff307", "verdict": "AGREE", "field": null, "proposed": null, "reason": "The context is off-topic but shares the generic word 'proses' with the query, properly triggering the generic_overlap stratum and boolean."}
+{"summary": {"agree": 2, "disagree": 0, "undecidable": 0}}

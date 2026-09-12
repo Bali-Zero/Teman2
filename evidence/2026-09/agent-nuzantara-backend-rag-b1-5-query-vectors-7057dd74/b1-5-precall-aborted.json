@@ -1,0 +1,17 @@
+{
+  "authorization_reference": "research/operations/2026-09-11-bot-staff-room/README.md queue item 7 \u2014 RULED 2026-09-11 ~15:00 WITA: YES (\"ok procediamo\")",
+  "base_sha": "70b23c196e3475f5254ea50b6a82dd6e670932b9",
+  "ceiling": 40,
+  "host": "Nuzantara",
+  "list_sha256": "6b1beb37e45384ae0a3254da45ba700a29b6301a99799d59f9fc5b666ee13e02",
+  "resolution": {
+    "aborted_before_any_provider_attempt": true,
+    "cause": "Settings ValidationError (jwt_secret_key, api_keys): the apps/backend-rag/.env symlink created by the pre-flight command was removed by that shell's own 'trap ... EXIT' before --execute ran, so pydantic-settings found no .env.",
+    "ceiling_consumed": 0,
+    "code_path_proof": "The only provider call is generate_query_embedding inside _run_batch, reached only after _build_zero_retry_generator() returns; the ValidationError was raised inside that function at 'from backend.core.embeddings import EmbeddingsGenerator'. No artifact file was written and this record carries no completion block.",
+    "note": "Ruling I24a keeps this record immutable. The harness refuses to run when b1-5-precall.json exists, so this aborted receipt is preserved under the name b1-5-precall-aborted.json and the real run writes a fresh b1-5-precall.json in the same evidence directory; both ship in the pack.",
+    "provider_attempts": 0,
+    "resolved_by": "fleet envelope 20260912T052244Z-5035 (imperator ruling I24a, option A)"
+  },
+  "timestamp_utc": "2026-09-12T05:19:16.761139+00:00"
+}

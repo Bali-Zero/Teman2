@@ -1,0 +1,38 @@
+### Factual Claims Table
+
+| Locale(s) | Location (Section / Heading) | Claim as written | Registry Fact ID | Verdict |
+| :--- | :--- | :--- | :--- | :--- |
+| EN, IT, ID, RU, FR | AI Snippet, Path 1, FAQ | USD 130,000 is approximately IDR 2 billion; requires IDR 2,000,000,000 bank balance | `idr_equivalence_and_fx_date` | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Path 1: Bank Balance | "The funds can be in a single account or combined across multiple accounts at the same bank" | `split_deposit_accepted` / no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Path 1: Bank Balance | "Fixed deposits (deposito berjangka) count toward the balance" | no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Path 2: Property Ownership | Eligible property: "Residential property held under Hak Pakai (Right to Use) title" | `e33_base_property_title_type` | FALSE / OVERCLAIM (Title type is forbidden to assert) |
+| EN, IT, ID, RU, FR | Path 2: Property Ownership | Eligible property: "Property held through a PT PMA company where the applicant is a majority shareholder" | `e33_base_property_title_type` | FALSE / UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Path 2: Property Ownership | "Apartment/strata title units designated for foreign ownership" | `e33_base_property_alternative` | OVERCLAIM (Misses BERSYARAT caveat: completed unit only; no off-plan) |
+| EN, IT, ID, RU, FR | Path 2: Property Ownership | "Minimum value thresholds may apply (varies by province; Bali typically IDR 2B-5B)" | `e33_base_property_alternative` | FALSE (Threshold is strictly USD 1,000,000) |
+| EN, IT, ID, RU, FR | General Requirements | Passport valid for 60 months, apostilled criminal record, health insurance required | no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Stage 2, Costs, Renewal | Government visa fee / Renewal fee is IDR 3,000,000 - 5,000,000 | `pnbp_5y_amount` | FALSE |
+| EN, IT, ID, RU, FR | Stage 3, Stage 4, Comparison | Processing time takes 14-30 working days total | `processing_time_4wd` | CONTRADICTS |
+| EN, IT, ID, RU, FR | Stage 4, Stage 5 | "Enter Indonesia within 90 days of visa issuance" | `entry_window_90d_and_force_majeure` | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Stage 5, Overlooked Obligations | Wajib Lapor within 7 days, SKTT registration within 14 days | no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Costs Breakdown | Estimated fees for agents, translation, apostille, insurance, SKTT | no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | FAQ 1 | "passive income activities... permitted. Remote work for foreign clients exists in a similar gray area" | `e33_not_work_visa` / no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | FAQ 3, CANNOT Do, Comparison | SHV time does not count toward KITAP / Cannot directly convert to KITAP | `itap_after_3y_criteria` | OVERCLAIM (ITAP criteria is pending; marketing is forbidden) |
+| EN, IT, ID, RU, FR | What You CAN Do | "Sponsor dependent visas for spouse and children (separate application required)" | `dependent_codes_confirmation` | OVERCLAIM / UNVERIFIABLE (Concurrent filing is pending) |
+| EN, IT, ID, RU, FR | Renewal Process, Comparison | "The SHV can be renewed for an additional 5 years before expiry" | `pasal_113_cumulative_caps` | UNVERIFIABLE (Cap exists, but 5-year renewal term unconfirmed) |
+| EN, IT, ID, RU, FR | Renewal Process | Renewal takes 10-20 working days; IDR 1,000,000/day overstay fine | no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Tax Implications | 183-day rule, NPWP required, worldwide income taxed 5-35%, DTA benefits apply | no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Overlooked Obligations | Failure to complete Wajib Lapor results in IDR 5,000,000 fine | no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Overlooked Obligations | 180+ consecutive days absence triggers SHV status review | no registry fact | UNVERIFIABLE |
+| EN, IT, ID, RU, FR | Who Is This Best For? | Digital nomads who want to work legally should get E33G | no registry fact | UNVERIFIABLE |
+
+*(Note on E33 sub-codes: The articles exclusively cover the Base E33 route. The E33E (Senior/Retirement 5-year) and E33F (Senior 1-year) routes outlined in the registry are entirely omitted from the text.)*
+
+### Divergences Between Locales
+
+1. **KITAP Separation Clause (FAQ 3):**
+   - **EN, RU, FR:** Include an explicit concluding sentence stating that the SHV and KITAP are separate immigration pathways (e.g., "The SHV and KITAP are separate immigration pathways." / "SHV и KITAP — разные иммиграционные пути.").
+   - **IT, ID:** Completely omit this concluding sentence.
+
+2. **Call-to-Action / Fit Memo Offer:**
+   - **EN, IT, ID:** Include a bullet point at the bottom of the article offering a "Full guide & free fit memo" with an accompanying URL.
+   - **RU, FR:** Entirely omit this bullet point.

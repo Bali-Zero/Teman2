@@ -1,0 +1,42 @@
+### GUILT MUTANTS — one per consumer. Each must turn its own consumer test RED.
+
+=== M1 /team: compose() stops calling publicEntries — mutant applied to src/app/(blog)/team/page.tsx
+     × does not publish the two people the owner excluded 147ms
+     × keeps every other person, with the role label this page carries today 136ms
+     × drops a person the filter excludes, whoever it is 10ms
+     × applies the filter to every section, not only the first 9ms
+ FAIL  src/app/(blog)/team/team.test.tsx > /team — the public directory > does not publish the two people the owner excluded
+ FAIL  src/app/(blog)/team/team.test.tsx > /team — the public directory > keeps every other person, with the role label this page carries today
+ FAIL  src/app/(blog)/team/team.test.tsx > /team — the exclusion filter is wired into this consumer > drops a person the filter excludes, whoever it is
+ FAIL  src/app/(blog)/team/team.test.tsx > /team — the exclusion filter is wired into this consumer > applies the filter to every section, not only the first
+ Test Files  1 failed (1)
+      Tests  4 failed | 3 passed (7)
+--- restored byte-identical: YES (d55461f55528d1a7fd029749a05dc48170a0e6c6520618371ab6b72be5a9b175)
+
+=== M2 SocialProof: the two spec lists stop being filtered — mutant applied to src/app/v2/_components/SocialProof.tsx
+     × drops a person the filter excludes, whoever it is 9ms
+     × applies the filter to the founders too 5ms
+ FAIL  src/app/v2/_components/SocialProof.test.tsx > SocialProof — the exclusion filter is wired into this consumer > drops a person the filter excludes, whoever it is
+ FAIL  src/app/v2/_components/SocialProof.test.tsx > SocialProof — the exclusion filter is wired into this consumer > applies the filter to the founders too
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 passed (8)
+--- restored byte-identical: YES (a992e8edef19f063bfc96c73dd05310281c2d1f4570e8cc857d39732bf95d644)
+
+=== M3 /v2/company/about: the curated list stops being filtered — mutant applied to src/app/v2/company/about/page.tsx
+     × drops a person the filter excludes, whoever it is 16ms
+ FAIL  src/app/v2/company/about/about.test.tsx > /v2/company/about > drops a person the filter excludes, whoever it is
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+--- restored byte-identical: YES (04362f7480253d2a7224aa69d46390a828210b8ad3816bc719b60b8ae7183a40)
+
+=== M4 book: TEAM_MEMBERS derives from PUBLIC_ROSTER again — mutant applied to src/components/book/book-data.ts
+     × stops publishing the two people the owner excluded 17ms
+     × keeps everybody else, with their roster role and photo 2ms
+     × drops a person the filter excludes, whoever it is 1ms
+ FAIL  src/components/book/book-team-roster.test.ts > book team grid (/book, /book/team) > stops publishing the two people the owner excluded
+ FAIL  src/components/book/book-team-roster.test.ts > book team grid (/book, /book/team) > keeps everybody else, with their roster role and photo
+ FAIL  src/components/book/book-team-roster.test.ts > book team grid (/book, /book/team) > drops a person the filter excludes, whoever it is
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed (4)
+--- restored byte-identical: YES (d011aaa236cff2264e19e574c87ce65ae0e541f9274cd1c90963a2396d78401c)
+

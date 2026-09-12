@@ -1,0 +1,148 @@
+task_id: voa-w3c-idempotency-live-required
+gear: 2
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-12
+machine: air-m5 (M5)
+lanes:
+  - lane: voa-w3c-idempotency-build
+    role: build
+    seat: claude-opus-5 (GARUDA VOA W3C session 2/4)
+  - lane: voa-w3c-idempotency-refute
+    role: review
+    seat: codex-gpt-5.6-sol (read-only, outside the contribution chain)
+seat_diversity: exempt
+seat_diversity_note: One build lane; the review seat is a different family (Sol).
+council_run: journal.jsonl
+outcome: >-
+  The frozen contract already said `Idempotency-Key: required: true`; the served
+  schema said false on all ten mutating operations, and behaviour already
+  matched the contract (400 IDEMPOTENCY_KEY_REQUIRED in all five router
+  families). So this diff changes the generated DOCUMENT only:
+  `mark_idempotency_key_required()` overwrites the `required` flag of the
+  parameter FastAPI generated, scoped by operationId, chained onto `app.openapi`
+  in both factories beside `strip_unreachable_validation_errors`. The parity
+  suite's declared exemption `_KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED`
+  is deleted and replaced by real parity over all ten operations, a
+  one-parameter-per-operation assertion, a two-operation not-touched assertion,
+  and a served-behaviour assertion on the deployed singleton.
+diff:
+  files: 7
+  net_lines: 484
+pii_scan: clean
+pii_scan_note: Schema plumbing and tests; no client data, no identifiers.
+receipts:
+  - claim: the frozen contract declares the header required and ten operations reference it
+    cmd: python3 - (yaml.safe_load of git show origin/main:products/garuda-voa/contracts/openapi.yaml, iterate paths)
+    result: >-
+      components.parameters.IdempotencyKey.required = True; ten mutating operations
+      carry the $ref (requestMagicLink, exchangeMagicLink, createEligibilityCheck,
+      deleteEligibilityResult, uploadIntakeDocument, createOrderFromCheck,
+      observePaymentBrowserReturn, resolveLateOrder, assignPractice,
+      transitionPractice); receivePaymentWebhook is the only mutating operation
+      without it.
+    ts: "2026-09-12T06:12:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: the live schema said required=false on all ten, before the cure
+    cmd: .venv/bin/python - (import backend.app.main_api; app.openapi(); print required per GARUDA mutating op)
+    result: >-
+      ten operations, every one `required=False`; previewMagicLink and
+      receivePaymentWebhook declare no such parameter at all.
+    ts: "2026-09-12T06:28:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: after the cure the deployed singleton documents all ten as required, once each
+    cmd: .venv/bin/python - (same probe, after the change)
+    result: >-
+      ten operations `n=1 required=[True]`; previewMagicLink and
+      receivePaymentWebhook unchanged at `n=0`.
+    ts: "2026-09-12T06:33:28Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: parity suite green and wider
+    cmd: .venv/bin/python -m pytest backend/tests/app/routers/test_garuda_voa_openapi_parity.py --no-header
+    result: "50 passed in 18.97s (29 before this change)"
+    ts: "2026-09-12T06:37:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: guilt and innocence, four mutations, each restored afterwards
+    cmd: four scoped edits, each followed by the parity suite and a restore from backup
+    result: >-
+      M1 drop `transitionPractice` from the operation set -> exactly that case red
+      (required=False vs frozen true), 9 passed. M2 unchain the transform in
+      main_api.py -> all 10 requiredness cases red. M3 transform ignores the
+      operationId filter and appends -> 10 `declared_once` cases red (17-21
+      duplicate parameters on the worst operation). M4 transform reaches
+      operations outside its set -> both `did_not_acquire` cases red
+      (receivePaymentWebhook, previewMagicLink). Unmutated: 50 passed before and
+      after; `cmp -s` reports both mutated files byte-identical to their backups
+      afterwards.
+    ts: "2026-09-12T06:39:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: no behaviour changed — the pre-existing missing-key tests still pass untouched
+    cmd: .venv/bin/python -m pytest backend/tests/app/routers/ --no-header
+    result: >-
+      312 passed, 2 skipped, 15 errors — all 15 asyncpg UndefinedTableError at
+      fixture setup, reproduced identically by the same file on the untouched
+      main checkout (/Users/balizero/nuzantara, 15 errors in 0.93s), so they are
+      this laptop's missing local tables and not this diff.
+    ts: "2026-09-12T06:38:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: gear floor and size measured, not assumed
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed>; git diff --numstat
+    result: "floor 1 (no hot-zone path in this changed-file set); net 484 lines over 7 files with the pack, 213 of them code and test; brief declares gear 2"
+    ts: "2026-09-12T06:40:06Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: Sol round 1 (adversarial, read-only, outside the contribution chain) returned BLOCK, two findings, both cured in this head
+    cmd: codex exec -m gpt-5.6-sol --sandbox read-only (06:41Z-06:52Z, rc 0, 346.576 tokens)
+    result: >-
+      HIGH — the behavioural claim "a missing key answers 400
+      IDEMPOTENCY_KEY_REQUIRED" is FALSE as a universal: measured with the flag
+      on, createEligibilityCheck / requestMagicLink / exchangeMagicLink answer
+      422 INVALID_REQUEST for the BODY first
+      (garuda_voa_public.py:607, garuda_portal_auth.py:427) and
+      uploadIntakeDocument, the three orders operations and the two staff
+      operations answer 401 SESSION_REQUIRED when unauthenticated
+      (garuda_orders_router.py:368, garuda_documents_router.py:533,
+      garuda_staff_router.py:386); the new test picked DELETE precisely to dodge
+      that and did not say so as a limit. MEDIUM — the expected operation set was
+      transcribed by hand into the test, so transform and test could agree with
+      each other and diverge from the contract. Sol found NO mutation bypass and
+      NO uncovered mounted path.
+    ts: "2026-09-12T06:52:00Z"
+    seat: codex-gpt-5.6-sol
+    exit: 1
+  - claim: both Sol findings cured, depth 1, and the cures are themselves pinned
+    cmd: .venv/bin/python -m pytest backend/tests/app/routers/test_garuda_voa_openapi_parity.py --no-header
+    result: >-
+      51 passed (was 50). Finding 2: `_frozen_idempotency_key_operations()` now
+      DERIVES the set from the frozen file by scanning for
+      `$ref: #/components/parameters/IdempotencyKey`, the parametrized tests run
+      over the derived set, and
+      `test_the_transform_covers_exactly_the_operations_the_contract_names`
+      compares it against the production constant — guilt: adding
+      `getEligibilityResult` to the production set turns exactly that test red
+      ("transform covers ['getEligibilityResult'] the contract does not"),
+      restored byte-identical. Finding 1: the test is renamed
+      `test_the_documented_requirement_is_served_when_nothing_answers_first` and
+      its docstring states the scope with Sol's own measured precedence — 400 is
+      what an otherwise-valid, authenticated request gets; auth and body
+      validation legitimately answer first, and `required: true` never promised
+      to be the first gate checked.
+    ts: "2026-09-12T06:54:46Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CURED
+    resolution: >-
+      Both findings accepted and cured in the same head rather than dispositioned:
+      the universal behavioural claim was narrowed to what was measured, and the
+      operation set now comes from the contract instead of a transcription. Neither
+      cure changes served behaviour; both add assertions.
+
+appetite_exceeded: ""

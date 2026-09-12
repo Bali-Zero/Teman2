@@ -1,0 +1,135 @@
+brief_ref: evidence/brief.yml # staging-layout literal CI lints against (harness-floor.yml:989); the real brief lives beside this pack
+seat_override: >-
+  no council_run journal is recorded for this branch, and no seat string
+  above is a literal COUNCIL_REVIEW_SEATS token (codex-gpt-5.6-sol /
+  kimi-code/k3 / tp1-qwen3.8-max). The reviews this PR did receive are
+  listed in brief.yml adversarial_review as this session's record of runs
+  for which this repository holds no transcript, and in `dissent:` below,
+  where each objection names the commit that answered it.
+plan_ref: >-
+  PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE. Replaces PR #6240, whose
+  reviewed content is carried unchanged on 9 paths (the 7 byte-identical research copies,
+  SKILL.md, live-state-log.md) and inside the R1 wrapper on the 2 research
+  .md files (body segment = pin); brief.yml, contract-lock.json and
+  pack.yml are authored for this PR; .secrets.baseline gains 2
+  file-anchored exclude regexes and 2 per-finding false-positive audit
+  decisions.
+
+lanes:
+  - lane: o0r2-build
+    role: build
+    seat: "claude-opus-5 — the seat the commits name: `git log --format='%(trailers:key=Co-Authored-By,valueonly)' 7378c87fca..HEAD`"
+  - lane: o0r2-review-codex
+    role: review
+    seat: "gpt-6-astra (codex exec --sandbox read-only, xhigh — see brief.yml adversarial_review for every round and verdict)"
+  - lane: o0r2-review-kimi
+    role: review
+    seat: "kimi-k3 (kimi -r session_dbb009de-85fd-4d72-952c-7d21df829beb — see brief.yml adversarial_review round 3)"
+
+diff:
+  files: 15
+  churn: >-
+    15 files; churn far above the 1828 SIZE threshold (measured with
+    `git diff --numstat origin/main...HEAD`), dominated by census.json
+    (1568 generated lines) and the other pinned evidence copies required
+    by spec §3.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      7 of the 9 copied files (census.json, inputs.mts, test_census.py,
+      render.test.tsx, browser.mts, live-browser.json,
+      live-uncertainty.png) are byte-identical to contract-lock.json's
+      pinned sha256_source (full-file hash). The other 2 (spec, README)
+      are body-segment-identical only — their full-file hashes differ by
+      design (added frontmatter + appended review section).
+    cmd: |
+      shasum -a 256 -c <<'SUMS'
+      11fe7c1886cf2559493811f8cbdbb883b274f797eaaae3f2e6bb90261f12e704  research/visa/2026-09-11-review-reason-audit/census.json
+      73969f9cee2bd549f39b7f56bd621fde8f387267971fdd0fac30dd1d40ada251  research/visa/2026-09-11-review-reason-audit/inputs.mts
+      ba3ee261fe43b0e6413c1aff6b8c86b3f16035aad22d7751c2ec8ef861df84d6  research/visa/2026-09-11-review-reason-audit/test_census.py
+      bb5939cad97fe9857d8fea8cacef0aef41285eeace4b56333a004ce4a890890e  research/visa/2026-09-11-review-reason-audit/render.test.tsx
+      e056d690aa5b38318d0a09099ac9bb404ebcb170423c9bb7874498c565c99960  research/visa/2026-09-11-review-reason-audit/browser.mts
+      c29c51a01b3f9a4b5fa34d7011f21c496a0b2157cbccfc6fa02feab36de40360  research/visa/2026-09-11-review-reason-audit/live-browser.json
+      14427e15b2a380375732e0502105ce9d0152a2f91f11cef4b3d8bd6a5827c41f  research/visa/2026-09-11-review-reason-audit/live-uncertainty.png
+      SUMS
+    result: "7/7 OK — every hash matches the corresponding sha256_source pin in contract-lock.json."
+    exit: 0
+    ts: "2026-09-12T17:40:39+08:00"
+    seat: "claude-opus-5 (this session, o0r2-build lane — the seat the commits name in their Co-Authored-By trailer)"
+
+  - claim: >-
+      The local gear floor over this diff (numstat-only reproduction of
+      harness-floor.yml's Step 2c/Step 6) is 3, sourced from the SIZE term —
+      matching this pack's declared gear.
+    cmd: |
+      git diff --name-only origin/main...HEAD > /tmp/o0r2-changed-files.txt
+      git diff --numstat  origin/main...HEAD > /tmp/o0r2-numstat.txt
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor \
+        --changed-files-file /tmp/o0r2-changed-files.txt --numstat-file /tmp/o0r2-numstat.txt
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor-source \
+        --changed-files-file /tmp/o0r2-changed-files.txt --numstat-file /tmp/o0r2-numstat.txt
+    result: "3, then size — the floor is 3 and the SIZE term is what sources it"
+    exit: 0
+    ts: "2026-09-12T17:40:55+08:00"
+    seat: "claude-opus-5 (this session, o0r2-build lane — the seat the commits name in their Co-Authored-By trailer)"
+
+  - claim: >-
+      scripts/check_adversarial_review.py (R1 gate) passes on both changed
+      research/**/*.md files after the frontmatter + appended review section
+      were added.
+    cmd: >-
+      python3 scripts/check_adversarial_review.py --files
+      research/visa/2026-09-11-oracle-final-window-spec.md
+      research/visa/2026-09-11-review-reason-audit/README.md
+    result: "PASS — 2 research file(s) carry a valid adversarial review"
+    exit: 0
+    ts: "2026-09-12T17:41:02+08:00"
+    seat: "claude-opus-5 (this session, o0r2-build lane — the seat the commits name in their Co-Authored-By trailer)"
+
+  - claim: >-
+      Stripping the frontmatter block and the appended "## Adversarial
+      review" section from each of the two research .md files reproduces
+      contract-lock.json's pinned sha256_source exactly (proves the wrapper
+      never touched the reviewed body bytes).
+    cmd: "see brief.yml acceptance probe #2 (strip-and-hash proof)"
+    result: "both stripped-body hashes equal their pin (2acb148e... spec, d8102e73... README)."
+    exit: 0
+    ts: "2026-09-12T17:41:02+08:00"
+    seat: "claude-opus-5 (this session, o0r2-build lane — the seat the commits name in their Co-Authored-By trailer)"
+
+dissent:
+  - seat: gpt-6-astra (codex, round 1, head 8b947103b5)
+    objection: >-
+      live-state-log.md's PR #5855 entry said "After rebasing onto the
+      merged seq-20 wave" but the PR body states origin/main was merged in
+      via a merge commit, not a rebase.
+    status: CONFIRMED
+    note: fixed in the follow-up commit (round-2 head 82d08445b3).
+  - seat: gpt-6-astra (codex, round 1, head 8b947103b5)
+    objection: >-
+      live-state-log.md's PR #5855 entry said two findings were documented
+      as stated bounds; the PR body documents only the sampling-limit
+      finding as a stated bound.
+    status: CONFIRMED
+    note: fixed in the follow-up commit (round-2 head 82d08445b3).
+  - seat: gpt-6-astra (codex, round 1, head 8b947103b5)
+    objection: >-
+      contract-lock.json pinned 02-DECISIONI-ZERO.md at a hash the source
+      Desktop file had since moved past (an imperator exception for
+      W1-SH-TECH was appended there).
+    status: CONFIRMED
+    note: fixed in the follow-up commit (round-2 head 82d08445b3).
+  - seat: kimi-k3 (session_dbb009de-85fd-4d72-952c-7d21df829beb)
+    objection: >-
+      README.md's engine-adapter.test.ts:782 and engine-adapter.ts:698
+      file:line pointers are off-by-one; the "181 test frontend esistenti"
+      figure is not independently verifiable from the artifacts alone.
+    status: PLAUSIBLE
+    note: >-
+      recorded OPEN in the README's appended "## Adversarial review"
+      section — verbatim capture, the pinned body is not corrected (would
+      break the sha256_source pin). The engine-adapter.ts:698 pointer
+      objection is itself refuted on re-read — see brief.yml
+      adversarial_review round 3, finding K2.
