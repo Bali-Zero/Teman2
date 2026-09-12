@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections.abc import Awaitable, Callable
 
 import asyncpg
 
@@ -44,6 +45,14 @@ MAX_ARTIFACT_BYTES = 10 * 1024 * 1024
 
 _PDF_MAGIC = b"%PDF-"
 _CONTENT_TYPE = "application/pdf"
+
+#: How many times a read may re-resolve after losing the race with a
+#: concurrent supersession (finding F6). Two: the first pass serves the
+#: common case, the second serves the successor of a correction that landed
+#: mid-fetch. A third would be a correction landing during the retry of a
+#: correction -- at which point "absent" is a truer answer than any of the
+#: rows involved, and the caller can simply ask again.
+_READ_REVALIDATIONS = 2
 
 
 class InvalidArtifactContent(ValueError):
@@ -237,15 +246,12 @@ class GarudaArtifactService:
         / `ArtifactDigestMismatch` for the router's `503
         SERVICE_UNAVAILABLE` case."""
 
-        record = await self._repository.get_live_for_order(
-            conn, order_id=order_id, result_id_ref=result_id_ref
-        )
-        if record is None:
-            raise LookupError(order_id)
-        body = await self._object_store.fetch_and_verify(
-            key=record.storage_key, expected_digest=record.artifact_digest
-        )
-        return record, body
+        async def resolve() -> ArtifactRecord | None:
+            return await self._repository.get_live_for_order(
+                conn, order_id=order_id, result_id_ref=result_id_ref
+            )
+
+        return await self._fetch_still_live(resolve, missing_key=order_id)
 
     async def get_staff_practice_artifact(
         self, conn: asyncpg.Connection, *, practice_id: str
@@ -254,13 +260,63 @@ class GarudaArtifactService:
         practice is the router's job, run before this is ever called (same
         split `get_staff_practice` uses)."""
 
-        record = await self._repository.get_live_for_practice(conn, practice_id=practice_id)
-        if record is None:
-            raise LookupError(practice_id)
-        body = await self._object_store.fetch_and_verify(
-            key=record.storage_key, expected_digest=record.artifact_digest
-        )
-        return record, body
+        async def resolve() -> ArtifactRecord | None:
+            return await self._repository.get_live_for_practice(conn, practice_id=practice_id)
+
+        return await self._fetch_still_live(resolve, missing_key=practice_id)
+
+    async def _fetch_still_live(
+        self,
+        resolve: Callable[[], Awaitable[ArtifactRecord | None]],
+        *,
+        missing_key: str,
+    ) -> tuple[ArtifactRecord, bytes]:
+        """Resolve, fetch, then CONFIRM the row is still the live one
+        before its bytes are handed back.
+
+        Sol's O1 refutation (2026-09-11, finding F6) interleaved a read
+        with a correction: the reader resolves the live row, a concurrent
+        `putPracticeArtifact` supersedes it and commits, and the reader --
+        already holding a key from the retired row, whose object is kept on
+        purpose (decision #13-revision: superseded objects are never
+        removed) -- fetches and emits the OLD grant. Nothing in the fetch
+        path could notice, because the digest it verifies is the retired
+        row's own and matches perfectly. The customer downloads a document
+        the correction existed to replace.
+
+        The re-resolve after the fetch closes that window: if the live row
+        moved under us, the loop serves the SUCCESSOR rather than what it
+        started with. A read that loses the race twice in a row stops and
+        reads as absent -- `LookupError`, the router's single 404, which is
+        also what spec SS4 already says a superseded artifact looks like
+        from outside. No new error code, and no contract surface, for a
+        case whose correct answer the contract already names.
+
+        Not a lock, deliberately: the fetch is a network round trip to the
+        object store, and `putPracticeArtifact` holds
+        `pg_advisory_xact_lock` on the practice for its whole transaction.
+        Making readers take that same lock would let one slow customer
+        download block every correction for the same practice -- a
+        liveness cost paid on the frequent path to fix a rare one.
+        """
+        for _ in range(_READ_REVALIDATIONS):
+            record = await resolve()
+            if record is None:
+                raise LookupError(missing_key)
+            # `expected_byte_length` is what turns F5's ceiling check into
+            # a check against THIS row: an object whose declared size does
+            # not equal the length the row recorded at write time is
+            # refused before a byte is read, whatever its digest would
+            # have been.
+            body = await self._object_store.fetch_and_verify(
+                key=record.storage_key,
+                expected_digest=record.artifact_digest,
+                expected_byte_length=record.byte_length,
+            )
+            still_live = await resolve()
+            if still_live is not None and still_live.artifact_id == record.artifact_id:
+                return record, body
+        raise LookupError(missing_key)
 
     async def resolve_for_delivery(
         self, conn: asyncpg.Connection, *, practice_id: str, artifact_id: str, artifact_digest: str
@@ -286,12 +342,20 @@ class GarudaArtifactService:
             or record.artifact_id != artifact_id
             or record.artifact_digest != artifact_digest
         ):
+            # One message for "no such live row", "expired past retention"
+            # and "the pair does not match": the staff caller learns the
+            # delivery was refused, never WHICH of the three it was. The
+            # retention arm is the one Sol's F3 added -- `get_live_for_
+            # practice_locked` now filters it, so an expired pair arrives
+            # here as `record is None`.
             raise ArtifactDeliveryRejected(
-                f"no live artifact matches the submitted pair for practice {practice_id}"
+                f"no live, unexpired artifact matches the submitted pair for practice {practice_id}"
             )
         try:
             await self._object_store.fetch_and_verify(
-                key=record.storage_key, expected_digest=record.artifact_digest
+                key=record.storage_key,
+                expected_digest=record.artifact_digest,
+                expected_byte_length=record.byte_length,
             )
         except (ArtifactObjectMissing, ArtifactDigestMismatch) as exc:
             raise ArtifactDeliveryRejected(

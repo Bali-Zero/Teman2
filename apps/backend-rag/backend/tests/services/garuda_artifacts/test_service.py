@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+from collections.abc import Awaitable, Callable
 
 import pytest
 
@@ -19,6 +20,7 @@ from backend.services.garuda_artifacts.fakes import (
     InMemoryArtifactRepository,
 )
 from backend.services.garuda_artifacts.service import (
+    _READ_REVALIDATIONS,
     MAX_ARTIFACT_BYTES,
     ArtifactDeliveryRejected,
     ArtifactTooLarge,
@@ -39,6 +41,56 @@ def _service() -> tuple[GarudaArtifactService, InMemoryArtifactRepository, InMem
     store = InMemoryArtifactObjectStore()
     service = GarudaArtifactService(repository=repo, object_store=store, environment="TEST")
     return service, repo, store
+
+
+class _SupersedingObjectStore(InMemoryArtifactObjectStore):
+    """`InMemoryArtifactObjectStore` plus a fetch counter and an optional
+    one-shot (or persistent) side-effect hook, so a test can make a
+    concurrent `putPracticeArtifact` supersession land DETERMINISTICALLY
+    at the moment `_fetch_still_live` (finding F6) is fetching the
+    object -- no sleeps, no real concurrency; the interleaving is encoded
+    as "this callback runs right after this fetch returns its bytes,
+    before the caller re-resolves"."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fetch_count = 0
+        self._on_fetch: Callable[[], Awaitable[None]] | None = None
+        self._persistent = False
+
+    def arm_supersession_on_next_fetch(
+        self, callback: Callable[[], Awaitable[None]], *, persistent: bool = False
+    ) -> None:
+        self._on_fetch = callback
+        self._persistent = persistent
+
+    async def fetch_and_verify(
+        self, *, key: str, expected_digest: str, expected_byte_length: int | None = None
+    ) -> bytes:
+        self.fetch_count += 1
+        body = await super().fetch_and_verify(
+            key=key, expected_digest=expected_digest, expected_byte_length=expected_byte_length
+        )
+        if self._on_fetch is not None:
+            callback = self._on_fetch
+            if not self._persistent:
+                self._on_fetch = None
+            await callback()
+        return body
+
+
+class _OrderAwareRepository(InMemoryArtifactRepository):
+    """The base fake's `get_live_for_order` deliberately raises
+    `NotImplementedError` (see its own docstring: "not modeled by this
+    fake -- unit-test resolve/put only"). This thin local subclass models
+    it by delegating to the practice-level live lookup with `order_id`
+    standing in for `practice_id` -- enough to exercise
+    `get_order_artifact`'s share of `_fetch_still_live` without inventing
+    order/result-ref semantics this fake never had."""
+
+    async def get_live_for_order(self, conn, *, order_id: str, result_id_ref: str):
+        del result_id_ref
+        return await self.get_live_for_practice(conn, practice_id=order_id)
 
 
 class TestPutPracticeArtifact:
@@ -198,6 +250,141 @@ class TestGetStaffPracticeArtifact:
 
         with pytest.raises(ArtifactObjectMissing):
             await service.get_staff_practice_artifact(conn=None, practice_id=practice_id)
+
+
+class TestFetchStillLiveConcurrentSupersession:
+    """`_fetch_still_live`'s F6 cure (Sol O1 refutation, 2026-09-11,
+    MAJOR): a read resolves the live row, a concurrent
+    `putPracticeArtifact` supersedes it and commits mid-fetch, and the OLD
+    code returned immediately after the first fetch -- emitting the
+    RETIRED row's own object, digest and all, because the digest it
+    verified was the retired row's own. Covered on
+    `get_staff_practice_artifact`, which the base fake's
+    `get_live_for_practice` models directly; `get_order_artifact` shares
+    the exact same `_fetch_still_live` helper (`get_live_for_order` is
+    the only difference between the two call sites), so one thinner test
+    against `_OrderAwareRepository` closes that entry point too without
+    duplicating all three scenarios."""
+
+    @pytest.mark.asyncio
+    async def test_supersession_during_fetch_serves_the_successor_never_the_retired_bytes(
+        self,
+    ) -> None:
+        """F6: the OLD code, having already fetched the retired row's
+        verified bytes, returned them straight away -- the customer/staff
+        reader downloaded the exact document the concurrent correction
+        existed to replace. The cure's re-resolve-after-fetch notices the
+        live row moved and loops, so this test's reader ends up with the
+        SUCCESSOR's bytes, never the retired ones."""
+        repo = InMemoryArtifactRepository()
+        store = _SupersedingObjectStore()
+        service = GarudaArtifactService(repository=repo, object_store=store, environment="TEST")
+        practice_id = "prc_test_f6_0000000001"
+        original = await service.put_practice_artifact(
+            conn=None, practice_id=practice_id, body=_SYNTHETIC_PDF, produced_by="staff@balizero.com"
+        )
+        successor_body = _SYNTHETIC_PDF + b"\n%corrected-mid-fetch"
+
+        async def _supersede_mid_fetch() -> None:
+            await service.put_practice_artifact(
+                conn=None,
+                practice_id=practice_id,
+                body=successor_body,
+                produced_by="staff2@balizero.com",
+            )
+
+        store.arm_supersession_on_next_fetch(_supersede_mid_fetch)
+
+        record, body = await service.get_staff_practice_artifact(conn=None, practice_id=practice_id)
+
+        assert body == successor_body
+        assert body != _SYNTHETIC_PDF
+        assert record.artifact_id != original.artifact_id
+        # One fetch for the (now-retired) row this read started with, one
+        # re-fetch for the successor the re-resolve discovered.
+        assert store.fetch_count == 2
+
+    @pytest.mark.asyncio
+    async def test_supersession_on_every_attempt_exhausts_revalidations_and_raises(self) -> None:
+        """F6, worst case: the correction keeps landing on every single
+        re-resolve. The OLD code never re-resolved at all, so it would
+        still have served the FIRST (already superseded) row's bytes on
+        read one -- this scenario didn't even need to be adversarial to
+        break it. The cure gives up after `_READ_REVALIDATIONS` losses and
+        raises `LookupError` (the routers' single 404) -- no bytes, from
+        any row, are ever returned."""
+        repo = InMemoryArtifactRepository()
+        store = _SupersedingObjectStore()
+        service = GarudaArtifactService(repository=repo, object_store=store, environment="TEST")
+        practice_id = "prc_test_f6_0000000002"
+        await service.put_practice_artifact(
+            conn=None, practice_id=practice_id, body=_SYNTHETIC_PDF, produced_by="staff@balizero.com"
+        )
+        attempt = {"n": 0}
+
+        async def _always_supersede() -> None:
+            attempt["n"] += 1
+            await service.put_practice_artifact(
+                conn=None,
+                practice_id=practice_id,
+                body=_SYNTHETIC_PDF + f"\n%correction-{attempt['n']}".encode(),
+                produced_by="staff2@balizero.com",
+            )
+
+        store.arm_supersession_on_next_fetch(_always_supersede, persistent=True)
+
+        with pytest.raises(LookupError):
+            await service.get_staff_practice_artifact(conn=None, practice_id=practice_id)
+        assert store.fetch_count == _READ_REVALIDATIONS
+
+    @pytest.mark.asyncio
+    async def test_ordinary_read_returns_on_first_attempt_with_a_single_fetch(self) -> None:
+        """Uncontested path, no supersession armed: the re-resolve the
+        cure adds must not cost an extra object-store round trip -- the
+        fake's fetch counter proves exactly one `fetch_and_verify` call
+        for one successful read."""
+        repo = InMemoryArtifactRepository()
+        store = _SupersedingObjectStore()
+        service = GarudaArtifactService(repository=repo, object_store=store, environment="TEST")
+        practice_id = "prc_test_f6_0000000003"
+        put_record = await service.put_practice_artifact(
+            conn=None, practice_id=practice_id, body=_SYNTHETIC_PDF, produced_by="staff@balizero.com"
+        )
+
+        record, body = await service.get_staff_practice_artifact(conn=None, practice_id=practice_id)
+
+        assert record.artifact_id == put_record.artifact_id
+        assert body == _SYNTHETIC_PDF
+        assert store.fetch_count == 1
+
+    @pytest.mark.asyncio
+    async def test_order_artifact_supersession_during_fetch_serves_the_successor(self) -> None:
+        """Thinner sibling of the first scenario, against
+        `get_order_artifact` instead of `get_staff_practice_artifact` --
+        proves the shared `_fetch_still_live` helper closes finding F6 on
+        BOTH entry points, not just the one the fake models natively."""
+        repo = _OrderAwareRepository()
+        store = _SupersedingObjectStore()
+        service = GarudaArtifactService(repository=repo, object_store=store, environment="TEST")
+        order_id = "prc_test_f6_0000000004"  # stands in for practice_id, see _OrderAwareRepository
+        original = await service.put_practice_artifact(
+            conn=None, practice_id=order_id, body=_SYNTHETIC_PDF, produced_by="staff@balizero.com"
+        )
+        successor_body = _SYNTHETIC_PDF + b"\n%corrected-mid-fetch-order"
+
+        async def _supersede_mid_fetch() -> None:
+            await service.put_practice_artifact(
+                conn=None, practice_id=order_id, body=successor_body, produced_by="staff2@balizero.com"
+            )
+
+        store.arm_supersession_on_next_fetch(_supersede_mid_fetch)
+
+        record, body = await service.get_order_artifact(
+            conn=None, order_id=order_id, result_id_ref="unused-by-this-fake"
+        )
+
+        assert body == successor_body
+        assert record.artifact_id != original.artifact_id
 
 
 class TestResolveForDelivery:

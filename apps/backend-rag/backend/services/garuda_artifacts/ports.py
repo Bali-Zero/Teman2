@@ -47,9 +47,19 @@ class ArtifactObjectStorePort(Protocol):
 
     async def put(self, *, key: str, body: bytes, content_type: str) -> None: ...
 
-    async def fetch_and_verify(self, *, key: str, expected_digest: str) -> bytes:
+    async def fetch_and_verify(
+        self, *, key: str, expected_digest: str, expected_byte_length: int | None = None
+    ) -> bytes:
         """Fetch the object's bytes, hash them, and compare against
         `expected_digest`. Returns the bytes ONLY on a match.
+
+        `expected_byte_length` is the row's recorded length, and it is a
+        BEFORE-the-read check (finding F5): an implementation that can
+        learn the object's declared size without transferring it must
+        refuse a disagreement, and must in any case never read more than
+        the ceiling plus one byte. Optional because it narrows rather than
+        replaces the digest check -- an implementation that cannot see a
+        declared size still satisfies this port by bounding its read.
 
         Raises `ArtifactObjectMissing` if the key does not resolve to an
         object, `ArtifactDigestMismatch` if it does but the hash disagrees.

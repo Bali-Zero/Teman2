@@ -31,12 +31,22 @@ class InMemoryArtifactObjectStore:
         del content_type  # not modeled -- this fake stores bytes only
         self._objects[key] = body
 
-    async def fetch_and_verify(self, *, key: str, expected_digest: str) -> bytes:
+    async def fetch_and_verify(
+        self, *, key: str, expected_digest: str, expected_byte_length: int | None = None
+    ) -> bytes:
         import hashlib
 
         if key not in self._objects:
             raise ArtifactObjectMissing(key)
         body = self._objects[key]
+        # Models the real store's size check (finding F5), in the same
+        # order: the declared length is compared BEFORE the digest, so a
+        # test that grows an object past its row's recorded length sees
+        # the refusal the real adapter gives, not a digest mismatch that
+        # only happens to fire for the same object. A fake that skipped
+        # this would let a caller pass here and fail in production.
+        if expected_byte_length is not None and len(body) != expected_byte_length:
+            raise ArtifactDigestMismatch(key)
         if hashlib.sha256(body).hexdigest() != expected_digest:
             raise ArtifactDigestMismatch(key)
         return body
