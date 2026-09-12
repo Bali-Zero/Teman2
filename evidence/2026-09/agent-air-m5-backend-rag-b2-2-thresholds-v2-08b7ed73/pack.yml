@@ -55,7 +55,11 @@ per_cell_numbers:
     live sample and for B2.3's review — never counted as a safety pass here.
   mandatory_is_clean: "0/0 in every cell at both gates, unchanged by the thresholds."
 
-receipts:
+dux_receipts_narrative: # CORRECTED post-gate (C4): this was the pack's only `receipts:` entry
+  # and lacked claim/exit/seat (an OPINION wearing a receipt's shape, per gate-6364
+  # finding 5). Renamed off the canonical key and kept as narrative; the canonical
+  # `receipts:` list (below, C4b) carries this same measurement reshaped plus the
+  # successor's own re-runs on this head.
   - ts: "2026-09-12T18:47:46Z"
     what: "the four harness runs and the per-case domain/score census"
     cmd: "PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py [--manifest …supplement…] --support-record …support_verdicts_b2.json --json"
@@ -95,12 +99,12 @@ what_this_pr_changes:
       `DOMAIN_ABSTAIN_THRESHOLDS='{"tax":0.15,"visa":0.15}'` (a JSON typo) used to
       parse into a GARBAGE key ('{"tax"' -> 0.15) and log a warning: a partial,
       silently-wrong override. Configuration failed OPEN.
-    cure: "the parser raises on malformed / out-of-range / unknown-domain entries; the builder catches, logs ERROR and falls back to the DEFAULTS IN FULL — never a partial override, and never a raise at import time (the module builds its dict at import; a raise there would stop the app from booting)."
-    verified_by_the_dux: "with a JSON spec in the env, importing the module succeeds and the thresholds in force are exactly the defaults; with the valid colon-comma spec the override applies."
+    cure: "the parser raises on malformed / out-of-range / unknown-domain / duplicate-domain entries; the builder catches, logs ERROR and falls back to the STRICT thresholds (`_strict_fallback_thresholds()` — every relief lifted to `default`, anything already stricter kept) — never a partial override, and never the permissive defaults, and never a raise at import time (the module builds its dict at import; a raise there would stop the app from booting). CORRECTED post-gate (#6364, ruling I42): this line previously said 'falls back to the DEFAULTS IN FULL', which was already wrong at merge time — the code has returned the strict fallback since council round 1's R9 cure below; three human-readable surfaces (this line, the reasoning_utils.py docstring/log, and brief A4) still said the old thing and are corrected in this PR."
+    verified_by_the_dux: "with a JSON spec in the env, importing the module succeeds and the thresholds in force are the STRICT fallback ({tax 0.15, visa 0.15, pricing 0.15, kbli 0.2, default 0.15}), never the relieved defaults; with the valid colon-comma spec the override applies."
 
 tests:
   - "test_domain_relief_tripwire.py: 4 passed"
-  - "test_domain_threshold_override_parsing.py: 19 passed"
+  - "test_domain_threshold_override_parsing.py: 19 passed (as merged in #6364; the successor PR below adds 2 more, C3)"
   - "test_evidence_sufficiency_benchmark.py: 73 passed"
   - "test_evidence_cross_language.py: 123 passed, 1 xfailed (pre-existing generic-word case)"
   - "all four together, run by the Dux: 219 passed, 1 xfailed"
@@ -203,12 +207,177 @@ council_round_1_refuter:
         NOT cured, recorded: the override tests use `importlib.reload`, which
         rebuilds the module's classes, so a test holding a pre-reload reference
         could be order-dependent. Measured rather than assumed: the whole
-        `backend/tests/unit/services/rag/` tree runs 3082 passed / 30 skipped /
-        7 xfailed with these tests in it. If a future ordering ever bites, this
+        `backend/tests/unit/services/rag/` tree ran 3082 passed / 30 skipped /
+        7 xfailed with these tests in it, as merged in #6364; the successor PR
+        below adds 2 more (C3), for 3084. If a future ordering ever bites, this
         is the entry that names the cause.
 
 final_state_measured_by_the_dux:
   ts: "2026-09-12T19:22:32Z"
-  suite: "backend/tests/unit/services/rag/ — 3082 passed, 30 skipped, 7 xfailed, 0 failed"
+  suite: "backend/tests/unit/services/rag/ — 3082 passed, 30 skipped, 7 xfailed, 0 failed (as merged in #6364 — see successor_b2_2_v2 below for this head's count)"
   harness_reports_unchanged: "67322f4876c126ff… (mandatory, both conditions) · 48ceff1a0c390c56… (supplement, both conditions) — the per-cell table above still describes this head after every cure"
   reliefs: "tax 0.10 / visa 0.12 — UNCHANGED, which is the point of the PR"
+
+successor_b2_2_v2:
+  ts: "2026-09-13T00:00:00Z"
+  branch: "agent/air-m5/backend-rag/b2-2-thresholds-v2"
+  rework_of: "#6364 (gate REWORK-BUILD, ruling I42), gate report by claude-opus-5/gate-6364"
+  what_changed:
+    C1: >-
+      Rewrote the 11 legacy assertions in
+      backend/tests/services/rag/agentic/test_abstain_policy_hardening.py (7),
+      backend/tests/services/rag/agentic/test_reasoning_utils.py (3) and
+      backend/tests/services/rag/test_evidence_scoring_abstain.py (1) that
+      pinned the OLD lenient parser (skip-and-keep-the-rest, out-of-range
+      leaves the default live, partial override) to assert the I41 strict
+      semantics instead: a malformed/out-of-range/unknown/duplicate entry
+      rejects the WHOLE spec, and the caller falls back to the STRICT
+      thresholds. No test deleted — every one was rewritten in place because
+      each still exercises a live contract, just the corrected one.
+    C2: >-
+      Reworded the ERROR log and docstring at
+      backend/services/rag/agentic/reasoning_utils.py (~909, ~986, ~996-1002)
+      and brief.yml acceptance A4 (this file) to say what the code has always
+      done: the whole spec is rejected and the STRICT fallback is in force
+      (every relief lifted to `default`, anything stricter kept) — never the
+      permissive defaults. Adjusted the two tests that asserted the old log
+      text (test_abstain_policy_hardening.py, test_evidence_scoring_abstain.py).
+    C3: >-
+      Added `test_duplicate_domain_key_raises` and
+      `test_duplicate_domain_key_falls_back_strict_and_logs_the_duplicate` to
+      backend/tests/unit/services/rag/test_domain_threshold_override_parsing.py,
+      following that file's existing fresh-process/monkeypatch pattern; the
+      file already had a test using override values different from the
+      defaults (`test_valid_override_applies_on_top_of_defaults`, tax 0.13 /
+      kbli 0.17) — kept as-is, nothing to add there.
+    C4: >-
+      Renamed the evidence dir to this branch's own slug (`git mv`, no content
+      change beyond this file), and updated the measured counts below to this
+      head.
+  measured_counts:
+    "backend/tests/services/rag": "1714 passed, 12 skipped, 0 failed"
+    "backend/tests/unit/services/rag": "3084 passed, 30 skipped, 7 xfailed, 0 failed (+2 vs #6364's 3082, the new C3 tests)"
+    "backend/tests/unit/services/integrations": "347 passed, 0 failed"
+  ruff: "All checks passed! on the 5 touched python files"
+pii_scan: clean
+receipts:
+  - claim: "backend/tests/services/rag green after C1 (was 11 failed / 1703 passed / 12 skipped on #6364's head)"
+    cmd: "cd apps/backend-rag && JWT_SECRET_KEY=x32 API_KEYS=x .venv/bin/python -m pytest backend/tests/services/rag -p no:cacheprovider"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "backend/tests/unit/services/rag green with the 2 new C3 tests"
+    cmd: "cd apps/backend-rag && JWT_SECRET_KEY=x32 API_KEYS=x .venv/bin/python -m pytest backend/tests/unit/services/rag -p no:cacheprovider"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "backend/tests/unit/services/integrations unaffected"
+    cmd: "cd apps/backend-rag && JWT_SECRET_KEY=x32 API_KEYS=x .venv/bin/python -m pytest backend/tests/unit/services/integrations -p no:cacheprovider"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "ruff clean on the 5 touched python files"
+    cmd: "cd apps/backend-rag && .venv/bin/ruff check backend/services/rag/agentic/reasoning_utils.py backend/tests/services/rag/agentic/test_abstain_policy_hardening.py backend/tests/services/rag/agentic/test_reasoning_utils.py backend/tests/services/rag/test_evidence_scoring_abstain.py backend/tests/unit/services/rag/test_domain_threshold_override_parsing.py"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "pii_scan clean — no sk-/Bearer/Authorization:/_API_KEY= literal in any touched file"
+    cmd: "grep -rniE 'sk-[a-z0-9]|Bearer [A-Za-z0-9._-]{10,}|Authorization:|_API_KEY=' apps/backend-rag/backend/services/rag/agentic/reasoning_utils.py apps/backend-rag/backend/tests/services/rag/agentic/test_abstain_policy_hardening.py apps/backend-rag/backend/tests/services/rag/agentic/test_reasoning_utils.py apps/backend-rag/backend/tests/services/rag/test_evidence_scoring_abstain.py apps/backend-rag/backend/tests/unit/services/rag/test_domain_threshold_override_parsing.py"
+    exit: 1
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "harness.py mandatory manifest, default thresholds, on this head"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json --json"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "harness.py mandatory manifest, uniform 0.15 override, on this head — report unchanged"
+    cmd: "cd apps/backend-rag && DOMAIN_ABSTAIN_THRESHOLDS='tax:0.15,visa:0.15' PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json --json"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "harness.py supplement manifest, default thresholds, on this head"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py --manifest backend/tests/benchmarks/evidence_sufficiency/manifest_supplement_b2.json --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json --json"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "harness.py supplement manifest, uniform 0.15 override, on this head — report unchanged"
+    cmd: "cd apps/backend-rag && DOMAIN_ABSTAIN_THRESHOLDS='tax:0.15,visa:0.15' PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py --manifest backend/tests/benchmarks/evidence_sufficiency/manifest_supplement_b2.json --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json --json"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+  - claim: "evidence pack lint, CI-shaped staging (fresh dir, flat evidence/pack.yml + evidence/brief.yml, --source-path/--brief-source-path pointing at the real per-PR path, --changed-files-file, --numstat-file)"
+    cmd: "python3 scripts/evidence_pack_lint.py /tmp/evidence-check/evidence/pack.yml --repo-root /tmp/evidence-check --changed-files-file /tmp/changed-files.txt --numstat-file /tmp/net-lines-numstat.txt --source-path evidence/2026-09/agent-air-m5-backend-rag-b2-2-thresholds-v2-08b7ed73/pack.yml --brief-source-path evidence/2026-09/agent-air-m5-backend-rag-b2-2-thresholds-v2-08b7ed73/brief.yml"
+    exit: 0
+    seat: claude-sonnet-5
+    ts: "2026-09-13T00:00:00Z"
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "P2-counterfactual-moves-kbli — UNIFORM_THRESHOLDS flattening every domain to 0.15 lowers kbli from 0.20, a false positive about a domain with no relief."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "P2-pin-test-can-become-vacuous — the pin test looped over an emptied sets dict and asserted nothing while staying green."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "P3-merge-test-indistinguishable — override tests used tax:0.10, identical to the default, so an applied override was indistinguishable from an ignored one."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "P3-score-census-multiplicities — the pack's own census of the supplement's tax/visa scores was miscounted."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "codex-precision-on-the-parser — double/trailing commas are tolerated by the parser, not covered by the fail-closed promise. Recorded, not cured: accepted as a limit."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "R9-fail-open-in-the-wrong-direction — falling back to the DEFAULTS on an untrusted spec is not fail-closed for an abstain gate, since the defaults carry the reliefs (the most permissive values)."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "R10-duplicate-domain-keys — tax:0.10,tax:0.20 applied silently with last-wins."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "R6-literal-default-in-the-counterfactual — the tripwire's counterfactual baseline was a literal 0.15 instead of reading the engine dict live."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "R12-set-D-was-unpinned — 12 cases carry set: D while the sets metadata named only B and C, so the pin guard skipped an existing set."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "R11-reload-pollution — override tests use importlib.reload, which could make a test order-dependent. Recorded, not cured."
+    status: CONFIRMED
+  - seat: claude-opus-5/gate-6364
+    objection: "C1 — 11 pre-existing tests in backend/tests/services/rag/ pin the OLD lenient parser and go RED under the new strict-fallback behaviour. Cured: rewritten to assert the I41 strict semantics (successor PR)."
+    status: CONFIRMED
+  - seat: claude-opus-5/gate-6364
+    objection: "C2 — the ERROR log, the _build_domain_thresholds docstring and brief A4 all state the untrusted-spec fallback is 'the defaults in full' when the code returns the strict fallback. Cured: all three reworded (successor PR)."
+    status: CONFIRMED
+  - seat: claude-opus-5/gate-6364
+    objection: "C3 — duplicate-key rejection ships with no test coverage. Cured: 2 tests added to test_domain_threshold_override_parsing.py (successor PR)."
+    status: CONFIRMED
+  - seat: claude-opus-5/gate-6364
+    objection: "C4 — the Evidence Pack fails evidence_pack_lint.py on four counts (receipts shape, pii_scan, dissent, lanes). Cured: this pack now carries all four (successor PR)."
+    status: CONFIRMED
+lanes:
+  # ONE build lane, on purpose and accurately (same shape as
+  # evidence/2026-09/agent-nuzantara-backend-rag-b1-score-contract-107e45b6
+  # and .../r1-research-os-desig-3e4165f9): B2.2 was never two parallel
+  # lanes — a single lane built SEQUENTIALLY, the Opus 5 Dux's PR #6364
+  # then a Sonnet 5 successor curing the gate's four conditions on the
+  # SAME files and the SAME concern. Splitting it in two would trip D3's
+  # seat-diversity rule while describing a parallelism that never
+  # existed. Seat diversity for this PR lives in the REVIEW lane, which
+  # is non-Anthropic by construction.
+  - lane: "B2.2 domain abstain thresholds"
+    role: build
+    seat: "claude-opus-5 (Dux B2, Pro, PR #6364, commit cfec6acc02) then claude-sonnet-5 (this successor implementer, M5, cures C1-C4)"
+    state: delivered
+  - lane: "B2.2 adversarial review round 1"
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: "B2.2 refuter round 1"
+    role: review
+    seat: kimi-code/k3
+  - lane: "B2.2 gate on #6364"
+    role: review
+    seat: "claude-opus-5/gate-6364 (fresh session outside the contribution chain, REWORK-BUILD verdict)"
+  - lane: "B2.2 ground-truth reproduction"
+    role: ground_truth
+    seat: claude-fable-5-1
+    note: "imperator reproduction on base 429e54d208, hashes 67322f4876c1 / 48ceff1a0c39"

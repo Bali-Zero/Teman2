@@ -906,7 +906,9 @@ def _parse_domain_threshold_overrides(spec: str) -> dict[str, float]:
     live threshold dict while the caller only ever logged a warning — a
     partially-applied, silently-wrong override. The caller
     (`_build_domain_thresholds`) treats any raise here as "reject the WHOLE
-    spec, use the defaults in full" — never a partial override.
+    spec, use the STRICT fallback (`_strict_fallback_thresholds`) — every
+    relief lifted to `default`, anything already stricter kept as-is" —
+    never a partial override, and never the permissive defaults.
 
     An empty/blank spec (the default — `DOMAIN_ABSTAIN_THRESHOLDS` unset) is
     NOT an error: it means "no override" and returns `{}`.
@@ -983,7 +985,9 @@ def _build_domain_thresholds() -> dict[str, float]:
 
     RULING I40(d): the override is all-or-nothing. If
     `_parse_domain_threshold_overrides` raises, this logs the reason at
-    ERROR and falls back to the DEFAULTS IN FULL — never a partial merge.
+    ERROR and falls back to the STRICT fallback (`_strict_fallback_thresholds`)
+    — every relief lifted to `default`, anything already stricter kept —
+    never a partial merge and never the permissive defaults.
     This function itself must never raise: it runs at import time
     (`_DOMAIN_THRESHOLDS = _build_domain_thresholds()` immediately below),
     and an uncaught exception here would stop the whole app from booting
@@ -994,8 +998,10 @@ def _build_domain_thresholds() -> dict[str, float]:
         overrides = _parse_domain_threshold_overrides(raw_spec)
     except ValueError as exc:
         logger.error(
-            "DOMAIN_ABSTAIN_THRESHOLDS=%r is invalid (%s) — falling back to the "
-            "defaults in full, no partial override applied",
+            "DOMAIN_ABSTAIN_THRESHOLDS=%r is invalid (%s) — rejecting the whole "
+            "spec and falling back to the STRICT thresholds (every relief "
+            "lifted to 'default', anything stricter kept), not the permissive "
+            "defaults",
             raw_spec,
             exc,
         )

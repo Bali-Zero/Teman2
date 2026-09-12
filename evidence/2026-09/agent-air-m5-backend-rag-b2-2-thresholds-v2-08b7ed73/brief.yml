@@ -6,6 +6,12 @@ base_sha: 429e54d208f25efccde443a9f523b868e81c10b7 # pragma: allowlist secret
 mandate: B2
 colour: BLUE
 pr: B2.2-thresholds
+envelope: 20260912T091907Z-435d # generation authority (the B1-ack that triggered wave 2)
+checkpoint_refs:
+  - 20260912T192614Z-3e78
+  - 20260912T192719Z-0e42
+rework_of: "#6364 (gate REWORK-BUILD, ruling I42)"
+deadline: "2026-09-13T05:30:00Z"
 objective: >-
   B2 §4 PR B2.2, criterion 5 — the domain abstain reliefs. The question the
   mandate asks is whether `tax: 0.10` and `visa: 0.12` should be restored
@@ -43,8 +49,13 @@ acceptance:
   - id: A4
     text: >-
       A malformed `DOMAIN_ABSTAIN_THRESHOLDS` never applies a partial override:
-      it is rejected whole, logged at ERROR, and the defaults stay in force —
-      and it never raises at import time.
+      it is rejected whole, logged at ERROR, and the STRICT fallback takes
+      force — every relief lifted to `default`, anything already stricter
+      (kbli) kept as-is, never the permissive defaults — and it never raises
+      at import time (RULING I41, corrected from the REWORK-BUILD gate on
+      #6364: "the defaults stay in force" was the wrong claim — the code
+      always returned the strict fallback, three human-readable surfaces said
+      otherwise).
   - id: A5
     text: >-
       The panel-ruled divergence (generation gate flat 0.15 vs per-domain label

@@ -9,12 +9,16 @@ partially-applied, silently-wrong override, with only a `logger.warning`
 to notice it by. RULING I40(d): fail-closed applies to configuration too.
 
 `_parse_domain_threshold_overrides` now raises `ValueError` on the first
-malformed entry / out-of-range value / unknown domain key, and
-`_build_domain_thresholds` (the function actually bound to
+malformed entry / out-of-range value / unknown domain key / duplicate
+domain key, and `_build_domain_thresholds` (the function actually bound to
 `_DOMAIN_THRESHOLDS` at module import) catches that, logs at ERROR, and
-falls back to `DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT` IN FULL — never a partial
-merge. `_build_domain_thresholds` itself must never raise: it runs at
-import time, and an uncaught exception there would stop the whole app from
+falls back to the STRICT thresholds (`_strict_fallback_thresholds()` —
+every relief lifted to `default`, anything already stricter kept) — never
+a partial merge, and never the permissive `DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT`
+(RULING I41, kimi-code/k3 R9: falling back to the defaults is not
+fail-closed for an abstain gate, since the defaults carry the reliefs).
+`_build_domain_thresholds` itself must never raise: it runs at import
+time, and an uncaught exception there would stop the whole app from
 booting over a bad env var.
 """
 
@@ -73,6 +77,12 @@ class TestParseDomainThresholdOverridesRaisesOnBadInput:
         with pytest.raises(ValueError):
             reasoning_utils._parse_domain_threshold_overrides("tax:0.10,notadomain:0.5")
 
+    def test_duplicate_domain_key_raises(self) -> None:
+        # Council round 1 (kimi-code/k3, R10): `tax:0.10,tax:0.20` used to
+        # apply silently with last-wins. An ambiguous spec is not a spec.
+        with pytest.raises(ValueError, match="duplicate domain"):
+            reasoning_utils._parse_domain_threshold_overrides("tax:0.10,tax:0.20")
+
 
 class TestBuildDomainThresholdsNeverRaisesAndFallsBackInFull:
     def test_valid_override_applies_on_top_of_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -130,6 +140,20 @@ class TestBuildDomainThresholdsNeverRaisesAndFallsBackInFull:
         # permissive value in the dict.
         assert result["tax"] > reasoning_utils.DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT["tax"]
         assert result["tax"] == reasoning_utils.DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT["default"]
+
+    def test_duplicate_domain_key_falls_back_strict_and_logs_the_duplicate(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.setenv("DOMAIN_ABSTAIN_THRESHOLDS", "tax:0.10,tax:0.20")
+        with caplog.at_level(logging.ERROR, logger=reasoning_utils.logger.name):
+            result = reasoning_utils._build_domain_thresholds()
+
+        assert result == reasoning_utils._strict_fallback_thresholds()
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        assert error_records, "expected an ERROR log record for the duplicate key"
+        message = error_records[0].getMessage()
+        assert "tax" in message
+        assert "duplicate" in message.lower()
 
     def test_unset_env_var_yields_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("DOMAIN_ABSTAIN_THRESHOLDS", raising=False)
