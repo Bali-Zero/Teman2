@@ -36,11 +36,6 @@ import {
   Target,
   Clock,
   Award,
-  ArrowUpRight,
-  ArrowDownRight,
-  Smartphone,
-  Tablet,
-  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -58,8 +53,6 @@ interface ClientOverview {
   new_this_week: number;
   by_status: Record<string, number>;
   by_nationality: Record<string, number>;
-  growth_rate: number;
-  churn_rate: number;
 }
 
 interface TeamPerformance {
@@ -115,35 +108,14 @@ interface FunnelStage {
   drop_off: number;
 }
 
-type DateRange = "7d" | "30d" | "90d" | "6m" | "1y" | "all";
 type ViewMode = "desktop" | "tablet" | "mobile";
 
-// ================================================
-// UTILITY COMPONENTS
-// ================================================
-
-const TrendIndicator = ({
-  value,
-  suffix = "%",
-}: {
-  value: number;
-  suffix?: string;
-}) => {
-  const isPositive = value >= 0;
-  return (
-    <span
-      className={`flex items-center gap-1 text-xs font-medium ${isPositive ? "text-[var(--state-success)]" : "text-[var(--state-danger)]"}`}
-    >
-      {isPositive ? (
-        <ArrowUpRight className="w-3 h-3" />
-      ) : (
-        <ArrowDownRight className="w-3 h-3" />
-      )}
-      {Math.abs(value).toFixed(1)}
-      {suffix}
-    </span>
-  );
-};
+// The trend endpoint's lookback window. A user-facing range picker used to
+// sit in front of this (7d/30d/90d/6m/1y/all) but only the "1y" option ever
+// changed anything (6 vs 12 months on this one query) and no other section
+// on this page reads a selected range at all — see PR body for the audit
+// trail. Fixed at the picker's own former default.
+const TREND_LOOKBACK_MONTHS = 6;
 
 // ================================================
 // STAT CARD COMPONENT
@@ -153,7 +125,6 @@ interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  trend?: number;
   icon: React.ElementType;
   color: "blue" | "green" | "amber" | "purple" | "red" | "cyan";
   loading?: boolean;
@@ -164,7 +135,6 @@ const StatCard = ({
   title,
   value,
   subtitle,
-  trend,
   icon: Icon,
   color,
   loading,
@@ -201,11 +171,6 @@ const StatCard = ({
               </p>
               {subtitle && (
                 <p className="text-xs mt-1 opacity-70 truncate">{subtitle}</p>
-              )}
-              {trend !== undefined && (
-                <div className="mt-1">
-                  <TrendIndicator value={trend} />
-                </div>
               )}
             </>
           )}
@@ -339,45 +304,6 @@ const ProgressBar = ({
 };
 
 // ================================================
-// DATE RANGE SELECTOR
-// ================================================
-
-const DateRangeSelector = ({
-  value,
-  onChange,
-}: {
-  value: DateRange;
-  onChange: (v: DateRange) => void;
-}) => {
-  const ranges: { value: DateRange; label: string }[] = [
-    { value: "7d", label: "7 Days" },
-    { value: "30d", label: "30 Days" },
-    { value: "90d", label: "90 Days" },
-    { value: "6m", label: "6 Months" },
-    { value: "1y", label: "1 Year" },
-    { value: "all", label: "All Time" },
-  ];
-
-  return (
-    <div className="flex flex-wrap gap-1 bg-muted p-1 rounded-lg">
-      {ranges.map((r) => (
-        <button
-          key={r.value}
-          onClick={() => onChange(r.value)}
-          className={`px-2 sm:px-3 py-1 text-xs rounded-md transition-all ${
-            value === r.value
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {r.label}
-        </button>
-      ))}
-    </div>
-  );
-};
-
-// ================================================
 // EXPORT BUTTON
 // ================================================
 
@@ -423,7 +349,6 @@ export default function ClientAnalyticsPage() {
   const router = useRouter();
   const { error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<DateRange>("6m");
   const [viewMode, setViewMode] = useState<ViewMode>("desktop");
   const [activeTab, setActiveTab] = useState<
     "overview" | "team" | "revenue" | "processes"
@@ -463,7 +388,7 @@ export default function ClientAnalyticsPage() {
           api.get<RevenueSummary>("/api/crm/analytics/revenue/summary"),
           api.get<ProcessTypeMetric[]>("/api/crm/analytics/processes/by-type"),
           api.get<TrendPoint[]>(
-            `/api/crm/analytics/clients/trend?months=${dateRange === "6m" ? 6 : dateRange === "1y" ? 12 : 6}`,
+            `/api/crm/analytics/clients/trend?months=${TREND_LOOKBACK_MONTHS}`,
           ),
         ]);
 
@@ -520,7 +445,7 @@ export default function ClientAnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [dateRange, showError]);
+  }, [showError]);
 
   useEffect(() => {
     fetchData();
@@ -609,23 +534,6 @@ export default function ClientAnalyticsPage() {
             </Button>
           </div>
         </div>
-
-        {/* Controls Row */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
-          <DateRangeSelector value={dateRange} onChange={setDateRange} />
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="hidden sm:inline">View:</span>
-            <Monitor
-              className={`w-4 h4 ${viewMode === "desktop" ? "text-foreground" : ""}`}
-            />
-            <Tablet
-              className={`w-4 h-4 ${viewMode === "tablet" ? "text-foreground" : ""}`}
-            />
-            <Smartphone
-              className={`w-4 h-4 ${viewMode === "mobile" ? "text-foreground" : ""}`}
-            />
-          </div>
-        </div>
       </div>
 
       {/* Mobile Tabs */}
@@ -646,9 +554,6 @@ export default function ClientAnalyticsPage() {
               <Users className="w-4 h-4 sm:w-5 sm:h-5" />
               Client Overview
             </h2>
-            {overview?.growth_rate !== undefined && (
-              <TrendIndicator value={overview.growth_rate} />
-            )}
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -659,7 +564,6 @@ export default function ClientAnalyticsPage() {
                 isLoading ? "-" : formatCompact(overview?.total_clients || 0)
               }
               subtitle={`+${overview?.new_this_month || 0} this month`}
-              trend={overview?.growth_rate}
               icon={Users}
               color="blue"
               loading={isLoading}
