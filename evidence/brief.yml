@@ -1,59 +1,59 @@
-task_id: kbli-l2-pr-b-reingest-20260911
-gear: 3
+task_id: kbli-l2-pr-a-vault-adapter
+gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff: 3, source `size` (the 36 MB canonical rewritten in three tracked copies).
-# Gear 3 declared; evidence/pack.yml is mandatory and present.
+# Floor for this diff: 2, source `size` (440 added lines: adapter, flags, tests, six one-line
+# fixtures, spec §6). No hot-zone path. Gear 2 declared to match the floor; no pack below Gear 3.
 objective: >-
-  PR-B of docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md: re-ingest the KBLI L2
-  risk layer (per_skala tiers, perizinan/persyaratan/kewajiban/kewenangan, _l2_*) from the frozen
-  2026-09-11 OSS vault for the 1559 codes, through a MERGE policy that leaves every later layer
-  (jangka_waktu enrichment, fiktif_positif, the l4 cure labels, the per_skala quarantine) as its
-  owner left it; bump metadata to v11.0-L2-oss-risk-20260911 with the snapshot provenance and the
-  PP28_2025 source fix; re-emit the artifacts pinned to the canonical.
+  PR-A of docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md: make the KBLI L2
+  risk transform reproducible from a frozen vault snapshot. Adds the pure adapter
+  scripts/kbli_filiera/vault_to_risk_jsonl.py (vault -> the jsonl the transform already reads),
+  --root/--raw flags on scripts/build_kbli_l2_oss_risk.py with defaults equal to today's
+  literals, a machine-readable SUMMARY line, adapter tests, a six-code reproduction test on
+  real July-vault fixtures, and the spec's §6 recording the full-scale rule-4/rule-5 outcome.
 constraints:
   - >-
-    Cure-owned data is never re-derived: per_skala_disputed_* codes (119) are skipped, a NO_BESAR
-    verdict never rewrites l4_bali (the no-Besar-row inference is withdrawn), l4_bali is rewritten
-    only where the recomputed verdict moved, _l4_needs_review is never written.
+    No logic change in the transform: flags, derived paths and one SUMMARY print only.
+    apps/backend-rag/scripts/build_kbli_l2_oss_risk.py untouched (its merge is a deploy).
   - >-
-    Absences are not applied: the 13 codes with scope in July and 404 today keep their rows and
-    are marked absent_pending_corroboration with absent_probes (methodology P3).
+    No data file changes: the canonical corpus, its five copies and the sidecar are
+    byte-identical to origin/main. --apply was run only on /tmp copies.
   - >-
-    No network, no credentials: both vaults are frozen on disk; the September one is chmod a-w
-    with a sha256 manifest. apps/backend-rag/scripts/build_kbli_l2_oss_risk.py untouched.
+    No network, no credentials: the adapter reads a vault on disk; vaults were never modified
+    (the September vault is chmod a-w with a sha256 manifest).
 acceptance:
   - text: >-
-      A1 (rule 4): WHEN the adapter runs over the frozen July vault and the transform dry-runs
-      against the v10.0 canonical (origin/main) SHALL print a SUMMARY line with changed_codes=0.
-    probe: git show origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json > /tmp/l2b/root/data/source_documents/KBLI_2025_FINAL_CLEAN.json && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2b/root --raw /tmp/l2b/july.jsonl | grep '^SUMMARY'
+      A1: WHEN `python3 -m pytest scripts/kbli_filiera/tests -q` runs SHALL pass, including the
+      adapter determinism/ordering/404/exit-2 tests and the six-code reproduction test that
+      asserts the L2-owned field set equal to the canonical slice.
+    probe: python3 -m pytest scripts/kbli_filiera/tests -q
   - text: >-
-      A2 Bites (rule 5): WHEN the committed canonical is diffed against origin/main SHALL show
-      tier-set changes on exactly the pinned 181 codes minus 20111 plus {93111, 93112, 93119},
-      absent_probes on exactly the 13 old-only codes, and no top-level field differing on any
-      code outside pinned ∪ new-only ∪ old-only.
-    probe: python3 /tmp/l2b/field_diff_b.py /tmp/l2b/main_canonical.json data/source_documents/KBLI_2025_FINAL_CLEAN.json /tmp/l2b/changed_pinned.txt /tmp/l2b/field_diff_sept3.md | grep -E 'tier-set changed|absent_pending codes == old_only'
+      A2 Bites: WHEN the adapter runs over the frozen July vault and the transform dry-runs with
+      --root /tmp/l2/root --raw /tmp/l2/july.jsonl SHALL print one line starting with SUMMARY
+      carrying no_oss_risk=221 and l4_changed=21 (this scripts/ copy; the backend copy gives 0),
+      and the field-level table of an --apply on that /tmp copy (spec §6, measured before this
+      PR was opened) SHALL show 0 codes differing on skala_usaha/kategori_risiko/scope_index
+      and exactly 1 (49213) on the other L2-owned fields, counted on rows common to both sides
+      (20111's 12 new rows are reported on the row-count line).
+    probe: set -o pipefail; python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | grep '^SUMMARY'
   - text: >-
-      A3: WHEN the merge-policy, reproduction and adapter tests run SHALL pass, and WHEN the
-      whole scripts/kbli_filiera suite runs SHALL pass with the re-emitted artifacts and the
-      re-measured count pins.
-    probe: python3 -m pytest scripts/kbli_filiera/tests -q -p no:cacheprovider | tail -1
-  - text: >-
-      A4: WHEN the sidecar test and the dataset-sync check run SHALL pass (sha == committed
-      canonical, five copies identical).
-    probe: (cd apps/mouth && npx vitest run src/lib/kbli-dataset-version.test.ts | grep Tests) && scripts/sync_kbli_dataset.sh --check | tail -1
+      A3: WHEN the transform's source is read SHALL still define ROOT as /tmp/kbli-l2-risk and
+      RAW as /tmp/oss_risk_raw.jsonl and use them as the --root/--raw defaults (grep count 2),
+      so the June run is still reproducible.
+    probe: grep -c 'Path("/tmp/kbli-l2-risk")\|Path("/tmp/oss_risk_raw.jsonl")' scripts/build_kbli_l2_oss_risk.py
 assumptions:
   - text: >-
-      The v10.0 canonical is exactly what the transform reproduces from the July vault under the
-      merge policy, so every September difference is OSS data, not transform drift.
+      The vault ruang_lingkup.json has the same response shape the June fetcher stored under
+      "data" ({success,data,meta,code}), so the adapter's records are the transform's native
+      input; shape compatibility is what is proven, not byte identity with the lost June file.
     status: verified
-    probe: "A1 measured 2026-09-11: SUMMARY changed_codes=0 quarantined_skipped=119 rows_fresh=0"
+    probe: "rule-5 recheck — adapter-driven change set equals the raw-vault change set under the same triple definition (181/181 with the pinned triple of spec §6)"
   - text: >-
-      derive_fiktif_positif.py is idempotent on unchanged rows, so running it after --apply touches
-      only the fresh rows.
+      jangka_waktu, fiktif_positif and jangka_waktu_source are owned by layers after L2, so
+      their divergence is not a transform defect.
     status: verified
-    probe: "dry-run on the v10.0 canonical: codes touched 0; after --apply: 329 rows changed, all fresh, 0 non-fiktif changes"
+    probe: "scripts/enrich_kbli_jangka_waktu.py (2026-06-28) writes jangka_waktu_source; canonical carries it on 4,200 rows of 941 codes"
   - text: >-
-      The kewenangan drift on ~1290 codes is OSS de-duplicating authority lists, not a parser change.
+      The apps/backend-rag copy of the transform is the one whose L4 logic the canonical reflects.
     status: verified
-    probe: "row classification: 4928 same-set (order/dup), 1355 subset, 29 superset, 19 different; parse_per_skala unchanged since PR-A"
+    probe: "full-scale run of both copies on the July jsonl — l4_bali.blocked flips: scripts/ 21, backend 0"
