@@ -1,32 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   User,
   Edit2,
-  Users,
   FileText,
-  MessageCircle,
-  Mail,
   Phone,
-  Send,
-  Calendar,
   Clock,
   Activity,
-  FolderOpen,
-  CheckCircle2,
-  ArrowRight,
   Copy,
   Check,
-  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type {
-  ClientProfile,
-  ClientDocument,
-  Interaction,
-} from "@/lib/api/crm/crm.types";
+import type { ClientProfile, ClientDocument } from "@/lib/api/crm/crm.types";
 import { formatPhoneNumber, isBirthdayToday } from "./utils";
 import { PassportCard } from "./PassportCard";
 import { VisaCard } from "./VisaCard";
@@ -34,32 +20,14 @@ import { AiSummaryCard } from "./AiSummaryCard";
 import { OracleChat } from "./OracleChat";
 import { WaCaseIntelligencePanel } from "./WaCaseIntelligencePanel";
 
-const INTERACTION_ICONS: Record<string, typeof MessageCircle> = {
-  chat: MessageCircle,
-  whatsapp: MessageCircle,
-  email: Mail,
-  call: Phone,
-  telegram: Send,
-  meeting: Calendar,
-  note: FileText,
-};
-
-const SENTIMENT_COLORS: Record<string, string> = {
-  positive: "text-[var(--state-success)]",
-  neutral: "text-[var(--bz-text-2)]",
-  negative: "text-[var(--state-danger)]",
-};
-
 export function OverviewTab({
   client,
   stats,
   documents,
   activePractices,
   completedPractices,
-  interactions,
   formatDate,
   formatCurrency,
-  router,
   onEditClick,
   onRefresh,
   clientId,
@@ -69,16 +37,13 @@ export function OverviewTab({
   documents: ClientDocument[];
   activePractices: ClientProfile["practices"];
   completedPractices: ClientProfile["practices"];
-  interactions: Interaction[];
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
-  router: ReturnType<typeof useRouter>;
   onEditClick: () => void;
   onRefresh: () => Promise<void>;
   clientId: number;
 }) {
   const isClientBirthday = isBirthdayToday(client.date_of_birth);
-  const [showAllInteractions, setShowAllInteractions] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const copyToClipboard = (value: string, field: string) => {
@@ -87,10 +52,6 @@ export function OverviewTab({
       setTimeout(() => setCopiedField(null), 2000);
     });
   };
-  const TIMELINE_PREVIEW = 5;
-  const visibleInteractions = showAllInteractions
-    ? interactions
-    : interactions.slice(0, TIMELINE_PREVIEW);
 
   return (
     <div className="space-y-6">
@@ -248,104 +209,18 @@ export function OverviewTab({
                 </div>
               </div>
 
-              {/* Passport & DOB - from OCR extraction */}
-              {(client.passport_number || client.date_of_birth) && (
+              {/* Birthplace — not shown on PassportCard (which already
+                  covers passport number/expiry and date of birth) */}
+              {client.birthplace && (
                 <>
                   <div className="border-t border-[var(--bz-border)]" />
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    {client.passport_number && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
-                          Passport
-                        </p>
-                        <div className="flex items-center gap-1.5 group/copy">
-                          <p className="text-sm font-semibold font-mono">
-                            {client.passport_number}
-                          </p>
-                          <button
-                            onClick={() =>
-                              copyToClipboard(
-                                client.passport_number!,
-                                "passport",
-                              )
-                            }
-                            className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
-                            title="Copy passport number"
-                            aria-label="Copy passport number"
-                          >
-                            {copiedField === "passport" ? (
-                              <Check className="w-3 h-3 text-green-400" />
-                            ) : (
-                              <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {client.passport_expiry && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
-                          Passport Expiry
-                        </p>
-                        {(() => {
-                          const daysLeft = Math.ceil(
-                            (new Date(client.passport_expiry).getTime() -
-                              Date.now()) /
-                              86400000,
-                          );
-                          const color =
-                            daysLeft < 0
-                              ? "text-red-500"
-                              : daysLeft <= 180
-                                ? "text-yellow-500"
-                                : "text-green-500";
-                          const label =
-                            daysLeft < 0
-                              ? `Expired ${Math.abs(daysLeft)}d ago`
-                              : daysLeft === 0
-                                ? "Expires today"
-                                : daysLeft <= 365
-                                  ? `⏰ ${daysLeft}d left`
-                                  : `${Math.floor(daysLeft / 30)}mo left`;
-                          return (
-                            <p
-                              className={`text-sm font-medium ${color}`}
-                              title={formatDate(client.passport_expiry)}
-                            >
-                              {label}
-                            </p>
-                          );
-                        })()}
-                      </div>
-                    )}
-                    {client.date_of_birth && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
-                          Date of Birth
-                        </p>
-                        <p className="text-sm font-medium flex items-center gap-2">
-                          {formatDate(client.date_of_birth)}
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bz-surface)] text-[var(--bz-text-2)]">
-                            {Math.floor(
-                              (Date.now() -
-                                new Date(client.date_of_birth).getTime()) /
-                                (365.25 * 86400000),
-                            )}
-                            y
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                    {client.birthplace && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
-                          Birthplace
-                        </p>
-                        <p className="text-sm font-medium">
-                          {client.birthplace}
-                        </p>
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
+                        Birthplace
+                      </p>
+                      <p className="text-sm font-medium">{client.birthplace}</p>
+                    </div>
                   </div>
                 </>
               )}
@@ -416,64 +291,26 @@ export function OverviewTab({
                 </>
               )}
 
-              {/* Quick Actions */}
-              {(client.phone || client.email) && (
+              {/* Quick Actions — WhatsApp/Email dropped: the page header already
+                  offers both for this client. Call (tel:) is kept: it's not
+                  offered anywhere else on this page. */}
+              {client.phone && (
                 <>
                   <div className="border-t border-[var(--bz-border)]" />
                   <div className="flex items-center gap-2">
-                    {client.phone &&
-                      (() => {
-                        const wa = client.phone
-                          .replace(/[^0-9]/g, "")
-                          .replace(/^0/, "62");
-                        return (
-                          <a
-                            href={`https://wa.me/${wa}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-                            style={{
-                              background: "rgba(37,211,102,0.12)",
-                              color: "#25d366",
-                              border: "1px solid rgba(37,211,102,0.25)",
-                            }}
-                            title={`WhatsApp ${client.phone}`}
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            WhatsApp
-                          </a>
-                        );
-                      })()}
-                    {client.email && (
-                      <a
-                        href={`mailto:${client.email}`}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={{
-                          background: "rgba(99,102,241,0.12)",
-                          color: "#818cf8",
-                          border: "1px solid rgba(99,102,241,0.25)",
-                        }}
-                        title={`Email ${client.email}`}
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                        Email
-                      </a>
-                    )}
-                    {client.phone && (
-                      <a
-                        href={`tel:${client.phone}`}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={{
-                          background: "rgba(59,130,246,0.12)",
-                          color: "#60a5fa",
-                          border: "1px solid rgba(59,130,246,0.25)",
-                        }}
-                        title={`Call ${client.phone}`}
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        Call
-                      </a>
-                    )}
+                    <a
+                      href={`tel:${client.phone}`}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      style={{
+                        background: "rgba(59,130,246,0.12)",
+                        color: "#60a5fa",
+                        border: "1px solid rgba(59,130,246,0.25)",
+                      }}
+                      title={`Call ${client.phone}`}
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      Call
+                    </a>
                   </div>
                 </>
               )}
@@ -498,15 +335,8 @@ export function OverviewTab({
               .reduce((sum, p) => sum + amountOf(p), 0);
             return (
               <div className="grid grid-cols-2 gap-3 mt-4">
-                <div className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Users className="w-3.5 h-3.5 text-blue-500" />
-                    <span className="text-[10px] text-[var(--bz-text-2)]">
-                      Family
-                    </span>
-                  </div>
-                  <p className="text-lg font-bold">{stats.family_count}</p>
-                </div>
+                {/* Family tile dropped — the Family tab label already shows
+                    `Family (${stats.family_count})`, same source value. */}
                 <div className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1">
                   <div className="flex items-center gap-1.5 mb-1">
                     <FileText className="w-3.5 h-3.5 text-purple-500" />
@@ -575,377 +405,6 @@ export function OverviewTab({
             onRefresh={onRefresh}
             clientId={clientId}
           />
-        </div>
-      </div>
-
-      {/* Bottom Section: Activity Timeline + Quick Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Activity Timeline — spans 2 columns */}
-        <div className="bz-product-panel lg:col-span-2 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
-            <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
-              <Activity className="w-4 h-4 text-[var(--bz-accent)]" />
-              Activity Timeline
-            </h3>
-            <span className="text-xs text-[var(--bz-text-2)]">
-              {interactions.length > 0
-                ? `${interactions.length} interactions`
-                : "No interactions yet"}
-            </span>
-          </div>
-
-          <div className="p-4 max-h-[480px] overflow-y-auto">
-            {interactions.length > 0 ? (
-              <div className="space-y-1">
-                {visibleInteractions.map((interaction, idx) => {
-                  const Icon =
-                    INTERACTION_ICONS[interaction.interaction_type] ||
-                    MessageCircle;
-                  const sentimentClass = interaction.sentiment
-                    ? SENTIMENT_COLORS[interaction.sentiment] ||
-                      "text-[var(--bz-text-2)]"
-                    : "";
-
-                  return (
-                    <div
-                      key={interaction.id}
-                      className="group flex gap-3 py-2.5 px-2 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors"
-                    >
-                      {/* Timeline line + icon */}
-                      <div className="flex flex-col items-center">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                            interaction.direction === "inbound"
-                              ? "bg-blue-500/15 text-blue-400"
-                              : "bg-green-500/15 text-green-400"
-                          }`}
-                        >
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        {idx < visibleInteractions.length - 1 && (
-                          <div className="w-px flex-1 bg-[var(--bz-border)] mt-1" />
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0 pb-2">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-sm font-medium text-[var(--bz-text-1)] capitalize">
-                            {interaction.interaction_type}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.05] text-[var(--bz-text-2)]">
-                            {interaction.direction === "inbound"
-                              ? "← In"
-                              : "→ Out"}
-                          </span>
-                          {interaction.channel &&
-                            interaction.channel !==
-                              interaction.interaction_type && (
-                              <span className="text-[10px] text-[var(--bz-text-2)]">
-                                via {interaction.channel}
-                              </span>
-                            )}
-                          {interaction.sentiment && (
-                            <span className={`text-[10px] ${sentimentClass}`}>
-                              {interaction.sentiment}
-                            </span>
-                          )}
-                        </div>
-                        {interaction.subject && (
-                          <p className="text-sm text-[var(--bz-text-1)] font-medium truncate">
-                            {interaction.subject}
-                          </p>
-                        )}
-                        {interaction.summary && (
-                          <p className="text-xs text-[var(--bz-text-2)] line-clamp-2 mt-0.5">
-                            {interaction.summary}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock className="w-3 h-3 text-[var(--bz-text-2)]" />
-                          {(() => {
-                            const ageDays = Math.floor(
-                              (Date.now() -
-                                new Date(
-                                  interaction.interaction_date,
-                                ).getTime()) /
-                                86400000,
-                            );
-                            const label =
-                              ageDays === 0
-                                ? "today"
-                                : ageDays === 1
-                                  ? "1d ago"
-                                  : ageDays >= 30
-                                    ? `${Math.floor(ageDays / 30)}mo ago`
-                                    : ageDays >= 7
-                                      ? `${Math.floor(ageDays / 7)}w ago`
-                                      : `${ageDays}d ago`;
-                            return (
-                              <span
-                                className="text-[9px] px-1.5 py-0.5 rounded tabular-nums"
-                                style={{
-                                  background:
-                                    ageDays === 0
-                                      ? "rgba(34,197,94,0.12)"
-                                      : "var(--surface-raised)",
-                                  color:
-                                    ageDays === 0
-                                      ? "#4ade80"
-                                      : "var(--bz-text-2)",
-                                }}
-                              >
-                                {label}
-                              </span>
-                            );
-                          })()}
-                          <span className="text-[10px] text-[var(--bz-text-2)]">
-                            {formatDate(interaction.interaction_date)}
-                          </span>
-                          {interaction.team_member && (
-                            <span className="text-[10px] text-[var(--bz-text-2)]">
-                              • {interaction.team_member.split("@")[0]}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {interactions.length > TIMELINE_PREVIEW && (
-                  <button
-                    onClick={() => setShowAllInteractions((v) => !v)}
-                    className="w-full mt-2 py-2 text-xs text-[var(--bz-accent)] hover:text-[var(--bz-accent)]/80 border border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 rounded-lg transition-colors"
-                  >
-                    {showAllInteractions
-                      ? "Show less"
-                      : `Show ${interactions.length - TIMELINE_PREVIEW} more interactions`}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="py-8 text-center">
-                <MessageCircle className="w-10 h-10 mx-auto mb-3 text-[var(--bz-text-2)] opacity-30" />
-                <p className="text-sm text-[var(--bz-text-2)]">
-                  No interactions recorded yet
-                </p>
-                <p className="text-xs text-[var(--bz-text-2)] mt-1 opacity-60">
-                  Interactions from WhatsApp, Email, Telegram and other channels
-                  will appear here
-                </p>
-                {client.last_interaction_date && (
-                  <p className="text-xs text-[var(--bz-text-2)] mt-2 opacity-50">
-                    Last known contact:{" "}
-                    {formatDate(client.last_interaction_date)}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right column: Practices Summary */}
-        <div className="space-y-4">
-          {/* Active Practices */}
-          <div className="bz-product-panel overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
-              <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
-                <FolderOpen className="w-4 h-4 text-yellow-500" />
-                Active
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[var(--bz-accent)]">
-                  {activePractices.length}
-                </span>
-                <button
-                  onClick={() =>
-                    router.push(`/process/new?client_id=${clientId}`)
-                  }
-                  className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)] hover:text-[var(--bz-accent)] transition-colors"
-                  title="New process"
-                  aria-label="New process"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-            <div className="p-3 space-y-2 max-h-[180px] overflow-y-auto">
-              {activePractices.length > 0 ? (
-                activePractices.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors cursor-pointer group/p"
-                    onClick={() => router.push(`/process/${p.id}`)}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <p className="text-sm text-[var(--bz-text-1)] truncate group-hover/p:text-[var(--bz-accent)] transition-colors">
-                          {p.practice_type_name || `Practice #${p.id}`}
-                        </p>
-                        {p.priority && p.priority !== "normal" && (
-                          <span
-                            className={`shrink-0 text-[9px] px-1 py-0.5 rounded font-semibold ${
-                              p.priority === "urgent"
-                                ? "bg-red-500/20 text-red-400"
-                                : "bg-orange-500/20 text-orange-400"
-                            }`}
-                          >
-                            {p.priority === "urgent" ? "🔥" : "↑"}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                        <span className="text-[10px] text-[var(--bz-text-2)]">
-                          {p.status.replace(/_/g, " ")}
-                        </span>
-                        {p.payment_status && p.payment_status !== "paid" && (
-                          <span
-                            className={`text-[9px] px-1 py-0.5 rounded ${
-                              p.payment_status === "unpaid"
-                                ? "bg-red-500/20 text-red-400"
-                                : "bg-yellow-500/20 text-yellow-400"
-                            }`}
-                          >
-                            {p.payment_status}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {p.quoted_price != null && p.quoted_price > 0 && (
-                      <span className="text-xs font-medium text-[var(--bz-accent)] ml-2 shrink-0">
-                        {formatCurrency(p.actual_price || p.quoted_price)}
-                      </span>
-                    )}
-                    <ArrowRight className="w-3 h-3 text-[var(--bz-text-2)] ml-1 opacity-0 group-hover/p:opacity-100 transition-opacity shrink-0" />
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-[var(--bz-text-2)] text-center py-3 opacity-60">
-                  No active processes
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Completed Practices */}
-          <div className="bz-product-panel overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
-              <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                Completed
-              </h3>
-              <span className="text-xs font-bold text-green-400">
-                {completedPractices.length}
-              </span>
-            </div>
-            <div className="p-3 space-y-2 max-h-[180px] overflow-y-auto">
-              {completedPractices.length > 0 ? (
-                completedPractices.slice(0, 5).map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors cursor-pointer group/p"
-                    onClick={() => router.push(`/process/${p.id}`)}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-[var(--bz-text-1)] truncate group-hover/p:text-green-400 transition-colors">
-                        {p.practice_type_name || `Practice #${p.id}`}
-                      </p>
-                      {p.completion_date && (
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <p className="text-[10px] text-[var(--bz-text-2)]">
-                            Completed {formatDate(p.completion_date)}
-                          </p>
-                          {(() => {
-                            const ageDays = Math.floor(
-                              (Date.now() -
-                                new Date(p.completion_date).getTime()) /
-                                86400000,
-                            );
-                            if (ageDays < 7) return null;
-                            const label =
-                              ageDays >= 365
-                                ? `${Math.floor(ageDays / 365)}y ago`
-                                : ageDays >= 30
-                                  ? `${Math.floor(ageDays / 30)}mo ago`
-                                  : `${ageDays}d ago`;
-                            return (
-                              <span
-                                className="text-[9px] px-1 py-0.5 rounded tabular-nums"
-                                style={{
-                                  background: "var(--bz-surface)",
-                                  color: "var(--bz-text-3)",
-                                }}
-                              >
-                                {label}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {p.payment_status && (
-                        <span
-                          className={`text-[9px] px-1 py-0.5 rounded ${
-                            p.payment_status === "paid"
-                              ? "bg-green-500/20 text-green-400"
-                              : p.payment_status === "partial"
-                                ? "bg-yellow-500/20 text-yellow-400"
-                                : "bg-red-500/20 text-red-400"
-                          }`}
-                        >
-                          {p.payment_status}
-                        </span>
-                      )}
-                      {p.actual_price != null && p.actual_price > 0 && (
-                        <span className="text-xs font-medium text-green-400">
-                          {formatCurrency(p.actual_price)}
-                        </span>
-                      )}
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-[var(--bz-text-2)] ml-1 opacity-0 group-hover/p:opacity-100 transition-opacity shrink-0" />
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-[var(--bz-text-2)] text-center py-3 opacity-60">
-                  No completed processes
-                </p>
-              )}
-              {completedPractices.length > 5 && (
-                <p className="text-[10px] text-[var(--bz-text-2)] text-center">
-                  +{completedPractices.length - 5} more
-                </p>
-              )}
-            </div>
-            {/* Revenue summary footer */}
-            {(() => {
-              const totalRevenue = completedPractices.reduce(
-                (sum, p) => sum + (p.actual_price || 0),
-                0,
-              );
-              const paidRevenue = completedPractices
-                .filter((p) => p.payment_status === "paid")
-                .reduce((sum, p) => sum + (p.actual_price || 0), 0);
-              if (totalRevenue === 0) return null;
-              return (
-                <div className="px-3 py-2 border-t border-[var(--bz-border)] flex items-center justify-between">
-                  <span className="text-[10px] text-[var(--bz-text-2)] uppercase tracking-wider">
-                    Revenue
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {paidRevenue < totalRevenue && (
-                      <span className="text-[10px] text-yellow-400">
-                        {formatCurrency(paidRevenue)} paid
-                      </span>
-                    )}
-                    <span className="text-xs font-bold text-green-400">
-                      {formatCurrency(totalRevenue)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
         </div>
       </div>
     </div>
