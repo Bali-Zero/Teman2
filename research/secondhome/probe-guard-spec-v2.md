@@ -80,19 +80,40 @@ publishable article. Fixed in PR-1 (two ID translations whose dates run against 
 the spec records the rule: every sorted output gets a fixture where the correct order disagrees
 with the filesystem order, and the mutation is proved red.
 
+## R8 — Anchor the frontmatter field an answer engine actually lifts
+
+Found by the independent gate on `8ba4b4f1ed`, not by the builder and not by the refuter. The
+`answerSnippet:` frontmatter field is not duration-anchored: flattening `a stay permit of up to
+5 years` to `a stay permit of 5 years` leaves `--claims` at zero in every locale. `M2` pinned the
+duration only in the comparison table's Duration cell, and the property-condition anchor DOES reach
+the frontmatter — the gate's companion case, dropping the completed-unit condition from `excerpt:`,
+came back red — so the gap is specific to the duration claim, not to the frontmatter as a whole.
+
+This is the field an AI answer engine lifts verbatim, which makes it the highest-consequence place
+in the file for an unanchored claim: a flattened `answerSnippet` is what gets quoted, while the
+table it contradicts is not. Every claim anchored anywhere must be anchored in `answerSnippet` and
+`excerpt` too, in all five locales, not only in the body or the table.
+
+Acceptance: in PR-1b, flattening `up to 5 years` → `5 years` in `answerSnippet` of ANY locale makes
+`--claims` report ≥ 1 failure. Today it reports 0. The content itself is correct at this head — all
+five locales say "up to 5 years", verified by reading them — so this is a guard gap, not a content
+defect, and it is the eighth demonstration of the thing the docstring already says out loud.
+
 ## What "done" means for PR-1b
 
-A mutation run in the shape of `build-receipts/guard-mutation-run.txt`, extended with the seven
+A mutation run in the shape of `build-receipts/guard-mutation-run.txt`, extended with the EIGHT
 counter-examples above, every one red, and the honest paragraph in the probe docstring rewritten to
-match what the code then actually does. Until then the docstring keeps saying what it says now.
+match what the code then actually does — including its count, which today says "nine named
+mutations" where the receipt lists ten. Until then the docstring keeps saying what it says now.
 
 ## Adversarial review
 
-This spec is the OUTPUT of adversarial review, not a document awaiting one. Every requirement
-above is a counter-example that `codex-sol` executed against the working tree on 2026-09-12
-(round 3, BLOCK, findings 1-7), with the command and the result recorded in the session
-scratchpad and summarised in the PR body. R7 was additionally re-proved red in this repo after
-the fixture landed. The one judgement that is mine and not the refuter's is the choice of
+This spec is the OUTPUT of adversarial review, not a document awaiting one. R1-R7 are
+counter-examples that `codex-sol` executed against the working tree on 2026-09-12 (round 3, BLOCK,
+findings 1-7), with the command and the result recorded in the session scratchpad and summarised in
+the PR body. R7 was additionally re-proved red in this repo after the fixture landed. R8 came from a
+SECOND adversarial reader — the independent on-disk gate on `8ba4b4f1ed` (PASS-WITH-CONDITIONS, F3),
+which ran its own two cases against a sandbox copy and found one red and one green. The one judgement that is mine and not the refuter's is the choice of
 paragraph scope in R3; a reviewer who thinks the section or the whole file is the right unit
 should say so before it is implemented, because widening the scope makes allowances rotate more
 often and narrowing it reopens the evasion.
