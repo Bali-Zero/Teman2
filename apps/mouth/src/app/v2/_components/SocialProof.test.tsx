@@ -1,9 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// Same shape as the other consumer probes: the component builds its people at
-// MODULE LOAD, so each case sets `extraExcluded` and imports fresh. Empty set →
-// the real filter, so everything below is real behaviour unless stated.
+// The people are no longer resolved INSIDE the component — `SocialProof` is
+// `"use client"` (it hands `next/image` an `onError` fallback) and importing the
+// roster there shipped every staff record, the excluded two included, in a JS
+// chunk every public route loads. The resolution moved to
+// `socialProofRoster.ts`, which runs on the server.
+//
+// So the guilt probe moves with it. `extraExcluded` still injects a person into
+// the exclusion, but now it is `socialProofRoster()` that must drop them — and
+// the rendering assertions below feed the component whatever that function
+// returns, which is exactly what the two server pages do.
 const extraExcluded = new Set<string>();
 
 vi.mock("@/lib/team-public-listing", async (importOriginal) => {
@@ -20,7 +27,8 @@ vi.mock("@/lib/team-public-listing", async (importOriginal) => {
 
 async function renderSocialProof(props?: { variant?: "founder-band" }) {
   const { SocialProof } = await import("./SocialProof");
-  render(props ? <SocialProof {...props} /> : <SocialProof />);
+  const { socialProofRoster } = await import("./socialProofRoster");
+  render(<SocialProof {...(props ?? {})} {...socialProofRoster()} />);
 }
 
 beforeEach(() => {

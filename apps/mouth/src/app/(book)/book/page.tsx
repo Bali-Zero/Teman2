@@ -1,5 +1,6 @@
 import { BookPage } from "./BookPage";
+import { bookTeamMembers } from "@/components/book/book-team";
 
 export default function BookRootPage() {
-  return <BookPage />;
+  return <BookPage teamMembers={bookTeamMembers()} />;
 }

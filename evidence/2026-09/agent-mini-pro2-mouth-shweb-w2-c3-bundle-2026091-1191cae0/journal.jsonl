@@ -1,0 +1,2 @@
+{"seat":"kimi-code/k3","role":"review","ok":true,"ts":"2026-09-12T12:36:00Z","round":"POST","verdict":"GO-WITH-CONDITIONS","record":"reviews/refuter-kimi-k3.txt","scope":"the full C3 diff, delivered inline"}
+{"seat":"gemini-3.1-pro","role":"review","ok":true,"ts":"2026-09-12T12:44:00Z","round":"POST","verdict":"NO-GO","record":"reviews/refuter-gemini-3.1-pro.txt","scope":"the full C3 diff, delivered inline"}

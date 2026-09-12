@@ -49,7 +49,7 @@ import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 import { SelectServiceCard } from "./SelectServiceCard";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { useInvalidateClient } from "@/hooks/useClientDetail";
-import { initialsOf } from "@/data/team-roster";
+import { initialsOf } from "@/lib/team-initials";
 import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
 
 // Status badge styling — WS2 (GARUDA OS): reuses the canonical kanban column

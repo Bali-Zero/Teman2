@@ -1,0 +1,184 @@
+# Evidence Pack — SHWEB-20260911 / W2-C3 (the declared partial of PR #6277, closed)
+gear: 2 # floor from scripts/evidence_pack_lint.py --print-floor = 2, --print-floor-source = size
+task_id: shweb-w2-c3-bundle-20260912
+mandate_id: SHWEB-20260911/W2-C3
+colour: BLUE
+l_level: L2
+host: Mini-Pro2 (nuzantara)
+worktree: .worktrees/mouth-shweb-w2-c3-bundle-20260912
+branch: agent/mini-pro2/mouth/shweb-w2-c3-bundle-20260912
+base_sha: 5ceb29b375ee01bf2e707f13b5f1bf4cd5b87445 # pragma: allowlist secret - public Git commit ID
+opened_at: "2026-09-12T12:10Z"
+predecessor: >-
+  PR #6277 (merge 7378c87fca, SERVED and proven). That window made the two owner-ordered
+  exclusions structural in every public consumer's RENDERED HTML, and declared one thing it could
+  not fix inside its perimeter: the roster still reached the public client JS bundle. This pack is
+  that remainder, closed. Granted in advance by the SHWEB imperator (mailbox
+  shweb-imp-w2-g1-ruling, re-confirmed shweb-imp-w2-followup-go).
+
+objective: >-
+  No "use client" module imports the staff roster, so no public JS chunk carries the records of the
+  people the owner excluded from public pages. The rendered HTML was already clean after #6277 —
+  this is about the bundle, which no page test or browser walk could see.
+
+brief_ref: evidence/brief.yml # the STAGING path the harness resolves against, never the per-PR one
+pii_scan: clean
+pii_scan_note: >-
+  The only personal data in play is the PUBLIC staff roster already on balizero.com/team. This diff
+  MOVES where it is read (server instead of client) and adds no record, no name and no photo path.
+  The two excluded people are named only in test assertions that prove their ABSENCE from client
+  modules. No client PII, no credential, nothing sent to any paid endpoint.
+
+scope:
+  - apps/mouth/src/app/v2/_components/socialProofRoster.ts # new: SERVER resolution + the editorial specs
+  - apps/mouth/src/app/v2/_components/SocialProof.tsx # stays "use client"; takes rows as props, imports no roster
+  - apps/mouth/src/app/v2/page.tsx # passes the rows (default render)
+  - apps/mouth/src/app/(marketing)/page.tsx # passes the rows (opt-in founder band)
+  - apps/mouth/src/lib/team-initials.ts # new: the 4-line helper, with no roster behind it
+  - apps/mouth/src/data/team-roster.ts # FROZEN FILE — re-exports the helper; see frozen_file_exception
+  - apps/mouth/src/app/(workspace)/process/[id]/page.tsx # client page takes the helper from the data-free module
+  - apps/mouth/src/app/(blog)/team/page.tsx # same import, for one helper source
+  - apps/mouth/src/components/book/book-team.ts # new: SERVER derivation of the book grid
+  - apps/mouth/src/components/book/book-data.ts # roster removed; its 7 client importers now carry none
+  - apps/mouth/src/components/book/TeamGrid.tsx # takes members as a prop
+  - apps/mouth/src/app/(book)/book/BookPage.tsx # threads them through
+  - apps/mouth/src/app/(book)/book/page.tsx # resolves + passes
+  - apps/mouth/src/app/(book)/book/[chapter]/page.tsx # resolves + passes
+  - apps/mouth/src/lib/client-roster-boundary.test.ts # new: the structural tripwire
+  - apps/mouth/src/app/v2/_components/SocialProof.test.tsx # the guilt probe moves with the code
+  - apps/mouth/src/components/book/book-team-roster.test.ts # same
+
+frozen_file_exception:
+  file: apps/mouth/src/data/team-roster.ts
+  why_it_is_in_the_diff: >-
+    `initialsOf` — four lines of string handling with no data behind it — lived in the same module
+    as the 170-line roster array. A "use client" page that wanted only that helper imported the
+    module, and the bundler follows imports, not intentions: the whole roster went into a public
+    chunk. The helper now lives in src/lib/team-initials.ts and this file RE-EXPORTS it, so its
+    public API is unchanged for server callers.
+  what_changed: "8 lines removed, 5 added. Nothing else."
+  proof_no_data_changed: >-
+    The TEAM_ROSTER array is BYTE-IDENTICAL to origin/main (169 lines, `diff -q` clean), and
+    PUBLIC_ROSTER, rosterByDept, rosterBySlug and photoForEmail each hash identical to main's. 20
+    members, same slugs. The FILE sha256 changes (947b181a… → 4b792be2…) because the helper moved;
+    the DATA does not.
+  alternative_rejected: >-
+    Leaving a second copy of `initialsOf` in this file would keep the sha256 intact and create two
+    definitions that can drift apart silently. Reported to the imperator as a STOP before the PR
+    was opened (mailbox shweb-w2-followup-frozen) rather than decided here.
+
+acceptance:
+  - text: >-
+      WHEN the app is built, THEN no chunk loaded by a PUBLIC route shall contain "faisha" or
+      "sahira" — and the six public routes shall still show neither name in their HTML.
+    probe: "npm run build; then per route, fetch the HTML, extract every /_next/static/chunks/*.js it references, fetch each and grep"
+    status: PASS
+  - text: >-
+      WHEN a "use client" module imports the roster, THEN a test shall fail — the fix must not be
+      able to regrow silently.
+    probe: "vitest src/lib/client-roster-boundary.test.ts; four mutants, each red"
+    status: PASS
+  - text: >-
+      WHEN the exclusion filter is removed from either server resolver, THEN that surface's guilt
+      probe shall fail — the probes moved with the code, they were not deleted.
+    probe: "mutants on socialProofRoster() and bookTeamMembers()"
+    status: PASS
+  - text: WHEN /v2 and /team render, THEN nothing the visitor sees shall change.
+    probe: "playwright e2e/shweb-team.spec.ts 24/24; /v2 byte size and zero error digests"
+    status: PASS
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    what: >-
+      Code AND tests, one seat. Declared as one build lane because that is what happened; the
+      diversity in this pack is on the review side.
+  - lane: review-refuter
+    role: review
+    seat: gemini-3.1-pro
+    what: the diff, on the frozen head — leak paths, prop boundary, whether the probes can go red
+  - lane: review-second-reader
+    role: review
+    seat: kimi-code/k3
+    what: the same, independently
+
+dissent:
+  - seat: self (the conducting session, on its own first attempt)
+    objection: >-
+      "SocialProof needs no client features, so the minimal fix is to delete its `"use client"`
+      directive and let it resolve the roster on the server." I asserted this after grepping for
+      useState / useEffect / useRef / onClick / onChange / window. / document. and finding nothing.
+    status: CONFIRMED
+    disposition: >-
+      WRONG, and the build caught it, not the review. The component passes an `onError` fallback to
+      `next/image` at two places — a handler my grep list did not include. As a server component it
+      threw "Event handlers cannot be passed to Client Component props" on every portrait: /v2
+      rendered its error boundary, dropped from ~228 KB to 107 KB, and two e2e assertions went red.
+      Reverted, and the change rebuilt along the shape the imperator had specified from the start —
+      the component STAYS client and receives server-resolved rows as props. Recorded because the
+      claim was a measurement with a hole in it, not a fact: an enumerated blocklist of handler
+      names cannot prove the absence of handlers. The boundary test now asserts the opposite
+      invariant on purpose — SocialProof must REMAIN "use client" and must contain `onError` — so
+      the same shortcut cannot be retried silently.
+
+debt_out_of_scope:
+  - >-
+    Three (workspace) route chunks still carry the roster: clients/[id], lkpm, team-management.
+    They are authenticated INTERNAL surfaces and the roster is what they are for. Two of them also
+    hardcode the excluded people's portrait paths (raised as Kimi F6 during #6277 and registered
+    then). Not touched here and not a public leak.
+  - >-
+    public/static/team/faisha.jpg and sahira.jpg remain directly addressable on the public origin.
+    Pre-existing, raised by Codex Sol during #6277, ruled to debt by the imperator and carried to
+    Zero. No public page links them.
+
+receipts:
+  - claim: "THE BITES — no chunk loaded by any of the six public routes contains either name, and their HTML carries neither"
+    cmd: "npm run build; next start; then per route: fetch HTML, extract every /_next/static/chunks/*.js it references, fetch each and grep -i 'faisha|sahira'; and grep the URL-decoded HTML"
+    result: "/team, /, /v2, /v2/company/about, /book, /book/team — LEAKING: none on all six; HTML faisha=0 sahira=0 on all six. BEFORE: 75947-*.js on the first four, plus 94651-*.js on the two book routes."
+    exit: 0
+    ts: "2026-09-12T12:29:00Z"
+    seat: claude-opus-5
+  - claim: "only internal authenticated route chunks still carry the roster"
+    cmd: "grep -rli 'faisha|sahira' .next/static/chunks/"
+    result: "app/(workspace)/clients/[id], app/(workspace)/lkpm, app/(workspace)/team-management — three route chunks, no shared chunk, no public route"
+    exit: 0
+    ts: "2026-09-12T12:28:00Z"
+    seat: claude-opus-5
+  - claim: "the roster DATA is untouched although the frozen file appears in the diff"
+    cmd: "extract the TEAM_ROSTER array text from origin/main and from HEAD and diff -q; hash each other export block from both revisions; print member count and slugs"
+    result: "array BYTE-IDENTICAL (169 lines); PUBLIC_ROSTER, rosterByDept, rosterBySlug, photoForEmail all SAME; 20 members, same slugs. File sha256 947b181a…e550e -> 1ff1ead1…26aa1 (the helper moved; the data did not)"
+    exit: 0
+    ts: "2026-09-12T12:35:00Z"
+    seat: claude-opus-5
+  - claim: "the tripwire and the relocated guilt probes are load-bearing — four mutants, each red, each restored"
+    cmd: "mutants: restore 'use client' on SocialProof; make the workspace page import the helper from the roster again; make SocialProof import the roster; drop publicEntries from the server resolver — each followed by vitest and a restore"
+    result: "2 red; 1 red; 2 red; 2 red (the moved SocialProof guilt probes). All green after each restore."
+    exit: 0
+    ts: "2026-09-12T12:26:00Z"
+    seat: claude-opus-5
+  - claim: "nothing a visitor sees changed, and /v2 renders without the error boundary my first attempt caused"
+    cmd: "playwright e2e/shweb-team.spec.ts against the built server; plus /v2 byte size and a grep for error digests"
+    result: "24/24 passed; /v2 212,136 bytes with 0 error digests and 0 server errors (the broken attempt was 107,229 bytes with 6 digests)"
+    exit: 0
+    ts: "2026-09-12T12:27:00Z"
+    seat: claude-opus-5
+  - claim: "the repo checks are green"
+    cmd: "npx vitest --run (the five W2 suites + the new boundary test); npx tsc --noEmit; npx eslint; npx prettier --check"
+    result: "Tests 46 passed (46); tsc 0; eslint 0 errors (9 warnings, ignore-pattern notices); prettier clean"
+    exit: 0
+    ts: "2026-09-12T12:33:00Z"
+    seat: claude-opus-5
+  - claim: "the ARTIFACT is asserted too, not only the imports — and the assertion can fail"
+    cmd: "node scripts/assert-roster-not-in-public-chunks.mjs after npm run build; then its own guilt probes (a planted public chunk, a planted (workspace) chunk, an empty chunk directory)"
+    result: "clean build exit 0 (530 chunks scanned, 394 public); planted PUBLIC chunk exit 1; planted INTERNAL chunk exit 0 (allowed by design); empty directory exit 1 (refuses to report success on an empty scan)"
+    exit: 0
+    ts: "2026-09-12T12:52:00Z"
+    seat: claude-opus-5
+  - claim: "the hardened tripwire catches every bypass the two refuters found"
+    cmd: "nine probes against the scanner: a line-comment header before the directive; side-effect / dynamic / require / whitespace-free imports; the three transitive server modules; and dropping the `type` keyword on the resolver import"
+    result: "all nine red; the restored tree green; the detector also carries its own guilt probes in the suite"
+    exit: 0
+    ts: "2026-09-12T12:47:00Z"
+    seat: claude-opus-5
