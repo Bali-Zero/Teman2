@@ -203,8 +203,10 @@ class _UnconfiguredDocumentStore:
     no uniqueness guarantee across actors), and a fake missing the parameter
     raises `TypeError` AT THE CALL SITE, before its body ever raises
     `_PersistenceUnavailable` — which reaches the caller as a raw 500, not this
-    store's documented 503. `test_garuda_documents_router.py` pins that: the
-    unconfigured store still answers 503 SERVICE_UNAVAILABLE, never 500.
+    store's documented 503. `test_garuda_documents_router.py` pins both of this
+    store's documented 503 shapes against that: 503
+    PERSISTENCE_POLICY_UNAVAILABLE on `uploadIntakeDocument`, 503
+    SERVICE_UNAVAILABLE on `listIntakeDocuments` — never a 500.
     """
 
     async def get_existing(
@@ -313,18 +315,22 @@ def _require_owned_result(result_id: str, actor: str) -> None:
 
 def _scoped_key(*, actor: str, result_id: str, raw_key: str) -> str:
     """Local scoping (LANES.md discipline: no cross-lane import of
-    `garuda_orders.idempotency`), folding in the two dimensions the port does NOT
-    know about: `result_id` and the operation name. Without it, one customer's two
-    different eligibility checks could collide on the same literal client-supplied
-    Idempotency-Key value.
+    `garuda_orders.idempotency`), folding in the operation name alongside the actor
+    and the result.
 
-    `actor` is folded in here too and ALSO passed to the store as `actor_id` — that
-    is deliberate belt-and-braces, not an oversight. `ports.py` now requires every
-    implementation to scope on `actor_id` itself, because a store cannot assume its
-    caller pre-scoped the key; this router keeps its own folding because the
-    resulting digest is also what a store's `key_sha256` ends up covering, and
-    dropping it would silently weaken every deployment whose store trusted this
-    router's scoping.
+    What this actually buys TODAY is narrower than it looks, and saying so is the
+    point: `actor` IS the session's own `result_id` (`_require_magic_session_actor`),
+    and `_require_owned_result` rejects any request whose path `result_id` differs —
+    so "one customer's two different eligibility checks colliding on one literal key"
+    is not a reachable state through this router. The folding is defence in depth for
+    a store that receives keys from somewhere other than this call path, and the
+    operation name is the one dimension neither the actor nor `ports.py`'s scoping
+    covers.
+
+    `actor` is folded in here AND passed separately to the store as `actor_id`.
+    That is deliberate: `ports.py` requires every implementation to scope on
+    `actor_id` itself, because a store cannot assume its caller pre-scoped the key.
+    Neither layer is load-bearing on the other.
     """
     digest = hashlib.sha256()
     for part in (actor, result_id, "uploadIntakeDocument", raw_key):

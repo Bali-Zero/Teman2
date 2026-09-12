@@ -104,7 +104,13 @@ class InMemoryDocumentStore:
     async def commit(
         self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome, *, actor_id: str
     ) -> bool:
-        winning = self._by_key.setdefault((actor_id, idempotency_key), (payload_hash, outcome))
+        # The winner is decided by the identity of the CANDIDATE ENTRY this call built,
+        # not of `outcome`. Comparing `winning[1] is outcome` looks equivalent and is not:
+        # two calls that happen to carry the SAME outcome instance would both be told they
+        # won, and both would fire the at-most-once side effect `commit`'s contract says
+        # exactly one caller may fire. A fresh tuple per call has no such collision.
+        candidate = (payload_hash, outcome)
+        winning = self._by_key.setdefault((actor_id, idempotency_key), candidate)
         if winning[0] != payload_hash:
             raise IdempotencyConflictError(idempotency_key)
-        return winning[1] is outcome
+        return winning is candidate
