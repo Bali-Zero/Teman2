@@ -26,7 +26,7 @@ objective: >-
   No chunk of the build carries an excluded roster member, internal routes included; and the guard
   that proves it runs on every build instead of sitting in the repo unexecuted.
 
-brief_ref: evidence/brief.yml # the STAGING name the validator resolves against # the STAGING path the validator resolves against, never the per-PR one
+brief_ref: evidence/brief.yml # the STAGING name the validator resolves against
 pii_scan: clean
 pii_scan_note: >-
   The only personal data is the staff roster. This diff MOVES two tables off the client and derives
@@ -244,12 +244,26 @@ receipts:
     exit: 0
     ts: "2026-09-12T14:08:00Z"
     seat: claude-opus-5
-  - claim: "the repo checks are green"
-    cmd: "npx vitest --run (the eight suites touching this change); npm run typecheck; npx prettier --check"
-    result: "Test Files 8 passed, Tests 145 passed (145); typecheck exit 0; prettier clean"
+  - claim: "the FULL test suite is green — not a subset I chose"
+    cmd: "npx vitest --run (no path filter, every file the app's config collects); npm run typecheck; npx prettier --check"
+    result: "Test Files 477 passed (477), Tests 5097 passed (5097), exit 0, zero failures; typecheck exit 0; prettier clean"
     exit: 0
     ts: "2026-09-12T14:18:00Z"
     seat: claude-opus-5
+
+lesson:
+  what: >-
+    The first candidate was verified against EIGHT suites I judged affected, and the full suite was
+    red. `partners/__tests__/token-drain.guard.test.ts` reads the team-management page SOURCE to pin
+    its design-token drain, and this PR moved that markup from page.tsx into
+    TeamManagementClient.tsx — so the guard was reading a thin wrapper with nothing to assert about
+    and failed on two names. The gate found it because it ran everything.
+  why_it_matters: >-
+    A file move has a blast radius that is not visible from the file being moved: anything reading
+    it BY PATH breaks, and a path reference does not show up in a type check or an import graph.
+    Choosing which suites to run is choosing which regressions to see. Cured by pointing the guard
+    at the file the markup now lives in, assertions untouched and mutant-verified still red; and by
+    running the whole suite, which is the only number quoted now.
 
 residuals: # the imperator's R-A and R-B, declared and NOT fixed here
   - id: R-A
