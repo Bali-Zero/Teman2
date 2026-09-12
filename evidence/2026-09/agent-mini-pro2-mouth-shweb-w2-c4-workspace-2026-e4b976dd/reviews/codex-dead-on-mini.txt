@@ -1,0 +1,8 @@
+# Codex Sol — seat unavailable on this host
+
+ok: false
+Not a missing review by choice: this seat cannot be run from Mini-Pro2.
+  acct1 → "workspace out of credits", WITH exit 0 (a zero exit carrying no review)
+  acct2 → tool-router timeout
+Both measured during PR #6277 and unchanged since; the cascade was recorded then and not retried
+here. The council quorum for this pack is kimi-code/k3 + tp1-qwen3.8-max, both ok:true.

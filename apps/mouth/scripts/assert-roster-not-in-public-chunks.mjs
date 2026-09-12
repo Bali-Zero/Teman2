@@ -1,5 +1,14 @@
-// Assert that no JS chunk loaded by a PUBLIC route contains a roster member who
-// is excluded from public pages.
+// Assert that NO JS chunk — public route, internal route or shared — contains a
+// roster member the owner excluded from public pages.
+//
+// This started as a public-route check with the `(workspace)` routes skipped "by
+// design", on the reasoning that those pages are authenticated and the roster is
+// what they exist to show. That reasoning was wrong about one thing: the PAGE is
+// behind auth, the CHUNK is not. A Next static asset is served from the public CDN
+// path with no session, so
+// `curl https://balizero.com/_next/static/chunks/app/(workspace)/lkpm/page-*.js`
+// returned 200 and an excluded name to an anonymous caller. So the skip is gone and
+// the scan covers everything.
 //
 // WHY A SCRIPT AND NOT A UNIT TEST. The defect this guards lived only in the
 // BUILT output: the rendered HTML was clean, every page test and every browser
@@ -12,33 +21,92 @@
 // HOW TO RUN
 //   npm run build && node scripts/assert-roster-not-in-public-chunks.mjs
 //
-// NOT YET WIRED INTO `npm run build`. Doing that edits package.json, which the
-// PR introducing this file is forbidden to touch (it is on the frozen list).
-// Named as a remainder in the evidence pack rather than left implicit — the
-// script is useless if nothing runs it, and saying so is the honest state.
+// WIRED INTO `npm run build` (apps/mouth/package.json, scripts.build), so every
+// build runs it. It was introduced unwired, because the PR that added it could not
+// touch package.json; a guard nothing runs is not a guard, and that gap is now closed.
+
+// WHAT THIS GUARD DOES NOT SEE, said here rather than only in a PR body.
+//
+// It scans two surfaces: the built JS chunks, and the filenames under `public/`.
+// It does NOT scan the prerendered server payloads in `.next/server/app` — and
+// those DO contain staff data for the workspace routes, because those pages now
+// receive it as server props. Both refuter seats raised it, correctly.
+//
+// It is deliberate. Those payloads are reachable only through the route, and the
+// workspace routes are redirected off the public domain by `src/proxy.ts`
+// (`INTERNAL_ROUTES`) — measured: an anonymous request for /lkpm, /team-management
+// or /clients on the public host answers 301, including with the RSC and prefetch
+// headers and with `?_rsc=`. What remains is that the app domain itself has no
+// SERVER-side session gate: `(workspace)/layout.tsx` is "use client" and gates with
+// GateScreen after the payload has already been sent. That is a security design
+// question about the whole workspace, not about one table, and it is escalated as
+// its own piece of work. Extending this guard to that surface before that decision
+// would mean writing an allowlist that encodes the very thing under review.
+//
+// So: chunks and public files, absolutely. Server payloads, on purpose, not yet.
 
 import fs from "node:fs";
 import path from "node:path";
 
 const CHUNK_DIR = path.join(".next", "static", "chunks");
-// The public surfaces. (workspace)/* is deliberately absent: those are
-// authenticated internal pages and the roster is what they exist to show.
-const PUBLIC_ROUTE_CHUNK_PREFIXES = [
-  "app/(blog)",
-  "app/(marketing)",
-  "app/(book)",
-  "app/v2",
-  "app/page",
-  "app/layout",
-];
+// Keep in step with PUBLIC_EXCLUDED_SLUGS / PUBLIC_EXCLUDED_NAME_ALIASES in
+// src/lib/team-public-listing.ts: a person added to the exclusion there and not
+// here is a person this guard will not look for, and it will pass in silence.
 const FORBIDDEN = /faisha|faysha|sahira/i;
+
+/**
+ * ONE entry, and it is TIME-BOXED. It is not a design decision — it is a debt with
+ * a name and a closing PR.
+ *
+ * `app/(workspace)/clients/` still hardcodes the tax-consultant address that
+ * contains an excluded person's name, because this PR was split: another window's
+ * #6329 and #6307 rewrote `clients/[id]/page.tsx` and `components/TaxTab.tsx` while
+ * this branch had relocated their contents, and by contract the merged work wins.
+ * Redoing that half on top of theirs is **C4b**, from a fresh main — and C4b
+ * REMOVES this entry, taking the list back to empty. If you are reading this and
+ * C4b has merged, the entry is stale and should be deleted.
+ *
+ * It is a narrower exposure than the one this guard exists for: `/clients` is in
+ * `INTERNAL_ROUTES` (src/proxy.ts), so the public domain answers 301 for it —
+ * measured — which is exactly the protection `/lkpm` was missing and now has. The
+ * chunk is still fetchable by path on the app domain, which is why this is debt
+ * rather than an accepted design.
+ *
+ * `client-roster-boundary.test.ts` fails if this list contains anything other than
+ * this one prefix, so a second exception cannot be slipped in beside it.
+ */
+const ALLOWED_CHUNK_PREFIXES = ["app/(workspace)/clients/"];
+
+/** Where the app's public static files live — served with no session, like chunks. */
+const PUBLIC_DIR = "public";
+
+/**
+ * Portraits under `public/` whose FILENAME is an excluded person's name.
+ *
+ * These are a real, currently-accepted public exposure, listed here so that it is a
+ * DECISION and not an omission: `curl https://balizero.com/static/team/sahira.jpg`
+ * returns 200 today, and the URL itself is the name. No page links them any more —
+ * that was the earlier work — but the bytes stay fetchable by anyone who guesses
+ * the path.
+ *
+ * They are not deleted here because internal surfaces still use them, so removing
+ * them or moving them behind an authenticated route handler is the owner's call,
+ * not a presentation change's. It is already with the owner.
+ *
+ * The point of the list: a THIRD excluded person's portrait added to `public/` will
+ * fail this build instead of quietly joining them.
+ */
+const ACCEPTED_PUBLIC_FILES = [
+  "static/team/faisha.jpg",
+  "static/team/sahira.jpg",
+];
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
   for (const entry of fs.readdirSync(dir)) {
     const full = path.join(dir, entry);
     if (fs.statSync(full).isDirectory()) walk(full, out);
-    else if (entry.endsWith(".js")) out.push(full);
+    else if (/\.[cm]?js$/.test(entry)) out.push(full);
   }
   return out;
 }
@@ -53,17 +121,12 @@ if (all.length === 0) {
 }
 
 const rel = (f) => path.relative(CHUNK_DIR, f).split(path.sep).join("/");
-const isInternalRoute = (r) => r.startsWith("app/(workspace)");
-// A shared chunk (no `app/` prefix) is loaded by everything, so it counts as public.
-const isPublic = (r) =>
-  !isInternalRoute(r) &&
-  (!r.startsWith("app/") ||
-    PUBLIC_ROUTE_CHUNK_PREFIXES.some((p) => r.startsWith(p)));
+const isAllowed = (r) => ALLOWED_CHUNK_PREFIXES.some((p) => r.startsWith(p));
 
 const offenders = [];
 for (const file of all) {
   const r = rel(file);
-  if (!isPublic(r)) continue;
+  if (isAllowed(r)) continue;
   const body = fs.readFileSync(file, "utf8");
   const hit = body.match(FORBIDDEN);
   if (hit) offenders.push(`${r} (matched ${JSON.stringify(hit[0])})`);
@@ -71,7 +134,7 @@ for (const file of all) {
 
 if (offenders.length > 0) {
   console.error(
-    "ROSTER_CHUNK_ASSERT FAILED — a public chunk carries an excluded roster member:",
+    "ROSTER_CHUNK_ASSERT FAILED — a chunk carries an excluded roster member:",
   );
   for (const o of offenders) console.error("  " + o);
   console.error(
@@ -82,9 +145,60 @@ if (offenders.length > 0) {
   process.exit(1);
 }
 
-const internal = all.filter((f) => isInternalRoute(rel(f))).length;
+// ── Second surface: public static FILES, whose names are also URLs ──────────
+// The chunk scan above cannot see these: they are not chunks. But they sit on the
+// same sessionless CDN path, so leaving them unexamined is how "no public asset
+// carries these names" became an overstatement in an earlier PR body.
+const publicFiles = [];
+(function walkPublic(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    if (fs.statSync(full).isDirectory()) walkPublic(full);
+    else
+      publicFiles.push(
+        path.relative(PUBLIC_DIR, full).split(path.sep).join("/"),
+      );
+  }
+})(PUBLIC_DIR);
+
+if (publicFiles.length === 0) {
+  console.error(
+    `ROSTER_CHUNK_ASSERT: no files found under ${PUBLIC_DIR} — refusing to report ` +
+      `success on an empty scan.`,
+  );
+  process.exit(1);
+}
+
+const acceptedLower = ACCEPTED_PUBLIC_FILES.map((f) => f.toLowerCase());
+const unexpectedPublic = publicFiles.filter(
+  // Compared lowercased on BOTH sides: on a case-sensitive filesystem a
+  // `Faisha.jpg` would match FORBIDDEN and miss the accepted list, failing the
+  // build for a file that is in fact the declared one.
+  (f) => FORBIDDEN.test(f) && !acceptedLower.includes(f.toLowerCase()),
+);
+if (unexpectedPublic.length > 0) {
+  console.error(
+    "ROSTER_CHUNK_ASSERT FAILED — a public static file is named after an excluded " +
+      "roster member and is not on the accepted list:",
+  );
+  for (const f of unexpectedPublic) console.error("  " + f);
+  console.error(
+    "\nEither remove it, put it behind an authenticated route, or add it to " +
+      "ACCEPTED_PUBLIC_FILES with the reason — so the exposure is a decision.",
+  );
+  process.exit(1);
+}
+
+const acceptedPresent = ACCEPTED_PUBLIC_FILES.filter((f) =>
+  publicFiles.includes(f),
+);
+
+const skipped = all.filter((f) => isAllowed(rel(f))).length;
 console.log(
-  `ROSTER_CHUNK_ASSERT OK: scanned ${all.length} chunks, ` +
-    `${all.length - internal} public — none carries an excluded roster member ` +
-    `(${internal} internal (workspace) chunks skipped by design).`,
+  `ROSTER_CHUNK_ASSERT OK: scanned ${all.length} chunks, ${skipped} skipped by ` +
+    `the declared time-boxed exception (${ALLOWED_CHUNK_PREFIXES.join(", ") || "none"}) — ` +
+    `no other chunk carries an excluded roster member. ` +
+    `Public files: ${publicFiles.length} scanned, ${acceptedPresent.length} named ` +
+    `after an excluded member and ACCEPTED by declaration (${acceptedPresent.join(", ") || "none"}).`,
 );

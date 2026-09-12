@@ -18,6 +18,7 @@ import pytest
 from backend.db.migration_base import split_migration_sql
 from backend.services.compliance.obligations_register import (
     ATTRIBUTES,
+    ONE_TIME_REVIEW_NOTE,
     CatalogError,
     ClientProfile,
     DueRule,
@@ -50,6 +51,25 @@ def catalog() -> dict[str, ObligationRule]:
 def _synthetic(frequency: str, day: int = 10, after: int = 1, basis: str = "fiscal", month=None):
     due = DueRule(frequency, day, month, after, "none", basis)
     return ObligationRule("synthetic", "n", "a", "s", False, (), due)
+
+
+def _one_time(fixed_date: date | None = None, reason: str | None = None) -> ObligationRule:
+    """A one_time rule with nothing in applies_if, so it applies to every profile."""
+    due = DueRule("one_time", None, None, 0, "none", "fiscal", fixed_date)
+    return ObligationRule(
+        "synthetic_one_time", "n", "a", "s", False, (), due, reason, trigger="when it triggers"
+    )
+
+
+def _rule_file(tmp_path: Path, due: str, trigger: bool) -> Path:
+    """A one-rule catalog whose `due` mapping is given verbatim (trigger iff unscheduled)."""
+    path = tmp_path / "rule.yaml"
+    path.write_text(
+        "rules:\n  - id: some_rule\n    name: n\n    authority: a\n    legal_source: s\n"
+        + ("    trigger: t\n" if trigger else "")
+        + f"    due: {due}\n"
+    )
+    return path
 
 
 def _catalog_file(tmp_path: Path, predicate: str, extra: str = "") -> Path:
@@ -381,12 +401,137 @@ def test_a_next_business_day_rule_is_flagged_for_an_undecreed_year(catalog):
     assert proposed.needs_review_reason == "holiday calendar for 2027 not loaded"
 
 
-def test_one_time_and_event_rules_produce_nothing(catalog):
-    platform = ClientProfile(company_type="FOREIGN_PLATFORM", serves_indonesian_users_online=True)
-    assert applies(catalog["pse_registration"], platform)
-    assert due_dates(catalog["pse_registration"], platform, date(2026, 9, 11), 365) == []
-    proposed = {p.rule_id for p in propose(catalog.values(), platform, date(2026, 9, 11), 365)}
-    assert not proposed & {"pse_registration", "pmse_vat_assessment", "wajib_lapor_ketenagakerjaan"}
+# -- one_time triggers and the optional fixed statutory date (PR M2) -------------------------
+# Before M2 these rules applied to a profile and produced nothing, so the three obligations the
+# compliance offer actually sells never reached the reviewer queue. One "once" proposal per
+# applicable rule now does, dated the generation date unless the catalog states a fixed_date.
+
+PLATFORM = ClientProfile(
+    company_type="FOREIGN_PLATFORM",
+    serves_indonesian_users_online=True,
+    pse_registered=False,
+    pmse_vat_appointed=False,
+)
+GEN = date(2026, 9, 11)
+
+
+def test_event_rules_still_schedule_nothing(catalog):
+    """Per-person and per-event dates are in no profile attribute; only the trigger is stated."""
+    expat = ClientProfile(
+        company_type="PT_PMA",
+        has_employees=True,
+        has_foreign_employees=True,
+        pse_registered=True,
+    )
+    event_ids = {"pse_data_update", "rptka_imta_expat", "wajib_lapor_ketenagakerjaan"}
+    for rule_id in event_ids:
+        rule = catalog[rule_id]
+        assert rule.due.frequency == "event"
+        assert applies(rule, expat), rule_id
+        assert due_dates(rule, expat, GEN, 365) == []
+    assert not {p.rule_id for p in propose(catalog.values(), expat, GEN, 365)} & event_ids
+
+
+def test_one_time_rules_reach_the_queue_once_with_the_generation_date(catalog):
+    """The M2 observation: the two PSE/PMSE obligations a foreign platform owes are proposed."""
+    once = [p for p in propose(catalog.values(), PLATFORM, GEN, 90) if p.period_key == "once"]
+    assert [(p.rule_id, p.due_date) for p in once] == [
+        ("pmse_vat_assessment", GEN),
+        ("pse_registration", GEN),
+    ]
+    for proposal in once:  # the rule's own reason (M4 gave pmse one), then the M2 note
+        rule = catalog[proposal.rule_id]
+        assert rule.due.fixed_date is None
+        expected = ONE_TIME_REVIEW_NOTE
+        if rule.needs_review_reason:
+            expected = f"{rule.needs_review_reason}; {ONE_TIME_REVIEW_NOTE}"
+        assert proposal.needs_review_reason == expected
+    registered = replace(PLATFORM, pse_registered=True, pmse_vat_appointed=True)
+    assert not [p for p in propose(catalog.values(), registered, GEN, 90) if p.period_key == "once"]
+
+
+def test_halal_certification_reaches_a_pt_pma_queue_on_its_statutory_date(catalog):
+    """The catalog states the UMK deadline PP 42/2024 art. 160(2) sets, so it is not a placeholder.
+
+    M4 (#6336) confirmed 17 October 2026 against the PP text, so this proposal is the one case
+    where a one_time due date is a real deadline: the generation-date note must NOT be added, and
+    the rule's own sector caveat must survive alone.
+    """
+    rule = catalog["halal_certification"]
+    assert rule.due.fixed_date == date(2026, 10, 17)
+    [once] = propose([rule], PMA, GEN, 30)
+    assert (once.rule_id, once.period_key) == ("halal_certification", "once")
+    assert once.due_date == date(2026, 10, 17)
+    assert once.needs_review_reason == rule.needs_review_reason
+    assert ONE_TIME_REVIEW_NOTE not in (once.needs_review_reason or "")
+
+
+def test_the_one_time_note_appends_to_the_rules_own_reason():
+    [once] = propose([_one_time(reason="sector is not a profile attribute")], PMA, GEN, 0)
+    assert (once.period_key, once.due_date) == ("once", GEN)
+    assert once.needs_review_reason == f"sector is not a profile attribute; {ONE_TIME_REVIEW_NOTE}"
+
+
+def test_a_one_time_proposal_is_identical_whatever_the_horizon(catalog):
+    """period_key "once" is the idempotence key: same tuple, so UNIQUE blocks the second row."""
+    short = [p for p in propose(catalog.values(), PLATFORM, GEN, 1) if p.period_key == "once"]
+    long = [p for p in propose(catalog.values(), PLATFORM, GEN, 400) if p.period_key == "once"]
+    assert short == long
+    assert len(short) == 2
+
+
+def test_a_fixed_date_at_or_after_the_generation_date_becomes_the_due_date():
+    rule = _one_time(fixed_date=date(2026, 10, 17), reason="sector not modelled")
+    [once] = propose([rule], PMA, GEN, 1)
+    assert (once.due_date, once.needs_review_reason) == (date(2026, 10, 17), "sector not modelled")
+    [same_day] = propose([_one_time(fixed_date=GEN)], PMA, GEN, 1)
+    assert (same_day.due_date, same_day.needs_review_reason) == (GEN, None)
+
+
+def test_a_fixed_date_already_past_keeps_the_obligation_and_says_it_passed():
+    """A missed statutory deadline is the one the reviewer most needs to see, not one to drop."""
+    [once] = propose([_one_time(fixed_date=date(2026, 8, 31), reason="sector")], PMA, GEN, 1)
+    assert once.due_date == GEN
+    assert once.needs_review_reason == "sector; fixed statutory date 2026-08-31 already passed"
+
+
+def test_load_catalog_accepts_a_fixed_date_on_a_one_time_rule(tmp_path):
+    bare = "{frequency: one_time, months_after_period_end: 0, roll: none}"
+    dated = bare[:-1] + ", fixed_date: 2026-10-17}"
+    quoted = bare[:-1] + ', fixed_date: "2026-10-17"}'
+    assert load_catalog(_rule_file(tmp_path, bare, True))[0].due.fixed_date is None
+    assert load_catalog(_rule_file(tmp_path, dated, True))[0].due.fixed_date == date(2026, 10, 17)
+    assert load_catalog(_rule_file(tmp_path, quoted, True))[0].due.fixed_date == date(2026, 10, 17)
+
+
+@pytest.mark.parametrize(
+    ("due", "trigger"),
+    [
+        ("{frequency: monthly, day: 10, months_after_period_end: 1, roll: none, fixed_date: 2026-10-17}", False),
+        ("{frequency: annual, day: 31, months_after_period_end: 4, roll: none, fixed_date: 2026-10-17}", False),
+        ("{frequency: event, months_after_period_end: 0, roll: none, fixed_date: 2026-10-17}", True),
+    ],
+)  # fmt: skip
+def test_load_catalog_rejects_a_fixed_date_on_a_rule_that_would_never_read_it(
+    tmp_path, due, trigger
+):
+    with pytest.raises(CatalogError, match="fixed_date is only for one_time rules"):
+        load_catalog(_rule_file(tmp_path, due, trigger))
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        ("17-10-2026", "fixed_date must be YYYY-MM-DD"),
+        ("20261017", "fixed_date must be YYYY-MM-DD"),
+        ("2026-10", "fixed_date must be YYYY-MM-DD"),
+        ("2026-02-30", "impossible fixed_date"),
+    ],
+)
+def test_load_catalog_rejects_a_malformed_fixed_date(tmp_path, raw, message):
+    due = f'{{frequency: one_time, months_after_period_end: 0, roll: none, fixed_date: "{raw}"}}'
+    with pytest.raises(CatalogError, match=message):
+        load_catalog(_rule_file(tmp_path, due, True))
 
 
 def test_propose_is_sorted_and_carries_review_reasons(catalog):
@@ -397,6 +542,8 @@ def test_propose_is_sorted_and_carries_review_reasons(catalog):
         (p.rule_id, p.period_key, p.due_date) for p in proposed
     }
     for p in proposed:
+        if catalog[p.rule_id].due.frequency == "one_time":
+            continue  # a "once" proposal carries the M2 note too; pinned by its own tests above
         assert p.needs_review_reason == catalog[p.rule_id].needs_review_reason
 
 
@@ -564,6 +711,32 @@ async def test_upsert_proposals_is_idempotent_and_never_resets_reviewed_rows(moc
     assert "ON CONFLICT (client_id, rule_id, period_key) DO NOTHING" in sql
     assert "DO UPDATE" not in sql
     assert (client_id, rule_ids) == (7, [p.rule_id for p in proposals])
+
+
+async def test_a_re_run_inserts_no_one_time_row_for_the_same_client(mock_db_pool, catalog):
+    """ON CONFLICT DO NOTHING plus the stable "once" key: the second run writes nothing."""
+    pool, conn = mock_db_pool
+    first = propose(catalog.values(), PLATFORM, GEN, 90)
+    # A day later the undated one_time proposals carry a DIFFERENT due_date (the new generation
+    # date) and the same "once" key, which is the half of idempotence the engine owns: the key the
+    # UNIQUE constraint matches on cannot drift with the clock. The constraint itself is pinned by
+    # test_migration_309_shape_and_rollback (the DDL) and exercised end to end by the router's
+    # test_generate_persists_and_is_idempotent; no live database is reachable from this suite.
+    later = propose(catalog.values(), PLATFORM, date(2026, 9, 12), 90)
+    assert [p.period_key for p in later] == [p.period_key for p in first]
+    assert [p.due_date for p in later] != [p.due_date for p in first]
+    conn.fetch.side_effect = [[{"id": n} for n in range(len(first))], []]
+    repo = ObligationsRepository(pool)
+    assert await repo.upsert_proposals(7, first) == len(first)
+    assert await repo.upsert_proposals(7, later) == 0
+    sql, client_id, rule_ids, period_keys, due_dates_arg, _reasons = conn.fetch.call_args.args
+    assert "ON CONFLICT (client_id, rule_id, period_key) DO NOTHING" in sql
+    assert (client_id, period_keys.count("once")) == (7, 2)
+    assert {r for r, k in zip(rule_ids, period_keys, strict=True) if k == "once"} == {
+        "pse_registration",
+        "pmse_vat_assessment",
+    }
+    assert all(d >= GEN for d in due_dates_arg)
 
 
 async def test_upsert_with_no_proposals_skips_the_database(mock_db_pool):

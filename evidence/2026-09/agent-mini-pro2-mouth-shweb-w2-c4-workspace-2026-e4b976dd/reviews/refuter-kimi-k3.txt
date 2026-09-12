@@ -1,0 +1,67 @@
+# Refuter — Kimi K3 on the C4 diff
+
+seat: kimi-code/k3
+ok: true
+verdict: GO-WITH-CONDITIONS (1 MAJOR, 4 MINOR, 2 NIT)
+
+## Verbatim
+
+• # Adversarial review — roster-directory refactor
+
+  ## Findings
+
+  **1. MAJOR — the names still reach anonymous browsers; the guard's scope can't see it**
+  File: `apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs`
+  Quoted: `const CHUNK_DIR = path.join(".next", "static", "chunks");`
+  And the removed map, quoted from the diff: `sahira: "/static/team/sahira.jpg",` / `faisha: "/static/team/faisha.jpg",`
+  Scenario: the portraits live under `public/`, served from the same public CDN path as the chunks, with no session. `curl https://balizero.com/static/team/sahira.jpg` returns 200 today, and the URL itself *is* the excluded name. The PR narrative is "the exclusion is now real because no public asset carries these names," but the guard only walks `.next/static/chunks` — it cannot observe the one public surface where the names demonstrably still sit. The measured claim "0 carrying either name" is true only of the directory the script chose to look at.
+  Smallest fix: either move internal portraits out of `public/` behind an authenticated route handler, or state explicitly in the guard's header comment and PR body that `public/static/team/*` is accepted exposure out of scope — and add a `public/` filename scan to the guard so the acceptance is a decision, not an omission.
+
+  **2. MINOR — prerendered flight/HTML is unguarded**
+  File: `apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs`
+  Quoted: `function walk(dir, out = []) { if (!fs.existsSync(dir)) return out;` (walking only `CHUNK_DIR`)
+  Scenario: the three wrappers use no dynamic server API, so Next will try to prerender them; the serialized `taxConsultants` / photo map lands in `.next/server/app/(workspace)/**` RSC/HTML payloads. Those route responses are gated by auth today, but the guard gives zero signal if any serving path (CDN HTML caching, a future `output` change, an ISR misconfiguration) ever exposes them — the build stays green while "Faisha" sits in a served payload. The chunk scan is necessary, not sufficient.
+  Smallest fix: extend the walk to `.next/server/app` and match the same `FORBIDDEN` regex there (cheap; same script, same build step).
+
+  **3. MINOR — `roster-directory.ts` is server-only by convention, not by enforcement**
+  File: `apps/mouth/src/lib/workspace/roster-directory.ts`
+  Quoted: `import { TEAM_ROSTER } from "@/data/team-roster";`
+  Scenario: there is no `import "server-only"`. A future import of this module from a `"use client"` file bundles the module into that chunk; webpack tree-shaking can drop the `teamPhotoMap`/roster path while keeping `TAX_CONSULTANTS`, and if a caller only pulls the photo-map type or a non-excluded slice, the build can go green while staff data crosses the boundary — the regex only covers `faisha|faysha|sahira`, not the other ~20 people. The tripwire test runs in CI, not in `scripts.build`.
+  Smallest fix: add `import "server-only";` as the first line of `roster-directory.ts` so a boundary violation fails the build itself.
+
+  **4. MINOR — the derivation assumes `slug === email-prefix`, an assumption this very file disproves**
+  File: `apps/mouth/src/lib/workspace/roster-directory.ts`
+  Quoted: `if (m.photo) out[m.slug] = m.photo;` versus the lookup in `TeamManagementClient.tsx`: `const prefix = email.split("@")[0].toLowerCase();`
+  Scenario: the hand-written map needed `ari.firda` and `dewa.ayu` aliases precisely because slug≠prefix happens in this organization. The four people the derivation "gains" (zainal, heru, ruslana, vino) only actually render if each one's roster slug equals their email prefix; if any differs, the claimed improvement silently no-ops (a blank, exactly as before) and nobody will notice, because there is no test tying roster slugs to email prefixes.
+  Smallest fix: a unit test asserting every roster entry's slug equals its email prefix or is covered by `EMAIL_PREFIX_ALIASES` — turns the silent no-op into a build-time failure.
+
+  **5. NIT — the `[id]` wrapper's comment contradicts the code**
+  File: `apps/mouth/src/app/(workspace)/clients/[id]/page.tsx`
+  Quoted: `// forwards nothing and deliberately holds no data of its own.` followed immediately by `return <ClientDetailClient taxConsultants={taxConsultants()} />;`
+  Scenario: the comment says the wrapper forwards nothing; it forwards a staff table. The next reader trimming "obviously dead" server data may delete the prop on the comment's authority and break the type contract.
+  Smallest fix: reword to "forwards no *route* params; the only data it holds is the consultant table."
+
+  **6. MINOR — the `src={...}` call site is shown removed but never shown added**
+  File: `apps/mouth/src/app/(workspace)/team-management/TeamManagementClient.tsx`
+  Quoted: `-                          src={getTeamPhoto(member.email)!}` — the hunk (`@@ -269,9 +261,9 @@`) shows this `-` line with no `+` counterpart in the presented diff.
+  Scenario: `getTeamPhoto` now takes two arguments; if this second call site kept the one-argument call, `tsc --noEmit` fails. The claimed build exit 0 implies it was updated, but the diff as presented does not demonstrate it, and the render now calls the function twice with a non-null assertion — a shape where one call can be updated and the other missed forever.
+  Smallest fix: publish the full hunk, and hoist `const photo = getTeamPhoto(teamPhotos, member.email)` once per member, deleting the `!`.
+
+  **7. NIT — required-prop blast radius is asserted, not shown**
+  File: `apps/mouth/src/app/(workspace)/clients/[id]/components/TaxTab.tsx`
+  Quoted: `taxConsultants: TaxConsultantOption[];` (required, in `TaxTab`'s props)
+  Scenario: exactly one `TaxTab` call site is updated in the diff (`ClientDetailClient.tsx`). Any other render — a test, a story, a second host — now fails typecheck. Build exit 0 covers app code, not necessarily the test/story files if they are excluded from the build tsconfig.
+  Smallest fix: run `npm run typecheck` and the TaxTab test suite and quote the result in the evidence pack.
+
+  ## Checks that came back clean
+
+  - **Tax list "byte-identical" claim: verified true.** The five `{value, label}` rows in `roster-directory.ts` match the removed `lkpm` and `TaxTab` constants exactly, same order, including the constraint-canonical `faisha.tax@` spelling. Moving rather than deriving was the right call given the `faysha.tax`/`faisha.tax` and `tax@`/`veronika.tax@` disagreements with migration 093.
+  - **Type-only imports on the client side** (`import type { TaxConsultantOption }` / `import type { TeamPhotoMap }`) are erased at compile time — no leak path through them.
+  - **The guard itself**: empty allowlist makes `isAllowed` always false; the empty-scan refusal (`if (all.length === 0)`) survives the edit; the regex is a string-literal match, which webpack minification does not evade; it scans *all* files under chunks, including any source maps. No bypass found within its declared scope.
+  - **Server/client split**: the old pages were `"use client"`, so they could not have exported `metadata`, `generateStaticParams`, or route-segment config — nothing is lost there; `useParams`/`useSearchParams` work identically one wrapper down; error/loading boundaries are untouched.
+  - **No behaviour lost in the photo map**: the derived map is a strict superset of the hand-written one (all 14 exact matches + both aliases retained), so no previously-rendering photo regresses; the four additions are the only delta, subject to finding 4.
+
+  ## Verdict
+
+  **GO-WITH-CONDITIONS** — the chunk leak is genuinely closed and the guard is sound within its scope, but the "no public asset carries these names" claim is overstated while the portraits sit in `public/` (finding 1), and `server-only` plus the flight-payload scan (findings 2–3) are cheap hardening that should land before this is called done.
+
