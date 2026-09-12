@@ -321,6 +321,13 @@ def test_profile_from_rows_missing_custom_fields_gives_defaults(company_type, ex
     assert profile == ClientProfile(company_type=expected)
 
 
+@pytest.mark.parametrize("raw", ["\u00b2", "\u00bd", "12x", " ", "-3"])
+def test_int_attributes_drop_a_non_decimal_string_instead_of_raising(raw):
+    """isdigit() accepts "\u00b2" but int("\u00b2") raises: that ValueError reached the API as a 500."""
+    company = {"company_type": "PT PMA", "custom_fields": {"employee_count": raw}}
+    assert profile_from_rows(None, company) == ClientProfile(company_type="PT_PMA")
+
+
 def test_profile_from_rows_reads_json_text_and_drops_malformed_values():
     company = {
         "company_type": "PT PMA",

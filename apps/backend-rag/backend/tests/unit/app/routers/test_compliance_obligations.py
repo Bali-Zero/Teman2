@@ -773,6 +773,7 @@ def test_patch_invalid_company_type_is_422(store: Store) -> None:
         {},
         {"fiscal_year_end": "31-03"},
         {"employee_count": -2},
+        {"employee_count": "\u00b2"},  # isdigit() true, int() raises: used to be a 500
         {"pkp": "maybe"},
         {"investment_stage": "pre-seed"},
     ],

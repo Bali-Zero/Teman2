@@ -382,7 +382,10 @@ def _as_int(value: Any) -> int | None:
         return int(value)
     if isinstance(value, float) and value.is_integer() and value >= 0:
         return int(value)
-    if isinstance(value, str) and value.strip().isdigit():
+    # isdecimal(), NOT isdigit(): "\u00b2".isdigit() is True but int("\u00b2") raises, which turned a
+    # malformed custom_fields value into a 500 (Codex spalla, PR M3). Every isdecimal()
+    # string — including Arabic-Indic digits — int() parses.
+    if isinstance(value, str) and value.strip().isdecimal():
         return int(value.strip())
     return None
 
