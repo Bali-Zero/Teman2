@@ -30,6 +30,13 @@ decisions:
       locators were already correct. The prodlike suite is a direct consumer of the
       label and is edited in the same PR although outside the brief's file list —
       recorded as a CONFIRMED dissent, not hidden.
+  - id: D-redact
+    decision: >-
+      The required Detect Secrets check flagged the Codex council transcript for a
+      quoted test fixture (access_token: "synthetic-token", four occurrences copied
+      from page.test.tsx). The value is a synthetic fixture, not a credential; the
+      four occurrences are replaced by "[redacted synthetic fixture value]" in the
+      transcript. Nothing else in either transcript changed; the verdict lines stand.
   - id: D-logo
     decision: >-
       The first council round (both seats, VERDICT DEFECT) found the hero used

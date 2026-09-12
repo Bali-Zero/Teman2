@@ -3840,7 +3840,7 @@ nl -ba apps/mouth/src/app/portal/login-upgraded/page.test.tsx | sed -n '1,420p'"
    146	        `/portal/login-upgraded?redirect=${encodeURIComponent(redirect)}`,
    147	      );
    148	      mockLogin.mockResolvedValue({
-   149	        access_token: "synthetic-token",
+   149	        access_token: "[redacted synthetic fixture value]",
    150	        token_type: "Bearer",
    151	        user: {
    152	          id: "client-1",
@@ -3893,7 +3893,7 @@ nl -ba apps/mouth/src/app/portal/login-upgraded/page.test.tsx | sed -n '1,420p'"
    199	      "/portal/login-upgraded?redirect=%2Fportal%2Fbilling",
    200	    );
    201	    mockLogin.mockResolvedValue({
-   202	      access_token: "synthetic-token",
+   202	      access_token: "[redacted synthetic fixture value]",
    203	      token_type: "Bearer",
    204	      user: {
    205	        id: "partner-user-1",
@@ -5523,7 +5523,7 @@ apps/mouth/public/assets/logo/balizero-logo-clean.png: PNG image data, 512 x 512
    186	        `/portal/login-upgraded?redirect=${encodeURIComponent(redirect)}`,
    187	      );
    188	      mockLogin.mockResolvedValue({
-   189	        access_token: "synthetic-token",
+   189	        access_token: "[redacted synthetic fixture value]",
    190	        token_type: "Bearer",
    191	        user: {
    192	          id: "client-1",
@@ -5576,7 +5576,7 @@ apps/mouth/public/assets/logo/balizero-logo-clean.png: PNG image data, 512 x 512
    239	      "/portal/login-upgraded?redirect=%2Fportal%2Fbilling",
    240	    );
    241	    mockLogin.mockResolvedValue({
-   242	      access_token: "synthetic-token",
+   242	      access_token: "[redacted synthetic fixture value]",
    243	      token_type: "Bearer",
    244	      user: {
    245	        id: "partner-user-1",
