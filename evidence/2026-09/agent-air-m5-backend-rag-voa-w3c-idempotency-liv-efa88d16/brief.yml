@@ -1,0 +1,92 @@
+gear: 2
+task_id: voa-w3c-idempotency-live-required
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/voa-w3c-idempotency-live-required
+gate_class: opus
+l_level: L2
+objective: >-
+  GARUDA VOA window W3C, concern 2 of 4: `Idempotency-Key` is `required: true`
+  in the frozen contract and `required: false` in the schema the deployed app
+  serves. Measured on `origin/main` a5ddcd0d1b: the frozen
+  `components.parameters.IdempotencyKey` declares `required: true` and ten
+  mutating operations reference it (every one except `receivePaymentWebhook`,
+  which the payment PROVIDER calls); `main_api.app.openapi()` marked all ten
+  `required: false`, because FastAPI infers requiredness from the handler
+  signature and every one of them declares an optional `Header`. So the
+  contract half of this concern needed NO change — the frozen file already
+  says the right thing — and the live half was a documentation lie: each of
+  the five router families already refuses a missing key with the contract's
+  own 400 IDEMPOTENCY_KEY_REQUIRED envelope. The cure is therefore a scoped
+  transform of the GENERATED schema, not a signature change.
+scope:
+  - >-
+    apps/backend-rag/backend/app/routers/garuda_voa_public.py — new
+    `mark_idempotency_key_required()` plus its operation set, sibling of the
+    existing `strip_unreachable_validation_errors()`.
+  - >-
+    apps/backend-rag/backend/app/main_api.py and
+    apps/backend-rag/backend/app/setup/app_factory.py — chain the new
+    transform onto `app.openapi` in BOTH factories, composed with the existing
+    one, never replacing it.
+  - >-
+    apps/backend-rag/backend/tests/app/routers/test_garuda_voa_openapi_parity.py
+    — remove the `_KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED` exemption and
+    pin real parity for all ten operations.
+constraints:
+  - >-
+    NO change to products/garuda-voa/contracts/openapi.yaml — it is already
+    correct, and the frozen contract is not this lane's to edit.
+  - >-
+    NO behaviour change. No handler signature moves to `Header(...)`: a
+    required Header makes FastAPI answer its own 422 for the absent header,
+    which is not what the contract promises (400 with a code), and remapping
+    it back would break the contract and re-sew it.
+  - NOT via `openapi_extra` — its merge concatenates `parameters` lists, so it
+    would DUPLICATE the parameter instead of overriding it (the documented
+    reason the exemption existed).
+  - No migration, no ledger row, no fly.toml, no .env*, no zantara_core.py.
+  - No PII in code, tests or this pack; no client data anywhere.
+acceptance:
+  - text: >-
+      WHERE the frozen contract declares `Idempotency-Key` required, THE SYSTEM
+      SHALL serve a generated schema that marks it required, for all ten
+      operations and for no others.
+    status: verified
+    probe: >-
+      `test_mutating_operation_declares_idempotency_key_required` (10 cases)
+      reads `required` from the FROZEN file rather than hardcoding it, then
+      asserts the live `main_api.app.openapi()` parameter is a header with
+      `required is True`; `test_operation_without_idempotency_key_did_not_acquire_one`
+      asserts `receivePaymentWebhook` and `previewMagicLink` acquired nothing.
+      Measured before the cure: all ten `required=false`. After: all ten true,
+      the two exempt operations still carry no such parameter.
+  - text: >-
+      WHERE the cure adjusts a generated parameter, THE SYSTEM SHALL overwrite
+      the entry FastAPI produced and SHALL NOT append a second one.
+    status: verified
+    probe: >-
+      `test_idempotency_key_is_declared_once_per_operation` asserts exactly one
+      `Idempotency-Key` parameter per operation after the wrap — the failure
+      shape `openapi_extra` would have produced, and one the requiredness
+      assertion cannot see because it reads the first match.
+  - text: >-
+      WHEN a request omits the header, THE SYSTEM SHALL still answer 400 with
+      code IDEMPOTENCY_KEY_REQUIRED — the documented requirement must be the
+      served one.
+    status: verified
+    probe: >-
+      `test_the_documented_requirement_is_the_served_one` calls DELETE
+      /api/visa/voa/eligibility-checks/{id} on the `main_api` singleton itself
+      (no body, so nothing Pydantic validates can answer first) and asserts 400
+      plus the code. Pre-existing behaviour tests
+      (`test_garuda_voa_public.py::test_missing_idempotency_key_returns_400`,
+      `::test_malformed_idempotency_key_is_rejected_same_as_missing`) are
+      unchanged and still pass, which is the no-behaviour-change evidence.
+pii: none
+local_evidence: >-
+  50 passed in test_garuda_voa_openapi_parity.py (29 before this change);
+  312 passed / 2 skipped in backend/tests/app/routers/ with 15 pre-existing
+  asyncpg UndefinedTableError setup errors, reproduced identically on the
+  untouched main checkout, so they are this laptop's missing local tables and
+  not this diff; ruff check and ruff format clean.

@@ -380,20 +380,55 @@ def test_not_yet_built_operations_are_counted_not_silently_ignored():
 # (`_STAFF_SESSION_SECURITY` / `_TRANSITION_OPENAPI_EXTRA` in
 # garuda_staff_router.py) and checked here as real parity, not a gap.
 #
-# The third — Idempotency-Key's `required` flag on assignPractice/
-# transitionPractice — genuinely CANNOT be corrected the same way:
-# `openapi_extra`'s merge (`fastapi.utils.deep_dict_update`) concatenates
-# `parameters` LISTS rather than matching by name, so adding a second
-# `Idempotency-Key` parameter entry to force `required: true` would
-# DUPLICATE the parameter, not override it — a worse defect than the one
-# being fixed. Declared and guarded here, same discipline as
-# `_KNOWN_STATUS_CODE_GAPS` above: NOT "fixed", NOT "safe to ignore",
-# a real documentation gap awaiting a genuine fix (a custom exception
-# handler that intercepts FastAPI's own 422 for a missing `Header(...,
-# required)` and remaps it to the contract's 400 IDEMPOTENCY_KEY_REQUIRED
-# shape, which is a real behavior change outside this round's scope).
-_KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED: frozenset[str] = frozenset(
-    {"assignPractice", "transitionPractice"}
+# The third — Idempotency-Key's `required` flag — used to be a declared
+# exemption here (`_KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED`, removed
+# 2026-09-12) covering assignPractice/transitionPractice. It is now real
+# parity for all TEN mutating operations the frozen contract governs, and the
+# reason the exemption existed is still the reason the cure is not
+# `openapi_extra`: that merge (`fastapi.utils.deep_dict_update`) concatenates
+# `parameters` LISTS rather than matching by name, so a second entry would
+# DUPLICATE the parameter instead of overriding it. The cure is
+# `garuda_voa_public.mark_idempotency_key_required`, chained onto
+# `app.openapi` in both factories next to `strip_unreachable_validation_errors`,
+# which OVERWRITES the `required` flag of the entry FastAPI already generated.
+# `test_idempotency_key_is_declared_once_per_operation` below is what keeps
+# the distinction honest.
+#
+# No behaviour changed with it: every family already answered a missing key
+# with the contract's 400 IDEMPOTENCY_KEY_REQUIRED before this
+# (`garuda_voa_public._valid_idempotency_key`,
+# `garuda_portal_auth._require_idempotency_key`, and the inline length check
+# in the orders/staff/documents routers) — the schema was the only liar.
+
+
+#: The operations the FROZEN contract marks `Idempotency-Key: required` —
+#: derived from the file, never transcribed. A hardcoded copy here and a
+#: hardcoded copy in the transform can agree with each other while both
+#: diverge from the contract, which is the one disagreement this module
+#: exists to catch (Sol round 1, finding 2).
+def _frozen_idempotency_key_operations() -> frozenset[str]:
+    frozen = _frozen_schema()
+    ops: set[str] = set()
+    for methods in frozen.get("paths", {}).values():
+        for op in methods.values():
+            if not isinstance(op, dict):
+                continue
+            for param in op.get("parameters", []) or []:
+                ref = param.get("$ref") if isinstance(param, dict) else None
+                if ref == "#/components/parameters/IdempotencyKey":
+                    ops.add(op["operationId"])
+    return frozenset(ops)
+
+
+_IDEMPOTENCY_KEY_REQUIRED_OPERATIONS: tuple[str, ...] = tuple(
+    sorted(_frozen_idempotency_key_operations())
+)
+
+#: Mutating GARUDA operations the contract deliberately leaves without the
+#: header. Named, so "absent" is a pinned decision and not an oversight.
+_NO_IDEMPOTENCY_KEY_OPERATIONS: tuple[str, ...] = (
+    "receivePaymentWebhook",
+    "previewMagicLink",
 )
 
 _STAFF_PRACTICE_OPERATIONS: tuple[str, ...] = (
@@ -424,29 +459,138 @@ def test_staff_operation_declares_staff_session_security(operation_id: str) -> N
     )
 
 
-@pytest.mark.parametrize("operation_id", ("assignPractice", "transitionPractice"))
-def test_staff_mutating_operation_declares_idempotency_key_parameter(
-    operation_id: str,
-) -> None:
-    """Guilt+innocence anchor for `_KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED`:
-    the parameter itself must be PRESENT (that much FastAPI already gets
-    right from the function signature) even though its `required` flag is a
-    declared, guarded gap."""
+def test_the_transform_covers_exactly_the_operations_the_contract_names() -> None:
+    """The production set and the frozen contract must be the SAME set.
+
+    Without this, adding a `$ref` to the contract (or dropping one) leaves the
+    transform and the parametrized tests below agreeing with each other and
+    both wrong — they would simply never visit the new operation. Compares the
+    live module constant against the set derived from the file.
+    """
+    from backend.app.routers.garuda_voa_public import _IDEMPOTENCY_KEY_REQUIRED_OPERATIONS as prod
+
+    frozen_ops = _frozen_idempotency_key_operations()
+    assert set(prod) == set(frozen_ops), (
+        f"transform covers {sorted(set(prod) - frozen_ops)} the contract does not, and "
+        f"misses {sorted(frozen_ops - set(prod))} the contract names"
+    )
+
+
+@pytest.mark.parametrize("operation_id", _IDEMPOTENCY_KEY_REQUIRED_OPERATIONS)
+def test_mutating_operation_declares_idempotency_key_required(operation_id: str) -> None:
+    """Frozen contract vs live schema on the ONE flag FastAPI cannot infer.
+
+    `openapi.yaml` declares `components.parameters.IdempotencyKey` with
+    `required: true` and every one of these ten operations references it, so
+    a live `required: false` is a documented lie about a header the handler
+    refuses to work without. Read from the FROZEN file rather than hardcoded
+    here, so the day the contract changes its mind this test follows it
+    instead of outvoting it.
+    """
+    frozen_required = _frozen_schema()["components"]["parameters"]["IdempotencyKey"]["required"]
+    assert frozen_required is True, (
+        "the frozen contract no longer declares Idempotency-Key required — "
+        "this suite's premise moved, update it deliberately"
+    )
     live_ops = _live_operations()
     live_path, live_method, _codes = live_ops[operation_id]
     schema = _main_api_module.app.openapi()
     op = schema["paths"][live_path][live_method.lower()]
     param = _idempotency_key_param(op)
     assert param is not None, f"{operation_id}: no Idempotency-Key parameter in live schema"
-    is_required = bool(param.get("required"))
-    if operation_id in _KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED:
-        assert not is_required, (
-            f"{operation_id}: Idempotency-Key is now documented as required — "
-            f"remove it from _KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED instead "
-            f"of leaving a stale exemption"
-        )
-    else:
-        assert is_required, f"{operation_id}: Idempotency-Key must be required"
+    assert param.get("in") == "header", f"{operation_id}: Idempotency-Key is not a header parameter"
+    assert bool(param.get("required")) is True, (
+        f"{operation_id}: live Idempotency-Key required={param.get('required')!r}, "
+        f"frozen contract says required=true"
+    )
+
+
+@pytest.mark.parametrize("operation_id", _IDEMPOTENCY_KEY_REQUIRED_OPERATIONS)
+def test_idempotency_key_is_declared_once_per_operation(operation_id: str) -> None:
+    """The cure must OVERWRITE the generated parameter, never append a second.
+
+    This is the failure `openapi_extra` would have produced — two
+    `Idempotency-Key` entries, one required and one not — and it is invisible
+    to the test above, which reads the first match.
+    """
+    live_ops = _live_operations()
+    live_path, live_method, _codes = live_ops[operation_id]
+    schema = _main_api_module.app.openapi()
+    op = schema["paths"][live_path][live_method.lower()]
+    matches = [
+        p
+        for p in (op.get("parameters") or [])
+        if isinstance(p, dict) and p.get("name") == "Idempotency-Key"
+    ]
+    assert len(matches) == 1, (
+        f"{operation_id}: {len(matches)} Idempotency-Key parameters in the live schema, expected 1"
+    )
+
+
+@pytest.mark.parametrize("operation_id", _NO_IDEMPOTENCY_KEY_OPERATIONS)
+def test_operation_without_idempotency_key_did_not_acquire_one(operation_id: str) -> None:
+    """The transform is scoped by operationId; these two must stay untouched.
+
+    `receivePaymentWebhook` is called by the payment provider and
+    `previewMagicLink` mutates nothing — the contract gives neither the
+    header, so a live entry here would be the transform reaching too far.
+    """
+    schema = _main_api_module.app.openapi()
+    for path, methods in schema.get("paths", {}).items():
+        for method, op in methods.items():
+            if not isinstance(op, dict) or op.get("operationId") != operation_id:
+                continue
+            assert _idempotency_key_param(op) is None, (
+                f"{operation_id} ({method.upper()} {path}) declares an Idempotency-Key "
+                f"parameter the contract never gave it"
+            )
+            return
+    pytest.fail(f"{operation_id} is not mounted in the live app — this test lost its subject")
+
+
+def test_the_documented_requirement_is_served_when_nothing_answers_first(monkeypatch) -> None:
+    """The other half of `required: true`: the DEPLOYED app must refuse the
+    request the document now says is invalid — and refuse it the contract's
+    way (400 with a code), not FastAPI's way (422).
+
+    SCOPE, stated because the broader claim is FALSE and was refuted before
+    this test was believed (Sol round 1, finding 1): 400
+    IDEMPOTENCY_KEY_REQUIRED is what an OTHERWISE VALID, ALREADY AUTHENTICATED
+    request gets. It is not what every keyless request gets, and that is
+    correct rather than a defect — authentication and body validation
+    legitimately answer first. Measured on this head with the flag on and no
+    header: `createEligibilityCheck`, `requestMagicLink` and
+    `exchangeMagicLink` answer 422 INVALID_REQUEST for the BODY
+    (`garuda_voa_public.py:607`, `garuda_portal_auth.py:427`), and
+    `uploadIntakeDocument`, the three orders operations and the two staff
+    operations answer 401 SESSION_REQUIRED when unauthenticated
+    (`garuda_orders_router.py:368`, `garuda_documents_router.py:533`,
+    `garuda_staff_router.py:386`). `required: true` in a schema says the
+    client must send the header; it never promised to be the first thing
+    checked.
+
+    So this test picks the one operation with no body and no session —
+    DELETE on a public eligibility result — because that is where the key
+    check is genuinely the first gate, and asserts there. It runs against
+    `main_api.app`, the same singleton `_live_operations()` reads, so the
+    document and the behaviour under test belong to one object.
+    """
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
+    client = TestClient(_main_api_module.app)
+    # DELETE deliberately: no body and no session, so the key check is the
+    # first gate rather than the third. (Measured while writing this test:
+    # the same call as a POST with an empty body returns FastAPI's 422 for
+    # the BODY — which is why the docstring above states the scope instead of
+    # letting this one green case imply a universal one.)
+    response = client.delete("/api/visa/voa/eligibility-checks/" + "r" * 22)
+    assert response.status_code == 400, (
+        f"missing Idempotency-Key answered {response.status_code}, expected the "
+        f"contract's 400 — a 422 would mean FastAPI started enforcing the header "
+        f"itself and the contract's error envelope was lost"
+    )
+    assert response.json()["code"] == "IDEMPOTENCY_KEY_REQUIRED"
 
 
 def test_transition_practice_declares_idempotency_replayed_header() -> None:
