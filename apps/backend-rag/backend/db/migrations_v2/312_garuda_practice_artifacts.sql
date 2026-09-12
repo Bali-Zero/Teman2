@@ -566,6 +566,9 @@ DECLARE
     guard_fn oid;
     table_owner text;
     guard_owner text;
+    extra_signature text;
+    extra_fn oid;
+    extra_owner text;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ledger_owner) THEN
         RAISE NOTICE 'garuda practice artifacts (312): role % absent -- skipping table/guard ownership transfer, same convention as (2)',
@@ -592,6 +595,48 @@ BEGIN
     -- Then the guard function: owning it is what confers CREATE OR REPLACE
     -- on its body. A table the runtime cannot alter, guarded by a function
     -- the runtime CAN rewrite, is not a boundary.
+    --
+    -- ...and, with it, the read helper. `active_garuda_practice_artifact_
+    -- policy_available` is a plain STABLE SQL function with no privilege of
+    -- its own, so moving it buys no security -- it buys ONE regime. The
+    -- shape-D fixture (PG17, all three roles, non-superuser migrator)
+    -- caught what having two costs: the rollback assumes the ledger owner
+    -- before its removals, and this one object was still owned by the
+    -- runtime role, so the rollback aborted with "must be owner of
+    -- function ..." BEFORE reaching anything else -- nothing removed, the
+    -- migration left fully applied, and the operator told the undo ran.
+    -- That is finding F9's own outcome, surviving inside F9's cure, for the
+    -- single object its author did not enumerate. Every object this file
+    -- creates now has the same owner, so the rollback has one regime to
+    -- get right instead of two.
+    FOR extra_signature IN
+        SELECT unnest(ARRAY[
+            'public.active_garuda_practice_artifact_policy_available(TEXT, TIMESTAMPTZ)'
+        ])
+    LOOP
+        extra_fn := to_regprocedure(extra_signature);
+        IF extra_fn IS NULL THEN
+            RAISE EXCEPTION 'garuda practice artifacts (312): % is not present -- refusing to continue',
+                extra_signature;
+        END IF;
+        SELECT pg_get_userbyid(proowner) INTO extra_owner FROM pg_proc WHERE oid = extra_fn;
+        IF extra_owner IS DISTINCT FROM ledger_owner THEN
+            BEGIN
+                EXECUTE format('ALTER FUNCTION %s OWNER TO %I', extra_signature, ledger_owner);
+            EXCEPTION
+                WHEN insufficient_privilege THEN
+                    RAISE NOTICE 'garuda practice artifacts (312): owner change denied for % (current owner %)',
+                        extra_signature, extra_owner;
+            END;
+            SELECT pg_get_userbyid(proowner) INTO extra_owner FROM pg_proc WHERE oid = extra_fn;
+        END IF;
+        IF extra_owner IS DISTINCT FROM ledger_owner THEN
+            RAISE EXCEPTION
+                'garuda practice artifacts (312): % is owned by %, expected % -- the rollback assumes the ledger owner before removing it and would abort with "must be owner of", leaving this migration applied while reporting an undo. Refusing to record it as applied.',
+                extra_signature, extra_owner, ledger_owner;
+        END IF;
+    END LOOP;
+
     guard_fn := to_regprocedure(guard_signature);
     IF guard_fn IS NULL THEN
         RAISE EXCEPTION 'garuda practice artifacts (312): % is not present after (3) created it -- refusing to continue',
