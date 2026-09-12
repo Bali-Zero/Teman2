@@ -28,7 +28,9 @@
    "inSitemapTrue": 121,
    "canonicalAgrees": 128,
    "noIndexFiles": 19
-  }
+  },
+  "cleanFamiliesFormat": "`<articleUrl> | <locales> | <served robots> | sitemap:<yes|no>` — one string per family. They carry no superseded threshold in any locale, so a full object per row would be 25 lines of identical structure; the fields that could differ are all here.",
+  "evidenceCap": "at most 5 lines per family; `evidenceTruncatedFrom` says how many there were. Re-derive the full set with `probe-superseded-threshold.py --attribute <file>`."
  },
  "families": [
   {
@@ -246,18 +248,9 @@
       "line": 49,
       "text": "A significant procedural change came with Permenimipas No. 5 Tahun 2025, which formally revoked the earlier guarantor ru"
      }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded.mdx",
-     "line": 69,
-     "text": "ure their property purchase around the Rp 2 billion national figure will find their applications stalled at the Bali immigration office.",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": {
-      "line": 61,
-      "text": "The Second Home KITAS has matured into the most credible long-term residency instrument Indonesia has produced for forei"
-     }
     }
-   ]
+   ],
+   "evidenceTruncatedFrom": 6
   },
   {
    "articleUrl": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm",
@@ -288,2482 +281,6 @@
    "linesAttributingItToSecondHome": 0,
    "disposition": "blocked-on-zero-ruling",
    "why": "noIndex E33 family. Rewrite-or-delete is Zero's ruling to give; this window censuses it and stops. It keeps whatever claims it has until then — it is out of the index and out of the sitemap, not corrected.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/13-japanese-nationals-deported-from-indonesia-for-online-scam-operations",
-   "folder": "business_regulations",
-   "category": "business",
-   "slug": "13-japanese-nationals-deported-from-indonesia-for-online-scam-operations",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/bali-2026-eco-luxury-villas-and-the-new-american-expat-playbook",
-   "folder": "business",
-   "category": "business",
-   "slug": "bali-2026-eco-luxury-villas-and-the-new-american-expat-playbook",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/bali-business-setup-in-2026-what-every-foreign-entrepreneur-must-know",
-   "folder": "business",
-   "category": "business",
-   "slug": "bali-business-setup-in-2026-what-every-foreign-entrepreneur-must-know",
-   "locales": [
-    "en",
-    "id"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/buy-property-in-bali-as-a-foreigner-2026-legal-investment-guide",
-   "folder": "business",
-   "category": "business",
-   "slug": "buy-property-in-bali-as-a-foreigner-2026-legal-investment-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/consulting-business-guide",
-   "folder": "business",
-   "category": "business",
-   "slug": "consulting-business-guide",
-   "locales": [
-    "en",
-    "fr",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/kbli-2025-advertising-creative-arts-bali-2026",
-   "folder": "business",
-   "category": "business",
-   "slug": "kbli-2025-advertising-creative-arts-bali-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/kbli-2025-it-tech-software-cloud-bali-2026",
-   "folder": "business",
-   "category": "business",
-   "slug": "kbli-2025-it-tech-software-cloud-bali-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/kbli-2025-legal-accounting-tax-advisory-bali-2026",
-   "folder": "business",
-   "category": "business",
-   "slug": "kbli-2025-legal-accounting-tax-advisory-bali-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/kbli-2025-sports-recreation-entertainment-bali-2026",
-   "folder": "business",
-   "category": "business",
-   "slug": "kbli-2025-sports-recreation-entertainment-bali-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/kbli-2025-visa-kitas-synergy",
-   "folder": "business",
-   "category": "business",
-   "slug": "kbli-2025-visa-kitas-synergy",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/living-in-bali-as-an-expat-2026-visa-and-residency-guide",
-   "folder": "business",
-   "category": "business",
-   "slug": "living-in-bali-as-an-expat-2026-visa-and-residency-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/business/retiring-in-bali-2026-what-foreign-buyers-must-know-before-they-sign",
-   "folder": "business",
-   "category": "business",
-   "slug": "retiring-in-bali-2026-what-foreign-buyers-must-know-before-they-sign",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/bali-digital-nomad-guide",
-   "folder": "digital-nomad",
-   "category": "living",
-   "slug": "bali-digital-nomad-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/bali-for-women-what-the-bliss-blogs-dont-tell-you",
-   "folder": "lifestyle",
-   "category": "living",
-   "slug": "bali-for-women-what-the-bliss-blogs-dont-tell-you",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/cost-of-living-bali",
-   "folder": "lifestyle",
-   "category": "living",
-   "slug": "cost-of-living-bali",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/coworking-spaces-bali",
-   "folder": "digital-nomad",
-   "category": "living",
-   "slug": "coworking-spaces-bali",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/remote-work-tax",
-   "folder": "digital-nomad",
-   "category": "living",
-   "slug": "remote-work-tax",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/sim-card-internet-indonesia",
-   "folder": "lifestyle",
-   "category": "living",
-   "slug": "sim-card-internet-indonesia",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/us-expat-exodus-what-permanent-relocation-really-demands",
-   "folder": "lifestyle",
-   "category": "living",
-   "slug": "us-expat-exodus-what-permanent-relocation-really-demands",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/visa-on-arrival-in-indonesia-what-first-timers-need-to-know",
-   "folder": "lifestyle",
-   "category": "living",
-   "slug": "visa-on-arrival-in-indonesia-what-first-timers-need-to-know",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/living/why-bali-keeps-pulling-expats-back-the-lifestyle-magnet-explained",
-   "folder": "lifestyle",
-   "category": "living",
-   "slug": "why-bali-keeps-pulling-expats-back-the-lifestyle-magnet-explained",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/property/bali-property-market-trends-2026",
-   "folder": "property",
-   "category": "property",
-   "slug": "bali-property-market-trends-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/asian-countries-offering-digital-nomad-visas-in-2026",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "asian-countries-offering-digital-nomad-visas-in-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/bali-cracks-down-social-media-work-on-tourist-visas-risks-deportation",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "bali-cracks-down-social-media-work-on-tourist-visas-risks-deportation",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/bali-digital-nomad-visa-guide-2024-pumble",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "bali-digital-nomad-visa-guide-2024-pumble",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/bali-digital-nomad-visa-how-to-apply-simify",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "bali-digital-nomad-visa-how-to-apply-simify",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/bali-targets-influencers-and-tourists-bartering-stays-for-content",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "bali-targets-influencers-and-tourists-bartering-stays-for-content",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/digital-nomads-in-bali-face-2026-insurance-blind-spots",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "digital-nomads-in-bali-face-2026-insurance-blind-spots",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/dubai-updates-digital-nomad-remote-work-visa-lower-fees-faster-online-approval",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "dubai-updates-digital-nomad-remote-work-visa-lower-fees-faster-online-approval",
-   "locales": [
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/indonesia-eyes-mandatory-wfh-to-slash-fuel-imports-and-emissions",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "indonesia-eyes-mandatory-wfh-to-slash-fuel-imports-and-emissions",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/indonesia-makes-nib-mandatory-for-content-creators",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "indonesia-makes-nib-mandatory-for-content-creators",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/indonesia-tax-2024-what-every-expat-and-investor-must-know-now",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "indonesia-tax-2024-what-every-expat-and-investor-must-know-now",
-   "locales": [
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/indonesia-tax-guide-for-foreigners",
-   "folder": "tax",
-   "category": "taxes",
-   "slug": "indonesia-tax-guide-for-foreigners",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/indonesia-tightens-visa-rules-for-bali-visitors-whats-changed",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "indonesia-tightens-visa-rules-for-bali-visitors-whats-changed",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/indonesia-zero-tax-foreign-income-2026",
-   "folder": "tax",
-   "category": "taxes",
-   "slug": "indonesia-zero-tax-foreign-income-2026",
-   "locales": [
-    "en"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/indonesias-digital-nomad-visa-whats-real-whats-rumor-whats-the-tax-trap",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "indonesias-digital-nomad-visa-whats-real-whats-rumor-whats-the-tax-trap",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/irish-expats-in-bali-skip-the-crowds-build-a-real-life",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "irish-expats-in-bali-skip-the-crowds-build-a-real-life",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/living-in-bali-as-a-digital-nomad",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "living-in-bali-as-a-digital-nomad",
-   "locales": [
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/taxes/the-best-places-to-be-a-6-figure-nomad-in-2025",
-   "folder": "tax-legal",
-   "category": "taxes",
-   "slug": "the-best-places-to-be-a-6-figure-nomad-in-2025",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/bali-2026-the-rules-every-visitor-must-know-before-landing",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "bali-2026-the-rules-every-visitor-must-know-before-landing",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/bali-governor-downplays-crime-surge-as-foreign-cases-mount",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "bali-governor-downplays-crime-surge-as-foreign-cases-mount",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/bali-immigration-brings-permit-services-to-discovery-mall",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "bali-immigration-brings-permit-services-to-discovery-mall",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/bali-launches-dharma-dewata-dedicated-task-force-to-police-foreign-nationals",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "bali-launches-dharma-dewata-dedicated-task-force-to-police-foreign-nationals",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/bali-opens-new-dining-frontiers-march-2026s-restaurant-wave",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "bali-opens-new-dining-frontiers-march-2026s-restaurant-wave",
-   "locales": [
-    "en",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/balis-informal-economy-crackdown-what-tighter-rules-mean-for-expats",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "balis-informal-economy-crackdown-what-tighter-rules-mean-for-expats",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/budapest-meets-bali-hungarian-embassy-brings-culinary-festival-to-jakarta",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "budapest-meets-bali-hungarian-embassy-brings-culinary-festival-to-jakarta",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/business-visit-vs-work-visa-indonesia-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "business-visit-vs-work-visa-indonesia-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/canggus-breakfast-economy-what-the-caf-boom-tells-expats-about-living-costs",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "canggus-breakfast-economy-what-the-caf-boom-tells-expats-about-living-costs",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/choose-the-right-bali-visa-stay-in-bali-long-term-in-2026",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "choose-the-right-bali-visa-stay-in-bali-long-term-in-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/divorce-kitas-implications",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "divorce-kitas-implications",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/dkp-tka-foreign-worker-registration",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "dkp-tka-foreign-worker-registration",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/e-voa-electronic-visa-on-arrival-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "e-voa-electronic-visa-on-arrival-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/e23-employee-kitas-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "e23-employee-kitas-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/e25b-director-kitas-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "e25b-director-kitas-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/e28a-investor-kitas-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "e28a-investor-kitas-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/e31b-spouse-dependent-kitas-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "e31b-spouse-dependent-kitas-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/e31e-child-dependent-kitas-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "e31e-child-dependent-kitas-guide",
-   "locales": [
-    "en",
-    "fr",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/e33g-remote-worker-visa-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "e33g-remote-worker-visa-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/global-citizenship-indonesia",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "global-citizenship-indonesia",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/golden-visa-2026-updates",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "golden-visa-2026-updates",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/golden-visa-indonesia-complete-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "golden-visa-indonesia-complete-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/immigration-fines-penalties-complete",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "immigration-fines-penalties-complete",
-   "locales": [
-    "en",
-    "id"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-arrests-321-foreigners-in-sweeping-online-gambling-crackdown",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-arrests-321-foreigners-in-sweeping-online-gambling-crackdown",
-   "locales": [
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-axes-fast-track-residency-permits-minister-confirms",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-axes-fast-track-residency-permits-minister-confirms",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-cracks-worlds-28-most-beautiful-countries-list",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-cracks-worlds-28-most-beautiful-countries-list",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-doubles-down-on-foreign-surveillance-amid-wfa-boom",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-doubles-down-on-foreign-surveillance-amid-wfa-boom",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-eyes-bali-tax-havenbut-skeptics-say-political-will-is-missing",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-eyes-bali-tax-havenbut-skeptics-say-political-will-is-missing",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-mobilizes-tourism-defenses-as-global-geopolitical-storms-gather",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-mobilizes-tourism-defenses-as-global-geopolitical-storms-gather",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-rewrites-its-visa-rulebook-what-expats-must-know-now",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-rewrites-its-visa-rulebook-what-expats-must-know-now",
-   "locales": [
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-rewrites-the-rules-for-us-expats-eyeing-bali-in-2025",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-rewrites-the-rules-for-us-expats-eyeing-bali-in-2025",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-seeks-to-attract-more-tourists-but-challenges-remain",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-seeks-to-attract-more-tourists-but-challenges-remain",
-   "locales": [
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-tax-for-expats-who-owes-what-in-2026",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-tax-for-expats-who-owes-what-in-2026",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-tightens-grip-on-influencers-working-on-tourist-visas",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-tightens-grip-on-influencers-working-on-tourist-visas",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-tightens-immigration-enforcement-what-april-2026-means-for-expats",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-tightens-immigration-enforcement-what-april-2026-means-for-expats",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-visa-requirements-2026-complete-guide-for-foreigners",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-visa-requirements-2026-complete-guide-for-foreigners",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesia-visa-revenue-breaks-rp28-trillion-despite-global-uncertainty",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesia-visa-revenue-breaks-rp28-trillion-despite-global-uncertainty",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesias-digital-nomad-kitas-the-full-legal-picture-for-2025",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesias-digital-nomad-kitas-the-full-legal-picture-for-2025",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesias-e-visa-overhaul-what-every-foreign-national-must-know-in-2026",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesias-e-visa-overhaul-what-every-foreign-national-must-know-in-2026",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesias-expat-service-market-what-jakarta-rivals-offer-vs-bali-zero",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesias-expat-service-market-what-jakarta-rivals-offer-vs-bali-zero",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesias-golden-visa-what-the-government-is-actually-planning",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesias-golden-visa-what-the-government-is-actually-planning",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesias-multiple-entry-tourist-visa-what-expats-need-to-know-in-2025",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesias-multiple-entry-tourist-visa-what-expats-need-to-know-in-2025",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesias-retirement-kitas-the-definitive-guide-for-expats-over-55",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesias-retirement-kitas-the-definitive-guide-for-expats-over-55",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesias-visa-landscape-for-bali-bound-foreigners-what-you-need-to-know",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesias-visa-landscape-for-bali-bound-foreigners-what-you-need-to-know",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/indonesias-work-permit-maze-what-expats-must-know-before-taking-the-job",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "indonesias-work-permit-maze-what-expats-must-know-before-taking-the-job",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/interpol-wanted-british-crime-boss-arrested-in-bali",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "interpol-wanted-british-crime-boss-arrested-in-bali",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/investor-kitas-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "investor-kitas-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/kitas-extension-renewal-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "kitas-extension-renewal-guide",
-   "locales": [
-    "en",
-    "fr",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/kitas-side-business-freelance",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "kitas-side-business-freelance",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/kitas-upgrade-downgrade-conversion",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "kitas-upgrade-downgrade-conversion",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/lombok-rising-why-indonesias-second-island-is-rewriting-the-expat-playbook",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "lombok-rising-why-indonesias-second-island-is-rewriting-the-expat-playbook",
-   "locales": [
-    "en",
-    "id",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/multiple-kitas-indonesia",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "multiple-kitas-indonesia",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/newborn-registration-foreign-parents",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "newborn-registration-foreign-parents",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/retirement-visa-indonesia",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "retirement-visa-indonesia",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/rptka-foreign-worker-plan-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "rptka-foreign-worker-plan-guide",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/sono-hotels-signs-bali-canggu-property-betting-on-indonesias-luxury-lifestyle-boom",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "sono-hotels-signs-bali-canggu-property-betting-on-indonesias-luxury-lifestyle-boom",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/spouse-dependent-work-rights",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "spouse-dependent-work-rights",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/thailand-vietnam-push-remote-work-as-iran-war-disrupts-fuel-supply",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "thailand-vietnam-push-remote-work-as-iran-war-disrupts-fuel-supply",
-   "locales": [
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/the-most-popular-long-term-visas-and-kitas-in-indonesia-in-2026",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "the-most-popular-long-term-visas-and-kitas-in-indonesia-in-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/the-real-cost-of-living-in-bali-what-1000-buys-in-2026",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "the-real-cost-of-living-in-bali-what-1000-buys-in-2026",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/tourist-visa-extension-indonesia-guide",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "tourist-visa-extension-indonesia-guide",
-   "locales": [
-    "en"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/visa-agent-vs-diy-indonesia",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "visa-agent-vs-diy-indonesia",
-   "locales": [
-    "en",
-    "fr",
-    "id",
-    "it",
-    "ru"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/visa-policy-of-indonesia-wikipedia",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "visa-policy-of-indonesia-wikipedia",
-   "locales": [
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/vizag-airport-launches-e-tourist-visa-on-arrival-for-foreign-visitors",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "vizag-airport-launches-e-tourist-visa-on-arrival-for-foreign-visitors",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
-   "evidence": []
-  },
-  {
-   "articleUrl": "https://balizero.com/visas/zero-tax-countries-are-temptingbut-indonesia-has-rules-of-its-own",
-   "folder": "immigration",
-   "category": "visas",
-   "slug": "zero-tax-countries-are-temptingbut-indonesia-has-rules-of-its-own",
-   "locales": [
-    "en",
-    "id",
-    "it"
-   ],
-   "noIndexLocales": [],
-   "served": {
-    "httpStatus": 200,
-    "robots": "index, follow",
-    "canonicalAgrees": true
-   },
-   "inSitemap": true,
-   "supersededThresholdLines": 0,
-   "linesAttributingItToSecondHome": 0,
-   "disposition": "census-only-no-defect-found",
-   "why": "Mentions E33/Second Home; no superseded threshold in any locale.",
    "evidence": []
   },
   {
@@ -2819,52 +336,34 @@
      "path": "apps/mouth/src/content/articles/business/kbli-2025-professional-services-consulting-design-bali-2026.id.mdx",
      "line": 282,
      "text": "**Prospek Investasi:** Proyek desain interior vila di Canggu/Seminyak berkisar antara IDR 200 juta hingga IDR 2 miliar per proyek. Perlengkapan rumah sakit dan retreat wellness KEK Sanur (Ubud) mewaki",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/business/kbli-2025-professional-services-consulting-design-bali-2026.id.mdx",
      "line": 315,
      "text": "**Prospek Investasi:** Ekonomi kreatif Bali menghasilkan USD 50 juta+ setiap tahun dalam nilai ekspor desain. Identitas merek, pemasaran pariwisata mewah, dan desain kemasan perhotelan adalah kategori",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/business/kbli-2025-professional-services-consulting-design-bali-2026.it.mdx",
      "line": 282,
      "text": "**Prospettive di investimento:** I progetti di design d'interni di ville a Canggu/Seminyak vanno da 200 milioni a 2 miliardi di IDR per progetto. Il completamento di ospedali e wellness resort (KEK Sa",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/business/kbli-2025-professional-services-consulting-design-bali-2026.mdx",
      "line": 280,
      "text": "**Investment Outlook:** Villa interior design projects in Canggu/Seminyak range IDR 200M–IDR 2B per project. Hospital and wellness resort fit-out (KEK Sanur, Ubud wellness retreats) represents the hig",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/business/kbli-2025-professional-services-consulting-design-bali-2026.mdx",
      "line": 313,
      "text": "**Investment Outlook:** Bali's creative economy generates USD 50M+ annually in design export value. Brand identity, luxury tourism marketing, and hospitality packaging design are top revenue categorie",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
-    },
-    {
-     "path": "apps/mouth/src/content/articles/business/kbli-2025-professional-services-consulting-design-bali-2026.ru.mdx",
-     "line": 282,
-     "text": "**Инвестиционный прогноз:** Проекты по дизайну интерьера вилл в Canggu/Seminyak варьируются от 200 млн IDR до 2 млрд IDR за проект. Оборудование больниц и оздоровительных курортов (KEK Sanur, Ubud wel",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
-    },
-    {
-     "path": "apps/mouth/src/content/articles/business/kbli-2025-professional-services-consulting-design-bali-2026.ru.mdx",
-     "line": 315,
-     "text": "**Инвестиционный прогноз:** Креативная экономика Бали генерирует более 50 млн долларов США ежегодно в экспортной стоимости дизайна. Дизайн фирменного стиля, маркетинг роскошного туризма и дизайн упако",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     }
-   ]
+   ],
+   "evidenceTruncatedFrom": 7
   },
   {
    "articleUrl": "https://balizero.com/living/why-bali-keeps-drawing-the-worlds-most-restless-minds",
@@ -2892,8 +391,7 @@
      "path": "apps/mouth/src/content/articles/lifestyle/why-bali-keeps-drawing-the-worlds-most-restless-minds.id.mdx",
      "line": 21,
      "text": "*   Modal dasar minimal Rp 2.500.000.000,- (Dua Miliar Lima Ratus Juta Rupiah).",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     }
    ]
   },
@@ -2924,59 +422,34 @@
      "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.fr.mdx",
      "line": 635,
      "text": "| Bali                  | 5 milliards IDR | 2 milliards IDR  |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.fr.mdx",
      "line": 638,
      "text": "| Autres zones          | 2 milliards IDR | 750 millions IDR |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.id.mdx",
      "line": 607,
      "text": "| Bali               | IDR 5 miliar | IDR 2 miliar   |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.id.mdx",
      "line": 610,
      "text": "| Wilayah lain       | IDR 2 miliar | IDR 750 juta   |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.it.mdx",
      "line": 607,
      "text": "| Bali               | IDR 5 billion | IDR 2 billion   |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
-    },
-    {
-     "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.it.mdx",
-     "line": 610,
-     "text": "| Other areas        | IDR 2 billion | IDR 750 million |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
-    },
-    {
-     "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.mdx",
-     "line": 619,
-     "text": "| Bali               | IDR 5 billion | IDR 2 billion   |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
-    },
-    {
-     "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.mdx",
-     "line": 622,
-     "text": "| Other areas        | IDR 2 billion | IDR 750 million |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     }
-   ]
+   ],
+   "evidenceTruncatedFrom": 8
   },
   {
    "articleUrl": "https://balizero.com/living/education-expat-children",
@@ -3060,22 +533,19 @@
      "path": "apps/mouth/src/content/articles/digital-nomad/bali-digital-nomad-complete-guide.fr.mdx",
      "line": 59,
      "text": "answer: \"Options: E33G Digital Nomad Visa (1 year, renewable up to 6 years total; requires USD 60,000/year income proof), B211A Social Visa (60 days extendable to 180), Second Home Visa (5-year first ",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/digital-nomad/bali-digital-nomad-complete-guide.mdx",
      "line": 59,
      "text": "answer: \"Options: E33G Digital Nomad Visa (1 year, renewable up to 6 years total; requires USD 60,000/year income proof), B211A Social Visa (60 days extendable to 180), Second Home Visa (5-year first ",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/digital-nomad/bali-digital-nomad-complete-guide.ru.mdx",
      "line": 59,
      "text": "answer: \"Options: E33G Digital Nomad Visa (1 year, renewable up to 6 years total; requires USD 60,000/year income proof), B211A Social Visa (60 days extendable to 180), Second Home Visa (5-year first ",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     }
    ]
   },
@@ -3109,29 +579,25 @@
      "path": "apps/mouth/src/content/articles/lifestyle/living-in-bali-honest-guide.fr.mdx",
      "line": 70,
      "text": "answer: \"Yes. Options include B211A social visa (60 days, extendable to 180), Second Home Visa (5-year first grant, renewable up to a 10-year cumulative maximum, with IDR 2B savings), KITAS (work/spou",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/lifestyle/living-in-bali-honest-guide.it.mdx",
      "line": 71,
      "text": "answer: \"Sì. Le opzioni includono il visto sociale B211A (60 giorni, estendibile a 180), il Second Home Visa (concessione iniziale di 5 anni, rinnovabile fino a 10 anni cumulativi, con risparmi di 2 m",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/lifestyle/living-in-bali-honest-guide.mdx",
      "line": 71,
      "text": "answer: \"Yes. Options include B211A social visa (60 days, extendable to 180), Second Home Visa (5-year first grant, renewable up to a 10-year cumulative maximum, with IDR 2B savings), KITAS (work/spou",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/lifestyle/living-in-bali-honest-guide.ru.mdx",
      "line": 70,
      "text": "answer: \"Yes. Options include B211A social visa (60 days, extendable to 180), Second Home Visa (5-year first grant, renewable up to a 10-year cumulative maximum, with IDR 2B savings), KITAS (work/spou",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     }
    ]
   },
@@ -3215,22 +681,19 @@
      "path": "apps/mouth/src/content/articles/immigration/bali-immigration-law-what-expats-need-to-know-in-2026.id.mdx",
      "line": 69,
      "text": "Visa Rumah Kedua (Second Home Visa), yang diperkenalkan pada akhir 2022 berdasarkan Peraturan Presiden No. 37/2022, tetap menjadi salah satu instrumen imigrasi paling prestisius bagi individu dengan k",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/bali-immigration-law-what-expats-need-to-know-in-2026.it.mdx",
      "line": 52,
      "text": "Il Second Home Visa, introdotto alla fine del 2022 ai sensi del Regolamento Presidenziale n. 37/2022, rimane uno dei prodotti migratori più significativi disponibili per individui ad alto patrimonio, ",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/bali-immigration-law-what-expats-need-to-know-in-2026.mdx",
      "line": 50,
      "text": "The Second Home Visa, first launched in late 2022, remains one of the most significant immigration products available to high-net-worth individuals, offering a five-year or ten-year stay with limited ",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     }
    ]
   },
@@ -3272,8 +735,7 @@
      "path": "apps/mouth/src/content/articles/immigration/balis-visa-crackdown-reaches-digital-nomads-as-australia-raises-alert.id.mdx",
      "line": 73,
      "text": "jika Anda mendapatkan uang sambil berada di Bali, visa yang Anda pegang harus mengizinkan aktivitas tersebut. Visa B211A tidak mengizinkannya. Kategori visa E33G 'pekerja jarak jauh' masih menjadi pem",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/balis-visa-crackdown-reaches-digital-nomads-as-australia-raises-alert.it.mdx",
@@ -3299,8 +761,7 @@
      "path": "apps/mouth/src/content/articles/immigration/balis-visa-crackdown-reaches-digital-nomads-as-australia-raises-alert.ru.mdx",
      "line": 69,
      "text": "Для наших клиентов послание неоднозначно: если вы зарабатываете деньги, находясь на Бали, виза, которую вы держите, должна авторизовать эту деятельность. Виза B211A этого не делает. Категория визы E33",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     }
    ]
   },
@@ -3332,29 +793,25 @@
      "path": "apps/mouth/src/content/articles/immigration/e31-student-visa-indonesia.id.mdx",
      "line": 291,
      "text": "3. **Second Home Visa:** Jika memiliki deposit minimal IDR 2 Miliar.",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/e31-student-visa-indonesia.it.mdx",
      "line": 240,
      "text": "| Genitore ha risparmi           | Second Home Visa                       | Deposito IDR 2 miliardi richiesto    |",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/e31-student-visa-indonesia.mdx",
      "line": 238,
      "text": "| Parent has savings        | Second Home Visa          | IDR 2B deposit required        |",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/e31-student-visa-indonesia.ru.mdx",
      "line": 240,
      "text": "| Родитель имеет сбережения     | Second Home Visa                   | Требуется депозит IDR 2 млрд        |",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     }
    ]
   },
@@ -3386,8 +843,7 @@
      "path": "apps/mouth/src/content/articles/immigration/e311a-retirement-visa-kitas-guide.fr.mdx",
      "line": 452,
      "text": "| **Exigence de revenu**   | 183M IDR/an passif           | Achat immobilier de 2B IDR OU 183M IDR/an    |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/e311a-retirement-visa-kitas-guide.mdx",
@@ -3403,8 +859,7 @@
      "path": "apps/mouth/src/content/articles/immigration/e311a-retirement-visa-kitas-guide.ru.mdx",
      "line": 451,
      "text": "| **Требование к доходу**    | 183 млн IDR/год пассивного | Покупка недвижимости на 2 млрд IDR ИЛИ 183 млн IDR/год |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": false
     }
    ]
   },
@@ -3436,15 +891,13 @@
      "path": "apps/mouth/src/content/articles/immigration/family-reunification-indonesia.id.mdx",
      "line": 112,
      "text": "2. **Second Home Visa:** Memerlukan deposit bank sebesar Rp 2 miliar di bank Indonesia.",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/family-reunification-indonesia.it.mdx",
      "line": 86,
      "text": "2. **Second Home Visa:** Richiede un deposito bancario di 2 miliardi di IDR (circa 120.000€) in una banca indonesiana.",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/family-reunification-indonesia.mdx",
@@ -3475,38 +928,9 @@
       "line": 172,
       "text": "The **Second Home Visa** was introduced to attract wealthy long-term residents."
      }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/family-reunification-indonesia.ru.mdx",
-     "line": 178,
-     "text": "- Банковский депозит в размере 130 000 долларов США (приблизительно 2 миллиарда IDR) в государственном индонезийском банке",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": {
-      "line": 172,
-      "text": "#### Вариант 2: Виза \"Второй дом\" (SHV)"
-     }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/family-reunification-indonesia.ru.mdx",
-     "line": 184,
-     "text": "**Ограничение:** Депозит в размере 2 миллиардов IDR должен оставаться в индонезийском банке на весь срок действия визы",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": {
-      "line": 172,
-      "text": "#### Вариант 2: Виза \"Второй дом\" (SHV)"
-     }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/family-reunification-indonesia.ru.mdx",
-     "line": 210,
-     "text": "| Виза \"Второй дом\"              | Банковский депозит 2 млрд IDR                     | Если финансово способны |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": {
-      "line": 172,
-      "text": "#### Вариант 2: Виза \"Второй дом\" (SHV)"
-     }
     }
-   ]
+   ],
+   "evidenceTruncatedFrom": 8
   },
   {
    "articleUrl": "https://balizero.com/visas/indonesia-visa-landscape-what-every-foreign-visitor-and-investor-needs-to-know",
@@ -3535,29 +959,25 @@
      "path": "apps/mouth/src/content/articles/immigration/indonesia-visa-landscape-what-every-foreign-visitor-and-investor-needs-to-know.fr.mdx",
      "line": 53,
      "text": "Le Second Home Visa de l'Indonésie, introduit sous le Règlement présidentiel n° 37 de 2022, a été conçu pour attirer les personnes fortunées en offrant des séjours jusqu'à 10 ans lors du dépôt d'un dé",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/indonesia-visa-landscape-what-every-foreign-visitor-and-investor-needs-to-know.id.mdx",
      "line": 58,
      "text": "Second Home Visa Indonesia, yang diperkenalkan berdasarkan Peraturan Presiden No. 37 Tahun 2022, dirancang untuk menarik individu dengan kekayaan bersih tinggi dengan menawarkan masa tinggal hingga 10",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/indonesia-visa-landscape-what-every-foreign-visitor-and-investor-needs-to-know.it.mdx",
      "line": 55,
      "text": "Il Second Home Visa dell'Indonesia, introdotto con il Regolamento Presidenziale n. 37 del 2022, è stato progettato per attrarre individui ad alto patrimonio netto offrendo soggiorni fino a 10 anni pre",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/indonesia-visa-landscape-what-every-foreign-visitor-and-investor-needs-to-know.mdx",
      "line": 52,
      "text": "Indonesia's Second Home Visa, introduced under Presidential Regulation No. 37 of 2022, was designed to attract high-net-worth individuals by offering up to 10-year stays upon placing a substantial dep",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     }
    ]
   },
@@ -3751,8 +1171,7 @@
      "path": "apps/mouth/src/content/articles/immigration/kitas-2026-the-complete-indonesia-work-stay-permit-roadmap.id.mdx",
      "line": 136,
      "text": "Undang-Undang Cipta Kerja tahun 2022 memperkenalkan Visa Rumah Kedua (Second Home Visa), yang secara teknis merupakan visa masuk jam-jam ganda namun secara fungsional beroperasi sebagai mekanisme izin",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": null
+     "namesProductOnSameLine": true
     },
     {
      "path": "apps/mouth/src/content/articles/immigration/kitas-2026-the-complete-indonesia-work-stay-permit-roadmap.id.mdx",
@@ -3793,18 +1212,9 @@
       "line": 18,
       "text": "seoDescription: \"Your complete 2026 guide to the Indonesian KITAS permit. Learn the requirements for the work, investor,"
      }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/kitas-2026-the-complete-indonesia-work-stay-permit-roadmap.mdx",
-     "line": 86,
-     "text": "\"Audit your current permit status immediately \\u2014 confirm the category, expiry date, and whether your current activity aligns with what your visa or KITAS permits. If you are operating a business o",
-     "namesProductOnSameLine": true,
-     "nearestProductMentionAbove": {
-      "line": 70,
-      "text": "For entrepreneurs and digital professionals, the Second Home Visa remains the cleanest entry point if you can meet the f"
-     }
     }
-   ]
+   ],
+   "evidenceTruncatedFrom": 6
   },
   {
    "articleUrl": "https://balizero.com/visas/kitas-for-digital-nomads-reality",
@@ -3879,48 +1289,115 @@
       "line": 286,
       "text": "| Caratteristica           | E33G            | B211A                | E-VOA Runs          | SHV             | PT PMA + E"
      }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/kitas-for-digital-nomads-reality.mdx",
-     "line": 236,
-     "text": "- Proof of USD 130,000 (approximately IDR 2 billion) in savings, OR",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": {
-      "line": 232,
-      "text": "The Second Home Visa (SHV) is designed for high-net-worth individuals who want to use Indonesia as a second residence. I"
-     }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/kitas-for-digital-nomads-reality.mdx",
-     "line": 287,
-     "text": "| **Income requirement**     | USD 60K/year   | None                  | None              | IDR 2B savings | IDR 10B investment        |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": {
-      "line": 284,
-      "text": "| Feature                    | E33G           | B211A                 | E-VOA Runs        | SHV            | PT PMA + E2"
-     }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/kitas-for-digital-nomads-reality.ru.mdx",
-     "line": 238,
-     "text": "- Подтверждение наличия сбережений в размере 130 000 долларов США (приблизительно 2 миллиарда IDR) ИЛИ",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": {
-      "line": 234,
-      "text": "Виза \"Второй дом\" (SHV) предназначена для состоятельных людей, которые хотят использовать Индонезию в качестве второго м"
-     }
-    },
-    {
-     "path": "apps/mouth/src/content/articles/immigration/kitas-for-digital-nomads-reality.ru.mdx",
-     "line": 289,
-     "text": "| **Требование к доходу**                | 60 тыс. долл. США/год | Нет                   | Нет               | 2B IDR сбережения | 10B IDR инвестиции            |",
-     "namesProductOnSameLine": false,
-     "nearestProductMentionAbove": {
-      "line": 286,
-      "text": "| Особенность                            | E33G                  | B211A                 | \"Виза-раны\" E-VOA | SHV      "
-     }
     }
-   ]
+   ],
+   "evidenceTruncatedFrom": 9
   }
+ ],
+ "cleanFamilies": [
+  "https://balizero.com/business/13-japanese-nationals-deported-from-indonesia-for-online-scam-operations | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/business/bali-2026-eco-luxury-villas-and-the-new-american-expat-playbook | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/business/bali-business-setup-in-2026-what-every-foreign-entrepreneur-must-know | en,id | index, follow | sitemap:yes",
+  "https://balizero.com/business/buy-property-in-bali-as-a-foreigner-2026-legal-investment-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/business/consulting-business-guide | en,fr,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/business/kbli-2025-advertising-creative-arts-bali-2026 | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/business/kbli-2025-it-tech-software-cloud-bali-2026 | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/business/kbli-2025-legal-accounting-tax-advisory-bali-2026 | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/business/kbli-2025-sports-recreation-entertainment-bali-2026 | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/business/kbli-2025-visa-kitas-synergy | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/business/living-in-bali-as-an-expat-2026-visa-and-residency-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/business/retiring-in-bali-2026-what-foreign-buyers-must-know-before-they-sign | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/living/bali-digital-nomad-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/living/bali-for-women-what-the-bliss-blogs-dont-tell-you | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/living/cost-of-living-bali | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/living/coworking-spaces-bali | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/living/remote-work-tax | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/living/sim-card-internet-indonesia | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/living/us-expat-exodus-what-permanent-relocation-really-demands | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/living/visa-on-arrival-in-indonesia-what-first-timers-need-to-know | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/living/why-bali-keeps-pulling-expats-back-the-lifestyle-magnet-explained | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/property/bali-property-market-trends-2026 | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/asian-countries-offering-digital-nomad-visas-in-2026 | en,fr,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/bali-cracks-down-social-media-work-on-tourist-visas-risks-deportation | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/bali-digital-nomad-visa-guide-2024-pumble | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/bali-digital-nomad-visa-how-to-apply-simify | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/bali-targets-influencers-and-tourists-bartering-stays-for-content | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/digital-nomads-in-bali-face-2026-insurance-blind-spots | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/dubai-updates-digital-nomad-remote-work-visa-lower-fees-faster-online-approval | id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/indonesia-eyes-mandatory-wfh-to-slash-fuel-imports-and-emissions | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/indonesia-makes-nib-mandatory-for-content-creators | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/indonesia-tax-2024-what-every-expat-and-investor-must-know-now | id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/indonesia-tax-guide-for-foreigners | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/indonesia-tightens-visa-rules-for-bali-visitors-whats-changed | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/indonesia-zero-tax-foreign-income-2026 | en | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/indonesias-digital-nomad-visa-whats-real-whats-rumor-whats-the-tax-trap | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/irish-expats-in-bali-skip-the-crowds-build-a-real-life | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/living-in-bali-as-a-digital-nomad | id,it | index, follow | sitemap:yes",
+  "https://balizero.com/taxes/the-best-places-to-be-a-6-figure-nomad-in-2025 | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/bali-2026-the-rules-every-visitor-must-know-before-landing | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/bali-governor-downplays-crime-surge-as-foreign-cases-mount | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/bali-immigration-brings-permit-services-to-discovery-mall | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/bali-launches-dharma-dewata-dedicated-task-force-to-police-foreign-nationals | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/bali-opens-new-dining-frontiers-march-2026s-restaurant-wave | en,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/balis-informal-economy-crackdown-what-tighter-rules-mean-for-expats | en,fr,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/budapest-meets-bali-hungarian-embassy-brings-culinary-festival-to-jakarta | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/business-visit-vs-work-visa-indonesia-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/canggus-breakfast-economy-what-the-caf-boom-tells-expats-about-living-costs | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/choose-the-right-bali-visa-stay-in-bali-long-term-in-2026 | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/divorce-kitas-implications | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/dkp-tka-foreign-worker-registration | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/e-voa-electronic-visa-on-arrival-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/e23-employee-kitas-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/e25b-director-kitas-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/e28a-investor-kitas-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/e31b-spouse-dependent-kitas-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/e31e-child-dependent-kitas-guide | en,fr,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/e33g-remote-worker-visa-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/global-citizenship-indonesia | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/golden-visa-2026-updates | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/golden-visa-indonesia-complete-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/immigration-fines-penalties-complete | en,id | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-arrests-321-foreigners-in-sweeping-online-gambling-crackdown | fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-axes-fast-track-residency-permits-minister-confirms | en,fr,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-cracks-worlds-28-most-beautiful-countries-list | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-doubles-down-on-foreign-surveillance-amid-wfa-boom | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-eyes-bali-tax-havenbut-skeptics-say-political-will-is-missing | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-mobilizes-tourism-defenses-as-global-geopolitical-storms-gather | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-rewrites-its-visa-rulebook-what-expats-must-know-now | id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-rewrites-the-rules-for-us-expats-eyeing-bali-in-2025 | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-seeks-to-attract-more-tourists-but-challenges-remain | id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-tax-for-expats-who-owes-what-in-2026 | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-tightens-grip-on-influencers-working-on-tourist-visas | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-tightens-immigration-enforcement-what-april-2026-means-for-expats | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-visa-requirements-2026-complete-guide-for-foreigners | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesia-visa-revenue-breaks-rp28-trillion-despite-global-uncertainty | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesias-digital-nomad-kitas-the-full-legal-picture-for-2025 | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesias-e-visa-overhaul-what-every-foreign-national-must-know-in-2026 | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesias-expat-service-market-what-jakarta-rivals-offer-vs-bali-zero | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesias-golden-visa-what-the-government-is-actually-planning | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesias-multiple-entry-tourist-visa-what-expats-need-to-know-in-2025 | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesias-retirement-kitas-the-definitive-guide-for-expats-over-55 | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesias-visa-landscape-for-bali-bound-foreigners-what-you-need-to-know | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/indonesias-work-permit-maze-what-expats-must-know-before-taking-the-job | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/interpol-wanted-british-crime-boss-arrested-in-bali | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/investor-kitas-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/kitas-extension-renewal-guide | en,fr,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/kitas-side-business-freelance | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/kitas-upgrade-downgrade-conversion | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/lombok-rising-why-indonesias-second-island-is-rewriting-the-expat-playbook | en,id,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/multiple-kitas-indonesia | en,fr,id,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/newborn-registration-foreign-parents | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/retirement-visa-indonesia | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/rptka-foreign-worker-plan-guide | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/sono-hotels-signs-bali-canggu-property-betting-on-indonesias-luxury-lifestyle-boom | en,fr,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/spouse-dependent-work-rights | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/thailand-vietnam-push-remote-work-as-iran-war-disrupts-fuel-supply | id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/the-most-popular-long-term-visas-and-kitas-in-indonesia-in-2026 | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/the-real-cost-of-living-in-bali-what-1000-buys-in-2026 | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/tourist-visa-extension-indonesia-guide | en | index, follow | sitemap:yes",
+  "https://balizero.com/visas/visa-agent-vs-diy-indonesia | en,fr,id,it,ru | index, follow | sitemap:yes",
+  "https://balizero.com/visas/visa-policy-of-indonesia-wikipedia | id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/vizag-airport-launches-e-tourist-visa-on-arrival-for-foreign-visitors | en,id,it | index, follow | sitemap:yes",
+  "https://balizero.com/visas/zero-tax-countries-are-temptingbut-indonesia-has-rules-of-its-own | en,id,it | index, follow | sitemap:yes"
  ]
 }

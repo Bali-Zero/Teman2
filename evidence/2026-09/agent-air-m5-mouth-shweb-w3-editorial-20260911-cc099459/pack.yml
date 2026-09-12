@@ -1,0 +1,101 @@
+gear: 3
+mission: SHWEB-20260911
+window: W3-SH-EDITORIAL
+colour: BLUE
+verdict: PENDING_GATE
+base_sha: 70b43c5459489ce9c8d524eefc94d53a7009866d
+
+churn:
+  measured_with: "git diff --numstat 70b43c5459 HEAD"
+  total_lines: 2929
+  ceiling_named_in_the_mandate: 1828
+  gear_override: >-
+    Declared, per the mandate's own alternative ("churn under 1828 OR a coherent Gear-3
+    declaration"). The excess is one artifact: research/secondhome/editorial-disposition.json,
+    1402 lines, the census of 128 article families with the evidence lines that justify each
+    disposition. It was already compacted twice — the 104 families with no defect are one
+    string each instead of a 25-line object, and the evidence is capped at 5 lines per family
+    with `evidenceTruncatedFrom` recording what was cut. What remains is the part a reviewer
+    needs in order to disagree with a disposition, which is the whole point of a census whose
+    central risk is a blind substitution. The code and content half of this PR is ~900 lines:
+    five MDX sources (~625 added+deleted), a probe (204), a test (88) and the generator
+    tie-break.
+
+spend:
+  wall_clock_hours: ~2.5
+  adversarial_rounds: 2
+  seats:
+    - name: codex-sol
+      role: PRE-review (cross-family, outside the contribution chain)
+      invocation: "CODEX_HOME=~/.codex-acct2 codex exec --sandbox read-only -c model_reasoning_effort=high"
+      verdict: BLOCK with 5 conditions
+      record: prereview/codex-sol-prereview-round1.txt
+    - name: gemini-3.1-pro-high
+      role: long-context read of the 5 sources against the fact registry
+      invocation: 'agy -p "<prompt>" --model "Gemini 3.1 Pro (High)"'
+      record: prereview/gemini-3.1-pro-claim-table.txt
+    - name: claude-sonnet-5 (spalla-review subagent, w3-second-reader)
+      role: second independent reader of the corrected sources
+      record: prereview/second-reader.txt
+
+prereview_conditions:
+  - id: 1
+    condition: "the probe measures tokens, not claims — fix the over/under-matches"
+    met: >-
+      THRESHOLD no longer accepts IDR 20B (`2(?![\d.,]*\d)`), and now catches
+      `IDR 2 000 000 000`, `2 à 5 milliards IDR`, `IDR 2B-5B`, `two billion`,
+      `due miliardi`, `deux milliards`, `два миллиарда`, `Rp2M`. `--selftest` carries
+      16 guilt cases and 6 innocence cases and reports 0 failures.
+  - id: 2
+    condition: "state the property rewrite with completed unit, USD 1,000,000, and title/validation unresolved"
+    met: "Path 2 rewritten in all five locales; no qualifying title is named, and the ledger records why."
+  - id: 3
+    condition: "remove the decomposition, the totals and the residual fees; point at the service page without introducing a price"
+    met: "Costs Breakdown and the two comparison-table cost/time rows are gone in all five locales. No price value appears in the diff."
+  - id: 4
+    condition: "put positive and contradiction checks beside the zeros"
+    met: >-
+      `--claims` asserts what each locale must SAY and must NOT say. It caught two residual
+      `Hak Pakai` mentions in the .id and .ru sources AFTER the amount check already read 0.
+  - id: 5
+    condition: "define M3 as the removal of the real enArticles.sort and test the exact output"
+    met: "M1 2 failed, M2 2 failed, M3 5 failed (all 5 tests), baseline and restored tree 5 passed."
+
+results:
+  - probe: "python3 research/secondhome/probe-superseded-threshold.py --sources"
+    before: 68
+    after: 0
+  - probe: "python3 research/secondhome/probe-superseded-threshold.py --claims"
+    after: "0 failures"
+  - probe: "python3 research/secondhome/probe-superseded-threshold.py --selftest"
+    after: "0 failures"
+  - probe: "npx vitest run src/lib/llms-article-exports.test.ts"
+    after: "5 passed"
+  - probe: "mutants M1/M2/M3 against that suite"
+    after: "2 failed / 2 failed / 5 failed — all RED; tree restored, 5 passed"
+  - probe: "npm run build (real, exit 0) then the co-occurrence probe on the generated apps/mouth/public/llms-full.txt"
+    caveat: >-
+      Stated because it would otherwise be a hidden approximation: the generator runs FIRST
+      inside `npm run build`, and the export was measured as soon as it was written. The three
+      tracked artifacts were then restored from git while `next build` was still compiling, so
+      the .next output carries the committed exports rather than the freshly generated ones.
+      That affects nothing measured here — the artifact under test is the generator's output,
+      and the same build run returned exit 0 — but the two are not the same instant.
+    after: >-
+      0 superseded-threshold lines inside the 4 records of this family. 24 lines remain
+      across the other families — 23 of them are PR-2's by the imperator's scope split, and
+      1 is a Russian translation that landed on main after the served baseline was taken.
+  - probe: "the freshness block of the regenerated llms.txt"
+    after: >-
+      5 DISTINCT canonical URLs, all sharing publishedAt 2026-09-11, ordered by URL. The
+      committed artifact listed two of its URLs twice. Evidence: build/freshness-before-after.txt.
+  - probe: "live census of 128 canonical URLs + sitemap.xml"
+    after: "128/128 HTTP 200 with a served canonical equal to the requested URL; 121 index,follow and in the sitemap; 7 noindex,nofollow and absent."
+
+not_done_and_why:
+  - "The 14 queued-pr2 families still publish the superseded threshold. One PR, one concern (imperator disposition 2026-09-12T02:24Z)."
+  - "The 4 noIndex E33 families are censused and untouched: rewrite-or-delete needs Zero's ruling."
+  - "The tracked apps/mouth/public/llms*.txt are NOT regenerated into the commit — they are build outputs (322k lines of churn) and W1 took the same disposition. They were regenerated by the real build, measured, and restored from git."
+  - "The inert `canonicalUrl` frontmatter field still reads /immigration/ in this family. Documented, not touched — it moves in PR-2 with the proof that no consumer reads it."
+
+pii: none
