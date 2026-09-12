@@ -39,7 +39,10 @@ lanes:
       its read-only sandbox. Round 4 (on the registry-entry + evidence
       delta added after O3): BLOCK, 2 MAJOR + 1 MINOR + 1 NIT. One MAJOR
       cured in this PR (A8), one MAJOR declined as out of concern and
-      ledgered; MINOR and NIT both cured. Also static.
+      ledgered; MINOR and NIT both cured. Also static. Round 5 (on the
+      gate-6287c cure, `-m gpt-5.6-sol` explicit, 12:12:44Z->12:22:25Z):
+      MAJOR + MINOR, both confirmed, both cured; the part of the MAJOR
+      that is the shared mechanism's property is declared, not fixed.
   - lane: contract-second-reader
     role: review
     seat: kimi-code/k3
@@ -181,6 +184,17 @@ receipts:
     exit: 0
     ts: "2026-09-12T11:49:59Z"
     seat: claude-opus-5 (build)
+  - probe: A9
+    claim: >-
+      After round O5's cures (restore in a `finally`, 285 named as the
+      narrowing rollback, docstring no longer claiming the shared
+      unwind/restore is state-preserving for other fixtures' rows) this file
+      then the registry canary still pass on one database.
+    cmd: ci_shape_pg.sh backend/tests/db/test_migration_313_garuda_practice_artifacts.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py --color=no -p no:randomly
+    result: "21 passed in 4.47s"
+    exit: 0
+    ts: "2026-09-12T12:24:53Z"
+    seat: claude-opus-5 (build)
 guilt_mutations:
   - target: tests/services/visa_engine/conftest.py — the retention-FK registry entry
     mutation: >-
@@ -233,6 +247,21 @@ guilt_mutations:
       restored from a cp backup, md5 identical before and after
       (3eb0afbab1a56e755ce0bb870ca9c0a8).
     ts: "2026-09-12T11:43:30Z"
+  - target: tests/db/test_migration_313_garuda_practice_artifacts.py — the reproduction test's `finally`
+    mutation: >-
+      Force the assertion INSIDE the try (`to_regclass(...) is None` ->
+      `is not None`) so the test fails after unwind and before restore; run
+      this file then the registry canary on one database. Sol O5 asked for
+      exactly this proof.
+    observed: >-
+      The reproduction test FAILS (1 failed, 20 passed) and the registry
+      canary that runs next PASSES all three, including
+      test_restore_only_reapplies_the_entry_that_was_actually_unwound whose
+      first assertion is "281 must be live in the deployed schema" — so
+      restore ran in the `finally` and the stack was put back despite the
+      failure. File restored from a cp backup, md5 identical
+      (f00421b9def7ac40d31ac898ff9e7649).
+    ts: "2026-09-12T12:26:17Z"
   - target: db/migrations_v2/313_garuda_practice_artifacts.sql (composite deferred FK, F7)
     mutation: >-
       Point `superseded_by` at an artifact belonging to ANOTHER practice and
@@ -373,6 +402,42 @@ dissent:
       real unwind/restore on the same connection. DELETE was tried first and
       refused by the guard — that refusal is why the earlier shape closed
       instead, and the comment now says so.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O5, MAJOR) The reproduction test is not state-preserving on a shared
+      worker database: unwind rolls the whole 281..313 chain back, 281's
+      rollback DROPS policy_scope, restore re-adds it with its default, so
+      closed GARUDA_ORDER / GARUDA_MAGIC_LINK rows other fixtures left
+      behind come back as VISA_DECISION. And restore was not in a
+      `finally`, so a failed assertion would leave the next file without
+      281..313. The docstring's "leaves this test as it entered" was false.
+    status: CONFIRMED
+    disposition: >-
+      CURED where it is this test's: restore now runs in a `finally`
+      (mutation measured — forced failure inside the try, canary after it
+      still finds 281 live), and the docstring states what "back" means
+      and what it does not. DECLARED where it is the mechanism's: the
+      scope-erasing side effect of 281's rollback + restore is a property
+      of the shared unwind/restore pair, identical for the three
+      visa_engine consumers that call it; this test adds nothing to it and
+      does not fix it. It joins the two rows already parked in
+      ledger-rows-held.md as a third fact about that pair for the
+      visa_engine lane.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O5, MINOR) The comments and tripwire message blamed 304's rollback for
+      re-narrowing the policy_scope CHECK. 304's rollback sees the
+      GARUDA_DOCUMENT rows and leaves the CHECK widened; on a clean database
+      it is 285's rollback, which guards only GARUDA_MAGIC_LINK rows, that
+      rebuilds the four-scope CHECK and raises.
+    status: CONFIRMED
+    disposition: >-
+      CURED — verified by reading both rollback halves (304: "left
+      WIDENED" NOTICE when rows exist; 285: narrows unless
+      GARUDA_MAGIC_LINK rows exist). Attribution corrected in the fixture
+      docstring, the tripwire message and the reproduction test's
+      docstring. The defect and the cure are unchanged; only the name of the
+      statement that raises was wrong.
   - seat: claude-opus-5
     objection: >-
       (evidence integrity, raised by the Imperator on gate-6287c) The O4
