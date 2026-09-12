@@ -24,7 +24,6 @@ export function DocumentsTab({
   formatDate,
   onAddClick,
   onEditClick,
-  onRefresh,
 }: {
   clientId: number;
   documents: ClientDocument[];
@@ -32,7 +31,6 @@ export function DocumentsTab({
   formatDate: (d: string) => string;
   onAddClick: () => void;
   onEditClick: (doc: ClientDocument) => void;
-  onRefresh: () => Promise<void>;
 }) {
   const categoryLabels: Record<string, string> = {
     immigration: "Immigration",
