@@ -204,6 +204,13 @@ export interface ReassignBody {
   reason: string;
 }
 
+export interface BulkReassignBody {
+  // CRIT-8: partner_ids are UUID strings
+  partner_ids: string[];
+  new_user_id: string;
+  reason: string;
+}
+
 export interface CreateReferralBody {
   // CATA-4: practice_id is INTEGER (production practices.id is INTEGER, not UUID).
   // Serializes as JSON number. Backend ReferralCreate model expects int.
@@ -294,6 +301,18 @@ export const deactivatePartner = (id: string) =>
 /** Reassign a partner to a different team member */
 export const reassignPartner = (id: string, body: ReassignBody) =>
   api.post<{ success: boolean }>(`${BASE}/${id}/reassign`, body);
+
+/**
+ * Bulk reassign partners. Client for the LIVE backend route
+ * (partners.py `POST /bulk-reassign`, 204). The /partners/orphaned page that
+ * used it was retired on 2026-09-12 because its list endpoint never existed;
+ * the ?orphaned= filter on /partners is where a bulk action would attach.
+ */
+export const bulkReassign = (body: BulkReassignBody) =>
+  api.post<{ success: boolean; updated_count: number }>(
+    `${BASE}/bulk-reassign`,
+    body,
+  );
 
 // NOTE: resendWelcomeEmail removed — backend has no /resend-welcome endpoint.
 // v1 welcome email is sent atomically on activation via outbox. v1.1 may add manual resend.

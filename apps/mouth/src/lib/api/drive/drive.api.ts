@@ -7,7 +7,6 @@ import type {
   FileListResponse,
   UserFolderResponse,
   AuthUrlResponse,
-  DisconnectResponse,
   CreateFolderRequest,
   CreateDocRequest,
   OperationResponse,
@@ -51,17 +50,6 @@ export class DriveApi {
   async getAuthUrl(): Promise<AuthUrlResponse> {
     return this.client.request<AuthUrlResponse>(
       "/api/integrations/google-drive/auth/url",
-    );
-  }
-
-  /**
-   * Disconnect the current user's Google Drive OAuth grant.
-   * Backend: POST /api/integrations/google-drive/disconnect.
-   */
-  async disconnect(): Promise<DisconnectResponse> {
-    return this.client.request<DisconnectResponse>(
-      "/api/integrations/google-drive/disconnect",
-      { method: "POST" },
     );
   }
 

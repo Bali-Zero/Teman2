@@ -16,11 +16,21 @@ import { logger } from "@/lib/logger";
 
 type DriveStatus = "checking" | "connected" | "disconnected" | "error";
 
+// Per-user OAuth grant, the thing "Connect" actually creates. NOT /api/drive/status:
+// that is the Team-Drive service-account router and answers "connected" as a literal
+// whenever the SA is configured (refuter finding on #6296).
+interface DriveConnectionStatus {
+  connected: boolean;
+  configured: boolean;
+}
+
 const GOOGLE_BLUE = "#4285F4"; // token-lint-ok: third-party brand identity color (Google), not theme chrome
 
 // Google Drive is the one integration with a real backend behind it
 // (/api/integrations/google-drive/*). The other cards this page used to show
-// were constants flipped in local state, so they are gone.
+// were constants flipped in local state, so they are gone. Disconnect is
+// deliberately NOT offered: the backend route revokes the Google token and
+// deletes the grant, irreversibly, and this page has no confirmation flow.
 export default function IntegrationsPage() {
   const router = useRouter();
   const [status, setStatus] = useState<DriveStatus>("checking");
@@ -29,7 +39,9 @@ export default function IntegrationsPage() {
   useEffect(() => {
     const check = async () => {
       try {
-        const s = await api.drive.getStatus();
+        const s = await api.get<DriveConnectionStatus>(
+          "/api/integrations/google-drive/status",
+        );
         setStatus(s.connected ? "connected" : "disconnected");
       } catch (error) {
         logger.error("Failed to check Google Drive status", {}, error as Error);
@@ -56,18 +68,6 @@ export default function IntegrationsPage() {
       window.location.href = auth_url;
     } catch (error) {
       logger.error("Failed to get auth URL", {}, error as Error);
-      setBusy(false);
-    }
-  };
-
-  const disconnect = async () => {
-    setBusy(true);
-    try {
-      await api.drive.disconnect();
-      setStatus("disconnected");
-    } catch (error) {
-      logger.error("Failed to disconnect Google Drive", {}, error as Error);
-    } finally {
       setBusy(false);
     }
   };
@@ -137,23 +137,27 @@ export default function IntegrationsPage() {
               </p>
             </div>
           </div>
-          <Button
-            variant={status === "connected" ? "outline" : "default"}
-            size="sm"
-            onClick={status === "connected" ? disconnect : connect}
-            disabled={busy || status === "checking"}
-          >
-            {busy ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Working…
-              </>
-            ) : status === "connected" ? (
-              "Disconnect"
-            ) : (
-              "Connect"
-            )}
-          </Button>
+          {status === "connected" ? (
+            <p className="text-xs text-[var(--foreground-muted)] text-right max-w-[220px]">
+              Connected via your Google account. Revoke access from your Google
+              account permissions page.
+            </p>
+          ) : (
+            <Button
+              size="sm"
+              onClick={connect}
+              disabled={busy || status === "checking"}
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Redirecting…
+                </>
+              ) : (
+                "Connect"
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>

@@ -451,7 +451,6 @@ API Routes:
 ├── /api/blog/articles      → Lista articoli
 ├── /api/blog/articles/[category]/[slug]  → Articolo singolo
 ├── /api/blog/articles/[category]/[slug]/views  → Track views
-├── /api/blog/ai-generate   → Genera articolo AI
 ├── /api/blog/newsletter    → Subscribe newsletter
 └── /api/blog/newsletter/confirm  → Conferma email
 ```
@@ -832,7 +831,6 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
 | `/api/blog/articles/[cat]/[slug]`       | GET    | Singolo articolo          |
 | `/api/blog/articles/[cat]/[slug]/views` | POST   | Track view                |
 | `/api/blog/newsletter`                  | POST   | Subscribe                 |
-| `/api/blog/ai-generate`                 | POST   | Genera con AI             |
 
 ---
 

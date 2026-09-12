@@ -3,9 +3,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * auth-gates-cookie-primary — class-wide gate contract (spec §2 rows #1-8).
+ * auth-gates-cookie-primary — class-wide gate contract (spec §2 rows #1-8;
+ * rows #5-#7 — settings/roles, settings/security, settings/users — were
+ * retired with those pages on 2026-09-12, the numbering of the survivors is
+ * kept so the rows still map to the spec).
  *
- * All eight pages below used to gate on `api.isAuthenticated()` (a
+ * All five pages below used to gate on `api.isAuthenticated()` (a
  * local-token-only, positive-only signal — see client.ts docstring) and now
  * gate on `useSessionState()` (cookie-primary). The contract is the same for
  * every member of the class:

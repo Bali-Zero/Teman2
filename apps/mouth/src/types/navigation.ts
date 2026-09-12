@@ -165,8 +165,8 @@ export const routeTitles: Record<string, string> = {
   "/hr/leave": "Leave Management",
   "/hr/leave/request": "Request Leave",
   "/hr/settings": "HR Settings",
-  "/analytics": "Analytics",
   "/analytics/funnel": "Funnel Analytics",
+  "/team/analytics": "Team Analytics",
   "/settings": "Settings",
   // Portal routes
   "/portal": "Dashboard",
