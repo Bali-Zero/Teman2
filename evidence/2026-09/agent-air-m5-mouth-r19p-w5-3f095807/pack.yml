@@ -1,0 +1,163 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19p-w5-3f095807/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: R19P-W5
+    role: build
+    seat: Claude Opus 5 (Dux of window W5, implements directly)
+pii_scan: clean
+decisions:
+  - id: D1
+    decision: >-
+      The palette lives as page-local custom properties (--r19-*) on .r19-gate, each
+      declaration line carrying a token-lint-ok reason, instead of reading --bz-* tokens.
+      Reason - the R19 values are W1's mandate and are NOT on origin/main yet (grep for
+      "forest" in apps/mouth/src/app/globals.css returns nothing, and --bz-base is
+      #f4f1ea, not paper #F7F4EE). Reading today's tokens would render the wrong palette;
+      editing globals.css is outside this window's perimeter. The seam W5 owes W1 is the
+      persona declaration, which IS shipped.
+  - id: D2
+    decision: >-
+      BZLogo variant="mark" (the wordmark-less glyph), not variant="full" (a black disc
+      carrying the wordmark). The brief asks for "the clean wordmark-less logo variant";
+      the hero already sets "Bali Zero" in serif beside it, so a second wordmark would
+      double it, and a black disc on the forest panel reads as a hole. concept.md §3
+      permits the red brand mark inside the mark itself.
+  - id: D3
+    decision: >-
+      The quiet line is the "nothing to register" sentence, not a /portal/register link.
+      /portal/register exists but is an invitation-token route (analytics-url.ts redacts
+      its ?token=), and no page links it as self-registration - grep over apps/mouth/src
+      returns only proxy/middleware/analytics/test references, no <Link href>.
+  - id: D4
+    decision: >-
+      The step-1 hint says "your PIN" where the mock says "your six-digit PIN". The field
+      itself accepts 4-8 digits (minLength/maxLength unchanged), so "six-digit" would be
+      copy the control contradicts.
+  - id: D5
+    decision: >-
+      Field labels stay "Corporate Email" and "Access PIN" (mock says "Email"). They are
+      the accessible names three behavioural tests select by; the window brief lists the
+      copy it wants changed and does not list them.
+  - id: D6
+    decision: >-
+      error.tsx swaps --state-danger for --bz-copper-text. It is in the owned perimeter
+      "for colour classes only", and concept F §3 says red does not exist in this concept.
+receipts:
+  - claim: The worktree was created by the broker on the mouth lane for this task id.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id r19p-w5
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-r19p-w5 ; branch agent/air-m5/mouth/r19p-w5"
+    exit: 0
+    ts: "2026-09-13T02:39:00+08:00"
+    seat: Claude Opus 5
+  - claim: A1 - the diff touches 3 files, all under login-upgraded/, and is strongly net-negative.
+    cmd: git -C <wt> diff --cached --numstat origin/main
+    result: "page.test.tsx 41/80 ; page.tsx 292/1369 ; error.tsx 5/4 (added after this measurement, see the final diffstat receipt). Net for the two main files -1116 lines."
+    exit: 0
+    ts: "2026-09-13T02:58:00+08:00"
+    seat: Claude Opus 5
+  - claim: A2 - the two test files in the folder are green and the origin/main test-case count is preserved.
+    cmd: cd apps/mouth && npx vitest --run src/app/portal/login-upgraded ; grep -c on both the new and the origin/main page.test.tsx
+    result: "Test Files 2 passed (2) ; Tests 16 passed (16) ; duration 18.91s. Test-case count: 11 on HEAD, 11 on origin/main (it( / it.each( / test( at describe-body indent). csp.test.ts unchanged."
+    exit: 0
+    ts: "2026-09-13T02:52:33+08:00"
+    seat: Claude Opus 5
+  - claim: A3 - no illustration SVG, no starfield, no framer-motion and no raw hex outside the three marked palette lines survive in page.tsx.
+    cmd: grep -n "<svg|<circle|<rect|starDrift|twinkle|gate-scene|passageGlow|framer-motion" and grep -nEi "#[0-9a-f]{3,8}" on page.tsx
+    result: "first grep: no match. hex grep: exactly 3 lines, all --r19-* declarations carrying token-lint-ok reasons; the only red in the surface is the brand mark asset. The only remaining svg is the lucide Loader2 at w-5 h-5 (20px)."
+    exit: 1
+    ts: "2026-09-13T02:58:10+08:00"
+    seat: Claude Opus 5
+  - claim: A3 - the token-lint CI gate accepts the added lines in the scoped portal surface.
+    cmd: python3 -I scripts/token_lint.py --base origin/main
+    result: "token-lint: clean - no new hardcoded hex colors in scoped surfaces. (Run again after the commit; the scanner diffs REF...HEAD, so the pre-commit run scanned 0 files.)"
+    exit: 0
+    ts: "2026-09-13T02:58:30+08:00"
+    seat: Claude Opus 5
+  - claim: A4 - typecheck green.
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: "no diagnostics, exit 0 (ran ~14 min; pnpm -F mouth typecheck refuses on this checkout with ERR_PNPM_UNSAFE_MODULES_DIR because node_modules is a symlink outside the worktree, so the underlying script was run directly)."
+    exit: 0
+    ts: "2026-09-13T03:12:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4 - eslint and prettier green on every touched file.
+    cmd: cd apps/mouth && npx eslint src/app/portal/login-upgraded/{page,page.test,error}.tsx ; npx prettier --check the same files
+    result: "eslint 0 errors (page.test.tsx is matched by an ignore pattern, reported as 1 warning) ; prettier: All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-13T03:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 - four screenshots of the real route rendered by a local dev server; /portal/login 308s onto the component.
+    cmd: npx next dev --webpack -p 3987 ; playwright chromium channel=chrome, viewports 1440x900 and 390x844, goto /portal/login, step 2 reached by filling the email and submitting
+    result: "status 200, final url http://localhost:3987/portal/login-upgraded for all four. Files: 01-entry-step1-desktop-1440x900.png, 02-entry-step1-mobile-390x844.png, 03-entry-step2-desktop-1440x900.png, 04-entry-step2-mobile-390x844.png under /Users/balizero/Desktop/R19-PORTAL-RENDERS-20260912/build/r19p-w5/."
+    exit: 0
+    ts: "2026-09-13T03:38:00+08:00"
+    seat: Claude Opus 5
+  - claim: The persona effect really fires in the browser - data-product/data-theme observed on documentElement.
+    cmd: playwright evaluate document.documentElement.dataset.product and .dataset.theme on the loaded page
+    result: 'product: "my" ; theme: "operative-light"'
+    exit: 0
+    ts: "2026-09-13T03:30:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 comparison against concepts/concept-F/01-entry.html - the visible differences.
+    cmd: read the rendered PNGs and the mock side by side
+    result: >-
+      (1) headline serif is Cormorant, not Fraunces - --font-serif is still the Cormorant
+      wiring on origin/main and the font swap is W1's window; the page reads the variable,
+      so it follows W1 automatically. (2) the brand mark is the red "3" glyph, not the
+      mock's paper-coloured abstract square (Zero's logo order, D2). (3) "Forgot PIN?"
+      instead of the mock's "Forgot your PIN?" - the string is the i18n value
+      portal.login.forgot_password and the locale JSON is forbidden ground. (4) the
+      primary button renders grey-green in both captures because it is correctly disabled
+      with an empty field; the forest fill is asserted by the vitest CTA test. (5) a
+      Next.js dev-mode indicator badge sits bottom-left of the step-2 capture. Everything
+      else - split 5fr/6fr, forest panel, copper 56x3 rule, two step ticks, eyebrows,
+      52px field, copper links, hairline, quiet line, footer row - matches the mock.
+    exit: 0
+    ts: "2026-09-13T03:40:00+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: Claude Opus 5 (self-refutation, on the local toolchain)
+    objection: >-
+      The first vitest/typecheck/dev-server attempts all failed with missing modules
+      (@vitejs/plugin-react, lru-cache, typescript). Four sibling windows were running
+      pnpm install CONCURRENTLY against the SAME node_modules (the worktrees symlink it
+      from the main checkout) - cicatrix family #5, sibling race on a shared checkout
+      resource. Reporting green tooling during that window would have been reporting a
+      half-built tree.
+    status: CONFIRMED
+    cure: >-
+      No install of my own (that would have been the fifth racer). Waited for the four to
+      drain, then re-ran every check on the settled tree. The tree now resolves through
+      .worktrees/mouth-r19p-w2/node_modules/.pnpm - a store owned by another window's
+      worktree, which will break for everyone the moment that worktree is released.
+      Recorded as a leftover for the imperator, not cured from inside this window.
+  - seat: Claude Opus 5 (self-refutation, on the visual proof)
+    objection: >-
+      The dev server had to be started with --webpack (turbopack refuses the worktree's
+      node_modules symlink: "points out of the filesystem root"), and the webpack dev
+      runtime uses eval, which the portal CSP forbids - so the client bundle never
+      hydrated and the email field stayed disabled. The first step-2 capture attempt
+      timed out on a disabled input.
+    status: CONFIRMED
+    cure: >-
+      Playwright context opened with bypassCSP:true, which suspends CSP enforcement in
+      the browser only - it changes nothing in the markup or the CSS under capture. Both
+      step-2 captures then rendered. The production CSP itself is untouched and
+      csp.test.ts passes unchanged.
+  - seat: Claude Opus 5 (self-refutation, on the palette)
+    objection: >-
+      Page-local --r19-* variables duplicate values that W1 is about to put in the token
+      seam; when W1 lands, this page will keep its own copy instead of following the seam.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured - deliberately. W1 is not on origin/main, and a page that reads a token
+      that does not exist yet renders the wrong colours today. The follow-up (repoint the
+      six --r19-* declarations at the my-product tokens once W1 is live) is one line each
+      and is recorded as a leftover.
+leftovers:
+  - The M5 checkout's node_modules now resolves through .worktrees/mouth-r19p-w2/node_modules/.pnpm after four concurrent pnpm installs; every mouth worktree depends on w2's store surviving. Imperator-level cleanup, outside this window.
+  - Once W1's my-product token seam is on main, the six --r19-* declarations should be repointed at the tokens and their token-lint-ok markers dropped.
+  - The headline renders in Cormorant until W1 swaps --font-serif to Fraunces; nothing in this window needs to change when it does.
+  - The mock's "Forgot your PIN?" stays "Forgot PIN?" (i18n locale JSON is outside the perimeter); an i18n window could align the string.
+  - The success/denied overlays were restyled to paper/forest/copper but are not in the mock, so their R19 treatment is this window's own reading, not a compared render.
+  - loading.tsx was left untouched (neutral Skeletons, no colour to correct).

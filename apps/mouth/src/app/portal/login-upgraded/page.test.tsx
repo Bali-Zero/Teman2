@@ -5,7 +5,6 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockLogin, mockLoggerError, mockLoggerInfo, mockRouterReplace } =
@@ -25,46 +24,6 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-// Login behaviour does not depend on animation timing. Keeping this unit test
-// on semantic DOM elements also prevents motion's RAF loop from obscuring the
-// submit and accessibility assertions.
-vi.mock("framer-motion", async () => {
-  const React = await vi.importActual<typeof import("react")>("react");
-  const makeMotionElement = (tag: "button" | "div" | "form" | "p") =>
-    React.forwardRef<
-      HTMLElement,
-      Record<string, unknown> & { children?: ReactNode }
-    >(function MotionElement(
-      {
-        animate: _animate,
-        exit: _exit,
-        initial: _initial,
-        transition: _transition,
-        whileHover: _whileHover,
-        whileTap: _whileTap,
-        children,
-        ...domProps
-      },
-      ref,
-    ) {
-      return React.createElement(
-        tag,
-        { ...domProps, ref },
-        children as ReactNode,
-      );
-    });
-
-  return {
-    AnimatePresence: ({ children }: { children?: ReactNode }) => children,
-    motion: {
-      button: makeMotionElement("button"),
-      div: makeMotionElement("div"),
-      form: makeMotionElement("form"),
-      p: makeMotionElement("p"),
-    },
-  };
-});
-
 vi.mock("@/lib/api/public-auth", () => ({
   publicAuth: { login: mockLogin },
 }));
@@ -80,78 +39,78 @@ vi.mock("@/lib/logger", () => ({
 
 import UpgradedLoginPage from "./page";
 
-describe("UpgradedLoginPage (WS3 day pass)", () => {
+describe("UpgradedLoginPage (R19 concept F sign-in)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.history.replaceState({}, "", "/portal/login-upgraded");
   });
 
-  it("shell reads --bz-base and the gate scene carries its re-light class", () => {
+  it("renders the split gate and no illustration survives", () => {
     const { container } = render(<UpgradedLoginPage />);
 
-    const shell = container.querySelector(".min-h-screen");
-    expect(shell?.className).toContain("bg-[var(--bz-base)]");
-    expect(shell?.className).not.toContain("bg-black");
-
-    // The day re-light is scoped to this class via attribute-selector CSS.
-    expect(container.querySelector(".gate-scene")).not.toBeNull();
+    expect(container.querySelector(".r19-gate")).not.toBeNull();
+    expect(container.querySelector(".r19-hero")).not.toBeNull();
+    // The candi-bentar gate scene, its starfield and its re-light class are gone.
+    expect(container.querySelector(".gate-scene")).toBeNull();
+    expect(container.querySelector("svg circle")).toBeNull();
   });
 
-  it("masthead slogan reads day tokens (copper headline: AA on the gate passage)", () => {
+  it("the forest panel carries the brand mark and the hero sentence", () => {
+    const { container } = render(<UpgradedLoginPage />);
+
+    const hero = container.querySelector(".r19-hero");
+    expect(hero).not.toBeNull();
+    expect(hero?.textContent).toContain("Bali Zero");
+    expect(hero?.textContent).toContain("Client portal");
+    expect(hero?.querySelector("h2")?.textContent).toBe(
+      "Your Bali file,kept in order.",
+    );
+    // Zero's order: the real logo, never cropped into a circle.
+    const mark = hero?.querySelector("img");
+    expect(mark).not.toBeNull();
+    expect(mark?.getAttribute("alt")).toBe("Bali Zero");
+    expect(mark?.className ?? "").not.toContain("rounded-full");
+  });
+
+  it("the email field is the paper form control with a copper focus ring", () => {
     render(<UpgradedLoginPage />);
-
-    // The headline spans the sky AND the dark gate passage: copper-text
-    // keeps ≥3:1 large-text contrast on both (3.28:1 on the passage,
-    // 5.05:1 on paper) where ink would drop to ~1.2:1 on the passage.
-    const h1 = screen.getByText("Your Bali Life.");
-    expect(h1.className).toContain("text-[var(--bz-copper-text)]");
-
-    const kicker = screen.getByText("Turn On");
-    expect(kicker.className).toContain("text-[var(--bz-copper-text)]");
-  });
-
-  it("spotlight card is the token surface; inputs are warm paper with copper focus", () => {
-    const { container } = render(<UpgradedLoginPage />);
-
-    const card = container.querySelector(".bg-\\[var\\(--bz-card\\)\\]\\/95");
-    expect(card).not.toBeNull();
-    expect(card?.className).toContain("border-[var(--bz-border)]");
 
     const email = screen.getByPlaceholderText("client@company.com");
-    expect(email.className).toContain("bg-[var(--bz-base)]");
-    expect(email.className).toContain("border-[var(--bz-border)]");
-    expect(email.className).toContain("text-[var(--tx-primary)]");
-    expect(email.className).toContain("focus:border-[var(--bz-copper)]");
+    expect(email.className).toContain("r19-input");
+
+    const eyebrow = screen.getByText("Sign in · step 1 of 2");
+    expect(eyebrow.className).toContain("r19-eyebrow");
   });
 
-  it("CTA uses the darker copper step + --bz-on-warm (AA pair)", () => {
+  it("the primary CTA is filled forest — copper never fills a button", () => {
     render(<UpgradedLoginPage />);
 
-    const cta = screen.getByRole("button", { name: /Pass the Portal/ });
-    expect(cta.style.background).toBe("var(--bz-copper-text)");
-    expect(cta.style.color).toBe("var(--bz-on-warm)");
+    const cta = screen.getByRole("button", { name: /Continue/ });
+    expect(cta.style.background).toBe("var(--r19-forest)");
+    expect(cta.style.color).toBe("var(--r19-paper)");
   });
 
-  it("email step advances to the PIN step with token-styled controls", async () => {
+  it("email step advances to the PIN step with the R19 controls", async () => {
     render(<UpgradedLoginPage />);
 
     fireEvent.change(screen.getByPlaceholderText("client@company.com"), {
       target: { value: "synthetic.user@example.test" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Pass the Portal/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
 
     const pin = await screen.findByLabelText("Access PIN");
-    expect(pin.className).toContain("bg-[var(--bz-base)]");
-    expect(pin.className).toContain("border-[var(--bz-border)]");
+    expect(pin.className).toContain("r19-input");
+    expect(pin.className).toContain("r19-pin");
+    expect(screen.getByText("Sign in · step 2 of 2")).toBeTruthy();
 
     const verify = screen.getByRole("button", { name: /Verify Identity/ });
-    expect(verify.style.background).toBe("var(--bz-copper-text)");
-    expect(verify.style.color).toBe("var(--bz-on-warm)");
+    expect(verify.style.background).toBe("var(--r19-forest)");
+    expect(verify.style.color).toBe("var(--r19-paper)");
 
     const magicLink = screen.getByRole("link", {
       name: /Sign in with an email link instead/,
     });
-    expect(magicLink.className).toContain("text-[var(--bz-accent-warm)]");
+    expect(magicLink.className).toContain("r19-link");
   });
 
   it("exposes durable labels and password-manager semantics", async () => {
@@ -366,5 +325,7 @@ describe("UpgradedLoginPage (WS3 day pass)", () => {
     expect(html).not.toContain("text-[#f0ece4]"); // token-lint-ok: drain-guard assertion string, not a color use
     expect(html).not.toContain("text-[#f8e89a]"); // token-lint-ok: drain-guard assertion string, not a color use
     expect(html).not.toContain("accent-gold-muted");
+    expect(html).not.toContain("starDrift");
+    expect(html).not.toContain("passageGlow");
   });
 });
