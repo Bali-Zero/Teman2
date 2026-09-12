@@ -119,9 +119,18 @@ guilt_mutations:
   - "_with_database reverted to rsplit('/', 1) (Sol O1 finding 5 reverted) -> 1 failed"
   - "_redacted returning the DSN unchanged (Sol O1 finding 7 reverted) -> 1 failed"
 refuter:
-  seat: codex Sol
-  model_id: gpt-5.6-sol
-  invocation: "codex exec --sandbox read-only -c model_reasoning_effort=xhigh"
+  # SEAT IDENTITY, corrected 2026-09-12 (Imperator decision #33). Rounds O1 and O2 were
+  # launched WITHOUT `-m`, so `~/.codex/config.toml`'s account default carried them: every
+  # log header reads `model: gpt-6-astra` (sol_pr2a.log:5, sol_o2.log:5). That is the ASTRA
+  # seat, prepare-only under the Builder Contract, not Sol. The first version of this block
+  # said `gpt-5.6-sol` — copied from the mandate text, never read from a log. Their findings
+  # were real and their cures stand; they are recorded here for what they were. Round O3
+  # below is the first on the real Sol door (`-m gpt-5.6-sol`, header verified) and is the
+  # round that satisfies "Sol refuter before opening".
+  seat: codex (account default = Astra for O1/O2; Sol for O3)
+  model_id: gpt-6-astra
+  model_id_source: "log header line `model:` of each round, read after the run — never the seat name"
+  invocation: "codex exec --sandbox read-only -c model_reasoning_effort=xhigh  (no -m: account default)"
   round: O1
   duration: "6m01s (2026-09-12T09:37:07Z -> 09:43:08Z), 130217 tokens"
   verdict: BLOCK
@@ -175,6 +184,8 @@ refuter:
     same fixture-internal branch, same reason. All three are named here so a reader does
     not infer coverage from the mutation table's silence.
   round_O2:
+    model_id: gpt-6-astra
+    invocation: "codex exec --sandbox read-only -c model_reasoning_effort=xhigh  (no -m: account default)"
     delta_reviewed: "git diff 8c64223f4e 50aa8127fd (the O1 cure commit)"
     duration: "6m15s (2026-09-12T09:52:24Z -> 09:58:39Z), 141528 tokens"
     verdict: BLOCK
