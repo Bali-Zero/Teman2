@@ -591,28 +591,50 @@ describe("support reasons are sentences, not machine codes", () => {
   });
 
   /**
+   * D3c/C-D2 (2026-09-13): the tests below read the SIGNED pack specifically
+   * — a `.source.json` is a draft that need not have gone through signing at
+   * all, so it is not "the pack" any decision was made under. Globbing
+   * `*.signed.json` and reading rules from the envelope's `payload` (never
+   * top-level, which only exists on the unsigned `.source.json` shape).
+   */
+  function signedProductionPackFiles(): string[] {
+    const files = fs
+      .readdirSync(PACKS_DIR)
+      .filter((name) => /^rulepack-prod-\d+\.signed\.json$/.test(name))
+      .map((name) => path.join(PACKS_DIR, name));
+    if (files.length === 0) {
+      throw new Error(`no signed production packs found under ${PACKS_DIR}`);
+    }
+    return files;
+  }
+
+  /**
    * The tripwire above walks SUPPORT effects only, but an EXCLUDE code reaches
    * a reader through the SAME `reasonMessage` fallback: `NO_SUPPORTED_PATH`
    * maps `no_path_reasons` through `reason()`. So a new hard filter can print
    * a machine code on the no-path sheet without failing anything above. seq-20
    * adds exactly one such rule — `hf.d2.indonesia-source-compensation`,
    * CL-D2-01's local-compensation prohibition — and its code is read OUT of
-   * the highest-sequence pack on disk rather than typed here, so a rename in
-   * the fold moves this test with it instead of leaving it quietly stale.
+   * the highest-sequence SIGNED pack on disk rather than typed here, so a
+   * rename in the fold moves this test with it instead of leaving it quietly
+   * stale.
    */
   function highestSequencePack(): { rules?: Array<Record<string, unknown>> } {
     let best: {
       payload: { sequence: number; rules?: Array<Record<string, unknown>> };
       sequence: number;
     } | null = null;
-    for (const full of productionPackFiles()) {
-      const payload = JSON.parse(fs.readFileSync(full, "utf-8")) as {
-        sequence?: unknown;
-        rules?: Array<Record<string, unknown>>;
+    for (const full of signedProductionPackFiles()) {
+      const envelope = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        payload?: {
+          sequence?: unknown;
+          rules?: Array<Record<string, unknown>>;
+        };
       };
+      const payload = envelope.payload;
       // A pack without a numeric `sequence` cannot be compared — skip it
       // rather than let it win via a sentinel default.
-      if (typeof payload.sequence !== "number") continue;
+      if (!payload || typeof payload.sequence !== "number") continue;
       if (best === null || payload.sequence > best.sequence) {
         best = {
           payload: payload as {
@@ -624,7 +646,9 @@ describe("support reasons are sentences, not machine codes", () => {
       }
     }
     if (best === null) {
-      throw new Error(`no pack under ${PACKS_DIR} had a numeric sequence`);
+      throw new Error(
+        `no signed pack under ${PACKS_DIR} had a numeric sequence`,
+      );
     }
     return best.payload;
   }
@@ -709,6 +733,188 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(SECOND_HOME_DEPOSIT_THRESHOLD_USD).toBe(
       gteThresholdInPack("el.e33.deposit-basis", "secondhome.bank_deposit_usd"),
     );
+  });
+
+  // D3c/C-D5 (owner order, 2026-09-13): three more SUPPORT_REASON_COPY
+  // sentences state a literal figure that a signed-pack rule actually backs
+  // (`el.e28a.investment`, `el.e33e.retirement`, `el.e33f.retirement` — the
+  // Second Home basis pair above is already covered by the pinned-constant
+  // test). The figure is extracted from the PROSE STRING (never the pack
+  // JSON — that stays a structural `when`-tree walk via `gteThresholdInPack`)
+  // and compared to the rule's own `gte` threshold, in both languages, with
+  // an explicit copy-key -> rule-id/fact map so a reader can see which rule
+  // is claimed to back which sentence.
+  function usdFromProse(copy: string): number {
+    const match = copy.match(/USD\s+([\d,]+)/);
+    if (!match) {
+      throw new Error(`no "USD <n>" figure found in: ${copy}`);
+    }
+    return Number(match[1].replace(/,/g, ""));
+  }
+
+  function usdFromProseId(copy: string): number {
+    const match = copy.match(/USD\s+([\d.]+)/);
+    if (!match) {
+      throw new Error(`no "USD <n>" figure found in: ${copy}`);
+    }
+    return Number(match[1].replace(/\./g, ""));
+  }
+
+  function idrBillionFromProse(copy: string): number {
+    const match = copy.match(/IDR\s+([\d.]+)\s+billion/i);
+    if (!match) {
+      throw new Error(`no "IDR <n> billion" figure found in: ${copy}`);
+    }
+    return Math.round(Number(match[1]) * 1_000_000_000);
+  }
+
+  function rpMiliarFromProse(copy: string): number {
+    const match = copy.match(/Rp\s+([\d,]+)\s+miliar/i);
+    if (!match) {
+      throw new Error(`no "Rp <n> miliar" figure found in: ${copy}`);
+    }
+    return Math.round(Number(match[1].replace(",", ".")) * 1_000_000_000);
+  }
+
+  const FIGURE_BACKED_BY_RULE: Record<
+    string,
+    {
+      ruleId: string;
+      fact: string;
+      readEn: (copy: string) => number;
+      readId: (copy: string) => number;
+    }
+  > = {
+    E28A_INVESTMENT_ELIGIBLE: {
+      ruleId: "el.e28a.investment",
+      fact: "investment.paid_up_capital_idr",
+      readEn: idrBillionFromProse,
+      readId: rpMiliarFromProse,
+    },
+    E33E_RETIREMENT_ELIGIBLE: {
+      ruleId: "el.e33e.retirement",
+      fact: "secondhome.bank_deposit_usd",
+      readEn: usdFromProse,
+      readId: usdFromProseId,
+    },
+    E33F_RETIREMENT_ELIGIBLE: {
+      ruleId: "el.e33f.retirement",
+      fact: "secondhome.passive_monthly_income_usd",
+      readEn: usdFromProse,
+      readId: usdFromProseId,
+    },
+  };
+
+  it("anchors every remaining SUPPORT-copy figure with a backing rule to that rule's gte threshold, EN and ID", () => {
+    // Guard the guard: an empty map would make the loop below vacuously pass.
+    expect(Object.keys(FIGURE_BACKED_BY_RULE).length).toBeGreaterThan(0);
+    for (const [key, spec] of Object.entries(FIGURE_BACKED_BY_RULE)) {
+      const copy = SUPPORT_REASON_COPY[key];
+      const expected = gteThresholdInPack(spec.ruleId, spec.fact);
+      expect(spec.readEn(copy.en)).toBe(expected);
+      expect(spec.readId(copy.id)).toBe(expected);
+    }
+  });
+
+  // Mirror image: these SUPPORT reasons named a dollar figure on `main` with
+  // NO backing rule anywhere in the signed pack (verified: no fact for
+  // proof-of-funds, living cost or an income threshold exists in ANY rule's
+  // `when` tree). Per the same rule as the anchor test above, an unbacked
+  // figure may not be stated — this pins that the fix stays applied.
+  it("states no figure for SUPPORT reasons the signed pack has no rule to back", () => {
+    const NO_BACKING_KEYS = [
+      "PROOF_OF_FUNDS_D1",
+      "PROOF_OF_FUNDS_D2",
+      "PROOF_OF_FUNDS_D12",
+      "REQ_FUNDS_2000",
+      "LIVING_COST_USD2000",
+      "E33G_INCOME_60K_ADVISOR_CHECK",
+    ] as const;
+    for (const key of NO_BACKING_KEYS) {
+      const copy = SUPPORT_REASON_COPY[key];
+      expect(copy.en).not.toMatch(/\d/);
+      expect(copy.id).not.toMatch(/\d/);
+    }
+  });
+
+  // D3c/C-D1 gate finding (2026-09-13): `fact-mapper.ts`'s
+  // `depositBasisDecisivelyNotChosen`/`propertyBasisDecisivelyNotChosen`
+  // synthesise KNOWN(0)/KNOWN(false) for the sibling Second Home basis's four
+  // facts once the interview has decisively routed to the OTHER basis. That
+  // synthesis is innocent only while every signed-pack rule reading these
+  // facts stays SUPPORT-only: the moment a HARD_FILTER/EXCLUDE rule reads one
+  // of them, or any rule compares one with `eq false`, the synthesised
+  // "known false" stops meaning "not claimed here" and starts actively
+  // EXCLUDING a visitor who never answered the question. Nobody else guards
+  // this premise, so this walks the highest-sequence SIGNED pack's `when`
+  // trees structurally (`all`/`any` via `args`, `not` via its singular `arg`
+  // — never regexed off the JSON text) and must go RED the moment a future
+  // pack rule breaks it.
+  it("never lets a HARD_FILTER/EXCLUDE rule, or an eq-false comparison, read a synthesised Second-Home twin-basis fact", () => {
+    const GUARDED_FACTS = [
+      "secondhome.bank_deposit_usd",
+      "secondhome.bank_deposit_at_state_bank",
+      "secondhome.bank_deposit_in_own_name",
+      "secondhome.qualifying_property_value_usd",
+    ];
+
+    function findGuardedFactNodes(
+      node: unknown,
+      out: Array<Record<string, unknown>>,
+    ): void {
+      if (Array.isArray(node)) {
+        node.forEach((item) => findGuardedFactNodes(item, out));
+        return;
+      }
+      if (node === null || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (
+        typeof record.fact === "string" &&
+        GUARDED_FACTS.includes(record.fact)
+      ) {
+        out.push(record);
+      }
+      if (Array.isArray(record.args)) {
+        findGuardedFactNodes(record.args, out);
+      }
+      if (record.arg !== undefined) {
+        findGuardedFactNodes(record.arg, out);
+      }
+    }
+
+    const rules = highestSequencePack().rules ?? [];
+    let rulesReferencingGuardedFacts = 0;
+    const offendingStageRuleIds: string[] = [];
+    const offendingEqFalseRuleIds: string[] = [];
+
+    for (const rule of rules) {
+      const nodes: Array<Record<string, unknown>> = [];
+      findGuardedFactNodes(rule.when, nodes);
+      if (nodes.length === 0) continue;
+      rulesReferencingGuardedFacts += 1;
+
+      const stage = rule.stage;
+      const effectType = (rule.effect as Record<string, unknown> | undefined)
+        ?.type;
+      if (
+        stage === "HARD_FILTER" ||
+        stage === "EXCLUDE" ||
+        effectType === "EXCLUDE"
+      ) {
+        offendingStageRuleIds.push(String(rule.rule_id));
+      }
+      for (const node of nodes) {
+        if (node.op === "eq" && node.value === false) {
+          offendingEqFalseRuleIds.push(String(rule.rule_id));
+        }
+      }
+    }
+
+    // Guard the guard: a glob/parse that silently found nothing would make
+    // the assertions below vacuously pass.
+    expect(rulesReferencingGuardedFacts).toBeGreaterThan(0);
+    expect(offendingStageRuleIds).toEqual([]);
+    expect(offendingEqFalseRuleIds).toEqual([]);
   });
 
   function firstNoPathReason(code: string, facts?: OracleFacts) {
