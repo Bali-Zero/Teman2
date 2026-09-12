@@ -227,7 +227,10 @@ def test_rendered_text_report_never_contains_legacy_claim_text() -> None:
     )
     text = nb.render_report(report, as_json=False)
     assert SENTINEL_CLAIM_TEXT not in text
-    assert manifest_hash not in text or True  # hash IS expected to appear; sentinel must not
+    # The manifest hash IS expected in the report -- it is the run's identity and what `--apply`
+    # is bound to. Asserting its PRESENCE is the real contract; the previous
+    # `assert manifest_hash not in text or True` was `X or True`, true for every input.
+    assert manifest_hash in text
     assert SENTINEL_CLAIM_TEXT not in json.dumps(report.as_dict())
 
 
