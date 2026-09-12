@@ -1,9 +1,9 @@
 {
-  "run_at": "2026-09-12T09:15:00+08:00",
+  "run_at": "2026-09-12T09:04:01+08:00",
   "today": "2026-09-12",
   "yesterday_seen_count": 24,
   "yesterday_file_used": "2026-09-11-delta.json",
-  "new_today_count": 1,
+  "new_today_count": 0,
   "partial": true,
   "unreachable_sources": [
     {"url": "https://www.hukumonline.com/berita/", "reason": "http_403", "note": "HTTP 403 on fetch"},
@@ -13,33 +13,20 @@
     {"url": "https://jdih.kemenkeu.go.id/peraturan", "reason": "empty_shell", "note": "Nav/institutional content only, no dated regulation entries"}
   ],
   "sources_checked_no_delta": [
-    {"url": "https://peraturan.go.id", "reason": "outside_window", "note": "Newest entry 2026-09-04 (Permen KKP 9/2026), not a matching reg-type either"},
-    {"url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026", "reason": "checked_no_new", "note": "Content read (285 pages, 2026 index) but jenis=PMK filter surfaced only UU entries, likely JS-paginated"},
+    {"url": "https://news.ddtc.co.id/", "reason": "checked_no_new", "note": "SE-10/PJ/2026 (barang sitaan) and PER-10/BC/2026 (Bea Cukai BTD/BDN/BMMN) found but neither is a tracked reg-type nor touches a Bali Zero service line"},
+    {"url": "https://peraturan.go.id", "reason": "outside_window", "note": "Newest entries dated 2026-09-04 (Permen KKP 9/2026, Perban BP Tapera 1/2026, Perka ANRI 3/2026)"},
+    {"url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026", "reason": "checked_no_new", "note": "2,849 results for 2026 but jenis=PMK filter surfaced only UU/PP titles, no dated PMK, likely JS-paginated"},
     {"url": "https://www.imigrasi.go.id", "reason": "outside_window", "note": "Newest Siaran Pers dated 2026-09-04, no Permenimigrasi/Permenkumham citation"},
     {"url": "https://www.pajak.go.id/peraturan", "reason": "outside_window", "note": "Newest entry KEP-185/PJ/2026 dated 2026-09-02, predates 48h window"},
     {"url": "https://jdih.kemnaker.go.id/peraturan", "reason": "outside_window", "note": "Newest shown entry UU Nomor 2 Tahun 2026 dated 2026-04-30, far outside window"}
   ],
   "nb_query_errors": [
-    {"nb": "NB-INTEL-Regulation — Daily Regulatory Intelligence", "reason": "timeout", "note": "nlm query notebook via cached UUID, exit 124 after 20-25s; consistent with account-wide nlm auth expired since 2026-09-06"},
-    {"nb": "NB-INTEL-Press — Daily Press Intelligence", "reason": "timeout", "note": "Same timeout pattern, cached UUID"},
-    {"nb": "NB-INTEL-Immigration — Daily Immigration Intelligence", "reason": "timeout", "note": "Same timeout pattern, cached UUID"},
-    {"nb": "NB-INTEL-Tax — Daily Tax/Fiscal Intelligence", "reason": "timeout", "note": "Same timeout pattern, cached UUID"}
+    {"nb": "NB-INTEL-Regulation — Daily Regulatory Intelligence", "reason": "timeout", "note": "nlm notebook list (UUID resolve prerequisite) exit 124 after 25s, zero output; consistent with account-wide nlm auth expired since 2026-09-06, still unresolved"},
+    {"nb": "NB-INTEL-Press — Daily Press Intelligence", "reason": "timeout", "note": "Same nlm notebook list failure blocks resolution for all NBs before any per-NB query could run"},
+    {"nb": "NB-INTEL-Immigration — Daily Immigration Intelligence", "reason": "timeout", "note": "Same nlm notebook list failure blocks resolution for all NBs before any per-NB query could run"},
+    {"nb": "NB-INTEL-Tax — Daily Tax/Fiscal Intelligence", "reason": "timeout", "note": "Same nlm notebook list failure blocks resolution for all NBs before any per-NB query could run"}
   ],
-  "deltas": [
-    {
-      "citation": "PER-10/BC/2026",
-      "title_id": "DJBC Terbitkan Aturan Baru Pengelolaan BTD, BDN, dan BMMN",
-      "title_en": "DGCE Issues New Regulation on Management of BTD, BDN, and BMMN",
-      "service_line": ["tax"],
-      "severity": "low",
-      "confidence": "medium",
-      "impact_note": "Narrow relevance: governs Directorate General of Customs and Excise (DJBC) management of bonded/state-controlled/state-owned goods categories (BTD/BDN/BMMN) — affects PT PMA clients operating bonded warehouses or import-heavy KBLI, not the general visa/individual-tax client base. Single-source (DDTC), regulation full text not accessible from the article page — flagging the citation only, not asserting substantive content beyond the headline.",
-      "summary": "DDTC reports DJBC issued PER-10/BC/2026 on management of BTD (Barang Tidak Dikuasai), BDN (Barang Dikuasai Negara) and BMMN (Barang Milik Negara/Musnah). Article body not retrievable from the fetch — no deadline/fee/procedure detail confirmed beyond the headline.",
-      "source": "DDTC | https://news.ddtc.co.id/berita/nasional/1822393/djbc-terbitkan-aturan-baru-pengelolaan-btd-bdn-dan-bmmn",
-      "verbatim_excerpt": "DJBC Terbitkan Aturan Baru Pengelolaan BTD, BDN, dan BMMN",
-      "first_seen_at": "2026-09-12T09:15:00+08:00"
-    }
-  ],
+  "deltas": [],
   "seen_citations": [
     "PMK Nomor 28 Tahun 2026","PMK Nomor 40 Tahun 2026","PMK Nomor 41 Tahun 2026","PMK Nomor 42 Tahun 2026",
     "PMK Nomor 43 Tahun 2026","PMK Nomor 44 Tahun 2026","PMK Nomor 55 Tahun 2026","PMK Nomor 57 Tahun 2026",
@@ -48,7 +35,6 @@
     "Permen PMK/Badan PMI Nomor 5 Tahun 2026","Permenaker No. 12 Tahun 2026; BN 2026 (598)",
     "Permenaker Nomor 7 Tahun 2026","Permenaker Nomor 8 Tahun 2026","Permenaker Nomor 9 Tahun 2026",
     "Permenkes Nomor 6 Tahun 2026","Perpres Nomor 26 Tahun 2026","Perpres Nomor 27 Tahun 2026",
-    "Perpres Nomor 3 Tahun 2026","UU Nomor 4 Tahun 2026","UU Nomor 5 Tahun 2026",
-    "PER-10/BC/2026"
+    "Perpres Nomor 3 Tahun 2026","UU Nomor 4 Tahun 2026","UU Nomor 5 Tahun 2026"
   ]
 }
