@@ -120,7 +120,13 @@ measured:
 pii_scan: clean
 bites:
   consumer: "CI Backend Tests (Python) shards collecting the four tripwire files and the guard"
-  observation: "before/after counts above, both green; guard red under both mutations"
+  observation: >-
+    The guard runs in the same shards as the files it protects, and it is red when they are
+    weakened. Measured on the cured tree: guard 97 passed (86 before the round-3 cure);
+    the four tripwire files 88 / 29 / 35 / 87 and the six B1 §4 innocence files at their base
+    counts; A2's two registry/score mutations red on G1 and G4; the round-3 forged-metadata
+    clone red on G12 with G11 still green; the round-3 collection hook red on G13 leg B with
+    the guard alone and on legs B and A with the tripwire file in the session.
 lanes:
   - lane: "B1.2 registry and guard"
     role: build
