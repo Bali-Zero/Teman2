@@ -366,7 +366,12 @@ export default function PortalLayout({
           </main>
 
           {/* Portal Footer */}
-          <footer className="md:ml-0 flex flex-col sm:flex-row items-center justify-between gap-2 px-4 md:px-10 py-[18px] text-[12px] border-t border-[var(--bz-border)] bg-[var(--bz-footer,#EEE9E1)] text-[var(--tx-secondary)]">
+          <footer
+            className="md:ml-0 flex flex-col sm:flex-row items-center justify-between gap-2 px-4 md:px-10 py-[18px] text-[12px] border-t border-[var(--bz-border)] text-[var(--tx-secondary)]"
+            // R19 footer band. The token is the sibling token window's to
+            // define; until it lands the band sits on the page base.
+            style={{ background: "var(--bz-footer, var(--bz-base))" }}
+          >
             <span>© {new Date().getFullYear()} Bali Zero</span>
             <span>
               <a href="/privacy" className="hover:underline">

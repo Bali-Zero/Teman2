@@ -165,6 +165,30 @@ receipts:
     exit: 0
     ts: "2026-09-13T03:51:00+08:00"
     seat: Claude Opus 5 (r19p-w2)
+  - claim: >-
+      CI red #1 on the first head sha (1af70c1ece) was MINE - "token-lint - no new
+      hardcoded brand hex in redesigned surfaces" convicted the footer fallback
+      #EEE9E1 in apps/mouth/src/app/portal/(authenticated)/layout.tsx:369. The lint
+      scopes apps/mouth/src/app/portal/ and apps/mouth/src/app/(workspace)/, which is
+      why the sidebar's #EAE3D8 was not named. Cured at depth 1 - both literals became
+      token chains in inline styles (var(--bz-footer, var(--bz-base)) and
+      var(--bz-wash, var(--bz-elevated))), so no hex is authored anywhere in the diff.
+    cmd: gh run view --job 103612394350 --log-failed ; git diff | grep "^+" | grep -oE "#[0-9A-Fa-f]{3,8}" | sort -u ; python3 scripts/token_lint.py --base origin/main
+    result: "the job named layout.tsx:369 #EEE9E1, 1 violation in 1 file ; after the cure the added-line hex list is EMPTY and token_lint is clean on the new commit"
+    exit: 0
+    ts: "2026-09-13T04:10:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
+  - claim: >-
+      CI red #2 - "Harness floor recompute" - is HARNESS-caused and is not cured by this
+      window - harness_gate_read reports PENDING because no harness/fable-gate verdict
+      has been posted on the head sha yet. Its own message says "This is NOT a defect".
+      The fresh gate session posts the verdict and the run is re-triggered with
+      `gh run rerun` (never `gh workflow run --ref`).
+    cmd: gh run view --job 103612394641 --log-failed
+    result: "harness_gate_read: PENDING - no harness/fable-gate verdict has been posted yet on this commit ; real head sha = 1af70c1ece77e2fd0572d122ea873573b46e095c"
+    exit: 1
+    ts: "2026-09-13T04:07:00+08:00"
+    seat: Claude Opus 5 (r19p-w2)
 dissent:
   - seat: Claude Opus 5 (r19p-w2, self-review against the window brief)
     objection: >-
@@ -201,6 +225,6 @@ leftovers:
   - PortalBottomNav.test.tsx still queries ".bg-[var(--state-danger)]" to prove the absence of the count pip; the pip is now bg-[var(--bz-copper)], so that assertion passes vacuously. Re-point it when a window owns that test file.
   - The notification pip and the impersonation bar keep their current styling — PortalNotificationsPopover / SuperuserImpersonationBar are outside this window's perimeter.
   - The sidebar "who" block still prints "Client Portal" under the user's name, which now repeats the brand eyebrow above it (D4). The mock's line ("Client since March 2024") needs a field the portal profile does not return.
-  - --bz-wash and --bz-footer do not exist yet; two literals ride as var() fallbacks until the token window defines them.
+  - --bz-wash and --bz-footer do not exist yet; they ride as token chains (var(--bz-wash, var(--bz-elevated)) / var(--bz-footer, var(--bz-base))) until the token window defines them, so the footer band and the initials circle are paper/elevated for now instead of the concept's wash.
   - The authenticated /portal shell is not rendered locally (A5): turbopack refuses the broker worktree's symlinked node_modules, and under webpack the route-intercepted session stayed in the layout's isLoading state. A window with a working portal mock harness (or the deploy preview) should capture it.
   - The nav section label stayed a <div> instead of the mock's <h6> (D3).

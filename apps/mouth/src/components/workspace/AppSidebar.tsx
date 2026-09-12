@@ -343,12 +343,12 @@ export function AppSidebar({
               <div
                 className={
                   isPortal
-                    ? "w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-[650] text-[var(--tx-pure)] bg-[var(--bz-wash,#EAE3D8)]"
+                    ? "w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-[650] text-[var(--tx-pure)]"
                     : "w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-white"
                 }
                 style={
                   isPortal
-                    ? undefined
+                    ? { background: "var(--bz-wash, var(--bz-elevated))" }
                     : {
                         background:
                           "linear-gradient(135deg, var(--bz-accent-warm) 0%, var(--bz-sidebar-active-fill) 100%)",
