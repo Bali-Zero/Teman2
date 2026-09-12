@@ -105,7 +105,18 @@ receipts:
       python3 scripts/detect_secrets_check_unaudited.py   # in the committed scratch dir
       detect-secrets scan --baseline <scratch>/control/.secrets.baseline <the 3 files>
       python3 scripts/detect_secrets_check_unaudited.py   # in the control scratch dir
-    result: "committed: exit 0, 'All findings audited (19 total)'. control: exit 1 on 17 findings, all of them in contract-lock.json and live-browser.json."
+    result: >-
+      committed exit 0 / control exit 1 on exactly those 17 findings. NOTE the
+      file list matters and this receipt's list is NOT the CI job's: it scans
+      the three C2 files, which is the right experiment for the conversion but
+      the wrong one for the gate. The Detect Secrets job scans THIS PR's changed
+      files (.secrets.baseline, brief.yml, pack.yml) with the baseline at its
+      own relative path, and a diff-mode scan prunes the audited entries of
+      every file it is not given — so its check sees only the changed files'
+      findings. Reproduced in CI's exact shape at this head: scan -> auto-triage
+      --apply -> check = exit 0, "All findings audited (2 total)", those two
+      being the brief's own round head_sha values, now audited; with those two
+      audit decisions removed the same sequence exits 1 on exactly them.
     exit: 0
     ts: "2026-09-12T19:12:00+08:00"
     seat: "claude-opus-5 (this session, o0-followup lane — the seat the commits name in their Co-Authored-By trailer)"

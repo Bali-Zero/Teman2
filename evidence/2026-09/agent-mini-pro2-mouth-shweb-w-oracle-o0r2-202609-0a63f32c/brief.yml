@@ -171,6 +171,22 @@ acceptance:
       grep -qE '^  - round: 7$' "$F" && grep -q 'gpt-6-astra' "$F" || { echo "FAIL: round 7 does not name its seat"; exit 1; }
       echo "OK: rounds 7 and 8 recorded, gate recorded as final_gate"
   - text: >-
+      Baseline invariant, and the one the Detect Secrets CI job actually
+      enforces: WHEN .secrets.baseline as committed is read, THEN NO entry
+      SHALL lack an audit decision. Line numbers move; this does not.
+    status: verified
+    probe: |
+      python3 - <<'PYEOF'
+      import json, sys
+      d = json.load(open(".secrets.baseline"))
+      u = [(f, e.get("line_number")) for f, l in d["results"].items() for e in l if "is_secret" not in e]
+      if u:
+          print(f"FAIL: {len(u)} unaudited finding(s), first: {u[:3]}")
+          sys.exit(1)
+      total = sum(len(l) for l in d["results"].values())
+      print(f"OK: every one of the {total} findings carries an audit decision")
+      PYEOF
+  - text: >-
       C2 discharge. WHEN the two files that were excluded whole-file are
       scanned, THEN every finding SHALL be audited in .secrets.baseline and
       NO exclude regex SHALL name either file — the conversion is live, not
