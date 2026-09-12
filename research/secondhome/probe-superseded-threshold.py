@@ -60,11 +60,11 @@ FAMILY = [
 # What each locale must SAY (the cure), and must NOT say (the contradiction).
 # Deliberately short: each entry is a claim the fact registry settles.
 REQUIRED = {
-    "": ["USD 130,000", "own name", "state-owned (BUMN)", "USD 1,000,000", "completed apartment or strata unit", "Pasal 113"],
-    ".it": ["USD 130.000", "a nome del richiedente", "banca statale (BUMN)", "USD 1.000.000", "unità strata già ultimata", "Pasal 113"],
-    ".id": ["USD 130.000", "atas nama pemohon sendiri", "bank milik negara (BUMN)", "USD 1.000.000", "unit strata yang sudah selesai dibangun", "Pasal 113"],
-    ".ru": ["USD 130 000", "на собственное имя", "(BUMN)", "USD 1 000 000", "strata-юнита", "Pasal 113"],
-    ".fr": ["130 000 USD", "au nom propre du demandeur", "banque publique (BUMN)", "1 000 000 USD", "lot en copropriété (rumah susun) déjà achevé", "Pasal 113"],
+    "": ["USD 130,000", "own name", "state-owned (BUMN)", "USD 1,000,000", "completed apartment or strata unit", "Pasal 113", "entry window stated on the approval letter", "not settled in public regulation"],
+    ".it": ["USD 130.000", "a nome del richiedente", "banca statale (BUMN)", "USD 1.000.000", "unità strata già ultimata", "Pasal 113", "finestra d'ingresso indicata sulla lettera", "non è fissato da una norma pubblica"],
+    ".id": ["USD 130.000", "atas nama pemohon sendiri", "bank milik negara (BUMN)", "USD 1.000.000", "unit strata yang sudah selesai dibangun", "Pasal 113", "jendela waktu masuk yang tertera", "belum diatur secara publik"],
+    ".ru": ["USD 130 000", "на собственное имя", "(BUMN)", "USD 1 000 000", "strata-юнита", "Pasal 113", "в пределах срока, указанного в письме", "публичной нормой не установлено"],
+    ".fr": ["130 000 USD", "au nom propre du demandeur", "banque publique (BUMN)", "1 000 000 USD", "lot en copropriété (rumah susun) déjà achevé", "Pasal 113", "fenêtre d'entrée indiquée sur la lettre", "n'est pas fixé par un texte public"],
 }
 # Contradictions the amount check is blind to. `Hak Pakai` and `PT PMA` are barred as
 # ELIGIBLE-TITLE claims: `e33_base_property_title_type` is an `unknown` fact, so naming
@@ -77,6 +77,11 @@ FORBIDDEN = [
     (r"(3[.,]000[.,]000|3 000 000)\s*-\s*(5[.,]000[.,]000|5 000 000)", "an invented government/renewal fee range"),
     (r"(varies by province|varia da provincia|berbeda-beda per provinsi|varie selon la province|различаются по провинциям)", "a province-varying property threshold; the requirement is USD 1,000,000"),
     (r"(Costs Breakdown|Dettaglio dei Costi|Rincian Biaya|Распределение затрат|Répartition des coûts)", "the decomposed cost table"),
+    # Added 2026-09-12 after the cross-family review: the English source had been cured of
+    # both of these and the four translations had not, so each translated file contradicted
+    # its OWN FAQ. A per-locale check is the only thing that catches a cure applied to 1 of 5.
+    (r"\b90\s*(days|giorni|hari|дней|jours)\b", "asserts a 90-day entry window; `entry_window_90d_and_force_majeure` is `pending`"),
+    (r"(SHV|E33)[^\n]{0,80}(does not count|non conta|tidak dihitung|не учитывается|ne compte pas)", "asserts how E33 time counts toward KITAP; `itap_after_3y_criteria` is `unknown` and marketing it is forbidden"),
 ]
 
 
