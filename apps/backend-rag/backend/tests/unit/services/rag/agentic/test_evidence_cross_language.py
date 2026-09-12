@@ -47,10 +47,15 @@ RETRIEVAL = [{"score": 0.72}]
 POOR_RETRIEVAL = [{"score": 0.18}]
 
 # V1 (RULED I31) — a DECLARED dense source for the one measured cosine on
-# disk for this (query, chunk) pair: 0.373 on `text-embedding-3-small`,
-# measured 2026-09-03. The only receipt for that number is the value recorded
-# in this file's own (now-removed) xfail reason below it — there is no
-# separate script/probe file, and none is invented here. `score` is the REAL
+# disk for this (query, chunk) pair: 0.373 on `text-embedding-3-small`.
+# What is ATTESTED, and nothing more (aligned to the manifest's own wording
+# under gate condition C3 of #6338): 0.373 appears in #5618 (commit
+# 2cd3cf84b8, 2026-09-09), whose message records its OTHER cosines as
+# `measured live 2026-09-01` with their text pairs but states this one with
+# NO measurement date of its own; the `2026-09-03` this comment used to
+# attach to it is that commit's ADVERSARIAL REVIEW date, not a measurement
+# receipt. No probe artifact for this cosine exists anywhere on disk, and
+# none is invented here. `score` is the REAL
 # transform of that cosine through the live `format_search_results`
 # (`backend/services/misc/result_formatter.py`), not hand arithmetic:
 #   PYTHONPATH=. .venv/bin/python -c "
@@ -333,7 +338,8 @@ def test_a_question_naming_no_identifier_is_still_language_blind() -> None:
     has nothing to bridge the languages LEXICALLY — the legacy literal
     (`RETRIEVAL`, score_kind unknown) still scores 0.08 here, unchanged. What
     cures it is declaring the provenance this source actually has: its real
-    embedding cosine against this chunk is 0.373 (measured 2026-09-03), which
+    embedding cosine against this chunk is 0.373 (attested in #5618, no
+    measurement date of its own), which
     lands in B2.1's dense MODERATE band (>=0.32,
     `reasoning_utils.py::_dense_band_index`) and no longer needs a lexical
     bridge at all. `RETRIEVAL_DECLARED_DENSE` (declared above) scores 0.55.

@@ -232,8 +232,8 @@ rules:
     verified: true
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, OTHER]}
-    needs_review_reason: "sector (food and beverage, cosmetics, supplements) is not a profile attribute: applies to every operating company until reviewed"
-    due: {frequency: one_time, month: null, months_after_period_end: 0, roll: none}
+    needs_review_reason: "neither sector (food and beverage, cosmetics, supplements) nor business size is a profile attribute: the 17 October 2026 due date is the MICRO-AND-SMALL phase of art. 160(2), while medium and large have been in force since 17 October 2024 (art. 160(1)) and are already late. Confirm sector and size before acting on the date"
+    due: {frequency: one_time, month: null, months_after_period_end: 0, roll: none, fixed_date: 2026-10-17}
     trigger: "sector in food_beverage, cosmetics, supplements: certified by 17 October 2026 for micro and small businesses (art. 160(2)); medium and large have been in force since 17 October 2024 (art. 160(1)). Cosmetics and health supplements run on the separate art. 161 schedule, whose letters a and d also end on 17 October 2026"
     notes: "17 October 2026, not 18: the PP states the 17th. It falls on a Saturday, which may be why the 18th circulates, but no source was found saying so. Assist only, never certify. The free SEHATI self-declare route for UMK is a BPJPH programme under art. 98; the IDR 500 million turnover figure is a programme threshold, not PP text."
 

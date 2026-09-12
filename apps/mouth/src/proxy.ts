@@ -18,7 +18,6 @@ const INTERNAL_ROUTES = [
   "/process",
   "/second-home",
   "/settings",
-  "/whatsapp",
   "/admin",
   "/agents",
   "/portal",

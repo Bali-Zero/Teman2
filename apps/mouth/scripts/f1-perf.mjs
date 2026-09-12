@@ -29,7 +29,6 @@ const ROUTES = [
   "/clients",
   "/dashboard",
   "/hr",
-  "/inbox",
   "/intelligence",
   "/lkpm",
   "/notifications",
