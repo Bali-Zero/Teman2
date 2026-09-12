@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from backend.services.garuda_documents.models import DocumentOutcome
+from backend.services.garuda_documents.models import DocumentOutcome, PassportReviewFieldName
 
 
 class DocumentStorePort(Protocol):
@@ -71,6 +71,39 @@ class DocumentStorePort(Protocol):
 
 class IdempotencyConflictError(Exception):
     """Raised by a `DocumentStorePort` when a key is replayed with a different payload."""
+
+
+class ReadyOutcomeValueNotPersisted(Exception):
+    """Raised by `get_existing()` when a replayed key resolves to a committed `ReadyOutcome`
+    whose store cannot rehydrate `ReviewField.value` — the PII boundary forbids persisting
+    an extracted passport field's actual VALUE in cleartext (see `postgres_store.py`'s
+    module docstring for the full argument), so a store that honours that boundary has
+    nothing to rehydrate the value FROM.
+
+    Lives here, on the Protocol's own module, rather than on any one concrete store — a
+    storage-agnostic caller (`service.py`) needs to be able to catch this without
+    importing a specific implementation, the same reason `IdempotencyConflictError` lives
+    here instead of on each store that raises it.
+
+    Carries enough of the persisted STRUCTURE (`document_id`, `persisted_fields` — field
+    names and confirmation flags only, never a value) that a caller holding its own
+    independently-derived `ReadyOutcome` for the identical bytes (e.g. the loser of a
+    `commit()` race, which ran its own OCR pass before losing) can verify that outcome's
+    shape agrees with what was actually committed and re-tag it with the authoritative
+    `document_id`, without the store ever having to hand back — or fabricate — a value.
+    A caller with no such independent outcome (an ordinary sequential replay, OCR never
+    ran on this call) has nothing to reconcile against and must let this propagate; the
+    caller that CAN reconcile does not exist yet and arrives in its own PR.
+    """
+
+    def __init__(
+        self,
+        document_id: str,
+        persisted_fields: tuple[tuple[PassportReviewFieldName, bool], ...],
+    ) -> None:
+        super().__init__(document_id)
+        self.document_id = document_id
+        self.persisted_fields = persisted_fields
 
 
 class InMemoryDocumentStore:

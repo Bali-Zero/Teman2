@@ -1,0 +1,159 @@
+task_id: voa-store-adapter
+mandate_id: garuda-voa-w1w
+colour: BLUE
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor MEASURED, not guessed: `evidence_pack_lint.py --print-floor --changed-files-file …
+# --numstat-file …` returns 2, source `size`: the diff crosses the 400-line size term and no
+# path in it is hot-zone.
+#
+# The VERDICT is quoted here, not a total, and that is deliberate. This file is itself part
+# of the diff it would be describing, so any exact total written inside it is stale the
+# moment it is written — measured twice while writing this brief, +883/-1 then +1023/-1,
+# each reading invalidated by the edit that recorded it. The stable, checkable figures are
+# the per-file counts of the three files that are NOT this one: ports.py +34/-1,
+# postgres_store.py +320/-0, test_postgres_store.py +550/-0 = 903 net before this brief is
+# counted at all, already past the 400-line term, so the floor is 2 no matter what this file
+# weighs. (Both conditions of gate-6281 on PR #6281 were a count taken at commit N and never
+# refreshed at N+1; a self-referential total is the same defect with no fixed point.)
+#
+# Gear 2 == the floor exactly — not raised above it, because the gear CEILING rule is as
+# real as the floor and this is one adapter with one test file.
+objective: >-
+  GARUDA VOA W1W, PR 2a of 4. Give `DocumentStorePort` its real implementation over
+  migration 304: `PostgresDocumentStore`, plus the integration suite that exercises it
+  against an actual PostgreSQL cluster rather than a fake. The store persists the STRUCTURE
+  of a `DocumentOutcome` — document_id, processing_state, and for the two outcome kinds that
+  carry review fields the field NAMES and their confirmation flags — and never a field
+  VALUE, because the PII boundary forbids storing an extracted passport field's content in
+  cleartext. `ReadyOutcomeValueNotPersisted` is the honest consequence: a replayed key that
+  resolves to a committed ReadyOutcome raises rather than fabricate a placeholder that would
+  read as real data.
+  Spec: docs/plans/2026-09-11-garuda-voa-final-spec.md §3 row W1W. Source of the work:
+  `agent/air-m5/ops/garuda-voa-store-wiring` @ 7cc6878f07, re-applied semantically from
+  fresh main — that branch is based on c52a04c9ee and is never merged.
+scope:
+  - apps/backend-rag/backend/services/garuda_documents/postgres_store.py
+  - apps/backend-rag/backend/services/garuda_documents/ports.py
+  - apps/backend-rag/backend/tests/services/garuda_documents/test_postgres_store.py
+  - evidence/2026-09/agent-air-m5-backend-rag-voa-store-adapter-51505641/
+constraints:
+  - >-
+    NO migration. 304 is already applied in production — measured this session via
+    scripts/pg.sh: `_schema_versions.applied_as = 'backend_rag_v2
+    (session_user=backend_rag_migrator)'`, and the GARUDA_DOCUMENT policy
+    `garuda-document-privacy-v1` is active (PRODUCTION, 30 days, CREATED_AT, count 1). This
+    PR reads that schema; it does not change it. If the wiring had needed a schema change it
+    would have stopped here instead.
+  - >-
+    No production wiring. `service_initializer.py` still constructs nothing, so
+    `app.state.garuda_document_store` stays unset and the router keeps answering its
+    documented 503 on every real request. Wiring is PR 3, deliberately after this, so the
+    adapter lands and is provable before anything routes traffic to it.
+  - >-
+    No fly.toml, no .env*, no zantara_core.py, no products/garuda-voa/contracts/openapi.yaml
+    (W3C owns the contract). No Header declarations in any router are touched.
+  - >-
+    Deferred to PR 2b, declared rather than forgotten: the SECURITY DEFINER
+    ownership-transfer pair, and the lost-race recovery on a READY document (which needs
+    `service.py::_reconcile_lost_race_ready_replay` to exist first). A comment at the foot of
+    the test file names both.
+  - >-
+    No PII anywhere. The suite's only "passport" data is invented strings in a disposable
+    database that is dropped in the fixture teardown; no image bytes and no OCR text are read
+    or written by any test in this PR.
+acceptance:
+  - text: >-
+      A1 (the requirement carried forward from PR 1's refuter round, and the reason it is an
+      acceptance criterion rather than a memory): `PostgresDocumentStore` must USE `actor_id`,
+      not merely accept it. WHEN two different actors commit under the SAME literal
+      idempotency key, THEN both SHALL win their own commit, the table SHALL hold two distinct
+      rows, and neither actor's `get_existing` SHALL return the other's outcome.
+    probe: "pytest backend/tests/services/garuda_documents/test_postgres_store.py -k different_actor"
+  - text: >-
+      A2: the scoped key SHALL be length-prefixed, not separator-joined. WHEN a component
+      CONTAINS the separator a shortcut implementation would use, THEN the two tuples it would
+      render identically SHALL still hash differently.
+    probe: "pytest backend/tests/services/garuda_documents/test_postgres_store.py -k ambiguous"
+  - text: >-
+      A3 (idempotency): an exact key+payload replay SHALL return the original outcome and
+      SHALL NOT create a second row; a DIFFERENT payload under the same key SHALL raise
+      IdempotencyConflictError from both `get_existing` and `commit`.
+    probe: "pytest backend/tests/services/garuda_documents/test_postgres_store.py -k 'replay or conflict'"
+  - text: >-
+      A4 (race): WHEN two commits for the same key run concurrently, THEN exactly ONE SHALL
+      return True — the permission to fire the at-most-once work-item hook — and the loser
+      SHALL receive False, never a raw asyncpg exception.
+    probe: "pytest backend/tests/services/garuda_documents/test_postgres_store.py -k 'concurrent or second_sequential'"
+  - text: >-
+      A5 (fail-closed): WHEN no active GARUDA_DOCUMENT retention policy covers the
+      environment, THEN `commit` SHALL refuse and persist nothing.
+    probe: "pytest backend/tests/services/garuda_documents/test_postgres_store.py -k fails_closed"
+  - text: >-
+      A6 (PII boundary): WHEN a committed ReadyOutcome is replayed, THEN the store SHALL raise
+      `ReadyOutcomeValueNotPersisted` carrying only field names and confirmation flags, and
+      SHALL NOT fabricate a placeholder value.
+    probe: "pytest backend/tests/services/garuda_documents/test_postgres_store.py -k value_gap"
+  - text: >-
+      A7 (no regression): the whole garuda_documents lane plus the router suite SHALL stay
+      green.
+    probe: "pytest backend/tests/services/garuda_documents/ backend/tests/app/routers/test_garuda_documents_router.py"
+guilt_mutations:
+  - "scoped key built with actor_id replaced by an empty string (the 'accepts it and ignores it' store) -> A1 red, 3 failed"
+  - "length-prefixed encoding replaced by '|'.join -> A2 red, 1 failed"
+  - "the active-policy check removed from commit() -> A5 red, 1 failed"
+  - "_rehydrate fabricating an empty-valued ReadyOutcome instead of raising -> A6 red, 1 failed (DID NOT RAISE)"
+  - "the UniqueViolationError catch removed -> A4 red, 1 failed (raw asyncpg error reaches the caller)"
+perimeter_not_touched: >-
+  ONE line, so a reader does not have to infer it from absence: this PR does not touch
+  `service_initializer.py`, does not set `app.state.garuda_document_store`, does not touch
+  `garuda_documents_router.py` or any router's `Header(...)` declaration, adds no migration,
+  and touches no contract, fly.toml, .env* or zantara_core.py. Two things are DEFERRED TO
+  PR 2b BY NAME, not dropped: (1) the SECURITY DEFINER ownership-transfer pair
+  (`test_low_privilege_role_can_insert_thanks_to_the_ownership_transfer` and
+  `test_low_privilege_role_insert_fails_once_the_function_is_mis_owned_again`), and (2) the
+  lost-race recovery on a READY document
+  (`test_lost_race_on_a_ready_document_returns_the_committed_body_instead_of_raising` and
+  `test_ordinary_sequential_replay_of_a_ready_document_still_raises`), which needs
+  `service.py::_reconcile_lost_race_ready_replay` to exist first. A comment at the foot of
+  the test file names both.
+measurements:
+  test_environment: >-
+    The suite builds its OWN disposable database and two uuid-suffixed roles per test, applies
+    migration 304's real forward SQL from the repo with `visa_ledger_owner` substituted, and
+    drops everything in teardown. It never touches nuzantara_dev or nuzantara_test.
+  ci_behaviour: >-
+    ANSWERED BY MEASUREMENT, not assumed, because it decides what the Bites consumer is.
+    These 14 tests DO run in CI: `.github/workflows/tests.yml` gives the backend shards a
+    `services: postgres` container (`public.ecr.aws/docker/library/postgres:15`) and the
+    "Run backend tests" step exports
+    `INTAKE_TEST_DSN=postgresql://test:test@localhost:5432/nuzantara_test`, which is the
+    second DSN this suite's `_ADMIN_URL` falls back to. So CI exercises them on PostgreSQL
+    15, not 17. The fixture degrades honestly either way: it SKIPS with a named reason if
+    the connecting role is not a superuser, and `pytest.fail`s (never silently skips) if the
+    connection itself is unreachable while `CI` is set.
+  postgres_versions: >-
+    Because CI is PG15 and production is PG17.9, both were run rather than one assumed —
+    migration 304's privilege bracket is precisely where those two versions diverge (SET vs
+    MEMBER), so "it passed on my machine" would have been the wrong evidence. Disposable
+    PostgreSQL 17.10 (Homebrew, local): 14 passed. Disposable PostgreSQL 15.19 (Homebrew,
+    `initdb` into the session scratchpad, port 15433, dropped after): 14 passed.
+  results: >-
+    test_postgres_store.py 14 passed on PG17.10 and 14 passed on PG15.19. Whole lane +
+    router: 79 passed, 3 skipped (the 3 skips are pre-existing: 2 live-Ollama tests gated on
+    RUN_OLLAMA_LIVE=1, 1 defensively unreachable ProcessingOutcome branch).
+notes:
+  - >-
+    Two honest observations from running the mutations, recorded because a brief that only
+    reports the green is worth less than one that reports what the red looked like. (a) The
+    separator-join mutation SURVIVED the ambiguity test as that test was originally written:
+    its pairs never put the separator INSIDE a component, so `"actorab|c"` and `"actora|bc"`
+    are genuinely different strings and the test stayed green while claiming to "prove the
+    length-prefixing". The test now exhibits the collision that actually kills it, for seven
+    candidate separators, and its docstring says plainly that the original pair was not
+    enough. (b) The removed-policy-check mutation turns A5 red via
+    `asyncpg.RaiseError` raised by migration 304's own binder trigger, not via the Python
+    `PersistencePolicyUnavailable`. The refusal is therefore defence in depth with the
+    DATABASE as the real backstop — worth knowing, because it means a future store that
+    forgets the Python check still cannot write an unprotected row.
