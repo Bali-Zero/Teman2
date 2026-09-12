@@ -42,7 +42,7 @@ acceptance:
       WHEN the backend walk-census test runs, THEN every walk SHALL match its EXPECTED_OUTCOME —
       the eleven new walks included.
     status: verified
-    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -q -o addopts=''"
+    probe: "cd apps/backend-rag && PYTHONPATH=. /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -q -o addopts=''"
   - text: >-
       WHEN the corpus is counted, THEN it SHALL carry more walks than the 67 it had before this PR,
       and the STEPCHILD sponsor-permit branches SHALL both be present — the walks are what turn a
