@@ -1,0 +1,2 @@
+{"seat":"codex-sol","role":"post-refuter-round-3","ok":false,"verdict":"BLOCK","findings":9,"ts":"2026-09-12","note":"third BLOCK; eight of nine findings are the same cause as round 2 (guard evadable)"}
+{"seat":"tp1-qwen3.8-max","role":"adversarial-language-round-3","ok":true,"verdict":"CONCERNS","ts":"2026-09-12","note":"was CONCERNS in round 2 too; no regression"}

@@ -1,0 +1,114 @@
+1. **BLOCK — Il probe misura corrispondenze lessicali, non requisiti E33.**
+
+Nel sorgente EN **non esistono match riferiti a capitale versato, soglie di altri visti o scaglioni fiscali**. La tabella comparativa contiene USD 350K per Golden Visa; quella fiscale arriva a IDR 5B: nessuno dei due corrisponde al pattern. Non inventerei eccezioni per queste cifre. Evidenza: [EN:210](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.mdx:210), stesso file:238–244.
+
+L’unico match da distinguere dal deposito è **EN:114, “Bali typically IDR 2B-5B”**: una soglia immobiliare provinciale presentata dentro i requisiti E33. Non è un prezzo immobiliare autonomo da preservare automaticamente: l’associazione all’ammissibilità E33 è proprio il difetto da correggere.
+
+Gli over-match del [probe:21](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/research/secondhome/probe-superseded-threshold.py:21) sono concreti:
+
+- `2[.,]?0*` riconosce anche **IDR 20B**.
+- La co-occorrenza riconosce «Second Home vs investor: investor capital IDR 2B», attribuendo implicitamente a E33 una cifra dell’altro prodotto.
+- Riconosce anche «Second Home no longer requires IDR 2B»: non distingue una confutazione da un requisito.
+- In `--sources` elimina persino il controllo Second Home, sulla premessa ingiustificata che ogni cifra della famiglia riguardi quel requisito: righe 55–57.
+
+Gli under-match verificati sono:
+
+- `two billion`, `due miliardi`, `два миллиарда`, `deux milliards`;
+- `Rp2M`, abbreviazione da classificare nel contesto, non convertire automaticamente;
+- numeri raggruppati con spazi: **FR:85 contiene realmente `IDR 2 000 000 000`**;
+- intervalli localizzati: **FR:116 contiene realmente `2 à 5 milliards IDR`**;
+- nel controllo dell’export, `E33` senza Second Home/SHV, denominazioni interamente tradotte e requisito su una riga distinta dal nome del prodotto.
+
+**`IDR 2.000.000.000` invece è già riconosciuto**, dalle alternative alle righe 23–24. Anche `2 млрд` e `2 milliards` sono riconosciuti come importi; può mancare il marcatore del prodotto.
+
+Evidenza eseguita: `python3 research/secondhome/probe-superseded-threshold.py --sources` restituisce **68 righe, exit 1**, con i conteggi dichiarati. Una matrice eseguita tramite `python3 -B -c`, caricando le regex originali con `runpy.run_path`, conferma gli esempi sopra. Le due omissioni francesi spiegano il conteggio 12 anziché 14.
+
+2. **BLOCK — “Path 2” confonde acquisto immobiliare e qualificazione E33.**
+
+Confronto tra [EN:104](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.mdx:104) e [registro:34](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/research/secondhome/e33-fact-registry.json:34):
+
+- **104, proprietà in Indonesia:** incompleto; la proprietà generica non basta.
+- **108, proprietà residenziale Hak Pakai:** falso come ammissibilità generalizzata di case/terreni; l’ammissibilità del titolo Hak Pakai per un appartamento resta invece **unknown**, non falsa per definizione.
+- **109, appartamenti/unità strata:** compatibile, ma manca il vincolo **completato** e la soglia **USD 1.000.000**; “designated for foreign ownership” non dimostra da solo l’ammissibilità E33.
+- **110, proprietà tramite PT PMA con maggioranza:** **non verificabile dal registro**. Nessun fatto autorizza questa alternativa societaria.
+- **114, soglia eventuale e provinciale IDR 2B–5B:** falso come requisito E33; il registro specifica USD 1.000.000.
+- **115–117, BPN, certificati nominati, assenza di controversie:** non verificati come checklist sufficiente per E33. Nominare certificati ammessi risolve abusivamente `e33_base_property_title_type`.
+- **119, durata Hak Pakai 30+20+30, divieto Hak Milik, nominee/PT PMA:** il registro non verifica queste proposizioni generali. Non possono essere usate per dedurre l’ammissibilità E33.
+
+La formulazione EN più forte sostenibile è:
+
+> “The base E33 property alternative requires qualifying property worth at least USD 1,000,000, limited to a completed apartment or strata unit (rumah susun). Off-plan and leasehold property do not qualify. The qualifying legal title type and the method used to validate the property value remain unconfirmed.”
+
+“Strata unit” descrive qui l’unità immobiliare, **non certifica un titolo giuridico specifico**. Evidenza: registro:36–51 e `property_validation_standard`, registro:354–361. La condizione dell’immobile completato deve accompagnare anche FAQ, snippet e tabelle.
+
+3. **BLOCK — Eliminare la scomposizione e rinviare alla pagina servizio.**
+
+La disposizione corretta per questa finestra è:
+
+- Eliminare **Costs Breakdown**, compresi totali iniziali, annuali e quinquennali.
+- Eliminare la riga **Total cost (5 years)** dalla comparazione, senza sostituire un costo quinquennale complessivo con il prezzo di una pratica.
+- Eliminare anche le cifre tariffarie residue della procedura e del rinnovo.
+- Inserire un rinvio a `/visa/second-home`, già presente nel sorgente.
+
+Evidenza: [EN:168](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.mdx:168), stesso file:146, 214, 268, 309; [brief:47](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/evidence/2026-09/agent-air-m5-mouth-shweb-w3-editorial-20260911-cc099459/brief.yml:47) impone espressamente di rimuovere le tabelle inventate.
+
+Failure mode delle tre opzioni:
+
+- **Solo cancellazione:** lasciare altrove fee e totali contraddittori, oppure perdere ogni indicazione su dove ottenere il prezzo.
+- **Singolo importo all-inclusive:** copiarlo dalla memoria/skill anziché da PricingTool, renderlo obsoleto o presentarlo impropriamente come costo totale di cinque anni. Inoltre il [contract-lock:69](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/evidence/2026-09/agent-air-m5-mouth-shweb-w3-editorial-20260911-cc099459/contract-lock.json:69) vieta modifiche ai valori di prezzo in questa finestra.
+- **Rinvio al servizio:** destinazione errata o non verificata, oppure promessa implicita che il prezzo comprenda deposito, immobile e ogni spesa accessoria. Il testo deve limitarsi a indicare dove consultare il prezzo del servizio.
+
+4. **OK — Le nove famiglie sono nello scope scritto, con interventi limitati alle claim.**
+
+Il caso più forte **contro** l’inclusione: dieci famiglie aumentano il rischio di sostituzioni semantiche errate, allargano traduzioni e revisione, e possono trasformare una correzione canonica in una bonifica editoriale indiscriminata. Il target globale “zero righe” incentiva proprio questo allargamento.
+
+Ma il documento effettivo smentisce una finestra limitata a una sola famiglia: [brief:18](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/evidence/2026-09/agent-air-m5-mouth-shweb-w3-editorial-20260911-cc099459/brief.yml:18) include gli altri articoli; la riga 29 nomina **nove ulteriori famiglie**, e le righe 101–102 richiedono modifiche puntuali censite.
+
+Procederei quindi con la famiglia canonica e le sole claim E33 identificate nelle altre nove, ciascuna con prima/dopo, contesto, fatto del registro e motivazione. Preserverei le cifre estranee correttamente attribuite; nessuna modifica a noIndex o cancellazione di articoli.
+
+Il censimento deve usare `articleUrl(folder, file)`: [categories.ts:93](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/apps/mouth/src/lib/blog/categories.ts:93). `immigration → visas`; le traduzioni condividono lo slug pubblico. Anche `canonicalUrl` in **EN:67**, ancora `/immigration/...`, richiede attenzione dentro la famiglia autorizzata.
+
+5. **BLOCK — La prova più debole è lo zero di co-occorrenze nell’export generato.**
+
+Un build reale dimostra la generazione dell’artefatto; **quel contatore non dimostra la correttezza delle claim**. Il controllo richiede nome del prodotto e importo sulla stessa riga: [probe:43](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/research/secondhome/probe-superseded-threshold.py:43).
+
+Controesempio che supera tutte e tre le prove previste:
+
+- correggere realmente la famiglia canonica e la sua preview;
+- nelle altre nove famiglie mantenere il requisito falso, scrivendo **“E33 requires IDR 2B”**, oppure separando titolo Second Home e requisito su due righe;
+- ottenere zero dal controllo dell’export, lasciando informazioni false pubblicate.
+
+Misura eseguita sulle regex originali: **EN contiene 14 righe con l’importo, ma soltanto 4 con la co-occorrenza**. Inoltre il generatore esporta excerpt/description e corpo, non tutti i campi SEO e FAQ: [generatore:75](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/apps/mouth/scripts/generate-llms-full.ts:75), stesso file:115.
+
+Anche lo zero nei sorgenti può lasciare “villa”, PT PMA o un titolo indebitamente dichiarato ammissibile. Un grep positivo sulla preview può trovare la formulazione corretta accanto a una contraddizione.
+
+Servono quindi verifiche positive per claim e locale, controllo delle contraddizioni e verifica che tutte le famiglie attese siano ancora presenti negli export. Ho riprodotto **27 righe/10 URL nell’artefatto su disco**; i fetch web sono falliti, quindi non presento quel conteggio come nuova verifica live.
+
+6. **OK — Sì, il tie-break a monte può far fallire M3; bisogna mutare il sort effettivo.**
+
+Nel codice attuale la freshness chain **non contiene alcun sort**: filtra i canonici e prende i primi cinque. Riceve l’array ordinato da `enArticles.sort`: [generatore:103](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/apps/mouth/scripts/generate-llms-full.ts:103), stesso file:150–158. Il filtro preserva l’ordine: aggiungere lì il criterio URL è sufficiente.
+
+Ho eseguito in memoria le espressioni estratte dal generatore, con sei canonici alla stessa data:
+
+| Input | Sort attuale | Data + URL | M3: eliminato `enArticles.sort` |
+|---|---|---|---|
+| `fedcba` | `fedcb` | `abcde` | `fedcb` |
+| `bdfaec` | `bdfae` | `abcde` | `bdfae` |
+| `abcdef` | `abcde` | `abcde` | `abcde` |
+
+Dunque M3 va RED **se elimina il sort alle righe 103–106 e il test controlla l’output del generatore**. Eliminare un presunto sort nella freshness chain sarebbe una mutazione senza effetto, perché non esiste.
+
+Il test deve asserire **i cinque URL esatti, nell’ordine previsto**, per più ordini di enumerazione controllati, con esclusione del sesto; deve mantenere anche la priorità della data su URL. Mescolare soltanto l’ordine di creazione dei file non garantisce un diverso ordine di `readdirSync`. Il test esistente usa date distinte e non copre i pareggi: [test:42](/Users/balizero/nuzantara/.worktrees/mouth-shweb-w3-editorial-20260911/apps/mouth/src/lib/llms-article-exports.test.ts:42).
+
+Condizioni prima del diff:
+
+1. Correggere probe e criterio di accettazione distinguendo token, contesto e claim; coprire le omissioni francesi e preservare le cifre estranee.
+2. Specificare la riscrittura property con unità completata, USD 1.000.000 e titolo/validazione irrisolti.
+3. Rimuovere scomposizioni, totali e fee residue; rinviare alla pagina servizio senza introdurre prezzi.
+4. Affiancare agli zeri verifiche positive e delle contraddizioni per le claim censite, mantenendo la presenza delle famiglie negli export.
+5. Definire M3 come rimozione del vero `enArticles.sort` e testare l’output esatto con enumerazioni controllate.
+
+PRE-REVIEW VERDICT: BLOCK
+hook: Stop
+hook: Stop Blocked
+codex
