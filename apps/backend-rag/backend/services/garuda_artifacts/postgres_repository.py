@@ -176,11 +176,30 @@ class PostgresArtifactRepository:
     async def move_practice_pointer_if_delivered(
         self, conn: asyncpg.Connection, *, practice_id: str, artifact_id: str, artifact_digest: str
     ) -> bool:
+        # The EXISTS is what binds the pointer to this practice's OWN
+        # artifacts. Sol's O2 (2026-09-12, new finding 1, BLOCKER) noticed
+        # that F7's composite FK protects `garuda_practice_artifacts` from
+        # naming a stranger's row, and that `garuda_practices` had no
+        # equivalent: this UPDATE took whatever pair it was handed. Today's
+        # only caller passes the successor it just inserted for this same
+        # practice, so nothing reaches it -- but "no caller does that" is
+        # the kind of guarantee F7 was cured for ASSUMING, and 287's
+        # same-state transition guard does not cover a pointer move either.
+        # A practice pointed at another practice's artifact is permanently
+        # a 404 to its customer, because `get_live_for_order`'s equality
+        # predicates can never be satisfied.
         tag = await conn.execute(
             """
-            UPDATE garuda_practices
+            UPDATE garuda_practices p
                SET artifact_id = $2, artifact_digest = $3
-             WHERE practice_id = $1 AND artifact_id IS NOT NULL
+             WHERE p.practice_id = $1
+               AND p.artifact_id IS NOT NULL
+               AND EXISTS (
+                   SELECT 1 FROM garuda_practice_artifacts a
+                    WHERE a.artifact_id = $2
+                      AND a.practice_id = $1
+                      AND a.artifact_digest = $3
+               )
             """,
             practice_id,
             artifact_id,

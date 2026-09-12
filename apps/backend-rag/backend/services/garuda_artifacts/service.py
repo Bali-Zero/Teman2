@@ -298,6 +298,22 @@ class GarudaArtifactService:
         Making readers take that same lock would let one slow customer
         download block every correction for the same practice -- a
         liveness cost paid on the frequent path to fix a rare one.
+
+        WHAT THIS DOES NOT CLOSE, stated rather than implied (Sol's O2 read
+        this method as PARTIAL, correctly). A supersession committing
+        between the confirming read and this return still leaves the caller
+        holding the previous row's bytes, and no amount of re-reading
+        removes that window: a non-blocking read can promise "these bytes
+        were the live row at an instant inside this request", never "they
+        still are as you receive them" -- even a lock held across the fetch
+        would only move the window to the moment it is released. What the
+        confirming read DOES buy is that bytes known to be retired are
+        never emitted. The other edge of the same trade: two corrections
+        landing during one read exhaust the attempts and produce a 404
+        while a live row exists. That is a self-correcting answer to a
+        deliberately contended read, and the same 404 the contract already
+        gives for a superseded artifact -- not a claim that the practice
+        has none.
         """
         for _ in range(_READ_REVALIDATIONS):
             record = await resolve()

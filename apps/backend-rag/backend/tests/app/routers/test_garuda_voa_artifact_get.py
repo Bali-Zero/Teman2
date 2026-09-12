@@ -943,3 +943,70 @@ class TestArtifactSupersession:
             "SELECT state FROM garuda_practices WHERE practice_id = $1", practice_id
         )
         assert state == "Approved"
+
+
+@pytest.mark.asyncio
+class TestPracticePointerIntegrity:
+    async def test_the_pointer_cannot_be_moved_to_another_practices_artifact(
+        self, pool, order_repository, client
+    ) -> None:
+        """Sol O2 new finding 1 (BLOCKER, 2026-09-12).
+
+        F7 constrained `garuda_practice_artifacts.superseded_by` to the
+        practice's own rows, and `garuda_practices`' pointer had no
+        equivalent: `move_practice_pointer_if_delivered` wrote whatever
+        pair it was handed. Today's only caller passes the successor it
+        just inserted for the same practice, so nothing reaches it -- but
+        that is the shape of guarantee F7 was cured for assuming, and a
+        practice pointed at a stranger's artifact is a permanent 404 to its
+        customer, because `get_live_for_order`'s equality predicates can
+        never be satisfied.
+
+        Drives the repository method directly: the defect is not reachable
+        through the routers, which is exactly why only a direct call can
+        hold the line.
+        """
+        own_order_id = await _create_and_pay_order(
+            order_repository, result_id="result-ptrown-00000000000", provider_event_id="evt-ptrown-1"
+        )
+        own_practice_id = await _practice_id_for(pool, own_order_id)
+        await _deliver(client, own_practice_id, key_prefix="ptrown")
+
+        stranger_order_id = await _create_and_pay_order(
+            order_repository, result_id="result-ptrstr-00000000000", provider_event_id="evt-ptrstr-1"
+        )
+        stranger_practice_id = await _practice_id_for(pool, stranger_order_id)
+        stranger = await _deliver(client, stranger_practice_id, key_prefix="ptrstr")
+
+        before = await pool.fetchrow(
+            "SELECT artifact_id, artifact_digest FROM garuda_practices WHERE practice_id = $1",
+            own_practice_id,
+        )
+
+        repository = PostgresArtifactRepository()
+        async with pool.acquire() as conn:
+            moved = await repository.move_practice_pointer_if_delivered(
+                conn,
+                practice_id=own_practice_id,
+                artifact_id=stranger["artifact_id"],
+                artifact_digest=stranger["artifact_digest"],
+            )
+        assert moved is False, "a stranger's artifact must not become this practice's pointer"
+
+        after = await pool.fetchrow(
+            "SELECT artifact_id, artifact_digest FROM garuda_practices WHERE practice_id = $1",
+            own_practice_id,
+        )
+        assert dict(after) == dict(before)
+
+        # The customer read is unaffected -- still the practice's own grant.
+        await _seed_session(
+            pool,
+            raw_secret="secret-ptrown-000000000000000",
+            result_id="result-ptrown-00000000000",
+        )
+        resp = await client.get(
+            f"/api/visa/voa/orders/{own_order_id}/artifact",
+            cookies={_SESSION_COOKIE: "secret-ptrown-000000000000000"},
+        )
+        assert resp.status_code == 200, resp.text

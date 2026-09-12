@@ -83,6 +83,19 @@ def test_both_halves_carry_the_ownership_privilege_bracket() -> None:
     # the migration does not leave the connection on a role nobody chose.
     assert "$garuda_312_resume_runtime_role_after_grants$" in forward
 
+    # Neither half may name the role it returns to. `assume_runtime_role`
+    # is an unconditional no-op in the single-DSN shape, so the session was
+    # never on `backend_rag_v2` there -- and a superuser is a member of
+    # every role, so a resume that ASKS whether it may become the runtime
+    # role is answered yes and leaves the session somewhere it never was
+    # (Sol O2 new finding 2). The role restored must be the one measured
+    # before the reset.
+    assert "set_config('garuda312.prior_role', current_role, false)" in forward
+    assert "current_setting('garuda312.prior_role'" in forward
+    assert "SET ROLE %I', target_role" not in forward, (
+        "a resume block must restore the measured prior role, never a named one"
+    )
+
     # Rollback: assume the owner BEFORE the removals, resume after.
     assert rollback is not None
     assert "$garuda_312_rollback_assume_owner$" in rollback

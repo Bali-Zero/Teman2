@@ -342,6 +342,18 @@ FOR EACH ROW EXECUTE FUNCTION public.bind_garuda_practice_artifact_retention_pol
 -- which cannot take the FOR SHARE lock on visa_decision_retention_policies
 -- either -- the SAME production outage 301 fixed for magic-link would
 -- recur here on the first real write.
+-- Remember the role this session is ACTUALLY on before dropping it. The
+-- resume blocks below restore THIS value rather than naming a role
+-- literally: `assume_runtime_role` (migration_base.py) is an unconditional
+-- no-op in the single-DSN shape (CI, laptops, Fly until the dedicated
+-- secret exists), so in that shape the session never was `backend_rag_v2`
+-- to begin with -- and a superuser is a member of every role by
+-- `pg_has_role`'s definition, so a resume that asks "may I become
+-- backend_rag_v2?" answers yes and leaves the session somewhere it never
+-- was. Sol's O2 (2026-09-12, new finding 2, MAJOR) traced that to the
+-- migration manager's own next statement running under a role nobody
+-- chose. Restoring what was measured cannot have that failure mode.
+SELECT set_config('garuda312.prior_role', current_role, false);
 RESET ROLE;
 DO $garuda_312_owner_transfer$
 DECLARE
@@ -414,17 +426,13 @@ $garuda_312_owner_transfer$;
 -- uses for `ALTER FUNCTION ... OWNER TO`.
 DO $garuda_312_resume_runtime_role$
 DECLARE
-    target_role constant text := 'backend_rag_v2';
-    can_assume boolean;
+    prior_role text := current_setting('garuda312.prior_role', true);
 BEGIN
-    IF to_regrole(target_role) IS NOT NULL THEN
-        IF current_setting('server_version_num')::int >= 160000 THEN
-            can_assume := pg_has_role(session_user, target_role, 'SET');
-        ELSE
-            can_assume := pg_has_role(session_user, target_role, 'MEMBER');
-        END IF;
-        IF can_assume THEN
-            EXECUTE format('SET ROLE %I', target_role);
+    -- No-op whenever the session is already where it started (the common
+    -- case: nothing had assumed another role in the first place).
+    IF prior_role IS NOT NULL AND prior_role <> '' AND prior_role IS DISTINCT FROM current_role THEN
+        IF to_regrole(prior_role) IS NOT NULL THEN
+            EXECUTE format('SET ROLE %I', prior_role);
         END IF;
     END IF;
 END;
@@ -517,6 +525,18 @@ FOR EACH ROW EXECUTE FUNCTION public.guard_garuda_practice_artifacts_mutation();
 -- silence.
 -- ----------------------------------------------------------------------------
 
+-- Remember the role this session is ACTUALLY on before dropping it. The
+-- resume blocks below restore THIS value rather than naming a role
+-- literally: `assume_runtime_role` (migration_base.py) is an unconditional
+-- no-op in the single-DSN shape (CI, laptops, Fly until the dedicated
+-- secret exists), so in that shape the session never was `backend_rag_v2`
+-- to begin with -- and a superuser is a member of every role by
+-- `pg_has_role`'s definition, so a resume that asks "may I become
+-- backend_rag_v2?" answers yes and leaves the session somewhere it never
+-- was. Sol's O2 (2026-09-12, new finding 2, MAJOR) traced that to the
+-- migration manager's own next statement running under a role nobody
+-- chose. Restoring what was measured cannot have that failure mode.
+SELECT set_config('garuda312.prior_role', current_role, false);
 RESET ROLE;
 DO $garuda_312_table_owner_transfer$
 DECLARE
@@ -612,17 +632,13 @@ $garuda_312_runtime_grants$;
 -- order is not guaranteed).
 DO $garuda_312_resume_runtime_role_after_grants$
 DECLARE
-    target_role constant text := 'backend_rag_v2';
-    can_assume boolean;
+    prior_role text := current_setting('garuda312.prior_role', true);
 BEGIN
-    IF to_regrole(target_role) IS NOT NULL THEN
-        IF current_setting('server_version_num')::int >= 160000 THEN
-            can_assume := pg_has_role(session_user, target_role, 'SET');
-        ELSE
-            can_assume := pg_has_role(session_user, target_role, 'MEMBER');
-        END IF;
-        IF can_assume THEN
-            EXECUTE format('SET ROLE %I', target_role);
+    -- No-op whenever the session is already where it started (the common
+    -- case: nothing had assumed another role in the first place).
+    IF prior_role IS NOT NULL AND prior_role <> '' AND prior_role IS DISTINCT FROM current_role THEN
+        IF to_regrole(prior_role) IS NOT NULL THEN
+            EXECUTE format('SET ROLE %I', prior_role);
         END IF;
     END IF;
 END;
@@ -649,6 +665,18 @@ $garuda_312_resume_runtime_role_after_grants$;
 -- the environments that never had the roles in the first place and where
 -- the table is therefore still owned by whoever created it. The symmetric
 -- resume at the very end of this file puts the runtime role back.
+-- Remember the role this session is ACTUALLY on before dropping it. The
+-- resume blocks below restore THIS value rather than naming a role
+-- literally: `assume_runtime_role` (migration_base.py) is an unconditional
+-- no-op in the single-DSN shape (CI, laptops, Fly until the dedicated
+-- secret exists), so in that shape the session never was `backend_rag_v2`
+-- to begin with -- and a superuser is a member of every role by
+-- `pg_has_role`'s definition, so a resume that asks "may I become
+-- backend_rag_v2?" answers yes and leaves the session somewhere it never
+-- was. Sol's O2 (2026-09-12, new finding 2, MAJOR) traced that to the
+-- migration manager's own next statement running under a role nobody
+-- chose. Restoring what was measured cannot have that failure mode.
+SELECT set_config('garuda312.prior_role', current_role, false);
 RESET ROLE;
 DO $garuda_312_rollback_assume_owner$
 DECLARE
@@ -710,20 +738,20 @@ $garuda_312_narrow_policy_scope$;
 -- visa_ledger_owner. A rollback that returns with a different current_role
 -- than it was given would hand the next statement in the same session a
 -- privilege set nobody chose.
+-- The save/restore pair for THIS half was taken at the top of the rollback
+-- section, before the ledger owner was assumed; saving again here would
+-- record `visa_ledger_owner` as the role to return to and hand it straight
+-- back. Only the reset belongs here.
 RESET ROLE;
 DO $garuda_312_rollback_resume_runtime_role$
 DECLARE
-    target_role constant text := 'backend_rag_v2';
-    can_assume boolean;
+    prior_role text := current_setting('garuda312.prior_role', true);
 BEGIN
-    IF to_regrole(target_role) IS NOT NULL THEN
-        IF current_setting('server_version_num')::int >= 160000 THEN
-            can_assume := pg_has_role(session_user, target_role, 'SET');
-        ELSE
-            can_assume := pg_has_role(session_user, target_role, 'MEMBER');
-        END IF;
-        IF can_assume THEN
-            EXECUTE format('SET ROLE %I', target_role);
+    -- No-op whenever the session is already where it started (the common
+    -- case: nothing had assumed another role in the first place).
+    IF prior_role IS NOT NULL AND prior_role <> '' AND prior_role IS DISTINCT FROM current_role THEN
+        IF to_regrole(prior_role) IS NOT NULL THEN
+            EXECUTE format('SET ROLE %I', prior_role);
         END IF;
     END IF;
 END;
