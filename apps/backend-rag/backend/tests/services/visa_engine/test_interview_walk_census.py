@@ -391,6 +391,14 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/merit": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2",)),
+    # PR-D4d (seq-21 corpus prep, unsigned — activation caveat in the PR
+    # body): `el.e33c.world-figure-invitation` needs INVESTMENT purpose +
+    # `sponsor.type eq GOVERNMENT`, so this is the `invest` walk that would
+    # exercise it once seq-21 activates. Under the pack ACTUALLY signed
+    # today (rulepack-prod-020, which reads no sponsor.type condition for
+    # any INVESTMENT-purpose product), `sponsor.type` is a silent extra fact
+    # and the walk answers exactly like its `pt_pma` sibling: C2.
+    "offshore/invest/pt_pma/sponsor_government": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/undecided": ("SUPPORTED_CANDIDATES", ("C2",)),
     # C1 gate (PR-D3): below-threshold walks for D3-1's re-route. Owner
     # ruling 2026-09-13 CLOSED the twin-base dead end this pattern first
@@ -422,10 +430,27 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     # clear those gates is verified separately (report only, not a new
     # pinned walk here).
     "offshore/other/no_paid_activity": ("NO_SUPPORTED_PATH", ()),
+    # C6 regression walk (PR-D4d, coordinator-authorised scope addition):
+    # PR-D4a repurposed `offshore/other/no_paid_activity` (above) to prove
+    # the TRANSIT route instead, which silently dropped C6 from this
+    # census — the rule itself never moved. `other_purpose = "medical"` (no
+    # special-case mapping anywhere in fact-mapper.ts) plus
+    # `other_paid_activity = "no"` keeps the purpose OTHER, so
+    # `el.c6.social` answers again.
+    "offshore/other/no_paid_activity/medical": ("SUPPORTED_CANDIDATES", ("C6",)),
     # C1 gate (PR-D3): the two negative D3-2 facts.
     "offshore/other": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/other/paid/employer_no": ("NO_SUPPORTED_PATH", ()),
     "offshore/other/paid/sponsor_unsure": ("NEEDS_INPUT", ()),
+    # PR-D4d, work item 1 end to end: `other_paid_activity === "yes"` could
+    # not answer `sponsor.type` at all before this PR. This walk answers
+    # GOVERNMENT down that newly-added question — the second reachable path
+    # (besides `work`) into seq-21's `el.e33a/b.government-*`/
+    # `el.e23v.trade-office` (unsigned — activation caveat in the PR body).
+    # Under the pack signed today, no EMPLOYMENT-purpose rule reads
+    # sponsor.type, so the walk answers exactly like its `employer_no`
+    # sibling's purpose-mate: E23.
+    "offshore/other/paid/sponsor_government": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/remote": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
     # D3-3 (PR-D3): now ALSO asks `family_sponsor_confirmed` (default "yes"),
@@ -475,6 +500,24 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
     "offshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
+    # PR-D4d (seq-21 corpus prep, unsigned — activation caveat in the PR
+    # body). `el.e33a/b.government-*`/`el.e23v.trade-office` share an
+    # IDENTICAL condition (EMPLOYMENT + sponsor.type eq GOVERNMENT), so this
+    # one walk is the reachability proof for all three at once; the sibling
+    # walk right below swaps in INDIVIDUAL for `el.e23u.diplomatic-
+    # household` (E23U is the diplomat's household assistant — the sponsor
+    # is an INDIVIDUAL, there is no `DIPLOMATIC` sponsor value). Under the
+    # pack signed today, neither value is read by any rule, so both answer
+    # exactly like the unmodified `offshore/work` walk above: E23.
+    "offshore/work/sponsor_government": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "offshore/work/sponsor_individual": ("SUPPORTED_CANDIDATES", ("E23",)),
+    # Work item 2, fourth bullet: leaving `sponsor.type` genuinely
+    # UNRESOLVED (`unsure` -> UNVERIFIED) on a reaching tile must be
+    # silence, never a hold — `offshore/work` above already proves the
+    # honest-negative half (`NONE`, the question's first option). Under the
+    # pack signed today this is a non-event (no EMPLOYMENT-purpose rule
+    # reads sponsor.type yet), and it answers identically: E23.
+    "offshore/work/sponsor_unsure": ("SUPPORTED_CANDIDATES", ("E23",)),
     "onshore/business": ("NO_SUPPORTED_PATH", ()),
     # D4a: the onshore family/diaspora walks default to SPOUSE — same
     # `family_sponsor_status_code` fix as the offshore SPOUSE/=IT walks
@@ -700,26 +743,44 @@ def outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return _evaluate_walks(walks)
 
 
-def test_corpus_is_the_76_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_corpus_is_the_82_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
-    43 before PR-3, 61 before PR-5, 67 before PR-D3, 78 before D4a. PR-5's 6
-    new walks are the 5 offshore `retirement` bases plus the onshore neutral
-    `retirement` walk, each replayed with `birth_date` overridden to
-    `RETIREMENT_AGE_64_BIRTH_DATE` (age 64 on `CORPUS_TODAY`) instead of the
-    corpus-wide default 25 — the generator's own age dimension, not a new
-    tree branch. PR-D3's 11 new walks are real new branches: the two
-    invest-vehicle below-threshold routes, the three declared-paid-activity
-    branches, the retirement property/bank_deposit/undecided branches that
-    used to dead-end, and the two STEPCHILD sponsor-permit answers — see
-    `generate-walk-corpus.ts`. D4a (owner ruling SHWEB-20260911, THIS PR)
-    REMOVES those same two STEPCHILD sponsor-permit walks: the D3-4 hold and
-    the question they exercised had no pack requirement behind them for
+    43 before PR-3, 61 before PR-5, 67 before PR-D3, 78 before D4a, 76 before
+    PR-D4d. PR-5's 6 new walks are the 5 offshore `retirement` bases plus the
+    onshore neutral `retirement` walk, each replayed with `birth_date`
+    overridden to `RETIREMENT_AGE_64_BIRTH_DATE` (age 64 on `CORPUS_TODAY`)
+    instead of the corpus-wide default 25 — the generator's own age
+    dimension, not a new tree branch. PR-D3's 11 new walks are real new
+    branches: the two invest-vehicle below-threshold routes, the three
+    declared-paid-activity branches, the retirement
+    property/bank_deposit/undecided branches that used to dead-end, and the
+    two STEPCHILD sponsor-permit answers — see `generate-walk-corpus.ts`.
+    D4a REMOVES those same two STEPCHILD sponsor-permit walks: the D3-4 hold
+    and the question they exercised had no pack requirement behind them for
     E31D (fresh grader review) and were retired, so the corpus shrinks
-    78 -> 76. Every OTHER walk in the corpus is unchanged, byte-for-byte."""
+    78 -> 76. PR-D4d (THIS PR) adds 6: one walk per seq-21 product with the
+    `sponsor.type` value that product's rule requires (`offshore/work/
+    sponsor_government` covers E33A/E33B/E23V at once — identical
+    condition; `offshore/work/sponsor_individual` covers E23U;
+    `offshore/invest/pt_pma/sponsor_government` covers E33C, INVESTMENT
+    purpose), one proving work item 1's new `other`+paid question end to
+    end (`offshore/other/paid/sponsor_government`), one proving an
+    unresolved answer is silence not a hold (`offshore/work/
+    sponsor_unsure`), and the C6 regression walk
+    (`offshore/other/no_paid_activity/medical`, coordinator-authorised scope
+    addition) — corpus grows 76 -> 82. Every OTHER walk in the corpus is
+    unchanged, byte-for-byte, EXCEPT the four `other`-tile walks whose
+    `other_paid_activity` already resolves (`offshore/other`,
+    `onshore/other`, `offshore/other/paid/employer_no`, `offshore/other/
+    paid/sponsor_unsure`): work item 1 makes their branch ask
+    `sponsor_category` for the first time, so their wire `sponsor.type`
+    moves UNKNOWN(NOT_ASKED) -> KNOWN(NONE) — a byte change with no state
+    change, verified by `test_every_walk_ends_in_its_pinned_outcome` staying
+    green on their unmoved EXPECTED_OUTCOME entries."""
 
-    assert len(walks) == 76, f"expected 76 interview walks, found {len(walks)}"
+    assert len(walks) == 82, f"expected 82 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -731,7 +792,7 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_2_dead_ends_15_no_paths_and_59_answers(
+def test_walk_state_census_is_2_dead_ends_15_no_paths_and_65_answers(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
@@ -741,8 +802,15 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_59_answers(
     widening landed; 11/10/22 with PR-2's reorder on top; 0/10/51 over a
     43 → 61 corpus with PR-3's interview; 2/10/55 over a 61 → 67 corpus with
     PR-5's age dimension on top; 2/14/62 over a 67 → 78 corpus with PR-D3
-    (module docstring). D4a (owner ruling SHWEB-20260911, THIS PR) has two
-    parts:
+    (module docstring); 2/15/59 over a 78 → 76 corpus with D4a. PR-D4d (THIS
+    PR) adds 6 new walks, all SUPPORTED_CANDIDATES on the pack signed
+    TODAY (rulepack-prod-020 — none of them exercise a rule that reads
+    `sponsor.type` yet; that is seq-21, unsigned): 2/15/59 -> 2/15/65 over a
+    76 -> 82 corpus. No existing walk's STATE moves — the four `other`-tile
+    walks whose wire `sponsor.type` changes bytes (see the corpus-count
+    test above) keep their pinned (state, candidates) exactly, which is
+    what `test_every_walk_ends_in_its_pinned_outcome` proves. D4a (owner
+    ruling SHWEB-20260911) had two parts:
 
     1. The sponsor-status fix: one walk's STATE moves —
        `offshore/other/no_paid_activity` was SUPPORTED_CANDIDATES [C6]
@@ -763,7 +831,8 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_59_answers(
        [C1, E31D] — are retired along with the question and hold they
        exercised. Corpus 78 → 76, SUPPORTED_CANDIDATES 61 → 59.
 
-    Net over both parts: 2/14/62 → 2/15/59."""
+    D4a net over both parts: 2/14/62 → 2/15/59. PR-D4d (THIS PR) adds 6:
+    2/15/59 → 2/15/65."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     assert (
@@ -772,7 +841,7 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_59_answers(
         == {
             "NEEDS_INPUT": 2,
             "NO_SUPPORTED_PATH": 15,
-            "SUPPORTED_CANDIDATES": 59,
+            "SUPPORTED_CANDIDATES": 65,
         }
     )
     assert census["NEEDS_INPUT"] == 2

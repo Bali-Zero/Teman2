@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   CATEGORY_TO_PURPOSE,
   SCHEMA_VERSION,
+  SPONSOR_TYPES,
   mapCurrentStatusExpiry,
   mapCurrentlyInIndonesia,
   mapDisclosedReviewFlags,
@@ -767,19 +768,28 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
     });
   });
 
-  it("is reachable (and answers KNOWN) on every category branch that asks it", () => {
-    // The categories where the sponsor discriminates (design choice, see
-    // FIXED_CATEGORY_QUESTIONS/getCategoryQuestionIds in flow.ts): work,
-    // remote, study, invest, retirement, family — and, since 2026-09-06,
-    // diaspora, which now serves the FAMILY question set verbatim (owner
-    // ruling 4) and therefore inherits its `sponsor_category`. `second_home`
-    // deliberately does NOT ask it: no E33 rule reads `sponsor.type`, and
-    // every question carries `notSure: { mode: "human-review" }`, so a
-    // ceremonial one could only add review volume. Derived from the flow
+  it("is reachable (and answers KNOWN) on every category branch that asks it unconditionally", () => {
+    // The categories where the sponsor discriminates for EVERY facts value
+    // (design choice, see FIXED_CATEGORY_QUESTIONS/getCategoryQuestionIds in
+    // flow.ts): work, remote, study, invest, retirement, family — and, since
+    // 2026-09-06, diaspora, which now serves the FAMILY question set
+    // verbatim (owner ruling 4) and therefore inherits its
+    // `sponsor_category`. `other` is deliberately EXCLUDED from this list
+    // (PR-D4d): it asks the question only down its `other_paid_activity ===
+    // "yes"` branch — see the dedicated describe block below.
+    // `second_home` does NOT ask it at all — not because no rule reads
+    // `sponsor.type` (the ACTIVE pack's `hf.e33a/b/c` do, and PR-D4d's
+    // pack-vocabulary pin below proves it), but because Zero's ruling 3
+    // (2026-09-06) stands: every extra question here carries `notSure: {
+    // mode: "human-review" }`, so a ceremonial one could only add review
+    // volume for a fact measured (PR-D4d) to change no `second_home`
+    // walk's outcome on the pack in force today. Derived from the flow
     // graph itself, not hardcoded, so this test breaks if a branch's
     // question list changes without this describe block being revisited.
-    const categoriesAsking = CATEGORY_KEYS.filter((category) =>
-      getCategoryQuestionIds({ category }).includes("sponsor_category"),
+    const categoriesAsking = CATEGORY_KEYS.filter(
+      (category) =>
+        category !== "other" &&
+        getCategoryQuestionIds({ category }).includes("sponsor_category"),
     );
     expect([...categoriesAsking].sort()).toEqual(
       [
@@ -801,17 +811,140 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
     }
   });
 
-  it("is never asked on categories where the sponsor doesn't discriminate", () => {
-    for (const category of [
-      "tourism",
-      "business",
-      "second_home",
-      "other",
-    ] as const) {
+  it("is never asked on categories where the sponsor never discriminates", () => {
+    for (const category of ["tourism", "business", "second_home"] as const) {
       expect(getCategoryQuestionIds({ category })).not.toContain(
         "sponsor_category",
       );
     }
+  });
+
+  it("`other`: asked only down the other_paid_activity=yes branch (PR-D4d)", () => {
+    // `yes` is EMPLOYMENT purpose (D3-2) and is the second reachable path
+    // (besides `work`) into seq-21's sponsor.type-gated rules
+    // (el.e33a/b.government-*, el.e23u.diplomatic-household,
+    // el.e23v.trade-office). `no`/`unsure` stay OTHER purpose, which none
+    // of those rules cover, so they must not gain the question.
+    expect(
+      getCategoryQuestionIds({
+        category: "other",
+        other_paid_activity: "yes",
+      }),
+    ).toContain("sponsor_category");
+    for (const other_paid_activity of ["no", "unsure"] as const) {
+      expect(
+        getCategoryQuestionIds({ category: "other", other_paid_activity }),
+      ).not.toContain("sponsor_category");
+    }
+    expect(getCategoryQuestionIds({ category: "other" })).not.toContain(
+      "sponsor_category",
+    );
+
+    const result = mapFacts({
+      category: "other",
+      other_paid_activity: "yes",
+      sponsor_category: "GOVERNMENT",
+    });
+    expect(result.facts["sponsor.type"]).toEqual({
+      status: "KNOWN",
+      value: "GOVERNMENT",
+    });
+  });
+});
+
+describe("sponsor.type vocabulary — pack ⊆ SPONSOR_TYPES, one direction only (PR-D4d)", () => {
+  const PACKS_DIR = path.resolve(
+    REPO_ROOT,
+    "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+  );
+
+  /**
+   * Every production pack on disk, not just the highest sequence — same
+   * posture as engine-adapter.test.ts's `productionPackFiles()`: "a pack is
+   * written before it is activated", so a DRAFT that names a sponsor.type
+   * value the UI cannot produce must fail here the moment it lands, not
+   * only once signed. Reads `.source.json` (every sequence ever authored
+   * carries one; the matching `.signed.json`, when it exists, nests the
+   * identical rule list one level deeper under `payload` and is not read
+   * separately here for that reason).
+   */
+  function productionPackFiles(): string[] {
+    const files = fs
+      .readdirSync(PACKS_DIR)
+      .filter((name) => /^rulepack-prod-\d+\.source\.json$/.test(name))
+      .map((name) => path.join(PACKS_DIR, name));
+    if (files.length === 0) {
+      throw new Error(`no production packs found under ${PACKS_DIR}`);
+    }
+    return files;
+  }
+
+  function sponsorTypeValuesInPack(file: string): string[] {
+    const values = new Set<string>();
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) {
+        node.forEach(walk);
+        return;
+      }
+      if (node === null || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (record.fact === "sponsor.type") {
+        if (typeof record.value === "string") values.add(record.value);
+        if (Array.isArray(record.values)) {
+          for (const v of record.values) {
+            if (typeof v === "string") values.add(v);
+          }
+        }
+      }
+      Object.values(record).forEach(walk);
+    };
+    walk(JSON.parse(fs.readFileSync(file, "utf-8")));
+    return [...values];
+  }
+
+  function allPackSponsorTypeValues(): Set<string> {
+    const values = new Set<string>();
+    for (const file of productionPackFiles()) {
+      for (const value of sponsorTypeValuesInPack(file)) values.add(value);
+    }
+    return values;
+  }
+
+  /**
+   * ONE direction only, deliberately not a bidirectional deep-equal (D4a's
+   * technique elsewhere in this file) — that pin would be red TODAY:
+   * `EMPLOYER`/`INVESTMENT` are declared UI-only values no pack rule
+   * compares against, and being unread is not itself a defect. The failure
+   * THIS pin guards against is the other direction: a pack value the UI has
+   * no way to ever send, which makes that rule unreachable through the
+   * funnel however the pack itself reads — the exact class of gap this PR
+   * closes for the `other` tile.
+   */
+  it("every sponsor.type value any production pack compares against is one SPONSOR_TYPES can send", () => {
+    const packValues = allPackSponsorTypeValues();
+    // Guard the guard: a glob or walker that silently matched nothing would
+    // make the assertion below vacuously true.
+    expect(packValues.size).toBeGreaterThan(0);
+    const unreachable = [...packValues].filter(
+      (value) => !(SPONSOR_TYPES as readonly string[]).includes(value),
+    );
+    expect(unreachable).toEqual([]);
+  });
+
+  it("EMPLOYER: UI-only — mapSponsorType still sends it KNOWN, but no production-pack rule compares against it", () => {
+    expect(mapSponsorType({ sponsor_category: "EMPLOYER" })).toEqual({
+      status: "KNOWN",
+      value: "EMPLOYER",
+    });
+    expect(allPackSponsorTypeValues().has("EMPLOYER")).toBe(false);
+  });
+
+  it("INVESTMENT: UI-only — mapSponsorType still sends it KNOWN, but no production-pack rule compares against it", () => {
+    expect(mapSponsorType({ sponsor_category: "INVESTMENT" })).toEqual({
+      status: "KNOWN",
+      value: "INVESTMENT",
+    });
+    expect(allPackSponsorTypeValues().has("INVESTMENT")).toBe(false);
   });
 });
 

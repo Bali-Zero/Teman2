@@ -10,6 +10,7 @@
     "trip_scope",
     "other_purpose",
     "other_paid_activity",
+    "sponsor_category",
     "work_payer",
     "work_sponsor_confirmed",
     "stay_days",
@@ -106,7 +107,7 @@
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "sponsor.type": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "sponsor.type": { "status": "KNOWN", "value": "NONE" },
     "secondhome.bank_deposit_usd": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

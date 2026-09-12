@@ -756,10 +756,24 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
     ];
   }
 
-  // Second Home (owner ruling 3, 2026-09-06). No `sponsor_category`: no
-  // E33 rule reads `sponsor.type`, and every extra question carries
-  // `notSure: { mode: "human-review" }`, so a ceremonial one can only add
-  // review volume without ever changing an outcome.
+  // Second Home (owner ruling 3, 2026-09-06; comment corrected PR-D4d —
+  // the prior wording ("no E33 rule reads sponsor.type") was false: the
+  // ACTIVE pack (rulepack-prod-020.signed.json) carries three HARD_FILTERs
+  // on `sponsor.type` — `hf.e33a.sponsor-not-government`, `hf.e33b`/
+  // `hf.e33c.sponsor-not-government-or-none` — all `on_unknown:
+  // NEEDS_INPUT`. They just never reach this tile: E33A/E33B/E33C's own
+  // `covered_purposes` do not include SECOND_HOME (E33A: EMPLOYMENT/
+  // TOURISM/FAMILY; E33B: +BUSINESS_MEETINGS/INVESTMENT; E33C: INVESTMENT/
+  // BUSINESS_MEETINGS/TOURISM/FAMILY), so `hit_policy:
+  // COVER_ALL_DECLARED_PURPOSES` excludes all three as candidates before
+  // their HARD_FILTER is ever evaluated — measured PR-D4d on all three
+  // `second_home` corpus walks (offshore/property, offshore/bank_deposit,
+  // onshore), `sponsor.type` UNKNOWN(NOT_ASKED): every one still resolves
+  // `SUPPORTED_CANDIDATES [E33]` (the separate, plain E33 product), missing
+  // facts empty. Ruling stands regardless (imperator, 2026-09-13):
+  // `second_home` keeps its omission until Zero decides — every extra
+  // question here carries `notSure: { mode: "human-review" }`, so asking
+  // one a rule cannot use would only add review volume.
   if (category === "second_home") {
     const branch = facts.secondhome_basis;
     const branchQuestions =
@@ -878,12 +892,21 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
   // instead of holding on a bare ACTIVITY_BOUNDARY flag. `no` and `unsure`
   // keep today's `family_sponsor_confirmed` question: `el.c6.social` (the
   // OTHER-purpose rule) still needs it, and neither branch changes purpose.
+  //
+  // `sponsor_category` joined the `yes` arm only (PR-D4d): an EMPLOYMENT-
+  // purpose walk down THIS branch is the other reachable path (besides
+  // `work`) into `el.e33a/b.government-*`, `el.e23u.diplomatic-household`
+  // and `el.e23v.trade-office` (seq-21, unsigned) — all keyed on
+  // `sponsor.type`, none readable before this. `no`/`unsure` stay OTHER
+  // purpose, which none of those rules cover, so they must NOT gain the
+  // question — asking it there would only add review volume for a fact no
+  // rule on that path reads.
   if (category === "other") {
     return [
       "other_purpose",
       "other_paid_activity",
       ...(facts.other_paid_activity === "yes"
-        ? ["work_payer", "work_sponsor_confirmed"]
+        ? ["sponsor_category", "work_payer", "work_sponsor_confirmed"]
         : ["family_sponsor_confirmed"]),
       "stay_days",
       "entry_pattern",
