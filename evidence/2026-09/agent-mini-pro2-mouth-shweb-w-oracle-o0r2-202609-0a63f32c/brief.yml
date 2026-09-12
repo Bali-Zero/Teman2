@@ -198,17 +198,40 @@ acceptance:
 pii: none
 supersession: >-
   this branch supersedes PR #6295, whose head c2a85b6ced was gated
-  PASS-WITH-CONDITIONS. No content changed: the 12 non-evidence files are
-  blob-identical to that head, and brief.yml and pack.yml differ from it only by
-  the three re-pins this commit makes. The commits were replayed onto
-  origin/main 7378c87fca because the repository's off-limits pre-commit gate is
-  over-inclusive on merges BY DESIGN (it reads the raw staged list so a deletion
-  of a protected file cannot hide) and therefore refuses any merge of main that
-  carries apps/backend-rag/backend/prompts/zantara_core.py — a file this branch
-  never touched and inherits unchanged. The round head_sha values below
-  (8b947103b5, 9a85b97b84, 8b63ec5326, 6f8256d640) are the commits the refuters
-  actually read and are left unrewritten: they live on #6295's branch, which is
-  not deleted, and each is content-identical to its replayed twin here.
+  PASS-WITH-CONDITIONS. What changed, measured with `git diff --name-only
+  c2a85b6ced HEAD` restricted to that PR's 15 paths: 12 files are blob-identical
+  to the gated head and THREE are not — .secrets.baseline (resolved additively
+  against main), brief.yml and pack.yml (the re-pins). An earlier wording of this
+  field said "the 12 non-evidence files are blob-identical", which was false:
+  .secrets.baseline is a non-evidence file and is one of the three that differ.
+  The commits were replayed onto origin/main 7378c87fca because the repository's
+  off-limits pre-commit gate is over-inclusive on merges BY DESIGN (it reads the
+  raw staged list so a deletion of a protected file cannot hide) and therefore
+  refuses any merge of main that carries
+  apps/backend-rag/backend/prompts/zantara_core.py — a file this branch never
+  touched and inherits unchanged.
+supersession_pin_reachability: >-
+  the round head_sha values recorded below are the commits the refuters actually
+  read and are left unrewritten. They do NOT all live on the same branch, and an
+  earlier wording of this record said they were all on #6295's branch, which is
+  wrong; the commit message of 6381af36c0 carries the same error and cannot be
+  amended after merge, so this field is the correction of record. Verify any of
+  it with `git branch -a --contains <sha>`.
+  (a) Rounds 1 and 2 — 8b947103b5 and 82d08445b3 — exist ONLY on the r1 branch
+  agent/mini-pro2/mouth/shweb-w-oracle-20260911. They predate r2 and have no
+  replayed twin anywhere.
+  (b) Rounds 4, 5 and 6 — 9a85b97b84, 8b63ec5326, 6f8256d640 — and the heads of
+  rounds 7 and 8 (69651442d4, 4b92705c56) and the gated head c2a85b6ced exist on
+  #6295's branch agent/mini-pro2/mouth/shweb-w-oracle-o0r2-20260911, each
+  content-identical to its replayed twin on the superseding branch.
+  (c) Round 3 — be45266252 — is an ancestor of main and stays reachable whatever
+  happens to the branches.
+  CONSEQUENCE for branch cleanup: neither
+  agent/mini-pro2/mouth/shweb-w-oracle-20260911 nor
+  agent/mini-pro2/mouth/shweb-w-oracle-o0r2-20260911 may be deleted while this
+  record points at them. Deleting either makes the pins above unresolvable and
+  turns this review record into prose nobody can check — which is the one
+  property it exists to have.
 adversarial_review_provenance: >-
   every round below is this session's record of a run for which this
   repository holds no transcript; it is provenance, not evidence, and the
