@@ -58,6 +58,45 @@ def test_the_migration_file_exists_and_declares_a_rollback() -> None:
     assert "DROP TABLE" in joined
 
 
+def test_both_halves_carry_the_ownership_privilege_bracket() -> None:
+    """Structural guard for Sol findings F8/F9, cured under Imperatore
+    decision #16 (2026-09-12). STRUCTURAL is the honest word: it reads the
+    file, not a database. The behavioural proof needs a shape-D fixture
+    (PG17, both roles provisioned, a non-superuser migrator) that this
+    suite does not have -- ledgered as S1's own gear-3 precondition, not
+    silently assumed here.
+
+    What it does catch is the drift that actually happened: a forward half
+    that hands objects to `visa_ledger_owner` and a rollback half that
+    tries to remove them while the session has assumed `backend_rag_v2`,
+    which owns none of them. Every removal then fails with "must be owner
+    of", the rollback transaction aborts, and the operator is told an undo
+    ran that did nothing.
+    """
+    forward, rollback = split_migration_sql(MIGRATION.read_text())
+
+    # Forward: the table and the guard function leave backend_rag_v2.
+    assert "ALTER TABLE %s OWNER TO %I" in forward
+    assert "guard_garuda_practice_artifacts_mutation" in forward
+    assert "$garuda_312_table_owner_transfer$" in forward
+    # ... and the session is handed back to the runtime role afterwards, so
+    # the migration does not leave the connection on a role nobody chose.
+    assert "$garuda_312_resume_runtime_role_after_grants$" in forward
+
+    # Rollback: assume the owner BEFORE the removals, resume after.
+    assert rollback is not None
+    assert "$garuda_312_rollback_assume_owner$" in rollback
+    assert "$garuda_312_rollback_resume_runtime_role$" in rollback
+    assume_at = rollback.index("$garuda_312_rollback_assume_owner$")
+    first_removal = min(
+        i for i in (rollback.find("DROP TRIGGER"), rollback.find("DROP FUNCTION"), rollback.find("DROP TABLE"))
+        if i != -1
+    )
+    assert assume_at < first_removal, (
+        "the rollback's privilege bracket must open before the first removal statement"
+    )
+
+
 #: Same guard as 310's own suite, same reasoning: this fixture applies 312
 #: PERMANENTLY (outside any transaction) against whatever TEST_DATABASE_URL
 #: resolves to, so a mistyped DSN must never be allowed to reach a real
@@ -427,15 +466,20 @@ class TestGuardTriggerAppendOnly:
             first_id = f"art_{uuid.uuid4().hex[:20]}"
             await _insert_artifact(conn, artifact_id=first_id, practice_id=practice_id)
 
-            # The partial unique index only binds LIVE rows -- insert the
-            # new row FIRST for a DIFFERENT practice here only to have a
-            # real artifact_id to supersede-by; the real service instead
-            # orders it old-row-UPDATE-then-new-row-INSERT for the SAME
-            # practice (postgres_repository.py::insert_superseding).
+            # Drive the REAL order the service uses: mark the old row
+            # first, insert the successor for the SAME practice after
+            # (postgres_repository.py::insert_superseding). An earlier
+            # version of this test took a shortcut -- it pointed
+            # `superseded_by` at an artifact of a DIFFERENT practice, purely
+            # to have some real artifact_id on hand -- and passed, because
+            # the composite FK is DEFERRABLE INITIALLY DEFERRED and this
+            # test ends in `tx.rollback()`: the check never ran. Sol's O1
+            # refutation (finding F7) named that exact line as the proof
+            # that a cross-practice successor was accepted. The shortcut is
+            # gone, and `SET CONSTRAINTS ALL IMMEDIATE` below makes the
+            # deferred check happen HERE rather than at a COMMIT this test
+            # deliberately never reaches.
             second_id = f"art_{uuid.uuid4().hex[:20]}"
-            other_practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
-            await _insert_artifact(conn, artifact_id=second_id, practice_id=other_practice_id)
-
             await conn.execute(
                 "UPDATE garuda_practice_artifacts "
                 "SET superseded_at = clock_timestamp(), superseded_by = $2 "
@@ -443,6 +487,8 @@ class TestGuardTriggerAppendOnly:
                 first_id,
                 second_id,
             )
+            await _insert_artifact(conn, artifact_id=second_id, practice_id=practice_id)
+            await conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
             row = await conn.fetchrow(
                 "SELECT superseded_at, superseded_by FROM garuda_practice_artifacts "
                 "WHERE artifact_id = $1",
@@ -451,10 +497,66 @@ class TestGuardTriggerAppendOnly:
             assert row["superseded_at"] is not None
             assert row["superseded_by"] == second_id
 
-            # The practice this superseded row belonged to is free again --
-            # a fresh live insert for it must now succeed.
-            third_id = f"art_{uuid.uuid4().hex[:20]}"
-            await _insert_artifact(conn, artifact_id=third_id, practice_id=practice_id)
+            # The successor is now the practice's one live row: the partial
+            # unique index counts exactly one, and it is the new id. (The
+            # older assertion here inserted a THIRD live row for the same
+            # practice, which only worked while the successor belonged to
+            # someone else -- with the successor on this practice, that
+            # insert is the two-live-rows case `test_a_second_live_insert_
+            # for_the_same_practice_is_refused` already owns.)
+            live = await conn.fetch(
+                "SELECT artifact_id FROM garuda_practice_artifacts "
+                " WHERE practice_id = $1 AND superseded_at IS NULL",
+                practice_id,
+            )
+            assert [r["artifact_id"] for r in live] == [second_id]
+        finally:
+            await tx.rollback()
+
+    @pytest.mark.asyncio
+    async def test_a_successor_from_another_practice_is_refused(self, conn) -> None:
+        """Sol O1 finding F7 (BLOCKER, 2026-09-11), cured by the composite
+        deferred FK `(superseded_by, practice_id) -> (artifact_id,
+        practice_id)`.
+
+        Before the cure every structure in 312 waved this through: the
+        single-column FK resolved (the target row exists), the guard
+        trigger checked only that OLD.practice_id did not CHANGE, and the
+        partial unique index counts live rows and so cannot see it. The
+        result was a Delivered practice with ZERO live artifacts and a
+        `garuda_practices.artifact_id` still naming the row just retired --
+        a customer GET answering 404 forever with no error anywhere.
+
+        The check is deferred, so it lands at constraint-check time and not
+        at statement time: `SET CONSTRAINTS ALL IMMEDIATE` is what forces
+        it here instead of at a COMMIT this test never reaches. A caller
+        who never asks for it gets the same refusal at COMMIT.
+        """
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            first_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(conn, artifact_id=first_id, practice_id=practice_id)
+
+            other_practice_id = await _seed_practice(conn, suffix=uuid.uuid4().hex[:12])
+            stranger_id = f"art_{uuid.uuid4().hex[:20]}"
+            await _insert_artifact(
+                conn, artifact_id=stranger_id, practice_id=other_practice_id
+            )
+
+            # The UPDATE itself is accepted -- the guard trigger has no
+            # opinion on WHERE superseded_by points, and cannot have one:
+            # the successor row does not exist yet in the real flow.
+            await conn.execute(
+                "UPDATE garuda_practice_artifacts "
+                "SET superseded_at = clock_timestamp(), superseded_by = $2 "
+                "WHERE artifact_id = $1",
+                first_id,
+                stranger_id,
+            )
+            with pytest.raises(asyncpg.ForeignKeyViolationError):
+                await conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
         finally:
             await tx.rollback()
 

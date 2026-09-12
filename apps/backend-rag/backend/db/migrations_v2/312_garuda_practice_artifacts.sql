@@ -19,28 +19,42 @@
 -- tree it runs on, so run it AFTER the rebase, never before.
 --
 -- OWNERSHIP: created while the session holds `backend_rag_v2`
--- (`assume_runtime_role`, migration_base.py) -- owned by `backend_rag_v2`
--- like every other `garuda_*` table (spec SS3), NOT by `visa_ledger_owner`.
--- Only the retention-binding trigger function in (2) needs the ledger
--- owner's lock-taking privilege on `visa_decision_retention_policies`,
--- exactly as measured for `garuda_documents` (304, unmerged -- read via
--- `git show origin/agent/air-m5/ops/garuda-voa-documents:.../304_garuda_
+-- (`assume_runtime_role`, migration_base.py), then handed to
+-- `visa_ledger_owner` -- table, guard function and retention-binding
+-- function alike -- by the two transfer blocks in (2) and (3bis).
+-- `garuda_*` tables are otherwise owned by `backend_rag_v2` (spec SS3) and
+-- this one is the deliberate exception, ruled by the Imperatore (decision
+-- #16, 2026-09-12) on Sol's F8: this is the only `garuda_*` table whose
+-- whole value proposition is that the runtime CANNOT rewrite history on
+-- it, and an owner can always take a guard apart. See (3bis) for the
+-- statements that were reachable while `backend_rag_v2` owned it, and the
+-- LEAST PRIVILEGE note below for what the split does and does not buy.
+-- The ledger owner is the same role (2) already required for its trigger's
+-- lock-taking privilege on `visa_decision_retention_policies`, exactly as
+-- measured for `garuda_documents` (304, unmerged -- read via `git show
+-- origin/agent/air-m5/ops/garuda-voa-documents:.../304_garuda_
 -- documents.sql`).
 --
--- LEAST PRIVILEGE, HONESTLY CAVEATED (spec SS3: "'append-only' is a grant,
--- not an adjective"). PostgreSQL gives a table's OWNER every privilege
--- unconditionally; REVOKE against the owner is a no-op, and there is no ACL
--- entry that can make an owner's own DELETE fail. Because `backend_rag_v2`
--- is both this table's owner and the sole runtime writer in production, the
--- GRANT statements in (4) (SELECT + INSERT, and UPDATE scoped to the two
--- columns `superseded_at`/`superseded_by`) document the INTENDED boundary
--- and would bind a future non-owner grantee (a read-only reporting role, or
--- a split-ownership migration the way 300/301 later did for magic-link
--- retention) -- but cannot themselves stop `backend_rag_v2` from writing
--- outside that boundary. The guard trigger in (3) is the REAL enforcement:
--- it runs regardless of which role's privileges apply and rejects any
--- DELETE and any UPDATE that is not exactly "set superseded_at and
--- superseded_by together, once, nothing else."
+-- LEAST PRIVILEGE (spec SS3: "'append-only' is a grant, not an
+-- adjective"). PostgreSQL gives a table's OWNER every privilege
+-- unconditionally: REVOKE against an owner is a no-op, and no ACL entry
+-- can make an owner's own removal fail. An earlier draft of this file
+-- accepted that as a caveat -- `backend_rag_v2` owned the table, the
+-- grants in (4) merely documented the intent, and the guard trigger in (3)
+-- was called "the REAL enforcement". Sol's F8 showed the last step of that
+-- reasoning to be false: the owner can take the guard apart (disable it,
+-- remove it, or replace its body) before writing whatever it likes, so a
+-- guard owned by the role it constrains constrains nobody.
+--
+-- (3bis) therefore moves the table and the guard function to
+-- `visa_ledger_owner`. What that buys, precisely: the runtime role holds
+-- ONLY the three grants in (4) -- SELECT, INSERT, and UPDATE of
+-- `superseded_at`/`superseded_by` -- and reaches the guard only by
+-- triggering it. Removals, trigger management and any rewrite of the
+-- guard's body now require a role no production process logs in as. What
+-- it does NOT buy: anyone able to authenticate AS `visa_ledger_owner`, or
+-- as a superuser, is outside every boundary in this file -- that is a
+-- credential-custody property, not a schema one.
 --
 -- SCOPE DEPENDENCY (phase_2_gate condition 2, brief.yml): retention is
 -- bound to the existing `GARUDA_DOCUMENT` policy_scope, widened onto
@@ -158,9 +172,13 @@ CREATE TABLE IF NOT EXISTS public.garuda_practice_artifacts (
     -- exist yet at that point in the SAME transaction -- measured directly
     -- (asyncpg.ForeignKeyViolationError) while building this migration.
     -- Deferring the check to COMMIT is what lets both statements land in
-    -- the one order the unique index tolerates.
-    superseded_by       TEXT REFERENCES public.garuda_practice_artifacts (artifact_id)
-                        DEFERRABLE INITIALLY DEFERRED,
+    -- the one order the unique index tolerates -- and, since Sol's F7, it
+    -- is also the only moment at which the successor's practice_id can be
+    -- compared with this row's. The reference is therefore the COMPOSITE,
+    -- still-deferred foreign key declared at the END of this table, not a
+    -- column-level one -- read it for the case the single-column version
+    -- accepted.
+    superseded_by       TEXT,
     -- NOW() (== transaction_timestamp()): the retention-binding trigger
     -- below checks `NEW.created_at IS DISTINCT FROM transaction_timestamp()`
     -- (304's exact convention) -- see that migration's own comment for why
@@ -173,7 +191,35 @@ CREATE TABLE IF NOT EXISTS public.garuda_practice_artifacts (
     -- The two supersession columns are set together or not at all --
     -- structural backstop for the guard trigger's identical rule.
     CHECK ((superseded_at IS NULL) = (superseded_by IS NULL)),
-    CHECK (superseded_by IS NULL OR superseded_by <> artifact_id)
+    CHECK (superseded_by IS NULL OR superseded_by <> artifact_id),
+    -- The successor must belong to the SAME practice, and the database is
+    -- what says so. Sol's O1 refutation (2026-09-11, finding F7, BLOCKER)
+    -- built the case the earlier single-column FK accepted: point a
+    -- Delivered practice's sole live row at an artifact_id belonging to
+    -- ANOTHER practice. Every other structure in this file waves it
+    -- through -- the FK resolves (the target row does exist), the guard
+    -- trigger in (3) checks that OLD.practice_id does not CHANGE but never
+    -- looks at where superseded_by points, and the partial unique index is
+    -- satisfied by construction because it only ever counts live rows.
+    -- The result is a practice with zero live artifacts whose
+    -- `garuda_practices.artifact_id` still names the row just retired:
+    -- Delivered, pointer stale, customer GET 404 forever, and no error
+    -- anywhere.
+    --
+    -- Composite FK rather than a guard-trigger lookup, because the guard
+    -- CANNOT do this check: `postgres_repository.insert_superseding` marks
+    -- the old row BEFORE inserting the successor (the partial unique index
+    -- tolerates no other order), so at BEFORE UPDATE time the successor
+    -- row does not exist yet and any SELECT for it would fail every legal
+    -- supersession. Deferring to COMMIT is the only moment both rows are
+    -- on the table -- the same reason the reference was DEFERRABLE
+    -- already. `MATCH SIMPLE` (the default) leaves the constraint
+    -- unchecked while superseded_by IS NULL, which is exactly the live-row
+    -- case; practice_id is NOT NULL, so no other partial-null shape exists.
+    UNIQUE (artifact_id, practice_id),
+    FOREIGN KEY (superseded_by, practice_id)
+        REFERENCES public.garuda_practice_artifacts (artifact_id, practice_id)
+        DEFERRABLE INITIALLY DEFERRED
 );
 
 COMMENT ON TABLE public.garuda_practice_artifacts IS
@@ -181,7 +227,7 @@ COMMENT ON TABLE public.garuda_practice_artifacts IS
 COMMENT ON COLUMN public.garuda_practice_artifacts.superseded_at IS
     'NULL = live. Set exactly once by a correction, together with superseded_by; the guard trigger (3) refuses any other UPDATE and every DELETE for the runtime role. Physical row deletion is the retention sweep''s own role (spec SS6, decision #7a) -- not built by this migration.';
 COMMENT ON COLUMN public.garuda_practice_artifacts.superseded_by IS
-    'NULL = live. Set exactly once, together with superseded_at, to the artifact_id of the row that replaced this one (decision #13-revision) -- the guard trigger (3) enforces both columns move together and never again after that.';
+    'NULL = live. Set exactly once, together with superseded_at, to the artifact_id of the row that replaced this one (decision #13-revision) -- the guard trigger (3) enforces both columns move together and never again after that, and the composite deferred FK enforces that the successor belongs to the SAME practice (Sol finding F7).';
 
 -- One live artifact per practice is a database fact, not a convention
 -- (spec SS2) -- also the index the customer/staff read paths use to find
@@ -439,6 +485,99 @@ BEFORE UPDATE OR DELETE ON public.garuda_practice_artifacts
 FOR EACH ROW EXECUTE FUNCTION public.guard_garuda_practice_artifacts_mutation();
 
 -- ----------------------------------------------------------------------------
+-- (3bis) THE TABLE'S OWN OWNERSHIP TRANSFER -- what turns (3) from a
+-- convention into a boundary (Imperatore decision #16, 2026-09-12, on Sol
+-- finding F8 BLOCKER; same shape as 304's bracket, decision #12).
+--
+-- The module header above says, honestly, that the guard trigger is "the
+-- REAL enforcement" because ACL cannot bind an owner. Sol's F8 pushed that
+-- sentence one step further and it did not hold: a trigger cannot bind an
+-- owner EITHER. While `backend_rag_v2` owned this table and the guard
+-- function, the runtime role could disable the trigger, remove it, replace
+-- the guard's body with `RETURN NEW`, or empty the table wholesale -- each
+-- a single owner-only statement, none of them blocked by anything in this
+-- file, all of them leaving no row behind to show it happened.
+-- "Append-only" was then a property of whichever code happened to be
+-- running, not of the database.
+--
+-- Moving both the table and the guard function to `visa_ledger_owner` (a
+-- NOLOGIN role -- the same owner (2) already requires for the retention
+-- trigger) is what makes the difference: those statements are owner-only
+-- privileges with no GRANT that confers them, so after this block the
+-- runtime role's entire vocabulary on this table is the three grants in
+-- (4) -- SELECT, INSERT, and UPDATE of two columns -- and the guard it can
+-- no longer reach decides the rest.
+--
+-- Fail-safe, identically to (2): role absent (this session's local
+-- nuzantara_test, CI's `postgres:15`) is a NOTICE and a no-op, so the
+-- schema this file builds stays the same everywhere; role present but the
+-- transfer refused is an EXCEPTION, because recording the migration as
+-- applied would then publish a boundary that is not there. The verdict is
+-- read from the MEASURED owner after the ALTER, never from the ALTER's
+-- silence.
+-- ----------------------------------------------------------------------------
+
+RESET ROLE;
+DO $garuda_312_table_owner_transfer$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    guard_signature constant text := 'public.guard_garuda_practice_artifacts_mutation()';
+    tbl constant text := 'public.garuda_practice_artifacts';
+    guard_fn oid;
+    table_owner text;
+    guard_owner text;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ledger_owner) THEN
+        RAISE NOTICE 'garuda practice artifacts (312): role % absent -- skipping table/guard ownership transfer, same convention as (2)',
+            ledger_owner;
+        RETURN;
+    END IF;
+
+    -- The table first: owning it is what confers the trigger-management and
+    -- whole-table-emptying privileges.
+    SELECT pg_get_userbyid(relowner) INTO table_owner
+      FROM pg_class WHERE oid = to_regclass(tbl);
+    IF table_owner IS DISTINCT FROM ledger_owner THEN
+        BEGIN
+            EXECUTE format('ALTER TABLE %s OWNER TO %I', tbl, ledger_owner);
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE NOTICE 'garuda practice artifacts (312): table owner change denied (current owner %) -- this session is neither superuser nor a member of %',
+                    table_owner, ledger_owner;
+        END;
+        SELECT pg_get_userbyid(relowner) INTO table_owner
+          FROM pg_class WHERE oid = to_regclass(tbl);
+    END IF;
+
+    -- Then the guard function: owning it is what confers CREATE OR REPLACE
+    -- on its body. A table the runtime cannot alter, guarded by a function
+    -- the runtime CAN rewrite, is not a boundary.
+    guard_fn := to_regprocedure(guard_signature);
+    IF guard_fn IS NULL THEN
+        RAISE EXCEPTION 'garuda practice artifacts (312): % is not present after (3) created it -- refusing to continue',
+            guard_signature;
+    END IF;
+    SELECT pg_get_userbyid(proowner) INTO guard_owner FROM pg_proc WHERE oid = guard_fn;
+    IF guard_owner IS DISTINCT FROM ledger_owner THEN
+        BEGIN
+            EXECUTE format('ALTER FUNCTION %s OWNER TO %I', guard_signature, ledger_owner);
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE NOTICE 'garuda practice artifacts (312): guard function owner change denied (current owner %) -- this session is neither superuser nor a member of %',
+                    guard_owner, ledger_owner;
+        END;
+        SELECT pg_get_userbyid(proowner) INTO guard_owner FROM pg_proc WHERE oid = guard_fn;
+    END IF;
+
+    IF table_owner IS DISTINCT FROM ledger_owner OR guard_owner IS DISTINCT FROM ledger_owner THEN
+        RAISE EXCEPTION
+            'garuda practice artifacts (312): table is owned by % and the guard function by %, expected % for both -- the runtime role could still disable the trigger, rewrite the guard body or empty the table, so the append-only boundary this migration publishes would not exist. Refusing to record it as applied: run the two owner changes on a superuser connection, then re-apply.',
+            table_owner, guard_owner, ledger_owner;
+    END IF;
+END;
+$garuda_312_table_owner_transfer$;
+
+-- ----------------------------------------------------------------------------
 -- (4) Runtime grants -- documents the intended boundary; see the module
 -- header's LEAST PRIVILEGE note for why this cannot itself bind the owner
 -- role. No unconditional-removal grant appears anywhere, on purpose.
@@ -463,15 +602,83 @@ BEGIN
 END;
 $garuda_312_runtime_grants$;
 
+-- (3bis) left the session on its own login role so the grants above could
+-- be issued by the table's new owner. Hand it back to the runtime role,
+-- same guarded shape (and the same measured reasons) as (2)'s resume
+-- block: a bare `SET ROLE` aborts on every environment that does not
+-- provision `backend_rag_v2`, and the role-existence and
+-- can-actually-assume checks stay in NESTED ifs rather than one
+-- `AND`-combined expression (Codex #8's refutation: operand evaluation
+-- order is not guaranteed).
+DO $garuda_312_resume_runtime_role_after_grants$
+DECLARE
+    target_role constant text := 'backend_rag_v2';
+    can_assume boolean;
+BEGIN
+    IF to_regrole(target_role) IS NOT NULL THEN
+        IF current_setting('server_version_num')::int >= 160000 THEN
+            can_assume := pg_has_role(session_user, target_role, 'SET');
+        ELSE
+            can_assume := pg_has_role(session_user, target_role, 'MEMBER');
+        END IF;
+        IF can_assume THEN
+            EXECUTE format('SET ROLE %I', target_role);
+        END IF;
+    END IF;
+END;
+$garuda_312_resume_runtime_role_after_grants$;
+
 -- === ROLLBACK ===
+
+-- THE ROLLBACK'S OWN PRIVILEGE BRACKET (Sol finding F9 MAJOR, cured under
+-- Imperatore decision #16 -- "bracket anche sul rollback").
+--
+-- The forward half moves three objects to `visa_ledger_owner`: the
+-- retention trigger function (2), and since (3bis) the table and the guard
+-- function too. The rollback half removes exactly those objects -- and
+-- `migration_base.py` runs it on a session that has assumed
+-- `backend_rag_v2`, which after the forward half owns NONE of them. Every
+-- removal statement below would raise `must be owner of ...`, aborting the
+-- rollback transaction: the forward migration stays fully applied while
+-- the operator is told the rollback ran. An undo that silently does
+-- nothing is worse than no undo, because it is trusted.
+--
+-- So: hand the session back to its login role, then assume the ledger
+-- owner if this session may. Guarded exactly like (2) and (4)'s resume
+-- blocks -- absent role or unassumable role is a no-op, which is right on
+-- the environments that never had the roles in the first place and where
+-- the table is therefore still owned by whoever created it. The symmetric
+-- resume at the very end of this file puts the runtime role back.
+RESET ROLE;
+DO $garuda_312_rollback_assume_owner$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    can_assume boolean;
+BEGIN
+    IF to_regrole(ledger_owner) IS NOT NULL THEN
+        IF current_setting('server_version_num')::int >= 160000 THEN
+            can_assume := pg_has_role(session_user, ledger_owner, 'SET');
+        ELSE
+            can_assume := pg_has_role(session_user, ledger_owner, 'MEMBER');
+        END IF;
+        IF can_assume THEN
+            EXECUTE format('SET ROLE %I', ledger_owner);
+        ELSE
+            RAISE NOTICE 'garuda practice artifacts (312) rollback: session_user % cannot assume % -- the removals below will only succeed if this session is superuser',
+                session_user, ledger_owner;
+        END IF;
+    END IF;
+END;
+$garuda_312_rollback_assume_owner$;
 
 DROP TRIGGER IF EXISTS trg_guard_garuda_practice_artifacts_mutation ON public.garuda_practice_artifacts;
 DROP FUNCTION IF EXISTS public.guard_garuda_practice_artifacts_mutation();
 DROP TRIGGER IF EXISTS garuda_practice_artifacts_retention_binding ON public.garuda_practice_artifacts;
--- Same caveat 304's rollback accepts silently: bind_garuda_practice_artifact_
--- retention_policy() is owned by visa_ledger_owner after (2)'s transfer, so
--- this next statement requires a session that owns it (or superuser) --
--- exactly as 304's own rollback requires for its twin.
+-- bind_garuda_practice_artifact_retention_policy() is owned by
+-- visa_ledger_owner after (2)'s transfer, so the next statement requires a
+-- session that owns it or is superuser. 304's rollback accepts that caveat
+-- silently; this one does not -- the bracket at the top of this section is
+-- what makes the requirement true instead of hoped for.
 DROP FUNCTION IF EXISTS public.bind_garuda_practice_artifact_retention_policy();
 DROP FUNCTION IF EXISTS public.active_garuda_practice_artifact_policy_available(TEXT, TIMESTAMPTZ);
 DROP TABLE IF EXISTS public.garuda_practice_artifacts;
@@ -497,3 +704,27 @@ BEGIN
     END IF;
 END;
 $garuda_312_narrow_policy_scope$;
+
+-- Symmetric close of the bracket opened at the top of this section: leave
+-- the session on the role `migration_base.py` handed us, never on
+-- visa_ledger_owner. A rollback that returns with a different current_role
+-- than it was given would hand the next statement in the same session a
+-- privilege set nobody chose.
+RESET ROLE;
+DO $garuda_312_rollback_resume_runtime_role$
+DECLARE
+    target_role constant text := 'backend_rag_v2';
+    can_assume boolean;
+BEGIN
+    IF to_regrole(target_role) IS NOT NULL THEN
+        IF current_setting('server_version_num')::int >= 160000 THEN
+            can_assume := pg_has_role(session_user, target_role, 'SET');
+        ELSE
+            can_assume := pg_has_role(session_user, target_role, 'MEMBER');
+        END IF;
+        IF can_assume THEN
+            EXECUTE format('SET ROLE %I', target_role);
+        END IF;
+    END IF;
+END;
+$garuda_312_rollback_resume_runtime_role$;
