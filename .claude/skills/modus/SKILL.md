@@ -169,12 +169,12 @@ seat's own TP1 token lives in the broker layer, outside the model's context).
 **Gate taxonomy (spec §4, 2026-08-10 — the drift-killer; four distinct organs called "gate",
 conflating them is the W86-class drift this table exists to prevent):**
 
-| Gate                                  | What it judges                                              | Who                                                                                                                                                                                                             | Fallback                                                                                                                                                            |
-| ------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Final on-disk gate** (modus VERIFY) | the last empirical grep/disk/live check of every task       | **Independent-verifier assignment on the Opus 5 `xhigh` seat, a Claude session outside the contribution chain — ALL gears** (RULED 2026-09-06→08: no permanent reviewer title; Fable 5.1 imperator window only) | **NONE. Never cascades to a weaker model.** All Anthropic accounts dead → task SUSPENDS (Gear-3 strictness). Gear 1-2: ordinary Opus-5 account rotation (unchanged) |
-| **WR2 content gate**                  | on-disk editorial content                                   | **Opus 5, xhigh effort** (RULED 2026-08-20 — was Fable 5, no fallback then either)                                                                                                                              | **NONE.** Window dead → SUSPEND                                                                                                                                     |
-| **Gear 2-3 harness verdict gate**     | the verdict a Gear 2 or Gear 3 task ships (PASS/PWC/REWORK) | **Opus 5, xhigh effort**, rotating AZ→A2→A3→A1 (RULED 2026-08-20 — was "Fable 5 first, degrade to Opus on exhaustion" per the 2026-08-09 ruling; that two-tier degradation is now moot, Opus 5 IS the seat)     | **NONE.** All Anthropic accounts dead → task QUEUES in PENDING-ARMS. Never pay                                                                                      |
-| **Gear-2 verdict**                    | standard feature PRs — gated since 2026-09-10               | Opus 5 + AI-review action + CI                                                                                                                                                                                  | ordinary cascade rules                                                                                                                                              |
+| Gate                                  | What it judges                                               | Who                                                                                                                                                                                                             | Fallback                                                                                                                                                            |
+| ------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Final on-disk gate** (modus VERIFY) | the last empirical grep/disk/live check of every task        | **Independent-verifier assignment on the Opus 5 `xhigh` seat, a Claude session outside the contribution chain — ALL gears** (RULED 2026-09-06→08: no permanent reviewer title; Fable 5.1 imperator window only) | **NONE. Never cascades to a weaker model.** All Anthropic accounts dead → task SUSPENDS (Gear-3 strictness). Gear 1-2: ordinary Opus-5 account rotation (unchanged) |
+| **WR2 content gate**                  | on-disk editorial content                                    | **Opus 5, xhigh effort** (RULED 2026-08-20 — was Fable 5, no fallback then either)                                                                                                                              | **NONE.** Window dead → SUSPEND                                                                                                                                     |
+| **Gear 2-3 harness verdict gate**     | PASS or BLOCK — the verdict a Gear 2 or 3 task ships (09-12) | **Opus 5, xhigh effort**, rotating AZ→A2→A3→A1 (RULED 2026-08-20 — was "Fable 5 first, degrade to Opus on exhaustion" per the 2026-08-09 ruling; that two-tier degradation is now moot, Opus 5 IS the seat)     | **NONE.** All Anthropic accounts dead → task QUEUES in PENDING-ARMS. Never pay                                                                                      |
+| **Gear-2 verdict**                    | standard feature PRs — gated since 2026-09-10                | Opus 5 + AI-review action + CI                                                                                                                                                                                  | ordinary cascade rules                                                                                                                                              |
 
 None of these rows route to Fable — Fable 5.1 is an owner-opened imperator window, never a gate seat (RULED 2026-09-06→08); the old "Fable-paid contingency" is moot for the same reason.
 
@@ -186,6 +186,16 @@ Both now run on Opus 5 (RULED 2026-08-20), so there is no cross-model fallback t
 Opus 5 is unavailable for either stage, the task suspends/queues rather than cascading to a weaker
 model. No contradiction, no bypass.
 
+**SAETTA rules (RULED 2026-09-12, `docs/rules/RULINGS.md` — the seven amendments, binding on every window from 2026-09-12):**
+
+1. Verdict binary, PASS or BLOCK; evidence-record defects are notices, never conditions; a surviving condition is discharged in the PR's own pack or the mission close row.
+2. One `PENDING-ARMS.md` row per MISSION, written by the imperator at close — no ledger PR per gated PR, healer at most daily.
+3. A window is a customer-visible slice; an infrastructure window opens only with its consumer in the same wave.
+4. The imperator opens, acks within 15 min, rules on BLOCK — nothing else; the gate is a fresh read-only subagent commissioned by the level above the Dux, 20-minute budget.
+5. Silence does not suspend: no ack in 15 min → the Dux proceeds on its declared default; the root deadline counts Dux active time only.
+6. A guarded window with a live successor is never re-enabled; first act on resume = `ListAgents`, stand down if a successor exists.
+7. A harness-caused red never rebuilds the branch: fix the harness in its own PR or waive with the reason in the pack.
+
 **Floor note:** gear classification is the DETERMINISTIC FLOOR computed from the diff (harness §1),
 recomputed by CI — never the conductor's choice. This table is not a downgrade lever: a task cannot
 be talked into Gear-2 when its diff says 3.
@@ -195,7 +205,7 @@ computation does not honor custom merge drivers (`merge=union`) — a union-file
 PRs both editing `.claude/skills/modus/PENDING-ARMS.md`) can read DIRTY/CONFLICTING against a
 sibling that merged first even though local git resolves the union cleanly; cure = a LOCAL `git
 merge origin/main` (never `update-branch`, which uses GitHub's own merge and hits the same wall),
-inspect the union result, push.
+inspect the union result, push. Since RULED 2026-09-12 (SAETTA rule 2) sibling ledger PRs do not exist by construction — one row per mission, at close.
 
 Full source: `research/operations/2026-08-10-fleet-order-spec.md` §4.
 
