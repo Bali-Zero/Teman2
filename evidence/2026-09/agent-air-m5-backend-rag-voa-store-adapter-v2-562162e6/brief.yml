@@ -108,14 +108,16 @@ limits:
 spec_errata:
   - >-
     SPEC v2 §5 calls `from None` "the load-bearing change, because `from None` is what stops
-    a `--tb=long` renderer from printing the original". MEASURED otherwise (guilt table):
-    dropping `from None` while keeping `pytrace=False` survives all 288 tests, and setting
-    `pytrace=True` while keeping `from None` also survives; only removing BOTH leaks (the
-    combined mutation on the previous head: 2 failed). With `pytrace=False` pytest renders
-    the message alone and never walks the chain; with the chain severed and `pytrace=True`
-    the only rendered frame is `_connect`'s, whose argument is a database NAME. Two redundant
-    layers, each sufficient; both stay as defence in depth. The §5 sentence is to be corrected
-    in the spec on main by a later docs PR (decision #38, constraint 3), not silently.
+    a `--tb=long` renderer from printing the original". MEASURED otherwise (guilt table, H1
+    rows, subprocess run with `--tb=long --showlocals`): dropping `from None` while keeping
+    `pytrace=False` survives all 288 tests -- with `pytrace=False` pytest renders the message
+    alone, no frame and no locals, whatever the renderer; setting `pytrace=True` while keeping
+    `from None` is red under `--showlocals` (3 failed: `_connect`'s own `dsn` local renders)
+    and was green at plain `--tb=long` on the previous head (the only rendered frame's
+    ARGUMENT is a database name). So `pytrace=False` is the load-bearing layer; `from None` is
+    defence in depth that closes the chained frame at `--tb=long` only. Both stay. The §5
+    sentence is to be corrected in the spec on main by a later docs PR (decision #38,
+    constraint 3), not silently.
   - >-
     SPEC v2 §3 lists `swap_case: s -> s.swapcase()` in the mutation model E. `swapcase` is a
     BIJECTION on ASCII letters -- it has no collision pair -- so it cannot be a member of a LOSSY
@@ -172,7 +174,7 @@ acceptance:
     property: §4.2 the seam is a test seam
     test: test_the_default_constructor_has_no_hooks
   - id: A14
-    property: H1 no DSN secret reaches the REPORT (subprocess, --tb=long, JUnit), and CI fails instead of skipping in all three degraded cases
+    property: H1 no DSN secret reaches the REPORT (subprocess, --tb=long --showlocals, JUnit), and CI fails instead of skipping in all three degraded cases
     test: >-
       test_h1_no_dsn_secret_reaches_the_report_at_tb_long_or_the_junit_xml[unreachable-server|dsn-rejected-by-parser],
       test_h1_non_superuser_role_fails_under_ci_without_leaking_its_password
@@ -201,7 +203,7 @@ measurements:
     17.10: the same mutations against the tests the property NAMES (`-k` selector recorded per
     row) -- the full file cost ~4.5 min per run on this cluster while the loop ran (see `suite`), so the PG17
     column proves "red on PG17" and the PG15 column proves the blast radius. Every row is red on
-    both, except the two H1 rows marked SURVIVES ALONE, declared as such (spec_errata) rather than dropped: together they are red (the combined mutation on the previous head: 2 failed), each alone is not. No row carries a scheduler caveat.
+    both, except ONE H1 row marked SURVIVES ALONE (`from None` dropped with `pytrace=False` kept), declared as such (spec_errata) rather than dropped: `pytrace=False` is the load-bearing layer. The H1 rows were re-measured after the subprocess runner gained `--showlocals`; every other row was measured on the same sources before `ruff format` (formatting only). No row carries a scheduler caveat.
 guilt_mutations:
   - "P1 -- actor_id replaced by an empty string in _scoped_key_sha256 -> PG15 full file: 127 failed, 161 passed; PG17 -k 'test_p1': 1 failed, 48 passed, 239 deselected"
   - "P2 -- encoder prefix_17 substituted into the hash (the cut that walked past PR2a's 16-char pair) -> PG15 full file: 53 failed, 235 passed; PG17 -k 'prefix_17': 1 failed, 1 passed, 286 deselected"
@@ -231,8 +233,8 @@ guilt_mutations:
   - "§2 outcome 3 -- IdempotencyKeyVanished reverted to RuntimeError -> PG15 full file: 1 failed, 287 passed; PG17 -k 'schedule_c': 1 failed, 287 deselected"
   - "§4 -- the after_collision_before_reread seam made a no-op: every race test FAILS TO SET UP (counter != 1), none passes vacuously -> PG15 full file: 5 failed, 283 passed; PG17 -k 'schedule_a or schedule_b or schedule_c or schedule_d': 5 failed, 283 deselected"
   - "§4.7 -- the race pool built min_size=1/max_size=3: every race test fails to set up on the size assertion read FROM THE POOL (Sol finding 7) -> PG15 full file: 5 failed, 283 passed; PG17 -k 'schedule_a or schedule_b or schedule_c or schedule_d': 5 failed, 283 deselected"
-  - "H1 -- `from None` dropped, pytrace=False kept. SURVIVES ALONE (see spec_errata: with pytrace=False pytest renders only the message) -> PG15 full file: 288 passed; PG17 -k 'test_h1': 4 passed, 284 deselected"
-  - "H1 -- pytrace=True, `from None` kept. SURVIVES ALONE (see spec_errata: with the chain severed the only rendered frame is _connect's, whose argument is a database name) -> PG15 full file: 288 passed; PG17 -k 'test_h1': 4 passed, 284 deselected"
+  - "H1 -- `from None` dropped, pytrace=False kept. SURVIVES ALONE under `--tb=long --showlocals` (see spec_errata: with pytrace=False pytest renders only the message, no frame, no locals) -> PG15 full file: 288 passed; PG17 -k 'test_h1': 4 passed, 284 deselected"
+  - "H1 -- pytrace=True, `from None` kept. RED under `--showlocals` (_connect's own `dsn` local renders in the three subprocess cases; the non-superuser case does not go through _connect's handler); was green at plain --tb=long on the previous head -> PG15 full file: 3 failed, 285 passed; PG17 -k 'test_h1': 3 failed, 1 passed, 284 deselected"
   - "H1 -- _redacted re-raising ValueError instead of returning the constant (Sol finding 3; the non-numeric-port subprocess case turns it red) -> PG15 full file: 1 failed, 287 passed; PG17 -k 'test_h1': 1 failed, 3 passed, 284 deselected"
   - "H1 -- _redacted returning the DSN unchanged -> PG15 full file: 4 failed, 284 passed; PG17 -k 'test_h1': 4 failed, 284 deselected"
   - "H1 -- a connect moved outside the try in the helper -> PG15 full file: 3 failed, 285 passed; PG17 -k 'test_h1': 3 failed, 1 passed, 284 deselected"

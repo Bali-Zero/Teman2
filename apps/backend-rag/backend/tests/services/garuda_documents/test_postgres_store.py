@@ -135,10 +135,15 @@ async def _connect(database: str | None) -> asyncpg.Connection:
     """The ONLY way this module opens a connection (§5). Takes a database NAME, never a
     DSN, so no frame pytest could render carries a secret as an argument. Any failure --
     unreachable server, a DSN asyncpg's parser rejects before opening a socket, anything --
-    is re-raised as the redacted pytest outcome `from None`: the chain is SEVERED, which is
-    what stops a `--tb=long` renderer from printing the original `asyncpg.connect(dsn=...)`
-    frame, and `pytrace=False` prints the message alone. Under `CI` the outcome is a
-    FAILURE; outside CI it is a skip with the same redacted reason."""
+    is re-raised as the redacted pytest outcome with TWO layers: `pytrace=False` makes
+    pytest print the message alone (no frame, no locals, under `--tb=long` and under
+    `--showlocals` alike), and `from None` severs the chain so the original
+    `asyncpg.connect(dsn=...)` frame is not there to render. MEASURED (brief
+    `guilt_mutations`, H1 rows): `pytrace=False` alone still passes the subprocess harness;
+    `from None` alone passes at `--tb=long` but this function's own `dsn` local renders
+    under `--showlocals`. So `pytrace=False` is the load-bearing layer and `from None` is
+    defence in depth (brief `spec_errata` against SPEC v2 §5). Under `CI` the outcome is
+    a FAILURE; outside CI it is a skip with the same redacted reason."""
     dsn = _ADMIN_URL if database is None else _with_database(_ADMIN_URL, database)
     try:
         return await asyncpg.connect(dsn)
@@ -565,6 +570,8 @@ def test_p2_the_mutation_model_is_exactly_the_enumerated_model():
     )
     for component, base in (("actor", _BASE_ACTOR), ("key", _BASE_KEY)):
         names = [enc.name for comp, enc in _STRING_CASES if comp == component]
+        # actor L=32 -> 62 + 9 + 32 + 1 + 21 = 125; key L=19 -> 36 + 9 + 19 + 1 + 21 = 86;
+        # 211 string cases in total, which is what `_STRING_CASES` parametrizes.
         assert len(names) == _expected_model_size(len(base)), (
             f"{component}: model has {len(names)} members, expected {_expected_model_size(len(base))}"
         )
@@ -1035,6 +1042,7 @@ def _run_probe_subprocess(tmp_path: Path, dsn: str) -> tuple[subprocess.Complete
             "pytest",
             str(probe),
             "--tb=long",
+            "--showlocals",
             f"--junit-xml={junit}",
             f"--rootdir={_BACKEND_ROOT}",
             "-c",
@@ -1068,14 +1076,22 @@ def _sentinel_dsn(host_port: str, query: str = "") -> tuple[str, str]:
 def test_h1_no_dsn_secret_reaches_the_report_at_tb_long_or_the_junit_xml(
     tmp_path: Path, host_port: str, query: str, case: str
 ):
-    """H1. A pytest SUBPROCESS with `--tb=long` and JUnit output, `CI=1`, and a sentinel
-    password in the DSN. The sentinel must be absent from stdout, stderr and the XML; the
+    """H1. A pytest SUBPROCESS with `--tb=long --showlocals` and JUnit output, `CI=1`, and
+    a sentinel password in the DSN. The sentinel must be absent from stdout, stderr and the
+    XML under the most verbose renderer pytest has (`--showlocals` prints every frame's
+    locals, which is where a `dsn` variable would leak). The sentinel is a random uuid minted
+    by THIS test, not a credential: the harness's own frames hold it (`secret`, `dsn`), so a
+    failure of the harness itself would render a throwaway string, never a real password. The
     run must FAIL (exit != 0) with the must-not-skip text; and the `***` redaction marker
     must be present -- the last two so a subprocess that merely failed to collect cannot
-    pass vacuously. Two degraded cases: an unreachable server (OSError) and a DSN asyncpg's
+    pass vacuously. Three degraded cases: an unreachable server (OSError); a DSN asyncpg's
     parser rejects before any socket (`ClientConfigurationError`, an InterfaceError that
-    the old suite's `except (OSError, PostgresError)` let through). Guilt: `from None`
-    dropped -> the chained `asyncpg.connect(dsn=...)` frame renders -> sentinel appears."""
+    the old suite's `except (OSError, PostgresError)` let through); and a DSN `_redacted`
+    itself cannot parse (a non-numeric port), which is red the moment the redactor stops
+    being total. Guilt (brief `guilt_mutations`, H1 rows): `_redacted` passing the DSN
+    through -> 4 failed; `pytrace=True` -> 3 failed (`_connect`'s `dsn` local renders under
+    `--showlocals`); `from None` dropped alone -> survives, because `pytrace=False` renders
+    the message alone -- declared in the brief's `spec_errata`, not hidden."""
     secret, dsn = _sentinel_dsn(host_port, query)
     completed, xml = _run_probe_subprocess(tmp_path, dsn)
     report = completed.stdout + completed.stderr
@@ -1124,6 +1140,7 @@ async def test_h1_non_superuser_role_fails_under_ci_without_leaking_its_password
                 "pytest",
                 str(tmp_path / "test_h1_probe.py"),
                 "--tb=long",
+                "--showlocals",
                 f"--junit-xml={junit}",
                 f"--rootdir={_BACKEND_ROOT}",
                 "-c",
