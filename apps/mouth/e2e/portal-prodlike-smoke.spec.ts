@@ -141,7 +141,7 @@ async function loginViaPortalUi(
     waitUntil: "domcontentloaded",
   });
   const emailInput = page.getByRole("textbox", { name: "Corporate Email" });
-  const emailSubmit = page.getByRole("button", { name: "Pass the Portal" });
+  const emailSubmit = page.getByRole("button", { name: "Continue" });
   await expect(emailInput).toBeEnabled();
   await emailInput.fill(email);
   await expect(emailSubmit).toBeEnabled();
@@ -186,7 +186,7 @@ async function loginPartnerViaPortalUi(
     waitUntil: "domcontentloaded",
   });
   await page.getByRole("textbox", { name: "Corporate Email" }).fill(email);
-  await page.getByRole("button", { name: "Pass the Portal" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Access PIN").fill(pin);
   const loginResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -363,7 +363,7 @@ test("@qa-be-003 portal-disabled PIN credentials fail closed without a session",
   });
   const emailInput = page.getByRole("textbox", { name: "Corporate Email" });
   await emailInput.fill(environment.disabledClientEmail);
-  await page.getByRole("button", { name: "Pass the Portal" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Access PIN").fill(environment.disabledClientPin);
 
   const loginResponsePromise = page.waitForResponse((response) => {

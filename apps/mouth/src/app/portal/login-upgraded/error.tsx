@@ -18,17 +18,19 @@ export default function LoginError({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center p-6">
-      {/* WS3 final slice: bg-destructive/text-destructive are dead classes in
-          mouth (no such Tailwind token) → real --state-danger tokens with a
-          color-mix tint of the same AA step. */}
+      {/* R19 concept F: red does not exist on the portal surface — a failed
+          load is copper ("needs you"), and the word carries the state. */}
       <div
         className="flex h-20 w-20 items-center justify-center rounded-full"
         style={{
           background:
-            "color-mix(in srgb, var(--state-danger) 10%, transparent)",
+            "color-mix(in srgb, var(--bz-copper-text) 10%, transparent)",
         }}
       >
-        <LogIn className="h-10 w-10" style={{ color: "var(--state-danger)" }} />
+        <LogIn
+          className="h-10 w-10"
+          style={{ color: "var(--bz-copper-text)" }}
+        />
       </div>
       <div className="mt-6 text-center space-y-2 max-w-md">
         <h2 className="text-2xl font-semibold tracking-tight text-[var(--tx-pure)]">

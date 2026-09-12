@@ -1,0 +1,40 @@
+gear: 3
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-R19P window W5 (BLUE, host M5) — the client-portal sign-in page becomes concept F's split gate
+objective: >-
+  apps/mouth/src/app/portal/login-upgraded/page.tsx was 1575 lines of night
+  scene: an SVG candi-bentar gate, three animated starfield layers, a moon, a
+  passage glow, a framer-motion spotlight glass card and a block of
+  attribute-selector CSS whose only job was to re-light that illustration for
+  the day theme. Replace the whole presentation with concept F ("RAPI"):
+  a forest left panel carrying the real Bali Zero mark, the serif hero
+  "Your Bali file, kept in order." and one lede; a paper right panel carrying
+  two step ticks, "Welcome back.", the email/PIN field, one forest button and
+  the two existing alternative sign-in paths as copper text links. Keep the
+  two-step state machine, publicAuth.login, the HTTP-status -> i18n error map,
+  the hydration guard, the rate-limit handling, the overlays with their
+  role=status / role=alert, the sound and haptics calls, and the CSP
+  expectations, all unchanged. Declare the "my" product persona at mount so the
+  sign-in page sits on the same token seam as the authenticated portal.
+scope:
+  - apps/mouth/src/app/portal/login-upgraded/page.tsx
+  - apps/mouth/src/app/portal/login-upgraded/page.test.tsx
+  - apps/mouth/src/app/portal/login-upgraded/error.tsx
+constraints:
+  - PRESENTATION ONLY — no route, no field, no hook, no fetch, no API type, no i18n key removed, no behavioural change.
+  - Forbidden — magic-link, forgot-password and register pages, publicAuth, i18n JSON, middleware, csp.test.ts (must pass unchanged), globals.css and every shared primitive.
+  - No red hex and no --state-danger fill in what is written; forest is the only primary-button fill; copper is text, numeral and outline only.
+  - No client PII — synthetic identities only.
+  - No ledger PR, no PENDING-ARMS.md edit (SAETTA rule 2).
+acceptance:
+  - A1 git diff origin/main --stat <= 4 files, all under login-upgraded/; net lines negative or <= 400 added.
+  - A2 npx vitest --run src/app/portal/login-upgraded green (page.test.tsx + csp.test.ts), with the origin/main test-case count preserved.
+  - A3 no <svg illustration blocks remain except icons <= 24px; no red hex; the primary button fill is forest.
+  - A4 typecheck + eslint green.
+  - A5 dev-server screenshots of /portal/login at 1440x900 and 390x844, step 1 and step 2, saved under the mission build directory and compared against concepts/concept-F/01-entry.*.png.
+consumer_map:
+  - The live my.balizero.com/portal/login sign-in page served by the apps/mouth Vercel deploy on merge to main — the 308 route /portal/login lands on this component.
+  - The required GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs page.test.tsx and csp.test.ts on every future PR touching this route.
+appetite:
+  budget: 75 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

@@ -1,0 +1,461 @@
+kimi version 0.41.0
+• Let me start by reading the diff file and then examining the post-change sources in this checkout.
+
+  The diff is at /private/tmp/claude-501/-Users-balizero-nuzantara/471c2662-0e19-4a89-bc1d-8c7b29a7cb2c/scratchpad/r19p/w5-council.diff
+
+  Let me read it first.The diff is 1963 lines. Most of it is likely the removal of the SVG gate scene. Let me read the rest of the diff to see the new JSX structure (the parts after line 1000).Now I have the full diff. The diff covers:
+  1. `apps/mouth/e2e/portal-prodlike-smoke.spec.ts` — 3 locator updates ("Pass the Portal" → "Continue")
+  2. `apps/mouth/src/app/portal/login-upgraded/error.tsx` — red → copper tokens
+  3. `apps/mouth/src/app/portal/login-upgraded/page.test.tsx` — test updates
+  4. `apps/mouth/src/app/portal/login-upgraded/page.tsx` — full presentation refactor
+
+  Now I need to verify the post-change sources in this checkout. Key checks:
+
+  (a) Behavioral invariants in page.tsx:
+  - two-step email→PIN state machine (step state, handleSubmitEmail, handleLogin)
+  - publicAuth.login call
+  - HTTP-status→i18n error mapping (errorKeyFor)
+  - rate-limit retry-after handling
+  - hydration guard (isHydrated)
+  - success/denied overlays with role=status/alert
+  - every data-testid the tests use
+
+  Wait — the diff doesn't show the state machine logic itself (the part between line 404 and the JSX). The diff hunk "@@ -206,1370 +284,214 @@" starts after the handlers. So the handlers (handleSubmitEmail, handleLogin, errorKeyFor) are unchanged context... Actually the diff only shows changes; the unchanged parts include the state machine. But I must verify the post-change source in this checkout actually retains them — the review asks to verify against the post-change sources.
+
+  (b) no i18n key removed, no route changed, no new dependency:
+  - Imports changed: removed framer-motion, next/image, cormorant font; added @balizero/core/components/BZLogo. Is BZLogo a new dependency? It's from @balizero/core which is presumably an existing workspace package. Need to check it exists and is already a dependency of apps/mouth.
+  - i18n keys used: t("portal.login.forgot_password") — still used. Check for other t() calls in the new page.
+  - Routes: /portal/magic-link, /portal/forgot-password, /privacy, /terms — the new file adds /privacy and /terms links (new routes referenced, but do they exist?). "No route changed" — the page route itself is unchanged. But new links to /privacy and /terms are added — need to check those routes exist.
+
+  (c) tests still assert the same behaviors — check page.test.tsx post-change.
+
+  (d) accessibility: focus, contrast, target size, red colour:
+  - The error.tsx now uses --bz-copper-text instead of --state-danger. The page.tsx overlay denied now uses --r19-copper (#a44b36). No red introduced... wait, the question is "any accessibility regression (focus, contrast, target size) or any red colour introduced". The refactor deliberately removed red (--state-danger) — that's intended per the comment "red does not exist on this surface". Hmm, but does removing red from "Access Denied" constitute a regression? The task says verify "any red colour introduced" — the change removes red, doesn't introduce it. Also #a44b36 is a copper/terracotta — need to check contrast on the paper background #f7f4ee.
+
+  Let me now read the post-change sources. Key files:
+  1. src/app/portal/login-upgraded/page.tsx (post-change, full)
+  2. src/app/portal/login-upgraded/page.test.tsx (post-change, full)
+  3. src/app/portal/login-upgraded/error.tsx (post-change)
+  4. e2e/portal-prodlike-smoke.spec.ts (the three hunks)
+  5. Check BZLogo exists: @balizero/core/components/BZLogo
+  6. Check i18n keys used exist
+  7. Check /privacy and /terms routes exist
+  8. Check useSystemSound, sanitizeRedirect, publicAuth usage unchanged
+
+  Also check: the unit tests use data-testid? Let me check what data-testid the tests use. The task mentions "every data-testid the tests use are behaviourally unchanged". Let me grep for data-testid in the test file and page.
+
+  Also check the e2e spec for other locators that might break: "Corporate Email" textbox (kept — label "Corporate Email" with htmlFor portal-email), "Access PIN" label (kept), "Continue" button (new), "Verify Identity". Also the e2e test at line 363 area uses disabledClient flow. Also there may be other tests referencing "Pass the Portal" elsewhere — need to grep the whole repo for "Pass the Portal" to make sure no other test/spec breaks. That's part of "no route changed / tests assert same behaviors" and general correctness.
+
+  Also check that `motion` removal doesn't leave `framer-motion` unused in package.json — not required, removal of a dependency isn't required; "no new dependency" — BZLogo needs verification.
+
+  Also the test mock for framer-motion was removed from page.test.tsx — that's fine since the page no longer imports framer-motion. But wait — BZLogo might itself use framer-motion or next/image. Need to check BZLogo component. If BZLogo uses next/image, the unit test doesn't mock next/image — next/image in vitest/jsdom usually works fine (renders img). Let me check BZLogo source.
+
+  Also the test asserts `hero?.querySelector("img")` exists and alt "Bali Zero" and not rounded-full. BZLogo variant="full" — need to verify it renders an img with alt "Bali Zero".
+
+  Also check `--font-serif` variable exists (r19-serif uses var(--font-serif)). If not defined, falls back to Georgia,serif — fine.
+
+  Also check that page.tsx still exports default and has I18nProvider wrapper. The diff shows only UpgradedLoginPageInner's return changed; the default export wrapper with I18nProvider is presumably below and unchanged. Need to verify in post-change file.
+
+  Also verify: hydration guard — isHydrated state and the useEffect setting it, plus disabled={!isHydrated || ...} on email input and submit. PIN input disabled doesn't include !isHydrated in either version (only loginStage !== "idle") — unchanged behavior.
+
+  Rate-limit retry-after handling — in handleLogin, unchanged portion. Need to read the post-change page.tsx fully to confirm.
+
+  data-testid: let me grep the new page.tsx for data-testid. The old page might have had data-testid attributes... In the diff I don't see any data-testid added or removed. Let me check the test file and e2e spec for data-testid usage. The e2e uses getByRole/getByLabel, not testids, from what we've seen. But maybe other parts of the e2e spec use getByTestId — need to check the full spec.
+
+  Also check other e2e tests referencing this page: grep "login-upgraded" across e2e/.
+
+  Also "no i18n key removed": the old page used t("portal.login.forgot_password") — still present. Did the old page use any other t() calls? The diff doesn't show any removed t() calls... In the removed JSX I see hardcoded English text ("Turn On", "Your Bali Life.", etc.) and only one t() call. The new page also has one t() call. But wait — error mapping uses i18n keys via errorKeyFor + t() in handleLogin presumably. Those are in the unchanged portion; verify in post-change file.
+
+  Contrast check (d): 
+  - --r19-copper #a44b36 on --r19-paper #f7f4ee: compute contrast. Relative luminance of #a44b36: R=164/255=0.643 → lin: ((0.643+0.055)/1.055)^2.4 = (0.6616)^2.4. ln(0.6616)=-0.4132, ×2.4=-0.9917, e^-0.9917=0.371. G=75/255=0.294 → ((0.294+0.055)/1.055)^2.4 = (0.3308)^2.4. ln(0.3308)=-1.1066, ×2.4=-2.6558, e^-2.6558=0.0702. B=54/255=0.2118 → ((0.2118+0.055)/1.055)^2.4=(0.2529)^2.4. ln(0.2529)=-1.375, ×2.4=-3.3, e^-3.3=0.0369. L = 0.2126×0.371 + 0.7152×0.0702 + 0.0722×0.0369 = 0.0789 + 0.0502 + 0.00266 = 0.1317.
+  - Paper #f7f4ee: R=247/255=0.9686→lin≈0.930; G=244/255=0.9569→lin≈0.904; B=238/255=0.9333→lin≈0.855. L=0.2126×0.930+0.7152×0.904+0.0722×0.855=0.1978+0.6465+0.0617=0.906.
+  - Contrast = (0.906+0.05)/(0.1317+0.05) = 0.956/0.1817 = 5.26:1. OK for normal text AA (4.5:1).
+  - Forest #253e33 on paper #f7f4ee: R=37/255=0.145→lin=((0.145+0.055)/1.055)^2.4=(0.1896)^2.4. ln(0.1896)=-1.6629×2.4=-3.991, e^-3.991=0.01847. G=62/255=0.2431→((0.2431+0.055)/1.055)^2.4=(0.2826)^2.4. ln=-1.2638×2.4=-3.033, e^-3.033=0.04815. B=51/255=0.2→((0.2+0.055)/1.055)^2.4=(0.2417)^2.4. ln=-1.42×2.4=-3.408, e^-3.408=0.03306. L=0.2126×0.01847+0.7152×0.04815+0.0722×0.03306=0.003927+0.034437+0.002387=0.04075. Contrast vs paper: 0.956/0.09075=10.53:1. Great.
+  - Paper on forest (button): (0.906+0.05)/(0.04075+0.05)=10.53:1. Great.
+  - Muted #58626b on paper: R=88/255=0.345→((0.345+0.055)/1.055)^2.4=(0.3791)^2.4. ln(0.3791)=-0.9699×2.4=-2.3278, e=0.0974. G=98/255=0.3843→(0.4164)^2.4. ln=-0.8759×2.4=-2.1022, e=0.1221. B=107/255=0.4196→(0.4503)^2.4. ln=-0.7979×2.4=-1.915, e=0.1473. L=0.2126×0.0974+0.7152×0.1221+0.0722×0.1473=0.02071+0.08733+0.01063=0.1187. Contrast: 0.956/0.1687=5.67:1. OK.
+  - r19-brand-role rgba(247,244,238,0.72) on forest #253e33: composite = 0.72×paper + 0.28×forest. Composite RGB: R=0.72×247+0.28×37=188.2, G=0.72×244+0.28×62=193.0, B=0.72×238+0.28×51=185.6. Lin: R=0.738→((0.738+0.055)/1.055)^2.4=(0.7517)^2.4≈ ln=-0.2852×2.4=-0.6845,e=0.5045. G=0.757→(0.7697)^2.4: ln=-0.2616×2.4=-0.6278,e=0.5338. B=0.728→(0.7422)^2.4: ln=-0.298×2.4=-0.7153,e=0.489. L=0.2126×0.5045+0.7152×0.5338+0.0722×0.489=0.1073+0.3818+0.0353=0.5244. Contrast vs forest L=0.04075: (0.5244+0.05)/(0.04075+0.05)=0.5744/0.09075=6.33:1. Fine (it's small text — eyebrow 10px uppercase; 6.3:1 > 4.5 OK).
+  - hero-lede rgba(247,244,238,0.78) on forest: even higher contrast. Fine.
+
+  Target size: inputs height 52px, buttons 48px — ≥44px OK. The r19-back button ("← email") — font-size 12px, no explicit min-height. It's a small text button; target size may be <24px. WCAG 2.5.8 (AA, WCAG 2.2) requires 24×24 CSS px minimum except inline/undersized exceptions... A 12px font button with no padding would have height ~17px. Hmm — is that a regression? The old back button was `text-[11px]` with no min-height either. So similar. The formfoot links have min-height 24px explicitly. The r19-back button: font-size 12px, line-height inherits 1.75 → 21px height. Slightly under 24px. The old one: text-[11px], line-height... probably similar. Not a clear regression.
+
+  Focus: r19-input:focus has border-color copper + box-shadow 3px rgba(164,75,54,0.18). A 0.18-alpha shadow might be too faint for WCAG 2.4.13/2.4.11 focus visibility... but the border-color change from #a8aca9 to #a44b36 plus a 3px glow. Old: focus:border copper + ring-2 25% copper. Comparable.
+
+  Buttons: `.r19-gate button{...outline:none?}` — no, only .r19-input has outline:none. Buttons retain default outline on focus-visible. OK.
+
+  Links r19-link color copper #a44b36 — 5.26:1 on paper. OK.
+
+  Red color introduced? No — removed. #a44b36 is copper (hue ~9°... it's a terracotta red-brown). Hmm, hue of #a44b36: R164 G75 B54. Hue = 60×((G-B)/(max-min)) = 60×(21/110) = 11.5° — that's orange-red territory but perceptually terracotta/copper. The design intent comment says "red does not exist on this surface at all". The reviewer question (d) asks "any red colour introduced" — the change removed red rather than introducing it. I should note the denied overlay is now copper instead of red (--state-danger). Is that a behavioral/accessibility concern? role="alert" retained, aria-live assertive retained, errorMessage text retained, aria-invalid/aria-describedby retained. The color change is presentational and intentional (concept F). Not a defect per the brief.
+
+  But wait — one important check: in the denied overlay, the old had error paragraph styled with --state-danger color; new has plain p with r19-overlay p color --r19-ink. id="portal-login-error" retained. aria-describedby on pin input references it. Good.
+
+  Now potential defects to check carefully:
+
+  1. **The old page had `<div className="px-6 pb-6 ...">No PIN? Check your invitation email or contact support.</div>`** — removed. Presentational only.
+
+  2. **Forgot-password link placement**: old PIN step had forgot-password link inside the PIN field group; new has it in `alternatives` shown on both steps. Fine.
+
+  3. **Magic link**: old only on PIN step; new on both steps. Fine (addition, not removal).
+
+  4. **`BZLogo`** — verify existence and alt text. Test asserts img with alt "Bali Zero". Need to check BZLogo component.
+
+  5. **`--font-serif`** — check defined somewhere; fallback Georgia,serif exists so no defect.
+
+  6. **data-testid** — the task says "every data-testid the tests use". Let me grep test file for testId usage. From the diff, tests use getByRole/getByPlaceholderText/getByLabelText/getByText. The full post-change test file needs reading — the diff only shows the changed hunks; there are unchanged tests below (lines 239+ show context at 366→326). I need to read the full post-change page.test.tsx to see all tests, including ones not in the diff (e.g., tests about error mapping, retry-after, publicAuth.login call, etc.).
+
+  7. **e2e spec** — read the relevant parts; check for other references to the page that might break: e.g., waiting for response, overlay text "Access Denied" or "Portal Unlocked", etc.
+
+  8. **Other specs referencing "Pass the Portal"** — grep repo-wide.
+
+  9. **package.json** — confirm @balizero/core is an existing dependency; confirm framer-motion removal from page doesn't break imports elsewhere (not needed — other files may still use it; page.test.tsx removed the mock, fine).
+
+  10. **i18n keys** — the new page uses t("portal.login.forgot_password") only? Check errorKeyFor + handleLogin in post-change file for the error key mapping (portal.login.errors.* presumably). Verify those keys exist in i18n files and none removed. The task: "no i18n key removed" — since presentation-only, check that any t() usage in the new file references existing keys. Also check whether i18n files were touched by the diff — they weren't (diff only has 4 files). So no keys removed. But verify keys used in unchanged code still exist (they did before).
+
+  11. **Routes**: page route /portal/login-upgraded unchanged. Links: /portal/magic-link, /portal/forgot-password (pre-existing), plus new /privacy and /terms — check these exist in app router. If they don't exist, that's a new broken link — arguably a defect (dead link introduced). Let me check.
+
+  12. **useSystemSound / sanitizeRedirect / logger** usage unchanged — in unchanged portion; verify post-change file.
+
+  13. **`useRef` import retained** — new import line: `React, { useEffect, useState, useRef }`. Is useRef still used after cardRef removal? Check post-change file for other useRef usage. If unused → lint error (build failure on unused import? TypeScript with noUnusedLocals would fail). Need to check! Similarly `Image` and `motion` imports removed correctly. `MouseEvent` removed. Also in error.tsx, LogIn still imported? error.tsx diff only changed colors; LogIn import unchanged and still used.
+
+  Let me check page.tsx for useRef usage. The old code had cardRef (removed). Maybe there's another useRef (e.g., for timers/redirect timeout). Need to read the post-change file.
+
+  14. **Tests**: page.test.tsx — the diff shows tests 1-5 replaced; unchanged tests from line 239 onward ("exposes durable labels and password-manager semantics" and others through line ~330). Need to read the full post-change test file.
+
+  15. **error.tsx** — check --bz-copper-text token exists (it's used elsewhere? it was used in old page.tsx masthead, now removed from page but error.tsx uses it). Check token defined in mouth styles. Also check error.tsx full file for other issues (reset button etc.).
+
+  16. **The `gate-scene` CSS** in globals? Old page relied on attribute-selector CSS scoped inline; removed. Check no global CSS references `.gate-scene` leftovers — the test asserts `.gate-scene` absent from render. Fine.
+
+  17. Check `sanitizeRedirect` usage — unchanged portion.
+
+  18. Check the new page file compiles: I'll read the full post-change page.tsx.
+
+  Also check whether `framer-motion` is still used by BZLogo — if BZLogo imports framer-motion, the unit test no longer mocks it; the old mock existed because the page used motion. If BZLogo uses motion with RAF loops, tests could hang, but that's test-infra, and motion components render fine in jsdom typically. Let me check BZLogo.
+
+  Also check `@balizero/core/components/BZLogo` path resolution: apps/mouth has alias @balizero/core → packages/core? Check tsconfig paths and that the module exists.
+
+  Plan: read these files now. Use parallel reads:
+  - src/app/portal/login-upgraded/page.tsx (full — need to find size; probably ~500 lines now)
+  - src/app/portal/login-upgraded/page.test.tsx (full)
+  - src/app/portal/login-upgraded/error.tsx
+  - e2e/portal-prodlike-smoke.spec.ts (relevant portions; it's big, read around the login helpers)
+
+  Then greps:
+  - "Pass the Portal" repo-wide (should be zero now... well, zero outside maybe docs)
+  - "login-upgraded" in e2e/
+  - data-testid in login-upgraded files
+  - BZLogo component file
+  - --font-serif definition
+  - /privacy and /terms routes
+  - @balizero/core in package.json
+  - --bz-copper-text definition (for error.tsx)
+
+  Let me do it. First read the page.tsx post-change fully.
+
+• I have the full diff. Now let me verify the post-change sources in this checkout.
+
+• Now let me read the post-change test file and the e2e spec. Also check BZLogo, i18n keys, routes, package.json, and grep for leftover references.
+
+• Now the test file and the e2e spec:
+
+• The e2e spec uses role/label locators — "Corporate Email", "Continue", "Access PIN", "Verify Identity". Those match the new page. 
+
+  Wait — one important detail: in the new page, the email input's accessible name. The label "Corporate Email" is associated via htmlFor="portal-email" — good. PIN label htmlFor="portal-pin" — good.
+
+  Now, one subtle thing: `page.getByRole("button", { name: "Continue" })` — the email submit button has text "Continue". But the back button on the PIN step ("← userpart")... not relevant. Also note that the "Continue" name matching is exact by default in Playwright? `getByRole` with `name` option does case-insensitive substring? No — by default `name` matching is "accessible name" full-string case-insensitive... Actually Playwright getByRole name matching is by whole string, case-insensitive, ignoring whitespace unless `exact: true`. "Continue" matches a button named "Continue". But wait — could it also match "Continue" within another button's name? The only other buttons are "Verify Identity" and "← userpart". Fine.
+
+  Also in the e2e at line 144, they await `expect(emailSubmit).toBeEnabled()` before filling — the button is disabled until hydrated and email non-empty. They fill email first, then expect enabled. Order in helper: expect(emailInput).toBeEnabled() → fill → expect(emailSubmit).toBeEnabled() → click. The email input is disabled until isHydrated — `toBeEnabled` auto-waits, fine.
+
+  Now check the third hunk context in the spec (line ~363, @qa-be-003). Let me read that section. Also grep the entire spec for other references to the login page that might interact with removed elements (e.g., "Pass the Portal", "Access Denied", "Portal Unlocked", "Turn On", "Your Bali Life"). Also grep repo-wide for "Pass the Portal".
+
+  Also check:
+  - BZLogo component exists at @balizero/core/components/BZLogo and renders <img alt="Bali Zero">, no rounded-full, variant="full" size prop priority prop.
+  - @balizero/core is in apps/mouth/package.json dependencies (no NEW dependency).
+  - i18n keys used: portal.login.forgot_password, portal.login.errors.* (invalid_credentials, portal_unavailable, email_not_found, invalid_2fa, rate_limited, maintenance, server_error, network_error) — check they exist in i18n files and whether "rate_limited" supports the {seconds} interpolation.
+  - The 403 test expects text "Portal access is not available for this account. Contact team@balizero.com." — that comes from t("portal.login.errors.portal_unavailable"). Unchanged code, keys unchanged.
+  - Routes /privacy and /terms exist?
+  - --font-serif variable defined?
+  - useSystemSound hook unchanged usage: play("focus"), play("auth_start"), play("access_granted"), play("access_denied") — same as before presumably (unchanged region).
+  - framer-motion still in package.json? Removal from page doesn't require package removal; but check nothing else in login-upgraded imports motion.
+  - Check no other files import from the removed things (cormorant etc.) — not needed, they weren't deleted, just unused here.
+  - Check `next/image` removal — old page used Image for logo; new uses BZLogo. Does BZLogo use next/image? If BZLogo is in @balizero/core package, check its implementation renders an img with alt "Bali Zero".
+  - Also verify the test at line 64: `expect(hero?.textContent).not.toContain("Bali Zero")` — hero contains BZLogo img with alt "Bali Zero" — alt text is an attribute, not textContent, so fine. But wait — BZLogo variant="full" might render text "Bali Zero" alongside the mark! If variant "full" means logo + wordmark text, then hero.textContent would contain "Bali Zero" and the test would fail. Need to check BZLogo implementation.
+  - Also check that `BZLogo` doesn't use framer-motion (test no longer mocks it) — if it does, tests might still pass but with RAF... jsdom + framer-motion works usually. But check anyway.
+
+  Also check the third e2e hunk around line 363 and any other login-page interactions in the spec (e.g., magic-link test uses /portal/magic-link page — unchanged; forgot-password page unchanged).
+
+  Also check for other specs/tests referencing login-upgraded page elements: grep e2e/ for "login-upgraded", "Pass the Portal", "Access PIN", "Corporate Email", "Portal Unlocked", "Access Denied", "Continue".
+
+  Also check src/__tests__ or other unit tests referencing the page.
+
+  Also confirm no data-testid usage: grep "data-testid" in login-upgraded dir and in the spec. The task says "every data-testid the tests use are behaviourally unchanged" — if tests use none, that clause is vacuously satisfied; but let me check the e2e spec for getByTestId.
+
+  Let me also verify the magic-link and forgot-password routes exist (they did before — unchanged), and /privacy, /terms.
+
+  And check `useSystemSound` exists (unchanged import).
+
+  Also check i18n locale files for the keys. Find the i18n directory: apps/mouth/src/i18n or apps/mouth/messages? The import is "@/i18n". Let me look.
+
+  Also check tsconfig paths for @balizero/core.
+
+  Parallel calls now:
+  1. Read spec around line 340-420 (third hunk).
+  2. Grep "Pass the Portal" repo-wide (apps/mouth).
+  3. Grep "getByTestId|data-testid" in e2e/portal-prodlike-smoke.spec.ts and login-upgraded dir.
+  4. Find BZLogo: Glob packages/core components or Grep "BZLogo" in packages.
+  5. Read apps/mouth/package.json.
+  6. Grep i18n keys in i18n files.
+  7. Glob for /privacy and /terms routes: src/app/privacy/page.* and src/app/terms/page.* (note: might be under (blog) or similar group).
+  8. Grep "--font-serif" in apps/mouth src/styles.
+
+• The post-change page, error and test files are consistent with the diff. Now the remaining verification points — the third e2e hunk context, BZLogo, i18n keys, routes, dependencies:
+
+• - "Pass the Portal" no longer appears anywhere in apps/mouth — all locators updated.
+  - No data-testid usage in the spec or the login-upgraded directory — the "data-testid" clause is vacuously satisfied (tests use role/label locators, all unchanged or updated in the 3 hunks).
+  - The @qa-be-003 test uses getByRole("alert") filtered by "Access Denied" text and the i18n denial message — both retained in the new page (page.tsx:329-337).
+
+  Now check:
+  1. BZLogo component — location, alt text, variant="full" rendering (img vs text), rounded-full, priority/size props, whether it uses next/image or framer-motion.
+  2. @balizero/core in apps/mouth/package.json.
+  3. i18n keys existence.
+  4. /privacy and /terms routes.
+  5. --font-serif definition.
+  6. Other references to login-upgraded elements in other e2e/unit tests (grep "login-upgraded" across apps/mouth, grep "Access PIN", "Corporate Email" repo-wide to find other consumers).Interesting: `@balizero/core` is NOT in apps/mouth/package.json dependencies! The import `@balizero/core/components/BZLogo` — how does it resolve? Maybe via tsconfig paths. Let me check tsconfig.json / next.config.ts / vitest config for the alias. Other apps/mouth files already import BZLogo (src/components/workspace/AppSidebar.tsx, src/app/visa/layout.tsx etc. are inside apps/mouth — the grep result paths "src/app/..." are relative to apps/mouth since I passed path=apps/mouth... wait, no. The grep was on the whole worktree root `/Users/balizero/nuzantara/.worktrees/mouth-r19p-w5` with glob *.tsx. Results include both `packages/core/components/BZLogo.tsx` and `src/...` paths — but "src/app/portal/login-upgraded/page.tsx" is relative... hmm, the first result is shown as `src/app/portal/login-upgraded/page.tsx` without the apps/mouth prefix — that's odd. Actually Grep output shows paths relative to the search path; the search path was the worktree root, so `src/app/portal/login-upgraded/page.tsx` would be worktree-root/src/... which doesn't exist... unless grep tool printed relative paths for files under cwd. The cwd is apps/mouth. Mixed output: files under apps/mouth printed relative to cwd, and packages/core printed with worktree-relative path? The second result is `/Users/balizero/nuzantara/.worktrees/mouth-r19p-w5/packages/core/components/BZLogo.test.tsx` (absolute). Hmm, inconsistent. Likely: results under cwd (apps/mouth) shown relative, others absolute. So `src/components/workspace/AppSidebar.tsx` = apps/mouth/src/... Good — BZLogo is already used by several apps/mouth pages, so it's an existing import pattern, not a new dependency. Let me verify how it resolves: check tsconfig paths in apps/mouth/tsconfig.json.
+
+  Also confirm BZLogo.tsx implementation. Read it.
+
+  Also package.json: framer-motion still a dependency (fine — used elsewhere presumably; removing import from one page is not "new dependency"). No new dependency added to package.json — but wait: is @balizero/core a workspace package that mouth already depends on via tsconfig paths? If mouth's tsconfig maps @balizero/core/* to ../../packages/core/*, fine. Check.
+
+  Next checks:
+  1. Read packages/core/components/BZLogo.tsx.
+  2. Read apps/mouth/tsconfig.json (paths).
+  3. Check i18n keys — find i18n directory: apps/mouth/src/i18n. Grep for "portal.login.errors.rate_limited" and "portal_unavailable" etc.
+  4. Check /privacy and /terms routes in apps/mouth/src/app — earlier grep shows src/app/v2/privacy/page.tsx and src/app/v2/terms/page.tsx exist, but the new footer links point to "/privacy" and "/terms" (root). Do root-level privacy/terms routes exist? Check via Glob: src/app/privacy/** and src/app/terms/**, also (blog) groups etc. If they don't exist → dead links introduced (href target 404). Is that a "route changed" defect? The task (b) says "no route changed" — adding dead links would be a correctness defect worth flagging. Let me check.
+  5. --font-serif variable: grep in apps/mouth src (globals.css / layout). Fallback exists, so cosmetic only if missing. But check if --font-serif is defined — if defined via next/font in root layout it applies globally (CSS var on html/body). The page sets font-family:var(--font-serif),Georgia,serif — fine either way.
+  6. Check scripts/assert-public-login-bundle.mjs — since page changed, this build assert might check the login bundle contents (e.g., that certain heavy deps like framer-motion are NOT in the public login chunk, or roster not included). Read it to see whether the refactor affects it. It could assert things about the login page's client bundle. If the assert expects framer-motion excluded... now it is excluded. If it expects specific strings (e.g., "login-upgraded"), check.
+  7. Check src/app/portal/login/route.ts — redirects /portal/login → /portal/login-upgraded presumably; unchanged (not in diff). Good — no route changed.
+  8. Check other e2e tests that reference the login page UI: e2e/theme-toggle.spec.ts references login-upgraded — check what it asserts (theme toggle on login page?). The new page forces dataset.theme to operative-light/dark and there's no theme toggle on the page. Let me read theme-toggle.spec.ts to see whether it depends on removed UI.
+  9. Check portal-theme-persona.test.ts — references login-upgraded; the new page adds data-product="my" persona effect. That test may assert the persona behavior of the (authenticated) layout; check whether it covers the login page and whether new effect matches.
+  10. Check src/app/portal/(authenticated)/layout.tsx persona declaration to compare with the new effect (the comment claims parity).
+
+  Also verify the magic-link page exists at /portal/magic-link (it does — src/app/portal/magic-link/page.tsx in grep results) and forgot-password (exists). Those links unchanged.
+
+  Also check check-portal-public-live.mjs — might assert login page content live (e.g., "Corporate Email" string, or title). If it greps for removed strings like "Pass the Portal" or "Your Bali Life", it would break — it references login-upgraded. Read it.
+
+  Also middleware/proxy.ts references login-upgraded — unchanged behavior (route unchanged).
+
+  Let me batch: read BZLogo.tsx, tsconfig.json, theme-toggle.spec.ts, check-portal-public-live.mjs, assert-public-login-bundle.mjs.
+
+• `@balizero/core` isn't in package.json dependencies — BZLogo is already imported by several mouth pages, so it must resolve via tsconfig paths. Let me verify that and the remaining consumers:
+
+• BZLogo: renders next/image `<Image alt="Bali Zero">` for variant "full", className passed through (none here → no rounded-full). Test assertions hold: img exists, alt "Bali Zero", no rounded-full class. Note: BZLogo uses `next/image` — the unit test doesn't mock next/image; next/image renders an img in jsdom fine. Good.
+
+  tsconfig paths: `@balizero/core/*` → `../../packages/core/*` — existing alias, not a new dependency. BZLogo was already used by AppSidebar etc. Good.
+
+  theme-toggle.spec.ts: "My defaults to day mode without a stored preference" — visits /portal/login-upgraded and expects html[data-theme="operative-light"]. How was this satisfied before the change? The new page's persona effect sets data-theme to operative-light if not already operative-* (page.tsx:166-177). But was there something doing this before? Previously the login page did NOT set data-theme — the old page read --bz-base tokens. Something else must set data-theme — maybe root layout or a theme script. Since theme-toggle.spec passed before, whatever set data-theme=operative-light on the login page before must still exist... OR the new useEffect is precisely what now sets it. Wait — the old page didn't have that effect (the diff adds it). So how did the theme-toggle spec pass pre-change? Maybe the root layout sets a default data-theme on my.localhost domain. The new effect would then be redundant but consistent: if root already sets operative-light, the effect's conditions leave it unchanged (root.dataset.theme === "operative-light" → no change). And sets data-product="my".
+
+  Hmm, but actually maybe the theme spec passed because the (authenticated) portal layout sets it? No — login-upgraded is not under (authenticated). Let me check src/app/layout.tsx and proxy.ts for theme defaults on the "my" hostname. Not strictly necessary for the review: the key question is whether the new effect BREAKS anything. It maps "light"→"operative-light", "dark"→"operative-dark", default→"operative-light". This only ADDs data-product="my" and normalizes theme. Could it break the "explicit dark preference wins" test? That test is Kita-origin only. For My origin with stored operative-dark: root layout presumably sets data-theme="operative-dark" from localStorage; the page effect leaves it (it's operative-dark). OK.
+
+  One more check: portal-theme-persona.test.ts references login-upgraded — let me read it to see if it asserts something about the login page persona.
+
+  Also check the (authenticated) layout persona effect for parity claim, and check-portal-public-live.mjs + assert-public-login-bundle.mjs since they reference the login page and run in build/CI.
+
+  Also i18n keys. Find i18n message files: apps/mouth/src/i18n — grep for rate_limited.
+
+  And routes: check for src/app/privacy and src/app/terms (root-level) — the footer links. If only /v2/privacy exists, /privacy is a 404 → dead link defect. Check glob.
+
+  Let me batch these.
+
+• BZLogo and the `@balizero/core` alias check out (existing path alias, existing component, `alt="Bali Zero"`, no `rounded-full`). Now the remaining consumers and the i18n/routes checks:
+
+• Excellent. Findings so far:
+
+  1. i18n: all 8 error keys + forgot_password exist in all 5 locales (en/it/id/fr/ru), including the `{{seconds}}` placeholder for rate_limited. No i18n key removed (the diff touches no locale files; the page's t() usage is unchanged in count: forgot_password + errorKeyFor keys).
+
+  2. Routes: `src/app/privacy/page.tsx` and `src/app/terms/page.tsx` EXIST (glob found them). So /privacy and /terms links are valid. /portal/magic-link and /portal/forgot-password exist. /portal/login-upgraded route unchanged; /portal/login/route.ts unchanged (not in diff).
+
+  3. persona: the root layout has a pre-paint themeInitScript that sets data-product="my" + operative-light for /portal/* paths on ANY host (portal-theme-persona.test.ts). The new page-level effect (page.tsx:166-177) is consistent with it: maps legacy "light"/"dark" to operative-*, defaults to operative-light. Wait — one subtlety: the pre-paint script honors a stored "dark" preference → data-theme="operative-dark". The page effect: if theme is "light" → operative-light; "dark" → operative-dark; if already operative-*, leave; else operative-light. What if the pre-paint script sets theme="editorial" (non-portal path)? On /portal/login-upgraded the pre-paint script always sets product="my" and theme operative-light or operative-dark (per the test). So the page effect leaves it. Consistent. No defect.
+
+  But wait — is the page effect's comment accurate ("Same persona declaration the authenticated portal layout makes")? Let me quickly check portal/(authenticated)/layout.tsx for the same effect — not critical for behavioral correctness of the login page itself. Actually let me check it to make sure the comment's claim holds and there's no mismatch (e.g., the authenticated layout doesn't default unknown themes to operative-light, creating a flash difference). Minor.
+
+  4. assert-public-login-bundle.mjs: scans the login page chunks for internal API routes (anything not /api/auth/). The new page adds no new /api/ strings... wait — the page has no /api/ strings at all; publicAuth.login is in @/lib/api/public-auth which contains /api/auth/login presumably — allowed prefix. The new page adds links /privacy, /terms, /portal/magic-link, /portal/forgot-password — not API routes. BZLogo adds /assets/logo/... — not /api/. So the bundle assert still passes. 
+
+  Hmm — one thing: the old page imported framer-motion; the new one doesn't. Bundle gets smaller. No issue.
+
+  5. check-portal-public-live.mjs — need to check what it asserts about the live login page (it references login-upgraded). If it greps HTML for strings like "Corporate Email" or "Pass the Portal", the refactor could break it. Let me read it.
+
+  6. Also `src/proxy.ts` references login-upgraded — route unchanged, fine. Not in diff.
+
+  7. Also `scripts/check-portal-public-live.test.mjs` — its unit test. Read check-portal-public-live.mjs.
+
+  8. Check the (authenticated) layout persona effect for the comment parity claim (minor; the comment is not behavior). I'll check quickly.
+
+  9. Focus/target size/contrast — computed contrasts:
+     - copper #a44b36 on paper #f7f4ee ≈ 5.3:1 (AA pass for text)
+     - forest #253e33 on paper ≈ 10.5:1
+     - paper on forest ≈ 10.5:1
+     - muted #58626b on paper ≈ 5.7:1
+     - brand-role rgba(paper,0.72) on forest ≈ 6.3:1
+     - lede rgba(paper,0.78) on forest ≈ ~7:1
+     - placeholder muted on surface #fffcf7 ≈ ~5.6:1
+     - input border #a8aca9 on #fffcf7: contrast ~2:1 — non-text UI component contrast (WCAG 1.4.11 wants 3:1 for input boundaries). #a8aca9 on #fffcf7: L(#a8aca9): R168→0.6588→lin 0.391; G172→0.6745→lin 0.409; B169→0.6627→lin 0.395. L≈0.2126×0.391+0.7152×0.409+0.0722×0.395≈0.0831+0.2925+0.0285=0.404. L(#fffcf7): ≈0.938. Ratio=(0.988)/(0.454)=2.18:1 < 3:1. Hmm — borderline WCAG 1.4.11 fail for input boundaries... BUT the old inputs had border --bz-border tokens; what was the old contrast? Unknown tokens. Is this a "regression"? The task asks about "any accessibility regression (focus, contrast, target size)". A 2.2:1 border is below the 3:1 SC 1.4.11 guideline for identifying input fields, but inputs are also identifiable by their 52px height, surface #fffcf7 vs page paper #f7f4ee background difference, and placeholder text. SC 1.4.11 has an exception: if the visual presentation is not required to identify the component... a filled rect with lighter bg vs page bg — #fffcf7 vs #f7f4ee is nearly invisible (ratio ~1.03). Hmm. This is a judgement call. The old design: border --bz-border. Let me check what --bz-border is on operative-light. If old border was also light, not a regression. Let me grep tokens.
+     
+     Also focus ring: 3px rgba(164,75,54,0.18) glow + border-color change to copper. Old: focus:border-copper + ring-2 25% copper. Comparable or better (3px vs 2px).
+     
+     Target sizes: email input 52px, CTA 48px, PIN input 52px, links in formfoot min-height 24px. The r19-back button: 12px font, inherits line-height 1.75 → ~21px tall, and padding 0 (`.r19-gate button{border:0;background:none}` — padding not reset! button default padding remains? `font:inherit` set; padding not zeroed — browsers give buttons ~1px 6px padding). So back button ≈ 21px height × auto width. WCAG 2.5.8 target size minimum 24×24 (AA, 2.2). The old back button: text-[11px], also no explicit size — line-height default ~16px + padding. Both under 24px; not a regression per se (similar before). The magic-link/forgot links: 13px font, line-height 1.75 → ~23px, gap 10px — inline links exception applies (they're in a block list, not inline sentences...). WCAG 2.5.8 "inline" exception is for links in sentences. These are block-level links in a flex column — strictly they should be 24px. 13px×1.75=22.75px ≈ close. This is getting into the weeds; old design had 11px links with default line-height ~16-17px, so new is bigger. Not a regression.
+
+  10. Red colour introduced? No — the opposite: --state-danger removed from error.tsx and denied overlay; copper #a44b36 is the most "red-adjacent" color but it's the concept's "needs you" copper, deliberate. No literal red (#f00, red-500 etc.) introduced. The drain-guard test asserts no gold hexes; nothing about red, but error.tsx previously used --state-danger. The question (d) asks "any red colour introduced" — answer: none introduced; red-family usage was *reduced* (--state-danger → copper in error.tsx and denied overlay).
+
+  11. Unit tests (c): page.test.tsx still asserts: state machine advance (email→PIN), mockLogin called once with normalized credentials, double-submit guard, redirect sanitization ×3 cases, partner role routing, telemetry hygiene (401), 403 denial with role=alert text, labels/password-manager semantics, drain guard. Same behaviors as before per diff context (the unchanged tests 6-10). The 5 rewritten tests are presentation assertions. The framer-motion mock removal is fine because page no longer imports framer-motion... but wait — does BZLogo or anything else in the render tree import framer-motion? BZLogo imports only next/image. I18nProvider? Possibly — but it was already rendered in the old tests outside the motion mock's concern (old test also rendered I18nProvider with the motion mock active; if I18nProvider used motion, the mock would have intercepted it before too... the mock replaced the whole framer-motion module, so if I18nProvider used motion it would have gotten the mocked version before and real one now — behavioral change in tests possible). Check @/i18n provider imports quickly.
+
+  12. Check that nothing else references the removed test-id/anchors... already done (no data-testid anywhere).
+
+  13. Check check-portal-public-live.mjs for asserted page content.
+
+  14. Also check `src/app/portal/(authenticated)/layout.tsx` persona effect for the comment parity (quick grep for data.product there).
+
+  15. Check that framer-motion removal doesn't break the build elsewhere — framer-motion still in package.json, fine.
+
+  16. Check that `useRef` is still used — yes, loginInFlightRef (page.tsx:151). Good, no unused import. `React` import used? React.FormEvent used in handlers — yes. `Loader2` used — yes. `Link` used — yes. `useRouter` — yes. `Image` import removed and no longer used — correct. `cormorant` import removed and no longer used — correct. `motion, AnimatePresence` removed — correct. `MouseEvent` removed from react import — no longer used — correct.
+
+  17. One more: the vitest setup — does jsdom render next/image fine without config? The old test didn't render next/image either (old page used next/image for the logo! Old page had `<Image src="/assets/logo/balizero-logo-clean.png" ...>` — and old tests passed with next/image unmocked). Good precedent.
+
+  18. Also verify the e2e spec's magic-link/forgot flows don't touch the login page's removed elements. The spec is 2599 lines; the login helper functions were the only hunks in the diff. But maybe other parts reference "Turn On" or "Your Bali Life" or the overlays. Grep the spec for "Portal Unlocked|Access Denied|Turn On|Your Bali Life|Continue|Verify Identity". I saw "Access Denied" at line 384. Let me grep to be thorough.
+
+  19. Also grep other e2e specs for locators hitting the login page (e2e/auth/, e2e/portal/). Grep "Corporate Email" across e2e/.
+
+  Let me run these final checks.
+
+• i18n keys all present in 5 locales, `/privacy` and `/terms` routes exist, bundle-assert script unaffected by presentation changes. Final sweep — other e2e consumers of the login page, the live-check script, and the persona-layout parity claim:
+
+• The persona effect in page.tsx:166-177 is byte-identical to the one in portal/(authenticated)/layout.tsx:60-71 — the comment's parity claim holds.
+
+  check-portal-public-live.mjs only checks HTTP status/metadata/CSP for /portal/login-upgraded — presentation changes don't affect it.
+
+  Remaining e2e consumers:
+  - e2e/portal-prodlike-smoke.spec.ts:484 and :2282 use "Corporate Email" textbox — role+name locator, retained (label htmlFor association preserved).
+  - e2e/offline/auth-critical-flow.spec.ts:44 expects heading "Access Denied" — retained (page.tsx:335, h1 "Access Denied" inside role=alert overlay). It's a heading role? h1 → heading role, name "Access Denied". Yes, retained.
+  - e2e/crm/crm-real-ui.spec.ts:69 — text=Access Denied or text=Login — "Access Denied" text only appears on denial; "Login"... hmm, does the new page contain the text "Login" anywhere? Old page? This is an `.or()` — either matches. If neither matches it fails. What page is this? Let me check the context — crm-real-ui.spec.ts is probably about the CRM (kita) login, not the portal login page. "text=Login" — the old portal page: did it contain "Login"? Hmm, the old page had... "Portal Unlocked", "Access Denied", "Pass the Portal", "Verify Identity"... no literal "Login" text either (id "portal-login-error" is not text). So the CRM spec likely targets a different page (kita CRM). Not affected by this diff since it matched before via one of the alternatives... Actually wait, if it targeted the portal login page, neither "Access Denied" (only on denial) nor "Login" would match in either old or new versions. Let me check the context of that line to be safe.
+
+  Let me check crm-real-ui.spec.ts:50-80.
+
+  Also e2e/auth/ directory may have login specs. Grep found only these. Let me also check e2e/production/ specs that reference the portal login... the grep covered all of e2e/.
+
+  One more check: the unit tests for the OLD page asserted `.min-h-screen` shell with bg-[var(--bz-base)] — those were replaced. Fine.
+
+  Now — did I miss checking `page.getByRole("button", { name: "Continue" })` ambiguity on the PIN step? On PIN step there's no "Continue" button; helper uses it only on email step. OK.
+
+  And one subtle e2e detail in loginViaPortalUi: after `emailSubmit.click()`, it does `page.getByLabel("Access PIN").fill(pin)` — the PIN step renders with autoFocus and the label "Access PIN" — retained.
+
+  Another subtle point: in the OLD page the PIN form was inside AnimatePresence with mode="popLayout" — behaviorally the step swap was conditional render; new is plain conditional render. Same state machine.
+
+  Hydration guard: isHydrated useEffect (page.tsx:157-159), disabled={!isHydrated || loginStage !== "idle"} on email input (396) and email submit (405) — identical to old. PIN input disabled={loginStage !== "idle"} (462) — same as old (old also lacked !isHydrated on PIN). Unchanged.
+
+  Rate-limit retry-after: page.tsx:265-275 — reads response.headers.get("retry-after"), parseInt, Number.isFinite fallback 60, t("portal.login.errors.rate_limited", {seconds}). Unchanged from old (not in diff = identical context lines around 206... wait, the diff hunk @@ -206,1370 +284,214 @@ starts AT line 206 of old — everything before (errorKeyFor through handleLogin end) is unchanged. Confirmed by post-change file containing them.
+
+  publicAuth.login: page.tsx:219, with normalizedEmail and pin; double-submit guard loginInFlightRef (151, 201-208, 281). Tests assert toHaveBeenCalledTimes(1) with two submits. Unchanged.
+
+  Error mapping errorKeyFor: page.tsx:107-126 — 401/403/404/422/429/503/default ≥500 server_error else network_error. Unchanged (diff context shows it at lines 365-367 area — the comment above it appears in diff as context: "Map HTTP status code → i18n error key..." unchanged).
+
+  Overlays: success role=status aria-live=polite "Portal Unlocked" (318-326); denied role=alert aria-live=assertive "Access Denied" + errorMessage p#portal-login-error (329-338). Old had same roles/live/text. Unchanged behaviorally; colors changed (copper vs --state-danger) — intentional per concept F.
+
+  data-testid: none used by tests — vacuously satisfied.
+
+  New dependency: none — @balizero/core is a tsconfig path alias to packages/core (tsconfig.json:24-25), already used by ~20 other mouth files; BZLogo already exists with its own test. framer-motion remains in package.json (still used elsewhere presumably) — no manifest change at all.
+
+  Routes: page route unchanged; /portal/login route.ts unchanged; links /portal/magic-link, /portal/forgot-password unchanged; new /privacy, /terms links → both routes exist (src/app/privacy/page.tsx, src/app/terms/page.tsx). No route changed.
+
+  i18n: no keys removed (locale files untouched); the single t() key in JSX (forgot_password) + 8 error keys all present in 5 locales with {{seconds}} placeholder; interpolation API t(key, {seconds}) — check the useTranslation t signature supports interpolation... The rate_limited test file locale-key-parity.test.ts checks {{seconds}} placeholder exists. The old code used the same call — unchanged.
+
+  Accessibility (d):
+  - Focus: inputs get copper border + 3px rgba(164,75,54,0.18) ring (R19_STYLES line 64) — vs old 2px 25% copper ring. Comparable; ring is visible (3px at 18% alpha over paper ≈ blend #d8b3a8-ish… border color change from #a8aca9 to #a44b36 is the primary indicator — hue+lightness change, contrast between focused/unfocused border colors ~2.4:1). Buttons keep native outline (no outline:none on buttons — only .r19-input has outline:none). Links have hover underline; focus relies on native outline. OK.
+  - Contrast: computed — copper-on-paper 5.3:1, forest-on-paper 10.5:1, paper-on-forest 10.5:1, muted-on-paper 5.7:1, brand-role/lede/foot on forest 6.3-7:1. All ≥4.5:1 for text. Eyebrow text is 10px but 650 weight uppercase — 5.7:1 passes AA even for small text. Input border #a8aca9 on #fffcf7 ≈ 2.2:1 — below 3:1 for SC 1.4.11 non-text contrast... but the old border was --bz-border; check value? The old input also had bg-[var(--bz-base)] inside a --bz-card/95 card, so field was distinguished by background contrast rather than border. New: surface #fffcf7 on paper #f7f4ee — nearly identical backgrounds, so the field is identified mainly by the 2.2:1 border and placeholder text. Hmm. WCAG 1.4.11 requires 3:1 for "visual information required to identify user interface components" — a text input's boundary. Many design systems fail this strictly; but is it a REGRESSION? Old: border --bz-border — need the token value. Let me check globals.css for --bz-border on operative-light. If old border was similarly faint, not a regression. Let me grep.
+  - Target size: inputs 52px, CTAs 48px, formfoot links min-height 24px (explicit), back button ~21px (12px font × 1.75 lh) — old back button was 11px font, similar ~19px; small but not regressed. alt links 13px×1.75≈23px vs old 11px links ~17px. Improved.
+  - Red: none introduced. --state-danger removed from error.tsx (→ --bz-copper-text) and denied overlay (→ --r19-copper #a44b36). Deliberate concept-F decision, stated in comments.
+
+  Let me check --bz-border value quickly, and crm-real-ui.spec.ts context. Then done.
+
+  Actually — one more possible defect to check: the denied overlay previously rendered the error `<p>` styled --state-danger; new overlay p has no id-related style loss... id="portal-login-error" retained (336). aria-describedby on PIN input (447-449) points to it. OK.
+
+  And: the old page auto-focused email input; new retains autoFocus (399). PIN autoFocus retained (465). Focus management on step change identical (autoFocus on mount of the new form). Since forms are conditionally rendered, autoFocus fires on PIN mount — same as before with motion.form... Actually with AnimatePresence mode="popLayout" the motion.form mounted and autoFocus fired too. Same.
+
+  One more subtle thing: in the OLD email form, the submit button was motion.button with whileHover/whileTap — the unit test mock stripped those. E2E: getByRole button name "Pass the Portal →"... the accessible name included the arrow "→"? Playwright name matching is substring/case-insensitive by default... they used "Pass the Portal" which matched "Pass the Portal →". New button text "Continue" — locator "Continue" matches. Fine.
+
+  Also check offline/auth-critical-flow.spec.ts:44 context — expects heading "Access Denied". In new page the denied overlay h1 is "Access Denied" — heading role retained. Let me peek at that spec briefly to confirm it targets this page (it's offline/auth-critical-flow). Line 44 context: probably goes to login page with offline, submits, expects denial... The denied overlay requires loginStage==="denied" which requires a failed publicAuth.login — offline would produce status 0 → network_error message, overlay shows "Access Denied" + message. Retained.
+
+  Let me quickly read both spec contexts (offline/auth-critical-flow.spec.ts:30-60, crm/crm-real-ui.spec.ts:55-80) and grep --bz-border in styles. Then run the unit tests? Running vitest for this page would strengthen the review. The task says don't modify files — running tests is allowed (read-only-ish; may write coverage cache... vitest run may create cache. It's acceptable? "Do not modify any file" — running tests could create node_modules/.vite cache. To be safe, I could run with --no-cache... vitest run page.test.tsx. Hmm, the review is independent correctness; running the test suite is strong evidence. Risk: creates temp files (coverage only with --coverage). vitest run doesn't write by default. Let me try running it — it's the project's standard test command (npm test = vitest). I'll run `npx vitest run src/app/portal/login-upgraded/page.test.tsx` in apps/mouth. That verifies (c) empirically. Also typecheck? tsc --noEmit takes long; skip or run? It would catch unused imports etc. But full tsc on a big app may take minutes. The eslint unused-import issue: all imports verified used manually. Skip tsc; rely on manual check.
+
+  Also worth verifying: does `useSystemSound` hook exist and export `play`? It's unchanged import, existed before. Fine.
+
+  Also: `@/i18n` I18nProvider — does it import framer-motion? If it does, tests still fine (framer-motion works in jsdom; the old mock was to avoid RAF noise). Not a correctness issue for the review. Skip.
+
+  Let me do the last greps and run the test.- offline/auth-critical-flow.spec.ts: uses "Authenticate" button and URL /login — that's the KITA operator login (different page, /login not /portal/login-upgraded). Not affected.
+  - crm-real-ui.spec.ts: asserts "Access Denied"/"Login" text NOT visible on /clients (kita CRM). Not affected by portal login changes.
+  - Old --bz-border on light themes: rgba(9,9,11,0.08) or rgba(55,44,32,0.1) — extremely faint borders (<1.5:1). New --r19-line-strong #a8aca9 (~2.2:1 on surface) is STRONGER than the old border. So no contrast regression on input boundaries — actually an improvement.
+
+  Now let me run the unit tests for the page to empirically confirm (c). Command: npx vitest run src/app/portal/login-upgraded/page.test.tsx in apps/mouth. That's the project's standard test runner. It shouldn't modify files (no coverage flag). Let me run it with a reasonable timeout. DEPRECATED  `test.poolOptions` was removed in Vitest 4. All previous `poolOptions` are now top-level options. Please, refer to the migration guide: https://vitest.dev/guide/migration#pool-rework
+
+ RUN  v4.1.10 /Users/balizero/nuzantara/.worktrees/mouth-r19p-w5/apps/mouth
+
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  06:41:39
+   Duration  5.58s (transform 333ms, setup 259ms, import 472ms, tests 2.60s, environment 1.99s)
+
+All 13 tests pass. The review is complete. Let me also double check one thing — the BZLogo alt test passed, which empirically confirms BZLogo renders the img correctly in this checkout.
+
+  Summary of the review:
+
+  (a) Behavioral invariants — all verified in post-change page.tsx:
+  - Two-step state machine: step state (page.tsx:145), handleSubmitEmail trims + advances (186-194), handleLogin (196-285), back button (430-439). Unchanged from pre-change (diff context confirms).
+  - publicAuth.login(normalizedEmail, pin) at page.tsx:219; in-flight guard loginInFlightRef (151, 201-208, 281); test asserts single call under double-submit (page.test.tsx:170-183).
+  - HTTP-status→i18n mapping errorKeyFor (page.tsx:107-126): 401/403/404/422/429/503, ≥500 server_error, else network_error — byte-identical to pre-change (unchanged diff context).
+  - 429 retry-after: page.tsx:265-275 reads response.headers.get("retry-after"), parseInt, NaN→60 fallback, interpolates {{seconds}} — unchanged; placeholder exists in all 5 locales (e.g. en.json:290).
+  - Hydration guard: isHydrated (142, 157-159), disables email input (396) and email CTA (405) — identical to old.
+  - Overlays: success role=status aria-live=polite "Portal Unlocked" (318-326); denied role=alert aria-live=assertive "Access Denied" + errorMessage p#portal-login-error (329-338), aria-describedby/aria-invalid wiring on PIN (447-450) — same roles/text/wiring as old.
+  - data-testid: none used by any test (grep empty in spec and page dir) — vacuously unchanged.
+
+  (b) i18n/routes/deps:
+  - No i18n key removed: locale files untouched by diff; t() usage unchanged (forgot_password + 8 error keys present in en/it/id/fr/ru).
+  - No route changed: /portal/login-upgraded untouched as a route; proxy/login route unchanged; links /portal/magic-link, /portal/forgot-password pre-existing; new /privacy + /terms links resolve to existing src/app/privacy/page.tsx and src/app/terms/page.tsx.
+  - No new dependency: package.json untouched; @balizero/core resolves via existing tsconfig path alias (tsconfig.json:24-25) to packages/core; BZLogo pre-exists (packages/core/components/BZLogo.tsx) and is already imported by ~20 other mouth files. framer-motion import removed (still in deps for other pages). All imports in page.tsx are used (useRef → loginInFlightRef).
+
+  (c) Tests: page.test.tsx still asserts the same behaviors — state machine advance, credential normalization + single login call, redirect sanitizer (3 cases), partner role routing, telemetry hygiene, 403 denial role=alert content, label/password-manager semantics, drain guard; 13/13 pass when executed just now. The framer-motion mock removal is safe: the page no longer imports framer-motion and BZLogo imports only next/image, which the old suite also rendered unmocked (old page used next/image too).
+
+  (d) Accessibility:
+  - Focus: .r19-input:focus copper border + 3px rgba(164,75,54,0.18) ring (page.tsx:64) — comparable to old 2px/25% ring; buttons/links keep native focus outline (only inputs have outline:none).
+  - Contrast: forest/paper 10.5:1 both directions, copper-on-paper 5.3:1, muted-on-paper 5.7:1, 0.72-0.78 alpha paper-on-forest 6.3-7:1 — all AA. Input border #a8aca9 ≈2.2:1 is stronger than the old --bz-border (rgba(9,9,11,0.08)) — improved, not regressed.
+  - Target size: inputs 52px, CTAs 48px, footer links min-height 24px (page.tsx:76); back button small (~21px) but old equivalent was smaller (~11px font, no min size) — no regression.
+  - Red: none introduced; the change *removes* --state-danger from error.tsx (→ --bz-copper-text, error.tsx:26-33) and from the denied overlay (→ --r19-copper #a44b36, page.tsx:82/335) — deliberate concept-F semantics, word + role=alert carry the state.
+  - Empirical: 13/13 unit tests pass.
+
+  One minor observation, not a defect: the error overlay's error <p> lost its red color styling (now --r19-ink) — intentional per concept F; still announced via role=alert + aria-describedby. Not flagging.
+
+  Verdict: OK.
+
+  The final line must be exactly "VERDICT: OK".
+
+• All 13 unit tests pass. Review complete — here are the findings.
+
+  **(a) Behavioral invariants — all unchanged**
+
+  - **Two-step state machine**: `step` state `page.tsx:145`, `handleSubmitEmail` (trim → advance) `page.tsx:186-194`, `handleLogin` `page.tsx:196-285`, back-to-email button `page.tsx:430-439` — byte-identical to pre-change (these lines are untouched context in the diff).
+  - **`publicAuth.login`**: `page.tsx:219` called with `(normalizedEmail, pin)`; double-submit guard `loginInFlightRef` at `page.tsx:151,201-208,281`; test asserts exactly one call under double submit `page.test.tsx:170-183`.
+  - **HTTP-status→i18n mapping**: `errorKeyFor` `page.tsx:107-126` — 401/403/404/422/429/503, ≥500→`server_error`, else `network_error` — unchanged.
+  - **429 retry-after**: `page.tsx:265-275` reads `response.headers.get("retry-after")`, `parseInt`, NaN→60 fallback, `{{seconds}}` interpolation; placeholder present in all 5 locales (`src/i18n/locales/en.json:290` etc.).
+  - **Hydration guard**: `isHydrated` `page.tsx:142,157-159`, gating email input `page.tsx:396` and email CTA `page.tsx:405` — same as before (PIN input never had it, still doesn't).
+  - **Overlays**: success `role="status" aria-live="polite"` "Portal Unlocked" `page.tsx:318-326`; denied `role="alert" aria-live="assertive"` "Access Denied" + `p#portal-login-error` `page.tsx:329-338`; `aria-describedby`/`aria-invalid` wiring on PIN `page.tsx:447-450` — same roles, texts, and ids.
+  - **data-testid**: none used by any test (grep over spec + page dir is empty) — clause vacuously satisfied.
+
+  **(b) i18n / routes / dependencies**
+
+  - No locale file touched; all 8 error keys + `forgot_password` exist in en/it/id/fr/ru.
+  - No route changed; new footer links `/privacy` and `/terms` resolve to existing `src/app/privacy/page.tsx` and `src/app/terms/page.tsx`.
+  - No new dependency: `package.json` untouched; `@balizero/core` is an existing tsconfig path alias (`tsconfig.json:24-25`), `BZLogo` pre-exists (`packages/core/components/BZLogo.tsx:39`, renders `<Image alt="Bali Zero">`, no `rounded-full`) and is already imported by ~20 other mouth files. `framer-motion` import removed; all remaining imports are used (`useRef`→`loginInFlightRef`).
+
+  **(c) Tests**: `page.test.tsx` still asserts the same behaviours (state-machine advance, credential normalization + single login, redirect sanitizer ×3, partner routing, telemetry hygiene, 403 denial via `role=alert`, password-manager semantics, drain guard); the motion-mock removal is safe (page no longer imports framer-motion; BZLogo only uses next/image, which the old suite also rendered unmocked). Ran just now: **13/13 pass**.
+
+  **(d) Accessibility**: focus ring on inputs is copper border + 3px glow (`page.tsx:64`), buttons/links keep native outlines; contrast AA throughout (forest↔paper ≈10.5:1, copper-on-paper ≈5.3:1, muted ≈5.7:1, translucent paper-on-forest ≈6.3–7:1; input border 2.2:1 is *stronger* than the old `--bz-border` rgba(9,9,11,0.08)); targets 52px inputs / 48px CTAs / 24px-min footer links. **No red introduced** — the change removes `--state-danger` (error.tsx:26-33, denied overlay `page.tsx:82`) in favour of copper, with the state carried by word + `role=alert`, which is the stated concept-F intent. The three e2e locator updates match the new "Continue" label, and no other spec references the old label.
+
+  VERDICT: OK
+
+To resume this session: kimi -r session_80c18afb-7083-4e60-8acf-fd50c1e893c9
