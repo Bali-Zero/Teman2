@@ -22,6 +22,7 @@ Usage:
   probe-superseded-threshold.py <file> [<file> ...]  # co-occurrence, e.g. a built llms-full.txt
   probe-superseded-threshold.py --sources            # every amount hit in the 5 canonical sources
   probe-superseded-threshold.py --claims             # positive + contradiction checks per locale
+  probe-superseded-threshold.py --attribute <file>   # each hit + the nearest product mention above it
   probe-superseded-threshold.py --selftest           # the probe's own guilt/innocence cases
 """
 import re
@@ -103,6 +104,34 @@ def run_cooccurrence(paths, require_product):
     return 1 if total else 0
 
 
+def run_attribution(paths, window=40):
+    """Attribute every amount hit to the nearest product mention ABOVE it.
+
+    The line-scoped co-occurrence check has a measured blind spot: in a comparison
+    table the product is the COLUMN HEADER and the amount is a body row, and in a
+    document checklist the product is a section heading. Three families were
+    classified "not an E33 claim" by the line check and turned out to be E33 claims
+    exactly that way (e311a-retirement-visa-kitas-guide, indonesia-visa-timeline-comparison,
+    kitas-for-digital-nomads-reality, measured 2026-09-12). This mode prints the
+    evidence a human classifies from; it never classifies by itself.
+    """
+    for path in paths:
+        lines = open(path, encoding="utf-8").read().split("\n")
+        hits = [(n, l) for n, l in enumerate(lines, 1) if THRESHOLD.search(l)]
+        if not hits:
+            continue
+        print(f"=== {path}")
+        for n, line in hits:
+            context = None
+            for back in range(n - 1, max(0, n - 1 - window), -1):
+                if PRODUCT.search(lines[back - 1]):
+                    context = (back, lines[back - 1].strip()[:110])
+                    break
+            print(f"  {n}: {line.strip()[:120]}")
+            print(f"      nearest product mention: {context if context else 'NONE within %d lines' % window}")
+    return 0
+
+
 def run_claims():
     """Every locale must carry the cure and none of the contradictions."""
     failures = 0
@@ -157,6 +186,8 @@ def run_selftest():
 def main(argv):
     if argv == ["--selftest"]:
         return run_selftest()
+    if argv[:1] == ["--attribute"]:
+        return run_attribution(argv[1:] or FAMILY)
     if argv == ["--claims"]:
         return run_claims()
     if argv == ["--sources"]:
