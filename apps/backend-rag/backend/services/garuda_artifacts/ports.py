@@ -34,14 +34,15 @@ class ArtifactDigestMismatch(RuntimeError):
 
 
 class ArtifactAlreadyExists(RuntimeError):
-    """`insert`/`insert_superseding` hit a genuine collision -- `artifact_id`'s
-    PK or `storage_key`'s UNIQUE (both astronomically unlikely: 128 random
-    bits from `journal.new_opaque_id`). NOT raised for "a live artifact
-    already exists" any more (decision #13-revision, 2026-09-11: "always
-    supersede, never 409, made observable") -- the service resolves the live
-    row itself and calls `insert_superseding` instead of racing `insert`
-    into `ux_garuda_practice_artifacts_live`. `putPracticeArtifact` maps
-    this to `500`, not `409`: an anomaly, not a business conflict."""
+    """Raised by EITHER side of the port when a write would land on a key or
+    id that is already taken (O2 N2 -- one exception, two raisers, stated):
+    the object store raises it when a conditional put finds an object under
+    the key (write-once, spec SS2); the repository raises it on the
+    `artifact_id` PK or `storage_key` UNIQUE (both astronomically unlikely:
+    128 random bits from `journal.new_opaque_id`). NOT raised for "a live
+    artifact already exists" (decision #13-revision: always supersede, never
+    409) -- the service resolves the live row itself. A consumer maps this to
+    `500`, not `409`: an anomaly, not a business conflict."""
 
 
 class ArtifactObjectStorePort(Protocol):

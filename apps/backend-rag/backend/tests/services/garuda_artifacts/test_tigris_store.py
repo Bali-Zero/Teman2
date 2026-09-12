@@ -22,6 +22,7 @@ import pytest
 from botocore.exceptions import (
     ClientError,
     EndpointConnectionError,
+    IncompleteReadError,
     NoCredentialsError,
     ParamValidationError,
 )
@@ -67,14 +68,24 @@ class _BytesBody:
     largest `amt` ever requested, the bytes handed back and whether
     `close()` was called."""
 
-    def __init__(self, data: bytes) -> None:
+    def __init__(
+        self, data: bytes, *, declared: int | None = None, short_reads: bool = False
+    ) -> None:
         self._data = data
         self._offset = 0
+        self._declared = declared
+        self._short_reads = short_reads
         self.max_amt_requested: int | None = None
         self.total_bytes_returned = 0
+        self.read_calls = 0
         self.closed = False
 
     def read(self, amt: int | None = None) -> bytes:
+        self.read_calls += 1
+        # botocore: a short read is legal; on an EMPTY read with amt > 0 the
+        # declared length is verified and IncompleteReadError raised.
+        if self._short_reads and amt is not None and amt > 1:
+            amt = max(1, amt // 3)
         self.max_amt_requested = (
             amt
             if self.max_amt_requested is None or (amt or 0) > self.max_amt_requested
@@ -87,6 +98,12 @@ class _BytesBody:
         )
         self._offset += len(chunk)
         self.total_bytes_returned += len(chunk)
+        if (
+            (amt is None or (not chunk and amt > 0))
+            and self._declared is not None
+            and self._offset != self._declared
+        ):
+            raise IncompleteReadError(actual_bytes=self._offset, expected_bytes=self._declared)
         return chunk
 
     def close(self) -> None:
@@ -108,6 +125,9 @@ class _FakeS3Client:
         get_object_bytes: bytes | None = None,
         get_object_content_length: object = _UNSET,
         existing_keys: set[str] | None = None,
+        honours_if_none_match: bool = True,
+        short_reads: bool = False,
+        head_failures: list[Exception] | None = None,
         public_access_block: dict | Exception | None = None,
         policy_status: dict | Exception | None = None,
     ) -> None:
@@ -120,6 +140,11 @@ class _FakeS3Client:
         self._get_object_bytes = get_object_bytes
         self._get_object_content_length = get_object_content_length
         self._existing_keys = set(existing_keys or ())
+        self.stored: dict[str, bytes] = dict.fromkeys(self._existing_keys, b"<pre-existing>")
+        self._honours_if_none_match = honours_if_none_match
+        self._short_reads = short_reads
+        self._head_failures = list(head_failures or [])
+        self.head_calls: list[dict] = []
         self._public_access_block = public_access_block
         self._policy_status = policy_status
         self.bodies: list[_BytesBody] = []
@@ -128,10 +153,24 @@ class _FakeS3Client:
         self.put_calls.append(kwargs)
         if self._put_failures:
             raise self._put_failures.pop(0)
-        if kwargs.get("IfNoneMatch") == "*" and kwargs["Key"] in self._existing_keys:
+        if (
+            self._honours_if_none_match
+            and kwargs.get("IfNoneMatch") == "*"
+            and kwargs["Key"] in self._existing_keys
+        ):
             raise _client_error("PreconditionFailed", status=412)
         self._existing_keys.add(kwargs["Key"])
+        self.stored[kwargs["Key"]] = bytes(kwargs["Body"])
         return {}
+
+    def head_object(self, **kwargs):
+        self.head_calls.append(kwargs)
+        if self._head_failures:
+            raise self._head_failures.pop(0)
+        if kwargs["Key"] not in self._existing_keys:
+            raise _client_error("404", status=404, op="HeadObject")
+        etag = hashlib.md5(self.stored[kwargs["Key"]], usedforsecurity=False).hexdigest()
+        return {"ETag": f'"{etag}"'}
 
     def get_object(self, **kwargs):
         self.get_calls.append(kwargs)
@@ -139,14 +178,20 @@ class _FakeS3Client:
             raise self._get_failures.pop(0)
         if self._get_object_bytes is None and kwargs["Key"] not in self._existing_keys:
             raise _client_error("NoSuchKey", op="GetObject")
-        data = self._get_object_bytes or b""
-        body = _BytesBody(data)
-        self.bodies.append(body)
-        resp: dict = {"Body": body}
+        data = (
+            self._get_object_bytes
+            if self._get_object_bytes is not None
+            else self.stored.get(kwargs["Key"], b"")
+        )
+        resp: dict = {}
         if self._get_object_content_length is _UNSET:
             resp["ContentLength"] = len(data)
         elif self._get_object_content_length is not None:
             resp["ContentLength"] = self._get_object_content_length
+        declared = resp.get("ContentLength") if isinstance(resp.get("ContentLength"), int) else None
+        body = _BytesBody(data, declared=declared, short_reads=self._short_reads)
+        self.bodies.append(body)
+        resp["Body"] = body
         return resp
 
     def delete_object(self, **kwargs):
@@ -156,6 +201,7 @@ class _FakeS3Client:
         if kwargs["Key"] not in self._existing_keys:
             raise _client_error("NoSuchKey", op="DeleteObject")
         self._existing_keys.discard(kwargs["Key"])
+        self.stored.pop(kwargs["Key"], None)
         return {}
 
     def get_public_access_block(self, **kwargs):
@@ -254,7 +300,10 @@ class TestEnvVarGate:
         assert captured["aws_access_key_id"] == "scoped-access-key"
         assert captured["aws_secret_access_key"] == "scoped-secret"
         assert captured["endpoint_url"] == tigris_store.DEFAULT_ENDPOINT_URL
-        assert captured["config"].retries == {"max_attempts": 1, "mode": "standard"}
+        # `total_max_attempts` INCLUDES the initial request (botocore's docstring);
+        # `max_attempts` would have been one RETRY. What a unit test can observe
+        # is the configuration handed to the SDK, not wire attempts -- stated.
+        assert captured["config"].retries == {"total_max_attempts": 1, "mode": "standard"}
 
 
 # ------------------------------------------------------- endpoint + bucket
@@ -269,6 +318,12 @@ class TestEndpointAndBucketConfinement:
             "https://attacker.example/tigris.dev",  # suffix in the path, not the host
             "https://tigris.dev.attacker.example",  # suffix not terminal
             "https://",  # no host
+            "https://evil@fly.storage.tigris.dev",  # userinfo (O2)
+            "https://fly.storage.tigris.dev:8443",  # port (O2)
+            "https://fly.storage.tigris.dev/prefix",  # path (O2)
+            "https://fly.storage.tigris.dev?x=1",  # query (O2)
+            "https://fly.storage.tigris.dev.",  # trailing dot
+            "https://flý.storage.tigris.dev",  # non-ASCII label (O2)
         ],
     )
     def test_non_tigris_or_non_https_endpoint_is_refused(self, monkeypatch, endpoint) -> None:
@@ -355,16 +410,21 @@ class TestBucketPrivacy:
         assert await store.assert_private() == {"public_access_block": True, "policy_status": True}
 
     @pytest.mark.asyncio
-    async def test_unimplemented_probes_are_reported_as_unknown_not_as_private(self) -> None:
-        """A store that does not implement the call cannot be read as
-        'private'; the verdict says None and the caller decides."""
+    async def test_unimplemented_probes_fail_closed_unless_the_caller_opts_out(self) -> None:
+        """O2 F1: two unknowns are not a private bucket. Refused by default;
+        the caller that knows its store cannot answer says so explicitly."""
         store = _store(
             _FakeS3Client(
                 public_access_block=_client_error("NotImplemented", op="GetPublicAccessBlock"),
                 policy_status=_client_error("MethodNotAllowed", op="GetBucketPolicyStatus"),
             )
         )
-        assert await store.assert_private() == {"public_access_block": None, "policy_status": None}
+        with pytest.raises(GarudaArtifactsStoreUnavailable, match="VERIFIED"):
+            await store.assert_private()
+        assert await store.assert_private(require_verified=False) == {
+            "public_access_block": None,
+            "policy_status": None,
+        }
 
     @pytest.mark.asyncio
     async def test_a_real_probe_error_is_not_swallowed(self) -> None:
@@ -403,8 +463,53 @@ class TestPut:
         await store.put(key=_SENTINEL_KEY, body=b"A", content_type="application/pdf")
         with caplog.at_level(logging.ERROR), pytest.raises(ArtifactAlreadyExists):
             await store.put(key=_SENTINEL_KEY, body=b"B", content_type="application/pdf")
-        assert len(client.put_calls) == 2
+        # Layer one (HEAD) refused before layer two (IfNoneMatch) was needed.
+        assert len(client.put_calls) == 1
+        assert client.stored[_SENTINEL_KEY] == b"A"
         assert "SENTINELPRACTICE" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_a_store_that_ignores_if_none_match_still_cannot_overwrite(self) -> None:
+        """O2 F5: the HEAD layer catches a non-compliant store."""
+        client = _FakeS3Client(honours_if_none_match=False)
+        store = _store(client)
+        await store.put(key=_SENTINEL_KEY, body=b"A", content_type="application/pdf")
+        with pytest.raises(ArtifactAlreadyExists):
+            await store.put(key=_SENTINEL_KEY, body=b"B", content_type="application/pdf")
+        assert client.stored[_SENTINEL_KEY] == b"A"
+
+    @pytest.mark.asyncio
+    async def test_a_412_on_a_retry_after_our_own_commit_is_a_success(self) -> None:
+        """O2 N1: first attempt commits but surfaces a 500; the retry sees 412;
+        the ETag is our body's MD5, so this is our write, not a collision."""
+        client = _FakeS3Client()
+        original_put = client.put_object
+
+        def put_then_500(**kwargs):
+            original_put(**kwargs)
+            raise _client_error("InternalError", status=500)
+
+        client.put_object = put_then_500  # type: ignore[method-assign]
+        await _store(client).put(key=_SENTINEL_KEY, body=b"A", content_type="application/pdf")
+        assert client.stored[_SENTINEL_KEY] == b"A"
+
+    @pytest.mark.asyncio
+    async def test_a_412_on_a_retry_for_someone_elses_object_is_a_collision(self) -> None:
+        client = _FakeS3Client()
+        calls = {"n": 0}
+
+        def put_500_then_other_wins(**kwargs):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                client._existing_keys.add(kwargs["Key"])
+                client.stored[kwargs["Key"]] = b"SOMEONE-ELSE"
+                raise _client_error("InternalError", status=500)
+            raise _client_error("PreconditionFailed", status=412)
+
+        client.put_object = put_500_then_other_wins  # type: ignore[method-assign]
+        with pytest.raises(ArtifactAlreadyExists):
+            await _store(client).put(key=_SENTINEL_KEY, body=b"A", content_type="application/pdf")
+        assert client.stored[_SENTINEL_KEY] == b"SOMEONE-ELSE"
 
     @pytest.mark.asyncio
     async def test_oversized_body_is_refused_before_any_upload_call(self) -> None:
@@ -460,9 +565,11 @@ class TestRetry:
             _client_error("NoSuchBucket"),
             ParamValidationError(report="bad param"),
             NoCredentialsError(),
+            _client_error("AccessDenied", status=500),
         ],
     )
     async def test_permanent_failures_are_not_retried(self, exc) -> None:
+        """O1/O2 F9: includes a permanent Error.Code wearing a 5xx."""
         """O1 F9: botocore's own permanent errors used to retry as
         'transient' because every BotoCoreError did."""
         sleeps: list[float] = []
@@ -635,6 +742,8 @@ class TestFetchAndVerifyBoundedRead:
                 == data
             )
             assert client.bodies[-1].max_amt_requested == MAX_ARTIFACT_BYTES + 1
+            # The EOF probe is a real extra read (O2): drop it and this fails.
+            assert client.bodies[-1].read_calls >= 2
         client = _FakeS3Client(
             get_object_bytes=b"x" * (MAX_ARTIFACT_BYTES + 1), get_object_content_length=None
         )
@@ -655,12 +764,32 @@ class TestFetchAndVerifyBoundedRead:
 
     @pytest.mark.asyncio
     async def test_body_shorter_than_declared_is_refused_even_with_matching_digest(self) -> None:
+        """O2 F6: the fake body now does what botocore does -- raises
+        IncompleteReadError on the EOF probe -- and the adapter maps it."""
         actual = b"y" * 99
         client = _FakeS3Client(get_object_bytes=actual, get_object_content_length=100)
         with pytest.raises(ArtifactDigestMismatch):
             await _store(client).fetch_and_verify(
                 key=_SENTINEL_KEY, expected_digest=_digest(actual)
             )
+
+    @pytest.mark.asyncio
+    async def test_short_reads_are_accumulated_not_mistaken_for_eof(self) -> None:
+        """O2 F6: a single read(amt) may return fewer than amt bytes."""
+        data = b"q" * 3000
+        client = _FakeS3Client(get_object_bytes=data, short_reads=True)
+        assert (
+            await _store(client).fetch_and_verify(key=_SENTINEL_KEY, expected_digest=_digest(data))
+            == data
+        )
+        assert client.bodies[-1].read_calls > 2
+        big = b"q" * (MAX_ARTIFACT_BYTES + 1)
+        client = _FakeS3Client(
+            get_object_bytes=big, get_object_content_length=None, short_reads=True
+        )
+        with pytest.raises(ArtifactDigestMismatch):
+            await _store(client).fetch_and_verify(key=_SENTINEL_KEY, expected_digest=_digest(big))
+        assert client.bodies[-1].total_bytes_returned <= MAX_ARTIFACT_BYTES + 1
 
     @pytest.mark.asyncio
     async def test_exactly_the_ceiling_is_served(self) -> None:
@@ -789,7 +918,9 @@ class TestFakeParity:
         """O1 F3, the check the docstring promises:
         `TigrisArtifactObjectStore.for_tests(` appears nowhere under
         `backend/` except the tests tree (other modules have their own,
-        unrelated `for_tests` seams -- the qualified name is the check)."""
+        unrelated `for_tests` seams -- the qualified name is the check).
+        LIMIT: a textual scan of `backend/`; an alias, reflection or a caller
+        outside that tree evades it. It is a tripwire, not a boundary."""
         import pathlib
 
         root = pathlib.Path(__file__).resolve().parents[3]
