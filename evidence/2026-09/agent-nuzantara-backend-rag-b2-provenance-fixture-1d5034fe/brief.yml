@@ -1,0 +1,239 @@
+task_id: backend-rag-b2-provenance-fixture
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 5ceb29b375ee01bf2e707f13b5f1bf4cd5b87445 # pragma: allowlist secret
+mandate: B2
+colour: BLUE
+pr: B2.1-followup-provenance-fixture
+objective: >-
+  The OWED provenance-fixture PR (RULED I30, 2026-09-12; deferred acceptance
+  cell RULED I31, 2026-09-12). B2.1 made retrieval provenance the PRIMARY
+  relevance signal, which turned every fixture that declares NO provenance
+  into a case the engine cannot reach BY CONSTRUCTION — so V1 and V2 could
+  not be cured inside B2.1 and were ruled here. This PR declares the REAL
+  score kind and raw value on the fixtures that today declare none: the
+  frozen manifest's own declared residual bs-17806bb4 (real cosine 0.373,
+  measured 2026-09-03 and recorded in the xfail's own reason), the standing
+  tripwires pinned to cosines no writer in this repo can produce, and Set D's
+  two cross-language false abstentions of the same disease in the supplement.
+  It is the ONLY PR allowed to touch the frozen mandatory manifest and it
+  re-pins the manifest's sha256 everywhere the old value is quoted. It also
+  discharges the four conditions and the five findings the #6304 gate
+  returned (C1/C2/C4, the mid-band parity fixture, the crossing-test fake's
+  default, the 29-vs-29 correction, the council review files, and
+  g1_characterize.py's two absolute Pro paths). NO ENGINE FILE IS EDITED —
+  if a band, a threshold or an assertion moves, the PR is wrong.
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1
+  tokens: 1500000
+generation: 1
+deadline_utc: "2026-09-12T19:30:00Z"
+deadline_authority: >-
+  Root mandate deadline of B2, unchanged. Hops ceiling raised 3 -> 5 by the
+  Fable imperator (M5, session 8933d19d) in B2-ack 20260912T122800Z-7f43 on
+  the prove-live checkpoint 20260912T122645Z-5995; this is hop 3. Ship
+  reserve zero.
+window:
+  session: 5eb1a312 # Dux B2, Pro, jump 2 of session 6d08443a
+  worktree: .worktrees/backend-rag-b2-provenance-fixture
+  branch: agent/nuzantara/backend-rag/b2-provenance-fixture
+  predecessor: >-
+    B2.1 ENGINE PR #6304, merged 2026-09-12T12:05:21Z as 5ceb29b375 (= this
+    base sha), deployed to Fly nuzantara-rag v4431 and PROVEN LIVE on the
+    deployed code (three in-container sha256 equalities, the live
+    `support` keyword in calculate_evidence_score's signature, and the
+    support-negative guard at line 644 before the broker offer at 711).
+    Accepted by the imperator in B2-ack 20260912T122800Z-7f43.
+constraints:
+  - >-
+    DATA PR, NOT AN ENGINE PR. No file under backend/services/ changes
+    behaviour: no band edge, no threshold, no assertion, no scorer line. The
+    diff on the engine must be empty; `git diff origin/main -- <engine files>`
+    is a receipt of this PR, not a formality.
+  - >-
+    The frozen mandatory manifest is edited HERE AND NOWHERE ELSE, and only
+    its `score_kind` / `score_raw` provenance fields — never a label, never a
+    context, never a band, never a query. Every edited case keeps its recorded
+    LABEL byte-identical, so a cure can never be a relabel.
+  - >-
+    The new manifest sha256 is re-pinned in EVERY place the old value is
+    quoted (this PR's pack, the benchmark test's MANDATORY_MANIFEST_SHA256,
+    and the staff-room documents that quote it). Grep for the old literal
+    before opening the PR: B1.3, B1.4 and B1.5 each pinned it.
+  - >-
+    A strict xfail marker is removed ONLY when the test passes for the
+    declared reason. `test_a_question_naming_no_identifier_is_still_language_blind`
+    (V1) MUST become a pass — RULING I31 forbids waiving it. The other xfail
+    is judged case by case and stays xfail if it legitimately still fails; a
+    marker is never removed to make a number look better.
+  - >-
+    No paid per-token call, no embedding call, no seat generation on client
+    data, no WhatsApp send, no production write. The 0.373 cosine is a value
+    already MEASURED and recorded on 2026-09-03 — this PR quotes that record
+    and does not re-measure it with a new embedding call.
+  - >-
+    Merging this PR touches apps/backend-rag/** and therefore triggers the
+    Fly release pipeline, but the deployed BEHAVIOUR is unchanged: the diff is
+    tests, fixtures and evidence only, and the test tree is outside the image
+    build context. The release must still be watched and named.
+acceptance:
+  - status: measured
+    outcome: >-
+      MET — EN>ID false_abstention 1/6 -> 0/6 at both gates; every other
+      false_abstention cell stayed 0.
+    text: >-
+      B1 (V1 cured): WHEN harness.py --support-record replays the frozen
+      manifest on this head, THE EN>ID false_abstention cell SHALL fall
+      1/6 -> 0/6 at both gates AND every other false_abstention cell SHALL
+      stay 0. bs-17806bb4 is cured by DECLARING dense_formatted / 0.373 and
+      by nothing else.
+    probe: "EN>ID false_abstention 1/6 -> 0/6 at both gates"
+  - status: measured
+    outcome: >-
+      MET — 0/38 in every cell at both gates (EN>EN 0/9, EN>ID 0/10, ID>EN
+      0/11, ID>ID 0/8).
+    text: >-
+      B2 (no admission bought): WHILE declaring real provenance CAN admit a
+      negative the zero band was holding, false_acceptance SHALL stay 0/38
+      across every cell at both gates (EN>EN 0/9, EN>ID 0/10, ID>EN 0/11,
+      ID>ID 0/8), measured on the FULL harness report and never only the
+      cells that moved.
+    probe: "false_acceptance 0/38 across every cell at both gates (EN>EN 0/9, EN>ID 0/10, ID>EN 0/11, ID>ID 0/8)"
+  - status: measured
+    outcome: >-
+      NOT MET AND NOT ATTEMPTED — superseded by RULING I33 (2026-09-12,
+      option b). V2 stays open because no measured cosine exists for
+      sup-d-4984a0c2's or sup-d-4d058bdc's (query, chunk) pairs anywhere on
+      disk; query_vectors_b1_5.json holds 23 query vectors only and no
+      context/chunk vectors, so nothing offline can compute one. Handed to
+      B2.2's retrieval harness rather than closed with an invented number.
+    text: >-
+      B3 (V2): IF no measured cosine exists on disk for sup-d-4984a0c2's or
+      sup-d-4d058bdc's (query, chunk) pairs, THEN this PR SHALL leave V2
+      open rather than close it with a number no run ever produced.
+    probe: "sup-d-4984a0c2 and sup-d-4d058bdc remain score_kind=unknown"
+  - status: measured
+    outcome: >-
+      MET — spec_pairs 16/16; Set C 7/12 and Set D 3/6 UNCHANGED from pack
+      #6304 (judge findings, not scorer findings — this PR edits no judge
+      code).
+    text: >-
+      B4 (nothing moved that must not): WHERE this PR touches no judge
+      code, Set C and Set D SHALL stay UNCHANGED at 7/12 and 3/6
+      respectively, AND spec_pairs SHALL remain 16/16 distinguished at the
+      generation gate.
+    probe: "Set C 7/12 and Set D 3/6 distinguished, UNCHANGED from pack #6304"
+  - status: measured
+    outcome: >-
+      MET — test_a_question_naming_no_identifier_is_still_language_blind is
+      a PASS with its marker removed, for the declared reason; the file
+      reads 123 passed + 1 xfailed against origin/main's 122 + 2 xfailed.
+    text: >-
+      B5 (V1 xfail becomes a pass): WHEN
+      test_a_question_naming_no_identifier_is_still_language_blind runs
+      WITH its strict xfail marker removed, IT SHALL pass for the declared
+      reason, recorded in the ledger row per RULING I31.
+    probe: "test_a_question_naming_no_identifier_is_still_language_blind passes with its strict xfail marker removed"
+  - status: measured
+    outcome: >-
+      MET — test_evidence_scoring_abstain 29, test_wa_package_builder 36,
+      test_evidence_sufficiency_benchmark 72, test_b2_supplement_and_b1_debts
+      72, test_tripwire_pipeline_variants_guard 97 (each at its origin/main
+      count or better); the three full suites together report 5118 passed,
+      42 skipped, 7 xfailed, 0 failed, 0 error.
+    text: >-
+      B6 (innocence): WHILE the six innocence files run one at a time,
+      EACH SHALL be at its origin/main count or better, AND the three full
+      suites together SHALL report 5118 passed, 42 skipped, 7 xfailed, 0
+      failed, 0 error.
+    probe: "5118 passed, 42 skipped, 7 xfailed, 0 failed, 0 error"
+  - status: measured
+    outcome: >-
+      MET — under the reintroduced SUPPORTED-raises-the-band mutation the
+      mid-band fixture fails (0.5500 with silence vs 0.7500 with
+      SUPPORTED) while the two pre-existing parametrized tests still pass
+      at 0.7500 either way (saturated); after revert the file is 54 passed
+      and the engine diff is empty.
+    text: >-
+      B7 (the parity class actually defends the rule): IF the
+      SUPPORTED-raises-the-band mutation is reintroduced on the
+      fail-closed parity class, THEN the new mid-band fixture SHALL fail
+      (0.5500 with silence vs 0.7500 with SUPPORTED) WHILE the two
+      pre-existing parametrized tests SHALL still pass at 0.7500 either
+      way, AND after revert the file SHALL be 54 passed with an empty
+      engine diff.
+    probe: "0.5500 with silence vs 0.7500 with SUPPORTED"
+  - status: measured
+    outcome: >-
+      MET — with the fake's `support` default removed, dropping `support=`
+      from the production caller makes the crossing test fail with
+      TypeError; after revert, test_score_contract_crossing.py is 18
+      passed with an empty engine diff.
+    text: >-
+      B8 (the crossing test proves what it claims): IF the production
+      caller in wa_package_builder.py stops passing `support=` WHILE the
+      fake's `support` keyword has no default, THEN the crossing test
+      SHALL fail with TypeError instead of staying green, AND after
+      revert test_score_contract_crossing.py SHALL be 18 passed with an
+      empty engine diff.
+    probe: "fails with TypeError, proving it now fails for the reason it claims to guard"
+team:
+  dux:
+    seat: claude-opus-5
+    role: "orchestrate, measure, gate on disk, ship"
+    session: 5eb1a312
+  seats:
+    - { seat: claude-sonnet-5, role: implement, lane: fixtures-and-tests }
+    - {
+        seat: codex-gpt-5.6-sol,
+        role: review,
+        counts_toward_quorum: true,
+        note: "NOT recused here — this PR judges fixtures, not the support signal's election (imperator B2-ack 20260912T122800Z-7f43)",
+      }
+    - { seat: kimi-code/k3, role: refute, counts_toward_quorum: true }
+    - { seat: gemini-3.1-pro, role: second_reader, counts_toward_quorum: false }
+  council_size: 2
+  seat_rule: >-
+    JUDGE != generator family. Three reds for the SAME cause suspend the PR
+    instead of taking a fourth round; a fix-of-a-fix stops at depth 1.
+inherited_conditions:
+  - id: C1
+    from: "#6304 gate, PASS-WITH-CONDITIONS, RULING I31"
+    owed: >-
+      acceptance (f) was met for ONE strict xfail only; the other IS V1 and is
+      deferred here with an explicit ban on waiving it — this PR turns it into
+      a pass by declaring the score kind, recorded in the ledger row.
+  - id: C2
+    from: "#6304 gate"
+    owed: >-
+      five receipts in #6304's pack.yml carry placeholder timestamps
+      ("2026-09-12T10:2xZ") that predate the head they describe. Re-pin them
+      with real ISO instants in this PR's ledger row. A receipt whose ts is a
+      pattern is not a receipt.
+  - id: C4
+    from: "#6304 gate"
+    owed: >-
+      score_provenance.py carried a comment-line edit outside B2.1's §2 file
+      list; declare it in this PR's pack instead of leaving it unexplained.
+  - id: F1
+    from: "#6304 gate finding"
+    owed: "mid-band fixture for the saturated fail-closed parity class (acceptance B7)."
+  - id: F2
+    from: "#6304 gate finding"
+    owed: "the crossing-test fake's support default removed (acceptance B8)."
+  - id: F3
+    from: "#6304 gate finding, corrected by the Dux"
+    owed: >-
+      the innocence line "29 vs 26" is 29 vs 29 — corrected in this PR's
+      ledger row; the innocence CLAIM itself is unaffected and still true.
+  - id: F4
+    from: "#6304 gate finding"
+    owed: >-
+      the council journal names two seats but no review FILES exist on disk;
+      persist the seat transcripts (redacted) beside the pack, or say in the
+      journal that they live only in the session scratchpad.
+  - id: F5
+    from: "#6304 gate finding"
+    owed: "g1_characterize.py hardcodes two absolute Pro paths; parameterise them from the repo root so it runs on M5 and Mini."

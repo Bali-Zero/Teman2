@@ -1,0 +1,447 @@
+task_id: backend-rag-b2-provenance-fixture
+mandate: B2
+colour: BLUE
+pr: B2.1-followup-provenance-fixture
+base_sha: 5ceb29b375ee01bf2e707f13b5f1bf4cd5b87445 # pragma: allowlist secret
+brief_ref: evidence/brief.yml
+gear: 2 # deterministic floor computed BEFORE opening: compute_floor(12 files, numstat) = 2, source=size
+spend:
+  wall_clock_hours: 1.1
+  wall_clock_note: >-
+    One window (5eb1a312, hop 3 of B2): prove-live of #6304, then this PR.
+    Two implementer seats ran in parallel; the second went silent for 30
+    minutes without writing a file and was STOPPED by the Dux on the
+    imperator's standing instruction not to wait on a silent child — its
+    three findings (F1, F2, F5) were then built and measured by the Dux
+    directly, which is why the seat table below credits them to the Dux and
+    not to the seat that was dispatched for them.
+  adversarial_rounds: 0
+  tokens: 900000
+result: >-
+  SHIP. One acceptance cell moved and nothing else did: EN>ID false_abstention
+  1/6 -> 0/6, false_acceptance still 0/38 in every cell at both gates,
+  spec_pairs 16/16, and the strict xfail RULING I31 forbade waiving is a PASS
+  for the declared reason. The PR is deliberately SMALLER than its brief
+  predicted: one of the three cures it was handed had already been paid by
+  B1.2, and the other (V2) cannot be paid with a number that does not exist —
+  both reported rather than performed.
+scope_reduction:
+  what: >-
+    The brief this PR inherited predicted THREE cures: bs-17806bb4, "the nine
+    tripwires pinned to impossible cosines", and V2's two Set D cases. Only the
+    FIRST is this PR's work, and the reduction was measured on disk before it
+    was claimed.
+  tripwires_already_cured_by_b1_2: >-
+    backend/tests/fixtures/pipeline_score_fixtures.py's nine DenseSourceSpec
+    rows ALREADY declare score_kind=DENSE_FORMATTED with REAL measured cosines
+    (0.04 / 0.14 / 0.16 / 0.16 / 0.20 / 0.22 / 0.30 / 0.35 / 0.40 / 0.51) from
+    one read-only prod Qdrant probe, 2026-09-10T18:03Z, 20 texts, 216 prompt
+    tokens, with `measurement_ref` naming the commit and the script. B1.2
+    (#6268 / #6270) cured them. The xfail sentence "withdrawn until the nine
+    tripwires ... are corrected in their own PR" therefore names work that has
+    ALREADY LANDED — what stayed open for V1 is the GOLDEN FIXTURE and the
+    MANIFEST CASE, and that is what this PR cures.
+  ratified_by: "Fable imperator M5 (8933d19d), B2-ack 20260912T123956Z-44f0, 12:58Z — accepted as the honest reading and verified independently on origin/main."
+v2_stays_open:
+  id: V2-cross-language-unknown-provenance-is-blind
+  ruling: "RULED I33 (2026-09-12), option (b), on this Dux's question in checkpoint 20260912T123834Z-7f7d."
+  reason_verbatim: >-
+    There is NO measured cosine for sup-d-4984a0c2's or sup-d-4d058bdc's
+    (query, chunk) pairs anywhere on disk. The one artifact that could have
+    carried it — query_vectors_b1_5.json — holds 23 QUERY vectors only
+    (text-embedding-3-small, 1536d, 23 of an authorized 40 attempts, 0
+    failures) and NO context/chunk vectors, so no cosine can be computed
+    offline from it. Nothing may stand in for a measurement that was never
+    taken (pipeline_score_fixtures.py's own docstring), and
+    manifest_supplement_b2.json holds score_kind=unknown across ALL 44 Set C/D
+    cases BY DECLARED DESIGN, "so the legacy lexical path is exercised rather
+    than the provenance-primary branch". Inventing a number to close a cell is
+    the one cure that is never available.
+  handed_to: >-
+    B2.2's retrieval harness, where query_vectors_b1_5.json's own `handoff`
+    field already points it. The 17 attempts left under B1.5's ceiling of 40
+    are NOT consumed here; if B2.2 needs the two chunk vectors it decides that
+    with a pre-call record under I15's discipline (product loader route,
+    max_retries=0, hard stop at the ceiling, receipt first) and names it in its
+    brief — a B2.2 MEASUREMENT, never a fixture edit.
+  this_pr_paid_calls: "ZERO. No embedding call, no per-token API, no seat generation on client data, no production write."
+conditions_discharged:
+  - id: C1
+    ruling: "RULING I31 — deferred here and explicitly NOT waivable."
+    how: >-
+      test_a_question_naming_no_identifier_is_still_language_blind is a PASS
+      with its strict xfail marker REMOVED, and it passes for the DECLARED
+      reason: a dense source at the one measured cosine on disk (0.373,
+      text-embedding-3-small, 2026-09-03) lands in B2.1's MODERATE band.
+      Strengthened beyond the ruling's ask by the Dux: the test now ALSO
+      asserts that the legacy literal is still below the gate (0.08), so both
+      halves of its own name are defended by an assertion instead of by prose
+      — if the lexical bridge ever appeared, the cure would be measuring
+      something other than provenance and the test would say so.
+    recorded_in: "the PENDING-ARMS ledger row of this PR."
+  - id: C2
+    how: >-
+      #6304's five receipts carried placeholder timestamps ("2026-09-12T10:2xZ",
+      "10:3xZ") that predate the head they described. The REAL instants were
+      recovered forensically from the session transcript and are re-pinned in
+      this PR's ledger row. The merged pack itself is NOT edited — a merged
+      pack is a historical record (imperator B2-ack 20260912T123956Z-44f0).
+    lesson: "A receipt whose ts is a pattern is not a receipt."
+  - id: C3
+    how: "Detect Secrets was green on the merged tree. Nothing owed, nothing done."
+  - id: C4
+    how: >-
+      MEASURED AND DECLARED, not merely acknowledged: the edit B2.1 made to
+      backend/core/score_provenance.py outside its §2 file list is exactly ONE
+      comment line — `git diff 50a3d4f762..5ceb29b375 -- <that file>` is a
+      single hunk changing the docstring cross-reference
+      `wa_package_builder.py:529` to `:537`, because B2.1 added lines above it.
+      Verified on this checkout that :537 IS the line that mints the curated
+      block at a literal 1.0. No code, no constant, no behaviour.
+findings_carried:
+  - id: F3
+    correction: >-
+      The innocence line in #6304's pack reads "test_evidence_scoring_abstain
+      29 (origin 26)". It is 29 vs 29: `git diff origin/main...HEAD` on that
+      file was EMPTY, so the file was byte-identical to main and its count
+      there was 29. The "26" came from a 2026-09-11 envelope measured on a
+      different base and was carried forward without re-measuring. The
+      innocence CLAIM (every file at its origin/main count or better) is
+      unaffected and still true. Corrected in this PR's ledger row, not in the
+      merged pack.
+  - id: F4
+    how: >-
+      council-reviews-6304/ persists the two SMALL seat outputs in full (Kimi
+      K3 refutation 11041 B, Gemini 3.1 Pro second read 1053 B, both scanned
+      clean for PII before commit) and names the three LARGE ones — 3.4 MB of
+      raw Codex transcript and a 228 KB Dux working file — by byte count and
+      sha256 rather than committing them, with the reason written in that
+      directory's README. It also records the honest part: the Codex seat
+      never wrote a report at all, so no report file can be persisted; what
+      exists is the transcript it produced, by hash, and the Dux's own
+      reproductions that stand in for a verdict it never gave.
+    residual: "A scratchpad is session-local and does not survive the machine. Making these durable is an archival decision (where, what retention) and belongs to Zero."
+c2_real_instants_for_6304:
+  method: >-
+    Recovered from the session transcript of window 6d08443a by a read-only
+    forensic seat, and CORROBORATED rather than assumed: for three of the six,
+    the tool_result found at that instant quotes the pack's numbers VERBATIM
+    (item 3 "673 passed, 2 xfailed"; item 6 "SUBSTANTIVE RELEASES: 0 /
+    identical inputs keep identical outcomes: True"; item 1 "false_abstention
+    1/6" and "16/16"). That is what makes these the right invocations and not
+    plausible timestamps.
+  correction_of_the_condition_itself: >-
+    C2 said FIVE receipts carry placeholders. Measured: one of them was never
+    broken — the manifest shasum receipt already carried a real instant,
+    2026-09-12T10:24:56Z. Reporting "five corrected" would have been one
+    correction too many.
+  instants:
+    - receipt: "A1/A2/A3 — harness.py --support-record (pack said 10:2xZ)"
+      first_success: "2026-09-12T10:06:27.583Z"
+      last_success: "2026-09-12T11:10:38.305Z"
+      note: >-
+        The pack quotes this run's numbers, which are IDENTICAL at both ends
+        (EN>ID false_abstention 1/6, false_acceptance 0 in all four cells at
+        both gates = 0/38, spec_pairs 16/16) — so the numbers alone cannot
+        distinguish the runs and the FIRST occurrence is named. An earlier
+        attempt at 10:05:01.178Z CRASHED (KeyError on a missing
+        support_verdicts key) and is not counted as a run.
+    - receipt: "the 11-file suite (pack said 10:2xZ, result '673 passed, 2 xfailed')"
+      first_success: "2026-09-12T10:22:23.641Z (670 passed, 2 xfailed)"
+      last_success: "2026-09-12T10:28:12.717Z (673 passed, 2 xfailed)"
+      note: >-
+        Here the pack quotes the LAST run, not the first: three tests were
+        added to test_reasoning_utils_provenance_bands.py between them. The
+        instant to pin is 10:28:12.717Z.
+    - receipt: "test_evidence_sufficiency_benchmark.py (pack said 10:2xZ)"
+      first_success: "2026-09-12T10:06:52.478Z"
+      last_success: "2026-09-12T10:33:48.845Z"
+      note: >-
+        DISCLOSED: no invocation ever ran that file ALONE. The pack's `cmd`
+        for this receipt is a paraphrase; the real runs always paired it with
+        at least one other file.
+    - receipt: "A4 — bands + benchmark together (pack said 10:2xZ)"
+      first_success: "2026-09-12T10:06:52.478Z"
+      last_success: "2026-09-12T10:28:12.717Z"
+      note: "Both files are named together only inside larger multi-file lists, never alone."
+    - receipt: "A5 — g1_characterize.py (pack said 10:3xZ)"
+      first_success: "2026-09-12T10:31:20.403Z"
+      last_success: "same — the script was executed exactly ONCE in either session."
+    - receipt: "manifest shasum — NOT a placeholder, no correction owed"
+      recorded: "2026-09-12T10:24:56Z"
+      last_reread: "2026-09-12T12:18:09.086Z"
+  finding_found_while_doing_it:
+    what: >-
+      A pytest run dispatched in the BACKGROUND reports the exit code of its
+      bash WRAPPER, not pytest's. Transcript line 240: the task notification
+      read "exit code 0" while pytest had exited 4, refused by
+      scripts/pytest_guards/pytest_verbosity_guard.py ("effective verbosity is
+      -2 ... this run cannot be read as evidence that anything ran").
+    why_it_matters: >-
+      A receipt built on that notification would have certified a suite that
+      never ran — cicatrix class #2, Esiste != Armato, in its purest shape.
+      The seat caught it by reading the task's raw .output file instead of
+      trusting the notification, and that is now the required method here.
+measured:
+  by: "the Dux (claude-opus-5) on this head, re-run rather than inherited from the implementer seat"
+  at: "2026-09-12T13:49:49Z"
+  benchmark_after_this_pr:
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json"
+    false_abstention: "EN>EN 0/4 · EN>ID 0/6 · ID>EN 0/6 · ID>ID 0/4 (both gates)"
+    false_acceptance: "EN>EN 0/9 · EN>ID 0/10 · ID>EN 0/11 · ID>ID 0/8 (both gates) = 0 of 38"
+    spec_pairs: "16/16 distinguished at the generation gate"
+    delta_against_6304: >-
+      The ONLY cell that moved is EN>ID false_abstention, 1/6 -> 0/6. Nothing
+      was bought for it: false_acceptance is still 0/38 in every cell at both
+      gates, which is the risk this PR had to disprove rather than assert —
+      declaring real provenance can ADMIT a negative that the zero band was
+      holding, and here it did not.
+  v1_case_scores:
+    legacy_literal: "0.08 — unchanged, and now ASSERTED by the cured test rather than described in prose"
+    declared_dense: "0.55 — MODERATE band (cosine 0.373 >= 0.32)"
+  innocence:
+    at: "2026-09-12T13:49:49Z, each file run on its own by the Dux"
+    counts: >-
+      test_evidence_cross_language 123 passed + 1 xfailed (origin/main: 122 + 2
+      xfailed — one xfail became a pass, which IS the mandate) ·
+      test_evidence_scoring_abstain 29 · test_wa_package_builder 36 ·
+      test_evidence_sufficiency_benchmark 72 · test_b2_supplement_and_b1_debts
+      72 · test_tripwire_pipeline_variants_guard 97. Every file at its
+      origin/main count or better, 0 failed, 0 error.
+  guilt_demonstrations:
+    note: >-
+      Both mutations were applied to the ENGINE, run, and REVERTED, with the
+      revert proven by an empty `git diff` on backend/services and backend/core
+      before any measurement was recorded. A test that cannot be made to fail
+      is not evidence.
+    runs:
+      - finding: F1 — the fail-closed parity class was saturated
+        mutation: "SUPPORTED raises the band by one step (elif branch added at reasoning_utils.py's support gate)"
+        what_it_proved: >-
+          CONFIRMS THE GATE'S FINDING, measured rather than accepted: under the
+          mutation the two pre-existing parametrized tests still PASSED (their
+          inputs score 0.7500 either way — the query shares tokens with the
+          context, so lexical corroboration had already carried the band to the
+          ceiling and one more step cannot move it), and only the third test
+          went red. The NEW mid-band test — same declared dense source, cosine
+          0.40 -> MODERATE, with an English query sharing NO token with the
+          Indonesian context — went red too: 0.5500 with silence against 0.7500
+          with SUPPORTED.
+        after_revert: "engine diff empty; the file's 54 tests pass (53 before + the new one)"
+      - finding: F2 — the crossing-test fake defaulted support=None
+        mutation: "the production caller in wa_package_builder.py stopped passing `support=`"
+        what_it_proved: >-
+          With the default removed, the test FAILS with TypeError — i.e. it now
+          fails for the reason it claims to guard. With the old default it would
+          have stayed green, because `captured[\"support\"]` would still have been
+          populated by the fake's own default and the assertion only ever proved
+          the KEY existed.
+        after_revert: "engine diff empty; test_score_contract_crossing.py 18 passed"
+  f5_g1_portability:
+    what: "g1_characterize.py's two absolute Pro paths are derived from the file's own location (parents[3] / apps / backend-rag)."
+    reproduced_from_a_DIFFERENT_worktree: >-
+      Run from .worktrees/backend-rag-b2-provenance-fixture, the script
+      reproduces the frozen table of #6304 EXACTLY: negatives 38,
+      outcome x released = ('send', False): 38, defect_reasons {None: 38},
+      told_a_human ('rag_abstain',): 38, SUBSTANTIVE RELEASES 0, identical
+      inputs keep identical outcomes True. That is the portability proof and
+      the characterization's independent reproduction in one run.
+  full_suites:
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/rag backend/tests/unit/services/rag backend/tests/unit/services/integrations"
+    at: "2026-09-12T13:51:49Z"
+    result: "5118 passed, 42 skipped, 7 xfailed, 0 failed, 0 error"
+    read_how: >-
+      Read from the task's RAW .output file, not from the background wrapper's
+      exit code — see the finding recorded under c2_real_instants_for_6304,
+      where a wrapper reported exit 0 over a pytest that had exited 4.
+receipts:
+  - claim: >-
+      harness.py --support-record run on this head, per cell, next to
+      B2.1's merged numbers (#6304): EN>ID false_abstention 1/6 -> 0/6 at
+      both gates, every other false_abstention cell 0/4 or 0/6 unchanged.
+      false_acceptance 0/38 across every cell at both gates (EN>EN 0/9,
+      EN>ID 0/10, ID>EN 0/11, ID>ID 0/8). spec_pairs 16/16 distinguished
+      at the generation gate.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json"
+    exit: 0
+    ts: "2026-09-12T13:49:49Z"
+    seat: claude-opus-5
+  - claim: >-
+      the supplement report on this head, against manifest_supplement_b2.json:
+      Set C 7/12 and Set D 3/6 distinguished, UNCHANGED from pack #6304 —
+      they are judge findings, not scorer findings, and this PR edits no
+      judge code. sup-d-4984a0c2 and sup-d-4d058bdc remain
+      score_kind=unknown by declared design and were NOT re-measured — no
+      cosine exists for them anywhere on disk (RULING I33).
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py --validation backend/tests/benchmarks/evidence_sufficiency/manifest_supplement_b2.json --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json"
+    exit: 0
+    ts: "2026-09-12T13:49:49Z"
+    seat: claude-opus-5
+  - claim: >-
+      pytest on test_evidence_cross_language.py alone:
+      test_a_question_naming_no_identifier_is_still_language_blind passes
+      with its strict xfail marker removed, for the declared reason. The
+      file reads 123 passed + 1 xfailed against origin/main's 122 + 2
+      xfailed.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_evidence_cross_language.py -q"
+    exit: 0
+    ts: "2026-09-12T13:49:49Z"
+    seat: claude-opus-5
+  - claim: >-
+      the six innocence files, each run on its own: test_evidence_scoring_abstain
+      29 passed, test_wa_package_builder 36 passed,
+      test_evidence_sufficiency_benchmark 72 passed,
+      test_b2_supplement_and_b1_debts 72 passed,
+      test_tripwire_pipeline_variants_guard 97 passed — each at its
+      origin/main count or better. The three full suites together report
+      5118 passed, 42 skipped, 7 xfailed, 0 failed, 0 error.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/rag backend/tests/unit/services/rag backend/tests/unit/services/integrations"
+    exit: 0
+    ts: "2026-09-12T13:51:49Z"
+    seat: claude-opus-5
+  - claim: >-
+      F1 guilt mutation (SUPPORTED raises the band by one step,
+      reintroduced on reasoning_utils.py's support gate, then reverted):
+      the mid-band parity fixture fails 0.5500 with silence vs 0.7500
+      with SUPPORTED, while the two pre-existing parametrized tests still
+      pass at 0.7500 either way (saturated). After revert, the engine
+      diff is empty and the file is 54 passed.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_reasoning_utils_provenance_bands.py -q"
+    exit: 0
+    ts: "2026-09-12T13:49:49Z"
+    seat: claude-opus-5
+  - claim: >-
+      F2 guilt mutation (wa_package_builder.py's production caller stops
+      passing support=, reintroduced then reverted): the crossing test
+      fails with TypeError, proving it now fails for the reason it
+      claims to guard. After revert, test_score_contract_crossing.py is
+      18 passed with an empty engine diff.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_score_contract_crossing.py -q"
+    exit: 0
+    ts: "2026-09-12T13:49:49Z"
+    seat: claude-opus-5
+pii_scan: clean
+pii_scan_note: >-
+  No client data anywhere. The two seat transcripts persisted in
+  council-reviews-6304/ were scanned before commit (zero matches for NPWP,
+  passport, KITAS, email, phone or credential patterns). Every fixture touched
+  is synthetic; the Indonesian chunk in the cured case is the manifest's own
+  synthetic PT PMA text, unchanged.
+lanes:
+  - { lane: v1-cure-and-manifest-repin, role: build, seat: claude-sonnet-5 }
+  - {
+      lane: receipt-forensics,
+      role: read,
+      seat: claude-sonnet-5,
+      note: "recovered the real ISO instants from the transcript and CORRECTED the Dux's framing twice — one receipt was never broken, and one pack claim quotes the LAST run, not the first",
+    }
+  - {
+      lane: f1-f2-f5,
+      role: build,
+      seat: claude-opus-5,
+      note: "dispatched to a sonnet child that went silent for 30 minutes without writing a file; STOPPED by the Dux per the imperator's standing instruction, and built by the Dux instead. Credit stays with the Dux.",
+    }
+  - {
+      lane: gate,
+      role: review,
+      seat: "fable imperator M5 (8933d19d)",
+      note: "not this session — generator is never grader",
+    }
+dissent:
+  - seat: "none — no council round has run on this pack yet (adversarial_rounds: 0; the gate is the imperator's own, and it happens after PR-open)"
+    objection: >-
+      This PR names itself "provenance-fixture" but cures only V1
+      (bs-17806bb4) and leaves V2 (sup-d-4984a0c2, sup-d-4d058bdc) open.
+      RULING I33 accepted that as the honest reading given no measured
+      cosine exists for those two pairs — but a reviewer who has not yet
+      looked could still push back that a PR advertised as "the OWED
+      provenance-fixture" shipping half its named cures is a partial fix
+      wearing a closed pack, and ask why V2 was not simply left for a
+      later mandate instead of being declared "stays open" inside this one.
+    status: PLAUSIBLE
+  - seat: "none — no council round has run on this pack yet (adversarial_rounds: 0; the gate is the imperator's own, and it happens after PR-open)"
+    objection: >-
+      The declared dense cosine 0.373 for bs-17806bb4 has exactly one
+      receipt anywhere on disk: a sentence inside the REMOVED strict
+      xfail's own reason string, measured 2026-09-03 — not a standalone
+      probe artifact (script + timestamp + raw output) produced by a run
+      this PR itself can point to. A reviewer could ask this PR to
+      independently re-attest the number (e.g. by naming the original
+      measurement's script and raw output) rather than quote a prior
+      xfail's prose as its only provenance.
+    status: PLAUSIBLE
+bites:
+  consumer: >-
+    The benchmark harness (`backend/tests/benchmarks/evidence_sufficiency/harness.py`)
+    and the CI test that replays the frozen support record
+    (`test_evidence_sufficiency_benchmark.py`, `test_b2_supplement_and_b1_debts.py`) —
+    both already run on every commit and both read the manifest this PR edits,
+    so a regression in either direction is caught by a test rather than by a
+    client. The cured golden test itself is the second consumer: it is the
+    tripwire that goes red if the lexical bridge ever appears or the declared
+    band stops carrying the case.
+  observation: >-
+    Made BEFORE reporting the work done, by the Dux on this head, not
+    inherited from an implementer: the harness reports EN>ID false_abstention
+    0/6 where #6304's merged pack reports 1/6, with false_acceptance still
+    0/38 in every cell at both gates and spec_pairs 16/16; the six innocence
+    files are each at their origin/main count or better; the three suites are
+    5118 passed / 0 failed; and both new tests were shown to go RED under a
+    reintroduced defect and GREEN after the mutation was reverted, with the
+    revert proven by an empty engine diff. Merging this PR triggers a Fly
+    release whose deployed BEHAVIOUR cannot change — the diff is tests,
+    fixtures and evidence, and the test tree is outside the image build
+    context (measured during #6304's prove-live: /app has no backend/tests) —
+    but the release is still owed a named observation after the merge.
+ledger_row_is_deliberately_NOT_in_this_pr:
+  ruling_it_serves: >-
+    RULING I31 requires C1's discharge to be RECORDED in a ledger row, and the
+    imperator's B2-ack 20260912T123956Z-44f0 adds the manifest's old->new sha
+    with this PR's number. Both are owed and neither is dropped.
+  why_separate: >-
+    MEASURED, not preferred: .claude/skills/modus/PENDING-ARMS.md carries
+    `merge=union`, which GIT honours and GITHUB'S MERGE MACHINERY DOES NOT, so
+    a branch that appends to it conflicts permanently once main appends too —
+    re-probing never clears it, hand-resolving silently deletes the other
+    lane's row, and rebasing duplicates one's own. Three open PRs are stuck in
+    exactly that state right now (#6080, #6269, #6321; the fleet watcher's
+    20260912T135130Z-5644 states the mechanism). This branch is 11 commits
+    behind main already, so adding the row here would very likely hand a pure
+    data PR the one conflict class that cannot be cured from inside it.
+  what_happens_instead: >-
+    A ledger-only PR, cut from FRESH origin/main immediately after this one is
+    opened, carrying the row with this PR's number and head: C1 discharged
+    (the V1 xfail is a pass, not waived), C2's real ISO instants, F3's 29-vs-29
+    correction, and the manifest transition
+    9d7ea833b5... -> 240842d97a... It verifies `git diff origin/main -- <file>`
+    is +N/-0 before opening, per the watcher's own instruction.
+  disclosed_to: "the imperator in this PR's head checkpoint, so the sequencing can be overruled before the gate rather than after."
+pack_lint:
+  how_ci_actually_runs_it: >-
+    harness-floor.yml's pack-validation step is guarded by
+    `if: steps.gearcheck.outputs.gear == '3'`. This pack declares gear 2 (the
+    deterministic floor, source=size), so that step DOES NOT RUN for this PR
+    and none of the findings below are a required-check failure. The only
+    Gear-2 CI obligation is the step that READS a posted harness/fable-gate
+    verdict; it does not validate pack content. Stated so the gate is not told
+    a lint is green when it simply never ran.
+  reproduced_anyway: "clean except the one real finding below — the two NOTICEs (unreferenced probes, non-EARS acceptance) were cured in brief.yml."
+  false_alarm_of_my_own_making: >-
+    `evidence_root_deprecated` was an ARTEFACT of the Dux's local
+    reproduction, not a defect: omitting `--source-path` makes the lint judge
+    the SYNTHETIC path `evidence/pack.yml` instead of this pack's real
+    per-task path. CI always passes `--source-path`, and with it the violation
+    disappears. Recorded because the same trap cost a sibling lane a green
+    check yesterday.
+  real_finding_left_UNCURED_deliberately:
+    rule: "D3 seat diversity — a Gear-2 pack with build lanes must carry at least one non-Anthropic builder seat (enforced since 2026-08-24)."
+    state: >-
+      VIOLATED and not cured: both build lanes are Anthropic (claude-sonnet-5
+      for the V1 cure, claude-opus-5 for F1/F2/F5 after the dispatched seat
+      went silent). The non-Anthropic seats on this mandate reviewed and
+      refuted; none of them BUILT anything here.
+    why_not_cured: >-
+      The only way to satisfy it retroactively is to name a seat that did not
+      do the work. Falsifying an evidence pack to pass the check that exists
+      to keep evidence packs honest is the one cure that is never available.
+      It is declared here instead, and it is the gate's to weigh.
