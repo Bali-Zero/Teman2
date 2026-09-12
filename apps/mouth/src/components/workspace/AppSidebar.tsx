@@ -36,6 +36,7 @@ import {
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import { navigation, NavSection, NavItem } from "@/types/navigation";
 import { cn } from "@/lib/utils";
+import { isOwner } from "@/lib/auth/owner";
 
 // Icon mapping
 const iconMap: Record<string, React.ElementType> = {
@@ -96,7 +97,9 @@ export function AppSidebar({
   isZantaraOpen = false,
 }: AppSidebarProps) {
   const pathname = usePathname();
-  const nav = navigationConfig || navigation;
+  const nav = (navigationConfig || navigation).filter(
+    (section) => !section.ownerOnly || isOwner(user.email),
+  );
 
   const isActive = (href: string) => {
     if (!pathname) return false;
@@ -194,6 +197,14 @@ export function AppSidebar({
           style={{ color: "var(--bz-text-3)" }}
         >
           {section.title}
+        </div>
+      )}
+      {section.note && (
+        <div
+          className="text-[8px] px-2.5 pb-1.5 leading-snug"
+          style={{ color: "var(--bz-text-3)" }}
+        >
+          {section.note}
         </div>
       )}
       {section.items.map(renderNavItem)}
