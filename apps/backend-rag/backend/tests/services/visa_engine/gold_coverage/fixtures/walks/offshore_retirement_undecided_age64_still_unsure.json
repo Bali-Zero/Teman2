@@ -1,5 +1,5 @@
 {
-  "label": "offshore/retirement/property/age64",
+  "label": "offshore/retirement/undecided/age64/still_unsure",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -10,9 +10,7 @@
     "trip_scope",
     "sponsor_category",
     "retirement_basis",
-    "secondhome_property_value_usd",
-    "secondhome_passive_income_usd",
-    "family_sponsor_confirmed",
+    "retirement_undecided_basis",
     "stay_days",
     "review_gate"
   ],
@@ -105,27 +103,30 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
+    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.type": { "status": "KNOWN", "value": "NONE" },
-    "secondhome.bank_deposit_usd": { "status": "KNOWN", "value": 0 },
+    "secondhome.bank_deposit_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "secondhome.bank_deposit_at_state_bank": {
-      "status": "KNOWN",
-      "value": false
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "secondhome.bank_deposit_in_own_name": {
-      "status": "KNOWN",
-      "value": false
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "secondhome.qualifying_property_value_usd": {
-      "status": "KNOWN",
-      "value": 1000000000
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "secondhome.passive_monthly_income_usd": {
-      "status": "KNOWN",
-      "value": 1000000000
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "process.application_channel": {
       "status": "UNKNOWN",

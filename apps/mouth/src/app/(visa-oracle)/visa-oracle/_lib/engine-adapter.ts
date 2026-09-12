@@ -122,6 +122,16 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Retirement with passive income of USD 3,000 per month or more and a confirmed sponsor.",
     "Pensiun dengan penghasilan pasif minimal USD 3.000 per bulan dan penjamin terkonfirmasi.",
   ),
+  // `hf.e33f.sponsor-required` (EXCLUDE, `family.sponsor_confirmed == false`)
+  // — reachable via `no_path_reasons` since D3-3's retirement-basis
+  // dead-end fix made a definitively-denied sponsor a decisive
+  // NO_SUPPORTED_PATH outcome instead of leaving it unresolved. Previously
+  // unreachable from any corpus walk, so it fell through `reasonMessage`'s
+  // raw-code fallback with no test to catch it.
+  SPONSOR_REQUIRED: text(
+    "The Second Home Retirement Visa (E33F) requires a confirmed family sponsor, and you told us your sponsor has not confirmed. Confirming the sponsor is what would open this route.",
+    "Visa Rumah Kedua Pensiun (E33F) mensyaratkan sponsor keluarga yang telah dikonfirmasi, dan Anda menyatakan sponsor Anda belum mengonfirmasi. Konfirmasi sponsor adalah yang akan membuka jalur ini.",
+  ),
   E33_DEPOSIT_BASIS_ELIGIBLE: text(
     "Second Home on the deposit basis: USD 130,000 or more held in your own name at a state bank.",
     "Rumah Kedua berbasis deposito: minimal USD 130.000 atas nama sendiri di bank BUMN.",
@@ -386,14 +396,84 @@ function reasonMessage(code: string): LocalizedText {
   );
 }
 
+// D3-3 gate finding, owner escalation 2026-09-13: `el.e33.property-basis` /
+// `el.e33.deposit-basis` are ELIGIBILITY/SUPPORT rules — when their own
+// condition is false (a below-threshold value), the rule simply does not
+// fire and emits NO reason_code of its own (verified against
+// rulepack-prod-020.source.json: only a HARD_FILTER EXCLUDE carries a
+// reason_code, and no such filter exists for this threshold). The engine's
+// only fallback is the generic `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_
+// PURPOSES`, which cannot name a number the pack itself never labeled. The
+// interview's OWN facts already carry the declared basis and its exact
+// value, so this names the threshold in the applicant's own terms instead
+// of leaving the generic catalogue sentence to stand in for it — the same
+// D2-bis move as the STEPCHILD copy above, applied to a NO_SUPPORTED_PATH
+// reason instead of a HUMAN_REVIEW one. Returns `undefined` (falls back to
+// the generic sentence) whenever the facts do not actually show a
+// below-threshold Second Home basis, so a future cause of this same code
+// is never mis-attributed to a threshold it did not fail.
+// Exported so `engine-adapter.test.ts` can pin these against the signed
+// pack's own `el.e33.property-basis` / `el.e33.deposit-basis` `gte` values
+// (same technique as fact-mapper.test.ts's "AMBIGUOUS_SPONSOR relation
+// proxy tracks the signed pack") — a second copy of a number the pack owns
+// is a silent-drift risk with a seq-21 threshold revision already in
+// preparation, and a wrong VERDICT is caught by other tests while a stale
+// NUMBER INSIDE A SENTENCE is not.
+export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
+export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
+
+function usd(value: number, locale: "en-US" | "id-ID"): string {
+  return `USD ${value.toLocaleString(locale)}`;
+}
+
+function secondHomeBelowThresholdReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  const basis =
+    facts.category === "invest"
+      ? facts.investment_vehicle
+      : facts.category === "second_home"
+        ? facts.secondhome_basis
+        : undefined;
+  if (basis === "property") {
+    const value = Number(facts.secondhome_property_value_usd);
+    if (
+      !Number.isFinite(value) ||
+      value >= SECOND_HOME_PROPERTY_THRESHOLD_USD
+    ) {
+      return undefined;
+    }
+    return text(
+      `You declared a qualifying property worth ${usd(value, "en-US")}. The Second Home Golden Visa requires at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}.`,
+      `Anda menyatakan properti yang memenuhi syarat senilai ${usd(value, "id-ID")}. Visa Rumah Kedua mensyaratkan setidaknya ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}.`,
+    );
+  }
+  if (basis === "bank_deposit") {
+    const value = Number(facts.secondhome_deposit_usd);
+    if (!Number.isFinite(value) || value >= SECOND_HOME_DEPOSIT_THRESHOLD_USD) {
+      return undefined;
+    }
+    return text(
+      `You declared a bank deposit of ${usd(value, "en-US")}. The Second Home Golden Visa requires at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")}.`,
+      `Anda menyatakan deposito bank senilai ${usd(value, "id-ID")}. Visa Rumah Kedua mensyaratkan setidaknya ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")}.`,
+    );
+  }
+  return undefined;
+}
+
 function reason(
   code: string,
   sourceIds: readonly string[],
   trustedIds: ReadonlySet<string>,
+  facts?: OracleFacts,
 ): OutcomeReason {
+  const message =
+    code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+      ? (secondHomeBelowThresholdReason(facts ?? {}) ?? reasonMessage(code))
+      : reasonMessage(code);
   return {
     code,
-    message: reasonMessage(code),
+    message,
     sourceIds: sourceIds.filter((id) => trustedIds.has(id)),
   };
 }
@@ -710,14 +790,45 @@ const GENERIC_REVIEW_REASON: LocalizedText = text(
   "Beberapa jawaban Anda memerlukan penilaian dari seseorang sebelum kami dapat mengonfirmasi jalur.",
 );
 
+// D3-4 (PR-D3, owner ruling SHWEB-20260911): `DISCLOSED_AMBIGUOUS_SPONSOR_
+// REVIEW`'s generic copy ("has not been established here") is true for an
+// `unsure` answer but would be FALSE for a STEPCHILD applicant who told the
+// interview their sponsor holds NO KITAS/KITAP — that fact IS established,
+// just not one any seq-20 rule reads. D2-bis forbids reusing an
+// "unresolved" sentence for a resolved-negative answer, so this one trigger
+// gets its own two variants, selected in `reviewReason` below from the
+// interview facts already threaded through `BuildEngineOutcomeOptions`. Not
+// the general D3-6 mechanism (deferred, three OTHER parameter-less codes) —
+// scoped to this one code and this one question.
+const STEPCHILD_SPONSOR_PERMIT_NO_REVIEW: LocalizedText = text(
+  "You told us your sponsor does not hold a valid KITAS/KITAP of their own. A sponsor without a stay permit cannot sponsor the Family Reunification Visa — Stepchild (E31D); this does not affect the Multiple-Entry Visa (C1), which stays available on its own terms. A person needs to confirm the E31D sponsorship route separately before it can be resolved.",
+  "Anda menyatakan bahwa sponsor Anda tidak memiliki KITAS/KITAP yang sah. Sponsor tanpa izin tinggal sendiri tidak dapat mensponsori Visa Penyatuan Keluarga — Anak Tiri (E31D); hal ini tidak memengaruhi Visa Kunjungan Berkali-kali (C1), yang tetap tersedia dengan syaratnya sendiri. Diperlukan konfirmasi terpisah oleh seseorang atas jalur sponsor E31D sebelum dapat diselesaikan.",
+);
+const STEPCHILD_SPONSOR_PERMIT_UNSURE_REVIEW: LocalizedText = text(
+  "Whether your sponsor holds a valid KITAS/KITAP of their own has not been established — confirming your sponsor's own stay permit is what resolves it before the Family Reunification Visa — Stepchild (E31D) can be confirmed.",
+  "Belum dapat dipastikan apakah sponsor Anda memiliki KITAS/KITAP yang sah — konfirmasi izin tinggal sponsor Anda sendiri adalah yang akan menyelesaikannya sebelum Visa Penyatuan Keluarga — Anak Tiri (E31D) dapat dipastikan.",
+);
+
 function reviewReason(
   code: string,
   sourceIds: readonly string[],
   trustedIds: ReadonlySet<string>,
+  facts?: OracleFacts,
 ): OutcomeReason {
+  const stepchildSponsorPermitAnswer =
+    code === "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW" &&
+    facts?.family_relation === "STEPCHILD"
+      ? facts.family_stepchild_sponsor_permit_confirmed
+      : undefined;
+  const message =
+    stepchildSponsorPermitAnswer === "no"
+      ? STEPCHILD_SPONSOR_PERMIT_NO_REVIEW
+      : stepchildSponsorPermitAnswer === "unsure"
+        ? STEPCHILD_SPONSOR_PERMIT_UNSURE_REVIEW
+        : (REVIEW_REASON_COPY[code] ?? GENERIC_REVIEW_REASON);
   return {
     code,
-    message: REVIEW_REASON_COPY[code] ?? GENERIC_REVIEW_REASON,
+    message,
     sourceIds: sourceIds.filter((id) => trustedIds.has(id)),
   };
 }
@@ -1136,7 +1247,12 @@ function buildValidatedOutcome(
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         reviewReasons: response.decision.review_reasons.map((item) => {
           requireReviewHoldRefs(item.source_refs);
-          return reviewReason(item.code, item.source_refs, trustedIds);
+          return reviewReason(
+            item.code,
+            item.source_refs,
+            trustedIds,
+            options.facts,
+          );
         }) as [OutcomeReason, ...OutcomeReason[]],
       };
     case "NO_SUPPORTED_PATH":
@@ -1147,7 +1263,7 @@ function buildValidatedOutcome(
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
           requireDecisiveRefs(item.source_refs);
-          return reason(item.code, item.source_refs, trustedIds);
+          return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives: [],
       };

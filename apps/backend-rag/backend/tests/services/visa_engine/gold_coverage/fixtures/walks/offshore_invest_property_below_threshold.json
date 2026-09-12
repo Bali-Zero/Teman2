@@ -1,5 +1,5 @@
 {
-  "label": "offshore/retirement/property/age64",
+  "label": "offshore/invest/property/below_threshold",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -9,10 +9,8 @@
     "category",
     "trip_scope",
     "sponsor_category",
-    "retirement_basis",
+    "investment_vehicle",
     "secondhome_property_value_usd",
-    "secondhome_passive_income_usd",
-    "family_sponsor_confirmed",
     "stay_days",
     "review_gate"
   ],
@@ -36,7 +34,7 @@
     "immigration.overstay_days": { "status": "KNOWN", "value": 0 },
     "immigration.violation_history": { "status": "KNOWN", "value": [] },
     "immigration.renewal_paid": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.purposes": { "status": "KNOWN", "value": ["RETIREMENT"] },
+    "intent.purposes": { "status": "KNOWN", "value": ["SECOND_HOME"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "intent.entry_pattern": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
@@ -105,7 +103,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
+    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
@@ -121,11 +119,11 @@
     },
     "secondhome.qualifying_property_value_usd": {
       "status": "KNOWN",
-      "value": 1000000000
+      "value": 500000
     },
     "secondhome.passive_monthly_income_usd": {
-      "status": "KNOWN",
-      "value": 1000000000
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "process.application_channel": {
       "status": "UNKNOWN",

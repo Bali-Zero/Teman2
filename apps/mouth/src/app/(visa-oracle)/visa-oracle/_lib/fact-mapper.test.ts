@@ -230,7 +230,6 @@ describe("question registry -> wire coverage", () => {
     ["trip_scope", "multiple", "MULTI_PURPOSE_TRIP"],
     ["business_activity", "training", "ACTIVITY_BOUNDARY"],
     ["business_activity", "other", "ACTIVITY_BOUNDARY"],
-    ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
     ["diaspora_connection", "former_citizen", "ACTIVITY_BOUNDARY"],
     ["diaspora_documents", "passport", "ACTIVITY_BOUNDARY"],
     ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
@@ -267,6 +266,11 @@ describe("question registry -> wire coverage", () => {
     // off `secondhome.passive_monthly_income_usd`/`family.sponsor_confirmed`
     // alone, never `retirement_basis` itself. See fact-mapper.ts.
     ["retirement_basis", "family_sponsor"],
+    // Released (PR-D3, D3-3) — `property` and `undecided` now ask
+    // `family_sponsor_confirmed` too (flow.ts), so both are exactly as
+    // decidable as `family_sponsor` above, for the identical reason.
+    ["retirement_basis", "property"],
+    ["retirement_basis", "undecided"],
     // Engine-inert: no rule reads a work role (owner ruling, decision 6).
     // All five options are swept in `activity-boundary.test.ts`.
     ["work_role", "specialist"],
@@ -317,16 +321,54 @@ describe("AMBIGUOUS_SPONSOR — narrowed to unsure or a sponsor-dependent relati
     ).toContain("AMBIGUOUS_SPONSOR");
   });
 
-  it("guilt: STEPCHILD with a foreign (non-unsure) sponsor status still holds — el.e31d-stepchild-support is the one relation with a sponsor-dependent product", () => {
+  // Replaced (PR-D3, D3-4): the old proxy fired on the mere PRESENCE of
+  // `family_sponsor_status_code` for a STEPCHILD relation. It is now the
+  // direct question `family_stepchild_sponsor_permit_confirmed` — see
+  // `mapDisclosedReviewFlags` (fact-mapper.ts).
+  it("guilt: STEPCHILD whose sponsor's permit is answered 'no' holds — the pack has no rule to deny E31D on this fact", () => {
     expect(
       mapFacts({
         family_relation: "STEPCHILD",
-        family_sponsor_status_code: "E23",
+        family_stepchild_sponsor_permit_confirmed: "no",
       }).disclosed_review_flags,
     ).toContain("AMBIGUOUS_SPONSOR");
   });
 
-  it("innocence: a non-STEPCHILD relation with a resolved (non-unsure) foreign sponsor status releases — C1 reads no sponsor fact", () => {
+  it("guilt: STEPCHILD whose sponsor's permit is answered 'unsure' holds", () => {
+    expect(
+      mapFacts({
+        family_relation: "STEPCHILD",
+        family_stepchild_sponsor_permit_confirmed: "unsure",
+      }).disclosed_review_flags,
+    ).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("innocence: STEPCHILD whose sponsor's permit is answered 'yes' releases", () => {
+    expect(
+      mapFacts({
+        family_relation: "STEPCHILD",
+        family_stepchild_sponsor_permit_confirmed: "yes",
+      }).disclosed_review_flags,
+    ).not.toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  // Kills the mutant that re-adds the OLD D2 relation proxy alongside the
+  // new question (e.g. as an extra `||` arm) instead of replacing it: a
+  // foreign, non-unsure `family_sponsor_status_code` on a STEPCHILD relation
+  // is EXACTLY what the old proxy held on regardless of any other answer.
+  // With the permit explicitly confirmed 'yes', this must release — a
+  // reintroduced proxy would hold it and fail this assertion.
+  it("innocence: STEPCHILD with a foreign family_sponsor_status_code releases once the sponsor's permit is confirmed 'yes' — kills the old relation-proxy mutant", () => {
+    expect(
+      mapFacts({
+        family_relation: "STEPCHILD",
+        family_sponsor_status_code: "E23",
+        family_stepchild_sponsor_permit_confirmed: "yes",
+      }).disclosed_review_flags,
+    ).not.toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("innocence: a non-STEPCHILD relation whose sponsor's permit is answered 'no' releases — the question is STEPCHILD-only", () => {
     for (const relation of [
       "SPOUSE",
       "CHILD",
@@ -998,10 +1040,13 @@ describe("mapDisclosedReviewFlags — monotone abstention metadata", () => {
     });
   });
 
-  it("holds unsupported retirement property context for human review", () => {
-    expect(mapDisclosedReviewFlags({ retirement_basis: "property" })).toEqual([
-      "ACTIVITY_BOUNDARY",
-    ]);
+  // Released (PR-D3, D3-3): `property` now asks `family_sponsor_confirmed`
+  // too (flow.ts), so the bare `retirement_basis` answer alone no longer
+  // holds — see the ACTIVITY_BOUNDARY guilt/innocence table above.
+  it("releases a bare retirement property context — the basis alone no longer holds", () => {
+    expect(mapDisclosedReviewFlags({ retirement_basis: "property" })).toEqual(
+      [],
+    );
   });
 });
 

@@ -172,16 +172,18 @@ const WALKS: readonly WalkCase[] = [
     flags: [],
   },
   {
-    name: "retirement · property — HELD: §6 R3 measured the unflagged answer as a wrong NO_PATH",
+    name: "retirement · property — FREED (PR-D3, D3-3): family_sponsor_confirmed is now asked as a fallback, curing the §6 R3 defect this HELD",
     category: "retirement",
     tripScope: "single",
     branch: [
       ["sponsor_category", "NONE"],
       ["retirement_basis", "property"],
       ["secondhome_property_value_usd", "1200000"],
+      ["secondhome_passive_income_usd", "5000"],
+      ["family_sponsor_confirmed", "yes"],
       ["stay_days", "365"],
     ],
-    flags: ["ACTIVITY_BOUNDARY"],
+    flags: [],
   },
   {
     // NARROW-2 (owner ruling SHWEB-20260911, 2026-09-12): `el.e33f.
@@ -303,7 +305,7 @@ const WALKS: readonly WalkCase[] = [
     // asked at all); the Indonesian-sponsor STEPCHILD walk stays FREED —
     // see "innocence: STEPCHILD with an Indonesian sponsor" in
     // fact-mapper.test.ts.
-    name: "family · STEPCHILD, foreign sponsor — HELD (NARROW-1 ii): el.e31d-stepchild-support is sponsor-dependent",
+    name: "family · STEPCHILD, sponsor permit unresolved — HELD (D3-4, replaces NARROW-1 ii's relation proxy): el.e31d-stepchild-support is sponsor-dependent and no rule reads the sponsor's own permit",
     category: "family",
     tripScope: "single",
     branch: [
@@ -315,6 +317,7 @@ const WALKS: readonly WalkCase[] = [
       ["family_sponsor_permit_basis", "EXPERT"],
       ["family_stepchild_marriage_certificate_confirmed", "yes"],
       ["family_stepchild_birth_certificate_confirmed", "yes"],
+      ["family_stepchild_sponsor_permit_confirmed", "no"],
       ["family_sponsor_confirmed", "yes"],
       ["stay_days", "121"],
     ],
@@ -414,6 +417,15 @@ describe("ACTIVITY_BOUNDARY — the decision table itself", () => {
       // property` returns SUPPORTED_CANDIDATES [E33] — classifying `property`
       // as undecidable would delete an E33 the signed pack had proven.
       secondhome_basis:
+        "engine-inert routing label; the evidence carries the fact",
+      // D3-4 (PR-D3): raises AMBIGUOUS_SPONSOR directly from its own answer
+      // (`mapDisclosedReviewFlags`'s `stepchildSponsorPermitUnresolved`),
+      // never through this table.
+      family_stepchild_sponsor_permit_confirmed: "raises AMBIGUOUS_SPONSOR",
+      // D3-3 (PR-D3): same shape as `secondhome_basis` above — this only
+      // selects which evidence questions follow (`getCategoryQuestionIds`,
+      // flow.ts); the engine reads that evidence, never this label.
+      retirement_undecided_basis:
         "engine-inert routing label; the evidence carries the fact",
     };
     for (const question of Object.values(QUESTIONS)) {

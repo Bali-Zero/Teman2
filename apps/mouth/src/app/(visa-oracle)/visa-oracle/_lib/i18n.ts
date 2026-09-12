@@ -389,6 +389,12 @@ const en = {
     "The birth certificate should show the biological parent who is part of the mixed marriage.",
   "why.family_stepchild_birth_certificate_confirmed":
     "Birth-certificate evidence is sent as its own boolean decision fact.",
+  "q.family_stepchild_sponsor_permit_confirmed":
+    "Does your sponsor hold a valid KITAS/KITAP of their own?",
+  "q.family_stepchild_sponsor_permit_confirmed.hint":
+    "This asks about the sponsor's own stay permit, separate from the marriage and birth certificates above.",
+  "why.family_stepchild_sponsor_permit_confirmed":
+    "The signed rules for this route do not check the sponsor's own permit; this establishes that fact directly instead of leaving it assumed.",
   "q.family_sponsor_confirmed":
     "Has the family sponsor confirmed they will support the process?",
   "q.family_sponsor_confirmed.hint":
@@ -406,6 +412,16 @@ const en = {
   "q.retirement_basis.opt.undecided": "I have not chosen a basis",
   "why.retirement_basis":
     "There is no matching engine fact for this label. It only routes the next exact inputs.",
+  "q.retirement_undecided_basis": "Which of these can you document today?",
+  "q.retirement_undecided_basis.hint":
+    "Pick whichever basis you can support with evidence. If neither applies, say so — a person is not needed to answer that.",
+  "q.retirement_undecided_basis.opt.deposit_or_income":
+    "A bank deposit or documented passive income",
+  "q.retirement_undecided_basis.opt.family_sponsor":
+    "A confirmed family sponsor",
+  "q.retirement_undecided_basis.opt.still_unsure": "I still can't say",
+  "why.retirement_undecided_basis":
+    "There is no matching engine fact for this label either. It only routes the next exact inputs, same as the basis question above.",
   "q.secondhome_basis": "Which Second Home basis can you document today?",
   "q.secondhome_basis.hint":
     "Pick the one you can evidence now. Use Not sure rather than guessing.",
@@ -1212,6 +1228,12 @@ const id: Record<Keys, string> = {
     "Akta lahir sebaiknya menunjukkan orang tua kandung yang merupakan bagian dari pernikahan campuran.",
   "why.family_stepchild_birth_certificate_confirmed":
     "Bukti akta lahir dikirim sebagai fakta keputusan boolean tersendiri.",
+  "q.family_stepchild_sponsor_permit_confirmed":
+    "Apakah sponsor Anda memiliki KITAS/KITAP yang sah atas nama sendiri?",
+  "q.family_stepchild_sponsor_permit_confirmed.hint":
+    "Ini menanyakan izin tinggal sponsor sendiri, terpisah dari akta nikah dan akta lahir di atas.",
+  "why.family_stepchild_sponsor_permit_confirmed":
+    "Aturan yang telah disahkan untuk jalur ini tidak memeriksa izin tinggal sponsor sendiri; pertanyaan ini memastikan fakta tersebut secara langsung, bukan diasumsikan.",
   "q.family_sponsor_confirmed":
     "Apakah sponsor keluarga sudah mengonfirmasi dukungan proses?",
   "q.family_sponsor_confirmed.hint":
@@ -1229,6 +1251,18 @@ const id: Record<Keys, string> = {
   "q.retirement_basis.opt.undecided": "Saya belum memilih dasar",
   "why.retirement_basis":
     "Tidak ada fakta mesin yang cocok untuk label ini. Label hanya mengarahkan input persis berikutnya.",
+  "q.retirement_undecided_basis":
+    "Yang mana dari berikut yang dapat Anda buktikan saat ini?",
+  "q.retirement_undecided_basis.hint":
+    "Pilih dasar yang dapat Anda dukung dengan bukti. Jika tidak ada yang berlaku, sampaikan saja — tidak diperlukan peninjauan orang untuk itu.",
+  "q.retirement_undecided_basis.opt.deposit_or_income":
+    "Deposito bank atau penghasilan pasif yang terdokumentasi",
+  "q.retirement_undecided_basis.opt.family_sponsor":
+    "Sponsor keluarga yang dikonfirmasi",
+  "q.retirement_undecided_basis.opt.still_unsure":
+    "Saya masih belum bisa memastikan",
+  "why.retirement_undecided_basis":
+    "Tidak ada fakta mesin yang cocok untuk label ini juga. Hanya mengarahkan input persis berikutnya, sama seperti pertanyaan dasar di atas.",
   "q.secondhome_basis":
     "Dasar Second Home mana yang dapat Anda buktikan saat ini?",
   "q.secondhome_basis.hint":

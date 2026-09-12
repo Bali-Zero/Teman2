@@ -1,5 +1,5 @@
 {
-  "label": "offshore/retirement/property/age64",
+  "label": "offshore/retirement/undecided/age64/family_sponsor",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -10,7 +10,7 @@
     "trip_scope",
     "sponsor_category",
     "retirement_basis",
-    "secondhome_property_value_usd",
+    "retirement_undecided_basis",
     "secondhome_passive_income_usd",
     "family_sponsor_confirmed",
     "stay_days",
@@ -120,8 +120,8 @@
       "value": false
     },
     "secondhome.qualifying_property_value_usd": {
-      "status": "KNOWN",
-      "value": 1000000000
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "secondhome.passive_monthly_income_usd": {
       "status": "KNOWN",
