@@ -13,11 +13,19 @@ https://peraturan.bpk.go.id/Download/366884/2024pmkeuangan081.pdf):
           libur nasional, hari yang diliburkan untuk penyelenggaraan pemilihan umum, atau hari
           yang ditetapkan sebagai cuti bersama secara nasional."
 
-    Pasal 173 — SPT reporting: a SEPARATE provision, keyed to Pasal 171/172 and not to Pasal
+    Pasal 173 — SPT Masa reporting: a SEPARATE provision, keyed to Pasal 171/172 and not to Pasal
     94/100, carrying the identical hari-libur definition in its own ayat (2). Payment rules and
-    reporting rules therefore roll for the same reason under two different articles; this module
-    is the one implementation of both, and a caller does not have to know which article it is
-    under. Pasal 264 ayat (2)-(3) repeats the same template for oil-and-gas reporting.
+    monthly reporting rules therefore roll for the same reason under two different articles, and
+    this module is the one implementation of both. Pasal 264 ayat (2)-(3) repeats the template for
+    oil-and-gas reporting.
+
+WHAT THIS MODULE DOES NOT DECIDE: which obligations are entitled to the roll. That is the `roll`
+field of each catalog rule, and the articles above cover the monthly payment and SPT Masa rules —
+NOT every deadline in the catalog. The annual corporate return is a known open case: it sits under
+UU KUP art. 3, its catalog `legal_source` still ends in "(verify)", and Pasal 173 does not name it.
+Rolling it is therefore an unverified catalog entitlement, not something this module asserts; the
+catalog-source verification pass owns that question. An over-broad `roll` still only ever moves a
+date onto an open day, so it cannot produce a deadline nobody can meet.
 
 Two deliberate gaps, both of which under-roll (they can only leave a date earlier than the law
 allows, never later, so they never invent a deadline that has already passed):

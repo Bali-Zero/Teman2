@@ -5,9 +5,10 @@ Calendar facts used below, all 2026: 15 Feb is a Sunday; 16 Feb (cuti bersama Im
 are Idulfitri AND the weekend, 23-24 Mar are cuti bersama, 25 Mar is a Wednesday — the longest
 closed run in the decree. 17 Aug (Proklamasi Kemerdekaan) is a Monday. 9 Sep is a Wednesday.
 
-The 18 February 2026 case is not invented: DJP published exactly it (SPT Masa PPh Unifikasi for
-Masa Pajak Januari 2026 moves to 18 February 2026 because 15 Feb is a Sunday and 16-17 Feb are
-non-working days), so this file pins the engine against the authority's own worked example.
+The 18 February 2026 case is the PAYMENT/deposit deadline of Pasal 94 (the 15th of the following
+month), not a reporting deadline: Sun 15 Feb, then cuti bersama and Imlek, land it on Wed 18 Feb.
+The same month's SPT Masa is a different deadline (Pasal 171, the 20th) and does not move at all.
+The arithmetic below rests on the decreed dates, not on anyone's worked example.
 """
 
 from __future__ import annotations
@@ -58,7 +59,8 @@ class TestNextBusinessDay:
         assert next_business_day(date(2026, 9, 13)) == date(2026, 9, 14)
 
     def test_sunday_before_two_decreed_days_lands_on_wednesday(self) -> None:
-        # DJP's own published example: Sun 15 Feb -> Mon 16 (cuti bersama) -> Tue 17 (Imlek) -> Wed.
+        # Sun 15 Feb -> Mon 16 (cuti bersama Imlek) -> Tue 17 (Imlek) -> Wed 18. The old
+        # weekend-only roll stopped on the 16th, a day the tax system is closed.
         assert next_business_day(date(2026, 2, 15)) == date(2026, 2, 18)
 
     def test_friday_before_the_idulfitri_block_crosses_the_longest_closed_run(self) -> None:

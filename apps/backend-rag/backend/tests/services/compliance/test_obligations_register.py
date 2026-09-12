@@ -262,12 +262,15 @@ def test_horizon_start_is_inclusive_and_end_exclusive(catalog):
         due_dates(rule, PMA, date(2026, 11, 16), -1)
 
 
-def test_due_on_a_libur_nasional_moves_to_the_next_business_day(catalog):
-    # 2026-05 PPN is statutorily due Tue 30 Jun; the 2026-06 period is due Fri 31 Jul. Neither is
-    # decreed, so pick the one that is: pph21 for 2026-07 is due Mon 17 Aug, Independence Day.
-    assert due_dates(catalog["pph21_payment"], PMA, date(2026, 8, 1), 30) == [
-        ("2026-07", date(2026, 8, 18))
-    ]
+def test_due_on_a_libur_nasional_moves_to_the_next_business_day():
+    # No 2026 catalog date lands on a decreed WEEKDAY, so this case needs a synthetic rule: due on
+    # the 17th means Mon 2026-08-17, Proklamasi Kemerdekaan, a holiday that is not also a weekend.
+    rule = ObligationRule(
+        "synthetic_17", "n", "a", "s", False, (), DueRule("monthly", 17, None, 0, "none", "fiscal")
+    )
+    rolling = replace(rule, due=replace(rule.due, roll="next_business_day"))
+    assert due_dates(rule, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 17))]
+    assert due_dates(rolling, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 18))]
 
 
 def test_due_on_a_cuti_bersama_moves_to_the_next_business_day(catalog):
@@ -278,24 +281,22 @@ def test_due_on_a_cuti_bersama_moves_to_the_next_business_day(catalog):
 
 
 def test_due_on_a_weekend_skips_the_monday_holiday_too(catalog):
-    # Sun 2026-02-15 used to roll to Mon 16 Feb (cuti bersama Imlek) and stop there; 17 Feb is
-    # Imlek itself. This is DJP's own published example: the deadline lands on Wed 18 Feb 2026.
+    # The PPh 21 DEPOSIT deadline (Pasal 94: the 15th) for Masa Pajak 2026-01 is Sun 15 Feb. The
+    # old weekend-only roll stopped on Mon 16 Feb, which is cuti bersama Imlek; Tue 17 Feb is Imlek
+    # itself. Wed 18 Feb is the first day the deposit can actually be made.
     assert due_dates(catalog["pph21_payment"], PMA, date(2026, 2, 1), 28) == [
         ("2026-01", date(2026, 2, 18))
     ]
+    # The RETURN for the same month is a different deadline (Pasal 171: the 20th) and does not
+    # move: Fri 20 Feb 2026 is a business day. Conflating the two is the easy mistake here.
+    assert due_dates(catalog["spt_masa_pph21"], PMA, date(2026, 2, 1), 28) == [
+        ("2026-01", date(2026, 2, 20))
+    ]
 
 
-def test_roll_none_never_moves_even_on_a_holiday(catalog):
-    # Same statutory date, Mon 2026-08-17 (Proklamasi Kemerdekaan), under both rolls: the only
-    # difference is the roll field, so this isolates it from the calendar.
-    due = DueRule("monthly", 17, None, 0, "none", "fiscal")
-    stays = ObligationRule("stays", "n", "a", "s", False, (), due)
-    moves = ObligationRule(
-        "moves", "n", "a", "s", False, (), replace(due, roll="next_business_day")
-    )
-    assert due_dates(stays, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 17))]
-    assert due_dates(moves, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 18))]
-    # And in the catalog: BPJS Ketenagakerjaan is roll: none, so Sat 15 Aug stays Sat 15 Aug.
+def test_a_catalog_roll_none_rule_ignores_the_holiday_block_after_it(catalog):
+    # BPJS Ketenagakerjaan for 2026-07 is due Sat 15 Aug with roll: none. The next business day is
+    # Tue 18 Aug (Sun 16, then Independence Day on Mon 17), and none of that reaches this rule.
     assert due_dates(catalog["bpjs_ketenagakerjaan_monthly"], PMA, date(2026, 8, 1), 30) == [
         ("2026-07", date(2026, 8, 15))
     ]
@@ -312,14 +313,15 @@ def test_a_year_without_a_holiday_table_rolls_weekends_only_and_says_so(catalog)
 
 
 def test_the_holiday_gap_is_flagged_per_proposal_not_per_run(catalog):
-    # One horizon can straddle a decreed year and an undecreed one; each date answers for itself.
+    # One horizon straddles the decreed year and the undecreed one, so the flag cannot be a
+    # property of the run: 2026-11 is due inside 2026 and says nothing, 2026-12 lands in 2027.
     reasons = {
         (p.period_key, p.due_date): p.needs_review_reason
-        for p in propose([catalog["spt_masa_ppn"]], PMA, date(2027, 12, 1), 75)
+        for p in propose([catalog["spt_masa_ppn"]], PMA, date(2026, 12, 1), 75)
     }
     assert reasons == {
-        ("2027-11", date(2027, 12, 31)): "holiday calendar for 2027 not loaded",
-        ("2027-12", date(2028, 1, 31)): "holiday calendar for 2028 not loaded",
+        ("2026-11", date(2026, 12, 31)): None,
+        ("2026-12", date(2027, 2, 1)): "holiday calendar for 2027 not loaded",
     }
 
 
