@@ -3061,6 +3061,7 @@ def lint(
     source_path: str | None = None,
     measured_commits: int | None = None,
     brief_source_path: str | None = None,
+    today: datetime.date | None = None,
 ) -> tuple[int, list[str]]:
     """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind.
 
@@ -3072,7 +3073,12 @@ def lint(
     corrected 2026-08-27, was a cancelable per-file Σ|added−deleted| before
     the round-2 refuter fix), not the ceiling's pre-summed global net, so
     the two parameters are independent and neither substitutes for the
-    other."""
+    other.
+
+    `today` is the SAME seam `check_brief_not_at_deprecated_root` already
+    exposes, threaded one level up so an end-to-end test can pin which side of
+    a flip date it is asserting. Default None means the real UTC date, which is
+    what every CLI and CI caller gets."""
     if not pack_path.exists():
         return 2, [f"BLIND: evidence pack not found at {pack_path}"]
     try:
@@ -3153,7 +3159,7 @@ def lint(
     # judge a brief against the pack's constant, which is precisely the
     # blind spot this rule exists to close.
     brief_root_violations, brief_root_notice = check_brief_not_at_deprecated_root(
-        brief_source_path, repo_root
+        brief_source_path, repo_root, today=today
     )
     violations += brief_root_violations
     if brief_root_notice:
