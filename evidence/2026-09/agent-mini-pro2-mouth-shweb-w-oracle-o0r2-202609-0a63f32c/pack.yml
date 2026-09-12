@@ -18,7 +18,7 @@ plan_ref: >-
 lanes:
   - lane: o0r2-build
     role: build
-    seat: "claude-opus-5 — the seat the commits name: `git log --format='%(trailers:key=Co-Authored-By,valueonly)' 4cc1b03edc..HEAD`"
+    seat: "claude-opus-5 — the seat the commits name: `git log --format='%(trailers:key=Co-Authored-By,valueonly)' 7378c87fca..HEAD`"
   - lane: o0r2-review-codex
     role: review
     seat: "gpt-6-astra (codex exec --sandbox read-only, xhigh — see brief.yml adversarial_review for every round and verdict)"

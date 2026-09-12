@@ -144,12 +144,25 @@ acceptance:
     status: verified
     probe: "python3 scripts/check_adversarial_review.py --files research/visa/2026-09-11-oracle-final-window-spec.md research/visa/2026-09-11-review-reason-audit/README.md"
 pii: none
+supersession: >-
+  this branch supersedes PR #6295, whose head c2a85b6ced was gated
+  PASS-WITH-CONDITIONS. No content changed: the 12 non-evidence files are
+  blob-identical to that head, and brief.yml and pack.yml differ from it only by
+  the three re-pins this commit makes. The commits were replayed onto
+  origin/main 7378c87fca because the repository's off-limits pre-commit gate is
+  over-inclusive on merges BY DESIGN (it reads the raw staged list so a deletion
+  of a protected file cannot hide) and therefore refuses any merge of main that
+  carries apps/backend-rag/backend/prompts/zantara_core.py — a file this branch
+  never touched and inherits unchanged. The round head_sha values below
+  (8b947103b5, 9a85b97b84, 8b63ec5326, 6f8256d640) are the commits the refuters
+  actually read and are left unrewritten: they live on #6295's branch, which is
+  not deleted, and each is content-identical to its replayed twin here.
 adversarial_review_provenance: >-
   every round below is this session's record of a run for which this
   repository holds no transcript; it is provenance, not evidence, and the
   pack contract requires it to be recorded as such. What a reader can verify
   from the commits is the CHANGE each round produced — `git log
-  4cc1b03edc..HEAD` for rounds 1 and 4-6, and the README's appended
+  7378c87fca..HEAD` for rounds 1 and 4-6, and the README's appended
   "## Adversarial review" section for round 3.
 adversarial_review:
   - round: 1
@@ -179,7 +192,7 @@ adversarial_review:
       the round's findings are not reproduced here: this repository holds no
       record of their text, so nothing in it could evidence them. What the
       commits do show is that no change to the reviewed skill files followed
-      this round — `git diff 82d08445b3 3b2f5e09e9 --
+      this round — `git diff 82d08445b3 ac5021ae13 --
       .agents/skills/visaoracle` is empty.
   - round: 3
     refuter: kimi
