@@ -23,6 +23,7 @@ import asyncpg
 import pytest
 
 from backend.db.migration_base import split_migration_sql
+from backend.services.research_os.naga_persistence import _WRITE_INSTANT_RE
 from backend.tests.unit.research_os.research_os_reader_reference import (
     instant_sort_key,
     parse_instant,
@@ -152,24 +153,56 @@ async def test_calendar_boundaries_agree_with_r1(
 
 
 # ---------------------------------------------------------------------------
-# Non-ASCII digits: measured, not assumed. R1's `_INSTANT_RE` uses bare `\d`, which under
-# Python's default (non-ASCII) `re` flags matches any Unicode decimal-digit codepoint,
-# Arabic-Indic included -- so the REGEX stage admits this spelling. But `instant_sort_key`
-# then calls `datetime.fromisoformat`, which requires ASCII digits and raises
-# `ValueError: Invalid isoformat string: ...`. Measured directly against R1's reference
-# implementation before writing this test. SQL's `[0-9]` never matches these codepoints at
-# the regex stage, so it returns NULL. BOTH REJECT -- there is no domain divergence to
-# exclude or paper over here; this test pins that measured fact.
+# Non-ASCII digits. R1's `_INSTANT_RE` uses bare `\d`, which under Python's default
+# (non-ASCII) `re` flags matches any Unicode decimal-digit codepoint, Arabic-Indic included,
+# so the REGEX stage admits these spellings; SQL's POSIX `[0-9]` never matches them and
+# returns NULL. What happens next depends on WHERE the non-ASCII digit sits, and the two
+# cases below do NOT behave the same. An earlier version of this file measured only the
+# first and concluded "both reject, no domain divergence" -- that conclusion was FALSE for
+# the second case, which no test exercised. Found by the Kimi K3 council seat, re-measured
+# here before the words were changed.
+#
+#   (1) non-ASCII in the DATE (or clock): `instant_sort_key` reaches
+#       `datetime.fromisoformat`, which is ASCII-only, and raises. SQL NULLs. Both reject.
+#   (2) non-ASCII in the FRACTION ONLY: `fromisoformat` only ever sees the ASCII date and
+#       clock, so it does NOT raise; the fraction goes to `int()`, which DOES accept Unicode
+#       digits. R1's reference therefore returns a key while SQL returns NULL -- a real
+#       domain divergence on R1's surface, pinned here rather than papered over.
+#
+# R2 cannot cure (2) at its source: `_INSTANT_RE` lives in R1's reference module, outside
+# this window's writable perimeter. R2 fences it instead, at the only place it could reach
+# storage -- `naga_persistence._WRITE_INSTANT_RE` spells digits `[0-9]`, exactly as the key
+# does, so this slice can never write a row the key cannot index. The fence is asserted by
+# `test_naga_persistence_unit.py::test_validate_object_rejects_malformed_write_path_instants`
+# and by the last assertion below. The residual is reported to the staff room: a foreign
+# writer of `research_os_objects` (today only `consul_executor`) is NOT behind this fence.
 # ---------------------------------------------------------------------------
 
 NON_ASCII_DIGIT_INSTANT = "٢٠٢٦-٠٩-١١T١٠:٠٠:٠٠Z"
+NON_ASCII_FRACTION_INSTANT = "2026-09-11T10:00:00.١Z"
 
 
-async def test_non_ascii_digits_both_reject_no_divergence(db: asyncpg.Connection) -> None:
+async def test_non_ascii_digits_in_the_date_both_reject(db: asyncpg.Connection) -> None:
     sql_key = await _sql_key(db, NON_ASCII_DIGIT_INSTANT)
     assert sql_key is None
     with pytest.raises(ValueError):
         instant_sort_key(NON_ASCII_DIGIT_INSTANT)
+
+
+async def test_non_ascii_digits_in_the_fraction_diverge_and_the_writer_fences_it(
+    db: asyncpg.Connection,
+) -> None:
+    """The one measured divergence between R1's reference and the storage key, and its fence."""
+
+    sql_key = await _sql_key(db, NON_ASCII_FRACTION_INSTANT)
+    assert sql_key is None, "migration 312 uses POSIX [0-9] and must NULL this spelling"
+
+    # R1's reference does NOT reject it -- the divergence, stated as a measurement.
+    assert instant_sort_key(NON_ASCII_FRACTION_INSTANT) == "2026-09-11T10:00:00.100000Z"
+
+    # R2's write path is the fence: nothing this slice writes can carry that spelling.
+    assert _WRITE_INSTANT_RE.match(NON_ASCII_FRACTION_INSTANT) is None
+    assert _WRITE_INSTANT_RE.match("2026-09-11T10:00:00.1Z") is not None
 
 
 # ---------------------------------------------------------------------------

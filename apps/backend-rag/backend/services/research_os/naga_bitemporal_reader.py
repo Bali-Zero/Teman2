@@ -110,8 +110,16 @@ def instant_key(text: str) -> str | None:
     that is not a real calendar instant — 2026-02-30, a non-leap-year February 29th, hour 24,
     second 60, year 0000, month 13, day 00 all raise inside the underlying
     `datetime.fromisoformat`/`datetime.replace` construction, and Python's `\\d` is
-    Unicode-aware so a non-ASCII-digit spelling (e.g. Arabic-Indic) matches the regex but is
-    then rejected by `datetime.fromisoformat`'s own stricter ASCII-only parser. The full
+    Unicode-aware so a non-ASCII-digit spelling (e.g. Arabic-Indic) matches the regex. That
+    last one is rejected by `datetime.fromisoformat`'s ASCII-only parser ONLY when the Unicode
+    digit sits in the DATE or CLOCK. A Unicode digit in the FRACTION ALONE
+    (`2026-09-11T10:00:00.١Z`) never reaches `fromisoformat` -- it goes to `int()`, which
+    accepts it -- so this function returns a key while migration 312's POSIX `[0-9]` pattern
+    returns NULL for the same text. That divergence is R1's (`_INSTANT_RE` is mirrored from
+    R1's reference and R2 may not edit it); R2 fences it at the only path that could reach
+    storage, `naga_persistence._WRITE_INSTANT_RE`, which spells digits `[0-9]`. Measured and
+    pinned in `backend.tests.migrations.test_migration_312_instant_key_parity`
+    ::test_non_ascii_digits_in_the_fraction_diverge_and_the_writer_fences_it. The full
     measurement table lives in `test_naga_bitemporal_reader.py::TestInstantKeyDomain`.
     """
 

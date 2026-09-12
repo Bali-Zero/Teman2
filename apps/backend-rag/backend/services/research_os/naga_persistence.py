@@ -141,7 +141,17 @@ class AdmissionRow:
 #: (never lowercase `z` -- see "the lowercase-z measurement" in the module docstring), fraction
 #: 1-6 digits only when present (a 7th digit cannot match `(Z|\+00:00)` immediately after, so a
 #: longer fraction fails the whole pattern rather than being silently truncated).
-_WRITE_INSTANT_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|\+00:00)$")
+#:
+#: `[0-9]`, NEVER `\d`. Python's `\d` is Unicode-aware and matches Arabic-Indic and every other
+#: decimal-digit codepoint; migration 312's `research_os_instant_key` uses POSIX `[0-9]`, which
+#: does not. With `\d` here the writer ADMITTED an instant the storage key cannot index --
+#: measured, not reasoned: `2026-09-11T10:00:00.١Z` matched this pattern (the date and clock are
+#: ASCII, so `fromisoformat` never sees the Unicode digit; the fraction goes through `int()`,
+#: which accepts it), while `SELECT research_os_instant_key('2026-09-11T10:00:00.١Z')` returns
+#: NULL. Such a row would have been written byte-identical and then dropped from every D2 index
+#: predicate -- silently invisible to the reader, forever. The writer's domain must be a SUBSET
+#: of the key's domain, so the writer spells digits exactly the way the key does.
+_WRITE_INSTANT_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?(Z|\+00:00)$")
 
 #: `claim.py`'s own docstring: "the `_on`/`_at` suffix family in this spec is always a
 #: timestamp" -- confirmed against every `..._at` name in `primitives.py`'s

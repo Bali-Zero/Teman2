@@ -105,6 +105,13 @@ def test_validate_object_rejects_hash_mismatch() -> None:
         "2026-01-01T00:00:00.1234567Z",  # 7 fractional digits -- rule 5, literal text
         "2026-01-01T00:00:00+07:00",  # non-UTC offset -- never admitted by the core's own pattern
         "not-an-instant",
+        # Arabic-Indic digit in the FRACTION ONLY. The date and clock are ASCII, so
+        # `datetime.fromisoformat` never sees the Unicode codepoint and does not raise, and the
+        # fraction reaches `int()`, which accepts it -- this spelling therefore survived every
+        # other guard. Migration 312's `research_os_instant_key` uses POSIX `[0-9]` and returns
+        # NULL for it, so a written row would be invisible to both D2 indexes forever. The writer
+        # must refuse what the storage key cannot index; this row is that fence.
+        "2026-01-01T00:00:00.\u0661Z",
     ],
 )
 def test_validate_object_rejects_malformed_write_path_instants(spelling: str) -> None:
