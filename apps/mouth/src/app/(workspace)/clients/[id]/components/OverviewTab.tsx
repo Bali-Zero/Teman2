@@ -303,7 +303,7 @@ export function OverviewTab({
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
                       style={{
                         background: "rgba(59,130,246,0.12)",
-                        color: "#60a5fa",
+                        color: "var(--state-info)",
                         border: "1px solid rgba(59,130,246,0.25)",
                       }}
                       title={`Call ${client.phone}`}
