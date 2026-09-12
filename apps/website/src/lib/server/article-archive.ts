@@ -97,6 +97,24 @@ async function canonicalArchiveRoot(): Promise<{
   }
 }
 
+/** Runs `fn` over `items` with at most `limit` in flight, preserving order. */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      for (let i = next++; i < items.length; i = next++) {
+        out[i] = await fn(items[i]);
+      }
+    }),
+  );
+  return out;
+}
+
 async function readArchiveFile(
   root: string,
   canonicalRoot: string,
@@ -260,7 +278,15 @@ export async function listAuthoredEnglishArticles(): Promise<
     return articleArchiveMemo.entries;
   }
 
-  const entries: AuthoredArchiveEntry[] = [];
+  // Selection stays SEQUENTIAL and in snapshot order, because dedup keeps the
+  // FIRST occurrence of an identity and a failed read still consumes it — the
+  // same two rules as before. Only the reads move.
+  const candidates: {
+    category: string;
+    folder: string;
+    name: string;
+    slug: string;
+  }[] = [];
   const identities = new Set<string>();
   for (const { category, folder, files } of snapshots) {
     for (const entry of files) {
@@ -274,16 +300,39 @@ export async function listAuthoredEnglishArticles(): Promise<
       const identity = `${category}/${slug}`;
       if (identities.has(identity)) continue;
       identities.add(identity);
-      const file = await readArchiveFile(
-        archive.root,
-        archive.canonicalRoot,
-        folder,
-        entry.name,
-      );
-      if (file.status !== "ready") continue;
-      const article = decodeAuthoredArticleSource(file.source, category, slug);
-      if (article) entries.push({ category, slug, ...article });
+      candidates.push({ category, folder, name: entry.name, slug });
     }
+  }
+
+  // Each file costs realpath + stat + readFile. Awaited one file at a time
+  // that is ~2400 sequential round-trips for ~800 articles: measured 246ms,
+  // against 34ms at this concurrency — paid on every cold start by /news and
+  // /sitemap.xml. Results are consumed in candidate order, so the output is
+  // byte-identical to the sequential version.
+  const reads = await mapWithConcurrency(candidates, 16, (candidate) =>
+    readArchiveFile(
+      archive.root,
+      archive.canonicalRoot,
+      candidate.folder,
+      candidate.name,
+    ),
+  );
+
+  const entries: AuthoredArchiveEntry[] = [];
+  for (const [index, candidate] of candidates.entries()) {
+    const file = reads[index];
+    if (file.status !== "ready") continue;
+    const article = decodeAuthoredArticleSource(
+      file.source,
+      candidate.category,
+      candidate.slug,
+    );
+    if (article)
+      entries.push({
+        category: candidate.category,
+        slug: candidate.slug,
+        ...article,
+      });
   }
   articleArchiveMemo = { fingerprint, cachedAt: now, entries };
   return entries;
