@@ -412,8 +412,15 @@ function reasonMessage(code: string): LocalizedText {
 // the generic sentence) whenever the facts do not actually show a
 // below-threshold Second Home basis, so a future cause of this same code
 // is never mis-attributed to a threshold it did not fail.
-const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
-const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
+// Exported so `engine-adapter.test.ts` can pin these against the signed
+// pack's own `el.e33.property-basis` / `el.e33.deposit-basis` `gte` values
+// (same technique as fact-mapper.test.ts's "AMBIGUOUS_SPONSOR relation
+// proxy tracks the signed pack") — a second copy of a number the pack owns
+// is a silent-drift risk with a seq-21 threshold revision already in
+// preparation, and a wrong VERDICT is caught by other tests while a stale
+// NUMBER INSIDE A SENTENCE is not.
+export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
+export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
 
 function usd(value: number, locale: "en-US" | "id-ID"): string {
   return `USD ${value.toLocaleString(locale)}`;

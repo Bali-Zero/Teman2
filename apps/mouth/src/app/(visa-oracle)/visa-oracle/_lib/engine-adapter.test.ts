@@ -4,6 +4,8 @@ import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import {
   REVIEW_REASON_COPY,
+  SECOND_HOME_DEPOSIT_THRESHOLD_USD,
+  SECOND_HOME_PROPERTY_THRESHOLD_USD,
   SUPPORT_REASON_COPY,
   buildEngineOutcome,
 } from "./engine-adapter";
@@ -642,6 +644,72 @@ describe("support reasons are sentences, not machine codes", () => {
     }
     throw new Error(`${ruleId} is absent from the highest-sequence pack`);
   }
+
+  /**
+   * Walks a rule's `when` tree (the `all`/`args` structure, never regexed
+   * off the raw JSON text) looking for a `{ op: "gte", fact, value }` node
+   * on the named fact, at any nesting depth — `el.e33e.retirement` nests its
+   * deposit-trio conjuncts inside an inner `all`, so a top-level-only walk
+   * would miss it for that rule even though it happens not to be needed
+   * here.
+   */
+  function findGteValue(node: unknown, fact: string): number | undefined {
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = findGteValue(item, fact);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    }
+    if (node === null || typeof node !== "object") return undefined;
+    const record = node as Record<string, unknown>;
+    if (
+      record.op === "gte" &&
+      record.fact === fact &&
+      typeof record.value === "number"
+    ) {
+      return record.value;
+    }
+    if (Array.isArray(record.args)) {
+      return findGteValue(record.args, fact);
+    }
+    return undefined;
+  }
+
+  function gteThresholdInPack(ruleId: string, fact: string): number {
+    const rule = (highestSequencePack().rules ?? []).find(
+      (r) => r.rule_id === ruleId,
+    );
+    if (!rule) {
+      throw new Error(`${ruleId} is absent from the highest-sequence pack`);
+    }
+    const value = findGteValue(rule.when, fact);
+    if (value === undefined) {
+      throw new Error(
+        `no gte(${fact}) node found in ${ruleId}'s when-tree — the rule's shape changed`,
+      );
+    }
+    return value;
+  }
+
+  // D3-3 gate finding (owner escalation, 2026-09-13): `secondHomeBelow
+  // ThresholdReason` (engine-adapter.ts) quotes these two constants to a
+  // real applicant as a legal requirement, in both languages. They are a
+  // SECOND COPY of a number the signed pack owns, with nothing tying them
+  // together — and a seq-21 pack revision naming Second Home thresholds is
+  // already in preparation. A wrong VERDICT is caught elsewhere (the
+  // interview walks); a stale NUMBER INSIDE A SENTENCE is caught only here.
+  it("SECOND_HOME_PROPERTY_THRESHOLD_USD and SECOND_HOME_DEPOSIT_THRESHOLD_USD track the signed pack's el.e33.property-basis / el.e33.deposit-basis gte thresholds", () => {
+    expect(SECOND_HOME_PROPERTY_THRESHOLD_USD).toBe(
+      gteThresholdInPack(
+        "el.e33.property-basis",
+        "secondhome.qualifying_property_value_usd",
+      ),
+    );
+    expect(SECOND_HOME_DEPOSIT_THRESHOLD_USD).toBe(
+      gteThresholdInPack("el.e33.deposit-basis", "secondhome.bank_deposit_usd"),
+    );
+  });
 
   function firstNoPathReason(code: string, facts?: OracleFacts) {
     const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
