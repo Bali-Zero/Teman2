@@ -1,0 +1,62 @@
+task_id: kita-w2c-ocr-polling
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: e83615c7f7b7986b153833190f74e7d5514d3ee3 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 457 lines over 6 files (305 added, 152 deleted).
+# No hot-zone path, no PII path, no ground-truth path.
+objective: >-
+  Kita pruning wave 2, PR-C: dedupe the OCR-result polling loop copied four times under
+  apps/mouth/src/app/(workspace)/clients/[id]/components/ (PassportCard, VisaCard, FamilyTab's
+  FamilyMemberUploadButton, CompanyDocUpload) into one hook, apps/mouth/src/hooks/useOcrPolling.ts,
+  with no observable behaviour change at any of the four call sites.
+constraints:
+  - >-
+    Same endpoint (/api/crm/clients/{clientId}/ocr-status), same initial delay (2000ms), same
+    poll cadence (3000ms) and same maxAttempts (10) at all four call sites — none of these
+    genuinely differed across the four copies, so none became a hook option.
+  - >-
+    Three genuine behavioural differences between the four copies were preserved as explicit
+    hook options rather than normalized away: VisaCard's original copy never guarded against
+    firing state after unmount (no abort ref, no cleanup effect) — reproduced via
+    cleanupOnUnmount: false; CompanyDocUpload's original copy did not call its onUploaded
+    callback on the error path — reproduced via callOnDoneOnError: false; CompanyDocUpload's
+    onUploaded is optional and fire-and-forget (not awaited) — reproduced via awaitOnDone: false.
+  - >-
+    No new dependency. No change to apps/backend-rag, zantara_core.py, fly.toml or any .env*
+    file. No client PII in this pack, in the PR body or in any log.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+  tokens: 300000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file,
+      including the new useOcrPolling hook test (polls at the interval, stops on terminal
+      status, stops scheduling after unmount, surfaces the error path both with and without
+      callOnDoneOnError).
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+assumptions:
+  - text: >-
+      The four copies' endpoint, initial delay, poll interval and maxAttempts were byte-for-byte
+      identical, so those four values did not need to become hook options.
+    status: verified
+    probe: >-
+      grep -n "ocr-status\|setTimeout(poll\|maxAttempts\|attempts >= " "apps/mouth/src/app/(workspace)/clients/[id]/components/PassportCard.tsx"
+      "apps/mouth/src/app/(workspace)/clients/[id]/components/VisaCard.tsx"
+      "apps/mouth/src/app/(workspace)/clients/[id]/components/FamilyTab.tsx"
+      "apps/mouth/src/app/(workspace)/clients/[id]/components/company/CompanyDocUpload.tsx"
+  - text: >-
+      VisaCard's original pollOcrStatus had no ocrAbortedRef/ocrTimerRef and no unmount cleanup
+      effect, unlike the other three copies.
+    status: verified
+    probe: >-
+      git show origin/main:"apps/mouth/src/app/(workspace)/clients/[id]/components/VisaCard.tsx"
+      | grep -n "ocrAbortedRef\|ocrTimerRef\|useEffect"
