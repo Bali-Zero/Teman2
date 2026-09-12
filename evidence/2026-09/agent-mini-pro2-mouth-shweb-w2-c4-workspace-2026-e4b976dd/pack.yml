@@ -1,0 +1,284 @@
+# Canonical pack for W2-C4 — same content as brief.yml beside it, at the path
+# scripts/ci/evidence_paths.py resolves for this branch (NOT the deprecated root).
+# Evidence Pack — SHWEB-20260911 / W2-C4 (the internal-chunk hole, and the guard's wiring)
+gear: 3 # floor from scripts/evidence_pack_lint.py --print-floor = 3, --print-floor-source = size
+gear_floor_note: >-
+  The floor is SIZE, and size here is an artefact of three file MOVES: the net change is 146 lines,
+  but moving a 1055-, a 798- and a 324-line client page out from under its route counts as 2,351
+  added and 2,205 deleted. Declared so the gear is not read as a risk signal it is not.
+task_id: shweb-w2-c4-workspace-20260912
+mandate_id: SHWEB-20260911/W2-C4
+colour: BLUE
+l_level: L2
+host: Mini-Pro2 (nuzantara)
+worktree: .worktrees/mouth-shweb-w2-c4-workspace-20260912
+branch: agent/mini-pro2/mouth/shweb-w2-c4-workspace-20260912
+base_sha: 1e30c8255553200cb97aa2dc24d89864172e8022 # pragma: allowlist secret - public Git commit ID
+opened_at: "2026-09-12T13:40Z"
+
+predecessor: >-
+  #6277 (merged 7378c87fca, SERVED) made the exclusions structural in the public HTML. #6313
+  (merged 51f95bbd60, SERVED) got the roster out of the public client bundle. While proving that
+  SERVED, this session measured a hole neither had closed and reported it instead of filing it as
+  done — which is why this PR exists.
+
+objective: >-
+  No chunk of the build carries an excluded roster member, internal routes included; and the guard
+  that proves it runs on every build instead of sitting in the repo unexecuted.
+
+brief_ref: evidence/brief.yml # the STAGING name the validator resolves against # the STAGING path the validator resolves against, never the per-PR one
+pii_scan: clean
+pii_scan_note: >-
+  The only personal data is the staff roster. This diff MOVES two tables off the client and derives
+  one of them from the roster; it adds no record, no name and no portrait path. The excluded people
+  are named only in the guard's regex and in assertions proving their absence.
+
+the_hole:
+  what: >-
+    Three (workspace) pages were "use client" and each held a hardcoded staff table: a photo map
+    keyed by email prefix (team-management) and a tax-consultant dropdown of email + display name
+    (lkpm, and clients/[id] via components/TaxTab.tsx). A client module's constants ship to the
+    browser, so the names sat in three route chunks.
+  why_it_was_missed: >-
+    Because "internal" was treated as sufficient. The pages ARE behind auth — and the CHUNKS are
+    not. A Next static asset is served from the public CDN path with no session, so an anonymous
+    `curl https://balizero.com/_next/static/chunks/app/(workspace)/lkpm/page-13cbbb4d6ca5effb.js`
+    returned HTTP 200, 24,724 bytes, and both `faisha` and `Faisha`. The same held for
+    team-management. #6313's pack and PR body called those chunks an "authenticated internal
+    surface"; that sentence was mine and it was wrong, which is how this was found.
+
+scope:
+  - apps/mouth/src/lib/workspace/roster-directory.ts # new: SERVER tables — photo map derived, tax list moved
+  - apps/mouth/src/app/(workspace)/lkpm/page.tsx # now a server wrapper
+  - apps/mouth/src/app/(workspace)/lkpm/LkpmBatchClient.tsx # the client page, moved out; takes the list as a prop
+  - apps/mouth/src/app/(workspace)/team-management/page.tsx # now a server wrapper
+  - apps/mouth/src/app/(workspace)/team-management/TeamManagementClient.tsx # moved out; takes the photo map as a prop
+  - apps/mouth/src/app/(workspace)/clients/[id]/page.tsx # now a server wrapper
+  - apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx # moved out; threads the list to TaxTab
+  - apps/mouth/src/app/(workspace)/clients/[id]/components/TaxTab.tsx # takes the list as a prop, incl. its TaxConsultantSelector
+  - apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs # tightened: scans EVERY chunk, allowlist pinned empty
+  - apps/mouth/package.json # scripts.build only — the guard now runs on every build
+  - apps/mouth/src/lib/client-roster-boundary.test.ts # the new server module added to the roster graph
+  - apps/mouth/src/app/v2/_components/SocialProof.tsx # one stale comment, declared
+
+constraints:
+  - >-
+    apps/mouth/src/data/team-roster.ts is FROZEN this time and has NO hunk — verified: git status
+    reports it unmodified and its sha256 is still 1ff1ead1…26aa1.
+  - >-
+    package.json: scripts.build ONLY, one line. No dependency added, removed or moved.
+    package-lock.json is untouched — git status reports no lockfile at all.
+  - Every other path #6277 forbade stays forbidden and none appears in the diff.
+
+decisions:
+  - >-
+    The photo map is DERIVED from the roster. Measured against the hand-written map it replaces: 14
+    entries identical, 0 disagreeing, 2 email aliases the roster cannot express (ari.firda,
+    dewa.ayu — kept explicitly), and 4 people who have a roster portrait but were MISSING from the
+    map (zainal, heru, ruslana, vino). Those four now render their photo on the internal directory
+    instead of a blank. That is a consequence of having one source of truth, and it is declared
+    rather than discovered later.
+  - >-
+    The tax-consultant list is MOVED but NOT derived, and this is the load-bearing judgement of the
+    PR. Its `value`s are constrained by a backend CHECK (migration 093) and the ROSTER DISAGREES
+    with two of them: the roster holds `faysha.tax@…` (with a Y) where the constraint holds
+    `faisha.tax@…`, and `tax@balizero.com` where the constraint holds `veronika.tax@…`. Deriving
+    would have silently changed what this form submits and broken the constraint. So the five
+    values are preserved byte-for-byte and only moved off the client — and the disagreement itself
+    is raised as a finding below, because one of the two records is wrong and which one is the
+    owner's call.
+
+acceptance:
+  - text: WHEN the app is built, THEN no chunk at all — public, internal or shared — shall contain an excluded name.
+    probe: "npm run build; grep -rli over every .js in .next/static/chunks"
+    status: PASS
+  - text: WHEN anyone runs `npm run build`, THEN the guard shall run as part of it, and a reachable regression shall fail the build.
+    probe: "the build log shows ROSTER_CHUNK_ASSERT; and a mutant putting the constant back in a client file, rendered, exits 1"
+    status: PASS
+  - text: WHEN the internal pages render, THEN nothing shall be lost — the photo map covers every key it covered before, and the tax values are byte-identical.
+    probe: "npx tsx printing the derived map for all 16 former keys; diff of the five tax values against origin/main"
+    status: PASS
+  - text: WHEN the roster SSOT is hashed, THEN it shall be untouched — frozen with no hunk this time.
+    probe: "git status; shasum -a 256"
+    status: PASS
+  - text: WHEN the merged commit is promoted, THEN production's chunks shall carry neither name.
+    probe: "curl every chunk referenced by the workspace and public routes on the served commit"
+    status: pending — the only item that cannot close before the merge lands
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    what: the server module, the three wrappers, the prop plumbing, the guard, the wiring
+  - lane: review-refuter
+    role: review
+    seat: gemini-3.1-pro
+    what: the changed hunks, out of the contribution chain
+  - lane: review-second-reader
+    role: review
+    seat: kimi-code/k3
+    what: the same, independently
+
+council_run: journal.jsonl
+
+dissent:
+  - seat: gemini-3.1-pro AND kimi-code/k3 (independently, and I had reached it first by measuring)
+    objection: >-
+      BLOCKER — passing the tables as SERVER props serialises them into the RSC flight payload
+      inside the HTML, so the fix merely moves the names from a JS chunk into a served document.
+      Gemini added that the guard is blind to that surface entirely.
+    status: CONFIRMED
+    disposition: >-
+      TRUE, and it was the reason this PR stopped before opening rather than shipping. Measured on
+      the built server: an anonymous GET /lkpm returned 200 with
+      `"value":"faisha.tax@balizero.com","label":"Faisha"` in the HTML. The ROOT CAUSE turned out to
+      be older and larger than the tables: src/proxy.ts keeps an INTERNAL_ROUTES list that redirects
+      workspace pages off the public domain, and /lkpm was the only one missing from it — measured
+      on production, /team-management and /clients answered 301 while /lkpm answered 200 with
+      48,529 bytes. Ruled option (A) by the imperator: /lkpm added to INTERNAL_ROUTES, one array
+      element. After it, every anonymous public-host variant of /lkpm — plain, RSC header,
+      prefetch header, ?_rsc= — answers 301, and the public response is 30 bytes with 0 names. Two
+      tests pin it and the mutant that removes the entry turns one red. The guard's blindness to
+      server payloads is left in place ON PURPOSE and stated in its own header: that surface is
+      R-A, escalated as its own window.
+  - seat: gemini-3.1-pro
+    objection: >-
+      BLOCKER — the <Image src> call still uses the one-argument getTeamPhoto, a type hole that
+      breaks the build. And MAJOR — ClientDetailClient calls useSearchParams, which needs a
+      <Suspense> boundary once it sits under a server wrapper.
+    status: RETRACTED
+    disposition: >-
+      Neither reproduces. The call site was updated in the same change — the seat was reading a
+      truncated hunk — and it is now a single hoisted call per member with the non-null assertion
+      gone, which was Kimi's suggestion. `npm run typecheck` exits 0, and a missing required
+      argument could not survive that. On Suspense: the build emits no such warning and
+      kita.balizero.com/clients/1 answers 200 with no error digest in the document.
+  - seat: kimi-code/k3
+    objection: >-
+      MAJOR — the narrative "no public asset carries these names" is overstated while the portraits
+      sit in public/: `curl /static/team/sahira.jpg` returns 200 and the URL is the name, and the
+      guard only walks .next/static/chunks so it cannot see the one surface where the names
+      demonstrably still are.
+    status: CONFIRMED
+    disposition: >-
+      Right on both halves. The guard now scans public/ by filename too, and the two portraits are
+      listed in ACCEPTED_PUBLIC_FILES with the reason — so the exposure is a decision that a reader
+      can see, and a third such portrait fails the build (probed). The claim in the body is
+      corrected to say what is actually true rather than what sounded finished.
+  - seat: kimi-code/k3
+    objection: >-
+      MINOR/NIT — the derivation assumes slug == email prefix, which this very file disproves; the
+      [id] wrapper's comment contradicts its code; the required-prop blast radius is asserted, not
+      shown.
+    status: CONFIRMED
+    disposition: >-
+      All three taken. The slug assumption is now pinned by a test that keeps the 16 historical map
+      keys and both aliases — measured, six roster entries do have slug != email prefix, and the
+      four people the derivation gains were verified to have slug == prefix so they really do render.
+      The comment is reworded to say it forwards no ROUTE PARAMS but does hold the consultant table.
+      And the blast radius is shown rather than asserted: `npm run typecheck` exits 0 over the whole
+      app, which a missing required prop cannot survive.
+
+debt_out_of_scope:
+  - >-
+    The roster/backend email disagreement named above (faysha vs faisha; tax@ vs veronika.tax@).
+    Not a presentation matter: one record is wrong and correcting either one has consequences
+    outside this PR. Raised for the owner.
+  - >-
+    public/static/team/faisha.jpg and sahira.jpg remain directly addressable on the public origin.
+    Pre-existing, raised during #6277, already with the owner. No page links them.
+
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      GO, with hardening: the chunk walker matched only `.js` so an `.mjs`/`.cjs` chunk would be
+      skipped in silence; ACCEPTED_PUBLIC_FILES compared case-sensitively, so a `Faisha.jpg` on a
+      case-sensitive filesystem would fail the build as unexpected while being the declared file;
+      FORBIDDEN is a closed enumeration with no pointer to the exclusion list it must track; and
+      `const TAX_CONSULTANTS = taxConsultants` re-introduced the very identifier that used to hold
+      the leaked table.
+    status: CONFIRMED
+    disposition: >-
+      All four taken. The walker matches /\.[cm]?js$/; the accepted list is compared lowercased on
+      both sides; FORBIDDEN carries a comment naming the two constants in team-public-listing.ts it
+      has to stay in step with, because a person added to the exclusion and not here is a person
+      this guard will not look for and it will pass in silence; and the alias is gone, the prop used
+      directly. The seat also independently confirmed the things this PR most needed a second pair
+      of eyes on: that the RSC payload no longer matters once the route 301s, that the derived photo
+      map loses nothing and gains four, and that moving the tax list rather than deriving it was the
+      right call.
+
+receipts:
+  - claim: "THE C4 BITES — every chunk of the build is clean, internal routes included"
+    cmd: "npm run build; then grep -rli 'faisha|sahira' over every .js under .next/static/chunks"
+    result: "530 chunks, 0 carrying either name. Before: 3 — clients/[id], lkpm and team-management route chunks."
+    exit: 0
+    ts: "2026-09-12T14:02:00Z"
+    seat: claude-opus-5
+  - claim: "the guard now runs as part of every build, and it can fail"
+    cmd: "npm run build (scripts.build ends with the guard); then four guilt probes — a planted public chunk, a planted (workspace) chunk, an empty chunk dir, and a reachable constant put back in a client file"
+    result: "build log carries ROSTER_CHUNK_ASSERT OK; planted public chunk exit 1; planted INTERNAL chunk exit 1 (it used to be allowed); empty scan exit 1; the reachable client-side regression fails the BUILD with exit 1"
+    exit: 0
+    ts: "2026-09-12T14:05:00Z"
+    seat: claude-opus-5
+  - claim: "the accepted public exposure is now a declaration, not an omission"
+    cmd: "the guard also walks public/ by filename against ACCEPTED_PUBLIC_FILES; probe: copy a third portrait named after an excluded person"
+    result: "1,526 public files scanned, 2 accepted by declaration (static/team/faisha.jpg, static/team/sahira.jpg); a third one exits 1 naming the file"
+    exit: 0
+    ts: "2026-09-12T14:06:00Z"
+    seat: claude-opus-5
+  - claim: "THE RULING'S MEASUREMENT — /lkpm now leaves the public domain like its siblings"
+    cmd: "local production build; anonymous curl on Host: balizero.com for /lkpm, /team-management, /clients, plus the RSC and prefetch headers and ?_rsc=; then the same on Host: kita.balizero.com"
+    result: "public /lkpm 301 -> https://kita.balizero.com/lkpm (as do /team-management and /clients); every RSC variant also 301; the public response is 30 bytes with 0 names, where before this change it was 48,529 bytes carrying faisha x2. kita /lkpm still 200."
+    exit: 0
+    ts: "2026-09-12T14:12:00Z"
+    seat: claude-opus-5
+  - claim: "package-lock.json is byte-identical to main and absent from the changeset; proxy.ts is one array element"
+    cmd: "shasum -a 256 on both revisions of package-lock.json; git status for lockfiles; git diff --numstat on src/proxy.ts"
+    result: "both 0952ade18fe70ce7ebfd1a2314ae7c196e23adc01a111c251e96a6a95afbbc1b; no lockfile in the changeset; proxy.ts +1/-0"
+    exit: 0
+    ts: "2026-09-12T14:15:00Z"
+    seat: claude-opus-5
+  - claim: "nothing is lost on the internal pages, and the tax values are byte-identical"
+    cmd: "npx tsx printing the derived photo map; vitest src/lib/workspace/roster-directory.test.ts pinning the 16 historical keys and forbidding derivation of the tax list"
+    result: "all 16 former keys resolve, 20 entries total (the 4 additions are people with a roster portrait the hand-written map omitted); the five tax values match origin/main exactly, same order"
+    exit: 0
+    ts: "2026-09-12T14:08:00Z"
+    seat: claude-opus-5
+  - claim: "the repo checks are green"
+    cmd: "npx vitest --run (the eight suites touching this change); npm run typecheck; npx prettier --check"
+    result: "Test Files 8 passed, Tests 145 passed (145); typecheck exit 0; prettier clean"
+    exit: 0
+    ts: "2026-09-12T14:18:00Z"
+    seat: claude-opus-5
+
+residuals: # the imperator's R-A and R-B, declared and NOT fixed here
+  - id: R-A
+    what: >-
+      The workspace has no SERVER-side session gate: (workspace)/layout.tsx is "use client" and
+      gates with GateScreen after the payload has already been sent. So any server-rendered payload
+      of a workspace route is readable by an anonymous request that reaches the route — which on the
+      public domain it no longer can (301), but on the app domain it can.
+    status: >-
+      Escalated by the imperator to Zero as its own window. NOT fixed here by order, and the guard
+      says so in its own header rather than only in this pack: extending it to that surface before
+      the decision would mean writing an allowlist that encodes the thing under review.
+  - id: R-B
+    what: >-
+      public/static/team/faisha.jpg and sahira.jpg stay fetchable by direct URL — measured 200,
+      66,303 and 69,448 bytes, and the URL itself is the name. No page links them.
+    status: >-
+      An explicit decision pending Zero, now encoded as ACCEPTED_PUBLIC_FILES in the guard so a
+      THIRD such portrait fails the build instead of quietly joining them.
+  - id: R-C
+    what: >-
+      The roster's own emails disagree with the backend CHECK the tax dropdown submits: roster
+      faysha.tax@… vs constraint faisha.tax@…, and roster tax@balizero.com vs constraint
+      veronika.tax@…. One of the two records is wrong.
+    status: >-
+      Raised for the owner. The list is moved, not derived, precisely so this PR does not silently
+      pick a side; roster-directory.test.ts pins both spellings so a later "tidy-up" into a
+      derivation fails.
+
+spend:
+  wall_clock_hours: 0.9
+  adversarial_rounds: 1

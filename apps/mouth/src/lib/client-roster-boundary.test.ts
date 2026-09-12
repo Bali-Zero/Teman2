@@ -51,6 +51,11 @@ const ROSTER_GRAPH_MODULES = [
   "lib/team-public-listing",
   "socialProofRoster",
   "book-team",
+  // The workspace directory module: it reads the roster to build the internal
+  // photo map, so a "use client" page importing it would put the records back in
+  // that route's chunk — exactly the defect the module exists to fix, and the
+  // reason the three workspace pages now have server wrappers.
+  "workspace/roster-directory",
 ];
 
 /**
@@ -164,6 +169,7 @@ describe("the roster does not cross the client boundary", () => {
       'import { publicRoster } from "@/lib/team-public-listing";',
       'import { socialProofRoster } from "./socialProofRoster";',
       'import { bookTeamMembers } from "./book-team";',
+      'import { teamPhotoMap } from "@/lib/workspace/roster-directory";',
     ]) {
       expect(importsRosterGraph(src), src).not.toEqual([]);
     }

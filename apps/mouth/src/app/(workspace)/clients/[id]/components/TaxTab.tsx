@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, memo, useEffect } from "react";
+import type { TaxConsultantOption } from "@/lib/workspace/roster-directory";
 import {
   User,
   Building2,
@@ -24,14 +25,12 @@ import { AiSummaryCard } from "./AiSummaryCard";
 // ============================================
 // TAX CONSULTANT DROPDOWN (Bali Zero tax team)
 // ============================================
-// 5 allowed values, kept in sync with backend migration 093 CHECK constraint.
-const TAX_CONSULTANTS: { value: string; label: string }[] = [
-  { value: "veronika.tax@balizero.com", label: "Veronika" },
-  { value: "kadek.tax@balizero.com", label: "Kadek" },
-  { value: "dewaayu.tax@balizero.com", label: "Dewa Ayu" },
-  { value: "angel.tax@balizero.com", label: "Angel" },
-  { value: "faisha.tax@balizero.com", label: "Faisha" },
-];
+// The 5 allowed values — still exactly the set backend migration 093's CHECK
+// constraint accepts — are resolved on the SERVER in
+// `@/lib/workspace/roster-directory` and arrive as a prop. They used to be a
+// module constant in this "use client" file, which shipped two staff names into
+// this route's public chunk. See that module for why the list is moved rather than
+// derived: the roster's own emails disagree with the constraint.
 
 // ============================================
 // TAX TYPES AND INTERFACES
@@ -462,6 +461,8 @@ const SideWorkspace = memo(function SideWorkspace({
 // TAX CONSULTANT SELECTOR
 // ============================================
 interface TaxConsultantSelectorProps {
+  /** Resolved on the server — see @/lib/workspace/roster-directory. */
+  taxConsultants: TaxConsultantOption[];
   clientId: number;
   initialValue: string | null | undefined;
   onSaved?: () => Promise<void> | void;
@@ -471,6 +472,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
   clientId,
   initialValue,
   onSaved,
+  taxConsultants,
 }: TaxConsultantSelectorProps) {
   const [value, setValue] = useState<string>(initialValue ?? "");
   const [isSaving, setIsSaving] = useState(false);
@@ -497,7 +499,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
         );
         toast.success(
           newValue
-            ? `Tax consultant: ${TAX_CONSULTANTS.find((c) => c.value === newValue)?.label ?? newValue}`
+            ? `Tax consultant: ${taxConsultants.find((c) => c.value === newValue)?.label ?? newValue}`
             : "Tax consultant cleared",
         );
         await onSaved?.();
@@ -530,7 +532,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
         className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--bz-accent)] transition-colors disabled:opacity-60"
       >
         <option value="">— not assigned —</option>
-        {TAX_CONSULTANTS.map((c) => (
+        {taxConsultants.map((c) => (
           <option key={c.value} value={c.value}>
             {c.label}
           </option>
@@ -858,8 +860,10 @@ export function TaxTab({
   client,
   companyLinks,
   onRefresh,
+  taxConsultants,
 }: {
   clientId: number;
+  taxConsultants: TaxConsultantOption[];
   formatDate: (d: string) => string;
   client: Client | null;
   companyLinks?: ClientCompanyLink[];
@@ -982,6 +986,7 @@ export function TaxTab({
         clientId={clientId}
         initialValue={client?.tax_consultant}
         onSaved={onRefresh}
+        taxConsultants={taxConsultants}
       />
 
       {/* Tax identifiers from CRM */}
