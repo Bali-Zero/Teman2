@@ -5,13 +5,21 @@ pr: B1.3
 code_sha: 951bad7bb45df4dc8e2c3a156f934b176948ed50 # pragma: allowlist secret — last commit touching apps/
 base_sha: 2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed # pragma: allowlist secret
 brief_ref: evidence/brief.yml
-gear: 2
+gear: 3
 spend:
-  wall_clock_hours: 1.2
+  wall_clock_hours: 1.5
   adversarial_rounds: 2
-  tokens: 700000
+  tokens: 900000
   children: 2
   child_depth: 1
+  note: >-
+    Cumulative across the two windows that built this PR. Generation 3
+    (session 9f704c30, suspended on an expired deadline) spent 1.2 h, both
+    adversarial rounds and ~0.7M tokens and left two items open on purpose;
+    generation 4 (session 5009fde7) closed those two items, re-ran every
+    number it reports, and dispatched no child and no new adversarial round —
+    the staff room ruled at 02:48Z that the label review is not re-run.
+    Inside the declared appetite (5 h / 2 rounds / 1.5M tokens).
 result: >-
   Frozen mandatory manifest of 58 synthetic cases, an empty B2 supplement, the
   12-case validation set drawn by the adversarial seat, and a reporting harness
@@ -20,7 +28,7 @@ result: >-
   baseline B2 inverts against.
 frozen:
   manifest: apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/manifest_mandatory.json
-  manifest_sha256: 9a46a96b2dbce31218a51c9b53679384c3c277cc014068c09f6c5016b0b178d2
+  manifest_sha256: 9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f # pragma: allowlist secret
   validation_sha256: f6c8239b1e7b70e677666c93e2432e615abf517fd980b49c29c163509fbf3a01
   baseline_report: evidence/2026-09/agent-nuzantara-backend-rag-b1-3-benchmark-8c81ecfa/baseline-report.json
   baseline_report_sha256: 56f365b39595dc104dbf8e6ac70149d37d970883859708de80ea19df8a91e039
@@ -51,6 +59,33 @@ measured:
     "ID>ID": "generation 0/4, 6/8; label 0/4, 6/8"
     spec_pairs: "16 pairs, distinguished by generation gate 0, by label gate 0"
   golden_test_file_diff: "empty (test_evidence_cross_language.py byte-identical)"
+  generic_word_rule_recompute:
+    at: "2026-09-12T02:52Z, Dux session 5009fde7 (B1 generation 4, second window)"
+    method: >-
+      The manifest's own generic_word_definition implemented literally
+      (case-insensitive [A-Za-zÀ-ÿ]+ tokens of >=3 letters present in BOTH
+      query and joined context, minus generic_word_stopwords, minus
+      generic_word_identifiers) and run over ALL 70 cases — the 58 mandatory
+      plus the 12 validation ones, which carry no rule block of their own and
+      are therefore judged by the mandatory manifest's pinned rule.
+    before: >-
+      70 scanned, 1 disagreement: validation case bv-b82d6f13 records
+      generic_overlap false while the rule computes true on the single shared
+      token 'visa' (query 'Where is an Indonesian e-Visa approval delivered?'
+      x Indonesian context 'Persetujuan e-Visa Indonesia ...'; the tokenizer
+      splits 'e-Visa' and keeps 'visa').
+    cure: >-
+      'visa' added to generic_word_identifiers (9 entries: kitas, nib, oss,
+      pkp, pma, pph, pt, vat, visa). It belongs to the same class as 'kitas' —
+      a domain permit/document identifier, never a generic word — so the
+      disagreement was the list being short, not the label being wrong.
+    after: "70 scanned, 0 disagreements; no case body changed, no boolean flipped, no stratum moved"
+    report_delta: >-
+      byte-identical before and after, sha256
+      56f365b39595dc104dbf8e6ac70149d37d970883859708de80ea19df8a91e039 —
+      the same value already pinned as baseline_report_sha256, so the frozen
+      baseline survives the cure unchanged (generic_overlap is a reporting
+      column the harness does not read; only fee_policy and stratum are).
 label_review:
   second_reader:
     seat: "gemini-3.1-pro via agy, effort high"
@@ -93,13 +128,22 @@ label_review:
     - case: bs-07dda8f1
       origin: "sufficient"
       raised_by: [codex]
-      decision: AGREE
-      why: "'all' occurs in query and context; nuisance flag generic_overlap set true (stratum unchanged, nuisance properties are recorded independently)"
+      decision: "AGREE, then SUPERSEDED by the pinned rule"
+      why: >-
+        Round 2 accepted Codex's reading that 'all' occurs in query and
+        context and set generic_overlap true. That decision was taken BEFORE
+        the manifest pinned what a generic word IS. The pinned
+        generic_word_definition lists 'all' in generic_word_stopwords, so the
+        rule computes generic_overlap false and the case records false. This
+        is a SUPERSESSION, not a contradiction: from the freeze onward the
+        pinned rule is the single authority and every disposition older than
+        it is read through it. Stratum unchanged (sufficient); nuisance
+        properties are recorded independently of the stratum.
     - case: bs-0912abc7
       origin: "sufficient"
       raised_by: [codex]
-      decision: AGREE
-      why: "same as bs-07dda8f1"
+      decision: "AGREE, then SUPERSEDED by the pinned rule"
+      why: "same as bs-07dda8f1 — 'all' is a pinned stopword, recorded false"
   findings:
     - {
         id: C1,
@@ -122,8 +166,8 @@ label_review:
     - {
         id: C4,
         severity: MEDIUM,
-        decision: AGREE,
-        cure: "generic_overlap true on bs-07dda8f1, bs-0912abc7",
+        decision: "AGREE, then SUPERSEDED by the pinned rule",
+        cure: "round 2 set generic_overlap true on bs-07dda8f1 and bs-0912abc7; the later-pinned generic_word_definition lists 'all' as a stopword, so the rule computes false and both cases record false — supersession, not contradiction (see dispositions)",
       }
     - {
         id: C5,
@@ -172,8 +216,95 @@ lanes:
       seat: "codex gpt-5.6-sol high read-only",
       state: "round 1 BLOCK -> cured; round 2 BLOCK (C7 partial, 1 stale, 1 low) -> cured/recorded; appetite of 2 rounds reached, no third round",
     }
-dissent: []
+dissent:
+  - seat: "claude-opus-5 (Dux) vs gemini-3.1-pro and codex gpt-5.6-sol"
+    status: CONFIRMED
+    objection: >-
+      Both reviewers proposed relabelling bs-e234b992 and bs-2ae24f1c to
+      irrelevant ('processing'/'proses' is a translation, not a shared token).
+      The Dux agreed with the defect and rejected the relabel: it would leave
+      the EN>ID and ID>EN cells without a generic_overlap case and break the
+      balance rule. The text was fixed instead (literal shared 'online'); Codex
+      round 2 confirmed CURED.
+  - seat: "claude-opus-5 (Dux) vs codex gpt-5.6-sol"
+    status: CONFIRMED
+    objection: >-
+      Codex proposed moving bs-c0693a25 to generic_overlap ('time' in both
+      texts). The Dux rejected the relabel and reworded the context so no
+      content word is shared (the cell's irrelevant negative stays one);
+      Codex round 2 confirmed CURED and that the shared stop word 'the' does
+      not warrant generic_overlap.
+  - seat: "claude-opus-5 (Dux) vs codex gpt-5.6-sol (round 2, N2)"
+    status: PLAUSIBLE
+    objection: >-
+      Codex flagged its own validation case bv-6b43e1a7 (explanation wording,
+      clipped Indonesian query). Not edited: the validation set is the
+      adversarial seat's independent draw and the Dux does not author it; the
+      label is correct per the same reviewer. Residual carried to B2.
+      Status was written "OPEN" by the previous window, which is not one of
+      the three the Evidence Pack contract admits — the linter named it and
+      the generation-4 window corrected it to PLAUSIBLE: the objection is
+      credible and was never verified as a defect, because acting on it would
+      have meant the Dux authoring the adversarial seat's own draw.
 pii_scan: clean
+receipts:
+  - claim: "the structural module is green on the code sha"
+    cmd: "PYTHONPATH=. SKIP_SENTRY_INIT=1 .venv/bin/python -m pytest backend/tests/unit/services/rag/test_evidence_sufficiency_benchmark.py"
+    exit: 0
+    ts: 2026-09-11T18:24:54Z
+    seat: claude-opus-5
+    output: "65 passed, 1 warning in 4.21s"
+  - claim: "the golden test file is byte-identical to origin/main"
+    cmd: "git diff origin/main -- apps/backend-rag/backend/tests/unit/services/rag/agentic/test_evidence_cross_language.py | wc -l"
+    exit: 0
+    ts: 2026-09-11T18:24:48Z
+    seat: claude-opus-5
+    output: "0"
+  - claim: "no email or Indonesian phone shape in the manifest or the validation set"
+    cmd: "grep -cEo '<email>|\\+?62[0-9 -]{8,}|08[0-9]{8,}' manifest_mandatory.json validation_codex.json"
+    exit: 0
+    ts: 2026-09-11T18:24:48Z
+    seat: claude-opus-5
+    output: "0"
+  - claim: "validate() is clean on both sets"
+    cmd: "PYTHONPATH=. SKIP_SENTRY_INIT=1 .venv/bin/python -c 'h.validate(h.load(manifest_mandatory.json)); h.validate(h.load(validation_codex.json))'"
+    exit: 0
+    ts: 2026-09-11T18:23:00Z
+    seat: claude-opus-5
+    output: "mandatory [] validation []"
+  # --- generation 4 (Dux session 5009fde7): the freeze measurements, all re-run
+  # on the head this PR ships, never carried over from the suspended window ---
+  - claim: "A1 probe re-run after the two ruled cures: the structural module is green on the shipped head"
+    cmd: "PYTHONPATH=. SKIP_SENTRY_INIT=1 .venv/bin/python -m pytest backend/tests/unit/services/rag/test_evidence_sufficiency_benchmark.py"
+    exit: 0
+    ts: 2026-09-12T02:44:30Z
+    seat: claude-opus-5
+    output: "68 passed, 1 warning in 4.62s (the 18:24:54Z receipt above reads 65 — the round-2 C7 cure added three rejection tests after it)"
+  - claim: "A3 probe: the harness CLI report is BYTE-IDENTICAL before and after the generic_word_identifiers cure, and equals the frozen baseline"
+    cmd: "python -m backend.tests.benchmarks.evidence_sufficiency.harness --json > before/after; diff; shasum -a 256"
+    exit: 0
+    ts: 2026-09-12T02:43:50Z
+    seat: claude-opus-5
+    output: "identical; sha256 56f365b39595dc104dbf8e6ac70149d37d970883859708de80ea19df8a91e039 == baseline_report_sha256"
+  - claim: "the pinned generic-word rule, applied literally, now agrees with every recorded generic_overlap boolean across all 70 cases"
+    cmd: "scratchpad recompute over manifest_mandatory.json + validation_codex.json implementing generic_word_definition verbatim"
+    exit: 0
+    ts: 2026-09-12T02:42:10Z
+    seat: claude-opus-5
+    output: "before: 70 scanned, 1 disagreement (bv-b82d6f13 on 'visa'); after adding 'visa' to generic_word_identifiers: 70 scanned, 0 disagreements"
+  - claim: "the deterministic gear floor for this PR's own three-dot diff is 3, source size"
+    cmd: "evidence_pack_lint.compute_floor(files, numstat) / compute_floor_source(...) on git diff against merge-base 2a4681b0b8"
+    exit: 0
+    ts: 2026-09-12T02:46:00Z
+    seat: claude-opus-5
+    output: "FLOOR=3 SOURCE=size, size term 6297 net lines vs SIZE_GEAR3_THRESHOLD 1828"
+  - claim: "the Evidence Pack contract passes under the CI staging layout (pack+brief+council journal staged, --source-path at the real path)"
+    cmd: "evidence_pack_lint.py <staged pack> --repo-root <stage> --source-path <real pack> --changed-files-file --numstat-file"
+    exit: 0
+    ts: 2026-09-12T02:58:00Z
+    seat: claude-opus-5
+    output: "clean (1 NOTICE on acceptance-probe/receipt text matching; the two violations it found first — dissent status 'OPEN' and the unstaged council journal — are cured above)"
+council_run: council-journal.jsonl
 bites:
   consumer: "the reporting harness shipped in this PR (python -m backend.tests.benchmarks.evidence_sufficiency.harness), downstream B2.1"
   observation: "its report on this head with every required denominator positive, the manifest sha256 and the baseline above (baseline-report.json)"
