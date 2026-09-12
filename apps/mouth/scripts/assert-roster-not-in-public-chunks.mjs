@@ -44,6 +44,36 @@
 // would mean writing an allowlist that encodes the very thing under review.
 //
 // So: chunks and public files, absolutely. Server payloads, on purpose, not yet.
+//
+// THE ASSUMPTION UNDERNEATH, AND ITS MEASURED STATE — written here because the
+// paragraph above rests on it and never said so.
+//
+// The reasoning "those payloads are per-request, so they are not files" holds only
+// while a route is DYNAMIC. It is NOT true of this app today, and the first draft of
+// this comment got that wrong by describing it as a future risk.
+//
+// MEASURED on this build: five `(workspace)` index routes are statically prerendered
+// with no `generateStaticParams` and no `force-static` anywhere — App Router
+// prerenders a route by default unless it uses a dynamic API. `/clients`,
+// `/dashboard`, `/lkpm`, `/partners` and `/settings` all appear in
+// `.next/prerender-manifest.json`, and `.next/server/app/<route>.html` / `.rsc`
+// exist on disk for each. Of those, `/lkpm`'s prerendered payload carries 4 marker
+// hits — staff data baked into a build artifact that this guard does not scan.
+//
+// So the honest statement is not "server payloads are per-request". It is: this
+// guard covers chunks and public files; some workspace payloads are ALREADY static
+// files carrying staff data; and that exposure is the escalated workspace-auth item,
+// not something this guard silently handles.
+//
+// `clients/[id]` is the exception and stays dynamic — 0 prerender artifacts,
+// measured — which is why the fix that moved its table server-side genuinely removed
+// the data from everything this guard can see.
+//
+// WHEN TO WIDEN THE SCAN. The mechanical test is `.next/prerender-manifest.json`: if
+// a `(workspace)` route is in it, its payload is a file. That check is deliberately
+// NOT asserted here yet, because asserting it today would fail the build on the five
+// routes above — and failing every build is not how a declared, escalated exposure
+// gets decided. Wire it the moment that decision lands.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -75,6 +105,22 @@ const FORBIDDEN = /faisha|faysha|sahira/i;
  * quiet one.
  */
 const ALLOWED_CHUNK_PREFIXES = [];
+
+/**
+ * Every prefix in ALLOWED_CHUNK_PREFIXES must appear here as a key, mapped to the PR
+ * that removes it. Empty, because the list above is empty.
+ *
+ * This exists because "the guard mentions a closing PR somewhere" is not a check. The
+ * previous rule asked exactly that — `expect(guard).toContain("C4b")` — and a refuter
+ * showed it was vacuous: this file already says "closing PR" twice while narrating
+ * history, so a NEW un-timeboxed entry would have satisfied it and the suite would
+ * have stayed green. Measured before fixing: an entry added to both lists with no
+ * prose touched passed 9/9.
+ *
+ * Keying the promise to the ENTRY is what makes it enforceable — the repo's own scar
+ * family for this is "a guard that judges a substring instead of an entity".
+ */
+const ALLOWED_CHUNK_PREFIX_CLOSERS = {};
 
 /** Where the app's public static files live — served with no session, like chunks. */
 const PUBLIC_DIR = "public";
@@ -121,6 +167,62 @@ if (all.length === 0) {
 
 const rel = (f) => path.relative(CHUNK_DIR, f).split(path.sep).join("/");
 const isAllowed = (r) => ALLOWED_CHUNK_PREFIXES.some((p) => r.startsWith(p));
+
+// THE EXCEPTION CONTRACT, enforced HERE rather than by reading this file's text.
+//
+// Two adversarial rounds broke earlier versions of this rule, and both breaks had the
+// same root: the check lived in a unit test that PARSED this source with a regex, so
+// it judged strings instead of values. Source-parsing cannot see an empty prefix, a
+// prototype-inherited lookup, or a closer whose value is the word "TODO". This loop
+// runs on every build with the real objects, so it can.
+//
+// Both structures are empty today, so all of this is a no-op — which is the point: it
+// costs nothing until someone adds an exception, and then it is strict.
+const CLOSER_SHAPE = /(#\d+|\bC\d+[a-z]?\b)/; // a PR number, or a lane id like C4b
+{
+  const prefixes = ALLOWED_CHUNK_PREFIXES;
+  const closerKeys = Object.keys(ALLOWED_CHUNK_PREFIX_CLOSERS);
+  const fail = (msg) => {
+    console.error(`ROSTER_CHUNK_ASSERT FAILED: ${msg}`);
+    process.exit(1);
+  };
+
+  for (const prefix of prefixes) {
+    // An empty or blank prefix makes `startsWith` true for EVERY chunk, which would
+    // skip the whole scan while both lists still looked declared and paired.
+    if (typeof prefix !== "string" || prefix.trim() === "") {
+      fail(
+        `an allowlist entry is empty or blank (${JSON.stringify(prefix)}). ` +
+          `"".startsWith() matches every chunk, so this would disable the scan.`,
+      );
+    }
+    // `Object.hasOwn`, not truthiness: `CLOSERS["constructor"]` inherits a truthy
+    // value from Object.prototype and would otherwise wave an exception through.
+    if (!Object.hasOwn(ALLOWED_CHUNK_PREFIX_CLOSERS, prefix)) {
+      fail(
+        `"${prefix}" is allowed but has no OWN entry in ALLOWED_CHUNK_PREFIX_CLOSERS. ` +
+          `An exception that does not name the PR removing it is not time-boxed.`,
+      );
+    }
+    const closer = ALLOWED_CHUNK_PREFIX_CLOSERS[prefix];
+    if (typeof closer !== "string" || !CLOSER_SHAPE.test(closer)) {
+      fail(
+        `"${prefix}" names ${JSON.stringify(closer)} as its closer, which is not a PR ` +
+          `reference. "TODO", "later" and true are not closing PRs. Use #1234 or a lane id.`,
+      );
+    }
+  }
+  // Both directions. A closer left behind after its prefix is removed is a stale
+  // promise that the next exception could quietly reuse.
+  for (const key of closerKeys) {
+    if (!prefixes.includes(key)) {
+      fail(
+        `ALLOWED_CHUNK_PREFIX_CLOSERS has "${key}" with no matching entry in ` +
+          `ALLOWED_CHUNK_PREFIXES — a stale closing-PR claim.`,
+      );
+    }
+  }
+}
 
 const offenders = [];
 for (const file of all) {
