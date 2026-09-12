@@ -719,6 +719,29 @@ class TestKeyRedaction:
     """O1 F4: storage keys are not emitted in logs or exception messages."""
 
     @pytest.mark.asyncio
+    async def test_digest_mismatch_log_record_carries_key_ref_not_the_key(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Gate-6334 C1: mutation (d) -- `_key_ref(key)` -> `key` in the
+        digest-mismatch log at the end of `fetch_and_verify` -- survived the
+        S2a suite, because no test read that LOG RECORD. This one does: the
+        record's `key_ref` is the digest, and the sentinel key appears in
+        no field of the record and nowhere in the captured text."""
+        caplog.set_level(logging.ERROR, logger="backend.services.garuda_artifacts.tigris_store")
+        client = _FakeS3Client(get_object_bytes=b"tampered")
+        with pytest.raises(ArtifactDigestMismatch):
+            await _store(client).fetch_and_verify(
+                key=_SENTINEL_KEY, expected_digest=_digest(b"original")
+            )
+        records = [
+            r for r in caplog.records if r.getMessage() == "garuda_artifacts.digest_mismatch"
+        ]
+        assert len(records) == 1, "exactly one digest-mismatch record per refusal"
+        assert records[0].key_ref == key_ref(_SENTINEL_KEY)  # type: ignore[attr-defined]
+        assert _SENTINEL_KEY not in caplog.text
+        assert all(_SENTINEL_KEY not in str(v) for v in records[0].__dict__.values())
+
+    @pytest.mark.asyncio
     async def test_no_refusal_path_leaks_the_key(self, caplog) -> None:
         cases = [
             _FakeS3Client(get_object_bytes=b"tampered"),

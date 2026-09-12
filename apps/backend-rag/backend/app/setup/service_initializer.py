@@ -1524,6 +1524,87 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
         "not merged yet for garuda_documents — see garuda_documents_router.py docstring)"
     )
 
+    # 5.9 GARUDA VOA — delivered-artifact object store (W3A S2b, decision #43).
+    # `TigrisArtifactObjectStore()` reads its own three scoped env vars and
+    # REFUSES to construct when any is missing, naming the VARIABLES and never
+    # a value — the env gate lives in the constructor, so this block repeats
+    # no list of names and cannot drift from it. While the bucket and its
+    # credentials are provisioning (Zero, #G) the attribute stays ABSENT (never
+    # `None`): a reader that arrives in S3+ resolves it the way
+    # `get_repository()` resolves `garuda_order_repository` — absent means 503,
+    # not a fallback to `nuzantara-warroom-images`, the one bucket already
+    # wired here, which exists to mint PUBLIC URLs. No consumer reads this
+    # attribute yet; the observable consequence of this block today is the log
+    # line below, on both processes, at startup.
+    #
+    # Construction only, and synchronous: this function must contain ZERO
+    # awaits (`test_no_await_separates_the_pool_from_the_garuda_wiring` — an
+    # await here reopens the readiness race that test closed). The privacy
+    # probe, which is network, lives in `probe_garuda_artifact_bucket` below
+    # and is awaited by both entry points right after this call. Network
+    # happens only when the three env vars are present, i.e. never while #G
+    # is pending.
+    try:
+        from backend.services.garuda_artifacts.tigris_store import (
+            GarudaArtifactsStoreUnavailable,
+            TigrisArtifactObjectStore,
+        )
+
+        app.state.garuda_artifact_store = TigrisArtifactObjectStore()
+        logger.info(
+            "✅ GARUDA VOA artifact store constructed (bucket privacy probed next, see "
+            "probe_garuda_artifact_bucket)"
+        )
+    except GarudaArtifactsStoreUnavailable as e:
+        # Names only: the constructor never formats a value into its message
+        # (test_exception_message_never_carries_a_value, S2a).
+        logger.info(
+            "ℹ️ GARUDA VOA artifact store wiring skipped (fail closed, no consumer yet): %s", e
+        )
+    except Exception as e:
+        logger.warning("⚠️ GARUDA VOA artifact store wiring failed (fail closed): %s", e)
+
+
+async def probe_garuda_artifact_bucket(app: FastAPI) -> None:
+    """Privacy probe for the store 5.9 constructed — the one await the wiring
+    above may not contain. Called by BOTH entry points on the statement after
+    `initialize_garuda_services`.
+
+    `assert_private(require_verified=False)` (decision #43): refuse only a
+    bucket a probe PROVES public. Tigris may not implement PublicAccessBlock /
+    PolicyStatus, in which case both probes answer UNKNOWN (None) and
+    `require_verified=True` would make the good branch unreachable even with a
+    correctly provisioned private bucket; so an unknown verdict keeps the store
+    wired and is LOGGED by name — privacy is provisioning, and the verdict is
+    the record of what the store could and could not confirm. A PROVEN public
+    bucket removes the attribute again (absent, never None) and logs an error.
+    Any other failure of the probe also unwires: a store whose privacy could
+    not even be asked about is not one to serve passports from. Never raises.
+    The verdict is published as `app.state.garuda_artifact_privacy` so the
+    reader that arrives in S3 can require it alongside the store.
+    """
+    store = getattr(app.state, "garuda_artifact_store", None)
+    if store is None:
+        return
+    try:
+        verdict = await store.assert_private(require_verified=False)
+    except Exception as e:
+        del app.state.garuda_artifact_store
+        logger.error(
+            "❌ GARUDA VOA artifact store UNWIRED — bucket privacy probe refused or failed: %s", e
+        )
+        return
+    app.state.garuda_artifact_privacy = verdict
+    logger.info(
+        "✅ GARUDA VOA artifact store wired — bucket private: %s (public_access_block=%s, "
+        "policy_status=%s; None = probe unsupported, privacy is provisioning, see #G)",
+        "verified"
+        if any(v is True for v in verdict.values())
+        else "unverified (probes unsupported)",
+        verdict["public_access_block"],
+        verdict["policy_status"],
+    )
+
 
 async def initialize_services(app: FastAPI) -> None:
     """
@@ -1626,6 +1707,7 @@ async def initialize_services(app: FastAPI) -> None:
     # again is what left the `api` process (the only one that mounts these
     # routers) with no stores at all.
     await initialize_garuda_services(app, db_pool)
+    await probe_garuda_artifact_bucket(app)  # 5.9's one await, kept out of the helper above
     # 6. CRM & Memory
     await initialize_crm_and_memory_services(app, ai_client, db_pool)
 
@@ -1996,6 +2078,7 @@ async def initialize_services_light(app: FastAPI) -> None:
         # is not narrowed, it is closed.
         # `test_no_await_separates_the_pool_from_the_garuda_wiring` pins this.
         await initialize_garuda_services(app, db_pool)
+        await probe_garuda_artifact_bucket(app)  # 5.9's one await, AFTER the await-free wiring
         service_registry.register("database", ServiceStatus.HEALTHY)
         logger.info("✅ DB pool initialized (light)")
     except Exception as e:
