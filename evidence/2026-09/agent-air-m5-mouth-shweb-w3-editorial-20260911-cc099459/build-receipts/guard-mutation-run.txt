@@ -13,7 +13,11 @@ mutated. The sandbox was verified green before and after every mutation.
 
   probe:  research/secondhome/probe-superseded-threshold.py --claims
 
-PROBE MUTATIONS — 9 applied, 9 RED
+PROBE MUTATIONS — 10 applied, 10 RED
+  (This header said "9 applied, 9 RED" while the list below it named M1 through M10. The list is
+  the measurement and the header was the slip: ten mutations were applied and ten came back red.
+  Found by the independent gate on 8ba4b4f1ed, F5. The same nine appears in the PR body, the probe
+  docstring and the pack's note; the body and the pack are corrected, the docstring in PR-1b.)
   RED   M1  restore `14. If property-based: verification with BPN records`   (the refuter's own
             counter-example, green before this round)      -> PRESENT 'BPN'
   RED   M2  Duration cell flattened from `Up to 5 years` to `5 years`        -> UNANCHORED

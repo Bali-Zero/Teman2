@@ -12,8 +12,8 @@ brief_ref: evidence/brief.yml
 pii_scan: clean
 
 churn:
-  measured_with: "git diff --numstat 70b43c5459 HEAD | awk '{a+=$1;d+=$2} END {print a+d}' — measured on the tree as pushed: 29 files, +4212 -531 at the first frozen head, plus the two CI cures of the second push. An earlier revision of this field said 4373; that was a transposition by the author, corrected here against the measurement rather than left standing. The growth over the 3902 of the pre-refuter head is the rebuilt guard (+146 probe lines), the guard spec written instead of a fourth cure round (99 lines), and the census/disposition rows three refuter rounds and a second reader demanded."
-  total_lines: 4749
+  measured_with: "git diff --numstat 70b43c5459 8ba4b4f1ed | awk '{a+=$1;d+=$2} END {print a+d}' — measured at the FINAL head: 29 files, +4220 -531. This number was wrong twice before, and both corrections are recorded rather than overwritten: 4373 was a transposition by the author; 4749 was a real measurement taken before the third commit landed, which is why the gate on 8ba4b4f1ed read 2 more. The growth over the 3902 of the pre-refuter head is the rebuilt guard (+146 probe lines), the guard spec written instead of a fourth cure round (99 lines), and the census/disposition rows three refuter rounds and a second reader demanded."
+  total_lines: 4751
   ceiling_named_in_the_mandate: 1828
   gear_override: >-
     Declared, per the mandate's own alternative ("churn under 1828 OR a coherent Gear-3
@@ -29,7 +29,15 @@ churn:
     one deleted backend fixture (14).
 
 spend:
-  wall_clock_hours: ~2.5
+  # Measured, not estimated: first Dux transcript event (02:13:26Z) to the commit of the final
+  # head 8ba4b4f1ed (08:26:47Z). It EXCLUDES the independent gate session and the three council
+  # seats, which are not this lane's spend, and it does not grow after the merge. The two Dux
+  # sessions overlap by 0.62h across the handover, so summing their spans (8.47) would count the
+  # same time twice; the union to the final head is what is recorded. The field previously read
+  # `~2.5`, which YAML parses as a STRING — so the lint treated the dimension as unmeasured and
+  # never compared it to the ceiling of 8 in brief.yml. It was an estimate of the first session
+  # alone, and false for the mandate.
+  wall_clock_hours: 6.2
   adversarial_rounds: 3
   seats:
     - name: codex-sol
@@ -115,12 +123,12 @@ receipts:
     seat: claude-opus-5 (dux, M5)
     before: "canonical-family hits at the base commit: 68"
     after: "canonical-family 0, other-family 24, file 450,488 lines"
-  - claim: "every cure named in the disposition can be turned red by mutating it, and the four documented generator mutants die"
+  - claim: "the TEN named mutations listed in build-receipts/guard-mutation-run.txt each turn the probe red, and the four documented generator mutants die"
     cmd: "sandbox copy of the five MDX + probe --claims per mutation; vitest per generator mutant"
     exit: 0
     ts: "2026-09-12"
     seat: claude-opus-5 (dux, M5)
-    note: "9 probe mutations red, 4 generator mutants red, recorded in build-receipts/guard-mutation-run.txt; the sandbox was green before and after each"
+    note: "10 probe mutations red (M1-M10), 4 generator mutants red, recorded in build-receipts/guard-mutation-run.txt; the sandbox was green before and after each. This claim is a MEASURED LIST and deliberately not the universal 'every cure can be turned red', which this pack retracts in the codex dissent block below and which the gate on 8ba4b4f1ed proved false with an eighth evasion (answerSnippet unanchored for duration). The receipt's header said 9 while its body listed ten; ten is the measured number and the header is corrected in the same patch as this line."
   - claim: "two council seats reviewed the final tree and neither returned BLOCK"
     cmd: "python3 scripts/tp1_call.py --model qwen3.8-max --task-file <core> ; kimi -m kimi-code/k3 -p <scoped prompt>"
     exit: 0
