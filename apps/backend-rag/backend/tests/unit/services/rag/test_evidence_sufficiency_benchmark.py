@@ -29,7 +29,16 @@ _GOLDEN_TEST_PATH = Path(__file__).resolve().parent / "agentic" / "test_evidence
 # after the freeze — a re-labelled case, a reworded span, anything — makes
 # this red. That is the point: the mandatory set is frozen, and B2
 # supplements live in a SEPARATE file (`manifest_supplement_b2.json`).
-MANDATORY_MANIFEST_SHA256 = "9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f"
+#
+# RE-PINNED (RULED I30/I31, provenance-fixture PR): this is the ONE
+# sanctioned exception to the freeze above — the only PR allowed to touch
+# the frozen manifest. Case bs-17806bb4's `provenance_fixture` moved from a
+# legacy literal (score 0.72, score_kind unknown) to a declared dense source
+# (score 0.6146, score_kind dense_formatted, score_raw the one measured
+# cosine on disk for that (query, chunk) pair — 0.373, 2026-09-03); nothing
+# else in the manifest changed. Old pin (until this PR):
+# 9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f.
+MANDATORY_MANIFEST_SHA256 = "240842d97a34c9f1b4230b1b8bb441844eb3f441bb762d6c1ce2052d65211bb7"
 
 _CELLS = ("EN>EN", "EN>ID", "ID>EN", "ID>ID")
 _NEGATIVE_STRATA = (

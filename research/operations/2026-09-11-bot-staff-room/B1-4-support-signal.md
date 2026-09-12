@@ -185,8 +185,12 @@ Two sets were measured, and they disagree with each other. That disagreement is
 the finding of this window, so both ship.
 
 **Set A — the frozen mandatory manifest** (`manifest_mandatory.json`, sha256
-`9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f`, merged in
-#6274): 16 counterfactual pairs carrying a `pair_id` with exactly one
+`9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f` at
+measurement time, merged in #6274; re-pinned to
+`240842d97a34c9f1b4230b1b8bb441844eb3f441bb762d6c1ce2052d65211bb7` by the
+provenance-fixture PR — RULED I30/I31 — which is the one sanctioned exception
+to the freeze and touches only case `bs-17806bb4`'s `provenance_fixture`):
+16 counterfactual pairs carrying a `pair_id` with exactly one
 `sufficient` and one `relevant_insufficient` member. 16 x 2 x 3 reps x 4
 candidates = 384 calls, every outcome `ok`, no `UNAVAILABLE`.
 

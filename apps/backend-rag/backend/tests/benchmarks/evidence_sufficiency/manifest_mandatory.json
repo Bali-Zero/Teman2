@@ -644,12 +644,12 @@
         "inventory_row": 5,
         "sources": [
           {
-            "score": 0.72,
-            "score_kind": "unknown",
-            "score_raw": null
+            "score": 0.6146,
+            "score_kind": "dense_formatted",
+            "score_raw": 0.373
           }
         ],
-        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+        "note": "declared dense source (RULED I31, this PR): 0.373 is the one measured embedding cosine on disk for this (query, chunk) pair (text-embedding-3-small, measured 2026-09-03) — its only receipt is the value recorded in test_evidence_cross_language.py's own (now-removed) xfail reason, so none is invented here; 0.6146 is that cosine's REAL score_provenance.DENSE_FORMATTED transform through the live format_search_results. Replaces the prior legacy literal (0.72, score_kind unknown) — RETRIEVAL's literal fixture score at test_evidence_cross_language.py:45 (this note previously cited line 44 in error)."
       },
       "requested_fact": "the price of new PT PMA company setup",
       "supporting_span": "Harga: IDR 20.000.000 sudah termasuk semuanya.",
