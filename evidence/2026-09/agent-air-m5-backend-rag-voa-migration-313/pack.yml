@@ -1,7 +1,7 @@
 task_id: voa-migration-313-garuda-practice-artifacts
 gear: 3
 gate_class: opus
-brief_ref: evidence/2026-09/agent-air-m5-backend-rag-voa-migration-313/brief.yml
+brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 lanes:
   - lane: build
@@ -98,7 +98,31 @@ receipts:
     exit: 0
     ts: "2026-09-12T09:21:00Z"
     seat: claude-opus-5 (build)
+  - probe: A7
+    claim: >-
+      The retention-FK registry canary passes with 313 declared, and so do
+      the two visa_engine suites that roll migration 264 back in their own
+      fixtures — the suites CI found red.
+    cmd: ci_shape_pg.sh backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_evaluate_endpoint.py --color=no -p no:randomly
+    result: "263 passed in 50.72s"
+    exit: 0
+    ts: "2026-09-12T18:46:33Z"
+    seat: claude-opus-5 (build)
 guilt_mutations:
+  - target: tests/services/visa_engine/conftest.py — the retention-FK registry entry
+    mutation: >-
+      Remove the one-line `_GARUDA_VOA_RETENTION_FK_DEPENDENTS` entry for 313
+      and run the canary.
+    observed: >-
+      RED, with the message that is itself the spec: "migration(s)
+      ['313_garuda_practice_artifacts.sql'] add a foreign key onto
+      visa_decision_retention_policies (264) but are not registered ... or
+      this repo's other visa_engine tests that roll 264 back in their
+      fixtures will go red with DependentObjectsStillExistError the moment
+      your migration merges, on files that never touch your product at
+      all". conftest.py restored from a cp backup, md5 identical before and
+      after (02da4e1b9844f03b19ef2397bd2cd661).
+    ts: "2026-09-12T18:47:30Z"
   - target: db/migrations_v2/313_garuda_practice_artifacts.sql (composite deferred FK, F7)
     mutation: >-
       Point `superseded_by` at an artifact belonging to ANOTHER practice and

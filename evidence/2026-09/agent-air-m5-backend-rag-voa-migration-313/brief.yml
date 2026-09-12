@@ -108,6 +108,25 @@ acceptance:
       python3 scripts/evidence_pack_lint.py --print-floor
       --changed-files-file cf.txt --numstat-file ns.txt
   - text: >-
+      A7: WHEN `test_visa_engine_retention_fk_registry.py` runs with this
+      migration in the tree SHALL pass, and the two visa_engine suites that
+      roll migration 264 back in their own fixtures
+      (test_shadow_match.py, test_evaluate_endpoint.py) SHALL pass with it.
+      This criterion is here because its ABSENCE is what made CI red on the
+      first armed head: migration 313 adds the tenth FK onto
+      visa_decision_retention_policies, those fixtures unwind only the
+      dependents REGISTERED in conftest.py's
+      _GARUDA_VOA_RETENTION_FK_DEPENDENTS, and an unregistered table
+      survives the unwind and kills `rollback_264` with
+      DependentObjectsStillExistError — on files belonging to another
+      product entirely. The repo had already institutionalised the lesson;
+      the canary was simply not among this lane's targets.
+    probe: >-
+      ci_shape_pg.sh
+      backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py
+      backend/tests/services/visa_engine/test_shadow_match.py
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py
+  - text: >-
       A6 (Bites, post-merge): WHEN this PR merges — a backend merge IS the
       deploy, release_command applies migrations — `_schema_versions` SHALL
       gain row 313 applied_as `backend_rag_v2
