@@ -71,14 +71,14 @@ measured:
 # ---------------------------------------------------------------------------
 receipts:
   - claim: "the acceptance suite was green except the rollback pair -- the state BEFORE the rollback section landed, kept because that is what the exit 1 below measures"
-    cmd: "TEST_DATABASE_URL=postgresql://test:test@localhost:55435/nuzantara_test apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/ apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py apps/backend-rag/backend/tests/unit/research_os/ apps/backend-rag/backend/tests/db/test_research_os_valid_time_is_not_text_orderable.py apps/backend-rag/backend/tests/services/research_os/ apps/backend-rag/backend/tests/migrations/"
+    cmd: "TEST_DATABASE_URL=postgresql://test:test@localhost:55435/nuzantara_test apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/ apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py apps/backend-rag/backend/tests/unit/research_os/ apps/backend-rag/backend/tests/db/test_research_os_valid_time_is_not_text_orderable.py apps/backend-rag/backend/tests/services/research_os/ apps/backend-rag/backend/tests/migrations/" # pragma: allowlist secret
     exit: 1
     ts: "2026-09-12T04:28:00Z"
     seat: claude-opus-5
     note: "re-run by the Dux from the repo root AFTER the child reported the same numbers — generator is not grader"
 
   - claim: "with migration 312's rollback section executable, the whole acceptance suite is green -- no failure, no error, no xfail, and no skip inside the R2 surface"
-    cmd: "TEST_DATABASE_URL=postgresql://test:test@localhost:55435/nuzantara_test apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/ apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py apps/backend-rag/backend/tests/unit/research_os/ apps/backend-rag/backend/tests/db/test_research_os_valid_time_is_not_text_orderable.py apps/backend-rag/backend/tests/services/research_os/ apps/backend-rag/backend/tests/migrations/"
+    cmd: "TEST_DATABASE_URL=postgresql://test:test@localhost:55435/nuzantara_test apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/ apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py apps/backend-rag/backend/tests/unit/research_os/ apps/backend-rag/backend/tests/db/test_research_os_valid_time_is_not_text_orderable.py apps/backend-rag/backend/tests/services/research_os/ apps/backend-rag/backend/tests/migrations/" # pragma: allowlist secret
     exit: 0
     ts: "2026-09-12T04:48:00Z"
     seat: claude-opus-5
