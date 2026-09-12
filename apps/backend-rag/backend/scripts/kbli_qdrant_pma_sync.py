@@ -451,7 +451,17 @@ def _truncated_section_matches_reviewed_prefix(
     # it into one list element and the final join turns those into physical
     # lines, so compare the same physical representation stored in Qdrant.
     reviewed_physical_lines = "\n".join(reviewed_lines).split("\n")
-    return actual_prefix == reviewed_physical_lines[: len(actual_prefix)]
+    reviewed_len = len(reviewed_physical_lines)
+    if len(actual_prefix) <= reviewed_len:
+        return actual_prefix == reviewed_physical_lines[: len(actual_prefix)]
+    # The cap can also fall AFTER the whole reviewed block (a record whose
+    # per_skala rows grew, e.g. 21022 on the 2026-09-11 L2 re-ingestion): the
+    # section is then the exact reviewed block followed only by the blank
+    # separator the generator writes before the marker. Anything non-blank
+    # after the block is content nobody reviewed and is still refused.
+    return actual_prefix[:reviewed_len] == reviewed_physical_lines and all(
+        not line.strip() for line in actual_prefix[reviewed_len:]
+    )
 
 
 def certified_intelligence_block(
