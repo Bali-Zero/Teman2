@@ -19,7 +19,6 @@ import {
   ZantaraPortalCard,
 } from "@/components/dashboard";
 import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
-import type { CasePreview } from "@/components/dashboard/CasesPreview";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { TeamActivityPanel } from "@/components/dashboard/TeamActivityPanel";
 import type {
@@ -280,6 +279,15 @@ function MetricItem({
 }
 
 // ── Pipeline row ───────────────────────────────────────────
+interface CasePreview {
+  id: number;
+  title: string;
+  client: string;
+  status: "inquiry" | "quotation" | "in_progress" | "documents" | "completed";
+  daysRemaining?: number;
+  completedAt?: string;
+}
+
 function PipelineRow({ p }: { p: CasePreview }) {
   const cfg = STATUS_CONFIG[p.status];
   const isUrgent =

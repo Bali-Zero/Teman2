@@ -3,9 +3,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * auth-gates-cookie-primary — class-wide gate contract (spec §2 rows #1-8).
+ * auth-gates-cookie-primary — class-wide gate contract (spec §2 rows #1-8;
+ * rows #5-#7 — settings/roles, settings/security, settings/users — were
+ * retired with those pages on 2026-09-12, the numbering of the survivors is
+ * kept so the rows still map to the spec).
  *
- * All eight pages below used to gate on `api.isAuthenticated()` (a
+ * All five pages below used to gate on `api.isAuthenticated()` (a
  * local-token-only, positive-only signal — see client.ts docstring) and now
  * gate on `useSessionState()` (cookie-primary). The contract is the same for
  * every member of the class:
@@ -106,9 +109,6 @@ import CellPage from "../(workspace)/admin/cell/page";
 import AdminPage from "../(workspace)/admin/page";
 import SystemDashboardPage from "../(workspace)/admin/system/page";
 import TeamActivityPage from "../(workspace)/admin/team-activity/page";
-import RolesPermissionsPage from "../(workspace)/settings/roles/page";
-import SecuritySettingsPage from "../(workspace)/settings/security/page";
-import UserManagementPage from "../(workspace)/settings/users/page";
 import AgentsPage from "../agents/page";
 
 beforeEach(() => {
@@ -297,119 +297,6 @@ describe("admin/team-activity/page.tsx (gate #4)", () => {
 
       expect(mocks.routerPush).not.toHaveBeenCalled();
       expect(mocks.api.adminApi.getTeamActivityOverview).not.toHaveBeenCalled();
-    },
-  );
-});
-
-// #5 settings/roles/page.tsx
-describe("settings/roles/page.tsx (gate #5)", () => {
-  it("authenticated + admin: no redirect, page renders", async () => {
-    render(<RolesPermissionsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Roles & Permissions")).toBeInTheDocument();
-    });
-    expect(mocks.routerPush).not.toHaveBeenCalled();
-  });
-
-  it("anonymous: redirects to /login, renders nothing", async () => {
-    mocks.sessionState = "anonymous";
-
-    render(<RolesPermissionsPage />);
-
-    await waitFor(() => {
-      expect(mocks.routerPush).toHaveBeenCalledWith("/login");
-    });
-    expect(screen.queryByText("Roles & Permissions")).not.toBeInTheDocument();
-  });
-
-  it.each(["pending", "unknown"] as const)(
-    "%s: no redirect, renders nothing yet",
-    async (state) => {
-      mocks.sessionState = state;
-
-      render(<RolesPermissionsPage />);
-      await Promise.resolve();
-
-      expect(mocks.routerPush).not.toHaveBeenCalled();
-      expect(screen.queryByText("Roles & Permissions")).not.toBeInTheDocument();
-    },
-  );
-});
-
-// #6 settings/security/page.tsx
-describe("settings/security/page.tsx (gate #6)", () => {
-  it("authenticated + admin: no redirect, page renders", async () => {
-    render(<SecuritySettingsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Security Settings")).toBeInTheDocument();
-    });
-    expect(mocks.routerPush).not.toHaveBeenCalled();
-  });
-
-  it("anonymous: redirects to /login, renders nothing", async () => {
-    mocks.sessionState = "anonymous";
-
-    render(<SecuritySettingsPage />);
-
-    await waitFor(() => {
-      expect(mocks.routerPush).toHaveBeenCalledWith("/login");
-    });
-    expect(screen.queryByText("Security Settings")).not.toBeInTheDocument();
-  });
-
-  it.each(["pending", "unknown"] as const)(
-    "%s: no redirect, renders nothing yet",
-    async (state) => {
-      mocks.sessionState = state;
-
-      render(<SecuritySettingsPage />);
-      await Promise.resolve();
-
-      expect(mocks.routerPush).not.toHaveBeenCalled();
-      expect(screen.queryByText("Security Settings")).not.toBeInTheDocument();
-    },
-  );
-});
-
-// #7 settings/users/page.tsx
-describe("settings/users/page.tsx (gate #7)", () => {
-  it("authenticated + admin: no redirect, page renders and loads users", async () => {
-    render(<UserManagementPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("User Management")).toBeInTheDocument();
-    });
-    await waitFor(() => {
-      expect(mocks.api.getTeamStatus).toHaveBeenCalled();
-    });
-    expect(mocks.routerPush).not.toHaveBeenCalled();
-  });
-
-  it("anonymous: redirects to /login, renders nothing, never loads", async () => {
-    mocks.sessionState = "anonymous";
-
-    render(<UserManagementPage />);
-
-    await waitFor(() => {
-      expect(mocks.routerPush).toHaveBeenCalledWith("/login");
-    });
-    expect(screen.queryByText("User Management")).not.toBeInTheDocument();
-    expect(mocks.api.getTeamStatus).not.toHaveBeenCalled();
-  });
-
-  it.each(["pending", "unknown"] as const)(
-    "%s: no redirect, renders nothing yet, no load",
-    async (state) => {
-      mocks.sessionState = state;
-
-      render(<UserManagementPage />);
-      await Promise.resolve();
-
-      expect(mocks.routerPush).not.toHaveBeenCalled();
-      expect(screen.queryByText("User Management")).not.toBeInTheDocument();
-      expect(mocks.api.getTeamStatus).not.toHaveBeenCalled();
     },
   );
 });

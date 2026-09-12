@@ -524,9 +524,10 @@ missing_files = sorted(expected_files - files_in_report)
 # is a fair one); a floor of the sentinels that must ALWAYS exist drifts only
 # when one is deliberately retired — which is exactly the moment a human should
 # have to edit this line and say so.
+# dream.spec.ts left this floor on 2026-09-12: the /dream page it guarded
+# was retired (orphan prototype), so the sentinel no longer exists to miss.
 REQUIRED_SPECS = {
     "_selftest.spec.ts",
-    "dream.spec.ts",
     "magic-link.spec.ts",
     "prime-maps.spec.ts",
     "visa-clock.spec.ts",

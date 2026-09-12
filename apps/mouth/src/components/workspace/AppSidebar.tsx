@@ -34,12 +34,7 @@ import {
   Receipt,
 } from "lucide-react";
 import { BZLogo } from "@balizero/core/components/BZLogo";
-import {
-  navigation,
-  portalNavigation,
-  NavSection,
-  NavItem,
-} from "@/types/navigation";
+import { navigation, NavSection, NavItem } from "@/types/navigation";
 import { cn } from "@/lib/utils";
 
 // Icon mapping

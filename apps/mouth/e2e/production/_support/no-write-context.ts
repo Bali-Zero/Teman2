@@ -56,10 +56,10 @@ const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * landing on any of these, unblocked, is a real durable side effect. Covers
  * the apex + every subdomain of balizero.com (mouth on the apex, the portal
  * app on my.balizero.com) plus the Fly backend the frontend calls directly
- * (apps/mouth/next.config.ts CSP `connect-src` names it explicitly — e.g.
- * dream.spec.ts's POST /api/dream/state resolves to
+ * (apps/mouth/next.config.ts CSP `connect-src` names it explicitly — e.g. the
+ * retired dream.spec.ts's POST /api/dream/state resolved to
  * https://nuzantara-rag.fly.dev/api/dream/state, a DIFFERENT host than the
- * page the browser is on).
+ * page the browser was on).
  */
 const OWN_ORIGIN_RE = /(^|\.)balizero\.com$|(^|\.)nuzantara-rag\.fly\.dev$/;
 
@@ -67,9 +67,10 @@ export interface NoWriteGuardOptions {
   /**
    * Path prefixes on our own origins that THIS spec is deliberately allowed
    * to hit unblocked, because observing the real response is the entire
-   * point of the test — e.g. dream.spec.ts needs the genuine 401 from
-   * `POST /api/dream/state` to prove the auth gate runs (and therefore
-   * nothing is persisted) BEFORE the redirect-suppression fix is trusted.
+   * point of the test — e.g. the retired dream.spec.ts needed the genuine
+   * 401 from `POST /api/dream/state` to prove the auth gate ran (and
+   * therefore nothing was persisted) BEFORE the redirect-suppression fix
+   * was trusted.
    * The guard still records every such request; it is on the spec to
    * assert something concrete about its response (status, body) rather
    * than silently trusting the allowlist entry is safe.

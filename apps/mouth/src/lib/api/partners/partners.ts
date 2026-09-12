@@ -302,7 +302,12 @@ export const deactivatePartner = (id: string) =>
 export const reassignPartner = (id: string, body: ReassignBody) =>
   api.post<{ success: boolean }>(`${BASE}/${id}/reassign`, body);
 
-/** Bulk reassign multiple orphaned partners */
+/**
+ * Bulk reassign partners. Client for the LIVE backend route
+ * (partners.py `POST /bulk-reassign`, 204). The /partners/orphaned page that
+ * used it was retired on 2026-09-12 because its list endpoint never existed;
+ * the ?orphaned= filter on /partners is where a bulk action would attach.
+ */
 export const bulkReassign = (body: BulkReassignBody) =>
   api.post<{ success: boolean; updated_count: number }>(
     `${BASE}/bulk-reassign`,
@@ -333,20 +338,6 @@ export const listCommissions = (
   api.get<{ commissions: PartnerCommission[]; total: number }>(
     `${BASE}/${partnerId}/commissions${qs(params)}`,
   );
-
-/** List orphaned partners (assigned_to is null or empty) */
-export const listOrphanedPartners = () =>
-  api.get<{ partners: Partner[]; total: number }>(`${BASE}/orphaned`);
-
-/** List all commissions for admin finance queue */
-export const listAllCommissions = (
-  params?: Record<string, string | number | null | undefined>,
-) =>
-  api.get<{
-    commissions: PartnerCommission[];
-    total: number;
-    summary: Record<string, number>;
-  }>(`${BASE}/commissions${qs(params)}`);
 
 /** Approve a commission */
 // CRIT-8: was /api/partner-commissions/{id}/approve — corrected to /api/partners/commissions/{id}/approve
