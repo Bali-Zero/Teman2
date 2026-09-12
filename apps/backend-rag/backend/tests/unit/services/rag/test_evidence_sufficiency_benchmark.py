@@ -35,7 +35,9 @@ _GOLDEN_TEST_PATH = Path(__file__).resolve().parent / "agentic" / "test_evidence
 # the frozen manifest. Case bs-17806bb4's `provenance_fixture` moved from a
 # legacy literal (score 0.72, score_kind unknown) to a declared dense source
 # (score 0.6146, score_kind dense_formatted, score_raw the one measured
-# cosine on disk for that (query, chunk) pair — 0.373, 2026-09-03); nothing
+# cosine on disk for that (query, chunk) pair — 0.373, attested in #5618
+# (commit 2cd3cf84b8) with no measurement date of its own; `2026-09-03` is
+# that commit's adversarial-review date, not a measurement receipt); nothing
 # else in the manifest changed. Old pin (until this PR):
 # 9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f.
 MANDATORY_MANIFEST_SHA256 = "d23a66ca27f48d2bf186f941e902a99c6991803ae53c651fedbab201772da745"
