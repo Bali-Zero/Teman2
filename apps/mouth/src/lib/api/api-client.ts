@@ -18,7 +18,6 @@ import { InstagramApi } from "./instagram/instagram.api";
 import { TwitterApi } from "./twitter/twitter.api";
 import { WorkflowApi } from "./workflow";
 import { WebSocketUtils } from "./websocket/websocket.utils";
-import { AnalyticsApi } from "./analytics/analytics.api";
 import { OmnichannelApi } from "./omnichannel/omnichannel.api";
 import { BlogApi } from "./blog/blog.api";
 import { PrimeApi } from "./prime/prime.api";
@@ -121,7 +120,6 @@ export class ApiClient extends ApiClientBase {
   private twitterApi: TwitterApi;
   private workflowApi: WorkflowApi;
   private wsUtils: WebSocketUtils;
-  private analyticsApi: AnalyticsApi;
   private omnichannelApi: OmnichannelApi;
   private blogApi: BlogApi;
   private primeApi: PrimeApi;
@@ -147,7 +145,6 @@ export class ApiClient extends ApiClientBase {
     this.twitterApi = new TwitterApi(this);
     this.workflowApi = new WorkflowApi(this);
     this.wsUtils = new WebSocketUtils(this);
-    this.analyticsApi = new AnalyticsApi(baseUrl, () => this.token);
     this.omnichannelApi = new OmnichannelApi(this);
     this.blogApi = new BlogApi(this);
     this.primeApi = new PrimeApi(this);
@@ -354,14 +351,6 @@ export class ApiClient extends ApiClientBase {
 
   public get prime(): PrimeApi {
     return this.primeApi;
-  }
-
-  // ============================================================================
-  // Analytics (Founder-only dashboard)
-  // ============================================================================
-
-  public get analytics(): AnalyticsApi {
-    return this.analyticsApi;
   }
 
   // ============================================================================
