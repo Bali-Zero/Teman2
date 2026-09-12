@@ -880,10 +880,8 @@ export default function ClientDetailPage() {
             documents={documents}
             activePractices={activePractices}
             completedPractices={completedPractices}
-            interactions={interactions}
             formatDate={formatDate}
             formatCurrency={formatCurrency}
-            router={router}
             onEditClick={() => setActiveModal("edit_client")}
             onRefresh={invalidateClient}
             clientId={clientId}
