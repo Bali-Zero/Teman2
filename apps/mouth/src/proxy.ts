@@ -18,6 +18,7 @@ const INTERNAL_ROUTES = [
   "/process",
   "/second-home",
   "/settings",
+  "/lkpm", // workspace LKPM batch — answered 200 on the public domain until 2026-09-12
   "/admin",
   "/agents",
   "/portal",

@@ -419,6 +419,14 @@ describe("Middleware - Multi-domain Routing", () => {
       );
     });
 
+    it("should allow /lkpm on the app domain", () => {
+      const request = createRequest("https://kita.balizero.com/lkpm");
+      const response = proxy(request);
+
+      expect(response.status).not.toBe(301);
+      expect(response.headers.get("x-pathname")).toBe("/lkpm");
+    });
+
     it("should allow internal app routes", () => {
       const request = createRequest("https://kita.balizero.com/dashboard");
       const response = proxy(request);
