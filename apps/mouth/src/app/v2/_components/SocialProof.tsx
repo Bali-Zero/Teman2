@@ -16,9 +16,10 @@ import styles from "./SocialProof.module.css";
 // `department` caption + accent + role overrides. `department` here is a marketing
 // caption, NOT the SSOT dept.
 //
-// WHO IS SHOWN goes through `publicEntries()` (src/lib/team-public-listing.ts) —
-// the roster keeps every record, this component publishes only the people the
-// owner lists publicly, so adding a slug below is never enough to publish them.
+// WHO IS SHOWN is decided in `socialProofRoster.ts`, on the server: it applies
+// `publicEntries()` and hands this component the finished rows. The specs no longer
+// live below, so there is no slug here to add — and that is the point, because a
+// constant naming staff in a "use client" file ships to the browser.
 //
 // VARIANTS. `default` is what /v2 renders and is unchanged. `founder-band` is
 // opt-in and used only by the home: the founders alone, in the R19 band rhythm.

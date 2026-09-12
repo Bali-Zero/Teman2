@@ -429,6 +429,30 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("x-pathname")).toBe("/team-management");
     });
 
+    it("should redirect /lkpm off the public domain, like its siblings", () => {
+      // /lkpm is a workspace page and was the ONLY one missing from
+      // INTERNAL_ROUTES: measured 2026-09-12, balizero.com/lkpm answered 200 with
+      // 48,529 bytes while /team-management and /clients answered 301. That made
+      // its server-rendered payload readable by anyone, which is how a change that
+      // moved staff data from its JS chunk into its HTML would have made things
+      // worse instead of better.
+      const request = createRequest("https://balizero.com/lkpm");
+      const response = proxy(request);
+
+      expect(response.status).toBe(301);
+      expect(response.headers.get("location")).toBe(
+        "https://kita.balizero.com/lkpm",
+      );
+    });
+
+    it("should allow /lkpm on the app domain", () => {
+      const request = createRequest("https://kita.balizero.com/lkpm");
+      const response = proxy(request);
+
+      expect(response.status).not.toBe(301);
+      expect(response.headers.get("x-pathname")).toBe("/lkpm");
+    });
+
     it("should allow internal app routes", () => {
       const request = createRequest("https://kita.balizero.com/dashboard");
       const response = proxy(request);
