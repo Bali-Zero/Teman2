@@ -3,6 +3,17 @@ ReAct Reasoning Utilities
 
 Helper functions extracted from reasoning.py to reduce file complexity.
 Contains: domain detection, evidence scoring, tool validation, team query detection.
+
+RULE OF THE ENGINE (RULED I30, 2026-09-12 — staff room, on B2.1's measurement):
+**the support signal is FAIL-CLOSED ONLY. It may ZERO relevance and never
+CREATE it — in every band and in both directions.** A verdict good enough to
+veto an answer is not good enough to grant one, and that is not a preference:
+Set D holds a hard negative (`sup-d-dd0c1a97`) that the elected judge calls
+SUPPORTED and that only the zero lexical band abstains today, so a rule
+letting SUPPORTED raise a band would buy the one residual false abstention
+(`bs-17806bb4`) and pay for it with a false acceptance of unsupported
+fee/duration advice in the same cell. If a future judge's error direction
+inverts, that is a NEW measurement and a new ruling — never a quiet edit here.
 """
 
 import logging

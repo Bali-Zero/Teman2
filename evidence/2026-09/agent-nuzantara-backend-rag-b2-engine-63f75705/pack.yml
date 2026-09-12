@@ -413,6 +413,16 @@ vulnerabilities:
     what: "A positive `reranked` score reads a flat conservative WEAK band because this repo has never measured the reranker's scale."
     disposition: "Declared in the code, in the tests and here; needs a real reranker-score measurement in a follow-up. The 0.0/negative floor is no longer read as evidence (round-1 cure)."
 perimeter_decision:
+  support_rule: >-
+    RULED I30 (2026-09-12, staff room, on this PR's measurement): the support
+    signal is FAIL-CLOSED ONLY — it may ZERO relevance and never CREATE it, in
+    every band and both directions. Written into `reasoning_utils.py`'s module
+    docstring as a rule of the engine, and pinned by
+    `TestSupportIsFailClosedOnlyInBothDirections`: SUPPORTED must be worth
+    exactly what silence is worth on BOTH relevance paths, every other verdict
+    must zero relevance, and a SUPPORTED verdict must not rescue the declared
+    residual's shape. If a future judge's error direction inverts, that is a
+    new measurement and a new ruling, never a quiet edit.
   ruling: >-
     SIX paths reach a client without ever calling the scorer — widened from
     the three the build spec named, after this window found three more. ALL
@@ -443,5 +453,12 @@ deferred_by_name:
   - "B2.2 — the live sample, the retrieval harness and the THRESHOLD, which these numbers say must be decided across two judges rather than as a single cut."
   - "B2.3a — the schema slice (migrations_v2, previous-image deploy order)."
   - "B2.3b — the carrier/writer slice."
-  - "The provenance-fixture PR — the nine tripwires pinned to impossible cosines, which is where V1 and V2 are actually cured."
+  - >-
+    OWED, and ruled so: the PROVENANCE-FIXTURE PR (RULED I30, 2026-09-12).
+    The nine tripwires pinned to impossible cosines, plus bs-17806bb4
+    declaring its real dense score — cut from FRESH origin/main AFTER B2.1
+    merges and proves live, and BEFORE B2.3. It is the ONLY PR allowed to
+    touch the frozen mandatory manifest; it re-pins the manifest sha256 in
+    its own pack, with a council of two counted seats. V1 and V2 are cured
+    there and nowhere else.
   - "A reranker-score measurement, for V4."

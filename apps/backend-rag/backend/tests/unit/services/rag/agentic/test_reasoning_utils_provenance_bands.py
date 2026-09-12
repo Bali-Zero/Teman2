@@ -446,3 +446,54 @@ class TestLexicalCorroboratesAndNeverCreates:
             ["Pendirian PT PMA memerlukan akta notaris, NPWP dan NIB melalui OSS."],
             "xyzabc123 qwerty",
         )
+
+
+class TestSupportIsFailClosedOnlyInBothDirections:
+    """RULED I30 — the rule of the engine, pinned so it cannot be relaxed by
+    an edit that merely looks symmetrical.
+
+    SUPPORTED may never be worth MORE than silence. `None` (not consulted)
+    and `SUPPORTED` must produce the SAME score for the same inputs, on both
+    relevance paths; every other verdict must zero it. If someone later makes
+    a SUPPORTED verdict lift a band, these tests are what goes red.
+    """
+
+    _DECLARED = [{"score": 0.5, "score_kind": "dense_formatted", "score_raw": 0.40}]
+    _UNKNOWN_KIND = [{"score": 0.72, "score_kind": "unknown", "score_raw": None}]
+    _CONTEXT = ["Pendirian PT PMA memerlukan akta notaris, NPWP dan NIB melalui OSS."]
+    _QUERY = "PT PMA NIB OSS requirements"
+    _CROSS_LANGUAGE_QUERY = "What is the price of new company setup?"
+
+    @pytest.mark.parametrize("sources", [_DECLARED, _UNKNOWN_KIND])
+    def test_supported_is_worth_exactly_what_silence_is_worth(self, sources: list[dict]) -> None:
+        not_consulted = calculate_evidence_score(sources, self._CONTEXT, self._QUERY)
+        supported = calculate_evidence_score(
+            sources, self._CONTEXT, self._QUERY, support=SupportVerdict.SUPPORTED
+        )
+        assert supported == not_consulted
+
+    @pytest.mark.parametrize("sources", [_DECLARED, _UNKNOWN_KIND])
+    @pytest.mark.parametrize(
+        "verdict",
+        [SupportVerdict.NOT_SUPPORTED, SupportVerdict.UNKNOWN, SupportVerdict.UNAVAILABLE],
+    )
+    def test_every_other_verdict_zeroes_relevance(
+        self, sources: list[dict], verdict: SupportVerdict
+    ) -> None:
+        assert calculate_evidence_score(
+            sources, self._CONTEXT, self._QUERY, support=verdict
+        ) < 0.15
+
+    def test_supported_cannot_rescue_the_declared_residual(self) -> None:
+        """The concrete case the rule was ruled on: `bs-17806bb4`'s shape — an
+        English question naming no identifier, Indonesian context that DOES
+        carry the fact, and a fixture declaring no provenance. A SUPPORTED
+        verdict must NOT lift it, however much we would like the cell to read
+        zero."""
+        score = calculate_evidence_score(
+            self._UNKNOWN_KIND,
+            ["Pendirian PT PMA — termasuk akta notaris, NPWP dan NIB. Harga: IDR 20.000.000"],
+            self._CROSS_LANGUAGE_QUERY,
+            support=SupportVerdict.SUPPORTED,
+        )
+        assert score < 0.15

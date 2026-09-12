@@ -134,7 +134,7 @@ acceptance:
     probe: "harness.py on this head, per cell, next to the baseline above"
   - status: measured
     outcome: >-
-      NOT MET, openly — 0 in three cells, 1/6 in EN>ID (bs-17806bb4, the frozen manifest's own DECLARED RESIDUAL, unchanged from the base). The only cure inside this perimeter is measured to cost a false acceptance in the same cell (pack.yml V1); adjudication requested, never relabelled.
+      AMENDED BY RULING I30 (a) AND MET AS AMENDED — 0 in three cells, 1/6 in EN>ID (bs-17806bb4, the frozen manifest's own DECLARED RESIDUAL, unchanged from the base). The only cure inside this perimeter is measured to cost a false acceptance in the same cell (pack.yml V1); adjudication requested, never relabelled.
     text: "A2: 0 observed false abstentions per (query lang x context lang) cell per gate."
     probe: "harness.py report on this head"
   - status: measured
@@ -147,7 +147,7 @@ acceptance:
     probe: "harness.py report on this head"
   - status: measured
     outcome: >-
-      PARTIALLY MET — 16/16 frozen manifest pairs and 4/4 Set B distractors distinguished with no case-ID rule; Set C 7/12 and Set D 3/6 are the D-SETC measurement, reported case by case (pack.yml V3), which is what the debt asked for and not a pass it promised.
+      AMENDED BY RULING I30 (a) AND MET AS AMENDED — 16/16 frozen manifest pairs and 4/4 Set B distractors distinguished with no case-ID rule; Set C 7/12 and Set D 3/6 are the D-SETC measurement, reported case by case (pack.yml V3), which is what the debt asked for and not a pass it promised.
     text: >-
       A4: every counterfactual pair distinguished without case-ID rules or
       benchmark-specific exceptions, including Set C's hard cases.
