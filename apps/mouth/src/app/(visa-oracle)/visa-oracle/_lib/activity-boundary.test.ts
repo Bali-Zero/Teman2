@@ -350,12 +350,17 @@ const WALKS: readonly WalkCase[] = [
     // `transit`: D4a (owner ruling SHWEB-20260911) released `transit` —
     // `mapPurposes` now maps it to a real, pack-decided purpose — so it can
     // no longer stand in for "an undecidable other_purpose value" here.
+    // `sponsor_category` (PR-D4d) is now asked between `other_paid_activity`
+    // and `work_payer` on this branch — the value is incidental to this
+    // row's own concern (`other_purpose`'s hold), so `NONE` (the question's
+    // first option) is used, same as the neutral rows above.
     name: "other · paid activity yes — engine reroutes to employment; other_purpose still holds",
     category: "other",
     tripScope: "single",
     branch: [
       ["other_purpose", "medical"],
       ["other_paid_activity", "yes"],
+      ["sponsor_category", "NONE"],
       ["work_payer", "yes"],
       ["work_sponsor_confirmed", "yes"],
       ["stay_days", "30"],

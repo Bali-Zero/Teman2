@@ -463,12 +463,14 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
    * family/work/study "is the sponsor confirmed?" booleans elsewhere in
    * this file, and it is not the sponsor's identity either — just the
    * category. Maps to the single optional `sponsor.type`
-   * FactPath (spec staged-rollout field). No rule in the currently
-   * active pack reads it yet; the question exists to collect the fact
-   * ahead of the rules that will (design doc §4, category-conditional
-   * questions). Asked only where the category makes the sponsor
-   * discriminating — see `FIXED_CATEGORY_QUESTIONS`/`getCategoryQuestionIds`
-   * in flow.ts for exactly which categories include it. */
+   * FactPath (spec staged-rollout field). Corrected PR-D4d: the prior
+   * claim here ("no rule in the currently active pack reads it yet") was
+   * false — the ACTIVE pack (rulepack-prod-020.signed.json) already carries
+   * five conditions on `sponsor.type` (`el.e30e/e30f-student-support`,
+   * `hf.e33a/b/c`), and a draft pack (seq-21, unsigned) adds seven more.
+   * Asked only where the category makes the sponsor discriminating — see
+   * `FIXED_CATEGORY_QUESTIONS`/`getCategoryQuestionIds` in flow.ts for
+   * exactly which categories include it. */
   sponsor_category: {
     id: "sponsor_category",
     i18nKey: "q.sponsor_category",
