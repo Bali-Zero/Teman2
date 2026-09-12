@@ -546,3 +546,21 @@ council_delta_on_the_successor:
     on disk BEFORE curing it, and by the gate that follows — not by the seats
     that raised them. That is weaker than a confirmed delta and it is said
     here rather than left to be discovered.
+
+rectification_c4_of_the_6338_gate:
+  ts: "2026-09-12T16:29:40Z"
+  by: "the Dux of B2, in the ledger-only successor PR — appended, never rewritten, because a pack that edits its own errors stops being evidence"
+  what: >-
+    Two receipts in THIS pack report the full-suite total as "5118 passed"
+    (the `full_suites.result` receipt dated 13:51:49Z, and the innocence
+    paragraph that repeats it). The pack's own summary line and the fresh
+    Opus 5 on-disk gate of 2026-09-12 both measure 5119 passed, 42 skipped,
+    7 xfailed, 0 failed, 0 error on head 91674b56d5 — one MORE than #6326's
+    5118, and that one is F1b
+    (`test_supported_is_worth_nothing_MID_BAND_ON_THE_LEGACY_PATH_too`).
+  cause: >-
+    The 13:51:49Z run predates F1b's own commit; the figure was true when
+    measured and was carried forward past the commit that changed it. The
+    original receipts are left exactly as they were: the clock was not
+    invented here, only a superseded number was reused.
+  in_force: "5119 passed, 42 skipped, 7 xfailed, 0 failed, 0 error — pack summary line and gate agree."
