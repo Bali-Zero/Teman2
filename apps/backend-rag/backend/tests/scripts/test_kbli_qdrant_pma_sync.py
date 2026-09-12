@@ -689,6 +689,29 @@ def test_a_truncated_legacy_gap_with_unsafe_editorial_is_refused():
     assert rewrite_pma_prose(rec, truncated) is None
 
 
+def test_a_truncation_landing_exactly_on_the_section_separator_is_still_a_no_op():
+    """Regression, 21022 in the v11.0-L2-oss-risk-20260911 regeneration: its
+    Intelligence section grew (a new `editorial` field) until the generator's
+    global character cap landed exactly on the one blank line that always
+    separates a complete section from what follows it. The truncated blob then
+    carries the COMPLETE reviewed section plus that separator, one line longer
+    than `certified_intelligence_block` itself returns — still an exact match,
+    not a partial prefix, and must not be refused."""
+    registry = load_editorial_registry()
+    rec = _real_record("21022")
+    reviewed = certified_intelligence_block(rec, registry)
+    assert reviewed and reviewed[0] == "## Intelligence 2026"
+
+    blob = (
+        "\n".join(render_pma_block(rec))
+        + "\n\n"
+        + "\n".join(reviewed)
+        + "\n\n(... dipotong untuk batas panjang.)"
+    )
+
+    assert rewrite_pma_prose(rec, blob, registry) == blob
+
+
 def test_a_point_whose_blob_already_tells_the_truth_is_not_rewritten():
     """Innocence: the repair must be a no-op on a truthful blob, or every run
     would rewrite the whole collection and the diff would stop meaning anything."""

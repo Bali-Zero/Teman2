@@ -168,8 +168,8 @@ state reproduces exactly, no exception list.
 
 **Rule 5 (September vault):** tier-set changes on 183 codes = the pinned 181 minus 20111
 (quarantined) plus the 3 applied new-only codes; nothing outside that set. Field table on rows
-common to both sides: `skala_usaha`/`kategori_risiko`/`scope_index` 0; `scope_uraian` 141,
-`persyaratan` 14, `kewajiban` 28, `perizinan` 1, `kewenangan` ~1290 (OSS de-duplicated the
+common to both sides: `skala_usaha`/`kategori_risiko`/`scope_index` 0; `scope_uraian` 140,
+`persyaratan` 13, `kewajiban` 27, `perizinan` 0, `kewenangan` ~1290 (OSS de-duplicated the
 authority lists — the report's generic drift flag); `jangka_waktu` 6 codes (unsourced rows whose
 OSS value changed; sourced rows preserved on 4,048 rows); `fiktif_positif`/`jangka_waktu_source`
 dropped on 0 rows. Top level: `absent_probes` 13 (= the old-only set), `_l2_status` 16,

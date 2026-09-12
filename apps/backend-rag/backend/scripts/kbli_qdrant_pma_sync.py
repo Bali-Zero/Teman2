@@ -451,7 +451,15 @@ def _truncated_section_matches_reviewed_prefix(
     # it into one list element and the final join turns those into physical
     # lines, so compare the same physical representation stored in Qdrant.
     reviewed_physical_lines = "\n".join(reviewed_lines).split("\n")
-    return actual_prefix == reviewed_physical_lines[: len(actual_prefix)]
+    if actual_prefix == reviewed_physical_lines[: len(actual_prefix)]:
+        return True
+    # The generator always separates a complete section from whatever follows
+    # it with exactly one blank line (see `_replace_heading_section`). When the
+    # global character cap lands right after that separator, the actual prefix
+    # is the COMPLETE reviewed section plus that one blank line, not a partial
+    # one — still an exact match, just one line longer than `reviewed_lines`
+    # itself accounts for (`certified_intelligence_block` never appends it).
+    return actual_prefix == reviewed_physical_lines + [""]
 
 
 def certified_intelligence_block(
