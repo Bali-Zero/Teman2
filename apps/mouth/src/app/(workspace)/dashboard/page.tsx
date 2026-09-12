@@ -12,13 +12,9 @@ import {
   TrendingUp,
   Activity,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
-import {
-  LiveActivityFeed,
-  RoleWidget,
-  ZantaraPortalCard,
-} from "@/components/dashboard";
-import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
+import { RoleWidget } from "@/components/dashboard";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { TeamActivityPanel } from "@/components/dashboard/TeamActivityPanel";
 import type {
@@ -29,7 +25,6 @@ import { dashboardQueryKey, useDashboardData } from "@/hooks/useDashboardData";
 import { useRealtime } from "@/lib/realtime";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { normalizeDashboardRole } from "@/lib/dashboard-role";
-import type { LiveActivityEvent } from "@/types/dashboard-role.types";
 import { logger } from "@/lib/logger";
 import { STRINGS } from "@/lib/strings";
 import { api } from "@/lib/api";
@@ -464,15 +459,10 @@ export default function DashboardPage() {
   const { data: complianceAlerts, isLoading: complianceLoading } =
     useComplianceAlerts(opsIdentity);
 
-  // Team stats — loaded lazily after main data resolves
-  const [teamEnabled, setTeamEnabled] = React.useState(false);
-  React.useEffect(() => {
-    const t = setTimeout(() => setTeamEnabled(true), 800);
-    return () => clearTimeout(t);
-  }, []);
+  // Team stats
   const { data: teamData, isLoading: teamLoading } = useTeamStats(
     authIdentity,
-    teamEnabled,
+    Boolean(authIdentity),
   );
 
   const realtime = useRealtime();
@@ -500,43 +490,6 @@ export default function DashboardPage() {
       });
     }
   }, [user?.email, isLoading]);
-
-  // Live events from practices
-  const liveEvents: LiveActivityEvent[] = React.useMemo(() => {
-    return practices.slice(0, 8).map((p): LiveActivityEvent => ({
-      id: String(p.id),
-      type:
-        p.status === "completed"
-          ? "ok"
-          : p.daysRemaining !== undefined && p.daysRemaining < 7
-            ? "critical"
-            : p.status === "documents"
-              ? "warning"
-              : "info",
-      icon:
-        p.status === "completed"
-          ? "✅"
-          : p.daysRemaining !== undefined && p.daysRemaining < 7
-            ? "🚨"
-            : p.status === "documents"
-              ? "📄"
-              : "📁",
-      text: `${p.client} · ${p.title || p.status}`,
-      tag:
-        p.status === "completed"
-          ? "COMPLETED"
-          : p.daysRemaining !== undefined && p.daysRemaining < 7
-            ? "URGENT"
-            : p.status === "documents"
-              ? "DOCUMENTS"
-              : undefined,
-      timestamp: new Date().toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      userId: user?.email,
-    }));
-  }, [practices, user?.email]);
 
   // Loading skeleton
   if (isLoading) {
@@ -634,9 +587,9 @@ export default function DashboardPage() {
           href: "/process",
         },
         {
-          label: "Stalled",
+          label: "Expiring",
           value: stats.criticalDeadlines,
-          sub: ">14 days",
+          sub: "≤ 7 days",
           accent: "var(--bz-chart-7)",
         },
         {
@@ -646,19 +599,28 @@ export default function DashboardPage() {
           accent: "var(--bz-chart-3)",
         },
         {
-          label: "Unread",
+          label: "Messages",
           value: stats.whatsappUnread + stats.emailUnread,
-          sub: "messages",
+          sub: "whatsapp + unread email",
           accent: "var(--bz-chart-1)",
         },
       ];
 
   return (
     <DashboardErrorBoundary>
-      <div className="relative dash-liquid-bg">
+      <div className="relative">
         <div className="p-2.5 space-y-2">
-          {/* ROW 1: Zantara AI portal */}
-          <ZantaraPortalCard />
+          {/* ROW 1: Zantara AI link */}
+          <a
+            href="https://zantara.balizero.com/chat"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bz-product-panel flex items-center gap-2 px-4 py-2 text-[11px] font-semibold text-[var(--bz-text-1)] hover:text-[var(--bz-accent)] transition-colors"
+          >
+            <Sparkles size={12} className="text-[var(--bz-accent)]" />
+            Zantara AI
+            <ExternalLink size={11} className="ml-auto opacity-50" />
+          </a>
 
           {/* ROW 1.5: Intake review banner — only when docs are waiting */}
           <IntakeReviewBanner identity={authIdentity} />
@@ -681,19 +643,17 @@ export default function DashboardPage() {
           </div>
 
           {/* ROW 3: Team Activity — admin sees all, team member sees own row only */}
-          {teamEnabled && (
-            <TeamActivityPanel
-              members={
-                isZero
-                  ? (teamData?.members ?? [])
-                  : (teamData?.members ?? []).filter(
-                      (m) => m.email === user?.email,
-                    )
-              }
-              overview={isZero ? (teamData?.overview ?? null) : null}
-              isLoading={teamLoading || !teamEnabled}
-            />
-          )}
+          <TeamActivityPanel
+            members={
+              isZero
+                ? (teamData?.members ?? [])
+                : (teamData?.members ?? []).filter(
+                    (m) => m.email === user?.email,
+                  )
+            }
+            overview={isZero ? (teamData?.overview ?? null) : null}
+            isLoading={teamLoading}
+          />
 
           {/* ROW 3.5: System Pulse + Compliance Radar (WS2 slice 2 — live ops probes) */}
           <div
@@ -880,15 +840,11 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Right column: LiveActivityFeed + RoleWidget stacked */}
+            {/* Right column: RoleWidget */}
             <div className="flex flex-col gap-2">
-              <LiveActivityFeed events={liveEvents} isLoading={isLoading} />
               <RoleWidget role={role} userId={user?.email ?? ""} />
             </div>
           </div>
-
-          {/* ROW 5: Hero news — below the operational rows (audit P0.1: action above the fold) */}
-          <HeroLiveWindow />
         </div>
       </div>
     </DashboardErrorBoundary>
