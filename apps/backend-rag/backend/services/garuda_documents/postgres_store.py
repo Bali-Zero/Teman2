@@ -380,9 +380,23 @@ class PostgresDocumentStore:
             # three possible answers stay three, rather than collapsing them into False:
             #   same payload   -> a genuine lost race, which IS False
             #   other payload  -> IDEMPOTENCY_CONFLICT, the caller must be told
-            #   no row at all  -> nobody holds this key, so "you lost" is not true of
-            #                     anything; 304 forbids DELETE on this table, so this is
-            #                     an invariant breach and is raised, never swallowed.
+            #   no row at all  -> nobody holds this key NOW, so "you lost to X" is not
+            #                     true of anything. An earlier draft of this comment said
+            #                     304 forbids DELETE and called the case impossible. It is
+            #                     not: `guard_garuda_document_mutation` (304, the DELETE
+            #                     branch) rejects a delete only while `clock_timestamp() <
+            #                     OLD.retention_until`, so a row legitimately leaves once
+            #                     its retention expires and a third caller can then
+            #                     re-occupy the key. Reaching here therefore means the
+            #                     winner was purged between the collision and this
+            #                     re-read, or the key was re-taken after that purge. Both
+            #                     need this single call to straddle the retention window
+            #                     -- 30 days under the active policy -- so neither is
+            #                     ordinary; but neither has a defined answer for THIS
+            #                     caller either. It is raised rather than swallowed, and
+            #                     the message says UNHANDLED, not impossible. Giving the
+            #                     case a semantics (typed error, or a bounded retry) is
+            #                     PR2b's, specified in SPEC-PR2b-interleaving.md.
             async with self._pool.acquire() as conn:
                 winner = await conn.fetchrow(
                     """
@@ -395,8 +409,9 @@ class PostgresDocumentStore:
             if winner is None:
                 raise RuntimeError(
                     "garuda_documents: the INSERT reported a primary-key collision but no "
-                    "row holds that key -- the table's DELETE guard should make this "
-                    "unreachable"
+                    "row holds that key -- the winner was purged after its retention "
+                    "expired, or the key was re-occupied after that purge. This call "
+                    "straddled the retention window; the case is unhandled, not impossible"
                 )
             if bytes(winner["canonical_payload_sha256"]) != payload_hash_bytes:
                 raise IdempotencyConflictError(idempotency_key)

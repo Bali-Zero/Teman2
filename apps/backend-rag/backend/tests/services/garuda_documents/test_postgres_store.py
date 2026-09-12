@@ -153,10 +153,20 @@ _ENV = "TEST"
 # Real actors are `result_id`s: 32 hex characters, and two of a customer's sessions can
 # share a long prefix. Short literals like "actor-1"/"actor-2" let a length-truncating
 # mutation -- `actor_id[:8]` in the hash -- keep every key in this suite byte-identical
-# and stay GREEN while cross-actor isolation is gone. These two share their first 16
-# characters on purpose, so any truncation shorter than the full id collides them.
-_ACTOR_1 = "0123456789abcdef" + "1" * 16
-_ACTOR_2 = "0123456789abcdef" + "2" * 16
+# and stay GREEN while cross-actor isolation is gone.
+#
+# A pair sharing SOME prefix only pins the cuts shorter than it: the first version of
+# these constants shared 16 characters, caught `actor_id[:8]`, and survived
+# `actor_id[:17]` (Sol, round O2, finding 2 -- the mutation moved, the suite stayed
+# green). A longer hand-picked prefix would have the same shape one cut further out. So
+# the prefix here is MAXIMAL rather than long: the two ids differ only in their final
+# character, which makes "every truncation collides them" a property of the pair instead
+# of a claim about one chosen n, and
+# `test_every_truncation_of_the_actor_id_collides_the_two_fixture_actors` asserts it for
+# all 31 cuts.
+_ACTOR_COMMON_PREFIX = "0123456789abcdef" + "0" * 15  # 31 of the 32 characters
+_ACTOR_1 = _ACTOR_COMMON_PREFIX + "1"
+_ACTOR_2 = _ACTOR_COMMON_PREFIX + "2"
 
 
 def _doc_id(label: str) -> str:
@@ -194,8 +204,15 @@ async def sandbox() -> AsyncIterator[_Sandbox]:
     ledger = f"gdoc_ledger_{suffix}"
     app = f"gdoc_app_{suffix}"
 
-    admin = await asyncpg.connect(_ADMIN_URL)
+    # The connect itself is INSIDE the try, and `asyncpg.InterfaceError` is in the tuple.
+    # Outside it, a DSN that asyncpg's own parser rejects -- a bad `sslmode`, say -- raises
+    # `ClientConfigurationError` (an `InterfaceError`, which is neither `OSError` nor
+    # `PostgresError`) before any socket is opened, so it escaped both the redaction below
+    # and the CI-must-not-skip branch, and a `--tb=long` traceback renders the connect's
+    # arguments -- the DSN, password included (Sol, round O2, finding 5).
+    admin: asyncpg.Connection | None = None
     try:
+        admin = await asyncpg.connect(_ADMIN_URL)
         is_superuser = await admin.fetchval("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")
         if not is_superuser:
             # In CI this is a FAILURE, not a skip. `pytest.skip` raises `Skipped`, which is
@@ -218,7 +235,7 @@ async def sandbox() -> AsyncIterator[_Sandbox]:
         await admin.execute(f'CREATE DATABASE "{db_name}"')
         await admin.execute(f'CREATE ROLE "{ledger}" NOLOGIN')
         await admin.execute(f'CREATE ROLE "{app}" NOLOGIN')
-    except (OSError, asyncpg.PostgresError) as exc:
+    except (OSError, asyncpg.InterfaceError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(
                 f"CI has no reachable Postgres for GARUDA_DOCUMENTS_TEST_DSN "
@@ -228,7 +245,8 @@ async def sandbox() -> AsyncIterator[_Sandbox]:
             )
         pytest.skip(f"no local superuser Postgres reachable at {_redacted(_ADMIN_URL)}: {exc}")
     finally:
-        await admin.close()
+        if admin is not None:
+            await admin.close()
 
     try:
         # Build ONLY what migration 304 needs (module docstring explains why not the
@@ -439,12 +457,25 @@ async def test_two_concurrent_commits_same_key_exactly_one_wins(
     outcome_a = _low_confidence(_doc_id("doc-race-a-00000000000001"))
     outcome_b = _low_confidence(_doc_id("doc-race-b-00000000000001"))
 
-    # `asyncio.gather` alone does NOT force the interleaving this test is named for. If
-    # acquiring the second pool connection delays B past A's INSERT, B's own `SELECT ...
-    # FOR UPDATE` finds the row already there and takes the ordinary replay branch: every
-    # assertion below still passes, and so does a mutant with the `UniqueViolationError`
-    # handler deleted. A barrier makes the property deterministic instead of scheduler-
-    # dependent: both coroutines must have observed the key ABSENT before either inserts.
+    # `asyncio.gather` alone does NOT even get both racers to a shared starting point: if
+    # acquiring the second pool connection delays B past A's INSERT, B never observed the
+    # key absent at all. The barrier fixes that much -- both coroutines must have seen the
+    # key ABSENT before either inserts -- and no more.
+    #
+    # DECLARED LIMIT (Sol, round O2, finding 1) -- and it is the reason this file does not
+    # claim to pin the PK branch. The barrier synchronises the EXTERNAL probes, not the
+    # lookups the two `commit()` calls make INTERNALLY. Both racers can see the key absent,
+    # pass the barrier, and then A can still run its whole transaction -- internal `SELECT
+    # ... FOR UPDATE`, INSERT, commit -- before B reaches its own `SELECT ... FOR UPDATE`.
+    # B then finds the row and takes the ordinary replay branch, every assertion below
+    # still passes, and so does a mutant with the `UniqueViolationError` handler deleted:
+    # Sol reproduced exactly that schedule against this candidate and got two PASSes with
+    # zero primary-key violations. What this test therefore proves is the OUTCOME (exactly
+    # one winner, exactly one row) under a schedule where both racers start from an empty
+    # key -- not that the loser travelled through the PK-violation branch. Forcing that
+    # branch needs the store to expose a test-only seam between its lookup and its INSERT,
+    # or two connections holding an explicit lock; it is specified, with the assertion it
+    # must carry, in SPEC-PR2b-interleaving.md.
     both_looked = asyncio.Barrier(2)
     original_scoped_key = _scoped_key_sha256
 
@@ -631,6 +662,40 @@ def test_scoped_key_hash_differs_by_actor_and_matches_for_the_same_tuple():
     assert hash_alice == hash_alice_again, "same (actor, operation, environment, key) must replay to the same hash"
 
 
+@pytest.mark.parametrize("cut", range(1, 32))
+def test_every_truncation_of_the_actor_id_collides_the_two_fixture_actors(cut: int):
+    """The PROPERTY the cross-actor tests depend on, asserted for every cut instead of one.
+
+    A hash that truncates the actor before mixing it -- `actor_id[:n]` for any n short of
+    the full id -- destroys cross-actor isolation. Every isolation test in this file can
+    only NOTICE that if the two fixture actors collide under the truncation, and that is a
+    fact about the FIXTURE, not about the store: with the previous pair (16 shared
+    characters) `[:8]` was caught and `[:17]` was not, so the guard held for one chosen n
+    and the mutation simply moved (Sol, round O2, finding 2).
+
+    So this asserts the fact directly, for all 31 cuts: under `actor_id[:cut]` the two
+    actors produce the SAME scoped hash. Combined with
+    `test_scoped_key_hash_differs_by_actor_and_matches_for_the_same_tuple` -- which says
+    the untruncated ids do NOT collide -- no truncating mutation of this hash can survive
+    the isolation tests, whatever n it picks.
+    """
+    assert len(_ACTOR_1) == len(_ACTOR_2) == 32
+    assert _ACTOR_1 != _ACTOR_2, "the pair must stay distinct at full length, or nothing is proved"
+
+    truncated_alice = _scoped_key_sha256(
+        actor_id=_ACTOR_1[:cut], operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
+    )
+    truncated_bob = _scoped_key_sha256(
+        actor_id=_ACTOR_2[:cut], operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
+    )
+
+    assert truncated_alice == truncated_bob, (
+        f"the fixture actors diverge at or before character {cut}, so a hash truncating at "
+        f"{cut} would keep them distinct and every cross-actor test here would survive that "
+        "mutation while isolation is actually gone"
+    )
+
+
 # ---------------------------------------------------------------------------
 # DEFERRED TO THE NEXT PR, on purpose, not forgotten:
 #   - the SECURITY DEFINER ownership-transfer pair (a low-privilege application
@@ -648,12 +713,22 @@ async def test_lost_race_with_a_different_payload_is_a_conflict_not_a_lost_race(
 ):
     """Losing the INSERT race says NOTHING about whose payload won.
 
-    Two callers, same actor and key, DIFFERENT payloads, both past their `SELECT ... FOR
-    UPDATE` before either inserts. One wins. The loser's INSERT hits the primary key --
-    and at that moment it has never compared payloads, because when it looked there was no
-    row to compare against. Reporting `False` there tells the caller "you merely lost a
-    race, the committed outcome is yours to read", which is a lie: the committed outcome
-    belongs to a DIFFERENT document. The contract's answer is IDEMPOTENCY_CONFLICT.
+    Two callers, same actor and key, DIFFERENT payloads, each having observed the key
+    absent before either inserts. One wins. If the loser's INSERT reaches the primary key
+    -- which is what happens when it looked before the winner's row existed -- it has
+    never compared payloads, because there was nothing to compare against. Reporting
+    `False` there tells the caller "you merely lost a race, the committed outcome is yours
+    to read", which is a lie: the committed outcome belongs to a DIFFERENT document. The
+    contract's answer is IDEMPOTENCY_CONFLICT, and it is the answer this test pins.
+
+    DECLARED LIMIT (Sol, round O2, finding 1), same one as
+    `test_two_concurrent_commits_same_key_exactly_one_wins`: the barrier coordinates the
+    two EXTERNAL probes, not the lookups the two `commit()` calls make internally. Nothing
+    here forces the loser through the `UniqueViolationError` branch rather than through the
+    ordinary sequential `SELECT ... FOR UPDATE` comparison -- Sol showed both tests pass,
+    with zero primary-key violations, against a candidate with that handler deleted. Both
+    routes owe the caller IDEMPOTENCY_CONFLICT, which is why the assertion is still worth
+    making; making WHICH route ran observable is what SPEC-PR2b-interleaving.md specifies.
     """
     store_a = PostgresDocumentStore(pool, environment=_ENV)
     store_b = PostgresDocumentStore(pool, environment=_ENV)
@@ -720,6 +795,15 @@ async def test_low_confidence_replay_returns_the_fields_in_the_original_order(
     different serialized body for the customer. This pair is chosen so the two orders
     DISAGREE: in the enum `passport_number` precedes `nationality`, alphabetically it does
     not. A fixture whose fields happen to be alphabetical hides the whole defect.
+
+    DECLARED LIMIT (Sol, round O2, finding 4). What this proves is the CANONICAL case:
+    the store returns the enum's declaration order, and for outcomes `confidence.py`
+    produces that IS the order they were sent in. It does NOT prove the stronger sentence
+    "a replay preserves the order received", which is false for a `LowConfidenceOutcome`
+    assembled in any other order -- nothing in the port constrains the caller to the enum
+    order, and the store has no column to remember a different one in. The port docstring
+    now promises the canonical order explicitly rather than the received one; making the
+    received order survivable is a schema change, specified in SPEC-PR2b-interleaving.md.
     """
     fields = (
         UncertainReviewField(field_path=PassportReviewFieldName.PASSPORT_NUMBER, confirmation_required=True),

@@ -12,11 +12,13 @@ gate_class: opus
 # of the diff it would be describing, so any exact total written inside it is stale the
 # moment it is written — measured twice while writing this brief, +883/-1 then +1023/-1,
 # each reading invalidated by the edit that recorded it. The stable, checkable figures are
-# the per-file counts of the three files that are NOT this one: ports.py +34/-1,
-# postgres_store.py +320/-0, test_postgres_store.py +550/-0 = 903 net before this brief is
-# counted at all, already past the 400-line term, so the floor is 2 no matter what this file
-# weighs. (Both conditions of gate-6281 on PR #6281 were a count taken at commit N and never
-# refreshed at N+1; a self-referential total is the same defect with no fixed point.)
+# the per-file counts of the three files that are NOT this one, `git diff --numstat
+# 50a3d4f762 -- apps/` on the head this brief describes: ports.py +44/-1, postgres_store.py
+# +419/-0, test_postgres_store.py +851/-0 = 1313 net before this brief is counted at all,
+# already past the 400-line term, so the floor is 2 no matter what this file weighs.
+# HISTORICAL: +34/-1, +320/-0, +550/-0 = 903 at the pre-O1 head — replaced, not silently
+# overwritten. (Both conditions of gate-6281 on PR #6281 were a count taken at commit N and
+# never refreshed at N+1; a self-referential total is the same defect with no fixed point.)
 #
 # Gear 2 == the floor exactly — not raised above it, because the gear CEILING rule is as
 # real as the floor and this is one adapter with one test file.
@@ -37,7 +39,7 @@ scope:
   - apps/backend-rag/backend/services/garuda_documents/postgres_store.py
   - apps/backend-rag/backend/services/garuda_documents/ports.py
   - apps/backend-rag/backend/tests/services/garuda_documents/test_postgres_store.py
-  - evidence/2026-09/agent-air-m5-backend-rag-voa-store-adapter-51505641/
+  - evidence/2026-09/agent-air-m5-backend-rag-voa-store-adapter-51505641/ # brief.yml, SPEC-PR2b-interleaving.md, ledger-rows-held.md
 constraints:
   - >-
     NO migration. 304 is already applied in production — measured this session via
@@ -99,18 +101,23 @@ acceptance:
       A7 (no regression): the whole garuda_documents lane plus the router suite SHALL stay
       green.
     probe: "pytest backend/tests/services/garuda_documents/ backend/tests/app/routers/test_garuda_documents_router.py"
+# Every figure below was measured on the head this brief describes, on BOTH PostgreSQL
+# 17.10 and 15.19, identical counts on each. Out of 50 collected (19 + 31 parametrized).
 guilt_mutations:
   - "actor_id replaced by an empty string in the scoped key (the 'accepts it and ignores it' store) -> 3 failed"
-  - "actor_id TRUNCATED to actor_id[:8] -> 3 failed. Sol's finding 1: this one SURVIVED at first, because every actor literal in the suite was 7 characters or fewer and truncation changed no key. Cured by giving the tests 32-hex ids sharing a 16-character prefix, the shape a real result_id has."
+  - "actor_id TRUNCATED to actor_id[:8] -> 3 failed"
+  - "actor_id TRUNCATED to actor_id[:17] -> 3 failed. HISTORY: survived O1's cure (Sol O2 finding 2, SAME CAUSE as O1 finding 1) because the fixture actors shared 16 characters and the cut moved past them. Now the pair shares 31 of 32, and `test_every_truncation_of_the_actor_id_collides_the_two_fixture_actors` asserts the collision for every cut 1..31 instead of pinning one."
+  - "actor_id TRUNCATED to actor_id[:31] -> 3 failed"
+  - "actor_id TRUNCATED to actor_id[:1] -> 3 failed"
   - "length-prefixed encoding replaced by '|'.join -> 1 failed"
   - "the active-policy check removed from commit() -> 1 failed"
   - "_rehydrate fabricating a valueless ReadyOutcome instead of raising -> 1 failed"
-  - "the UniqueViolationError catch removed entirely -> 1 failed"
-  - "the INSERT-path loser reported as payload_checked=True (Sol finding 2 reverted) -> 1 failed"
-  - "every UniqueViolationError treated as a lost race, document_id included (Sol finding 3 reverted) -> 1 failed"
-  - "_in_canonical_order dropped, SQL order kept (Sol finding 10 reverted) -> 1 failed"
-  - "_with_database reverted to rsplit('/', 1) (Sol finding 5 reverted) -> 1 failed"
-  - "_redacted returning the DSN unchanged (Sol finding 7 reverted) -> 1 failed"
+  - "the UniqueViolationError handler removed entirely -> 2 failed (both race tests, UniqueViolationError propagating). DECLARED: this is red under M5's scheduler, where the race reaches the primary key; Sol showed a schedule under which it stays green. The tests pin the outcome, not the branch — see declared_limits and SPEC-PR2b-interleaving.md §1."
+  - "the INSERT-path loser reported as payload_checked=True (Sol O1 finding 2 reverted) -> 1 failed"
+  - "every UniqueViolationError treated as a lost race, document_id included (Sol O1 finding 3 reverted) -> 1 failed"
+  - "_in_canonical_order dropped, SQL order kept (Sol O1 finding 10 reverted) -> 1 failed"
+  - "_with_database reverted to rsplit('/', 1) (Sol O1 finding 5 reverted) -> 1 failed"
+  - "_redacted returning the DSN unchanged (Sol O1 finding 7 reverted) -> 1 failed"
 refuter:
   seat: codex Sol
   model_id: gpt-5.6-sol
@@ -155,15 +162,53 @@ refuter:
     fields. And (11) three prose claims, one of them the same separator-join example this
     brief already recorded as wrong in the test file and had left uncorrected in the store.
   cures_without_a_behavioural_test: >-
-    Declared rather than glossed. TWO of the eleven cures carry no test of their own.
-    (4) transaction_timestamp: the window it closes is the sub-millisecond gap between a
-    transaction's start and a round-trip, and forcing a policy to become effective inside
-    it is not deterministically reproducible; the cure is structural — one instant instead
-    of two — rather than conditional, and is offered as such.
-    (6) CI-fails-instead-of-skips: the branch lives inside the fixture and asserting it
+    Declared rather than glossed. THREE cures carry no test of their own.
+    (O1-4) transaction_timestamp: the window it closes lies between the Python guard and
+    the INSERT — a transaction start, a round-trip, and whatever scheduling happens in
+    between, so NOT sub-millisecond, and a test could widen it deliberately by pausing
+    after the transaction opens and flipping the policy (Sol O2 finding 6 corrected the
+    earlier "sub-millisecond, not reproducible" wording). No such test is written here;
+    the cure is structural — one instant instead of two — and is offered as such.
+    (O1-6) CI-fails-instead-of-skips: the branch lives inside the fixture and asserting it
     would mean driving pytest's own skip/fail machinery from within a test that uses it.
-    Both are named here so a reader does not infer coverage from the mutation table's
-    silence.
+    (O2-5) the admin connect inside the try with `asyncpg.InterfaceError` caught: the
+    same fixture-internal branch, same reason. All three are named here so a reader does
+    not infer coverage from the mutation table's silence.
+  round_O2:
+    delta_reviewed: "git diff 8c64223f4e 50aa8127fd (the O1 cure commit)"
+    duration: "6m15s (2026-09-12T09:52:24Z -> 09:58:39Z), 141528 tokens"
+    verdict: BLOCK
+    self_declared_limit: >-
+      "non ho rieseguito la suite PostgreSQL né modificato file" — in-memory verification
+      of source and extracted tests, plus asyncpg's real DSN parser.
+    findings: >-
+      6. FIVE marked by Sol itself as the SAME CAUSE as an O1 finding already cured, ONE new
+      cause introduced by the O1 cure. That is the Builder Contract 1 stop: a fix-of-a-fix
+      ends at depth 1 and the surface gets a spec. Imperator decision #29 ruled path (b):
+      cure ONLY what can be stated as a PROPERTY, declare the rest, write the spec.
+      (1, P1, = O1-8) the barrier coordinates the external probes, not the internal
+      lookups, so the race tests pin the outcome and not the PK branch — DECLARED, spec §1.
+      (2, P2, = O1-1) `actor_id[:17]` survived a 16-character shared prefix — CURED as a
+      property: maximal 31-character prefix + a test parametrized over every cut 1..31.
+      (3, P2, NEW) "304 forbids DELETE" is false; 304's trigger permits DELETE after
+      `retention_until`, so the "no row" branch is a legitimate expiry/re-occupation, not
+      corruption — CURED in prose: RuntimeError kept, message says unhandled not
+      impossible, semantics specified in spec §2.
+      (4, P2, = O1-10) canonical order ≠ received order for a non-enum-ordered outcome —
+      DECLARED in the port docstring and the test; column = migration = not PR2b, spec §3.
+      (5, P2, = O1-7) `asyncpg.connect` outside the try: a DSN the parser rejects raises
+      `ClientConfigurationError` (an InterfaceError, neither OSError nor PostgresError)
+      before any socket, escaping the redaction; a `--tb=long` report renders the DSN.
+      Sol itself noted CI's `--tb=short` does not — CURED at four lines: connect inside
+      the try, InterfaceError in the tuple, finally tolerant of a failed connect.
+      (6, P3, = O1-11) brief prose: the policy window is not sub-millisecond; ci_behaviour
+      still said 14 tests and SKIP — CURED, old figures labelled historical below.
+      Sol also confirmed the document_id and DSN tests verify what they claim, and found
+      nothing on the two hypotheses it was asked to falsify (aborted connection returning
+      to the pool; unknown field value).
+  round_O3:
+    delta_reviewed: "TO BE FILLED after the run — static, on the O2-cure delta only"
+    verdict: PENDING
 perimeter_not_touched: >-
   ONE line, so a reader does not have to infer it from absence: this PR does not touch
   `service_initializer.py`, does not set `app.state.garuda_document_store`, does not touch
@@ -184,24 +229,45 @@ measurements:
     drops everything in teardown. It never touches nuzantara_dev or nuzantara_test.
   ci_behaviour: >-
     ANSWERED BY MEASUREMENT, not assumed, because it decides what the Bites consumer is.
-    These 14 tests DO run in CI: `.github/workflows/tests.yml` gives the backend shards a
+    These tests DO run in CI: `.github/workflows/tests.yml` gives the backend shards a
     `services: postgres` container (`public.ecr.aws/docker/library/postgres:15`) and the
     "Run backend tests" step exports
     `INTAKE_TEST_DSN=postgresql://test:test@localhost:5432/nuzantara_test`, which is the
     second DSN this suite's `_ADMIN_URL` falls back to. So CI exercises them on PostgreSQL
-    15, not 17. The fixture degrades honestly either way: it SKIPS with a named reason if
-    the connecting role is not a superuser, and `pytest.fail`s (never silently skips) if the
-    connection itself is unreachable while `CI` is set.
+    15, not 17. Under `CI` the fixture FAILS — never skips — in all three degraded cases: the
+    connecting role is not a superuser (O1 finding 6), the connection is unreachable, or
+    asyncpg's parser rejects the DSN before connecting (O2 finding 5). Outside CI those same
+    cases skip with a redacted reason. HISTORICAL: the first version of this paragraph said
+    "these 14 tests" and "SKIPS if not a superuser" — both true of the pre-O1 file, both
+    false now, both left here labelled so the change is visible rather than overwritten.
   postgres_versions: >-
     Because CI is PG15 and production is PG17.9, both were run rather than one assumed —
     migration 304's privilege bracket is precisely where those two versions diverge (SET vs
-    MEMBER), so "it passed on my machine" would have been the wrong evidence. Disposable
-    PostgreSQL 17.10 (Homebrew, local): 14 passed. Disposable PostgreSQL 15.19 (Homebrew,
-    `initdb` into the session scratchpad, port 15433, dropped after): 14 passed.
+    MEMBER), so "it passed on my machine" would have been the wrong evidence. On the head
+    this brief describes: PostgreSQL 17.10 (Homebrew, local) 50 passed; PostgreSQL 15.19
+    (Homebrew, `initdb` into the session scratchpad, port 55432) 50 passed. HISTORICAL:
+    14 passed on each before the O1 round, 19 after it.
   results: >-
-    test_postgres_store.py 19 passed on PG17.10 and 19 passed on PG15.19 (14 before the
-    refuter round, plus 5 that pin its cures). Whole lane + router: 84 passed, 3 skipped (the 3 skips are pre-existing: 2 live-Ollama tests gated on
-    RUN_OLLAMA_LIVE=1, 1 defensively unreachable ProcessingOutcome branch).
+    test_postgres_store.py 50 passed on PG17.10 and 50 passed on PG15.19: 19 tests plus the
+    31-case parametrized truncation property. Whole lane + router: 115 passed, 3 skipped
+    (the 3 skips are pre-existing: 2 live-Ollama tests gated on RUN_OLLAMA_LIVE=1, 1
+    defensively unreachable ProcessingOutcome branch). HISTORICAL: 14/14 and 84/3 before
+    O1; 19/19 and 84/3 after it.
+declared_limits: >-
+  Three, each stated where a reader will meet it and not only here. (1) The INSERT-race
+  tests pin the OUTCOME of a race, not the BRANCH: the barrier coordinates the external
+  probes and not the store's internal lookups, so nothing obliges the loser through the
+  `UniqueViolationError` handler; declared in both tests' docstrings, guilt row "handler
+  removed" above says under which scheduler it is red, SPEC-PR2b-interleaving.md §1 says
+  what makes it obligatory. (2) A replay returns the CANONICAL field order, not the
+  received one — the port docstring (`DocumentStorePort.get_existing`) now promises exactly
+  that, the order test says it proves only the canonical case, spec §3 says received
+  order is a column and therefore a migration. (3) The "no row after a PK collision"
+  branch has no semantics yet: 304 permits DELETE after `retention_until`, so it is a
+  legitimate expiry or re-occupation; the store raises `RuntimeError` whose message says
+  unhandled, not impossible; spec §2 specifies the typed error or bounded retry PR2b must
+  choose. The two ledger rows for (1) and (2) are parked in `ledger-rows-held.md` beside
+  this file because the shared ledger is deadlocked today (decision #28 gesture, as #6292).
 notes:
   - >-
     Two honest observations from running the mutations, recorded because a brief that only

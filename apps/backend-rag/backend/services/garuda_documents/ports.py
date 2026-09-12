@@ -44,6 +44,16 @@ class DocumentStorePort(Protocol):
         (actor, key) pair. Raises `IdempotencyConflictError` if the key is already bound
         (for this actor) to a DIFFERENT payload hash. A different actor reusing the same
         `idempotency_key` string is a distinct binding, not a replay and not a conflict.
+
+        REPLAY ORDER, stated here so no consumer infers the stronger promise: a replayed
+        `LowConfidenceOutcome` returns its `uncertain_fields` in the CANONICAL order --
+        `PassportReviewFieldName`'s declaration order -- and NOT in the order the original
+        `commit` received. For every outcome `confidence.py` builds today the two coincide,
+        because it assembles the tuple by iterating that same enum; for a tuple assembled
+        in any other order they do not, and what comes back is the canonical one. A
+        consumer that needs the order it sent needs the store to persist an ordinal, which
+        is a column, which is a migration and therefore a different concern -- see
+        `evidence/2026-09/agent-air-m5-backend-rag-voa-store-adapter-51505641/SPEC-PR2b-interleaving.md`.
         """
         ...
 
