@@ -1,0 +1,42 @@
+task_id: kita-w2a-codex
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: 645a9feae4e7aaa31f119d5157c2f4e03db59cb7 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 1427 lines over 3 files (0 added, 1427 deleted).
+# No hot-zone path, no PII path, no ground-truth path.
+objective: >-
+  Kita pruning wave 2, PR-A: delete the /codex Next.js route from apps/mouth — a standalone,
+  PIN-gated private reading room with zero real callers anywhere in the app.
+constraints:
+  - >-
+    Deletion only, one concern, no new feature, no redesign, no backend change.
+  - >-
+    Verified zero real callers repo-wide: `git grep -n "/codex" -- apps/mouth apps/web scripts
+    docs` returns hits only inside apps/mouth/src/app/codex/ itself (the route being deleted)
+    plus unrelated Codex-CLI tooling docs/scripts that never link to this route (docs/codex/,
+    scripts/codex/, scripts/ai-dispatch.sh, scripts/arsenal_probe.py, etc — a different "codex").
+  - >-
+    Verified no next.config.ts, robots.ts, sitemap.ts, or navigation.ts entry named this route.
+  - >-
+    No client PII in this pack, in the PR body or in any log.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+  tokens: 200000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file.
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+assumptions:
+  - text: >-
+      No file outside apps/mouth/src/app/codex/ links to or imports from the /codex route.
+    status: verified
+    probe: 'git grep -n "/codex" -- apps/mouth apps/web scripts docs'
