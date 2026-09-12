@@ -42,6 +42,14 @@ it.each([["0"], ["1"]])(
       for (const [file, title, date, extra] of [
         ["current.mdx", "Current EN", "2026-09-06", ""],
         ["current.id.mdx", "Current ID", "2026-09-06", ""],
+        // Two more ID translations, and their dates run AGAINST the filesystem order:
+        // readdirSync yields current.id, older-1.id, older-5.id lexically, while the dates
+        // want current, older-5, older-1. Without this pair the ID export had ONE publishable
+        // article, so deleting `idArticles.sort(...)` left the whole suite green — the mutant
+        // the POST refuter found on 2026-09-12 (round 3, finding 7). Titles avoid the word
+        // "Older" because an assertion below forbids it in the ID export.
+        ["older-5.id.mdx", "Lama 5 ID", "2026-09-05", ""],
+        ["older-1.id.mdx", "Lama 1 ID", "2026-09-01", ""],
         // The newest EN-side file is a translation: freshness must skip it.
         ["current.fr.mdx", "Current FR", "2026-09-07", ""],
         ["older-5.mdx", "Older 5", "2026-09-05", ""],
@@ -94,7 +102,15 @@ it.each([["0"], ["1"]])(
         /TITLE: Current ID\nCATEGORY: .*\nURL: https:\/\/balizero\.com\/visas\/current\n/,
       );
       expect(id).toContain("KONTEN:\nBody for Current ID");
-      expect(id).not.toMatch(/Current EN|Current FR|Older/);
+      expect(id).not.toMatch(/Current EN|Current FR|Older \d/);
+      // The ID export is sorted by the same comparator as the EN one, and nothing proved it
+      // until now: date DESC, so current (09-06) then Lama 5 (09-05) then Lama 1 (09-01),
+      // which is NOT the order readdirSync hands them over.
+      const idOrder = ["Current ID", "Lama 5 ID", "Lama 1 ID"].map((title) =>
+        id.indexOf(`TITLE: ${title}`),
+      );
+      expect(idOrder.every((at) => at >= 0)).toBe(true);
+      expect(idOrder).toEqual([...idOrder].sort((a, b) => a - b));
       expect(en + id).not.toMatch(/Archived|Draft|stale/);
       const directory = readFileSync(join(output, "llms.txt"), "utf8");
       expect(directory).toContain(
@@ -144,8 +160,22 @@ const TIED: Array<[string, string, string]> = [
   ["property", "victor", "property"],
   ["tax-legal", "uniform", "taxes"],
 ];
-// Date must outrank URL: this one is newer and its URL sorts LAST of all seven.
+// Date must outrank URL: these are newer and zulu's URL sorts LAST of all eight.
 const NEWEST: [string, string, string] = ["immigration", "zulu", "visas"];
+// The SAME served category as NEWEST and the same date, from a DIFFERENT folder.
+// `normalizeCategory` maps both `immigration/` and `visas/` onto `/visas/`, and
+// `immigration` enumerates before `visas`, so the filesystem offers zulu first while
+// the URLs order alpha first. Without this pair a tie-break that compares only the
+// CATEGORY SEGMENT — `a.url.split("/")[3].localeCompare(...)` — returns 0 for every
+// pair in TIED (six distinct categories, so it never has to break a real tie) and
+// V8's stable sort quietly preserves the input order, which is the order the fixtures
+// already wanted. That mutant survived the first version of this suite: the POST
+// refuter named it on 2026-09-12, and this is the fixture that kills it.
+const NEWEST_SAME_CATEGORY: [string, string, string] = [
+  "visas",
+  "alpha",
+  "visas",
+];
 
 it.each([
   [TIED],
@@ -176,6 +206,7 @@ it.each([
       };
       for (const article of creationOrder) write(article, SAME_DATE);
       write(NEWEST, "2026-09-07");
+      write(NEWEST_SAME_CATEGORY, "2026-09-07");
       execFileSync(
         require.resolve("tsx/cli"),
         [join(app, "scripts/generate-llms-full.ts")],
@@ -186,28 +217,86 @@ it.each([
         },
       );
       const directory = readFileSync(join(output, "llms.txt"), "utf8");
-      // Newest first, then the four tied articles whose URLs sort first:
-      // business < living < property < taxes < trends < visas. `xray` (/trends/) and
-      // `whisky` (/visas/) are the two the slice drops. Under bare filesystem order the
-      // survivors would be the first five FOLDERS instead — business_regulations,
-      // digital-nomad, emerging_trends, immigration, property — which keeps `xray` and
-      // `whisky` and drops `uniform`, so this assertion separates the two behaviours.
+      // The two newest first, IN URL ORDER — alpha before zulu, even though the
+      // filesystem offers zulu first (immigration/ enumerates before visas/). Then the
+      // tied 2026-09-06 articles whose URLs sort first: business < living < property <
+      // taxes < trends < visas. Under bare filesystem order the survivors would be the
+      // first five FOLDERS instead — business_regulations, digital-nomad,
+      // emerging_trends, immigration, property — which keeps `xray` and `whisky`.
+      // Under a category-only tie-break alpha and zulu compare equal and zulu leads.
+      // This one assertion separates all three behaviours.
       expect(directory).toContain(
         [
           "## Recently Published & Updated (Freshness Signal)",
           "",
+          "- [alpha](https://balizero.com/visas/alpha) (2026-09-07)",
           "- [zulu](https://balizero.com/visas/zulu) (2026-09-07)",
           "- [zeta](https://balizero.com/business/zeta) (2026-09-06)",
           "- [yankee](https://balizero.com/living/yankee) (2026-09-06)",
           "- [victor](https://balizero.com/property/victor) (2026-09-06)",
-          "- [uniform](https://balizero.com/taxes/uniform) (2026-09-06)",
           "",
         ].join("\n"),
       );
       expect(directory).not.toContain("xray");
       expect(directory).not.toContain("whisky");
+      expect(directory).not.toContain("uniform");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
   },
 );
+
+// The tie-break above compares `new Date(publishedAt).getTime()`, and every fixture it
+// uses carries a bare date. So a mutant that replaces both `.getTime()` calls with
+// `.setUTCHours(0, 0, 0, 0)` changes nothing there and survives — the POST refuter
+// demonstrated exactly that on 2026-09-12, comparing 5,184 fixture pairs in memory and
+// finding zero differences. A publication TIME is what separates the two functions, and
+// this is the only fixture in the suite that has one.
+//
+// `aurora` lives in immigration/ and `borealis` in visas/, and both serve `/visas/`:
+// the filesystem offers aurora first, the URLs order aurora first, the CATEGORY segment
+// is equal — and the clock says borealis. Anything that loses the clock puts aurora on
+// top, whether it rounds the day, drops the sort, or compares only the category.
+it("freshness orders same-day articles by publication time, not by date alone", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "llms-freshness-time-"));
+  try {
+    const output = join(cwd, "public");
+    mkdirSync(output, { recursive: true });
+    mkdirSync(join(cwd, "data"));
+    writeFileSync(
+      join(output, "llms.txt"),
+      "# Directory\n## Services\nKeep this section\n",
+    );
+    const write = (folder: string, slug: string, publishedAt: string) => {
+      const dir = join(cwd, "src/content/articles", folder);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, `${slug}.mdx`),
+        `---\ntitle: ${slug}\npublishedAt: '${publishedAt}'\n---\nBody for ${slug}\n`,
+      );
+    };
+    write("immigration", "aurora", "2026-09-08T09:00:00Z");
+    write("visas", "borealis", "2026-09-08T18:00:00Z");
+    execFileSync(
+      require.resolve("tsx/cli"),
+      [join(app, "scripts/generate-llms-full.ts")],
+      {
+        cwd,
+        env: { ...process.env, LLMS_GENERATE_ARTICLES_ONLY: "1" },
+        stdio: "pipe",
+      },
+    );
+    const directory = readFileSync(join(output, "llms.txt"), "utf8");
+    expect(directory).toContain(
+      [
+        "## Recently Published & Updated (Freshness Signal)",
+        "",
+        "- [borealis](https://balizero.com/visas/borealis) (2026-09-08)",
+        "- [aurora](https://balizero.com/visas/aurora) (2026-09-08)",
+        "",
+      ].join("\n"),
+    );
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
