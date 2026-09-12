@@ -2790,10 +2790,37 @@ def test_brief_root_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
             tmp_path,
             None,
             brief_source_path="evidence/brief.yml",
+            today=_BRIEF_ROOT_PRE_FLIP,
         )
     assert rc == 0
     assert not any("evidence_root_brief_deprecated" in v for v in viol)
     assert "evidence_root_brief_deprecated" in err.getvalue()
+
+
+def test_brief_root_end_to_end_violation_post_flip_fails(tmp_repo):
+    """The post-flip twin, end-to-end through lint(): on/after the flip date the
+    same root brief is a VIOLATION and the run exits 1, with nothing on stderr.
+
+    It exists because its pre-flip sibling asserts only the notice side, and a
+    rule wired to notice forever would keep that sibling green. Both pin their
+    date explicitly: a test whose verdict depends on the day it runs is not a
+    test, and this pair used to flip the whole repo's merge queue red at
+    2026-09-12T00:00Z on its own."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        rc, viol = lint(
+            tmp_path / "evidence" / "pack.yml",
+            tmp_path,
+            None,
+            brief_source_path="evidence/brief.yml",
+            today=_BRIEF_ROOT_POST_FLIP,
+        )
+    assert rc == 1
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+    assert "evidence_root_brief_deprecated" not in err.getvalue()
 
 
 def test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name():
