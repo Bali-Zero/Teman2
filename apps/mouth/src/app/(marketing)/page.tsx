@@ -113,7 +113,11 @@ export default async function HomePage() {
             each door carries its tool identity (ex-FunnelChips, strip
             removed per Antonello 2026-06-11). */}
         <PersonaDoors />
-        <SocialProof />
+        {/* W2 (SHWEB-20260911): the home shows the founder band — the two
+            founders in the R19 band rhythm — while /v2 keeps SocialProof's
+            default render. Opt-in, so the default is unchanged for everyone
+            else. */}
+        <SocialProof variant="founder-band" />
         <NewsHero articles={heroArticles} />
         <TopicPills />
         <LatestNews articles={latest} />
