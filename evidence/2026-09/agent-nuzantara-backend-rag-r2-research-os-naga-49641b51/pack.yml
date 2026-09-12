@@ -5,7 +5,7 @@ pr: R2 ENGINE (P06 slice 2 — NAGA claim ledger)
 head_sha: 20ec62c593 # pragma: allowlist secret — freeze candidate: the rollback commit. The commit that carries THIS pack edit is its child and is named in the R2-checkpoint envelope instead, because a sha written here cannot name the commit that writes it
 code_sha: 20ec62c593 # pragma: allowlist secret — last commit touching apps/ (migration 312's rollback section)
 base_sha: 2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed # pragma: allowlist secret
-brief_ref: evidence/2026-09/agent-nuzantara-backend-rag-r2-research-os-naga-49641b51/brief.yml # THIS mission's brief, not the root literal: rule 6 loads the brief through THIS field, so a pack pointing at evidence/brief.yml is judged against whatever mission last staged there (measured: it held KBLI PR-A's gear 2 and failed this pack at floor 3), and rule 12 deprecates the root path anyway
+brief_ref: evidence/brief.yml # MUST be the STAGING literal, never this mission's per-PR path: harness-floor.yml:939-1000 copies pack and brief into a synthetic /tmp/evidence-check/evidence/ under canonical names and lints with --repo-root there, so brief_ref resolves in THAT tree (:992-996 calls the per-PR value "exactly the trap this migration exists to remove"). Running the lint from the repo root instead resolves this to the DEPRECATED root brief, which belongs to whichever mission staged it last and produced a phantom "gear 2 below floor 3" here.
 gear: 3
 gear_floor_measured: 3
 gear_floor_source: both # hot-zone hit AND churn >= threshold; floor agrees with the mandate's declared gear
