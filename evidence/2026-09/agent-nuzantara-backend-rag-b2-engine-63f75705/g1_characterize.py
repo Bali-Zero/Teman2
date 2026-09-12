@@ -12,8 +12,17 @@ No network, no DB, no WhatsApp send: `tell_a_human` is a recording closure and
 """
 from __future__ import annotations
 
-import asyncio, collections, json, sys
-sys.path.insert(0, "/Users/nuzantara/nuzantara/.worktrees/backend-rag-b2-engine/apps/backend-rag")
+import asyncio, collections, json, pathlib, sys
+
+# Derived from this file's own location, never hardcoded (#6304 gate finding
+# F5, cured in the provenance-fixture PR): the script lives at
+# <repo>/evidence/<month>/<pack>/g1_characterize.py, so the backend root is
+# three parents up plus apps/backend-rag. The previous two absolute paths
+# named ONE worktree on ONE machine, so the script could not run on M5, on
+# Mini, or in any other worktree on Pro — including the one that had to
+# reproduce its table.
+_BACKEND_ROOT = pathlib.Path(__file__).resolve().parents[3] / "apps" / "backend-rag"
+sys.path.insert(0, str(_BACKEND_ROOT))
 
 from backend.services.integrations.wa_finalize import (  # noqa: E402
     FinalizeOutcome, FinalizeProvider, finalize_wa_answer,
@@ -21,7 +30,7 @@ from backend.services.integrations.wa_finalize import (  # noqa: E402
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy  # noqa: E402
 from backend.tests.benchmarks.evidence_sufficiency import harness as H  # noqa: E402
 
-BENCH = "/Users/nuzantara/nuzantara/.worktrees/backend-rag-b2-engine/apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/"
+BENCH = str(_BACKEND_ROOT / "backend/tests/benchmarks/evidence_sufficiency") + "/"
 
 #: Substantive on purpose: a real-looking answer carrying a price and a
 #: duration, i.e. exactly the content a client must never receive unsupported.

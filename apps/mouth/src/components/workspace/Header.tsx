@@ -116,12 +116,6 @@ export function Header({
           >
             {userName ? `${userName}, ayo!` : getPageTitle()}
           </span>
-          <span
-            className="hidden lg:inline text-[11px] truncate"
-            style={{ color: "var(--bz-text-1)" }}
-          >
-            We are writing the history!
-          </span>
         </div>
 
         <div className="flex-1" />
