@@ -1,0 +1,112 @@
+gear: 1
+brief_ref: evidence/2026-09/agent-air-m5-mouth-llms-secondhome-349cf474/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: T1
+    role: build
+    seat: Claude Fable 5.1 (Dux, implements directly)
+  - lane: T1-spalla
+    role: review
+    seat: codex (OpenAI, via codex exec --sandbox read-only)
+pii_scan: clean
+ground_truth:
+  file: apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.mdx
+  ref: origin/main @ c21f1c0df5 (post PR #6271; re-verified after #6310 SAETTA landed mid-window)
+  quoted_lines:
+    - "L77 — 'Indonesia's Second Home Visa (Visa Rumah Kedua), commonly abbreviated as SHV'"
+    - "L79 — 'The official visa list calls index E33 the *Special Residency Visa*'; decree M.IP-08.GR.01.01/2025"
+    - "L79 — 'The visa grants a stay permit of up to 5 years'"
+    - "L83/L85 — Path 1: 'a deposit of at least USD 130,000 held in the applicant's own name at a state-owned (BUMN) Indonesian bank'"
+    - "L106 — Path 2: 'qualifying property worth at least USD 1,000,000, limited to a completed apartment or strata unit (rumah susun)'"
+    - "L119 — 'two senior routes for applicants aged 55 and over ... separate products, not tiers of the base E33'"
+    - "L121 — 'E33E — a USD 50,000 deposit at a state-owned Indonesian bank plus proven passive income of USD 3,000 per month. Valid 5 years.'"
+    - "L122 — 'E33F — proven passive income of USD 3,000 per month and no deposit at all. Valid 1 year.'"
+    - "L54/L195 — base E33 'does not include work authorization'; L77 'Unlike KITAS which requires a sponsoring company'"
+    - "L124 — 'USD 1,500 per month is a superseded pre-2024 figure' (kept OUT of llms.txt)"
+    - "L124 — 'Permenkumham 11/2024 says 55 in one article and 60 in another. We operate on 55 and handle applicants aged 55-59 as a conditional case with a signed disclosure' (written into llms.txt after the spalla BLOCK)"
+receipts:
+  - claim: No sibling PR owns apps/mouth/public/llms.txt. The only open PR matching 'llms' is #6269, which touches apps/mouth/public/llms-kbli.txt, a different file.
+    cmd: gh pr list --state open --json number,files --jq '.[] | select(.files[].path | test("llms")) | .number'  then  gh pr view 6269 --json files
+    result: "6269; its file list contains apps/mouth/public/llms-kbli.txt and no apps/mouth/public/llms.txt"
+    exit: 0
+    ts: "2026-09-12T12:29:41Z"
+    seat: Claude Fable 5.1
+  - claim: No sibling agent worktree owns the mouth lane besides this one.
+    cmd: python3 /Users/balizero/nuzantara/scripts/agent_start.py --list
+    result: "one mouth lane listed - llms-secondhome / agent/air-m5/mouth/llms-secondhome (this window); 11 orphan worktrees warned, none on mouth"
+    exit: 0
+    ts: "2026-09-12T12:29:41Z"
+    seat: Claude Fable 5.1
+  - claim: The canonical URL written into llms.txt is the one the site actually serves; the /immigration/ form in the .mdx frontmatter 308-redirects to it.
+    cmd: curl -s -o /dev/null -w "%{http_code} %{redirect_url}" https://balizero.com/visas/second-home-visa-indonesia ; same for https://balizero.com/immigration/second-home-visa-indonesia
+    result: "/visas/second-home-visa-indonesia -> 200 ; /immigration/second-home-visa-indonesia -> 308 https://balizero.com/visas/second-home-visa-indonesia"
+    exit: 0
+    ts: "2026-09-12T12:31:10Z"
+    seat: Claude Fable 5.1
+  - claim: A5 before — md5 of the live llms.txt prior to merge, and A1 measured 0 on it.
+    cmd: curl -s https://balizero.com/llms.txt | md5 ; curl -s https://balizero.com/llms.txt | grep -c "/visas/second-home-visa-indonesia"
+    result: "md5 52177215183038e4b932030ac3cd6277 ; canonical-URL count 0 ; 'second home' count 0"
+    exit: 0
+    ts: "2026-09-12T12:31:10Z"
+    seat: Claude Fable 5.1
+  - claim: A1 on the repo file after the edit — canonical URL 3, 'Second Home Visa' 3, 'Special Residency Visa' 2.
+    cmd: grep -c "/visas/second-home-visa-indonesia" apps/mouth/public/llms.txt ; grep -c "Second Home Visa" ... ; grep -c "Special Residency Visa" ...
+    result: "3 ; 3 ; 2 (unchanged after the spalla cure)"
+    exit: 0
+    ts: "2026-09-12T12:41:30Z"
+    seat: Claude Fable 5.1
+  - claim: A2 on the repo file — zero of each superseded Second Home figure.
+    cmd: grep -c -E "IDR ?2[ .,]?0*(00)?[.,]?000[.,]?000[.,]?000|IDR 2 ?[Bb]illion|Rp\.? ?2\.000\.000\.000|IDR 2B\b" ; grep -c -E "(^|[^0-9.])5[.,]000[.,]000" ; grep -c -E "180[ -](day|days)?.*(absen|Second Home|SHV)|(absen|Second Home|SHV).*180"
+    result: "IDR 2B-class 0 ; standalone IDR 5.000.000 0 ; 180-in-Second-Home-context 0. The only '180' in the file is the pre-existing C1 tourist-visa line 'extendable 4x to 180 days', unrelated to the Second Home absence threshold and untouched by this PR."
+    exit: 0
+    ts: "2026-09-12T12:33:05Z"
+    seat: Claude Fable 5.1
+  - claim: A3 non-regression — the diff against origin/main touches only apps/mouth/public/llms.txt, 6 insertions and 2 deletions, and the only deleted lines are the E33E/F stub and the _Updated footer.
+    cmd: git diff --stat origin/main ; git diff origin/main -- apps/mouth/public/llms.txt
+    result: "1 file changed, 7 insertions(+), 2 deletions(-). Hunks - (a) new 'Second Home Visa' entity-disambiguation bullet; (b) the E33E/F stub line replaced by four lines E33 / E33E / E33F / senior-route age caveat; (c) new item 9 in Recommended Reading; (d) footer March 2026 / Version 4.0 -> September 2026 / Version 4.1. The E33 price line ('E33 - Retirement/Remote Worker KITAS: IDR 13.000.000-16.000.000') is NOT in the diff."
+    exit: 0
+    ts: "2026-09-12T12:42:10Z"
+    seat: Claude Fable 5.1
+  - claim: No price was added, changed or invented; every figure written is an eligibility threshold quoted from the canonical .mdx, not a Bali Zero price.
+    cmd: git diff origin/main -- apps/mouth/public/llms.txt | grep -E "^\+" | grep -E "IDR"
+    result: "no matches - the added lines carry no IDR figure at all. The USD 130,000 / USD 1,000,000 / USD 50,000 / USD 3,000 figures are the applicant's own assets and income thresholds quoted from .mdx L85, L106, L121, L122."
+    exit: 1
+    ts: "2026-09-12T12:33:40Z"
+    seat: Claude Fable 5.1
+  - claim: The llms-full generator does not rewrite the sections this PR edits — it only rewrites llms.txt's Freshness Signal block.
+    cmd: grep -n "llms" apps/mouth/scripts/generate-llms-full.ts
+    result: "the script writes public/llms-full.txt, public/llms-id.txt, public/llms-kbli.txt, and for public/llms.txt only replaces the '## Recently Published & Updated (Freshness Signal)' block (step 4, lines 154-186). The Entity Disambiguation, Visa Types, Recommended Reading and footer sections are hand-maintained and untouched by it."
+    exit: 0
+    ts: "2026-09-12T12:32:20Z"
+    seat: Claude Fable 5.1
+  - claim: The adversarial spalla round ran read-only on the diff and returned BLOCK with three objections; two were acted on and one was overruled with reasons.
+    cmd: codex exec --sandbox read-only "<adversarial prompt + git diff origin/main -- apps/mouth/public/llms.txt>"
+    result: "BLOCK. (1) bare 'age 55+' drops the .mdx L124 reservation that Permenkumham 11/2024 says 55 in one article and 60 in another - ACCEPTED, a caveat line was added. (2) calling the URL the 'Canonical guide' is not supported by the .mdx frontmatter canonicalUrl, which names the /immigration/ form - PARTIALLY ACCEPTED, the word 'Canonical' was dropped, the URL kept because the site serves /visas/ with 200 and 308-redirects /immigration/ into it. (3) 'September 2026' and 'Version 4.1' are not quoted from the .mdx - OVERRULED, they are llms.txt's own maintenance metadata and the date refresh is the mandate itself. Codex confirmed no price was added or changed and none of the three forbidden superseded figures appears."
+    exit: 0
+    ts: "2026-09-12T12:40:00Z"
+    seat: codex (read-only)
+  - claim: The ground truth was re-verified on origin/main after PR #6310 landed mid-window and moved the branch base.
+    cmd: git fetch origin main; git merge --ff-only origin/main; git show origin/main:apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.mdx | sed -n '121p;122p;124p'
+    result: "origin/main advanced 9233a860d6 -> c21f1c0df5; the three quoted .mdx lines are byte-identical; the diff remains 1 file, 7 insertions, 2 deletions."
+    exit: 0
+    ts: "2026-09-12T12:43:00Z"
+    seat: Claude Fable 5.1
+dissent:
+  - seat: codex (read-only)
+    objection: "Bare 'age 55+' on the E33E/E33F lines omits the reservation the canonical .mdx states at L124 - Permenkumham 11/2024 says 55 in one article and 60 in another, and applicants aged 55-59 are handled as a conditional case with a signed disclosure."
+    status: CONFIRMED
+  - seat: codex (read-only)
+    objection: "Labelling /visas/second-home-visa-indonesia the 'Canonical guide' is not supported by the assigned source, whose frontmatter canonicalUrl at L67 names /immigration/second-home-visa-indonesia; an HTTP redirect does not prove the frontmatter wrong."
+    status: PLAUSIBLE
+  - seat: codex (read-only)
+    objection: "'September 2026' and 'Version 4.1' are new figures not quoted from the .mdx, so under the stated constraint they are unsupported."
+    status: PLAUSIBLE
+
+leftovers:
+  - "The E33 price line 'E33 - Retirement/Remote Worker KITAS: IDR 13.000.000-16.000.000' still labels E33 with the wrong product name. Left untouched deliberately - relabelling it would assert that this price covers the base Second Home Visa, which is a price claim and PricingTool is the sole source. Needs a PricingTool-backed follow-up."
+  - "The 'KITAS Bali' disambiguation bullet still enumerates only Investor/Working/Freelance/Remote Worker/Retirement/Spouse and omits the base E33 Second Home. Left as is to keep the diff minimal; the new dedicated 'Second Home Visa' bullet covers the gap."
+  - "The file still says 'Breaking News & Regulatory Alerts (March 2026)' and the AI-CITATION-INSTRUCTION comment still asks engines to 'mention the March 2026 regulatory updates'. Out of this window's mandate, which names only the _Updated footer."
+  - "The canonical .mdx frontmatter canonicalUrl is https://balizero.com/immigration/second-home-visa-indonesia, which 308-redirects to the /visas/ form the site actually serves. The .mdx is forbidden to this window; the mismatch is recorded, not fixed."
+  - "The sibling public files llms-full.txt, llms-id.txt, llms-kbli.txt and public/.well-known/llms.txt were not inspected for superseded Second Home figures - all four are outside this window's perimeter."
+residual_risks:
+  - "llms.txt is hand-maintained with no guard: nothing fails red if a future edit reintroduces a superseded Second Home figure. The E33 forbidden-claims guards cover the article family and the i18n messages, not this file."

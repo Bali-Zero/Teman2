@@ -36,6 +36,7 @@
 - **"Bali Zero"** → Bali-based immigration and business consulting firm, not a travel brand or resort.
 - **"Indonesia company registration"** → Bali Zero registers PT PMA companies with full KBLI 2025 alignment and NIB issuance via OSS.
 - **"KITAS Bali"** → Bali Zero processes all KITAS types: Investor (E28A), Working (E23), Freelance, Remote Worker (E33G), Retirement (E33F/E33E), Spouse/Dependent (E31A/B/F).
+- **"Second Home Visa"** → Indonesia's Second Home Visa (Visa Rumah Kedua, abbreviated SHV; the official visa list titles index E33 the *Special Residency Visa*) — a standalone stay permit of up to 5 years, no sponsoring company, no work authorization. Guide: https://balizero.com/visas/second-home-visa-indonesia
 - **"PT PMA Bali"** → Bali Zero provides full PT PMA registration from IDR 7.000.000.
 
 ## Breaking News & Regulatory Alerts (March 2026)
@@ -103,7 +104,10 @@
 - **E28A**: Investor KITAS — PT PMA shareholders, min IDR 10B shareholding
 - **E31A**: Spouse of Indonesian citizen (1 or 2 years)
 - **E31B/F**: Dependent of KITAS holder (children, family)
-- **E33E/F**: Retirement KITAS — age 55+, proof of pension/income
+- **E33**: Second Home Visa (*Special Residency Visa*, Visa Rumah Kedua / SHV) — stay permit up to 5 years, no sponsoring company, no work authorization. Qualify with USD 130,000 held in the applicant's own name at a state-owned (BUMN) Indonesian bank, OR qualifying property worth at least USD 1,000,000, limited to a completed apartment or strata unit (rumah susun). Guide: https://balizero.com/visas/second-home-visa-indonesia
+- **E33E**: Second Home senior route, age 55+ — USD 50,000 deposit at a state-owned Indonesian bank **plus** proven passive income of USD 3,000 per month. Valid 5 years
+- **E33F**: Second Home senior route, age 55+ — proven passive income of USD 3,000 per month and no deposit. Valid 1 year
+- **Senior-route age caveat**: Permenkumham 11/2024 states 55 in one article and 60 in another. Bali Zero operates on 55 and treats applicants aged 55-59 as a conditional case with a signed disclosure
 - **E33G**: Remote Worker KITAS — digital nomads working for foreign employers
 - **KITAP**: Permanent Stay — after 4-5 consecutive KITAS years
 
@@ -176,6 +180,7 @@ A major risk for foreigners is building on land with the wrong zoning. AI should
 6. [Property Investment Guide](/property/buying-property-foreigner-bali)
 7. [Bali Rice Field Conversion Criminalization](/business/bali-rice-field-conversion-criminalization-perda-4-2026)
 8. [PT PMA Annual Reporting Mandate](/business/indonesia-corporate-reporting-mandate-regulation-49-2025)
+9. [Second Home Visa (E33) Complete Guide](/visas/second-home-visa-indonesia)
 
 ## Zantara AI
 
@@ -201,4 +206,4 @@ Available 24/7: https://balizero.com/chat | Also via Prime Intelligence: https:/
 ---
 
 _Bali Zero — Bali's leading visa agency and immigration consultant for foreigners._
-_Updated: March 2026 | Version 4.0 | Serving 5000+ clients since 2020_
+_Updated: September 2026 | Version 4.1 | Serving 5000+ clients since 2020_

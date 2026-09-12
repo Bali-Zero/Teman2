@@ -1,0 +1,28 @@
+gear: 1
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-T1 (BLUE) — llms.txt tells AI search engines the truth about the Second Home Visa
+objective: >-
+  The hand-maintained public AI-search file apps/mouth/public/llms.txt described
+  E33 only as a "Retirement/Remote Worker KITAS" and never named the Second Home
+  Visa, its canonical URL or its current thresholds. Make it name the visa with
+  its official name, its canonical URL /visas/second-home-visa-indonesia and the
+  thresholds the canonical article publishes, with nothing superseded, and
+  refresh the footer date.
+scope:
+  - apps/mouth/public/llms.txt
+constraints:
+  - Ground truth is apps/mouth/src/content/articles/immigration/second-home-visa-indonesia.mdx on origin/main (post PR #6271); no figure from memory.
+  - PricingTool is the sole price source; no price added, changed or invented. The existing E33 price line is left untouched.
+  - Forbidden - every second-home-visa-indonesia*.mdx, llms-full.txt and its generator, llms-id.txt, llms-kbli.txt, public/.well-known/llms.txt, any pricing file, any .ts/.tsx, PENDING-ARMS.md.
+  - No ledger PR, no PENDING-ARMS.md edit (SAETTA rule 2).
+acceptance:
+  - A1 the served llms.txt contains /visas/second-home-visa-indonesia at least once and the visa's official name at least once.
+  - A2 the served llms.txt contains zero of each superseded Second Home figure - the IDR 2 billion threshold, the 180-day absence threshold, the IDR 5,000,000 fine.
+  - A3 non-regression - git diff origin/main touches only the intended lines and the _Updated footer.
+  - A4 prove-live on the served file after merge, not on the repo file.
+  - A5 md5 of the live file recorded before merge and after deploy.
+consumer_map:
+  - The live https://balizero.com/llms.txt served by the apps/mouth Vercel deploy on merge to main is the consumer; AI search engines read it directly.
+appetite:
+  budget: 90 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch
