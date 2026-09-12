@@ -5,7 +5,7 @@ This file is a rewrite, not a repair. Its predecessor was suspended after three 
 rounds reopened one class -- a test that pins a FORM and calls it a PROPERTY: one truncation
 cut, then a longer prefix, then every prefix and no suffix; a race whose barrier coordinated
 the probes but not the transactions. Every test here states the property it proves in its
-docstring, and every declared limit is cited by its id from the brief's `limits:` block (L1..L5)
+docstring, and every declared limit is cited by its id from the brief's `limits:` block (L1..L8)
 and stated nowhere else in stronger or weaker words.
 
 Harness, in three parts:
@@ -59,6 +59,7 @@ from backend.services.garuda_documents.models import (
     UnreadableOutcome,
 )
 from backend.services.garuda_documents.ports import (
+    DuplicateReviewFieldPath,
     IdempotencyConflictError,
     IdempotencyKeyVanished,
     ReadyOutcomeValueNotPersisted,
@@ -105,11 +106,23 @@ def _with_database(dsn: str, database: str) -> str:
 
 
 def _redacted(dsn: str) -> str:
-    parts = urlsplit(dsn)
-    user = f"{parts.username}:***@" if parts.password else (f"{parts.username}@" if parts.username else "")
-    host = parts.hostname or ""
-    port = f":{parts.port}" if parts.port else ""
-    return f"{parts.scheme}://{user}{host}{port}{parts.path}"
+    """TOTAL: never raises. `urlsplit(...).port` raises ValueError on a non-numeric port
+    and a malformed IPv6 literal raises on `.hostname`; either, thrown INSIDE `_connect`'s
+    handler before the redacted outcome is built, would leave an ordinary traceback whose
+    frame arguments carry the DSN (Sol, PR2a-v2 round O1, finding 3). A DSN this cannot
+    parse is described by a constant, not echoed."""
+    try:
+        parts = urlsplit(dsn)
+        user = (
+            f"{parts.username}:***@"
+            if parts.password
+            else (f"{parts.username}@" if parts.username else "")
+        )
+        host = parts.hostname or ""
+        port = f":{parts.port}" if parts.port else ""
+        return f"{parts.scheme}://{user}{host}{port}{parts.path}"
+    except ValueError:
+        return "<unparseable dsn: ***>"
 
 
 _CI_MUST_NOT_SKIP = (
@@ -220,11 +233,17 @@ async def _sandbox(retention: str) -> AsyncIterator[_Sandbox]:
         conn = await _connect(database)
         try:
             await conn.execute(_RETENTION_POLICIES_DDL)
-            await conn.execute(f'ALTER TABLE public.visa_decision_retention_policies OWNER TO "{ledger}"')
-            await conn.execute(f'GRANT SELECT ON TABLE public.visa_decision_retention_policies TO "{app}"')
+            await conn.execute(
+                f'ALTER TABLE public.visa_decision_retention_policies OWNER TO "{ledger}"'
+            )
+            await conn.execute(
+                f'GRANT SELECT ON TABLE public.visa_decision_retention_policies TO "{app}"'
+            )
             await conn.execute(_migration_304_forward(ledger))
             await conn.execute(f'GRANT SELECT, INSERT ON TABLE public.garuda_documents TO "{app}"')
-            await conn.execute(f'GRANT SELECT, INSERT ON TABLE public.garuda_document_review_fields TO "{app}"')
+            await conn.execute(
+                f'GRANT SELECT, INSERT ON TABLE public.garuda_document_review_fields TO "{app}"'
+            )
             await conn.execute(
                 """
                 INSERT INTO public.visa_decision_retention_policies (
@@ -247,7 +266,9 @@ async def _sandbox(retention: str) -> AsyncIterator[_Sandbox]:
             )
         finally:
             await conn.close()
-        yield _Sandbox(database=database, dsn=_with_database(_ADMIN_URL, database), ledger=ledger, app=app)
+        yield _Sandbox(
+            database=database, dsn=_with_database(_ADMIN_URL, database), ledger=ledger, app=app
+        )
     finally:
         admin = await _connect(None)
         try:
@@ -281,11 +302,17 @@ async def pool(sandbox: _Sandbox) -> AsyncIterator[asyncpg.Pool]:
     await p.close()
 
 
+_RACE_POOL_MIN, _RACE_POOL_MAX = 4, 8
+
+
 async def _race_pool(dsn: str) -> asyncpg.Pool:
-    """§4.7: a race holds two connections in dead transactions while the loser's re-read
-    acquires a THIRD; schedule D adds a fourth caller. `min_size=4, max_size=8`, and the
-    race tests assert spare capacity before starting so exhaustion is a setup error."""
-    return await create_prod_shaped_pool(dsn=dsn, min_size=4, max_size=8)
+    """§4.7. Both racers' transactions have UNWOUND by the time the loser reaches
+    `after_collision_before_reread` (the `async with` exited on the exception), so the
+    re-read does not compete with them for a connection; what does compete is the
+    superuser purge (outside the pool) and, in schedule D, the third caller INSIDE the
+    pool while the loser is held. `min_size=4, max_size=8` is asserted FROM THE POOL by
+    `_assert_spare_capacity`, not trusted as a literal."""
+    return await create_prod_shaped_pool(dsn=dsn, min_size=_RACE_POOL_MIN, max_size=_RACE_POOL_MAX)
 
 
 @pytest.fixture
@@ -312,20 +339,30 @@ def _doc_id(label: str) -> str:
     return hashlib.sha256(label.encode()).hexdigest()[:32]
 
 
-def _low_confidence(document_id: str, fields: tuple[PassportReviewFieldName, ...] = ()) -> LowConfidenceOutcome:
+def _low_confidence(
+    document_id: str, fields: tuple[PassportReviewFieldName, ...] = ()
+) -> LowConfidenceOutcome:
     chosen = fields or (PassportReviewFieldName.FULL_NAME, PassportReviewFieldName.PASSPORT_NUMBER)
     return LowConfidenceOutcome(
         document_id=document_id,
-        uncertain_fields=tuple(UncertainReviewField(field_path=f, confirmation_required=True) for f in chosen),
+        uncertain_fields=tuple(
+            UncertainReviewField(field_path=f, confirmation_required=True) for f in chosen
+        ),
     )
 
 
 def _ready(document_id: str, fields: tuple[PassportReviewFieldName, ...] = ()) -> ReadyOutcome:
+    """Flags ALTERNATE by position in the received order (True, False, True, ...), so a
+    store that forces every flag to True, or drops one named field, is red (Sol, PR2a-v2
+    O1, finding 2: a matrix of all-True flags over three of four fields proved neither)."""
     chosen = fields or (PassportReviewFieldName.FULL_NAME,)
     return ReadyOutcome(
         document_id=document_id,
         review_fields=tuple(
-            ReviewField(field_path=f, value=f"SYNTHETIC {f.value}", confirmation_required=True) for f in chosen
+            ReviewField(
+                field_path=f, value=f"SYNTHETIC {f.value}", confirmation_required=(i % 2 == 0)
+            )
+            for i, f in enumerate(chosen)
         ),
     )
 
@@ -343,7 +380,10 @@ async def _row_count(pool: asyncpg.Pool, table: str = "garuda_documents") -> int
 
 def _key(idempotency_key: str, actor_id: str = _ACTOR_1) -> bytes:
     return _scoped_key_sha256(
-        actor_id=actor_id, operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment=_ENV, idempotency_key=idempotency_key
+        actor_id=actor_id,
+        operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT,
+        environment=_ENV,
+        idempotency_key=idempotency_key,
     )
 
 
@@ -352,7 +392,9 @@ def _key(idempotency_key: str, actor_id: str = _ACTOR_1) -> bytes:
 # ---------------------------------------------------------------------------
 
 
-async def test_p1_two_actors_same_literal_key_hold_two_bindings(store: PostgresDocumentStore, pool: asyncpg.Pool):
+async def test_p1_two_actors_same_literal_key_hold_two_bindings(
+    store: PostgresDocumentStore, pool: asyncpg.Pool
+):
     """P1. Both commits win; two rows; each actor replays its own outcome and the other
     actor's lookup is None -- not a conflict, not a replay. Guilt: `actor_id` replaced by
     `""` in `_scoped_key_sha256` (the store that accepts the argument and ignores it)."""
@@ -397,12 +439,18 @@ def _string_model(L: int) -> list[_Encoder]:
     model: list[_Encoder] = []
     for n in range(1, L):
         model.append(_Encoder(f"prefix_{n}", lambda s, n=n: s[:n], lambda s, n=n: (s, _flip(s, n))))
-        model.append(_Encoder(f"suffix_{n}", lambda s, n=n: s[n:], lambda s, n=n: (s, _flip(s, n - 1))))
+        model.append(
+            _Encoder(f"suffix_{n}", lambda s, n=n: s[n:], lambda s, n=n: (s, _flip(s, n - 1)))
+        )
     for k in range(2, 5):
         for o in range(k):
             # s[o::k] keeps indices congruent to o mod k; flip one that is not.
             j = (o + 1) % k
-            model.append(_Encoder(f"stride_{k}_{o}", lambda s, k=k, o=o: s[o::k], lambda s, j=j: (s, _flip(s, j))))
+            model.append(
+                _Encoder(
+                    f"stride_{k}_{o}", lambda s, k=k, o=o: s[o::k], lambda s, j=j: (s, _flip(s, j))
+                )
+            )
     for i in range(L):
         if i < L - 1:
             model.append(
@@ -413,10 +461,16 @@ def _string_model(L: int) -> list[_Encoder]:
                 )
             )
         else:
-            model.append(_Encoder(f"drop_{i}", lambda s, i=i: s[:i], lambda s, i=i: (s[:i] + "a", s[:i] + "b")))
+            model.append(
+                _Encoder(
+                    f"drop_{i}", lambda s, i=i: s[:i], lambda s, i=i: (s[:i] + "a", s[:i] + "b")
+                )
+            )
     # `swapcase` is a bijection on ASCII letters and has NO collision pair, so it cannot be
     # a member of a LOSSY model; the case-insensitive encoder that IS lossy is casefold.
-    model.append(_Encoder("casefold", lambda s: s.casefold(), lambda s: (s[:-2] + "ab", s[:-2] + "AB")))
+    model.append(
+        _Encoder("casefold", lambda s: s.casefold(), lambda s: (s[:-2] + "ab", s[:-2] + "AB"))
+    )
     for sep in _SEPARATORS:
         model.append(
             _Encoder(
@@ -425,10 +479,37 @@ def _string_model(L: int) -> list[_Encoder]:
                 lambda s, sep=sep: (s[:4] + sep + s[4:], s),
             )
         )
+        # Trailing/leading strips are NOT covered by an inner strip: `rstrip("-")` collapses
+        # `k` and `k-` and leaves every inner-separator witness intact (Sol, PR2a-v2 O1,
+        # finding 1). Each gets its own witness at the edge it erases.
+        model.append(
+            _Encoder(
+                f"rstrip_sep_{sep!r}",
+                lambda s, sep=sep: s.rstrip(sep),
+                lambda s, sep=sep: (s + sep, s),
+            )
+        )
+        model.append(
+            _Encoder(
+                f"lstrip_sep_{sep!r}",
+                lambda s, sep=sep: s.lstrip(sep),
+                lambda s, sep=sep: (sep + s, s),
+            )
+        )
     return model
 
 
-def _tuple_model() -> list[tuple[str, Callable[[tuple[str, ...]], str], tuple[tuple[str, ...], tuple[str, ...]]]]:
+def _expected_model_size(L: int) -> int:
+    """The size of E for a component of length L, derived from the model's own shape:
+    (L-1) prefixes + (L-1) suffixes + 9 strides (k=2..4, o<k) + L drops + 1 casefold
+    + 3 per separator (strip, rstrip, lstrip). Asserted EXACTLY, so removing one member
+    is red (limit L6: injectivity is proved over this enumerated model)."""
+    return 2 * (L - 1) + 9 + L + 1 + 3 * len(_SEPARATORS)
+
+
+def _tuple_model() -> list[
+    tuple[str, Callable[[tuple[str, ...]], str], tuple[tuple[str, ...], tuple[str, ...]]]
+]:
     """Encoders over the whole 4-tuple: separator-joins, and a byte moved across a component
     boundary (actor/operation and operation/environment)."""
     cases = []
@@ -440,30 +521,69 @@ def _tuple_model() -> list[tuple[str, Callable[[tuple[str, ...]], str], tuple[tu
                 ((f"a{sep}b", "c", _ENV, _BASE_KEY), ("a", f"b{sep}c", _ENV, _BASE_KEY)),
             )
         )
-    cases.append(("swap_actor_operation", "".join, (("actorab", "c", _ENV, _BASE_KEY), ("actora", "bc", _ENV, _BASE_KEY))))
-    cases.append(("swap_operation_environment", "".join, (("a", "opTE", "ST", _BASE_KEY), ("a", "op", "TEST", _BASE_KEY))))
+    cases.append(
+        (
+            "swap_actor_operation",
+            "".join,
+            (("actorab", "c", _ENV, _BASE_KEY), ("actora", "bc", _ENV, _BASE_KEY)),
+        )
+    )
+    cases.append(
+        (
+            "swap_operation_environment",
+            "".join,
+            (("a", "opTE", "ST", _BASE_KEY), ("a", "op", "TEST", _BASE_KEY)),
+        )
+    )
     return cases
 
 
-_STRING_CASES = [(comp, enc) for comp, base in (("actor", _BASE_ACTOR), ("key", _BASE_KEY)) for enc in _string_model(len(base))]
+_STRING_CASES = [
+    (comp, enc)
+    for comp, base in (("actor", _BASE_ACTOR), ("key", _BASE_KEY))
+    for enc in _string_model(len(base))
+]
 _TUPLE_CASES = _tuple_model()
 
 
-def test_p2_the_mutation_model_is_not_empty():
-    """§3: an empty or hollow model fails to set up rather than proving injectivity
-    vacuously -- every encoder FAMILY must be present, for both components."""
-    families = ("prefix_", "suffix_", "stride_", "drop_", "casefold", "strip_sep_")
-    for component in ("actor", "key"):
+def test_p2_the_mutation_model_is_exactly_the_enumerated_model():
+    """§3 and limit L6: injectivity is proved OVER the model E enumerated in this file, not
+    universally -- a lossy encoder outside E is outside the proof, and the honest guard is
+    that E is exactly what it claims to be. The case count is asserted EXACTLY per
+    component from the model's own shape, so dropping a single member is red; every
+    family must be present; the tuple model is exactly the separators plus the two
+    boundary shifts."""
+    families = (
+        "prefix_",
+        "suffix_",
+        "stride_",
+        "drop_",
+        "casefold",
+        "strip_sep_",
+        "rstrip_sep_",
+        "lstrip_sep_",
+    )
+    for component, base in (("actor", _BASE_ACTOR), ("key", _BASE_KEY)):
         names = [enc.name for comp, enc in _STRING_CASES if comp == component]
-        assert names, f"no cases for {component}"
+        assert len(names) == _expected_model_size(len(base)), (
+            f"{component}: model has {len(names)} members, expected {_expected_model_size(len(base))}"
+        )
+        assert len(set(names)) == len(names), f"{component}: duplicate encoder names"
         for family in families:
-            assert any(n.startswith(family) for n in names), f"{component}: family {family!r} missing from the model"
+            assert any(n.startswith(family) for n in names), (
+                f"{component}: family {family!r} missing from the model"
+            )
     assert len(_TUPLE_CASES) == len(_SEPARATORS) + 2
 
 
-@pytest.mark.parametrize(("component", "encoder"), _STRING_CASES, ids=lambda x: x if isinstance(x, str) else x.name)
-def test_p2_scoped_key_distinguishes_every_pair_a_lossy_encoder_collapses(component: str, encoder: _Encoder):
-    """P2, stated as INJECTIVITY over the 4-tuple, proved per encoder of the model E.
+@pytest.mark.parametrize(
+    ("component", "encoder"), _STRING_CASES, ids=lambda x: x if isinstance(x, str) else x.name
+)
+def test_p2_scoped_key_distinguishes_every_pair_a_lossy_encoder_collapses(
+    component: str, encoder: _Encoder
+):
+    """P2, stated as INJECTIVITY over the 4-tuple, proved per encoder of the model E --
+    and ONLY over E (limit L6): the proof is exactly as wide as the enumerated model.
 
     For this encoder the test COMPUTES a pair (t1, t2) with t1 != t2 and e(t1) == e(t2),
     checks that premise (a witness the model cannot construct is an ERROR, not a skip),
@@ -475,7 +595,9 @@ def test_p2_scoped_key_distinguishes_every_pair_a_lossy_encoder_collapses(compon
     base = _BASE_ACTOR if component == "actor" else _BASE_KEY
     s1, s2 = encoder.witness(base)
     assert s1 != s2, f"{encoder.name}: witness pair must differ"
-    assert encoder.encode(s1) == encoder.encode(s2), f"{encoder.name}: encoder does not collapse its own witness"
+    assert encoder.encode(s1) == encoder.encode(s2), (
+        f"{encoder.name}: encoder does not collapse its own witness"
+    )
 
     def tup(s: str) -> dict[str, str]:
         return {
@@ -492,14 +614,20 @@ def test_p2_scoped_key_distinguishes_every_pair_a_lossy_encoder_collapses(compon
 
 
 @pytest.mark.parametrize(("name", "encode", "pair"), _TUPLE_CASES, ids=[c[0] for c in _TUPLE_CASES])
-def test_p2_scoped_key_distinguishes_tuples_a_separator_join_or_boundary_shift_collapses(name, encode, pair):
+def test_p2_scoped_key_distinguishes_tuples_a_separator_join_or_boundary_shift_collapses(
+    name, encode, pair
+):
     """P2 across component boundaries: two tuples that render identically under a
     separator-join (a component CONTAINING the separator) or under a byte moved across a
     boundary must hash differently. Guilt: `sep.join(...)` in place of length-prefixing."""
     t1, t2 = pair
     assert t1 != t2 and encode(t1) == encode(t2), f"{name}: witness premise failed"
-    h1 = _scoped_key_sha256(actor_id=t1[0], operation=t1[1], environment=t1[2], idempotency_key=t1[3])
-    h2 = _scoped_key_sha256(actor_id=t2[0], operation=t2[1], environment=t2[2], idempotency_key=t2[3])
+    h1 = _scoped_key_sha256(
+        actor_id=t1[0], operation=t1[1], environment=t1[2], idempotency_key=t1[3]
+    )
+    h2 = _scoped_key_sha256(
+        actor_id=t2[0], operation=t2[1], environment=t2[2], idempotency_key=t2[3]
+    )
     assert h1 != h2, f"{name}: the scoped key is separator-joined, not length-prefixed"
 
 
@@ -522,7 +650,9 @@ def test_p2_golden_vector_backward_compatibility_pin_not_a_property():
 # ---------------------------------------------------------------------------
 
 
-async def test_p3_exact_replay_returns_the_committed_outcome_and_creates_nothing(pool: asyncpg.Pool):
+async def test_p3_exact_replay_returns_the_committed_outcome_and_creates_nothing(
+    pool: asyncpg.Pool,
+):
     """P3. A sequential replay is answered by the LOOKUP, never by a primary-key collision:
     the outcome comes back equal, the second commit returns False, no row is added, and the
     collision seam never fires. That last assertion is what makes the guilt bite -- with the
@@ -534,15 +664,24 @@ async def test_p3_exact_replay_returns_the_committed_outcome_and_creates_nothing
     async def unexpected_collision(_ctx: _HookContext) -> None:
         collisions.collisions += 1
 
-    store = PostgresDocumentStore(pool, environment=_ENV, _hooks=_CommitHooks(after_collision_before_reread=unexpected_collision))
+    store = PostgresDocumentStore(
+        pool,
+        environment=_ENV,
+        _hooks=_CommitHooks(after_collision_before_reread=unexpected_collision),
+    )
     outcome = _low_confidence(_doc_id("p3-replay"))
     assert await store.commit("key-p3", "aa" * 32, outcome, actor_id=_ACTOR_1) is True
     rows, fields = await _row_count(pool), await _row_count(pool, "garuda_document_review_fields")
 
     assert await store.get_existing("key-p3", "aa" * 32, actor_id=_ACTOR_1) == outcome
     assert await store.commit("key-p3", "aa" * 32, outcome, actor_id=_ACTOR_1) is False
-    assert (await _row_count(pool), await _row_count(pool, "garuda_document_review_fields")) == (rows, fields)
-    assert collisions.collisions == 0, "a sequential replay must be answered by the lookup, not by a PK collision"
+    assert (await _row_count(pool), await _row_count(pool, "garuda_document_review_fields")) == (
+        rows,
+        fields,
+    )
+    assert collisions.collisions == 0, (
+        "a sequential replay must be answered by the lookup, not by a PK collision"
+    )
 
 
 async def test_p3_processing_and_unreadable_replay_faithfully(store: PostgresDocumentStore):
@@ -563,7 +702,9 @@ async def test_p4_different_payload_same_key_is_a_conflict_on_both_entry_points(
     with pytest.raises(IdempotencyConflictError):
         await store.get_existing("key-p4", "22" * 32, actor_id=_ACTOR_1)
     with pytest.raises(IdempotencyConflictError):
-        await store.commit("key-p4", "22" * 32, _low_confidence(_doc_id("p4-second")), actor_id=_ACTOR_1)
+        await store.commit(
+            "key-p4", "22" * 32, _low_confidence(_doc_id("p4-second")), actor_id=_ACTOR_1
+        )
     assert await _row_count(pool) == 1
 
 
@@ -572,7 +713,11 @@ async def test_p4_different_payload_same_key_is_a_conflict_on_both_entry_points(
 # ---------------------------------------------------------------------------
 
 
-def _racing_hooks(barrier: asyncio.Barrier, counters: _Counters, hold_loser: Callable[[], Awaitable[None]] | None = None) -> _CommitHooks:
+def _racing_hooks(
+    barrier: asyncio.Barrier,
+    counters: _Counters,
+    hold_loser: Callable[[], Awaitable[None]] | None = None,
+) -> _CommitHooks:
     async def after_lookup(_ctx: _HookContext) -> None:
         counters.lookups += 1
         await barrier.wait()
@@ -586,40 +731,60 @@ def _racing_hooks(barrier: asyncio.Barrier, counters: _Counters, hold_loser: Cal
 
 
 async def _assert_spare_capacity(pool: asyncpg.Pool, needed: int = 3) -> None:
+    assert pool.get_min_size() >= _RACE_POOL_MIN and pool.get_max_size() >= _RACE_POOL_MAX, (
+        f"setup: race pool must be sized >= {_RACE_POOL_MIN}/{_RACE_POOL_MAX}, "
+        f"got {pool.get_min_size()}/{pool.get_max_size()} (§4.7)"
+    )
     free = pool.get_max_size() - pool.get_size() + pool.get_idle_size()
     assert free >= needed, f"setup: race needs {needed} spare connections, pool has {free} (§4.7)"
 
 
-async def _schedule_a(pool: asyncpg.Pool, key: str, payload_a: str, payload_b: str, hold_loser=None):
+async def _schedule_a(
+    pool: asyncpg.Pool, key: str, payload_a: str, payload_b: str, hold_loser=None
+):
     """Two stores on one pool, both blocked in `after_lookup` behind a Barrier(2). After
     the barrier neither can have committed -- both were still inside their lookup when it
     closed -- so the replay branch is unreachable and the second INSERT MUST collide on
     `garuda_documents_pkey`. Returns (results, counters)."""
     await _assert_spare_capacity(pool)
     barrier, counters = asyncio.Barrier(2), _Counters()
-    store_a = PostgresDocumentStore(pool, environment=_ENV, _hooks=_racing_hooks(barrier, counters, hold_loser))
-    store_b = PostgresDocumentStore(pool, environment=_ENV, _hooks=_racing_hooks(barrier, counters, hold_loser))
+    store_a = PostgresDocumentStore(
+        pool, environment=_ENV, _hooks=_racing_hooks(barrier, counters, hold_loser)
+    )
+    store_b = PostgresDocumentStore(
+        pool, environment=_ENV, _hooks=_racing_hooks(barrier, counters, hold_loser)
+    )
     results = await asyncio.gather(
         store_a.commit(key, payload_a, _low_confidence(_doc_id(f"{key}-a")), actor_id=_ACTOR_1),
         store_b.commit(key, payload_b, _low_confidence(_doc_id(f"{key}-b")), actor_id=_ACTOR_1),
         return_exceptions=True,
     )
-    assert counters.lookups == 2, f"setup: both racers must pass after_lookup, saw {counters.lookups}"
-    assert counters.collisions == 1, f"setup: exactly one racer must collide on the PK, saw {counters.collisions}"
+    assert counters.lookups == 2, (
+        f"setup: both racers must pass after_lookup, saw {counters.lookups}"
+    )
+    assert counters.collisions == 1, (
+        f"setup: exactly one racer must collide on the PK, saw {counters.collisions}"
+    )
     return results, counters
 
 
-async def test_p5_p6_schedule_a_exactly_one_winner_and_the_loser_traversed_the_pk_branch(race_pool: asyncpg.Pool):
+async def test_p5_p6_schedule_a_exactly_one_winner_and_the_loser_traversed_the_pk_branch(
+    race_pool: asyncpg.Pool,
+):
     """P5 (at most one True per key) and P6 (`commit` is total) under schedule A. The
     collision counter == 1 IS the branch assertion the previous suite could not make: the
     loser went through the `UniqueViolationError` handler, under ANY scheduler. Guilt: the
     handler deleted -> `UniqueViolationError` escapes -> red on PG15 and PG17, no caveat."""
     results, _ = await _schedule_a(race_pool, "key-schedule-a", "55" * 32, "55" * 32)
-    assert sorted(results, key=str) == [False, True], f"exactly one winner and one loser: {results!r}"
+    assert sorted(results, key=str) == [False, True], (
+        f"exactly one winner and one loser: {results!r}"
+    )
     assert await _row_count(race_pool) == 1
 
 
-async def test_p7_schedule_b_loser_with_a_different_payload_gets_conflict_not_false(race_pool: asyncpg.Pool):
+async def test_p7_schedule_b_loser_with_a_different_payload_gets_conflict_not_false(
+    race_pool: asyncpg.Pool,
+):
     """P7. On the INSERT-collision path no payload was compared (there was no row when we
     looked), so the loser is re-read against the winner: a different hash is
     IDEMPOTENCY_CONFLICT, never "you merely lost". Guilt: `payload_checked=True` on that path."""
@@ -629,7 +794,9 @@ async def test_p7_schedule_b_loser_with_a_different_payload_gets_conflict_not_fa
     assert len(winners) == 1 and len(conflicts) == 1, f"one winner, one conflict: {results!r}"
     assert await _row_count(race_pool) == 1
     async with race_pool.acquire() as conn:
-        persisted = await conn.fetchval("SELECT canonical_payload_sha256 FROM public.garuda_documents")
+        persisted = await conn.fetchval(
+            "SELECT canonical_payload_sha256 FROM public.garuda_documents"
+        )
     assert bytes(persisted) in (bytes.fromhex("aa" * 32), bytes.fromhex("bb" * 32))
 
 
@@ -653,7 +820,8 @@ async def _purge_winner_once_expired(database: str, key_hash: bytes) -> None:
     try:
         for _ in range(60):
             if await conn.fetchval(
-                "SELECT clock_timestamp() >= retention_until FROM public.garuda_documents WHERE key_sha256 = $1", key_hash
+                "SELECT clock_timestamp() >= retention_until FROM public.garuda_documents WHERE key_sha256 = $1",
+                key_hash,
             ):
                 break
             await asyncio.sleep(0.1)
@@ -666,7 +834,9 @@ async def _purge_winner_once_expired(database: str, key_hash: bytes) -> None:
         await conn.close()
 
 
-async def test_schedule_c_key_vanished_after_the_collision_is_typed(short_sandbox: _Sandbox, short_race_pool: asyncpg.Pool):
+async def test_schedule_c_key_vanished_after_the_collision_is_typed(
+    short_sandbox: _Sandbox, short_race_pool: asyncpg.Pool
+):
     """§2 outcome 3. The loser is held in `after_collision_before_reread`; the winner's row
     expires (2-second policy) and is purged, legally, by a superuser outside the pool; the
     loser's re-read finds the key bound to nothing -> `IdempotencyKeyVanished`, typed, no
@@ -676,13 +846,17 @@ async def test_schedule_c_key_vanished_after_the_collision_is_typed(short_sandbo
     async def hold() -> None:
         await _purge_winner_once_expired(short_sandbox.database, key_hash)
 
-    results, _ = await _schedule_a(short_race_pool, "key-schedule-c", "77" * 32, "77" * 32, hold_loser=hold)
+    results, _ = await _schedule_a(
+        short_race_pool, "key-schedule-c", "77" * 32, "77" * 32, hold_loser=hold
+    )
     assert [r for r in results if r is True] == [True]
     assert [type(r) for r in results if isinstance(r, Exception)] == [IdempotencyKeyVanished]
     assert await _row_count(short_race_pool) == 0
 
 
-@pytest.mark.parametrize("reoccupier_payload_matches_loser", [True, False], ids=["same-payload", "different-payload"])
+@pytest.mark.parametrize(
+    "reoccupier_payload_matches_loser", [True, False], ids=["same-payload", "different-payload"]
+)
 async def test_schedule_d_reoccupation_collapses_into_outcome_1_or_2(
     short_sandbox: _Sandbox, short_race_pool: asyncpg.Pool, reoccupier_payload_matches_loser: bool
 ):
@@ -698,9 +872,13 @@ async def test_schedule_d_reoccupation_collapses_into_outcome_1_or_2(
 
     async def hold() -> None:
         await _purge_winner_once_expired(short_sandbox.database, key_hash)
-        assert await third.commit("key-schedule-d", third_payload, _low_confidence(_doc_id("d-third")), actor_id=_ACTOR_1)
+        assert await third.commit(
+            "key-schedule-d", third_payload, _low_confidence(_doc_id("d-third")), actor_id=_ACTOR_1
+        )
 
-    results, _ = await _schedule_a(short_race_pool, "key-schedule-d", loser_payload, loser_payload, hold_loser=hold)
+    results, _ = await _schedule_a(
+        short_race_pool, "key-schedule-d", loser_payload, loser_payload, hold_loser=hold
+    )
     assert [r for r in results if r is True] == [True]
     loser_result = [r for r in results if r is not True]
     if reoccupier_payload_matches_loser:
@@ -730,6 +908,29 @@ async def test_p8_duplicate_document_id_under_a_fresh_key_propagates_not_a_lost_
     assert await _row_count(pool) == 1
 
 
+async def test_p6_a_duplicate_field_path_is_refused_typed_before_any_sql(
+    store: PostgresDocumentStore, pool: asyncpg.Pool
+):
+    """P6. The model does not forbid naming a field twice; the child table's PRIMARY KEY
+    (document_id, field_path) does, and would answer with a raw UniqueViolationError from
+    outside the handler. The store refuses it first, typed, and writes nothing. Guilt:
+    `_unique_fields` returning its input unchecked."""
+    twice = LowConfidenceOutcome(
+        document_id=_doc_id("p6-dup"),
+        uncertain_fields=(
+            UncertainReviewField(field_path=PassportReviewFieldName.FULL_NAME),
+            UncertainReviewField(field_path=PassportReviewFieldName.FULL_NAME),
+        ),
+    )
+    with pytest.raises(DuplicateReviewFieldPath) as excinfo:
+        await store.commit("key-p6-dup", "ee" * 32, twice, actor_id=_ACTOR_1)
+    assert excinfo.value.field_path == "full_name"
+    assert (
+        await _row_count(pool) == 0 and await _row_count(pool, "garuda_document_review_fields") == 0
+    )
+    assert await store.get_existing("key-p6-dup", "ee" * 32, actor_id=_ACTOR_1) is None
+
+
 async def test_p9_no_active_policy_fails_closed_with_the_documented_type(pool: asyncpg.Pool):
     """P9. STAGING has no policy in the sandbox. The assertion is on the TYPE: with the
     Python guard deleted the refusal still happens, but as migration 304's untranslated
@@ -741,31 +942,41 @@ async def test_p9_no_active_policy_fails_closed_with_the_documented_type(pool: a
     assert await _row_count(pool) == 0
 
 
-_THREE_FIELDS = (PassportReviewFieldName.NATIONALITY, PassportReviewFieldName.FULL_NAME, PassportReviewFieldName.PASSPORT_EXPIRY_DATE)
-
-
-@pytest.mark.parametrize("order", list(itertools.permutations(_THREE_FIELDS)), ids=lambda o: "-".join(f.value[:4] for f in o))
+@pytest.mark.parametrize(
+    "order",
+    list(itertools.permutations(_CANONICAL)),
+    ids=lambda o: "-".join(f.value[:4] for f in o),
+)
 async def test_p10_ready_replay_announces_the_gap_with_the_persisted_structure_in_canonical_order(
     store: PostgresDocumentStore, order: tuple[PassportReviewFieldName, ...]
 ):
     """P10. No field VALUE is persisted; a replayed ReadyOutcome raises
-    `ReadyOutcomeValueNotPersisted` carrying the document_id and the persisted STRUCTURE
-    (names + confirmation flags), in canonical order for EVERY received order. The TYPE
-    alone is not the property. Guilt: `_rehydrate` fabricating a valueless ReadyOutcome;
-    separately, `persisted_fields` replaced by `()`."""
+    `ReadyOutcomeValueNotPersisted` carrying the document_id and the FULL persisted
+    STRUCTURE -- every one of the four names, each with the flag it was committed with --
+    in canonical order, for EVERY received order (24 permutations; flags alternate by
+    received position, so the committed flag set differs per permutation). The TYPE alone
+    is not the property. Guilt: `_rehydrate` fabricating a valueless ReadyOutcome;
+    `persisted_fields` replaced by `()`; one named field dropped in `_decompose`; every
+    flag forced to True."""
     document_id = _doc_id("p10-" + "".join(f.value for f in order))
     key = "key-p10-" + "-".join(f.value[:3] for f in order)
-    assert await store.commit(key, "cc" * 32, _ready(document_id, order), actor_id=_ACTOR_1)
+    committed = _ready(document_id, order)
+    assert await store.commit(key, "cc" * 32, committed, actor_id=_ACTOR_1)
 
     with pytest.raises(ReadyOutcomeValueNotPersisted) as excinfo:
         await store.get_existing(key, "cc" * 32, actor_id=_ACTOR_1)
 
-    expected = tuple((f, True) for f in _CANONICAL if f in order)
+    committed_flags = {rf.field_path: rf.confirmation_required for rf in committed.review_fields}
+    expected = tuple((f, committed_flags[f]) for f in _CANONICAL)
     assert excinfo.value.document_id == document_id
     assert excinfo.value.persisted_fields == expected
 
 
-@pytest.mark.parametrize("order", list(itertools.permutations(_CANONICAL)), ids=lambda o: "-".join(f.value[:4] for f in o))
+@pytest.mark.parametrize(
+    "order",
+    list(itertools.permutations(_CANONICAL)),
+    ids=lambda o: "-".join(f.value[:4] for f in o),
+)
 async def test_p11_low_confidence_replay_is_canonical_for_every_received_order(
     store: PostgresDocumentStore, order: tuple[PassportReviewFieldName, ...]
 ):
@@ -847,10 +1058,16 @@ def _sentinel_dsn(host_port: str, query: str = "") -> tuple[str, str]:
 
 @pytest.mark.parametrize(
     ("host_port", "query", "case"),
-    [("127.0.0.1:1", "", "unreachable-server"), ("127.0.0.1:1", "?sslmode=bogus", "dsn-rejected-by-parser")],
-    ids=["unreachable-server", "dsn-rejected-by-parser"],
+    [
+        ("127.0.0.1:1", "", "unreachable-server"),
+        ("127.0.0.1:1", "?sslmode=bogus", "dsn-rejected-by-parser"),
+        ("127.0.0.1:notaport", "", "dsn-the-redactor-itself-cannot-parse"),
+    ],
+    ids=["unreachable-server", "dsn-rejected-by-parser", "dsn-the-redactor-itself-cannot-parse"],
 )
-def test_h1_no_dsn_secret_reaches_the_report_at_tb_long_or_the_junit_xml(tmp_path: Path, host_port: str, query: str, case: str):
+def test_h1_no_dsn_secret_reaches_the_report_at_tb_long_or_the_junit_xml(
+    tmp_path: Path, host_port: str, query: str, case: str
+):
     """H1. A pytest SUBPROCESS with `--tb=long` and JUnit output, `CI=1`, and a sentinel
     password in the DSN. The sentinel must be absent from stdout, stderr and the XML; the
     run must FAIL (exit != 0) with the must-not-skip text; and the `***` redaction marker
@@ -865,11 +1082,15 @@ def test_h1_no_dsn_secret_reaches_the_report_at_tb_long_or_the_junit_xml(tmp_pat
 
     assert completed.returncode != 0, f"{case}: the probe must FAIL under CI\n{report[-2000:]}"
     assert secret not in report and secret not in xml, f"{case}: sentinel leaked into the report"
-    assert "***" in report, f"{case}: the redaction marker is missing, so nothing was redacted\n{report[-2000:]}"
+    assert "***" in report, (
+        f"{case}: the redaction marker is missing, so nothing was redacted\n{report[-2000:]}"
+    )
     assert "must not be skipped" in report, f"{case}: CI must FAIL, not skip\n{report[-2000:]}"
 
 
-async def test_h1_non_superuser_role_fails_under_ci_without_leaking_its_password(sandbox: _Sandbox, tmp_path: Path):
+async def test_h1_non_superuser_role_fails_under_ci_without_leaking_its_password(
+    sandbox: _Sandbox, tmp_path: Path
+):
     """§8.2's third degraded case, behaviourally: a LOGIN role that is NOT a superuser, with
     a sentinel password, pointed at the sandbox. Under CI the fixture must FAIL (not skip)
     and the sentinel must not reach the report. Closes the "untestable" declaration the
@@ -897,9 +1118,24 @@ async def test_h1_non_superuser_role_fails_under_ci_without_leaking_its_password
         env = {**os.environ, "CI": "1", "GARUDA_DOCUMENTS_TEST_DSN": dsn, "PYTHONPATH": "."}
         env.pop("INTAKE_TEST_DSN", None)
         completed = subprocess.run(
-            [sys.executable, "-m", "pytest", str(tmp_path / "test_h1_probe.py"), "--tb=long", f"--junit-xml={junit}",
-             f"--rootdir={_BACKEND_ROOT}", "-c", str(_BACKEND_ROOT / "pytest.ini"), "-p", "no:cacheprovider"],
-            cwd=_BACKEND_ROOT, env=env, capture_output=True, text=True, timeout=120,
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                str(tmp_path / "test_h1_probe.py"),
+                "--tb=long",
+                f"--junit-xml={junit}",
+                f"--rootdir={_BACKEND_ROOT}",
+                "-c",
+                str(_BACKEND_ROOT / "pytest.ini"),
+                "-p",
+                "no:cacheprovider",
+            ],
+            cwd=_BACKEND_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         report = completed.stdout + completed.stderr
         xml = junit.read_text() if junit.exists() else ""

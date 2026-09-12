@@ -84,7 +84,38 @@ limits:
     name; the READY-replay pair is deferred until `service.py::_reconcile_lost_race_ready_replay`
     exists, renamed `test_ready_replay_after_outcome_1_returns_the_committed_body` and
     `test_sequential_ready_replay_still_raises_value_not_persisted`.
+  L6: >-
+    P2 (injectivity of the scoped key) is proved OVER the mutation model E enumerated in
+    `_string_model`/`_tuple_model`, exactly as SPEC v2 §3 prescribes ("parametrization is
+    over the MODEL") -- not universally. A lossy encoder outside E is outside the proof: Sol
+    (PR2a-v2 O1, finding 1) showed `rstrip("-")` surviving a model with only inner-separator
+    strips; E now carries `rstrip_sep`/`lstrip_sep` per separator and asserts its EXACT size
+    per component, so the proof's width is itself pinned. Cited by
+    `test_p2_scoped_key_distinguishes_every_pair_a_lossy_encoder_collapses` and
+    `test_p2_the_mutation_model_is_exactly_the_enumerated_model`.
+  L7: >-
+    `get_existing` reads the parent row and its review-field rows inside ONE REPEATABLE
+    READ, read-only transaction, so a purge between the two reads cannot hand `_rehydrate`
+    a parent without children (Sol, PR2a-v2 O1, finding 5). The interleaving itself is
+    NOT test-forced: doing so would need a third seam inside `get_existing`, and decision
+    #38 rules out a third hook. Declared in the method's comment; no guilt row claims it.
+  L8: >-
+    Schedules C and D use a 2-second retention policy. A scheduler pause longer than that
+    between a racer's transaction start and its INSERT makes migration 304's binder refuse
+    the already-elapsed deadline with an untranslated `asyncpg.RaiseError` -- a LOUD failure
+    with a diagnosis, never a vacuous pass (Sol, PR2a-v2 O1, finding 4, second part). Not
+    observed in any run recorded here; declared because it is possible.
 spec_errata:
+  - >-
+    SPEC v2 §5 calls `from None` "the load-bearing change, because `from None` is what stops
+    a `--tb=long` renderer from printing the original". MEASURED otherwise (guilt table):
+    dropping `from None` while keeping `pytrace=False` survives all 288 tests, and setting
+    `pytrace=True` while keeping `from None` also survives; only removing BOTH leaks (the
+    combined mutation on the previous head: 2 failed). With `pytrace=False` pytest renders
+    the message alone and never walks the chain; with the chain severed and `pytrace=True`
+    the only rendered frame is `_connect`'s, whose argument is a database NAME. Two redundant
+    layers, each sufficient; both stay as defence in depth. The §5 sentence is to be corrected
+    in the spec on main by a later docs PR (decision #38, constraint 3), not silently.
   - >-
     SPEC v2 §3 lists `swap_case: s -> s.swapcase()` in the mutation model E. `swapcase` is a
     BIJECTION on ASCII letters -- it has no collision pair -- so it cannot be a member of a LOSSY
@@ -150,9 +181,12 @@ measurements:
     pg15: "15.19 (Homebrew), disposable cluster in the session scratchpad, port 55432 -- CI's major"
     pg17: "17.10 (Homebrew), local cluster, port 5432 -- production's major (prod is 17.9)"
   suite: >-
-    test_postgres_store.py, 240 collected. PG 15.19: 240 passed in 50.44s. PG 17.10: 240 passed in
-    262.18s -- the local PG17 cluster does `CREATE DATABASE` in ~6 s today (`\timing` on a bare
-    CREATE DATABASE: 6256 ms), which is the environment, not the code; measured once, not chased.
+    test_postgres_store.py, 288 collected on the cured head (240 at bef78d89c0, before Sol O1's
+    cures; the delta is the model's rstrip_sep/lstrip_sep cases, the P10 permutation matrix, two
+    more H1 subprocess cases and the duplicate-field-path test). PG 15.19: 288 passed in 50.52s.
+    PG 17.10: 288 passed in 31.52s (the earlier 262 s run on this cluster had `CREATE DATABASE`
+    at ~6 s -- environment, measured once, gone on the re-run). Lane
+    `backend/tests/services/garuda_documents/` on PG17: 353 passed, 3 skipped in 26.86s.
   ci_behaviour: >-
     `.github/workflows/tests.yml` gives the backend shards `services: postgres`
     (`public.ecr.aws/docker/library/postgres:15`) and exports
@@ -163,38 +197,45 @@ measurements:
     declaration PR2a's brief carried.
   guilt_mutation_method: >-
     One mutation at a time, applied by anchor with a cp backup and restored after (never `git
-    checkout --`). PG 15.19: the FULL file per mutation, so the count is over all 240 tests. PG
+    checkout --`). PG 15.19: the FULL file per mutation, so the count is over all 288 tests. PG
     17.10: the same mutations against the tests the property NAMES (`-k` selector recorded per
-    row) -- the full file costs ~4.5 min per run on this cluster today (see `suite`), so the PG17
+    row) -- the full file cost ~4.5 min per run on this cluster while the loop ran (see `suite`), so the PG17
     column proves "red on PG17" and the PG15 column proves the blast radius. Every row is red on
-    both; no row carries a scheduler caveat.
+    both, except the two H1 rows marked SURVIVES ALONE, declared as such (spec_errata) rather than dropped: together they are red (the combined mutation on the previous head: 2 failed), each alone is not. No row carries a scheduler caveat.
 guilt_mutations:
-  - "P1 -- actor_id replaced by an empty string in _scoped_key_sha256 -> PG15 full file: 113 failed, 127 passed; PG17 -k 'test_p1': 1 failed, 30 passed, 209 deselected"
-  - "P2 -- encoder prefix_17 substituted into the hash (the cut that walked past PR2a's 16-char pair) -> PG15 full file: 46 failed, 194 passed; PG17 -k 'prefix_17': 1 failed, 1 passed, 238 deselected"
-  - "P2 -- encoder suffix_5 (the class PR2a's prefix-only property missed entirely) -> PG15 full file: 24 failed, 216 passed; PG17 -k 'suffix_5': 1 failed, 1 passed, 238 deselected"
-  - "P2 -- encoder stride_2_1 (actor_id[1::2], named by Sol O3) -> PG15 full file: 53 failed, 187 passed; PG17 -k 'stride_2_1': 1 failed, 1 passed, 238 deselected"
-  - "P2 -- encoder drop_3 -> PG15 full file: 5 failed, 235 passed; PG17 -k 'drop_3': 1 failed, 3 passed, 236 deselected"
-  - "P2 -- encoder casefold (swapcase is a bijection; see spec_errata) -> PG15 full file: 1 failed, 239 passed; PG17 -k 'casefold': 1 failed, 1 passed, 238 deselected"
-  - "P2 -- encoder strip_sep '|' -> PG15 full file: 1 failed, 239 passed; PG17 -k 'strip_sep': 1 failed, 13 passed, 226 deselected"
-  - "P2 -- suffix_2 on the idempotency_key component -> PG15 full file: 12 failed, 228 passed; PG17 -k 'suffix_2 and key': 1 failed, 11 passed, 228 deselected"
-  - "P2 -- length-prefixing replaced by '|'.join (kills the join case AND the golden pin) -> PG15 full file: 2 failed, 238 passed; PG17 -k 'join_sep or golden': 2 failed, 6 passed, 232 deselected"
-  - "P3 -- the SELECT ... FOR UPDATE branch removed. HISTORY: SURVIVED the first version of the test (240 passed): the store still answered False with no new row, by colliding on the PK and recovering. The test now also asserts the collision seam never fired on a sequential replay. -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p3': 1 failed, 1 passed, 238 deselected"
-  - "P4 -- get_existing's hash comparison replaced by True -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p4': 1 failed, 239 deselected"
-  - "P4 -- commit's lookup-path hash comparison replaced by True -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p4': 1 failed, 239 deselected"
-  - "P5 -- the lookup-path loser returns True -> PG15 full file: 2 failed, 238 passed; PG17 -k 'test_p5': 1 failed, 1 passed, 238 deselected"
-  - "P5 -- the collision-path loser returns True -> PG15 full file: 2 failed, 238 passed; PG17 -k 'test_p5 or schedule_d': 2 failed, 2 passed, 236 deselected"
-  - "P6 -- the UniqueViolationError handler deleted. Red on BOTH versions under the seam-forced schedule, NO scheduler caveat (the caveat PR2a carried is gone: this is what SPEC v2 §4 exists for) -> PG15 full file: 5 failed, 235 passed; PG17 -k 'schedule_a or schedule_b': 2 failed, 238 deselected"
-  - "P7 -- _LostRace(payload_checked=True) on the INSERT-collision path -> PG15 full file: 5 failed, 235 passed; PG17 -k 'schedule_b': 1 failed, 239 deselected"
-  - "P8 -- the constraint_name != garuda_documents_pkey discrimination removed -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p8': 1 failed, 239 deselected"
-  - "P9 -- the active-policy guard deleted (red via the TYPE assertion: the DB trigger refuses with asyncpg.RaiseError, not PersistencePolicyUnavailable) -> PG15 full file: 1 failed, 239 passed; PG17 -k 'test_p9': 1 failed, 239 deselected"
-  - "P10 -- _rehydrate fabricating a valueless ReadyOutcome -> PG15 full file: 6 failed, 234 passed; PG17 -k 'test_p10': 6 failed, 234 deselected"
-  - "P10 -- persisted_fields replaced by () -> PG15 full file: 6 failed, 234 passed; PG17 -k 'test_p10': 6 failed, 234 deselected"
-  - "P11 -- _in_canonical_order dropped, SQL order kept -> PG15 full file: 24 failed, 216 passed; PG17 -k 'test_p11': 24 failed, 216 deselected"
-  - "§2 outcome 3 -- IdempotencyKeyVanished reverted to RuntimeError -> PG15 full file: 1 failed, 239 passed; PG17 -k 'schedule_c': 1 failed, 239 deselected"
-  - "§4 -- the after_collision_before_reread seam made a no-op: every race test FAILS TO SET UP (counter != 1), none passes vacuously -> PG15 full file: 5 failed, 235 passed; PG17 -k 'schedule_a or schedule_b or schedule_c or schedule_d': 5 failed, 235 deselected"
-  - "H1 -- `from None` dropped (pytrace=True): the chained asyncpg.connect frame renders and the sentinel appears at --tb=long -> PG15 full file: 2 failed, 238 passed; PG17 -k 'test_h1': 2 failed, 1 passed, 237 deselected"
-  - "H1 -- _redacted returning the DSN unchanged -> PG15 full file: 3 failed, 237 passed; PG17 -k 'test_h1': 3 failed, 237 deselected"
-  - "H1 -- a connect moved outside the try in the helper -> PG15 full file: 2 failed, 238 passed; PG17 -k 'test_h1': 2 failed, 1 passed, 237 deselected"
+  - "P1 -- actor_id replaced by an empty string in _scoped_key_sha256 -> PG15 full file: 127 failed, 161 passed; PG17 -k 'test_p1': 1 failed, 48 passed, 239 deselected"
+  - "P2 -- encoder prefix_17 substituted into the hash (the cut that walked past PR2a's 16-char pair) -> PG15 full file: 53 failed, 235 passed; PG17 -k 'prefix_17': 1 failed, 1 passed, 286 deselected"
+  - "P2 -- encoder suffix_5 (the class PR2a's prefix-only property missed entirely) -> PG15 full file: 24 failed, 264 passed; PG17 -k 'suffix_5': 1 failed, 1 passed, 286 deselected"
+  - "P2 -- encoder stride_2_1 (actor_id[1::2], named by Sol O3 on PR2a) -> PG15 full file: 60 failed, 228 passed; PG17 -k 'stride_2_1': 1 failed, 1 passed, 286 deselected"
+  - "P2 -- encoder drop_3 -> PG15 full file: 5 failed, 283 passed; PG17 -k 'drop_3': 1 failed, 3 passed, 284 deselected"
+  - "P2 -- encoder casefold (swapcase is a bijection; see spec_errata) -> PG15 full file: 1 failed, 287 passed; PG17 -k 'casefold': 1 failed, 1 passed, 286 deselected"
+  - "P2 -- encoder strip_sep '|' (kills the strip, rstrip and lstrip cases for '|') -> PG15 full file: 3 failed, 285 passed; PG17 -k 'strip_sep': 3 failed, 39 passed, 246 deselected"
+  - "P2 -- suffix_2 on the idempotency_key component -> PG15 full file: 12 failed, 276 passed; PG17 -k 'suffix_2 and key': 1 failed, 11 passed, 276 deselected"
+  - "P2 -- length-prefixing replaced by '|'.join (kills the join case AND the golden pin) -> PG15 full file: 2 failed, 286 passed; PG17 -k 'join_sep or golden': 2 failed, 6 passed, 280 deselected"
+  - "P2 -- idempotency_key.rstrip('-') (Sol PR2a-v2 O1 finding 1's survivor; red since rstrip_sep/lstrip_sep joined the model, limit L6) -> PG15 full file: 1 failed, 287 passed; PG17 -k 'rstrip_sep': 1 failed, 13 passed, 274 deselected"
+  - "P3 -- the SELECT ... FOR UPDATE branch removed. HISTORY: survived the first version of the test (240 passed): the store still answered False with no new row by colliding on the PK and recovering; the test now also asserts the collision seam never fired on a sequential replay -> PG15 full file: 1 failed, 287 passed; PG17 -k 'test_p3': 1 failed, 1 passed, 286 deselected"
+  - "P4 -- get_existing's hash comparison replaced by True -> PG15 full file: 1 failed, 287 passed; PG17 -k 'test_p4': 1 failed, 287 deselected"
+  - "P4 -- commit's lookup-path hash comparison replaced by True -> PG15 full file: 1 failed, 287 passed; PG17 -k 'test_p4': 1 failed, 287 deselected"
+  - "P5 -- the lookup-path loser returns True -> PG15 full file: 2 failed, 286 passed; PG17 -k 'test_p5': 1 failed, 1 passed, 286 deselected"
+  - "P5 -- the collision-path loser returns True -> PG15 full file: 2 failed, 286 passed; PG17 -k 'test_p5 or schedule_d': 2 failed, 2 passed, 284 deselected"
+  - "P6 -- the UniqueViolationError handler deleted. Red on BOTH versions under the seam-forced schedule, NO scheduler caveat -> PG15 full file: 5 failed, 283 passed; PG17 -k 'schedule_a or schedule_b': 2 failed, 286 deselected"
+  - "P6 -- _unique_fields returning its input unchecked: a duplicate field path would reach the child PK as a raw UniqueViolationError (Sol PR2a-v2 O1 finding 4) -> PG15 full file: 1 failed, 287 passed; PG17 -k 'test_p6': 1 failed, 287 deselected"
+  - "P7 -- _LostRace(payload_checked=True) on the INSERT-collision path -> PG15 full file: 5 failed, 283 passed; PG17 -k 'schedule_b': 1 failed, 287 deselected"
+  - "P8 -- the constraint_name != garuda_documents_pkey discrimination removed -> PG15 full file: 1 failed, 287 passed; PG17 -k 'test_p8': 1 failed, 287 deselected"
+  - "P9 -- the active-policy guard deleted (red via the TYPE assertion: the DB trigger refuses with asyncpg.RaiseError, not PersistencePolicyUnavailable) -> PG15 full file: 1 failed, 287 passed; PG17 -k 'test_p9': 1 failed, 287 deselected"
+  - "P10 -- _rehydrate fabricating a valueless ReadyOutcome -> PG15 full file: 24 failed, 264 passed; PG17 -k 'test_p10': 24 failed, 264 deselected"
+  - "P10 -- persisted_fields replaced by () -> PG15 full file: 24 failed, 264 passed; PG17 -k 'test_p10': 24 failed, 264 deselected"
+  - "P10 -- _decompose dropping PASSPORT_NUMBER from READY outcomes (Sol PR2a-v2 O1 finding 2's first survivor; red now that all four fields are permuted) -> PG15 full file: 24 failed, 264 passed; PG17 -k 'test_p10': 24 failed, 264 deselected"
+  - "P10 -- every READY confirmation flag forced to True (finding 2's second survivor; red now that flags alternate by received position) -> PG15 full file: 24 failed, 264 passed; PG17 -k 'test_p10': 24 failed, 264 deselected"
+  - "P11 -- _in_canonical_order dropped, SQL order kept (kills all 24 P11 and all 24 P10 permutations) -> PG15 full file: 48 failed, 240 passed; PG17 -k 'test_p11': 24 failed, 264 deselected"
+  - "§2 outcome 3 -- IdempotencyKeyVanished reverted to RuntimeError -> PG15 full file: 1 failed, 287 passed; PG17 -k 'schedule_c': 1 failed, 287 deselected"
+  - "§4 -- the after_collision_before_reread seam made a no-op: every race test FAILS TO SET UP (counter != 1), none passes vacuously -> PG15 full file: 5 failed, 283 passed; PG17 -k 'schedule_a or schedule_b or schedule_c or schedule_d': 5 failed, 283 deselected"
+  - "§4.7 -- the race pool built min_size=1/max_size=3: every race test fails to set up on the size assertion read FROM THE POOL (Sol finding 7) -> PG15 full file: 5 failed, 283 passed; PG17 -k 'schedule_a or schedule_b or schedule_c or schedule_d': 5 failed, 283 deselected"
+  - "H1 -- `from None` dropped, pytrace=False kept. SURVIVES ALONE (see spec_errata: with pytrace=False pytest renders only the message) -> PG15 full file: 288 passed; PG17 -k 'test_h1': 4 passed, 284 deselected"
+  - "H1 -- pytrace=True, `from None` kept. SURVIVES ALONE (see spec_errata: with the chain severed the only rendered frame is _connect's, whose argument is a database name) -> PG15 full file: 288 passed; PG17 -k 'test_h1': 4 passed, 284 deselected"
+  - "H1 -- _redacted re-raising ValueError instead of returning the constant (Sol finding 3; the non-numeric-port subprocess case turns it red) -> PG15 full file: 1 failed, 287 passed; PG17 -k 'test_h1': 1 failed, 3 passed, 284 deselected"
+  - "H1 -- _redacted returning the DSN unchanged -> PG15 full file: 4 failed, 284 passed; PG17 -k 'test_h1': 4 failed, 284 deselected"
+  - "H1 -- a connect moved outside the try in the helper -> PG15 full file: 3 failed, 285 passed; PG17 -k 'test_h1': 3 failed, 1 passed, 284 deselected"
 refuter:
   seat: codex Sol
   model_id: PENDING -- written after the round, from the log header, never from the mandate

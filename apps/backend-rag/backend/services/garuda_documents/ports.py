@@ -1,11 +1,11 @@
 """Storage port for document intake idempotency.
 
-L1 (retention + archive) has not merged into `feature/garuda-voa` yet — no
-garuda-scoped documents migration exists, and LANES.md is explicit that a lane must not
-persist a row before L1's retention primitive covers it. `DocumentStorePort` is therefore
-the seam: `service.py` is written entirely against this Protocol, and a real Postgres
-implementation (owned by L1/L2, retention-covered) can be dropped in later without
-touching the OCR/confidence/redaction logic this lane owns.
+Migration 304 (`garuda_documents`, `garuda_document_review_fields`, retention bound by
+`bind_garuda_document_retention_policy`) is applied in production, and
+`postgres_store.PostgresDocumentStore` is the real implementation of this Protocol.
+`DocumentStorePort` remains the seam: `service.py` is written entirely against it, and the
+in-memory store below is what the service tests use. The exceptions live here, beside the
+Protocol, so a storage-agnostic caller catches them without importing a concrete store.
 
 `InMemoryDocumentStore` is a reference implementation for THIS lane's own tests only —
 it is not retention-aware and must never be wired into a running service.
@@ -24,7 +24,9 @@ class DocumentStorePort(Protocol):
     Mirrors the contract's Idempotency-Key semantics (openapi.yaml top-level description
     AND the `IdempotencyKey` parameter description: "Scoped to actor and operation"): an
     exact scoped key plus the same canonical payload replays the original outcome with no
-    repeated side effect; a different payload under the same key is an
+    repeated side effect -- with ONE qualification a PII-honouring store cannot avoid: a
+    replayed `ReadyOutcome` cannot carry its field VALUES and surfaces as
+    `ReadyOutcomeValueNotPersisted` instead (limit L5); a different payload under the same key is an
     IDEMPOTENCY_CONFLICT, which this port signals by raising `IdempotencyConflictError` —
     `service.py` never has to special-case a store implementation's own exceptions.
 
@@ -118,6 +120,20 @@ class ReadyOutcomeValueNotPersisted(Exception):
         super().__init__(document_id)
         self.document_id = document_id
         self.persisted_fields = persisted_fields
+
+
+class DuplicateReviewFieldPath(ValueError):
+    """Raised by `commit()` BEFORE any SQL when an outcome names the same
+    `PassportReviewFieldName` twice. The model does not forbid it; migration 304's
+    `garuda_document_review_fields` has PRIMARY KEY (document_id, field_path) and would
+    refuse the second row with a raw `asyncpg.UniqueViolationError` outside `commit()`'s
+    contract (SPEC v2 P6: no raw asyncpg exception escapes). Typed here so the caller's
+    bug is named as its bug and nothing is written."""
+
+    def __init__(self, document_id: str, field_path: str) -> None:
+        super().__init__(f"{document_id}: review field {field_path!r} named twice")
+        self.document_id = document_id
+        self.field_path = field_path
 
 
 class IdempotencyKeyVanished(Exception):

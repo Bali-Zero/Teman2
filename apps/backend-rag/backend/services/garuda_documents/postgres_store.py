@@ -38,8 +38,11 @@ This gap is narrower than it may sound. ``service.py::submit_document`` calls
 losing a ``commit()`` race (its ``if not won:`` branch). When it commits a FRESH outcome it
 returns the in-memory object it just built directly, never through this store. So a first-time submission of a document that turns out READY_FOR_REVIEW is
 completely unaffected: the customer sees the real extracted values immediately, and they
-never touch this table. The gap is exactly one path: an exact idempotent REPLAY (same
-Idempotency-Key AND the same payload, submitted again) of an ALREADY-READY document.
+never touch this table. The gap is every REPLAY of an ALREADY-READY document that
+reaches `get_existing()`: the ordinary sequential retry (same Idempotency-Key AND the same
+payload, submitted again) and the commit-race loser's re-read alike -- today BOTH let
+`ReadyOutcomeValueNotPersisted` propagate, as the note below `_STATE_UNREADABLE` says;
+the reconciliation that would let the race loser recover is deferred (limit L5).
 ``ports.py``'s idempotency contract ("an exact scoped key plus the same canonical payload
 replays the original outcome with no repeated side effect") and the PII boundary are in
 genuine tension there, and this file does not resolve it -- see
@@ -66,6 +69,7 @@ from backend.services.garuda_documents.models import (
     UnreadableOutcome,
 )
 from backend.services.garuda_documents.ports import (
+    DuplicateReviewFieldPath,
     IdempotencyConflictError,
     IdempotencyKeyVanished,
     ReadyOutcomeValueNotPersisted,
@@ -97,8 +101,9 @@ _STATE_UNREADABLE = "UNREADABLE"
 # without the store ever handing back -- or fabricating -- a value. NO SUCH CALLER EXISTS
 # YET: the reconciliation that would use it is deliberately deferred to its own PR, so
 # today EVERY replay of a READY document -- race-loser or ordinary sequential retry --
-# lets this propagate. The structure is carried now so the exception's shape does not have
-# to change when that caller arrives.
+# lets this propagate (limit L5 in the brief: the two deferred READY-replay tests are
+# named there). The structure is carried now so the exception's shape does not have to
+# change when that caller arrives.
 
 # The single operation this store's `key_sha256` namespace belongs to. A store-level
 # constant, not a caller-supplied parameter: this table backs exactly one endpoint
@@ -114,7 +119,9 @@ _OPERATION_UPLOAD_INTAKE_DOCUMENT = "upload_intake_document"
 _PK_KEY_SHA256 = "garuda_documents_pkey"
 
 
-def _scoped_key_sha256(*, actor_id: str, operation: str, environment: str, idempotency_key: str) -> bytes:
+def _scoped_key_sha256(
+    *, actor_id: str, operation: str, environment: str, idempotency_key: str
+) -> bytes:
     """Canonical, unambiguous hash of (actor, operation, environment, idempotency_key).
 
     NOT a bare `sha256(idempotency_key)` -- the contract's `IdempotencyKey` parameter
@@ -154,6 +161,20 @@ def _payload_sha256_bytes(payload_hash: str) -> bytes:
     return bytes.fromhex(payload_hash)
 
 
+def _unique_fields(
+    document_id: str, fields: list[tuple[PassportReviewFieldName, bool]]
+) -> list[tuple[PassportReviewFieldName, bool]]:
+    """P6: a field path named twice would hit the child table's PRIMARY KEY
+    (document_id, field_path) and escape as a raw `UniqueViolationError`. Refused here,
+    typed, before any SQL runs."""
+    seen: set[PassportReviewFieldName] = set()
+    for field_path, _flag in fields:
+        if field_path in seen:
+            raise DuplicateReviewFieldPath(document_id, field_path.value)
+        seen.add(field_path)
+    return fields
+
+
 def _decompose(outcome: DocumentOutcome) -> tuple[str, list[tuple[PassportReviewFieldName, bool]]]:
     """Outcome -> (processing_state column value, review-field rows to insert).
 
@@ -162,14 +183,22 @@ def _decompose(outcome: DocumentOutcome) -> tuple[str, list[tuple[PassportReview
     drop in the first place.
     """
     if isinstance(outcome, ReadyOutcome):
-        return _STATE_READY_FOR_REVIEW, [(rf.field_path, rf.confirmation_required) for rf in outcome.review_fields]
+        return _STATE_READY_FOR_REVIEW, _unique_fields(
+            outcome.document_id,
+            [(rf.field_path, rf.confirmation_required) for rf in outcome.review_fields],
+        )
     if isinstance(outcome, ProcessingOutcome):
         return _STATE_PROCESSING, []
     if isinstance(outcome, LowConfidenceOutcome):
-        return _STATE_LOW_CONFIDENCE, [(f.field_path, f.confirmation_required) for f in outcome.uncertain_fields]
+        return _STATE_LOW_CONFIDENCE, _unique_fields(
+            outcome.document_id,
+            [(f.field_path, f.confirmation_required) for f in outcome.uncertain_fields],
+        )
     if isinstance(outcome, UnreadableOutcome):
         return _STATE_UNREADABLE, []
-    raise TypeError(f"unrecognized DocumentOutcome variant: {outcome!r}")  # pragma: no cover - exhaustive union
+    raise TypeError(
+        f"unrecognized DocumentOutcome variant: {outcome!r}"
+    )  # pragma: no cover - exhaustive union
 
 
 # `ORDER BY field_path` in the SQL gives a DETERMINISTIC read, which is necessary and not
@@ -184,7 +213,10 @@ _CANONICAL_FIELD_ORDER: dict[PassportReviewFieldName, int] = {
 
 
 def _in_canonical_order(field_rows: list[asyncpg.Record]) -> list[asyncpg.Record]:
-    return sorted(field_rows, key=lambda row: _CANONICAL_FIELD_ORDER[PassportReviewFieldName(row["field_path"])])
+    return sorted(
+        field_rows,
+        key=lambda row: _CANONICAL_FIELD_ORDER[PassportReviewFieldName(row["field_path"])],
+    )
 
 
 def _rehydrate(
@@ -219,7 +251,9 @@ def _rehydrate(
             for row in _in_canonical_order(field_rows)
         )
         raise ReadyOutcomeValueNotPersisted(document_id, persisted_fields)
-    raise ValueError(f"unrecognized processing_state column value: {processing_state!r}")  # pragma: no cover
+    raise ValueError(
+        f"unrecognized processing_state column value: {processing_state!r}"
+    )  # pragma: no cover
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,7 +299,9 @@ class PostgresDocumentStore:
     ``_hooks`` is a test seam (`_CommitHooks`) and must never be set in production.
     """
 
-    def __init__(self, pool: asyncpg.Pool, *, environment: str, _hooks: _CommitHooks | None = None) -> None:
+    def __init__(
+        self, pool: asyncpg.Pool, *, environment: str, _hooks: _CommitHooks | None = None
+    ) -> None:
         self._pool = pool
         self._environment = environment
         self._hooks = _hooks
@@ -282,7 +318,16 @@ class PostgresDocumentStore:
             idempotency_key=idempotency_key,
         )
         payload_hash_bytes = _payload_sha256_bytes(payload_hash)
-        async with self._pool.acquire() as conn:
+        # ONE snapshot for the parent and the child reads. Read as two autocommit
+        # statements, a purge of the parent between them (legal after retention_until)
+        # would hand `_rehydrate` a parent with no children -- an empty LOW_CONFIDENCE
+        # tuple, or a READY structure that is not the one committed. REPEATABLE READ
+        # makes both reads see the same committed state; a purge before the first read is
+        # simply "no row" (limit L7: the interleaving itself is not test-forced here).
+        async with (
+            self._pool.acquire() as conn,
+            conn.transaction(isolation="repeatable_read", readonly=True),
+        ):
             row = await conn.fetchrow(
                 """
                 SELECT document_id, canonical_payload_sha256, processing_state
@@ -443,7 +488,9 @@ class PostgresDocumentStore:
             # outcome 1 or 2 with an irrelevant provenance (SPEC v2 §2, row 4).
             self._collisions += 1
             if self._hooks is not None and self._hooks.after_collision_before_reread is not None:
-                await self._hooks.after_collision_before_reread(_HookContext(key_hash, self._collisions))
+                await self._hooks.after_collision_before_reread(
+                    _HookContext(key_hash, self._collisions)
+                )
             async with self._pool.acquire() as conn:
                 winner = await conn.fetchrow(
                     """
