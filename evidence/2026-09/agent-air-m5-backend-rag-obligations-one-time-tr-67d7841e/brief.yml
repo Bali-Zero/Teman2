@@ -1,0 +1,46 @@
+mandate: >
+  M2 of the compliance-stack second wave (spec docs/plans/2026-09-12-compliance-stack-engine-ui-windows.md):
+  make the three one_time obligations the compliance offer sells reach the reviewer queue. propose()
+  now emits ONE proposal per applicable one_time rule with period_key "once", dated the generation
+  date and flagged as such in needs_review_reason; _parse_due accepts an optional one_time-only
+  due.fixed_date (rejected on every other frequency) which becomes the due date when it is not
+  already past, and otherwise adds "fixed statutory date <date> already passed";
+  halal_certification gets fixed_date 2026-10-17, the date M4 (#6336) read off PP 42/2024
+  art. 160(2). event rules still schedule nothing.
+gear: 1
+gear_reason: >
+  Deterministic floor 1 as printed by scripts/evidence_pack_lint.py --print-floor on
+  git diff --name-only/--numstat of this PR's own commit range: 3 files, +293/-29 (264 net), all
+  under apps/backend-rag. Pure functions and one catalog data line: no migration, no router, no
+  schema, no workflow, no guard, no lockfile, no secret, no CODEOWNERS path, no client data. An
+  adversarial round ran anyway (Codex, read-only sandbox, reasoning effort high) because the change
+  puts a DATE in front of a reviewer, which is the part of this engine that can be confidently
+  wrong; both findings are disposed in the PR body.
+origin: >
+  Measured gap, not a report: pse_registration, pmse_vat_assessment and halal_certification pass
+  applies() and produced zero rows, because _periods() yields nothing for one_time and propose()
+  only ever read due_dates(). Probed on disk: a FOREIGN_PLATFORM profile
+  (serves_indonesian_users_online true, pse_registered false, pmse_vat_appointed false) proposed 0
+  obligations over 90 days from 2026-09-11 and now proposes 2; a PT_PMA with employees and PKP
+  proposed 27 and now proposes 28, the new rows being pse_registration/once,
+  pmse_vat_assessment/once (both dated the generation date) and halal_certification/once dated
+  2026-10-17.
+instruction_to_the_grader: >
+  Three things deserve attack. (1) The date the reviewer sees. An undated one_time proposal is
+  deliberately dated the generation date — check that needs_review_reason always says so, that the
+  rule's own caveat is never replaced, and that halal's proposal (the only one with a statutory
+  date) does NOT carry the placeholder note. The known weakness is disclosed, not fixed: PP 42/2024
+  art. 160(2) is the micro-and-small phase, the engine has neither sector nor size, and the cure
+  chosen was a sharper needs_review_reason rather than a silent date. Attack that choice if you
+  think a date no attribute conditions should not ship at all. (2) Idempotence. The claim is that
+  the "once" key cannot drift with the clock, so UNIQUE (client_id, rule_id, period_key) plus
+  ON CONFLICT DO NOTHING makes a re-run insert zero; no live database is reachable from this suite,
+  so the proof is three-layered (engine key stability under a later start date, the migration DDL
+  test, the router's fake store) and a real-DB test is absent on purpose. (3) The two repaired
+  tests. They were red on origin/main after #6336 flipped both BPJS rules to next_business_day on
+  primary sources; verify the repair moved the TESTS and not the catalog, and that the calendar
+  facts (Sat 2026-08-15 before Independence Day, Sun 2027-01-10 in an undecreed year) still carry
+  the same meaning.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
