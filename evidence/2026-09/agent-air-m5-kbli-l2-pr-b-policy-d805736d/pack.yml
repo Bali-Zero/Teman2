@@ -223,6 +223,12 @@ receipts:
     exit: 0
     ts: 2026-09-12T12:40Z
     seat: session (M5, successor window 3)
+  - claim: The editorial re-read of the two certified codes whose tier-set moved (47221, 50122) is done by the owner, so the registry bump in 19cd5e43b3 is now authorised and the gate may be dispatched
+    cmd: (Zero, in the conducting session, after the 47221/50122 tier + l4 diff was shown) — quoted verbatim
+    result: "ok, riletti, fai partire il gate — 2026-09-13 WITA"
+    exit: 0
+    ts: 2026-09-13T01:40Z
+    seat: operator[business] (Zero)
 pii_scan: clean
 pii_scan_note:
   "Public classification data only (KBLI codes, OSS risk tiers, licence names, authority names).
