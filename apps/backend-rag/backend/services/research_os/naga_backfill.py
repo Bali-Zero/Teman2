@@ -119,8 +119,9 @@ _MANIFEST_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 async def _load_legacy_rows(conn: asyncpg.Connection) -> list[dict[str, Any]]:
-    """Explicit column list, ordered by `id` (never `SELECT *`) -- the columns `persist.py`'s
-    own `naga_claims` INSERT populates (`services/naga/persist.py`), read back, never written."""
+    """Explicit column list, ordered by `id` (never `SELECT *`) -- the columns the legacy
+    writer `backend.services.naga.persist` populates in its own `naga_claims` INSERT, read back,
+    never written."""
 
     records = await conn.fetch(
         "SELECT id, session_id, claim_text, claim_key, domain, verification_level, "

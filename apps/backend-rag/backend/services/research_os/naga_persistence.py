@@ -1,7 +1,8 @@
 """D5's persistence adapter -- the ONLY module in this slice that talks to PostgreSQL.
 
 `research_os_objects` is the one generic append-only store (migration 279); this module is
-one of its writers, alongside `services/autonomous_lab/consul_executor.py` (`seal`/`_persist`),
+one of its writers, alongside `backend.services.autonomous_lab.consul_executor`
+(`seal`/`_persist`),
 whose column set, JSON encoding and idempotency check (`INSERT ... ON CONFLICT (object_id) DO
 NOTHING` followed by a read-back hash comparison) this module mirrors deliberately rather than
 inventing a second convention. The one other table this module writes is
@@ -40,7 +41,8 @@ rejected on write: the core's own pattern does not admit it, its own serializer 
 and no fixture this build must agree with ever spells it that way -- the three-way measurement
 the task named all point the same way, unlike `t`/`T` (which the reader's grammar admits
 because *legacy* text -- `naga_bitemporal_reader`'s own module docstring cites
-`consul_executor.py` "emits optional fractions" -- can be lowercase, but the canonical writer
+`backend.services.autonomous_lab.consul_executor` "emits optional fractions" -- can be
+lowercase, but the canonical writer
 never emits or should accept it).
 """
 
