@@ -330,9 +330,18 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // here rather than guessed.
   // D3c/C-D5: no rule in the signed pack carries this reason code at all
   // (verified: no `E33G_INCOME_60K_ADVISOR_CHECK` reason_code anywhere, and
-  // no income fact exists to hold a `gte` threshold), so the figure is
-  // dropped — same "confirm the current figure" template already used by
-  // the three sibling advisor checks below, for the same reason.
+  // no fact anywhere holds an ANNUAL income threshold). Narrowed (PR-D3d,
+  // 2026-09-13, fresh grader review): the pack's only income fact —
+  // `secondhome.passive_monthly_income_usd`, gte 3000, on
+  // `el.e33e.age-55-59-disputed-band` / `el.e33e.retirement` /
+  // `el.e33f.retirement` — is a MONTHLY figure backing E33E/E33F retirement,
+  // a different quantity from E33G's USD 60,000 PER YEAR; it does not back
+  // this reason code, and its existence is what made the prior wording ("no
+  // income fact exists") false — the true statement is the narrower one
+  // above: no fact holds an ANNUAL income threshold. The conclusion is
+  // unchanged: this figure is dropped — same "confirm the current figure"
+  // template already used by the three sibling advisor checks below, for
+  // the same reason.
   E33G_INCOME_60K_ADVISOR_CHECK: text(
     "This route has a minimum annual income threshold. We confirm the current figure and your evidence with one of our advisors.",
     "Jalur ini memiliki ambang penghasilan tahunan minimum. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
@@ -808,42 +817,24 @@ const GENERIC_REVIEW_REASON: LocalizedText = text(
   "Beberapa jawaban Anda memerlukan penilaian dari seseorang sebelum kami dapat mengonfirmasi jalur.",
 );
 
-// D3-4 (PR-D3, owner ruling SHWEB-20260911): `DISCLOSED_AMBIGUOUS_SPONSOR_
-// REVIEW`'s generic copy ("has not been established here") is true for an
-// `unsure` answer but would be FALSE for a STEPCHILD applicant who told the
-// interview their sponsor holds NO KITAS/KITAP — that fact IS established,
-// just not one any seq-20 rule reads. D2-bis forbids reusing an
-// "unresolved" sentence for a resolved-negative answer, so this one trigger
-// gets its own two variants, selected in `reviewReason` below from the
-// interview facts already threaded through `BuildEngineOutcomeOptions`. Not
-// the general D3-6 mechanism (deferred, three OTHER parameter-less codes) —
-// scoped to this one code and this one question.
-const STEPCHILD_SPONSOR_PERMIT_NO_REVIEW: LocalizedText = text(
-  "You told us your sponsor does not hold a valid KITAS/KITAP of their own. A sponsor without a stay permit cannot sponsor the Family Reunification Visa — Stepchild (E31D); this does not affect the Multiple-Entry Visa (C1), which stays available on its own terms. A person needs to confirm the E31D sponsorship route separately before it can be resolved.",
-  "Anda menyatakan bahwa sponsor Anda tidak memiliki KITAS/KITAP yang sah. Sponsor tanpa izin tinggal sendiri tidak dapat mensponsori Visa Penyatuan Keluarga — Anak Tiri (E31D); hal ini tidak memengaruhi Visa Kunjungan Berkali-kali (C1), yang tetap tersedia dengan syaratnya sendiri. Diperlukan konfirmasi terpisah oleh seseorang atas jalur sponsor E31D sebelum dapat diselesaikan.",
-);
-const STEPCHILD_SPONSOR_PERMIT_UNSURE_REVIEW: LocalizedText = text(
-  "Whether your sponsor holds a valid KITAS/KITAP of their own has not been established — confirming your sponsor's own stay permit is what resolves it before the Family Reunification Visa — Stepchild (E31D) can be confirmed.",
-  "Belum dapat dipastikan apakah sponsor Anda memiliki KITAS/KITAP yang sah — konfirmasi izin tinggal sponsor Anda sendiri adalah yang akan menyelesaikannya sebelum Visa Penyatuan Keluarga — Anak Tiri (E31D) dapat dipastikan.",
-);
-
+// D3-4 (PR-D3, owner ruling SHWEB-20260911) had added a STEPCHILD-only
+// variant here: `reviewReason` special-cased a
+// `family_stepchild_sponsor_permit_confirmed` answer threaded through
+// `BuildEngineOutcomeOptions.facts`, on the theory that E31D might
+// implicitly need the sponsor's own stay permit. REMOVED (owner ruling
+// SHWEB-20260911, 2026-09-13, fresh grader review; PR-D3d): no such
+// requirement exists for E31D (tree.ts no longer asks the question; see the
+// comment left in its place), so the fact can never be populated and the
+// branch below was dead. `DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW`'s own copy in
+// `REVIEW_REASON_COPY` is correct for every caller now, STEPCHILD included —
+// pinned by the "gives a STEPCHILD walk the same ambiguous-sponsor copy..."
+// test in engine-adapter.test.ts.
 function reviewReason(
   code: string,
   sourceIds: readonly string[],
   trustedIds: ReadonlySet<string>,
-  facts?: OracleFacts,
 ): OutcomeReason {
-  const stepchildSponsorPermitAnswer =
-    code === "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW" &&
-    facts?.family_relation === "STEPCHILD"
-      ? facts.family_stepchild_sponsor_permit_confirmed
-      : undefined;
-  const message =
-    stepchildSponsorPermitAnswer === "no"
-      ? STEPCHILD_SPONSOR_PERMIT_NO_REVIEW
-      : stepchildSponsorPermitAnswer === "unsure"
-        ? STEPCHILD_SPONSOR_PERMIT_UNSURE_REVIEW
-        : (REVIEW_REASON_COPY[code] ?? GENERIC_REVIEW_REASON);
+  const message = REVIEW_REASON_COPY[code] ?? GENERIC_REVIEW_REASON;
   return {
     code,
     message,
@@ -1265,12 +1256,7 @@ function buildValidatedOutcome(
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         reviewReasons: response.decision.review_reasons.map((item) => {
           requireReviewHoldRefs(item.source_refs);
-          return reviewReason(
-            item.code,
-            item.source_refs,
-            trustedIds,
-            options.facts,
-          );
+          return reviewReason(item.code, item.source_refs, trustedIds);
         }) as [OutcomeReason, ...OutcomeReason[]],
       };
     case "NO_SUPPORTED_PATH":

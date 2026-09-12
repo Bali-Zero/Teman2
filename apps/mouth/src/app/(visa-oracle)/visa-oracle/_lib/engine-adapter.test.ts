@@ -266,6 +266,33 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(message.en).not.toContain("Verified reason:");
   });
 
+  it("gives a STEPCHILD walk the same ambiguous-sponsor copy as anyone else — the dead sponsor-permit fact no longer branches it", () => {
+    // D3-4 (PR-D3, owner ruling SHWEB-20260911) had `reviewReason` special-
+    // case a STEPCHILD applicant's `family_stepchild_sponsor_permit_
+    // confirmed` answer here. That question was REMOVED from tree.ts (owner
+    // ruling SHWEB-20260911, 2026-09-13, fresh grader review; no such
+    // requirement exists for E31D) and PR-D3d retired the now-unreachable
+    // branch. `facts` below still carries the fact's old key — nothing in
+    // the current interview can set it any more, but the adapter must not
+    // resurrect the special case if a stale value ever showed up in it.
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW";
+    const facts: OracleFacts = {
+      family_relation: "STEPCHILD",
+      family_stepchild_sponsor_permit_confirmed: "no",
+    };
+
+    const outcome = buildEngineOutcome(response, { facts });
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(outcome.reviewReasons[0].message).toEqual(
+      REVIEW_REASON_COPY.DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW,
+    );
+    expect(outcome.reviewReasons[0].message.en).not.toContain("KITAS/KITAP");
+  });
+
   it("falls back to an honest generic sentence for an unmapped review-reason code", () => {
     const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
     response.decision.review_reasons[0].code = "SOME_FUTURE_RULE_CODE";
@@ -818,9 +845,16 @@ describe("support reasons are sentences, not machine codes", () => {
 
   // Mirror image: these SUPPORT reasons named a dollar figure on `main` with
   // NO backing rule anywhere in the signed pack (verified: no fact for
-  // proof-of-funds, living cost or an income threshold exists in ANY rule's
-  // `when` tree). Per the same rule as the anchor test above, an unbacked
-  // figure may not be stated — this pins that the fix stays applied.
+  // proof-of-funds or living cost exists in ANY rule's `when` tree, and no
+  // fact anywhere holds an ANNUAL income threshold). Narrowed (PR-D3d,
+  // 2026-09-13, fresh grader review): the pack does carry ONE income fact —
+  // `secondhome.passive_monthly_income_usd`, gte 3000 — but it is a MONTHLY
+  // figure backing `el.e33e.retirement`/`el.e33f.retirement` (pinned by
+  // `FIGURE_BACKED_BY_RULE` above), a different quantity from
+  // `E33G_INCOME_60K_ADVISOR_CHECK`'s USD 60,000 PER YEAR below; it backs no
+  // key in this list. Per the same rule as the anchor test above, an
+  // unbacked figure may not be stated — this pins that the fix stays
+  // applied.
   it("states no figure for SUPPORT reasons the signed pack has no rule to back", () => {
     const NO_BACKING_KEYS = [
       "PROOF_OF_FUNDS_D1",

@@ -1,0 +1,189 @@
+gear: 1
+gear_reason: >-
+  Measured the way CI measures it, with BOTH inputs:
+  `scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <n>`
+  (changed-files-file listing the two touched files, numstat-file their real
+  `git diff --numstat origin/main`: engine-adapter.test.ts +37/-3,
+  engine-adapter.ts +24/-40) returns 1, and `--print-floor-source` returns `none`
+  (no size/path escalation triggered). Omitting `--numstat-file` was rejected three
+  times already in this mandate (#6240, PR-O2's brief, PR-D3c's brief) for
+  under-reporting the floor — both flags were passed here, and no digit is typed:
+  re-run both invocations to check. Two files, ~60 net lines, no rule-pack change,
+  no new corpus, one dead-code removal plus one comment correction — nothing here
+  crosses a size/risk threshold that would raise the floor above 1.
+task_id: shweb-w-oracle-d3d-20260913
+mandate_id: SHWEB-20260911/W-ORACLE/PR-D3d
+colour: BLUE
+l_level: L1
+gate_class: opus
+objective: >-
+  Two independent, comment/dead-code-only items in engine-adapter.ts/.test.ts, no
+  rulepack change and no corpus change (D4d's lane, running concurrently, owns
+  flow.ts/fact-mapper.ts/tree.ts/the walk corpus).
+  (1) PR-D4a (817cd8674b) removed the question `family_stepchild_sponsor_permit_
+  confirmed` from tree.ts, leaving only a comment. That made three things in
+  engine-adapter.ts unreachable: the two STEPCHILD_SPONSOR_PERMIT_{NO,UNSURE}_REVIEW
+  copy constants and the `stepchildSponsorPermitAnswer` branch in `reviewReason`
+  that selected between them. Verified unreachable (see acceptance/self_report
+  below) and removed; `reviewReason` now always falls through to
+  `REVIEW_REASON_COPY[code] ?? GENERIC_REVIEW_REASON`, pinned by a new test.
+  (2) Two comments (engine-adapter.ts ~L331-335, engine-adapter.test.ts ~L845-849)
+  claimed "no income fact exists in any rule's `when` tree" to justify dropping the
+  USD 60,000/year figure from E33G_INCOME_60K_ADVISOR_CHECK. Measured against the
+  active signed pack (rulepack-prod-020.signed.json, sequence 20), that is false:
+  `secondhome.passive_monthly_income_usd` (gte 3000) backs
+  `el.e33e.age-55-59-disputed-band` / `el.e33e.retirement` / `el.e33f.retirement`,
+  and the test file's own `FIGURE_BACKED_BY_RULE` map two blocks earlier pins
+  `E33F_RETIREMENT_ELIGIBLE` to exactly that fact — a self-contradiction. Both
+  comments are narrowed to the true statement: no rule carries the reason code
+  `E33G_INCOME_60K_ADVISOR_CHECK`, and no fact anywhere holds an ANNUAL income
+  threshold; the pack's one income fact is a MONTHLY passive-income floor backing a
+  different product (E33E/E33F retirement), not E33G. The verdict (E33G states no
+  figure) is unchanged — only the reason given for it was too broad. No behaviour
+  change in item 2.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - this brief
+constraints:
+  - >-
+    Only the two files above are touched. flow.ts, fact-mapper.ts, tree.ts and every
+    walk fixture are untouched — D4d is live on them concurrently. Verified:
+    `git diff --name-only origin/main...HEAD` names only these two files plus this
+    brief (see acceptance below).
+  - No rule-pack edit; `sign_pack.py`/`activate_pack.py` never run; `VISA_ENGINE_EVALUATE_MODE` untouched.
+  - No corpus walk added or modified (C6 regression walk is D4d's, per the 20:37Z ruling).
+  - Item 2 is comment-only: no `SUPPORT_REASON_COPY`/`REVIEW_REASON_COPY` string, no test assertion, and no verdict changed.
+  - No client PII in any file added or edited.
+  - No push, no PR, no arm, no merge — committed locally only; the orchestrator ships.
+acceptance:
+  - text: >-
+      WHEN `family_stepchild_sponsor_permit_confirmed` is searched for across the
+      repo, THEN the only non-comment occurrence SHALL be the new test's literal
+      (simulating a stale value the current interview can no longer produce) — no
+      producer exists in fact-mapper.ts and no question node exists in tree.ts.
+    status: verified
+    ts: "2026-09-13T04:50+08:00"
+    probe: 'grep -rn "family_stepchild_sponsor_permit_confirmed" --include=''*.ts'' . | grep -v node_modules'
+    result: >-
+      6 hits: generate-walk-corpus.ts:438 (comment), fact-mapper.ts:605 (comment),
+      engine-adapter.ts:820 (comment, this PR's own), engine-adapter.test.ts:283
+      (this PR's new test literal), fact-mapper.test.ts:330 (comment), tree.ts:957
+      (comment). Zero live producers/consumers besides the new test's deliberate
+      literal.
+  - text: >-
+      WHEN `STEPCHILD_SPONSOR_PERMIT_NO_REVIEW`/`_UNSURE_REVIEW` are searched for
+      after removal, THEN zero references SHALL remain anywhere.
+    status: verified
+    ts: "2026-09-13T04:50+08:00"
+    probe: "grep -rn 'STEPCHILD_SPONSOR_PERMIT_NO_REVIEW|STEPCHILD_SPONSOR_PERMIT_UNSURE_REVIEW' --include='*.ts' --include='*.tsx' . | grep -v node_modules"
+    result: "0 hits."
+  - text: >-
+      WHEN a STEPCHILD walk's `reviewReason` is called for
+      `DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW` with a stale
+      `family_stepchild_sponsor_permit_confirmed: \"no\"` fact still present in
+      `options.facts`, THEN it SHALL return `REVIEW_REASON_COPY.
+      DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW` (the same copy every other caller gets),
+      never the removed STEPCHILD-specific text. Red before this PR's deletion
+      (with the dead branch still in place, this exact scenario returned
+      `STEPCHILD_SPONSOR_PERMIT_NO_REVIEW` instead), green after — proving the
+      branch was live-reachable code with observable behaviour, now retired on
+      purpose rather than silently.
+    status: verified
+    ts: "2026-09-13T04:47+08:00"
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t 'gives a
+      STEPCHILD walk the same ambiguous-sponsor copy'
+    result: >-
+      BEFORE (dead branch still present): 1 failed — received
+      STEPCHILD_SPONSOR_PERMIT_NO_REVIEW's KITAS/KITAP text instead of the expected
+      DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW copy. AFTER (branch removed): 1 passed.
+  - text: >-
+      WHEN the active signed pack (highest sequence) is walked structurally for
+      every `gte` node's (fact, rule_id) pair, THEN the only fact containing
+      "income" SHALL be `secondhome.passive_monthly_income_usd` (a MONTHLY figure,
+      value 3000), attached only to `el.e33e.age-55-59-disputed-band`,
+      `el.e33e.retirement` and `el.e33f.retirement` — never to any rule carrying
+      reason_code `E33G_INCOME_60K_ADVISOR_CHECK` — and no fact containing "annual"
+      SHALL exist anywhere in any rule's `when` tree.
+    status: verified
+    ts: "2026-09-13T04:44+08:00"
+    probe: >-
+      python3 - <<'PY' reading
+      apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-020.signed.json
+      (`payload["rules"]`, 109 rules — never `payload["products"]`, 38 metadata
+      entries with no rules; `gte` nodes here carry `value`, singular), walks every
+      rule's `when` tree structurally and prints every `gte`(fact) pair, every
+      "income"/"annual" fact name, and whether reason_code
+      E33G_INCOME_60K_ADVISOR_CHECK appears anywhere.
+      PY
+    result: >-
+      sequence=20, 109 rules in payload.rules, 38 products in payload.products (no
+      "rules" key on any product). 21 gte() nodes total; the only income-named fact
+      is secondhome.passive_monthly_income_usd=3000 on exactly the three rule ids
+      named above (el.e33e.age-55-59-disputed-band, el.e33e.retirement,
+      el.e33f.retirement — reason codes E33E_AGE_55_59_ADVISOR_CHECK,
+      E33E_RETIREMENT_ELIGIBLE, E33F_RETIREMENT_ELIGIBLE). E33G_INCOME_60K_ADVISOR_CHECK
+      reason_code: not found anywhere in payload.rules. Facts containing "annual":
+      none (0 of 39 distinct facts referenced in any when-tree).
+  - text: WHEN the project typechecks, THEN it SHALL succeed.
+    status: verified
+    ts: "2026-09-13T04:47+08:00"
+    probe: "cd apps/mouth && npx tsc --noEmit"
+    result: "exit 0, no diagnostics."
+  - text: WHEN eslint runs against the changed source file, THEN it SHALL report 0 errors.
+    status: verified
+    ts: "2026-09-13T04:48+08:00"
+    probe: 'cd apps/mouth && npx eslint "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts"'
+    result: >-
+      0 errors (engine-adapter.test.ts is excluded by this project's own eslint
+      ignore pattern for `src/**/*.test.{ts,tsx}` — running it directly prints only
+      the ignore-pattern warning, 0 errors, exit 0).
+  - text: WHEN the full visa-oracle frontend suite runs, THEN every test SHALL pass.
+    status: verified
+    ts: "2026-09-13T04:48+08:00"
+    probe: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'"
+    result: "39 test files passed (39), 731 tests passed (731)."
+  - text: WHEN the backend interview walk-census pytest runs, THEN every walk SHALL pass.
+    status: verified
+    ts: "2026-09-13T04:49+08:00"
+    probe: >-
+      cd apps/backend-rag &&
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python3 -m pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "17 passed."
+  - text: >-
+      WHEN the diff against origin/main is listed, THEN it SHALL name only
+      engine-adapter.ts, engine-adapter.test.ts and this brief — no walk fixture, no
+      generator, no rule pack.
+    status: verified
+    ts: "2026-09-13T04:52+08:00"
+    probe: "git diff --name-only origin/main...HEAD"
+    result: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+      evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-d3d-2026091-d620814d/brief.yml
+pii: none
+self_report:
+  premise_verification: >-
+    Both premises the brief asked to re-derive, verified before writing any code:
+    (a) family_stepchild_sponsor_permit_confirmed has no producer anywhere in the
+    repo (tree.ts's question node, fact-mapper.ts's mapper and the corpus generator
+    all carry only a REMOVED-comment where it used to live, per PR-D4a/D3-4's own
+    trail) — TRUE, matches the brief; (b) the "no income fact exists" comment is
+    false as stated — TRUE, matches the brief's own finding — `secondhome.
+    passive_monthly_income_usd` exists and backs E33E/E33F retirement, a MONTHLY
+    figure distinct from E33G's ANNUAL USD 60,000. Neither premise required a STOP.
+  what_i_did_not_do: >-
+    Did not touch the `facts` field on `BuildEngineOutcomeOptions` or on `reason()`
+    (the sibling function used for SUPPORTED_CANDIDATES/NO_SUPPORTED_PATH) — only
+    `reviewReason`'s own now-fully-unused `facts` parameter was dropped, along with
+    updating its sole call site to stop passing `options.facts` to it;
+    `options.facts` itself remains live for `reason()` and the NEEDS_INPUT branch,
+    untouched. Did not touch tree.ts, fact-mapper.ts, flow.ts or any walk fixture —
+    D4d's lane. Did not push, open a PR, arm auto-merge or merge — commits are
+    local only on `agent/mini-pro2/mouth/shweb-w-oracle-d3d-20260913`. The
+    `OracleFacts` type itself needed no pruning: it is `Record<string, string>`
+    (tree.ts:91), not a field-by-field interface, so there was no separate
+    declaration to remove or hand off to D4d.
