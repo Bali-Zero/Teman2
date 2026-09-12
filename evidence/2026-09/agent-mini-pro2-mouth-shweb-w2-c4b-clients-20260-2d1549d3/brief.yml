@@ -1,7 +1,18 @@
 # Brief for W2-C4b (same content as pack.yml beside it) — same content as brief.yml beside it, at the path
 # scripts/ci/evidence_paths.py resolves for this branch (NOT the deprecated root).
 # Evidence Pack — SHWEB-20260911 / W2-C4b (closing the exception C4 had to open)
-gear: 1 # floor from scripts/evidence_pack_lint.py --print-floor = 1, --print-floor-source = none
+gear: 3 # floor from scripts/evidence_pack_lint.py --print-floor = 3, --print-floor-source = size
+gear_floor_note: >-
+  The floor is SIZE, and the size is an artefact of ONE file MOVE. The code change is +308 net
+  lines across 8 paths; the move of a 1039-line client body out from under its route scores as
+  1,062 added and 1,061 deleted because a new 22-line page.tsx took the old path, so git cannot
+  see it as a rename. Proven to be a move, not a rewrite: `diff` of origin/main's page.tsx
+  against ClientDetailClient.tsx reports 3 changed regions and 19 differing lines — one
+  `import type`, the export signature, one forwarded prop. Declared so the gear is not read as a
+  risk signal it is not.
+  CORRECTION: this pack first declared gear 1. That was my measurement error, not a dispute —
+  I ran --print-floor without --numstat-file, so the SIZE term was absent from the computation
+  and the floor came back 1. With the numstat supplied, local and CI agree at 3.
 task_id: shweb-w2-c4b-clients-20260913
 mandate_id: SHWEB-20260911/W2-C4b
 colour: BLUE
@@ -112,6 +123,10 @@ lanes:
     role: review
     seat: kimi-code/k3
     what: the same, independently
+  - lane: council
+    role: review
+    seat: tp1-qwen3.8-max
+    what: the whole change AND the other two seats' dispositions — the Gear-3 council seat
 
 council_run: journal.jsonl
 
@@ -216,6 +231,29 @@ dissent:
       Nothing else differs. On the test count: the old page.test.tsx had exactly 2 cases and the
       renamed file kept both, then gained the forwarding case, so nothing was dropped.
 
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      GO, no blocking findings — and it checked the other two seats' dispositions rather than only
+      the diff. Two non-blocking points of its own: (LOW) taxConsultants() returns a SHALLOW copy,
+      inert today because the shape is two strings and RSC serialisation deep-copies for the client
+      anyway, but a future non-primitive field would silently reintroduce server-side aliasing;
+      (INFO) the guard's scan scope assumes this route stays dynamic — a later generateStaticParams
+      or static export would write payloads into .next/server/app and the guard would not see them,
+      so the boundary assumption deserves a comment naming its trigger.
+    status: CONFIRMED
+    disposition: >-
+      Both accepted as correct and NEITHER implemented here, deliberately: the only push authorised
+      on this frozen head is evidence-only (imperator, key shweb-imp-w2-c4b-fix-go), and both would
+      edit code — roster-directory.ts for the copy, the guard's header for the comment. Recorded as
+      named follow-ups rather than done quietly or dropped: (1) make the pinning test assert the
+      consultant fields stay primitive, or switch to structuredClone; (2) add the trigger sentence
+      to the guard so "extend the scan to .next/server/app" is written where the next reader of
+      that scope decision will be. The seat also independently confirmed the substance the round
+      turned on: that the exposure reduction is real and not illusory — from an unauthenticated CDN
+      GET of a guessable static chunk path to an unauthenticated GET of a dynamic route whose URL
+      contains an unknown [id] — and it asked that the escalated server-auth item track THIS route
+      specifically rather than sit in a generic backlog. That request is passed upward with R-A.
+
 receipts:
   - claim: "THE C4b BITES — the exception is gone from the guard's allowlist, not only from the file"
     cmd: "npm run build; then read the guard's OK line; then vitest src/lib/client-roster-boundary.test.ts which reads ALLOWED_CHUNK_PREFIXES out of the guard source"
@@ -271,6 +309,40 @@ receipts:
       against the merge-base: clean.
     exit: 0
     ts: "2026-09-12T18:20:00Z"
+    seat: claude-opus-5
+
+  - claim: "the two CI reds were MY measurement and MY artefact, and both cures are proven in both directions"
+    cmd: >-
+      gh run view --log-failed on both jobs; then --print-floor WITH --numstat-file; then a
+      diff-scoped detect-secrets scan with the baseline at its own relative path, listing
+      file:line:type for every finding; then the gate script with and without the audit
+    result: >-
+      RED 1 "Harness floor recompute": declared gear 1 vs floor 3. Cause: I read --print-floor
+      WITHOUT --numstat-file, so the SIZE term was absent and the floor came back 1. With the
+      numstat supplied, local agrees with CI at 3 (source "size"); CI's arithmetic is the raw
+      numstat 2369+1266 = 3635 > SIZE_GEAR3 1828. Cured by declaring gear 3 + gear_floor_note.
+      RED 2 "Detect Secrets": 2 unaudited findings, brief.yml:22 and pack.yml:22, both
+      "Base64 High Entropy String", both hashed_secret 95ea023288715c765e3c198ea4e7a7aa1fe31384.
+      PROVEN not to be a secret rather than asserted: that hash is exactly
+      sha1("agent/mini-pro2/mouth/shweb-w2-c4b-clients-20260913"), the BRANCH NAME, which
+      `git ls-remote --heads origin` shows published on the remote and which appears in the PR URL.
+      Cured by auditing each finding is_secret:false — never a whole-file exclude, never a regex,
+      and no pragma. BOTH BRANCHES: with the audit, a CI-shaped scan keeps is_secret=False on both
+      and the gate prints "All findings audited (8256 total)", exit 0; with the 20 lines removed,
+      the gate exits 1 naming EXACTLY those two findings and nothing else.
+    exit: 0
+    ts: "2026-09-12T19:20:00Z"
+    seat: claude-opus-5
+  - claim: "the baseline edit is a pure textual INSERTION — no round-trip, no churn"
+    cmd: 'line-based insertion after the `"results": {` line; then git diff --numstat; then a structural comparison of the parsed before/after'
+    result: >-
+      +20 / -0, zero deleted lines. 553 -> 555 result keys, 8254 -> 8256 findings, only the two new
+      file keys added and none removed; EVERY pre-existing key byte-equal and every non-results
+      section identical. This is the shape the ruling on .secrets.baseline demands: entries appended
+      textually, never a json.loads/dumps round-trip — the 5,897-line churn that hid a loss is the
+      reason the rule exists.
+    exit: 0
+    ts: "2026-09-12T19:21:00Z"
     seat: claude-opus-5
 
 lesson:
