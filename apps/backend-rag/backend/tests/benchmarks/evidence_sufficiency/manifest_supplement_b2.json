@@ -15,12 +15,19 @@
     "C": {
       "name": "D-SETC — hard case: entity present, referent wrong, no meta-commentary",
       "source": "evidence/2026-09/agent-nuzantara-backend-rag-b2-engine-63f75705/set_c_probe.json",
-      "source_sha256": "a55aed9416c6e876efb999c0ad50948b6c805e41a6cfdd5b3f010416c4f25040",
+      "source_sha256": "5f493b6b036954cec3622e6cd03b625061cb2bda54907634b6129344ea7c7910",
+      "source_sha256_note": "Re-pinned 2026-09-13 (B2.2). Old (wrong) value: a55aed9416c6e876efb999c0ad50948b6c805e41a6cfdd5b3f010416c4f25040 — that was sha256(json.dumps(data, indent=2)) over the file's PARSED-then-re-serialized content, which drops the file's own trailing newline; the writer hashed the in-memory string it was about to write, not the bytes the file ended up holding. The current value is `shasum -a 256 set_c_probe.json` over the file's real bytes (harness.source_sha256()).",
       "authored_by": "gemini-3.1-pro via agy --effort high, 2026-09-12T09:30Z, second reader (Codex recused: candidate (iii) is its own family); Dux-cured (two supporting_span elisions replaced with true verbatim substrings; one false Dux digit-search flag on two spelled-out durations reverted)",
       "pair_count": 12,
       "case_count": 24,
       "measures": "Whether the scorer/support-signal is fooled by a confident, on-topic amount or duration that names the SAME entity as the question but answers a DIFFERENT question about it (a neighbouring fact, an indirect sufficiency claim, or an internal contradiction) — with NO announcement of insufficiency anywhere in the text. This is the hard case Set A (which deletes the trigger token) and Set B (whose negatives announce their own insufficiency) do not cover.",
       "does_not_measure": "Cases where the wrong referent is signalled lexically (a negation, a hedge, an explicit 'not stated') — Set B already covers that; and it does not fix a threshold — (iii)/(ii) are measured on Set C BEFORE any threshold is set in B2.2, per the build spec."
+    },
+    "D": {
+      "name": "Set D — the cross-language cell of the SAME Set C hard pairs",
+      "derived_from": "C",
+      "derivation_note": "Set D has no source file of its own: its cases are the cross-language members of Set C's pairs, so Set C's source_sha256 pins them too. Added in B2.2 after council round 1 (kimi-code/k3, R12) found that 12 cases carried set=D while the sets metadata named only B and C — an unpinned set that the new pin guard would have skipped in silence.",
+      "case_count": 12
     }
   },
   "cases": [
