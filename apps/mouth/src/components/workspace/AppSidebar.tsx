@@ -74,8 +74,6 @@ interface AppSidebarProps {
     role?: string;
     team?: string;
     avatar?: string;
-    isOnline?: boolean;
-    hoursToday?: string;
   };
   unreadWhatsApp?: number;
   reviewCount?: number;
@@ -314,17 +312,6 @@ export function AppSidebar({
               {isPortal ? "Client Portal" : user.role || user.team || "Team"}
             </div>
           </div>
-          <div
-            className="w-[7px] h-[7px] rounded-full flex-shrink-0"
-            style={{
-              background: user.isOnline
-                ? "var(--bz-green)"
-                : "var(--bz-text-3)",
-              boxShadow: user.isOnline
-                ? "0 0 6px color-mix(in srgb, var(--bz-green) 45%, transparent)"
-                : "none",
-            }}
-          />
         </div>
         <button
           onClick={onLogout}

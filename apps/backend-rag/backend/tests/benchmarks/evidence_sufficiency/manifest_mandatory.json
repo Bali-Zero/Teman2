@@ -644,12 +644,12 @@
         "inventory_row": 5,
         "sources": [
           {
-            "score": 0.72,
-            "score_kind": "unknown",
-            "score_raw": null
+            "score": 0.6146,
+            "score_kind": "dense_formatted",
+            "score_raw": 0.373
           }
         ],
-        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+        "note": "declared dense source (RULED I31, cured in the successor PR under RULING I35): 0.373 is the ONE embedding cosine this repo has for this (query, chunk) pair. What is ATTESTED, and nothing more: it appears in #5618 (commit 2cd3cf84b8, 2026-09-09), whose message records its OTHER cosines as `measured live 2026-09-01` with their text pairs but states 0.373 with NO measurement date of its own; the `2026-09-03` that the removed xfail reason attached to it is that commit's ADVERSARIAL REVIEW date, not a measurement receipt, and no probe artifact for this cosine exists anywhere on disk. It is therefore a historical attestation promoted to a declared fixture, and it is falsifiable: a re-measurement incompatible with 0.373 at this precision, or any value below the 0.32 MODERATE boundary, breaks this cure and this case returns to abstaining. 0.6146 is that cosine's REAL transform through the live format_search_results. Replaces the prior legacy literal (0.72, score_kind unknown) — RETRIEVAL's literal fixture score at test_evidence_cross_language.py:46 (earlier revisions of this note cited 44 and then 45; 46 is the line after this PR's own added literal, verified by grep AFTER the edit)."
       },
       "requested_fact": "the price of new PT PMA company setup",
       "supporting_span": "Harga: IDR 20.000.000 sudah termasuk semuanya.",
@@ -661,8 +661,8 @@
       "expected_label_gate": "pass",
       "synthetic": true,
       "origin": "golden:test_evidence_cross_language.py:241",
-      "xfail_ref": "test_a_question_naming_no_identifier_is_still_language_blind",
-      "label_review": "DECLARED RESIDUAL (xfail, strict=True on origin/main): the query names no PT/PMA/NIB/OSS identifier, so the live scorer's lexical bridge cannot fire and the case currently scores below the abstain gate — this manifest records the INTENDED label (sufficient), the harness measures the actual divergence."
+      "cured_ref": "test_a_question_naming_no_identifier_is_still_language_blind",
+      "label_review": "CURED (RULED I31, provenance-fixture PR): the query still names no PT/PMA/NIB/OSS identifier, so the lexical bridge still cannot fire and the legacy literal still scores 0.08 — what discharges the residual is the DECLARED provenance (dense_formatted, cosine 0.373 -> MODERATE band), not a relabel: stratum, context and both expected gates are byte-identical to the frozen original. The golden test named in `cured_ref` is a PASS with its strict xfail marker removed. The cross-language residual is NOT closed in general: V2 (sup-d-4984a0c2, sup-d-4d058bdc in the supplement) stays OPEN because no measured cosine exists for those pairs (RULED I33)."
     },
     {
       "case_id": "bs-2641bf9a",
