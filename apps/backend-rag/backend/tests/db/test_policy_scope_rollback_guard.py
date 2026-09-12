@@ -99,14 +99,16 @@ def _guard_spans(text: str, scope: str) -> list[tuple[int, int, int]]:
 
 
 #: Any executable statement that ADDs a CHECK on policy_scope -- whatever the
-#: constraint name, IN vs = ANY, NOT VALID -- or DROPs/VALIDATEs a constraint
-#: named as the policy_scope check (Sol O1: discovery by the exact safe
-#: spelling was green by omission for a new shape). A rollback that touches
-#: and does not match the safe shape is RED. Dropping the COLUMN (281's
-#: rollback) is not a touch: no CHECK survives to narrow anything.
+#: constraint name or no name at all, IN vs = ANY, NOT VALID -- or DROPs,
+#: VALIDATEs or RENAMEs a constraint named as the policy_scope check (Sol O1:
+#: discovery by the exact safe spelling was green by omission for a new shape;
+#: gate-6363: a RENAME away plus an unnamed `ADD CHECK` escaped discovery). A
+#: rollback that touches and does not match the safe shape is RED. Dropping
+#: the COLUMN (281's rollback) is not a touch: no CHECK survives to narrow
+#: anything.
 _TOUCH_RE = re.compile(
-    r"\bADD\s+CONSTRAINT\b[^;]*?\bCHECK\s*\([^;]*?\bpolicy_scope\b"
-    r"|\b(?:DROP|VALIDATE)\s+CONSTRAINT\b[^;,]*?policy_scope_check\b",
+    r"\bADD\s+(?:CONSTRAINT\b[^;]*?)?\bCHECK\s*\([^;]*?\bpolicy_scope\b"
+    r"|\b(?:DROP|VALIDATE|RENAME)\s+CONSTRAINT\b[^;,]*?policy_scope_check\b",
     re.IGNORECASE | re.DOTALL,
 )
 
