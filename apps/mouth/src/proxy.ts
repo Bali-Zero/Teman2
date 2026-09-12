@@ -19,7 +19,6 @@ const INTERNAL_ROUTES = [
   "/second-home",
   "/settings",
   "/team-management", // workspace team management (not /team which is public)
-  "/whatsapp",
   "/admin",
   "/agents",
   "/portal",

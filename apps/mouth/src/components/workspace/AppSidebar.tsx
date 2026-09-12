@@ -75,7 +75,6 @@ interface AppSidebarProps {
     team?: string;
     avatar?: string;
   };
-  unreadWhatsApp?: number;
   reviewCount?: number;
   onLogout: () => void;
   navigationConfig?: NavSection[];
@@ -88,7 +87,6 @@ interface AppSidebarProps {
 export function AppSidebar({
   id,
   user,
-  unreadWhatsApp = 0,
   reviewCount = 0,
   onLogout,
   navigationConfig,
@@ -111,12 +109,7 @@ export function AppSidebar({
   const renderNavItem = (item: NavItem) => {
     const Icon = iconMap[item.icon] || Home;
     const active = isActive(item.href);
-    const badge =
-      item.href === "/whatsapp"
-        ? unreadWhatsApp
-        : item.href === "/review"
-          ? reviewCount
-          : item.badge;
+    const badge = item.href === "/review" ? reviewCount : item.badge;
 
     // GARUDA active: AA-safe copper fill + white text, rounded-[12px]
     const sharedClassName = cn(
