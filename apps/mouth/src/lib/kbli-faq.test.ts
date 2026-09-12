@@ -274,15 +274,30 @@ describe("buildKbliFaq", () => {
   });
 
   it("qualifies the license answer on pending-with-rows codes; verified codes stay unqualified", () => {
-    // 114 real codes serve rows whose provenance awaits crosswalk
-    // adjudication — the FAQ (visible + JSON-LD) must qualify them.
-    const pending = getAllCodes().find(
+    // Until 2026-09-11 real codes served rows whose provenance awaited
+    // crosswalk adjudication (5 on the 2026-08-15 canonical). The September
+    // L2 re-ingestion (spec 2026-09-11 §7) gave the last three undisputed ones
+    // (93111, 93112, 93119) an OSS-native scope, and the two left (93114,
+    // 93191) are quarantined, so they read as detached, not pending. The
+    // guilt subject is therefore a real OSS-native record with its licensing
+    // provenance set to pending — the builder reads only that status.
+    const nativeWithRows = getAllCodes().find(
       (c) =>
         c.licensing.length > 0 &&
-        c.provenance?.licensing.status === "pending_crosswalk",
-    );
-    expect(pending).toBeDefined();
-    const pendingAnswer = buildKbliFaq(pending as KBLICode)[1].answer;
+        c.provenance?.licensing.status === "oss_native",
+    ) as KBLICode;
+    expect(nativeWithRows).toBeDefined();
+    const pending: KBLICode = {
+      ...nativeWithRows,
+      provenance: {
+        ...nativeWithRows.provenance!,
+        licensing: {
+          ...nativeWithRows.provenance!.licensing,
+          status: "pending_crosswalk",
+        },
+      },
+    };
+    const pendingAnswer = buildKbliFaq(pending)[1].answer;
     expect(pendingAnswer).toContain("crosswalk adjudication is pending");
 
     // Innocence: an OSS-verified code keeps the plain factual answer.
