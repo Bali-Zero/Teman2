@@ -64,13 +64,27 @@ def path_matches_template(path: str, template: str) -> bool:
         leading and trailing slashes BEFORE splitting, so a trailing slash
         never produces a segment. That is the long-standing behaviour of
         every `match="template"` public entry, deliberately left unchanged
-        here: the path is CLASSIFIED as the slash-less operation. It is not
-        SERVED by it — past the middleware FastAPI's default
-        `redirect_slashes` answers 307 to the slash-less path (measured on
-        `garuda_staff_router`, pinned by
-        `test_a_trailing_slash_past_the_middleware_redirects_to_the_same_operation`),
-        so a trailing slash never reaches a different operation. The matching
-        itself is pinned both ways by
+        here: the path is CLASSIFIED as the slash-less operation, which is a
+        statement about THIS function and nothing else.
+
+        Whether the slash-less operation then SERVES it is a routing question
+        this function cannot answer, and no unit test here answers it either:
+        three adversarial rounds established that a test running in the same
+        process as the router it inspects cannot distinguish the contract's
+        operation from a counterfeit installed ahead of it. So the observable
+        half is pinned here — for two paths on `garuda_staff_router` and one on
+        `garuda_orders_router`,
+        `test_a_trailing_slash_answers_307_to_the_slash_less_path_with_the_same_envelope`
+        asserts a 307 to the slash-less path and an identical envelope, and
+        claims nothing about which route produced it — while the claim that
+        those paths ARE the frozen contract's operations is anchored where it
+        has an external reference: the `garuda-contract-parity` check
+        (`.github/workflows/garuda-contract-parity.yml`), which compares the
+        frozen `openapi.yaml` against the live singleton on every PR. Named
+        here as the anchor, not re-proved here. Registry-wide behaviour is a
+        ledger row (PENDING-ARMS, #6267 gate condition 2).
+
+        The matching itself is pinned both ways by
         `test_path_matches_template_trailing_and_inner_slashes` in
         `tests/unit/middleware/test_public_endpoints_registry.py`, so a
         future change to it is a decision, not an accident.

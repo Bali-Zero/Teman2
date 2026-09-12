@@ -1,0 +1,91 @@
+gear: 3
+task_id: voa-6267-cond12
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/voa-6267-cond12
+gate_class: opus
+l_level: L2
+objective: >-
+  GARUDA VOA W3C. Cures conditions 1 and 2 of the PASS-WITH-CONDITIONS gate on
+  #6267 (merge commit 23a26dca61, proven live), ledgered in
+  `.claude/skills/modus/PENDING-ARMS.md` by #6273. Both are the same defect
+  class #6267 itself cured in docstrings — text promising more than the
+  assertion checks — surviving in a test NAME and in a universal quantifier.
+  (1) `test_a_trailing_slash_past_the_middleware_redirects_to_the_same_operation`
+  builds a `FastAPI()` that mounts only `garuda_staff_router`, so the name
+  claims a path through `HybridAuthMiddleware` the test never exercises.
+  (2) `path_matches_template`'s docstring said a trailing slash "never reaches
+  a different operation" — a claim over every `match="template"` entry in the
+  registry, while the measurement behind it covered two paths on one router.
+  Condition 3 is deliberately NOT touched (pre-existing prose, stays at ledger
+  per the Imperatore's scoping).
+scope:
+  - >-
+    apps/backend-rag/backend/app/auth/public_endpoints.py (docstring of
+    path_matches_template only — the `app/auth/**` HOT ZONE touch that raises
+    the deterministic floor to 3; behaviour unchanged)
+  - apps/backend-rag/backend/tests/unit/middleware/test_hybrid_auth_contract_401_envelope.py
+constraints:
+  - No served behaviour changes — no router, middleware, service or migration file.
+  - products/garuda-voa/contracts/openapi.yaml is NOT modified.
+  - Condition 3 of the #6267 gate is out of scope by ruling.
+  - No fly.toml, no .env*, no zantara_core.py.
+  - No PII anywhere in code, tests, or this pack.
+acceptance:
+  - text: >-
+      WHERE a test's NAME and docstring state what it establishes, THE SYSTEM
+      SHALL state only what the assertions beside them check — a 307, a whole
+      Location equality, and an envelope comparison — and SHALL NOT name a
+      middleware, a route, a matcher, a mechanism or a destination operation.
+    status: verified
+    probe: >-
+      grep -rn "past_the_middleware\|Match\.\|operation_id\|matches(scope"
+      on the changed test file returns nothing; the test's three assertions are
+      status_code == 307, Location equality, and
+      contract_401_envelope(path) == contract_401_envelope(path.rstrip("/")).
+  - text: >-
+      WHEN a trailing-slash variant of a frozen staff operation is requested on
+      the app this test builds, THE SYSTEM SHALL answer 307 with Location equal
+      to the slash-less path, for three paths across BOTH routers that carry
+      frozen staff operations.
+    status: verified
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/middleware/test_hybrid_auth_contract_401_envelope.py -k
+      trailing_slash_answers_307 (3 cases: two on garuda_staff_router, one on
+      garuda_orders_router's late-resolution)
+  - text: >-
+      IF the redirect target changes, or the two paths stop resolving to the
+      same contract envelope, THEN the suite SHALL go red.
+    status: verified
+    probe: >-
+      two guilt mutations, each restored afterwards: a route redirecting the
+      trailing-slash path to https://elsewhere.invalid, and
+      contract_401_envelope made to return None for a trailing slash so the two
+      paths disagree.
+  - text: >-
+      WHERE the claim is that these paths ARE the frozen contract's operations,
+      THE SYSTEM SHALL anchor it to the `garuda-contract-parity` check rather
+      than to a unit test.
+    status: verified
+    probe: >-
+      .github/workflows/garuda-contract-parity.yml exists and runs on PRs
+      (verified by reading the workflow: name garuda-contract-parity, job
+      garuda-contract-parity); public_endpoints.py names it as the anchor and
+      does not re-prove it.
+anchor_note: >-
+  Decision #19 (Imperatore, in force of Zero's 04:30Z autonomous-conduct
+  ruling, revocable by Zero) moved the operation-identity claim OUT of the unit
+  test after three adversarial rounds established it cannot be held there: a
+  test running in the same process as the router it inspects cannot distinguish
+  the frozen contract's operation from a counterfeit installed ahead of it
+  (refuter defeated, in turn, a path-string comparison, a `route.matches`
+  scope without a Host header, and identity by `operation_id`, which is
+  reusable). The identity claim now lives with `garuda-contract-parity`, which
+  compares the frozen contract against the live singleton and has an anchor
+  outside the process under test.
+pii: none
+local_evidence: >-
+  269 passed across backend/tests/unit/middleware/ plus the four mounted GARUDA
+  canary suites and the frozen-vs-live OpenAPI parity suite; ruff check and
+  ruff format clean on both changed files.
