@@ -397,41 +397,98 @@ def _custom_fields(row: Mapping[str, Any] | None) -> dict[str, Any]:
     return dict(raw) if isinstance(raw, Mapping) else {}
 
 
-def profile_from_rows(
-    client_row: Mapping[str, Any] | None, company_row: Mapping[str, Any] | None
-) -> ClientProfile:
-    """Build a profile from a clients row and a companies row.
+@dataclass(frozen=True)
+class ProfileInputs:
+    """A computed profile plus WHICH custom_fields keys produced it.
 
-    company_type comes from companies.company_type ("PT PMA" -> PT_PMA, "PT Perorangan"/"PT" ->
-    PT_PMDN, "CV" -> CV); anything else is OTHER, or FOREIGN_PLATFORM when custom_fields has
-    is_foreign_platform true. Every other attribute is read from custom_fields under its own name
-    (companies.custom_fields wins over clients.custom_fields); missing or malformed values fall
-    back to the ClientProfile defaults. has_employees is true if set or if employee_count > 0.
+    ``present_keys``: engine-recognised custom_fields keys that carried a value the engine could
+    parse, so they actually shaped the profile. ``missing_attributes``: engine ATTRIBUTES left at
+    their ClientProfile default because nothing valid was supplied (``company_type`` is listed
+    when it fell back to OTHER without an explicit ``compliance_company_type``).
+    """
+
+    profile: ClientProfile
+    present_keys: tuple[str, ...]
+    missing_attributes: tuple[str, ...]
+
+
+def profile_inputs(
+    client_row: Mapping[str, Any] | None, company_row: Mapping[str, Any] | None
+) -> ProfileInputs:
+    """Build a profile from a clients row and a companies row, with its provenance.
+
+    company_type precedence, highest first:
+    1. ``custom_fields["compliance_company_type"]`` when it is one of COMPANY_TYPES. This key is
+       written by PATCH /api/compliance/obligations/profile/{client_id} and WINS over the
+       companies.company_type string, so a reviewer can classify a company whose string spelling
+       the map below reads as OTHER.
+    2. the companies.company_type string mapped through _COMPANY_TYPE_MAP ("PT PMA" -> PT_PMA,
+       "PT Perorangan"/"PT" -> PT_PMDN, "CV" -> CV); anything unrecognised is OTHER.
+    3. FOREIGN_PLATFORM, when 2. yielded OTHER and custom_fields has is_foreign_platform true.
+
+    Every other attribute is read from custom_fields under its own name (companies.custom_fields
+    wins over clients.custom_fields); missing or malformed values fall back to the ClientProfile
+    defaults. has_employees is true if set or if employee_count > 0.
     """
     custom = {**_custom_fields(client_row), **_custom_fields(company_row)}
-    raw_type = str((company_row or {}).get("company_type") or "").upper()
-    raw_type = " ".join(re.sub(r"\(.*?\)|\.", " ", raw_type).split())  # "PT. PMA (Persero)"
-    company_type = _COMPANY_TYPE_MAP.get(raw_type, "OTHER")
-    if company_type == "OTHER" and _as_bool(custom.get("is_foreign_platform")):
-        company_type = "FOREIGN_PLATFORM"
+    present: list[str] = []
+    supplied: set[str] = set()
+
+    explicit = custom.get("compliance_company_type")
+    company_type = explicit.strip().upper() if isinstance(explicit, str) else ""
+    if company_type in COMPANY_TYPES:
+        present.append("compliance_company_type")
+        supplied.add("company_type")
+    else:
+        raw_type = str((company_row or {}).get("company_type") or "").upper()
+        raw_type = " ".join(re.sub(r"\(.*?\)|\.", " ", raw_type).split())  # "PT. PMA (Persero)"
+        company_type = _COMPANY_TYPE_MAP.get(raw_type, "OTHER")
+        if company_type != "OTHER":
+            supplied.add("company_type")
+        elif _as_bool(custom.get("is_foreign_platform")):
+            company_type = "FOREIGN_PLATFORM"
+            present.append("is_foreign_platform")
+            supplied.add("company_type")
+
     kwargs: dict[str, Any] = {"company_type": company_type}
     for name in BOOL_ATTRS:
         flag = _as_bool(custom.get(name))
         if flag is not None:
             kwargs[name] = flag
+            present.append(name)
+            supplied.add(name)
     for name in INT_ATTRS:
         number = _as_int(custom.get(name))
         if number is not None:
             kwargs[name] = number
+            present.append(name)
+            supplied.add(name)
     stage = custom.get("investment_stage")
     if isinstance(stage, str) and stage in INVESTMENT_STAGES:
         kwargs["investment_stage"] = stage
+        present.append("investment_stage")
+        supplied.add("investment_stage")
     if _valid_fye(custom.get("fiscal_year_end")):
         kwargs["fiscal_year_end"] = custom["fiscal_year_end"]
+        present.append("fiscal_year_end")
+        supplied.add("fiscal_year_end")
     kwargs["has_employees"] = (
         bool(kwargs.get("has_employees")) or kwargs.get("employee_count", 0) > 0
     )
-    return ClientProfile(**kwargs)
+    if kwargs["has_employees"]:  # explicit, or derived from a positive employee_count
+        supplied.add("has_employees")
+    return ProfileInputs(
+        profile=ClientProfile(**kwargs),
+        present_keys=tuple(sorted(present)),
+        missing_attributes=tuple(sorted(ATTRIBUTES - supplied)),
+    )
+
+
+def profile_from_rows(
+    client_row: Mapping[str, Any] | None, company_row: Mapping[str, Any] | None
+) -> ClientProfile:
+    """The profile only. See ``profile_inputs`` for the company_type precedence it applies."""
+    return profile_inputs(client_row, company_row).profile
 
 
 __all__ = [
@@ -443,10 +500,12 @@ __all__ = [
     "DueRule",
     "ObligationRule",
     "Predicate",
+    "ProfileInputs",
     "ProposedObligation",
     "applies",
     "due_dates",
     "load_catalog",
     "profile_from_rows",
+    "profile_inputs",
     "propose",
 ]

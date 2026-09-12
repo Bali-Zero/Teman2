@@ -9,6 +9,7 @@ the router's response-shaping code (``_to_out``) is exercised unchanged.
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -37,9 +38,11 @@ class Store:
         self.obligations: list[dict[str, Any]] = []
         self.alerts: list[dict[str, Any]] = []
         self.op_log: list[tuple[str, Any, bool]] = []
+        self.acquire_count = 0
         self._next_id = 1
 
     def acquire(self) -> _AcquireCtx:
+        self.acquire_count += 1
         return _AcquireCtx(self)
 
     def next_id(self) -> int:
@@ -77,7 +80,7 @@ class _CountingTxn:
 
 
 class FakeConn:
-    """Answers the THREE raw SQL calls the router makes directly on a connection."""
+    """Answers the raw SQL the router makes directly on a connection."""
 
     def __init__(self, store: Store) -> None:
         self.store = store
@@ -102,6 +105,21 @@ class FakeConn:
                     return {"status": row["status"]}
             return None
         raise AssertionError(f"unexpected fetchrow query in test fake: {query!r}")
+
+    async def execute(self, query: str, *args: Any) -> str:
+        flat = " ".join(query.split())
+        if flat.startswith("UPDATE companies SET custom_fields"):
+            patch = json.loads(args[0])  # the router passes to_jsonb(...) text
+            for row in self.store.companies.values():
+                if row.get("company_id") == args[1]:
+                    existing = row.get("custom_fields") or {}
+                    if isinstance(existing, str):
+                        existing = json.loads(existing)
+                    # mirrors COALESCE(custom_fields,'{}'::jsonb) || $1::text::jsonb
+                    row["custom_fields"] = {**existing, **patch}
+                    return "UPDATE 1"
+            return "UPDATE 0"
+        raise AssertionError(f"unexpected execute query in test fake: {query!r}")
 
 
 # --------------------------------------------------------------------------- #
@@ -284,6 +302,24 @@ def _seed_proposed(store: Store, **overrides: Any) -> dict[str, Any]:
     row.update(overrides)
     store.obligations.append(row)
     return row
+
+
+def _seed_client(
+    store: Store,
+    client_id: int = 1,
+    *,
+    company: dict[str, Any] | None = None,
+    client_custom_fields: dict[str, Any] | None = None,
+) -> None:
+    """A clients row, optionally with the companies row client_company_links resolves to.
+
+    ``company`` carries ``company_id`` because the PATCH writes to that id — the
+    SELECT in ``_load_client_and_company`` is the single place that decides WHICH
+    company row a client maps to, for both /generate and the profile routes.
+    """
+    store.clients[client_id] = {"id": client_id, "custom_fields": client_custom_fields or {}}
+    if company is not None:
+        store.companies[client_id] = dict(company)
 
 
 # --------------------------------------------------------------------------- #
@@ -537,3 +573,256 @@ def test_reject_unknown_id_404(store: Store) -> None:
     client = TestClient(_app(store, ADMIN_USER))
     resp = client.post("/api/compliance/obligations/999/reject", json={"reason": "no"})
     assert resp.status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# GET /catalog — rule metadata only: no client data, no database, and the path
+# segment must NOT be read as an obligation id (route ordering, PR M3).
+# --------------------------------------------------------------------------- #
+def test_catalog_403_for_non_admin(store: Store) -> None:
+    client = TestClient(_app(store, NON_ADMIN_USER))
+    assert client.get("/api/compliance/obligations/catalog").status_code == 403
+
+
+def test_catalog_returns_every_rule_with_reviewer_metadata(store: Store) -> None:
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.get("/api/compliance/obligations/catalog")
+
+    assert resp.status_code == 200
+    rows = resp.json()
+    assert len(rows) == len(compliance_obligations._cached_rules()) == 21
+    by_id = {row["id"]: row for row in rows}
+    assert set(by_id["pph21_payment"]) == {
+        "id",
+        "name",
+        "authority",
+        "legal_source",
+        "verified",
+        "frequency",
+        "roll",
+        "needs_review_reason",
+        "trigger",
+        "notes",
+    }
+    assert by_id["pph21_payment"]["frequency"] == "monthly"
+    assert by_id["pph21_payment"]["roll"] == "next_business_day"
+    assert all(isinstance(row["verified"], bool) and row["name"] for row in rows)
+
+
+def test_catalog_reads_no_client_data(store: Store) -> None:
+    client = TestClient(_app(store, ADMIN_USER))
+
+    assert client.get("/api/compliance/obligations/catalog").status_code == 200
+
+    assert store.acquire_count == 0  # never opens a connection
+
+
+# --------------------------------------------------------------------------- #
+# GET /profile/{client_id}
+# --------------------------------------------------------------------------- #
+def test_profile_403_for_non_admin(store: Store) -> None:
+    _seed_client(store)
+    client = TestClient(_app(store, NON_ADMIN_USER))
+    assert client.get("/api/compliance/obligations/profile/1").status_code == 403
+
+
+def test_profile_404_unknown_client(store: Store) -> None:
+    client = TestClient(_app(store, ADMIN_USER))
+    assert client.get("/api/compliance/obligations/profile/999").status_code == 404
+
+
+def test_profile_reports_present_and_missing_keys(store: Store) -> None:
+    _seed_client(
+        store,
+        company={"company_id": 90, "company_type": "PT PMA", "custom_fields": {"pkp": True}},
+    )
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.get("/api/compliance/obligations/profile/1")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["client_id"] == 1
+    assert body["profile"]["company_type"] == "PT_PMA"
+    assert body["profile"]["pkp"] is True
+    assert body["present_keys"] == ["pkp"]
+    assert "pse_registered" in body["missing_keys"]
+    assert "pkp" not in body["missing_keys"]
+    assert body["company_type_raw"] == "PT PMA"
+    assert body["needs_manual_classification"] is False
+
+
+def test_profile_without_a_company_row_is_all_defaults(store: Store) -> None:
+    _seed_client(store)  # client exists, no client_company_links row
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.get("/api/compliance/obligations/profile/1")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["profile"]["company_type"] == "OTHER"
+    assert body["company_type_raw"] is None
+    assert body["present_keys"] == []
+    assert body["needs_manual_classification"] is True
+
+
+# --------------------------------------------------------------------------- #
+# PATCH /profile/{client_id} — JSONB merge into companies.custom_fields
+# --------------------------------------------------------------------------- #
+def test_patch_403_for_non_admin(store: Store) -> None:
+    _seed_client(store, company={"company_id": 90, "company_type": "PT PMA", "custom_fields": {}})
+    client = TestClient(_app(store, NON_ADMIN_USER))
+    resp = client.patch("/api/compliance/obligations/profile/1", json={"pkp": True})
+    assert resp.status_code == 403
+
+
+def test_patch_merges_without_wiping_unrelated_keys(store: Store) -> None:
+    _seed_client(
+        store,
+        company={
+            "company_id": 90,
+            "company_type": "PT PMA",
+            "custom_fields": {"risk_status": "rendah", "pkp": False},
+        },
+    )
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.patch(
+        "/api/compliance/obligations/profile/1", json={"pkp": True, "employee_count": 4}
+    )
+
+    assert resp.status_code == 200
+    stored = store.companies[1]["custom_fields"]
+    assert stored["risk_status"] == "rendah"  # untouched by the merge
+    assert stored["pkp"] is True
+    assert stored["employee_count"] == 4
+    body = resp.json()
+    assert body["profile"]["pkp"] is True
+    assert body["profile"]["employee_count"] == 4
+    assert body["profile"]["has_employees"] is True  # derived
+    assert set(body["present_keys"]) >= {"pkp", "employee_count"}
+
+
+def test_patch_company_type_is_stored_under_its_own_key_and_wins(store: Store) -> None:
+    _seed_client(
+        store,
+        company={"company_id": 90, "company_type": "Yayasan Unrecognised", "custom_fields": {}},
+    )
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.patch("/api/compliance/obligations/profile/1", json={"company_type": "pt_pma"})
+
+    assert resp.status_code == 200
+    stored = store.companies[1]
+    assert stored["custom_fields"] == {"compliance_company_type": "PT_PMA"}
+    assert stored["company_type"] == "Yayasan Unrecognised"  # the column is never rewritten
+    body = resp.json()
+    assert body["profile"]["company_type"] == "PT_PMA"
+    assert body["company_type_raw"] == "Yayasan Unrecognised"
+    assert body["needs_manual_classification"] is False
+
+
+def test_patch_normalises_values_before_storing(store: Store) -> None:
+    _seed_client(store, company={"company_id": 90, "company_type": "CV", "custom_fields": {}})
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.patch(
+        "/api/compliance/obligations/profile/1",
+        json={"employee_count": "12", "pkp": "yes", "fiscal_year_end": "03-31"},
+    )
+
+    assert resp.status_code == 200
+    # typed values, not the submitted strings: what profile_inputs reads back
+    assert store.companies[1]["custom_fields"] == {
+        "employee_count": 12,
+        "pkp": True,
+        "fiscal_year_end": "03-31",
+    }
+    assert resp.json()["profile"]["fiscal_year_end"] == "03-31"
+
+
+def test_patch_unknown_key_is_422_and_writes_nothing(store: Store) -> None:
+    _seed_client(store, company={"company_id": 90, "company_type": "PT PMA", "custom_fields": {}})
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.patch(
+        "/api/compliance/obligations/profile/1", json={"pkp": True, "is_rich": True}
+    )
+
+    assert resp.status_code == 422
+    assert "is_rich" in resp.json()["detail"]
+    assert store.companies[1]["custom_fields"] == {}
+
+
+def test_patch_invalid_company_type_is_422(store: Store) -> None:
+    _seed_client(store, company={"company_id": 90, "company_type": "PT PMA", "custom_fields": {}})
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.patch("/api/compliance/obligations/profile/1", json={"company_type": "PT_XYZ"})
+
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    assert "company_type" in detail
+    assert "PT_XYZ" not in detail  # the detail names the key and the domain, never the value
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"fiscal_year_end": "31-03"},
+        {"employee_count": -2},
+        {"pkp": "maybe"},
+        {"investment_stage": "pre-seed"},
+    ],
+)
+def test_patch_rejects_an_invalid_value_with_422(store: Store, body: dict[str, Any]) -> None:
+    _seed_client(store, company={"company_id": 90, "company_type": "PT PMA", "custom_fields": {}})
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.patch("/api/compliance/obligations/profile/1", json=body)
+
+    assert resp.status_code == 422
+    assert store.companies[1]["custom_fields"] == {}
+
+
+def test_patch_404_unknown_client(store: Store) -> None:
+    client = TestClient(_app(store, ADMIN_USER))
+    resp = client.patch("/api/compliance/obligations/profile/999", json={"pkp": True})
+    assert resp.status_code == 404
+
+
+def test_patch_409_when_the_client_has_no_company_row(store: Store) -> None:
+    _seed_client(store)  # no client_company_links row
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.patch("/api/compliance/obligations/profile/1", json={"pkp": True})
+
+    assert resp.status_code == 409
+    assert "no company row" in resp.json()["detail"]
+
+
+def test_patch_then_generate_proposes_rules_the_default_profile_did_not(store: Store) -> None:
+    """The consumer proof: attributes the reviewer PATCHes widen what propose() emits."""
+    _seed_client(store, company={"company_id": 90, "company_type": "PT PMA", "custom_fields": {}})
+    client = TestClient(_app(store, ADMIN_USER))
+
+    bare = client.post(
+        "/api/compliance/obligations/generate", json={"client_id": 1, "horizon_days": 400}
+    )
+    assert bare.status_code == 200
+    bare_rules = {row["rule_id"] for row in bare.json()["rows"]}
+
+    patched = client.patch(
+        "/api/compliance/obligations/profile/1",
+        json={"has_employees": True, "employee_count": 5, "pkp": True},
+    )
+    assert patched.status_code == 200
+
+    again = client.post(
+        "/api/compliance/obligations/generate", json={"client_id": 1, "horizon_days": 400}
+    )
+    assert again.status_code == 200
+    assert again.json()["inserted_count"] > 0
+    assert {row["rule_id"] for row in again.json()["rows"]} > bare_rules
