@@ -65,10 +65,24 @@ def _catalog_file(tmp_path: Path, predicate: str, extra: str = "") -> Path:
 
 def test_catalog_loads_and_every_rule_validates(catalog):
     assert len(catalog) >= 15
-    assert not any(rule.verified for rule in catalog.values())
     assert {"lkpm_quarterly", "spt_masa_pph21", "spt_tahunan_badan", "pse_registration"} <= set(
         catalog
     )
+
+
+def test_verified_rules_cite_a_source_url_and_unverified_ones_say_why(catalog):
+    """The 2026-09-12 source sweep: `verified: true` is a claim, so it must carry its URL.
+
+    docs/compliance/obligations-catalog-sources-2026-09.md holds the quote behind each row.
+    """
+    verified = [rule for rule in catalog.values() if rule.verified]
+    assert len(verified) >= 12, [rule.id for rule in verified]
+    for rule in verified:
+        assert "http" in rule.legal_source, rule.id
+        assert "(verify" not in rule.legal_source, rule.id
+    for rule in catalog.values():
+        if not rule.verified:
+            assert rule.needs_review_reason, rule.id
 
 
 def test_unscheduled_rules_name_their_trigger(catalog):
@@ -207,11 +221,12 @@ def test_day_31_clamps_to_month_end_then_rolls(catalog):
     ]
 
 
+# Permen Investasi/BKPM 5/2025 art. 286(5) moved the LKPM deadline from the 10th to the 15th.
 LKPM_2026 = [
-    ("2025-Q4", date(2026, 1, 10)),
-    ("2026-Q1", date(2026, 4, 10)),
-    ("2026-Q2", date(2026, 7, 10)),
-    ("2026-Q3", date(2026, 10, 10)),
+    ("2025-Q4", date(2026, 1, 15)),
+    ("2026-Q1", date(2026, 4, 15)),
+    ("2026-Q2", date(2026, 7, 15)),
+    ("2026-Q3", date(2026, 10, 15)),
 ]
 
 

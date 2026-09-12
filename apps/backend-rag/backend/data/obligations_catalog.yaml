@@ -3,11 +3,15 @@
 # {attr, op, value} predicates that must all hold, due dates are computed from `due`. Loaded and
 # validated by backend/services/compliance/obligations_register.py::load_catalog.
 #
-# Every rule ships `verified: false`: the tax team confirms it against the current regulation text
-# before flipping it. "(verify)" notes in legal_source are kept on purpose.
+# `verified: true` means BOTH the legal basis AND the due-date rule were read on a primary source
+# (a government page or the regulation PDF itself) and the URL sits in legal_source. The source
+# sweep of 2026-09-12 is written up rule by rule, with the quote and the verdict, in
+# docs/compliance/obligations-catalog-sources-2026-09.md — amend that file with any later check.
+# `verified: false` means the basis or the date could not be read on a primary source; the rule
+# then carries a needs_review_reason saying exactly what is missing.
 # Where the draft's condition cannot be expressed with profile attributes, the rule states the safe
 # superset and a needs_review_reason that the reviewer queue shows next to each proposal.
-# roll: next_business_day only for DJP rules (DJP practice, verify); others keep the calendar date.
+# roll: next_business_day only where the regulation itself moves a due date off a non-working day.
 # No client data in this file.
 
 version: 1
@@ -16,19 +20,19 @@ rules:
   - id: lkpm_quarterly
     name: LKPM (Laporan Kegiatan Penanaman Modal), quarterly
     authority: BKPM via OSS-RBA
-    legal_source: "Peraturan BKPM 5/2021 art. on LKPM; PP 28/2025 sanctions ladder (verify article numbers)"
-    verified: false
+    legal_source: "Peraturan Menteri Investasi dan Hilirisasi/Kepala BKPM 5/2025 art. 286(1)(b) and 286(5): medium and large investors file every triwulan, due the 15th of April, July, October and January — https://jdih-storage.bkpm.go.id/jdih/jdih/2025Permeninvesthil005-.pdf ; sanctions PP 28/2025 art. 355(2)"
+    verified: true
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN]}
-    needs_review_reason: "PMDN small-business threshold not modelled (verify threshold): PMA always files, a PMDN below the threshold may not"
-    due: {frequency: quarterly, basis: calendar, day: 10, month: null, months_after_period_end: 1, roll: none}
-    notes: "Due 10 Apr, 10 Jul, 10 Oct, 10 Jan on calendar quarters, whatever the fiscal year. Sanctions: written warning x3, suspension, NIB revocation; PP 28/2025 adds fines (verify)."
+    needs_review_reason: "investment scale is not a profile attribute: art. 286(1)(a) puts skala usaha kecil on a 6-month cycle (15 July, 15 January) and art. 286(2) exempts skala usaha mikro, so reject or reschedule for a small or micro PMDN"
+    due: {frequency: quarterly, basis: calendar, day: 15, month: null, months_after_period_end: 1, roll: none}
+    notes: "Day 15, not 10: Perka BKPM 5/2021 set the 10th, and Permen 5/2025 moved it to the 15th. Calendar quarters, whatever the fiscal year. art. 286(7) adjusts a date falling on a libur nasional by official notice rather than automatically, so roll stays none. Sanctions ladder PP 28/2025 art. 355(2): peringatan, penghentian sementara kegiatan usaha, denda administratif, daya paksa polisional, pencabutan lisensi, pencabutan persyaratan dasar/PB (the NIB included)."
 
   - id: pph21_payment
     name: PPh 21/26 on salaries, payment (by the 15th of the following month)
     authority: DJP via Coretax
-    legal_source: "UU PPh art. 21 and 26; PMK 168/2023 on PPh 21 TER (verify current); payment day PMK 81/2024 art. 94 (verify)"
-    verified: false
+    legal_source: "UU PPh (UU 36/2008) art. 21 and 26 — https://www.pajak.go.id/en/node/35337 ; UU KUP art. 9(1) caps the deposit at 15 days after the Masa Pajak ends — https://www.pajak.go.id/en/node/35330 ; PMK 81/2024 art. 94 sets it on the 15th of the following month — https://www.pajak.go.id/en/node/112032 ; PMK 168/2023 governs the TER calculation, not the deadline"
+    verified: true
     applies_if:
       - {attr: has_employees, op: is_true}
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
@@ -37,8 +41,8 @@ rules:
   - id: spt_masa_pph21
     name: SPT Masa PPh 21/26 on salaries, return (report by the 20th of the following month)
     authority: DJP via Coretax
-    legal_source: "UU PPh art. 21 and 26; PMK 168/2023 on PPh 21 TER (verify current)"
-    verified: false
+    legal_source: "UU KUP art. 3(3)(a): every SPT Masa is due at most 20 days after the Masa Pajak ends — https://www.pajak.go.id/en/node/35330 ; withholding duty UU PPh art. 21 and 26 — https://www.pajak.go.id/en/node/35337 ; PMK 168/2023 governs the TER calculation, not the deadline"
+    verified: true
     applies_if:
       - {attr: has_employees, op: is_true}
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
@@ -47,8 +51,8 @@ rules:
   - id: pph23_26_payment
     name: PPh 23 and 26 withholding, payment (by the 15th of the following month)
     authority: DJP via Coretax
-    legal_source: "UU PPh art. 23, 26; PER-24/PJ/2021 unified return (verify); payment day PMK 81/2024 art. 94 (verify)"
-    verified: false
+    legal_source: "UU PPh (UU 36/2008) art. 23 and 26 — https://www.pajak.go.id/en/node/35337 ; UU KUP art. 9(1) caps the deposit at 15 days after the Masa Pajak ends — https://www.pajak.go.id/en/node/35330 ; PMK 81/2024 art. 94 sets it on the 15th of the following month — https://www.pajak.go.id/en/node/112032"
+    verified: true
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     needs_review_reason: "payments to third parties (services, rent, royalties, dividends, interest) are not modelled: reject when none were made in the period"
@@ -57,8 +61,8 @@ rules:
   - id: spt_masa_pph23_26
     name: SPT Masa PPh Unifikasi, PPh 23 and 26, return (report by the 20th of the following month)
     authority: DJP via Coretax
-    legal_source: "UU PPh art. 23, 26; PER-24/PJ/2021 unified return (verify)"
-    verified: false
+    legal_source: "UU KUP art. 3(3)(a): every SPT Masa is due at most 20 days after the Masa Pajak ends — https://www.pajak.go.id/en/node/35330 ; PER-24/PJ/2021 sets the form of the unified return and e-Bupot Unifikasi, not the deadline"
+    verified: true
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     needs_review_reason: "payments to third parties (services, rent, royalties, dividends, interest) are not modelled: reject when none were made in the period"
@@ -67,168 +71,175 @@ rules:
   - id: spt_masa_ppn
     name: SPT Masa PPN, monthly VAT return (payment and report by the last day of the following month)
     authority: DJP via Coretax and e-Faktur
-    legal_source: "UU PPN as amended by UU HPP 7/2021; PMK on e-Faktur (verify)"
-    verified: false
+    legal_source: "UU PPN (UU 42/2009) art. 15A(1) for the payment and art. 15A(2) for the return, both 'paling lama akhir bulan berikutnya setelah berakhirnya Masa Pajak' — https://www.pajak.go.id/en/node/35341"
+    verified: true
     applies_if:
       - {attr: pkp, op: is_true}
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: monthly, day: 31, month: null, months_after_period_end: 1, roll: next_business_day}
+    notes: "art. 15A(1) also requires the payment to precede the filing, so a single proposal covers both only when the team pays before it files."
 
   - id: pph25_installment
     name: PPh 25 monthly corporate income tax instalment (payment by the 15th of the following month)
     authority: DJP
-    legal_source: "UU PPh art. 25; reporting deemed by payment (verify)"
-    verified: false
+    legal_source: "UU PPh (UU 36/2008) art. 25(1) sets the monthly instalment — https://www.pajak.go.id/en/node/35337 ; UU KUP art. 9(1) caps the payment at 15 days after the Masa Pajak ends — https://www.pajak.go.id/en/node/35330 ; PMK 81/2024 art. 94 sets it on the 15th — https://www.pajak.go.id/en/node/112032"
+    verified: true
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV]}
     needs_review_reason: "final-tax regime PP 55/2022 is not modelled: reject for clients on the final regime"
     due: {frequency: monthly, day: 15, month: null, months_after_period_end: 1, roll: next_business_day}
+    notes: "A validated payment is widely held to discharge the reporting duty as well (reported as PMK 81/2024 art. 171(5)); that sub-rule was NOT read on a primary page, so file the SPT Masa if in doubt."
 
   - id: spt_tahunan_badan
     name: SPT Tahunan PPh Badan, annual corporate income tax return
     authority: DJP via Coretax
-    legal_source: "UU KUP art. 3; 4 months after fiscal year end; 2026 deadline extended to 31 May by DJP announcement (verify)"
-    verified: false
+    legal_source: "UU KUP art. 3(3)(c): 'paling lama 4 (empat) bulan setelah akhir Tahun Pajak' — https://www.pajak.go.id/en/node/35330"
+    verified: true
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV]}
     due: {frequency: annual, day: 31, month: null, months_after_period_end: 4, roll: next_business_day}
+    notes: "For tax year 2025 only, KEP-71/PJ/2026 WAIVES the late-filing and late-payment penalty for up to one month past the due date (so through 31 May 2026 for a December year end) without issuing a Surat Tagihan Pajak — https://pajak.go.id/id/pengumuman/kebijakan-penghapusan-sanksi-administratif-atas-keterlambatan-pembayaran-dan-pelaporan-1 . It is a penalty waiver, NOT an extension of the statutory date: keep proposing 30 April."
 
   - id: bpjs_kesehatan_monthly
     name: BPJS Kesehatan contributions (payment by the 10th of the month)
     authority: BPJS Kesehatan
-    legal_source: "UU 24/2011; Perpres 82/2018 (verify)"
-    verified: false
+    legal_source: "Perpres 82/2018 art. 39(1): the employer withholds, adds its own share and remits to BPJS Kesehatan 'paling lambat tanggal 10 (sepuluh) setiap bulan' — https://peraturan.go.id/files/ps82-2018.pdf ; framework UU 24/2011"
+    verified: true
     applies_if:
       - {attr: has_employees, op: is_true}
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: monthly, day: 10, month: null, months_after_period_end: 0, roll: none}
+    notes: "The 10th of the month the contribution covers, not of the following month. art. 39 carries no clause moving the date off a non-working day, so roll stays none."
 
   - id: bpjs_ketenagakerjaan_monthly
     name: BPJS Ketenagakerjaan contributions, including foreign workers employed 6 months or more (payment by the 15th of the following month)
     authority: BPJS Ketenagakerjaan
-    legal_source: "UU 24/2011; PP 44/2015, PP 45/2015, PP 46/2015; foreign worker rule Permenaker (verify); contribution for month M paid by the 15th of M+1 (verify)"
-    verified: false
+    legal_source: "PP 44/2015 art. 21(2) for JKK and JKM — https://www.bpjsketenagakerjaan.go.id/assets/uploads/peraturan/15122015_104557_PP%2044%20Tahun%202015.pdf ; PP 46/2015 art. 19(2) for JHT — https://www.bpjsketenagakerjaan.go.id/assets/uploads/peraturan/15122015_104556_PP%2046%20Tahun%202015.pdf : the contribution for a month is due 'paling lambat tanggal 15 bulan berikutnya'; foreign workers, PP 44/2015 art. 1(4) 'orang asing yang bekerja paling singkat 6 (enam) bulan di Indonesia'; framework UU 24/2011"
+    verified: true
     applies_if:
       - {attr: has_employees, op: is_true}
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
-    due: {frequency: monthly, day: 15, month: null, months_after_period_end: 1, roll: none}
-    notes: "Expat layer: foreign workers employed 6+ months must be enrolled; payroll SaaS may disable BPJS fields for 'ekspatriat' tax status. Check the enrolment anniversary per expat."
+    due: {frequency: monthly, day: 15, month: null, months_after_period_end: 1, roll: next_business_day}
+    notes: "roll is next_business_day because PP 44/2015 art. 21(3) and PP 46/2015 art. 19(3) both move a 15th falling on a hari libur to the next hari kerja — unlike BPJS Kesehatan. Late payment costs 2 percent per month (PP 44/2015 art. 22(1), PP 46/2015 art. 20(1)). JP under PP 45/2015 was not read: assume the same date and confirm before relying on it. Expat layer: check the enrolment anniversary per expat; payroll SaaS may disable BPJS fields for 'ekspatriat' tax status."
 
   - id: expat_tax_residency_review
     name: Expat tax residency review, PPh 21 versus PPh 26
     authority: DJP
-    legal_source: "UU PPh art. 2 (presence over 183 days in 12 months, or domicile, or intention to reside); PER-43/PJ/2011 (verify)"
+    legal_source: "UU PPh (UU 36/2008) art. 2(3) and 2(4) — https://www.pajak.go.id/en/node/35337 ; criteria PMK 18/2021 art. 2 and 3; implementing rule PER-23/PJ/2025, in force 9 December 2025, which revoked PER-43/PJ/2011 — https://www.pajak.go.id/en/node/118835"
     verified: false
     applies_if:
       - {attr: has_foreign_employees, op: is_true}
-    needs_review_reason: "the residency test is per person (183 days in any 12 months, domicile, intent) and is not modelled: check each foreign employee at every payroll run"
+    needs_review_reason: "the basis is confirmed but the monthly cadence is NOT statutory: no regulation sets a residency-review date. The test is per person (183 days in any 12 months, domicile, intent to reside) and is not modelled, so treat each proposal as a reminder and check every foreign employee at the payroll run"
     due: {frequency: monthly, day: 31, month: null, months_after_period_end: 0, roll: none}
-    notes: "Data source: passport entry and exit dates supplied by the client."
+    notes: "Data source: passport entry and exit dates supplied by the client. PER-43/PJ/2011 is revoked: cite PER-23/PJ/2025 from 9 December 2025 on."
 
   - id: pse_registration
     name: PSE Lingkup Privat registration (TD-PSE)
     authority: Komdigi via OSS-RBA (domestic) or Komdigi portal (foreign)
-    legal_source: "PP 71/2019; Permenkominfo 5/2020 as amended by Permenkominfo 10/2021"
-    verified: false
+    legal_source: "Permenkominfo 5/2020 art. 2(3): 'Kewajiban melakukan pendaftaran bagi PSE Lingkup Privat dilakukan sebelum Sistem Elektronik mulai digunakan oleh Pengguna Sistem Elektronik' — https://jdih.komdigi.go.id/produk_hukum/view/id/759/t/peraturan+menteri+komunikasi+dan+informatika+nomor+5+tahun+2020 ; amended by Permenkominfo 10/2021; framework PP 71/2019"
+    verified: true
     applies_if:
       - {attr: serves_indonesian_users_online, op: is_true}
       - {attr: pse_registered, op: is_false}
     due: {frequency: one_time, month: null, months_after_period_end: 0, roll: none}
-    trigger: "serves_indonesian_users_online is true while pse_registered is false: register before operating"
-    notes: "Sanctions: warning, temporary suspension, access blocking. Enforcement waves observed June 2025 and June 2026."
+    trigger: "serves_indonesian_users_online is true while pse_registered is false: register BEFORE the system is used by users (art. 2(3)), so the obligation is already late once the service is live"
+    notes: "Sanctions art. 7(3): written warning, temporary suspension, then access cut and revocation of the Tanda Daftar if the operator does not respond within 7 days of the suspension. Permenkomdigi 5/2025 replaced the Kominfo-era rule for PSE Lingkup Publik only; Permenkominfo 5/2020 still governs Lingkup Privat. Enforcement waves observed June 2025 and June 2026."
 
   - id: pse_data_update
     name: PSE registration data update on change
     authority: Komdigi
-    legal_source: "Permenkominfo 5/2020 art. on data changes (verify article and time limit)"
-    verified: false
+    legal_source: "Permenkominfo 5/2020 art. 5: 'Perubahan terhadap informasi pendaftaran sebagaimana dimaksud dalam Pasal 3 ayat (3), Pasal 3 ayat (5), dan Pasal 4 ayat (2) wajib dilaporkan kepada Menteri' — https://jdih.komdigi.go.id/produk_hukum/view/id/759/t/peraturan+menteri+komunikasi+dan+informatika+nomor+5+tahun+2020"
+    verified: true
     applies_if:
       - {attr: pse_registered, op: is_true}
+    needs_review_reason: "art. 5 imposes the duty with NO statutory time limit — the regulation states no number of days — so the reviewer sets the date; failing to report a change is itself a ground for the art. 7(3) sanctions"
     due: {frequency: event, month: null, months_after_period_end: 0, roll: none}
     trigger: "any change to registered PSE data: new system, domain, responsible officer, server location"
 
   - id: pmse_vat_assessment
     name: PMSE VAT collector assessment
     authority: DJP
-    legal_source: "PMK 81/2024 thresholds (previously PMK 60/2022, revoked) (revenue IDR 600 million per year or IDR 50 million per month; traffic or access 12,000 per year or 1,000 per month) (verify the figures against PMK 81/2024)"
+    legal_source: "PMK 81/2024 (PMSE part, reported as art. 332 onward), which revoked PMK 60/2022; thresholds carried over from PER-12/PJ/2020 art. 4: revenue IDR 600 million per year or IDR 50 million per month, traffic or access 12,000 per year or 1,000 per month"
     verified: false
     applies_if:
       - {attr: company_type, op: eq, value: FOREIGN_PLATFORM}
       - {attr: pmse_vat_appointed, op: is_false}
+    needs_review_reason: "NOT verified: the PMK 81/2024 PDF on jdih.kemenkeu.go.id is a scanned image with no text layer, so neither the article number nor the thresholds could be read on a primary page — the figures above rest on secondary tax commentary. Confirm against the regulation text before quoting a threshold to a client"
     due: {frequency: one_time, month: null, months_after_period_end: 0, roll: none}
-    trigger: "revenue or traffic from Indonesia crosses the PMK 81/2024 thresholds; appointment is made by DJP"
+    trigger: "revenue or traffic from Indonesia crosses the PMK 81/2024 thresholds; appointment is a DJP penunjukan decision, never a self-registration"
     notes: "Never sell 'appointment'. Sell assessment and reporting."
 
   - id: pmse_vat_monthly_deposit
     name: PMSE VAT deposit once appointed (by the end of the following month)
     authority: DJP
-    legal_source: "PMK 81/2024 (previously PMK 60/2022, revoked) (verify deposit and report cadence)"
+    legal_source: "PMK 81/2024 (PMSE part, deposit reported as art. 399(1)), which revoked PMK 60/2022"
     verified: false
     applies_if:
       - {attr: company_type, op: eq, value: FOREIGN_PLATFORM}
       - {attr: pmse_vat_appointed, op: is_true}
-    needs_review_reason: "the quarterly PMSE VAT report is not scheduled in v1 (verify cadence)"
+    needs_review_reason: "NOT verified: the PMK 81/2024 PDF is a scanned image with no text layer, so the article and the cadence could not be read on a primary page. Secondary commentary says PMK 81/2024 replaced the old quarterly PMSE report with a report for every Masa Pajak, due with the deposit at the end of the following month — confirm before telling a client the quarterly report is gone"
     due: {frequency: monthly, day: 31, month: null, months_after_period_end: 1, roll: next_business_day}
 
   - id: rups_annual
     name: Annual general meeting of shareholders (RUPS) approving financial statements
     authority: company law
-    legal_source: "UU 40/2007 art. 78: RUPS tahunan within 6 months after fiscal year end"
-    verified: false
+    legal_source: "UU 40/2007 art. 78(2): 'RUPS tahunan wajib diadakan dalam jangka waktu paling lambat 6 (enam) bulan setelah tahun buku berakhir' — https://peraturan.bpk.go.id/Download/29563/UU%20Nomor%2040%20Tahun%202007.pdf"
+    verified: true
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN]}
     due: {frequency: annual, day: 31, month: null, months_after_period_end: 6, roll: none}
+    notes: "art. 78(3): the annual RUPS must be given every document of the annual report under art. 66(2)."
 
   - id: wajib_lapor_ketenagakerjaan
     name: Wajib Lapor Ketenagakerjaan (WLKP) annual manpower report
     authority: Kemnaker via wajiblapor.kemnaker.go.id
-    legal_source: "UU 7/1981; Permenaker 18/2017 (verify)"
-    verified: false
+    legal_source: "UU 7/1981 art. 6(1): report within 30 days of establishing, restarting or relocating the company; art. 7(1): report again every year, and the Penjelasan to art. 7 counts the year from the month of the first report — https://peraturan.bpk.go.id/Download/35873/UU%20Nomor%207%20Tahun%201981.pdf ; filed online under Permenaker 18/2017"
+    verified: true
     applies_if:
       - {attr: has_employees, op: is_true}
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: event, month: null, months_after_period_end: 0, roll: none}
-    trigger: "first hire (report within 30 days), then yearly in the same month (verify); the first-hire date is not a profile attribute"
+    trigger: "30 days after establishing, restarting or relocating the company (art. 6(1)) — the trigger is the company event, not the first hire — then every year in the month of the first report (art. 7(1) and its Penjelasan); neither date is a profile attribute"
 
   - id: rptka_imta_expat
     name: RPTKA validity and foreign worker permits per expat
     authority: Kemnaker and Imigrasi
-    legal_source: "PP 34/2021; Permenaker 8/2021 (verify)"
-    verified: false
+    legal_source: "PP 34/2021 art. 17: RPTKA runs at most 6 months for temporary work (not renewable), 2 years for work beyond 6 months and non-DKPTKA, 5 years in a KEK; art. 21(2): the extension must be filed 'paling lambat 30 (tiga puluh) hari kerja sebelum jangka waktu berakhir' — https://peraturan.go.id/files/pp34-2021bt.pdf ; implementing rule Permenaker 8/2021"
+    verified: true
     applies_if:
       - {attr: has_foreign_employees, op: is_true}
     due: {frequency: event, month: null, months_after_period_end: 0, roll: none}
-    trigger: "60 days before each RPTKA and KITAS expiry; expiry dates are per person, not profile attributes"
+    trigger: "the statutory lead time is 30 WORKING days before an RPTKA expires (art. 21(2)); Bali Zero reviews 60 calendar days ahead as its own buffer, and KITAS expiry has its own immigration deadline. Expiry dates are per person, not profile attributes"
 
   - id: pdp_processor_controls
     name: "UU PDP controls: privacy notice, processing records, breach procedure"
     authority: PDP authority (lembaga PDP) once operational
-    legal_source: "UU 27/2022; breach notification within 3x24 hours (art. 46) (verify)"
+    legal_source: "UU 27/2022 art. 46(1): written notice of a personal-data breach 'paling lambat 3 x 24 (tiga kali dua puluh empat) jam' to the data subject and to the lembaga; art. 31: the controller must record every processing activity — https://jdih.komdigi.go.id/produk_hukum/view/id/832/t/undangundang+nomor+27+tahun+2022"
     verified: false
     applies_if:
       - {attr: serves_indonesian_users_online, op: is_true}
-    needs_review_reason: "the annual review has no statutory date and is anchored to fiscal year end in v1; the 3x24 hour breach notice is event-driven and not scheduled"
+    needs_review_reason: "the articles are confirmed but the SCHEDULE is not statutory: no regulation sets an annual review date, so the fiscal-year-end anchor is Bali Zero's own cadence, and the 3x24 hour breach notice is event-driven and cannot be scheduled. The implementing PP and the standalone lembaga PDP were still not confirmed operational on 2026-09-12"
     due: {frequency: annual, day: 31, month: null, months_after_period_end: 0, roll: none}
 
   - id: halal_certification
     name: Mandatory halal certification for F&B, cosmetics, supplements
     authority: BPJPH
-    legal_source: "UU 33/2014; PP 42/2024; UMK deadline 17 or 18 October 2026 (verify exact date and category)"
-    verified: false
+    legal_source: "PP 42/2024 art. 160(2): for micro and small businesses the halal duty for food, drink, slaughter products and slaughter services runs to 17 October 2026 — https://peraturan.bpk.go.id/Download/365010/PP%20Nomor%2042%20Tahun%202024.pdf ; art. 160(1) closed the medium and large phase on 17 October 2024; framework UU 33/2014"
+    verified: true
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, OTHER]}
     needs_review_reason: "sector (food and beverage, cosmetics, supplements) is not a profile attribute: applies to every operating company until reviewed"
     due: {frequency: one_time, month: null, months_after_period_end: 0, roll: none}
-    trigger: "sector in food_beverage, cosmetics, supplements: certified before 18 October 2026 for micro and small (verify); large already in force"
-    notes: "Assist only, never certify. SEHATI self-declare free for UMK up to IDR 500 million revenue."
+    trigger: "sector in food_beverage, cosmetics, supplements: certified by 17 October 2026 for micro and small businesses (art. 160(2)); medium and large have been in force since 17 October 2024 (art. 160(1)). Cosmetics and health supplements run on the separate art. 161 schedule, whose letters a and d also end on 17 October 2026"
+    notes: "17 October 2026, not 18: the PP states the 17th, which falls on a Saturday. Assist only, never certify. The free SEHATI self-declare route for UMK is a BPJPH programme under art. 98; the IDR 500 million turnover figure is a programme threshold, not PP text."
 
   - id: marketplace_withholding_pmk37
     name: Marketplace PPh 22 withholding 0.5 percent, monthly reconciliation (PMK 37/2025)
     authority: DJP via appointed marketplaces
-    legal_source: "PMK 37/2025; enforcement from 1 November 2026; IDR 500 million threshold applies to individual sellers, companies differ (verify)"
+    legal_source: "PMK 37/2025: marketplaces withhold PPh 22 at 0.5 percent of gross turnover before discounts, excluding VAT and luxury tax; the duty starts at the beginning of the month after DJP issues the penunjukan of that marketplace — https://www.pajak.go.id/en/node/120342"
     verified: false
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, OTHER]}
-    needs_review_reason: "selling on marketplaces is not a profile attribute, and enforcement starts 1 November 2026 (verify): reject for non-sellers and for periods before November 2026"
+    needs_review_reason: "NOT verified as a DATED obligation: the rate and the exemption are confirmed, but the start is per marketplace (the month after its penunjukan, widely reported as 1 November 2026 for the first wave) and the monthly reconciliation is Bali Zero's task, not a statutory deadline. Selling on a marketplace is also not a profile attribute: reject for non-sellers and for periods before the client's marketplace was appointed"
     due: {frequency: monthly, day: 31, month: null, months_after_period_end: 1, roll: next_business_day}
-    notes: "Reconcile withheld amounts against bukti potong from the marketplace."
+    notes: "The IDR 500 million turnover exemption covers wajib pajak ORANG PRIBADI only, across all their online and offline stores, and needs a declaration to each marketplace; a company seller is withheld whatever its turnover. Reconcile withheld amounts against bukti potong from the marketplace."
