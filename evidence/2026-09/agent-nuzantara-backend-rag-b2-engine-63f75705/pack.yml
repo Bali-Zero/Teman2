@@ -265,7 +265,12 @@ lanes:
     }
   - { lane: adversarial-review, role: review, seat: codex-gpt-5.6-sol }
   - { lane: refuter, role: review, seat: kimi-code/k3 }
-  - { lane: full-suite-verification, role: read, seat: claude-sonnet-5 }
+  - {
+      lane: full-suite-verification,
+      role: read,
+      seat: claude-opus-5,
+      note: "dispatched to a sonnet child first; it reported done without ever producing a number, so the Dux ran the suites and the credit stays with the Dux",
+    }
 council_run: council-journal.jsonl
 bites:
   consumer: >-
