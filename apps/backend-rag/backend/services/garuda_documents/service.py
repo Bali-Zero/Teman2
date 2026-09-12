@@ -30,7 +30,7 @@ from backend.services.garuda_documents.models import (
     UnreadableOutcome,
 )
 from backend.services.garuda_documents.ocr_client import extract_passport_biodata_dual_pass
-from backend.services.garuda_documents.ports import DocumentStorePort
+from backend.services.garuda_documents.ports import DocumentStorePort, ReadyOutcomeValueNotPersisted
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,42 @@ def _payload_hash(raw_bytes: bytes, document_kind: DocumentKind) -> str:
     return digest.hexdigest()
 
 
+def _reconcile_lost_race_ready_replay(
+    local_outcome: DocumentOutcome, exc: ReadyOutcomeValueNotPersisted
+) -> DocumentOutcome:
+    """Recover a `commit()` race-loser's own `ReadyOutcome` instead of propagating
+    `ReadyOutcomeValueNotPersisted` — WITHOUT fabricating or persisting anything new.
+
+    This caller ran its own OCR pass on the exact same bytes (`commit`'s payload-hash
+    check already guarantees identical input) and, if that pass also concluded
+    READY_FOR_REVIEW, already holds a `ReadyOutcome` with REAL values in `local_outcome`
+    — its own honest OCR result for the document IT uploaded, not someone else's data.
+    Returning it, re-tagged with the WINNER's `document_id` (`exc.document_id` — the one
+    actually persisted), preserves the "two racers never disagree" invariant `commit()`'s
+    docstring promises: they now agree on `document_id`, which is the one field a lost
+    race could otherwise return inconsistently (each `_process_new_upload` call mints its
+    own via `uuid4().hex`).
+
+    Structural agreement is checked, not assumed: `exc.persisted_fields` is exactly what
+    WAS committed (field names + confirmation flags, the only part the store persists for
+    a ReadyOutcome). If `local_outcome` is not itself a matching ReadyOutcome — a
+    different processing_state, or the same state but different field
+    names/confirmation flags (OCR non-determinism genuinely disagreeing, however rare) —
+    there is nothing honest left to return, and this re-raises `exc` rather than guess.
+    Compared as a set: persisted rows arrive `ORDER BY field_path` (postgres_store.py),
+    while `local_outcome.review_fields`' order comes from `confidence.py`'s enum
+    iteration order — a real match must not be rejected over ordering alone.
+    """
+    if not isinstance(local_outcome, ReadyOutcome):
+        raise exc
+    local_structure = frozenset(
+        (review_field.field_path, review_field.confirmation_required) for review_field in local_outcome.review_fields
+    )
+    if local_structure != frozenset(exc.persisted_fields):
+        raise exc
+    return ReadyOutcome(document_id=exc.document_id, review_fields=local_outcome.review_fields)
+
+
 class DocumentIntakeService:
     def __init__(
         self,
@@ -81,6 +117,7 @@ class DocumentIntakeService:
         declared_media_type: str,
         document_kind: DocumentKind,
         idempotency_key: str,
+        actor_id: str,
     ) -> DocumentOutcome:
         # Stateless request-shape checks first: deterministic on the payload alone, so
         # replaying them is always safe and they never need idempotency tracking.
@@ -88,7 +125,7 @@ class DocumentIntakeService:
         byte_validation.validate_size(raw_bytes)
 
         payload_hash = _payload_hash(raw_bytes, document_kind)
-        existing = await self._store.get_existing(idempotency_key, payload_hash)
+        existing = await self._store.get_existing(idempotency_key, payload_hash, actor_id=actor_id)
         if existing is not None:
             return existing
 
@@ -99,9 +136,21 @@ class DocumentIntakeService:
         # its own outcome in the meantime. Whoever's commit actually wins is the one
         # outcome of record — the loser discards its own result and adopts the winner's,
         # so two racing requests can never disagree or double-fire the work-item hook.
-        won = await self._store.commit(idempotency_key, payload_hash, outcome)
+        won = await self._store.commit(idempotency_key, payload_hash, outcome, actor_id=actor_id)
         if not won:
-            winning_outcome = await self._store.get_existing(idempotency_key, payload_hash)
+            try:
+                winning_outcome = await self._store.get_existing(idempotency_key, payload_hash, actor_id=actor_id)
+            except ReadyOutcomeValueNotPersisted as exc:
+                # The winner committed a ReadyOutcome and the store cannot rehydrate its
+                # ReviewField.value (PII boundary — postgres_store.py module docstring).
+                # Unlike an ORDINARY sequential replay (top of this method, above — no
+                # OCR ran on THIS call, nothing to reconcile against, so that path is
+                # left to raise), this caller LOST the commit race after running its own
+                # OCR pass on the identical bytes: `outcome` above already holds a full
+                # ReadyOutcome with real values. See `_reconcile_lost_race_ready_replay`
+                # for why re-tagging it with the winner's document_id is safe rather than
+                # a fabrication, and when it still has to give up and re-raise.
+                winning_outcome = _reconcile_lost_race_ready_replay(outcome, exc)
             assert winning_outcome is not None  # commit() just told us a record exists
             return winning_outcome
 

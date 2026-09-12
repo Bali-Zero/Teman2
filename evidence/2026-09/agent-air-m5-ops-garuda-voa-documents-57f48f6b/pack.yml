@@ -1,0 +1,263 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Rilaunch of a Gear-3 evidence ceremony for PR #5526 whose predecessor session died
+  mid-way (verified: no evidence pack existed under this slug, or the slug the
+  predecessor was given, before this run started). Worktree /tmp/wt-5526 was already
+  clean at PR head 2552b0e2eb, PR already disarmed (autoMergeRequest: null) — this
+  ceremony judges the diff, it does not attempt to make it merge.
+
+lanes:
+  - lane: garuda-voa-documents-ground
+    role: read
+    seat: >-
+      claude-fable-5.1 (conducting session, Air-M5). Read the full three-dot diff
+      (migration 304, postgres_store.py, its test) against origin/main. Verified every
+      symbol postgres_store.py imports (IdempotencyConflictError, PersistencePolicyUnavailable,
+      the DocumentOutcome union, PassportReviewFieldName's enum values against the migration's
+      CHECK constraint) actually exists and matches, by reading ports.py/models.py/public_api.py
+      directly rather than trusting the diff's own docstrings.
+  - lane: garuda-voa-documents-review-lint
+    role: review
+    seat: >-
+      claude-fable-5.1 (conducting session, Air-M5). Ran the exact squawk-cli invocation
+      .github/workflows/migration-lint.yml uses (--pg-version=15.0 + the repo's 13 standing
+      --exclude rules) against 304_garuda_documents.sql: 0 issues. Ran the new integration
+      suite (test_postgres_store.py) against a real local superuser Postgres: 11/11 passed,
+      including the SECURITY DEFINER ownership-transfer guilt/innocence pair.
+  - lane: garuda-voa-documents-review-ledger-guard
+    role: review
+    seat: >-
+      claude-fable-5.1 (conducting session, Air-M5). Ran the repo's OWN static guard,
+      test_post_d1_migrations_guard_ledger_owned_ddl.py (written after a real 2026-08-26
+      production incident where 5 migrations failed with "must be owner of table
+      visa_decision_retention_policies"), against the full migrations_v2 corpus including
+      304: 2 FAILED / 46 passed. Then traced the new test fixture to confirm it applies
+      migration 304's forward SQL through a required-superuser connection, not the real
+      production migration-runner role — the exact blind spot the guard's own docstring
+      names as why CI stayed green in 2026-08-26 while production failed.
+  - lane: garuda-voa-documents-refute-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol, --sandbox read-only, --skip-git-repo-check, cross-family,
+      dispatched in foreground with the full diff attached. Verdict BLOCKED,
+      independently converging on the SAME root cause (ownership/REFERENCES privilege
+      gap on visa_decision_retention_policies) without having seen this session's guard-
+      test run — reached it by static reading alone, and independently spotted that the
+      new test's schema-build step uses a superuser connection. Added two findings this
+      session had not made on its own: the inline FK REFERENCES clause inside
+      CREATE TABLE garuda_documents needs REFERENCES privilege the app role also lacks
+      (a shape the ledger guard's own docstring admits it cannot see, because it only
+      scans REFERENCES inside a top-level ALTER TABLE), and that the migration's own
+      documented rollback text cannot work under migration_base.py's single-transaction
+      runner.
+  - lane: garuda-voa-documents-refute-tp1
+    role: review
+    seat: >-
+      tp1-qwen3.8-max via scripts/tp1_call.py --effort medium, cross-family, SHORT prompt
+      (<4KB, no diff attached — this seat's known failure mode on long prompts).
+      Verdict PASS, but did not see the diff and did not independently find the
+      ownership/REFERENCES blocker; its one substantive concern (a missing GRANT on
+      garuda_documents for the trigger owner) rests on a wrong model of what a BEFORE
+      INSERT trigger's SECURITY DEFINER owner actually needs privilege for, and is
+      empirically contradicted by this session's own passing
+      test_low_privilege_role_can_insert_thanks_to_the_ownership_transfer. Its PASS is
+      recorded for seat diversity but does not carry weight against the two seats that
+      actually engaged with the diff and reached BLOCKED independently of each other.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Two review lanes ran cross-family (codex-gpt-5.6-sol, tp1-qwen3.8-max) alongside the
+  conducting session's own two review lanes (lint + the repo's own static guard). The
+  load-bearing convergence is between the session's guard-test run and codex's
+  independent static analysis — two different methods (execute a test vs. read the code)
+  reaching the identical root cause without either seeing the other's reasoning first.
+
+diff:
+  files: 3
+  net_lines: 1135
+  measured_at: >-
+    git diff --numstat <merge-base ae5740b59798a1bab2d07744301a18cbc7b170a0>...HEAD
+    (three-dot, merge-base anchored, per W102) — 366+284+485 additions, 0 deletions,
+    across 3 new files, spanning the feature commit plus the evidence-pack commit
+    added on top of it (recomputed after the fix below, not the state at authoring
+    time — the branch has since gained a rework round on top of both, so even a
+    commit count taken now would already be stale by the time this is read).
+    Measured LAST, after every other check in this pack.
+
+residual_risks:
+  - >-
+    THE PRIMARY BLOCKER IS NOT CURED IN THIS PR. Migration 304 cannot currently be
+    applied by the real production migration-runner role: it DROP/ADD CONSTRAINTs
+    visa_decision_retention_policies (owned by visa_ledger_owner, backend_rag_v2 holds
+    only SELECT) and inline-REFERENCES that same table from a brand-new CREATE TABLE —
+    two separate privilege gaps, the exact class that failed 5 migrations in production
+    on 2026-08-26. The established remediation (per this repo's own precedent, migrations
+    281/285) is a temporary `GRANT visa_ledger_owner TO backend_rag_v2` applied by an
+    operator at deploy time, followed by a REVOKE and a commit adding "304" to the
+    guard test's GRANDFATHERED dict with the date and reason — an operator-credential
+    action on the production database, outside this session's authority to perform or
+    to pre-declare. This pack does NOT add 304 to GRANDFATHERED, because doing so before
+    the production grant actually happens would assert a state that is not true — the
+    same "esiste != armato" failure this repo's own guard exists to prevent.
+  - >-
+    SECONDARY, not independently reproduced against a live rolling-deploy scenario by
+    this session (codex's static reading only): IF privilege were granted, the
+    CHECK-constraint DROP/ADD sits at the very top of migration 304 (Section 0), and
+    migration_base.py wraps the whole file in one transaction — so the resulting ACCESS
+    EXCLUSIVE lock on visa_decision_retention_policies would be held for the migration's
+    entire remaining runtime (through CREATE TABLE/FUNCTION/TRIGGER), not released until
+    COMMIT, while other live GARUDA_* paths take FOR SHARE on that same table on every
+    write during the rolling deploy window.
+  - >-
+    MINOR, non-blocking: commit()'s UniqueViolationError handler (postgres_store.py)
+    folds ANY unique-constraint hit into a bare "lost race, return False" without
+    re-checking whether the row that won carries the SAME payload hash — a genuine
+    same-key-different-payload race would silently swallow an IdempotencyConflictError
+    the contract (ports.py) says must be raised. Not live today: the sole caller
+    (service.py) re-reads via get_existing() afterward, which DOES compare hashes and
+    would still raise. Not reproduced against a live race by this session (codex's
+    static reading; a live two-different-payload race test does not exist in the PR's
+    own suite, which only races same-payload commits).
+  - >-
+    This session ran the local integration suite (11/11 passed) using a LOCAL superuser
+    Postgres role (balizero), the same blind spot the fixture itself has — this was
+    caught by re-reading the fixture's own connection logic, not by a difference in
+    outcome; the passing result is real evidence for schema/store correctness and the
+    ownership-TRANSFER mechanism, but is NOT evidence that the migration's DDL can be
+    APPLIED by the real low-privilege migration-runner role, which is the actual blocker.
+  - >-
+    tp1-qwen3.8-max's PASS verdict is recorded but not counted as clearing anything — it
+    ran on a short prompt with no diff attached (its documented failure mode on long
+    prompts) and did not engage with the migration text at all.
+  - >-
+    REWORK ROUND (added on top of this pack, not by its original author): three further
+    defects were found and fixed after this pack's original BLOCKED verdict, independent
+    of the cross-owner-DDL blocker above (which this round deliberately left untouched —
+    see the first residual risk in this list, still true). (1) The new
+    garuda_documents.retention_policy_id FK onto visa_decision_retention_policies was
+    never registered in conftest.py's _GARUDA_VOA_RETENTION_FK_DEPENDENTS, so any test
+    that rolls migration 264 back (test_evaluate_endpoint.py, on Backend Shard 2/3)
+    failed closed with DependentObjectsStillExistError the moment 304 merged — fixed by
+    registering it, the same one-line pattern 281/285/286 already use; confirmed by
+    test_visa_engine_retention_fk_registry.py going from RED to GREEN. (2) The idempotency
+    key stored in garuda_documents.key_sha256 was a bare sha256(idempotency_key), not
+    scoped to actor as the contract's IdempotencyKey parameter requires ("Scoped to actor
+    and operation") — two different actors reusing the same literal key would have
+    collided on the same PRIMARY KEY row; fixed by hashing a length-prefixed
+    (actor_id, operation, environment, idempotency_key) tuple instead, with new tests
+    proving no cross-actor collision/read and no separator-boundary ambiguity, mutation-
+    verified. (3) Replaying an already-committed READY_FOR_REVIEW document unconditionally
+    raised ReadyOutcomeValueNotPersisted even when the caller was a commit-race loser
+    holding its own matching in-memory outcome (from OCR on the identical bytes) — fixed
+    in service.py by reconciling the loser's outcome against the winner's persisted
+    field-structure (never a value) and re-tagging it with the winner's document_id; an
+    ordinary sequential replay (no independent outcome to reconcile against) still raises,
+    proven by a paired innocence test. All three fixes are mutation-verified (production
+    fix reverted, new test observed RED, fix restored, test observed GREEN again).
+
+pii_scan: clean
+
+dissent:
+  - seat: tp1-qwen3.8-max
+    status: RETRACTED
+    objection: >-
+      "The DO-block ownership transfer may be missing a GRANT SELECT, INSERT ON
+      garuda_documents TO visa_ledger_owner (or equivalent), or the trigger should carry
+      a WHEN guard so it doesn't impose latency on unrelated retention-policy writes."
+    resolution: >-
+      Not realised, on two counts. First, bind_garuda_document_retention_policy() is a
+      BEFORE INSERT trigger on garuda_documents itself — its SECURITY DEFINER body only
+      SELECTs from visa_decision_retention_policies (a table visa_ledger_owner already
+      owns outright, so no additional GRANT is needed once ownership of the FUNCTION
+      transfers); it does not INSERT into garuda_documents at all — that INSERT is
+      issued by the CALLER (postgres_store.py) under its own role, checked against the
+      caller's own privileges, not the trigger owner's. test_low_privilege_role_can_
+      insert_thanks_to_the_ownership_transfer (this session's own suite, passing)
+      empirically confirms the low-privilege app role's INSERT succeeds with no
+      additional GRANT beyond the function-ownership ALTER. Second, the WHEN-guard
+      suggestion mistakes which table the trigger fires ON — it is BEFORE INSERT ON
+      garuda_documents (a table this migration creates, with zero pre-existing writers),
+      not on visa_decision_retention_policies, so it cannot impose latency on
+      "unrelated retention-policy writes" as described.
+
+receipts:
+  - claim: "Squawk lint, exact CI invocation, on migration 304"
+    cmd: >-
+      squawk --pg-version=15.0 --exclude=require-concurrent-index-creation
+      --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion
+      --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field
+      --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field
+      --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid
+      --exclude=prefer-bigint-over-int --exclude=prefer-identity
+      --exclude=disallowed-unique-constraint
+      apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql
+    result: "Found 0 issues in 1 file"
+    exit: 0
+    ts: 2026-09-01T18:40:00Z
+    seat: session (Air-M5)
+  - claim: "New integration suite passes against a real local Postgres"
+    cmd: >-
+      JWT_SECRET_KEY=<test> API_KEYS=<test>
+      GARUDA_DOCUMENTS_TEST_DSN=postgresql://balizero@localhost:5432/postgres
+      PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_postgres_store.py -v
+    result: "11 passed in 1.75s"
+    exit: 0
+    ts: 2026-09-01T18:44:00Z
+    seat: session (Air-M5)
+  - claim: >-
+      THE PRIMARY BLOCKER, reproduced directly: migration 304 IS a new violation of the
+      repo's own post-D1 ledger-ownership guard
+    cmd: >-
+      JWT_SECRET_KEY=<test> API_KEYS=<test> PYTHONPATH=. pytest
+      backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py -v
+    result: >-
+      2 failed, 46 passed. test_no_post_d1_migration_alters_a_table_the_app_role_cannot_own:
+      "304_garuda_documents.sql:102 ALTERs visa_decision_retention_policies, which production
+      does not let backend_rag_v2 own -- this fails in prod and passes in CI."
+      test_the_incident_files_are_exactly_the_post_d1_violations: "NEW violation(s) after the
+      D1 boundary: [304]... observed=[281, 285, 304] grandfathered=[281, 285]".
+    exit: 1
+    ts: 2026-09-01T19:05:00Z
+    seat: session (Air-M5)
+  - claim: >-
+      The new test's green result does not clear the blocker: it builds schema through a
+      REQUIRED-superuser connection, not the real migration-runner role
+    cmd: >-
+      read backend/tests/services/garuda_documents/test_postgres_store.py:150-180
+      (sandbox() fixture) — is_superuser check on the admin connection, then
+      `conn = await asyncpg.connect(_db_url_for(db_name))` (same DSN family) runs
+      `_migration_304_forward(ledger)` in full
+    result: >-
+      Confirmed: the admin/build connection is required to be superuser
+      (pytest.skip/pytest.fail otherwise) BEFORE migration 304's forward SQL is ever
+      executed. The low-privilege app role is only used AFTER the schema already exists,
+      to exercise get_existing/commit — never to apply the DDL itself.
+    exit: 0
+    ts: 2026-09-01T19:12:00Z
+    seat: session (Air-M5)
+  - claim: "Codex gpt-5.6-sol cross-family refuter, foreground, full diff attached"
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort="high" --sandbox read-only
+      --skip-git-repo-check --ephemeral --output-last-message /tmp/r5526.md - < /tmp/r5526-prompt.txt
+    result: >-
+      "[Air-M5] Verdetto: BLOCKED." Two blockers: (1) the same ownership/REFERENCES
+      privilege gap, independently reached by static reading, plus the new test's
+      superuser blind spot (reached independently of this session's own finding of the
+      same thing) and the observation that the migration's own documented rollback text
+      cannot work under a single-transaction runner; (2) the ACCESS EXCLUSIVE lock
+      held for the migration's full runtime. Plus one non-blocking real finding on
+      commit()'s UniqueViolationError handling.
+    exit: 0
+    ts: 2026-09-01T19:28:00Z
+    seat: session (Air-M5), dispatching codex-gpt-5.6-sol
+  - claim: "tp1-qwen3.8-max cross-family refuter, short prompt, background"
+    cmd: >-
+      python3 scripts/tp1_call.py --model qwen3.8-max --task-file /tmp/r5526-tp1-prompt.txt
+      --effort medium --timeout 240
+    result: >-
+      VERDICT: PASS. Did not see the diff (short prompt by design); one dissent recorded
+      above and rejected on the strength of a passing live test.
+    exit: 0
+    ts: 2026-09-01T19:20:00Z
+    seat: session (Air-M5), dispatching tp1-qwen3.8-max
