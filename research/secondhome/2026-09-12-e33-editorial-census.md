@@ -2,7 +2,8 @@
 date: 2026-09-12
 domain: visa
 client_case: none (public editorial corpus of the E33 Second Home family)
-adversarial_review: codex-sol (PRE-review, BLOCK with 5 conditions) + gemini-3.1-pro (claim table over the 5 sources vs the fact registry)
+adversarial_review: codex
+adversarial_review_seats: codex-sol (PRE-review, BLOCK with 5 conditions) + gemini-3.1-pro (claim table over the 5 sources vs the fact registry)
 sources:
   - research/secondhome/e33-fact-registry.json
   - apps/mouth/src/lib/blog/categories.ts
