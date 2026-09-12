@@ -25,6 +25,7 @@ import { getCategoryQuestionIds } from "./flow";
 import {
   CATEGORY_KEYS,
   QUESTIONS,
+  STAY_PERMIT_CODES,
   type OracleFacts,
   type OracleQuestion,
 } from "./tree";
@@ -294,6 +295,10 @@ describe("question registry -> wire coverage", () => {
     // terms. See fact-mapper.ts.
     ["other_paid_activity", "yes"],
     ["other_paid_activity", "no"],
+    // Released (D4a, owner ruling SHWEB-20260911) — `mapPurposes` now routes
+    // `transit` to the TRANSIT purpose, which `el.a1.tourism`/`el.d1-*`
+    // (rulepack-prod-020) decide on. See fact-mapper.ts.
+    ["other_purpose", "transit"],
   ])(
     "leaves a decidable answer (%s=%s) unflagged — it must not veto a proven candidate",
     (id, value) => {
@@ -321,60 +326,34 @@ describe("AMBIGUOUS_SPONSOR — narrowed to unsure or a sponsor-dependent relati
     ).toContain("AMBIGUOUS_SPONSOR");
   });
 
-  // Replaced (PR-D3, D3-4): the old proxy fired on the mere PRESENCE of
-  // `family_sponsor_status_code` for a STEPCHILD relation. It is now the
-  // direct question `family_stepchild_sponsor_permit_confirmed` — see
-  // `mapDisclosedReviewFlags` (fact-mapper.ts).
-  it("guilt: STEPCHILD whose sponsor's permit is answered 'no' holds — the pack has no rule to deny E31D on this fact", () => {
-    expect(
-      mapFacts({
-        family_relation: "STEPCHILD",
-        family_stepchild_sponsor_permit_confirmed: "no",
-      }).disclosed_review_flags,
-    ).toContain("AMBIGUOUS_SPONSOR");
-  });
-
-  it("guilt: STEPCHILD whose sponsor's permit is answered 'unsure' holds", () => {
-    expect(
-      mapFacts({
-        family_relation: "STEPCHILD",
-        family_stepchild_sponsor_permit_confirmed: "unsure",
-      }).disclosed_review_flags,
-    ).toContain("AMBIGUOUS_SPONSOR");
-  });
-
-  it("innocence: STEPCHILD whose sponsor's permit is answered 'yes' releases", () => {
-    expect(
-      mapFacts({
-        family_relation: "STEPCHILD",
-        family_stepchild_sponsor_permit_confirmed: "yes",
-      }).disclosed_review_flags,
-    ).not.toContain("AMBIGUOUS_SPONSOR");
-  });
-
-  // Kills the mutant that re-adds the OLD D2 relation proxy alongside the
-  // new question (e.g. as an extra `||` arm) instead of replacing it: a
-  // foreign, non-unsure `family_sponsor_status_code` on a STEPCHILD relation
-  // is EXACTLY what the old proxy held on regardless of any other answer.
-  // With the permit explicitly confirmed 'yes', this must release — a
-  // reintroduced proxy would hold it and fail this assertion.
-  it("innocence: STEPCHILD with a foreign family_sponsor_status_code releases once the sponsor's permit is confirmed 'yes' — kills the old relation-proxy mutant", () => {
+  // D3-4 (PR-D3) had a proxy here: STEPCHILD held on the sponsor's own
+  // permit (`family_stepchild_sponsor_permit_confirmed`) being anything
+  // other than "yes". REMOVED (owner ruling SHWEB-20260911, 2026-09-13,
+  // fresh grader review): no pack requirement for the sponsor's permit
+  // exists for E31D (Permenkumham 11/2024 Pasal 33 ayat (2) huruf h names
+  // no permit for E31D, unlike its E31E neighbour; Pasal 193 makes E31D's
+  // guarantor a WNI, who cannot hold a KITAS/KITAP at all) — this was the
+  // same OVER-match shape NARROW-1 cured for SPOUSE/PARENT/CHILD/SIBLING
+  // above. The question itself is gone from `QUESTIONS` (tree.ts); these
+  // guilt tests become innocence tests — a STEPCHILD relation never holds
+  // via this route any more, for any answer.
+  it("innocence: STEPCHILD never holds on the sponsor's own permit any more — the D3-4 requirement did not exist", () => {
     expect(
       mapFacts({
         family_relation: "STEPCHILD",
         family_sponsor_status_code: "E23",
-        family_stepchild_sponsor_permit_confirmed: "yes",
       }).disclosed_review_flags,
     ).not.toContain("AMBIGUOUS_SPONSOR");
   });
 
-  it("innocence: a non-STEPCHILD relation whose sponsor's permit is answered 'no' releases — the question is STEPCHILD-only", () => {
+  it("innocence: no relation holds on a resolved (non-unsure) sponsor status code", () => {
     for (const relation of [
       "SPOUSE",
       "CHILD",
       "PARENT",
       "SIBLING",
       "DEPENDENT",
+      "STEPCHILD",
       "OTHER",
     ]) {
       expect(
@@ -401,6 +380,74 @@ describe("AMBIGUOUS_SPONSOR — narrowed to unsure or a sponsor-dependent relati
         family_sponsor_permit_basis: "EXPERT",
       }).disclosed_review_flags,
     ).not.toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  /**
+   * The door back for the STEPCHILD/E31D sponsor-permit hold this file just
+   * removed (owner ruling SHWEB-20260911, 2026-09-13) is THE PACK, not a
+   * frontend revert: if a future pack ever adds a rule that reads
+   * `family.sponsor_status_code` for an `el.e31d-*` product, the frontend
+   * would need a real fact-collection path for it again. Reads the highest-
+   * sequence signed production pack on disk (same posture as "AMBIGUOUS_
+   * SPONSOR relation proxy tracks the signed pack" below) and fails the
+   * moment that happens.
+   */
+  it("no E31D rule in the signed pack reads family.sponsor_status_code", () => {
+    const PACKS_DIR = path.resolve(
+      REPO_ROOT,
+      "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+    );
+
+    function latestProductionPackFile(): string {
+      const files = fs
+        .readdirSync(PACKS_DIR)
+        .filter((name) => /^rulepack-prod-\d+\.source\.json$/.test(name));
+      if (files.length === 0) {
+        throw new Error(`no production packs found under ${PACKS_DIR}`);
+      }
+      let best: { file: string; sequence: number } | null = null;
+      for (const name of files) {
+        const full = path.join(PACKS_DIR, name);
+        const payload = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+          sequence?: unknown;
+        };
+        if (typeof payload.sequence !== "number") continue;
+        if (best === null || payload.sequence > best.sequence) {
+          best = { file: full, sequence: payload.sequence };
+        }
+      }
+      if (best === null) {
+        throw new Error(`no pack under ${PACKS_DIR} had a numeric sequence`);
+      }
+      return best.file;
+    }
+
+    function referencesFact(node: unknown, fact: string): boolean {
+      if (Array.isArray(node)) {
+        return node.some((item) => referencesFact(item, fact));
+      }
+      if (node === null || typeof node !== "object") return false;
+      const record = node as Record<string, unknown>;
+      if (record.fact === fact) return true;
+      return Object.values(record).some((value) => referencesFact(value, fact));
+    }
+
+    const pack = JSON.parse(
+      fs.readFileSync(latestProductionPackFile(), "utf-8"),
+    ) as {
+      rules?: Array<{ rule_id?: unknown; when?: unknown }>;
+    };
+    const e31dRules = (pack.rules ?? []).filter(
+      (rule): rule is { rule_id: string; when?: unknown } =>
+        typeof rule.rule_id === "string" && rule.rule_id.startsWith("el.e31d"),
+    );
+    expect(e31dRules.length).toBeGreaterThan(0);
+    for (const rule of e31dRules) {
+      expect(
+        referencesFact(rule.when, "family.sponsor_status_code"),
+        `${rule.rule_id} must not read family.sponsor_status_code`,
+      ).toBe(false);
+    }
   });
 
   /**
@@ -1050,21 +1097,59 @@ describe("mapDisclosedReviewFlags — monotone abstention metadata", () => {
   });
 });
 
-describe("family sponsor status — unverified human context", () => {
-  it("never turns a plausible free-text status into a KNOWN signed fact", () => {
+describe("family sponsor status — closed catalogue, trusted only when confirmed (D4a)", () => {
+  // Guilt (D4a): a value outside the pack-derived 29-code catalogue must
+  // NEVER reach the wire as KNOWN — this is mechanism 1 from
+  // `research/visa/doctrine-factory/e5/inc6-pack-edits/
+  // HELD-fix4-sponsor-status-2026-08-23.json` (a KNOWN value the pack's
+  // `op:"in"` cannot match evaluates the rule silently FALSE, with no
+  // reason code at all). "NONE" is the exact sentinel that HELD note's
+  // corpus observed for this fact; "FOO" pins the general out-of-catalogue
+  // case. Both must resolve UNKNOWN, never KNOWN, and neither is `unsure`
+  // so AMBIGUOUS_SPONSOR must not fire either (no `family_relation` is set
+  // here — see "AMBIGUOUS_SPONSOR — narrowed…" for the relation-dependent
+  // case).
+  it.each(["FOO", "NONE"])(
+    "guilt: a sponsor status outside the 29-code catalogue (%s) never reaches KNOWN",
+    (value) => {
+      const result = mapFacts({
+        family_sponsor_confirmed: "yes",
+        family_sponsor_status_code: value,
+      });
+      expect(result.facts["family.sponsor_status_code"]).toEqual({
+        status: "UNKNOWN",
+        reason: "NOT_PROVIDED",
+      });
+      expect(result.disclosed_review_flags).not.toContain("AMBIGUOUS_SPONSOR");
+    },
+  );
+
+  // Innocence (D4a): a real catalogue code, once the sponsor is confirmed,
+  // now resolves KNOWN — this is the fix itself. Verified against the
+  // signed pack (`rulepack-prod-020.source.json`): every one of the 9
+  // `family.sponsor_status_code` rules already reads this exact 29-code
+  // set via `op:"in"`, so a KNOWN member of it can never be a value the
+  // pack cannot also accept. See `mapFamilySponsorStatus` (fact-mapper.ts).
+  it("innocence: a catalogue code resolves KNOWN once the sponsor is confirmed", () => {
     const result = mapFacts({
       family_sponsor_confirmed: "yes",
-      family_sponsor_status_code: "FOO",
+      family_sponsor_status_code: "E23",
+    });
+    expect(result.facts["family.sponsor_status_code"]).toEqual({
+      status: "KNOWN",
+      value: "E23",
+    });
+  });
+
+  it("stays UNVERIFIED on the explicit 'I don't know' answer, never a guessed KNOWN", () => {
+    const result = mapFacts({
+      family_sponsor_confirmed: "yes",
+      family_sponsor_status_code: "unsure",
     });
     expect(result.facts["family.sponsor_status_code"]).toEqual({
       status: "UNKNOWN",
       reason: "UNVERIFIED",
     });
-    // NARROW-1 (2026-09-12): staying UNVERIFIED, not KNOWN, is unchanged —
-    // whether that UNVERIFIED-ness also HOLDS the decision is now a
-    // relation-level question, no `family_relation` is set here, and "FOO"
-    // is not `unsure`, so it does not. See "AMBIGUOUS_SPONSOR — narrowed…".
-    expect(result.disclosed_review_flags).not.toContain("AMBIGUOUS_SPONSOR");
   });
 
   // 2026-08-23: `family.sponsor_permit_basis` shipped in PR #4650 wired to
@@ -1111,6 +1196,93 @@ describe("family sponsor status — unverified human context", () => {
       status: "UNKNOWN",
       reason: "NOT_ASKED",
     });
+  });
+});
+
+describe("sponsor status code catalogue — derived pin against the signed pack (D4a)", () => {
+  /**
+   * The 29-code catalogue backing `family_sponsor_status_code`'s (and
+   * `stay_permit_code`'s) SELECT — `tree.ts`'s `STAY_PERMIT_CODES` — is not
+   * derived from the pack at Next.js build time: this app has no existing
+   * build step that reads `apps/backend-rag`'s contracts, and standing one
+   * up for a single literal array was judged more invasive and riskier
+   * than the fallback below, argued in full in the PR body. This test IS
+   * that fallback — a BIDIRECTIONAL pin, re-derived from the highest-
+   * sequence signed production pack on disk every run, that fails on an
+   * extra code as well as a missing one — same posture as "AMBIGUOUS_
+   * SPONSOR relation proxy tracks the signed pack" above and
+   * `engine-adapter.test.ts`'s `latestProductionPackFile`.
+   */
+  it("STAY_PERMIT_CODES matches every family.sponsor_status_code rule's op:in set, exactly", () => {
+    const PACKS_DIR = path.resolve(
+      REPO_ROOT,
+      "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+    );
+
+    function latestProductionPackFile(): string {
+      const files = fs
+        .readdirSync(PACKS_DIR)
+        .filter((name) => /^rulepack-prod-\d+\.source\.json$/.test(name));
+      if (files.length === 0) {
+        throw new Error(`no production packs found under ${PACKS_DIR}`);
+      }
+      let best: { file: string; sequence: number } | null = null;
+      for (const name of files) {
+        const full = path.join(PACKS_DIR, name);
+        const payload = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+          sequence?: unknown;
+        };
+        if (typeof payload.sequence !== "number") continue;
+        if (best === null || payload.sequence > best.sequence) {
+          best = { file: full, sequence: payload.sequence };
+        }
+      }
+      if (best === null) {
+        throw new Error(`no pack under ${PACKS_DIR} had a numeric sequence`);
+      }
+      return best.file;
+    }
+
+    function collectSponsorStatusInSets(node: unknown, sets: string[][]): void {
+      if (Array.isArray(node)) {
+        for (const item of node) collectSponsorStatusInSets(item, sets);
+        return;
+      }
+      if (node === null || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (
+        record.fact === "family.sponsor_status_code" &&
+        record.op === "in" &&
+        Array.isArray(record.values)
+      ) {
+        sets.push([...(record.values as string[])].sort());
+      }
+      for (const value of Object.values(record)) {
+        collectSponsorStatusInSets(value, sets);
+      }
+    }
+
+    const pack = JSON.parse(
+      fs.readFileSync(latestProductionPackFile(), "utf-8"),
+    ) as { rules?: Array<{ when?: unknown }> };
+    expect(pack.rules?.length ?? 0).toBeGreaterThan(0);
+
+    const sets: string[][] = [];
+    for (const rule of pack.rules ?? []) {
+      collectSponsorStatusInSets(rule.when, sets);
+    }
+
+    // Guilt on absence: if the pack ever stops naming this fact via
+    // `op:in`, this must fail loudly rather than pass vacuously.
+    expect(sets.length).toBeGreaterThan(0);
+
+    // Bidirectional: every rule's own `in` set must equal the frontend's
+    // catalogue exactly — an extra pack code this UI doesn't offer, or a
+    // frontend option the pack doesn't accept, both fail this assertion.
+    const expected = [...STAY_PERMIT_CODES].sort();
+    for (const set of sets) {
+      expect(set).toEqual(expected);
+    }
   });
 });
 

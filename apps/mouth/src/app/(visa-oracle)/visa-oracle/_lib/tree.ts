@@ -119,6 +119,59 @@ export type CategoryKey = (typeof CATEGORY_KEYS)[number];
  * coverage only; it never means a visa path is legally supported. */
 export const BEHAVIORAL_CATEGORIES = new Set<CategoryKey>(CATEGORY_KEYS);
 
+/**
+ * 29 real ITAS/ITAP product codes — every one `category: "LIMITED_STAY"` in
+ * the signed pack, i.e. an actual stay permit a person can currently hold,
+ * not merely a visa product applied for. Verbatim from
+ * `rulepack-prod-007.source.json` (`products[].product_code`, filtered to
+ * `E`-prefix) and re-verified against the CURRENT signed pack
+ * (`rulepack-prod-020.source.json`, 2026-09-13): all 9
+ * `family.sponsor_status_code` rules (`el.e31{b,e,h,j}-*`) read this exact
+ * 29-value set via `op:"in"`, byte-identical to this list — see
+ * `fact-mapper.test.ts`'s "sponsor status code catalogue tracks the signed
+ * pack" for the test that pins the two together.
+ *
+ * Single source of truth for THREE consumers: `stay_permit_code`'s options
+ * (the applicant's own permit), `family_sponsor_status_code`'s options
+ * (D4a, owner ruling SHWEB-20260911, added 2026-09-13 — the sponsor's
+ * permit) and that same question's closed-catalogue trust decision in
+ * `mapFamilySponsorStatus` (fact-mapper.ts). "I'm not sure" is the existing
+ * universal `notSure` affordance on both questions, not a listed option —
+ * `enumFact()` already resolves the literal string "unsure" to
+ * UNKNOWN(UNVERIFIED), never a guessed KNOWN.
+ */
+export const STAY_PERMIT_CODES = [
+  "E23",
+  "E23U",
+  "E23V",
+  "E28A",
+  "E28B",
+  "E28C",
+  "E28D",
+  "E28F",
+  "E30",
+  "E30A",
+  "E30B",
+  "E30E",
+  "E30F",
+  "E31A",
+  "E31B",
+  "E31C",
+  "E31D",
+  "E31E",
+  "E31F",
+  "E31G",
+  "E31H",
+  "E31J",
+  "E33",
+  "E33A",
+  "E33B",
+  "E33C",
+  "E33E",
+  "E33F",
+  "E33G",
+] as const;
+
 export const QUESTIONS: Record<string, OracleQuestion> = {
   in_indonesia: {
     id: "in_indonesia",
@@ -216,13 +269,8 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.holds_stay_permit" },
     notSure: { mode: "human-review" },
   },
-  // 29 real product codes, verbatim from `rulepack-prod-007.source.json`
-  // (`products[].product_code` + `products[].names`), not invented — every
-  // one is `category: "LIMITED_STAY"`, i.e. an actual ITAS a person can
-  // currently hold, not merely a visa product applied for. "I'm not sure"
-  // is the existing universal `notSure` affordance below, not a listed
-  // option — `enumFact()` already resolves the literal string "unsure" to
-  // UNKNOWN(UNVERIFIED), never a guessed KNOWN (fact-mapper.ts).
+  // Options derived from `STAY_PERMIT_CODES` above — see that constant's
+  // doc comment for provenance and the sibling consumers.
   stay_permit_code: {
     id: "stay_permit_code",
     i18nKey: "q.stay_permit_code",
@@ -233,37 +281,10 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       factPaths: ["immigration.current_status_code"],
     },
     sensitive: true,
-    options: [
-      { key: "E23", labelI18nKey: "q.stay_permit_code.opt.E23" },
-      { key: "E23U", labelI18nKey: "q.stay_permit_code.opt.E23U" },
-      { key: "E23V", labelI18nKey: "q.stay_permit_code.opt.E23V" },
-      { key: "E28A", labelI18nKey: "q.stay_permit_code.opt.E28A" },
-      { key: "E28B", labelI18nKey: "q.stay_permit_code.opt.E28B" },
-      { key: "E28C", labelI18nKey: "q.stay_permit_code.opt.E28C" },
-      { key: "E28D", labelI18nKey: "q.stay_permit_code.opt.E28D" },
-      { key: "E28F", labelI18nKey: "q.stay_permit_code.opt.E28F" },
-      { key: "E30", labelI18nKey: "q.stay_permit_code.opt.E30" },
-      { key: "E30A", labelI18nKey: "q.stay_permit_code.opt.E30A" },
-      { key: "E30B", labelI18nKey: "q.stay_permit_code.opt.E30B" },
-      { key: "E30E", labelI18nKey: "q.stay_permit_code.opt.E30E" },
-      { key: "E30F", labelI18nKey: "q.stay_permit_code.opt.E30F" },
-      { key: "E31A", labelI18nKey: "q.stay_permit_code.opt.E31A" },
-      { key: "E31B", labelI18nKey: "q.stay_permit_code.opt.E31B" },
-      { key: "E31C", labelI18nKey: "q.stay_permit_code.opt.E31C" },
-      { key: "E31D", labelI18nKey: "q.stay_permit_code.opt.E31D" },
-      { key: "E31E", labelI18nKey: "q.stay_permit_code.opt.E31E" },
-      { key: "E31F", labelI18nKey: "q.stay_permit_code.opt.E31F" },
-      { key: "E31G", labelI18nKey: "q.stay_permit_code.opt.E31G" },
-      { key: "E31H", labelI18nKey: "q.stay_permit_code.opt.E31H" },
-      { key: "E31J", labelI18nKey: "q.stay_permit_code.opt.E31J" },
-      { key: "E33", labelI18nKey: "q.stay_permit_code.opt.E33" },
-      { key: "E33A", labelI18nKey: "q.stay_permit_code.opt.E33A" },
-      { key: "E33B", labelI18nKey: "q.stay_permit_code.opt.E33B" },
-      { key: "E33C", labelI18nKey: "q.stay_permit_code.opt.E33C" },
-      { key: "E33E", labelI18nKey: "q.stay_permit_code.opt.E33E" },
-      { key: "E33F", labelI18nKey: "q.stay_permit_code.opt.E33F" },
-      { key: "E33G", labelI18nKey: "q.stay_permit_code.opt.E33G" },
-    ],
+    options: STAY_PERMIT_CODES.map((key) => ({
+      key,
+      labelI18nKey: `q.stay_permit_code.opt.${key}`,
+    })),
     whyWeAsk: { i18nKey: "why.stay_permit_code" },
     notSure: { mode: "human-review" },
   },
@@ -816,19 +837,36 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.family_sponsor_nationalities" },
     notSure: { mode: "human-review" },
   },
+  // D4a (owner ruling SHWEB-20260911, 2026-09-13): closed SELECT over the
+  // same signed catalogue as `stay_permit_code` above (`STAY_PERMIT_CODES`),
+  // replacing the old free-text `codeInput`. The question NAMES the
+  // product (Zero's D4 ruling: the Oracle says the product, it never asks
+  // which visa the applicant wants) via the same `q.stay_permit_code.opt.*`
+  // labels `stay_permit_code` already uses ("E23 — Working Visa", etc.) —
+  // reused rather than re-typed so the two catalogues can never drift apart
+  // on label text either. "I'm not sure" stays the universal `notSure`
+  // affordance, unchanged.
+  //
+  // Promoted to `FACT`/`family.sponsor_status_code` from `HUMAN_CONTEXT`.
+  // See `mapFamilySponsorStatus` (fact-mapper.ts) for the closed-catalogue
+  // trust argument, and
+  // `research/visa/doctrine-factory/e5/inc6-pack-edits/
+  // HELD-fix4-sponsor-status-2026-08-23.json` for the fail-open history
+  // this promotion had to reason past before it was safe.
   family_sponsor_status_code: {
     id: "family_sponsor_status_code",
     i18nKey: "q.family_sponsor_status_code",
-    kind: "status-code",
+    kind: "choice",
     group: "details",
-    decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: true,
-    options: [],
-    codeInput: {
-      labelI18nKey: "q.family_sponsor_status_code.label",
-      multiple: false,
-      maxLength: 64,
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["family.sponsor_status_code"],
     },
+    sensitive: true,
+    options: STAY_PERMIT_CODES.map((key) => ({
+      key,
+      labelI18nKey: `q.stay_permit_code.opt.${key}`,
+    })),
     whyWeAsk: { i18nKey: "why.family_sponsor_status_code" },
     notSure: { mode: "human-review" },
   },
@@ -915,33 +953,21 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.family_stepchild_birth_certificate_confirmed" },
     notSure: { mode: "human-review" },
   },
-  // D3-4 (PR-D3, owner ruling SHWEB-20260911): the sponsor's OWN KITAS/KITAP
-  // becomes a fact the applicant can answer, replacing the D2 relation-proxy
-  // hold (which fired on the mere presence of `family_sponsor_status_code`
-  // for a STEPCHILD relation). HUMAN_CONTEXT, not FACT: no seq-20 rule reads
-  // the sponsor's permit at all (`el.e31d-stepchild-support` reads relation +
-  // `family.sponsor_confirmed` + the two certificates above, never this), so
-  // there is no FactPath to wire it to — same posture as
-  // `family_sponsor_permit_basis` immediately below. `no` and `unsure` both
-  // hold (see `mapDisclosedReviewFlags`, fact-mapper.ts): `no` because a
-  // sponsor without a stay permit of their own cannot sponsor E31D and the
-  // pack has no rule that says so (seq-21 candidate
-  // `hf.e31d.sponsor-permit-required`), `unsure` because the fact is
-  // genuinely unresolved. `yes` releases — no hold.
-  family_stepchild_sponsor_permit_confirmed: {
-    id: "family_stepchild_sponsor_permit_confirmed",
-    i18nKey: "q.family_stepchild_sponsor_permit_confirmed",
-    kind: "branch",
-    group: "details",
-    decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: true,
-    options: [
-      { key: "yes", labelI18nKey: "q.boolean.yes" },
-      { key: "no", labelI18nKey: "q.boolean.no" },
-    ],
-    whyWeAsk: { i18nKey: "why.family_stepchild_sponsor_permit_confirmed" },
-    notSure: { mode: "human-review" },
-  },
+  // D3-4 (PR-D3, owner ruling SHWEB-20260911) had added
+  // `family_stepchild_sponsor_permit_confirmed` here — "does your sponsor
+  // hold a valid KITAS/KITAP of their own?", holding on `no`/`unsure`
+  // (`mapDisclosedReviewFlags`, fact-mapper.ts). REMOVED (owner ruling
+  // SHWEB-20260911, 2026-09-13, fresh grader review): no such requirement
+  // exists for E31D. Permenkumham 11/2024 Pasal 33 ayat (2) huruf h names
+  // no permit at all for E31D's entry, unlike its E31E neighbour, which
+  // explicitly requires the sponsor to hold an "Izin Tinggal Terbatas atau
+  // Izin Tinggal Tetap" — and Pasal 193 makes E31D's guarantor an
+  // Indonesian-citizen (WNI) *Penanggung Jawab*, who cannot hold a
+  // KITAS/KITAP by definition. Asking the question was the same OVER-match
+  // shape NARROW-1 (fact-mapper.ts) cured elsewhere: a hold with nothing in
+  // the pack behind it. `el.e31d-stepchild-support` is untouched — it still
+  // reads `family.relation_to_sponsor` / `family.sponsor_confirmed` / the
+  // two stepchild certificates above, never a sponsor permit fact.
   // Sponsor permit basis (2026-08-23 owner ruling — Permenkumham 11/2024
   // Pasal 33 ayat (7) blocks family-reunification chaining for four
   // specific ayat (2) huruf h categories; `family.sponsor_status_code` is

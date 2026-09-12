@@ -927,14 +927,14 @@ function familyQuestionIds(facts: OracleFacts): readonly string[] {
     // extension): both evidence facts the ruling named, marriage
     // certificate of the WNA-WNI parents and birth certificate of the
     // stepchild, asked together whenever the relation is STEPCHILD.
+    // D3-4's third question, the sponsor's own KITAS/KITAP, was REMOVED
+    // (owner ruling SHWEB-20260911, 2026-09-13) — no pack requirement for
+    // it exists for E31D; see tree.ts and `mapDisclosedReviewFlags`
+    // (fact-mapper.ts).
     ...(facts.family_relation === "STEPCHILD"
       ? [
           "family_stepchild_marriage_certificate_confirmed",
           "family_stepchild_birth_certificate_confirmed",
-          // D3-4 (PR-D3): the sponsor's own KITAS/KITAP becomes a fact the
-          // applicant answers, replacing the D2 relation-proxy hold — see
-          // tree.ts and `mapDisclosedReviewFlags` (fact-mapper.ts).
-          "family_stepchild_sponsor_permit_confirmed",
         ]
       : []),
     "family_sponsor_confirmed",

@@ -432,29 +432,12 @@ export function enumerateScenarios(): Scenario[] {
     },
   });
 
-  // D3-4: STEPCHILD sponsor-permit answers. `yes` is already the corpus's
-  // regenerated default for the existing STEPCHILD walks (first option);
-  // these are `no` and `unsure`.
-  scenarios.push({
-    label: "offshore/family/STEPCHILD/spNat=ID/sponsor_permit_no",
-    overrides: {
-      ...base,
-      category: "family",
-      family_relation: "STEPCHILD",
-      family_sponsor_nationalities: "ID",
-      family_stepchild_sponsor_permit_confirmed: "no",
-    },
-  });
-  scenarios.push({
-    label: "offshore/family/STEPCHILD/spNat=ID/sponsor_permit_unsure",
-    overrides: {
-      ...base,
-      category: "family",
-      family_relation: "STEPCHILD",
-      family_sponsor_nationalities: "ID",
-      family_stepchild_sponsor_permit_confirmed: "unsure",
-    },
-  });
+  // D3-4's two STEPCHILD sponsor-permit walks (`sponsor_permit_no`/
+  // `sponsor_permit_unsure`) were REMOVED (owner ruling SHWEB-20260911,
+  // 2026-09-13, fresh grader review) along with the hold and the question
+  // they exercised (`family_stepchild_sponsor_permit_confirmed` — no pack
+  // requirement for the sponsor's own permit exists for E31D). They would
+  // now be byte-identical to the base STEPCHILD walk below.
 
   return scenarios;
 }
