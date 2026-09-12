@@ -44,17 +44,28 @@
 --       SQL) -- this migration does not compute or verify any hash, it only constrains their
 --       SHAPE.
 --
--- Append-only guard reuses 279's function VERBATIM
--- --------------------------------------------------
--- `public.reject_research_os_objects_mutation()`'s entire body is:
---     RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;
--- It references only the built-in `TG_TABLE_NAME` trigger variable -- never `NEW`/`OLD`,
--- never a schema-qualified lookup of any kind -- so the SAME function is already valid,
--- unchanged, for a BEFORE UPDATE OR DELETE ROW trigger on any table, exactly as migration
--- 280 established for a second event on `research_os_objects` itself. This migration binds
--- it to a second table the same way: no ALTER FUNCTION, no second CREATE FUNCTION, no CREATE
--- OR REPLACE FUNCTION -- only one new CREATE TRIGGER statement pointing at the existing
--- function. The raised message is identical in shape to 279/280's:
+-- Append-only guard gets its OWN function, and the reason is a measured CI failure
+-- ---------------------------------------------------------------------------------
+-- This migration first bound its two admission-table triggers to 279's
+-- `public.reject_research_os_objects_mutation()`. Logically that is sound -- the function's
+-- entire body is `RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;`, it touches only the
+-- built-in `TG_TABLE_NAME` and never `NEW`/`OLD`, so it is valid unchanged for any table.
+-- It is nonetheless WRONG here, and a green local suite did not show it:
+-- `backend/tests/db/test_migration_280_research_os_objects_truncate_guard.py`'s clean-slate
+-- fixture does `DROP FUNCTION IF EXISTS public.reject_research_os_objects_mutation()` after
+-- dropping only 279's OWN two triggers, with no CASCADE. That is correct as long as 279/280
+-- are the function's only dependents. The moment this migration's triggers exist in the same
+-- database, the DROP fails with
+--     DependentObjectsStillExistError: cannot drop function ... because other objects depend
+--     on it / DETAIL: trigger research_os_naga_admission_immutable ... depends on it
+-- and a test that this migration does not touch turns red. Measured on PR #6282's CI (one
+-- failure out of 9132), NOT reproducible from the R2 acceptance set alone, which does not
+-- include 280's file.
+-- So the guard is duplicated, not shared: `reject_research_os_naga_admission_mutation()` is
+-- byte-for-byte the same body under its own name, owned by this migration and dropped by its
+-- rollback. Duplicating six lines of plpgsql is the cheap side of this trade; the expensive
+-- side would be editing another migration's test fixture to add CASCADE, which would weaken
+-- that test's own teardown for every future migration. The raised message is unchanged:
 -- `research_os_naga_admission is append-only`.
 --
 -- Statement-level wipe guard, exactly as 280 established it
@@ -305,22 +316,41 @@ COMMENT ON TABLE public.research_os_naga_admission IS
     'D5 projection: NAGA legacy-claim admission decisions '
     '(Admitted | Excluded(reason)), one row per (run_id, legacy_claim_id). '
     'Append-only guard: row UPDATE/DELETE rejected and the whole-table wipe '
-    'statement rejected, both binding migration 279''s function verbatim '
-    '(migrations 279/280 precedent).';
+    'statement rejected, both binding this migration''s OWN '
+    'reject_research_os_naga_admission_mutation() -- same body as 279''s, '
+    'separate object (see the header note on PR #6282''s CI failure).';
 
--- Append-only guard, reusing 279's function verbatim (see header). Two bindings of the SAME
+-- Append-only guard. This migration's OWN function (see the header for the CI failure that
+-- forced it off 279's shared one), same body, same message shape. Two bindings of the SAME
 -- function, because one event class alone does not close the table:
 --   * FOR EACH ROW on UPDATE/DELETE -- the per-row mutation path;
 --   * FOR EACH STATEMENT on the wipe-everything-at-once event, which PostgreSQL never fires a
 --     ROW-level trigger for (migration 280 proved this on research_os_objects itself). Without
 --     it the row guard above would leave the whole table erasable in a single statement.
+CREATE FUNCTION public.reject_research_os_naga_admission_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+    RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;
+END;
+$$;
+
+COMMENT ON FUNCTION public.reject_research_os_naga_admission_mutation() IS
+    'Append-only trigger guard for research_os_naga_admission. Body is identical '
+    'to migration 279''s reject_research_os_objects_mutation(); it is a separate '
+    'function, not a second binding of that one, because 280''s test fixture '
+    'DROPs 279''s function without CASCADE and a dependent trigger from this '
+    'migration made that DROP fail (PR #6282 CI).';
+
 CREATE TRIGGER research_os_naga_admission_immutable
 BEFORE UPDATE OR DELETE ON public.research_os_naga_admission
-FOR EACH ROW EXECUTE FUNCTION public.reject_research_os_objects_mutation();
+FOR EACH ROW EXECUTE FUNCTION public.reject_research_os_naga_admission_mutation();
 
 CREATE TRIGGER research_os_naga_admission_no_wipe
 BEFORE TRUNCATE ON public.research_os_naga_admission
-FOR EACH STATEMENT EXECUTE FUNCTION public.reject_research_os_objects_mutation();
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_research_os_naga_admission_mutation();
 
 -- === ROLLBACK ===
 -- Local/CI teardown, not a production rollback step (R-research-os.md R2 s7: production DROP and
@@ -341,6 +371,7 @@ $$;
 DROP TRIGGER IF EXISTS research_os_naga_admission_no_wipe ON public.research_os_naga_admission;
 DROP TRIGGER IF EXISTS research_os_naga_admission_immutable ON public.research_os_naga_admission;
 DROP TABLE IF EXISTS public.research_os_naga_admission;
+DROP FUNCTION IF EXISTS public.reject_research_os_naga_admission_mutation();
 DROP INDEX IF EXISTS public.research_os_objects_valid_to_key_idx;
 DROP INDEX IF EXISTS public.research_os_objects_valid_from_key_idx;
 DROP FUNCTION IF EXISTS public.research_os_instant_key(text);

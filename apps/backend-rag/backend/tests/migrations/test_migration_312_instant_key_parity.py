@@ -54,6 +54,7 @@ async def db() -> AsyncIterator[asyncpg.Connection]:
             """
             DROP TABLE IF EXISTS research_os_naga_admission, research_os_objects CASCADE;
             DROP FUNCTION IF EXISTS public.research_os_instant_key(text);
+            DROP FUNCTION IF EXISTS public.reject_research_os_naga_admission_mutation();
             DROP FUNCTION IF EXISTS public.reject_research_os_objects_mutation();
             """
         )

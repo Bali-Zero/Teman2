@@ -65,6 +65,7 @@ async def db() -> AsyncIterator[asyncpg.Connection]:
             """
             DROP TABLE IF EXISTS research_os_naga_admission, research_os_objects CASCADE;
             DROP FUNCTION IF EXISTS public.research_os_instant_key(text);
+            DROP FUNCTION IF EXISTS public.reject_research_os_naga_admission_mutation();
             DROP FUNCTION IF EXISTS public.reject_research_os_objects_mutation();
             """
         )
@@ -302,6 +303,41 @@ async def test_admission_guards_installed_at_row_and_statement_level(
     ]
 
 
+async def test_admission_guards_do_not_depend_on_migration_279s_function(
+    db: asyncpg.Connection,
+) -> None:
+    """Both admission triggers must call THIS migration's own function.
+
+    Not a style preference -- a regression test for a measured CI failure. While these two
+    triggers were bound to 279's shared `reject_research_os_objects_mutation()`, the
+    clean-slate fixture of `backend/tests/db/test_migration_280_...py` (which this migration
+    does not touch, and which drops that function with no CASCADE after removing only 279's
+    own triggers) failed with DependentObjectsStillExistError as soon as 312 existed in the
+    same database. One red test out of 9132, invisible to the R2 acceptance set because it
+    does not include 280's file. So the guard is asserted from BOTH directions: our triggers
+    point at our function, and 279's function has no dependent of ours.
+    """
+    fns = await db.fetch(
+        "SELECT t.tgname, p.proname FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid "
+        "WHERE t.tgrelid = 'public.research_os_naga_admission'::regclass "
+        "AND NOT t.tgisinternal ORDER BY t.tgname"
+    )
+    assert [(r["tgname"], r["proname"]) for r in fns] == [
+        ("research_os_naga_admission_immutable", "reject_research_os_naga_admission_mutation"),
+        ("research_os_naga_admission_no_wipe", "reject_research_os_naga_admission_mutation"),
+    ]
+
+    borrowed = await db.fetchval(
+        "SELECT count(*) FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid "
+        "WHERE p.proname = 'reject_research_os_objects_mutation' "
+        "AND t.tgrelid = 'public.research_os_naga_admission'::regclass"
+    )
+    assert borrowed == 0, (
+        "no trigger of this migration may depend on 279's function: 280's test fixture "
+        "DROPs it without CASCADE"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Apply / rollback (exercised directly, see _312_ROLLBACK_SQL) / re-apply
 # ---------------------------------------------------------------------------
@@ -330,6 +366,8 @@ async def test_migration_312_rolls_back_cleanly_and_reapplies(db: asyncpg.Connec
 
     gone = await db.fetchval(
         "SELECT NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'research_os_instant_key') "
+        "AND NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = "
+        "                'reject_research_os_naga_admission_mutation') "
         "AND NOT EXISTS (SELECT 1 FROM information_schema.tables "
         "                WHERE table_name = 'research_os_naga_admission') "
         "AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname IN "
