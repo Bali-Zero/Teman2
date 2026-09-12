@@ -17,7 +17,6 @@ describe("dashboard-role types", () => {
     expectTypeOf<ZeroMetrics>().toHaveProperty("visti_scadenza");
     expectTypeOf<ZeroMetrics>().toHaveProperty("fatture_overdue");
     expectTypeOf<ZeroMetrics>().toHaveProperty("agenti_count");
-    expectTypeOf<ZeroMetrics>().toHaveProperty("fly_uptime");
   });
 
   it("RoleWidgetData is a discriminated union on role", () => {

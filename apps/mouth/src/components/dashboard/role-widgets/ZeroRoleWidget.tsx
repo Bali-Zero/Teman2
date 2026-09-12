@@ -3,7 +3,6 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
-  Server,
   FileWarning,
 } from "lucide-react";
 import { formatIDRCompact } from "@balizero/core/utils";
@@ -77,24 +76,6 @@ export function ZeroRoleWidget({ metrics }: Props) {
             </span>
           </div>
         )}
-
-        {/* System status */}
-        <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[color-mix(in_srgb,var(--state-info)_6%,transparent)] border border-[color-mix(in_srgb,var(--state-info)_16%,transparent)]">
-          <Server
-            size={11}
-            className="text-[var(--state-info)] flex-shrink-0"
-          />
-          <span className="text-[10px] font-semibold text-[var(--state-info)]">
-            Fly.io {metrics.fly_uptime}%
-          </span>
-          <span
-            className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--state-success)]"
-            style={{
-              boxShadow:
-                "0 0 4px color-mix(in srgb, var(--state-success) 80%, transparent)",
-            }}
-          />
-        </div>
       </div>
     </div>
   );

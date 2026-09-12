@@ -516,10 +516,6 @@ describe("intelligence.api", () => {
         agent_status: "active",
         last_run: "2025-01-05T10:30:00Z",
         items_processed_today: 15,
-        avg_response_time_ms: 2500,
-        qdrant_health: "healthy",
-        next_scheduled_run: "2025-01-05T12:00:00Z",
-        uptime_percentage: 99.8,
       };
 
       vi.mocked(api.request).mockResolvedValue(mockMetrics);
@@ -536,7 +532,6 @@ describe("intelligence.api", () => {
         expect.objectContaining({
           metadata: expect.objectContaining({
             agent_status: "active",
-            qdrant_health: "healthy",
             items_processed: 15,
           }),
         }),
@@ -544,15 +539,11 @@ describe("intelligence.api", () => {
       expect(result).toEqual(mockMetrics);
     });
 
-    it("should handle null values in metrics", async () => {
+    it("should handle null last_run", async () => {
       const mockMetrics: SystemMetrics = {
         agent_status: "idle",
         last_run: null,
         items_processed_today: 0,
-        avg_response_time_ms: 0,
-        qdrant_health: "degraded",
-        next_scheduled_run: null,
-        uptime_percentage: 0,
       };
 
       vi.mocked(api.request).mockResolvedValue(mockMetrics);
@@ -561,7 +552,6 @@ describe("intelligence.api", () => {
 
       expect(result).toEqual(mockMetrics);
       expect(result.last_run).toBeNull();
-      expect(result.next_scheduled_run).toBeNull();
     });
 
     it("should handle and log errors", async () => {
