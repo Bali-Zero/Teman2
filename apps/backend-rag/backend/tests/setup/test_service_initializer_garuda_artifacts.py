@@ -101,11 +101,64 @@ class TestArtifactStoreWiring:
         await _wire(app)
 
         assert not hasattr(app.state, "garuda_artifact_store"), (
-            "constructed, then UNWIRED by the probe: the attribute must be gone, not None"
+            "constructed, parked, then NOT published by the probe: the attribute must never appear"
         )
+        assert not hasattr(app.state, "garuda_artifact_store_pending")
         assert not hasattr(app.state, "garuda_artifact_privacy")
         errors = [r for r in _wiring_records(caplog) if r.levelno == logging.ERROR]
         assert len(errors) == 1 and "PUBLIC" in errors[0].getMessage()
+
+    @pytest.mark.asyncio
+    async def test_the_store_is_never_visible_before_the_probe_answers(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sol O1 (S2b): the window between construction and probe. The store
+        is parked under a PENDING name and `garuda_artifact_store` appears
+        only after the verdict -- so an entry point that forgets the probe
+        publishes nothing, and a reader during the network await sees
+        nothing."""
+        seen_during_probe: dict[str, bool] = {}
+
+        class _SlowStore:
+            async def assert_private(self, *, require_verified: bool = True) -> dict:
+                seen_during_probe["published"] = hasattr(app.state, "garuda_artifact_store")
+                return {"public_access_block": None, "policy_status": None}
+
+        monkeypatch.setattr(tigris_store, "TigrisArtifactObjectStore", _SlowStore)
+        app = FastAPI()
+
+        await initialize_garuda_services(app, None)
+        assert not hasattr(app.state, "garuda_artifact_store"), "published before any probe"
+        assert isinstance(app.state.garuda_artifact_store_pending, _SlowStore)
+
+        await probe_garuda_artifact_bucket(app)
+        assert seen_during_probe == {"published": False}
+        assert isinstance(app.state.garuda_artifact_store, _SlowStore)
+        assert not hasattr(app.state, "garuda_artifact_store_pending")
+
+    @pytest.mark.asyncio
+    async def test_sdk_exception_messages_are_never_logged(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Sol O1 (S2b): boto3 may echo an endpoint, bucket or key id into an
+        exception message; the catch-all handlers log the TYPE, not the text."""
+
+        class _LeakyConstructor:
+            def __init__(self) -> None:
+                raise RuntimeError(f"endpoint refused key {_SENTINEL_VALUE}")
+
+        class _LeakyProbe:
+            async def assert_private(self, *, require_verified: bool = True) -> dict:
+                raise RuntimeError(f"HeadBucket failed for {_SENTINEL_VALUE}")
+
+        caplog.set_level(logging.INFO, logger="zantara.backend")
+        for stub in (_LeakyConstructor, _LeakyProbe):
+            monkeypatch.setattr(tigris_store, "TigrisArtifactObjectStore", stub)
+            app = FastAPI()
+            await _wire(app)
+            assert not hasattr(app.state, "garuda_artifact_store")
+        assert _SENTINEL_VALUE not in caplog.text
+        assert "RuntimeError" in caplog.text
 
     @pytest.mark.asyncio
     async def test_a_probe_that_fails_for_any_other_reason_also_unwires(
@@ -183,5 +236,6 @@ class TestArtifactStoreWiring:
         await _wire(app)
 
         assert not hasattr(app.state, "garuda_artifact_store")
+        assert not hasattr(app.state, "garuda_artifact_store_pending")
         records = _wiring_records(caplog)
         assert len(records) == 1 and records[0].levelno == logging.WARNING
