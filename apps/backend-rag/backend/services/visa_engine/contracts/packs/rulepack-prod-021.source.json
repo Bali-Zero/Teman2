@@ -6308,7 +6308,7 @@
       },
       "rule_id": "el.e33a.government-invitation",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": [
         "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
         "9248b1d7-9172-54d9-ad61-251e83a2285b"
@@ -6332,9 +6332,9 @@
             "values": ["EMPLOYMENT"]
           },
           {
-            "op": "in",
+            "op": "eq",
             "fact": "sponsor.type",
-            "values": ["GOVERNMENT", "NONE"]
+            "value": "GOVERNMENT"
           }
         ]
       },
@@ -6347,7 +6347,7 @@
       },
       "rule_id": "el.e33b.government-collaboration",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": [
         "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
         "9248b1d7-9172-54d9-ad61-251e83a2285b"
@@ -6371,9 +6371,9 @@
             "values": ["INVESTMENT"]
           },
           {
-            "op": "in",
+            "op": "eq",
             "fact": "sponsor.type",
-            "values": ["GOVERNMENT", "NONE"]
+            "value": "GOVERNMENT"
           }
         ]
       },
@@ -6386,7 +6386,7 @@
       },
       "rule_id": "el.e33c.world-figure-invitation",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": [
         "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
         "9248b1d7-9172-54d9-ad61-251e83a2285b"
@@ -6414,7 +6414,7 @@
       },
       "rule_id": "hf.e23u.sponsor-not-individual",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": [
         "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
         "e3572ad2-08a9-55bd-b818-353b3e9db715"
@@ -6453,7 +6453,7 @@
       },
       "rule_id": "el.e23u.diplomatic-household",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": [
         "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
         "e3572ad2-08a9-55bd-b818-353b3e9db715"
@@ -6481,7 +6481,7 @@
       },
       "rule_id": "hf.e23v.sponsor-not-government",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": [
         "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
         "e3572ad2-08a9-55bd-b818-353b3e9db715"
@@ -6520,7 +6520,7 @@
       },
       "rule_id": "el.e23v.trade-office",
       "priority": 100,
-      "on_unknown": "NEEDS_INPUT",
+      "on_unknown": "NO_EFFECT",
       "source_refs": [
         "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
         "e3572ad2-08a9-55bd-b818-353b3e9db715"
