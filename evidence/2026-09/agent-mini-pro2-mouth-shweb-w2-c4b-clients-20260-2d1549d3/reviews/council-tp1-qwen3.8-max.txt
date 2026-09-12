@@ -1,0 +1,15 @@
+VERDICT: GO
+
+Findings:
+
+1. LOW – The flight payload for /clients/[id] still carries the five names in the initial HTML response because there is no server-side session gate. – This is correctly identified as the known, escalated item, but I want to confirm the improvement is real and not illusory: before, the data was a permanent, cacheable, CDN-served static asset reachable by URL alone; now it exists only inside a per-request dynamic page response that requires hitting the route. The attack surface narrows from "unauthenticated CDN GET of a guessable chunk path" to "unauthenticated GET of a dynamic route whose URL includes an unknown [id]." The reduction is genuine even though not complete. – What to check: nothing new; just confirm the escalated server-auth item tracks this specific route so it is not lost in a generic backlog.
+
+2. LOW – The shallow copy in taxConsultants() (TAX_CONSULTANTS.map(c => ({...c}))) would share nested object references if the consultant shape ever gains a non-primitive field. – Today the shape is {value,label} strings, and the RSC serialization boundary produces a full deep copy for the client anyway, so this is inert. But a future schema change (e.g., adding a permissions array) would silently reintroduce aliasing on the server side before serialization. – What to check: the pinning test that forbids deriving the five values should also assert the fields remain primitives, or the copy should be structuredClone. Non-blocking.
+
+3. INFO – Disposition (b) is correct: the substitution mutant compiles because {value,label}[] is structurally identical for team members and tax consultants. The cure (recording props in the TaxTab mock and asserting deep-equality) is the right layer. No issue with the disposition. – What to check: nothing; the four-mutant / four-red evidence is sufficient.
+
+4. INFO – Disposition (c) is correct: the guard scans .next/static/chunks, which is the artifact the data left. The data now lives in the runtime flight payload, which is not a static file. The measurement showing 0 prerender artifacts under clients/[id] confirms the route is dynamic and no server-rendered HTML snapshot is written to disk. The 11 marker files elsewhere are declared out of scope. – What to check: if a future change adds generateStaticParams or a static export mode, the guard's scan scope must be extended to .next/server/app. A comment in the guard noting this boundary assumption would prevent a silent regression.
+
+5. INFO – Disposition (a) retraction is valid. tsc exit-0 and a successful build are dispositive against a syntax-level BLOCK; the spliced excerpt was a packet artefact. No further action needed.
+
+No blocking findings. The move is verified by diff, the data is provably absent from every client chunk (522/522 + independent grep), the route is confirmed dynamic with no prerender output, the type boundary is import-type-only, the build-guard allowlist is fully empty and cross-checked by the test that reads the guard source, and the forwarding / substitution / payload / toast mutants are all covered with red tests. Ship it.

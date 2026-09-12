@@ -19,14 +19,19 @@ import { AiSummaryCard } from "./AiSummaryCard";
 // ============================================
 // TAX CONSULTANT DROPDOWN (Bali Zero tax team)
 // ============================================
-// 5 allowed values, kept in sync with backend migration 093 CHECK constraint.
-const TAX_CONSULTANTS: { value: string; label: string }[] = [
-  { value: "veronika.tax@balizero.com", label: "Veronika" },
-  { value: "kadek.tax@balizero.com", label: "Kadek" },
-  { value: "dewaayu.tax@balizero.com", label: "Dewa Ayu" },
-  { value: "angel.tax@balizero.com", label: "Angel" },
-  { value: "faisha.tax@balizero.com", label: "Faisha" },
-];
+// The five allowed values USED to be a literal here. They are not any more: this
+// is a "use client" module, so a literal in it is compiled into
+// `app/(workspace)/clients/[id]/page-*.js`, and that chunk is served from the
+// static CDN path with no session — an anonymous
+// `curl https://balizero.com/_next/static/chunks/app/(workspace)/clients/%5Bid%5D/page-*.js`
+// returned 200 and a name the owner had excluded from public surfaces. Measured,
+// not theorised: 2 marker hits in that chunk on production as of 2026-09-12.
+//
+// The list now arrives as a prop from the server (`page.tsx` ->
+// `taxConsultants()` in `@/lib/workspace/roster-directory`, which is the module
+// that stays in sync with backend migration 093's CHECK constraint). Only the
+// TYPE crosses this boundary, and `import type` is erased at compile time.
+import type { TaxConsultantOption } from "@/lib/workspace/roster-directory";
 
 type TaxYear = number;
 
@@ -72,12 +77,15 @@ interface TaxConsultantSelectorProps {
   clientId: number;
   initialValue: string | null | undefined;
   onSaved?: () => Promise<void> | void;
+  /** Server-supplied; required, so an empty dropdown cannot pass unnoticed. */
+  consultants: readonly TaxConsultantOption[];
 }
 
 const TaxConsultantSelector = memo(function TaxConsultantSelector({
   clientId,
   initialValue,
   onSaved,
+  consultants,
 }: TaxConsultantSelectorProps) {
   const [value, setValue] = useState<string>(initialValue ?? "");
   const [isSaving, setIsSaving] = useState(false);
@@ -104,7 +112,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
         );
         toast.success(
           newValue
-            ? `Tax consultant: ${TAX_CONSULTANTS.find((c) => c.value === newValue)?.label ?? newValue}`
+            ? `Tax consultant: ${consultants.find((c) => c.value === newValue)?.label ?? newValue}`
             : "Tax consultant cleared",
         );
         await onSaved?.();
@@ -117,7 +125,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
         setIsSaving(false);
       }
     },
-    [clientId, value, onSaved],
+    [clientId, value, onSaved, consultants],
   );
 
   return (
@@ -137,7 +145,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
         className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--bz-accent)] transition-colors disabled:opacity-60"
       >
         <option value="">— not assigned —</option>
-        {TAX_CONSULTANTS.map((c) => (
+        {consultants.map((c) => (
           <option key={c.value} value={c.value}>
             {c.label}
           </option>
@@ -465,12 +473,20 @@ export function TaxTab({
   client,
   companyLinks,
   onRefresh,
+  taxConsultants,
 }: {
   clientId: number;
   formatDate: (d: string) => string;
   client: Client | null;
   companyLinks?: ClientCompanyLink[];
   onRefresh?: () => Promise<void> | void;
+  /**
+   * The assignable tax team, resolved on the server. REQUIRED and not defaulted:
+   * a default here would put the names back into this chunk, which is the whole
+   * defect, and an optional prop would let a caller silently ship an empty
+   * dropdown instead of failing the type check.
+   */
+  taxConsultants: readonly TaxConsultantOption[];
 }) {
   const [selectedYear, setSelectedYear] = useState<TaxYear>(
     new Date().getFullYear(),
@@ -553,6 +569,7 @@ export function TaxTab({
         clientId={clientId}
         initialValue={client?.tax_consultant}
         onSaved={onRefresh}
+        consultants={taxConsultants}
       />
 
       {/* Tax identifiers from CRM */}

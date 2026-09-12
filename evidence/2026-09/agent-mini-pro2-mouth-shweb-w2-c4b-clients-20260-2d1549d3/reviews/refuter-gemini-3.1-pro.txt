@@ -1,0 +1,12 @@
+VERDICT
+BLOCK
+
+FINDINGS
+
+BLOCKER - Stray unclosed "import {" statement in ClientDetailClient.tsx - In the signature-change region of ClientDetailClient.tsx (line 5), an isolated, unclosed "import {" sits immediately before "import { useClickOutside } from '@/hooks/useClickOutside';". This is a syntax error (unexpected token) that will cause TS/SWC compilation, Next.js build, and test execution to fail immediately on parsing. - Check ClientDetailClient.tsx line 5, delete the stray "import {" line, and run a clean parse/typecheck.
+
+MAJOR - ClientDetailClient.test.tsx does not test prop forwarding of taxConsultants to TaxTab - The core purpose of C4b is threading taxConsultants through ClientDetailClient down to <TaxTab> (line 990). However, ClientDetailClient.test.tsx mocks TaxTab as a static stub (`<div data-testid="TaxTab" />`) without capturing props, and neither of the two test cases switches to the tax tab or asserts on TaxTab props. If line 990 (`taxConsultants={taxConsultants}`) is deleted, misnamed, or omitted, all tests in ClientDetailClient.test.tsx still pass green. - Check ClientDetailClient.test.tsx, add a test that renders the tax tab view, and assert that the mocked TaxTab receives the expected taxConsultants prop.
+
+MAJOR - Zero test coverage for the new server component clients/[id]/page.tsx - The previous page test was renamed and repointed entirely to ClientDetailClient.test.tsx, leaving the new 22-line server component clients/[id]/page.tsx with no test coverage whatsoever. Nothing verifies that ClientDetailPage renders, successfully calls taxConsultants() from @/lib/workspace/roster-directory, or passes the resulting array to ClientDetailClient. - Check whether a dedicated page.test.tsx exists; add one that renders ClientDetailPage and verifies invocation and prop delivery.
+
+MINOR - TaxTab.consultants.test.tsx omits testing the handleSelect mutation path - In TaxTab.tsx (lines 112-125), handleSelect was modified to resolve labels dynamically using `consultants.find((c) => c.value === newValue)?.label` and included `consultants` in the useCallback dependencies. The new test file TaxTab.consultants.test.tsx only verifies the static DOM options on mount and never triggers a change event to verify that handleSelect resolves the label correctly, produces the expected toast, or calls onSaved. - Check TaxTab.consultants.test.tsx and add a test case using userEvent.selectOptions to exercise handleSelect and assert on toast and onSaved behavior.
