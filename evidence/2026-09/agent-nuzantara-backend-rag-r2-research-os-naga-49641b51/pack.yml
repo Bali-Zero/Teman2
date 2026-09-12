@@ -2,8 +2,8 @@ task_id: r2-research-os-naga-engine
 mandate: R2
 colour: BLUE
 pr: R2 ENGINE (P06 slice 2 — NAGA claim ledger)
-head_sha: 20ec62c593 # pragma: allowlist secret — freeze candidate: the rollback commit. The commit that carries THIS pack edit is its child and is named in the R2-checkpoint envelope instead, because a sha written here cannot name the commit that writes it
-code_sha: 20ec62c593 # pragma: allowlist secret — last commit touching apps/ (migration 312's rollback section)
+head_sha: bec826d31e # pragma: allowlist secret — freeze candidate: the rollback commit. The commit that carries THIS pack edit is its child and is named in the R2-checkpoint envelope instead, because a sha written here cannot name the commit that writes it
+code_sha: bec826d31e # pragma: allowlist secret — last commit touching apps/ (migration 312's rollback section)
 base_sha: 2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed # pragma: allowlist secret
 brief_ref: evidence/brief.yml # MUST be the STAGING literal, never this mission's per-PR path: harness-floor.yml:939-1000 copies pack and brief into a synthetic /tmp/evidence-check/evidence/ under canonical names and lints with --repo-root there, so brief_ref resolves in THAT tree (:992-996 calls the per-PR value "exactly the trap this migration exists to remove"). Running the lint from the repo root instead resolves this to the DEPRECATED root brief, which belongs to whichever mission staged it last and produced a phantom "gear 2 below floor 3" here.
 gear: 3
@@ -83,7 +83,8 @@ receipts:
     ts: "2026-09-12T04:48:00Z"
     seat: claude-opus-5
     note: >-
-      1110 passed, 17 skipped, 0 failed, 0 error. The two previously red migration-312 tests
+      1110 passed, 17 skipped, 0 failed, 0 error at the time of that run; 1111 after the
+      regression test added with the trigger-function fix below. The two previously red migration-312 tests
       (rollback_refuses_while_admission_rows_exist, rolls_back_cleanly_and_reapplies) now pass;
       the 17 skips are the pre-existing DUAL_CONSUL_TEST_DSN gates in Consul's own integration
       file, untouched by this PR. Re-run from the repo root by the Dux after the freeze commit,
@@ -102,6 +103,23 @@ receipts:
       differs from the proposal by the marker line alone, which the split excludes by construction.
       The DROP TABLE line is a TRUE guardrail positive, so the operator of record pasted it and it
       was never routed around.
+
+  - claim: "the only red CI check on the opened PR was caused by this migration sharing another migration's trigger function, and the cure holds with 280's own test in the same database"
+    cmd: "TEST_DATABASE_URL=postgresql://test:test@localhost:55435/nuzantara_test apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/migrations/test_migration_312_research_os_naga_claims.py apps/backend-rag/backend/tests/migrations/test_migration_312_instant_key_parity.py apps/backend-rag/backend/tests/services/research_os/naga apps/backend-rag/backend/tests/db/test_migration_280_research_os_objects_truncate_guard.py" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-09-12T06:20:00Z"
+    seat: claude-opus-5
+    note: >-
+      220 passed. PR #6282's Backend Shard 2 failed one test out of 9132:
+      test_migration_280_..._truncate_guard, a file this PR does not touch, with
+      DependentObjectsStillExistError -- 280's clean-slate fixture DROPs 279's shared
+      reject_research_os_objects_mutation() without CASCADE and 312's two admission triggers
+      depended on it. Reproduced (2 failed against the old 312), cured by giving 312 its own
+      reject_research_os_naga_admission_mutation() (8 passed), then proven with both files in one
+      run and one database (220 passed). Curing the cure surfaced a second defect: all five of
+      this PR's Postgres fixtures re-apply 312 and none dropped the new function, so the second
+      application raised DuplicateFunctionError -- all five now drop it. Invisible to the R2
+      acceptance set by construction, because that set does not include 280's file.
 
   - claim: "the backfill dry-run admits nothing on today's production corpus and writes nothing"
     cmd: "PGPASSWORD=<from keychain, never printed> NAGA_BACKFILL_DSN=postgresql://nuzantara_readonly@127.0.0.1:15432/nuzantara_rag apps/backend-rag/.venv/bin/python -m backend.services.research_os.naga_backfill --cohort legacy_naga_claims --dry-run"
