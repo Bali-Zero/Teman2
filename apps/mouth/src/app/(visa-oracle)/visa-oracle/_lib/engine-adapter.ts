@@ -414,54 +414,271 @@ function reason(
 // cover yet), and every code the current pack can emit is accounted for,
 // either here or in that known-gap list.
 export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
+  // D2-bis (owner ruling, 2026-09-12 20:50 WITA): every HUMAN_REVIEW string
+  // must (1) name the specific fact/answer, in the applicant's own terms,
+  // that the signed rules cannot decide, (2) state authoritatively that the
+  // case is held deliberately for that named reason, and (3) name what
+  // resolves it. Applies to these 9 pre-existing entries too, revised below.
   CALLING_VISA_REVIEW: text(
-    "Your nationality is on the Calling Visa list, which always requires manual review before a visa can be confirmed.",
-    "Kewarganegaraan Anda termasuk dalam daftar Calling Visa, yang selalu memerlukan peninjauan manual sebelum visa dapat dikonfirmasi.",
+    "Your nationality is on Indonesia's Calling Visa list, so this case is held for the calling-visa clearance that nationality requires before any visa can be confirmed.",
+    "Kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, sehingga kasus ini ditahan untuk proses persetujuan calling visa yang disyaratkan bagi kewarganegaraan tersebut sebelum visa dapat dikonfirmasi.",
   ),
   ACTIVE_OVERSTAY: text(
-    "An active overstay on record needs a person to review before any path can be confirmed.",
-    "Overstay aktif yang tercatat memerlukan peninjauan oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+    "You reported active overstay days on your immigration record, so a person needs to review it — clearing the overstay is what resolves it.",
+    "Anda melaporkan adanya hari overstay yang masih berjalan pada catatan keimigrasian Anda, sehingga memerlukan peninjauan oleh seseorang — menyelesaikan overstay tersebut adalah yang akan menyelesaikannya.",
   ),
   // Renamed from CITIZENSHIP_EVIDENCE_CONFLICT (QW-4a, 2026-08-17): that key
   // named no code in any pack from seq-6 onward. CITIZENSHIP_LIST_DIVERGENCE
   // is its current name (services/visa_engine/contracts/packs/
-  // rulepack-prod-007.source.json). Copy text unchanged — only the key moved.
+  // rulepack-prod-007.source.json). Fires only when the declared
+  // nationalities themselves span two different eligibility categories
+  // (rule.when, review.citizenship-conflict) — single cause, revised for
+  // D2-bis below.
   CITIZENSHIP_LIST_DIVERGENCE: text(
-    "Your answers about citizenship do not fully agree with each other and need a person to confirm.",
-    "Jawaban Anda tentang kewarganegaraan tidak sepenuhnya cocok satu sama lain dan memerlukan konfirmasi dari seseorang.",
+    "You declared more than one nationality, and they fall into different eligibility categories — a person needs to confirm which passport you will use to apply.",
+    "Anda mencantumkan lebih dari satu kewarganegaraan yang termasuk dalam kategori kelayakan yang berbeda — diperlukan konfirmasi oleh seseorang mengenai paspor mana yang akan Anda gunakan untuk mengajukan permohonan.",
   ),
+  // review.minor-without-guardian: derived.is_minor == true AND
+  // family.sponsor_confirmed == false — confirming the sponsor is the fact
+  // that resolves it (the same fact the rule tests).
   MINOR_WITHOUT_CONFIRMED_GUARDIAN: text(
-    "This case involves a minor without a confirmed guardian on file and needs a person to review it.",
-    "Kasus ini melibatkan anak di bawah umur tanpa wali yang terkonfirmasi dan memerlukan peninjauan oleh seseorang.",
+    "This case involves a minor whose sponsor has not yet been confirmed, and a person needs to review it — confirming the sponsor is what resolves it.",
+    "Kasus ini melibatkan anak di bawah umur yang sponsornya belum dikonfirmasi, dan memerlukan peninjauan oleh seseorang — konfirmasi sponsor adalah yang akan menyelesaikannya.",
   ),
-  // Wording follows the pack's own product names verbatim — "Foreign Diplomat
-  // House Assistant (E23U)" / "Asisten Rumah Tangga Diplomat Asing" and "Trade
-  // and Economic Office (E23V)" / "Kantor Dagang dan Ekonomi". An adversarial
-  // review of the first draft caught it narrowing E23V to "trade representative
-  // office", dropping "and Economic": the applicant would then be told about a
-  // category that is not the one the rule actually names.
+  // Wording follows the pack's own product names verbatim — "Working Visa —
+  // Foreign Diplomat House Assistant (E23U)" / "Visa Kerja Asisten Rumah
+  // Tangga Diplomat Asing" and "Working Visa — Trade and Economic Office
+  // (E23V)" / "Visa Kerja Kantor Dagang dan Ekonomi". An adversarial review
+  // of the first draft caught it narrowing E23V to "trade representative
+  // office", dropping "and Economic": the applicant would then be told about
+  // a category that is not the one the rule actually names. Both rules fire
+  // unconditionally for their product code (no distinguishing fact beyond
+  // the product itself), so naming the product IS the specific cause.
   E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW: text(
-    "This case involves a house assistant employed by a foreign diplomat and needs a person to review it.",
-    "Kasus ini melibatkan asisten rumah tangga yang dipekerjakan oleh diplomat asing dan memerlukan peninjauan oleh seseorang.",
+    "Every application for the Working Visa — Foreign Diplomat House Assistant (E23U) is reviewed manually to confirm the household-employment relationship with the diplomat before it can be confirmed.",
+    "Setiap permohonan Visa Kerja Asisten Rumah Tangga Diplomat Asing (E23U) ditinjau secara manual untuk memastikan hubungan kerja rumah tangga dengan diplomat tersebut sebelum dapat dikonfirmasi.",
   ),
   E23V_TRADE_OFFICE_STAFF_REVIEW: text(
-    "This case involves staff of a trade and economic office and needs a person to review it.",
-    "Kasus ini melibatkan staf kantor dagang dan ekonomi dan memerlukan peninjauan oleh seseorang.",
+    "Every application for the Working Visa — Trade and Economic Office (E23V) is reviewed manually to confirm the staff relationship with that trade and economic office before it can be confirmed.",
+    "Setiap permohonan Visa Kerja Kantor Dagang dan Ekonomi (E23V) ditinjau secara manual untuk memastikan hubungan kerja dengan kantor dagang dan ekonomi tersebut sebelum dapat dikonfirmasi.",
   ),
   // Renamed from STATUS_BRIDGING_REVIEW (QW-4a, 2026-08-17): same stale
   // situation — BRIDGING_ADVERSE_HISTORY is the current name for this rule
-  // in rulepack-prod-007+. Copy text unchanged.
+  // in rulepack-prod-007+. review.bridging.adverse-history fires on ANY of 4
+  // distinct violation_history values (OVERSTAY / DEPORTATION / BLACKLIST /
+  // IMMIGRATION_INVESTIGATION) or on that fact being unknown — one code,
+  // several distinct causes with different real-world resolutions. Named all
+  // 4 rather than guessing one; flagged as a split candidate in the PR-O2
+  // report.
   BRIDGING_ADVERSE_HISTORY: text(
-    "Bridging between immigration statuses needs a person to check the timing and conditions involved.",
-    "Peralihan antar status keimigrasian memerlukan pemeriksaan oleh seseorang atas waktu dan ketentuan yang berlaku.",
+    "Your immigration record while in Indonesia shows one or more of overstay, deportation, blacklist, or an open investigation, so a person needs to check the timing and conditions before the Bridging Visa — Transitional Stay Permit can be confirmed.",
+    "Catatan keimigrasian Anda selama berada di Indonesia menunjukkan satu atau lebih dari overstay, deportasi, daftar hitam (blacklist), atau investigasi yang masih berjalan, sehingga memerlukan pemeriksaan waktu dan ketentuan oleh seseorang sebelum Izin Tinggal Peralihan dapat dipastikan.",
   ),
   LOCAL_MARKET_ACTIVITY_REVIEW: text(
-    "The activity you described needs a person to confirm it does not cross into locally reserved business.",
-    "Aktivitas yang Anda jelaskan memerlukan konfirmasi oleh seseorang agar tidak melanggar bidang usaha yang dicadangkan untuk lokal.",
+    "You said your remote work serves Indonesian clients, and the Second Home Visa — Remote Worker (E33G) is for income from outside Indonesia only — a person needs to confirm your work does not cross into locally reserved business.",
+    "Anda menyatakan bahwa pekerjaan jarak jauh Anda melayani klien di Indonesia, sedangkan Visa Rumah Kedua Pekerja Jarak Jauh (E33G) hanya untuk penghasilan dari luar Indonesia — diperlukan konfirmasi oleh seseorang bahwa pekerjaan Anda tidak melanggar bidang usaha yang dicadangkan untuk lokal.",
   ),
+  // fact-mapper.ts::hasUndecidableActivityAnswer raises this ONE code from 7
+  // distinct question ids (business_activity, investment_vehicle,
+  // retirement_basis, diaspora_connection, diaspora_documents,
+  // other_purpose, other_paid_activity) whenever any of them holds an
+  // answer value the signed pack cannot decide — the OutcomeReason carries
+  // no field to say which. Old copy ("sits close to a legal boundary") was
+  // ruled no longer acceptable (D2-bis) for being generic; named the
+  // question DIMENSIONS below as the most specific honest statement
+  // available, and flagged as a split candidate in the PR-O2 report.
   DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: text(
-    "The activity you disclosed sits close to a legal boundary that needs a person to confirm.",
-    "Aktivitas yang Anda ungkapkan berada dekat batas hukum yang memerlukan konfirmasi dari seseorang.",
+    "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own, so a person needs to confirm it before a path can be confirmed.",
+    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
+  ),
+
+  // --- QW-4b (PR-O2, D1): the 29 codes that previously fell back to
+  // GENERIC_REVIEW_REASON. Product names are copied verbatim from each
+  // rule's `product_version_ids` entry in rulepack-prod-020.source.json
+  // (`names.en` / `names.id`) — never shortened or re-described. Every
+  // string below is written to D2-bis's three rules too: name the specific
+  // fact, state the hold authoritatively, name what resolves it.
+
+  // 8 codes from rulepack-prod-020 (rulepack-prod-007+ lineage), stage
+  // HUMAN_REVIEW — each rule fires unconditionally for its product/purpose
+  // combination (no numeric threshold is modeled as a fact, hence "manual"),
+  // so naming the requested product IS the specific cause; the resolution is
+  // the manual check the code name itself describes.
+  E28B_USD_THRESHOLD_MANUAL_CHECK: text(
+    "You requested the Investor Golden Visa — Company Establishment (E28B), which always has its required USD investment amount checked manually — confirming that amount against your documents is what resolves it.",
+    "Anda mengajukan Visa Investor Pendirian Perusahaan (E28B), yang jumlah investasi USD yang disyaratkan selalu diperiksa secara manual — konfirmasi jumlah tersebut terhadap dokumen Anda adalah yang akan menyelesaikannya.",
+  ),
+  E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK: text(
+    "You requested the Investor Golden Visa — Capital Market (E28C), which always has its USD investment amount and financial instrument checked manually — confirming both against your documents is what resolves it.",
+    "Anda mengajukan Visa Investor Tanpa Mendirikan Perusahaan (E28C), yang jumlah investasi USD dan instrumen keuangannya selalu diperiksa secara manual — konfirmasi keduanya terhadap dokumen Anda adalah yang akan menyelesaikannya.",
+  ),
+  E28D_USD_THRESHOLD_AND_TURNOVER_CHECK: text(
+    "You requested the Investor Golden Visa — Branch or Subsidiary (E28D), which always has its USD investment amount and company turnover checked manually — confirming both against your documents is what resolves it.",
+    "Anda mengajukan Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan (E28D), yang jumlah investasi USD dan omzet perusahaannya selalu diperiksa secara manual — konfirmasi keduanya terhadap dokumen Anda adalah yang akan menyelesaikannya.",
+  ),
+  E28F_IKN_THRESHOLD_MANUAL_CHECK: text(
+    "You requested the Investor Golden Visa — New Capital (IKN) Subsidiary (E28F), which always has its IKN investment threshold checked manually — confirming that amount against your documents is what resolves it.",
+    "Anda mengajukan Visa Investor Anak Perusahaan Ibukota Nusantara (E28F), yang ambang batas investasi IKN-nya selalu diperiksa secara manual — konfirmasi jumlah tersebut terhadap dokumen Anda adalah yang akan menyelesaikannya.",
+  ),
+  E33B_EXPERTISE_QUALIFICATION_CHECK: text(
+    "You requested the Second Home Golden Visa — Special-Expertise Collaboration (E33B), which always has the applicant's expertise checked manually — confirming your qualification against your documents is what resolves it.",
+    "Anda mengajukan Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B), yang keahlian pemohonnya selalu diperiksa secara manual — konfirmasi kualifikasi Anda terhadap dokumen Anda adalah yang akan menyelesaikannya.",
+  ),
+  E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP: text(
+    "You said you have committed to PT PMA company ownership, and the Second Home Visa — Remote Worker (E33G) excludes local company ownership — a person needs to confirm your PT PMA commitment before this can be resolved.",
+    "Anda menyatakan telah berkomitmen pada kepemilikan perusahaan PT PMA, sedangkan Visa Rumah Kedua Pekerja Jarak Jauh (E33G) mengecualikan kepemilikan perusahaan lokal — diperlukan konfirmasi oleh seseorang atas komitmen PT PMA Anda sebelum hal ini dapat diselesaikan.",
+  ),
+  E33_WORK_RANGKAP_KEGIATAN_GATED: text(
+    "You selected both a Second Home Visa (E33) purpose and an employment purpose, and a person needs to confirm how the two combine before this case can be resolved.",
+    "Anda memilih tujuan Visa Rumah Kedua (E33) sekaligus tujuan bekerja, dan diperlukan konfirmasi oleh seseorang mengenai bagaimana keduanya digabungkan sebelum kasus ini dapat diselesaikan.",
+  ),
+  // Fires identically for two products (E33A, E33C) that share this reason
+  // code — both name their own product verbatim rather than picking one.
+  GOVT_INVITATION_REQUIRED: text(
+    "You requested the Second Home Visa — Special-Expertise Government Invitation (E33A) or the Second Home Golden Visa — World-Figure Government Invitation (E33C), both issued only on a central government invitation — confirming that invitation is what resolves it.",
+    "Anda mengajukan Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) atau Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C), yang keduanya hanya diterbitkan berdasarkan undangan pemerintah pusat — konfirmasi undangan tersebut adalah yang akan menyelesaikannya.",
+  ),
+
+  // 4 codes from rulepack-prod-020, stage HARD_FILTER with
+  // `on_unknown: "HUMAN_REVIEW"` (hf.bridging.offshore / .from-visit-itk /
+  // .to-bridging / hf.b1.not-voa-nationality). When the underlying fact is
+  // KNOWN these rules EXCLUDE the product outright; when it is UNKNOWN,
+  // `evaluator.py::_partition_unknowns_by_policy` + `_reason_from_rule`
+  // escalate to REVIEW and reuse the SAME reason_code (see
+  // evaluator.py:355-410, 741-751) — so this copy must never read as an
+  // exclusion, only as a fact still to be established; naming that missing
+  // fact doubles as naming what resolves it (confirming the fact).
+  BRIDGING_ONSHORE_ONLY: text(
+    "This case is held because whether you are currently in Indonesia has not been established, which the Bridging Visa — Transitional Stay Permit requires — confirming your current location is what resolves it.",
+    "Kasus ini ditahan karena belum dapat dipastikan apakah Anda saat ini berada di Indonesia, padahal Izin Tinggal Peralihan mensyaratkan hal itu — konfirmasi lokasi Anda saat ini adalah yang akan menyelesaikannya.",
+  ),
+  BRIDGING_FROM_VISIT_ITK_PROHIBITED: text(
+    "This case is held because your current immigration status code has not been established, and the Bridging Visa — Transitional Stay Permit cannot be issued from certain visit-based statuses — confirming your current status code is what resolves it.",
+    "Kasus ini ditahan karena kode status keimigrasian Anda saat ini belum dapat dipastikan, sedangkan Izin Tinggal Peralihan tidak dapat diterbitkan dari status berbasis kunjungan tertentu — konfirmasi kode status Anda saat ini adalah yang akan menyelesaikannya.",
+  ),
+  BRIDGING_TO_BRIDGING_PROHIBITED: text(
+    "This case is held because your current immigration status code has not been established, and a Bridging Visa — Transitional Stay Permit cannot follow one already active — confirming your current status code is what resolves it.",
+    "Kasus ini ditahan karena kode status keimigrasian Anda saat ini belum dapat dipastikan, sedangkan Izin Tinggal Peralihan tidak dapat mengikuti izin peralihan yang masih aktif — konfirmasi kode status Anda saat ini adalah yang akan menyelesaikannya.",
+  ),
+  VOA_NATIONALITY_ONLY: text(
+    "This case is held because your nationality has not been established, and the Visa on Arrival — Tourism (B1) is issued only for listed nationalities — confirming your nationality is what resolves it.",
+    "Kasus ini ditahan karena kewarganegaraan Anda belum dapat dipastikan, sedangkan Visa Saat Kedatangan Wisata (B1) hanya diterbitkan untuk kewarganegaraan yang terdaftar — konfirmasi kewarganegaraan Anda adalah yang akan menyelesaikannya.",
+  ),
+
+  // 17 pack-independent codes emitted by evaluate_path.py directly.
+  //
+  // CONFLICTING_IMMIGRATION_STATUS_REVIEW is a DisclosedReviewFlag
+  // (api_models.py) with no current trigger in fact-mapper.ts — unlike
+  // CITIZENSHIP_LIST_DIVERGENCE's precise nationality-list logic, there is
+  // no `when` clause to read for which two status answers conflict. Named
+  // as specifically as the code allows; flagged in the PR-O2 report as
+  // meaning not fully pinned to a specific fact pair (not a split
+  // candidate — there is no enumerable second cause to split out).
+  CONFLICTING_IMMIGRATION_STATUS_REVIEW: text(
+    "Your answers about your current immigration status conflict with each other — a person needs to confirm which status is correct before a path can be confirmed.",
+    "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan — diperlukan konfirmasi oleh seseorang mengenai status mana yang benar sebelum jalur dapat dipastikan.",
+  ),
+  // `_apply_decisive_source_authority_hold` (evaluate_path.py:1097-1198):
+  // abstains an otherwise-conclusive result when a citation the decision
+  // itself relies on isn't authoritative/applicable, or its freshness is
+  // unknown/stale. About the SOURCE behind the result, not an applicant
+  // answer — D2-bis rule 1's "applicant's own terms" framing does not fit
+  // this category, since nothing the applicant said caused this; named the
+  // source mechanism as specifically as the code allows instead.
+  DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE: text(
+    "This result relies on a regulatory source that could not be confirmed as valid and currently applicable — verifying that source is what a person must do before this result can stand.",
+    "Hasil ini bergantung pada sumber regulasi yang tidak dapat dikonfirmasi valid dan berlaku saat ini — memverifikasi sumber tersebut adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+  ),
+  DECISIVE_SOURCE_FRESHNESS_UNKNOWN: text(
+    "This result relies on a regulatory source whose currency could not be established automatically — confirming whether that source is still current is what a person must do before this result can stand.",
+    "Hasil ini bergantung pada sumber regulasi yang keberlakuannya belum dapat dipastikan secara otomatis — memastikan apakah sumber tersebut masih berlaku adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+  ),
+  DECISIVE_SOURCE_STALE: text(
+    "This result relies on a regulatory source confirmed out of date — replacing it with a current source is what a person must do before this result can stand.",
+    "Hasil ini bergantung pada sumber regulasi yang telah dipastikan usang — menggantinya dengan sumber yang berlaku saat ini adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+  ),
+  // `_DISCLOSED_REVIEW_REASON_CODES` (evaluate_path.py:1014-1027) +
+  // `_apply_disclosed_review_flags` (1304-1354): applicant self-disclosures,
+  // never a legal eligibility claim — carry no source_refs by design.
+  //
+  // Owner-directed wording (D2-bis, deliberately against the example
+  // offered): do NOT assert the sponsor's nationality as the cause. A
+  // parallel PR (D2) is narrowing this code's trigger from "any
+  // sponsor-status answer" to "answered unsure about the sponsor, or the
+  // product itself is sponsor-dependent" — naming nationality would go
+  // FALSE the day that merges. "The sponsor's own stay permit could not be
+  // established from the answers given" stays true under both the current
+  // trigger and the narrowed one.
+  DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW: text(
+    "The sponsor's own stay permit could not be established from the answers given, so a person needs to confirm it before this case can be resolved.",
+    "Izin tinggal sponsor itu sendiri tidak dapat dipastikan dari jawaban yang diberikan, sehingga memerlukan konfirmasi oleh seseorang sebelum kasus ini dapat diselesaikan.",
+  ),
+  DISCLOSED_CRIMINAL_RECORD_REVIEW: text(
+    "You flagged a criminal record concern in your disclosures, and a person needs to review the details before any path can be confirmed.",
+    "Anda menandai adanya masalah catatan kriminal dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+  ),
+  DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW: text(
+    "You flagged holding a diplomatic passport in your disclosures, and a person needs to review the details before any path can be confirmed.",
+    "Anda menandai kepemilikan paspor diplomatik dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+  ),
+  DISCLOSED_HEALTH_CONCERN_REVIEW: text(
+    "You flagged a health concern in your disclosures, and a person needs to review the details before any path can be confirmed.",
+    "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+  ),
+  // fact-mapper.ts: raised when trip_scope === "multiple".
+  DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW: text(
+    "You said your trip serves more than one purpose, and a person needs to review how those purposes combine before a path can be confirmed.",
+    "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan, dan memerlukan peninjauan oleh seseorang mengenai bagaimana tujuan-tujuan tersebut digabungkan sebelum jalur dapat dipastikan.",
+  ),
+  DISCLOSED_PEP_OR_SANCTIONS_REVIEW: text(
+    "You flagged a politically-exposed-person or sanctions-list concern in your disclosures, and a person needs to review the details before any path can be confirmed.",
+    "Anda menandai adanya masalah terkait status politically exposed person atau daftar sanksi dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+  ),
+  DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW: text(
+    "You flagged a prior visa refusal in your disclosures, and a person needs to review the details before any path can be confirmed.",
+    "Anda menandai adanya penolakan visa sebelumnya dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+  ),
+  DISCLOSED_SOURCE_OF_FUNDS_REVIEW: text(
+    "You flagged an unclear source of funds in your disclosures, and a person needs to review the details before any path can be confirmed.",
+    "Anda menandai sumber dana yang tidak jelas dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+  ),
+  // fact-mapper.ts: raised when ANY answer across the interview equals
+  // "unsure" — the OutcomeReason carries no field for which question. One
+  // code, as many potential causes as there are questions; flagged as a
+  // split candidate in the PR-O2 report.
+  DISCLOSED_UNCERTAINTY_REVIEW: text(
+    'One of your answers was marked "unsure," and a person needs to confirm that answer before any path can be confirmed.',
+    'Salah satu jawaban Anda ditandai "tidak yakin," dan memerlukan konfirmasi oleh seseorang atas jawaban tersebut sebelum jalur apa pun dapat dikonfirmasi.',
+  ),
+  // `_apply_minor_privacy_hold` (evaluate_path.py:1033-1094): a categorical
+  // privacy-policy hold on ANY known minor, distinct from the pack's own
+  // MINOR_WITHOUT_CONFIRMED_GUARDIAN rule (`family.sponsor_confirmed ==
+  // false`) — this one fires because the public evaluation contract has no
+  // guardian-identity/consent fact at all, so no automated supported
+  // outcome can ever be safe for a minor here, regardless of what the pack
+  // itself concluded. Resolution is necessarily off-platform (a person
+  // reviewing guardian identity/consent directly) since this adapter "may
+  // only abstain" by its own docstring.
+  MINOR_GUARDIAN_PRIVACY_REVIEW: text(
+    "This case involves a minor, and this tool cannot confirm guardian consent on its own — a person needs to review the guardian's identity and consent directly before this case can be resolved.",
+    "Kasus ini melibatkan anak di bawah umur, dan alat ini tidak dapat mengonfirmasi persetujuan wali dengan sendirinya — diperlukan peninjauan langsung oleh seseorang atas identitas dan persetujuan wali sebelum kasus ini dapat diselesaikan.",
+  ),
+  // `_apply_safety_critical_source_hold` (evaluate_path.py:1201-1301): same
+  // source-integrity pattern as the DECISIVE_* trio above, but global to
+  // every currently active `safety_critical: true` rule rather than only
+  // the specific citations a given result relied on. Same D2-bis rule 1
+  // caveat as the DECISIVE_* trio: not an applicant-fact code.
+  SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE: text(
+    "One of the safety-critical rules used in this evaluation relies on a source that could not be confirmed as valid and currently applicable — verifying that source is what a person must do before this result can stand.",
+    "Salah satu aturan safety-critical yang digunakan dalam evaluasi ini bergantung pada sumber yang tidak dapat dikonfirmasi valid dan berlaku saat ini — memverifikasi sumber tersebut adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+  ),
+  SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN: text(
+    "One of the safety-critical rules used in this evaluation relies on a source whose currency could not be established automatically — confirming whether that source is still current is what a person must do before this result can stand.",
+    "Salah satu aturan safety-critical yang digunakan dalam evaluasi ini bergantung pada sumber yang keberlakuannya belum dapat dipastikan secara otomatis — memastikan apakah sumber tersebut masih berlaku adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+  ),
+  SAFETY_CRITICAL_SOURCE_STALE: text(
+    "One of the safety-critical rules used in this evaluation relies on a source confirmed out of date — replacing it with a current source is what a person must do before this result can stand.",
+    "Salah satu aturan safety-critical yang digunakan dalam evaluasi ini bergantung pada sumber yang telah dipastikan usang — menggantinya dengan sumber yang berlaku saat ini adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
   ),
 };
 

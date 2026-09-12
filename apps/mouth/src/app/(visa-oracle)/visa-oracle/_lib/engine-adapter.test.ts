@@ -723,10 +723,21 @@ describe("review reasons cover every code the current pack can emit", () => {
     const codes = new Set<string>();
     for (const rule of payload.rules ?? []) {
       const effect = rule.effect as Record<string, unknown> | undefined;
+      if (!effect || typeof effect.reason_code !== "string") continue;
+      // A HUMAN_REVIEW-stage rule contributes its reason on a definite TRUE
+      // (`evaluator.py::evaluate_product`, `_true_reasons`). A HARD_FILTER
+      // rule ALSO contributes its reason — the SAME `effect.reason_code`,
+      // via `_reason_from_rule` — when its own condition is UNKNOWN and it
+      // declares `on_unknown: "HUMAN_REVIEW"`
+      // (`_partition_unknowns_by_policy` + `_reason_from_rule`,
+      // evaluator.py:355-410, 741-751): a rule author asking for human
+      // judgment on an uncertain exclusion outranks merely asking the
+      // applicant for more facts. Support-stage (ELIGIBILITY) on_unknown
+      // escalation feeds SUPPORT_REASON_COPY instead, not this map, so it is
+      // deliberately not included here.
       if (
-        rule.stage === "HUMAN_REVIEW" &&
-        effect &&
-        typeof effect.reason_code === "string"
+        rule.stage === "HUMAN_REVIEW" ||
+        (rule.stage === "HARD_FILTER" && rule.on_unknown === "HUMAN_REVIEW")
       ) {
         codes.add(effect.reason_code);
       }
@@ -778,43 +789,14 @@ describe("review reasons cover every code the current pack can emit", () => {
   // entry here stops naming a real code (renamed/retired upstream) — this
   // list is not exempt from going stale the same way REVIEW_REASON_COPY's
   // keys were.
-  const KNOWN_UNMAPPED_REVIEW_REASON_CODES = [
-    // From rulepack-prod-007+ (HUMAN_REVIEW stage):
-    "E28B_USD_THRESHOLD_MANUAL_CHECK",
-    "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
-    "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",
-    "E28F_IKN_THRESHOLD_MANUAL_CHECK",
-    "E33B_EXPERTISE_QUALIFICATION_CHECK",
-    "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
-    // `E33G_INCOME_EVIDENCE_REVIEW` was here from the E5 increment 3 seq-9
-    // fold (2026-08-19) until the seq-20 decisiveness fold retired the rule
-    // that emitted it: `review.e33g.income-evidence`'s `when` was a
-    // byte-for-byte copy of `el.e33g.remote-work`'s, so it vetoed E33G on
-    // the product's own success condition and E33G could never be
-    // recommended (2026-09-06 investigation §2.3 L3-b). It is removed here,
-    // not merely left unmapped, because the test below fails on a gap-list
-    // entry naming a code the highest-sequence pack no longer emits.
-    "E33_WORK_RANGKAP_KEGIATAN_GATED",
-    "GOVT_INVITATION_REQUIRED",
-    // Pack-independent (evaluate_path.py):
-    "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
-    "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
-    "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
-    "DECISIVE_SOURCE_STALE",
-    "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
-    "DISCLOSED_CRIMINAL_RECORD_REVIEW",
-    "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
-    "DISCLOSED_HEALTH_CONCERN_REVIEW",
-    "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
-    "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
-    "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
-    "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
-    "DISCLOSED_UNCERTAINTY_REVIEW",
-    "MINOR_GUARDIAN_PRIVACY_REVIEW",
-    "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
-    "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
-    "SAFETY_CRITICAL_SOURCE_STALE",
-  ];
+  //
+  // Emptied by PR-O2 (QW-4b, D1, 2026-09-12): all 29 codes below now have
+  // dedicated copy in REVIEW_REASON_COPY. The historical note that used to
+  // sit here about `E33G_INCOME_EVIDENCE_REVIEW`'s seq-20 retirement (a
+  // THIRD, already-removed code, never part of this 29) had no entry left to
+  // attach to once the list emptied, so it went with it rather than sit
+  // orphaned in an empty array.
+  const KNOWN_UNMAPPED_REVIEW_REASON_CODES: string[] = [];
 
   it("names every code the current pack + backend can emit, mapped or in the known gap", () => {
     const allRealCodes = [
@@ -822,7 +804,9 @@ describe("review reasons cover every code the current pack can emit", () => {
       ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
     ].sort();
     // Guard the guard: a glob/parse that silently found nothing would make
-    // every assertion below vacuously true. 14 pack + 18 pack-independent.
+    // every assertion below vacuously true. 20 pack (16 HUMAN_REVIEW-stage +
+    // 4 HARD_FILTER with on_unknown=HUMAN_REVIEW, PR-O2) + 18
+    // pack-independent = 38, all of them mapped as of PR-O2.
     expect(allRealCodes.length).toBeGreaterThanOrEqual(32);
 
     const unaccounted = allRealCodes.filter(
