@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
 const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
+  patch: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({ api: apiMock }));
@@ -93,6 +94,44 @@ const CLIENT_NAMES: Record<string, string> = {
   "43": "Fixture Client Beta",
 };
 
+/**
+ * `GET /obligations/profile/{id}` (M3): the all-defaults profile every client
+ * currently has, with `fiscal_year_end` the one attribute actually on file.
+ */
+const PROFILE = {
+  client_id: 42,
+  profile: {
+    company_type: "OTHER",
+    has_employees: false,
+    employee_count: 0,
+    has_foreign_employees: false,
+    pkp: false,
+    annual_turnover_idr: null,
+    investment_stage: null,
+    fiscal_year_end: "12-31",
+    serves_indonesian_users_online: false,
+    pse_registered: false,
+    pmse_vat_appointed: false,
+    has_expat_staff_over_6_months: false,
+  },
+  present_keys: ["fiscal_year_end"],
+  missing_keys: [
+    "company_type",
+    "has_employees",
+    "employee_count",
+    "has_foreign_employees",
+    "pkp",
+    "annual_turnover_idr",
+    "investment_stage",
+    "serves_indonesian_users_online",
+    "pse_registered",
+    "pmse_vat_appointed",
+    "has_expat_staff_over_6_months",
+  ],
+  company_type_raw: "PT PERSEROAN LAINNYA",
+  needs_manual_classification: true,
+};
+
 interface Deferred {
   status: string;
   resolve: (total: number) => void;
@@ -113,15 +152,27 @@ function installApiGet(
     deferCounters?: Deferred[];
     /** Collects one resolver per CRM client read instead of answering at once. */
     deferClients?: Array<{ id: string; resolve: () => void }>;
+    /** Answered for every profile read; the second read can differ from the first. */
+    profile?: unknown;
+    profileAfterSave?: unknown;
   } = {},
 ) {
   const listCalls: string[] = [];
   const counterCalls: string[] = [];
   const clientCalls: string[] = [];
+  const profileCalls: string[] = [];
 
   apiMock.get.mockImplementation((url: string) => {
     if (url.startsWith("/api/compliance/obligations/catalog")) {
       return Promise.resolve(opts.catalog ?? CATALOG);
+    }
+    if (url.startsWith("/api/compliance/obligations/profile/")) {
+      profileCalls.push(url);
+      const body =
+        profileCalls.length > 1 && opts.profileAfterSave
+          ? opts.profileAfterSave
+          : (opts.profile ?? PROFILE);
+      return Promise.resolve(body);
     }
     if (url.startsWith("/api/compliance/obligations?")) {
       const params = new URLSearchParams(url.split("?")[1] ?? "");
@@ -176,7 +227,7 @@ function installApiGet(
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 
-  return { listCalls, counterCalls, clientCalls };
+  return { listCalls, counterCalls, clientCalls, profileCalls };
 }
 
 describe("ObligationsPage", () => {
@@ -184,6 +235,7 @@ describe("ObligationsPage", () => {
     vi.clearAllMocks();
     installApiGet();
     apiMock.post.mockResolvedValue({});
+    apiMock.patch.mockResolvedValue(PROFILE);
   });
 
   it("renders proposed rows from the list response", async () => {
@@ -521,5 +573,302 @@ describe("ObligationsPage", () => {
     expect(
       screen.getByText("Could not load the rule catalog — showing rule ids."),
     ).toBeVisible();
+  });
+});
+
+describe("ObligationsPage — client profile panel (U2)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiMock.post.mockResolvedValue({});
+    apiMock.patch.mockResolvedValue(PROFILE);
+  });
+
+  /** Set the client filter: the panel is only rendered for one client. */
+  async function selectClient(clientId = "42") {
+    render(<ObligationsPage />);
+    await screen.findByText("PPh 21 — employee withholding deposit");
+    fireEvent.change(screen.getByPlaceholderText("all clients"), {
+      target: { value: clientId },
+    });
+    return screen.findByLabelText("Company type");
+  }
+
+  it("loads the profile only once a client filter is set", async () => {
+    const { profileCalls } = installApiGet({ listForClient: LIST_RESPONSE });
+
+    render(<ObligationsPage />);
+    await screen.findByText("PPh 21 — employee withholding deposit");
+    expect(profileCalls.length).toBe(0);
+    expect(screen.queryByLabelText("Company type")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("all clients"), {
+      target: { value: "42" },
+    });
+
+    await screen.findByLabelText("Company type");
+    expect(profileCalls).toEqual(["/api/compliance/obligations/profile/42"]);
+  });
+
+  it("highlights every attribute the engine read as a default", async () => {
+    installApiGet({ listForClient: LIST_RESPONSE });
+    await selectClient();
+
+    // missing_keys -> flagged; the one key on file is not.
+    expect(screen.getByTestId("profile-field-company_type")).toHaveAttribute(
+      "data-missing",
+      "true",
+    );
+    expect(screen.getByTestId("profile-field-pkp")).toHaveAttribute(
+      "data-missing",
+      "true",
+    );
+    expect(screen.getByTestId("profile-field-fiscal_year_end")).toHaveAttribute(
+      "data-missing",
+      "false",
+    );
+    expect(screen.getAllByText("not set").length).toBe(
+      PROFILE.missing_keys.length,
+    );
+    expect(screen.getByText("11 of 12 attributes not set")).toBeVisible();
+
+    // company_type_raw and needs_manual_classification, both set here.
+    expect(screen.getByText("PT PERSEROAN LAINNYA")).toBeVisible();
+    expect(screen.getByText(/Company type reads as OTHER/)).toBeVisible();
+  });
+
+  it("sends a PATCH carrying only the touched keys", async () => {
+    installApiGet({ listForClient: LIST_RESPONSE });
+    const select = await selectClient();
+
+    // Save is inert until something is touched.
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeDisabled();
+
+    fireEvent.change(select, { target: { value: "PT_PMA" } });
+    fireEvent.change(screen.getByLabelText("Employee count"), {
+      target: { value: "12" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    await waitFor(() => expect(apiMock.patch).toHaveBeenCalledTimes(1));
+    // Exact object: the untouched ten attributes must NOT be written, or every
+    // default would be stored as if a reviewer had asserted it.
+    expect(apiMock.patch).toHaveBeenCalledWith(
+      "/api/compliance/obligations/profile/42",
+      { company_type: "PT_PMA", employee_count: 12 },
+    );
+  });
+
+  it("sends a touched boolean as a boolean", async () => {
+    installApiGet({ listForClient: LIST_RESPONSE });
+    await selectClient();
+
+    fireEvent.click(screen.getByLabelText("Registered for VAT (PKP)"));
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    await waitFor(() =>
+      expect(apiMock.patch).toHaveBeenCalledWith(
+        "/api/compliance/obligations/profile/42",
+        { pkp: true },
+      ),
+    );
+  });
+
+  it("rejects a malformed fiscal year end before the round-trip", async () => {
+    installApiGet({ listForClient: LIST_RESPONSE });
+    await selectClient();
+
+    fireEvent.change(screen.getByLabelText("Fiscal year end (MM-DD)"), {
+      target: { value: "31 December" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(
+      await screen.findByText(
+        "Fiscal year end must be MM-DD, for example 12-31.",
+      ),
+    ).toBeVisible();
+    expect(apiMock.patch).not.toHaveBeenCalled();
+  });
+
+  it("shows the no-company message on a 409", async () => {
+    installApiGet({ listForClient: LIST_RESPONSE });
+    apiMock.patch.mockRejectedValueOnce(
+      new ApiError("Client has no company row to store the profile on", 409, {
+        detail: "Client has no company row",
+      }),
+    );
+    await selectClient();
+
+    fireEvent.click(screen.getByLabelText("Has employees"));
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(
+      await screen.findByText(/No company on file for this client/),
+    ).toBeVisible();
+    // The register's own 409 copy ("already decided") must not appear here.
+    expect(screen.queryByText(/already decided/)).not.toBeInTheDocument();
+  });
+
+  it("shows the 422 detail verbatim when the server rejects a value", async () => {
+    installApiGet({ listForClient: LIST_RESPONSE });
+    apiMock.patch.mockRejectedValueOnce(
+      new ApiError("invalid value for 'company_type'", 422, {
+        detail: "invalid value for 'company_type'",
+      }),
+    );
+    await selectClient();
+
+    fireEvent.click(screen.getByLabelText("Has employees"));
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(
+      await screen.findByText("invalid value for 'company_type'"),
+    ).toBeVisible();
+  });
+
+  it("refreshes the profile after a successful save and offers generate", async () => {
+    const saved = {
+      ...PROFILE,
+      profile: { ...PROFILE.profile, company_type: "PT_PMA" },
+      present_keys: ["fiscal_year_end", "compliance_company_type"],
+      missing_keys: PROFILE.missing_keys.filter((k) => k !== "company_type"),
+      needs_manual_classification: false,
+    };
+    const { profileCalls } = installApiGet({
+      listForClient: LIST_RESPONSE,
+      profileAfterSave: saved,
+    });
+    const select = await selectClient();
+
+    fireEvent.change(select, { target: { value: "PT_PMA" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    // The save re-reads the profile rather than trusting local state.
+    await waitFor(() => expect(profileCalls.length).toBe(2));
+    expect(
+      await screen.findByText("Profile saved. Generate proposals to apply it."),
+    ).toBeVisible();
+    expect(screen.getByTestId("profile-field-company_type")).toHaveAttribute(
+      "data-missing",
+      "false",
+    );
+    expect(
+      screen.queryByText(/Company type reads as OTHER/),
+    ).not.toBeInTheDocument();
+    // Nothing left to save: the draft was cleared by the successful PATCH.
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeDisabled();
+
+    // The offered action is the page's own generate path, for the filtered client.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Generate proposals for client 42" }),
+    );
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith(
+        "/api/compliance/obligations/generate",
+        { client_id: 42, horizon_days: 90 },
+      ),
+    );
+  });
+
+  it("drops an unsaved draft when the client filter moves to another client", async () => {
+    // Regression: the panel holds the draft, so without a remount per client the
+    // previous client's unsaved edits stayed on screen and a save would have
+    // written them to the NEW client.
+    installApiGet({ listForClient: LIST_RESPONSE });
+    const select = await selectClient("42");
+
+    fireEvent.change(select, { target: { value: "PT_PMA" } });
+    fireEvent.change(screen.getByLabelText("Employee count"), {
+      target: { value: "7" },
+    });
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeEnabled();
+
+    fireEvent.change(screen.getByPlaceholderText("all clients"), {
+      target: { value: "43" },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Company type")).toHaveValue("OTHER"),
+    );
+    expect(screen.getByLabelText("Employee count")).toHaveValue(0);
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeDisabled();
+    expect(apiMock.patch).not.toHaveBeenCalled();
+  });
+
+  it("keeps an attribute edited while the PATCH was in flight", async () => {
+    // Regression: clearing the whole draft on success dropped any edit made
+    // while the request was open, and said "Profile saved" over the loss.
+    installApiGet({ listForClient: LIST_RESPONSE });
+    let resolvePatch: (value: unknown) => void = () => {};
+    apiMock.patch.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePatch = resolve;
+        }),
+    );
+    await selectClient();
+
+    fireEvent.click(screen.getByLabelText("Registered for VAT (PKP)"));
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+    await waitFor(() => expect(apiMock.patch).toHaveBeenCalledTimes(1));
+
+    // Second edit lands while the first save is still open.
+    fireEvent.change(screen.getByLabelText("Employee count"), {
+      target: { value: "5" },
+    });
+    resolvePatch(PROFILE);
+
+    expect(
+      await screen.findByText("Profile saved. Generate proposals to apply it."),
+    ).toBeVisible();
+    expect(screen.getByLabelText("Employee count")).toHaveValue(5);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+    await waitFor(() => expect(apiMock.patch).toHaveBeenCalledTimes(2));
+    expect(apiMock.patch).toHaveBeenLastCalledWith(
+      "/api/compliance/obligations/profile/42",
+      { employee_count: 5 },
+    );
+  });
+
+  it("refuses a turnover too large to carry exactly", async () => {
+    installApiGet({ listForClient: LIST_RESPONSE });
+    await selectClient();
+
+    fireEvent.change(screen.getByLabelText("Annual turnover (IDR)"), {
+      target: { value: "9007199254740993" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(
+      await screen.findByText(
+        "annual_turnover_idr is too large to store exactly.",
+      ),
+    ).toBeVisible();
+    expect(apiMock.patch).not.toHaveBeenCalled();
+  });
+
+  it("shows the admin-only message when the profile read is forbidden", async () => {
+    installApiGet({ listForClient: LIST_RESPONSE });
+    const rejectingGet = apiMock.get.getMockImplementation();
+    apiMock.get.mockImplementation((url: string) => {
+      if (url.startsWith("/api/compliance/obligations/profile/")) {
+        return Promise.reject(
+          new ApiError("CRM admin required", 403, {
+            detail: "CRM admin required",
+          }),
+        );
+      }
+      return rejectingGet?.(url);
+    });
+
+    render(<ObligationsPage />);
+    await screen.findByText("PPh 21 — employee withholding deposit");
+    fireEvent.change(screen.getByPlaceholderText("all clients"), {
+      target: { value: "42" },
+    });
+
+    expect(await screen.findByText("Admin only.")).toBeVisible();
+    expect(screen.queryByLabelText("Company type")).not.toBeInTheDocument();
   });
 });
