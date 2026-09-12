@@ -317,3 +317,47 @@ class TestVaultTierChangeset:
         a = self._payload("Seluruh", [("UB", "Tinggi"), ("UK", "Rendah")])
         b = self._payload("Seluruh", [("UK", "Rendah"), ("UB", "Tinggi")])
         assert changeset.changeset(self._vault(tmp_path, "o", {"10001": a}), self._vault(tmp_path, "n", {"10001": b}), gt)["changed"] == []
+
+
+# --- Kimi K3 council round (2026-09-12, PR-B) -----------------------------------------------
+
+
+def test_a_scope_matched_donor_is_never_reused_as_a_tier_donor():
+    """H1: the same canonical row sat in both pools, so after donating by scope identity it
+    donated again — tier-level facts such as fiktif_positif — to a split row of the same
+    tier that never carried them (32 rows on 8 codes in the September run)."""
+    from collections import Counter
+
+    t = _transform()
+    old = [_row("Besar", "Tinggi", jw="7", jangka_waktu_source="pp28", fiktif_positif=True)]
+    new = [_row("Besar", "Tinggi", jw="7"), _row("Besar", "Tinggi", scope=1, jw="5", uraian="Sub A")]
+    stats = Counter()
+    merged = t.merge_per_skala(old, new, stats)
+    assert merged[0].get("fiktif_positif") is True
+    assert "fiktif_positif" not in merged[1]
+    assert merged[1]["jangka_waktu"] == "5"
+    assert stats["rows_carried"] == 1 and stats["rows_carried_tier"] == 0
+
+
+def test_a_tier_donor_is_never_reused_by_scope_identity():
+    """Innocence for the symmetric pool: a row consumed as a tier donor is gone by scope too."""
+    from collections import Counter
+
+    t = _transform()
+    old = [_row("Besar", "Tinggi", fiktif_positif=True)]
+    new = [_row("Besar", "Tinggi", scope=1, uraian="Sub A"), _row("Besar", "Tinggi")]
+    merged = t.merge_per_skala(old, new, Counter())
+    assert [("fiktif_positif" in r) for r in merged] == [True, False]
+
+
+def test_l4_without_a_verdict_key_moves_only_on_a_block_flip():
+    """H2: 237 canonical l4_bali blocks carry verdict_state and no verdict key; comparing
+    against a missing key manufactured a move and rewrote the cure's status/reason on
+    93111 and 93119 (CHIUSO_MORATORIA_BALI -> BLOCCATO_CLASSE_RISCHIO, blocked True -> True)."""
+    t = _transform()
+    cure_owned = {"status": "CHIUSO_MORATORIA_BALI", "blocked": True, "verdict_state": "x"}
+    assert t.l4_verdict_moved(cure_owned, "BLOCKED", True, True) is False
+    assert t.l4_verdict_moved(cure_owned, "OPEN", True, False) is True
+    # innocence: a canonical verdict that differs still counts as a move
+    assert t.l4_verdict_moved({"verdict": "OPEN", "blocked": False}, "AMBIGUOUS", False, False) is True
+    assert t.l4_verdict_moved({"verdict": "OPEN", "blocked": False}, "OPEN", False, False) is False

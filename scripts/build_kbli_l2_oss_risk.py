@@ -155,6 +155,14 @@ def _tier_key(p):
     return (tuple(p.get("skala_usaha") or []), (p.get("kategori_risiko") or "").strip().lower())
 
 
+def _drop_donor(pool, key, donor):
+    """Remove `donor` (by identity) from the OTHER pool so a canonical row never
+    donates twice — once by scope identity and again by tier (Kimi K3 PR-B H1)."""
+    rows = pool.get(key)
+    if rows:
+        pool[key] = [r for r in rows if r is not donor]
+
+
 def _pop_donor(pool, key):
     rows = pool.get(key)
     return rows.pop(0) if rows else None
@@ -178,6 +186,7 @@ def merge_per_skala(old_ps, new_ps, stats=None):
         row = dict(n)
         o = _pop_donor(by_scope, _row_key(n))
         if o is not None:
+            _drop_donor(by_tier, _tier_key(o), o)
             for k, v in o.items():
                 if k not in L2_OWNED_PER_SKALA_FIELDS and k != "jangka_waktu":
                     row[k] = v
@@ -189,6 +198,7 @@ def merge_per_skala(old_ps, new_ps, stats=None):
             continue
         t = _pop_donor(by_tier, _tier_key(n))
         if t is not None:
+            _drop_donor(by_scope, _row_key(t), t)
             for k in TIER_LEVEL_CARRY:
                 if k in t:
                     row[k] = t[k]
@@ -206,6 +216,16 @@ def merge_per_skala(old_ps, new_ps, stats=None):
         stats["rows_fresh"] += 1
         merged.append(row)
     return merged
+
+
+def l4_verdict_moved(old_l4, verdict, old_blocked, new_blocked):
+    """True only when the OSS-derived verdict actually moved. A canonical l4_bali that
+    carries no `verdict` key (a later cure layer wrote `verdict_state` instead) has no
+    verdict to compare, so only a flip of the binary block flag counts — otherwise the
+    transform would manufacture a move and clobber the cure's labels (Kimi K3 PR-B H2)."""
+    if new_blocked != old_blocked:
+        return True
+    return "verdict" in old_l4 and verdict != old_l4.get("verdict")
 
 
 def besar_block_verdict(per_skala):
@@ -386,7 +406,7 @@ def main(argv=None):
                                           sorted(new_risks)))
                 # l4 is rewritten only when the OSS-derived verdict moved; the labels the
                 # later cure layers put on an unchanged verdict are theirs, not ours.
-                l4_moved = verdict != old_l4.get("verdict") or new_blocked != old_blocked
+                l4_moved = l4_verdict_moved(old_l4, verdict, old_blocked, new_blocked)
             if l4_moved:
                 l4_rewritten.append(code)
             if args.apply:
