@@ -8,6 +8,7 @@ without either concrete module importing the other.
 
 from __future__ import annotations
 
+import hashlib
 from typing import Protocol
 
 import asyncpg
@@ -25,19 +26,37 @@ from backend.services.garuda_artifacts.models import ArtifactRecord
 MAX_ARTIFACT_BYTES = 10 * 1024 * 1024
 
 
+def key_ref(key: str) -> str:
+    """What logs and port exceptions carry instead of the storage key (O1
+    F4): a short digest, enough to correlate one refusal with one object
+    across a log and a row, not enough to reconstruct the key. On the port
+    so BOTH implementations emit the same shape (K3, second reader)."""
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
+
+
 class ArtifactObjectMissing(RuntimeError):
     """The object named by a `storage_key` does not exist in the store."""
 
 
 class ArtifactDigestMismatch(RuntimeError):
-    """The object's bytes hashed to something other than the expected digest."""
+    """The object's bytes cannot be the row's bytes. Raised for a hash
+    disagreement AND for every length refusal that precedes the hash (K3,
+    second reader): a declared ContentLength above the ceiling or disagreeing
+    with the row, a body longer than the ceiling, a body whose length
+    disagrees with its declaration or with the row. One exception because
+    the consumer's answer is the same on every branch -- refuse to serve,
+    name the key ref, never the bytes -- and because a digest computed over
+    the wrong length can still match an attacker's chosen bytes, so length
+    is part of integrity, not a separate failure."""
 
 
 class ArtifactAlreadyExists(RuntimeError):
     """Raised by EITHER side of the port when a write would land on a key or
     id that is already taken (O2 N2 -- one exception, two raisers, stated):
-    the object store raises it when a conditional put finds an object under
-    the key (write-once, spec SS2); the repository raises it on the
+    the object store raises it when a put finds an object already under the
+    key -- by a HEAD before the write or by the store's conditional-write
+    refusal, whichever answers first (write-once, spec SS2); the repository
+    raises it on the
     `artifact_id` PK or `storage_key` UNIQUE (both astronomically unlikely:
     128 random bits from `journal.new_opaque_id`). NOT raised for "a live
     artifact already exists" (decision #13-revision: always supersede, never
@@ -62,7 +81,17 @@ class ArtifactObjectStorePort(Protocol):
     stated here as a limit rather than implied as a guarantee.
     """
 
-    async def put(self, *, key: str, body: bytes, content_type: str) -> None: ...
+    async def put(self, *, key: str, body: bytes, content_type: str) -> None:
+        """Write the object under `key`, once. Raises `ValueError` if `body`
+        is above `MAX_ARTIFACT_BYTES` (before any upload call -- a caller's
+        bug, not a store condition, hence not a port exception) and
+        `ArtifactAlreadyExists` if the key is taken. Transient wire errors
+        are retried by the adapter; a permanent store error (denied, no such
+        bucket, malformed request) is raised as the SDK raises it -- the
+        port does not launder it into a port exception, because a consumer
+        that maps "the store is broken" to "the artifact is missing" would
+        lie to the customer. The fake has no wire and raises neither."""
+        ...
 
     async def fetch_and_verify(
         self, *, key: str, expected_digest: str, expected_byte_length: int | None = None
@@ -79,7 +108,14 @@ class ArtifactObjectStorePort(Protocol):
         declared size still satisfies this port by bounding its read.
 
         Raises `ArtifactObjectMissing` if the key does not resolve to an
-        object, `ArtifactDigestMismatch` if it does but the hash disagrees.
+        object, `ArtifactDigestMismatch` if it does but its length or hash
+        disagrees (see that exception's docstring for the full list). Two
+        more escape the port on the ADAPTER only, stated so a consumer does
+        not learn the vocabulary from a stack trace (K3): botocore's
+        `IncompleteReadError` when the wire cut the body short on every
+        attempt of the retry budget (a wire fault, retried whole, not a
+        refusal), and a permanent `ClientError` from the store (denied,
+        missing bucket) -- the fake has no wire and raises neither.
         Never returns unverified bytes -- callers (customer/staff serve,
         PR-11's resolve step) all rely on this being the single fetch-then-
         verify primitive (spec SS5: "fetch, verify, then emit... one route
@@ -90,10 +126,9 @@ class ArtifactObjectStorePort(Protocol):
         """Remove ONE object by its exact key. Idempotent: a key that does
         not resolve to an object is a success, not an error -- the desired
         state (nothing retrievable under this key) already holds. Never a
-        prefix, never a batch: one call, one key. Transient wire errors
-        retry as `put`/`fetch_and_verify` do; anything else is raised."""
-        ...
-
+        prefix, never a batch: one call, one key. Transient wire errors are
+        retried by the adapter, as for `put` and `fetch_and_verify`; a
+        permanent store error is raised as the SDK raises it."""
         ...
 
 

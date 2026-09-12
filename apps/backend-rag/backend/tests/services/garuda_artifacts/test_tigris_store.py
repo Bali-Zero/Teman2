@@ -34,6 +34,7 @@ from backend.services.garuda_artifacts.ports import (
     ArtifactAlreadyExists,
     ArtifactDigestMismatch,
     ArtifactObjectMissing,
+    key_ref,
 )
 from backend.services.garuda_artifacts.tigris_store import (
     ACCESS_KEY_ID_ENV,
@@ -972,6 +973,28 @@ class TestDelete:
 class TestFakeParity:
     """O1 F10: the in-memory double refuses what the adapter refuses, in the
     adapter's order, so a service test against the fake proves something."""
+
+    @pytest.mark.asyncio
+    async def test_fake_exceptions_carry_the_key_ref_not_the_key(self) -> None:
+        """K3 (second reader): the fake's messages used to carry the raw key
+        while the adapter's carry sha256(key)[:12]; a service test asserting
+        on a message would have baked in a shape production never emits."""
+        fake = InMemoryArtifactObjectStore()
+        await fake.put(key=_SENTINEL_KEY, body=b"A", content_type="application/pdf")
+        raised: list[BaseException] = []
+        for coro in (
+            fake.put(key=_SENTINEL_KEY, body=b"B", content_type="application/pdf"),
+            fake.fetch_and_verify(key=_SENTINEL_KEY, expected_digest=_digest(b"other")),
+            fake.fetch_and_verify(key="absent-" + _SENTINEL_KEY, expected_digest=_digest(b"A")),
+        ):
+            with pytest.raises(
+                (ArtifactAlreadyExists, ArtifactDigestMismatch, ArtifactObjectMissing)
+            ) as ei:
+                await coro
+            raised.append(ei.value)
+        for exc in raised:
+            assert _SENTINEL_KEY not in str(exc) and _SENTINEL_KEY not in repr(exc.args)
+        assert str(raised[0]) == key_ref(_SENTINEL_KEY) == tigris_store._key_ref(_SENTINEL_KEY)
 
     @pytest.mark.asyncio
     async def test_fake_put_refuses_over_ceiling_and_second_write(self) -> None:

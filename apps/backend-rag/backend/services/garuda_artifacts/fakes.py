@@ -15,6 +15,7 @@ from backend.services.garuda_artifacts.ports import (
     ArtifactAlreadyExists,
     ArtifactDigestMismatch,
     ArtifactObjectMissing,
+    key_ref,
 )
 
 
@@ -25,7 +26,10 @@ class InMemoryArtifactObjectStore:
     and refuses a key that already exists (write-once); fetch compares the
     stored length against the ceiling and against the row's expected length
     BEFORE the digest, then the digest. `corrupt(key)` lets a test simulate
-    a stored object whose bytes no longer hash to its row's digest."""
+    a stored object whose bytes no longer hash to its row's digest. Port
+    exceptions carry `key_ref(key)`, as the adapter's do (K3): a service test
+    asserting on a message meets the same shape production emits, and a
+    realistic key in a fixture never lands in failure output."""
 
     def __init__(self) -> None:
         self._objects: dict[str, bytes] = {}
@@ -37,21 +41,22 @@ class InMemoryArtifactObjectStore:
                 f"artifact body of {len(body)} bytes exceeds MAX_ARTIFACT_BYTES={MAX_ARTIFACT_BYTES}"
             )
         if key in self._objects:
-            raise ArtifactAlreadyExists(key)
+            raise ArtifactAlreadyExists(key_ref(key))
         self._objects[key] = body
 
     async def fetch_and_verify(
         self, *, key: str, expected_digest: str, expected_byte_length: int | None = None
     ) -> bytes:
+        ref = key_ref(key)
         if key not in self._objects:
-            raise ArtifactObjectMissing(key)
+            raise ArtifactObjectMissing(ref)
         body = self._objects[key]
         if len(body) > MAX_ARTIFACT_BYTES:
-            raise ArtifactDigestMismatch(key)
+            raise ArtifactDigestMismatch(ref)
         if expected_byte_length is not None and len(body) != expected_byte_length:
-            raise ArtifactDigestMismatch(key)
+            raise ArtifactDigestMismatch(ref)
         if hashlib.sha256(body).hexdigest() != expected_digest:
-            raise ArtifactDigestMismatch(key)
+            raise ArtifactDigestMismatch(ref)
         return body
 
     def corrupt(self, key: str, *, replacement: bytes = b"%PDF-1.4\ntampered") -> None:

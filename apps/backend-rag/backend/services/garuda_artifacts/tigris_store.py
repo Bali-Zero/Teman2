@@ -67,6 +67,7 @@ from backend.services.garuda_artifacts.ports import (
     ArtifactAlreadyExists,
     ArtifactDigestMismatch,
     ArtifactObjectMissing,
+    key_ref,
 )
 
 logger = logging.getLogger(__name__)
@@ -146,11 +147,9 @@ class GarudaArtifactsStoreUnavailable(RuntimeError):
     credential source."""
 
 
-def _key_ref(key: str) -> str:
-    """What logs and exception messages carry instead of the storage key
-    (O1 F4): a short digest, enough to correlate one refusal with one
-    object across a log and a row, not enough to reconstruct the key."""
-    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
+# What logs and exception messages carry instead of the storage key (O1
+# F4); defined on the port so the fake emits the same shape (K3).
+_key_ref = key_ref
 
 
 def _is_transient(exc: Exception) -> bool:
@@ -411,8 +410,10 @@ class TigrisArtifactObjectStore:
                 # single `read(amt)` may legally return fewer than `amt` bytes
                 # without being at EOF (O2 F6). botocore verifies the declared
                 # length itself when a read returns empty, raising
-                # IncompleteReadError on a truncated body -- mapped below to the
-                # same refusal as every other length disagreement.
+                # IncompleteReadError on a truncated body -- a wire fault, so
+                # it is NOT mapped here: it escapes `_once`, the retry wrapper
+                # restarts the whole GET, and only an exhausted budget lets it
+                # out (O3 N6).
                 # One growing buffer, no per-chunk list (O3 N5): peak memory is
                 # the buffer plus its final immutable copy, about twice the
                 # ceiling, and that figure is the declared bound -- not "the
@@ -471,7 +472,8 @@ class TigrisArtifactObjectStore:
         `None` (no caller exists in this PR) still gets the ceiling, the EOF
         proof and the declared-length agreement; a caller that passes it gets
         the row-agreement check too. Never more than `MAX_ARTIFACT_BYTES + 1`
-        bytes are read, plus one byte to prove EOF."""
+        bytes are read; EOF is proven by an empty read inside that budget,
+        not by an extra byte (O3 N7)."""
         body = await asyncio.to_thread(
             self._get_bytes_sync, key=key, expected_byte_length=expected_byte_length
         )
