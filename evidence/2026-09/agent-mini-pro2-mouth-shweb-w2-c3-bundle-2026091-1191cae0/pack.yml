@@ -56,8 +56,8 @@ frozen_file_touch: # the imperator's condition 2, in the pack as well as the PR 
     The bundler follows the import, not the intent. `initialsOf` is four lines of string handling
     with no data behind it, but it sat in the module that also holds the 170-line roster array, so a
     "use client" page importing only the helper shipped every staff record to the browser.
-  sha256_before: 947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e
-  sha256_after: 1ff1ead1229f784d1d1fe7b644ab1fbda6b5ed8f1debfc9a1154344187326aa1
+  sha256_before: 947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e # pragma: allowlist secret - sha256 of a tracked source file, recomputable
+  sha256_after: 1ff1ead1229f784d1d1fe7b644ab1fbda6b5ed8f1debfc9a1154344187326aa1 # pragma: allowlist secret - sha256 of a tracked source file, recomputable
   no_roster_data_changed: >-
     TEAM_ROSTER is byte-identical to origin/main (169 lines, `diff -q` clean). PUBLIC_ROSTER,
     rosterByDept, rosterBySlug and photoForEmail each hash identical to main's. 20 members, same
