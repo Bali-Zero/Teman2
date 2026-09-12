@@ -1,0 +1,104 @@
+gear: 2
+gear_reason: >-
+  Measured with the inputs CI uses — `scripts/evidence_pack_lint.py --print-floor
+  --changed-files-file <f> --numstat-file <n>` returns 2 (18 files touched, run against this
+  branch's real working-tree diff off `ac05dfc6f4`). Taking the floor without `--numstat-file`
+  under-reports it to 1 — measured in this same session — and that omission has been rejected
+  three times in this mandate (#6240, PR-O2's brief, PR-D3c's brief). No digit is typed: re-run
+  both invocations to check.
+task_id: shweb-w-oracle-d4d-20260913
+mandate_id: SHWEB-20260911/W-ORACLE/PR-D4d
+colour: BLUE
+l_level: L1
+gate_class: opus
+objective: >-
+  seq-21 (PR #6362, prepared and unsigned) gives five products — E33A, E33B, E33C, E23U, E23V —
+  their first SUPPORT/HARD_FILTER rules, all gated on `sponsor.type`. It changes no corpus
+  verdict, not because the question is missing (`work`/`remote`/`study`/`invest`/`retirement`/
+  `family`/`diaspora` already ask it) but because every walk that answers it answers `NONE`
+  (measured: 61/76 KNOWN NONE, 15/76 UNKNOWN NOT_ASKED, zero of anything else). This PR closes
+  the one tile that really is missing the question — `other`'s `other_paid_activity === "yes"`
+  branch, EMPLOYMENT purpose (D3-2), the second reachable path (besides `work`) into
+  E33A/E33B/E23V — and gives the corpus 6 new walks that answer something else: GOVERNMENT/
+  INDIVIDUAL for the five seq-21 products, one honest `unsure`, and a C6 regression walk
+  (coordinator-authorised scope addition) restoring the census entry PR-D4a silently dropped when
+  `other_purpose = "transit"` was repointed to the TRANSIT purpose. `second_home` keeps its
+  omission (Zero's ruling 3 stands) — measured instead of changed: the three `NEEDS_INPUT` E33
+  hard filters in the pack signed TODAY never reach a `second_home` walk at all, because
+  E33A/E33B/E33C's own `covered_purposes` exclude SECOND_HOME.
+scope:
+  - apps/mouth — the visa-oracle interview (`flow.ts`, `tree.ts` comment, `fact-mapper.ts`'s
+    exported `SPONSOR_TYPES`), the walk-corpus generator, and every test file touched
+  - apps/backend-rag/backend/tests/services/visa_engine — the walk corpus fixtures and the census
+    test (`EXPECTED_OUTCOME`, the two named/counted assertions)
+  - this brief
+constraints:
+  - Frontend + corpus only. No rule-pack edit (seq-21 stays Zero's to sign), no
+    `evaluate_path.py`, no `evaluator.py`.
+  - >-
+    `engine-adapter.ts` and `engine-adapter.test.ts` are NOT touched: a sibling PR (D3d) owns
+    them. Verified — `git diff --name-only ac05dfc6f4...HEAD -- '*engine-adapter*'` returns empty.
+  - >-
+    `second_home` does NOT gain `sponsor_category` — Zero's ruling 3 (2026-09-06) stands. The
+    three E33 HARD_FILTERs' actual effect on that tile is MEASURED (engine-level, against the
+    signed pack) and reported as a finding, not resolved.
+  - Every corpus addition goes through `generate-walk-corpus.ts`; no fixture is hand-edited.
+  - No PII in any file added or edited; no real client data in any walk or fixture.
+  - Never touched `VISA_ENGINE_EVALUATE_MODE`; no pack signed or activated.
+acceptance:
+  - text: >-
+      WHEN the visa-oracle frontend suite runs, THEN every test SHALL pass, including the new
+      pack-vocabulary pin and the updated `other`-branch/corpus-count tests this PR adds.
+    status: verified
+    probe: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'"
+    result: "Test Files 39 passed (39) | Tests 740 passed (740)"
+  - text: WHEN the project typechecks, THEN it SHALL succeed.
+    status: verified
+    probe: "cd apps/mouth && npx tsc --noEmit"
+    result: "exit 0, zero errors"
+  - text: WHEN the project lints, THEN it SHALL report zero errors.
+    status: verified
+    probe: "cd apps/mouth && npx eslint ."
+    result: "exit 0 — 147 pre-existing warnings outside this PR's files, 0 errors, 0 in any touched file"
+  - text: >-
+      WHEN the backend walk-census test runs, THEN every one of the 82 walks SHALL match its
+      pinned EXPECTED_OUTCOME and the state census SHALL read 2/15/65.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "17 passed (before this PR's corpus regen: 17 passed at 76 walks, 2/15/59)"
+  - text: >-
+      WHEN the corpus's `sponsor.type` distribution is read directly off disk (the brief's own
+      premise, re-measured rather than trusted), THEN it SHALL show only NONE and NOT_ASKED before
+      this PR's additions — the fact this PR exists to change.
+    status: verified
+    probe: |
+      grep -h -o '"sponsor.type"[^}]*}' apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/*.json \
+        | sed 's/.*"status"//' | sort | uniq -c
+    result: "61 KNOWN NONE, 15 UNKNOWN NOT_ASKED, zero of anything else, on the pre-regen 76-walk corpus"
+  - text: >-
+      WHEN a `second_home` walk with `sponsor.type` UNKNOWN is evaluated against the pack signed
+      TODAY, THEN none of the three `on_unknown: NEEDS_INPUT` E33 hard filters SHALL hold it —
+      the measurement this PR reports instead of resolving.
+    status: verified
+    probe: |
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python - <<'PY'
+      from backend.tests.services.visa_engine.test_interview_walk_census import _engine_decision, _load_walks
+      walks = _load_walks()
+      for label in ["offshore/second_home/bank_deposit", "offshore/second_home/property", "onshore/second_home"]:
+          d = _engine_decision(walks[label]["overrides"], label)
+          print(label, d.state, d.missing_facts, [c.product_code for c in d.candidates])
+      PY
+    result: >-
+      all three: SUPPORTED_CANDIDATES, missing_facts=(), candidates=['E33'] — sponsor.type stays
+      UNKNOWN(NOT_ASKED) throughout, because E33A/E33B/E33C's covered_purposes exclude
+      SECOND_HOME, so they are never candidates in the first place
+pii: none
+self_report:
+  note: >-
+    Reachable products (union of EXPECTED_OUTCOME candidates) move 16 -> 17 on the LIVE pack —
+    only C6 is new; E33A/E33B/E33C/E23U/E23V are NOT among them, because seq-21 is unsigned and
+    inert. Merging this PR does not activate seq-21 or move the funnel census beyond the C6
+    restoration — that distinction, the second_home finding, and the corpus/state triples at both
+    instants are this session's own record; the probes above are reproducible.
