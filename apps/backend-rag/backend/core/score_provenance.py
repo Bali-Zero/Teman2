@@ -62,7 +62,7 @@ DENSE_FORMATTED: Final = "dense_formatted"
 #: `score_raw` and `vector_score` are not interchangeable in general.
 RERANKED: Final = "reranked"
 
-#: The curated-QA block minted at a literal 1.0 by `wa_package_builder.py:529`. Nothing was
+#: The curated-QA block minted at a literal 1.0 by `wa_package_builder.py:537`. Nothing was
 #: retrieved and nothing was scored, so `score_raw` is `None`.
 CURATED_SYNTHETIC: Final = "curated_synthetic"
 
