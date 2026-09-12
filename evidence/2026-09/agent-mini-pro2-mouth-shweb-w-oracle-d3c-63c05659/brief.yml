@@ -1,14 +1,13 @@
-gear: 1
+gear: 2
 gear_reason: >-
-  `git diff --stat` against the base commit touches exactly two files under apps/mouth/.../_lib
-  (engine-adapter.ts, engine-adapter.test.ts — 261 insertions / 39 deletions, net well under the
-  ~400-line PR contract target) plus a two-line probe-path fix in an already-merged evidence
-  brief. No hot-zone path (rule pack, backend evaluator, secrets, deploy config) is touched, no
-  runtime behaviour of the visa engine changes — only tests, one evidence-doc fix, and copy text
-  in engine-adapter.ts. `scripts/evidence_pack_lint.py --print-floor` was NOT run (its `import
-  yaml` fails under this worktree's ambient python3, and this brief follows the D3b brief.yml
-  lineage rather than the pack.yml schema that script validates) — flagged here rather than
-  silently assumed measured.
+  Measured the way CI measures it, with BOTH inputs:
+  `scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <n>`
+  returns 2 and `--print-floor-source` returns `size`. An earlier revision of this brief declared
+  1 after reasoning from the shape of the diff without running the tool — the same mistake that
+  got #6240 rejected in this mandate and that PR-O2's brief repeated. Run both invocations to
+  check; no digit is typed here, because a count written into a file that is itself in the diff is
+  stale the moment it is written. Frontend tests and copy only: no rule pack, no evaluator, no
+  deploy config, no runtime behaviour of the engine.
 task_id: shweb-w-oracle-d3c-20260913
 mandate_id: SHWEB-20260911/W-ORACLE/PR-D3c
 colour: BLUE
