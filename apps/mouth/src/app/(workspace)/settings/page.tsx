@@ -2,54 +2,21 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import {
-  Settings,
-  User,
-  Bell,
-  Shield,
-  Palette,
-  Globe,
-  Key,
-  Building,
-} from "lucide-react";
+import { User, Palette, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const settingsSections = [
   {
     title: "Profile",
-    description: "Manage your personal information",
+    description: "Your account information",
     icon: User,
     href: "/settings/profile",
   },
   {
-    title: "Notifications",
-    description: "Configure notification preferences",
-    icon: Bell,
-    href: "/settings/notifications",
-  },
-  {
-    title: "Security",
-    description: "Password, 2FA and active sessions",
-    icon: Shield,
-    href: "/settings/security",
-  },
-  {
     title: "Appearance",
-    description: "Theme and visual preferences",
+    description: "Light or dark theme",
     icon: Palette,
     href: "/settings/appearance",
-  },
-  {
-    title: "Language & Region",
-    description: "Language, timezone and date format",
-    icon: Globe,
-    href: "/settings/locale",
-  },
-  {
-    title: "API Keys",
-    description: "Manage API keys",
-    icon: Key,
-    href: "/settings/api",
   },
 ];
 
@@ -146,21 +113,14 @@ export default function SettingsPage() {
         <div className="p-4 space-y-3">
           {[
             {
-              label: "User Management",
-              description: "Add, modify or remove users",
-            },
-            {
-              label: "Roles & Permissions",
-              description: "Configure roles and permissions",
-            },
-            {
               label: "Integrations",
-              description: "WhatsApp, Google Drive, other services",
+              description: "Google Drive",
+              href: "/settings/integrations",
             },
-            { label: "Backup & Export", description: "Data backup and export" },
           ].map((item) => (
             <div
               key={item.label}
+              onClick={() => router.push(item.href)}
               className="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors hover:opacity-80"
             >
               <div>
@@ -179,15 +139,7 @@ export default function SettingsPage() {
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (item.label === "User Management") {
-                    router.push("/settings/users");
-                  } else if (item.label === "Roles & Permissions") {
-                    router.push("/settings/roles");
-                  } else if (item.label === "Integrations") {
-                    router.push("/settings/integrations");
-                  } else if (item.label === "Backup & Export") {
-                    router.push("/settings/backup");
-                  }
+                  router.push(item.href);
                 }}
               >
                 Configure
@@ -195,27 +147,6 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Info Box */}
-      <div
-        className="rounded-xl border border-dashed p-8 text-center backdrop-blur-sm"
-        style={{
-          borderColor: "var(--bz-border)",
-          background: "rgba(35,35,40,0.6)",
-        }}
-      >
-        <Settings
-          className="w-12 h-12 mx-auto mb-3 opacity-50"
-          style={{ color: "var(--bz-text-2)" }}
-        />
-        <p
-          className="text-sm max-w-md mx-auto"
-          style={{ color: "var(--bz-text-2)" }}
-        >
-          Complete settings center to manage profile, security, notifications
-          and administrative configurations.
-        </p>
       </div>
     </div>
   );
