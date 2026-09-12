@@ -133,10 +133,14 @@ lanes:
   - lane: "B1.2 adversarial round 1"
     role: review
     seat: "codex gpt-5.6-sol, effort high, read-only (round 1 account 1 Pro, round 2 account 2 Mini)"
-    state: "round 1 BLOCK -> cured; round 2 BLOCK -> cured (G11); round 3 BLOCK -> SUSPENDED (three reds, one cause), ruling requested from the staff room"
+    state: "round 1 BLOCK -> cured; round 2 BLOCK -> cured (G11); round 3 BLOCK -> cured (G12 + G13), suspension REVOKED by imperator ruling I14, no fourth round"
 dissent: []
 appetite_exceeded: >-
-  adversarial rounds: a third round is needed against a declared appetite of 2.
+  adversarial rounds: a third round was needed against a declared appetite of 2 (accepted by
+  the imperator, envelope 20260911T181419Z-650b). The root deadline 2026-09-11T21:59:55Z then
+  EXPIRED with the staff room at its own context guard 18:41Z-01:30Z; B1 was reopened as
+  GENERATION 4 with a new root deadline 2026-09-12T14:00:00Z by ruling I16, same envelope as
+  I14. Rounds stay at three: no fourth Codex round was taken.
   Named cause: round 2 found the round-1 cure of finding 3 incomplete (G7 counts
   `def` nodes, a class-body rebinding escapes it) and the evidence wording still
   carried the old rank claim. Per the fix-of-a-fix rule the surface was written
@@ -184,15 +188,23 @@ adversarial:
     verdict: BLOCK
     record: evidence/2026-09/agent-nuzantara-backend-rag-b1-design-2-c12f4be0/codex-round-3-b1-2.md
     state: >-
-      SUSPENDED — third red for one cause (the guard cannot prove that the
-      callable pytest runs under a protected name is the parsed def: round 1
-      F3 duplicate def, round 2 N1 class-body rebinding, round 3 forged
-      metadata / collection hook). No fourth round, no push (staff-room ack
-      2026-09-11T18:14:19Z). Dispositions below are the Dux's PROPOSAL, pending
-      the staff room's ruling.
+      CURED, and the suspension is REVOKED by imperator ruling I14 (fleet
+      envelope 20260912T013527Z-13d6, 2026-09-12T01:36Z). Third red for one
+      cause (the guard cannot prove the callable pytest runs under a protected
+      name is the parsed def: round 1 F3 duplicate def, round 2 N1 class-body
+      rebinding, round 3 forged metadata / collection hook). NO fourth round —
+      the reviewer does not re-read; the cure is measured by the Dux and the
+      fresh Opus 5 gate re-runs innocence and guilt itself. The dispositions
+      below are MEASURED, replacing the previous window's proposed REJECTs:
+      the tiebreaker rule says "spec it" is only honest once the cheap patch is
+      known not to work, and both cheap patches work. Cure spec:
+      evidence/2026-09/agent-nuzantara-backend-rag-b1-design-2-c12f4be0/B1-2-round-3-cure-spec.md
     dispositions:
       - "R2-N1 NOT CURED (reviewer): G11 catches alias, lambda, decorator, functools.wraps, ordinary metaclass; NOT a function compiled via exec() under the original co_filename with padded co_firstlineno and a copied __qualname__, nor a pytest_collection_modifyitems hook replacing item._obj"
       - "R2-N2 CURED (reviewer)"
-      - "R3-1 BLOCKER forged-metadata clone: proposed REJECT as outside the guard's threat model — the bypass needs deliberately written exec/compile with line padding in a test file; no in-process check proves identity against arbitrary code in the same interpreter (the reviewer's own fix 'capture the binding during definition' is again in-process); deliberate sabotage is the review and gate boundary, accidental weakening is what G1-G11 pin"
-      - "R3-2 BLOCKER collection hook replacing item._obj: proposed REJECT on the same ground (a conftest hook is code in the same process, visible in review as a new conftest/plugin file)"
-      - "R3-3 MINOR docstring says pure/static while G11 imports four test modules; module identity via dotted name: proposed AGREE, cure = docstring + module.__file__ vs parsed path — NOT applied while suspended"
+      - "R3-1 BLOCKER forged-metadata clone: AGREE and CURED by G12. MEASURED FIRST (M1): G11's eight assertions all go GREEN on an exec-compiled clone carrying the original co_filename, a padded co_firstlineno and a copied __qualname__, and the clone is what runs — so the finding is real, not hypothetical, and the earlier window's REJECT was an argument where a measurement was available. G12 compares a STRUCTURAL DIGEST of the runtime code object (opcodes, flat consts, co_names, co_varnames, signature, co_flags, nested code digests) against the guard's own pytest-style compile of the parsed def; co_filename/co_firstlineno are excluded on purpose because they are the forged fields and G11 pins them already. Guilt A: 1 failed, G12 on the right node id, G11 GREEN — which is what proves G12 is load-bearing and not redundant."
+      - "R3-2 BLOCKER collection hook replacing item._obj: AGREE and CURED by G13. MEASURED FIRST (M3): with a pytest_collection_modifyitems hook in a throwaway project, G11 stays green and the protected body never runs. G13 binds on two legs — leg A compares the collected pytest.Function item's callable by IDENTITY against the class-body def for every protected name present in the session (absent names are printed, never silently skipped), leg B censuses the collection hooks defined in the conftest chain applying to the four tripwire files against an expected literal set (empty today) and therefore binds in EVERY session, including the guard-alone run where leg A has nothing to compare. Guilt B: guard alone 1 failed (leg B); guard + tripwire file 2 failed (leg B and leg A)."
+      - "R3-3 MINOR docstring says pure/static while G11 imports four test modules; module identity via dotted name: AGREE, APPLIED. The docstring now discloses that G11-G13 import the four tripwire modules and execute their top-level code, and G12 asserts module.__file__ resolves to the parsed path plus obj.__globals__ is module.__dict__."
+      - "STANDING, not cured, named as the boundary it is (imperator I14): G12/G13 raise the cost of a DELIBERATE in-process substitution, they do not make it impossible, and no in-process check can. Accidental weakening is what G1-G13 pin; deliberate sabotage is the review and gate boundary."
+      - "TWO TRADES CAUGHT AND UNDONE while measuring the cure, recorded because each would have shipped a guard that convicts an honest tree: (1) co_flags diverged on 8 of 18 names on bit 1<<24 (CO_FUTURE_ANNOTATIONS) because the tripwire files carry `from __future__ import annotations` and an isolated compile does not inherit it — cured by compiling the whole module, so co_flags stays IN the digest instead of being dropped to make the comparison pass; (2) pytest REWRITES asserts at import time, so a plain compile of the parsed def disagrees with the runtime code object on ALL 18 names — measured as 9 red G12 cases on the real tree, cured by reproducing _pytest.assertion.rewrite.rewrite_asserts before compiling. Only running the first draft on the real tree said so."
+      - "PROOF HYGIENE: no guilt proof touched a tracked file. The two bypasses were planted in a `git archive HEAD` copy under the session scratchpad (baseline on the copy reproduced 97 passed before planting), and M1/M3 used synthetic modules — so the lane rule the pack already carries was honoured without needing cp-and-restore at all."

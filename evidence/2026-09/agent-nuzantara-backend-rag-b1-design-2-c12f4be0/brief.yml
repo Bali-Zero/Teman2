@@ -22,7 +22,16 @@ appetite:
   wall_clock_hours: 5
   adversarial_rounds: 2
   tokens: 1500000
-deadline_utc: "2026-09-11T21:59:55Z"
+deadline_utc: "2026-09-12T14:00:00Z"
+generation: 4
+generation_authority: >-
+  B1 REOPENED as generation 4 (a new root mandate, not a renewal) by imperator ruling I16,
+  fleet envelope 20260912T013527Z-13d6, 2026-09-12T01:36Z. The generation-3 root deadline
+  2026-09-11T21:59:55Z expired while the imperator window sat at its own context guard
+  (18:41Z-01:30Z, the staff room's delay, acknowledged as such). Hops ceiling 3, ship reserve
+  zero, one renewal on request with a checkpoint. Dux of g4 = the live session in worktree
+  backend-rag-b1-design-2 (402a5404); session 9f704c30 is RETIRED.
+generation_3_deadline_utc: "2026-09-11T21:59:55Z"
 constraints:
   - >-
     Tests only. Writable: tests/fixtures/pipeline_score_fixtures.py (new),
@@ -80,7 +89,13 @@ team:
       role: "Dux + release owner",
       host: Pro,
       sessions:
-        [e14f8ad7-c934-4182-a460-af27cea37b18, "continuation (salto 1)"],
+        [
+          e14f8ad7-c934-4182-a460-af27cea37b18,
+          9f704c30 (g3,
+          retired by I16),
+          402a5404-ff34-4fbc-bf91-c14565a9938c (g4 Dux,
+          Pro),
+        ],
     }
   implementer_registry_guard:
     {
@@ -127,7 +142,13 @@ team:
       model: gpt-5.6-sol,
       effort: high,
       sandbox: read-only,
-      note: "default gpt-6-astra returns HTTP 400 on codex-cli 0.149.0 (CLI pinned by the WA daemon); explicit -m gpt-5.6-sol answers",
+      rounds:
+        [
+          { round: 1, account: 1, host: Pro, effort: high, verdict: BLOCK },
+          { round: 2, account: 2, host: Mini, effort: high, verdict: BLOCK },
+          { round: 3, account: 2, host: Mini, effort: high, verdict: BLOCK },
+        ],
+      note: "default gpt-6-astra returns HTTP 400 on codex-cli 0.149.0 (CLI pinned by the WA daemon); explicit -m gpt-5.6-sol answers. Account 1 ran out of credits 17:56Z, hence the host/account change from round 2 on (recorded per round as the imperator required). NO fourth round: three reds on one cause, ruling I14.",
     }
   final_gate: "fresh Opus 5 session commissioned by the staff room (Fable imperator, M5, 7c40d5cf)"
 sibling_outputs:
