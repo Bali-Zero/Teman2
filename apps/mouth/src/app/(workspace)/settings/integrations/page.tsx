@@ -31,10 +31,18 @@ const GOOGLE_BLUE = "#4285F4"; // token-lint-ok: third-party brand identity colo
 // were constants flipped in local state, so they are gone. Disconnect is
 // deliberately NOT offered: the backend route revokes the Google token and
 // deletes the grant, irreversibly, and this page has no confirmation flow.
+//
+// `connected` above is a stored-token check, not a live one — is_connected()
+// on the backend never re-asks Google, so a grant revoked on Google's side
+// still reads "Connected" here. Reconnect reruns the same OAuth flow as
+// Connect and is always offered once configured, so there is a way back
+// without a Disconnect button.
 export default function IntegrationsPage() {
   const router = useRouter();
   const [status, setStatus] = useState<DriveStatus>("checking");
+  const [configured, setConfigured] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const check = async () => {
@@ -43,6 +51,7 @@ export default function IntegrationsPage() {
           "/api/integrations/google-drive/status",
         );
         setStatus(s.connected ? "connected" : "disconnected");
+        setConfigured(s.configured);
       } catch (error) {
         logger.error("Failed to check Google Drive status", {}, error as Error);
         setStatus("error");
@@ -63,12 +72,16 @@ export default function IntegrationsPage() {
 
   const connect = async () => {
     setBusy(true);
+    setAuthError(null);
     try {
       const { auth_url } = await api.drive.getAuthUrl();
       window.location.href = auth_url;
     } catch (error) {
       logger.error("Failed to get auth URL", {}, error as Error);
       setBusy(false);
+      setAuthError(
+        "Could not start the Google Drive connection. Please try again in a moment.",
+      );
     }
   };
 
@@ -137,28 +150,40 @@ export default function IntegrationsPage() {
               </p>
             </div>
           </div>
-          {status === "connected" ? (
-            <p className="text-xs text-[var(--foreground-muted)] text-right max-w-[220px]">
-              Connected via your Google account. Revoke access from your Google
-              account permissions page.
-            </p>
-          ) : (
+          <div className="flex flex-col items-end gap-1">
             <Button
               size="sm"
+              variant={status === "connected" ? "outline" : "default"}
               onClick={connect}
-              disabled={busy || status === "checking"}
+              disabled={busy || status === "checking" || !configured}
             >
               {busy ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Redirecting…
                 </>
+              ) : status === "connected" ? (
+                "Reconnect"
               ) : (
                 "Connect"
               )}
             </Button>
-          )}
+            {status === "connected" && configured && (
+              <p className="text-xs text-[var(--foreground-muted)] text-right max-w-[220px]">
+                Use this if Drive access stopped working
+              </p>
+            )}
+          </div>
         </div>
+        {!configured && (
+          <p className="mt-3 text-xs text-[var(--state-danger)]">
+            Google Drive OAuth is not configured on the server — ask the
+            administrator.
+          </p>
+        )}
+        {authError && (
+          <p className="mt-3 text-xs text-[var(--state-danger)]">{authError}</p>
+        )}
       </div>
     </div>
   );
