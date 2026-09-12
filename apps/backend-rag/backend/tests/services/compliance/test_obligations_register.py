@@ -329,11 +329,13 @@ def test_due_on_a_weekend_skips_the_monday_holiday_too(catalog):
     ]
 
 
-def test_a_catalog_roll_none_rule_ignores_the_holiday_block_after_it(catalog):
-    # BPJS Ketenagakerjaan for 2026-07 is due Sat 15 Aug with roll: none. The next business day is
-    # Tue 18 Aug (Sun 16, then Independence Day on Mon 17), and none of that reaches this rule.
+def test_a_catalog_next_business_day_rule_absorbs_the_holiday_block_after_it(catalog):
+    # BPJS Ketenagakerjaan for 2026-07 is due Sat 15 Aug. #6336 (M4 source sweep) confirmed PP
+    # 44/2015 art. 21(3) and PP 46/2015 art. 19(3) both move a 15th falling on a hari libur to the
+    # next hari kerja, so this rule is roll: next_business_day, not roll: none as it read before
+    # that sweep. The next business day is Tue 18 Aug (Sun 16, then Independence Day on Mon 17).
     assert due_dates(catalog["bpjs_ketenagakerjaan_monthly"], PMA, date(2026, 8, 1), 30) == [
-        ("2026-07", date(2026, 8, 15))
+        ("2026-07", date(2026, 8, 18))
     ]
 
 
@@ -369,12 +371,14 @@ def test_the_holiday_gap_reason_appends_to_the_rules_own_reason(catalog):
     )
 
 
-def test_a_roll_none_rule_is_not_flagged_for_an_undecreed_year(catalog):
-    # Nothing about an unknown holiday table can change a date that never moves.
+def test_a_next_business_day_rule_is_flagged_for_an_undecreed_year(catalog):
+    # bpjs_kesehatan_monthly is roll: next_business_day (#6336, M4 source sweep: Perpres 82/2018
+    # art. 39(4)). Sun 2027-01-10 rolls on the weekend alone to Mon 11 Jan, since 2027 has no
+    # decreed holiday table yet, and the proposal says so instead of presenting it as settled.
     rule = catalog["bpjs_kesehatan_monthly"]
     [proposed] = propose([rule], PMA, date(2027, 1, 1), 15)
-    assert proposed.due_date == date(2027, 1, 10)
-    assert proposed.needs_review_reason == rule.needs_review_reason
+    assert proposed.due_date == date(2027, 1, 11)
+    assert proposed.needs_review_reason == "holiday calendar for 2027 not loaded"
 
 
 def test_one_time_and_event_rules_produce_nothing(catalog):
