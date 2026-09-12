@@ -78,11 +78,11 @@
     },
     {
       "path": "/Users/nuzantara/Desktop/w-oracle-launch-20260911/02-DECISIONI-ZERO.md",
-      "sha256_source": "41cd82f3b1c614fbac36a74447cc227ed6ec669a4b23ce72c8c9d35bd6b05d55",
+      "sha256_source": "f99a5dab360fc0379c2911fc0164b33f6e0536f849c5df62e2e67a4166e4e2de",
       "sha256_at_session_start": "5e9f325cb435136f699bf3809aa917b0aa11538379bcf1afb9b6166968ab8229",
       "repo_path": null,
       "sha256_repo": null,
-      "note": "changed 19:15 WITA: an imperator technical exception for W1-SH-TECH was appended; D1-D6 and M unchanged, re-read by the orchestrator"
+      "note": "re-pinned 2026-09-12 WITA to the bytes read at that moment (shasum -a 256). This source is appended to, never frozen: since 5e9f325c it has gained the W1-SH-TECH technical exception (19:15 WITA 2026-09-11), Zero's 2026-09-12 autonomy ruling and this PR's own technical exception. The D1-D6 and M rows were re-read at this pin and carry the same answers as at the freeze."
     }
   ],
   "active_pack": {

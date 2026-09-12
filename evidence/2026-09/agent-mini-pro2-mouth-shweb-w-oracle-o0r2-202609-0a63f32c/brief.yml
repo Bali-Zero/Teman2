@@ -119,19 +119,23 @@ acceptance:
   - text: >-
       WHEN the full diff against origin/main is scanned for PII shapes
       (emails, +62 phone numbers, KTP/NPWP/passport-like tokens), THEN the
-      probe SHALL exit 0 on exactly one outcome — the scanner ran and
-      matched nothing (rc 1). Every other outcome fails closed: a match
-      (rc 0) exits 1, a scanner error (rc 2 — a bad pattern, an unreadable
-      input) exits 2, and a failing `git diff` exits 2. The earlier
-      `!`-inverted form turned a scanner error into a pass; this one cannot.
+      probe SHALL exit 0 on exactly one outcome — the WHOLE diff reached the
+      scanner and it matched nothing. Every other outcome fails closed: a
+      match exits 1, a scanner error (rc 2 — a bad pattern, an unreadable
+      input) exits 2, a `git diff` that fails exits 2, and a diff that never
+      fully reached the scanner exits 2 as well. Both halves of the pipeline
+      are read from PIPESTATUS before anything else can overwrite it, since
+      `rc=$?` would itself reset it. The earlier `!`-inverted form turned a
+      scanner error into a pass; this one cannot.
     status: verified
     probe: |
       d="$(git diff origin/main...HEAD)" || exit 2
       printf '%s\n' "$d" | grep -inE '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|\+62[0-9]{8,13}|\b[0-9]{16}\b|\b[a-zA-Z][0-9]{7}\b'
-      rc=$?
+      st=("${PIPESTATUS[@]}"); pf=${st[0]}; rc=${st[1]}
       case "$rc" in
         0) echo "FAIL: PII-shaped match in the diff"; exit 1 ;;
-        1) echo "OK: scanner ran and matched nothing"; exit 0 ;;
+        1) if [ "$pf" = 0 ]; then echo "OK: the whole diff reached the scanner and it matched nothing"; exit 0
+           else echo "FAIL: the diff never fully reached the scanner (printf exited $pf)"; exit 2; fi ;;
         *) echo "FAIL: scanner exited $rc (error, not a clean diff)"; exit 2 ;;
       esac
   - text: >-
@@ -141,9 +145,10 @@ acceptance:
     probe: "python3 scripts/check_adversarial_review.py --files research/visa/2026-09-11-oracle-final-window-spec.md research/visa/2026-09-11-review-reason-audit/README.md"
 pii: none
 adversarial_review_provenance: >-
-  every round below is this session's record of a run whose transcript is
-  outside this repository; it is provenance, not evidence. What a reader can
-  verify from the commits is the CHANGE each round produced — `git log
+  every round below is this session's record of a run for which this
+  repository holds no transcript; it is provenance, not evidence, and the
+  pack contract requires it to be recorded as such. What a reader can verify
+  from the commits is the CHANGE each round produced — `git log
   4cc1b03edc..HEAD` for rounds 1 and 4-6, and the README's appended
   "## Adversarial review" section for round 3.
 adversarial_review:
@@ -171,11 +176,11 @@ adversarial_review:
     verdict: PASS-WITH-FINDINGS
     findings: []
     findings_note: >-
-      the round's findings are not reproduced here: their text lives only in
-      the seat transcript, which is outside this repository, so nothing in
-      the commits evidences it. What the commits do show is that no change
-      to the reviewed skill files followed this round — `git diff
-      82d08445b3 3b2f5e09e9 -- .agents/skills/visaoracle` is empty.
+      the round's findings are not reproduced here: this repository holds no
+      record of their text, so nothing in it could evidence them. What the
+      commits do show is that no change to the reviewed skill files followed
+      this round — `git diff 82d08445b3 3b2f5e09e9 --
+      .agents/skills/visaoracle` is empty.
   - round: 3
     refuter: kimi
     model: "kimi-k3 (kimi -r session_dbb009de-85fd-4d72-952c-7d21df829beb)"
@@ -266,8 +271,11 @@ adversarial_review:
           rewrite: the #6240 CI-red count (brief objective, pack plan_ref),
           the council and seat attributions (pack seat_override, build-lane
           seat, receipt seats) and round 2's finding text. Every statement
-          left either re-runs as a command in `receipts:` or is visible in
-          the commits.
+          left is either a command in `receipts:` that re-runs, a change
+          visible in the commits, or one of the self-reported fields the
+          pack contract requires — `lanes`, `dissent` and the round records
+          — which `adversarial_review_provenance` marks as provenance and
+          not as evidence.
   - round: 7
     refuter: opus
     model: "claude-opus-5 (fresh session, final on-disk gate)"
