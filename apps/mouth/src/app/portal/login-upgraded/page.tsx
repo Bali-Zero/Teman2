@@ -44,12 +44,11 @@ const R19_STYLES = `
 .r19-hero{background:var(--r19-forest);color:var(--r19-paper);display:flex;flex-direction:column;justify-content:space-between;gap:32px;padding:40px 48px}
 .r19-brand{display:flex;align-items:center;gap:10px}
 .r19-brand-text{display:flex;flex-direction:column}
-.r19-brand-name{font-size:17px;line-height:1;font-weight:500;letter-spacing:-0.01em}
-.r19-brand-role{margin-top:5px;color:rgba(247,244,238,0.6)}
+.r19-brand-role{color:rgba(247,244,238,0.72)}
 .r19-hero-rule{width:56px;height:3px;border-radius:2px;background:var(--r19-copper);margin-bottom:22px}
 .r19-hero h2{margin:0;font-size:clamp(40px,4vw,56px);line-height:1.04}
 .r19-hero-lede{margin:20px 0 0;max-width:34ch;font-size:15px;color:rgba(247,244,238,0.78)}
-.r19-hero-foot{display:flex;justify-content:space-between;gap:16px;color:rgba(247,244,238,0.55)}
+.r19-hero-foot{display:flex;justify-content:space-between;gap:16px;color:rgba(247,244,238,0.72)}
 
 .r19-form{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:48px 32px}
 .r19-box{width:100%;max-width:400px}
@@ -74,6 +73,7 @@ const R19_STYLES = `
 .r19-alt-sep{border-top:1px solid var(--r19-line);margin:6px 0}
 .r19-quiet{color:var(--r19-muted)}
 .r19-formfoot{margin-top:40px;display:flex;gap:16px;font-size:12px;color:var(--r19-muted);font-variant-numeric:tabular-nums}
+.r19-formfoot a{display:inline-flex;align-items:center;min-height:24px}
 .r19-formfoot a:hover{text-decoration:underline}
 
 .r19-overlay{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;background:color-mix(in srgb, var(--r19-paper) 92%, transparent);backdrop-filter:blur(8px)}
@@ -340,9 +340,8 @@ function UpgradedLoginPageInner() {
       {/* The one forest surface of the portal. No personal data before auth. */}
       <aside className="r19-hero" aria-label="Bali Zero">
         <span className="r19-brand">
-          <BZLogo variant="mark" size={28} priority />
+          <BZLogo variant="full" size={36} priority />
           <span className="r19-brand-text">
-            <span className="r19-brand-name r19-serif">Bali Zero</span>
             <span className="r19-brand-role r19-eyebrow">Client portal</span>
           </span>
         </span>

@@ -60,7 +60,8 @@ describe("UpgradedLoginPage (R19 concept F sign-in)", () => {
 
     const hero = container.querySelector(".r19-hero");
     expect(hero).not.toBeNull();
-    expect(hero?.textContent).toContain("Bali Zero");
+    // The logo asset carries the wordmark; the hero does not repeat it in text.
+    expect(hero?.textContent).not.toContain("Bali Zero");
     expect(hero?.textContent).toContain("Client portal");
     expect(hero?.querySelector("h2")?.textContent).toBe(
       "Your Bali file,kept in order.",

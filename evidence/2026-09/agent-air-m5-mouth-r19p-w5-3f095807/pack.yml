@@ -1,12 +1,45 @@
-gear: 2
+gear: 3
 brief_ref: evidence/2026-09/agent-air-m5-mouth-r19p-w5-3f095807/brief.yml
 ruling: RULED 2026-09-12 SAETTA
 lanes:
   - lane: R19P-W5
     role: build
     seat: Claude Opus 5 (Dux of window W5, implements directly)
+  - lane: R19P-W5-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (OpenAI, codex exec --sandbox read-only, independent correctness review of the merge-base diff)
+  - lane: R19P-W5-council-kimi
+    role: review
+    seat: kimi-code/k3 (Moonshot, kimi -p, independent correctness review of the merge-base diff)
+council_run: council/journal.jsonl
 pii_scan: clean
 decisions:
+  - id: D-gear
+    decision: >-
+      Gear raised 2 -> 3 to match the deterministic floor computed by
+      evidence_pack_lint.py compute_floor(): SIZE term, churn 1997 >= 1828 on the
+      merge-base diff (the night-scene teardown in page.tsx), not a hot-zone path.
+      A two-seat council (Codex GPT-5.6-sol, Kimi K3) was then run for real on the
+      diff; its raw stdout is filed under council/ and its journal is council_run.
+  - id: D-e2e
+    decision: >-
+      Second council round (Kimi K3, VERDICT DEFECT): e2e/portal-prodlike-smoke.spec.ts
+      located the email-step submit by its old label "Pass the Portal" (lines 144, 189,
+      366), which this window renamed to "Continue"; the three locators now use
+      "Continue". The step-2 button keeps its aria-label "Verify Identity", so those
+      locators were already correct. The prodlike suite is a direct consumer of the
+      label and is edited in the same PR although outside the brief's file list —
+      recorded as a CONFIRMED dissent, not hidden.
+  - id: D-logo
+    decision: >-
+      The first council round (both seats, VERDICT DEFECT) found the hero used
+      BZLogo variant "mark", which resolves to the red asset balizero-3-red.png,
+      against this pack's own D6 and the brief's no-red rule, and Zero's 2026-09-13
+      03:15 order (the full logo, no serif wordmark beside it). Fixed at depth 1:
+      variant "full" at 36px, the serif "Bali Zero" text removed (the asset carries
+      the wordmark), the hero footer and brand-role alpha raised 0.55/0.6 -> 0.72
+      (>= 4.5:1 on forest), footer links given a 24px minimum target. Tests, eslint,
+      prettier re-run; the council re-run on the corrected diff.
   - id: D1
     decision: >-
       The palette lives as page-local custom properties (--r19-*) on .r19-gate, each
