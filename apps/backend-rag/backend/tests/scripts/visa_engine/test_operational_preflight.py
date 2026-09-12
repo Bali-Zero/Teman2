@@ -38,6 +38,11 @@ CANONICAL_SENSITIVE_FUNCTIONS = {
     # that kept magic-link issuance answering 500 with zero tokens ever minted.
     "public.bind_garuda_voa_check_retention_policy()",
     "public.bind_garuda_magic_link_token_retention_policy()",
+    # Added 2026-09-12 with migration 313. Deliberate update, per the note at
+    # the top: this authority is independent of the module's list on purpose,
+    # so a new SECURITY DEFINER binder has to be typed twice or the parity
+    # assertion below names it.
+    "public.bind_garuda_practice_artifact_retention_policy()",
 }
 CANONICAL_SENSITIVE_TABLES = {
     "visa_rule_packs",
