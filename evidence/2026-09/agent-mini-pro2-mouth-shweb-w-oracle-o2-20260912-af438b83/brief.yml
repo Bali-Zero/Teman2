@@ -1,16 +1,19 @@
 task_id: shweb-w-oracle-o2-review-reason-copy
-gear: 1
-ts: 2026-09-12T20:58:49+08:00
+gear: 2
+ts: 2026-09-12T21:20:00+08:00
 gear_reason: >-
-  Computed, not chosen: `git diff --name-only 9233a860d6..HEAD > /tmp/o2-changed.txt &&
-  /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py
-  --changed-files-file /tmp/o2-changed.txt --print-floor` returns 1 (re-runnable; the script is
-  not directly executable on this checkout — verified by first trying it bare and getting
-  "Permission denied", then invoking it through the venv interpreter). Only two files touched,
-  both under apps/mouth/src/app/(visa-oracle)/ — not a HOTZONE_PATTERNS path — and the diff (268
-  insertions / 67 deletions per `git diff --numstat 9233a860d6..HEAD`, this commit's own
-  numstat, not a figure re-typed here as a fact) stays under every size threshold. The same
-  invocation with `--print-floor-source` returns "none".
+  Computed with the SAME inputs CI uses, which is where the first measurement went wrong: the
+  floor was taken with `--changed-files-file` only and returned 1 / source `none`. CI's harness
+  step passes `--numstat-file` as well, and with it
+  `scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <n>`
+  returns 2, source `size` — the diff crosses SIZE_GEAR2_THRESHOLD (400). Declaring 1 against a
+  floor of 2 is exactly why #6240 was rejected; declared 2 here. Re-run both invocations to
+  check. Only frontend files touched, both under apps/mouth/src/app/(visa-oracle)/ — not a
+  HOTZONE_PATTERNS path — plus this brief.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-o2-20260912-af438b83/brief.yml
 l_level: L2
 gate_class: opus
 objective: >-
