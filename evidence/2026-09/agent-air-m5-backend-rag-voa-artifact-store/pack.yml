@@ -28,8 +28,8 @@ lanes:
       the pinned spec §2-§3, boto3's conditional-write and StreamingBody
       semantics read from the installed source. BUILD: reapplied the four
       files onto fresh main (never a branch merge), then every cure listed
-      under `dissent` -- six commits on the branch, each cure round its own,
-      each naming its findings. No Sonnet builder seat in W3A (Imperator ruling after two
+      under `dissent` -- each cure round its own commit, each naming its
+      findings (the count is git's, not this note's: every CI cure adds one). No Sonnet builder seat in W3A (Imperator ruling after two
       hung Sonnet agents in S1). Authored this pack.
   - lane: adversarial-refuter
     role: review
