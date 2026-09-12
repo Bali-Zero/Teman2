@@ -25,7 +25,7 @@ constraints:
   - >-
     Content parity with the ratified source is a PROPERTY of this PR: `diff -w` between
     `~/BATTAGLIA-20260911/1-GARUDA-VOA/spec/2026-09-12-SPEC-v2-postgres-document-store.md`
-    (sha256 f7f3329aff5c7a448581cce989501e95b436cdcf6d445eb699b7a214ced2bf5d) and the committed
+    (sha256 in `measurements.ratified_source_sha256` below) and the committed
     file shows ONLY prettier's rewrites (`*emphasis*` -> `_emphasis_`, table/whitespace) plus
     the §12 Errata section. Verified by gate-6316 (PASS on content, 13:17Z); the gate's BLOCK was
     this pack's absence, cured here.
@@ -41,8 +41,8 @@ limits:
     The Bites consumer (PR2a-v2's brief) is not observable until PR2a-v2 is pushed; decision
     #36 step 3 makes it so, and PR2a-v2's body carries the observation.
 measurements:
-  committed_file_sha256: ce2dfb20842b39cbd9dfb1b6fd4cbcb8d640c7bac478d059980688845e97347d
-  ratified_source_sha256: f7f3329aff5c7a448581cce989501e95b436cdcf6d445eb699b7a214ced2bf5d
+  committed_file_sha256: ce2dfb20842b39cbd9dfb1b6fd4cbcb8d640c7bac478d059980688845e97347d # pragma: allowlist secret
+  ratified_source_sha256: f7f3329aff5c7a448581cce989501e95b436cdcf6d445eb699b7a214ced2bf5d # pragma: allowlist secret
   lines: "458 (443 source + 15 Errata)"
 refuter:
   seat: none -- docs-only, one file, content parity is the whole property and gate-6316 measured it
