@@ -3,21 +3,22 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * WS2 kita slice 5 — partners & team-management drain guard.
+ * WS2 kita slice 5 — partners drain guard.
  *
- * Pins the token drain of the five surfaces (team-management, partners list,
- * partner detail, partner new, partner edit): no raw hex colors, no raw
- * status-rgba tuples, no Tailwind status/neutral palette utilities in the
- * touched files. Any future documented one-off survives ONLY on a line
- * carrying a `// token-lint-ok: <reason>` marker, mirroring
- * scripts/token_lint.py.
+ * Pins the token drain of the four partners surfaces (partners list, partner
+ * detail, partner new, partner edit): no raw hex colors, no raw status-rgba
+ * tuples, no Tailwind status/neutral palette utilities in the touched files.
+ * Any future documented one-off survives ONLY on a line carrying a
+ * `// token-lint-ok: <reason>` marker, mirroring scripts/token_lint.py.
+ *
+ * team-management's coverage was removed with the page itself (kita pruning
+ * lot 4a, 2026-09-12): the surface was a dead duplicate of /admin and
+ * /clients/analytics with hardcoded KPIs, never linked from anywhere.
  */
 
 const PARTNERS_DIR = join(__dirname, "..");
-const WORKSPACE_DIR = join(PARTNERS_DIR, "..");
 
 const TOUCHED: Record<string, string> = {
-  teamManagement: join(WORKSPACE_DIR, "team-management", "page.tsx"),
   partnersList: join(PARTNERS_DIR, "page.tsx"),
   partnerDetail: join(PARTNERS_DIR, "[id]", "page.tsx"),
   partnerNew: join(PARTNERS_DIR, "new", "page.tsx"),
@@ -71,7 +72,7 @@ function codeLines(path: string): string[] {
     });
 }
 
-describe("partners & team-management drain guard (WS2 slice 5)", () => {
+describe("partners drain guard (WS2 slice 5)", () => {
   for (const [name, path] of Object.entries(TOUCHED)) {
     it(`${name} carries no unmarked raw hex colors`, () => {
       for (const line of codeLines(path)) {
@@ -132,22 +133,5 @@ describe("partners & team-management drain guard (WS2 slice 5)", () => {
       );
       expect(src, `${key} renders Money`).toContain("<Money");
     }
-  });
-
-  it("team-management reads state + accent tokens, not legacy aliases", () => {
-    const src = readFileSync(TOUCHED.teamManagement, "utf8");
-    for (const token of [
-      "var(--state-success)",
-      "var(--state-info)",
-      "var(--state-warning)",
-      "var(--bz-neon-purple)",
-      "var(--bz-accent)",
-      "var(--bz-border)",
-    ]) {
-      expect(src).toContain(token);
-    }
-    // legacy kita aliases drained
-    expect(src).not.toContain("var(--success)");
-    expect(src).not.toContain("var(--foreground)");
   });
 });

@@ -419,16 +419,6 @@ describe("Middleware - Multi-domain Routing", () => {
       );
     });
 
-    it("should allow /team-management on app domain", () => {
-      const request = createRequest(
-        "https://kita.balizero.com/team-management",
-      );
-      const response = proxy(request);
-
-      expect(response.status).not.toBe(307);
-      expect(response.headers.get("x-pathname")).toBe("/team-management");
-    });
-
     it("should allow internal app routes", () => {
       const request = createRequest("https://kita.balizero.com/dashboard");
       const response = proxy(request);

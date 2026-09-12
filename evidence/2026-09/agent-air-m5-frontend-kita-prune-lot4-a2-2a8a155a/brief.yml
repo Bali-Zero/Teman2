@@ -1,0 +1,83 @@
+task_id: kita-prune-lot4a-2
+gear: 2
+l_level: L1
+gate_class: opus
+base_sha: 5f8b56361fd2f7d57ecc549e6f2dfa9188e94b6f # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 15 insertions / 1554 deletions across 17 files
+# (all under apps/mouth). No hot-zone path, no PII path, no ground-truth path touched. Gear 2
+# declared to match the floor.
+objective: >-
+  Lot 4a-2 of the kita.balizero.com surface-pruning effort (audit shared with the owner on
+  2026-09-12, section B, plan items 17 and 18): delete /team-management, /team/analytics and
+  /revenue/analytics. Split out of a combined lot-4a scope (which also covered /whatsapp,
+  /inbox, /intelligence/system-pulse — now lot 4a-1, a separate PR) because the combined diff's
+  churn (2817) floored the harness gate at Gear 3; this half alone is 1569. Deletions and
+  reference cleanup only.
+constraints:
+  - >-
+    Deletions and reference cleanup only, one commit. No new feature, no redesign, no backend
+    change. Off-limits files (zantara_core.py, fly.toml, .env*, apps/backend-rag/**) untouched.
+  - >-
+    /team-management and /team/analytics: duplicates of /admin and /clients/analytics per the
+    audit, with literal/hardcoded KPIs (userCount 23, "0h" Hours Today, department grid with
+    fixed counts) and zero inbound links besides each other ("Calendar" button on
+    /team-management pushed to /team/analytics, the only referrer of either). Deleting both
+    together avoids leaving a dangling router.push target.
+  - >-
+    /revenue/analytics: duplicate of /clients/analytics Revenue + Cases by Type per the audit
+    (same two backend endpoints), with a no-op time-range select and an unimplemented "Export
+    Report" button, zero inbound links.
+  - >-
+    Every deleted route's inbound references were grep-verified empty afterward across
+    apps/mouth/src, apps/mouth/e2e, apps/mouth/scripts, apps/mouth/next.config.ts (quoted
+    '/team-management'/'/team/analytics'/'/revenue/analytics' forms). The two token-drain guard
+    tests that pinned team-management's and team/analytics's page.tsx (partners/__tests__ and
+    (workspace)/__tests__) were trimmed to their still-live surfaces (partners list/detail/new/
+    edit, and the six other residual pages respectively), not deleted wholesale, since each
+    file also guards pages outside this PR's scope.
+  - >-
+    /revenue/error.tsx and /revenue/loading.tsx are left untouched: there is no
+    /revenue/page.tsx (App Router needs page.tsx to create a route), so they were never a live
+    route on their own — only /revenue/analytics was in scope per the audit.
+  - No client PII in this pack, the PR body, or the commit: no client data was read or logged.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+  tokens: 600000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file,
+      including the two token-drain guard tests trimmed to drop the deleted pages' pins.
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK, with no /team-management, /team/analytics or
+      /revenue/analytics entry in the route manifest.
+    probe: cd apps/mouth && npm run build
+  - text: >-
+      A4 Bites: WHEN kita.balizero.com is deployed from the merge THEN
+      `curl -fsS -o /dev/null -w "%{http_code}" https://kita.balizero.com/team-management` and
+      the same for /team/analytics and /revenue/analytics SHALL each answer 404.
+    probe: curl -fsS https://kita.balizero.com/api/health
+assumptions:
+  - text: >-
+      No nav item anywhere in navigation.ts's `navigation` array ever had href
+      "/team-management", "/team/analytics" or "/revenue/analytics" (all three were reachable
+      only via proxy.ts's INTERNAL_ROUTES, a routeTitles entry, or the "Calendar" button inside
+      /team-management itself) — deleting the pages leaves no dangling sidebar entry to also
+      remove.
+    status: verified
+    probe: grep -n "team-management\|team/analytics\|revenue/analytics" apps/mouth/src/types/navigation.ts
+  - text: >-
+      The partners/__tests__/token-drain.guard.test.ts TOUCHED map's teamManagement entry and
+      the (workspace)/__tests__/token-drain.residuals.guard.test.ts PAGES array's
+      revenue/analytics and team/analytics entries were the ONLY entries in each file pointing
+      at a route deleted by this PR — every other entry in both files (partners list/detail/
+      new/edit; clients/analytics, notifications, admin/team-activity, admin,
+      intelligence/analytics, process/new) points at a page outside this PR's scope and was
+      left untouched.
+    status: verified
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts

@@ -35,7 +35,6 @@ const ROUTES = [
   "/notifications",
   "/omnichannel",
   "/process",
-  "/revenue/analytics",
   "/settings",
 ];
 
