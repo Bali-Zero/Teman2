@@ -4,12 +4,16 @@ window: W3-SH-EDITORIAL
 colour: BLUE
 verdict: PENDING_GATE
 base_sha: 70b43c5459489ce9c8d524eefc94d53a7009866d
-brief_ref: evidence/2026-09/agent-air-m5-mouth-shweb-w3-editorial-20260911-cc099459/brief.yml
+# MUST be the literal staging path, never the real per-PR one: harness-floor stages the
+# pack and the brief as evidence/{pack,brief}.yml in a synthetic tree and resolves this
+# field against THAT root (harness-floor.yml, "THE brief_ref CONTRACT"). The per-PR value
+# is the trap the staging layout exists to remove, and it is what turned this check red.
+brief_ref: evidence/brief.yml
 pii_scan: clean
 
 churn:
-  measured_with: "git diff --numstat 70b43c5459 | awk '{a+=$1;d+=$2} END {print a+d}' — measured on the tree as pushed. 3902 at the frozen head, 4348 now. The growth is the rebuilt guard (+146 probe lines), the guard spec written instead of a fourth cure round (99 lines), and the census/disposition rows three refuter rounds and a second reader demanded."
-  total_lines: 4373
+  measured_with: "git diff --numstat 70b43c5459 HEAD | awk '{a+=$1;d+=$2} END {print a+d}' — measured on the tree as pushed: 29 files, +4212 -531 at the first frozen head, plus the two CI cures of the second push. An earlier revision of this field said 4373; that was a transposition by the author, corrected here against the measurement rather than left standing. The growth over the 3902 of the pre-refuter head is the rebuilt guard (+146 probe lines), the guard spec written instead of a fourth cure round (99 lines), and the census/disposition rows three refuter rounds and a second reader demanded."
+  total_lines: 4749
   ceiling_named_in_the_mandate: 1828
   gear_override: >-
     Declared, per the mandate's own alternative ("churn under 1828 OR a coherent Gear-3
@@ -26,7 +30,7 @@ churn:
 
 spend:
   wall_clock_hours: ~2.5
-  adversarial_rounds: 2
+  adversarial_rounds: 3
   seats:
     - name: codex-sol
       role: PRE-review (cross-family, outside the contribution chain)

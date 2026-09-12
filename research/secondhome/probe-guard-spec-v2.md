@@ -2,6 +2,8 @@
 date: 2026-09-12
 domain: visa
 client_case: none
+adversarial_review: codex
+adversarial_review_seats: codex-sol (POST refuter, three rounds, BLOCK each time; round 3 executed the seven counter-examples that ARE the requirements below) + kimi-code/k3 (second reader on the tree this spec was written against, CONCERNS) + tp1-qwen3.8-max (language, CONCERNS)
 sources:
   - research/secondhome/probe-superseded-threshold.py (the v1 guard this spec replaces)
   - evidence/2026-09/agent-air-m5-mouth-shweb-w3-editorial-20260911-cc099459/build-receipts/guard-mutation-run.txt
