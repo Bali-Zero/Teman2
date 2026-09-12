@@ -1,0 +1,116 @@
+task_id: backend-rag-b1-4-support-signal
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: fb39ef3f847b12a8735a0365e009541e668b0eb0 # pragma: allowlist secret
+base_sha_of_the_measurement: a5ddcd0d1bf419a5c86be8a7e7355ab484def8d7 # pragma: allowlist secret
+mandate: B1
+colour: BLUE
+pr: B1.4
+objective: >-
+  B1.4 of mandate B1 (BLUE): the support-signal design note. Measure every
+  candidate that could tell "the retrieved text CONTAINS the requested fact"
+  from "it is merely about the same topic", offline, on counterfactual pairs —
+  and deliver a table and a recommendation the staff room can choose from. Not
+  a scorer change: B1 is behaviour-preserving by design.
+appetite: { wall_clock_hours: 3, adversarial_rounds: 1, tokens: 700000 }
+generation: 4
+deadline_utc: "2026-09-12T14:00:00Z"
+deadline_authority: >-
+  Root mandate deadline of B1 generation 4 (imperator ruling I16, fleet
+  envelope 20260912T013527Z-13d6). This window (session cd6f0313) is the
+  jump-2 successor of session d3bc5d81, which is the jump-1 successor of
+  session 5009fde7; the deadline is inherited unchanged and no renewal has
+  been spent.
+window:
+  session: cd6f0313
+  scope: "B1.3 (merged #6274) -> B1.5 (#6284) -> B1.4 (this PR)"
+  rulings_applied:
+    I24b: "provisionally chose candidate (i); SUSPENDED by its own condition when the second reader ruled the frozen pairs trivial"
+    I25: "GO for the distractor probe, with the decision rule fixed BEFORE the numbers: >=3/4 fair with 0 unstable AND >=15/16 easy"
+    I26: "CHOSE candidate (iii) with majority-of-3, split = NOT_SUPPORTED; (ii) as fallback; distractor pairs mandatory in B2.1's supplement"
+constraints:
+  - "Docs and evidence only. No backend/services/**, no backend/core/**, no scorer change, no production call, no caller added."
+  - "No paid API: (ii) is local Ollama on Mini, (iii) runs on the flat Codex subscription ONLY through the unchanged CodexExecClient.generate adapter."
+  - "Every case synthetic. The distractor probe lives in this evidence directory and NEVER in the frozen mandatory manifest."
+acceptance:
+  - status: verified
+    text: "A1: every candidate, including the control and any failure, is measured on the frozen pairs with 3 repetitions and an UNSTABLE marker."
+    probe: "support_probe_receipts.json — 384 calls, all outcomes ok, summary per candidate"
+  - status: verified
+    text: "A2: no candidate reads a label, a supporting span or a case id at decision time."
+    probe: "verified by the Dux reading support_probe.py before running it; stratum is read only in _score(), after every decision exists"
+  - status: verified
+    text: "A3: the chosen method distinguishes both members of pairs whose insufficient member keeps the entity."
+    probe: "fair_pairs_receipts.json — candidate (iii) 4/4, 0 unstable"
+gear_floor_note: >-
+  Declared 3 because the deterministic floor IS 3. Measured on this PR's
+  three-dot diff against its merge-base with the repo's own function:
+  evidence_pack_lint.compute_floor(files, numstat) = 3, source "size". The
+  brief first declared 2 on the assumption that a docs PR carries no size term;
+  the measurement said otherwise — the two receipt files are 8,149 and 2,089
+  lines of recorded calls — and the measurement wins. Gear 3's demands are then
+  met rather than declared: a council on disk in council-journal.jsonl —
+  Gemini 3.1 Pro as second reader, then Kimi K3 and TP1 qwen3.8-max, which are
+  the two seats the quorum rule actually counts (gemini-3.1-pro is not on its
+  allow-list, a fact the predecessor PR #6285 learned from its gate) —
+  non-empty dissent, and the receipts themselves. No test and no production file is touched by this PR.
+team:
+  dux:
+    {
+      model: claude-opus-5,
+      effort: xhigh,
+      role: "Dux; verified the harness before running it and graded the candidates",
+      host: Pro,
+    }
+  implementer:
+    {
+      model: claude-sonnet-5,
+      role: "support_probe.py draft, written by a child of the PREVIOUS window that was stopped without a report; treated as UNVERIFIED and verified line by line before use",
+    }
+  second_reader:
+    {
+      seat: gemini,
+      model: gemini-3.1-pro,
+      effort: high,
+      via: agy,
+      outcome: "TRIVIAL verdict on the frozen pairs; supplied the distractor constructions",
+    }
+  adversarial_reviewer:
+    {
+      seat: codex,
+      model: gpt-5.6-sol,
+      effort: high,
+      sandbox: read-only,
+      host: mini-pro2,
+      note: "never judges candidate (iii), which is its own family",
+    }
+  fourth_seat:
+    {
+      seat: tp1,
+      model: qwen3.8-max,
+      effort: high,
+      via: "scripts/tp1_call.py",
+      outcome: "REWORK, 7 items; two of them changed the note (Set A unfit as SOLE selector; the counting rule written out as the harness applies it)",
+    }
+  staff_room:
+    {
+      window: "Fable imperator M5, session 8933d19d",
+      rulings: "I24b, I25, I26",
+    }
+  final_gate: "fresh Opus 5 session commissioned by the staff room, outside this chain"
+seat_probe:
+  at: "2026-09-12T04:47Z, 60 s ceiling per seat"
+  results:
+    - {
+        seat: "codex gpt-5.6-sol, CODEX_HOME=~/.codex-acct2, Mini",
+        verdict: LIVE,
+        detail: "PONG — contradicts the organism board (UNKNOWN_ERR) and memory 16359 ('codex seat is dead on Mini')",
+      }
+    - { seat: "agy gemini-3.1-pro, Pro", verdict: LIVE, detail: "PONG" }
+    - {
+        seat: "ollama qwen3.8:27b-mlx, Mini",
+        verdict: LIVE,
+        detail: "present in /api/tags, digest 5642e97495e1",
+      }
+  suspended: none
