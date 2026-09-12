@@ -1,0 +1,2100 @@
+{
+  "schema_version": 1,
+  "frozen_for": "B1.3",
+  "base_sha": "2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed",
+  "bands": {
+    "generation_threshold": 0.15,
+    "label_thresholds": {
+      "default": 0.15,
+      "tax": 0.1,
+      "visa": 0.12,
+      "kbli": 0.2,
+      "pricing": 0.15
+    },
+    "confidence_low": 0.15,
+    "confidence_high": 0.6,
+    "source_quality_bands": [
+      {
+        "min_score": 0.7,
+        "points": 0.4
+      },
+      {
+        "min_score": 0.5,
+        "points": 0.3
+      },
+      {
+        "min_score": 0.3,
+        "points": 0.2
+      },
+      {
+        "min_score": 0.15,
+        "points": 0.1
+      },
+      {
+        "min_score": 0.0,
+        "points": 0.0
+      }
+    ]
+  },
+  "stratum_precedence": [
+    {
+      "rank": 1,
+      "stratum": "sufficient",
+      "rule": "a chunk states the requested fact"
+    },
+    {
+      "rank": 2,
+      "stratum": "relevant_insufficient",
+      "rule": "the chunks are about the requested topic/entity but do not state the fact"
+    },
+    {
+      "rank": 3,
+      "stratum": "irrelevant",
+      "rule": "off-topic and neither nuisance property holds"
+    },
+    {
+      "rank": 4,
+      "stratum": "generic_overlap",
+      "rule": "off-topic, shares at least one generic (non-identifier) query word"
+    },
+    {
+      "rank": 5,
+      "stratum": "company_prefix_chunk",
+      "rule": "off-topic, carries a company identifier prefix (PT/PMA/NIB/OSS) the query also names"
+    }
+  ],
+  "generic_word_definition": "a generic word is a case-insensitive literal token matched by [A-Za-zÀ-ÿ]+ with at least 3 letters that occurs in both the query and the context, is not in generic_word_stopwords and is not in generic_word_identifiers",
+  "generic_word_stopwords": [
+    "a",
+    "about",
+    "above",
+    "after",
+    "again",
+    "against",
+    "agli",
+    "ai",
+    "al",
+    "all",
+    "alla",
+    "alle",
+    "allo",
+    "among",
+    "an",
+    "anche",
+    "and",
+    "andare",
+    "any",
+    "are",
+    "as",
+    "ask",
+    "at",
+    "avere",
+    "be",
+    "been",
+    "before",
+    "being",
+    "below",
+    "between",
+    "both",
+    "but",
+    "by",
+    "can",
+    "che",
+    "chi",
+    "coi",
+    "col",
+    "come",
+    "con",
+    "could",
+    "da",
+    "dagli",
+    "dai",
+    "dal",
+    "dalla",
+    "dalle",
+    "dallo",
+    "degli",
+    "dei",
+    "del",
+    "della",
+    "delle",
+    "dello",
+    "deve",
+    "di",
+    "did",
+    "dimmi",
+    "do",
+    "does",
+    "dove",
+    "during",
+    "each",
+    "ed",
+    "essere",
+    "explain",
+    "fare",
+    "few",
+    "for",
+    "fra",
+    "from",
+    "further",
+    "get",
+    "had",
+    "has",
+    "have",
+    "here",
+    "how",
+    "in",
+    "including",
+    "information",
+    "informazioni",
+    "into",
+    "is",
+    "it",
+    "its",
+    "just",
+    "ma",
+    "may",
+    "me",
+    "might",
+    "more",
+    "most",
+    "need",
+    "negli",
+    "nei",
+    "nel",
+    "nella",
+    "nelle",
+    "nello",
+    "non",
+    "o",
+    "of",
+    "on",
+    "once",
+    "only",
+    "or",
+    "other",
+    "own",
+    "per",
+    "perche",
+    "perché",
+    "piu",
+    "puo",
+    "può",
+    "quando",
+    "quella",
+    "quelle",
+    "quelli",
+    "quello",
+    "query",
+    "questa",
+    "queste",
+    "questi",
+    "question",
+    "questo",
+    "same",
+    "say",
+    "se",
+    "shall",
+    "should",
+    "so",
+    "some",
+    "spiegami",
+    "su",
+    "such",
+    "sugli",
+    "sui",
+    "sul",
+    "sulla",
+    "sulle",
+    "sullo",
+    "tell",
+    "than",
+    "that",
+    "the",
+    "then",
+    "there",
+    "these",
+    "this",
+    "those",
+    "through",
+    "to",
+    "too",
+    "tra",
+    "under",
+    "until",
+    "very",
+    "want",
+    "was",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "why",
+    "will",
+    "with",
+    "would",
+    "yet"
+  ],
+  "generic_word_identifiers": [
+    "kitas",
+    "nib",
+    "oss",
+    "pkp",
+    "pma",
+    "pph",
+    "pt",
+    "vat",
+    "visa"
+  ],
+  "vocabulary": [
+    "curated_synthetic",
+    "dense_formatted",
+    "hybrid_rrf_formatted",
+    "kg_entity",
+    "reranked",
+    "trusted_tool_bypass",
+    "unknown"
+  ],
+  "cases": [
+    {
+      "case_id": "bs-07dda8f1",
+      "query": "Harga PT PMA berapa all in?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company setup — foreign-owned limited liability company registration, including deed, ministry approval, NPWP tax number and NIB business identification number via OSS. Price: IDR 20,000,000 all inclusive."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "the all-in price for PT PMA company setup",
+      "supporting_span": "Price: IDR 20,000,000 all inclusive.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:180"
+    },
+    {
+      "case_id": "bs-62289ee3",
+      "query": "Berapa biaya pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company setup — foreign-owned limited liability company registration, including deed, ministry approval, NPWP tax number and NIB business identification number via OSS. Price: IDR 20,000,000 all inclusive."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "the all-in cost of establishing a PT PMA",
+      "supporting_span": "Price: IDR 20,000,000 all inclusive.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:181"
+    },
+    {
+      "case_id": "bs-30ca5e5a",
+      "query": "Apa saja syarat NIB dan OSS?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company setup — foreign-owned limited liability company registration, including deed, ministry approval, NPWP tax number and NIB business identification number via OSS. Price: IDR 20,000,000 all inclusive."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "missing_fact_explanation": "The chunk lists components of company setup (deed, ministry approval, NPWP, NIB via OSS) but does not state that they are the requirements for obtaining NIB or OSS registration.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:182",
+      "activates_in": "B2.1",
+      "recorded_golden_expectation": true,
+      "adjudication": "RULED staff room 2026-09-12 02:05 WITA (decision I13): D5 exception extended 3→5; labelled per Gemini 3.1 Pro + Codex gpt-5.6-sol agreement",
+      "label_review": "RATIFIED per both reviewers (Gemini 3.1 Pro + Codex gpt-5.6-sol, 2026-09-11): EN_CONTEXT lists deed, ministry approval, NPWP and NIB-via-OSS as SETUP COMPONENTS, not as an explicit statement of 'these are the NIB/OSS requirements' — relabelled relevant_insufficient by reviewer agreement; was CONTESTABLE sufficient at freeze."
+    },
+    {
+      "case_id": "bs-6cd7df49",
+      "query": "Berapa modal disetor minimum PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company setup — foreign-owned limited liability company registration, including deed, ministry approval, NPWP tax number and NIB business identification number via OSS. Price: IDR 20,000,000 all inclusive."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "missing_fact_explanation": "EN_CONTEXT states general company-setup requirements (deed, ministry approval, NPWP, NIB via OSS) and only the all-in PRICE — it never states a paid-up capital figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:183",
+      "activates_in": "B2.1",
+      "recorded_golden_expectation": true
+    },
+    {
+      "case_id": "bs-57978a96",
+      "query": "How much is a PT PMA company, all in?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA — pendaftaran perusahaan penanaman modal asing, termasuk akta notaris, pengesahan kementerian, NPWP dan NIB melalui OSS. Harga: IDR 20.000.000 sudah termasuk semuanya."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "the all-in price for a PT PMA company",
+      "supporting_span": "Harga: IDR 20.000.000 sudah termasuk semuanya.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:184"
+    },
+    {
+      "case_id": "bs-3d3b5229",
+      "query": "What are the NIB and OSS requirements?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA — pendaftaran perusahaan penanaman modal asing, termasuk akta notaris, pengesahan kementerian, NPWP dan NIB melalui OSS. Harga: IDR 20.000.000 sudah termasuk semuanya."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "missing_fact_explanation": "The chunk lists components of company setup (deed, ministry approval, NPWP, NIB via OSS) but does not state that they are the requirements for obtaining NIB or OSS registration.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:185",
+      "activates_in": "B2.1",
+      "recorded_golden_expectation": true,
+      "adjudication": "RULED staff room 2026-09-12 02:05 WITA (decision I13): D5 exception extended 3→5; labelled per Gemini 3.1 Pro + Codex gpt-5.6-sol agreement",
+      "label_review": "RATIFIED per both reviewers (Gemini 3.1 Pro + Codex gpt-5.6-sol, 2026-09-11): ID_CONTEXT lists akta notaris, pengesahan kementerian, NPWP and NIB-via-OSS as SETUP COMPONENTS, not as an explicit statement of 'these are the NIB/OSS requirements' — relabelled relevant_insufficient by reviewer agreement; was CONTESTABLE sufficient at freeze. Same contestability as :182 (English-context case bs-30ca5e5a)."
+    },
+    {
+      "case_id": "bs-a3a7f1ca",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA — pendaftaran perusahaan penanaman modal asing, termasuk akta notaris, pengesahan kementerian, NPWP dan NIB melalui OSS. Harga: IDR 20.000.000 sudah termasuk semuanya."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "missing_fact_explanation": "ID_CONTEXT states general company-setup requirements (akta notaris, pengesahan kementerian, NPWP, NIB via OSS) and the all-in harga — it never states a paid-up capital figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:186",
+      "activates_in": "B2.1",
+      "recorded_golden_expectation": true
+    },
+    {
+      "case_id": "bs-dd6ff12d",
+      "query": "How long does PT PMA registration take?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA — pendaftaran perusahaan penanaman modal asing, termasuk akta notaris, pengesahan kementerian, NPWP dan NIB melalui OSS. Harga: IDR 20.000.000 sudah termasuk semuanya."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "how long PT PMA registration takes",
+      "missing_fact_explanation": "ID_CONTEXT describes what registration includes (akta notaris, pengesahan kementerian, NPWP, NIB via OSS) and the price, but never states a duration or timeframe.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:187",
+      "activates_in": "B2.1",
+      "recorded_golden_expectation": true
+    },
+    {
+      "case_id": "bs-e42f4b0d",
+      "query": "Where can I surf in Bali next weekend?",
+      "query_lang": "EN",
+      "context": [
+        "Scooter and motorbike rental in Canggu: daily and monthly rates, helmet included, delivery to your villa."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.18,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.18 is below the measured formatted floor)"
+      },
+      "requested_fact": "surf spots or conditions in Bali for next weekend",
+      "missing_fact_explanation": "the context is entirely about Canggu scooter/motorbike rental and shares no words, topic or identifier with a surfing question.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:188"
+    },
+    {
+      "case_id": "bs-38ed9327",
+      "query": "Ada apa saja di Ubud akhir pekan ini?",
+      "query_lang": "ID",
+      "context": [
+        "Scooter and motorbike rental in Canggu: daily and monthly rates, helmet included, delivery to your villa."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.18,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.18 is below the measured formatted floor)"
+      },
+      "requested_fact": "what's happening or worth doing in Ubud this weekend",
+      "missing_fact_explanation": "the context is only about Canggu scooter rental (in English) and shares no words or topic with an Ubud-activities question.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:189"
+    },
+    {
+      "case_id": "bs-95e82de0",
+      "query": "asdkjhasd",
+      "query_lang": "ID",
+      "context": [
+        "Scooter and motorbike rental in Canggu: daily and monthly rates, helmet included, delivery to your villa."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.18,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.18 is below the measured formatted floor)"
+      },
+      "requested_fact": "N/A — the query is not a well-formed question in any language; no fact is requested",
+      "missing_fact_explanation": "the query is not a real word or question in any language and shares no keywords with the context.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:190"
+    },
+    {
+      "case_id": "bs-f6687bb2",
+      "query": "xyzabc123",
+      "query_lang": "EN",
+      "context": [
+        "Scooter and motorbike rental in Canggu: daily and monthly rates, helmet included, delivery to your villa."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.18,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.18 is below the measured formatted floor)"
+      },
+      "requested_fact": "N/A — the query is not a well-formed question in any language; no fact is requested",
+      "missing_fact_explanation": "the query is not a real word or question in any language and shares no keywords with the context.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:191"
+    },
+    {
+      "case_id": "bs-17806bb4",
+      "query": "What is the price of new company setup?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA — pendaftaran perusahaan penanaman modal asing, termasuk akta notaris, pengesahan kementerian, NPWP dan NIB melalui OSS. Harga: IDR 20.000.000 sudah termasuk semuanya."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.72 is RETRIEVAL's literal fixture score at test_evidence_cross_language.py:44, which declares no score_kind)"
+      },
+      "requested_fact": "the price of new PT PMA company setup",
+      "supporting_span": "Harga: IDR 20.000.000 sudah termasuk semuanya.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:241",
+      "xfail_ref": "test_a_question_naming_no_identifier_is_still_language_blind",
+      "label_review": "DECLARED RESIDUAL (xfail, strict=True on origin/main): the query names no PT/PMA/NIB/OSS identifier, so the live scorer's lexical bridge cannot fire and the case currently scores below the abstain gate — this manifest records the INTENDED label (sufficient), the harness measures the actual divergence."
+    },
+    {
+      "case_id": "bs-2641bf9a",
+      "query": "Berapa harga sewa motor di Canggu?",
+      "query_lang": "ID",
+      "context": [
+        "Pendirian PT PMA — pendaftaran perusahaan penanaman modal asing, termasuk akta notaris, pengesahan kementerian, NPWP dan NIB melalui OSS. Harga: IDR 20.000.000 sudah termasuk semuanya."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 5,
+        "sources": [
+          {
+            "score": 0.18,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "legacy literal, no writer (0.18 is below the measured formatted floor)"
+      },
+      "requested_fact": "the price of motorbike rental in Canggu",
+      "missing_fact_explanation": "ID_CONTEXT is about PT PMA company registration and its own price, not motorbike rental — 'harga' is the only shared word, and it is generic, not an identifier.",
+      "stratum": "generic_overlap",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "golden:test_evidence_cross_language.py:260",
+      "xfail_ref": "test_one_generic_word_should_not_be_evidence",
+      "label_review": "DECLARED PRE-EXISTING RESIDUAL (xfail, strict=True on origin/main): one shared generic word ('harga') out of a small keyword set crosses the 0.15 gate on the live scorer — measured identically on both trees per the xfail's own docstring."
+    },
+    {
+      "case_id": "bs-01bf2a65",
+      "query": "How much is a PT PMA company, all in?",
+      "query_lang": "EN",
+      "context": [
+        "PT PMA company registration bundles the notarial deed, Ministry of Law approval, NPWP tax registration and the NIB business license via OSS. The complete service is IDR 20,000,000 all inclusive, government fees included."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the all-in price for PT PMA company registration",
+      "supporting_span": "The complete service is IDR 20,000,000 all inclusive, government fees included.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "all_in_price",
+      "pair_id": "bp-6ddd19e0"
+    },
+    {
+      "case_id": "bs-86c7963f",
+      "query": "How much is a PT PMA company, all in?",
+      "query_lang": "EN",
+      "context": [
+        "PT PMA company registration bundles the notarial deed, Ministry of Law approval, NPWP tax registration and the NIB business license via OSS. The complete service fee depends on the chosen KBLI classification and is not stated in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the all-in price for PT PMA company registration",
+      "missing_fact_explanation": "the chunk names the price topic but states the fee depends on KBLI classification instead of giving a figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "all_in_price",
+      "pair_id": "bp-6ddd19e0"
+    },
+    {
+      "case_id": "bs-ebef4f3e",
+      "query": "How much is a PT PMA company, all in?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan NIB (Nomor Induk Berusaha) melalui OSS. Biaya layanan lengkapnya IDR 20.000.000 sudah termasuk semuanya, termasuk biaya pemerintah."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the all-in price for PT PMA company registration",
+      "supporting_span": "Biaya layanan lengkapnya IDR 20.000.000 sudah termasuk semuanya, termasuk biaya pemerintah.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "all_in_price",
+      "pair_id": "bp-5467a417"
+    },
+    {
+      "case_id": "bs-71ce8130",
+      "query": "How much is a PT PMA company, all in?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan NIB (Nomor Induk Berusaha) melalui OSS. Biaya layanan lengkapnya tergantung klasifikasi KBLI yang dipilih dan tidak disebutkan dalam ringkasan ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the all-in price for PT PMA company registration",
+      "missing_fact_explanation": "the chunk names the price topic but states the fee depends on KBLI classification instead of giving a figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "all_in_price",
+      "pair_id": "bp-5467a417"
+    },
+    {
+      "case_id": "bs-0912abc7",
+      "query": "Harga PT PMA berapa all in?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company registration bundles the notarial deed, Ministry of Law approval, NPWP tax registration and the NIB business license via OSS. The complete service is IDR 20,000,000 all inclusive, government fees included."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the all-in price for PT PMA company registration",
+      "supporting_span": "The complete service is IDR 20,000,000 all inclusive, government fees included.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "all_in_price",
+      "pair_id": "bp-5ce9beb2"
+    },
+    {
+      "case_id": "bs-25e7c342",
+      "query": "Harga PT PMA berapa all in?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company registration bundles the notarial deed, Ministry of Law approval, NPWP tax registration and the NIB business license via OSS. The complete all-inclusive service fee depends on the chosen KBLI classification and is not stated in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the all-in price for PT PMA company registration",
+      "missing_fact_explanation": "the chunk names the price topic but states the fee depends on KBLI classification instead of giving a figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "all_in_price",
+      "pair_id": "bp-5ce9beb2"
+    },
+    {
+      "case_id": "bs-6309899f",
+      "query": "Harga PT PMA berapa all in?",
+      "query_lang": "ID",
+      "context": [
+        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan NIB (Nomor Induk Berusaha) melalui OSS. Biaya layanan lengkapnya IDR 20.000.000 sudah termasuk semuanya, termasuk biaya pemerintah."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the all-in price for PT PMA company registration",
+      "supporting_span": "Biaya layanan lengkapnya IDR 20.000.000 sudah termasuk semuanya, termasuk biaya pemerintah.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": true,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "all_in_price",
+      "pair_id": "bp-51e63737"
+    },
+    {
+      "case_id": "bs-8e5a0135",
+      "query": "Harga PT PMA berapa all in?",
+      "query_lang": "ID",
+      "context": [
+        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan NIB (Nomor Induk Berusaha) melalui OSS. Biaya layanan lengkapnya tergantung klasifikasi KBLI yang dipilih dan tidak disebutkan dalam ringkasan ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the all-in price for PT PMA company registration",
+      "missing_fact_explanation": "the chunk names the price topic but states the fee depends on KBLI classification instead of giving a figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "all_in_price",
+      "pair_id": "bp-51e63737"
+    },
+    {
+      "case_id": "bs-37a4d621",
+      "query": "What are the NIB and OSS requirements?",
+      "query_lang": "EN",
+      "context": [
+        "PT PMA company setup in Indonesia proceeds through several regulatory stages before the business can operate legally. The NIB is issued through OSS once the notarial deed, the Ministry of Law approval and the company NPWP are in place, together with the KBLI codes and the business address."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "supporting_span": "The NIB is issued through OSS once the notarial deed, the Ministry of Law approval and the company NPWP are in place, together with the KBLI codes and the business address.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "nib_oss_requirements",
+      "pair_id": "bp-df57e569"
+    },
+    {
+      "case_id": "bs-f8fb6909",
+      "query": "What are the NIB and OSS requirements?",
+      "query_lang": "EN",
+      "context": [
+        "PT PMA company setup in Indonesia proceeds through several regulatory stages before the business can operate legally. NIB and OSS registration involves several regulatory steps, and the exact requirement checklist is not detailed in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "missing_fact_explanation": "the chunk names NIB/OSS registration as a topic but defers the actual requirement checklist instead of stating it.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "nib_oss_requirements",
+      "pair_id": "bp-df57e569"
+    },
+    {
+      "case_id": "bs-7cd45469",
+      "query": "What are the NIB and OSS requirements?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA di Indonesia melalui beberapa tahap regulasi sebelum perusahaan dapat beroperasi secara legal. NIB diterbitkan melalui OSS setelah akta notaris, persetujuan Kementerian Hukum dan NPWP perusahaan selesai, disertai kode KBLI dan alamat usaha."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "supporting_span": "NIB diterbitkan melalui OSS setelah akta notaris, persetujuan Kementerian Hukum dan NPWP perusahaan selesai, disertai kode KBLI dan alamat usaha.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "nib_oss_requirements",
+      "pair_id": "bp-d1f1a58b"
+    },
+    {
+      "case_id": "bs-5d3e92ff",
+      "query": "What are the NIB and OSS requirements?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA di Indonesia melalui beberapa tahap regulasi sebelum perusahaan dapat beroperasi secara legal. Pendaftaran NIB dan OSS melibatkan beberapa tahap regulasi, dan daftar persyaratan lengkapnya tidak dirinci dalam ringkasan ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "missing_fact_explanation": "the chunk names NIB/OSS registration as a topic but defers the actual requirement checklist instead of stating it.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "nib_oss_requirements",
+      "pair_id": "bp-d1f1a58b"
+    },
+    {
+      "case_id": "bs-cfd6fca4",
+      "query": "Apa saja syarat NIB dan OSS?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company setup in Indonesia proceeds through several regulatory stages before the business can operate legally. The NIB is issued through OSS once the notarial deed, the Ministry of Law approval and the company NPWP are in place, together with the KBLI codes and the business address."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "supporting_span": "The NIB is issued through OSS once the notarial deed, the Ministry of Law approval and the company NPWP are in place, together with the KBLI codes and the business address.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "nib_oss_requirements",
+      "pair_id": "bp-3eed944f"
+    },
+    {
+      "case_id": "bs-e896eab7",
+      "query": "Apa saja syarat NIB dan OSS?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company setup in Indonesia proceeds through several regulatory stages before the business can operate legally. NIB and OSS registration involves several regulatory steps, and the exact requirement checklist is not detailed in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "missing_fact_explanation": "the chunk names NIB/OSS registration as a topic but defers the actual requirement checklist instead of stating it.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "nib_oss_requirements",
+      "pair_id": "bp-3eed944f"
+    },
+    {
+      "case_id": "bs-cc8e039c",
+      "query": "Apa saja syarat NIB dan OSS?",
+      "query_lang": "ID",
+      "context": [
+        "Pendirian PT PMA di Indonesia melalui beberapa tahap regulasi sebelum perusahaan dapat beroperasi secara legal. NIB diterbitkan melalui OSS setelah akta notaris, persetujuan Kementerian Hukum dan NPWP perusahaan selesai, disertai kode KBLI dan alamat usaha."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "supporting_span": "NIB diterbitkan melalui OSS setelah akta notaris, persetujuan Kementerian Hukum dan NPWP perusahaan selesai, disertai kode KBLI dan alamat usaha.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "nib_oss_requirements",
+      "pair_id": "bp-553489d2"
+    },
+    {
+      "case_id": "bs-5b935617",
+      "query": "Apa saja syarat NIB dan OSS?",
+      "query_lang": "ID",
+      "context": [
+        "Pendirian PT PMA di Indonesia melalui beberapa tahap regulasi sebelum perusahaan dapat beroperasi secara legal. Pendaftaran NIB dan OSS melibatkan beberapa tahap regulasi, dan daftar persyaratan lengkapnya tidak dirinci dalam ringkasan ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the requirements for obtaining NIB and OSS registration",
+      "missing_fact_explanation": "the chunk names NIB/OSS registration as a topic but defers the actual requirement checklist instead of stating it.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "nib_oss_requirements",
+      "pair_id": "bp-553489d2"
+    },
+    {
+      "case_id": "bs-713c5c75",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "A PT PMA is a foreign-owned limited liability company structured under Indonesia's investment regulations. Minimum paid-up capital is IDR 2.5 billion, per BKPM Regulation 5/2025."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "supporting_span": "Minimum paid-up capital is IDR 2.5 billion, per BKPM Regulation 5/2025.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "minimum_paid_up_capital",
+      "pair_id": "bp-1c2152db"
+    },
+    {
+      "case_id": "bs-3d9ad45b",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "A PT PMA is a foreign-owned limited liability company structured under Indonesia's investment regulations. The minimum paid-up capital depends on the approved investment plan and is not stated in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "missing_fact_explanation": "the chunk names the paid-up capital topic but defers to the approved investment plan instead of stating a figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "minimum_paid_up_capital",
+      "pair_id": "bp-1c2152db"
+    },
+    {
+      "case_id": "bs-3edd5ce2",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "PT PMA adalah perseroan terbatas penanaman modal asing (PT PMA) yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum adalah IDR 2,5 miliar, sesuai Peraturan BKPM No. 5/2025."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "supporting_span": "Modal disetor minimum adalah IDR 2,5 miliar, sesuai Peraturan BKPM No. 5/2025.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "minimum_paid_up_capital",
+      "pair_id": "bp-8799ae47"
+    },
+    {
+      "case_id": "bs-7734b413",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "PT PMA adalah perseroan terbatas penanaman modal asing (PT PMA) yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum tergantung rencana investasi yang disetujui dan tidak disebutkan dalam ringkasan ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "missing_fact_explanation": "the chunk names the paid-up capital topic but defers to the approved investment plan instead of stating a figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "minimum_paid_up_capital",
+      "pair_id": "bp-8799ae47"
+    },
+    {
+      "case_id": "bs-b96e2f5d",
+      "query": "Berapa modal disetor minimum PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "A PT PMA is a foreign-owned limited liability company structured under Indonesia's investment regulations. Minimum paid-up capital is IDR 2.5 billion, per BKPM Regulation 5/2025."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "supporting_span": "Minimum paid-up capital is IDR 2.5 billion, per BKPM Regulation 5/2025.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "minimum_paid_up_capital",
+      "pair_id": "bp-fccf0b5b"
+    },
+    {
+      "case_id": "bs-86211518",
+      "query": "Berapa modal disetor minimum PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "A PT PMA is a foreign-owned limited liability company structured under Indonesia's investment regulations. The minimum paid-up capital depends on the approved investment plan and is not stated in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "missing_fact_explanation": "the chunk names the paid-up capital topic but defers to the approved investment plan instead of stating a figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "minimum_paid_up_capital",
+      "pair_id": "bp-fccf0b5b"
+    },
+    {
+      "case_id": "bs-47392f91",
+      "query": "Berapa modal disetor minimum PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA adalah perseroan terbatas penanaman modal asing (PT PMA) yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum adalah IDR 2,5 miliar, sesuai Peraturan BKPM No. 5/2025."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "supporting_span": "Modal disetor minimum adalah IDR 2,5 miliar, sesuai Peraturan BKPM No. 5/2025.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "minimum_paid_up_capital",
+      "pair_id": "bp-bf963846"
+    },
+    {
+      "case_id": "bs-bcbd34e0",
+      "query": "Berapa modal disetor minimum PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA adalah perseroan terbatas penanaman modal asing (PT PMA) yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum tergantung rencana investasi yang disetujui dan tidak disebutkan dalam ringkasan ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "the minimum paid-up capital required for a PT PMA",
+      "missing_fact_explanation": "the chunk names the paid-up capital topic but defers to the approved investment plan instead of stating a figure.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "minimum_paid_up_capital",
+      "pair_id": "bp-bf963846"
+    },
+    {
+      "case_id": "bs-b762b369",
+      "query": "How long does PT PMA registration take?",
+      "query_lang": "EN",
+      "context": [
+        "PT PMA company registration proceeds through notarial, ministerial and licensing stages before the business becomes fully operational. PT PMA registration takes about 3 to 4 weeks from the signed deed to the NIB."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "how long PT PMA registration takes (synthetic example duration for this benchmark, not a verified current Bali Zero timeline)",
+      "supporting_span": "PT PMA registration takes about 3 to 4 weeks from the signed deed to the NIB.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "registration_duration",
+      "pair_id": "bp-1427ddfb"
+    },
+    {
+      "case_id": "bs-5d6af55b",
+      "query": "How long does PT PMA registration take?",
+      "query_lang": "EN",
+      "context": [
+        "PT PMA company registration proceeds through notarial, ministerial and licensing stages before the business becomes fully operational. PT PMA registration duration varies case by case and is not stated in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "how long PT PMA registration takes (synthetic example duration for this benchmark, not a verified current Bali Zero timeline)",
+      "missing_fact_explanation": "the chunk names the registration-duration topic but says it varies case by case instead of giving a timeframe.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "registration_duration",
+      "pair_id": "bp-1427ddfb"
+    },
+    {
+      "case_id": "bs-b980e91b",
+      "query": "How long does PT PMA registration take?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA melalui tahap notaris, kementerian dan perizinan sebelum perusahaan dapat beroperasi penuh. Proses pendirian PT PMA memakan waktu sekitar 3 sampai 4 minggu sejak akta ditandatangani hingga NIB terbit."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "how long PT PMA registration takes (synthetic example duration for this benchmark, not a verified current Bali Zero timeline)",
+      "supporting_span": "Proses pendirian PT PMA memakan waktu sekitar 3 sampai 4 minggu sejak akta ditandatangani hingga NIB terbit.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "registration_duration",
+      "pair_id": "bp-bd26f941"
+    },
+    {
+      "case_id": "bs-eaeff9b4",
+      "query": "How long does PT PMA registration take?",
+      "query_lang": "EN",
+      "context": [
+        "Pendirian PT PMA melalui tahap notaris, kementerian dan perizinan sebelum perusahaan dapat beroperasi penuh. Lama proses pendirian PT PMA berbeda-beda tiap kasus dan tidak disebutkan dalam ringkasan ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "how long PT PMA registration takes (synthetic example duration for this benchmark, not a verified current Bali Zero timeline)",
+      "missing_fact_explanation": "the chunk names the registration-duration topic but says it varies case by case instead of giving a timeframe.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "registration_duration",
+      "pair_id": "bp-bd26f941"
+    },
+    {
+      "case_id": "bs-65886be1",
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company registration proceeds through notarial, ministerial and licensing stages before the business becomes fully operational. PT PMA registration takes about 3 to 4 weeks from the signed deed to the NIB."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "how long PT PMA registration takes (synthetic example duration for this benchmark, not a verified current Bali Zero timeline)",
+      "supporting_span": "PT PMA registration takes about 3 to 4 weeks from the signed deed to the NIB.",
+      "stratum": "sufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "registration_duration",
+      "pair_id": "bp-09230f67",
+      "constructed_counterpart": true,
+      "label_review": "constructed_counterpart: the golden set (test_evidence_cross_language.py) has NO Indonesian registration-duration question — 'Berapa lama proses pendirian PT PMA?' is an independently reviewed synthetic Indonesian counterpart to the English golden question at :187, added per B1-design.md §4 B1.3's instruction; flag for the independent language check before freeze."
+    },
+    {
+      "case_id": "bs-6b1f7df4",
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "PT PMA company registration proceeds through notarial, ministerial and licensing stages before the business becomes fully operational. PT PMA registration duration varies case by case and is not stated in this summary."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "how long PT PMA registration takes (synthetic example duration for this benchmark, not a verified current Bali Zero timeline)",
+      "missing_fact_explanation": "the chunk names the registration-duration topic but says it varies case by case instead of giving a timeframe.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "registration_duration",
+      "pair_id": "bp-09230f67",
+      "constructed_counterpart": true,
+      "label_review": "constructed_counterpart: the golden set (test_evidence_cross_language.py) has NO Indonesian registration-duration question — 'Berapa lama proses pendirian PT PMA?' is an independently reviewed synthetic Indonesian counterpart to the English golden question at :187, added per B1-design.md §4 B1.3's instruction; flag for the independent language check before freeze."
+    },
+    {
+      "case_id": "bs-11f72d22",
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "Pendirian PT PMA melalui tahap notaris, kementerian dan perizinan sebelum perusahaan dapat beroperasi penuh. Proses pendirian PT PMA memakan waktu sekitar 3 sampai 4 minggu sejak akta ditandatangani hingga NIB terbit."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "how long PT PMA registration takes (synthetic example duration for this benchmark, not a verified current Bali Zero timeline)",
+      "supporting_span": "Proses pendirian PT PMA memakan waktu sekitar 3 sampai 4 minggu sejak akta ditandatangani hingga NIB terbit.",
+      "stratum": "sufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "pass",
+      "expected_label_gate": "pass",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "registration_duration",
+      "pair_id": "bp-49bc82b7",
+      "constructed_counterpart": true,
+      "label_review": "constructed_counterpart: the golden set (test_evidence_cross_language.py) has NO Indonesian registration-duration question — 'Berapa lama proses pendirian PT PMA?' is an independently reviewed synthetic Indonesian counterpart to the English golden question at :187, added per B1-design.md §4 B1.3's instruction; flag for the independent language check before freeze."
+    },
+    {
+      "case_id": "bs-4eb281c7",
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "Pendirian PT PMA melalui tahap notaris, kementerian dan perizinan sebelum perusahaan dapat beroperasi penuh. Lama proses pendirian PT PMA berbeda-beda tiap kasus dan tidak disebutkan dalam ringkasan ini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 1.0,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 1.0
+          }
+        ],
+        "note": "constructed on-topic: rank 0 in both prefetch lists (dense + sparse) -> server-side RRF fusion 1.0 -> formatted 1.0"
+      },
+      "requested_fact": "how long PT PMA registration takes (synthetic example duration for this benchmark, not a verified current Bali Zero timeline)",
+      "missing_fact_explanation": "the chunk names the registration-duration topic but says it varies case by case instead of giving a timeframe.",
+      "stratum": "relevant_insufficient",
+      "generic_overlap": true,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "spec_pair": "registration_duration",
+      "pair_id": "bp-49bc82b7",
+      "constructed_counterpart": true,
+      "label_review": "constructed_counterpart: the golden set (test_evidence_cross_language.py) has NO Indonesian registration-duration question — 'Berapa lama proses pendirian PT PMA?' is an independently reviewed synthetic Indonesian counterpart to the English golden question at :187, added per B1-design.md §4 B1.3's instruction; flag for the independent language check before freeze."
+    },
+    {
+      "case_id": "bs-c0693a25",
+      "query": "What time does the ferry to Nusa Penida leave?",
+      "query_lang": "EN",
+      "context": [
+        "The government fee (PNBP) for this permit is set by Indonesian immigration and can change periodically, so please confirm the current figure with our team rather than relying on a quoted amount here."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "what time the Nusa Penida ferry departs",
+      "missing_fact_explanation": "the context is a government-fee (PNBP) deferral notice for a different permit and shares no words, topic or identifier with a ferry-schedule question.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "label_review": "Context shape follows the compliant government-fee deferral pattern in test_curated_qa_government_fee_gate.py:85-106 (COMPLIANT_NO_FIGURE) — text is freshly constructed here, not copied; that file's own fixtures are corpus text (not client PII) per its docstring, and this case's text is independently synthetic. Carries fee_policy: true precisely because it names a PNBP figure-deferral while being off-topic for the ferry query."
+    },
+    {
+      "case_id": "bs-dd593d7a",
+      "query": "How long does a visa extension processing take?",
+      "query_lang": "EN",
+      "context": [
+        "New company registration in Bali includes notarial deed drafting, Ministry approval, tax ID issuance and the OSS-based business license. Processing usually finishes within a month."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "how long visa extension processing takes",
+      "missing_fact_explanation": "the chunk describes NEW COMPANY registration processing time, not visa extension — 'processing'/'proses' is the only shared word and it is generic, not a topic match.",
+      "stratum": "generic_overlap",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "label_review": "New wording of the xfail's shape (test_one_generic_word_should_not_be_evidence): a non-company question sharing exactly one generic word ('processing'/'proses') with an on-topic company chunk, constructed independently."
+    },
+    {
+      "case_id": "bs-b2266ec0",
+      "query": "Is NIB required for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "PT Roda Santai Bali, NIB 1234567890123, rents scooters and motorbikes in Seminyak: daily rates from IDR 70,000, monthly packages available, helmets included."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "whether NIB registration is required for a PT PMA",
+      "missing_fact_explanation": "the chunk is a scooter-rental business listing; its 'PT' and 'NIB' are that unrelated business's own identifiers, not a statement about PT PMA's requirements in general.",
+      "stratum": "company_prefix_chunk",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed"
+    },
+    {
+      "case_id": "bs-c64a7b17",
+      "query": "What time does the ferry to Nusa Penida leave?",
+      "query_lang": "EN",
+      "context": [
+        "Biaya pemerintah (PNBP) untuk izin ini ditetapkan oleh imigrasi Indonesia dan dapat berubah sewaktu-waktu, jadi silakan konfirmasi angka terkini dengan tim kami dan bukan mengandalkan angka yang tertulis di sini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "what time the Nusa Penida ferry departs",
+      "missing_fact_explanation": "the context is a government-fee (PNBP) deferral notice for a different permit and shares no words, topic or identifier with a ferry-schedule question.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "label_review": "Context shape follows the compliant government-fee deferral pattern in test_curated_qa_government_fee_gate.py:85-106 (COMPLIANT_NO_FIGURE) — text is freshly constructed here, not copied; that file's own fixtures are corpus text (not client PII) per its docstring, and this case's text is independently synthetic. Carries fee_policy: true precisely because it names a PNBP figure-deferral while being off-topic for the ferry query."
+    },
+    {
+      "case_id": "bs-e234b992",
+      "query": "How long does an online visa extension take?",
+      "query_lang": "EN",
+      "context": [
+        "Pendaftaran perusahaan baru di Bali meliputi pembuatan akta notaris, persetujuan Kementerian, penerbitan NPWP dan izin usaha yang diurus secara online melalui OSS. Proses biasanya selesai dalam waktu sebulan."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "how long visa extension processing takes",
+      "missing_fact_explanation": "the chunk describes NEW COMPANY registration processing time, not visa extension — 'online' is the only literally shared word between the English query and the Indonesian context, and it is generic, not an identifier.",
+      "stratum": "generic_overlap",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "label_review": "R2 (label-review round 2026-09-11, Codex gpt-5.6-sol + Gemini 3.1 Pro agreement): 'processing'/'proses' was flagged by both reviewers as a translation pair, not a literal shared word, which breaks the cross-language generic_overlap definition (a shared query WORD). Reworded query and context to share the generic loanword 'online' literally instead of relying on translation-equivalent vocabulary; stratum and generic_overlap unchanged."
+    },
+    {
+      "case_id": "bs-b3d343f6",
+      "query": "Is NIB required for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "PT Roda Santai Bali, NIB 1234567890123, menyewakan motor dan skuter di Seminyak: tarif harian mulai IDR 70.000, paket bulanan tersedia, helm disertakan."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "whether NIB registration is required for a PT PMA",
+      "missing_fact_explanation": "the chunk is a scooter-rental business listing; its 'PT' and 'NIB' are that unrelated business's own identifiers, not a statement about PT PMA's requirements in general.",
+      "stratum": "company_prefix_chunk",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed"
+    },
+    {
+      "case_id": "bs-a4e66d32",
+      "query": "Jam berapa kapal ke Nusa Penida berangkat?",
+      "query_lang": "ID",
+      "context": [
+        "The government fee (PNBP) for this permit is set by Indonesian immigration and can change over time, so please confirm the current figure with our team rather than relying on a quoted amount here."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "what time the Nusa Penida ferry departs",
+      "missing_fact_explanation": "the context is a government-fee (PNBP) deferral notice for a different permit and shares no words, topic or identifier with a ferry-schedule question.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "label_review": "Context shape follows the compliant government-fee deferral pattern in test_curated_qa_government_fee_gate.py:85-106 (COMPLIANT_NO_FIGURE) — text is freshly constructed here, not copied; that file's own fixtures are corpus text (not client PII) per its docstring, and this case's text is independently synthetic. Carries fee_policy: true precisely because it names a PNBP figure-deferral while being off-topic for the ferry query."
+    },
+    {
+      "case_id": "bs-2ae24f1c",
+      "query": "Berapa lama perpanjangan visa online?",
+      "query_lang": "ID",
+      "context": [
+        "New company registration in Bali includes notarial deed drafting, Ministry approval, tax ID issuance and the OSS-based business license, filed online. Processing usually finishes within a month."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "how long visa extension processing takes",
+      "missing_fact_explanation": "the chunk describes NEW COMPANY registration processing time, not visa extension — 'online' is the only literally shared word between the Indonesian query and the English context, and it is generic, not an identifier.",
+      "stratum": "generic_overlap",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "label_review": "R2 (label-review round 2026-09-11, Codex gpt-5.6-sol + Gemini 3.1 Pro agreement): 'proses'/'processing' was flagged by both reviewers as a translation pair, not a literal shared word, which breaks the cross-language generic_overlap definition (a shared query WORD). Reworded query and context to share the generic loanword 'online' literally instead of relying on translation-equivalent vocabulary; stratum and generic_overlap unchanged."
+    },
+    {
+      "case_id": "bs-5bab1cbe",
+      "query": "Apakah NIB wajib untuk PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "PT Roda Santai Bali, NIB 1234567890123, rents scooters and motorbikes in Seminyak: daily rates from IDR 70,000, monthly packages available, helmets included."
+      ],
+      "context_lang": "EN",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "whether NIB registration is required for a PT PMA",
+      "missing_fact_explanation": "the chunk is a scooter-rental business listing; its 'PT' and 'NIB' are that unrelated business's own identifiers, not a statement about PT PMA's requirements in general.",
+      "stratum": "company_prefix_chunk",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed"
+    },
+    {
+      "case_id": "bs-19c40235",
+      "query": "Jam berapa kapal ke Nusa Penida berangkat?",
+      "query_lang": "ID",
+      "context": [
+        "Biaya pemerintah (PNBP) untuk izin ini ditetapkan oleh imigrasi Indonesia dan dapat berubah sewaktu-waktu, jadi silakan konfirmasi angka terkini dengan tim kami dan bukan mengandalkan angka yang tertulis di sini."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "what time the Nusa Penida ferry departs",
+      "missing_fact_explanation": "the context is a government-fee (PNBP) deferral notice for a different permit and shares no words, topic or identifier with a ferry-schedule question.",
+      "stratum": "irrelevant",
+      "generic_overlap": false,
+      "company_prefix": false,
+      "fee_policy": true,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "label_review": "Context shape follows the compliant government-fee deferral pattern in test_curated_qa_government_fee_gate.py:85-106 (COMPLIANT_NO_FIGURE) — text is freshly constructed here, not copied; that file's own fixtures are corpus text (not client PII) per its docstring, and this case's text is independently synthetic. Carries fee_policy: true precisely because it names a PNBP figure-deferral while being off-topic for the ferry query."
+    },
+    {
+      "case_id": "bs-797ff307",
+      "query": "Berapa lama proses perpanjangan visa?",
+      "query_lang": "ID",
+      "context": [
+        "Pendaftaran perusahaan baru di Bali meliputi pembuatan akta notaris, persetujuan Kementerian, penerbitan NPWP dan izin usaha berbasis OSS. Proses biasanya selesai dalam waktu sebulan."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "how long visa extension processing takes",
+      "missing_fact_explanation": "the chunk describes NEW COMPANY registration processing time, not visa extension — 'processing'/'proses' is the only shared word and it is generic, not a topic match.",
+      "stratum": "generic_overlap",
+      "generic_overlap": true,
+      "company_prefix": false,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed",
+      "label_review": "New wording of the xfail's shape (test_one_generic_word_should_not_be_evidence): a non-company question sharing exactly one generic word ('processing'/'proses') with an on-topic company chunk, constructed independently."
+    },
+    {
+      "case_id": "bs-88096955",
+      "query": "Apakah NIB wajib untuk PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "PT Roda Santai Bali, NIB 1234567890123, menyewakan motor dan skuter di Seminyak: tarif harian mulai IDR 70.000, paket bulanan tersedia, helm disertakan."
+      ],
+      "context_lang": "ID",
+      "provenance_fixture": {
+        "inventory_row": 1,
+        "sources": [
+          {
+            "score": 0.6667,
+            "score_kind": "hybrid_rrf_formatted",
+            "score_raw": 0.5
+          }
+        ],
+        "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
+      },
+      "requested_fact": "whether NIB registration is required for a PT PMA",
+      "missing_fact_explanation": "the chunk is a scooter-rental business listing; its 'PT' and 'NIB' are that unrelated business's own identifiers, not a statement about PT PMA's requirements in general.",
+      "stratum": "company_prefix_chunk",
+      "generic_overlap": false,
+      "company_prefix": true,
+      "fee_policy": false,
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
+      "synthetic": true,
+      "origin": "constructed"
+    }
+  ]
+}

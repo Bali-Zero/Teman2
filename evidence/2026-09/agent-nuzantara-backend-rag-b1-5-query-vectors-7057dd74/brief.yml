@@ -1,0 +1,149 @@
+task_id: backend-rag-b1-5-query-vectors
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: fb39ef3f847b12a8735a0365e009541e668b0eb0 # pragma: allowlist secret
+base_sha_of_the_batch_run: 70b23c196e3475f5254ea50b6a82dd6e670932b9 # pragma: allowlist secret
+mandate: B1
+colour: BLUE
+pr: B1.5
+objective: >-
+  B1.5 of mandate B1 (BLUE), conditional and now authorized. Produce the ONE
+  bounded embedding batch B2.2's live retrieval sample depends on: the 23
+  distinct synthetic EN/ID queries of the FROZEN B1.3 mandatory manifest,
+  selected label-free, embedded once through the product's own embedding path
+  with the SDK's retries disabled, and checked in as an immutable artifact
+  carrying its sha256, the query -> vector map, model and dimension
+  provenance, the authorization reference, the number of provider attempts and
+  the handoff location. A pre-call record is written before the first call and
+  a completion block after it; the harness refuses to run twice.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+  tokens: 600000
+generation: 4
+deadline_utc: "2026-09-12T14:00:00Z"
+deadline_authority: >-
+  Root mandate deadline of B1 generation 4, set by imperator ruling I16 and
+  carried by fleet envelope 20260912T013527Z-13d6. This window (session
+  d3bc5d81) is the jump-1 successor of session 5009fde7 and inherits that
+  deadline unchanged; no renewal has been requested or spent by it.
+window:
+  session: cd6f0313 # Dux, Pro, B1 generation 4, second window, jump 2 (successor of d3bc5d81, which opened #6284)
+  scope: "B1.3 (merged as #6274) -> B1.5 (this PR) -> B1.4; B1.2 and its successors are NOT this window's"
+  authorization: >-
+    README queue item 7 (README.md:89) — RULED 2026-09-11 ~15:00 WITA by Zero:
+    YES ("ok procediamo"). One bounded batch only, ceiling 40 total provider
+    attempts including retries. That line is the authorization of record.
+  rulings_applied:
+    I15: "run the batch ONCE; the credential is never read, printed, exported or logged"
+    I24a: >-
+      fleet envelope 20260912T052244Z-5035 — the first --execute aborted before
+      any provider call; keep its receipt immutable with a resolution block,
+      then run ONCE more with the .env symlink created and removed by explicit
+      commands, never a shell trap. No third attempt without a checkpoint.
+constraints:
+  - >-
+    Tests and evidence only: tests/benchmarks/evidence_sufficiency/** (new
+    harness + artifact), one new unit test, this evidence pack. No
+    backend/services/**, no backend/core/** edit — the product's embedding path
+    is REUSED, never modified: the zero-retry client is assigned onto the
+    generator's own public `client` attribute after construction.
+  - >-
+    Every query synthetic and already frozen in the B1.3 manifest: no real
+    person, client, phone, email or document number. The artifact records
+    `synthetic: true`.
+  - >-
+    The OpenAI credential is never read, printed, exported or committed. It is
+    resolved by the product's own Settings loader from a .env the worktree
+    reached through a symlink that existed only for the duration of the run.
+acceptance:
+  - status: verified
+    text: >-
+      A1: WHEN the batch runs THEN the number of provider attempts is at most
+      the ceiling of 40 and every attempt is recorded.
+    probe: >-
+      b1-5-precall.json completion block: attempts 23, failures 0; plus the
+      aborted receipt's resolution block: provider_attempts 0.
+  - status: verified
+    text: >-
+      A2: WHEN the shipped test runs on this head THEN it loads the real
+      artifact and verifies dimension and mapping with no network call, and its
+      guilt fixtures reject a wrong dimension, a mismatched mapping and an
+      over-ceiling attempt count.
+    probe: >-
+      pytest backend/tests/unit/services/rag/test_query_vectors_b1_5.py
+  - status: verified
+    text: >-
+      A3: WHEN the artifact is hashed THEN its sha256 equals the value recorded
+      in the pre-call completion block and in pack.yml.
+    probe: >-
+      shasum -a 256 query_vectors_b1_5.json = 0021c3275b7bd9f812f0ce52fc06da1330e89a9d1c40a4c105ca932720083012
+gear_floor_note: >-
+  Declared 3 because the deterministic floor IS 3. Measured on this PR's
+  three-dot diff against its merge-base with the repo's own function:
+  `evidence_pack_lint.compute_floor(files, numstat)` = 3,
+  `compute_floor_source(...)` = "size". The size term is dominated by the
+  artifact itself — query_vectors_b1_5.json is 35,487 lines of vectors, lives
+  under tests/ but not under tests/fixtures/, and therefore counts. Staying
+  under the 1828 threshold was not reachable and not desirable: the artifact IS
+  the deliverable, and reformatting it to fewer lines would change the sha256
+  the pre-call receipt already committed to. Gear 3's demands are met rather
+  than avoided — non-empty dissent, receipts, and a two-seat council on the
+  harness and the receipts.
+assumptions:
+  - status: verified
+    text: >-
+      The product's embedding path leaves the SDK's retry default in place
+      (backend/core/embeddings.py:271 constructs AsyncOpenAI without
+      max_retries), so the harness's replacement client with max_retries=0
+      makes one call equal exactly one provider attempt.
+team:
+  dux:
+    {
+      model: claude-opus-5,
+      effort: xhigh,
+      role: "Dux + release owner; verified the harness before running it",
+      host: Pro,
+    }
+  implementer:
+    {
+      model: claude-sonnet-5,
+      role: "harness + test, written under the previous window (session 5009fde7); not re-generated here",
+    }
+  adversarial_reviewer:
+    {
+      seat: codex,
+      model: gpt-5.6-sol,
+      effort: high,
+      sandbox: read-only,
+      host: mini-pro2,
+      codex_home: .codex-acct2,
+    }
+  second_reader: { seat: gemini, model: gemini-3.1-pro, effort: high, via: agy }
+  staff_room:
+    {
+      window: "Fable imperator M5, session 8933d19d",
+      rulings: "I15 — single run, credential never read · I24a — abort resolution and the one authorized rerun",
+    }
+  final_gate: "fresh Opus 5 session commissioned by the staff room, outside this contribution chain; it signs and never arms"
+seat_probe:
+  at: "2026-09-12T04:47Z, 60 s ceiling per seat"
+  why: "the organism board and memory 16359 both reported codex/agy seats TIMEOUT or UNKNOWN_ERR in the last 24 h; a seat that did not run is not a seat that agreed"
+  results:
+    - {
+        seat: "codex, CODEX_HOME=~/.codex-acct2, gpt-5.6-sol, on Mini",
+        verdict: LIVE,
+        detail: "PONG; contradicts the board's UNKNOWN_ERR and memory 16359's 'codex seat is dead on Mini'",
+      }
+    - {
+        seat: "agy gemini-3.1-pro effort high, on Pro",
+        verdict: LIVE,
+        detail: "PONG",
+      }
+    - {
+        seat: "ollama qwen3.8:27b-mlx on Mini",
+        verdict: LIVE,
+        detail: "present in /api/tags, digest 5642e97495e1; used by B1.4, not by this PR",
+      }
+  suspended: "none"

@@ -65,6 +65,9 @@ _STAFF_PATHS = [
     "/api/visa/voa/staff/practices/prc_abc123/assignment",
     "/api/visa/voa/staff/practices/prc_abc123/transitions",
     "/api/visa/voa/staff/orders/ord_abc123/late-resolution",
+    # Trailing-slash variants of two entries above; same assertions as every entry.
+    "/api/visa/voa/staff/practices/",
+    "/api/visa/voa/staff/practices/prc_abc123/transitions/",
 ]
 
 _NON_STAFF_PATHS = [
@@ -189,23 +192,60 @@ def test_envelope_matches_the_frozen_error_catalog() -> None:
 
 
 def test_privacy_headers_match_the_staff_router_they_stand_in_for() -> None:
-    """Second, WEAKER anchor than the YAML one above (refuter round-2 #5: a
-    router-to-middleware comparison passes under synchronised drift). Kept
-    because it states the property that actually matters operationally — a
-    refusal the middleware serves must be indistinguishable from one the
-    router would have served — and it is checked in BOTH directions, so an
-    extra privacy header appearing on the router side also fails."""
+    """Asserts after == before + middleware as Counters of (lower-cased name, value) pairs."""
+    from collections import Counter
+
     from fastapi import Response
 
     from backend.app.routers.garuda_staff_router import _privacy_headers
 
+    def pairs(raw: list[tuple[bytes, bytes]]) -> Counter[tuple[str, str]]:
+        return Counter(
+            (name.decode("latin-1").lower(), value.decode("latin-1")) for name, value in raw
+        )
+
     probe = Response()
+    before = pairs(list(probe.headers.raw))
     _privacy_headers(probe)
+    after = pairs(list(probe.headers.raw))
     result = contract_401_envelope("/api/visa/voa/staff/practices")
     assert result is not None
-    router_privacy = {
-        name: value for name, value in probe.headers.items() if name.title() in result[1]
-    }
-    assert {k.title(): v for k, v in router_privacy.items()} == result[1], (
-        f"middleware serves {result[1]}, garuda_staff_router serves {dict(probe.headers)}"
+    middleware = Counter((name.lower(), value) for name, value in result[1].items())
+    expected = before + middleware
+    assert after == expected, (
+        f"after _privacy_headers: {sorted(after.items())} != before + middleware "
+        f"{sorted(expected.items())} — only after: {sorted((after - expected).items())}, "
+        f"only expected: {sorted((expected - after).items())}"
     )
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "router_module"),
+    [
+        ("GET", "/api/visa/voa/staff/practices/", "garuda_staff_router"),
+        ("POST", "/api/visa/voa/staff/practices/prc_abc123/transitions/", "garuda_staff_router"),
+        (
+            "POST",
+            "/api/visa/voa/staff/orders/ord_abc123/late-resolution/",
+            "garuda_orders_router",
+        ),
+    ],
+)
+def test_a_trailing_slash_answers_307_to_the_slash_less_path_with_the_same_envelope(
+    method: str, path: str, router_module: str
+) -> None:
+    """Asserts the app built here answers 307 with Location == "http://testserver" + the slash-less
+    path, and that both paths carry the same contract envelope. Nothing else."""
+    import importlib
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    router = importlib.import_module(f"backend.app.routers.{router_module}").router
+
+    app = FastAPI()
+    app.include_router(router)
+    response = TestClient(app).request(method, path, follow_redirects=False)
+    assert response.status_code == 307, f"{method} {path} -> {response.status_code}"
+    assert response.headers["location"] == f"http://testserver{path.rstrip('/')}"
+    assert contract_401_envelope(path) == contract_401_envelope(path.rstrip("/"))

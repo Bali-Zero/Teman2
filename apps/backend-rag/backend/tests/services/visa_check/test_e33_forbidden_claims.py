@@ -559,11 +559,15 @@ class TestMouthContentSecondHomeDuration:
                 "4. Elaborazione: 5-10 giorni lavorativi",
                 id="italian-working-days",
             ),
-            pytest.param(
-                "articles/immigration/second-home-visa-indonesia.id.mdx",
-                "### Tahap 1: Persiapan Dokumen (5-10 Hari)",
-                id="indonesian-document-preparation-days",
-            ),
+            # A fifth param used to pin "### Tahap 1: Persiapan Dokumen (5-10 Hari)" in
+            # second-home-visa-indonesia.id.mdx. That parenthetical was a processing time
+            # nothing in research/secondhome/e33-fact-registry.json supports
+            # (`processing_time_4wd` is `pending`), so the 2026-09-12 editorial pass
+            # removed it from all five locales and this fixture pinned a sentence that no
+            # longer exists. The innocence it proved is not lost: the synthetic twin
+            # `test_innocence_document_prep_days_stays_clean` below exercises exactly the
+            # same case — "5-10 Days" as a document-prep timeline inside a Second-Home
+            # document — on inline text that no content edit can drift.
         ],
     )
     def test_innocence_real_non_duration_ranges_stay_out(

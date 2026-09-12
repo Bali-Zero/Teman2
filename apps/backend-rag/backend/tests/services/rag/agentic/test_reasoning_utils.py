@@ -200,11 +200,40 @@ class TestCalculateEvidenceScore:
         # semantic_relevance == 0.0 → final_score capped at min(0.4*0.2, 0.1)
         assert score <= 0.10
 
+    def test_stop_words_only_query_keyword_ratio_zero_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_stop_words_only_query_keyword_ratio_zero"]
+        score = calculate_evidence_score(
+            pipeline_sources(
+                "services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_stop_words_only_query_keyword_ratio_zero"
+            ),
+            ["kitas immigration visa stay permit renewal"],
+            "what is the",
+        )
+        # semantic_relevance == 0.0 → final_score capped at min(0.4*0.2, 0.1)
+        assert score <= 0.10
+
     # --- short words stripped (all ≤ 3 chars after strip) ---
 
     def test_short_words_only_yields_near_zero(self):
         score = calculate_evidence_score(
             [{"score": 0.8}],
+            ["kitas visa permit"],
+            "go to a spa",  # all ≤ 3 chars: go(2), to(2), a(1), spa(3)
+        )
+        assert score <= 0.10
+
+    def test_short_words_only_yields_near_zero_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_short_words_only_yields_near_zero"]
+        score = calculate_evidence_score(
+            pipeline_sources(
+                "services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_short_words_only_yields_near_zero"
+            ),
             ["kitas visa permit"],
             "go to a spa",  # all ≤ 3 chars: go(2), to(2), a(1), spa(3)
         )
@@ -259,6 +288,21 @@ class TestCalculateEvidenceScore:
         )
         assert score < 0.15
 
+    def test_entity_mismatch_company_vs_visa_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_entity_mismatch_company_vs_visa"]
+        # query about PT/PMA company, context about visa/immigration only
+        score = calculate_evidence_score(
+            pipeline_sources(
+                "services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_entity_mismatch_company_vs_visa"
+            ),
+            ["visa immigration permit stay kitas renewal"],
+            "PT PMA company setup registration",
+        )
+        assert score < 0.15
+
     # --- semantic-cosine penalty guard conditions ---
 
     def test_semantic_penalty_not_applied_when_cosine_is_zero(self):
@@ -282,6 +326,23 @@ class TestCalculateEvidenceScore:
         # Craft a case with zero semantic relevance → final_score ≤ 0.10 → no penalty
         score = calculate_evidence_score(
             [{"score": 0.35}],  # cosine 0.35 < 0.5, would trigger penalty
+            ["completely unrelated content about something else"],
+            "xyzabc123",  # no meaningful keywords → semantic_relevance = 0.0
+        )
+        # final_score already ≤ 0.10; verify penalty didn't make it negative
+        assert 0.0 <= score <= 0.10
+
+    def test_semantic_penalty_not_applied_when_final_score_at_or_below_015_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_semantic_penalty_not_applied_when_final_score_at_or_below_015"]
+        # Even if cosine is < 0.5, penalty only fires when final_score > 0.15
+        # Craft a case with zero semantic relevance → final_score ≤ 0.10 → no penalty
+        score = calculate_evidence_score(
+            pipeline_sources(
+                "services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_semantic_penalty_not_applied_when_final_score_at_or_below_015"
+            ),
             ["completely unrelated content about something else"],
             "xyzabc123",  # no meaningful keywords → semantic_relevance = 0.0
         )

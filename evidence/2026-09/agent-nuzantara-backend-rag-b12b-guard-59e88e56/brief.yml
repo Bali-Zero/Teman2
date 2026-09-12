@@ -1,0 +1,94 @@
+task_id: b12b-guard
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 70b43c5459 # pragma: allowlist secret
+mandate: B1
+generation: 4
+colour: BLUE
+pr: "B1.2 PR-B (successor of the closed #6266, guard half)"
+depends_on: >-
+  PR-A (agent/nuzantara/backend-rag/b12a-variants). The guard imports
+  backend.tests.fixtures.pipeline_score_fixtures, which ships in PR-A, and its census reads the
+  nine variants, which also ship in PR-A. THIS PR'S CHECKS CANNOT BE GREEN UNTIL PR-A MERGES —
+  that is the ordering the gate directed, not a defect in this PR. Auto-merge is armed at open
+  per the contract; the queue merges it once its required checks pass on a merge ref that
+  includes PR-A. Whoever is live when PR-A lands may need to re-trigger this PR's checks; the
+  branch must NOT be pushed to, because arming freezes it.
+supersedes: >-
+  PR #6266, gate verdict BLOCK 2026-09-12T02:10Z (harness/fable-gate=failure on
+  1a7d340928), three causes. See B1-2-successor-spec.md for the
+  full disposition of each.
+objective: >-
+  Ship the structural guard for the nine dense-path tripwire variants: G1-G13. G1-G3 pin the
+  registry (shape, live-transform values, key set, original existence); G4-G6 pin the variants
+  (existence, the pipeline_sources call, no unlabelled score literal, whole-body AST parity with
+  the original); G7-G10 close the round-1 findings (duplicate def, independent AST snapshot of
+  each original, every registry field against an independent EXPECTED table, real runtime
+  immutability); G11 pins the runtime binding of each of the 18 protected names; G12 pins the
+  runtime CODE OBJECT against the guard's own pytest-style compile of the parsed def; G13 pins
+  pytest's own collected item and censuses the conftest chain for collection hooks.
+constraints:
+  - >-
+    One file of shipped code, and it is a test: the guard. No change to the variants, the
+    registry, or any shipped module — those are PR-A's and origin/main's. Nothing under
+    backend/services/**, backend/core/**, no corner, no zantara_core.py, no wa_codex_leg.py, no
+    migration, no network, no embedding or generation call.
+  - >-
+    G11/G12 must resolve modules by FILE IDENTITY, never by dotted name: pytest's import mode
+    gives the same file a different dotted name and a re-import yields a second module object
+    with different function objects. The dotted import stays only as the fallback for a
+    guard-alone run.
+  - >-
+    Every proof runs in a session shape that can actually catch the defect: the innocence run
+    collects the guard TOGETHER with the four tripwire files and the six B1 §4 innocence files,
+    and G13 leg A must report 18 of 18 verified rather than passing vacuously.
+  - >-
+    No guilt proof touches a tracked file. Mutations are planted in a throwaway tree built from
+    PR-A's HEAD by `git archive`, under the session scratchpad.
+acceptance:
+  - text: >-
+      A1: WHEN the guard is run alone SHALL pass at 97 with no skip and no xfail.
+    probe: pytest the guard file, -o addopts= -p no:randomly -q
+  - text: >-
+      A2 (the round-3 gate cure): WHEN one invocation collects the guard together with the four
+      tripwire files and the six B1 §4 innocence files SHALL report no failure other than the two
+      pre-existing order-dependent TestDetectTeamQuery cases, AND SHALL print
+      "G13 leg A: 18 of 18 protected items collected in this session and verified", so leg A is
+      non-vacuous in the very session shape that convicted its predecessor.
+    probe: >-
+      one pytest invocation over the guard + the four tripwire files + the six innocence files,
+      -o addopts= -p no:randomly -q -s; and the same multi-file run WITHOUT the guard, to show
+      the two TestDetectTeamQuery failures are not this diff's
+  - text: >-
+      A3 (guilt, G12): WHERE a forged-metadata clone (exec/compile under the original
+      co_filename, padded co_firstlineno, copied __qualname__) is planted in a throwaway tree,
+      WHEN the guard runs SHALL fail exactly one test — G12 on that node id — WHILE G11 and G13
+      stay green, which is what proves G12 load-bearing rather than redundant.
+    probe: guilt A planted in the git-archive proof tree; guard + the mutated tripwire file
+  - text: >-
+      A4 (guilt, G13): WHERE a pytest_collection_modifyitems hook replacing item._obj is planted
+      in the conftest chain, WHEN the guard runs ALONE SHALL fail leg B (the census binds with
+      nothing collected) AND WHEN it runs with the tripwire file SHALL fail legs B and A.
+    probe: guilt B planted in the proof tree; two runs
+  - text: >-
+      A5: WHEN the deterministic floor is recomputed from this PR's own changed-file list SHALL
+      be 2, matching the declared gear — the cure for the predecessor's second gate cause.
+    probe: >-
+      evidence_pack_lint --print-floor --print-floor-source with this PR's changed-files and
+      numstat
+assumptions:
+  - status: verified
+    text: >-
+      TestDetectTeamQuery::test_dynamic_company_name_marker_matches and
+      ..._uppercase_in_query fail in the multi-file session WITH THE GUARD REMOVED ENTIRELY, so
+      they are pre-existing and order-dependent rather than caused by this diff.
+    probe: >-
+      the four tripwire files in one session without the guard: 2 failed / 237 passed, the same
+      two node ids as the run that includes the guard
+  - status: verified
+    text: >-
+      Reproducing pytest's import-time assert rewriting is REQUIRED for G12, not optional: a
+      plain compile of the parsed def disagrees with the runtime code object on all 18 protected
+      names.
+    probe: "measured as 9 red G12 cases on the real tree before the cure; 0 after"

@@ -1,0 +1,7 @@
+{
+  "_what": "The ONLY way a line naming the superseded IDR 2 billion threshold is acquitted.",
+  "_why": "Until 2026-09-12 the probe acquitted any occurrence whose clause carried a supersession marker. The POST refuter walked through it twice: `E33 requires IDR 2 billion and no longer requires a sponsor` was acquitted (the retirement governed the SPONSOR, not the amount), and `For E33, IDR 2 billion, the old threshold, is no longer required` was convicted (the apposition separated the amount from the words retiring it). A marker near an amount says nothing about that amount. Cicatrix #3: a guard must judge an ENTITY by a decidable rule, never by proximity. So: EVERY occurrence is convicted, and a line that legitimately retires the figure is listed here by hand.",
+  "_shape": "Same contract as apps/mouth/src/i18n/secondhome-article-claims.baseline.json — an explicit, reviewed allowance keyed by a hash, and a stale entry is a FAILURE, not a silent pass. `key` = sha256 of the normalised line: stripped, inner whitespace collapsed to one space, lowercased. Rewrite the line and the hash rotates, the entry goes stale, the probe goes red and a human re-reads it.",
+  "_how_to_add": "python3 research/secondhome/probe-superseded-threshold.py --allowlist-key '<the exact line>' prints the key. Add it with a reason naming WHY the line retires the figure instead of asserting it. Never add a line you have not read.",
+  "entries": []
+}

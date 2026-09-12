@@ -298,6 +298,28 @@ class TestTrustedToolDetection:
         assert score < 0.15
 
     @pytest.mark.unit
+    def test_successful_but_irrelevant_vector_hit_stays_below_abstain_gate_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.services.rag.agentic._reasoning_evidence import compute_evidence_score
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["unit/services/rag/agentic/test_abstain_bypass_policy.py::TestTrustedToolDetection::test_successful_but_irrelevant_vector_hit_stays_below_abstain_gate"]
+        query = "Untuk KBLI 51101 berapa batas kepemilikan asing?"
+        irrelevant = (
+            "The D12 visa requires a passport and sponsor documents. "
+            "Immigration may request additional evidence for the stay permit."
+        )
+        score = compute_evidence_score(
+            trusted_tools_used=False,
+            sources=pipeline_sources(
+                "unit/services/rag/agentic/test_abstain_bypass_policy.py::TestTrustedToolDetection::test_successful_but_irrelevant_vector_hit_stays_below_abstain_gate"
+            ),
+            context_gathered=[irrelevant],
+            query=query,
+        )
+        assert score < 0.15
+
+    @pytest.mark.unit
     def test_relevant_vector_hit_can_pass_through_relevance_path(self):
         from backend.services.rag.agentic._reasoning_evidence import compute_evidence_score
 

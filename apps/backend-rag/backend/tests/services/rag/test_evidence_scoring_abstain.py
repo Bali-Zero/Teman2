@@ -45,6 +45,29 @@ class TestEvidenceScoringFixed:
         assert score < 0.15, f"Expected score < 0.15 for mismatched topic, got {score}"
         print(f"✅ KITAS query with KBLI results: score = {score} (correctly < 0.15)")
 
+    def test_kitas_query_with_kbli_results_low_score_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_kitas_query_with_kbli_results_low_score"]
+        # KITAS query
+        query = "Come posso richiedere il KITAS in Indonesia?"
+
+        # But results are about KBLI (business classification) - completely wrong topic
+        sources = pipeline_sources(
+            "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_kitas_query_with_kbli_results_low_score"
+        )
+        context = [
+            "KBLI (Klasifikasi Baku Lapangan Usaha Indonesia) è il sistema di classificazione...",
+            "I codici KBLI sono necessari per registrare un'azienda in Indonesia...",
+        ]
+
+        score = calculate_evidence_score(sources, context, query)
+
+        # Should be very low (< 0.15) due to topic mismatch
+        assert score < 0.15, f"Expected score < 0.15 for mismatched topic, got {score}"
+        print(f"✅ KITAS query with KBLI results: score = {score} (correctly < 0.15)")
+
     def test_nonsense_query_zero_score(self):
         """
         Problem 2: Nonsense query "xyzabc123" should score ~0.0
@@ -56,6 +79,25 @@ class TestEvidenceScoringFixed:
         sources = [
             {"id": 1, "title": "Random Doc", "score": 0.8},
         ]
+        context = [
+            "This is some generic document content about various topics and subjects...",
+        ]
+
+        score = calculate_evidence_score(sources, context, query)
+
+        # Should be very low (< 0.15 triggers ABSTAIN)
+        assert score < 0.15, f"Expected score < 0.15 for nonsense query, got {score}"
+        print(f"✅ Nonsense query: score = {score} (correctly < 0.15)")
+
+    def test_nonsense_query_zero_score_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_nonsense_query_zero_score"]
+        query = "xyzabc123 blorptastic fnord"
+        sources = pipeline_sources(
+            "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_nonsense_query_zero_score"
+        )
         context = [
             "This is some generic document content about various topics and subjects...",
         ]
@@ -146,6 +188,28 @@ class TestEvidenceScoringFixed:
 
         # Context about KBLI (wrong entity type)
         sources = [{"id": 1, "score": 0.9}]
+        context = [
+            "Il codice KBLI 46610 si riferisce al commercio all'ingrosso...",
+            "Per registrare un'azienda serve il KBLI corretto...",
+        ]
+
+        score = calculate_evidence_score(sources, context, query)
+
+        # Should be capped due to entity mismatch
+        assert score < 0.2, f"Entity mismatch should cap score low, got {score}"
+
+    def test_entity_type_mismatch_detection_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_entity_type_mismatch_detection"]
+        # Query about visa
+        query = "Come richiedere il KITAS?"
+
+        # Context about KBLI (wrong entity type)
+        sources = pipeline_sources(
+            "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_entity_type_mismatch_detection"
+        )
         context = [
             "Il codice KBLI 46610 si riferisce al commercio all'ingrosso...",
             "Per registrare un'azienda serve il KBLI corretto...",

@@ -1,0 +1,124 @@
+task_id: voa-store-wiring
+mandate_id: garuda-voa-w1w
+colour: BLUE
+gear: 2
+l_level: L2
+gate_class: opus
+# Deterministic floor for this diff is 1 (compute_floor: no hot-zone path, 167 net lines
+# < the 400-line size term). Gear 2 is DECLARED ABOVE the floor, not imposed by it: the
+# Imperatore's decision #24 sets a fresh Opus gate for every W1W PR at gear >= 2, and
+# declaring gear 2 is what makes that gate a required verdict on this head sha rather
+# than an optional courtesy.
+objective: >-
+  GARUDA VOA W1W, PR 1 of 4. Make `actor_id` a required, non-defaulted keyword on
+  `DocumentStorePort` (`ports.py`) and thread it from the router through
+  `DocumentIntakeService.submit_document` to the store. An `Idempotency-Key` is chosen by
+  the CLIENT: two different customers can pick the same literal value, and a store that
+  ignored the actor would let one read or displace the other's committed outcome.
+  What this PR does and does NOT achieve, stated precisely because Sol refuted the looser
+  claim: a required keyword FORCES every implementation and every call site to supply the
+  actor, and makes a stale one fail loudly; it cannot stop an implementation from
+  accepting the parameter and ignoring it. Enforcement of the USE is per-implementation
+  and is proved per-implementation — here on `InMemoryDocumentStore`, in PR 2a on
+  `PostgresDocumentStore`. This PR carries NO storage implementation — it is the port-shape change the
+  Postgres store (PR 2a) is written against, landed first so the adapter arrives against a
+  port that already enforces the scoping.
+  Spec: docs/plans/2026-09-11-garuda-voa-final-spec.md §3 row W1W. Source of the work:
+  `agent/air-m5/ops/garuda-voa-store-wiring` @ 7cc6878f07, re-applied semantically from
+  fresh main (never merged — that branch is based on c52a04c9ee, 10 days stale).
+scope:
+  - apps/backend-rag/backend/services/garuda_documents/ports.py
+  - apps/backend-rag/backend/services/garuda_documents/service.py
+  - apps/backend-rag/backend/app/routers/garuda_documents_router.py
+  - apps/backend-rag/backend/tests/services/garuda_documents/test_ports_actor_scoping.py
+  - apps/backend-rag/backend/tests/services/garuda_documents/test_service_journeys.py
+  - apps/backend-rag/backend/tests/services/garuda_documents/test_service_concurrency.py
+  - evidence/2026-09/agent-air-m5-backend-rag-voa-store-wiring-23492b6e/
+constraints:
+  - >-
+    No migration. 304 is already applied in production (measured this session:
+    _schema_versions.applied_as = 'backend_rag_v2 (session_user=backend_rag_migrator)').
+  - >-
+    No fly.toml, no .env*, no zantara_core.py, no
+    products/garuda-voa/contracts/openapi.yaml (that file belongs to W3C). The OpenAPI
+    contract is untouched by this PR and cannot be affected by it: it describes the HTTP
+    surface, not this internal Protocol.
+  - >-
+    No storage implementation here. `ReadyOutcomeValueNotPersisted` and the lost-race
+    reconciliation that the Postgres store's PII boundary requires are deliberately NOT in
+    this PR — they have no meaning until a store exists that cannot rehydrate a value.
+  - No PII in any output, log, test fixture or evidence file.
+acceptance:
+  - text: >-
+      A1: WHEN two different actors commit under the SAME literal idempotency key, THEN both
+      SHALL win their own commit, and neither SHALL be able to read the other's outcome —
+      `get_existing` for the other actor SHALL return None, not the outcome and not
+      IdempotencyConflictError (a conflict would confirm the key exists, an enumeration
+      oracle across customers).
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py"
+  - text: >-
+      A2 (innocence): WHEN the SAME actor replays the same key with the same payload, THEN
+      the original outcome SHALL still be returned; with a DIFFERENT payload it SHALL still
+      raise IdempotencyConflictError. Actor scoping must not break a genuine replay.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py -k same_actor"
+  - text: >-
+      A3: WHEN `actor_id` is omitted at a call site, THEN the call SHALL raise TypeError
+      rather than silently dropping the scoping — the keyword is required, never defaulted.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py -k required_not_defaulted"
+  - text: >-
+      A4 (the router's two Protocol-shaped fakes keep their documented error shape): WHEN no
+      store is wired, THEN uploadIntakeDocument SHALL still answer 503
+      PERSISTENCE_POLICY_UNAVAILABLE and listIntakeDocuments 503 SERVICE_UNAVAILABLE — NOT
+      the app's generic 500, which is what a fake missing the new required keyword produces
+      (TypeError at the call site, before its body raises).
+    probe: "PYTHONPATH=. pytest backend/tests/app/routers/test_garuda_documents_router.py -k '503'"
+  - text: >-
+      A5: WHEN one actor submits under TWO DIFFERENT idempotency keys, THEN both SHALL
+      commit independently and each SHALL replay its own outcome. Scoping adds the actor to
+      the key; it must never replace it, or a customer's second unrelated upload would come
+      back as a conflict against their first.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py -k two_distinct_keys"
+  - text: >-
+      A6: WHEN two actors submit the same payload under the same literal key THROUGH
+      `DocumentIntakeService.submit_document`, THEN they SHALL receive distinct outcomes.
+      The port-level tests call the store directly and stay green even if the service
+      forwards a constant actor; this one goes through the only path production uses.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py -k service_does_not_replay"
+  - text: >-
+      A7: WHEN `_ReplayTrackingStore` wraps a store, THEN the actor it received SHALL reach
+      the inner store unchanged — the wrapper observes, it does not re-scope.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py -k wrapper_forwards"
+  - text: >-
+      A8: WHEN `commit` is called twice with the SAME outcome instance, THEN exactly one
+      call SHALL return True. True is the caller's permission to fire the at-most-once
+      staff work-item hook; two winners fire it twice.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_ports_actor_scoping.py -k same_outcome_instance"
+  - text: >-
+      A9 (whole-lane regression): the garuda_documents service and router suites SHALL pass
+      unchanged apart from the actor_id argument threaded into each call.
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/ backend/tests/app/routers/test_garuda_documents_router.py"
+guilt_mutations:
+  - "InMemoryDocumentStore keyed on idempotency_key alone (its shape before this PR) -> A1 red"
+  - "_UnconfiguredDocumentStore.get_existing without the actor_id keyword -> A4 red (500, not 503)"
+  - "upload_intake_document dropping actor_id=actor -> A9 red (TypeError)"
+  - "InMemoryDocumentStore keyed on actor_id alone, ignoring the key -> A5 red (Sol finding 2)"
+  - "every actor_id= forward replaced by one constant -> A6 red (Sol finding 2)"
+  - "_ReplayTrackingStore substituting its own actor -> A7 red (Sol finding 2)"
+  - "commit deciding the winner by `outcome` identity instead of the entry it built -> A8 red (Sol finding 1)"
+refuter:
+  seat: codex Sol
+  model_id: gpt-5.6-sol
+  invocation: "codex exec --sandbox read-only -c model_reasoning_effort=xhigh"
+  duration: "3m37s (2026-09-12T05:41:12Z -> 05:44:49Z), 107216 tokens"
+  verdict: CONDITION
+  findings: >-
+    6, all accepted, none disputed. 1 (MEDIUM) commit could declare two winners on a shared
+    outcome instance — cured, decided by candidate-entry identity. 2 (MEDIUM) the suite did
+    not pin actor PROPAGATION: a store keyed on actor alone, and a constant actor forwarded
+    everywhere, both passed — cured by four new tests (A5-A8). 3 (LOW) this brief claimed
+    the Protocol prevents a bad implementation — reworded above. 4 (LOW) `_scoped_key`'s
+    docstring described a collision unreachable through this router (actor IS result_id) and
+    anticipated the future adapter — rewritten. 5 (LOW) a new docstring named
+    SERVICE_UNAVAILABLE for the upload path, which answers PERSISTENCE_POLICY_UNAVAILABLE —
+    corrected. 6 (LOW) the test docstring claimed a mutation keeps the whole suite green;
+    measured it is 2 failed / 3 passed — rewritten with the measured numbers.
