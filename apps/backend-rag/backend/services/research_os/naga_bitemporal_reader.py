@@ -43,6 +43,12 @@ R1 on the fixtures R1 ships, because those fixtures are already internally consi
   `valid_to` that does not parse under `instant_key`'s grammar quarantines the family rather than
   raising or silently sorting first/last — the same "never crash on this data, always name a
   reason" posture D4 states explicitly for admission.
+- `malformed_member` / `malformed_edge` are NEW Quarantine reasons on the same footing, for the
+  same reason one step earlier: `research_os_objects` is a polymorphic store with a second
+  writer and no payload-shape CHECK, so a row can arrive without the keys every traversal below
+  subscripts. Structure is checked FIRST and returns early, so a malformed row is named and
+  quarantined instead of raising a `KeyError` that would take `read()` down for the whole
+  `subject_key`, sound families included.
 
 INSTANTS. Every temporal comparison in this module goes through `instant_key`, never through a
 parsed `datetime` and never through raw text — R2-build-spec.md §4: "All temporal comparisons go
@@ -231,6 +237,34 @@ def _integrity_reasons(family: _Family) -> set[str]:
     """
 
     reasons: set[str] = set()
+
+    # STRUCTURE BEFORE SEMANTICS, and it returns early on purpose.
+    #
+    # Every line below this block hard-subscripts keys a sound row always carries
+    # (`member["time"]`, `edge["predecessor_ref"]`, `member["claim_family_id"]`, ...).
+    # `research_os_objects` is a polymorphic store with a SECOND writer (`consul_executor`)
+    # and no payload-shape CHECK constraint, so a structurally malformed row CAN reach this
+    # reader -- and a `KeyError` is neither of D3's two non-answers. It is not an explicit
+    # abstention and it is not a quarantine: it takes down `read()` for the whole
+    # `subject_key`, including the sound families under it, which is exactly the failure mode
+    # the contract forbids. Found by the Kimi K3 council seat; the probe that proved it was a
+    # claim with no `time` block, which raised `KeyError: 'time'` out of this function.
+    for member in family.members.values():
+        if not isinstance(member.get("time"), Mapping):
+            reasons.add("malformed_member")
+        elif any(
+            member.get(field_name) is None
+            for field_name in ("claim_id", "claim_family_id", "object_hash")
+        ):
+            reasons.add("malformed_member")
+    for edge in family.edges:
+        if not isinstance(edge.get("predecessor_ref"), Mapping) or not isinstance(
+            edge.get("successor_ref"), Mapping
+        ):
+            reasons.add("malformed_edge")
+    if reasons:
+        return reasons
+
     outgoing: dict[str | None, set[str | None]] = {}
 
     recomputed: dict[str, str | None] = {

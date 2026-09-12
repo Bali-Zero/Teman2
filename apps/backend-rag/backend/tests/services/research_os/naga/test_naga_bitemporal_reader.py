@@ -616,3 +616,53 @@ def test_an_unparseable_recorded_at_quarantines_instead_of_crashing() -> None:
     prod = read(_SUBJECT, "2026-03-01T00:00:00Z", "2026-06-01T00:00:00Z", _objects([claim], []))
     assert isinstance(prod, Quarantine)
     assert "unparseable_instant" in prod.reasons
+
+
+def test_a_member_without_a_time_block_quarantines_instead_of_raising() -> None:
+    """The reader's two non-answers are abstention and quarantine. A `KeyError` is neither: it
+    takes `read()` down for the whole subject_key, sound families included. Found by the Kimi K3
+    council seat -- before the cure this exact input raised `KeyError: 'time'` out of
+    `_integrity_reasons`, which every traversal below it reaches.
+    """
+
+    family = "22223333-0000-4000-8000-0000000000ac"
+    claim = dict(
+        _claim(
+            "abcdefab-0000-4000-8000-000000000003", family,
+            valid_from="2026-01-01T00:00:00Z", valid_to=None,
+            recorded_at="2026-02-01T00:00:00Z",
+        )
+    )
+    del claim["time"]
+    result = read(_SUBJECT, "2026-03-01T00:00:00Z", "2026-06-01T00:00:00Z", _objects([claim], []))
+    assert isinstance(result, Quarantine)
+    assert "malformed_member" in result.reasons
+    assert family in result.family_ids
+
+
+def test_a_member_missing_its_identity_quarantines_instead_of_raising() -> None:
+    family = "22223333-0000-4000-8000-0000000000ad"
+    claim = dict(
+        _claim(
+            "abcdefab-0000-4000-8000-000000000004", family,
+            valid_from="2026-01-01T00:00:00Z", valid_to=None,
+            recorded_at="2026-02-01T00:00:00Z",
+        )
+    )
+    del claim["object_hash"]
+    result = read(_SUBJECT, "2026-03-01T00:00:00Z", "2026-06-01T00:00:00Z", _objects([claim], []))
+    assert isinstance(result, Quarantine)
+    assert "malformed_member" in result.reasons
+
+
+def test_a_sound_family_still_answers_so_the_structural_guard_is_not_a_blanket_refusal() -> None:
+    """Innocence for the guard above: it must not turn every read into a quarantine."""
+
+    family = "22223333-0000-4000-8000-0000000000ae"
+    claim = _claim(
+        "abcdefab-0000-4000-8000-000000000005", family,
+        valid_from="2026-01-01T00:00:00Z", valid_to=None, recorded_at="2026-02-01T00:00:00Z",
+    )
+    result = read(_SUBJECT, "2026-03-01T00:00:00Z", "2026-06-01T00:00:00Z", _objects([claim], []))
+    assert isinstance(result, Answer)
+
