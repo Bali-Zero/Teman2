@@ -303,7 +303,7 @@ class TestEnvVarGate:
         TigrisArtifactObjectStore()
         assert captured["service"] == "s3"
         assert captured["aws_access_key_id"] == "scoped-access-key"
-        assert captured["aws_secret_access_key"] == "scoped-secret"
+        assert captured["aws_secret_access_key"] == "scoped-secret"  # pragma: allowlist secret
         assert captured["endpoint_url"] == tigris_store.DEFAULT_ENDPOINT_URL
         # `total_max_attempts` INCLUDES the initial request (botocore's docstring);
         # `max_attempts` would have been one RETRY. What a unit test can observe
