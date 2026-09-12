@@ -16,8 +16,12 @@ A `day` past the end of a month means that month's last day. Fiscal years are mo
 the MM of fiscal_year_end is the closing month. Period keys: "YYYY-MM" (monthly), "YYYY-Qn"
 (calendar quarter), "FYyyyy-Qn" (fiscal quarter), "FYyyyy" (annual), where yyyy is the calendar
 year in which the fiscal year ends.
-roll=next_business_day moves a Saturday or Sunday to the following Monday. Indonesian national
-holidays and cuti bersama are NOT modelled in v1: a due date on a holiday does not move.
+roll=next_business_day moves a date that is not an Indonesian business day to the first one after
+it: Saturday, Sunday, libur nasional and cuti bersama all push it (`business_days.py`, PMK
+81/2024 Pasal 100 for payment and Pasal 173 for reporting). When the due date's year has no
+decreed holiday table the roll degrades to weekends only, and `propose` attaches
+"holiday calendar for <year> not loaded" to that proposal's needs_review_reason so the reviewer
+sees a date the engine could not finish computing. roll=none never moves, holiday or not.
 The horizon window is [start, start + horizon_days): start inclusive, end exclusive, after rolling.
 """
 
@@ -33,6 +37,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from backend.services.compliance.business_days import holiday_years_loaded, next_business_day
 
 DEFAULT_CATALOG_PATH = Path(__file__).resolve().parents[2] / "data" / "obligations_catalog.yaml"
 
@@ -345,17 +351,29 @@ def due_dates(
     out = []
     for key, due in _periods(rule, profile, range(start.year - span, end.year + 2)):
         if rule.due.roll == "next_business_day":
-            due += timedelta(days=max(0, 7 - due.weekday()) if due.weekday() >= 5 else 0)
+            due = next_business_day(due)
         if start <= due < end:
             out.append((key, due))
     return sorted(out, key=lambda kd: (kd[1], kd[0]))
+
+
+def _review_reason(rule: ObligationRule, due: date) -> str | None:
+    """The rule's own reason, plus the holiday gap when this date's year has no decreed table.
+
+    Only a rolling rule can be wrong for that reason: a roll=none date never moved in the first
+    place, so an undecreed year tells the reviewer nothing about it.
+    """
+    if rule.due.roll != "next_business_day" or due.year in holiday_years_loaded():
+        return rule.needs_review_reason
+    gap = f"holiday calendar for {due.year} not loaded"
+    return f"{rule.needs_review_reason}; {gap}" if rule.needs_review_reason else gap
 
 
 def propose(
     rules: Iterable[ObligationRule], profile: ClientProfile, start: date, horizon_days: int
 ) -> list[ProposedObligation]:
     out = [
-        ProposedObligation(rule.id, key, due, rule.needs_review_reason)
+        ProposedObligation(rule.id, key, due, _review_reason(rule, due))
         for rule in rules
         if applies(rule, profile)
         for key, due in due_dates(rule, profile, start, horizon_days)
