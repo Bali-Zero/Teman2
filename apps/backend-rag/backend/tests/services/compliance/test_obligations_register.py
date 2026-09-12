@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import fields as dataclass_fields
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -16,6 +17,8 @@ import pytest
 
 from backend.db.migration_base import split_migration_sql
 from backend.services.compliance.obligations_register import (
+    ATTRIBUTES,
+    ONE_TIME_REVIEW_NOTE,
     CatalogError,
     ClientProfile,
     DueRule,
@@ -24,6 +27,7 @@ from backend.services.compliance.obligations_register import (
     due_dates,
     load_catalog,
     profile_from_rows,
+    profile_inputs,
     propose,
 )
 from backend.services.compliance.obligations_repository import (
@@ -49,6 +53,25 @@ def _synthetic(frequency: str, day: int = 10, after: int = 1, basis: str = "fisc
     return ObligationRule("synthetic", "n", "a", "s", False, (), due)
 
 
+def _one_time(fixed_date: date | None = None, reason: str | None = None) -> ObligationRule:
+    """A one_time rule with nothing in applies_if, so it applies to every profile."""
+    due = DueRule("one_time", None, None, 0, "none", "fiscal", fixed_date)
+    return ObligationRule(
+        "synthetic_one_time", "n", "a", "s", False, (), due, reason, trigger="when it triggers"
+    )
+
+
+def _rule_file(tmp_path: Path, due: str, trigger: bool) -> Path:
+    """A one-rule catalog whose `due` mapping is given verbatim (trigger iff unscheduled)."""
+    path = tmp_path / "rule.yaml"
+    path.write_text(
+        "rules:\n  - id: some_rule\n    name: n\n    authority: a\n    legal_source: s\n"
+        + ("    trigger: t\n" if trigger else "")
+        + f"    due: {due}\n"
+    )
+    return path
+
+
 def _catalog_file(tmp_path: Path, predicate: str, extra: str = "") -> Path:
     path = tmp_path / "catalog.yaml"
     path.write_text(
@@ -65,10 +88,29 @@ def _catalog_file(tmp_path: Path, predicate: str, extra: str = "") -> Path:
 
 def test_catalog_loads_and_every_rule_validates(catalog):
     assert len(catalog) >= 15
-    assert not any(rule.verified for rule in catalog.values())
     assert {"lkpm_quarterly", "spt_masa_pph21", "spt_tahunan_badan", "pse_registration"} <= set(
         catalog
     )
+
+
+def test_verified_rules_cite_a_source_url_and_unverified_ones_say_why(catalog):
+    """The 2026-09-12 source sweep: `verified: true` is a claim, so it must carry its URL.
+
+    What this CAN check is that a promotion carries its evidence and that a demotion explains
+    itself. What no unit test can check is whether a cited article really says what the rule
+    claims: that lives in docs/compliance/obligations-catalog-sources-2026-09.md, which holds the
+    verbatim quote behind each of the 21 rows. The count below is a floor on how much of that
+    sweep landed, not a quality score — raise it when a later sweep confirms more, and move a rule
+    back to `false` the moment its source is found wanting, even if that drops the count.
+    """
+    verified = [rule for rule in catalog.values() if rule.verified]
+    assert len(verified) >= 12, [rule.id for rule in verified]
+    for rule in verified:
+        assert "http" in rule.legal_source, rule.id
+        assert "(verify" not in rule.legal_source, rule.id
+    for rule in catalog.values():
+        if not rule.verified:
+            assert rule.needs_review_reason, rule.id
 
 
 def test_unscheduled_rules_name_their_trigger(catalog):
@@ -194,8 +236,21 @@ def test_payment_and_return_are_separate_deadlines(catalog):
 
 
 def test_roll_none_keeps_the_weekend_date(catalog):
+    # expat_tax_residency_review is roll: none — no regulation sets the date, so nothing moves it.
+    # 2026-10-31 is a Saturday and stays one.
+    assert due_dates(catalog["expat_tax_residency_review"], PMA, date(2026, 10, 1), 31) == [
+        ("2026-10", date(2026, 10, 31))
+    ]
+
+
+def test_bpjs_kesehatan_rolls_off_a_saturday_on_its_own_clause(catalog):
+    """Perpres 82/2018 art. 39(4): a 10th falling on a hari libur moves to the next hari kerja.
+
+    Sat 10 Oct 2026 therefore becomes Mon 12 Oct. The first pass of the 2026-09 source sweep had
+    this rule on roll: none, having read only art. 39(1) to (3) — the article straddles a page break.
+    """
     assert due_dates(catalog["bpjs_kesehatan_monthly"], PMA, date(2026, 10, 1), 30) == [
-        ("2026-10", date(2026, 10, 10))
+        ("2026-10", date(2026, 10, 12))
     ]
 
 
@@ -207,11 +262,12 @@ def test_day_31_clamps_to_month_end_then_rolls(catalog):
     ]
 
 
+# Permen Investasi/BKPM 5/2025 art. 286(5) moved the LKPM deadline from the 10th to the 15th.
 LKPM_2026 = [
-    ("2025-Q4", date(2026, 1, 10)),
-    ("2026-Q1", date(2026, 4, 10)),
-    ("2026-Q2", date(2026, 7, 10)),
-    ("2026-Q3", date(2026, 10, 10)),
+    ("2025-Q4", date(2026, 1, 15)),
+    ("2026-Q1", date(2026, 4, 15)),
+    ("2026-Q2", date(2026, 7, 15)),
+    ("2026-Q3", date(2026, 10, 15)),
 ]
 
 
@@ -261,12 +317,221 @@ def test_horizon_start_is_inclusive_and_end_exclusive(catalog):
         due_dates(rule, PMA, date(2026, 11, 16), -1)
 
 
-def test_one_time_and_event_rules_produce_nothing(catalog):
-    platform = ClientProfile(company_type="FOREIGN_PLATFORM", serves_indonesian_users_online=True)
-    assert applies(catalog["pse_registration"], platform)
-    assert due_dates(catalog["pse_registration"], platform, date(2026, 9, 11), 365) == []
-    proposed = {p.rule_id for p in propose(catalog.values(), platform, date(2026, 9, 11), 365)}
-    assert not proposed & {"pse_registration", "pmse_vat_assessment", "wajib_lapor_ketenagakerjaan"}
+def test_due_on_a_libur_nasional_moves_to_the_next_business_day():
+    # No 2026 catalog date lands on a decreed WEEKDAY, so this case needs a synthetic rule: due on
+    # the 17th means Mon 2026-08-17, Proklamasi Kemerdekaan, a holiday that is not also a weekend.
+    rule = ObligationRule(
+        "synthetic_17", "n", "a", "s", False, (), DueRule("monthly", 17, None, 0, "none", "fiscal")
+    )
+    rolling = replace(rule, due=replace(rule.due, roll="next_business_day"))
+    assert due_dates(rule, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 17))]
+    assert due_dates(rolling, PMA, date(2026, 8, 1), 30) == [("2026-08", date(2026, 8, 18))]
+
+
+def test_due_on_a_cuti_bersama_moves_to_the_next_business_day(catalog):
+    # Fri 2026-03-20 is cuti bersama Idulfitri and the block runs to Tue 24 Mar -> Wed 25 Mar.
+    assert due_dates(catalog["spt_masa_pph21"], PMA, date(2026, 3, 1), 31) == [
+        ("2026-02", date(2026, 3, 25))
+    ]
+
+
+def test_due_on_a_weekend_skips_the_monday_holiday_too(catalog):
+    # The PPh 21 DEPOSIT deadline (Pasal 94: the 15th) for Masa Pajak 2026-01 is Sun 15 Feb. The
+    # old weekend-only roll stopped on Mon 16 Feb, which is cuti bersama Imlek; Tue 17 Feb is Imlek
+    # itself. Wed 18 Feb is the first day the deposit can actually be made.
+    assert due_dates(catalog["pph21_payment"], PMA, date(2026, 2, 1), 28) == [
+        ("2026-01", date(2026, 2, 18))
+    ]
+    # The RETURN for the same month is a different deadline (Pasal 171: the 20th) and does not
+    # move: Fri 20 Feb 2026 is a business day. Conflating the two is the easy mistake here.
+    assert due_dates(catalog["spt_masa_pph21"], PMA, date(2026, 2, 1), 28) == [
+        ("2026-01", date(2026, 2, 20))
+    ]
+
+
+def test_a_catalog_next_business_day_rule_absorbs_the_holiday_block_after_it(catalog):
+    # BPJS Ketenagakerjaan for 2026-07 is due Sat 15 Aug. #6336 (M4 source sweep) confirmed PP
+    # 44/2015 art. 21(3) and PP 46/2015 art. 19(3) both move a 15th falling on a hari libur to the
+    # next hari kerja, so this rule is roll: next_business_day, not roll: none as it read before
+    # that sweep. The next business day is Tue 18 Aug (Sun 16, then Independence Day on Mon 17).
+    assert due_dates(catalog["bpjs_ketenagakerjaan_monthly"], PMA, date(2026, 8, 1), 30) == [
+        ("2026-07", date(2026, 8, 18))
+    ]
+
+
+def test_a_year_without_a_holiday_table_rolls_weekends_only_and_says_so(catalog):
+    # 2028 has no decree yet (they are issued ~September of the preceding year). Sat 2028-01-15
+    # therefore rolls on the weekend alone, to Mon 17 Jan, and the proposal says the date is
+    # unfinished instead of presenting it as computed.
+    rule = catalog["pph21_payment"]
+    assert due_dates(rule, PMA, date(2028, 1, 1), 31) == [("2027-12", date(2028, 1, 17))]
+    [proposed] = propose([rule], PMA, date(2028, 1, 1), 31)
+    assert proposed.needs_review_reason == "holiday calendar for 2028 not loaded"
+
+
+def test_the_holiday_gap_is_flagged_per_proposal_not_per_run(catalog):
+    # One horizon straddles the decreed year and the undecreed one, so the flag cannot be a
+    # property of the run: 2026-11 is due inside 2026 and says nothing, 2026-12 lands in 2027.
+    reasons = {
+        (p.period_key, p.due_date): p.needs_review_reason
+        for p in propose([catalog["spt_masa_ppn"]], PMA, date(2026, 12, 1), 75)
+    }
+    assert reasons == {
+        ("2026-11", date(2026, 12, 31)): None,
+        ("2026-12", date(2027, 2, 1)): "holiday calendar for 2027 not loaded",
+    }
+
+
+def test_the_holiday_gap_reason_appends_to_the_rules_own_reason(catalog):
+    rule = catalog["pph25_installment"]
+    assert rule.needs_review_reason  # the rule already has one; the gap must not replace it
+    [proposed] = propose([rule], PMA, date(2027, 1, 10), 10)
+    assert proposed.needs_review_reason == (
+        f"{rule.needs_review_reason}; holiday calendar for 2027 not loaded"
+    )
+
+
+def test_a_next_business_day_rule_is_flagged_for_an_undecreed_year(catalog):
+    # bpjs_kesehatan_monthly is roll: next_business_day (#6336, M4 source sweep: Perpres 82/2018
+    # art. 39(4)). Sun 2027-01-10 rolls on the weekend alone to Mon 11 Jan, since 2027 has no
+    # decreed holiday table yet, and the proposal says so instead of presenting it as settled.
+    rule = catalog["bpjs_kesehatan_monthly"]
+    [proposed] = propose([rule], PMA, date(2027, 1, 1), 15)
+    assert proposed.due_date == date(2027, 1, 11)
+    assert proposed.needs_review_reason == "holiday calendar for 2027 not loaded"
+
+
+# -- one_time triggers and the optional fixed statutory date (PR M2) -------------------------
+# Before M2 these rules applied to a profile and produced nothing, so the three obligations the
+# compliance offer actually sells never reached the reviewer queue. One "once" proposal per
+# applicable rule now does, dated the generation date unless the catalog states a fixed_date.
+
+PLATFORM = ClientProfile(
+    company_type="FOREIGN_PLATFORM",
+    serves_indonesian_users_online=True,
+    pse_registered=False,
+    pmse_vat_appointed=False,
+)
+GEN = date(2026, 9, 11)
+
+
+def test_event_rules_still_schedule_nothing(catalog):
+    """Per-person and per-event dates are in no profile attribute; only the trigger is stated."""
+    expat = ClientProfile(
+        company_type="PT_PMA",
+        has_employees=True,
+        has_foreign_employees=True,
+        pse_registered=True,
+    )
+    event_ids = {"pse_data_update", "rptka_imta_expat", "wajib_lapor_ketenagakerjaan"}
+    for rule_id in event_ids:
+        rule = catalog[rule_id]
+        assert rule.due.frequency == "event"
+        assert applies(rule, expat), rule_id
+        assert due_dates(rule, expat, GEN, 365) == []
+    assert not {p.rule_id for p in propose(catalog.values(), expat, GEN, 365)} & event_ids
+
+
+def test_one_time_rules_reach_the_queue_once_with_the_generation_date(catalog):
+    """The M2 observation: the two PSE/PMSE obligations a foreign platform owes are proposed."""
+    once = [p for p in propose(catalog.values(), PLATFORM, GEN, 90) if p.period_key == "once"]
+    assert [(p.rule_id, p.due_date) for p in once] == [
+        ("pmse_vat_assessment", GEN),
+        ("pse_registration", GEN),
+    ]
+    for proposal in once:  # the rule's own reason (M4 gave pmse one), then the M2 note
+        rule = catalog[proposal.rule_id]
+        assert rule.due.fixed_date is None
+        expected = ONE_TIME_REVIEW_NOTE
+        if rule.needs_review_reason:
+            expected = f"{rule.needs_review_reason}; {ONE_TIME_REVIEW_NOTE}"
+        assert proposal.needs_review_reason == expected
+    registered = replace(PLATFORM, pse_registered=True, pmse_vat_appointed=True)
+    assert not [p for p in propose(catalog.values(), registered, GEN, 90) if p.period_key == "once"]
+
+
+def test_halal_certification_reaches_a_pt_pma_queue_on_its_statutory_date(catalog):
+    """The catalog states the UMK deadline PP 42/2024 art. 160(2) sets, so it is not a placeholder.
+
+    M4 (#6336) confirmed 17 October 2026 against the PP text, so this proposal is the one case
+    where a one_time due date is a real deadline: the generation-date note must NOT be added, and
+    the rule's own sector caveat must survive alone.
+    """
+    rule = catalog["halal_certification"]
+    assert rule.due.fixed_date == date(2026, 10, 17)
+    [once] = propose([rule], PMA, GEN, 30)
+    assert (once.rule_id, once.period_key) == ("halal_certification", "once")
+    assert once.due_date == date(2026, 10, 17)
+    assert once.needs_review_reason == rule.needs_review_reason
+    assert ONE_TIME_REVIEW_NOTE not in (once.needs_review_reason or "")
+
+
+def test_the_one_time_note_appends_to_the_rules_own_reason():
+    [once] = propose([_one_time(reason="sector is not a profile attribute")], PMA, GEN, 0)
+    assert (once.period_key, once.due_date) == ("once", GEN)
+    assert once.needs_review_reason == f"sector is not a profile attribute; {ONE_TIME_REVIEW_NOTE}"
+
+
+def test_a_one_time_proposal_is_identical_whatever_the_horizon(catalog):
+    """period_key "once" is the idempotence key: same tuple, so UNIQUE blocks the second row."""
+    short = [p for p in propose(catalog.values(), PLATFORM, GEN, 1) if p.period_key == "once"]
+    long = [p for p in propose(catalog.values(), PLATFORM, GEN, 400) if p.period_key == "once"]
+    assert short == long
+    assert len(short) == 2
+
+
+def test_a_fixed_date_at_or_after_the_generation_date_becomes_the_due_date():
+    rule = _one_time(fixed_date=date(2026, 10, 17), reason="sector not modelled")
+    [once] = propose([rule], PMA, GEN, 1)
+    assert (once.due_date, once.needs_review_reason) == (date(2026, 10, 17), "sector not modelled")
+    [same_day] = propose([_one_time(fixed_date=GEN)], PMA, GEN, 1)
+    assert (same_day.due_date, same_day.needs_review_reason) == (GEN, None)
+
+
+def test_a_fixed_date_already_past_keeps_the_obligation_and_says_it_passed():
+    """A missed statutory deadline is the one the reviewer most needs to see, not one to drop."""
+    [once] = propose([_one_time(fixed_date=date(2026, 8, 31), reason="sector")], PMA, GEN, 1)
+    assert once.due_date == GEN
+    assert once.needs_review_reason == "sector; fixed statutory date 2026-08-31 already passed"
+
+
+def test_load_catalog_accepts_a_fixed_date_on_a_one_time_rule(tmp_path):
+    bare = "{frequency: one_time, months_after_period_end: 0, roll: none}"
+    dated = bare[:-1] + ", fixed_date: 2026-10-17}"
+    quoted = bare[:-1] + ', fixed_date: "2026-10-17"}'
+    assert load_catalog(_rule_file(tmp_path, bare, True))[0].due.fixed_date is None
+    assert load_catalog(_rule_file(tmp_path, dated, True))[0].due.fixed_date == date(2026, 10, 17)
+    assert load_catalog(_rule_file(tmp_path, quoted, True))[0].due.fixed_date == date(2026, 10, 17)
+
+
+@pytest.mark.parametrize(
+    ("due", "trigger"),
+    [
+        ("{frequency: monthly, day: 10, months_after_period_end: 1, roll: none, fixed_date: 2026-10-17}", False),
+        ("{frequency: annual, day: 31, months_after_period_end: 4, roll: none, fixed_date: 2026-10-17}", False),
+        ("{frequency: event, months_after_period_end: 0, roll: none, fixed_date: 2026-10-17}", True),
+    ],
+)  # fmt: skip
+def test_load_catalog_rejects_a_fixed_date_on_a_rule_that_would_never_read_it(
+    tmp_path, due, trigger
+):
+    with pytest.raises(CatalogError, match="fixed_date is only for one_time rules"):
+        load_catalog(_rule_file(tmp_path, due, trigger))
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        ("17-10-2026", "fixed_date must be YYYY-MM-DD"),
+        ("20261017", "fixed_date must be YYYY-MM-DD"),
+        ("2026-10", "fixed_date must be YYYY-MM-DD"),
+        ("2026-02-30", "impossible fixed_date"),
+    ],
+)
+def test_load_catalog_rejects_a_malformed_fixed_date(tmp_path, raw, message):
+    due = f'{{frequency: one_time, months_after_period_end: 0, roll: none, fixed_date: "{raw}"}}'
+    with pytest.raises(CatalogError, match=message):
+        load_catalog(_rule_file(tmp_path, due, True))
 
 
 def test_propose_is_sorted_and_carries_review_reasons(catalog):
@@ -277,6 +542,8 @@ def test_propose_is_sorted_and_carries_review_reasons(catalog):
         (p.rule_id, p.period_key, p.due_date) for p in proposed
     }
     for p in proposed:
+        if catalog[p.rule_id].due.frequency == "one_time":
+            continue  # a "once" proposal carries the M2 note too; pinned by its own tests above
         assert p.needs_review_reason == catalog[p.rule_id].needs_review_reason
 
 
@@ -319,6 +586,13 @@ def test_profile_from_rows_missing_custom_fields_gives_defaults(company_type, ex
     assert profile == ClientProfile(company_type=expected)
 
 
+@pytest.mark.parametrize("raw", ["\u00b2", "\u00bd", "12x", " ", "-3"])
+def test_int_attributes_drop_a_non_decimal_string_instead_of_raising(raw):
+    """isdigit() accepts "\u00b2" but int("\u00b2") raises: that ValueError reached the API as a 500."""
+    company = {"company_type": "PT PMA", "custom_fields": {"employee_count": raw}}
+    assert profile_from_rows(None, company) == ClientProfile(company_type="PT_PMA")
+
+
 def test_profile_from_rows_reads_json_text_and_drops_malformed_values():
     company = {
         "company_type": "PT PMA",
@@ -349,6 +623,66 @@ def test_profile_from_rows_survives_unhashable_values():
     assert profile_from_rows(None, company) == ClientProfile(company_type="PT_PMA")
 
 
+# --------------------------------------------------------------------------- #
+# company_type precedence and the provenance profile_inputs reports (PR M3):
+# compliance_company_type is written by PATCH /profile/{client_id} and must win
+# over the companies.company_type string, which is what lets a reviewer fix a
+# company the string mapping reads as OTHER.
+# --------------------------------------------------------------------------- #
+def test_compliance_company_type_wins_over_an_unrecognised_company_type_string():
+    company = {
+        "company_type": "Yayasan Something Unrecognised",
+        "custom_fields": {"compliance_company_type": "pt_pma"},
+    }
+    inputs = profile_inputs(None, company)
+    assert inputs.profile.company_type == "PT_PMA"
+    assert "compliance_company_type" in inputs.present_keys
+    assert "company_type" not in inputs.missing_attributes
+
+
+def test_compliance_company_type_wins_over_a_recognised_company_type_string_too():
+    company = {"company_type": "PT PMA", "custom_fields": {"compliance_company_type": "CV"}}
+    assert profile_from_rows(None, company).company_type == "CV"
+
+
+@pytest.mark.parametrize("bad", ["PT_XYZ", "", None, 7, ["PT_PMA"], {}])
+def test_invalid_compliance_company_type_falls_back_to_the_string_mapping(bad):
+    company = {"company_type": "PT PMA", "custom_fields": {"compliance_company_type": bad}}
+    assert profile_from_rows(None, company).company_type == "PT_PMA"
+
+
+def test_profile_inputs_reports_present_keys_and_missing_attributes():
+    company = {"company_type": "PT PMA", "custom_fields": {"pkp": "yes", "employee_count": 3}}
+    inputs = profile_inputs({"id": 1}, company)
+    assert set(inputs.present_keys) == {"pkp", "employee_count"}
+    assert "has_employees" not in inputs.missing_attributes  # derived from employee_count > 0
+    assert {"pse_registered", "annual_turnover_idr", "investment_stage"} <= set(
+        inputs.missing_attributes
+    )
+    assert "company_type" not in inputs.missing_attributes  # the string mapped to PT_PMA
+
+
+def test_profile_inputs_lists_company_type_as_missing_when_it_defaulted_to_other():
+    inputs = profile_inputs(None, {"company_type": "Koperasi"})
+    assert inputs.profile.company_type == "OTHER"
+    assert "company_type" in inputs.missing_attributes
+    assert inputs.present_keys == ()
+
+
+def test_profile_inputs_of_a_bare_client_has_every_attribute_missing():
+    inputs = profile_inputs(None, None)
+    assert set(inputs.missing_attributes) == set(ATTRIBUTES)
+    assert inputs.present_keys == ()
+
+
+def test_profile_inputs_counts_the_foreign_platform_flag_as_a_present_key():
+    company = {"company_type": "Foreign co", "custom_fields": {"is_foreign_platform": True}}
+    inputs = profile_inputs(None, company)
+    assert inputs.profile.company_type == "FOREIGN_PLATFORM"
+    assert inputs.present_keys == ("is_foreign_platform",)
+    assert "company_type" not in inputs.missing_attributes
+
+
 @pytest.mark.parametrize(
     "rule_id", ["marketplace_withholding_pmk37", "spt_masa_pph23_26", "halal_certification"]
 )
@@ -377,6 +711,32 @@ async def test_upsert_proposals_is_idempotent_and_never_resets_reviewed_rows(moc
     assert "ON CONFLICT (client_id, rule_id, period_key) DO NOTHING" in sql
     assert "DO UPDATE" not in sql
     assert (client_id, rule_ids) == (7, [p.rule_id for p in proposals])
+
+
+async def test_a_re_run_inserts_no_one_time_row_for_the_same_client(mock_db_pool, catalog):
+    """ON CONFLICT DO NOTHING plus the stable "once" key: the second run writes nothing."""
+    pool, conn = mock_db_pool
+    first = propose(catalog.values(), PLATFORM, GEN, 90)
+    # A day later the undated one_time proposals carry a DIFFERENT due_date (the new generation
+    # date) and the same "once" key, which is the half of idempotence the engine owns: the key the
+    # UNIQUE constraint matches on cannot drift with the clock. The constraint itself is pinned by
+    # test_migration_309_shape_and_rollback (the DDL) and exercised end to end by the router's
+    # test_generate_persists_and_is_idempotent; no live database is reachable from this suite.
+    later = propose(catalog.values(), PLATFORM, date(2026, 9, 12), 90)
+    assert [p.period_key for p in later] == [p.period_key for p in first]
+    assert [p.due_date for p in later] != [p.due_date for p in first]
+    conn.fetch.side_effect = [[{"id": n} for n in range(len(first))], []]
+    repo = ObligationsRepository(pool)
+    assert await repo.upsert_proposals(7, first) == len(first)
+    assert await repo.upsert_proposals(7, later) == 0
+    sql, client_id, rule_ids, period_keys, due_dates_arg, _reasons = conn.fetch.call_args.args
+    assert "ON CONFLICT (client_id, rule_id, period_key) DO NOTHING" in sql
+    assert (client_id, period_keys.count("once")) == (7, 2)
+    assert {r for r, k in zip(rule_ids, period_keys, strict=True) if k == "once"} == {
+        "pse_registration",
+        "pmse_vat_assessment",
+    }
+    assert all(d >= GEN for d in due_dates_arg)
 
 
 async def test_upsert_with_no_proposals_skips_the_database(mock_db_pool):

@@ -89,51 +89,95 @@ def get_invite_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> In
     return InviteService(db_pool)
 
 
-def build_invite_email_html(client_name: str, invite_url: str) -> str:
-    """Build HTML email for client invitation."""
-    safe_client_name = escape(client_name, quote=True)
-    safe_invite_url = escape(invite_url, quote=True)
+def build_invite_email_html(
+    client_name: str, invite_url: str, consultant_name: str | None = None
+) -> str:
+    """Build the brand-compliant HTML email for a client portal invitation.
 
-    return f"""
-<!DOCTYPE html>
+    Follows the `email-template` brand surface (600px table layout, HTML 4.01
+    Transitional doctype, inline CSS only, no `<style>` block, no web fonts,
+    no emoji) — see
+    `/Users/balizero/.agents/skills/bali-zero-brand/surfaces/email-template.md`
+    and section 11 of the 2026-09 portal launch kit spec.
+    """
+    safe_client_name = escape(client_name, quote=True) if client_name else ""
+    safe_invite_url = escape(invite_url, quote=True)
+    greeting = f"Hello {safe_client_name}," if safe_client_name else "Hello there,"
+
+    consultant_line = ""
+    if consultant_name:
+        safe_consultant_name = escape(consultant_name, quote=True)
+        consultant_line = f"""
+<p style="margin: 0 0 20px 0; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5; color: #1A1A1A;">Your consultant: {safe_consultant_name}</p>"""
+
+    return f"""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Welcome to Bali Zero Client Portal</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f8fafc;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <tr>
-            <td>
-                <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <h1 style="color: #059669; font-size: 24px; margin: 0 0 20px 0;">
-                        Welcome to Bali Zero Portal
-                    </h1>
-                    <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                        Hello {safe_client_name},
-                    </p>
-                    <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                        You've been invited to access your client portal where you can:
-                    </p>
-                    <ul style="color: #475569; font-size: 14px; line-height: 1.8; margin: 0 0 30px 0; padding-left: 20px;">
-                        <li>View your visa and immigration status</li>
-                        <li>Track company licenses and compliance</li>
-                        <li>Access and upload documents</li>
-                        <li>Communicate with our team</li>
-                    </ul>
-                    <a href="{safe_invite_url}" style="display: inline-block; background-color: #059669; color: white; padding: 14px 28px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
-                        Activate Your Portal
-                    </a>
-                    <p style="color: #94a3b8; font-size: 13px; margin: 30px 0 0 0;">
-                        This link expires in 72 hours. If you didn't expect this invitation, please ignore this email.
-                    </p>
-                </div>
-                <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-                    Bali Zero | Immigration & Corporate Services
-                </p>
-            </td>
-        </tr>
-    </table>
+<body style="margin: 0; padding: 0; background-color: #FFFFFF;">
+<span style="display: none; visibility: hidden; mso-hide: all; font-size: 1px; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden;">One link, 72 hours, your documents in one place.</span>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px;">
+<tr>
+<td style="background-color: #363A3E; padding: 0 24px;" height="80">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" height="80">
+<tr>
+<td width="48" valign="middle">
+<img src="https://balizero.com/assets/logo/balizero-logo-circle.png" alt="Bali Zero" width="40" height="40" style="display: block; border: 0;">
+</td>
+<td valign="middle" style="padding-left: 12px; font-family: Arial, Helvetica, sans-serif;">
+<span style="color: #FFFFFF; font-size: 18px; font-weight: 700;">Bali Zero</span><br>
+<span style="color: #9CA3AF; font-size: 12px;">Client Portal</span>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="background-color: #FFFFFF; padding: 40px 32px;">
+<h1 style="margin: 0 0 24px 0; font-family: Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 700; color: #1A1A1A; letter-spacing: 0.02em;">Your Bali Zero Portal Is Ready</h1>
+<p style="margin: 0 0 16px 0; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5; color: #1A1A1A;">{greeting}</p>
+<p style="margin: 0 0 28px 0; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5; color: #1A1A1A;">Your Bali Zero client portal holds your documents, case status and messages with your team in one place, so passport scans and contracts no longer travel on WhatsApp.</p>
+<h2 style="margin: 0 0 16px 0; font-family: Arial, Helvetica, sans-serif; font-size: 18px; font-weight: 700; color: #1A1A1A;">What Happens Next</h2>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px 0;">
+<tr>
+<td style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5; color: #1A1A1A; padding: 0 0 12px 0;">1. Open the link below.</td>
+</tr>
+<tr>
+<td style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5; color: #1A1A1A; padding: 0 0 12px 0;">2. Choose a 4 to 6 digit PIN.</td>
+</tr>
+<tr>
+<td style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5; color: #1A1A1A;">3. Sign in at my.balizero.com with your email and PIN, or use a magic link. No password to remember.</td>
+</tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 12px 0;">
+<tr>
+<td style="background-color: #F4C430; border-radius: 4px;" align="center">
+<a href="{safe_invite_url}" style="display: inline-block; padding: 14px 32px; font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; color: #363A3E; text-decoration: none; border-radius: 4px;">Activate My Portal</a>
+</td>
+</tr>
+</table>
+<p style="margin: 0 0 28px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.5; color: #6B7280;">Or copy this link into your browser: <a href="{safe_invite_url}" style="color: #6B7280;">{safe_invite_url}</a></p>{consultant_line}
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #363A3E; border-left: 4px solid #F4C430;">
+<tr>
+<td style="padding: 16px 20px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.5; color: #FFFFFF;">This link is valid for 72 hours and can be used once. Nobody at Bali Zero will ever ask for your PIN. If you did not expect this email, ignore it.</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="background-color: #FFFFFF; padding: 24px 32px; border-top: 1px solid #E5E7EB;">
+<p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.5; color: #6B7280;">Bali Zero &middot; Jl. Raya Anyar No. 2, Kerobokan Kelod, Kuta Utara, Badung, Bali 80361 &middot; zantara@balizero.com &middot; +62 821 3454 721 &middot; my.balizero.com</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
 </body>
 </html>
 """
@@ -146,12 +190,17 @@ async def send_portal_invite_email(
     invite_url: str,
     db_pool: asyncpg.Pool,
     client_id: int,
+    consultant_name: str | None = None,
 ) -> None:
     """Send a client portal invite through the canonical Brevo adapter."""
     await send_internal_email(
         to=to,
         subject="Welcome to Bali Zero Client Portal",
-        body=build_invite_email_html(client_name=client_name, invite_url=invite_url),
+        body=build_invite_email_html(
+            client_name=client_name,
+            invite_url=invite_url,
+            consultant_name=consultant_name,
+        ),
         log_context=f"portal invite client={client_id}",
         raise_on_failure=True,
         email_type="welcome",

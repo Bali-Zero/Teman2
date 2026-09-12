@@ -11,8 +11,6 @@
     "sponsor_category",
     "investment_vehicle",
     "secondhome_property_value_usd",
-    "family_sponsor_confirmed",
-    "wants_onshore_conversion",
     "stay_days",
     "review_gate"
   ],
@@ -36,7 +34,7 @@
     "immigration.overstay_days": { "status": "KNOWN", "value": 0 },
     "immigration.violation_history": { "status": "KNOWN", "value": [] },
     "immigration.renewal_paid": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.purposes": { "status": "KNOWN", "value": ["INVESTMENT"] },
+    "intent.purposes": { "status": "KNOWN", "value": ["SECOND_HOME"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "intent.entry_pattern": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
@@ -105,7 +103,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
+    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
@@ -134,7 +132,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "process.wants_onshore_conversion": { "status": "KNOWN", "value": true },
+    "process.wants_onshore_conversion": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "commercial.service_fee_budget_idr": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

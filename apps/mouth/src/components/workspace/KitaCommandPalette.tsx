@@ -7,9 +7,6 @@ import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { isCRMAdmin } from "@/lib/crm/admin";
 
-// /inbox is owner-only (Zero) — keep its palette shortcut off everyone else.
-const INBOX_OWNER_EMAIL = "zero@balizero.com";
-
 /**
  * Workspace-wide Cmd+K command palette for /kita.
  * Actions: navigation + case-creation shortcuts + external (Prime).
@@ -33,22 +30,10 @@ export function KitaCommandPalette() {
   }, [open]);
 
   const profile = api.getUserProfile();
-  const isInboxOwner =
-    (profile?.email || "").toLowerCase() === INBOX_OWNER_EMAIL;
   const isAccountingAdmin = isCRMAdmin(profile);
 
   const actions: CommandAction[] = useMemo(
     () => [
-      ...(isInboxOwner
-        ? [
-            {
-              id: "go-inbox",
-              label: t("commandPalette.actions.goInbox"),
-              group: t("commandPalette.groups.navigation"),
-              run: () => router.push("/inbox"),
-            },
-          ]
-        : []),
       ...(isAccountingAdmin
         ? [
             {
@@ -103,7 +88,7 @@ export function KitaCommandPalette() {
         run: () => router.push("/analytics/funnel"),
       },
     ],
-    [router, t, isInboxOwner, isAccountingAdmin],
+    [router, t, isAccountingAdmin],
   );
 
   return (

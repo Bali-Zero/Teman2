@@ -25,7 +25,7 @@ export function TeamRoleWidget({ metrics }: Props) {
       )}
       {metrics.stalled_count > 0 && (
         <div className="px-2 py-1.5 rounded-lg bg-[color-mix(in_srgb,var(--state-warning)_9%,transparent)] border border-[color-mix(in_srgb,var(--state-warning)_22%,transparent)] text-[9px] font-semibold text-[var(--state-warning)]">
-          ⚠️ {metrics.stalled_count} stalled &gt;14d
+          ⚠️ {metrics.stalled_count} stalled &gt;7d
         </div>
       )}
       {metrics.doc_mancanti > 0 && (

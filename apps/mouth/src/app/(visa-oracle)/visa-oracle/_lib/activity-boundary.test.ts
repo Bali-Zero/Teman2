@@ -141,20 +141,35 @@ const WALKS: readonly WalkCase[] = [
     flags: [],
   },
   {
-    name: "invest · property — HELD: a Second Home shape no purpose can be emitted for (§6 R3)",
+    // Released (PR-D3, D3-1): `investment_vehicle=property` now routes to
+    // Second Home and `mapPurposes` emits SECOND_HOME alone, so neither
+    // `family_sponsor_confirmed` nor `wants_onshore_conversion` is asked any
+    // more — no E33 rule reads either fact. Was "HELD" under §6 R3; see
+    // fact-mapper.ts's `ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS` comment.
+    name: "invest · property — FREED (D3-1): routes to Second Home, SECOND_HOME alone",
     category: "invest",
     tripScope: "single",
     branch: [
       ["sponsor_category", "INVESTMENT"],
       ["investment_vehicle", "property"],
       ["secondhome_property_value_usd", "1200000"],
-      // Both inserted into the invest branch by #5855 — they are the two
-      // facts that turned this walk's NEEDS_INPUT into an answer.
-      ["family_sponsor_confirmed", "yes"],
-      ["wants_onshore_conversion", "no"],
       ["stay_days", "730"],
     ],
-    flags: ["ACTIVITY_BOUNDARY"],
+    flags: [],
+  },
+  {
+    name: "invest · bank_deposit — FREED (D3-1): routes to Second Home, SECOND_HOME alone",
+    category: "invest",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "INVESTMENT"],
+      ["investment_vehicle", "bank_deposit"],
+      ["secondhome_deposit_usd", "150000"],
+      ["secondhome_state_bank", "yes"],
+      ["secondhome_own_name", "yes"],
+      ["stay_days", "730"],
+    ],
+    flags: [],
   },
   {
     name: "retirement · property — HELD: §6 R3 measured the unflagged answer as a wrong NO_PATH",
@@ -167,6 +182,38 @@ const WALKS: readonly WalkCase[] = [
       ["stay_days", "365"],
     ],
     flags: ["ACTIVITY_BOUNDARY"],
+  },
+  {
+    // NARROW-2 (owner ruling SHWEB-20260911, 2026-09-12): `el.e33f.
+    // retirement` (rulepack-prod-020) decides SUPPORT off
+    // `secondhome.passive_monthly_income_usd >= 3000` and `family.
+    // sponsor_confirmed == true` alone — it never reads `retirement_basis`
+    // at all — so the table was UNDER-inclusive: it deleted a real,
+    // deterministic engine answer regardless of which one it was.
+    // CORRECTED 2026-09-12 (D3-C/C2): this fixture is the YOUNG identity
+    // (age 25, `YOUNG_APPLICANT_BIRTH_DATE`), and at 25 the answer is
+    // NO_SUPPORTED_PATH — `hf.e33f.age-below-55` excludes E33F before
+    // `el.e33f.retirement` is ever reached. SUPPORTED E33F is reached only
+    // by the SAME branch replayed at age 64 in the backend corpus
+    // (`offshore/retirement/family_sponsor/age64`,
+    // `test_interview_walk_census.py`'s `EXPECTED_OUTCOME`); the walk at
+    // this age (`offshore/retirement/family_sponsor`) is pinned
+    // NO_SUPPORTED_PATH there. What NARROW-2 actually fixed is age-blind:
+    // `mapDisclosedReviewFlags` never sees `birth_date`, so the flag was
+    // deleting whichever real verdict the engine reached — a proven
+    // NO_SUPPORTED_PATH at 25, a proven SUPPORTED E33F at 64 — for a fact
+    // (`retirement_basis`) neither verdict depends on.
+    name: "retirement · family_sponsor — FREED (NARROW-2): el.e33f.retirement never reads retirement_basis",
+    category: "retirement",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "NONE"],
+      ["retirement_basis", "family_sponsor"],
+      ["secondhome_passive_income_usd", "5000"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "365"],
+    ],
+    flags: [],
   },
   {
     // NAME CORRECTED 2026-09-08, RELEASED SAME DAY. This row used to read
@@ -224,6 +271,56 @@ const WALKS: readonly WalkCase[] = [
     flags: ["ACTIVITY_BOUNDARY"],
   },
   {
+    // NARROW-1 (owner ruling SHWEB-20260911, 2026-09-12): a foreign sponsor
+    // used to raise AMBIGUOUS_SPONSOR for every relation, on the mere
+    // presence of `family_sponsor_status_code`/`family_sponsor_permit_
+    // basis`. `el.c1.tourism-family` (rulepack-prod-020) reads no sponsor
+    // fact at all, so this deleted a verdict the flag could never affect —
+    // the OVER-match this narrowing exists to cure. SPOUSE stands for
+    // PARENT/CHILD/SIBLING/DEPENDENT/OTHER too: none of their pack products
+    // gate on the sponsor fact with a real (non-NO_EFFECT) effect.
+    name: "family · SPOUSE, foreign sponsor — FREED (NARROW-1): el.c1.tourism-family reads no sponsor fact",
+    category: "family",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "FAMILY"],
+      ["family_relation", "SPOUSE"],
+      ["marital_status", "MARRIED"],
+      ["family_sponsor_nationalities", "IT"],
+      ["family_sponsor_status_code", "E23"],
+      ["family_sponsor_permit_basis", "EXPERT"],
+      ["family_marriage_registered", "yes"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "121"],
+    ],
+    flags: [],
+  },
+  {
+    // NARROW-1 condition (ii): STEPCHILD is, today, the one relation with a
+    // pack product genuinely gated on the sponsor — `el.e31d-stepchild-
+    // support` requires `family.sponsor_confirmed` with `on_unknown:
+    // NEEDS_INPUT`. Held only when the sponsor is foreign (status code
+    // asked at all); the Indonesian-sponsor STEPCHILD walk stays FREED —
+    // see "innocence: STEPCHILD with an Indonesian sponsor" in
+    // fact-mapper.test.ts.
+    name: "family · STEPCHILD, foreign sponsor — HELD (NARROW-1 ii): el.e31d-stepchild-support is sponsor-dependent",
+    category: "family",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "FAMILY"],
+      ["family_relation", "STEPCHILD"],
+      ["marital_status", "SINGLE"],
+      ["family_sponsor_nationalities", "IT"],
+      ["family_sponsor_status_code", "E23"],
+      ["family_sponsor_permit_basis", "EXPERT"],
+      ["family_stepchild_marriage_certificate_confirmed", "yes"],
+      ["family_stepchild_birth_certificate_confirmed", "yes"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "121"],
+    ],
+    flags: ["AMBIGUOUS_SPONSOR"],
+  },
+  {
     name: "other · medical — HELD: no answer here reaches a fact a rule reads",
     category: "other",
     tripScope: "single",
@@ -232,6 +329,29 @@ const WALKS: readonly WalkCase[] = [
       ["other_paid_activity", "no"],
       // Inserted into the `other` branch by #5855.
       ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "30"],
+      ["entry_pattern", "SINGLE"],
+    ],
+    flags: ["ACTIVITY_BOUNDARY"],
+  },
+  {
+    // D3-2 changes the ENGINE-level route (`other_paid_activity=yes` now
+    // asks the two employment facts `el.e23-employment-support` reads and
+    // `mapPurposes` emits EMPLOYMENT alone), but `other_purpose` ITSELF
+    // stays fully undecidable on purpose (spec: "holds on the
+    // `other_purpose` values stay until each value is mapped") — so this
+    // walk still holds, on the value `other_paid_activity` no longer
+    // contributes to. `disclosed_review_flags` is a boundary flag, not a
+    // per-cause list: removing one undecidable answer cannot un-hold a walk
+    // that another undecidable answer already holds.
+    name: "other · paid activity yes — engine reroutes to employment; other_purpose still holds",
+    category: "other",
+    tripScope: "single",
+    branch: [
+      ["other_purpose", "transit"],
+      ["other_paid_activity", "yes"],
+      ["work_payer", "yes"],
+      ["work_sponsor_confirmed", "yes"],
       ["stay_days", "30"],
       ["entry_pattern", "SINGLE"],
     ],

@@ -321,13 +321,24 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/family/STEPCHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31D")),
     "offshore/family/STEPCHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1", "E31D")),
     "offshore/holdsPermit/current/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
-    "offshore/invest/bank_deposit": ("SUPPORTED_CANDIDATES", ("C2",)),
+    # D3-1 (PR-D3, owner ruling SHWEB-20260911): `property`/`bank_deposit`
+    # now route to Second Home — `mapPurposes` emits SECOND_HOME alone, never
+    # joined with INVESTMENT (owner ruling 3) — and the corpus's canned
+    # numeric answer (1_000_000_000, `generate-walk-corpus.ts::answerFor`)
+    # clears both E33 thresholds (USD 1,000,000 property / USD 130,000
+    # deposit), so both walks answer E33 instead of C2.
+    "offshore/invest/bank_deposit": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/family": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/merit": ("SUPPORTED_CANDIDATES", ("C2",)),
-    "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/undecided": ("SUPPORTED_CANDIDATES", ("C2",)),
-    "offshore/other": ("SUPPORTED_CANDIDATES", ("C6",)),
+    # D3-2 (PR-D3): `other_paid_activity`'s first option is `yes`, so this
+    # walk now routes to the two employment facts `el.e23-employment-support`
+    # reads and `mapPurposes` emits EMPLOYMENT alone; both facts default to
+    # `yes`/true (`answerFor`'s first-option rule), so E23 answers instead of
+    # C6.
+    "offshore/other": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/remote": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/bank_deposit/age64": ("SUPPORTED_CANDIDATES", ("E33E",)),
@@ -350,7 +361,8 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "onshore/holdsPermit/current/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "onshore/holdsPermit/expired/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "onshore/invest": ("SUPPORTED_CANDIDATES", ("C2",)),
-    "onshore/other": ("SUPPORTED_CANDIDATES", ("C6",)),
+    # D3-2 (PR-D3): same route change as `offshore/other` above.
+    "onshore/other": ("SUPPORTED_CANDIDATES", ("E23",)),
     "onshore/remote": ("NO_SUPPORTED_PATH", ()),
     "onshore/retirement": ("NO_SUPPORTED_PATH", ()),
     "onshore/retirement/age64": ("SUPPORTED_CANDIDATES", ("E33E",)),

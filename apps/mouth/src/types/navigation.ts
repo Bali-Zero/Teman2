@@ -12,6 +12,13 @@ export interface NavItem {
 
 export interface NavSection {
   title?: string;
+  // One-line note rendered under the section title (e.g. an explanatory
+  // subtitle). Currently only used by the owner-only "Da fare" section.
+  note?: string;
+  // When true, AppSidebar hides the whole section unless the signed-in
+  // user is the owner (lib/auth/owner.ts::isOwner). Undefined/false means
+  // visible to everyone, same as before this field existed.
+  ownerOnly?: boolean;
   items: NavItem[];
 }
 
@@ -23,8 +30,6 @@ export interface UserProfile {
   team: string;
   avatar?: string;
   isOnline: boolean;
-  clockedInAt?: string;
-  hoursToday?: string;
 }
 
 export interface BreadcrumbItem {
@@ -80,6 +85,36 @@ export const navigation: NavSection[] = [
     title: "System",
     // Block 4: Admin
     items: [{ title: "Settings", href: "/settings", icon: "Settings" }],
+  },
+  {
+    title: "Da fare",
+    note: "Pagine vive senza link — da rivedere",
+    // Owner-only per Zero's 2026-09-12 ruling: these pages are live (real
+    // data, no dead endpoints) but had zero inbound links anywhere in the
+    // app before this section existed. Kept off the team sidebar until the
+    // owner decides which stay, get merged elsewhere, or get cut.
+    ownerOnly: true,
+    items: [
+      { title: "Accounting", href: "/accounting", icon: "Banknote" },
+      {
+        title: "Funnel Analytics",
+        href: "/analytics/funnel",
+        icon: "BarChart3",
+      },
+      { title: "GARUDA VOA", href: "/garuda-voa", icon: "ClipboardCheck" },
+      {
+        title: "Team Activity",
+        href: "/admin/team-activity",
+        icon: "Activity",
+      },
+      { title: "Agents", href: "/agents", icon: "BotMessageSquare" },
+      {
+        title: "Intelligence Analytics",
+        href: "/intelligence/analytics",
+        icon: "BarChart3",
+      },
+      { title: "Tax Pilot", href: "/clients/tax-pilot", icon: "Receipt" },
+    ],
   },
 ];
 
@@ -146,9 +181,7 @@ export const routeTitles: Record<string, string> = {
   "/intelligence": "Intelligence Center",
   "/intelligence/visa-oracle": "Visa Oracle",
   "/intelligence/news-room": "News Room",
-  "/intelligence/system-pulse": "System Pulse",
   "/chat": "Zantara AI",
-  "/whatsapp": "WhatsApp",
   "/clients": "Clients",
   "/clients/new": "New Client",
   "/process": "Process",
@@ -166,6 +199,12 @@ export const routeTitles: Record<string, string> = {
   "/hr/leave/request": "Request Leave",
   "/hr/settings": "HR Settings",
   "/analytics/funnel": "Funnel Analytics",
+  "/accounting": "Accounting",
+  "/garuda-voa": "GARUDA VOA",
+  "/admin/team-activity": "Team Activity",
+  "/agents": "Agents",
+  "/intelligence/analytics": "Intelligence Analytics",
+  "/clients/tax-pilot": "Tax Pilot",
   "/team/analytics": "Team Analytics",
   "/settings": "Settings",
   // Portal routes

@@ -1,0 +1,86 @@
+task_id: kita-prune-lot4a-1
+gear: 2
+l_level: L1
+gate_class: opus
+base_sha: 5f8b56361fd2f7d57ecc549e6f2dfa9188e94b6f # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 4 insertions / 1246 deletions across 21 files
+# (all under apps/mouth). No hot-zone path, no PII path, no ground-truth path touched. Gear 2
+# declared to match the floor.
+objective: >-
+  Lot 4a-1 of the kita.balizero.com surface-pruning effort (audit shared with the owner on
+  2026-09-12, section B, plan items 16 partial and 20): delete /whatsapp, /inbox and
+  /intelligence/system-pulse. Split out of a combined lot-4a scope (which also covered
+  /team-management, /team/analytics, /revenue/analytics — now lot 4a-2, a separate PR) because
+  the combined diff's churn (2817) floored the harness gate at Gear 3; this half alone is 1250.
+  Deletions and reference cleanup only.
+constraints:
+  - >-
+    Deletions and reference cleanup only, one commit. No new feature, no redesign, no backend
+    change. Off-limits files (zantara_core.py, fly.toml, .env*, apps/backend-rag/**) untouched.
+  - >-
+    /whatsapp and /inbox: neither reads the real Meta inbox (meta_inbox_threads per the audit);
+    /omnichannel is the one kept surface (19 live API calls, audit-confirmed). /whatsapp's only
+    referrer, components/dashboard/WhatsAppPreview.tsx, had zero mounters — it was already
+    deleted upstream in #6296 before this branch rebased onto it, confirmed by
+    `git show origin/main:apps/mouth/src/components/dashboard/index.ts` no longer exporting it.
+    /inbox was owner-only (Zero): a login-redirect branch in login/page.tsx and a
+    command-palette shortcut in KitaCommandPalette.tsx, both removed along with the
+    (workspace)/layout.tsx pathname gate that bounced non-owners to /dashboard.
+  - >-
+    /intelligence/system-pulse: verified NOT present in intelligence/layout.tsx's sub-nav (only
+    Visa Oracle, News Room, Article Composer tabs exist there) before deleting; 5 of its 7
+    displayed metrics are literal constants per the audit (uptime 99.8, "Every 2 hours" text,
+    a 4-string "Agent Configuration" card, Qdrant never pinged).
+  - >-
+    Every deleted route's inbound references were grep-verified empty afterward across
+    apps/mouth/src, apps/mouth/e2e, apps/mouth/scripts, apps/mouth/next.config.ts (quoted
+    '/whatsapp'/'/inbox'/'/intelligence/system-pulse' forms), except one deliberately-kept
+    generic test case in middleware.test.ts that uses "/inbox" as an arbitrary path string for
+    lookalike-hostname classification (middleware never checks page existence, so the test
+    stays valid regardless of the page).
+  - >-
+    Header's WhatsApp button keeps its whatsappUnread prop (default 0, has no href/onClick
+    linking to /whatsapp — grep-verified) — out of scope, it's lot 5 chrome per the audit's own
+    plan ordering. AppSidebar's dead /whatsapp badge ternary and the unreadWhatsApp prop that
+    fed only it (grep-verified: only two callers, both in this same layout.tsx) were removed
+    since they existed solely for this route.
+  - No client PII in this pack, the PR body, or the commit: no client data was read or logged.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+  tokens: 600000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file,
+      including the two token-drain guard tests trimmed to drop system-pulse's page.tsx pin.
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK, with no /whatsapp, /inbox or
+      /intelligence/system-pulse entry in the route manifest.
+    probe: cd apps/mouth && npm run build
+  - text: >-
+      A4 Bites: WHEN kita.balizero.com is deployed from the merge THEN
+      `curl -fsS -o /dev/null -w "%{http_code}" https://kita.balizero.com/whatsapp` and the
+      same for /inbox and /intelligence/system-pulse SHALL each answer 404, and the sidebar
+      SHALL show no residual WhatsApp unread badge slot.
+    probe: curl -fsS https://kita.balizero.com/api/health
+assumptions:
+  - text: >-
+      components/dashboard/WhatsAppPreview.tsx and its two exports were already deleted by
+      #6296 before this branch rebased onto origin/main — this branch's own deletion of it
+      became a no-op absorbed by the rebase (confirmed: dashboard/index.ts on this head exports
+      only MiniSparkline, ZantaraPortalCard, LiveActivityFeed, RoleWidget, matching
+      origin/main's index.ts exactly).
+    status: verified
+    probe: git diff origin/main -- apps/mouth/src/components/dashboard/index.ts
+  - text: >-
+      No nav item anywhere in navigation.ts's `navigation` array ever had href "/whatsapp",
+      "/inbox" or "/intelligence/system-pulse" (all three were reachable only via the
+      routeTitles map, a command-palette shortcut, or a direct URL) — deleting the pages leaves
+      no dangling sidebar entry to also remove.
+    status: verified
+    probe: grep -n "\"/whatsapp\"\|\"/inbox\"\|\"/intelligence/system-pulse\"" apps/mouth/src/types/navigation.ts

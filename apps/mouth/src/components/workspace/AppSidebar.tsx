@@ -36,6 +36,7 @@ import {
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import { navigation, NavSection, NavItem } from "@/types/navigation";
 import { cn } from "@/lib/utils";
+import { isOwner } from "@/lib/auth/owner";
 
 // Icon mapping
 const iconMap: Record<string, React.ElementType> = {
@@ -74,10 +75,7 @@ interface AppSidebarProps {
     role?: string;
     team?: string;
     avatar?: string;
-    isOnline?: boolean;
-    hoursToday?: string;
   };
-  unreadWhatsApp?: number;
   reviewCount?: number;
   onLogout: () => void;
   navigationConfig?: NavSection[];
@@ -90,7 +88,6 @@ interface AppSidebarProps {
 export function AppSidebar({
   id,
   user,
-  unreadWhatsApp = 0,
   reviewCount = 0,
   onLogout,
   navigationConfig,
@@ -100,7 +97,9 @@ export function AppSidebar({
   isZantaraOpen = false,
 }: AppSidebarProps) {
   const pathname = usePathname();
-  const nav = navigationConfig || navigation;
+  const nav = (navigationConfig || navigation).filter(
+    (section) => !section.ownerOnly || isOwner(user.email),
+  );
 
   const isActive = (href: string) => {
     if (!pathname) return false;
@@ -113,12 +112,7 @@ export function AppSidebar({
   const renderNavItem = (item: NavItem) => {
     const Icon = iconMap[item.icon] || Home;
     const active = isActive(item.href);
-    const badge =
-      item.href === "/whatsapp"
-        ? unreadWhatsApp
-        : item.href === "/review"
-          ? reviewCount
-          : item.badge;
+    const badge = item.href === "/review" ? reviewCount : item.badge;
 
     // GARUDA active: AA-safe copper fill + white text, rounded-[12px]
     const sharedClassName = cn(
@@ -203,6 +197,14 @@ export function AppSidebar({
           style={{ color: "var(--bz-text-3)" }}
         >
           {section.title}
+        </div>
+      )}
+      {section.note && (
+        <div
+          className="text-[8px] px-2.5 pb-1.5 leading-snug"
+          style={{ color: "var(--bz-text-3)" }}
+        >
+          {section.note}
         </div>
       )}
       {section.items.map(renderNavItem)}
@@ -314,17 +316,6 @@ export function AppSidebar({
               {isPortal ? "Client Portal" : user.role || user.team || "Team"}
             </div>
           </div>
-          <div
-            className="w-[7px] h-[7px] rounded-full flex-shrink-0"
-            style={{
-              background: user.isOnline
-                ? "var(--bz-green)"
-                : "var(--bz-text-3)",
-              boxShadow: user.isOnline
-                ? "0 0 6px color-mix(in srgb, var(--bz-green) 45%, transparent)"
-                : "none",
-            }}
-          />
         </div>
         <button
           onClick={onLogout}

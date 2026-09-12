@@ -73,6 +73,35 @@ async def test_send_portal_invite_email_uses_internal_brevo_adapter() -> None:
 
 
 @pytest.mark.asyncio
+async def test_invite_email_body_is_brand_compliant() -> None:
+    """The brand-compliant rewrite (spec-portal-launch-kit.md §11): CTA text,
+    the 72-hour line, the public logo URL, no `<style>` block (Gmail strips
+    it — the email-template surface mandates inline CSS only) and no
+    character above U+FFFF (the brand voice bans emoji everywhere, Article
+    6.7)."""
+    db_pool = MagicMock()
+
+    with patch(
+        "backend.app.routers.portal_invite.send_internal_email",
+        new=AsyncMock(),
+    ) as mock_sender:
+        await send_portal_invite_email(
+            to="client@example.com",
+            client_name="Sample Client",
+            invite_url="https://my.balizero.com/portal/register?token=SAMPLE",
+            db_pool=db_pool,
+            client_id=1,
+        )
+
+    body = mock_sender.await_args.kwargs["body"]
+    assert "Activate My Portal" in body
+    assert "72 hours" in body
+    assert "https://balizero.com/assets/logo/balizero-logo-circle.png" in body
+    assert "<style" not in body
+    assert all(ord(ch) <= 0xFFFF for ch in body)
+
+
+@pytest.mark.asyncio
 async def test_send_invitation_sends_email_through_internal_adapter(
     monkeypatch: pytest.MonkeyPatch,
     mock_db_pool: MagicMock,

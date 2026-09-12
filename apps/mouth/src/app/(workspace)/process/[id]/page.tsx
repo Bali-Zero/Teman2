@@ -14,7 +14,6 @@ import {
   AlertCircle,
   Loader2,
   FileText,
-  MessageCircle,
   MoreVertical,
   Edit,
   Trash2,
@@ -110,12 +109,11 @@ export default function CaseDetailPage() {
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Reduced to status + assignee + start date (kita-prune lot 6): priority,
+  // payment status and price already have their own inline editors on this
+  // page, so the modal no longer duplicates them.
   const [editForm, setEditForm] = useState({
     status: "",
-    priority: "",
-    payment_status: "",
-    quoted_price: "",
-    actual_price: "",
     assigned_to: "",
     start_date: "",
   });
@@ -425,10 +423,6 @@ export default function CaseDetailPage() {
 
     setEditForm({
       status: practice.status || "",
-      priority: practice.priority || "normal",
-      payment_status: practice.payment_status || "unpaid",
-      quoted_price: practice.quoted_price?.toString() || "",
-      actual_price: practice.actual_price?.toString() || "",
       assigned_to: practice.assigned_to || "",
       start_date: practice.start_date ? practice.start_date.split("T")[0] : "",
     });
@@ -455,23 +449,6 @@ export default function CaseDetailPage() {
 
       if (editForm.status && editForm.status !== practice.status)
         updates.status = editForm.status;
-      if (editForm.priority && editForm.priority !== practice.priority)
-        updates.priority = editForm.priority;
-      if (
-        editForm.payment_status &&
-        editForm.payment_status !== practice.payment_status
-      )
-        updates.payment_status = editForm.payment_status;
-      if (
-        editForm.quoted_price &&
-        Number(editForm.quoted_price) !== practice.quoted_price
-      )
-        updates.quoted_price = Number(editForm.quoted_price);
-      if (
-        editForm.actual_price &&
-        Number(editForm.actual_price) !== practice.actual_price
-      )
-        updates.actual_price = Number(editForm.actual_price);
       if (editForm.assigned_to !== (practice.assigned_to || ""))
         updates.assigned_to = editForm.assigned_to || null;
       const currentStartDate = practice.start_date
@@ -489,11 +466,7 @@ export default function CaseDetailPage() {
       }
 
       const fieldsUpdated = Object.keys(updates);
-      const updateType = updates.status
-        ? "status"
-        : updates.payment_status
-          ? "payment"
-          : "details";
+      const updateType = updates.status ? "status" : "details";
 
       // Log pre-request details
       logger.info(`Attempting to update case ${caseId}`, {
@@ -505,7 +478,7 @@ export default function CaseDetailPage() {
       const updatedPractice = await api.crm.updatePractice(caseId, updates);
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
-        "/api/crm/practices/update",
+        `/api/crm/practices/${caseId}/`,
         "PATCH",
         true,
         apiDuration,
@@ -530,7 +503,7 @@ export default function CaseDetailPage() {
     } catch (err) {
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
-        "/api/crm/practices/update",
+        `/api/crm/practices/${caseId}/`,
         "PATCH",
         false,
         apiDuration,
@@ -702,28 +675,9 @@ export default function CaseDetailPage() {
             <ArrowLeft className="w-4 h-4" />
             <span>Back</span>
           </button>
-          {practice.client_id && (
-            <>
-              <span
-                style={{ color: "var(--bz-text-2)" }}
-                className="opacity-30"
-              >
-                /
-              </span>
-              <button
-                onClick={() =>
-                  router.push(`/clients/${practice.client_id}?tab=process`)
-                }
-                className="flex items-center gap-1.5 transition-colors text-sm"
-                style={{ color: "var(--bz-text-2)" }}
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>
-                  {practice.client_name || `Client #${practice.client_id}`}
-                </span>
-              </button>
-            </>
-          )}
+          {/* Client link lives in the Client Information card below — the
+              primary, main-content instance (kita-prune lot 6: this
+              breadcrumb duplicated the same /clients/{id} navigation). */}
         </div>
 
         <div className="flex items-start justify-between">
@@ -794,54 +748,9 @@ export default function CaseDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {practice.payment_status !== undefined && (
-              <button
-                onClick={cyclePaymentStatus}
-                disabled={isUpdatingPayment}
-                title="Click to cycle payment status: unpaid → partial → paid"
-                aria-label="Cycle payment status"
-                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-50"
-                style={{
-                  background:
-                    practice.payment_status === "paid"
-                      ? "color-mix(in srgb, var(--state-success) 12%, transparent)"
-                      : practice.payment_status === "partial"
-                        ? "color-mix(in srgb, var(--state-warning) 12%, transparent)"
-                        : "color-mix(in srgb, var(--state-danger) 12%, transparent)",
-                  color:
-                    practice.payment_status === "paid"
-                      ? "var(--state-success)"
-                      : practice.payment_status === "partial"
-                        ? "var(--state-warning)"
-                        : "var(--state-danger)",
-                  border:
-                    practice.payment_status === "paid"
-                      ? "1px solid color-mix(in srgb, var(--state-success) 25%, transparent)"
-                      : practice.payment_status === "partial"
-                        ? "1px solid color-mix(in srgb, var(--state-warning) 25%, transparent)"
-                        : "1px solid color-mix(in srgb, var(--state-danger) 25%, transparent)",
-                }}
-              >
-                {isUpdatingPayment ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      background:
-                        practice.payment_status === "paid"
-                          ? "var(--state-success)"
-                          : practice.payment_status === "partial"
-                            ? "var(--state-warning)"
-                            : "var(--state-danger)",
-                    }}
-                  />
-                )}
-                <span className="capitalize">
-                  {practice.payment_status || "unpaid"}
-                </span>
-              </button>
-            )}
+            {/* Payment status is edited from the Process Details card below
+                (kita-prune lot 6: this header duplicated the same cycle
+                button/state, `cyclePaymentStatus`, with no distinct role). */}
             {(practice.actual_price || practice.quoted_price) && (
               <div
                 className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg tabular-nums"
@@ -895,49 +804,8 @@ export default function CaseDetailPage() {
                     <FileText className="w-3.5 h-3.5 opacity-60" />
                     Copy link
                   </button>
-                  {practice?.client_phone && (
-                    <button
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--bz-text-1)] hover:bg-[var(--bz-card)] transition-colors"
-                      onClick={() => {
-                        const phone = practice.client_phone?.replace(/\D/g, "");
-                        window.open(
-                          `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                          "_blank",
-                        );
-                        setShowMoreMenu(false);
-                      }}
-                    >
-                      <MessageCircle className="w-3.5 h-3.5 text-[var(--accent-whatsapp)]" />
-                      WhatsApp client
-                    </button>
-                  )}
-                  {practice?.client_email && (
-                    <button
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--bz-text-1)] hover:bg-[var(--bz-card)] transition-colors"
-                      onClick={() => {
-                        window.open(
-                          `mailto:${practice.client_email}`,
-                          "_blank",
-                        );
-                        setShowMoreMenu(false);
-                      }}
-                    >
-                      <Mail className="w-3.5 h-3.5 text-[var(--state-info)]" />
-                      Email client
-                    </button>
-                  )}
-                  {practice?.client_id && (
-                    <button
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--bz-text-1)] hover:bg-[var(--bz-card)] transition-colors"
-                      onClick={() => {
-                        router.push(`/clients/${practice.client_id}`);
-                        setShowMoreMenu(false);
-                      }}
-                    >
-                      <User className="w-3.5 h-3.5 opacity-60" />
-                      View client profile
-                    </button>
-                  )}
+                  {/* WhatsApp/Email/profile actions live in the Client
+                      Information card (main content, kita-prune lot 6). */}
                   <div className="my-1 border-t border-[var(--bz-border)]" />
                   <button
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--state-danger)] hover:bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] transition-colors"
@@ -1170,22 +1038,12 @@ export default function CaseDetailPage() {
                 >
                   Client ID
                 </label>
-                <button
-                  onClick={() => {
-                    casesMetrics.trackButtonClick(
-                      "Client ID Link",
-                      "CasesDetailPage",
-                      caseId || undefined,
-                      `/clients/${practice.client_id}`,
-                      userEmail.current || undefined,
-                    );
-                    router.push(`/clients/${practice.client_id}`);
-                  }}
-                  className="hover:underline font-medium"
+                <p
+                  className="font-medium"
                   style={{ color: "var(--bz-accent)" }}
                 >
                   #{practice.client_id}
-                </button>
+                </p>
               </div>
 
               {practice.client_email && (
@@ -1798,82 +1656,10 @@ export default function CaseDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Quick Actions */}
-          <div
-            className="rounded-xl p-6"
-            style={{
-              border: "1px solid var(--bz-border)",
-              background: "var(--bz-card)",
-            }}
-          >
-            <h3
-              className="text-lg font-semibold mb-4"
-              style={{ color: "var(--bz-text-1)" }}
-            >
-              Quick Actions
-            </h3>
-            <div className="space-y-2">
-              {practice.client_phone && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    casesMetrics.trackQuickAction(
-                      "whatsapp",
-                      caseId || 0,
-                      "CasesDetailPage",
-                      userEmail.current || undefined,
-                    );
-                    const phone = practice.client_phone?.replace(/\D/g, "");
-                    window.open(
-                      `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                      "_blank",
-                    );
-                  }}
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  WhatsApp Client
-                </Button>
-              )}
-
-              {practice.client_email && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    casesMetrics.trackQuickAction(
-                      "email",
-                      caseId || 0,
-                      "CasesDetailPage",
-                      userEmail.current || undefined,
-                    );
-                    window.open(`mailto:${practice.client_email}`, "_blank");
-                  }}
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Email Client
-                </Button>
-              )}
-
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  casesMetrics.trackButtonClick(
-                    "View Client Profile",
-                    "CasesDetailPage",
-                    caseId || undefined,
-                    `/clients/${practice.client_id}`,
-                    userEmail.current || undefined,
-                  );
-                  router.push(`/clients/${practice.client_id}`);
-                }}
-              >
-                <User className="w-4 h-4 mr-2" />
-                View Client Profile
-              </Button>
-            </div>
-          </div>
+          {/* Quick Actions card removed (kita-prune lot 6): its three
+              buttons (WhatsApp, Email, View Client Profile) duplicated the
+              Client Information card in the main content column, which is
+              the primary instance for all three. */}
 
           {/* Required Documents */}
           {caseId && <RequiredDocumentsCard practiceId={caseId} />}
@@ -2052,158 +1838,6 @@ export default function CaseDetailPage() {
                 </select>
               </div>
 
-              {/* Priority */}
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium"
-                  style={{ color: "var(--bz-text-1)" }}
-                >
-                  Priority
-                </label>
-                <div className="flex gap-2">
-                  {(
-                    [
-                      {
-                        value: "normal",
-                        label: "Normal",
-                        color: "var(--bz-text-2)",
-                        activeBg:
-                          "color-mix(in srgb, var(--bz-text-2) 20%, transparent)",
-                        activeBorder:
-                          "color-mix(in srgb, var(--bz-text-2) 40%, transparent)",
-                      },
-                      {
-                        value: "high",
-                        label: "↑ High",
-                        color: "var(--state-warning)",
-                        activeBg:
-                          "color-mix(in srgb, var(--state-warning) 20%, transparent)",
-                        activeBorder:
-                          "color-mix(in srgb, var(--state-warning) 40%, transparent)",
-                      },
-                      {
-                        value: "urgent",
-                        label: "🔥 Urgent",
-                        color: "var(--state-danger)",
-                        activeBg:
-                          "color-mix(in srgb, var(--state-danger) 20%, transparent)",
-                        activeBorder:
-                          "color-mix(in srgb, var(--state-danger) 40%, transparent)",
-                      },
-                    ] as const
-                  ).map((p) => (
-                    <button
-                      key={p.value}
-                      type="button"
-                      onClick={() =>
-                        setEditForm((prev) => ({ ...prev, priority: p.value }))
-                      }
-                      className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
-                      style={
-                        editForm.priority === p.value
-                          ? {
-                              background: p.activeBg,
-                              border: `1px solid ${p.activeBorder}`,
-                              color: p.color,
-                            }
-                          : {
-                              background: "var(--bz-card)",
-                              border: "1px solid var(--bz-border)",
-                              color: "var(--bz-text-2)",
-                            }
-                      }
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Payment Status */}
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium"
-                  style={{ color: "var(--bz-text-1)" }}
-                >
-                  Payment Status
-                </label>
-                <select
-                  value={editForm.payment_status}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      payment_status: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{
-                    border: "1px solid var(--bz-border)",
-                    background: "var(--bz-card)",
-                    color: "var(--bz-text-1)",
-                  }}
-                >
-                  <option value="unpaid">Unpaid</option>
-                  <option value="partial">Partial</option>
-                  <option value="paid">Paid</option>
-                </select>
-              </div>
-
-              {/* Quoted Price */}
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium"
-                  style={{ color: "var(--bz-text-1)" }}
-                >
-                  Quoted Price (IDR)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.quoted_price}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      quoted_price: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{
-                    border: "1px solid var(--bz-border)",
-                    background: "var(--bz-card)",
-                    color: "var(--bz-text-1)",
-                  }}
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
-
-              {/* Actual Price */}
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium"
-                  style={{ color: "var(--bz-text-1)" }}
-                >
-                  Actual Price (IDR)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.actual_price}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      actual_price: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{
-                    border: "1px solid var(--bz-border)",
-                    background: "var(--bz-card)",
-                    color: "var(--bz-text-1)",
-                  }}
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
-
               {/* Assigned To */}
               <div className="space-y-2">
                 <label
@@ -2228,9 +1862,11 @@ export default function CaseDetailPage() {
                   }}
                 >
                   <option value="">— unassigned —</option>
-                  <option value="zero@balizero.com">Zero</option>
-                  <option value="asya@balizero.com">Asya</option>
-                  <option value="antonellosiano@gmail.com">Antonello</option>
+                  {teamMemberOptions.map((member) => (
+                    <option key={member.value} value={member.value}>
+                      {member.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 

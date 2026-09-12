@@ -35,6 +35,7 @@ from __future__ import annotations
 import pytest
 
 from backend.app.core.constants import EvidenceScoreConstants
+from backend.core import score_provenance
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
 from backend.services.rag.agentic._support_signal import SupportVerdict
 from backend.services.rag.agentic.reasoning_utils import (
@@ -44,6 +45,36 @@ from backend.services.rag.agentic.reasoning_utils import (
 
 RETRIEVAL = [{"score": 0.72}]
 POOR_RETRIEVAL = [{"score": 0.18}]
+
+# V1 (RULED I31) — a DECLARED dense source for the one measured cosine on
+# disk for this (query, chunk) pair: 0.373 on `text-embedding-3-small`.
+# What is ATTESTED, and nothing more (aligned to the manifest's own wording
+# under gate condition C3 of #6338): 0.373 appears in #5618 (commit
+# 2cd3cf84b8, 2026-09-09), whose message records its OTHER cosines as
+# `measured live 2026-09-01` with their text pairs but states this one with
+# NO measurement date of its own; the `2026-09-03` this comment used to
+# attach to it is that commit's ADVERSARIAL REVIEW date, not a measurement
+# receipt. No probe artifact for this cosine exists anywhere on disk, and
+# none is invented here. `score` is the REAL
+# transform of that cosine through the live `format_search_results`
+# (`backend/services/misc/result_formatter.py`), not hand arithmetic:
+#   PYTHONPATH=. .venv/bin/python -c "
+#   from backend.services.misc.result_formatter import format_search_results
+#   from backend.core import score_provenance
+#   raw = {'ids': ['v1'], 'documents': ['x'], 'distances': [1 - 0.373], 'metadatas': [{}]}
+#   print(format_search_results(raw, 'kbli_2025_final_hybrid',
+#       score_kind=score_provenance.DENSE_FORMATTED)[0]['score'])"
+# -> 0.6146. RETRIEVAL and POOR_RETRIEVAL above stay byte-identical (D3/D5,
+# see `pipeline_score_fixtures.py`'s own docstring for the pattern this
+# mirrors) — this is an ADDITIONAL literal, read only by the test below that
+# names it.
+RETRIEVAL_DECLARED_DENSE = [
+    {
+        "score": 0.6146,
+        "score_kind": score_provenance.DENSE_FORMATTED,
+        "score_raw": 0.373,
+    }
+]
 
 EN_CONTEXT = [
     "PT PMA company setup — foreign-owned limited liability company "
@@ -302,21 +333,32 @@ def test_the_golden_set_abstain_rate_is_reported_per_language() -> None:
     )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "DECLARED RESIDUAL, measured not guessed: a question that names NO "
-        "identifier has nothing to bridge the languages with, so the lexical "
-        "ratio still reads 0. 'What is the price of new company setup?' against "
-        "Indonesian context scores 0.08. Its real embedding cosine against that "
-        "same chunk is 0.373 (measured 2026-09-03), comfortably above a 0.32 "
-        "band — so the retrieval signal WOULD cure it. That half of the spec is "
-        "withdrawn until the nine tripwires pinned to impossible cosines are "
-        "corrected in their own PR. This xfail is the marker that it is open."
-    ),
-    strict=True,
-)
 def test_a_question_naming_no_identifier_is_still_language_blind() -> None:
-    score = calculate_evidence_score(RETRIEVAL, ID_CONTEXT, "What is the price of new company setup?")
+    """CURED (RULED I31, this PR): a question that names NO identifier still
+    has nothing to bridge the languages LEXICALLY — the legacy literal
+    (`RETRIEVAL`, score_kind unknown) still scores 0.08 here, unchanged. What
+    cures it is declaring the provenance this source actually has: its real
+    embedding cosine against this chunk is 0.373 (attested in #5618, no
+    measurement date of its own), which
+    lands in B2.1's dense MODERATE band (>=0.32,
+    `reasoning_utils.py::_dense_band_index`) and no longer needs a lexical
+    bridge at all. `RETRIEVAL_DECLARED_DENSE` (declared above) scores 0.55.
+    This was the nine-tripwires-pinned-to-impossible-cosines blocker the
+    former xfail named as open — those nine were corrected in B1.2/B2.1
+    ahead of this PR, so only this one declaration was left."""
+    query = "What is the price of new company setup?"
+
+    # The first half of the sentence in this test's name, ASSERTED and not
+    # merely asserted in prose: the legacy literal is still language-blind.
+    legacy = calculate_evidence_score(RETRIEVAL, ID_CONTEXT, query)
+    assert legacy < 0.15, (
+        "the lexical bridge must still be absent — if this rises, the cure "
+        f"below is measuring something other than provenance (got {legacy})"
+    )
+
+    # The second half: declaring the provenance the source actually has is
+    # what carries it over the gate.
+    score = calculate_evidence_score(RETRIEVAL_DECLARED_DENSE, ID_CONTEXT, query)
     assert score >= 0.15
 
 
