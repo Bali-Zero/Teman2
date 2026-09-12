@@ -9016,10 +9016,10 @@
    "besar": "observed"
   },
   "93119": {
-   "bucket": "residual-besar-absent",
+   "bucket": "residual-besar-observed",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
    "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
-   "besar": "absent"
+   "besar": "observed"
   },
   "93121": {
    "bucket": "residual-besar-unobserved",
