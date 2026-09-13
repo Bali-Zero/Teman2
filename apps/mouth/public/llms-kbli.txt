@@ -673,7 +673,7 @@
 36003 | Aktivitas Penunjang Penyediaan Air | NOT_VERIFIED | Not verified | Not classified
 37001 | Pengumpulan Air Limbah | NOT_VERIFIED | Not verified | Menengah Tinggi
 37002 | Pengolahan dan Pembuangan Air Limbah | NOT_VERIFIED | Not verified | Menengah Tinggi
-38110 | Pengumpulan Limbah atau Sampah Tidak Berbahaya | NOT_VERIFIED | Not verified | Menengah Rendah
+38110 | Pengumpulan Limbah atau Sampah Tidak Berbahaya | TERBATAS | 0% | Menengah Rendah
 38121 | Pengumpulan Limbah Berbahaya Selain Limbah Radiokatif | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 38122 | Pengumpulan Limbah Radioaktif | NOT_VERIFIED | Not verified | Not classified
 38211 | Pengolahan Sampah Tidak Berbahaya untuk Menghasilkan Energi | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
@@ -724,7 +724,7 @@
 42997 | Konstruksi Bangunan Sipil Fasilitas Sumber Radiasi Pengion | NOT_VERIFIED | Not verified | Menengah Tinggi
 42998 | Konstruksi Bangunan Sipil Reaktor Nuklir | NOT_VERIFIED | Not verified | Tinggi
 42999 | Konstruksi Bangunan Sipil Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
-43110 | Pembongkaran | NOT_VERIFIED | Not verified | Menengah Rendah
+43110 | Pembongkaran | TERBATAS | 0% | Menengah Rendah
 43120 | Penyiapan Lahan | NOT_VERIFIED | Not verified | Menengah Tinggi
 43211 | Pemasangan Jaringan Listrik | NOT_VERIFIED | Not verified | Tinggi
 43212 | Pemasangan Jaringan Telekomunikasi | NOT_VERIFIED | Not verified | Menengah Tinggi
@@ -1057,25 +1057,25 @@
 55104 | Aktivitas Hotel Bintang Dua | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 55105 | Aktivitas Hotel Bintang Satu | TERBATAS | 0% | Menengah Rendah / Menengah Tinggi
 55106 | Aktivitas Hotel Nonbintang | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
-55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | NOT_VERIFIED | Not verified | Menengah Rendah
-55202 | Aktivitas Hostel Remaja (Youth Hostel) | NOT_VERIFIED | Not verified | Menengah Rendah
-55203 | Aktivitas Vila | NOT_VERIFIED | Not verified | Menengah Rendah
+55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | TERBATAS | 0% | Menengah Rendah
+55202 | Aktivitas Hostel Remaja (Youth Hostel) | TERBATAS | 0% | Menengah Rendah
+55203 | Aktivitas Vila | TERBATAS | 0% | Menengah Rendah
 55204 | Aktivitas Apartemen Hotel | NOT_VERIFIED | Not verified | Menengah Tinggi
-55209 | Aktivitas Penyediaan Akomodasi Jangka Pendek Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah
-55300 | Aktivitas Penyediaan Bumi Perkemahan, Persinggahan Karavan, dan Taman Karavan | NOT_VERIFIED | Not verified | Menengah Rendah
+55209 | Aktivitas Penyediaan Akomodasi Jangka Pendek Lainnya | TERBATAS | 0% | Menengah Rendah
+55300 | Aktivitas Penyediaan Bumi Perkemahan, Persinggahan Karavan, dan Taman Karavan | TERBATAS | 0% | Menengah Rendah
 55400 | Aktivitas Jasa Intermediasi Akomodasi | NOT_VERIFIED | Not verified | Rendah / Tinggi
 55901 | Aktivitas Jasa Manajemen Akomodasi | NOT_VERIFIED | Not verified | Menengah Rendah
 55909 | Penyediaan Akomodasi Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah
 56101 | Aktivitas Penyediaan Makanan di Bangunan Tetap | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-56102 | Aktivitas Penyediaan Makanan di Bangunan Tidak Tetap | NOT_VERIFIED | Not verified | Menengah Rendah
+56102 | Aktivitas Penyediaan Makanan di Bangunan Tidak Tetap | TERBATAS | 0% | Menengah Rendah
 56210 | Aktivitas Jasa Boga untuk Acara Tertentu (Event Catering) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 56290 | Aktivitas Penyediaan Jasa Boga Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 56301 | Aktivitas Bar | NOT_VERIFIED | Not verified | Menengah Tinggi
 56302 | Aktivitas Kelab Malam atau Diskotek yang Utamanya Menyediakan Minuman | NOT_VERIFIED | Not verified | Menengah Tinggi
 56303 | Aktivitas Rumah Minum/Kafe | NOT_VERIFIED | Not verified | Menengah Rendah
-56304 | Aktivitas Kedai Minuman | NOT_VERIFIED | Not verified | Menengah Rendah
+56304 | Aktivitas Kedai Minuman | TERBATAS | 0% | Menengah Rendah
 56305 | Aktivitas Rumah/Kedai Obat Bahan Alam | NOT_VERIFIED | Not verified | Menengah Rendah
-56306 | Aktivitas Penyediaan Minuman Keliling/Tempat Tidak Tetap | NOT_VERIFIED | Not verified | Menengah Rendah
+56306 | Aktivitas Penyediaan Minuman Keliling/Tempat Tidak Tetap | TERBATAS | 0% | Menengah Rendah
 56400 | Aktivitas Jasa Intermediasi Penyediaan Makanan dan Minuman | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 58110 | Penerbitan Buku | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 58120 | Penerbitan Surat Kabar | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
@@ -1256,7 +1256,7 @@
 69201 | Aktivitas Akuntansi, Pembukuan, dan Pemeriksa | NOT_VERIFIED | Not verified | Tinggi
 69202 | Aktivitas Konsultansi Pajak | NOT_VERIFIED | Not verified | Tinggi
 70100 | Aktivitas Kantor Pusat | NOT_VERIFIED | Not verified | Not classified
-70201 | Aktivitas Konsultansi Manajemen dan Bisnis Pariwisata | NOT_VERIFIED | Not verified | Rendah
+70201 | Aktivitas Konsultansi Manajemen dan Bisnis Pariwisata | TERBATAS | 0% | Rendah
 70202 | Aktivitas Konsultansi Manajemen dan Bisnis Industri | NOT_VERIFIED | Not verified | Menengah Rendah
 70203 | Aktivitas Konsultansi Manajemen dan Bisnis Perdagangan | NOT_VERIFIED | Not verified | Rendah
 70209 | Aktivitas Konsultasi Manajemen dan Bisnis Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi / Rendah
@@ -1280,7 +1280,7 @@
 73100 | Aktivitas Periklanan | TERBUKA | 100% | Rendah
 73201 | Penelitian Pasar | NOT_VERIFIED | Not verified | Rendah
 73202 | Jajak Pendapat Opini Publik | NOT_VERIFIED | Not verified | Rendah
-73300 | Aktivitas Kehumasan | NOT_VERIFIED | Not verified | Rendah
+73300 | Aktivitas Kehumasan | TERBATAS | 0% | Rendah
 74111 | Aktivitas Desain Alat Transportasi dan Permesinan | NOT_VERIFIED | Not verified | Menengah Rendah
 74112 | Aktivitas Desain Peralatan Rumah Tangga dan Furnitur | NOT_VERIFIED | Not verified | Menengah Rendah
 74113 | Aktivitas Desain Tekstil, Mode/Fesyen, dan Garmen | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -1294,7 +1294,7 @@
 74192 | Aktivitas Desain Grafis/Komunikasi Visual | NOT_VERIFIED | Not verified | Rendah
 74193 | Aktivitas Desain Khusus Film, Video, Program Televisi, Animasi dan Komik | NOT_VERIFIED | Not verified | Rendah
 74194 | Aktivitas Desain Konten Gim | NOT_VERIFIED | Not verified | Rendah
-74199 | Aktivitas Desain Khusus Lainya YTDL | NOT_VERIFIED | Not verified | Rendah
+74199 | Aktivitas Desain Khusus Lainya YTDL | TERBATAS | 0% | Rendah
 74201 | Aktivitas Fotografi Udara | NOT_VERIFIED | Not verified | Rendah
 74209 | Aktivitas Fotografi Lainnya | NOT_VERIFIED | Not verified | Rendah
 74300 | Aktivitas Penerjemah Atau Interpreter | NOT_VERIFIED | Not verified | Rendah
@@ -1332,13 +1332,13 @@
 78105 | Aktivitas Penyediaan Informasi Lowongan Kerja | NOT_VERIFIED | Not verified | Menengah Tinggi
 78109 | Aktivitas Penempatan Tenaga Kerja Lainnya | NOT_VERIFIED | Not verified | Not classified
 78200 | Aktivitas Penyediaan Tenaga Kerja Sementara dan Penyediaan Sumber Daya Manusia Lainnya | NOT_VERIFIED | Not verified | Rendah
-79110 | Aktivitas Agen Perjalanan | NOT_VERIFIED | Not verified | Rendah
+79110 | Aktivitas Agen Perjalanan | TERBATAS | 0% | Rendah
 79121 | Aktivitas Biro Perjalanan Wisata | NOT_VERIFIED | Not verified | Menengah Tinggi
 79122 | Aktivitas Biro Perjalanan Ibadah Umrah dan Haji Khusus | TERBATAS | 0% | Tinggi
 79129 | Aktivitas Biro Perjalanan Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
-79901 | Jasa Informasi Pariwisata | NOT_VERIFIED | Not verified | Rendah
-79902 | Jasa Informasi Daya Tarik Wisata | NOT_VERIFIED | Not verified | Rendah
-79903 | Jasa Pramuwisata | NOT_VERIFIED | Not verified | Rendah
+79901 | Jasa Informasi Pariwisata | TERBATAS | 0% | Rendah
+79902 | Jasa Informasi Daya Tarik Wisata | TERBATAS | 0% | Rendah
+79903 | Jasa Pramuwisata | TERBATAS | 0% | Rendah
 79909 | Aktivitas Terkait Perjalanan Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
 80110 | Aktivitas Investigasi dan Keamanan Swasta | NOT_VERIFIED | Not verified | Tinggi
 80190 | Aktivitas Keamanan YTDL | NOT_VERIFIED | Not verified | Not classified
@@ -1470,7 +1470,7 @@
 86992 | Aktivitas Pelayanan Kesehatan Tradisional | NOT_VERIFIED | Not verified | Menengah Tinggi
 86993 | Aktivitas Pelayanan Penunjang Kesehatan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi / Menengah Tinggi
 86994 | Aktivitas Angkutan Khusus Pengangkutan Orang Sakit (Medical Evacuation) | NOT_VERIFIED | Not verified | Menengah Tinggi
-86995 | Aktivitas Rumah Pijat | NOT_VERIFIED | Not verified | Menengah Rendah
+86995 | Aktivitas Rumah Pijat | TERBATAS | 0% | Menengah Rendah
 87101 | Aktivitas Perawatan dan Pemulihan kesehatan Berbasis Residensial oleh Pemerintah | NOT_VERIFIED | Not verified | Not classified
 87102 | Aktivitas Perawatan dan Pemulihan Kesehatan Berbasis Residensial oleh Lembaga Kesejahteraan Sosial | NOT_VERIFIED | Not verified | Not classified
 87201 | Aktivitas Perawatanuntuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Pemerintah | NOT_VERIFIED | Not verified | Not classified
@@ -1521,7 +1521,7 @@
 93111 | Fasilitas Stadion | NOT_VERIFIED | Not verified | Menengah Rendah
 93112 | Fasilitas Sirkuit | NOT_VERIFIED | Not verified | Menengah Tinggi
 93113 | Fasilitas Gelanggang/Arena | NOT_VERIFIED | Not verified | Not classified
-93114 | Fasilitas Lapangan | NOT_VERIFIED | Not verified | Menengah Rendah
+93114 | Fasilitas Lapangan | TERBATAS | 0% | Menengah Rendah
 93115 | Fasilitas Olahraga Beladiri | NOT_VERIFIED | Not verified | Not classified
 93116 | Fasilitas Pusat Kebugaran/Fitness Center | NOT_VERIFIED | Not verified | Menengah Rendah
 93119 | Pengelolaan Fasilitas Olahraga Lainnya | NOT_VERIFIED | Not verified | Rendah

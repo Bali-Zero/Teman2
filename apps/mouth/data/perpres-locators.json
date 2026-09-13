@@ -3912,7 +3912,7 @@
   "38110": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "38121": {
@@ -4218,7 +4218,7 @@
   "43110": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM)",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "43120": {
@@ -6216,19 +6216,19 @@
   "55201": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 55130",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 55130 + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "55202": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "55203": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 55193",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 55193 + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "55204": {
@@ -6240,13 +6240,13 @@
   "55209": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 55199",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 55199 + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "55300": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "55400": {
@@ -6276,7 +6276,7 @@
   "56102": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "56210": {
@@ -6312,7 +6312,7 @@
   "56304": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "56305": {
@@ -6324,7 +6324,7 @@
   "56306": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "56400": {
@@ -7410,7 +7410,7 @@
   "70201": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "70202": {
@@ -7554,7 +7554,7 @@
   "73300": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "74111": {
@@ -7638,7 +7638,7 @@
   "74199": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "74201": {
@@ -7866,7 +7866,7 @@
   "79110": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 79111",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 79111 + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "79121": {
@@ -7890,19 +7890,19 @@
   "79901": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "79902": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "79903": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 79921",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 79921 + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "79909": {
@@ -8694,7 +8694,7 @@
   "86995": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "87101": {
@@ -9000,7 +9000,7 @@
   "93114": {
    "bucket": "residual-besar-absent",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "cite": "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "93115": {
@@ -9258,7 +9258,7 @@
   "95291": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM)",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "95299": {
@@ -9294,19 +9294,19 @@
   "96100": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 96200",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 96200 + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "96210": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 96111",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 96111 + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "96220": {
    "bucket": "named-in-annex",
    "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 96112",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 96112 + Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar",
    "besar": "absent"
   },
   "96230": {

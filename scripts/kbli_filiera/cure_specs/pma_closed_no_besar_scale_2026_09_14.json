@@ -1,0 +1,265 @@
+{
+  "rule": "PMA_CLOSED_NO_BESAR_SCALE",
+  "ruled": {
+    "by": "owner (Zero)",
+    "date": "2026-09-14",
+    "verbatim": "100% non PMA i codici che non hanno skala besar",
+    "meaning": "A KBLI 2025 code whose OSS scale matrix (per_skala) is non-empty and names no Usaha Besar scale cannot be operated by a PT PMA: foreign ownership 0%."
+  },
+  "citations": [
+    {
+      "instrument": "Peraturan Presiden No. 10 Tahun 2021 tentang Bidang Usaha Penanaman Modal (as amended by Perpres 49/2021)",
+      "article": "Pasal 7 ayat (1)",
+      "reading": "a foreign investor may carry on business only as an Usaha Besar"
+    },
+    {
+      "instrument": "Peraturan Menteri Investasi dan Hilirisasi/Kepala BKPM No. 5 Tahun 2025",
+      "article": "Pasal 26 ayat (1)",
+      "quote": "Badan usaha sebagaimana dimaksud dalam Pasal 23 ayat (9) dan ayat (10) yang dikategorikan PMA merupakan usaha besar dan wajib mengikuti ketentuan minimum nilai investasi, kecuali ditentukan lain berdasarkan peraturan perundang-undangan.",
+      "enacted": "2025-10-01",
+      "url": "https://www.peraturan.go.id/files/peraturan-bkpm-no-5-tahun-2025.pdf",
+      "retrieved": "2026-09-14",
+      "pdf_sha256": "7ebd06ef03011417e11b2d4be004bf36af4460fbf100acb5b04256af09ffecbf"
+    }
+  ],
+  "source_vintage": "2025-10-01",
+  "selector": "per_skala non-empty AND no entry whose skala_usaha LIST contains 'Besar' (perpres_body_default_relation.besar_state == 'absent')",
+  "out_of_scope": {
+    "unobserved_empty_per_skala": 217,
+    "why": "an empty per_skala is a gap in our OSS snapshot, not an observed absence of Besar; the rule never fires on it"
+  },
+  "to_patch": {
+    "38110": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "43110": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "55201": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "55202": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "55203": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "55209": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "55300": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "56102": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "56304": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "56306": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "70201": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "73300": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "74199": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "79110": {
+      "pma_status": "TERBATAS",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": "Sertifikat standar dari LSPr untuk PMA",
+      "pma_nota": "Agen perjalanan wisata",
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": "source-backed (NB-3/curated triple-corroborated)",
+      "pma_cap_verified": true,
+      "pma_source_vintage": null
+    },
+    "79901": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "79902": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "79903": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "86995": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    },
+    "93114": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_kondisi": null,
+      "pma_nota": null,
+      "pma_source": "Perpres 10/2021, 49/2021",
+      "pma_cap_note": null,
+      "pma_cap_verified": null,
+      "pma_source_vintage": null
+    }
+  },
+  "already_closed_untouched": {
+    "codes": ["95291", "96100", "96210", "96220"],
+    "why": "already TERBATAS/0/located on a Lampiran II adjudication, and their PMA tuple is fingerprinted by data/kbli-filiera/pma-editorial-certifications.json; rewriting pma_source/pma_nota would void a human editorial certification, so the compiler only asserts the invariant on them"
+  }
+}
