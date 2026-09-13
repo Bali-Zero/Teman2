@@ -1,0 +1,71 @@
+task: >-
+  PR #6061, Lane 1 (R2) of the 2026-09-10 queue-time mandate: the advisory PR-collision
+  check reported this PR against ALL open PRs (measured: 35 overlaps across 40 open PRs on
+  #6058, none involving #6058 itself), so a reader could not see whether THEIR PR was at
+  risk. `scripts/ci/pr_collision_check.py` now defaults to comparing the subject PR (read
+  from GITHUB_EVENT_PATH/GITHUB_REF) against only the open PRs that are armed
+  (autoMergeRequest) or in the merge queue (mergeQueueEntry/isInMergeQueue) — one paginated
+  GraphQL query, pairs restricted to (subject, candidate). A GraphQL `errors` field or a
+  scan that hits the page cap with pages left returns rc 2 CANNOT VERIFY, never a partial
+  CLEAN. `--all-open` preserves the old repo-wide table for manual use.
+lane: infra/collision-armed-only
+machine: M5
+date: 2026-09-10
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against the
+  merge-base with origin/main measures churn 496 (295+17 in scripts/ci/pr_collision_check.py,
+  181+3 in scripts/ci/test_pr_collision_check.py) — above SIZE_GEAR2_THRESHOLD (400) and
+  below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path (both changed files are under
+  scripts/ci/, not a HOTZONE_PATTERNS match). Confirmed locally via
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source`, matching the value
+  the `Harness floor recompute` check reported. This brief is written retroactively — it
+  was absent at PR-open, which is what floored the check red — and adds no functional
+  change to the diff it documents.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Against #6054's live PR set, the tool reports the subject PR vs only its armed/queued
+    candidates, not the full open-PR table: measured output "CLEAN — this PR (#6054) has no
+    add/add overlap with the 7 armed/queued PR(s): #5619, #5623, #5734, #6015, #6028, #6044,
+    #6051" instead of a 35-pair table across 40 open PRs.
+    probe: >-
+      PYTHONPATH=scripts/ci pytest scripts/ci/test_pr_collision_check.py -k
+      "subject_vs_armed_candidate_overlap_is_flagged or subject_overlap_with_non_candidate_pr_is_not_reported
+      or subject_with_zero_candidates_is_clean or two_armed_candidates_colliding_with_each_other_not_subject_is_not_reported" -v
+  A2: >-
+    A GraphQL `errors` field, or a candidate scan that hits the page cap with pages still
+    left, returns rc 2 CANNOT VERIFY — never a partial CLEAN over an incomplete candidate
+    set.
+    probe: >-
+      PYTHONPATH=scripts/ci pytest scripts/ci/test_pr_collision_check.py -k
+      "candidate_scan_graphql_errors_field_raises_cannot_verify or
+      candidate_scan_cap_hit_with_more_pages_raises_cannot_verify or
+      candidate_query_failure_yields_cannot_verify_not_clean" -v
+  A3: >-
+    `--all-open` reproduces the pre-existing repo-wide table on the old fixture shape, and
+    the full 41-test corpus (32 pre-existing guilt/innocence/replay cases + 9 new
+    subject-vs-candidate cases) stays green.
+    probe: PYTHONPATH=scripts/ci pytest scripts/ci/test_pr_collision_check.py -v
+
+out_of_scope: >-
+  Changing the underlying add/add overlap discriminator (merge-base anchored hunk windows)
+  — this PR only changes WHICH PRs are compared, not HOW a collision is detected. The
+  `.github/workflows/*` trigger/wiring for this check is untouched. Ruff/lint status is
+  reported in the PR body as clean but not re-verified by this brief.
+
+assumptions:
+  - text: >-
+      This brief was authored by a separate session after PR-open, to satisfy the
+      `Harness floor recompute` check's SIZE-floor requirement — the acceptance probes above
+      are drawn from the PR body's own reported test names/results, not independently
+      re-run by the session writing this brief.
+    status: unverified
+    probe: >-
+      Re-run `PYTHONPATH=scripts/ci pytest scripts/ci/test_pr_collision_check.py -v` on this
+      PR's head and confirm 41 passed.

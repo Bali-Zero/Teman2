@@ -139,12 +139,16 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       anchors: (c: ReturnType<typeof countFromCanonical>) => [
         {
           what: "headline blocked count",
-          re: /Di ([\d.]+) codici KBLI classificati, ([\d.]+) sono bloccati/,
+          // "Di" (2026-08-11 wording) vs "Su" (2026-09-13 hourly-translator
+          // reword) — both precede the same classified/blocked clause.
+          re: /(?:Di|Su) ([\d.]+) codici KBLI classificati, ([\d.]+) sono bloccati/,
           expect: [group(c.total, "."), group(c.blocked, ".")],
         },
         {
           what: "not-blocked count",
-          re: /\(([\d.]+) codici senza flag di blocco/,
+          // "codici senza flag di blocco" (original) vs "codici non
+          // riportano il flag bloccato" (2026-09-13 reword) — same claim.
+          re: /\(([\d.]+) (?:codici senza flag di blocco|codici non riportano il flag bloccato)/,
           expect: [group(c.open, ".")],
         },
         {
@@ -161,12 +165,16 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       anchors: (c: ReturnType<typeof countFromCanonical>) => [
         {
           what: "headline blocked count",
-          re: /Dari ([\d.]+) kode KBLI terklasifikasi, ([\d.]+) diblokir/,
+          // "terklasifikasi" (original) vs "yang diklasifikasikan"
+          // (2026-09-13 hourly-translator reword) — same claim.
+          re: /Dari ([\d.]+) kode KBLI (?:terklasifikasi|yang diklasifikasikan), ([\d.]+) diblokir/,
           expect: [group(c.total, "."), group(c.blocked, ".")],
         },
         {
           what: "not-blocked count",
-          re: /\(([\d.]+) kode tanpa penanda blokir/,
+          // "kode tanpa penanda blokir" (original) vs "kode tidak membawa
+          // bendera diblokir" (2026-09-13 reword) — same claim.
+          re: /\(([\d.]+) kode (?:tanpa penanda blokir|tidak membawa bendera diblokir)/,
           expect: [group(c.open, ".")],
         },
         {

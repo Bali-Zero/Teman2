@@ -2130,16 +2130,16 @@ openai==2.53.0 \
     # via
     #   -r requirements-prod.txt
     #   langchain-openai
-openinference-instrumentation==0.1.57 \
-    --hash=sha256:2bd00a1f95ebb8a47d11615c1039128101e4abc0e9722cc4331849afdeb248fc \
-    --hash=sha256:e06f436e93156f5e0cfedf3f34bde1a386f8e00dbff528155a506ce74c72af92
+openinference-instrumentation==0.1.59 \
+    --hash=sha256:96eb1b9a29bc934e06db69fb2d10c9ccd676c3d5c328110db6c1a861e7c084bc \
+    --hash=sha256:d9947cf0c984e61eb7628edc3163a23c2a84fa74d985ea527075a54a2ad55b3a
     # via
     #   openinference-instrumentation-anthropic
     #   openinference-instrumentation-google-genai
     #   openinference-instrumentation-openai
-openinference-instrumentation-anthropic==1.1.2 \
-    --hash=sha256:1fa115e318ef1f70dc7305e04e408d00fbe2944b43572d9f5f2df5d7955399ed \
-    --hash=sha256:46dbcf32732d9198bce0db419ecf79451d4b62dc141e605273ff0d81502c06a5
+openinference-instrumentation-anthropic==2.1.1 \
+    --hash=sha256:32f97e6395d11f16a57c6679e09548742378debfbb0d291b95901e36a2dfc2b8 \
+    --hash=sha256:854b57e1b848b4c6f5d261e0b7218870367718920761796c196e73d02770757a
     # via -r requirements-prod.txt
 openinference-instrumentation-google-genai==1.4.0 \
     --hash=sha256:265935f09845c73a770c8a82c46e5a88277aaa054ad9cdd816ce845e6aa5378c \
@@ -2149,9 +2149,9 @@ openinference-instrumentation-openai==0.1.54 \
     --hash=sha256:19864c980303c6a3240a8add57b1c0b0fed9bcb46a0f14d4e36760b9a026bee2 \
     --hash=sha256:665ce91fc57e631ce124ac9ae242474dfee77bacdc477e8610a3505737399720
     # via -r requirements-prod.txt
-openinference-semantic-conventions==0.1.32 \
-    --hash=sha256:2a3e6723ddce37abc5c43d38c6c7ac05b0f2efcfbe75cc0f135ab14ceb0730f7 \
-    --hash=sha256:d06c4716faf7537fbabbb6d34e758ec6b3650a18c037661782fc8c3e9fa90f81
+openinference-semantic-conventions==0.1.37 \
+    --hash=sha256:5adb0b05c6fdd6a6cf1b5bbd5a370460ea1cb076184d46bb895b6b156a036722 \
+    --hash=sha256:ff1d7568bb75427320221ec0eee222a52a020b868e1846505be43af2b76808fd
     # via
     #   openinference-instrumentation
     #   openinference-instrumentation-anthropic
