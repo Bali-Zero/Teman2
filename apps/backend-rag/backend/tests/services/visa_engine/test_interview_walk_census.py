@@ -396,9 +396,12 @@ WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
 #: Measured 2026-09-13 on rulepack-prod-020.signed.json: 29 products carry a
 #: SUPPORT rule, 17 were named by some walk, and the 12 that were not are
 #: this window's subject. Eleven of them needed no code at all — every fact
-#: their rules read was already collected, and only the corpus's
-#: answer-with-the-first-option convention kept them dark. The twelfth is
-#: below.
+#: their rules read was already collected, and what kept them dark was the
+#: corpus's own answering convention: its first-option default for choice
+#: questions, and its ONE fixed synthetic identity for typed ones (a 25-year
+#: -old, 121 stay-days, IDR 1,000,000,000 for every amount), which is what
+#: hid A1/B1 (stay-day bounds), E28A (both capital bounds) and E31E (age).
+#: The twelfth is below.
 #: The excuse is STRUCTURED, not prose, on the first council round's finding
 #: (codex-gpt-5.6-sol, `council/codex-round1.txt`): a row that only carried a
 #: sentence would go on silencing this product even if a FUTURE pack gave it a
@@ -1184,8 +1187,19 @@ def _stale_ruling_rows(
     return sorted(set(excused) & set(named))
 
 
-def _condition_cannot_fire_without(condition: Any, fact: str) -> bool:
-    """Whether ``condition`` is UNABLE to evaluate TRUE while ``fact`` is UNKNOWN.
+def _proves_it_cannot_fire_without(condition: Any, fact: str) -> bool:
+    """Whether ``condition`` is PROVABLY unable to evaluate TRUE while ``fact``
+    is UNKNOWN.
+
+    One-directional on purpose, and the name says which direction: ``True``
+    means proven, ``False`` means NOT PROVEN by this analysis — never "proven
+    reachable". Council round 3 (codex-gpt-5.6-sol) rejected the earlier name
+    (``_condition_cannot_fire_without``) for exactly that confusion: it read
+    as a decision procedure, and the caller then turned "my conservative
+    analysis could not prove it" into "this route is reachable, delete the
+    ruling". The conservative direction is the safe one — an unproven row
+    demands re-justification, not a silent pass — but it must not be reported
+    as a proof of the opposite.
 
     Council round 2 (codex-gpt-5.6-sol, ``council/codex-round2.txt``) showed
     why membership in ``CompiledRule.required_facts`` is not this property:
@@ -1204,15 +1218,29 @@ def _condition_cannot_fire_without(condition: Any, fact: str) -> bool:
 
     ``unknown(fact)`` is the one leaf that is TRUE *because* the fact is
     missing, and is excluded explicitly — a rule that fires ON the absence is
-    the opposite of a rule that depends on the presence. Nothing else is
-    accepted: a fact buried under ``any`` or ``not`` may be irrelevant to the
-    branch that actually fires, and this returns False there, which is the
-    safe direction (the row must then be re-justified or dropped).
+    the opposite of a rule that depends on the presence. Its negation,
+    ``not(unknown(fact))``, is accepted: it is ``known(fact)`` spelled the long
+    way, FALSE whenever the fact is missing (round 3's own counterexample).
+    ``any`` is accepted only when EVERY branch is itself proven — a
+    disjunction cannot be TRUE unless some branch is, so if no branch can be,
+    neither can it. Anything else returns False, which is not a claim that the
+    rule fires without the fact, only that this analysis did not prove it did
+    not.
     """
 
     op = getattr(condition, "op", None)
     if op == "all":
-        return any(_condition_cannot_fire_without(arg, fact) for arg in condition.args)
+        return any(_proves_it_cannot_fire_without(arg, fact) for arg in condition.args)
+    if op == "any":
+        return bool(condition.args) and all(
+            _proves_it_cannot_fire_without(arg, fact) for arg in condition.args
+        )
+    if op == "not":
+        inner = condition.arg
+        return (
+            getattr(inner, "op", None) == "unknown"
+            and getattr(getattr(inner, "fact", None), "value", None) == fact
+        )
     if op == "unknown":
         return False
     referenced = getattr(condition, "fact", None)
@@ -1221,17 +1249,22 @@ def _condition_cannot_fire_without(condition: Any, fact: str) -> bool:
     return getattr(referenced, "value", referenced) == fact
 
 
-def _ruling_rows_with_a_reachable_route(
+def _ruling_rows_without_a_proven_dependency(
     *,
     excused: dict[str, RuledUnreachable] | None = None,
 ) -> list[str]:
-    """Ruling rows whose product has a SUPPORT route that does NOT read the
-    forbidden fact — i.e. a route the funnel could walk today, silenced by an
-    excuse written for a different route.
+    """Ruling rows carrying a SUPPORT route whose dependency on the forbidden
+    fact this analysis cannot prove — either because the route genuinely no
+    longer needs the fact, or because it is written in a shape
+    ``_proves_it_cannot_fire_without`` does not reason about.
 
-    This is the half a "does a walk name it?" check cannot see: the product is
-    still named by no walk, so the guard and the staleness mirror both stay
-    green, while the reason the row was granted has evaporated.
+    Both readings demand the same gesture (re-justify the row against the new
+    pack, or give the product a walk and delete the row), which is why they
+    share a return value — but they are NOT the same claim, and the assertion
+    that consumes this says so. This is the half a "does a walk name it?"
+    check cannot see: the product is still named by no walk, so the guard and
+    the staleness mirror both stay green, while the reason the row was granted
+    may have evaporated.
     """
 
     excused = UNREACHABLE_BY_RULING if excused is None else excused
@@ -1240,7 +1273,7 @@ def _ruling_rows_with_a_reachable_route(
     for code, row in excused.items():
         rules = support_rules.get(code, ())
         if any(
-            not _condition_cannot_fire_without(rule.when, row.forbidden_fact)
+            not _proves_it_cannot_fire_without(rule.when, row.forbidden_fact)
             for rule in rules
         ):
             offenders.append(code)
@@ -2150,7 +2183,7 @@ def test_every_support_bearing_product_is_named_by_some_walk(
     KITAS products, and had been for the whole life of the corpus.
 
     The two halves are read from DIFFERENT sources on purpose — the
-    supported set from the signed pack's own payload, the named set by
+    supported set from the signed pack, COMPILED and effective-filtered, the named set by
     replaying the corpus — so neither can be edited into agreement with the
     other. Curing a red here means giving the product a WALK (an applicant
     who answers the questions its rules read), never widening this test.
@@ -2184,19 +2217,26 @@ def test_every_ruled_unreachable_product_still_depends_on_its_forbidden_fact() -
 
     A row says "no walk can name this product because its SUPPORT rules need a
     fact an owner ruling forbids the funnel to collect". That claim is only
-    true while EVERY effective SUPPORT route for the product reads that fact.
-    The day a signed pack adds a BRIDGING route keyed on something the
-    interview does collect, the product becomes reachable — and the guard
-    above would stay green anyway, because the excuse subtracts the code
-    unconditionally. This test is what turns that into a red (council round 1,
-    codex-gpt-5.6-sol).
+    true while EVERY effective SUPPORT route for the product provably cannot
+    fire without the fact. The day a signed pack adds a BRIDGING route keyed
+    on something the interview does collect, the product becomes reachable —
+    and the guard above would stay green anyway, because the excuse subtracts
+    the code unconditionally. This test is what turns that into a red (council
+    round 1, codex-gpt-5.6-sol).
+
+    The analysis is conservative (council round 3): it proves dependency, it
+    never proves the absence of one, so a red here means "re-justify", not
+    "the route is reachable" — the message says which.
     """
 
-    offenders = _ruling_rows_with_a_reachable_route()
+    offenders = _ruling_rows_without_a_proven_dependency()
     assert not offenders, (
-        "these UNREACHABLE_BY_RULING rows now have a SUPPORT route that does "
-        f"not read their forbidden fact: {offenders}. The ruling no longer "
-        "covers the product — give it a walk and delete the row."
+        "these UNREACHABLE_BY_RULING rows carry a SUPPORT route whose "
+        f"dependency on their forbidden fact is no longer provable: {offenders}. "
+        "Either the pack gave the product a route that does not need the fact "
+        "— give it a walk and delete the row — or the route is written in a "
+        "shape this conservative check cannot reason about, in which case "
+        "extend the check and say so. Do not widen the excuse."
     )
     # ...and an excuse for a product the pack does not support at all is a
     # typo, not a ruling.
@@ -2269,7 +2309,7 @@ def test_guilt_a_ruling_row_whose_product_has_a_free_support_route_is_caught() -
             ruling="fabricated row — C6's SUPPORT rule reads no such fact",
         )
     }
-    assert _ruling_rows_with_a_reachable_route(excused=fabricated) == ["C6"]
+    assert _ruling_rows_without_a_proven_dependency(excused=fabricated) == ["C6"]
 
 
 def test_guilt_a_rule_that_only_mentions_the_forbidden_fact_is_not_a_dependency() -> None:
@@ -2307,11 +2347,11 @@ def test_guilt_a_rule_that_only_mentions_the_forbidden_fact_is_not_a_dependency(
         str(path) for path in ast_module.collect_fact_paths(bypass)
     }, "the counterexample must MENTION the fact — that is what makes it a trap"
     assert ast_module.evaluate_condition(bypass, snapshot).truth is TruthValue.TRUE
-    assert _condition_cannot_fire_without(bypass, forbidden) is False
+    assert _proves_it_cannot_fire_without(bypass, forbidden) is False
 
     # Innocence: the shape the four real BRIDGING rules use is accepted, and
     # the real rules themselves are what the row rests on.
     conjunction = ast_module.AllCondition(op="all", args=(bypass.args[0], bypass.args[1]))
-    assert _condition_cannot_fire_without(conjunction, forbidden) is True
+    assert _proves_it_cannot_fire_without(conjunction, forbidden) is True
     for rule in _support_rules_by_product()["BRIDGING"]:
-        assert _condition_cannot_fire_without(rule.when, forbidden), rule.rule_id
+        assert _proves_it_cannot_fire_without(rule.when, forbidden), rule.rule_id
