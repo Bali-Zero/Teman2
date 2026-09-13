@@ -55,6 +55,7 @@ from backend.scripts.visa_engine.fold_pack_seq21 import (
     _assert_retired_review_rules_are_dormant,
     _rule_pack_id,
     fold,
+    main,
 )
 from backend.scripts.visa_engine.gold_replay_driver import (
     _offline_identity_provider,
@@ -255,9 +256,7 @@ def _decide(
 def _replay(
     pack: compiler.CompiledRulePack, walks: dict[str, dict[str, Any]]
 ) -> dict[str, dict[str, Any]]:
-    return {
-        label: _decide(pack, spec["overrides"], label) for label, spec in sorted(walks.items())
-    }
+    return {label: _decide(pack, spec["overrides"], label) for label, spec in sorted(walks.items())}
 
 
 def _known(value: Any) -> dict[str, Any]:
@@ -368,6 +367,50 @@ class TestFoldIntegrity:
     ) -> None:
         assert fold(seq20_source, seq20_signed, observed_at=OBSERVED_AT) == seq21_source
 
+    def test_the_cli_reproduces_the_bytes_the_owner_signs(
+        self,
+        tmp_path: Path,
+        seq21_source: dict[str, Any],
+        prod_trust_store_env: None,
+    ) -> None:
+        """Byte-level reproducibility, stated at the level that is signed.
+
+        The committed file is NOT the writer's raw output: the repo's
+        pre-commit hook runs prettier over every staged ``*.json`` (root
+        ``package.json`` lint-staged), which reflows arrays — seq-19 and
+        seq-20 carry the same reflow. What ``sign_pack.py`` signs is JCS over
+        the parsed payload, so the byte contract a third party can re-execute
+        is: run the CLI, canonicalize its file, and get EXACTLY the canonical
+        bytes of the committed file, whose sha256 is the digest the owner
+        signs. Comparing parsed dicts (the test above) would not catch a
+        float/int or key-encoding drift that JCS would sign differently.
+
+        The FILE bytes are reproducible too, one step further out: the CLI's
+        output piped through ``prettier --stdin-filepath <this pack's path>``
+        (prettier 3.9.6, repo root) is sha256-identical to the committed file
+        — measured 2026-09-14, recorded in the evidence pack rather than
+        asserted here, because this suite does not run node.
+        """
+        output = tmp_path / "rulepack-prod-021.source.json"
+        assert (
+            main(
+                [
+                    "--seq20-source",
+                    str(_SEQ20_SOURCE_PATH),
+                    "--seq20-signed",
+                    str(_SEQ20_SIGNED_PATH),
+                    "--output",
+                    str(output),
+                ],
+                observed_at=OBSERVED_AT,
+            )
+            == 0
+        )
+        produced = canonicalize_json(json.loads(output.read_bytes()))
+        committed = canonicalize_json(seq21_source)
+        assert produced == committed
+        assert hashlib.sha256(produced).hexdigest() == SEQ21_PAYLOAD_SHA256
+
     def test_fold_is_deterministic(
         self,
         seq20_source: dict[str, Any],
@@ -443,9 +486,7 @@ class TestFoldIntegrity:
         report = compile_rule_pack(wrap_as_unsigned_pack(payload))
         assert report.ok, f"seq-21 does not compile clean: {report}"
 
-    def test_source_validates_against_the_payload_model(
-        self, seq21_source: dict[str, Any]
-    ) -> None:
+    def test_source_validates_against_the_payload_model(self, seq21_source: dict[str, Any]) -> None:
         assert RulePackPayload.model_validate(seq21_source).sequence == 21
 
 
@@ -458,9 +499,7 @@ class TestIdentity:
     def test_sequence_is_21(self, seq21_source: dict[str, Any]) -> None:
         assert seq21_source["sequence"] == 21
 
-    def test_rule_pack_id_follows_the_uuid5_convention(
-        self, seq21_source: dict[str, Any]
-    ) -> None:
+    def test_rule_pack_id_follows_the_uuid5_convention(self, seq21_source: dict[str, Any]) -> None:
         assert seq21_source["rule_pack_id"] == str(_rule_pack_id(21))
 
     def test_chain_anchor_is_the_measured_seq20_digest(
@@ -501,9 +540,7 @@ class TestIdentity:
         """
         assert seq21_source["valid_period"] == {"to": None, "from": PACK_VALID_FROM}
         opens = datetime.fromisoformat(PACK_VALID_FROM.replace("Z", "+00:00"))
-        assert opens > datetime.fromisoformat(
-            seq21_source["created_at"].replace("Z", "+00:00")
-        )
+        assert opens > datetime.fromisoformat(seq21_source["created_at"].replace("Z", "+00:00"))
         assert opens > datetime.fromisoformat(
             seq20_source["valid_period"]["from"].replace("Z", "+00:00")
         )
@@ -535,9 +572,7 @@ class TestIdentity:
 
 
 class TestRetiredReviewRules:
-    def test_every_retired_rule_was_dormant_in_seq20(
-        self, seq20_source: dict[str, Any]
-    ) -> None:
+    def test_every_retired_rule_was_dormant_in_seq20(self, seq20_source: dict[str, Any]) -> None:
         """INNOCENCE: nothing live was deleted. Each retired rule is a
         REQUIRE_REVIEW rule gated on ``intent.requested_product_code`` — the
         fact ``fact-mapper.ts`` hard-codes to UNKNOWN(NOT_ASKED), so no browser
@@ -638,9 +673,7 @@ class TestSupportRuleShape:
             ]
             assert len(eq_nodes) == 1, row["rule_id"]
 
-    def test_no_two_support_rules_share_a_condition(
-        self, seq21_source: dict[str, Any]
-    ) -> None:
+    def test_no_two_support_rules_share_a_condition(self, seq21_source: dict[str, Any]) -> None:
         """GUILT, and the precise defect PR #6362 shipped: ``el.e33a``,
         ``el.e33b`` and ``el.e23v`` there had one byte-identical ``when``, so a
         single answer produced three products no fact distinguished."""
@@ -711,14 +744,10 @@ class TestNamedCauseRules:
             and node.get("op") == "gte"
         ]
         exclude = {
-            node["fact"]: node["value"]
-            for node in _nodes(rule["when"])
-            if node.get("op") == "lt"
+            node["fact"]: node["value"] for node in _nodes(rule["when"]) if node.get("op") == "lt"
         }
         assert exclude["secondhome.bank_deposit_usd"] == deposit_support[0]["value"]
-        assert (
-            exclude["secondhome.qualifying_property_value_usd"] == property_support[0]["value"]
-        )
+        assert exclude["secondhome.qualifying_property_value_usd"] == property_support[0]["value"]
 
     def test_both_named_cause_rules_never_fire_on_an_unknown(
         self, seq21_source: dict[str, Any]
@@ -832,12 +861,8 @@ class TestSponsorTypeAloneIsNotEvidence:
             fact = quals.get(rule["rule_id"])
             if fact is None:
                 continue
-            rule["when"]["args"] = [
-                arg for arg in rule["when"]["args"] if arg.get("fact") != fact
-            ]
-            rule["required_facts"] = sorted(
-                path for path in rule["required_facts"] if path != fact
-            )
+            rule["when"]["args"] = [arg for arg in rule["when"]["args"] if arg.get("fact") != fact]
+            rule["required_facts"] = sorted(path for path in rule["required_facts"] if path != fact)
         return mutated
 
     def test_stripping_the_qualification_hands_products_out_on_no_evidence(
@@ -865,9 +890,7 @@ class TestSponsorTypeAloneIsNotEvidence:
         with nothing having established a collaboration."""
         label = "offshore/work"
         cured = _decide(seq21_compiled, walks[label]["overrides"], label)
-        uncured = _decide(
-            _compiled(self._uncured(seq21_source)), walks[label]["overrides"], label
-        )
+        uncured = _decide(_compiled(self._uncured(seq21_source)), walks[label]["overrides"], label)
         assert "E33B" not in cured["candidates"]
         assert "E33B" in uncured["candidates"]
 
@@ -881,9 +904,7 @@ class TestSponsorTypeAloneIsNotEvidence:
         E23V + E33A + E33B together because nothing tells them apart."""
         label = "offshore/work/sponsor_government"
         cured = _decide(seq21_compiled, walks[label]["overrides"], label)
-        uncured = _decide(
-            _compiled(self._uncured(seq21_source)), walks[label]["overrides"], label
-        )
+        uncured = _decide(_compiled(self._uncured(seq21_source)), walks[label]["overrides"], label)
         assert cured["candidates"] == ["E23"]
         assert {"E23V", "E33A", "E33B"} <= set(uncured["candidates"])
 

@@ -1,0 +1,19 @@
+as_of 2026-09-15T12:00:00+00:00 walks 84
+actual keys ['candidates', 'missing_facts', 'no_path_reason_codes', 'notice_codes', 'review_reason_codes', 'state']
+seq20 states {'NO_SUPPORTED_PATH': 15, 'SUPPORTED_CANDIDATES': 67, 'NEEDS_INPUT': 2}
+seq21 states {'NO_SUPPORTED_PATH': 15, 'SUPPORTED_CANDIDATES': 67, 'NEEDS_INPUT': 2}
+distinct named seq20 17 ['C1', 'C2', 'C6', 'E23', 'E30', 'E30A', 'E31A', 'E31B', 'E31C', 'E31D', 'E31F', 'E31G', 'E31H', 'E31J', 'E33', 'E33E', 'E33F']
+distinct named seq21 17 ['C1', 'C2', 'C6', 'E23', 'E30', 'E30A', 'E31A', 'E31B', 'E31C', 'E31D', 'E31F', 'E31G', 'E31H', 'E31J', 'E33', 'E33E', 'E33F']
+walks whose outcome differs 3
+  offshore/invest/bank_deposit/below_threshold | {"candidates": [], "missing_facts": [], "no_path_reason_codes": ["OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"], "notice_codes": [], "review_reason_codes": [], "state": "NO_SUPPORTED_PATH"} -> {"candidates": [], "missing_facts": [], "no_path_reason_codes": ["SECOND_HOME_GUARANTEE_BELOW_THRESHOLD"], "notice_codes": [], "review_reason_codes": [], "state": "NO_SUPPORTED_PATH"}
+  offshore/invest/property/below_threshold | {"candidates": [], "missing_facts": [], "no_path_reason_codes": ["OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"], "notice_codes": [], "review_reason_codes": [], "state": "NO_SUPPORTED_PATH"} -> {"candidates": [], "missing_facts": [], "no_path_reason_codes": ["SECOND_HOME_GUARANTEE_BELOW_THRESHOLD"], "notice_codes": [], "review_reason_codes": [], "state": "NO_SUPPORTED_PATH"}
+  offshore/other/paid/employer_no | {"candidates": [], "missing_facts": [], "no_path_reason_codes": ["OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"], "notice_codes": [], "review_reason_codes": [], "state": "NO_SUPPORTED_PATH"} -> {"candidates": [], "missing_facts": [], "no_path_reason_codes": ["PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR", "E33A_SPONSOR_NOT_GOVERNMENT"], "notice_codes": [], "review_reason_codes": [], "state": "NO_SUPPORTED_PATH"}
+gold E23U seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E23U']
+gold E23V seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E23V']
+gold E33A seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E33A']
+gold E33B seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E33B']
+gold E33C seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E33C']
+gold E28B seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E28B']
+gold E28C seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E28C']
+gold E28D seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E28D']
+gold E28F seq20: NEEDS_INPUT [] | seq21: SUPPORTED_CANDIDATES ['E28F']

@@ -500,7 +500,9 @@ def _assert_retired_review_rules_are_dormant(payload: dict[str, Any]) -> None:
 
 def _bound_nodes(rule: dict[str, Any], fact: str, op: str) -> list[dict[str, Any]]:
     return [
-        node for node in _nodes(rule.get("when")) if node.get("fact") == fact and node.get("op") == op
+        node
+        for node in _nodes(rule.get("when"))
+        if node.get("fact") == fact and node.get("op") == op
     ]
 
 
@@ -547,7 +549,9 @@ def _assert_employment_sponsor_scope_is_coherent(payload: dict[str, Any]) -> Non
     products = _products_by_code(payload)
     for code in EMPLOYMENT_SPONSOR_PRODUCT_CODES:
         if code not in products:
-            _fail(f"product {code!r} is not in the catalogue — cannot scope {EMPLOYMENT_SPONSOR_RULE_ID}")
+            _fail(
+                f"product {code!r} is not in the catalogue — cannot scope {EMPLOYMENT_SPONSOR_RULE_ID}"
+            )
         covered = products[code].get("covered_purposes") or []
         if "EMPLOYMENT" not in covered:
             _fail(
@@ -579,7 +583,9 @@ def build_support_rule(payload: dict[str, Any], row: dict[str, Any]) -> dict[str
         _fail(f"product {code!r} is not in the catalogue — cannot build {row['rule_id']!r}")
     product = products[code]
     purposes = list(row["purposes"])
-    unknown = [purpose for purpose in purposes if purpose not in (product.get("covered_purposes") or [])]
+    unknown = [
+        purpose for purpose in purposes if purpose not in (product.get("covered_purposes") or [])
+    ]
     if unknown:
         _fail(
             f"{row['rule_id']!r} would cover {unknown} for {code}, which the product "
@@ -671,7 +677,9 @@ def build_employment_sponsor_rule(payload: dict[str, Any]) -> dict[str, Any]:
         "required_facts": _required_facts(when),
         "explanation_key": f"explain.{EMPLOYMENT_SPONSOR_RULE_ID}",
         "safety_critical": False,
-        "product_version_ids": [products[code]["product_version_id"] for code in EMPLOYMENT_SPONSOR_PRODUCT_CODES],
+        "product_version_ids": [
+            products[code]["product_version_id"] for code in EMPLOYMENT_SPONSOR_PRODUCT_CODES
+        ],
     }
 
 
@@ -707,10 +715,7 @@ def assert_only_expected_changes(before: dict[str, Any], after: dict[str, Any]) 
 
     missing = set(before_rules) - set(after_rules)
     if missing != set(RETIRED_REVIEW_RULES):
-        _fail(
-            f"removed-rule set mismatch: {sorted(missing)} != "
-            f"{sorted(RETIRED_REVIEW_RULES)}"
-        )
+        _fail(f"removed-rule set mismatch: {sorted(missing)} != {sorted(RETIRED_REVIEW_RULES)}")
     added = set(after_rules) - set(before_rules)
     if added != set(NEW_RULE_IDS):
         _fail(f"added-rule set mismatch: {sorted(added)} != {sorted(NEW_RULE_IDS)}")
