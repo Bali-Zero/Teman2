@@ -17,7 +17,7 @@ from backend.services.visa_engine.api_models import (
     DisclosedReviewFlag,
     VisaOracleEvaluateRequest,
 )
-from backend.services.visa_engine.enums import DecisionState
+from backend.services.visa_engine.enums import DecisionState, FactPath
 from backend.services.visa_engine.models import ApplicantFactsData, Decision
 from backend.tests.services.visa_engine import _gold_fixtures as gf
 from backend.tests.services.visa_engine.gold_replay import _persona_expected
@@ -308,21 +308,41 @@ def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> N
     # header forbids that); instead a divergence counts toward the floor only
     # when the ruling itself explains it: the legal reading expected a review
     # hold on non-allowlisted causes, and the visitor now gets a deterministic
-    # state that still NAMES a consideration (a condition, a no-path cause or
-    # a fact to ask). Measured 2026-09-13 on sequence 20: 10 literal matches +
+    # state that still NAMES every one of those causes (as a condition or a
+    # no-path cause). Measured 2026-09-13 on sequence 20: 10 literal matches +
     # 7 ruling-converted (#2 #3 #4 #5 #6 #12 #20) = the same 17, and the same
     # three unexplained divergences.
+    #
+    # Two exceptions, each pinned rather than waved through (council round 2):
+    # the ruling RENAMES the minor privacy review to the no-path cause
+    # GUARDIAN_MUST_APPLY; and persona 20 is ASKED before it is judged - it
+    # leaves `immigration.overstay_days` UNKNOWN, which the visitor surface
+    # asks as a missing fact instead of holding on it, so it must be exactly
+    # that one question and nothing else.
+    renamed_by_ruling = {"MINOR_GUARDIAN_PRIVACY_REVIEW": "GUARDIAN_MUST_APPLY"}
+    asked_before_judged = {20: {FactPath.IMMIGRATION_OVERSTAY_DAYS}}
+
     def ruling_converted(row: dict) -> bool:
-        expected = PRODUCTION_REPLAY_EXPECTATIONS[row["persona_id"]]
-        decision = decision_by_id[row["persona_id"]]
-        return (
-            expected.state is DecisionState.HUMAN_REVIEW_REQUIRED
-            and set(expected.review_codes).isdisjoint(
-                driver.evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST
+        persona_id = row["persona_id"]
+        expected = PRODUCTION_REPLAY_EXPECTATIONS[persona_id]
+        decision = decision_by_id[persona_id]
+        if expected.state is not DecisionState.HUMAN_REVIEW_REQUIRED:
+            return False
+        if not set(expected.review_codes).isdisjoint(
+            driver.evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST
+        ):
+            return False
+        if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED:
+            return False
+        if persona_id in asked_before_judged:
+            return (
+                decision.state is DecisionState.NEEDS_INPUT
+                and set(decision.missing_facts) == asked_before_judged[persona_id]
             )
-            and decision.state is not DecisionState.HUMAN_REVIEW_REQUIRED
-            and bool(decision.conditions or decision.no_path_reasons or decision.missing_facts)
-        )
+        named = {condition.code for condition in decision.conditions} | {
+            reason.code for reason in decision.no_path_reasons
+        }
+        return {renamed_by_ruling.get(code, code) for code in expected.review_codes} <= named
 
     converted = {
         row["persona_id"]

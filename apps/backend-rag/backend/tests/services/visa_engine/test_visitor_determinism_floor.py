@@ -298,6 +298,29 @@ def test_an_allowlisted_hold_survives_a_non_allowlisted_cause_beside_it(
     assert {r.code for r in raw.review_reasons} <= {c.code for c in floored.conditions}
 
 
+def test_a_criminal_hold_keeps_the_review_causes_it_replaces_as_conditions(
+    compiled: Any,
+) -> None:
+    """Council round 2: an engine-mode review (persona 4, ACTIVE_OVERSTAY)
+    that also discloses a criminal matter must hold on the criminal cause and
+    still NAME the review cause it replaces, never drop it."""
+
+    persona = next(p for p in driver.PERSONAS if p.id == 4)
+    facts = driver.build_persona_request(persona).applicant_facts()
+    raw = evaluator.evaluate(
+        facts,
+        compiled,
+        effective_at=_AS_OF,
+        observed_at=_AS_OF,
+        identity_provider=driver._offline_identity_provider,
+    )
+    assert raw.state is DecisionState.HUMAN_REVIEW_REQUIRED, "premise lost"
+    held = evaluate_path._apply_disclosed_review_flags(raw, (DisclosedReviewFlag.CRIMINAL_RECORD,))
+    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    assert [r.code for r in held.review_reasons] == [CRIMINAL_MATTER_REVIEW_CODE]
+    assert {r.code for r in raw.review_reasons} <= {c.code for c in held.conditions}
+
+
 def test_the_floor_is_the_last_adapter_in_the_chain() -> None:
     """Order is behaviour here. Any adapter running AFTER the floor could hand
     a visitor the review state the floor just removed, so the floor's position

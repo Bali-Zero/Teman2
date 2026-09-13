@@ -1447,6 +1447,19 @@ def _apply_disclosed_review_flags(
         for flag, reason in zip(flags, disclosed_reasons, strict=True)
         if flag is not DisclosedReviewFlag.CRIMINAL_RECORD
     )
+    held = decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    standing_holds = tuple(
+        reason
+        for reason in decision.review_reasons
+        if held and reason.code in SOURCE_INTEGRITY_HOLD_CODES
+    )
+    # A review cause the criminal hold replaces is still owed its sentence:
+    # it rides as a condition, never silently dropped (council round 2).
+    displaced_reasons = tuple(
+        reason
+        for reason in decision.review_reasons
+        if held and reason.code not in SOURCE_INTEGRITY_HOLD_CODES
+    )
     payload = decision.model_dump(mode="python")
     payload.update(
         {
@@ -1476,15 +1489,7 @@ def _apply_disclosed_review_flags(
             # the flag table mints: the applicant-facing cause the owner asked
             # for is CRIMINAL_MATTER_DISCLOSED, and it carries no citation
             # because a disclosure is not a regulatory claim.
-            "review_reasons": (
-                *(
-                    reason
-                    for reason in decision.review_reasons
-                    if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
-                    and reason.code in SOURCE_INTEGRITY_HOLD_CODES
-                ),
-                criminal_cause,
-            ),
+            "review_reasons": (*standing_holds, criminal_cause),
             # The hold is EXPLAINED, not bare — Zero asked for the exception,
             # not for the silence the exception used to come with. The same
             # cause rides as a condition so it carries a next step
@@ -1494,6 +1499,7 @@ def _apply_disclosed_review_flags(
             "conditions": _dedupe_conditions(
                 (
                     *decision.conditions,
+                    *_conditions_from_reasons(displaced_reasons),
                     *_conditions_from_reasons(other_reasons),
                     _condition_from_reason(criminal_cause),
                 )
