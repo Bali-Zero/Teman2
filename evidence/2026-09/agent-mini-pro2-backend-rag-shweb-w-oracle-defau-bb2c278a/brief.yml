@@ -1,0 +1,185 @@
+task_id: shweb-w-oracle-default-removal-20260913
+gear: 1
+gear_reason: >-
+  Measured with the inputs CI uses — `git diff --name-only origin/main...HEAD > /tmp/f.txt &&
+  git diff --numstat origin/main...HEAD > /tmp/n.txt && python3 scripts/evidence_pack_lint.py
+  --print-floor --changed-files-file /tmp/f.txt --numstat-file /tmp/n.txt`, re-run after the
+  LAST commit (f2f2a9d97b). Result: 1. The paired `--print-floor-source` invocation (same two
+  input files) names why: "none" — neither the size term (total churn against
+  SIZE_GEAR2_THRESHOLD/SIZE_GEAR3_THRESHOLD) nor the path term (a hot-zone pattern) fires on this
+  diff. No bare churn figure is written into this prose on purpose, per this mandate's own scar
+  on that exact mistake (PR-D4c-1's brief, and again on PR-D4d's) — a number typed into a sentence
+  goes stale the moment a later commit changes that sentence's own length; the command above is
+  the only thing that stays true.
+mandate_id: SHWEB-20260911/W-ORACLE
+colour: BLUE
+l_level: L1
+gate_class: opus
+base_sha: 8452f0a6a82dac126b4d0b491a5b472d6138ed44 # pragma: allowlist secret (a git commit SHA, not a credential)
+objective: >-
+  Discharge condition C2 of the #6396 gate row (`.claude/skills/modus/PENDING-ARMS.md`, PR-D4c-1's
+  transitional-default addition): "remove the transitional `default=` from `investment_amount_usd`
+  and drop the sixth name from the rollout test's expected set ... a PR of its own after D4c-2
+  ships on Vercel; the rollout test going red on that field is the receipt." PR-D4c-2 (#6419,
+  merged into main at this branch's fork point 8452f0a6a8) shipped the interview question that
+  fills this fact on the merit/family/undecided branches, closing the deploy-order window
+  PR-D4c-1's transitional default existed to bridge. This PR discharges that follow-up: the fact
+  becomes required like every other, per the repo's own invariant that every fact is required so
+  an unasked question is UNKNOWN by declaration, never by omission.
+scope:
+  - apps/backend-rag/backend/services/visa_engine/models.py — drop the field's `default=`, the
+    now-discharged `_INVESTMENT_AMOUNT_USD_ROLLOUT_DEFAULT` constant and its comments (including
+    the `FOLLOW-UP (remove the default):` note), and the class docstring's transitional-field
+    count (six -> five).
+  - apps/backend-rag/backend/tests/services/visa_engine/test_sponsor_type_rollout.py — drop
+    `investment_amount_usd` from the pinned optional-field set; delete
+    `TestFactVocabularyExtensionRolloutDefaultD4c1` (it pinned only the now-retired
+    transitional-default mechanism for this one field); correct the "widened ... to six"
+    narrative to record the same-day narrowing back to five.
+  - apps/backend-rag/backend/tests/services/visa_engine/_gold_fixtures.py — `_BASELINE_FACTS`
+    was missing `investment.investment_amount_usd` (tolerated only while the field was optional);
+    added as UNKNOWN/NOT_ASKED, the same "no rule references this path yet" treatment as
+    `sponsor.type`.
+  - apps/mouth/src/lib/api/schema.d.ts + schema.d.ts.openapi-sha256 — regenerated via
+    `npm run contract:visa-oracle` (both files are generated, never hand-edited; the raw
+    openapi-typescript 7.13.0 output was reformatted with `prettier --write` to match the repo's
+    2-space style before being diffed or committed, exactly as PR-RISYNC's own precedent did).
+  - this brief.
+constraints:
+  - No rule-pack edit of any kind; `sign_pack.py`/`activate_pack.py` never run;
+    `VISA_ENGINE_EVALUATE_MODE` never touched.
+  - Never hand-edit a generated file — `schema.d.ts`/its pin came only from
+    `npm run contract:visa-oracle` + `prettier --write`.
+  - No push, no PR, no arming, no merge — commit locally, report; the orchestrator ships.
+  - Zero PII in any artifact touched.
+acceptance:
+  - text: >-
+      A1: WHEN the default is present (baseline, before any change), THEN
+      `test_sponsor_type_rollout.py` SHALL be fully green.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/services/visa_engine/test_sponsor_type_rollout.py -v
+    result: "32 passed, exit 0 (pre-change baseline)."
+  - text: >-
+      A2 (receipt, guilt): WHEN only `models.py`'s default is removed and the test file is left
+      untouched, THEN the suite SHALL fail exactly on the field that changed — not pass by
+      accident, not fail for an unrelated reason.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/services/visa_engine/test_sponsor_type_rollout.py -v
+    result: >-
+      3 failed, 29 passed, exit 1. `test_sponsor_type_is_one_of_a_named_finite_set_of_optional_fields`
+      fails with "Extra items in the right set: 'investment_amount_usd'" (the pinned-set guard
+      doing its job); the two `TestFactVocabularyExtensionRolloutDefaultD4c1` failures are the
+      now-obsolete rollout-mechanism tests (one raises `pydantic ValidationError: Field required`
+      on omission, the other `AttributeError` on the deleted constant) — both are why that class
+      is deleted in this commit rather than left red.
+  - text: >-
+      A3: WHEN the test file is updated to match (optional-set entry dropped, obsolete class
+      deleted), THEN the suite SHALL be green again.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/services/visa_engine/test_sponsor_type_rollout.py -v
+    result: "26 passed, exit 0 (32 - 6, the six deleted `TestFactVocabularyExtensionRolloutDefaultD4c1` cases)."
+  - text: >-
+      A4 (mutation proof, the actual receipt this brief was asked to carry): WHEN the default is
+      put BACK on the field (a fresh literal `UnknownFact(status="UNKNOWN", reason="NOT_ASKED")`,
+      since the named constant no longer exists) on top of the final committed test file, THEN
+      the optional-set guard SHALL go RED, naming the exact field; WHEN it is removed again, THEN
+      the suite SHALL go GREEN; WHEN the tree is compared against the committed diff afterward,
+      THEN it SHALL be identical (no mutation artifact left behind).
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/services/visa_engine/test_sponsor_type_rollout.py -v
+    result: >-
+      RED: 1 failed, 25 passed, exit 1 — `test_sponsor_type_is_one_of_a_named_finite_set_of_optional_fields`
+      fails with "Extra items in the left set: 'investment_amount_usd'". GREEN (mutation reverted):
+      26 passed, exit 0. `git diff apps/backend-rag/backend/services/visa_engine/models.py` against
+      HEAD (f2f2a9d97b) after reverting is empty — no artifact left.
+  - text: >-
+      A5: WHEN the visa_engine scripts tree and the interview walk census run, THEN the census
+      SHALL still collect exactly 17 items and pass, and no corpus fixture SHALL 422 on the newly
+      required key.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/scripts/visa_engine/ backend/tests/services/visa_engine/test_interview_walk_census.py -v
+    result: >-
+      193 passed, exit 0 (in isolation, `test_interview_walk_census.py` alone: "collected 17
+      items" / "17 passed", exit 0 — the census test asserts each walk's outcome individually
+      against its own pinned `EXPECTED_OUTCOME` entry, so 17/17 passed is the key-by-key proof,
+      not a totals compare). Before the `_gold_fixtures.py` baseline fix, 14 tests in
+      `test_gold_coverage_eval.py`/`test_gold_coverage_replay.py`/`test_gold_replay_driver.py`
+      failed with `pydantic ValidationError: investment.investment_amount_usd Field required` —
+      `_BASELINE_FACTS` (a hand-written dict, unlike the JSON persona fixtures which already had
+      the key) was missing this one entry; adding it as UNKNOWN/NOT_ASKED fixed all 14 with no
+      other change.
+  - text: >-
+      A6: WHEN the OpenAPI/TS contract is regenerated, THEN the `@default` JSDoc block SHALL be
+      gone from `investment.investment_amount_usd`, the key SHALL appear in
+      `ApplicantFactsData`'s `required` list, the diff SHALL be small (this key + the docstring
+      count only), and the pin test SHALL pass.
+    status: verified
+    probe: >-
+      cd apps/mouth && npm run contract:visa-oracle && npx prettier --write
+      src/lib/api/schema.d.ts && cd ../backend-rag && source .venv/bin/activate && PYTHONPATH=.
+      pytest backend/tests/unit/scripts/test_generate_openapi_schema_pin.py -v
+    result: >-
+      Raw `openapi-typescript` 7.13.0 output before prettier: 111,870 changed lines
+      (55,743 insertions / 56,129 deletions) — entirely a 4-space-vs-2-space indentation
+      difference from the installed tool's default, not content drift (verified: the full
+      top-level `paths` key set is identical before/after, only indentation width differs).
+      After `prettier --write`: 17 lines in `schema.d.ts` (the class-docstring six->five count,
+      and the `@default {"reason": "NOT_ASKED", "status": "UNKNOWN"}` JSDoc block dropping off
+      `investment.investment_amount_usd`) + 2 lines in the pin file (old pin
+      4b86de1b00d6bbb6e8dd7c39f4313522f90323447d2fa68d3aca6dd313879b41, matching the dispatch
+      brief's own "with the default present" measurement exactly; new pin
+      c6b44ed6715d0e964e32e9c9ef26fd58b4f2ec06b96149030153a98dc331b6c0 — differs from the
+      dispatch brief's predicted "with the default removed" hash because this session's exact
+      docstring wording for the six->five edit differs textually from whatever wording produced
+      that prediction; the "before" pin matching exactly rules out the regen having picked up
+      unrelated drift). Directly inspected the raw `openapi.json`
+      (`schema['components']['schemas']['ApplicantFactsData']`): `required` now has 41 entries
+      (was 40), `'investment.investment_amount_usd' in required` is `True`,
+      `'sponsor.type' in required` and `'immigration.renewal_paid' in required` are both still
+      `False` (untouched, still optional). Pin test: 1 passed, exit 0.
+  - text: >-
+      A7: WHEN `apps/mouth`'s TypeScript is typechecked and its full test suite runs, THEN both
+      SHALL be clean.
+    status: verified
+    probe: cd apps/mouth && npx tsc --noEmit && npx vitest run
+    result: >-
+      `tsc --noEmit`: exit 0, no output. `vitest run`: 483 test files passed (483), 5209 tests
+      passed (5209), exit 0 — run on Mini-Pro2 (`hostname` = mini-pro2); recorded per this
+      mandate's own standing condition that the same suite is host-dependent (green here, 5
+      files red on M5 from a mixed pnpm/npm `node_modules` — not applicable to this measurement).
+pii: none
+self_report:
+  note: >-
+    Everything the dispatch asked for was done as specified; nothing was skipped or worked
+    around. Two things worth naming plainly rather than leaving implicit:
+
+    (1) `TestFactVocabularyExtensionRolloutDefaultD4c1` was deleted in full, not just trimmed.
+    The dispatch's "What to change" section named only "remove investment_amount_usd from the
+    pinned optional-field set" for the test file. Running the suite empirically after the
+    `models.py` change (A2 above) showed this class could not survive as-is: two of its six
+    methods hard-fail (one on the now-required field rejecting omission, one on the deleted
+    `_INVESTMENT_AMOUNT_USD_ROLLOUT_DEFAULT` constant it references directly), and the other four
+    exist only to exercise the now-retired transitional-default mechanism for this one field —
+    the same fate the file's own docstring already prescribes for `TestSponsorTypeRolloutDefault`'s
+    tracking tests once the LAST field's window closes, applied here to the one class whose
+    window closed. This returns `investment_amount_usd` to the same test footprint as its two
+    sibling required `MoneyFact` fields (`investment_investment_capital_idr`,
+    `investment_paid_up_capital_idr`), neither of which has a dedicated test file entry either.
+
+    (2) The pin hash mismatch against the dispatch brief's own prediction (A6 above) was
+    investigated, not waved past: the "before" pin matches the dispatch's measurement exactly,
+    the raw regen diff was inspected before prettier (confirmed 4-space/2-space formatting only,
+    zero path-set difference) and after (confirmed 17-line delta touching only this field), and
+    the raw `openapi.json` was read directly to confirm `required` membership — so the differing
+    "after" hash is attributed to this session's own docstring wording for the six->five count,
+    not to unrelated schema drift.
