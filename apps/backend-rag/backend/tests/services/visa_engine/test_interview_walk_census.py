@@ -121,11 +121,15 @@ two different questions:
   right instrument for a pack or interview change.
 - **FUNNEL level** (``flagged_outcomes``, the flags each walk actually
   raises, straight from its own fixture): what the applicant meets.
-  ``evaluate_path.py::_apply_disclosed_review_flags`` is unconditional and
-  monotone — ONE flag rewrites the whole decision to
-  HUMAN_REVIEW_REQUIRED with ``candidates=()``, ``missing_facts=()``,
-  ``no_path_reasons=()``, ``quotes=()`` — so a flag DELETES a verdict the
-  signed pack had already proven.
+  ``evaluate_path.py::_apply_disclosed_review_flags`` is monotone and,
+  for any decision the engine actually produces, unconditional — ONE flag
+  rewrites the whole decision to HUMAN_REVIEW_REQUIRED with
+  ``candidates=()``, ``missing_facts=()``, ``no_path_reasons=()``,
+  ``quotes=()`` — so a flag DELETES a verdict the signed pack had already
+  proven. ("For any decision the engine actually produces" is the exact
+  qualifier: the adapter returns early when ``decision_id`` or ``public_id``
+  is ``None``, which no evaluated decision is — council round 1,
+  tp1-qwen3.8-max, on the word "unconditional".)
 
 MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 84 walks,
 both censuses in the same run (``test_the_flagged_census_is_the_funnel_the_
@@ -434,11 +438,15 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     # and the walk answers exactly like its `pt_pma` sibling: C2.
     "offshore/invest/pt_pma/sponsor_government": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/undecided": ("SUPPORTED_CANDIDATES", ("C2",)),
-    # PR-D4c-2: the "I can't say yet" currency answer — the walk measuring
-    # this PR's zero-review-cost claim (see the PR body's NOT_CERTAIN proof;
-    # this census does not carry disclosure flags at all, bound 1 above, so
-    # it cannot witness that claim itself — only that the ENGINE-level
-    # verdict does not move). Neither amount fact is ever populated
+    # PR-D4c-2: the "I can't say yet" currency answer — the walk that used to
+    # rest its zero-review-cost claim on a PR body, because the census could
+    # not carry disclosure flags and so could only witness that the
+    # ENGINE-level verdict does not move. It carries them now: this walk's own
+    # fixture is pinned in `EXPECTED_DISCLOSED_REVIEW_FLAGS` below, and the
+    # claim it proves is narrower than the PR body's — `still_unsure` costs no
+    # NOT_CERTAIN hold (its literal is not `unsure`), but the walk raises
+    # ACTIVITY_BOUNDARY anyway on `investment_vehicle = undecided`, so at
+    # FUNNEL level it IS held. Neither amount fact is ever populated
     # (`still_unsure` asks no further question), and this branch's
     # verdict is decided by `family.sponsor_confirmed` alone, unaffected:
     # C2, same as its unmodified `undecided` sibling above.
@@ -1053,11 +1061,14 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_67_answers(
         }
     )
     assert census["NEEDS_INPUT"] == 2
-    # NOT a claim about production. The corpus carries no disclosure flags, so
-    # the review arm of `apply_public_policy_adapters` is unreachable from
-    # here by construction: this line says the FIXTURES trigger no review, and
-    # a regression that adds a disclosure flag passes it invisibly. Bound 1 of
-    # the module docstring, with the measurement.
+    # NOT a claim about production, and no longer a claim the corpus cannot
+    # check. This fixture evaluates every walk WITHOUT its flags, so the zero
+    # says the PACK alone holds nobody — the ENGINE half. The review arm of
+    # `apply_public_policy_adapters` is exercised by the `flagged_outcomes`
+    # fixture instead, where the same 84 walks produce 8 holds; the comment
+    # that used to stand here said "a regression that adds a disclosure flag
+    # passes it invisibly", and `test_the_flagged_census_is_the_funnel_the_
+    # applicant_meets` is what stopped that being true.
     assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
     assert census["NO_SUPPORTED_PATH"] == 15
 

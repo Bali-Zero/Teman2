@@ -135,7 +135,8 @@ def _evaluate(
     # raised, and `evaluate_path.py::_apply_disclosed_review_flags` rewrites the
     # whole decision to HUMAN_REVIEW_REQUIRED on any one of them. Evaluating
     # facts alone therefore measures a funnel the applicant never meets — which
-    # is why the interview-walk census reported 0 human review for years. The
+    # is why the interview-walk census reported 0 human review from the day it
+    # was written (2026-09-06) until the corpus gained this field. The
     # flags are validated through `VisaOracleEvaluateRequest`, never injected
     # into `apply_public_policy_adapters` directly, so an unknown flag name is a
     # loud ValidationError here and not a silently ignored string.
