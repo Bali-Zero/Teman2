@@ -1628,3 +1628,159 @@ function behavioralSteps(
 }
 
 export { QUESTIONS };
+
+// ─── Process projection (W-VO-T) ─────────────────────────────────────────
+//
+// Metadata ONLY. Every value below is READ from the same `getTreeSteps`
+// projection and from `QUESTIONS`; nothing here decides what to ask next,
+// and nothing here decides eligibility — the engine owns that and is
+// consulted once, at the verdict. This exists so a visitor can see WHERE
+// they are in the process instead of inferring it from one question at a
+// time.
+
+/** The five question groups `tree.ts` already declares, plus the terminal
+ * node. `framing` belongs to no phase: it is the door, not a step. */
+export const PROCESS_PHASES = [
+  "location",
+  "identity",
+  "intent",
+  "details",
+  "review",
+  "outcome",
+] as const;
+export type ProcessPhaseKey = (typeof PROCESS_PHASES)[number];
+
+export interface ProcessPhase {
+  key: ProcessPhaseKey;
+  status: TreeStepStatus;
+  /** Question steps of this phase already answered, and how many the
+   * CURRENT path holds — both move as the path narrows. */
+  answered: number;
+  total: number;
+}
+
+/** What the open question decides, in the engine's own vocabulary. */
+export interface ProcessDecision {
+  questionId: string;
+  mapping: "FACT" | "REVIEW_ONLY" | "HUMAN_CONTEXT";
+  factPaths: readonly string[];
+}
+
+export interface ProcessCategory {
+  key: CategoryKey;
+  /** `current` = chosen and still being asked, `done` = chosen and its
+   * branch fully answered, `pruned` = closed by the choice, `pending` =
+   * still open because no choice has been made. */
+  status: TreeStepStatus;
+}
+
+export interface ProcessModel {
+  trunk: readonly TreeStep[];
+  /** The category fan only exists once the interview has reached the
+   * purpose question — before that there is nothing to show as open. */
+  showCategories: boolean;
+  phases: readonly ProcessPhase[];
+  categories: readonly ProcessCategory[];
+  /** The chosen category, and how many branches its choice closed. */
+  chosenCategory: CategoryKey | null;
+  prunedCount: number;
+  answeredQuestions: number;
+  totalQuestions: number;
+  currentPhase: ProcessPhaseKey | null;
+  decision: ProcessDecision | null;
+  /** True at the terminal node — the outcome is the last node of this
+   * same tree, never a separate page. */
+  atOutcome: boolean;
+}
+
+function phaseOfStep(stepId: string): ProcessPhaseKey | null {
+  const question = QUESTIONS[stepId];
+  if (question) return question.group;
+  if (stepId === "confirmation") return "review";
+  if (stepId === "verdict") return "outcome";
+  return null; // framing
+}
+
+/**
+ * Project the interview as a visible PROCESS: phases with their progress,
+ * the purpose branches that are open/closed, and the fact the open
+ * question decides. Pure; `LivingTree`/`ProcessRail` render it.
+ */
+export function getProcessModel(
+  current: OracleNode,
+  facts: OracleFacts,
+): ProcessModel {
+  const { trunk, categoryLeaves } = getTreeSteps(current, facts);
+  const questionSteps = trunk.filter((step) =>
+    Object.prototype.hasOwnProperty.call(QUESTIONS, step.id),
+  );
+
+  const phases: ProcessPhase[] = PROCESS_PHASES.map((key) => {
+    const steps = trunk.filter((step) => phaseOfStep(step.id) === key);
+    const answered = steps.filter((step) => step.status === "done").length;
+    const status: TreeStepStatus = steps.some(
+      (step) => step.status === "current",
+    )
+      ? "current"
+      : steps.length > 0 && steps.every((step) => step.status === "done")
+        ? "done"
+        : "pending";
+    return { key, status, answered, total: steps.length };
+  });
+
+  const chosen = facts.category as CategoryKey | undefined;
+  const chosenCategory =
+    chosen !== undefined && CATEGORY_KEYS.includes(chosen) ? chosen : null;
+  // The chosen branch is "done" only once every question the branch asks
+  // on THIS path has an answer — `behavioralSteps` is the same list
+  // `getTreeSteps` puts in the trunk, so the two can never disagree.
+  const branchIds = new Set(behavioralSteps(facts).map((step) => step.id));
+  const branchSteps = trunk.filter((step) => branchIds.has(step.id));
+  const branchComplete =
+    branchSteps.length > 0 &&
+    branchSteps.every((step) => step.status === "done");
+  const categories: ProcessCategory[] = CATEGORY_KEYS.map((key) => ({
+    key,
+    status:
+      chosenCategory === null
+        ? ("pending" as const)
+        : key === chosenCategory
+          ? branchComplete
+            ? ("done" as const)
+            : ("current" as const)
+          : ("pruned" as const),
+  }));
+
+  const decision: ProcessDecision | null =
+    current.kind === "question" && QUESTIONS[current.questionId]
+      ? {
+          questionId: current.questionId,
+          mapping: QUESTIONS[current.questionId].decisionMapping.kind,
+          factPaths:
+            QUESTIONS[current.questionId].decisionMapping.kind ===
+            "HUMAN_CONTEXT"
+              ? []
+              : (
+                  QUESTIONS[current.questionId].decisionMapping as {
+                    factPaths: readonly string[];
+                  }
+                ).factPaths,
+        }
+      : null;
+
+  return {
+    trunk,
+    showCategories: categoryLeaves !== null,
+    phases,
+    categories,
+    chosenCategory,
+    prunedCount: categories.filter((c) => c.status === "pruned").length,
+    answeredQuestions: questionSteps.filter((step) => step.status === "done")
+      .length,
+    totalQuestions: questionSteps.length,
+    currentPhase:
+      phases.find((phase) => phase.status === "current")?.key ?? null,
+    decision,
+    atOutcome: current.kind === "verdict",
+  };
+}

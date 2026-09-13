@@ -887,6 +887,20 @@ function OracleShellRuntime({
               current={current}
               facts={state.facts}
               onEditQuestion={handleEdit}
+              outcome={
+                // The rail may name a product ONLY from an engine answer
+                // that is already on screen — never from a local guess, and
+                // never while the request is still in flight.
+                current.kind === "verdict" && outcome !== null && !evaluating
+                  ? {
+                      state: outcome.state,
+                      candidates: outcome.candidates.map((candidate) => ({
+                        code: candidate.code,
+                        name: candidate.name,
+                      })),
+                    }
+                  : null
+              }
             />
           </div>
 
