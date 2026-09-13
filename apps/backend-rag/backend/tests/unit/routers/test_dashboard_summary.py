@@ -513,3 +513,122 @@ class TestGetNeuralPulseFakeFieldsGone:
         assert result["memory_facts"] == 0
         assert result["knowledge_docs"] == 0
         assert "model_version" not in result
+
+
+# ── GET /api/dashboard/portal-challenge ─────────────────────────────────────
+
+
+class TestPortalChallengeEndpoint:
+    """Endpoint-level tests: real `require_team_member` gate, mocked pool."""
+
+    @pytest.fixture(autouse=True)
+    def _bypass_cache(self):
+        """Every test computes fresh — no cross-test pollution via the
+        module-singleton `_cache`."""
+        with patch("backend.app.routers.dashboard_summary._cache") as mock_cache:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.set = AsyncMock()
+            yield mock_cache
+
+    def _make_client(self, current_user: dict, mock_pool):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+        from backend.app.routers.dashboard_summary import router
+
+        app = FastAPI()
+        app.include_router(router)
+        app.dependency_overrides[get_current_user] = lambda: current_user
+        app.dependency_overrides[get_database_pool] = lambda: mock_pool
+        return TestClient(app)
+
+    def test_client_token_rejected(self, mock_client_user, mock_db_pool):
+        """A portal CLIENT token must never reach the staff leaderboard."""
+        client = self._make_client(mock_client_user, mock_db_pool)
+        resp = client.get("/api/dashboard/portal-challenge")
+        assert resp.status_code == 403
+
+    def test_staff_token_returns_leaderboard(self, mock_current_user, mock_db_pool):
+        from datetime import datetime, timezone
+
+        roster_rows = [
+            {
+                "email": "winner@balizero.com",
+                "display_name": "Winner",
+                "department": "setup",
+                "role": "member",
+                "active": True,
+            },
+            {
+                "email": "zero_activity@balizero.com",
+                "display_name": "Zero Activity",
+                "department": "setup",
+                "role": "member",
+                "active": True,
+            },
+        ]
+        activity_rows = [
+            {
+                "creator_email": "winner@balizero.com",
+                "activations": 20,
+                "invited": 20,
+                "last_activation_at": datetime(2026, 9, 20, tzinfo=timezone.utc),
+            }
+        ]
+        recent_rows = [
+            {
+                "creator_email": "winner@balizero.com",
+                "used_at": datetime(2026, 9, 20, tzinfo=timezone.utc),
+            }
+        ]
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            side_effect=[roster_rows, activity_rows, recent_rows]
+        )
+
+        client = self._make_client(mock_current_user, mock_db_pool)
+        resp = client.get("/api/dashboard/portal-challenge")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] in {"upcoming", "live", "closed"}
+        assert body["timezone"] == "Asia/Makassar"
+        assert {t["tier"] for t in body["tiers"]} == {1, 2, 3}
+        assert body["team_total_activations"] == 20
+
+        by_member = {e["member"]: e for e in body["entries"]}
+        assert by_member["winner"]["activations"] == 20
+        assert by_member["winner"]["award_tier"] == 1
+        assert by_member["winner"]["prize_idr"] == 3_000_000
+        assert by_member["winner"]["is_me"] is (mock_current_user["email"] == "winner@balizero.com")
+        assert by_member["zero_activity"]["activations"] == 0
+        assert by_member["zero_activity"]["award_tier"] is None
+
+        assert len(body["recent_activations"]) == 1
+        assert body["recent_activations"][0]["display_name"] == "Winner"
+
+    def test_staff_token_is_me_flags_the_caller(self, mock_db_pool):
+
+        # A "clean" staff email — the shared `mock_current_user` fixture uses
+        # test@balizero.com, which the roster merge deliberately filters as a
+        # QA fixture account (see TestMergeRosterAndActivity), so it can't be
+        # used to exercise the is_me=True branch here.
+        caller = {"id": "u1", "email": "caller@balizero.com", "role": "member", "full_name": "Caller"}
+        roster_rows = [
+            {
+                "email": "caller@balizero.com",
+                "display_name": "Caller",
+                "department": "setup",
+                "role": "member",
+                "active": True,
+            }
+        ]
+        mock_db_pool._mock_conn.fetch = AsyncMock(side_effect=[roster_rows, [], []])
+
+        client = self._make_client(caller, mock_db_pool)
+        resp = client.get("/api/dashboard/portal-challenge")
+
+        assert resp.status_code == 200
+        entries = resp.json()["entries"]
+        assert len(entries) == 1
+        assert entries[0]["is_me"] is True

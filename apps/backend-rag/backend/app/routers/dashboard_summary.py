@@ -12,9 +12,10 @@ from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
 from backend.app.core.config import settings
-from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool, require_team_member
 from backend.app.routers.crm_interactions import get_interactions_stats, list_interactions
 from backend.app.routers.crm_practices import get_practices_stats, list_practices
 from backend.app.utils.logging_utils import get_logger
@@ -824,3 +825,197 @@ async def get_role_metrics(
             },
         }
         return {"role": role, "metrics": defaults.get(role, defaults["zero"]), "alerts": []}
+
+
+# ============================================================================
+# Portal Champion challenge leaderboard (staff-only, live widget)
+# ============================================================================
+# Scoring/window/tier rules are NOT here — they live in the single source
+# `backend.services.portal.challenge_leaderboard`, shared with the offline
+# report `scripts/portal_challenge_leaderboard.py` so the two can never
+# disagree about who is winning.
+
+PORTAL_CHALLENGE_CACHE_KEY = "dashboard:portal_challenge:v1"
+PORTAL_CHALLENGE_CACHE_TTL = 30  # seconds — the widget polls every 60s
+
+
+class PortalChallengeTier(BaseModel):
+    tier: int
+    threshold: int
+    prize_idr: int
+
+
+class PortalChallengeTaxRules(BaseModel):
+    podium_super_bonus_idr: int
+    best_tax_fallback_idr: int
+    best_tax_fallback_threshold: int
+
+
+class PortalChallengeEntry(BaseModel):
+    member: str
+    display_name: str
+    department: str | None
+    is_tax: bool
+    is_me: bool
+    rank: int
+    activations: int
+    invited: int
+    last_activation_at: datetime | None
+    award_tier: int | None
+    prize_idr: int
+    tax_bonus_idr: int
+    total_prize_idr: int
+    next_tier_threshold: int | None
+    to_next_tier: int | None
+
+
+class PortalChallengeRecentActivation(BaseModel):
+    display_name: str
+    at: datetime
+
+
+class PortalChallengeResponse(BaseModel):
+    status: str
+    window_start: datetime
+    window_end: datetime
+    timezone: str
+    generated_at: datetime
+    tiers: list[PortalChallengeTier]
+    tax_rules: PortalChallengeTaxRules
+    team_total_activations: int
+    entries: list[PortalChallengeEntry]
+    recent_activations: list[PortalChallengeRecentActivation]
+
+
+async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, Any]:
+    """Compute the JSON-safe (str timestamps, no `email`-bearing PII risk
+    beyond staff addresses already visible in `team_members`) leaderboard
+    payload. Cached whole — `is_me`/`generated_at` are added per-request by
+    the caller, never cached (they depend on who is asking / when)."""
+    from backend.services.portal.challenge_leaderboard import (
+        ROSTER_SQL,
+        TAX_FALLBACK_BONUS_IDR,
+        TAX_FALLBACK_THRESHOLD,
+        TAX_PODIUM_BONUS_IDR,
+        TIERS,
+        WINDOW_END,
+        WINDOW_START,
+        build_aggregates_sql,
+        build_recent_activations_sql,
+        compute_awards,
+        compute_status,
+        member_key_from_email,
+        merge_roster_and_activity,
+    )
+
+    async with db_pool.acquire() as conn:
+        # Sequential on ONE connection, not gathered: asyncpg forbids
+        # concurrent operations on a single connection. All three queries hit
+        # small/indexed tables and this whole payload sits behind the 30s
+        # cache above, so 3 round trips per cache-miss is cheap.
+        roster_records = await conn.fetch(ROSTER_SQL)
+        activity_records = await conn.fetch(build_aggregates_sql())
+        recent_records = await conn.fetch(build_recent_activations_sql())
+
+    members = merge_roster_and_activity(
+        [dict(r) for r in roster_records], [dict(r) for r in activity_records]
+    )
+    awarded = compute_awards(members)
+    display_by_email = {m.email: m.display_name for m in members}
+
+    return {
+        "status": compute_status(datetime.now(timezone.utc)),
+        "window_start": WINDOW_START.isoformat(),
+        "window_end": WINDOW_END.isoformat(),
+        "timezone": "Asia/Makassar",
+        "tiers": [
+            {"tier": t.tier, "threshold": t.threshold, "prize_idr": t.prize_idr} for t in TIERS
+        ],
+        "tax_rules": {
+            "podium_super_bonus_idr": TAX_PODIUM_BONUS_IDR,
+            "best_tax_fallback_idr": TAX_FALLBACK_BONUS_IDR,
+            "best_tax_fallback_threshold": TAX_FALLBACK_THRESHOLD,
+        },
+        "team_total_activations": sum(e.activations for e in awarded),
+        "entries": [
+            {
+                "email": e.email,
+                "member": e.member,
+                "display_name": e.display_name,
+                "department": e.department,
+                "is_tax": e.is_tax,
+                "rank": e.rank,
+                "activations": e.activations,
+                "invited": e.invited,
+                "last_activation_at": e.last_activation_at.isoformat()
+                if e.last_activation_at
+                else None,
+                "award_tier": e.award_tier,
+                "prize_idr": e.prize_idr,
+                "tax_bonus_idr": e.tax_bonus_idr,
+                "total_prize_idr": e.total_prize_idr,
+                "next_tier_threshold": e.next_tier_threshold,
+                "to_next_tier": e.to_next_tier,
+            }
+            for e in awarded
+        ],
+        "recent_activations": [
+            {
+                "display_name": display_by_email.get(
+                    r["creator_email"], member_key_from_email(r["creator_email"])
+                ),
+                "at": r["used_at"].isoformat(),
+            }
+            for r in recent_records
+        ],
+    }
+
+
+@router.get("/portal-challenge", response_model=PortalChallengeResponse)
+async def get_portal_challenge(
+    current_user: dict = Depends(require_team_member),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> PortalChallengeResponse:
+    """Portal Champion challenge leaderboard — staff-only (`require_team_member`
+    rejects a client token with 403), powers the kita home page live widget.
+    """
+    payload = await _cache.get(PORTAL_CHALLENGE_CACHE_KEY)
+    if payload is None:
+        payload = await _build_portal_challenge_payload(db_pool)
+        await _cache.set(PORTAL_CHALLENGE_CACHE_KEY, payload, PORTAL_CHALLENGE_CACHE_TTL)
+
+    current_email = (current_user.get("email") or "").strip().lower()
+    entries = [
+        PortalChallengeEntry(
+            member=e["member"],
+            display_name=e["display_name"],
+            department=e["department"],
+            is_tax=e["is_tax"],
+            is_me=e["email"] == current_email,
+            rank=e["rank"],
+            activations=e["activations"],
+            invited=e["invited"],
+            last_activation_at=e["last_activation_at"],
+            award_tier=e["award_tier"],
+            prize_idr=e["prize_idr"],
+            tax_bonus_idr=e["tax_bonus_idr"],
+            total_prize_idr=e["total_prize_idr"],
+            next_tier_threshold=e["next_tier_threshold"],
+            to_next_tier=e["to_next_tier"],
+        )
+        for e in payload["entries"]
+    ]
+    return PortalChallengeResponse(
+        status=payload["status"],
+        window_start=payload["window_start"],
+        window_end=payload["window_end"],
+        timezone=payload["timezone"],
+        generated_at=datetime.now(timezone.utc),
+        tiers=[PortalChallengeTier(**t) for t in payload["tiers"]],
+        tax_rules=PortalChallengeTaxRules(**payload["tax_rules"]),
+        team_total_activations=payload["team_total_activations"],
+        entries=entries,
+        recent_activations=[
+            PortalChallengeRecentActivation(**r) for r in payload["recent_activations"]
+        ],
+    )
