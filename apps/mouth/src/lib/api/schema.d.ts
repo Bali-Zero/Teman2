@@ -7106,6 +7106,27 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/dashboard/portal-challenge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Portal Challenge
+     * @description Portal Champion challenge leaderboard — staff-only (`require_team_member`
+     *     rejects a client token with 403), powers the kita home page live widget.
+     */
+    get: operations["get_portal_challenge_api_dashboard_portal_challenge_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/dashboard/role-metrics": {
     parameters: {
       query?: never;
@@ -24418,6 +24439,98 @@ export interface components {
         [key: string]: unknown;
       };
     };
+    /** PortalChallengeEntry */
+    PortalChallengeEntry: {
+      /** Activations */
+      activations: number;
+      /** Award Tier */
+      award_tier: number | null;
+      /** Department */
+      department: string | null;
+      /** Display Name */
+      display_name: string;
+      /** Invited */
+      invited: number;
+      /** Is Me */
+      is_me: boolean;
+      /** Is Tax */
+      is_tax: boolean;
+      /** Last Activation At */
+      last_activation_at: string | null;
+      /** Member */
+      member: string;
+      /** Next Tier Threshold */
+      next_tier_threshold: number | null;
+      /** Prize Idr */
+      prize_idr: number;
+      /** Rank */
+      rank: number;
+      /** Tax Bonus Idr */
+      tax_bonus_idr: number;
+      /** To Next Tier */
+      to_next_tier: number | null;
+      /** Total Prize Idr */
+      total_prize_idr: number;
+    };
+    /** PortalChallengeRecentActivation */
+    PortalChallengeRecentActivation: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** Display Name */
+      display_name: string;
+    };
+    /** PortalChallengeResponse */
+    PortalChallengeResponse: {
+      /** Entries */
+      entries: components["schemas"]["PortalChallengeEntry"][];
+      /**
+       * Generated At
+       * Format: date-time
+       */
+      generated_at: string;
+      /** Recent Activations */
+      recent_activations: components["schemas"]["PortalChallengeRecentActivation"][];
+      /** Status */
+      status: string;
+      tax_rules: components["schemas"]["PortalChallengeTaxRules"];
+      /** Team Total Activations */
+      team_total_activations: number;
+      /** Tiers */
+      tiers: components["schemas"]["PortalChallengeTier"][];
+      /** Timezone */
+      timezone: string;
+      /**
+       * Window End
+       * Format: date-time
+       */
+      window_end: string;
+      /**
+       * Window Start
+       * Format: date-time
+       */
+      window_start: string;
+    };
+    /** PortalChallengeTaxRules */
+    PortalChallengeTaxRules: {
+      /** Best Tax Fallback Idr */
+      best_tax_fallback_idr: number;
+      /** Best Tax Fallback Threshold */
+      best_tax_fallback_threshold: number;
+      /** Podium Super Bonus Idr */
+      podium_super_bonus_idr: number;
+    };
+    /** PortalChallengeTier */
+    PortalChallengeTier: {
+      /** Prize Idr */
+      prize_idr: number;
+      /** Threshold */
+      threshold: number;
+      /** Tier */
+      tier: number;
+    };
     /** PracticeCreate */
     PracticeCreate: {
       /** Assigned To */
@@ -38869,6 +38982,26 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  get_portal_challenge_api_dashboard_portal_challenge_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PortalChallengeResponse"];
         };
       };
     };

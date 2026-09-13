@@ -1,0 +1,135 @@
+task_id: portal-challenge-leaderboard-api
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor computed on the final two-commit diff:
+#   python3 scripts/evidence_pack_lint.py --print-floor \
+#     --changed-files-file <changed> --numstat-file <numstat>
+#   returns `2`, source `size`: no hot-zone path is touched (dashboard_summary.py,
+#   a new services/portal module, two test files, one script rewrite), but the
+#   size term counts CHURN (added + deleted) and this diff's churn crosses
+#   SIZE_GEAR2_THRESHOLD (5 files, ~1067 churn / ~903 net across two commits).
+# The change is one feature end to end: a new pure-Python scoring module, one
+# new staff-only FastAPI endpoint that consumes it, and the offline report
+# script repointed at the same module — no migration, no off-limits file, no
+# client PII anywhere in code/tests/output.
+objective: >-
+  Ship a staff-only leaderboard endpoint (GET /api/dashboard/portal-challenge)
+  for the "Portal Champion" challenge, live 2026-09-14 00:00 WITA through
+  2026-09-30 00:00 WITA (exclusive), per the NEW rules Zero decided on
+  2026-09-14: the counted unit is an ACTIVATION (a client_invitations row with
+  used_at inside the window, credited to that row's created_by staff account,
+  excluding soft-deleted/test-tagged clients, @balizero.com or +alias
+  invitees, and clients already active before the window), ranked by
+  activations desc with an earlier-last-activation tie-break, awarding three
+  podium tiers (20/15/10 activations -> 3M/1.5M/700k IDR) greedily down the
+  ranking, plus a tax-department bonus (1.5M for any tax member already on
+  the podium, else 1M for the best-ranked tax member with >=10 activations).
+  The scoring/SQL live in one new module,
+  backend/services/portal/challenge_leaderboard.py, so
+  scripts/portal_challenge_leaderboard.py (the pre-existing offline report,
+  previously on an unrelated invited/activated/first_action points scheme)
+  could be repointed at the exact same source instead of re-deriving the
+  rules — the two can no longer disagree about who is winning.
+constraints:
+  - >-
+    No client PII anywhere: entries carry only a staff local-part
+    (`member`), display name, department and activation COUNTS — never a
+    client name, email or id. Verified by reading every response field back
+    against the contract before writing it, and by the SQL itself never
+    selecting a client-identifying column into the leaderboard queries.
+  - >-
+    Staff-only. `require_team_member` (existing dependency, unmodified) gates
+    the route; a client-role token gets 403, proven by an endpoint test that
+    exercises the REAL dependency (not a mocked bypass).
+  - >-
+    Router registration untouched — the route was added inside the existing
+    `dashboard_summary.py` router (already on the manifest), so no
+    `router_manifest.py`/`router_registration.py` edit was needed; the
+    parity gate was still run to confirm.
+  - >-
+    Off-limits files untouched: no edit to `zantara_core.py`, `fly.toml`,
+    `.env*`, or any `db/migrations_v2/*.sql`.
+acceptance:
+  - text: >-
+      A1: the pure scoring function SHALL match the spec's own worked
+      example (rank 1 with 17 activations gets tier 2/1.5M; rank 2 with 16
+      gets tier 3/700k; tier 1 stays unawarded) plus ties, tax-podium,
+      tax-fallback (9 fails / 10 passes), and zero-activation members never
+      awarded.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/portal/test_challenge_leaderboard.py ->
+      23 passed
+  - text: >-
+      A2: the endpoint SHALL return 200 with the full contracted JSON shape
+      for a staff caller (incl. every active non-service/non-QA team member
+      at 0 activations, `is_me` on the caller's own row) and 403 for a
+      client-role token, against a mocked pool.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/routers/test_dashboard_summary.py -> 41 passed
+      (incl. TestPortalChallengeEndpoint::test_client_token_rejected,
+      test_staff_token_returns_leaderboard, test_staff_token_is_me_flags_the_caller)
+  - text: >-
+      A3: router manifest/registration parity and the FastAPI import chain
+      SHALL stay green (no router edit touched registration, but the gate
+      was run to confirm rather than assumed).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/setup/test_router_manifest.py
+      backend/tests/setup/test_manifest_registration_parity.py -> 380 passed;
+      python -c "from backend.app.dependencies import get_current_user;
+      print('OK')" -> OK
+  - text: >-
+      A4 (Bites): both consumers SHALL run against the real (read-only) prod
+      schema and agree — the SQL was verified column-by-column against
+      `\d client_invitations` / `\d clients` / `\d team_members` before
+      writing it, not guessed.
+    probe: >-
+      python3 scripts/portal_challenge_leaderboard.py --markdown -> prints
+      the window (status: live) and all 22 active @balizero.com staff at 0
+      activations (challenge window opened today, 2026-09-14); the two known
+      non-staff rows in that table (healthcheck@, role=monitoring; test@,
+      role=member but a seeded QA address) are correctly absent from the
+      zero-activity roster via `is_human_team_member` + the same test/demo/
+      example email-pattern exclusion `admin_team_activity.py` already uses
+      for people-shaped stats.
+  - text: >-
+      A5: pre-deploy RAG regression tests SHALL stay green (untouched code
+      path, confirmed rather than assumed).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/rag/test_kg_langgraph.py
+      backend/tests/services/rag/test_kg_subgraphs.py
+      backend/tests/services/rag/test_confidence.py -> 91 passed
+assumptions:
+  - text: >-
+      "activations" counts a client_invitations row per (client, creator)
+      pair without a DISTINCT-first restriction (unlike "invited", which the
+      spec explicitly scopes to the FIRST in-window invitation) — the spec's
+      wording for activations has no such "first" qualifier, only "row
+      credited to its creator" plus "count DISTINCT client_id per member".
+    status: verified
+    probe: >-
+      Re-read against the mandate text line by line; the DISTINCT dedupes
+      multiple rows for the SAME (creator, client) pair, not across
+      creators — an edge case (same client activated via two different
+      invitation rows credited to two different staff) that the mandate
+      does not resolve either way, so this reading is the literal one.
+  - text: >-
+      `rank` is dense over the ACTIVATIONS VALUE alone (every 0-activation
+      member shares one bottom rank), while the tie-break chain
+      (last_activation_at, display_name) still orders WHO gets first crack
+      at an unclaimed tier among members tied on that value.
+    status: verified
+    probe: >-
+      Chosen because the contract's own example only disambiguates two
+      DIFFERENT activation counts (17 vs 16); a rank dense on the full
+      tie-break tuple would give every zero-activation member a distinct
+      rank number, which reads wrong on a leaderboard widget with more than
+      a handful of members at zero. Pinned by
+      test_zero_activation_members_share_bottom_rank and
+      test_ties_share_rank_earlier_activation_wins_award_order.
+appetite:
+  wall_clock_hours: 3
