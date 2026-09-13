@@ -238,3 +238,98 @@ def test_floors_carry_denominators_and_the_canonical_command(score_mod, tmp_path
     assert report["class_rules"]["bali_moratorium_scope"]["declared_gap"]
     # the class rule decided Q23, not a judge — and it decided it correct on this fixture
     assert report["per_question"]["Q23"]["runs"] == ["correct", "correct", "correct"]
+
+
+# ── run integrity: four distinct failure categories ───────────────────────────────────────
+@pytest.mark.parametrize(
+    "row, expected",
+    [
+        ({"qid": "Q01", "run": 1, "raw_answer": "56303 is blocked.", "package_outcome": "built"}, "answered"),
+        ({"qid": "Q01", "run": 1, "raw_answer": "", "package_outcome": "built"}, "empty_answer"),
+        ({"qid": "Q01", "run": 1, "raw_answer": "   \n", "package_outcome": "built"}, "empty_answer"),
+        ({"qid": "Q01", "run": 1, "error": "codex timed out after 180s", "package_outcome": "built"}, "timeout"),
+        ({"qid": "Q01", "run": 1, "error": "could not parse the runner's JSON envelope", "package_outcome": "built"}, "parse_failed"),
+        ({"qid": "Q01", "run": 1, "error": "spawn failed: EAGAIN", "package_outcome": "built"}, "transport_error"),
+        ({"qid": "Q01", "run": 1, "raw_answer": "I can't help with that.", "package_outcome": "built"}, "model_refusal"),
+        ({"qid": "Q01", "run": 1, "package_outcome": "narrowComparison:1,2,3,4"}, "package_not_built"),
+    ],
+)
+def test_each_failure_shape_gets_its_own_category(score_mod, row, expected):
+    """GUILT+INNOCENCE per category: a timeout is not "an error", an empty answer is not a
+    refusal, and a refusal by the model is a benchmark result while the other three are not."""
+    assert score_mod.classify_row(row) == expected
+
+
+def test_run_integrity_flags_an_incomplete_run(score_mod):
+    corpus = {"questions": [{"id": "Q01", "class": "structured"}, {"id": "Q02", "class": "structured"}]}
+    rows = [{"qid": "Q01", "run": 1, "raw_answer": "x", "package_outcome": "built"}]
+    r = score_mod.run_integrity(rows, corpus, expected_runs=3)
+    assert r["complete"] is False
+    assert r["rows"] == 1 and r["expected_rows"] == 6
+
+
+def test_run_integrity_flags_a_synthesized_row(score_mod):
+    """A row for a question the corpus does not contain is a fabricated record, and saying so
+    is the whole point of counting rows instead of trusting the file."""
+    corpus = {"questions": [{"id": "Q01", "class": "structured"}]}
+    rows = [
+        {"qid": "Q01", "run": 1, "raw_answer": "x", "package_outcome": "built"},
+        {"qid": "Q99", "run": 1, "raw_answer": "x", "package_outcome": "built"},
+    ]
+    r = score_mod.run_integrity(rows, corpus, expected_runs=1)
+    assert r["synthesized_rows"] == [("Q99", 1)]
+    assert r["complete"] is False
+
+
+def test_run_integrity_innocence_a_complete_run_is_complete(score_mod):
+    corpus = {"questions": [{"id": "Q01", "class": "structured"}, {"id": "Q02", "class": "structured"}]}
+    rows = [{"qid": q, "run": n, "raw_answer": "x", "package_outcome": "built"}
+            for q in ("Q01", "Q02") for n in (1, 2, 3)]
+    r = score_mod.run_integrity(rows, corpus, expected_runs=3)
+    assert r["complete"] is True
+    assert r["categories"] == {"answered": 6}
+    assert r["duplicate_rows"] == [] and r["synthesized_rows"] == []
+
+
+# ── permanence polarity: the three sentences the council supplied ─────────────────────────
+HEAD = ("Sumber: B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku "
+        "untuk seluruh KBLI dengan kategori risiko Rendah dan Menengah Rendah. ")
+
+
+def test_council_r2_tp1_a_negated_permanence_plus_a_real_temporary_claim_must_fail(score_mod):
+    """Council round 2, tp1-qwen3.8-max, VERDICT DEFECT. "Larangan ini tidak permanen dan hanya
+    sementara" says the ban IS temporary. It passed because "permanen" was read as a permanence
+    statement inside "tidak permanen", and because the negator leaked across "dan" to silence
+    the claim it does not govern."""
+    r = score_mod.moratorium_scope_check(HEAD + "Larangan ini tidak permanen dan hanya sementara.")
+    assert r["required"]["states_permanence"] is False, r["polarity"]
+    assert r["forbidden"]["claims_temporary"] is True, r["polarity"]
+    assert r["pass"] is False
+
+
+def test_council_r2_codex_a_negated_temporariness_alone_establishes_permanence(score_mod):
+    """Council round 2, codex-gpt-5.6-sol, VERDICT DEFECT. "Larangan ini tidak bersifat
+    sementara" IS the permanence statement; the earlier fixtures masked it by always carrying an
+    independent "permanen" token as well."""
+    r = score_mod.moratorium_scope_check(HEAD + "Larangan ini tidak bersifat sementara.")
+    assert r["required"]["states_permanence"] is True, r["polarity"]
+    assert r["forbidden"]["claims_temporary"] is False, r["polarity"]
+    assert r["pass"] is True, r
+
+
+def test_english_negated_temporariness_alone_establishes_permanence(score_mod):
+    en = ("Source: Gubernur letter B.27.000/642/PM/DPMPTSP. Since 13 May 2026 the Bali PMA "
+          "moratorium covers the Low and Medium-Low risk classes island-wide. "
+          "The restriction is not temporary.")
+    r = score_mod.moratorium_scope_check(en)
+    assert r["required"]["states_permanence"] is True, r["polarity"]
+    assert r["pass"] is True, r
+
+
+def test_meanwhile_is_not_a_temporariness_claim(score_mod):
+    """INNOCENCE: "sementara itu" is Indonesian for "meanwhile" and says nothing about how long
+    the ban lasts. A token-presence guard would have called this answer temporary."""
+    r = score_mod.moratorium_scope_check(
+        HEAD + "Larangan ini permanen. Sementara itu, kode di luar kategori tersebut tidak terpengaruh.")
+    assert r["forbidden"]["claims_temporary"] is False, r["polarity"]
+    assert r["pass"] is True, r

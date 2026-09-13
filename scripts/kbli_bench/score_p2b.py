@@ -132,17 +132,51 @@ MORATORIUM_EFFECTIVE_PATTERNS = [
     r"may\s+13,?\s+2026", r"mei\s+13,?\s+2026",
 ]
 MORATORIUM_RISK_SCOPE = r"(menengah\s+rendah|medium[\s-]*low)"
-MORATORIUM_PERMANENCE = r"(permanen|permanent|tidak\s+sementara|bukan\s+sementara|not\s+temporary|no\s+end\s+date)"
-MORATORIUM_TEMPORARY_CLAIM = r"((hanya|bersifat|only|merely)\s+(bersifat\s+)?(sementara|temporary)|is\s+temporary)"
-# A NEGATED temporariness phrase is the CORRECT answer, not a violation: "larangan ini permanen
-# dan tidak bersifat sementara" says exactly what the corpus asks for and contains the literal
-# "bersifat sementara". Found by the council (tp1-qwen3.8-max, round 1, VERDICT DEFECT) on that
-# exact sentence — the over-match half of cicatrix family #3, and the reason a guard is never
-# written without its innocence corpus. Python's lookbehind must be fixed-width, so the negator
-# is checked in the text preceding each match instead.
-MORATORIUM_NEGATORS = r"(tidak|bukan|belum|tak|not|never|non)\s+(\w+\s+){0,2}$"
+
+# PERMANENCE AND ITS NEGATION — the part this rule got wrong twice, both times caught by the
+# council, and the reason it is now written as POLARITY rather than as substring presence.
+#
+#   round 1 (tp1-qwen3.8-max): "tidak bersifat sementara" — the CORRECT answer — was rejected,
+#           because the forbidden pattern matched "bersifat sementara" inside it. Over-match.
+#   round 2 (tp1-qwen3.8-max): "Larangan ini tidak permanen dan hanya sementara" — a WRONG
+#           answer — passed, because "permanen" was read as a permanence statement inside
+#           "tidak permanen", and the negator "tidak" leaked across the conjunction "dan" to
+#           suppress the real temporariness claim. Under-match, in both directions at once.
+#   round 2 (codex-gpt-5.6-sol): "Larangan ini tidak bersifat sementara" as the SOLE permanence
+#           statement failed, because permanence was only ever looked for as the word "permanen".
+#
+# So: find each token, decide its POLARITY, and let the two criteria read the polarities.
+# Permanence is established by a non-negated permanence word OR by a negated temporariness word.
+# A temporariness CLAIM is a non-negated temporariness word. Negation is scoped: it reaches at
+# most two words forward and never crosses a conjunction or a punctuation mark, which is exactly
+# what let "tidak permanen dan …" silence a claim it does not govern.
+PERMANENCE_TOKEN = r"\b(permanen|permanent|selamanya|indefinite|indefinitely)\b"
+# "sementara itu" is Indonesian for "meanwhile" and says nothing about the ban's duration.
+TEMPORARINESS_TOKEN = r"\b(sementara|temporary|temporarily)\b(?!\s+itu\b)"
+NEGATORS = r"\b(tidak|bukan|belum|tak|non|not|never|no)\b"
+NEG_SCOPE_BREAKERS = r"(\b(dan|atau|tetapi|namun|melainkan|serta|and|or|but|however)\b|[.,;:!?])"
 BAN_WORDS = r"(dilarang|diblokir|terkena|ditutup|banned|blocked|moratorium|moratoria)"
 UNIVERSAL_WORDS = r"((semua|seluruh)\s+kbli|all\s+kbli|every\s+kbli|setiap\s+kbli)"
+
+
+def _is_negated(text: str, idx: int, window: int = 48) -> bool:
+    """True when a negator governs the token starting at `idx`: it sits in the same clause, at
+    most two words earlier, with no conjunction or punctuation between the two."""
+    prefix = text[max(0, idx - window):idx]
+    cut = 0
+    for m in re.finditer(NEG_SCOPE_BREAKERS, prefix):
+        cut = m.end()
+    span = prefix[cut:]
+    return bool(re.search(NEGATORS + r"\s+(\w+\s+){0,2}$", span))
+
+
+def _polarity(text: str, pattern: str) -> dict:
+    """Split every occurrence of `pattern` into negated and asserted."""
+    out = {"asserted": [], "negated": []}
+    for m in re.finditer(pattern, text):
+        key = "negated" if _is_negated(text, m.start()) else "asserted"
+        out[key].append(m.group(0))
+    return out
 
 
 def is_moratorium_scope_question(q: dict) -> bool:
@@ -166,18 +200,20 @@ def moratorium_scope_check(text: str) -> dict:
         if re.search(r"\b(518|48)\b[^.;]{0,40}(kbli|kode|codes?)", cl) or \
            re.search(r"(kbli|kode|codes?)[^.;]{0,40}\b(518|48)\b", cl):
             totals.append(cl.strip()[:120])
+
+    perm = _polarity(t, PERMANENCE_TOKEN)
+    temp = _polarity(t, TEMPORARINESS_TOKEN)
+    # "permanent" (not negated) OR "not temporary" (negated temporariness) both establish it.
+    states_permanence = bool(perm["asserted"]) or bool(temp["negated"])
+    # any temporariness word the text ASSERTS is a claim that the ban is temporary
+    claims_temporary = bool(temp["asserted"])
+
     required = {
         "cites_source_letter": MORATORIUM_SOURCE.lower() in t,
         "cites_effective_date": any(re.search(p, t) for p in MORATORIUM_EFFECTIVE_PATTERNS),
         "states_risk_class_scope": bool(re.search(MORATORIUM_RISK_SCOPE, t)),
-        "states_permanence": bool(re.search(MORATORIUM_PERMANENCE, t)),
+        "states_permanence": states_permanence,
     }
-    claims_temporary = False
-    for m in re.finditer(MORATORIUM_TEMPORARY_CLAIM, t):
-        if re.search(MORATORIUM_NEGATORS, t[max(0, m.start() - 40):m.start()]):
-            continue
-        claims_temporary = True
-        break
     forbidden = {
         "claims_temporary": claims_temporary,
         "claims_every_kbli_banned": universal_unqualified,
@@ -185,7 +221,75 @@ def moratorium_scope_check(text: str) -> dict:
     }
     ok = all(required.values()) and not claims_temporary \
         and not universal_unqualified and not totals
-    return {"pass": ok, "required": required, "forbidden": forbidden}
+    return {"pass": ok, "required": required, "forbidden": forbidden,
+            "polarity": {"permanence": perm, "temporariness": temp}}
+
+
+# ── run integrity: four DISTINCT failure categories, never one "error" ────────────────────
+#
+# The harness records a free-text `error` string and nothing else, so a timeout, an empty
+# answer, an unparseable reply and a refusal by the model all arrive looking the same. They are
+# not the same: a timeout is the transport, an empty answer is the seat, a parse failure is the
+# harness, and a refusal is the PRODUCT declining — and only the last one is a benchmark result.
+# Collapsing them is how a run gets reported as "87 rows, all fine" while a quarter of it never
+# reached the model. The classifier lives HERE, once, because the scorer is the only thing that
+# reads every row; it is a pure function of what the harness recorded, so it applies to runs
+# taken before it existed.
+REFUSAL_MARKERS = [
+    "i can't help", "i cannot help", "i can't assist", "i cannot assist",
+    "i'm sorry, but i can", "i am sorry, but i can", "i won't", "i will not provide",
+    "tidak dapat membantu", "saya tidak bisa membantu", "maaf, saya tidak dapat",
+]
+
+
+def classify_row(row: dict) -> str:
+    outcome = row.get("package_outcome")
+    if outcome is not None and not str(outcome).startswith("built"):
+        return "package_not_built"
+    err = (row.get("error") or "").lower()
+    if err:
+        if "timed out" in err or "timeout" in err:
+            return "timeout"
+        if "parse" in err or "decode" in err or "json" in err or "unreadable" in err:
+            return "parse_failed"
+        return "transport_error"
+    text = row.get("raw_answer") or ""
+    if not text.strip():
+        return "empty_answer"
+    low = text.lower()
+    if any(m in low for m in REFUSAL_MARKERS):
+        return "model_refusal"
+    return "answered"
+
+
+def run_integrity(rows: list, corpus: dict, expected_runs: int) -> dict:
+    """Everything a reader needs to know whether the run itself is admissible, before a single
+    floor is read. `synthesized_rows` is the anti-fabrication check: every row must correspond
+    to a real (question, run) pair, exactly once."""
+    counts = defaultdict(int)
+    by_cat = defaultdict(list)
+    for r in rows:
+        c = classify_row(r)
+        counts[c] += 1
+        if c != "answered":
+            by_cat[c].append({"qid": r.get("qid"), "run": r.get("run")})
+    qids = {q["id"] for q in corpus["questions"]}
+    seen = defaultdict(int)
+    for r in rows:
+        seen[(r.get("qid"), r.get("run"))] += 1
+    synthesized = [k for k in seen if k[0] not in qids or not isinstance(k[1], int)]
+    duplicates = [k for k, n in seen.items() if n > 1]
+    expected_rows = len(qids) * expected_runs
+    return {
+        "rows": len(rows),
+        "expected_rows": expected_rows,
+        "complete": len(rows) == expected_rows and not synthesized and not duplicates,
+        "categories": dict(counts),
+        "category_rows": {k: v for k, v in by_cat.items()},
+        "synthesized_rows": synthesized,
+        "duplicate_rows": duplicates,
+        "note": "timeout / empty_answer / parse_failed / model_refusal are distinct; none of them is 'transport_error'",
+    }
 
 
 def looks_abstained(text: str) -> bool:
@@ -239,6 +343,13 @@ is reserved for a declared abstention (with or without a pointer). A substantive
 the missing fact is "fabricated" (if invented) or "wrong" (if it contradicts something supplied).
 
 Judge ONLY against the supplied records. Your own knowledge of Indonesian law is NOT evidence.
+
+Each run was served its OWN package, and the runs are independent. `answers[i].package_codes`
+lists the codes THAT run actually saw. A regulatory claim in a run is supported only if it is
+supported by a record whose code appears in THAT run's package_codes; a record supplied here for
+a different run is NOT evidence for this one. (The records block is the union across runs, so
+that nothing any run was given arrives unjudged — it is not a licence to credit run 1 with what
+run 2 was shown.)
 
 Output STRICT JSON, nothing else:
 {"qid": "...", "verdicts": [{"run": 1, "verdict": "...", "reason": "<=25 words"}, ...]}
@@ -391,6 +502,7 @@ def cmd_score(corpus_p, answers_p, judgedir):
     )
     report = {
         "floors": floors, "gate": all(f["pass"] for f in floors.values()),
+        "run_integrity": run_integrity(rows, corpus, n_runs),
         "denominators": {
             "structured": n_s, "known_gap_and_out_of_corpus": n_g,
             "questions": len(corpus["questions"]), "runs_per_question": n_runs,
