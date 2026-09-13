@@ -13,6 +13,21 @@ lane: frontend/kita-portal-challenge-widget
 machine: air-m5
 date: 2026-09-14
 
+round_2: >-
+  Orchestrator design gate found round 1 "functional but not predominant". Commit 912e87d913
+  reworks the hero into a dark ink panel (--bz-text-1 reused as a background, not a new hex),
+  huge Fraunces team-total numeral, a real 2-1-3 podium hierarchy, HARI/JAM/MENIT countdown
+  blocks, a fixed 0..top-tier-threshold position scale with all three Juara ticks always
+  visible, a Tim Tax mini-ranking, and a designed day-one all-zeros state (inviting copy,
+  alphabetical ranking with a "–" marker). It also fixes a brand violation the shared R19 idiom
+  would have carried over silently: --state-info resolves to #1d4ed8 (BLUE) and --state-success
+  to #147a3a (GREEN) on kita's [data-theme="operative-light"] block (verified by grep against
+  globals.css) — neither is applied on this widget now; the "Tax" pill uses a new "ink" tone
+  (solid dark chip) added to r19.tsx instead. 27 tests pass (5 new: zero-state copy, zero-state
+  alphabetical ranking, podium zero-state branch, tax-pill-never-blue, feed copper-dot-under-1h
+  with vi.setSystemTime to pin the wall clock against the fixture), tsc clean. 4 screenshots
+  (1440/390 x data/zero) retaken via the same temporary non-committed preview-harness pattern.
+
 gear: 3
 gear_reason: >-
   Deterministic floor from `git diff --cached --numstat` against this worktree's branch point
