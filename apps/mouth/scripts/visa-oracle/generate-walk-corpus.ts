@@ -33,9 +33,17 @@
  *
  * A PR that changes the interview tree (a new question, a new branch, a
  * reordered spine) MUST regenerate the corpus in that same PR and update
- * `EXPECTED_OUTCOME` / `WALK_DEAD_END_ALLOWLIST` in the census test to match.
- * `walk-corpus-determinism.test.ts` fails whenever the committed corpus and
- * this generator's output disagree by a single byte.
+ * `EXPECTED_OUTCOME` / `WALK_DEAD_END_ALLOWLIST` / the disclosure-flag tables
+ * in the census test to match. `walk-corpus-determinism.test.ts` fails
+ * whenever the committed corpus and this generator's output disagree by a
+ * single byte.
+ *
+ * A fixture carries BOTH halves of the wire request: the mapped facts
+ * (`overrides`) and the disclosure flags the same walk raises
+ * (`disclosed_review_flags`, omitted when empty — see `WalkFixture`). The
+ * flags half was added 2026-09-13 because the census could not see the layer
+ * that produces human review at all: it reported 0 HUMAN_REVIEW_REQUIRED over
+ * a corpus whose flags rewrite 8 walks.
  */
 
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
@@ -53,7 +61,10 @@ import {
   computeNextNode,
   type OracleNode,
 } from "../../src/app/(visa-oracle)/visa-oracle/_lib/flow";
-import { mapOracleFactsToApplicantFacts } from "../../src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper";
+import {
+  mapOracleFactsToApplicantFacts,
+  type DisclosedReviewFlagWire,
+} from "../../src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -102,6 +113,25 @@ export interface WalkFixture {
   asked: string[];
   /** The exact wire facts this walk produced, straight from the mapper. */
   overrides: Record<string, unknown>;
+  /**
+   * The disclosure flags THIS walk raises, straight from
+   * `mapDisclosedReviewFlags` — the other half of the wire request the browser
+   * actually sends, and until now the half the corpus threw away. A fixture
+   * carrying facts only is evaluated with `disclosed_review_flags = ()`, so
+   * `evaluate_path.py::_apply_disclosed_review_flags` — unconditional and
+   * monotone — was invisible to the census: it reported 0 HUMAN_REVIEW_REQUIRED
+   * for a funnel that produces it.
+   *
+   * OMITTED when the walk raises no flag, and that absence is the empty tuple,
+   * not an unknown: it mirrors `api_models.py::VisaOracleEvaluateRequest`,
+   * whose own `disclosed_review_flags` field defaults to `()` so a request
+   * without the key stays wire-compatible. Two guards keep the absence honest
+   * rather than silent — `walk-corpus-determinism.test.ts` binds every
+   * committed byte to this generator's output, and the census test pins the
+   * EXACT set of flag-carrying walks (`EXPECTED_DISCLOSED_REVIEW_FLAGS`), so a
+   * flag that appears, disappears or changes name goes red on both sides.
+   */
+  disclosed_review_flags?: DisclosedReviewFlagWire[];
 }
 
 interface Scenario {
@@ -583,10 +613,16 @@ export function buildWalkCorpus(): Map<string, WalkFixture> {
     if (corpus.has(name)) {
       throw new Error(`duplicate walk file name ${name} (${scenario.label})`);
     }
+    // Key order is the file's line order (prettier preserves it), so the flag
+    // list goes LAST: the 76 walks that raise none keep byte-identical
+    // fixtures, and only the walks that actually carry the layer change.
     corpus.set(name, {
       label: scenario.label,
       asked,
       overrides: wire.facts as unknown as Record<string, unknown>,
+      ...(wire.disclosed_review_flags.length > 0
+        ? { disclosed_review_flags: [...wire.disclosed_review_flags] }
+        : {}),
     });
   }
   return new Map([...corpus].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));

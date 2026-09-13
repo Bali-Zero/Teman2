@@ -110,56 +110,67 @@ can raise a new ``on_unknown: NEEDS_INPUT`` rule on an unaskable fact, and
 the guilt tests below keep every branch of it exercised against a
 fabricated row.
 
-WHAT THIS CENSUS DOES NOT SEE — read the numbers with these two bounds, both
-raised by independent review on 2026-09-06 (codex) and both PRE-EXISTING, not
-introduced by this PR. Both bounds and the two measurements below them
-(**51**, **10/15/36**, **21/35/5**) were taken on the pre-PR-5, 61-walk
-corpus — PR-5 adds no disclosure-flag interaction of its own to replay, and
-none of its 6 new walks carries a disclosure flag either, so the bound's
-shape is unchanged; only the raw SUPPORTED_CANDIDATES/NEEDS_INPUT counts
-below move, per the invariant section above:
+THE DISCLOSURE-FLAG LAYER, carried since 2026-09-13 (W-VO-H schema half).
+The bound this section used to carry — "disclosure flags are not carried, so
+this file proves LESS than it looks like it proves" — is RETIRED, and the
+file now measures BOTH halves of the wire request. Read the two censuses as
+two different questions:
 
-1. **Disclosure flags are not carried, so this file proves LESS than it
-   looks like it proves.** A fixture stores a walk's ``facts`` only, so every
-   walk is evaluated with ``disclosed_review_flags = ()`` — while the live
-   funnel sends whatever ``mapDisclosureFlags`` computed (``ACTIVITY_BOUNDARY``
-   on the whole diaspora tile, for one). Read every number above with this
-   attached:
+- **ENGINE level** (``outcomes``, no flags): what the pack decides on the
+  facts alone. This is the census every table above pins, and it is the
+  right instrument for a pack or interview change.
+- **FUNNEL level** (``flagged_outcomes``, the flags each walk actually
+  raises, straight from its own fixture): what the applicant meets.
+  ``evaluate_path.py::_apply_disclosed_review_flags`` is unconditional and
+  monotone — ONE flag rewrites the whole decision to
+  HUMAN_REVIEW_REQUIRED with ``candidates=()``, ``missing_facts=()``,
+  ``no_path_reasons=()``, ``quotes=()`` — so a flag DELETES a verdict the
+  signed pack had already proven.
 
-   - **51 SUPPORTED_CANDIDATES means 51 walks reach candidates AT ENGINE
-     LEVEL, with no disclosure flags supplied.** It does NOT mean 51
-     applicants see a recommendation without human review.
-   - **``census.get("HUMAN_REVIEW_REQUIRED", 0) == 0`` below is a property of
-     these fixtures, not of production.** The review-flag arm of
-     ``apply_public_policy_adapters`` is not exercised by any walk here.
-   - **A regression that ADDS a disclosure flag — or fails to REMOVE one —
-     passes this census invisibly.** That is not hypothetical: it is exactly
-     what ``work_role`` did, and it is why the E23 claim in this PR rests on
-     a separate replay rather than on this table.
+MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 84 walks,
+both censuses in the same run (``test_the_flagged_census_is_the_funnel_the_
+applicant_meets``):
 
-   What IS sound as stated: the allowlist invariant (conditional, since
-   PR-5, on the two named rows below — never unconditionally "0
-   NEEDS_INPUT" again) and the candidate lists. A review flag can only
-   LOWER a result to HUMAN_REVIEW_REQUIRED; it cannot create a missing
-   fact.
+===========================  ======  =======
+state                        ENGINE  FUNNEL
+===========================  ======  =======
+SUPPORTED_CANDIDATES             67       60
+NO_SUPPORTED_PATH                15       15
+NEEDS_INPUT                       2        1
+HUMAN_REVIEW_REQUIRED             0        8
+===========================  ======  =======
 
-   MEASURED by this seat, 2026-09-07, replaying this same corpus through
-   ``evaluator.evaluate`` + ``apply_public_policy_adapters`` with
-   ``ACTIVITY_BOUNDARY`` supplied on the diaspora tile ALONE: **10/15/36** —
-   fifteen diaspora walks move SUPPORTED_CANDIDATES → HUMAN_REVIEW_REQUIRED,
-   NEEDS_INPUT stays 0 either way, and no NO_SUPPORTED_PATH walk moves. The
-   real flag set is wider than that one tile: the independent reviewer
-   (codex, 2026-09-06) reports 21/35/5 for the FULL flag set — that figure is
-   theirs and was NOT independently reproduced here, and note it moves
-   NO_SUPPORTED_PATH walks too, so 10 is not flag-invariant in general
-   either.
+Per flag — ``test_every_disclosure_flag_reports_the_walks_it_rewrites``
+prints this table on every run:
 
-   Carrying the flags is a corpus-SCHEMA change: the fixtures gain a field,
-   every one of them changes bytes, and the census can no longer share
-   ``_evaluate`` with ``gold_coverage_eval`` unchanged — which is the
-   coverage-floor gate. It belongs to its own PR, and until it lands this
-   bound stands.
-2. **The enumeration is a chosen sample, not a cover.** Every question is
+=================  ========  =========================================
+flag               rewrites  from-state -> to-state
+=================  ========  =========================================
+ACTIVITY_BOUNDARY         6  SUPPORTED_CANDIDATES -> HUMAN_REVIEW (×6)
+NOT_CERTAIN               2  SUPPORTED_CANDIDATES -> HUMAN_REVIEW (×1)
+                             NEEDS_INPUT -> HUMAN_REVIEW (×1)
+=================  ========  =========================================
+
+The other nine flags in ``DisclosedReviewFlag`` rewrite ZERO walks: no
+corpus walk answers ``trip_scope = "multiple"`` (``MULTI_PURPOSE_TRIP``),
+none discloses a ``review_gate`` item (the seven compliance disclosures —
+the generator answers that question with its first option, ``none``), and
+none answers ``unsure`` to a sponsor question (``AMBIGUOUS_SPONSOR``).
+That zero is a property of THIS enumeration, never of production: every
+real visitor with two purposes is held, and no walk here measures it.
+
+The six ``ACTIVITY_BOUNDARY`` rewrites are the ones a derivation misses,
+and one did: reasoning from "the generator answers every question with its
+FIRST option" predicts 2 flagged walks, because the first option of every
+question in ``ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS`` is decidable. The
+SCENARIO OVERRIDES are what break it — ``investment_vehicle`` answered
+``merit``/``family``/``undecided`` (only ``pt_pma``/``property``/
+``bank_deposit`` are decidable) and ``other_purpose`` answered ``medical``
+(only ``transit`` is). Executed, not derived: 8.
+
+WHAT THIS CENSUS STILL DOES NOT SEE:
+
+1. **The enumeration is a chosen sample, not a cover.** Every question is
    answered with its FIRST option and no walk ever answers ``unsure``, and
    the onshore arm is ONE neutral walk per category — its sub-branches
    (``onshore/second_home/property``, ``onshore/diaspora/STEPCHILD/...``)
@@ -170,16 +181,18 @@ below move, per the invariant section above:
 The corpus under ``gold_coverage/fixtures/walks/`` is DATA, generated by driving the
 real ``computeNextNode``/``getCategoryQuestionIds``/``mapOracleFactsToApplicantFacts``
 (first option answered at every question, 121 stay-days), never hand-written:
-each file carries the walk's ``asked`` question ids and the exact wire
-``overrides`` that walk produced. The expectations live HERE, in one
-reviewable table, so a wave PR that moves an outcome must state which
-outcome it moved.
+each file carries the walk's ``asked`` question ids, the exact wire
+``overrides`` that walk produced, and — when the walk raises any — the
+``disclosed_review_flags`` the same mapper computed for it. The expectations
+live HERE, in one reviewable table, so a wave PR that moves an outcome must
+state which outcome it moved.
 
 Regenerate the corpus with ``npm run visa-oracle:walk-corpus -w apps/mouth``
 (``apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts``, proved byte-for-byte
 reproducible by ``walk-corpus-determinism.test.ts``): a PR that changes the
 interview tree MUST regenerate it and update ``EXPECTED_OUTCOME`` /
-``WALK_DEAD_END_ALLOWLIST`` below in that same PR.
+``WALK_DEAD_END_ALLOWLIST`` / ``EXPECTED_DISCLOSED_REVIEW_FLAGS`` below in
+that same PR.
 """
 
 from __future__ import annotations
@@ -589,6 +602,64 @@ EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {
     "family.sponsor_confirmed": 1,
 }
 
+#: Which walks raise which disclosure flags — the OTHER half of the wire
+#: request, carried by the corpus since 2026-09-13 (W-VO-H schema half) and
+#: pinned here so the layer can never move unobserved again.
+#:
+#: A walk ABSENT from this table must carry no flag at all, and a walk present
+#: must carry exactly these: `test_the_corpus_carries_the_disclosure_flag_layer`
+#: compares the table against the fixtures in BOTH directions. That is what
+#: keeps the fixtures' omit-when-empty encoding honest — a fixture without the
+#: key means the empty tuple (mirroring `api_models.py`'s own default), and it
+#: is this table, not the absence, that says so.
+#:
+#: Every row is produced by `mapDisclosedReviewFlags` (fact-mapper.ts) from the
+#: walk's own answers, never chosen here:
+#:   - ACTIVITY_BOUNDARY on 6 walks: `investment_vehicle` answered `merit` /
+#:     `family` / `undecided` (the table in fact-mapper.ts lists only `pt_pma` /
+#:     `property` / `bank_deposit` as answers the signed pack decides), and
+#:     `other_purpose` answered `medical` (only `transit` is decidable).
+#:   - NOT_CERTAIN on 2 walks: the two scenarios that answer a sponsor question
+#:     with the literal string `unsure`. The `still_unsure` walks deliberately
+#:     use a DIFFERENT literal and therefore cost zero holds — that claim is
+#:     now MEASURED by this table rather than asserted in a PR body.
+EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
+    "offshore/invest/family": ("ACTIVITY_BOUNDARY",),
+    "offshore/invest/merit": ("ACTIVITY_BOUNDARY",),
+    "offshore/invest/merit/currency_usd": ("ACTIVITY_BOUNDARY",),
+    "offshore/invest/undecided": ("ACTIVITY_BOUNDARY",),
+    "offshore/invest/undecided/currency_still_unsure": ("ACTIVITY_BOUNDARY",),
+    "offshore/other/no_paid_activity/medical": ("ACTIVITY_BOUNDARY",),
+    "offshore/other/paid/sponsor_unsure": ("NOT_CERTAIN",),
+    "offshore/work/sponsor_unsure": ("NOT_CERTAIN",),
+}
+
+#: The FUNNEL-level state census, DERIVED from the two tables above rather
+#: than pinned as a third one — and the derivation is itself the claim under
+#: test. `_apply_disclosed_review_flags` is unconditional and monotone: a
+#: walk that raises ANY flag ends HUMAN_REVIEW_REQUIRED whatever the pack
+#: decided, and a walk that raises none keeps its engine state exactly. If
+#: either half of that stops being true, `test_the_flagged_census_is_the_
+#: funnel_the_applicant_meets` goes red without anyone having to re-pin a
+#: number. Measured 2026-09-13: 60 / 15 / 1 / 8.
+EXPECTED_FLAGGED_STATE_CENSUS: dict[str, int] = dict(
+    Counter(
+        "HUMAN_REVIEW_REQUIRED" if label in EXPECTED_DISCLOSED_REVIEW_FLAGS else state
+        for label, (state, _candidates) in EXPECTED_OUTCOME.items()
+    )
+)
+
+#: The review reason code `_apply_disclosed_review_flags` emits per flag —
+#: `_DISCLOSED_REVIEW_REASON_CODES` (evaluate_path.py), restated here so the
+#: census names the CAUSE and not just the count. Only the flags this corpus
+#: actually raises are listed; a flag that starts firing without a row here
+#: fails `test_every_disclosure_flag_reports_the_walks_it_rewrites` loudly
+#: rather than being silently summed into the total.
+EXPECTED_REVIEW_REASON_FOR_FLAG: dict[str, str] = {
+    "ACTIVITY_BOUNDARY": "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+    "NOT_CERTAIN": "DISCLOSED_UNCERTAINTY_REVIEW",
+}
+
 
 def _load_walks() -> dict[str, dict[str, Any]]:
     """Read the walk corpus, keyed by label (which must match the file stem
@@ -614,6 +685,40 @@ def _evaluate_walks(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any
 
     return {
         label: _evaluate(spec["overrides"], label, as_of=_AS_OF)["actual"]
+        for label, spec in sorted(walks.items())
+    }
+
+
+def _walk_flags(spec: dict[str, Any]) -> tuple[str, ...]:
+    """The disclosure flags one fixture carries, in the order it carries them.
+
+    An absent key is the EMPTY tuple and nothing else — the same default
+    ``api_models.py::VisaOracleEvaluateRequest`` gives the field on the wire, so
+    a fixture without it encodes a walk that raises nothing, not a walk whose
+    flags are unknown. ``EXPECTED_DISCLOSED_REVIEW_FLAGS`` pins which walks may
+    be in which group, so the default can never quietly absorb a lost flag.
+    """
+
+    return tuple(str(flag) for flag in spec.get("disclosed_review_flags", ()))
+
+
+def _evaluate_walks_with_flags(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """The FUNNEL-level census: every walk replayed with the flags its own
+    fixture carries, through the same ``_evaluate`` path as above.
+
+    This is the half the applicant lives in. ``_evaluate`` validates the flags
+    through ``VisaOracleEvaluateRequest`` before they reach
+    ``apply_public_policy_adapters``, so a fixture carrying a name the engine
+    does not know is a ValidationError here, never an ignored string.
+    """
+
+    return {
+        label: _evaluate(
+            spec["overrides"],
+            label,
+            as_of=_AS_OF,
+            disclosed_review_flags=_walk_flags(spec),
+        )["actual"]
         for label, spec in sorted(walks.items())
     }
 
@@ -726,6 +831,46 @@ def _public_decision(overrides: dict[str, Any], label: str) -> Any:
     )
 
 
+def _flag_table_violations(
+    walks: dict[str, dict[str, Any]],
+    expected: dict[str, tuple[str, ...]] | None = None,
+) -> list[str]:
+    """The disclosure-flag table, both ways — the shape guard family #3 asks
+    for: a pin that only catches a MISSING flag is an UNDER-match, and one
+    that only catches an EXTRA flag is an OVER-match.
+
+    A walk carrying flags must be pinned with exactly those flags, and a
+    pinned walk that stopped carrying them is a STALE row the curing PR must
+    delete — otherwise the table would outlive the layer it describes and go
+    on claiming a hold nobody suffers.
+    """
+
+    pins = EXPECTED_DISCLOSED_REVIEW_FLAGS if expected is None else expected
+    violations: list[str] = []
+    for label in sorted(walks):
+        carried = _walk_flags(walks[label])
+        pinned = pins.get(label, ())
+        if tuple(sorted(carried)) != tuple(sorted(pinned)):
+            violations.append(
+                f"{label}: fixture carries {list(carried)}, table pins {list(pinned)}"
+            )
+    for label in sorted(set(pins) - set(walks)):
+        violations.append(f"{label}: pinned for flags but absent from the corpus")
+    return violations
+
+
+def _scoped_flag_table(*labels: str) -> dict[str, tuple[str, ...]]:
+    """``EXPECTED_DISCLOSED_REVIEW_FLAGS`` restricted to ``labels`` — see
+    ``_scoped_allowlist`` for why a single-walk assertion must be graded
+    against a scoped table and never against the whole one."""
+
+    return {
+        label: EXPECTED_DISCLOSED_REVIEW_FLAGS[label]
+        for label in labels
+        if label in EXPECTED_DISCLOSED_REVIEW_FLAGS
+    }
+
+
 def _scoped_allowlist(*labels: str) -> dict[str, tuple[DeadEnd, ...]]:
     """``WALK_DEAD_END_ALLOWLIST`` restricted to ``labels`` — what a
     single-walk assertion MUST be graded against.
@@ -761,6 +906,11 @@ def walks() -> dict[str, dict[str, Any]]:
 @pytest.fixture(scope="module")
 def outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return _evaluate_walks(walks)
+
+
+@pytest.fixture(scope="module")
+def flagged_outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return _evaluate_walks_with_flags(walks)
 
 
 def test_corpus_is_the_84_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
@@ -1370,3 +1520,191 @@ def test_d4a_transit_purpose_positively_reaches_d1(
     engine = _engine_decision(overrides, "adhoc/d4a-transit-positive")
     assert engine.state is DecisionState.SUPPORTED_CANDIDATES
     assert "D1" in [c.product_code for c in engine.candidates]
+
+
+# ---------------------------------------------------------------------------
+# The disclosure-flag layer (W-VO-H schema half, 2026-09-13)
+#
+# Until this section landed, every walk was evaluated with
+# `disclosed_review_flags = ()` and the census reported 0 HUMAN_REVIEW_REQUIRED
+# over a funnel that produces 8 of them. That is cicatrix #2 in its exact
+# shape: a green census standing in front of a layer nobody measured.
+# ---------------------------------------------------------------------------
+
+
+def test_the_corpus_carries_the_disclosure_flag_layer(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """Every fixture's flags match the pinned table, in both directions.
+
+    The first assertion is the one that makes the omit-when-empty encoding
+    safe: if the generator ever stops emitting the field, EVERY walk reads as
+    unflagged and the table's 8 rows all go red at once — a loud failure, not
+    a census that silently returns to measuring half a request.
+    """
+
+    carrying = {label for label, spec in walks.items() if _walk_flags(spec)}
+    assert carrying, (
+        "no fixture carries `disclosed_review_flags` at all — the generator "
+        "stopped emitting the layer; regenerate with "
+        "`npm run visa-oracle:walk-corpus -w apps/mouth`"
+    )
+    assert _flag_table_violations(walks) == []
+    assert carrying == set(EXPECTED_DISCLOSED_REVIEW_FLAGS)
+
+
+def test_guilt_a_walk_that_loses_its_flag_is_caught(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """UNDER-match guilt: strip the flag from a fixture and the table must say
+    so. Without this, a regression that quietly stops raising a hold — the
+    `work_role` shape, which the old census admitted it could not see — would
+    pass."""
+
+    label = "offshore/work/sponsor_unsure"
+    stripped = copy.deepcopy(walks[label])
+    stripped.pop("disclosed_review_flags")
+
+    violations = _flag_table_violations({label: stripped}, _scoped_flag_table(label))
+    assert violations == [f"{label}: fixture carries [], table pins ['NOT_CERTAIN']"]
+
+
+def test_guilt_a_walk_that_gains_a_flag_is_caught(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """OVER-match guilt, the symmetric half: a fixture that starts carrying a
+    flag nobody pinned must fail too. A new hold is exactly as much of a
+    product change as a lost one — it deletes a verdict the pack proved."""
+
+    label = "offshore/tourism"
+    fabricated = copy.deepcopy(walks[label])
+    fabricated["disclosed_review_flags"] = ["MULTI_PURPOSE_TRIP"]
+
+    violations = _flag_table_violations({label: fabricated}, _scoped_flag_table(label))
+    assert violations == [f"{label}: fixture carries ['MULTI_PURPOSE_TRIP'], table pins []"]
+
+
+def test_the_flagged_census_is_the_funnel_the_applicant_meets(
+    outcomes: dict[str, dict[str, Any]],
+    flagged_outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """The two censuses, side by side — and the headline this file existed
+    without: **0 human review at engine level, 8 at funnel level.**
+
+    `EXPECTED_FLAGGED_STATE_CENSUS` is derived, not pinned, so this asserts
+    the monotone property itself: a flagged walk ends HUMAN_REVIEW_REQUIRED
+    whatever the pack decided, an unflagged walk keeps its engine state.
+    """
+
+    engine_census = dict(Counter(actual["state"] for actual in outcomes.values()))
+    funnel_census = dict(Counter(actual["state"] for actual in flagged_outcomes.values()))
+
+    print("\nstate                      ENGINE  FUNNEL")
+    for state in sorted(set(engine_census) | set(funnel_census)):
+        print(f"{state:<26} {engine_census.get(state, 0):>6}  {funnel_census.get(state, 0):>6}")
+
+    assert engine_census == EXPECTED_STATE_CENSUS
+    assert funnel_census == EXPECTED_FLAGGED_STATE_CENSUS
+    assert engine_census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
+    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == len(EXPECTED_DISCLOSED_REVIEW_FLAGS)
+
+
+def test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome(
+    outcomes: dict[str, dict[str, Any]],
+    flagged_outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """The 76 walks that raise nothing are byte-for-byte the same decision in
+    both censuses — not merely the same state, the same candidates, missing
+    facts, reason codes and notices.
+
+    This is the innocence half of the guard: supplying flags must change
+    NOTHING for a walk that raises none, or the flagged census would be
+    measuring the act of passing flags rather than the flags themselves.
+    """
+
+    unflagged = sorted(set(outcomes) - set(EXPECTED_DISCLOSED_REVIEW_FLAGS))
+    assert len(unflagged) == len(outcomes) - len(EXPECTED_DISCLOSED_REVIEW_FLAGS)
+    differences = [label for label in unflagged if flagged_outcomes[label] != outcomes[label]]
+    assert differences == []
+
+
+def test_every_disclosure_flag_reports_the_walks_it_rewrites(
+    outcomes: dict[str, dict[str, Any]],
+    flagged_outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """The table Zero needs to rule on `MULTI_PURPOSE_TRIP` and `NOT_CERTAIN`:
+    per flag, how many walks it rewrites and from which state to which.
+
+    Printed on every run (`pytest -s`) and asserted, so the number in a PR
+    body is the number the test measured. Each rewritten walk must also carry
+    that flag's own review reason code — the census names the CAUSE, not just
+    the count, which is what makes a narrowing decision reviewable at all.
+    """
+
+    per_flag: dict[str, list[tuple[str, str, str]]] = {}
+    for label, flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.items():
+        for flag in flags:
+            per_flag.setdefault(flag, []).append(
+                (label, outcomes[label]["state"], flagged_outcomes[label]["state"])
+            )
+
+    print("\nflag | walks rewritten | from-state -> to-state")
+    for flag in sorted(per_flag):
+        rows = per_flag[flag]
+        transitions = Counter((before, after) for _label, before, after in rows)
+        rendered = "; ".join(
+            f"{before} -> {after} (x{count})"
+            for (before, after), count in sorted(transitions.items())
+        )
+        print(f"{flag} | {len(rows)} | {rendered}")
+
+    for flag, rows in sorted(per_flag.items()):
+        reason = EXPECTED_REVIEW_REASON_FOR_FLAG[flag]
+        for label, _before, after in rows:
+            assert after == "HUMAN_REVIEW_REQUIRED", (
+                f"{label}: raises {flag} but the funnel census still ends {after} — "
+                "`_apply_disclosed_review_flags` is supposed to be unconditional"
+            )
+            assert reason in flagged_outcomes[label]["review_reason_codes"], (
+                f"{label}: rewritten by {flag} without emitting {reason}"
+            )
+
+    assert {flag: len(rows) for flag, rows in per_flag.items()} == {
+        "ACTIVITY_BOUNDARY": 6,
+        "NOT_CERTAIN": 2,
+    }
+    assert sorted(EXPECTED_REVIEW_REASON_FOR_FLAG) == sorted(per_flag), (
+        "a flag started (or stopped) firing on this corpus — add or remove its "
+        "row in EXPECTED_REVIEW_REASON_FOR_FLAG in the same PR"
+    )
+
+
+def test_guilt_a_fabricated_flag_deletes_a_proven_verdict(
+    walks: dict[str, dict[str, Any]],
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """The engine half of the guilt: a walk the pack answers cleanly loses
+    every candidate the moment ANY flag is supplied.
+
+    `offshore/tourism` is SUPPORTED on C1 with no flag. Supply
+    `MULTI_PURPOSE_TRIP` — the ordinary answer "my trip has two purposes" —
+    and the verdict is gone. This is the measurement the narrowing half of
+    W-VO-H needs, and it is made here rather than asserted: the corpus itself
+    raises this flag on zero walks, so nothing else in this file would show
+    it.
+    """
+
+    label = "offshore/tourism"
+    assert outcomes[label]["state"] == "SUPPORTED_CANDIDATES"
+    assert outcomes[label]["candidates"] == ["C1"]
+
+    held = _evaluate(
+        walks[label]["overrides"],
+        label,
+        as_of=_AS_OF,
+        disclosed_review_flags=("MULTI_PURPOSE_TRIP",),
+    )["actual"]
+
+    assert held["state"] == "HUMAN_REVIEW_REQUIRED"
+    assert held["candidates"] == []
+    assert held["review_reason_codes"] == ["DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW"]

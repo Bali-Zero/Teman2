@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
@@ -39,6 +40,7 @@ from backend.scripts.visa_engine.gold_replay_driver import (
     select_highest_repository_pack,
 )
 from backend.services.visa_engine import evaluate_path, evaluator
+from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
 from backend.services.visa_engine.bundle import verify_rule_pack
 from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.enums import DecisionState
@@ -120,8 +122,23 @@ def _verified_compiled_pack(observed_at: datetime) -> tuple[Path, CompiledRulePa
 
 
 def _evaluate(
-    overrides: dict[str, dict[str, Any]], label: str, *, as_of: datetime | None = None
+    overrides: dict[str, dict[str, Any]],
+    label: str,
+    *,
+    as_of: datetime | None = None,
+    disclosed_review_flags: Sequence[str] = (),
 ) -> dict[str, Any]:
+    # `disclosed_review_flags` defaults to the empty sequence, so every existing
+    # caller — the coverage floor, the authoring CLI — evaluates exactly as
+    # before. It exists because a walk's facts are only HALF its wire request:
+    # the browser also sends whatever `mapDisclosedReviewFlags` (fact-mapper.ts)
+    # raised, and `evaluate_path.py::_apply_disclosed_review_flags` rewrites the
+    # whole decision to HUMAN_REVIEW_REQUIRED on any one of them. Evaluating
+    # facts alone therefore measures a funnel the applicant never meets — which
+    # is why the interview-walk census reported 0 human review for years. The
+    # flags are validated through `VisaOracleEvaluateRequest`, never injected
+    # into `apply_public_policy_adapters` directly, so an unknown flag name is a
+    # loud ValidationError here and not a silently ignored string.
     # `as_of` defaults to None so production behaviour (evaluate at the real
     # wall clock) is unchanged. It exists so a TEST can pin the instant to the
     # pack's own `created_at` instead: the selected pack's `source_records`
@@ -139,6 +156,10 @@ def _evaluate(
         id=0, label=label, overrides=overrides, expected_state=DecisionState.NEEDS_INPUT
     )
     request = build_persona_request(persona)
+    if disclosed_review_flags:
+        wire = request.model_dump(mode="json", by_alias=True)
+        wire["disclosed_review_flags"] = list(disclosed_review_flags)
+        request = VisaOracleEvaluateRequest.model_validate(wire)
     facts = request.applicant_facts()
     decision = evaluator.evaluate(
         facts,
