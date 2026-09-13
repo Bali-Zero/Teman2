@@ -2,75 +2,58 @@
  * E2E scenarios for the consolidated visa funnel (spec
  * 2026-04-21-visa-funnel-fusion.md).
  *
- * Tests run against the live base URL configured in playwright.config.ts.
+ * 2026-09-13 — RULING Zero 2026-08-25 («Due porte: 301 → `/visa-oracle`
+ * subito»): the two happy-path scenarios that drove the legacy free-text quiz
+ * are gone with the quiz. What replaces them is the guard the defect actually
+ * needed — the legacy doors must answer a PERMANENT REDIRECT, and the
+ * already-shared result links must keep answering 200.
+ *
+ * The status code is asserted on the HTTP response with redirects disabled, not
+ * on a rendered heading and not on the final URL. That is deliberate: the first
+ * attempt at this fix used a page-level `permanentRedirect()`, which Next 16
+ * prerenders into a 200 HTML document that only redirects client-side after
+ * hydration. It would have satisfied any DOM assertion, and any assertion that
+ * followed redirects, while shipping nothing.
+ *
+ * Tests run against the base URL configured in playwright.config.ts.
  * The subdomain-redirect test requires the deployed preview; when running
  * locally it is skipped unless the redirect path is explicitly reachable.
  */
 
 import { expect, test } from "@playwright/test";
 
+const RETIRED_DOORS = ["/visa", "/visa/match"];
+
 test.describe("Visa funnel fusion", () => {
-  test("match happy path: wizard → accordion visible on result", async ({ page }) => {
-    await page.goto("/visa");
-    await page.getByRole("link", { name: /no, i'm planning/i }).click();
+  for (const door of RETIRED_DOORS) {
+    test(`retired door: ${door} answers a permanent redirect to /visa-oracle`, async ({
+      request,
+    }) => {
+      const res = await request.get(door, { maxRedirects: 0 });
+      expect([301, 308]).toContain(res.status());
+      expect(res.headers()["location"]).toMatch(/\/visa-oracle$/);
+    });
 
-    // Step 1 — nationality
-    await page.getByRole("combobox").selectOption("USA");
-    await page.getByRole("button", { name: /next/i }).click();
+    test(`retired door: ${door} serves no quiz body`, async ({ request }) => {
+      const res = await request.get(door);
+      expect(new URL(res.url()).pathname).toBe("/visa-oracle");
+      const body = await res.text();
+      // The legacy quiz's own copy — present on neither door once retired.
+      expect(body).not.toContain("Are you already in Indonesia?");
+      expect(body).not.toContain("Budget band for Indonesia setup?");
+    });
+  }
 
-    // Step 2 — purpose
-    await page.getByRole("button", { name: /work remotely/i }).click();
-    await page.getByRole("button", { name: /next/i }).click();
-
-    // Step 3 — duration (default)
-    await page.getByRole("button", { name: /next/i }).click();
-
-    // Step 4 — budget
-    await page.getByRole("button", { name: /idr 50m/i }).click();
-    await page.getByRole("button", { name: /see result/i }).click();
-
-    // Result page renders
-    await expect(page.getByText(/your visa:/i)).toBeVisible();
-
-    // Accordion is visible (closed by default)
-    const accordion = page.getByRole("button", { name: /ask 3 free questions/i });
-    await expect(accordion).toBeVisible();
-
-    // WhatsApp CTA is still visible and unaffected
-    await expect(page.getByRole("link", { name: /whatsapp/i }).first()).toBeVisible();
-  });
-
-  test("wizard_abstained path: investor + under-50M → HandoffWaLink, no accordion", async ({
-    page,
+  test("already-shared result links still resolve (/visa/match/<hash>)", async ({
+    request,
   }) => {
-    await page.goto("/visa");
-    await page.getByRole("link", { name: /no, i'm planning/i }).click();
-
-    await page.getByRole("combobox").selectOption("ITA");
-    await page.getByRole("button", { name: /next/i }).click();
-
-    await page.getByRole("button", { name: /invest/i }).click();
-    await page.getByRole("button", { name: /next/i }).click();
-
-    await page.getByRole("button", { name: /next/i }).click();
-
-    await page.getByRole("button", { name: /under idr 50m/i }).click();
-    await page.getByRole("button", { name: /see result/i }).click();
-
-    // Accordion MUST NOT appear
-    await expect(
-      page.getByRole("button", { name: /ask 3 free questions/i }),
-    ).toHaveCount(0);
-
-    // HandoffWaLink is visible with pre-compiled summary
-    const wa = page.getByRole("link", { name: /start on whatsapp/i }).first();
-    await expect(wa).toBeVisible();
-    const href = await wa.getAttribute("href");
-    expect(href).toBeTruthy();
-    expect(href).toContain("wa.me/");
-    const decoded = decodeURIComponent(href!);
-    expect(decoded).toContain("investor");
-    expect(decoded).toContain("ITA");
+    // A hash that cannot exist: the page must still be SERVED (200 + its own
+    // "could not find this recommendation" state), never redirected away with
+    // the door. Losing these URLs would break every link a visitor saved.
+    const res = await request.get("/visa/match/e2e0000000000000", {
+      maxRedirects: 0,
+    });
+    expect(res.status()).toBe(200);
   });
 
   test("subdomain 302: visa.balizero.com/privacy redirects to /visa/privacy", async ({

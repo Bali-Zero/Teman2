@@ -63,6 +63,13 @@ const BASE = "https://balizero.com";
  * wearing a permission slip.
  */
 const INTENTIONALLY_UNLISTED: Record<string, string> = {
+  // Retired doors (2026-09-13, RULING Zero 2026-08-25 «Due porte: 301 →
+  // /visa-oracle subito»): both are route handlers that answer 308 and render
+  // no document. The walk below still sees them — it counts `route.ts` as well
+  // as `page.tsx` — so it still demands a reason here, which is the point.
+  "/visa": "retired door — 308 to /visa-oracle, no document of its own",
+  "/visa/match":
+    "retired free-text quiz — 308 to /visa-oracle, no document of its own",
   "/visa/privacy": "legal boilerplate, no search intent to serve",
   "/visa/terms": "legal boilerplate, no search intent to serve",
   "/visa/voa":
@@ -200,9 +207,34 @@ describe("sitemap — visa funnel findability", () => {
     expect(layout).toContain("follow: false");
   });
 
-  it("has no public inbound link to GARUDA from the visa landing page", () => {
-    const landing = fs.readFileSync(path.join(VISA_DIR, "page.tsx"), "utf8");
-    expect(landing).not.toContain('href="/visa/voa"');
+  it("has no public inbound link to GARUDA from anywhere in the app", () => {
+    // Was: read the /visa landing page and assert it carries no href="/visa/voa".
+    // That page retired on 2026-09-13 (it is a 308 route handler now), so the
+    // guard had to move rather than disappear — GARUDA is still dark, and the
+    // property worth keeping was never "the landing page does not link it", it
+    // was "nothing a visitor can reach links it". This walk is strictly stronger
+    // than what it replaces: the whole app tree, minus GARUDA's own subtree
+    // (its result page links back to itself, behind a one-time hash) and minus
+    // this file, which must name the string to forbid it.
+    const thisFile = fileURLToPath(import.meta.url);
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (full === path.join(VISA_DIR, "voa")) continue;
+          walk(full);
+        } else if (/\.(tsx?|mdx)$/.test(entry.name) && full !== thisFile) {
+          if (fs.readFileSync(full, "utf8").includes('href="/visa/voa"')) {
+            offenders.push(path.relative(APP_DIR, full));
+          }
+        }
+      }
+    };
+    walk(APP_DIR);
+    // Positive control: the walk must actually read files, or this is vacuous.
+    expect(fs.readdirSync(APP_DIR).length).toBeGreaterThan(5);
+    expect(offenders).toEqual([]);
   });
 
   it("keeps GARUDA out of the checked-in public API client contract", () => {

@@ -1,0 +1,315 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: VO-C
+    role: build
+    seat: Claude Opus 5 (Dux of window W-VO-C, implements directly)
+  - lane: VO-C-ground
+    role: ground_truth
+    seat: >-
+      the live production surface itself, measured this session — curl on
+      balizero.com /visa, /visa/match, /visa-oracle and /sitemap.xml (receipts 2
+      and 3) — plus a real `next build` + `next start` of this app, which is what
+      settled the mechanism question (receipts 4 and 5)
+    nb: >-
+      SAETTA-VO grounding report visa-oracle-state.md §C1 (the measured state of
+      the two doors, and Zero's ruling of 2026-08-25) — read in full before the
+      first edit; not a repo file, a session artifact, so it is hashed
+    query_hash: sha256:7feb4b0a42fccbc0ecbc4b0f30215d06b17a1c81cac68edb3276b2825c2b0bad
+    note: >-
+      R8 fires because apps/mouth/src/app/visa/* is a mouth claim-page glob.
+      Declared honestly rather than overridden, and the direction matters: this
+      diff REMOVES claim content — the four-question quiz that promised a visa
+      AND a cost — and replaces it with a redirect that asserts nothing. No visa
+      fact, no eligibility statement and no price is added anywhere. What IS a
+      claim here is the routing one, and it is checkable. NOTE for a later
+      reader: the ruling text «Due porte: 301 -> /visa-oracle subito» is NOT on
+      origin/main — `git grep "Due porte" origin/main` returns nothing, and
+      docs/plans/2026-08-24-visa-oracle-live/ holds only MANDATE.md. It reaches
+      this window through the grounding report, which is why the report is what
+      is hashed.
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 2 declared, and 2 is also the deterministic floor from
+      evidence_pack_lint.py compute_floor(): "size" term, 9 files +235/-671 =
+      906 churn on the merge-base diff, under the 1828 that floors at 3, and no
+      hot-zone path. The report's escalation condition ("gear 3 if the redirect
+      touches shared next.config") does not fire, because D1 keeps out of it. No
+      council: council is a Gear-3 demand.
+  - id: D0
+    decision: >-
+      THIS IS THE SECOND ATTEMPT. PR #6401 shipped the same intent with
+      `permanentRedirect("/visa-oracle")` in a page component, and it answered
+      200. Measured after arming, on its own head fb7847e: `next build --webpack`
+      emitted `.next/server/app/visa.html` at 41135 bytes, prerender-manifest
+      recorded `/visa` as `{"routeType":"page","compute":"static","response":
+      "complete"}`, and `next start` + `curl -sS -D - /visa` returned
+      `HTTP/1.1 200 OK` with `x-nextjs-cache: HIT`, `x-nextjs-prerender: 1` and
+      NO `location:` header. The redirect existed only in the client bundle,
+      after hydration. Arming had frozen that branch, so #6401 was commented,
+      un-armed and CLOSED, and this work restarted from a fresh origin/main
+      (bf783e8d) rather than being pushed on top — the freeze is a rule, not a
+      preference. The correction stops at depth 1: one wrong mechanism, one
+      measured replacement, no third variant.
+  - id: D1
+    decision: >-
+      The redirect is a ROUTE HANDLER (`route.ts` returning
+      `NextResponse.redirect(new URL("/visa-oracle", request.url), 308)` with
+      `export const dynamic = "force-dynamic"`), not a page and not an entry in
+      apps/mouth/next.config.ts. A route handler cannot be prerendered into an
+      HTML document — it returns a Response — which is precisely the property
+      D0 shows a page does not have; the build now marks both routes `ƒ`
+      (dynamic) where the page version was `○` (static). next.config.ts stays
+      untouched because its redirects() table is shared by every funnel on the
+      domain (60+ ordering-sensitive entries for blog, kbli, tax, property,
+      immigration and second-home, including `:slug*` catch-alls): a mistake
+      there is site-wide, while here the blast radius is one URL. Keeping a file
+      at each path also keeps sitemap.test.ts's walk enumerating /visa and
+      /visa/match — that walk counts `route.ts` as well as `page.tsx` — so their
+      absence from the sitemap stays a written decision instead of a silent
+      disappearance. Cost: 308, not a literal 301. Both are permanent redirects
+      with identical link-equity semantics, 308 additionally preserves the
+      method, and the window brief accepts "301/308".
+  - id: D2
+    decision: >-
+      Robots are not touched anywhere in this diff — not on /visa-oracle, and
+      not on the retired doors either. Acceptance A4 says a robots change without
+      a quoted ruling is a fail, and the window override says "leave robots
+      exactly as they are". That override is read literally, including for
+      /visa/match/[hash], whose inherited canonical now points at a URL that
+      redirects (see leftovers) — fixing that is a robots/canonical decision and
+      belongs with Zero's A4 ratification, not smuggled in beside a redirect.
+  - id: D3
+    decision: >-
+      /visa/match/[hash] and its API are untouched, and `visa/match/layout.tsx`
+      stays because that child still needs it (a layout never wraps a route
+      handler, so the new route.ts beside it is unaffected). The window retires
+      an ENTRY POINT, not a data path: a result link a visitor already saved must
+      still open. The e2e suite asserts this with a non-existent synthetic hash —
+      200 plus the page's own "could not find this recommendation" state — which
+      is the strongest form of the claim, because it passes without depending on
+      any stored record.
+  - id: D4
+    decision: >-
+      apps/mouth/src/proxy.ts is NOT edited, although it is the real front door:
+      visa.balizero.com/ 302s to /visa (proxy.ts:331-338) and is what the
+      homepage PersonaDoors, FunnelCTAs, FunnelFeature and funnel-nav all link
+      to. After this change that path becomes 302 -> 308 -> /visa-oracle: two
+      hops, no lost visitor, and the homepage door labelled "Visa Oracle" finally
+      lands on the Oracle. proxy.ts is outside the window perimeter and carries
+      25 middleware tests; collapsing the chain is a separate one-line window.
+  - id: D5
+    decision: >-
+      The W0b telemetry antibody that lived in visa/match/page.test.tsx is not
+      lost with the wizard it guarded. formSubmitFailed(endpoint, status) — the
+      event whose absence made the v1 funnel die silently for three months — is
+      still pinned on the two wizards that remain, visa/clock/page.test.tsx and
+      lib/funnel-app-events.test.ts (both green in receipt 7).
+  - id: D6
+    decision: >-
+      The GARUDA dark-ship guard in sitemap.test.ts MOVED rather than
+      disappeared. It read the /visa landing page and asserted it carried no
+      `href="/visa/voa"`; that page is now deleted, so the test would have died
+      with its target. Its INTENT was never "the landing page does not link
+      GARUDA", it was "nothing a visitor can reach links GARUDA while it ships
+      dark". It now walks the whole app tree, minus GARUDA's own subtree (its
+      result page links back to itself behind a one-time hash) and minus the test
+      file itself, with a positive control so the walk cannot pass vacuously.
+      Measured before writing it: exactly one non-test occurrence of
+      `href="/visa/voa"` exists in apps/mouth/src, inside voa/[hash]/page.tsx.
+  - id: D7
+    decision: >-
+      The new guard asserts the STATUS CODE (308) and the Location header by
+      calling the handlers directly, plus a second case proving the redirect
+      follows the visitor's own origin rather than a hard-coded host. That shape
+      is chosen because of D0: a DOM assertion, or any assertion that follows
+      redirects, passes just as happily on a 200 that redirects after hydration.
+receipts:
+  - claim: The worktree was created by the broker on the mouth lane, from a fresh origin/main after #6401 was closed.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id vo-c-doors-2 --ttl-min 180
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-vo-c-doors-2 ; branch agent/air-m5/mouth/vo-c-doors-2 ; merge-base bf783e8d2ad5c6c34aab22b8cb5fb3b82b64d1a4"
+    exit: 0
+    ts: "2026-09-13T10:52:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      BEFORE — the two-doors defect measured live on production, this session.
+      Both legacy doors answer 200 and index,follow; the Oracle answers 200 and
+      noindex,nofollow. This is the state the window exists to change.
+    cmd: curl -sS -o /dev/null -D - -m 30 "$BASE$u"
+    result: >-
+      /visa HTTP/2 200, `<meta name="robots" content="index, follow">`, title
+      "Bali Visa Eligibility &amp; Selection | Bali Zero", and the quiz copy
+      "Are you already in Indonesia?" present (grep -c = 1). /visa/match
+      HTTP/2 200. /visa-oracle HTTP/2 200 with `<meta name="robots"
+      content="noindex, nofollow">`.
+    exit: 0
+    ts: "2026-09-13T10:22:41+08:00"
+    seat: Claude Opus 5
+  - claim: BEFORE — the live sitemap advertises both retired doors.
+    cmd: curl -sS -m 60 "$BASE/sitemap.xml"
+    result: "https://balizero.com/visa and https://balizero.com/visa/match both present, alongside /visa/clock, /visa/second-home and its three variants."
+    exit: 0
+    ts: "2026-09-13T10:23:30+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      D0 — the page-level permanentRedirect() of PR #6401 answers 200, not a
+      redirect. This is the measurement that withdrew that PR.
+    cmd: npx next build --webpack ; npx next start -p 3977 ; curl -sS -D - http://127.0.0.1:3977/visa
+    result: >-
+      "HTTP/1.1 200 OK" with "x-nextjs-cache: HIT" and "x-nextjs-prerender: 1",
+      no location header. .next/server/app/visa.html is 41135 bytes and
+      visa.meta carries only cache headers. prerender-manifest.json:
+      /visa {"routeType":"page","compute":"static","response":"complete","htmlSize":41135}.
+    exit: 0
+    ts: "2026-09-13T10:50:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      A6 — with the route-handler mechanism, a real build marks both retired
+      routes DYNAMIC instead of static. This is the positive half of D0.
+    cmd: npx next build --webpack
+    result: "exit 0; route table reads `ƒ /visa` and `ƒ /visa/match` (ƒ = server-rendered on demand), where the page version read `○ /visa` and `○ /visa/match` (○ = prerendered as static content)."
+    exit: 0
+    ts: "2026-09-13T11:02:00+08:00"
+    seat: Claude Opus 5
+  - claim: A2/A5/D7 — the retired-door guard is green, status code and Location asserted directly.
+    cmd: npx vitest run --no-file-parallelism src/app/visa/retired-doors.test.ts
+    result: "Test Files 1 passed (1) ; Tests 7 passed (7). Asserts status 308 and location https://balizero.com/visa-oracle for both handlers, origin-following on a second host, no page.tsx behind either, no AppWizard/AppFrame/AppBranchSelector/useFunnelApp/fetch( in either handler, and that match/[hash]/page.tsx still exists."
+    exit: 0
+    ts: "2026-09-13T11:09:30+08:00"
+    seat: Claude Opus 5
+  - claim: A6 — the touched surfaces and everything adjacent to them are green on vitest.
+    cmd: npx vitest run --no-file-parallelism src/app/visa/retired-doors.test.ts src/app/sitemap.test.ts src/app/robots.test.ts src/__tests__/middleware.test.ts src/app/visa/clock src/app/visa/second-home
+    result: "Test Files 21 passed (21) ; Tests 303 passed (303). Includes the sitemap deliberate-publication guard with its two new INTENTIONALLY_UNLISTED entries and the relocated GARUDA guard, robots.test.ts unchanged, the 25 visa.balizero.com middleware cases, and the clock wizard that still carries the W0b telemetry antibody."
+    exit: 0
+    ts: "2026-09-13T11:17:45+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      The two visa/voa test files fail on THIS worktree for a reason that is not
+      this diff — proven by running them with the diff stashed away.
+    cmd: git stash push -u -- apps/mouth ; npx vitest run --no-file-parallelism src/app/visa/voa/page.test.tsx ; git stash pop
+    result: "7 of 7 fail on clean origin/main (bf783e8d) with `TypeError: Cannot read properties of null (reading 'useState')` inside packages/core/components/apps/AppWizard.tsx — a React resolution fault in this worktree's shared node_modules (cicatrix family #5), not a code defect. The same files ran green earlier today in the sibling worktree. Not touched, not cured from inside this window."
+    exit: 1
+    ts: "2026-09-13T11:15:30+08:00"
+    seat: Claude Opus 5
+  - claim: A6 — typecheck, eslint and prettier green on every touched file.
+    cmd: npx tsc --noEmit ; npx eslint <touched> ; npx prettier --check <touched>
+    result: "tsc exit 0, no diagnostics. eslint 0 errors (1 warning, 'File ignored because of a matching ignore pattern', on the test file). prettier: All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-13T11:16:20+08:00"
+    seat: Claude Opus 5
+  - claim: The harness floor was computed from the merge-base diff BEFORE the gear was declared.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --print-measured --changed-files-file /tmp/.../cf-v2.txt --numstat-file /tmp/.../ns-v2.txt
+    result: "floor 2 ; floor source 'size' ; measured '9 files, +235/-671'. Declared gear = max(judgement 2, floor 2) = 2."
+    exit: 0
+    ts: "2026-09-13T11:20:00+08:00"
+    seat: Claude Opus 5
+  - claim: The pre-commit hook chain ran unskipped (no --no-verify anywhere in this window).
+    cmd: git -C <wt> commit -F -
+    result: "anti-reward-hacking, python print check, hardcoded-secrets check, console.log check, lint, apps/mouth tsc --noEmit, python lint, OFF-LIMITS check — 'All pre-commit checks passed'. 9 files changed, 235 insertions(+), 671 deletions(-)."
+    exit: 0
+    ts: "2026-09-13T11:19:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      D8 — the consumer-map pre-push guard blocked this push with 79 findings,
+      and all 79 are a basename over-match on the deleted
+      apps/mouth/src/app/visa/match/page.test.tsx. Read before judged, as that
+      tool's own docstring demands.
+    cmd: git -C <wt> push -u origin <branch> ; then grep -rn "visa/match/page" over the repo excluding .git/node_modules/.worktrees
+    result: >-
+      "consumer-map: 79 live consumers of deleted/renamed files — push blocked".
+      Every row in the printed table is a DIFFERENT file that merely contains the
+      string "page.test.tsx": apps/mouth/vitest.config.ts:60 (a glob),
+      visa/voa/page.test.tsx:14 (a comment), (workspace)/process/[id]/page.test.tsx,
+      i18n/initial-locale.test.tsx, merahPutihDayVars.ts:208, and so on. The grep
+      for the deleted path itself returns ZERO hits anywhere in the repo — every
+      "visa/match/page" hit is to page.tsx, in research/ and products/ prose, and
+      page.tsx is already on the tool's COMMON_BASENAMES skip list (its own table
+      prints both deleted page.tsx files as SKIPPED-common-basename).
+      consumer_map.py's docstring states the posture: "basename matching
+      OVER-matches by design ... Read the printed table before trusting the
+      verdict". Pushed with the hook's own documented kill switch
+      PREPUSH_SKIP_CONSUMER_MAP=1 after that reading, and only for this reason.
+      The fix is one line in scripts/consumer_map.py — "page.test.tsx" belongs in
+      COMMON_BASENAMES beside "page.tsx" — which is a harness PR, not a visa one.
+      Recorded as a leftover.
+    exit: 1
+    ts: "2026-09-13T11:28:00+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: Claude Opus 5 (self-refutation, on the first attempt)
+    objection: >-
+      #6401 was reported as complete work, armed for auto-merge, with a pack
+      whose receipts were all green — and it shipped a 200. The only reason it
+      did not land is that its author kept measuring after arming. Every gate in
+      this repo would have passed it: typecheck, vitest 448/448, eslint,
+      prettier, the Vercel preview deploy, "Visa Oracle fullstack smoke",
+      "Frontend Tests (mouth)", "E2E Tests (Playwright)". "apps/mouth compiles"
+      is only `tsc --noEmit` and never builds; the e2e redirect assertions this
+      window wrote are not collected by the PR gate, which runs
+      `--grep "page Page|@offline"`. Nothing in CI probes an HTTP status.
+    status: CONFIRMED
+    cure: >-
+      Cured for this window by asserting the status code in a unit test that runs
+      in the required "Frontend Tests (mouth, true)" check, so the property is
+      now guarded on every future PR touching these routes. NOT cured for the
+      repo: the general hole — no CI check anywhere probes a response status —
+      is recorded as a leftover for the imperator. It is a harness question, not
+      a visa one.
+  - seat: Claude Opus 5 (self-refutation, on what the retirement takes with it)
+    objection: >-
+      /visa was not only the quiz door: it was the branch selector, and it held
+      the ONLY internal link to /visa/clock (the visa-expiry timeline tool).
+      Measured — `grep -rn "/visa/clock" apps/mouth/src` returned the sitemap,
+      the clock's own files, and visa/page.tsx line 104. Nothing else. Retiring
+      /visa leaves /visa/clock reachable only from search and from a saved URL:
+      exactly the shape of the trauma sitemap.test.ts was written for ("live and
+      unreachable").
+    status: CONFIRMED
+    cure: >-
+      Not cured inside this window, and named rather than left to be discovered.
+      /visa/clock KEEPS its sitemap entry and its canonical, so it is still
+      indexed and still resolves — what it loses is its internal inbound link.
+      Re-homing it touches surfaces this window is forbidden from: the Oracle
+      route group is fenced by ruling, the homepage doors are another window's
+      perimeter. Recorded as the first leftover.
+  - seat: Claude Opus 5 (self-refutation, on the cost of the mechanism)
+    objection: >-
+      A `force-dynamic` route handler costs a server invocation on every hit to
+      a URL whose only job is to redirect, where a next.config entry would answer
+      at the edge for free. On an indexed door this is not nothing.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured, deliberately, and the trade is stated rather than hidden: the
+      next.config table is shared by every funnel on the domain and a mistake in
+      it is site-wide, while this costs one invocation on two URLs whose traffic
+      decays as search re-indexes. If the invocation count ever matters, moving
+      these two entries into next.config is a two-line change — recorded as a
+      leftover with its own gear consequence (the report floors that at 3).
+  - seat: Claude Opus 5 (self-refutation, on the proof that is still missing)
+    objection: >-
+      Every acceptance that matters is a LIVE property, and nothing in this diff
+      proves a live property. A merged redirect is not a served redirect.
+    status: CONFIRMED
+    cure: >-
+      The pack is filed with the BEFORE measurement taken live this session
+      (receipts 2 and 3) and with a local `next build` + `next start` probe of
+      the actual mechanism (receipts 4 and 5), which is as close to live as a
+      pre-merge session can get. The AFTER measurement — curl with redirects
+      disabled on /visa, /visa/match, /visa/match/<synthetic-hash>, /visa-oracle
+      and the sitemap on the promoted build — is taken after the merge and
+      reported in the window's close line. Nothing in this pack claims a
+      post-merge fact.
+leftovers:
+  - 'NO CI CHECK IN THIS REPO PROBES AN HTTP RESPONSE STATUS. That is how #6401 reached `armed` while serving a 200 in place of a redirect. The e2e suite could do it, but the PR gate collects only `--grep "page Page|@offline"`. Imperator-level; a redirect/status smoke over the promoted deploy would close a whole class.'
+  - 'scripts/consumer_map.py COMMON_BASENAMES holds "page.tsx", "route.ts" and "layout.tsx" but not "page.test.tsx" — so deleting any colocated App Router page test blocks the push with a wall of unrelated rows (79 here, zero of them real). One line, same measured justification the page.tsx entry already carries. Harness PR, not this window.'
+  - "/visa/clock loses its only internal inbound link (it was visa/page.tsx:104). It keeps its sitemap entry, its canonical and its direct URL, but nothing on the site links to it any more. Re-homing it needs a surface this window may not touch."
+  - "apps/mouth/src/proxy.ts:331-338 still maps visa.balizero.com / -> /visa and /quiz|/result|/chat -> /visa/match, so those become two-hop chains (302 then 308). Correct, just not minimal; collapsing them is a one-line change in a file with 25 middleware tests, outside this perimeter."
+  - "/visa/match/[hash] inherits alternates.canonical https://balizero.com/visa/match from visa/match/layout.tsx, which now redirects to a noindex page. Left exactly as found because the window override says robots stay untouched; it belongs with Zero's A4 ratification."
+  - "Internal links still pointing at the retired doors, each now taking one 308 hop: v2/_components/PersonaDoors.tsx:78, (blog)/NewsPageClient.tsx:21, (blog)/contact/page.tsx:260, (blog)/services/page.tsx:50, visa/voa/[hash]/page.tsx:207 and components/blog/ArticleToolEmbed.tsx:9 (the last one iframes /visa/match, and no article currently uses it — grep over src/content returns nothing)."
+  - "packages/core's AppBranchSelector now has no consumer in apps/mouth. It keeps its own unit tests in packages/core; deleting it would widen this PR into a shared package."
+  - "src/app/visa/voa/*.test.tsx fail in the .worktrees/mouth-vo-c-doors-2 checkout on clean origin/main with a null React dispatcher inside packages/core — a shared-node_modules resolution fault (family #5), not a main-branch red. CI is the authority on those files."
+  - "If Zero wants the literal 301 rather than 308, and wants it at the edge, it is a `statusCode: 301` pair in next.config.ts — a separate window, which the grounding report floors at gear 3."
+  - "A4 (lifting noindex on /visa-oracle) is untouched and carried to the close line under needs input."
