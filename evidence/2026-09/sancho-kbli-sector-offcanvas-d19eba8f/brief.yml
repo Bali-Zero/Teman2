@@ -1,0 +1,87 @@
+task: >-
+  PR #5608 (external seat, Subhi): a click on a sector card on `/kbli` opens
+  `/kbli/sectors/<id>` as an off-canvas panel over the index (parallel + intercepting route,
+  `apps/mouth/src/app/kbli/@panel/(.)sectors/[id]/page.tsx`) instead of a full-page
+  navigation, with an in-panel A-U section strip and one level of code drill-down. The
+  standalone SEO route `/kbli/sectors/[id]` is untouched and keeps its 21 prerendered
+  paths. Licences/Authority/Timeframe are deliberately not rendered in the compact panel
+  drill-down (data-honesty reasons documented in the PR body, section 6). Confined to
+  `apps/mouth` (zone VERDE) — no shared token, no data, no migration touched.
+lane: kbli/sector-offcanvas
+machine: external-sancho
+date: 2026-09-13
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against the
+  merge-base with origin/main measures churn 1140 (304 apps/mouth/e2e/kbli-sector-
+  offcanvas.spec.ts, 94 the intercepting route page, 3+3 layout/default wiring, 110
+  KBLIPanelCodeDetail.tsx, 226 KBLISectorOffcanvas.tsx, 90 KBLISectorStrip.tsx, 127+87
+  kbli-panel-detail.test.ts/.ts, 93+3 kbli-theme.css) — above SIZE_GEAR2_THRESHOLD (400) and
+  below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path (all 10 files are under apps/mouth/,
+  not a HOTZONE_PATTERNS match). Confirmed locally via `scripts/evidence_pack_lint.py
+  --print-floor --print-floor-source`, matching the value the `Harness floor recompute`
+  check reported. This brief is written retroactively by a Claude session, not the PR's
+  external author — it was absent at PR-open, which is what floored the check red — and
+  adds no functional change to the diff it documents.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    `npm run build -w apps/mouth` exits 0 and still prerenders exactly 21 sector paths
+    (A-U) under `.next/server/app/kbli/sectors/`, unchanged by this PR (positive control:
+    1562 prerendered files under the sibling `kbli/` directory).
+    probe: >-
+      npm run build -w apps/mouth && ls .next/server/app/kbli/sectors/*.html | wc -l
+  A2: >-
+    `npm run lint -w apps/mouth` exits 0; of the pre-existing 177 warnings across 88
+    flagged files, none of the 10 files this PR changes appear among them (delta: 0), and
+    `npx prettier --check` on the same 10 files exits 0.
+    probe: >-
+      npm run lint -w apps/mouth && npx prettier --check $(git diff --name-only
+      origin/main...HEAD)
+  A3: >-
+    The 5 unit tests in `kbli-panel-detail.test.ts` (panel-projection shape: identity/badge
+    fields carried, licences/authority/timeframe omitted, PMA verdict resolved not raw, no-
+    licensing-rows/no-Bali-layer survival, Bali block as boolean) and the 15 Playwright
+    specs in `kbli-sector-offcanvas.spec.ts` (open/close, Back button, section-strip
+    switching, drill-down, keyboard trap, scroll lock, mobile/desktop variants, and the two
+    REGRESSION specs pinning that `/kbli/sectors/A` and a drill-down URL still hard-load as
+    full pages) pass in CI — NOT independently re-run on this machine (vitest cannot resolve
+    the `@/` alias here and walks `.worktrees/`; Playwright is not driven here either), per
+    the PR body's own stated limitation.
+    probe: >-
+      npx vitest run apps/mouth/src/lib/kbli-panel-detail.test.ts && npx playwright test
+      apps/mouth/e2e/kbli-sector-offcanvas.spec.ts
+
+out_of_scope: >-
+  Redesigning or deduplicating the standalone `/kbli/sectors/[id]` route, or converting it
+  to dynamic rendering. `/kbli/[code]`. A centralised z-index scale (filed separately as
+  #5603). Fixing the pre-existing `authority` string/array type defect (#5601) or the
+  optional-chain gap in `kbli-provenance.ts` (#5602) — both reported, neither fixed here.
+  Re-measuring per-route gzip payload figures (not reproducible from this build's log,
+  stated in the PR body). Arming, merging or promoting this PR, and the live `/kbli` proof
+  at balizero.com — per the PR's own "stops at open" division of labour (section 10).
+
+assumptions:
+  - text: >-
+      This brief was authored by a Claude session after PR-open, on behalf of the external
+      author (Subhi/sancho), solely to satisfy the `Harness floor recompute` check's
+      SIZE-floor requirement — the acceptance probes above are drawn from the PR body's own
+      measured commands/return-codes (build/lint/format) and stated test counts, not
+      independently re-run by the session writing this brief.
+    status: unverified
+    probe: >-
+      Re-run the four gates in PR #5608's own §7 Risk table on this PR's head and confirm
+      the same return codes, plus the CI-run results for `Frontend Tests (mouth)` and `E2E
+      Tests (Playwright)`.
+  - text: >-
+      `machine: external-sancho` and `lane: kbli/sector-offcanvas` are this session's own
+      naming choice for a brief field with no enforced enum (evidence_pack_lint.py does not
+      validate `machine`/`lane` against a fixed set) — chosen to be honest about this PR's
+      external origin rather than misattributing it to an internal M5/Pro/Mini host.
+    status: verified
+    probe: n/a — a documentation choice, not a factual claim requiring a probe.
