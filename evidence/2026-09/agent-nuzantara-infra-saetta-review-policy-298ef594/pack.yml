@@ -2,81 +2,129 @@ task_id: infra-saetta-review-policy
 brief_ref: evidence/brief.yml
 base_sha: 316a8e84fa3de399a47c8d679e12d42e86d013e6 # pragma: allowlist secret
 mandate: SAETTA-REVIEW-POLICY
-status: BLOCK
-ruling: >-
-  Owner policy ruling 2026-09-13 (canonical change): "ok inserire anche gemini 3.1 pro high nella
-  lista - e non diminuiamo, ma una regola che tutti vengono invocati i revisori ma basta la risposta
-  di uno". This pack records that transition; it is not a fictional second review.
+status: ready_for_gate
+ruling:
+  'Owner policy ruling 2026-09-13 (canonical change): "ok inserire anche gemini 3.1 pro high nella
+  lista - e non diminuiamo, ma una regola che tutti vengono invocati i revisori ma basta la risposta di
+  uno". This pack records that transition; it is not a fictional second review. Root amended the preparation
+  budget to 2400s (cutoff 2026-09-13T21:08:23Z) and granted exactly one final correction cycle 2 and one
+  final council round 3.'
 council_policy: saetta-review-policy-v2
-candidate_sha: 759e08b0f9fe52ad27641de1a70ac8cd34852ebf # pragma: allowlist secret
-contributing_families: [anthropic, openai]
+candidate_sha: 39a241b1fa393a6a62ca21dac488cfb79694dc07 # pragma: allowlist secret
+contributing_families:
+  - anthropic
+  - openai
 council_run: council-journal.jsonl
-seat_override: >-
-  POLICY-RULING TRANSITION ONLY for the base-checkout (old v1) R9 in harness-floor, which cannot read
-  v2 journal lines and still counts only the unsuffixed agy-gemini-3.1-pro. The v2 lint in this
-  branch ignores seat_override and enforces the full contract; its verdict on this pack is BLOCK
-  (unresolved round-2 findings), recorded below.
+seat_override:
+  POLICY-RULING TRANSITION ONLY for the base-checkout (old v1) R9 in harness-floor, which
+  cannot read v2 journal lines and still counts only the unsuffixed agy-gemini-3.1-pro. The v2 lint in
+  this branch ignores seat_override and enforces the full contract on this pack.
 findings_disposition:
-  "agy-gemini-3.1-pro-high#argv-none-blocks-lint":
-    {
-      status: fixed,
-      rationale: "759e08b0 adds a first-party codex exec route; test_every_seat_has_a_first_party_route",
-    }
-  "agy-gemini-3.1-pro-high#finding-regex-drops-quotes":
-    {
-      status: fixed,
-      rationale: "759e08b0 regex keeps quotes/backslashes; test_quoted_finding_is_kept_and_any_block_wins",
-    }
-  "agy-gemini-3.1-pro-high#terminate-race-condition":
-    {
-      status: fixed,
-      rationale: "759e08b0 catches ProcessLookupError before SIGKILL; no dedicated race test",
-    }
-  "agy-gemini-3.1-pro-high#popen-unhandled-exception":
-    {
-      status: open,
-      rationale: "valid: a missing seat binary raises before the journal is written; correction round already used",
-    }
-  "agy-gemini-3.1-pro-high#terminate-timeout-uncaught":
-    {
-      status: open,
-      rationale: "valid: wait after SIGKILL can raise TimeoutExpired; correction round already used",
-    }
-  "agy-gemini-3.1-pro-high#pid-reuse-race":
-    {
-      status: open,
-      rationale: "plausible: killpg after reap can target a reused pgid; correction round already used",
-    }
-  "agy-gemini-3.1-pro-high#fleet-topology-missing-route":
-    {
-      status: open,
-      rationale: "valid doc drift: FLEET_TOPOLOGY routes omit codex; correction round already used",
-    }
+  agy-gemini-3.1-pro-high#argv-none-blocks-lint:
+    status: fixed
+    rationale: 759e08b0 adds a first-party codex exec route; test_every_seat_has_a_first_party_route
+  agy-gemini-3.1-pro-high#finding-regex-drops-quotes:
+    status: fixed
+    rationale: 759e08b0 regex keeps quotes/backslashes; test_quoted_finding_is_kept_and_any_block_wins
+  agy-gemini-3.1-pro-high#terminate-race-condition:
+    status: fixed
+    rationale: 759e08b0 catches ProcessLookupError before SIGKILL; no dedicated race test
+  agy-gemini-3.1-pro-high#popen-unhandled-exception:
+    status: fixed
+    rationale: 39a241b1 run_seat catches spawn exceptions as NON_JUDGMENT spawn_error; test_spawn_errors_are_isolated_and_every_other_seat_is_invoked
+  agy-gemini-3.1-pro-high#terminate-timeout-uncaught:
+    status: fixed
+    rationale: 39a241b1 any CLOSE exception is recorded as ambiguous closure and R9 v2 blocks it; test_cleanup_exception_is_isolated_and_blocks_beside_a_pass
+  agy-gemini-3.1-pro-high#pid-reuse-race:
+    status: fixed
+    rationale: 39a241b1 signals only while the leader is unreaped and reaps after verified closure; test_resistant_descendant_is_killed_while_the_leader_is_unreaped
+  agy-gemini-3.1-pro-high#fleet-topology-missing-route:
+    status: fixed
+    rationale: 39a241b1 FLEET_TOPOLOGY names every seat route incl. codex; test_fleet_topology_routes_name_every_seat_including_codex
 dissent:
   - seat: agy-gemini-3.1-pro-high
-    objection: "round 2 on 759e08b0: popen-unhandled-exception (high), terminate-timeout-uncaught (medium), pid-reuse-race (medium), fleet-topology-missing-route (low)"
+    status: RETRACTED
+    objection:
+      "round 3 on 39a241b1: PASS with no findings; round-2 objections withdrawn by the same seat
+      on the corrected source"
+  - seat: agy-gemini-3.1-pro-high
+    objection:
+      "round 2 on 759e08b0: popen-unhandled-exception (high), terminate-timeout-uncaught (medium),
+      pid-reuse-race (medium), fleet-topology-missing-route (low) — fixed in 39a241b1"
     status: CONFIRMED
   - seat: agy-gemini-3.1-pro-high
-    objection: "round 1 on ba29feec: argv-none-blocks-lint (high), finding-regex-drops-quotes (high), terminate-race-condition (medium) — fixed in 759e08b0"
+    objection:
+      "round 1 on ba29feec: argv-none-blocks-lint (high), finding-regex-drops-quotes (high), terminate-race-condition
+      (medium) — fixed in 759e08b0"
     status: CONFIRMED
   - seat: claude-opus-5
-    objection: "dux self-review of ba29feec: correction-round history reported as violations; echoed prompt literal could read as a verdict — fixed in 759e08b0"
+    objection:
+      "dux self-review of ba29feec: correction-round history reported as violations; echoed prompt
+      literal could read as a verdict — fixed in 759e08b0"
     status: CONFIRMED
 lanes:
-  - lane: "policy v2 producer + enforcer + doctrine"
+  - lane: policy v2 producer + enforcer + doctrine
     role: build
-    seat: "claude-opus-5 xhigh (native Claude Code, Pro)"
-    state: delivered-blocked
-  - lane: "council round 1 on ba29feec"
+    seat: claude-opus-5 xhigh (native Claude Code, Pro)
+    state: delivered
+  - lane: council round 1 on ba29feec
     role: review
     seat: agy-gemini-3.1-pro-high
-  - lane: "council round 2 on 759e08b0"
+  - lane: council round 2 on 759e08b0
     role: review
     seat: agy-gemini-3.1-pro-high
-  - lane: "council rounds 1-2 NON_JUDGMENT (kimi 403, TP1 429 x3)"
+  - lane: council round 3 on 39a241b1 (final)
     role: review
-    seat: "kimi-code/k3, tp1-qwen3.8-max, tp1-glm-5.2, tp1-deepseek-v4-pro"
+    seat: agy-gemini-3.1-pro-high
+  - lane: council rounds 1-3 NON_JUDGMENT (kimi exit 1 / 403, TP1 429 x3)
+    role: review
+    seat: kimi-code/k3, tp1-qwen3.8-max, tp1-glm-5.2, tp1-deepseek-v4-pro
 tests:
-  - "pytest scripts/tests/{test_council_policy_v2,test_council_journal,test_evidence_pack_lint,test_stage_council_journal,test_lint_roster_dispatch,test_saetta,test_saetta_receipt}.py on 759e08b0: 750 passed, 1 failed (test_saetta timeout test, PermissionError under parallel load; saetta.py untouched; rerun alone 15 passed)"
-  - "node --test infra/workflows/tests/test-saetta.mjs: 50 pass, 0 fail"
+  - "39a241b1: /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -q -p no:cacheprovider
+    scripts/tests/test_council_policy_v2.py scripts/tests/test_council_journal.py scripts/tests/test_evidence_pack_lint.py
+    scripts/tests/test_stage_council_journal.py scripts/tests/test_lint_roster_dispatch.py scripts/tests/test_saetta.py
+    scripts/tests/test_saetta_receipt.py -> exit 0, 759 passed, 16 subtests passed"
+  - "39a241b1: cd infra/workflows && node --test tests/test-saetta.mjs -> exit 0, pass 50, fail 0"
 pii_scan: clean
+source_candidate_note:
+  final source candidate 39a241b1 (correction cycle 2); the evidence commit on top
+  changes only this evidence directory; prior evidence-only head 7c19fbce carried source 759e08b0
+spec_ref: evidence/2026-09/agent-nuzantara-infra-saetta-review-policy-298ef594/dispatch-lifecycle-spec.md
+receipts:
+  - claim: affected suites green on source candidate 39a241b1 after the last source edit
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -q -p no:cacheprovider
+      scripts/tests/test_council_policy_v2.py scripts/tests/test_council_journal.py scripts/tests/test_evidence_pack_lint.py
+      scripts/tests/test_stage_council_journal.py scripts/tests/test_lint_roster_dispatch.py scripts/tests/test_saetta.py
+      scripts/tests/test_saetta_receipt.py
+    exit: 0
+    observed: 759 passed, 16 subtests passed
+    seat: claude-opus-5
+    ts: "2026-09-13T20:58:42Z"
+  - claim: SAETTA workflow tests green on 39a241b1
+    cmd: cd infra/workflows && node --test tests/test-saetta.mjs
+    exit: 0
+    observed: pass 50, fail 0
+    seat: claude-opus-5
+    ts: "2026-09-13T20:58:42Z"
+  - claim: round-3 all-eligible council through the public dispatcher on 39a241b1
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python scripts/council_journal.py
+      dispatch --pack-dir evidence/2026-09/agent-nuzantara-infra-saetta-review-policy-298ef594 --worktree
+      /Users/nuzantara/nuzantara/.worktrees/infra-saetta-review-policy --base-sha 316a8e84fa3de399a47c8d679e12d42e86d013e6
+      --candidate-sha 39a241b1fa393a6a62ca21dac488cfb79694dc07 --contributing-family openai --timeout 300
+      --capture-dir /tmp/saetta-review-captures/round3
+    exit: 0
+    observed:
+      codex excluded; kimi exit 1 NON_JUDGMENT; TP1 x3 429 NON_JUDGMENT; gemini-3.1-pro-high PASS,
+      0 findings; all local and remote closures verified
+    seat: claude-opus-5
+    ts: "2026-09-13T21:03:06Z"
+  - claim: R9 v2 on the CI-staged pack+brief has zero violations
+    cmd:
+      /tmp/srp-stage-lint.sh (synthetic tree evidence/pack.yml + evidence/brief.yml + journal; check_council_gear3
+      with brief gear 3)
+    exit: 0
+    observed: policy saetta-review-policy-v2, r9_dispatcher_violations 0
+    seat: claude-opus-5
+    ts: "2026-09-13T21:03:23Z"
