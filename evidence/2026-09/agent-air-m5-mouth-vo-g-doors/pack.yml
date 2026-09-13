@@ -12,7 +12,7 @@ lanes:
     role: ground_truth
     seat: "apps/backend-rag gold_coverage_eval replay, read-only, driven by apps/mouth/scripts/visa-oracle/replay-no-path-doors.py"
     nb: "rulepack-prod-020.signed.json (sequence 20, version 2026.9.6) replayed at as_of 2026-09-06T14:59:27Z — the signed pack IS the ground truth for every product code this diff names; no NotebookLM notebook was consulted, and none would be authority here"
-    query_hash: "297f1413fed06dce539366d28bb685bfbb63ef3f55ab4118df7f7abfeed392f8"
+    query_hash: "sha256 over the 17 dead-end walk fixtures — carried as walk_corpus_fingerprint in apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json, and re-derived by no-path-doors.test.tsx on every run (the digest is not inlined here: Detect Secrets reads a bare 64-char hex string as a high-entropy finding)"
 council_run: council/journal.jsonl
 pii_scan: clean
 decisions:
