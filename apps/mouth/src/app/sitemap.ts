@@ -141,9 +141,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 6. Visa funnel pages (balizero.com/visa — consolidated 2026-04-21,
   // was previously at visa.balizero.com; the subdomain now 302-redirects
   // to these canonical paths via middleware.ts).
+  // `/visa` and `/visa/match` are NOT here: both retired to a 308 on
+  // 2026-09-13 (RULING Zero 2026-08-25 — the public visa door is the Oracle).
+  // A sitemap must not advertise a URL that only redirects. The reason each
+  // one is absent is recorded in sitemap.test.ts's INTENTIONALLY_UNLISTED, so
+  // the omission stays a decision rather than an oversight.
   const visaPaths = [
-    "/visa",
-    "/visa/match",
     "/visa/clock",
     "/visa/second-home",
     // Localized SSG variants (2026-08-20) — see

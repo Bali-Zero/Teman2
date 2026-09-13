@@ -63,6 +63,13 @@ const BASE = "https://balizero.com";
  * wearing a permission slip.
  */
 const INTENTIONALLY_UNLISTED: Record<string, string> = {
+  // Retired doors (2026-09-13, RULING Zero 2026-08-25 «Due porte: 301 →
+  // /visa-oracle subito»): both answer 308 to /visa-oracle and render nothing.
+  // They keep a page.tsx — that is what serves the redirect — so this walk
+  // still sees them and still demands a reason, which is the point.
+  "/visa": "retired door — 308 to /visa-oracle, no document of its own",
+  "/visa/match":
+    "retired free-text quiz — 308 to /visa-oracle, no document of its own",
   "/visa/privacy": "legal boilerplate, no search intent to serve",
   "/visa/terms": "legal boilerplate, no search intent to serve",
   "/visa/voa":
