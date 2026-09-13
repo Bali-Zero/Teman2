@@ -868,6 +868,15 @@ async def _process_claimed_row(
     # 4. Bot replies: re-check human_handling (takeover may have flipped it
     #    since the webhook enqueued this row).
     body_text: str
+    # B2.3b carrier (research/operations/2026-09-11-bot-staff-room/
+    # B2-engine.md §4 PR B2.3b): D6's frozen-evidence values for the
+    # terminal write below. Declared here, above the needs_generation
+    # branch, so the human-send route (needs_generation False) carries
+    # them through unset — False/None, exactly like a scripted or
+    # unscored bot route that never reaches the codex leg's carrier.
+    persist_abstained = False
+    persist_score: float | None = None
+    package_ref: str | None = None
     if needs_generation:
         if thread["human_handling"]:
             fenced = await conn.fetchrow(
@@ -1012,6 +1021,16 @@ async def _process_claimed_row(
                 raise RuntimeError(f"codex_leg_failure:{leg.fail}")
             elif leg.text is not None:
                 body_text = leg.text
+                # D6 (B2.3b): only a served "codex" completion whose sealed
+                # label is True sets `abstained_at` — the support-negative
+                # branch's stub is `served_by="support_abstain"` and never
+                # qualifies here even though it too carries a True label
+                # (it generated nothing to abstain FROM).
+                persist_abstained = (
+                    leg.served_by == "codex" and leg.evidence_abstain_label is True
+                )
+                persist_score = leg.evidence_score
+                package_ref = leg.package_ref
                 logger.info(
                     "wa_outbox: %s served outbox=%s", leg.served_by, outbox_id
                 )
@@ -1028,6 +1047,12 @@ async def _process_claimed_row(
         except Exception as exc:  # deliberately broad — see the retry/failed handling below
             gen_exc = exc
             body_text = ""
+            # A failed generation carries nothing to persist — this attempt
+            # produced no sealed decision, so the carrier resets exactly
+            # like a route that never called the leg at all.
+            persist_abstained = False
+            persist_score = None
+            package_ref = None
         finally:
             heartbeat_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -1377,15 +1402,28 @@ async def _process_claimed_row(
     #    out of scope for F1a.
     wamid = _extract_wamid(send_result)
     async with conn.transaction():
+        # B2.3b carrier (research/operations/2026-09-11-bot-staff-room/
+        # B2-engine.md §4 PR B2.3b, D6): same statement, same fence as
+        # before — a lost fence means the whole write, carrier included,
+        # matches nothing and persists nothing (the residual double-send
+        # window logged below is unchanged). NOW() is this transaction's
+        # timestamp, the SAME one meta_inbox_messages.sent_at gets below,
+        # so a persisted abstained_at is exactly sent_at, never a separate
+        # clock read.
         commit_fenced = await conn.fetchrow(
             """
-            UPDATE wa_outbox SET status = 'done'
+            UPDATE wa_outbox
+            SET status = 'done',
+                abstained_at = CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
+                evidence_score = $5::numeric
             WHERE id = $1 AND claim_token = $2 AND status = $3
             RETURNING id
             """,
             outbox_id,
             claim_token,
             expected_status,
+            persist_abstained,
+            persist_score,
         )
         await conn.execute(
             """
@@ -1411,9 +1449,13 @@ async def _process_claimed_row(
         )
 
     logger.info(
-        "wa_outbox: sent (outbox=%s thread=%s wamid=%s)",
+        "wa_outbox: sent (outbox=%s thread=%s wamid=%s abstained=%s "
+        "evidence_score=%s package_ref=%s)",
         outbox_id,
         thread_id,
         wamid,
+        persist_abstained,
+        persist_score,
+        package_ref,  # opaque hash — never the query/wire/text it covers
     )
     return "sent"
