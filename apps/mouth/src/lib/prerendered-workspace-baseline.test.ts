@@ -7,9 +7,12 @@
 import { describe, it, expect } from "vitest";
 import {
   unacceptedPrerenderedWorkspaceRoutes,
-  urlRoute,
+  staleAcceptedRoutes,
   ACCEPTED_PRERENDERED_WORKSPACE_ROUTES,
 } from "../../scripts/lib/prerendered-workspace-baseline.mjs";
+import { urlRoute, walkAppRoutes } from "../../scripts/lib/app-routes.mjs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 describe("prerendered workspace baseline", () => {
   it("accepts the routes that are already static", () => {
@@ -110,22 +113,46 @@ describe("prerendered workspace baseline", () => {
   });
 
   /**
-   * The accepted set is EXPOSURE, not design. If it ever contains a route that no
-   * longer exists, the list is drifting into a configuration knob — which is the
-   * failure mode the chunk allowlist next door already has a contract against.
+   * The accepted set is EXPOSURE, not design — and this checks it against the REAL
+   * tree, which the first version did not: it called the function with an empty route
+   * list, got an empty answer, and asserted that. It proved the shape of the call and
+   * nothing about the list.
    */
   it("carries only routes that still exist, so the list cannot rot", () => {
-    const stale = unacceptedPrerenderedWorkspaceRoutes({
-      workspaceRoutes: [],
-      prerenderedPaths: ACCEPTED_PRERENDERED_WORKSPACE_ROUTES.map(
-        (r: string) => `/${r}`,
-      ),
-    });
-    // Nothing is reported, because nothing is a workspace route in this input —
-    // the point is the shape of the call, documented for the next reader.
-    expect(stale).toEqual([]);
+    const WS = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "app",
+      "(workspace)",
+    );
+    const real = new Set(walkAppRoutes(WS).map((r: string) => urlRoute(r)));
+    const vanished = ACCEPTED_PRERENDERED_WORKSPACE_ROUTES.filter(
+      (r: string) => !real.has(r),
+    );
+    expect(
+      vanished,
+      `these accepted baseline entries name routes that no longer exist: ${vanished.join(", ")}`,
+    ).toEqual([]);
     expect(new Set(ACCEPTED_PRERENDERED_WORKSPACE_ROUTES).size).toBe(
       ACCEPTED_PRERENDERED_WORKSPACE_ROUTES.length,
     );
+  });
+
+  it("reports an accepted route that has stopped being prerendered", () => {
+    expect(
+      staleAcceptedRoutes({
+        workspaceRoutes: ["clients", "lkpm"],
+        prerenderedPaths: ["/clients"],
+        accepted: ["clients", "lkpm"],
+      }),
+    ).toEqual(["lkpm"]);
+    // and says nothing when the accepted route simply no longer exists as a route
+    expect(
+      staleAcceptedRoutes({
+        workspaceRoutes: ["clients"],
+        prerenderedPaths: ["/clients"],
+        accepted: ["clients", "deleted-section"],
+      }),
+    ).toEqual([]);
   });
 });

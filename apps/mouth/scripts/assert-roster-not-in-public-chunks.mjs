@@ -52,16 +52,18 @@
 // while a route is DYNAMIC. It is NOT true of this app today, and the first draft of
 // this comment got that wrong by describing it as a future risk.
 //
-// MEASURED on this build, and the number C4c published was WRONG: SEVENTEEN
-// `(workspace)` routes are statically prerendered, not five. Every workspace
-// top-level route is — none is dynamic. C4c said five because the probe that
-// produced it filtered the manifest against a hardcoded tuple of five names instead
-// of enumerating `src/app/(workspace)/<route>/page.tsx`, so five was the most it
-// could ever return. The correction is recorded here rather than quietly applied.
+// MEASURED, and the count is NOT repeated here on purpose. It was written into this
+// comment twice and was wrong both times, because each number came from an enumeration
+// narrower than the thing it counted. Naming those wrong numbers here would be a third
+// and a fourth count in the same comment, which is the defect and not the lesson. The
+// list now lives in
+// scripts/lib/prerendered-workspace-baseline.mjs, derived by scripts/lib/app-routes.mjs,
+// and the OK line below prints how many are accepted. A number in prose goes stale in
+// silence; a number the build prints cannot.
 //
-// The exposure is narrower than seventeen suggests, which is worth stating in the
-// same breath: of the seventeen payloads, exactly ONE carries staff-name markers —
-// `/lkpm`, 4 hits. The other sixteen are the client shell.
+// What is worth stating here, because it is the part that does not change with the
+// count: of those accepted payloads exactly ONE carries staff-name markers — `/lkpm`.
+// The rest are the client shell.
 //
 // `clients/[id]` is the exception that stays dynamic — 0 prerender artifacts,
 // measured — which is why the fix that moved its table server-side genuinely removed
@@ -69,8 +71,10 @@
 //
 // THE BOUNDARY IS NOW A FLOOR, not just a paragraph. `.next/prerender-manifest.json`
 // is the mechanical test — if a `(workspace)` route is in it, its payload is a file —
-// and the check below enforces a BASELINE rather than a blanket rule: the seventeen
-// already-static routes are accepted with their measurement, and a NEW one fails.
+// and the check below enforces a BASELINE rather than a blanket rule: the routes that
+// are ALREADY static are accepted with their measurement — the list is in
+// scripts/lib/prerendered-workspace-baseline.mjs and its size is printed by the OK
+// line below — and a NEW one fails.
 // Asserting the blanket rule would fail every build today over an exposure that is
 // already escalated and owner-held, which teaches people to bypass the guard rather
 // than fixing anything. A route that becomes static tomorrow is a different matter:
@@ -79,7 +83,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { chunkExceptionViolations } from "./lib/chunk-exception-contract.mjs";
-import { unacceptedPrerenderedWorkspaceRoutes } from "./lib/prerendered-workspace-baseline.mjs";
+import {
+  unacceptedPrerenderedWorkspaceRoutes,
+  staleAcceptedRoutes,
+  ACCEPTED_PRERENDERED_WORKSPACE_ROUTES,
+} from "./lib/prerendered-workspace-baseline.mjs";
+import { walkAppRoutes } from "./lib/app-routes.mjs";
 
 const CHUNK_DIR = path.join(".next", "static", "chunks");
 // Keep in step with PUBLIC_EXCLUDED_SLUGS / PUBLIC_EXCLUDED_NAME_ALIASES in
@@ -168,8 +177,17 @@ if (all.length === 0) {
   process.exit(1);
 }
 
+// Reported by the OK line at the end, so the number it prints is MEASURED rather than
+// asserted — it used to read "0 unaccepted" as a literal, which is a claim about a run
+// that had not happened when the string was written. Declared HERE, at module scope:
+// the first attempt put it inside the block below, where the OK line cannot see it, and
+// the build failed with ReferenceError while a grep for the OK line simply showed
+// nothing — an absent line reading exactly like a pass, which is this mandate's oldest
+// lesson and was worth learning once more.
+let unacceptedCount = 0;
+
 // THE PRERENDER BASELINE. Derived from the filesystem, never from a list of names —
-// that is exactly how C4c's "five" happened.
+// that is exactly how the earlier hardcoded counts happened.
 {
   const WS_DIR = path.join("src", "app", "(workspace)");
   const MANIFEST = path.join(".next", "prerender-manifest.json");
@@ -190,43 +208,26 @@ if (all.length === 0) {
     process.exit(1);
   }
   {
-    // RECURSIVE. The first version read one level and only where a directory had its
-    // own page.tsx, so every nested route was invisible — and 25 of them were already
-    // prerendered. A shallow walk is not a smaller version of this check, it is a
-    // different check that happens to pass.
-    // Next resolves a page from several extensions, not just .tsx — a route added as
-    // page.jsx would otherwise never enter this list and could never be flagged.
-    const PAGE_FILES = [
-      "page.tsx",
-      "page.ts",
-      "page.jsx",
-      "page.js",
-      "page.mdx",
-    ];
-    const hasPage = (dir) =>
-      PAGE_FILES.some((f) => fs.existsSync(path.join(dir, f)));
-    const walk = (dir, prefix = "") => {
-      const out = [];
-      for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (!d.isDirectory()) continue;
-        const route = prefix ? `${prefix}/${d.name}` : d.name;
-        if (hasPage(path.join(dir, d.name))) out.push(route);
-        out.push(...walk(path.join(dir, d.name), route));
-      }
-      return out;
-    };
-    // A route with a dynamic segment cannot be prerendered without
-    // generateStaticParams, and its manifest key is not the literal path.
-    // A page.tsx directly inside (workspace) is the "/" route under that layout.
-    const workspaceRoutes = [
-      ...(hasPage(WS_DIR) ? [""] : []),
-      ...walk(WS_DIR),
-    ].filter((r) => !r.includes("["));
+    // ONE walk, shared with the baseline's urlRoute and with the test that proves
+    // every workspace page is an internal route. It used to be a private copy here,
+    // and the copy drifted: it never descended into route groups, never refused
+    // @slot/(..) directories, never followed symlinks and did not know page.mjs.
+    // Same set on today's tree, different rules — which is the definition of a
+    // coincidence rather than an agreement.
+    const workspaceRoutes = walkAppRoutes(WS_DIR).filter(
+      (r) => !r.includes("["),
+    );
     let prerenderedPaths = [];
     try {
-      prerenderedPaths = Object.keys(
-        JSON.parse(fs.readFileSync(MANIFEST, "utf8")).routes ?? {},
-      );
+      const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
+      // `routes ?? {}` used to swallow a manifest that PARSED but carried no routes
+      // key. An empty list then makes every accepted entry look stale and tells the
+      // reader to prune all of them — a warning that is simply false. The remedy for
+      // "I could not read it" is already exit 1, so this shape gets the same answer.
+      if (!manifest.routes || typeof manifest.routes !== "object") {
+        throw new Error("the manifest parsed but carries no `routes` object");
+      }
+      prerenderedPaths = Object.keys(manifest.routes);
     } catch (err) {
       console.error(
         `ROSTER_CHUNK_ASSERT FAILED: could not read ${MANIFEST} (${err.message}). ` +
@@ -238,11 +239,24 @@ if (all.length === 0) {
       workspaceRoutes,
       prerenderedPaths,
     });
+    // Reported, never fatal — a stale entry hides nothing, it only rots.
+    const stale = staleAcceptedRoutes({ workspaceRoutes, prerenderedPaths });
+    if (stale.length > 0) {
+      console.warn(
+        `ROSTER_CHUNK_ASSERT NOTICE: ${stale.length} accepted prerender baseline ` +
+          `entr${stale.length === 1 ? "y is" : "ies are"} no longer prerendered ` +
+          `(${stale.map((r) => `/${r}`).join(", ")}). The exposure shrank; prune them ` +
+          `from scripts/lib/prerendered-workspace-baseline.mjs so the list stays a ` +
+          `measurement and not configuration.`,
+      );
+    }
+
+    unacceptedCount = unaccepted.length;
     if (unaccepted.length > 0) {
       console.error(
         `ROSTER_CHUNK_ASSERT FAILED: ${unaccepted.length} (workspace) route(s) are now ` +
           `statically prerendered and are NOT in the accepted baseline: ` +
-          `${unaccepted.join(", ")}. A prerendered route's payload is a FILE under ` +
+          `${unaccepted.map((r) => `/${r}`).join(", ")}. A prerendered route's payload is a FILE under ` +
           `.next/server/app, served without a session, and this guard does not scan it. ` +
           `Either keep the route dynamic, or add it to ` +
           `scripts/lib/prerendered-workspace-baseline.mjs with the measurement that ` +
@@ -349,5 +363,10 @@ console.log(
     `the declared time-boxed exception (${ALLOWED_CHUNK_PREFIXES.join(", ") || "none"}) — ` +
     `no other chunk carries an excluded roster member. ` +
     `Public files: ${publicFiles.length} scanned, ${acceptedPresent.length} named ` +
-    `after an excluded member and ACCEPTED by declaration (${acceptedPresent.join(", ") || "none"}).`,
+    `after an excluded member and ACCEPTED by declaration (${acceptedPresent.join(", ") || "none"}). ` +
+    // The prerender baseline used to pass in SILENCE, which meant a build log could
+    // not show it had run at all — the imperator went looking for a line that did not
+    // exist. A check nobody can see is indistinguishable from a check nobody ran.
+    `Prerender baseline: ${ACCEPTED_PRERENDERED_WORKSPACE_ROUTES.length} (workspace) ` +
+    `route(s) accepted as already static, ${unacceptedCount} unaccepted.`,
 );

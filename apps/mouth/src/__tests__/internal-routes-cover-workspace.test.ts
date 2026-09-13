@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { INTERNAL_ROUTES } from "../proxy";
+import { walkAppRoutes } from "../../scripts/lib/app-routes.mjs";
 
 // Resolved from THIS FILE, not from process.cwd(). A runner invoked from the repo
 // root instead of apps/mouth would otherwise throw ENOENT and take the suite with it.
@@ -23,82 +24,29 @@ const WORKSPACE_DIR = path.resolve(HERE, "..", "app", "(workspace)");
 
 // Next resolves a page from any of these; listed rather than globbed so an unknown
 // extension is a visible omission instead of a silent one.
-const PAGE_FILES = [
-  "page.tsx",
-  "page.ts",
-  "page.jsx",
-  "page.js",
-  "page.mjs",
-  "page.cjs",
-  "page.mdx",
-];
-
 /** Fewer than this many workspace routes means the walk broke, not that the app shrank. */
 const MIN_EXPECTED_WORKSPACE_ROUTES = 10;
 
 /**
- * Every URL path under (workspace) that renders a page, as the browser sees it.
+ * The first URL segment of each workspace page — the granularity INTERNAL_ROUTES works
+ * at, since the proxy matches `pathname === route || startsWith(route + "/")`.
  *
- * RECURSIVE, and it descends INTO route groups. The first version of this walk read
- * one directory level and required a page.* at that level, which misses two real
- * shapes: a section with subpages but no index (settings/security/page.tsx with no
- * settings/page.tsx), and anything inside a route group — `(workspace)/(portal)/tickets`
- * is served at `/tickets`, so skipping the parenthesised directory loses the route
- * entirely. A refuter found both, and they are the same two mistakes the chunk guard
- * had just been corrected for — written again, in a new file, an hour later.
- */
-function workspacePagePaths(
-  dir = WORKSPACE_DIR,
-  segments: string[] = [],
-): string[] {
-  const out: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    // A symlinked directory reports isDirectory() === false, and pages behind it
-    // would vanish from the census in silence.
-    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-    if (
-      entry.isSymbolicLink() &&
-      !fs.statSync(path.join(dir, entry.name)).isDirectory()
-    ) {
-      continue;
-    }
-    const name = entry.name;
-
-    // Parallel-route slots (@modal) and intercepting-route markers ((..)photos,
-    // (...)photos) are App Router conventions that are NEITHER plain segments nor
-    // route groups. Neither exists here today; they are refused explicitly so the
-    // next person gets this sentence instead of a phantom route in a red test.
-    if (name.startsWith("@") || /^\(\.{1,3}\)/.test(name)) {
-      throw new Error(
-        `${name} is a parallel-route slot or intercepting-route marker, which this ` +
-          `walk does not model. Teach it the convention before adding one, or the ` +
-          `route census will be wrong in a way that looks like a coverage failure.`,
-      );
-    }
-
-    // A route group organises files and contributes NO URL segment.
-    const isGroup = name.startsWith("(") && name.endsWith(")");
-    const next = isGroup ? segments : [...segments, name];
-    const child = path.join(dir, name);
-    if (PAGE_FILES.some((f) => fs.existsSync(path.join(child, f)))) {
-      if (next.length > 0) out.push(next.join("/"));
-    }
-    out.push(...workspacePagePaths(child, next));
-  }
-  return out;
-}
-
-/**
- * The first URL segment of each workspace page — the granularity INTERNAL_ROUTES
- * works at, since the proxy matches `pathname === route || startsWith(route + "/")`.
- * A dynamic first segment cannot be a literal prefix, so it is not a route name.
+ * The walk itself is IMPORTED. It was a local copy here and a second local copy inside
+ * the chunk guard, written an hour apart by the same hand and wrong in the same two
+ * ways. One definition now, in scripts/lib/app-routes.mjs, with its own tests.
  */
 function workspaceRoutes(): string[] {
   return [
     ...new Set(
-      workspacePagePaths()
-        .map((p) => p.split("/")[0])
-        .filter((seg) => !seg.startsWith("[")),
+      walkAppRoutes(WORKSPACE_DIR)
+        .map((p: string) => p.split("/")[0])
+        // "" is the ROOT route — a page directly under (workspace), or under a route
+        // group directly beneath it. It cannot be expressed as an INTERNAL_ROUTES
+        // prefix (that would be "/", the public home), so it is excluded here on
+        // purpose rather than by accident. It does not exist today; if one appears, the
+        // collision with the marketing home is a bigger question than route coverage
+        // and belongs in front of a human, not silently inside this filter.
+        .filter((seg: string) => seg !== "" && !seg.startsWith("[")),
     ),
   ].sort();
 }
