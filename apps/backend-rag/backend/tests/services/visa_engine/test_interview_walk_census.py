@@ -155,7 +155,15 @@ The other nine flags in ``DisclosedReviewFlag`` rewrite ZERO walks: no
 corpus walk answers ``trip_scope = "multiple"`` (``MULTI_PURPOSE_TRIP``),
 none discloses a ``review_gate`` item (the seven compliance disclosures —
 the generator answers that question with its first option, ``none``), and
-none answers ``unsure`` to a sponsor question (``AMBIGUOUS_SPONSOR``).
+none answers ``unsure`` to either of the two questions ``AMBIGUOUS_SPONSOR``
+actually reads, ``family_sponsor_status_code`` / ``family_sponsor_confirmed``.
+Two walks DO answer ``unsure`` to a sponsor question —
+``offshore/other/paid/sponsor_unsure`` on ``work_sponsor_confirmed`` and
+``offshore/work/sponsor_unsure`` on ``sponsor_category`` — but neither is a
+FAMILY sponsor fact, so what they raise is the generic ``NOT_CERTAIN``, the
+two rows already counted above (council round 1, codex-gpt-5.6-sol: this
+sentence used to say "a sponsor question" flatly and contradicted the
+table 470 lines below it).
 That zero is a property of THIS enumeration, never of production: every
 real visitor with two purposes is held, and no walk here measures it.
 
