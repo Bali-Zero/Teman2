@@ -1,0 +1,201 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: VO-G-UI
+    role: build
+    seat: Claude Opus 5 (Dux of window W-VO-G, UI half, implements directly)
+  - lane: VO-G-UI-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (OpenAI, codex exec --sandbox read-only, three adversarial rounds on the merge-base diff)
+  - lane: VO-G-UI-ground-truth
+    role: ground_truth
+    seat: "apps/backend-rag gold_coverage_eval replay, read-only, driven by apps/mouth/scripts/visa-oracle/replay-no-path-doors.py"
+    nb: "rulepack-prod-020.signed.json (sequence 20, version 2026.9.6) replayed at as_of 2026-09-06T14:59:27Z — the signed pack IS the ground truth for every product code this diff names; no NotebookLM notebook was consulted, and none would be authority here"
+    query_hash: "297f1413fed06dce539366d28bb685bfbb63ef3f55ab4118df7f7abfeed392f8"
+council_run: council/journal.jsonl
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 2, which is the floor evidence_pack_lint.py --print-floor measures on
+      this merge-base diff (8 files, +1057/-25 at the time of the first
+      measurement; no hot-zone path, churn far under the 1828-line SIZE term).
+      A council was run anyway, because the surface makes a public claim about
+      which visa a visitor qualifies for. It is filed under council/ with all
+      three rounds; no seat ever returned VERDICT: OK, so no row in the journal
+      carries ok:true — the three DEFECT verdicts are what produced the three
+      cures below, and none of them is dressed up as approval. The second seat
+      did not land: kimi-code/k3 is quota-exhausted this month, and
+      tp1-qwen3.8-max returned an empty stdout on the 64KB diff prompt inside
+      the 900s ceiling. Both are recorded in the journal as they happened.
+  - id: D-proof
+    decision: >-
+      A door may be named only where a REPLAY of the signed pack returns that
+      product for the applicant's own stated facts.
+      apps/mouth/scripts/visa-oracle/replay-no-path-doors.py replays every
+      non-supported corpus walk against rulepack-prod-020.signed.json with
+      exactly ONE declared field changed (intent.purposes, or person.birth_date
+      for the age counterfactual) and writes _lib/fixtures/
+      no-path-doors.replay.json; no-path-doors.test.tsx holds every rendered
+      door against it. Prose is never evidence for a product code.
+  - id: D-counterexamples
+    decision: >-
+      Council round 1 (DEFECT) established that a rule proven on 17 synthetic
+      fact sets is not proven for a visitor. Five counterexamples — one changed
+      answer each — are now measured by the same generator and asserted by name
+      as ABSTENTIONS: Indonesian nationality, a stay past the tourist bound, a
+      deposit outside a state bank, a deposit not in the applicant's own name,
+      zero passive income. Each is the innocence half of a guilt/innocence pair
+      (cicatrix family #3).
+  - id: D-age-door-withdrawn
+    decision: >-
+      Council round 2 (DEFECT) showed the E33F "from 55" door still over-matched:
+      at exactly 55 the pack supports that route only above an income bound the
+      interview never states. Rather than take a third swing at the same rule (a
+      fix of a fix), the door is WITHDRAWN. The fixture keeps its AGE_55 column,
+      so the next window reopens it from evidence.
+  - id: D-switch-copy
+    decision: >-
+      Council round 3 (DEFECT, P2) showed both door sentences promised the rules
+      would check the other route "with the same answers", while flow.ts's
+      SELECT_CATEGORY truncates the interview back to the category question and
+      prunes the abandoned branch's facts. The copy now promises exactly what
+      the reducer does, in EN and ID.
+  - id: D-no-figures
+    decision: >-
+      No figure is printed by any door sentence. TOURIST_VISIT_MAX_STAY_DAYS
+      (180) and the two Second Home thresholds are PREDICATES only — bounds the
+      signed pack owns, measured in this session, never restated as copy. The
+      only figures the sheet prints are the ones #6404 already shipped on the
+      below-threshold path, which name the applicant's own declared value.
+  - id: D-perimeter
+    decision: >-
+      tree.ts / flow.ts / fact-mapper.ts and the walk corpus stay untouched
+      (W-VO-E owns them in parallel); oracle.css is untouched, so the door's
+      two-line shape is set with inline styles rather than a new class. The
+      seq-22 pack half is not in this PR.
+receipts:
+  - claim: The worktree was created by the broker on the mouth lane for this task id.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id vo-g-doors
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-vo-g-doors ; branch agent/air-m5/mouth/vo-g-doors"
+    exit: 0
+    ts: "2026-09-13T19:47:00+08:00"
+    seat: Claude Opus 5
+  - claim: The replay measures the census this window claims — 15 NO_SUPPORTED_PATH and 2 NEEDS_INPUT — against the signed pack in force.
+    cmd: apps/backend-rag/.venv/bin/python apps/mouth/scripts/visa-oracle/replay-no-path-doors.py
+    result: "17 non-supported walks written; pack rulepack-prod-020.signed.json sequence 20 version 2026.9.6, as_of 2026-09-06T14:59:27Z. States: 15 NO_SUPPORTED_PATH + 2 NEEDS_INPUT, matching the coverage report's B2 table row for row, codes included."
+    exit: 0
+    ts: "2026-09-13T20:08:00+08:00"
+    seat: Claude Opus 5
+  - claim: A1 — every no-path cause renders as a sentence in EN and ID; the raw code and the generic catalogue sentence reach zero walks.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/no-path-doors.test.tsx"
+    result: "77 passed. The wording assertions run over the 15 walks AND the 5 counterexample rows; removing the AGE_BELOW_55 entry from SUPPORT_REASON_COPY turns 8 of them red with 'AGE_BELOW_55 has no copy: the raw code reaches the reader', and removing the APPLICANT_IS_INDONESIAN_CITIZEN entry turns 1 red."
+    exit: 0
+    ts: "2026-09-13T20:53:00+08:00"
+    seat: Claude Opus 5
+  - claim: A2 — every rendered door names a product the replay returns for those facts, and the guard bites both ways.
+    cmd: mutate engine-adapter.ts (C1 -> C2 on the tourism door ; drop the state-bank/own-name conditions ; drop the Indonesian-nationality precondition) and re-run the suite each time
+    result: "C2 mutation: 15 failures, 'offshore/business names C2 behind the tourism door, which the replay does not support'. Dropped conditions: 3 failures on the counterexample rows (indonesian-nationality, deposit-not-at-state-bank, deposit-not-in-own-name). Restored: 77 passed."
+    exit: 0
+    ts: "2026-09-13T20:47:00+08:00"
+    seat: Claude Opus 5
+  - claim: The evidence cannot go stale silently — the fixture is fingerprinted against the walk corpus it was measured on.
+    cmd: flip one character of walk_corpus_fingerprint in the fixture and re-run the test
+    result: "1 failure: 'the interview corpus moved under this evidence: re-run apps/mouth/scripts/visa-oracle/replay-no-path-doors.py ...'. Restored from the backup copy; 77 passed."
+    exit: 0
+    ts: "2026-09-13T20:12:00+08:00"
+    seat: Claude Opus 5
+  - claim: A3 — both NEEDS_INPUT walks name the missing fact and carry a question that resolves it.
+    cmd: same suite, tests "asks the missing fact instead of holding it"
+    result: "offshore/other/paid/sponsor_unsure (work.indonesian_work_sponsor_confirmed) and offshore/retirement/undecided/age64/still_unsure (family.sponsor_confirmed) both green: every missingInput carries a questionId and non-empty EN and ID copy."
+    exit: 0
+    ts: "2026-09-13T20:53:00+08:00"
+    seat: Claude Opus 5
+  - claim: Every touched surface keeps its tests green, and the whole Visa Oracle suite with it.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)" ; npx tsc --noEmit ; npx eslint on the touched files ; npx prettier --check
+    result: "40 files / 846 tests passed ; tsc exit 0 ; eslint 0 errors (the new test file is matched by an ignore pattern, 1 warning) ; prettier clean on every touched file."
+    exit: 0
+    ts: "2026-09-13T20:56:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 — the dead ends were walked in a real browser on a local PRODUCTION build, EN and ID.
+    cmd: next build --webpack && next start --port 3131 ; PLAYWRIGHT_EXTERNAL_SERVER=1 npx playwright test e2e/visa-oracle-no-path-doors.spec.ts --project=chromium
+    result: "build exit 0 ; 3 passed (offshore/business, offshore/retirement/bank_deposit, offshore/other/paid/employer_no). This spec is what found the raw-code defect in the first place: its first run failed on 'Verified reason: AGE_BELOW_55' being read back by the sheet."
+    exit: 0
+    ts: "2026-09-13T21:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 — twelve screenshots of the same production build, three dead ends x 1440/390 x EN/ID.
+    cmd: playwright chromium driving the corpus generator's own answers against 127.0.0.1:3131, full-page captures
+    result: "/Users/balizero/Desktop/R3-RENDERS-20260913/vo-g/{offshore-business,offshore-retirement-bank_deposit,offshore-other-paid-employer_no}-{1440,390}-{en,id}.png — 12 files. The retirement sheet shows the named age cause plus both doors; the employer_no sheet shows the named payer cause where the generic catalogue sentence used to stand."
+    exit: 0
+    ts: "2026-09-13T21:06:00+08:00"
+    seat: Claude Opus 5
+  - claim: The harness floor for this diff is 2, and the gear declared equals it.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file /tmp/cf.txt --numstat-file /tmp/ns.txt
+    result: "2 (measured 8 files, +1057/-25)."
+    exit: 0
+    ts: "2026-09-13T20:31:00+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: codex-gpt-5.6-sol (council round 3, unresolved)
+    objection: >-
+      Where every door is shut — a declared Indonesian nationality, or a stay past
+      the tourist bound — the sheet renders no door section at all, so no product
+      is named. The reviewer reads that as an UNDER-match against the window's own
+      "every dead end names a door" framing.
+    status: CONFIRMED
+    cure: >-
+      Confirmed as behaviour, rejected as a defect — deliberate. Naming a product the pack measurably does not support for those
+      facts is the OVER-match this window spent two rounds removing. Both cases
+      still read a named cause (APPLICANT_IS_INDONESIAN_CITIZEN got copy in this
+      PR precisely because of that counterexample), and an Indonesian citizen has
+      no visa to be pointed at. An honest silence beats a false door.
+  - seat: codex-gpt-5.6-sol (council rounds 1 and 3, partially unresolved)
+    objection: >-
+      `reasonMessage` still falls back to `Verified reason: ${code}` for any code
+      outside SUPPORT_REASON_COPY, so a future rule can still print a machine
+      identifier at a reader.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured here. The fallback is the pre-existing contract of this file and
+      its comment states the reasoning (a code we have no copy for is still
+      information; blanking it would hide a new rule instead of surfacing it).
+      This window closes it for every code the 15 reachable dead ends and the 5
+      counterexamples can emit; closing it for ALL codes means an exhaustiveness
+      test against the pack's EXCLUDE vocabulary, which is the same shape as the
+      existing REVIEW_REASON_COPY exhaustiveness test and belongs to its own PR.
+      Recorded as a leftover.
+  - seat: Claude Opus 5 (self-refutation, on the proof's reach)
+    objection: >-
+      The replay proves the doors on the corpus's own synthetic identities (one
+      Italian passport, 121 declared days, $1B declared amounts) plus five
+      counterexamples I chose. A sixth dimension I did not probe could break a
+      rule exactly as the first three were broken.
+    status: CONFIRMED
+    cure: >-
+      Partly cured by narrowing every rule to a precondition and by withdrawing
+      the one door whose bound could not live in this file. The structural cure is
+      not a better predicate: it is asking the engine itself (a second evaluate
+      call with the alternative purpose) and rendering what it answers, which
+      needs OracleShell and the evaluation client — outside this window's
+      perimeter. Recorded as the first leftover.
+  - seat: Claude Opus 5 (self-refutation, on the e2e)
+    objection: >-
+      The browser spec computes its expectations by calling `buildNoPathDoors`,
+      the very function under test, so it cannot fail a wrong door rule — only a
+      rendering that disagrees with the rule.
+    status: CONFIRMED
+    cure: >-
+      By design, and stated in the spec's own header: the non-circular half is
+      no-path-doors.test.tsx, which holds the rule against the replay fixture the
+      engine produced. The browser's job here is to prove the sheet renders what
+      the adapter decided, and to walk the interview that reaches it — which is
+      how the raw-code defect was found.
+leftovers:
+  - The honest version of "the door that is open" is an engine round trip — one more POST /api/visa-oracle/evaluate with the same facts and the alternative purpose, rendering the products it returns. That removes every predicate in this file and the whole class of OVER-match the council found. It needs OracleShell.tsx and evaluation-client.ts (idempotency key, retry, telemetry), which this window does not own.
+  - The withdrawn age door (E33F "from 55") is still worth having; the fixture keeps its AGE_55 column and the measurement that killed it (zero passive income leaves the route unsupported at 55).
+  - "`reasonMessage`'s `Verified reason: ${code}` fallback stays reachable for EXCLUDE codes no reachable walk emits. An exhaustiveness test against the pack's EXCLUDE vocabulary, mirroring the REVIEW_REASON_COPY one, would close it."
+  - Playwright cannot import the corpus generator (`import.meta` under its CJS transform), so the browser spec walks three dead ends with a written-out answer table instead of all 17 from `enumerateScenarios`. The 17-row coverage lives in the vitest layer, which renders the real OutcomeSheet in both languages.
+  - "The seq-22 pack half of W-VO-G is untouched: OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES still stands at the source for the three walks whose cause this PR names in the UI instead."
+  - "no-path-doors.test.tsx fingerprints the 17 dead-end walk fixtures. W-VO-E owns the corpus and will move them; the cure is one command (the generator's own docstring names it), but it lands on that window's PR."
+  - "The shared apps/mouth/node_modules/.bin/tsx shim points into .worktrees/mouth-vo-c-doors (a sibling's pnpm store), so 'npm run build -w apps/mouth' fails from any other worktree. Worked around by invoking the root store's tsx directly; imperator-level cleanup, cicatrix family #5."
