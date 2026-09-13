@@ -1,0 +1,145 @@
+task_id: backend-rag-b2-4-pr2-leg-switch
+mandate: B2.4
+colour: BLUE
+pr: B2.4 PR-2
+base_sha: b8162521b58ea441c9890e41c2ae0bfa2a70cb65 # pragma: allowlist secret
+brief_ref: evidence/brief.yml
+gear: 3
+spend:
+  wall_clock_hours: 0.6
+  wall_clock_note: >-
+    Built by a Sonnet 5 child from 21:10Z while PR-1 was gated, rebased onto the
+    PR-1 squash b8162521b5 after merge, cured through Codex rounds 1-2 by
+    22:05Z. Same Dux window 5f34a6fa; hops 1 of 3.
+  adversarial_rounds: 3
+  tokens: 900000
+appetite_exceeded: >-
+  adversarial_rounds 3 against 2 declared: the second-reader seat timed out once
+  at agy's 5-minute print default and was re-run with --print-timeout 20m.
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro replaced kimi-code/k3 (HTTP 403 monthly limit) and
+  tp1-qwen3.8-max (HTTP 429 until 2026-09-18T08:39Z), both as observed and
+  stated in the B2.4 mandate; codex-gpt-5.6-sol played as titolare.
+result: >-
+  SHIP PR-2, the switch. After merge the Fly leg releases WhatsApp text only
+  when the PR-1 envelope authenticates a SUPPORTED verdict from the Pro daemon's
+  judge for this claim's package_hash. Pre-conditions measured before opening:
+  PR-1 merged b8162521b5 and proven in the Fly container; Zero re-provisioned
+  Pro; A5 proven (four runtime modules cmp -s identical, pid 637 -> 51432,
+  broker_last_seen_at advancing). The production defect is cured only when the
+  Bites observation below is made, not by this merge.
+measured:
+  preconditions:
+    pr1_container: "rag 1781e5eda03438 sha256 wa_codex_daemon.py f52108f2ca880899, wa_completion_envelope.py 313caec41cd24efd, wa_broker.py f3fd9f17021fb891 == merged blobs; /health 200 (2026-09-13T21:47Z)"
+    a5: "launchctl pid 51432 running, last exit 0; cmp -s 0 on 4 runtime modules vs clean checkout at b8162521b5; wa_broker_gauge.broker_last_seen_at 21:50:58Z -> 21:52:31Z"
+pii_scan: clean
+pii_scan_note: >-
+  Tests use synthetic questions and synthetic context only. New logs carry
+  outbox id, job id, verdict, judge and votes — never query, answer or key.
+receipts:
+  - claim: >-
+      A1, A2 — builder, leg, support signal, daemon, broker router and every
+      test importing wa_codex_leg / wa_package_builder green in ONE process on
+      head 4611d1f42f and again after the Gemini cure (same tally both times).
+    cmd: 'cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/unit/services/rag/agentic backend/tests/unit/services/integrations backend/tests/unit/services/test_wa_codex_daemon.py backend/tests/unit/services/test_wa_codex_leg.py backend/tests/unit/routers/test_wa_broker_router.py $(grep -rl "wa_codex_leg\|wa_package_builder" backend/tests | sort -u)'
+    exit: 0
+    ts: "2026-09-13T21:59Z"
+    seat: claude-opus-5
+    note: "3086 passed, 41 skipped, 7 xfailed"
+  - claim: >-
+      C2 guilt — disabling the `completion is None` branch turns the old-daemon
+      raw-text and forged look-alike JSON tests red; disabling the V4 check turns
+      the never-offers test red (implementer mutation, cp backup, cmp -s restore).
+    cmd: "mutate wa_codex_leg.py then pytest test_wa_codex_leg_support_negative.py; restore"
+    exit: 1
+    ts: "2026-09-13T21:1xZ"
+    seat: claude-sonnet-5
+  - claim: >-
+      Visible-character guilt — reverting L/N/P/S to the old not-Z/C rule turns
+      exactly the five new combining-mark cases red; the two innocence cases stay green.
+    cmd: "mutate _support_signal.has_visible_character then pytest test_support_signal.py test_wa_codex_leg_support_negative.py; restore"
+    exit: 1
+    ts: "2026-09-13T21:5xZ"
+    seat: claude-sonnet-5
+lanes:
+  - { lane: leg-switch-build, role: build, seat: claude-sonnet-5 }
+  - { lane: a5-proof, role: read, seat: claude-sonnet-5 }
+  - { lane: adversarial-review, role: review, seat: codex-gpt-5.6-sol }
+  - { lane: second-reader, role: review, seat: agy-gemini-3.1-pro }
+council_run: council-journal.jsonl
+bites:
+  consumer: >-
+    wa_outbox_worker -> wa_codex_leg on Fly rag (this PR), consuming the
+    envelope produced by wa_codex_daemon on Pro (PR-1, re-provisioned and
+    proven A5 before this PR was opened).
+  observation: >-
+    Owed after the deploy this merge triggers, NOT claimed here: a wa_outbox row
+    created after the deploy for a supported synthetic fact question ("How long
+    does PT PMA registration take?") with status done, generation_route codex,
+    abstained_at NULL, evidence_score above the label threshold, and a Fly log
+    line naming judge codex:gpt-5.6-terra with votes; plus the off-domain Nusa
+    Penida ferry question served support_abstain with a real judge named.
+    Zero sends both from the test number after READY-FOR-B3-PROBE.
+adversarial:
+  - seat: codex-gpt-5.6-sol
+    round: 1
+    verdict: FIX-FIRST
+    findings: 3
+    cured: 3
+    note: >-
+      MAJOR 315 rollback fails once rows carry support_judge_absent -> cured as
+      NOT VALID (a remap would erase the durable counter; the local guardrail
+      also refuses UPDATE in migrations). MAJOR U+FE0F / U+0301 alone passed the
+      visible rule -> L/N/P/S. MINOR V4 test lacked an offer assertion -> added.
+  - seat: codex-gpt-5.6-sol
+    round: 2
+    verdict: FIX-FIRST
+    findings: 1
+    cured: 0
+    note: >-
+      Confirmed cures 1 and 3 (rollback works, re-apply safe; offer assertion
+      real). New MAJOR: Hangul fillers (Lo) and U+2800 braille blank (So) still
+      pass. NOT cured: the visible-question surface is past its fix-of-a-fix
+      depth (PR-1 round 3, PR-2 round 1), so it is carried as V5 with a spec.
+  - seat: agy-gemini-3.1-pro
+    round: 1
+    verdict: SHIP
+    findings: 1
+    cured: 1
+    note: >-
+      Second reader on the full production diff at 4611d1f42f
+      (reviews/agy-gemini-3.1-pro-pr2-round1.md). MINOR: a package sealed before
+      this PR lacks abstain_unsupported, so the stub label read bool(None)=False;
+      cured with a fail-closed default True (telemetry only, no release path).
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "round 2: invisible Lo/So code points (U+3164, U+115F, U+1160, U+FFA0, U+2800) still count as a visible question"
+    disposition: "accepted and NOT cured in this PR (depth rule); V5 below"
+  - seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    objection: "round 2 (UNSURE): a later VALIDATE CONSTRAINT on the rolled-back CHECK would fail while support_judge_absent rows exist"
+    disposition: "no such migration exists today; recorded so any future VALIDATE on this constraint reads this pack first"
+vulnerabilities:
+  - id: V5-invisible-letter-and-symbol-fillers
+    severity: named-and-open
+    what: >-
+      A message made only of Hangul filler (U+3164, U+115F, U+1160, U+FFA0) or
+      U+2800 braille blank passes has_visible_character on both the leg and the
+      daemon parser, so it is offered and judged on context alone.
+    why_bounded: >-
+      The fail-closed gate is intact: nothing is released without an
+      authenticated SUPPORTED verdict, a NOT_SUPPORTED/UNKNOWN serves the stub,
+      and the daemon parser accepts the package so no support_judge_unavailable
+      folds into the breaker. The worst case is an answer to a message that
+      carries no question.
+    spec: >-
+      Follow-up owns one rule, not an enumeration by review round: a character
+      is visible iff its category is L/N/P/S AND it is not
+      Default_Ignorable_Code_Point AND not in a short named filler set
+      (U+115F, U+1160, U+3164, U+FFA0, U+2800), with one test per excluded
+      code point and innocence cases for Korean, Indonesian and emoji questions.
+  - id: V6-daemon-parser-lags-one-provisioning
+    severity: declared
+    what: "The daemon's copy of has_visible_character keeps the PR-1 rule (not Z/C) until Pro is next provisioned."
+    disposition: "No release path: the leg's V4 check runs before any offer with the new rule; the daemon rule only matters for a package the leg already refused."
