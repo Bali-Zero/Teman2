@@ -63,7 +63,7 @@ decisions:
   - id: D-net-lines
     decision: >-
       Net +2140 without this evidence directory (36 files, +2413/-273 against origin/main
-      after the merge; +2875 with it), far above the contract's ~400 "where the work allows".
+      after the merge), far above the contract's ~400 "where the work allows".
       Declared rather than split, for D-one-pr's reason. The bulk is regenerated contract
       (contract.schema.json +74, schema.d.ts +60), the EN/ID copy tables, the moved pins
       with their reasons, and the new guard file; the runtime logic is the evaluator
