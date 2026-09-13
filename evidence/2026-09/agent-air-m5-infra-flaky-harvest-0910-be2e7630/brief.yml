@@ -1,0 +1,72 @@
+task: >-
+  PR #6065, Lane 5 (R4) of the 2026-09-10 queue-time mandate: a weekly, measure-only flaky-
+  test harvest. `scripts/ci/flaky_harvest.py` joins the pull_request and merge_group
+  `tests.yml` runs for the same head commit over the last 7 days, counts flake candidates
+  per job (a job that flips conclusion between the two runs with no diff in between),
+  extracts failing pytest/Playwright test ids from the failing job's log where present,
+  writes `docs/reports/flaky-harvest/<date>.md`, and posts to the fleet mailbox
+  (`scripts/fleet_mail.sh`, key `flaky-harvest:weekly`). No quarantine and no threshold is
+  applied — the thresholds are a pending owner ruling, and the report header says so. Cron
+  wrapper `scripts/flaky_harvest_cron.sh` targets Mini, Monday 03:30 WITA, NOT installed
+  (deploy step is separate).
+lane: infra/flaky-harvest
+machine: M5
+date: 2026-09-10
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against the
+  merge-base with origin/main measures churn 1092, all additions (42 docs/reports/flaky-
+  harvest/2026-09-10.md, 27 docs/reports/flaky-harvest/README.md, 714
+  scripts/ci/flaky_harvest.py, 243 scripts/ci/test_flaky_harvest.py, 66
+  scripts/flaky_harvest_cron.sh) — above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path (scripts/ci, scripts/, docs/reports/ are not
+  a HOTZONE_PATTERNS match). Confirmed locally via `scripts/evidence_pack_lint.py
+  --print-floor --print-floor-source`, matching the value the `Harness floor recompute`
+  check reported. This brief is written retroactively — it was absent at PR-open, which is
+  what floored the check red — and adds no functional change to the diff it documents.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The join correctly resolves the PR's OWN head via `gh pr view` rather than the merge
+    queue's synthetic ahead-of-N ref, pairs pull_request/merge_group runs by SHA, and
+    classifies each job pair as a flake candidate (flip either direction), a real red (failed
+    both sides), or not comparable.
+    probe: >-
+      python3 -m unittest
+      scripts.ci.test_flaky_harvest.TestFindMatchingPrRun
+      scripts.ci.test_flaky_harvest.TestClassifyJobPair
+      scripts.ci.test_flaky_harvest.TestPairJobs -v
+  A2: >-
+    The rendered report states, in its own header, that no threshold/quarantine is applied
+    (that decision is a pending owner ruling), and the fleet-mailbox summary mentions the
+    same pending-thresholds caveat rather than implying enforcement.
+    probe: >-
+      python3 -m unittest
+      scripts.ci.test_flaky_harvest.TestRenderMarkdown
+      scripts.ci.test_flaky_harvest.TestBuildMailboxSummary -v
+  A3: >-
+    The full 22-test corpus (ref parsing, failed-test-id extraction, run filtering,
+    indexing/grouping, pairing, aggregation, rendering, mailbox summary) stays green.
+    probe: python3 -m unittest scripts.ci.test_flaky_harvest -v
+
+out_of_scope: >-
+  Applying a flakiness threshold or quarantine (Zero's pending ruling). Installing the
+  `flaky_harvest_cron.sh` crontab entry on Mini (a separate deploy step). The
+  `docs/reports/` `.gitignore` negation this PR depends on (landed in a separate PR).
+  Reproducing per-test flake ids for the first report's window, where the flakiness
+  observed was job-level infra (npm registry 503s, browser/apt setup) rather than test-level
+  — stated in the report, not hidden.
+
+assumptions:
+  - text: >-
+      This brief was authored by a separate session after PR-open, to satisfy the
+      `Harness floor recompute` check's SIZE-floor requirement — the acceptance probes above
+      are drawn from the PR body's own reported test count/results, not independently
+      re-run by the session writing this brief.
+    status: unverified
+    probe: "Re-run `python3 -m unittest scripts.ci.test_flaky_harvest -v` on this PR's head and confirm 22 passed."
