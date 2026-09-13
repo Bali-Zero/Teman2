@@ -3088,21 +3088,21 @@ def check_council_policy_v2(pack: dict[str, Any], pack_dir: Path, gear: int | No
             and isinstance(e["dispatch"].get("timeout_s"), (int, float))
             and 0 < e["dispatch"]["timeout_s"] <= COUNCIL_V2_MAX_TIMEOUT_S
         ]
-        if not invoked:
-            violations.append(f"{rule}: eligible seat {seat} was never invoked (all eligible seats are invoked, reserves included)")
-            continue
         bound = [e for e in invoked if e.get("candidate_sha") == candidate]
+        if not bound:
+            violations.append(f"{rule}: eligible seat {seat} was never invoked on {candidate[:12]} (all eligible seats are invoked on the frozen candidate, reserves included)")
         if len(bound) > 1:
             violations.append(f"{rule}: seat {seat} invoked {len(bound)} times on {candidate[:12]} — one invocation per revision")
         for entry in invoked:
             outcome = entry.get("outcome")
             if outcome not in ("PASS", "BLOCK"):
                 continue
-            problem = _v2_judgment_problem(entry, accepted, candidate)
+            problem = _v2_judgment_problem(entry, accepted, entry["candidate_sha"] if entry in bound or _SHA40.match(str(entry.get("candidate_sha"))) else candidate)
             if problem:
                 violations.append(f"{rule}: seat {seat} {outcome} rejected — {problem}")
                 continue
-            judged_families.add(family)
+            if entry in bound:
+                judged_families.add(family)
             raw = entry.get("findings")
             ids = [str(f.get("id")) for f in raw if isinstance(f, dict) and f.get("id")] if isinstance(raw, list) else []
             if outcome == "BLOCK" and not ids:

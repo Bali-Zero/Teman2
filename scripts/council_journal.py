@@ -283,7 +283,11 @@ SEAT_ROUTES: dict[str, dict[str, Any]] = {
         "host": "pro-local", "account_ref": "kimi-allegro-oauth",
         "argv": [KIMI, "-m", "kimi-code/k3", "--output-format", "stream-json", "-p", "{prompt}"],
     },
-    "codex-gpt-5.6-sol": {"host": "pro-local", "account_ref": "codex-oauth", "argv": None},
+    "codex-gpt-5.6-sol": {
+        "host": "pro-local", "account_ref": "codex-oauth",
+        "argv": ["codex", "exec", "-m", "gpt-5.6-sol", "--sandbox", "read-only", "--json", "-"],
+        "stdin": True,
+    },
 }
 for _model in ("qwen3.8-max", "glm-5.2", "deepseek-v4-pro"):
     SEAT_ROUTES[f"tp1-{_model}"] = {
@@ -295,7 +299,7 @@ for _model in ("qwen3.8-max", "glm-5.2", "deepseek-v4-pro"):
     }
 
 _VERDICT = re.compile(r"VERDICT=(PASS|BLOCK)\b")
-_FINDING = re.compile(r"FINDING=([A-Za-z0-9_.-]{1,40})\|(high|medium|low)\|([^\n\\\"]{1,240})")
+_FINDING = re.compile(r"FINDING=([A-Za-z0-9_.-]{1,40})\|(high|medium|low)\|([^\n]{1,240})", re.I)
 _MODEL_KEYS = {"model", "modelId", "model_id", "modelVersion", "resolved_model", "modelName"}
 _SESSION_KEYS = {"session_id", "sessionId", "conversation_id", "conversationId", "cascade_id", "cascadeId"}
 _COUNT_KEYS = {"num_turns", "numTurns", "request_count", "api_requests", "retries", "retry_count"}
@@ -321,7 +325,7 @@ def _walk(node: Any, sink: dict[str, list]) -> None:
             _walk(item, sink)
 
 
-def classify_output(seat: str, stdout: str, exit_code: int | None, timed_out: bool) -> dict[str, Any]:
+def classify_output(seat: str, stdout: str, exit_code: int | None, timed_out: bool, packet: str = "") -> dict[str, Any]:
     """Turn one real process result into a journal verdict. Only a VERDICT= line from a process
     that exited 0 in time, whose EVERY observed model identity is the exact requested one, is a
     judgment; everything else is NON_JUDGMENT with the reason — never PASS."""
@@ -332,8 +336,10 @@ def classify_output(seat: str, stdout: str, exit_code: int | None, timed_out: bo
         try:
             _walk(json.loads(line), sink)
         except (json.JSONDecodeError, RecursionError):
-            sink["text"].append(line)
-    blob = "\n".join(sink["text"])
+            if not (packet and len(line) >= 64 and line in packet):
+                sink["text"].append(line)
+    # An echoed prompt chunk is not the reviewer speaking: drop long strings copied from the packet.
+    blob = "\n".join(t for t in sink["text"] if not (packet and len(t) >= 64 and t in packet))
     models = sorted(set(sink["models"]))
     result: dict[str, Any] = {
         "observed_models": models,
@@ -357,14 +363,14 @@ def classify_output(seat: str, stdout: str, exit_code: int | None, timed_out: bo
     if reason:
         result.update(outcome="NON_JUDGMENT", non_judgment_reason=reason)
         return result
-    result["outcome"] = verdicts[-1]
+    result["outcome"] = "BLOCK" if "BLOCK" in verdicts else "PASS"
     result["resolved_model"] = next(m for m in models if m in accepted)
     result["verdict_sha256"] = hashlib.sha256(blob.encode()).hexdigest()
     seen = set()
     for fid, sev, text in _FINDING.findall(blob):
         if fid not in seen:
             seen.add(fid)
-            result["findings"].append({"id": fid, "severity": sev, "summary": text.strip()[:240]})
+            result["findings"].append({"id": fid, "severity": sev.lower(), "summary": text.strip()[:240]})
     return result
 
 
@@ -376,7 +382,10 @@ def _terminate(proc: subprocess.Popen) -> str:
     except ProcessLookupError:
         return "already_exited"
     except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGKILL)
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
         proc.wait(timeout=3)
         return "sigkill"
 
@@ -462,7 +471,7 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
             fd = os.open(raw, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 handle.write(ran["stdout"] + "\n--stderr--\n" + ran["stderr"])
-            verdict = classify_output(seat, ran["stdout"], ran["dispatch"]["exit_code"], ran["dispatch"]["timed_out"])
+            verdict = classify_output(seat, ran["stdout"], ran["dispatch"]["exit_code"], ran["dispatch"]["timed_out"], packet)
             entries.append({
                 "policy": lint.COUNCIL_POLICY_V2, "seat": seat, "family": family, "role": "review",
                 "requested_model": accepted[0], "candidate_sha": args.candidate_sha,

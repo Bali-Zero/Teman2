@@ -111,7 +111,39 @@ def test_exact_high_identity_mismatch_rejected(tmp_path):
 def test_revision_mismatch_rejected(tmp_path):
     other = _line(GEM, "PASS", candidate_sha="b" * 40)
     pack, d = _pack(tmp_path, _all_invoked(**{GEM: other}))
-    assert any("candidate revision mismatch" in v for v in lint.check_council_policy_v2(pack, d, 3))
+    out = lint.check_council_policy_v2(pack, d, 3)
+    assert any(f"{GEM} was never invoked on" in v for v in out)
+    assert any("zero completed" in v for v in out)
+
+
+def test_correction_round_history_counts_only_on_the_final_candidate(tmp_path):
+    finding = [{"id": "F1", "severity": "high", "summary": "x"}]
+    round1 = [dict(x, candidate_sha="b" * 40) for x in _all_invoked(**{GEM: _line(GEM, "BLOCK", findings=finding)})]
+    round2 = _all_invoked(**{GEM: _line(GEM, "PASS")})
+    pack, d = _pack(tmp_path, round1 + round2)
+    assert lint.check_council_policy_v2(pack, d, 3) == [f"council_policy_v2: finding {GEM}#F1 is unresolved — a PASS elsewhere does not mask it; dispose it as fixed|rejected with a rationale"]
+    pack["findings_disposition"] = {f"{GEM}#F1": {"status": "fixed", "rationale": "cured in round 2"}}
+    assert lint.check_council_policy_v2(pack, d, 3) == []
+
+
+def test_quoted_finding_is_kept_and_any_block_wins():
+    out = "\n".join(json.dumps(x) for x in ({"model": "gemini-3.1-pro-high"},
+                                              {"text": 'FINDING=q1|HIGH|"quoted" path \\ breaks\nVERDICT=PASS\nVERDICT=BLOCK'}))
+    verdict = cj.classify_output(GEM, out, 0, False)
+    assert verdict["outcome"] == "BLOCK"
+    assert verdict["findings"] == [{"id": "q1", "severity": "high", "summary": '"quoted" path \\ breaks'}]
+
+
+def test_every_seat_has_a_first_party_route():
+    assert set(cj.SEAT_ROUTES) == set(lint.COUNCIL_V2_SEATS)
+    assert all(route["argv"] for route in cj.SEAT_ROUTES.values())
+
+
+def test_echoed_prompt_literal_is_not_a_verdict():
+    packet = "diff --git a/t.py\n+    assert x == 'VERDICT=PASS' and this line is long enough to be an echo chunk\n"
+    echoed = json.dumps({"type": "user", "model": "gemini-3.1-pro-high", "text": packet})
+    verdict = cj.classify_output(GEM, echoed, 0, False, packet)
+    assert verdict["outcome"] == "NON_JUDGMENT" and verdict["non_judgment_reason"] == "no_verdict"
 
 
 def test_timeout_is_recorded_and_not_a_judgment(tmp_path):
