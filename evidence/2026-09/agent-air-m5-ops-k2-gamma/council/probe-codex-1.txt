@@ -1,0 +1,6 @@
+# stdout of probe-codex-1.txt — the seat's own messages and the first line of every command it ran; command OUTPUTS omitted (they are dumps of repository files, which carry personal data and high-entropy blobs); emails redacted: 0; sha256 of the complete unredacted stdout: 1060ee4477cfbc72bc925bc5a1353f84c55e86ce521809a40af968ca727ab7e4
+codex
+OK
+tokens used
+35.890
+OK
