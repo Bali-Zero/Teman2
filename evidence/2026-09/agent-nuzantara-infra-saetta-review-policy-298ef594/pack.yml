@@ -1,0 +1,82 @@
+task_id: infra-saetta-review-policy
+brief_ref: evidence/brief.yml
+base_sha: 316a8e84fa3de399a47c8d679e12d42e86d013e6 # pragma: allowlist secret
+mandate: SAETTA-REVIEW-POLICY
+status: BLOCK
+ruling: >-
+  Owner policy ruling 2026-09-13 (canonical change): "ok inserire anche gemini 3.1 pro high nella
+  lista - e non diminuiamo, ma una regola che tutti vengono invocati i revisori ma basta la risposta
+  di uno". This pack records that transition; it is not a fictional second review.
+council_policy: saetta-review-policy-v2
+candidate_sha: 759e08b0f9fe52ad27641de1a70ac8cd34852ebf # pragma: allowlist secret
+contributing_families: [anthropic, openai]
+council_run: council-journal.jsonl
+seat_override: >-
+  POLICY-RULING TRANSITION ONLY for the base-checkout (old v1) R9 in harness-floor, which cannot read
+  v2 journal lines and still counts only the unsuffixed agy-gemini-3.1-pro. The v2 lint in this
+  branch ignores seat_override and enforces the full contract; its verdict on this pack is BLOCK
+  (unresolved round-2 findings), recorded below.
+findings_disposition:
+  "agy-gemini-3.1-pro-high#argv-none-blocks-lint":
+    {
+      status: fixed,
+      rationale: "759e08b0 adds a first-party codex exec route; test_every_seat_has_a_first_party_route",
+    }
+  "agy-gemini-3.1-pro-high#finding-regex-drops-quotes":
+    {
+      status: fixed,
+      rationale: "759e08b0 regex keeps quotes/backslashes; test_quoted_finding_is_kept_and_any_block_wins",
+    }
+  "agy-gemini-3.1-pro-high#terminate-race-condition":
+    {
+      status: fixed,
+      rationale: "759e08b0 catches ProcessLookupError before SIGKILL; no dedicated race test",
+    }
+  "agy-gemini-3.1-pro-high#popen-unhandled-exception":
+    {
+      status: open,
+      rationale: "valid: a missing seat binary raises before the journal is written; correction round already used",
+    }
+  "agy-gemini-3.1-pro-high#terminate-timeout-uncaught":
+    {
+      status: open,
+      rationale: "valid: wait after SIGKILL can raise TimeoutExpired; correction round already used",
+    }
+  "agy-gemini-3.1-pro-high#pid-reuse-race":
+    {
+      status: open,
+      rationale: "plausible: killpg after reap can target a reused pgid; correction round already used",
+    }
+  "agy-gemini-3.1-pro-high#fleet-topology-missing-route":
+    {
+      status: open,
+      rationale: "valid doc drift: FLEET_TOPOLOGY routes omit codex; correction round already used",
+    }
+dissent:
+  - seat: agy-gemini-3.1-pro-high
+    objection: "round 2 on 759e08b0: popen-unhandled-exception (high), terminate-timeout-uncaught (medium), pid-reuse-race (medium), fleet-topology-missing-route (low)"
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro-high
+    objection: "round 1 on ba29feec: argv-none-blocks-lint (high), finding-regex-drops-quotes (high), terminate-race-condition (medium) — fixed in 759e08b0"
+    status: CONFIRMED
+  - seat: claude-opus-5
+    objection: "dux self-review of ba29feec: correction-round history reported as violations; echoed prompt literal could read as a verdict — fixed in 759e08b0"
+    status: CONFIRMED
+lanes:
+  - lane: "policy v2 producer + enforcer + doctrine"
+    role: build
+    seat: "claude-opus-5 xhigh (native Claude Code, Pro)"
+    state: delivered-blocked
+  - lane: "council round 1 on ba29feec"
+    role: review
+    seat: agy-gemini-3.1-pro-high
+  - lane: "council round 2 on 759e08b0"
+    role: review
+    seat: agy-gemini-3.1-pro-high
+  - lane: "council rounds 1-2 NON_JUDGMENT (kimi 403, TP1 429 x3)"
+    role: review
+    seat: "kimi-code/k3, tp1-qwen3.8-max, tp1-glm-5.2, tp1-deepseek-v4-pro"
+tests:
+  - "pytest scripts/tests/{test_council_policy_v2,test_council_journal,test_evidence_pack_lint,test_stage_council_journal,test_lint_roster_dispatch,test_saetta,test_saetta_receipt}.py on 759e08b0: 750 passed, 1 failed (test_saetta timeout test, PermissionError under parallel load; saetta.py untouched; rerun alone 15 passed)"
+  - "node --test infra/workflows/tests/test-saetta.mjs: 50 pass, 0 fail"
+pii_scan: clean
