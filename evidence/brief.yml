@@ -3,11 +3,11 @@ gear: 2
 l_level: L2
 gate_class: opus
 # Floor for this diff: 2, source `size` — measured with
-# `git diff --name-only origin/main...HEAD` (16 files) and
-# `git diff --numstat origin/main...HEAD` (16 files, ~727 added / ~33 removed lines) fed to
-# `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <f>`
-# after the last commit (42722761ea): floor 2. No pack edit, no engine-adapter.ts, no hot-zone
-# path touched. Gear 2 declared to match the floor.
+# `git diff --name-only origin/main...HEAD` and `git diff --numstat origin/main...HEAD` fed to
+# `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <f>`,
+# re-run after every commit in this PR including this file's own (17 files, ~727 added / ~33
+# removed lines at 51fd4474b4): floor stayed 2 throughout. No pack edit, no engine-adapter.ts, no
+# hot-zone path touched. Gear 2 declared to match the floor.
 objective: >-
   PR-D4c-2 of the Visa Oracle rebuild (mandate SHWEB-20260911): replace fact-mapper.ts's
   investment.investment_amount_usd unconditional unknownFact(NOT_ASKED) placeholder (PR-D4c-1,
