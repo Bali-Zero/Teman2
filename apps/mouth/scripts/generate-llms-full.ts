@@ -156,9 +156,34 @@ async function generate(): Promise<void> {
     let llmsTxt = fs.readFileSync(LLMS_TXT_PATH, "utf8");
     const freshnessHeader =
       "## Recently Published & Updated (Freshness Signal)";
-    const latest5 = enArticles
-      // Translations share the canonical URL; list each English article once.
-      .filter((a) => a.isCanonical)
+    // `isCanonical` drops translations, which is NOT the same as one entry per URL:
+    // 13 content folders collapse to 6 public segments (tax/ and tax-legal/ both
+    // publish under /taxes/), so two canonical files sharing a slug across two of
+    // those folders produce ONE url twice. The committed llms.txt carried exactly
+    // that — the same two articles listed twice in this block — and the comment here
+    // claimed each article appeared once. De-duplicate on the thing the block is a
+    // list OF, keeping the most recent date when a url arrives more than once.
+    const byUrl = new Map<string, (typeof enArticles)[number]>();
+    for (const a of enArticles.filter((x) => x.isCanonical)) {
+      // First wins, because the array is already sorted date-DESC above and the first
+      // sighting of a url is therefore its most recent entry. Comparing dates here as
+      // well would be dead code that LOOKS like the guarantee while the sort actually
+      // provides it.
+      if (!byUrl.has(a.url)) byUrl.set(a.url, a);
+    }
+    // NO second sort here, deliberately. A reviewer proposed one, reasoning that
+    // `Map.set` on an existing key updates the value without moving it, so a
+    // de-duplication that kept a LATER-arriving entry could leave it at an older
+    // position and let `slice(0, 5)` drop the newest article. That is true of a
+    // last-wins de-duplication; this one is first-wins over an array already sorted
+    // date-DESC, so the case cannot arise — and the probe confirmed it: removing a
+    // re-sort left every test green, i.e. it was code no test could redden.
+    //
+    // What the reviewer was right about is the COUPLING: these five lines depend on
+    // the sort eighty lines above. That dependency is written here rather than
+    // defended with unprovable code, and the sort itself already carries a comment
+    // explaining why its tie-break is load-bearing.
+    const latest5 = [...byUrl.values()]
       .slice(0, 5)
       .map(
         (a) =>
