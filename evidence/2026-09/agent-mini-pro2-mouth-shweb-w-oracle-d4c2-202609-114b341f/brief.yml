@@ -2,11 +2,13 @@ task_id: visa-oracle-d4c2-investment-amount-usd
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff: 2, source `size` — measured with
-# `git diff --name-only origin/main...HEAD` and `git diff --numstat origin/main...HEAD` fed to
-# `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <f>`,
-# re-run after every commit in this PR including this file's own (17 files, ~727 added / ~33
-# removed lines at 51fd4474b4): floor stayed 2 throughout. No pack edit, no engine-adapter.ts, no
+# Floor for this diff: 2, source `size`. Re-run after every commit in this PR, including the one
+# that moved this brief off the shared root path (87b5a33b66), with:
+#   git diff --name-only origin/main...HEAD > <changed-files-file>
+#   git diff --numstat origin/main...HEAD > <numstat-file>
+#   python3 scripts/evidence_pack_lint.py --print-floor \
+#     --changed-files-file <changed-files-file> --numstat-file <numstat-file>
+# → 2, every time (17 files at the last measurement). No pack edit, no engine-adapter.ts, no
 # hot-zone path touched. Gear 2 declared to match the floor.
 objective: >-
   PR-D4c-2 of the Visa Oracle rebuild (mandate SHWEB-20260911): replace fact-mapper.ts's
