@@ -1,0 +1,44 @@
+task_id: saetta-fleet-ready
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Ship a durable, portable SAETTA BLUE mission executor. The native Workflow scheduler
+  (infra/workflows/saetta.js) keeps dependants closed on BLOCK, missing receipts, changed
+  heads, failed seats, unobserved merges and failed live proofs, while unrelated slices
+  continue. Its launcher (scripts/saetta.py) resolves host paths, preflights installed
+  subscription seats and the Codex 0.6 context policy, and accepts a run only from a
+  receipt bound to the exact native Workflow journal (scripts/saetta_receipt.py).
+constraints:
+  - One concern. Scheduler, launcher and receipt consumer ship atomically with negative tests.
+  - Active session scripts from 2026-09-13 are not replaced; this is a successor for new missions.
+  - No product, scheduler, daemon, cron, fleet install, credential or paid API change.
+  - automation_catalog.json gains only the on-demand saetta.py entry.
+  - Mission colour BLUE. The Dux prepares, opens, arms and freezes; a fresh Opus gate signs.
+acceptance:
+  - text: >-
+      Invalid, duplicate, cyclic or unknown dependencies, non-BLUE colour, relative paths,
+      excessive fan-out and unordered overlapping scopes SHALL be rejected before dispatch;
+      only Dux result plus exact-head PASS, posted and merged gate, and PASS release SHALL
+      release dependants; close SHALL never upgrade BLOCK.
+    probe: /opt/homebrew/bin/node --test infra/workflows/tests/test-saetta.mjs
+  - text: >-
+      The launcher SHALL reject CLI exit 0 without a bound native completion receipt, and
+      SHALL reap a TERM-resistant descendant process group on timeout.
+    probe: python3 -m unittest discover -s scripts/tests -p 'test_saetta*.py'
+  - text: >-
+      Installed Codex parent and native-child context policy SHALL behave correctly
+      immediately below and at the 0.6 threshold.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest infra/codex-hooks/test_sixty_percent_boundary.py
+      infra/codex-hooks/test_child_lifecycle.py -q
+consumer_map:
+  - SAETTA imperator launches new BLUE missions with scripts/saetta.py run on Pro, M5 and Mini.
+  - The Kita tax-lead/pruning pilot is the first mission consumer, in its own separate briefs.
+risks:
+  - Gate and release read-back attestations are model-directed; the native DSL has no filesystem or GitHub oracle.
+  - Native smoke evidence was observed on installed CLI 2.1.270; account or CLI changes require a repeat smoke.
+  - Net size exceeds the ~400-line target because executor, launcher and receipt consumer must land together.
+grader: Fresh independent Opus 5 xhigh gate commissioned by the imperator on the frozen remote head.
+budget: Existing subscription seats only; no paid API calls.
+pii: none
