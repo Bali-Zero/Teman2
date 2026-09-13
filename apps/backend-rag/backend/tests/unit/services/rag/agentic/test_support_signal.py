@@ -512,12 +512,21 @@ class TestSupportInputsFromWire:
         with pytest.raises(ValueError, match="'history' is empty"):
             support_inputs_from_wire(wire)
 
-    def test_blank_content_raises(self) -> None:
-        """Same reasoning as empty history: a history whose last turn's
-        content is blank (or all whitespace) carries no question either."""
+    @pytest.mark.parametrize(
+        "query",
+        [
+            pytest.param("   ", id="spaces"),
+            pytest.param("​", id="zero-width-space"),
+            pytest.param("﻿​ \t\n", id="bom-zero-width-whitespace"),
+        ],
+    )
+    def test_query_without_a_visible_character_raises(self, query: str) -> None:
+        """Codex round 3 (MAJOR): `str.strip()` keeps U+200B/U+FEFF, and the
+        REAL builder emits such a query unchanged — built here through
+        `_sanitize_history`, not a hand-written history."""
         wire = wa_package_builder._canonical_wire(  # noqa: SLF001
             {
-                "history": [{"role": "user", "content": "   "}],
+                "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001
                 "chunks": [{"collection": "c", "text": "only chunk", "score": 1.0}],
                 "pricing_block": None,
                 "persona_digest": "digest",
@@ -528,6 +537,38 @@ class TestSupportInputsFromWire:
 
         with pytest.raises(ValueError, match="content is blank"):
             support_inputs_from_wire(wire)
+
+    def test_last_turn_not_from_user_raises(self) -> None:
+        """Codex round 3 (MAJOR, UNSURE): the builder always ends on a user
+        turn, so an assistant last turn is a broken producer, never a question."""
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": [{"role": "assistant", "content": "a statement drawn from context"}],
+                "chunks": [{"collection": "c", "text": "only chunk", "score": 1.0}],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        with pytest.raises(ValueError, match="not a user turn"):
+            support_inputs_from_wire(wire)
+
+    def test_visible_query_keeps_its_format_characters(self) -> None:
+        query = "​Berapa lama proses PT PMA?﻿"
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001
+                "chunks": [],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        assert support_inputs_from_wire(wire) == (query, "")
 
     def test_matches_the_builder_formula_zero_chunks(self) -> None:
         wire = wa_package_builder._canonical_wire(  # noqa: SLF001

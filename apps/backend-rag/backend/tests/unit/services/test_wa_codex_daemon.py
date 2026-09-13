@@ -92,6 +92,26 @@ _BLANK_CONTENT_PACKAGE_WIRE = json.dumps(
         "thread_epoch": 0,
     }
 )
+_ZERO_WIDTH_QUERY_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [{"role": "user", "content": "​﻿"}],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
+_ASSISTANT_LAST_TURN_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [{"role": "assistant", "content": _SYNTHETIC_QUERY}],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
 _RESULT_TEXT = "SYNTHETIC-MODEL-ANSWER-c71e"
 _JUDGE_PROMPT = RUBRIC.format(query=_SYNTHETIC_QUERY, context=_SYNTHETIC_CONTEXT)
 
@@ -855,6 +875,8 @@ class TestSupportJudgeStage:
             pytest.param(_MALFORMED_PACKAGE_WIRE, id="unreadable"),
             pytest.param(_EMPTY_HISTORY_PACKAGE_WIRE, id="empty-history"),
             pytest.param(_BLANK_CONTENT_PACKAGE_WIRE, id="blank-content"),
+            pytest.param(_ZERO_WIDTH_QUERY_PACKAGE_WIRE, id="zero-width-query"),
+            pytest.param(_ASSISTANT_LAST_TURN_PACKAGE_WIRE, id="assistant-last-turn"),
         ],
     )
     @pytest.mark.asyncio
