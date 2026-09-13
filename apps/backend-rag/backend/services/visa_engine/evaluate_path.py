@@ -1506,7 +1506,9 @@ def _apply_disclosed_review_flags(
     return Decision.model_validate(payload)
 
 
-#: The ONLY review cause a visitor may still be shown. A frozenset and not a
+#: The ONLY review causes a visitor may still be shown: the disclosed criminal
+#: matter (Zero) and the two source-integrity holds (imperator decision,
+#: 2026-09-13). A frozenset and not a
 #: substring test: `_apply_visitor_determinism_floor` decides on CODE IDENTITY,
 #: so a future `CRIMINAL_MATTER_DISCLOSED_PENDING` does NOT inherit the
 #: exception by looking like it (guard family #3, OVER-match).
@@ -1516,32 +1518,38 @@ VISITOR_REVIEW_CAUSE_ALLOWLIST: frozenset[str] = (
 
 
 def _apply_visitor_determinism_floor(decision: Decision) -> Decision:
-    """The last word: EXACTLY ONE review cause survives to a visitor.
+    """The last word: only an allowlisted review cause survives to a visitor.
 
     RULED 2026-09-13 (`docs/rules/RULINGS.md`), Zero verbatim, in two
     sentences that must be read together: *«non va mai a revisione umana ma
     c'è sempre risposta deterministica»* and, answering what should happen to
     the compliance disclosures, *«1 se ci sono questioni penali, revisione
     umana»*. So the rule is not "never" — it is "never, except a disclosed
-    criminal matter, and even that one is explained".
+    criminal matter, and even that one is explained". The imperator decision
+    of the same day adds the engine-integrity holds: a decisive or
+    safety-critical source that is not applicable law
+    (`*_PRIMARY_SOURCE_NOT_APPLICABLE`) keeps the hold, because no verdict
+    may stand on it.
 
     This adapter enforces the EXCEPT clause as an allowlist on the reason
     code. A review outcome whose causes are all allowlisted passes through
-    untouched; anything else is converted. That shape is why the guard test
-    can pin the number of visitor-path review emitters to ONE and have the
-    number mean something: a new emitter does not add a second path, it gets
-    converted by this adapter until somebody deliberately widens the
-    allowlist.
+    untouched; one that carries an allowlisted cause beside others keeps the
+    hold on the allowlisted causes and names the others as conditions; one
+    with no allowlisted cause becomes NO_SUPPORTED_PATH carrying the same
+    codes. That shape is why the guard test can pin the allowlist exactly and
+    have it mean something: a new emitter does not add a path, it gets
+    converted here until somebody deliberately widens the allowlist.
 
     On the ENDPOINT this adapter is a NET and finds nothing: `evaluate_path`
     asks the evaluator for `review_as_conditions=True`, so a pack rule whose
     effect is `REQUIRE_REVIEW` has already become a condition on a live
-    verdict — candidates intact — long before here. The net exists for the
-    OFFLINE callers of `apply_public_policy_adapters`
-    (`gold_coverage_eval.py`, `gold_replay_driver.py`) which evaluate in the
-    engine's default mode: they still get the guarantee, just the poorer
-    version of it, because a decision that short-circuited at the review gate
-    never computed the candidates this adapter would have to preserve.
+    verdict — candidates intact — long before here. The net exists for any
+    caller of `apply_public_policy_adapters` that evaluates in the engine's
+    default mode (the census and replay drivers now pass
+    `review_as_conditions=True` like the endpoint): it still gets the
+    guarantee, just the poorer version of it, because a decision that
+    short-circuited at the review gate never computed the candidates this
+    adapter would have to preserve.
 
     That asymmetry is deliberate and is the reason this is not the primary
     mechanism. A floor can promise "never HUMAN_REVIEW_REQUIRED"; only the
