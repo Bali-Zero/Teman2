@@ -63,6 +63,7 @@ __all__ = [
     "SupportDecision",
     "SupportVerdict",
     "evaluate_support",
+    "has_visible_character",
     "majority",
     "support_inputs_from_wire",
 ]
@@ -444,6 +445,17 @@ async def evaluate_support(
 # ---------------------------------------------------------------------------
 
 
+def has_visible_character(text: str) -> bool:
+    """True iff `text` carries at least one character OUTSIDE Unicode
+    categories Z (separator) and C (other/control/format) — a genuinely
+    visible character, not just whitespace or a zero-width/format mark
+    like U+200B (zero-width space) or U+FEFF (BOM). Extracted (B2.4 PR-2,
+    design B2-4-design.md §2 item B "residual V4") so `wa_codex_leg.py`'s
+    pre-offer check and this module's own `support_inputs_from_wire` apply
+    the IDENTICAL rule instead of two copies drifting apart."""
+    return any(unicodedata.category(char)[0] not in "ZC" for char in text)
+
+
 def support_inputs_from_wire(wire: str) -> tuple[str, str]:
     """Parse a sealed broker wire into the judge's ``(query, context)`` pair.
 
@@ -485,7 +497,7 @@ def support_inputs_from_wire(wire: str) -> tuple[str, str]:
     if last_turn.get("role") != "user":
         raise ValueError("support_inputs_from_wire: last history entry is not a user turn")
     query = last_turn["content"]
-    if not any(unicodedata.category(char)[0] not in "ZC" for char in query):
+    if not has_visible_character(query):
         raise ValueError("support_inputs_from_wire: last history entry's content is blank")
 
     chunks = payload.get("chunks")
