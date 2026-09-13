@@ -1,9 +1,9 @@
 {
   "_meta": {
     "purpose": "Add l4_bali.verdict_state without changing the meaning or type of l4_bali.blocked. Selection and targets are derived from live record state.",
-    "created": "2026-09-12",
+    "created": "2026-09-14",
     "emitted_by": "scripts/kbli_filiera/emit_l4bali_verdict_state_spec.py",
-    "canonical_source": "/Users/balizero/nuzantara/.worktrees/kbli-l2-pr-b-policy/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+    "canonical_source": "/Users/balizero/nuzantara/.worktrees/kbli-k2-no-besar/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "selection": "every live canonical record carrying a valid l4_bali Boolean verdict",
     "derivation_order": [
       "NON_CLASSIFICABILE -> unknown",
@@ -16,25 +16,25 @@
     "hard_rule": "The only permitted patch key is verdict_state. blocked is never written; blocked=true on unknown records is deliberately preserved.",
     "open_tier_statuses": ["APERTO_BALI_RISCHIO_ALTO", "OK_or_HIGHER_RISK"],
     "measured_counts": {
-      "open_supporting_tier_absent": 101,
-      "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 11,
+      "open_supporting_tier_absent": 100,
+      "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 10,
       "open_supporting_tier_absent:OK_or_HIGHER_RISK": 90,
-      "status:APERTO_BALI_RISCHIO_ALTO": 11,
+      "status:APERTO_BALI_RISCHIO_ALTO": 10,
       "status:BLOCCATO_CLASSE_RISCHIO": 373,
       "status:BLOCCATO_DIPENDE_SCOPE": 67,
       "status:CHIUSO_BALI": 1,
       "status:CHIUSO_BALI_PROPOSTO": 5,
       "status:CHIUSO_MORATORIA_BALI": 48,
-      "status:CHIUSO_PMA_NO_BESAR": 7,
+      "status:CHIUSO_PMA_NO_BESAR": 8,
       "status:CHIUSO_REGOLATORE_SETTORIALE": 2,
       "status:NON_CLASSIFICABILE": 25,
       "status:OK_or_HIGHER_RISK": 947,
       "status:TERBATAS": 5,
       "status:TERTUTUP": 68,
       "unknown_blocked_true_preserved": 17,
-      "verdict_state:blocked": 95,
+      "verdict_state:blocked": 96,
       "verdict_state:open": 3,
-      "verdict_state:provisional": 1436,
+      "verdict_state:provisional": 1435,
       "verdict_state:unknown": 25
     }
   },
@@ -20373,15 +20373,15 @@
     },
     "93114": {
       "facts_basis": {
-        "status": "APERTO_BALI_RISCHIO_ALTO",
-        "blocked": false,
-        "confidence": "LOW",
-        "needs_review": true,
-        "supporting_tier_absent": true,
+        "status": "CHIUSO_PMA_NO_BESAR",
+        "blocked": true,
+        "confidence": "HIGH",
+        "needs_review": false,
+        "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "provisional"
+        "verdict_state": "blocked"
       }
     },
     "93115": {
