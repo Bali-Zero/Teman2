@@ -1,0 +1,52 @@
+gear: 3
+gear_reason: >-
+  hot-zone path — .github/workflows/** is HOT ZONE (floor 3); the
+  first-party-pin exemption in scripts/evidence_pack_lint.py covers only
+  actions/* and github/*, not sonarsource/* or anchore/*. Verified via
+  `python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+  --changed-files-file <two-file list>` -> floor=3, source=path.
+mission: >-
+  Replace dependabot PR #5529 (sonarsource/sonarqube-scan-action) and #5528
+  (anchore/sbom-action 0.24.0->0.24.2) with one Gear-3-evidenced PR bumping
+  both third-party SAST action pins.
+objective: >-
+  .github/workflows/sonarqube.yml pins sonarsource/sonarqube-scan-action at
+  ad8210318ac8bb816e41990d5af2b304f7a6c213 (tracked as `# master`, not a
+  semver tag — this action publishes no release tags). Dependabot's PR #5529
+  bumps it to 5bc5285b684b9f0e940031dc8ddc4b6387a2f493. .github/workflows/
+  sbom.yml pins anchore/sbom-action twice at e22c389904149dbc22b58101806040
+  fa8d37a610 (`# v0`). Dependabot's PR #5528 bumps both occurrences to
+  3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 (`# v0.24.2`). Cherry-pick both
+  dependabot commits verbatim into one branch/PR (one concern: bump the two
+  third-party SAST action pins dependabot proposed), verify each new SHA
+  against its stated upstream ref, run a real two-seat council review, and
+  ship.
+scope:
+  - .github/workflows/sonarqube.yml
+  - .github/workflows/sbom.yml
+constraints:
+  - Third-party action pins ONLY — no change to job logic, permissions,
+    inputs/outputs, triggers, or any other workflow file.
+  - Apply the dependabot commits as-is (cherry-pick), do not hand-edit the
+    SHA/comment pairs beyond what dependabot proposed.
+  - No secrets printed; no --no-verify; no force-push.
+acceptance:
+  - actionlint green on both changed workflow files (pre-existing shellcheck
+    notices in sbom.yml's script block, unrelated to the pin lines, are not
+    regressions — verified identical on origin/main).
+  - The Security Scanning / SBOM workflow run on this PR's head ref completes
+    successfully using the new action versions (post-push receipt).
+  - >-
+    The SHA in each `uses:` line matches the upstream tag/branch it claims —
+    anchore/sbom-action@3ad7283... == annotated tag v0.24.2's peeled commit;
+    sonarsource/sonarqube-scan-action@5bc5285... == current HEAD of the
+    `master` branch (the action's own tracked ref, no semver tags exist).
+consumer_map:
+  - .github/workflows/sbom.yml's "Generate SBOM" job, which runs on every
+    push/PR touching non-exempt paths and gates the SBOM artifact.
+  - >-
+    .github/workflows/sonarqube.yml's SonarCloud scan step, gated behind
+    `if: env.SONAR_TOKEN != ''`, required for the SonarQube quality check.
+appetite:
+  budget: 60 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends
