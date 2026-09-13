@@ -381,7 +381,10 @@ describe("the NEEDS_INPUT follow-up node", () => {
       />,
     );
     const text = rail("outcome").textContent ?? "";
-    expect(text).toContain("asked for one more fact");
+    expect(text).toContain("named a fact it still needs");
+    // NEEDS_INPUT may name several facts; the rail cannot say "one more"
+    // (council round 11).
+    expect(text).not.toContain("one more fact");
     // …and does not promise the next evaluation names a product: a second
     // NEEDS_INPUT, a review hold or no supported path are all possible
     // (council round 5).
@@ -584,7 +587,7 @@ describe("an off-spine question that is NOT the engine's follow-up (council roun
       />,
     );
     expect(rail("outcome").textContent ?? "").not.toContain(
-      "asked for one more fact",
+      "named a fact it still needs",
     );
   });
 
@@ -790,6 +793,34 @@ describe("council round 10", () => {
     );
     expect(visitedVerdict).toBe(false);
     expect(m(current, state.facts, visitedVerdict).atFollowUp).toBe(false);
+  });
+
+  it("an answer from an abandoned branch never reaches the trunk: EDIT prunes facts to history", () => {
+    let state = replay({ ...TOURIST, category: "work" });
+    expect(state.facts.category).toBe("work");
+    state = flowReducer(state, { type: "EDIT", questionId: "category" });
+    state = flowReducer(state, {
+      type: "ANSWER",
+      questionId: "category",
+      value: "tourism",
+    });
+    const inHistory = new Set(
+      state.history.flatMap((node) =>
+        node.kind === "question" ? [node.questionId] : [],
+      ),
+    );
+    expect(Object.keys(state.facts).every((id) => inHistory.has(id))).toBe(
+      true,
+    );
+    const current = state.history[state.history.length - 1];
+    const model = m(current, state.facts);
+    const trunkQuestions = model.trunk
+      .map((step) => step.id)
+      .filter((id) => Object.prototype.hasOwnProperty.call(QUESTIONS, id));
+    for (const id of trunkQuestions) {
+      if (state.facts[id] !== undefined) expect(inHistory.has(id)).toBe(true);
+    }
+    expect(model.answeredQuestions).toBe(Object.keys(state.facts).length);
   });
 
   it.each([["HUMAN_REVIEW_REQUIRED"], ["TEMPORARILY_UNAVAILABLE"]] as const)(

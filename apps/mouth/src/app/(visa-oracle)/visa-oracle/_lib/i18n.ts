@@ -719,7 +719,7 @@ const en = {
   "process.candidates_undecided":
     "The engine did not name a product for these answers. The outcome below says why.",
   "process.candidates_follow_up":
-    "The engine has your answers and asked for one more fact before it can decide. This question is that fact.",
+    "The engine has your answers and named a fact it still needs before it can decide. This question asks for it.",
   "process.outcome_node":
     "You are at the last node of this tree: the outcome below is that node, not a separate page.",
   "process.jump_title": "Jump back to an answer",
@@ -1626,7 +1626,7 @@ const id: Record<Keys, string> = {
   "process.candidates_undecided":
     "Mesin tidak menyebut produk untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
   "process.candidates_follow_up":
-    "Mesin sudah menerima jawaban Anda dan meminta satu fakta lagi sebelum dapat memutuskan. Pertanyaan ini adalah fakta tersebut.",
+    "Mesin sudah menerima jawaban Anda dan menyebut fakta yang masih diperlukan sebelum dapat memutuskan. Pertanyaan ini menanyakan fakta tersebut.",
   "process.outcome_node":
     "Anda berada di simpul terakhir pohon ini: hasil di bawah adalah simpul tersebut, bukan halaman terpisah.",
   "process.jump_title": "Kembali ke sebuah jawaban",
