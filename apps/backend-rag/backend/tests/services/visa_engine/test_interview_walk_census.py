@@ -186,9 +186,12 @@ NEEDS_INPUT                       2        1
 HUMAN_REVIEW_REQUIRED             1        9
 ===========================  ======  =======
 
-W-VO-E moved both columns by the same +9/-1 shape: nine of its ten new
-walks answer at both levels, and the tenth — the minor — is the single
-ENGINE hold. The FUNNEL column keeps its 8 flag-driven holds and gains
+W-VO-E moved both columns by the same +9/+1 shape — +9
+SUPPORTED_CANDIDATES and +1 HUMAN_REVIEW_REQUIRED, i.e. ENGINE 67/15/2/0 ->
+76/15/2/1 and FUNNEL 60/15/1/8 -> 69/15/1/9 (an earlier draft of this
+sentence said "+9/-1", which sums to eight walks, not ten — council round 6,
+agy-gemini-3.1-pro): nine of its ten new walks answer at both levels, and
+the tenth — the minor — is the single ENGINE hold. The FUNNEL column keeps its 8 flag-driven holds and gains
 that same one: no new walk raises a disclosure flag (the per-flag table
 below is unchanged from the 84-walk corpus, measured, not derived).
 
