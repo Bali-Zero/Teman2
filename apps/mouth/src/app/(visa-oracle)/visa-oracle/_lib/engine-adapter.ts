@@ -519,6 +519,16 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     `The Second Home route is granted against a guarantee: a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank, or qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}. What you declared is below both. If you are 55 or over, the Retirement KITAS (E33E) is assessed on a smaller deposit plus monthly passive income; for a visit rather than a stay, the open door is the Tourism Visit Visa (C1).`,
     `Jalur Rumah Kedua diberikan atas dasar jaminan: deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara, atau properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}. Yang Anda nyatakan berada di bawah keduanya. Jika usia Anda 55 tahun atau lebih, KITAS Pensiun (E33E) dinilai atas deposito yang lebih kecil ditambah penghasilan pasif bulanan; untuk kunjungan dan bukan tinggal, pintu yang terbuka adalah Visa Kunjungan Wisata (C1).`,
   ),
+  // A seq-20 exclusion that no census walk surfaced until seq-21: once E33A
+  // has an eligibility rule covering EMPLOYMENT it is purpose-feasible for a
+  // paid-work walk, so its existing `hf.e33a.sponsor-not-government` reason is
+  // reported beside PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR instead of the
+  // generic sentence (offshore/other/paid/employer_no). Product name verbatim
+  // from the pack's `names.en` / `names.id`.
+  E33A_SPONSOR_NOT_GOVERNMENT: text(
+    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian government body, and you did not name one as your sponsor.",
+    "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah Indonesia, dan Anda tidak menyebutkan instansi pemerintah sebagai penjamin Anda.",
+  ),
   PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR: text(
     "You told us the activity is paid and that your employer is not an Indonesian entity. An Indonesian work permit is issued to a sponsoring entity in Indonesia, so the work routes are closed on that answer. If the work is done from Indonesia for that same employer abroad and none of the pay comes from an Indonesian source, the open door is the Second Home Visa — Remote Worker (E33G); if you are coming for meetings rather than to work, it is the Business Visit Visa (C2).",
     "Anda menyampaikan bahwa aktivitas tersebut dibayar dan pemberi kerja Anda bukan badan usaha Indonesia. Izin kerja Indonesia diterbitkan kepada badan penjamin di Indonesia, sehingga jalur kerja tertutup atas jawaban tersebut. Jika pekerjaan dilakukan dari Indonesia untuk pemberi kerja yang sama di luar negeri dan tidak ada bayaran yang berasal dari sumber di Indonesia, pintu yang terbuka adalah Visa Rumah Kedua Pekerja Jarak Jauh (E33G); jika Anda datang untuk pertemuan dan bukan untuk bekerja, pintunya adalah Visa Kunjungan Bisnis (C2).",

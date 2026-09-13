@@ -28,6 +28,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1084,6 +1085,33 @@ class TestCensusReplay:
             if before[label]["no_path_reason_codes"] != after[label]["no_path_reason_codes"]
         )
         assert moved == sorted(NAMED_CAUSE_WALKS)
+
+    def test_every_no_path_code_seq21_emits_on_the_corpus_has_visitor_copy(
+        self,
+        seq21_compiled: compiler.CompiledRulePack,
+        walks: dict[str, dict[str, Any]],
+    ) -> None:
+        """Cross-app guard: a no-path code without an entry in the mouth's
+        ``SUPPORT_REASON_COPY`` renders as ``Verified reason: <CODE>``. seq-21
+        makes E33A purpose-feasible on a paid-work walk, which surfaces the
+        seq-20 code ``E33A_SPONSOR_NOT_GOVERNMENT`` there for the first time;
+        this measures every code the candidate emits on the 84 walks against
+        the copy keys parsed out of ``engine-adapter.ts``."""
+        adapter = (
+            Path(__file__).resolve().parents[5]
+            / "mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts"
+        ).read_text(encoding="utf-8")
+        start = adapter.index("export const SUPPORT_REASON_COPY")
+        body = adapter[start : adapter.index("\n};", start)]
+        copy_keys = set(re.findall(r"^  ([A-Z0-9_]+): text\(", body, re.MULTILINE))
+        assert len(copy_keys) > 20, "the copy-map parse found almost nothing"
+        emitted = {
+            code
+            for outcome in _replay(seq21_compiled, walks).values()
+            for code in outcome["no_path_reason_codes"]
+        }
+        assert emitted, "no walk emitted a no-path code — the replay proves nothing"
+        assert sorted(emitted - copy_keys) == []
 
     def test_the_generic_catalogue_sentence_is_gone_from_the_corpus(
         self,
