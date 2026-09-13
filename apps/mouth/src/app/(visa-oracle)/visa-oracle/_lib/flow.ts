@@ -619,6 +619,148 @@ function nextCategoryQuestion(
   return { kind: "question", questionId: sequence[index + 1] };
 }
 
+/**
+ * W-VO-Q (mission SAETTA-VO3): the seq-21 sponsor qualification questions an
+ * EMPLOYMENT-purpose branch asks right after `sponsor_category`. Each rule's
+ * `sponsor.type` premise decides which answer asks which question
+ * (`rulepack-prod-021.source.json`): GOVERNMENT → `el.e33a.government-
+ * invitation` and `el.e23v.trade-office`, INDIVIDUAL → `el.e23u.diplomatic-
+ * household`, NONE → `el.e33b.government-collaboration`. Every other answer
+ * (EMPLOYER, EDUCATION, INVESTMENT, unsure, not yet answered) asks nothing:
+ * no seq-21 EMPLOYMENT rule has that premise, so the answer could not move a
+ * verdict. The purpose is the caller's to guarantee — only `work` and the
+ * paid-activity arm of `other` map to EMPLOYMENT (`mapPurposes`).
+ */
+function employmentSponsorQualificationIds(
+  facts: OracleFacts,
+): readonly string[] {
+  switch (facts.sponsor_category) {
+    case "GOVERNMENT":
+      return ["sponsor_government_invitation", "sponsor_trade_office"];
+    case "INDIVIDUAL":
+      return ["sponsor_diplomatic_household"];
+    case "NONE":
+      return ["sponsor_government_collaboration"];
+    default:
+      return [];
+  }
+}
+
+/**
+ * W-VO-Q: the seq-21 investment route questions (`el.e28b/c/d/f.*`) for an
+ * INVESTMENT-purpose `invest` walk. Two are always asked:
+ * `investment_establishes_company` and `investment_foreign_branch`. The
+ * company answer then splits the rest, because both follow-ups are worded
+ * against it: `investment_ikn_subsidiary` ("the company you are
+ * establishing") only after a "yes", `investment_capital_market_only`
+ * ("without establishing a company") only after a "no". The shared threshold
+ * question follows only when a route on THIS sequence was answered "yes" — a
+ * stale answer left behind by an edit is never read, because its route is no
+ * longer listed.
+ *
+ * Every route rule is decided by an answer on every walk, never left for the
+ * engine to ask: after a company "no" the IKN fact is KNOWN(false) by
+ * `fact-mapper.ts` (none established, so no IKN subsidiary) — without that,
+ * an applicant answering "no" everywhere ended NEEDS_INPUT on
+ * `investment.ikn_subsidiary` + `investment.meets_published_threshold`,
+ * measured on the seq-21 candidate. After a company "yes" the threshold
+ * question is always asked; after a "no" the capital-market route is.
+ */
+function investmentRouteQuestionIds(facts: OracleFacts): readonly string[] {
+  const routes = [
+    "investment_establishes_company",
+    "investment_foreign_branch",
+    ...(facts.investment_establishes_company === "yes"
+      ? ["investment_ikn_subsidiary"]
+      : facts.investment_establishes_company === "no"
+        ? ["investment_capital_market_only"]
+        : []),
+  ];
+  const anyRouteYes = routes.some((id) => facts[id] === "yes");
+  return anyRouteYes ? [...routes, "investment_meets_threshold"] : routes;
+}
+
+/**
+ * `el.e28a.investment` and its two capital filters (`hf.e28a.paid-capital-
+ * below-min`, `hf.e28a.total-investment-below-min`, both `on_unknown:
+ * NEEDS_INPUT`) for a branch that is INVESTMENT-purpose but not the `pt_pma`
+ * vehicle. The commitment question comes first: a "no" makes the E28A rule
+ * DEFINITELY FALSE and the engine then asks for no figure (measured on seq-20
+ * and seq-21); only a "yes" asks the capital and role questions the rule and
+ * its filters read.
+ */
+function ptPmaCommitmentQuestionIds(facts: OracleFacts): readonly string[] {
+  return [
+    "investment_pt_pma",
+    ...(facts.investment_pt_pma === "yes"
+      ? [
+          "investment_capital_idr",
+          "investment_paid_up_capital_idr",
+          "investment_role",
+        ]
+      : []),
+  ];
+}
+
+/**
+ * The stay bound of `el.d12-multi-entry-support` (`intent.stay_days <= 360`,
+ * sources 5e64ec6b… / e3572ad2… in the signed pack). Read by the explorer
+ * sequence below only to decide whether D12 can still answer the walk; a
+ * second copy of a number the pack owns, so `flow.test.ts` pins it to the
+ * rule in the highest-sequence pack on disk.
+ */
+export const D12_MAX_STAY_DAYS = 360;
+
+/**
+ * W-VO-Q item 7 (owner ruling 2026-09-14): the business visitor exploring
+ * whether to invest or open a business (`business_activity = exploring`,
+ * INVESTMENT purpose in `mapPurposes`). Asked instead of the meetings
+ * sequence, and only the facts an INVESTMENT-purpose rule reads:
+ *
+ * - `family_sponsor_confirmed` — `el.c2.business`.
+ * - `wants_onshore_conversion`, offshore only (onshore the spine already
+ *   asked it) — `hf.d12-onshore-conversion-excluded`. With "no", `el.d12-*`
+ *   names D12 for a stay inside its bound, whatever the sponsor answer.
+ * - `stay_days`, then — only when the answers so far exclude D12 (a
+ *   conversion "yes", or a stay beyond D12's own bound) — what the investor
+ *   products read, or the engine would be left asking for facts this walk
+ *   never offered: `sponsor_category` (`el.e33c.*` and its `hf.e33c`
+ *   filter), the world-figure question on GOVERNMENT, the PT PMA commitment
+ *   (`el.e28a.investment` — a "no" decides it without a figure) and, after a
+ *   "yes", the capital and role questions its filters read, then the seq-21
+ *   route questions (`investmentRouteQuestionIds`). Measured on seq-20 and
+ *   seq-21: an explorer answering "no" to all of them ends NO_SUPPORTED_PATH
+ *   on `D12_NOT_CONVERTIBLE`, never NEEDS_INPUT.
+ *
+ * `work_indonesia_compensation` and `entry_pattern` are not asked here:
+ * the rules that read them (`hf.d2.indonesia-source-compensation`, the
+ * `el.d1/d2` entry rules) cover BUSINESS_MEETINGS or TOURISM, never
+ * INVESTMENT.
+ */
+function businessExplorerQuestionIds(facts: OracleFacts): readonly string[] {
+  const staysBeyondD12 =
+    facts.stay_days !== undefined &&
+    Number(facts.stay_days) > D12_MAX_STAY_DAYS;
+  const investorFacts =
+    facts.wants_onshore_conversion === "yes" || staysBeyondD12
+      ? [
+          "sponsor_category",
+          ...(facts.sponsor_category === "GOVERNMENT"
+            ? ["sponsor_world_figure_invitation"]
+            : []),
+          ...ptPmaCommitmentQuestionIds(facts),
+          ...investmentRouteQuestionIds(facts),
+        ]
+      : [];
+  return [
+    "business_activity",
+    "family_sponsor_confirmed",
+    ...(facts.in_indonesia === "no" ? ["wants_onshore_conversion"] : []),
+    "stay_days",
+    ...investorFacts,
+  ];
+}
+
 const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
   tourism: ["stay_days", "entry_pattern"],
   business: [
@@ -733,11 +875,26 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
                       ? ["investment_amount_usd"]
                       : []),
                 ]
-              : [];
+              : // W-VO-Q: without the commitment question a capital-market
+                // investor whose stay or conversion answer excluded C2 and
+                // D12 ended NEEDS_INPUT on the E28A capital figures, which
+                // this vehicle never asked (measured on seq-20: 840 of the
+                // exhaustive edge walks through this branch).
+                branch === "capital_market"
+                ? ptPmaCommitmentQuestionIds(facts)
+                : [];
     return [
       "sponsor_category",
       "investment_vehicle",
+      // W-VO-Q: `el.e33c.world-figure-invitation` covers INVESTMENT only, so
+      // the question waits for a vehicle that keeps that purpose — a
+      // `property`/`bank_deposit` answer re-routes to SECOND_HOME
+      // (`mapPurposes`), where no rule could read it.
+      ...(!isSecondHomeRoute && facts.sponsor_category === "GOVERNMENT"
+        ? ["sponsor_world_figure_invitation"]
+        : []),
       ...branchQuestions,
+      ...(isSecondHomeRoute ? [] : investmentRouteQuestionIds(facts)),
       ...(isSecondHomeRoute
         ? []
         : [
@@ -903,6 +1060,18 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
     ];
   }
 
+  if (category === "business" && facts.business_activity === "exploring") {
+    return businessExplorerQuestionIds(facts);
+  }
+
+  // W-VO-Q: `work` is EMPLOYMENT, so its sponsor answer selects the seq-21
+  // qualification questions (`employmentSponsorQualificationIds`). The rest
+  // of the sequence is `FIXED_CATEGORY_QUESTIONS.work`, unchanged.
+  if (category === "work") {
+    const [sponsor, ...rest] = FIXED_CATEGORY_QUESTIONS.work;
+    return [sponsor, ...employmentSponsorQualificationIds(facts), ...rest];
+  }
+
   // D3-2 (owner ruling SHWEB-20260911): a declared paid activity is
   // employment, not a generic OTHER purpose — `mapPurposes` emits
   // EMPLOYMENT for `yes`, so the interview asks the two facts
@@ -925,7 +1094,12 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
       "other_purpose",
       "other_paid_activity",
       ...(facts.other_paid_activity === "yes"
-        ? ["sponsor_category", "work_payer", "work_sponsor_confirmed"]
+        ? [
+            "sponsor_category",
+            ...employmentSponsorQualificationIds(facts),
+            "work_payer",
+            "work_sponsor_confirmed",
+          ]
         : ["family_sponsor_confirmed"]),
       "stay_days",
       "entry_pattern",

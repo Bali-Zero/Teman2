@@ -76,8 +76,17 @@ import {
  * stays, MULTIPLE entry, business pay from abroad, the offshore investment
  * application and its capital figures, an education sponsor, a vocational
  * study level, a fully offshore remote worker, and a minor joining a parent.
- * No existing fixture changes by a byte: the interview tree is untouched. */
-const EXPECTED_WALK_COUNT = 94;
+ * No existing fixture changes by a byte: the interview tree is untouched.
+ *
+ * 94 → 111 on W-VO-Q (mission SAETTA-VO3): the tree asks the ten seq-21
+ * qualification facts. Their first option is "yes", so the existing default
+ * walks on the `work`, `invest` and paid-`other` branches change BYTES (the
+ * new questions in `asked`, the ten facts KNOWN in `overrides`); the
+ * seventeen new walks are the new `capital_market` vehicle's default walk,
+ * one product per walk, the honest "no" on each question, and four business
+ * explorers (`business_activity = exploring`, the D12 sequence).
+ * See generate-walk-corpus.ts. */
+const EXPECTED_WALK_COUNT = 111;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

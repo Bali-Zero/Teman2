@@ -256,6 +256,9 @@ describe("question registry -> wire coverage", () => {
     ["business_activity", "meetings"],
     ["business_activity", "negotiation"],
     ["business_activity", "conference"],
+    // Released (W-VO-Q item 7) — `mapPurposes` routes the explorer to
+    // INVESTMENT, which `el.d12-*` / `el.c2.business` decide.
+    ["business_activity", "exploring"],
     ["investment_vehicle", "pt_pma"],
     // Released (PR-D3, D3-1) — `mapPurposes` routes both to SECOND_HOME
     // alone and the Second Home facts the interview already collects for
@@ -1146,6 +1149,28 @@ describe("mapPurposes — category -> intent.purposes", () => {
   // pack's `hit_policy.eligibility = COVER_ALL_DECLARED_PURPOSES` drops
   // E33 the moment a second purpose rides along, so a second_home tile
   // that also emitted RETIREMENT would be a silent no-path.
+  // W-VO-Q item 7 (owner ruling 2026-09-14): the business explorer is an
+  // INVESTMENT-purpose visitor, ALONE — joined with BUSINESS_MEETINGS the
+  // COVER_ALL_DECLARED_PURPOSES policy drops D12, whose catalogue coverage
+  // has no BUSINESS_MEETINGS. Every other business answer keeps the tile's
+  // own purpose.
+  it("business + exploring emits INVESTMENT alone; the other business answers keep BUSINESS_MEETINGS", () => {
+    expect(
+      mapPurposes({ category: "business", business_activity: "exploring" }),
+    ).toEqual({ status: "KNOWN", value: ["INVESTMENT"] });
+    for (const { key } of QUESTIONS.business_activity.options) {
+      if (key === "exploring") continue;
+      expect(
+        mapPurposes({ category: "business", business_activity: key }),
+      ).toEqual({ status: "KNOWN", value: ["BUSINESS_MEETINGS"] });
+    }
+    // The option belongs to the business tile: on any other tile it moves
+    // nothing.
+    expect(
+      mapPurposes({ category: "tourism", business_activity: "exploring" }),
+    ).toEqual({ status: "KNOWN", value: ["TOURISM"] });
+  });
+
   it("second_home emits SECOND_HOME alone, never joined to RETIREMENT", () => {
     expect(mapPurposes({ category: "second_home" })).toEqual({
       status: "KNOWN",
@@ -1813,5 +1838,110 @@ describe("country-code facts: one code is not a set of one", () => {
         remote_employer_country: "unsure",
       } as OracleFacts).facts["work.employer_country_code"],
     ).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
+  });
+});
+
+// W-VO-Q (mission SAETTA-VO3): the ten seq-21 qualification facts are ASKED
+// now. A "no" must reach the wire as KNOWN(false) — an UNKNOWN would leave
+// the `on_unknown: NEEDS_INPUT` rule unknown and make the engine ask the
+// question the applicant just answered (FACTS-FOR-THE-TREE.md, "the trap").
+describe("the ten seq-21 qualification facts — asked, and a no is a known false", () => {
+  const PAIRS = [
+    ["sponsor_government_invitation", "sponsor.government_invitation"],
+    ["sponsor_government_collaboration", "sponsor.government_collaboration"],
+    ["sponsor_world_figure_invitation", "sponsor.world_figure_invitation"],
+    ["sponsor_diplomatic_household", "sponsor.diplomatic_household"],
+    ["sponsor_trade_office", "sponsor.trade_office"],
+    [
+      "investment_establishes_company",
+      "investment.establishes_indonesian_company",
+    ],
+    ["investment_capital_market_only", "investment.capital_market_only"],
+    ["investment_foreign_branch", "investment.foreign_branch_or_subsidiary"],
+    ["investment_ikn_subsidiary", "investment.ikn_subsidiary"],
+    ["investment_meets_threshold", "investment.meets_published_threshold"],
+  ] as const;
+  const PACKS_DIR = path.resolve(
+    REPO_ROOT,
+    "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+  );
+
+  const wireFact = (facts: OracleFacts, factPath: string) =>
+    (
+      mapOracleFactsToApplicantFacts(facts, {
+        assessmentId: ASSESSMENT_ID,
+        collectedAt: COLLECTED_AT,
+      }).facts as unknown as Record<string, unknown>
+    )[factPath];
+
+  it.each(PAIRS)(
+    "%s -> %s: yes is KNOWN(true), no is KNOWN(false), unasked is NOT_ASKED",
+    (questionId, factPath) => {
+      expect(QUESTIONS[questionId].decisionMapping).toEqual({
+        kind: "FACT",
+        factPaths: [factPath],
+      });
+      expect(wireFact({ [questionId]: "yes" }, factPath)).toEqual({
+        status: "KNOWN",
+        value: true,
+      });
+      expect(wireFact({ [questionId]: "no" }, factPath)).toEqual({
+        status: "KNOWN",
+        value: false,
+      });
+      expect(wireFact({}, factPath)).toEqual({
+        status: "UNKNOWN",
+        reason: "NOT_ASKED",
+      });
+    },
+  );
+
+  it("no company established answers the IKN fact: KNOWN(false), even over a stale yes", () => {
+    // flow.ts asks `investment_ikn_subsidiary` ("the company you are
+    // establishing") only after a company "yes"; after a "no" the fact must
+    // still be decided, or `el.e28f.ikn-subsidiary` stays UNKNOWN.
+    for (const stale of [undefined, "yes", "no"]) {
+      const facts: OracleFacts = { investment_establishes_company: "no" };
+      if (stale !== undefined) facts.investment_ikn_subsidiary = stale;
+      expect(wireFact(facts, "investment.ikn_subsidiary")).toEqual({
+        status: "KNOWN",
+        value: false,
+      });
+    }
+    expect(
+      wireFact(
+        {
+          investment_establishes_company: "yes",
+          investment_ikn_subsidiary: "yes",
+        },
+        "investment.ikn_subsidiary",
+      ),
+    ).toEqual({ status: "KNOWN", value: true });
+  });
+
+  it("every one is the fact a production pack's SUPPORT rule requires to be true", () => {
+    const supportReads = new Set<string>();
+    for (const name of fs.readdirSync(PACKS_DIR)) {
+      if (!/^rulepack-prod-\d+\.source\.json$/.test(name)) continue;
+      const pack = JSON.parse(
+        fs.readFileSync(path.join(PACKS_DIR, name), "utf-8"),
+      ) as { rules: { effect: { type: string }; when: unknown }[] };
+      for (const rule of pack.rules) {
+        if (rule.effect.type !== "SUPPORT") continue;
+        const walk = (node: unknown): void => {
+          if (Array.isArray(node)) return node.forEach(walk);
+          if (node === null || typeof node !== "object") return;
+          const leaf = node as Record<string, unknown>;
+          if (leaf.op === "eq" && leaf.value === true) {
+            supportReads.add(String(leaf.fact));
+          }
+          Object.values(leaf).forEach(walk);
+        };
+        walk(rule.when);
+      }
+    }
+    expect(PAIRS.filter(([, factPath]) => !supportReads.has(factPath))).toEqual(
+      [],
+    );
   });
 });

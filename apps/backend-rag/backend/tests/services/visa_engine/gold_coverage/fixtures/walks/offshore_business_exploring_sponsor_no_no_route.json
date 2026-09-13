@@ -1,5 +1,5 @@
 {
-  "label": "offshore/other/paid/sponsor_government",
+  "label": "offshore/business/exploring/sponsor_no/no_route",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -8,15 +8,15 @@
     "birth_date",
     "category",
     "trip_scope",
-    "other_purpose",
-    "other_paid_activity",
-    "sponsor_category",
-    "sponsor_government_invitation",
-    "sponsor_trade_office",
-    "work_payer",
-    "work_sponsor_confirmed",
+    "business_activity",
+    "family_sponsor_confirmed",
+    "wants_onshore_conversion",
     "stay_days",
-    "entry_pattern",
+    "sponsor_category",
+    "investment_pt_pma",
+    "investment_establishes_company",
+    "investment_foreign_branch",
+    "investment_capital_market_only",
     "review_gate"
   ],
   "overrides": {
@@ -39,10 +39,10 @@
     "immigration.overstay_days": { "status": "KNOWN", "value": 0 },
     "immigration.violation_history": { "status": "KNOWN", "value": [] },
     "immigration.renewal_paid": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.purposes": { "status": "KNOWN", "value": ["EMPLOYMENT"] },
+    "intent.purposes": { "status": "KNOWN", "value": ["INVESTMENT"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.entry_pattern": { "status": "KNOWN", "value": "SINGLE" },
+    "intent.entry_pattern": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "intent.requested_product_code": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -51,7 +51,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "work.employer_is_indonesian_entity": { "status": "KNOWN", "value": true },
+    "work.employer_is_indonesian_entity": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "work.serves_indonesian_clients": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -61,13 +64,10 @@
       "reason": "NOT_ASKED"
     },
     "work.indonesian_work_sponsor_confirmed": {
-      "status": "KNOWN",
-      "value": true
-    },
-    "investment.pt_pma_committed": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
+    "investment.pt_pma_committed": { "status": "KNOWN", "value": false },
     "investment.investment_capital_idr": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -91,7 +91,7 @@
     },
     "family.sponsor_status_code": {
       "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "reason": "NOT_APPLICABLE"
     },
     "family.marriage_registered": {
       "status": "UNKNOWN",
@@ -107,14 +107,17 @@
     },
     "family.sponsor_permit_basis": {
       "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "reason": "NOT_APPLICABLE"
     },
-    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "family.sponsor_confirmed": { "status": "KNOWN", "value": false },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "sponsor.type": { "status": "KNOWN", "value": "GOVERNMENT" },
-    "sponsor.government_invitation": { "status": "KNOWN", "value": true },
+    "sponsor.type": { "status": "KNOWN", "value": "NONE" },
+    "sponsor.government_invitation": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "sponsor.government_collaboration": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -127,20 +130,17 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "sponsor.trade_office": { "status": "KNOWN", "value": true },
+    "sponsor.trade_office": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "investment.establishes_indonesian_company": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": false
     },
-    "investment.capital_market_only": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "investment.capital_market_only": { "status": "KNOWN", "value": false },
     "investment.foreign_branch_or_subsidiary": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": false
     },
-    "investment.ikn_subsidiary": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "investment.ikn_subsidiary": { "status": "KNOWN", "value": false },
     "investment.meets_published_threshold": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -169,10 +169,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "process.wants_onshore_conversion": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "process.wants_onshore_conversion": { "status": "KNOWN", "value": true },
     "commercial.service_fee_budget_idr": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

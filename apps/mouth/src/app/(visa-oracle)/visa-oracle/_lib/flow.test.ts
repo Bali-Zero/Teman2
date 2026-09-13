@@ -1,10 +1,16 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import { CATEGORY_KEYS, getLane, QUESTIONS, type OracleFacts } from "./tree";
+import { translate, type I18nKey } from "./i18n";
 import {
+  D12_MAX_STAY_DAYS,
   INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
   computeNextNode,
   createInterviewSnapshot,
   flowReducer,
+  followUpPrerequisitesMet,
   getCategoryQuestionIds,
   getTreeSteps,
   initialFlowState,
@@ -112,6 +118,10 @@ const CATEGORY_CASES: ReadonlyArray<{
       ["investment_capital_idr", "1000000000"],
       ["investment_paid_up_capital_idr", "500000000"],
       ["investment_role", "SHAREHOLDER_DIRECTOR"],
+      ["investment_establishes_company", "yes"],
+      ["investment_foreign_branch", "no"],
+      ["investment_ikn_subsidiary", "no"],
+      ["investment_meets_threshold", "yes"],
       ["family_sponsor_confirmed", "no"],
       // `startOffshore` drives every CATEGORY_CASES walk, so the invest
       // branch's offshore-only `wants_onshore_conversion` is asked here.
@@ -1597,5 +1607,427 @@ describe("PR-3 · ASK_FOLLOW_UP appends, and never destroys the interview", () =
     state = answer(state, "stay_days", "30");
     expectQuestion(state, "entry_pattern");
     expect(state.pendingFollowUp).toBeNull();
+  });
+});
+
+// W-VO-Q (mission SAETTA-VO3): the ten seq-21 qualification questions are
+// asked only where the rule that reads each one can match — the sponsor
+// premise its `sponsor.type` names, on a branch whose purpose the rule
+// covers (`rulepack-prod-021.source.json`, FACTS-FOR-THE-TREE.md).
+describe("seq-21 qualification questions — asked only where their rule can match", () => {
+  const SPONSOR_QUESTIONS = [
+    "sponsor_government_invitation",
+    "sponsor_government_collaboration",
+    "sponsor_world_figure_invitation",
+    "sponsor_diplomatic_household",
+    "sponsor_trade_office",
+  ];
+  const ROUTE_QUESTIONS = [
+    "investment_establishes_company",
+    "investment_capital_market_only",
+    "investment_foreign_branch",
+    "investment_ikn_subsidiary",
+    "investment_meets_threshold",
+  ];
+  const TEN = [...SPONSOR_QUESTIONS, ...ROUTE_QUESTIONS];
+  const SPONSORS = QUESTIONS.sponsor_category.options.map(({ key }) => key);
+  const asked = (facts: OracleFacts) =>
+    TEN.filter((id) => getCategoryQuestionIds(facts).includes(id));
+
+  it("gives each of the ten a process-rail label in both languages", () => {
+    // Found in the browser, not by a test: the rail rendered the raw key
+    // `tree.investment_establishes_company` until these labels existed.
+    for (const id of TEN) {
+      for (const lang of ["en", "id"] as const) {
+        expect(translate(lang, `tree.${id}` as I18nKey)).not.toBe(`tree.${id}`);
+        expect(translate(lang, `q.${id}` as I18nKey)).not.toBe(`q.${id}`);
+        expect(translate(lang, `why.${id}` as I18nKey)).not.toBe(`why.${id}`);
+      }
+    }
+  });
+
+  it("registers all ten as yes/no FACT questions with no Not-sure affordance", () => {
+    for (const id of TEN) {
+      const question = QUESTIONS[id];
+      expect(question.options.map(({ key }) => key)).toEqual(["yes", "no"]);
+      expect(question.decisionMapping.kind).toBe("FACT");
+      expect(question.notSure).toBeUndefined();
+    }
+  });
+
+  it.each([
+    ["GOVERNMENT", ["sponsor_government_invitation", "sponsor_trade_office"]],
+    ["INDIVIDUAL", ["sponsor_diplomatic_household"]],
+    ["NONE", ["sponsor_government_collaboration"]],
+    ["EMPLOYER", []],
+    ["EDUCATION", []],
+    ["INVESTMENT", []],
+    ["unsure", []],
+  ])(
+    "an EMPLOYMENT branch with sponsor %s asks exactly %j",
+    (sponsor, expected) => {
+      expect(asked({ category: "work", sponsor_category: sponsor })).toEqual(
+        expected,
+      );
+      expect(
+        asked({
+          category: "other",
+          other_paid_activity: "yes",
+          sponsor_category: sponsor,
+        }),
+      ).toEqual(expected);
+    },
+  );
+
+  it("guilt: no category outside work, paid other and invest ever asks one, whatever the sponsor", () => {
+    const quiet = CATEGORY_KEYS.filter(
+      (category) => category !== "work" && category !== "invest",
+    );
+    for (const category of quiet) {
+      for (const sponsor_category of SPONSORS) {
+        const facts: OracleFacts = { category, sponsor_category };
+        expect(asked(facts)).toEqual([]);
+        expect(asked({ ...facts, other_paid_activity: "no" })).toEqual([]);
+      }
+    }
+  });
+
+  it("a Second Home vehicle asks none of the ten, even with a government sponsor", () => {
+    for (const investment_vehicle of ["property", "bank_deposit"]) {
+      expect(
+        asked({
+          category: "invest",
+          sponsor_category: "GOVERNMENT",
+          investment_vehicle,
+          investment_establishes_company: "yes",
+        }),
+      ).toEqual([]);
+    }
+  });
+
+  it("the world-figure question needs an INVESTMENT vehicle AND a government sponsor", () => {
+    const base = { category: "invest", investment_vehicle: "pt_pma" };
+    expect(
+      asked({ ...base, sponsor_category: "GOVERNMENT" }).includes(
+        "sponsor_world_figure_invitation",
+      ),
+    ).toBe(true);
+    for (const sponsor_category of SPONSORS.filter((s) => s !== "GOVERNMENT")) {
+      expect(asked({ ...base, sponsor_category })).not.toContain(
+        "sponsor_world_figure_invitation",
+      );
+    }
+  });
+
+  it.each([
+    [
+      { investment_establishes_company: "yes" },
+      [
+        "investment_establishes_company",
+        "investment_foreign_branch",
+        "investment_ikn_subsidiary",
+        "investment_meets_threshold",
+      ],
+    ],
+    [
+      {
+        investment_establishes_company: "no",
+        investment_foreign_branch: "no",
+        investment_capital_market_only: "yes",
+      },
+      [
+        "investment_establishes_company",
+        "investment_capital_market_only",
+        "investment_foreign_branch",
+        "investment_meets_threshold",
+      ],
+    ],
+    [
+      {
+        investment_establishes_company: "no",
+        investment_foreign_branch: "no",
+        investment_capital_market_only: "no",
+      },
+      [
+        "investment_establishes_company",
+        "investment_capital_market_only",
+        "investment_foreign_branch",
+      ],
+    ],
+    // A stale IKN "yes" left behind by an edit to "no company" is never
+    // re-asked and never read: its question is off the sequence, and
+    // fact-mapper.ts sends the fact KNOWN(false) on the company answer.
+    [
+      {
+        investment_establishes_company: "no",
+        investment_foreign_branch: "no",
+        investment_ikn_subsidiary: "yes",
+        investment_capital_market_only: "no",
+      },
+      [
+        "investment_establishes_company",
+        "investment_capital_market_only",
+        "investment_foreign_branch",
+      ],
+    ],
+    [{}, ["investment_establishes_company", "investment_foreign_branch"]],
+  ])("investment routes for %j are %j", (routeAnswers, expected) => {
+    expect(
+      asked({
+        category: "invest",
+        sponsor_category: "NONE",
+        investment_vehicle: "merit",
+        ...routeAnswers,
+      }),
+    ).toEqual(expected);
+  });
+
+  it("the capital-market vehicle keeps INVESTMENT and asks the same route questions", () => {
+    expect(
+      asked({
+        category: "invest",
+        sponsor_category: "NONE",
+        investment_vehicle: "capital_market",
+        investment_establishes_company: "no",
+        investment_capital_market_only: "yes",
+      }),
+    ).toEqual([
+      "investment_establishes_company",
+      "investment_capital_market_only",
+      "investment_foreign_branch",
+      "investment_meets_threshold",
+    ]);
+  });
+
+  it("walks a government-invited employee through both sponsor questions to the verdict", () => {
+    let state = startOffshore("work");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "sponsor_category", "GOVERNMENT");
+    expectQuestion(state, "sponsor_government_invitation");
+    state = answer(state, "sponsor_government_invitation", "yes");
+    expectQuestion(state, "sponsor_trade_office");
+    state = answer(state, "sponsor_trade_office", "no");
+    expectQuestion(state, "work_payer");
+  });
+});
+
+// W-VO-Q, coverage report §B2 rows 16–17: the two corpus walks that still end
+// NEEDS_INPUT at engine level. The doctrine (COMMON-ADD §B, Zero 2026-09-13)
+// allows NEEDS_INPUT only as "the missing fact, re-asked by the tree" — so
+// what must hold is that the interview CAN ask each blocking fact again, not
+// that the walk hides it. Row 16 (`unsure` on the work sponsor) asks it in its
+// own history; row 17 (`still_unsure` retirement basis) reaches it as a
+// follow-up, the same question the family branch asks.
+describe("§B2 rows 16–17 — the blocking fact is one the tree re-asks", () => {
+  it("row 16: offshore/other/paid/sponsor_unsure asks work_sponsor_confirmed on its own walk", () => {
+    const facts: OracleFacts = {
+      in_indonesia: "no",
+      holds_stay_permit: "no",
+      category: "other",
+      other_paid_activity: "yes",
+      sponsor_category: "NONE",
+      work_payer: "yes",
+    };
+    expect(getCategoryQuestionIds(facts)).toContain("work_sponsor_confirmed");
+    expect(QUESTIONS.work_sponsor_confirmed.decisionMapping).toEqual({
+      kind: "FACT",
+      factPaths: ["work.indonesian_work_sponsor_confirmed"],
+    });
+  });
+
+  it("row 17: offshore/retirement/undecided/age64/still_unsure can follow up on family_sponsor_confirmed", () => {
+    const facts: OracleFacts = {
+      in_indonesia: "no",
+      holds_stay_permit: "no",
+      category: "retirement",
+      retirement_basis: "undecided",
+      retirement_undecided_basis: "still_unsure",
+    };
+    expect(getCategoryQuestionIds(facts)).not.toContain(
+      "family_sponsor_confirmed",
+    );
+    expect(followUpPrerequisitesMet("family_sponsor_confirmed", facts)).toBe(
+      true,
+    );
+  });
+});
+
+// W-VO-Q item 7 (owner ruling 2026-09-14): the business visitor exploring
+// whether to invest or open a business. INVESTMENT purpose (`mapPurposes`),
+// so the explorer is asked what `el.d12-*` and `el.c2.business` read, and —
+// only when the conversion answer excludes D12 — what the investor products
+// read, so the engine is never left asking for a fact the walk skipped.
+describe("business explorer — the D12 sequence", () => {
+  const explorer: OracleFacts = {
+    in_indonesia: "no",
+    category: "business",
+    business_activity: "exploring",
+  };
+
+  it("offshore, asks the sponsor and the conversion question, then the stay, and nothing a business meeting reads", () => {
+    expect(getCategoryQuestionIds(explorer)).toEqual([
+      "business_activity",
+      "family_sponsor_confirmed",
+      "wants_onshore_conversion",
+      "stay_days",
+    ]);
+    expect(
+      getCategoryQuestionIds({ ...explorer, wants_onshore_conversion: "no" }),
+    ).toEqual([
+      "business_activity",
+      "family_sponsor_confirmed",
+      "wants_onshore_conversion",
+      "stay_days",
+    ]);
+  });
+
+  it("onshore, never asks the conversion question twice (the spine already did)", () => {
+    expect(
+      getCategoryQuestionIds({
+        ...explorer,
+        in_indonesia: "yes",
+        wants_onshore_conversion: "no",
+      }),
+    ).toEqual(["business_activity", "family_sponsor_confirmed", "stay_days"]);
+  });
+
+  const INVESTOR_FACTS_AFTER_THE_STAY = [
+    "business_activity",
+    "family_sponsor_confirmed",
+    "wants_onshore_conversion",
+    "stay_days",
+    "sponsor_category",
+    "investment_pt_pma",
+    "investment_establishes_company",
+    "investment_foreign_branch",
+  ];
+
+  it("a conversion yes asks the investor facts after the stay: sponsor, PT PMA commitment, routes", () => {
+    expect(
+      getCategoryQuestionIds({ ...explorer, wants_onshore_conversion: "yes" }),
+    ).toEqual(INVESTOR_FACTS_AFTER_THE_STAY);
+    const committed = getCategoryQuestionIds({
+      ...explorer,
+      wants_onshore_conversion: "yes",
+      sponsor_category: "GOVERNMENT",
+      investment_pt_pma: "yes",
+      investment_establishes_company: "yes",
+    });
+    expect(committed).toEqual([
+      "business_activity",
+      "family_sponsor_confirmed",
+      "wants_onshore_conversion",
+      "stay_days",
+      "sponsor_category",
+      "sponsor_world_figure_invitation",
+      "investment_pt_pma",
+      "investment_capital_idr",
+      "investment_paid_up_capital_idr",
+      "investment_role",
+      "investment_establishes_company",
+      "investment_foreign_branch",
+      "investment_ikn_subsidiary",
+      "investment_meets_threshold",
+    ]);
+  });
+
+  it("a stay beyond D12's own bound asks the investor facts too; a stay inside it does not", () => {
+    const noConversion = { ...explorer, wants_onshore_conversion: "no" };
+    expect(
+      getCategoryQuestionIds({
+        ...noConversion,
+        stay_days: String(D12_MAX_STAY_DAYS + 1),
+      }),
+    ).toEqual(INVESTOR_FACTS_AFTER_THE_STAY);
+    expect(
+      getCategoryQuestionIds({
+        ...noConversion,
+        stay_days: String(D12_MAX_STAY_DAYS),
+      }),
+    ).toEqual([
+      "business_activity",
+      "family_sponsor_confirmed",
+      "wants_onshore_conversion",
+      "stay_days",
+    ]);
+  });
+
+  it("D12_MAX_STAY_DAYS is the stay bound of el.d12-multi-entry-support in the highest-sequence pack on disk", () => {
+    const packs = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../../../../../backend-rag/backend/services/visa_engine/contracts/packs",
+    );
+    let best: {
+      sequence: number;
+      rules: Array<Record<string, unknown>>;
+    } | null = null;
+    for (const name of fs.readdirSync(packs)) {
+      if (!/^rulepack-prod-\d+\.(signed|source)\.json$/.test(name)) continue;
+      const raw = JSON.parse(fs.readFileSync(path.join(packs, name), "utf-8"));
+      const payload = (raw.payload ?? raw) as {
+        sequence?: number;
+        rules?: Array<Record<string, unknown>>;
+      };
+      if (typeof payload.sequence !== "number" || !payload.rules) continue;
+      if (best === null || payload.sequence > best.sequence) {
+        best = { sequence: payload.sequence, rules: payload.rules };
+      }
+    }
+    expect(best?.sequence ?? 0).toBeGreaterThanOrEqual(20);
+    const rule = best?.rules.find(
+      (r) => r.rule_id === "el.d12-multi-entry-support",
+    ) as { when: { args: Array<Record<string, unknown>> } } | undefined;
+    const bound = rule?.when.args.find(
+      (arg) => arg.op === "lte" && arg.fact === "intent.stay_days",
+    );
+    expect(bound?.value).toBe(D12_MAX_STAY_DAYS);
+  });
+
+  it("the capital-market vehicle asks the PT PMA commitment, and the capital questions only after a yes", () => {
+    const base: OracleFacts = {
+      category: "invest",
+      sponsor_category: "NONE",
+      investment_vehicle: "capital_market",
+    };
+    const ids = getCategoryQuestionIds(base);
+    expect(ids).toContain("investment_pt_pma");
+    expect(ids).not.toContain("investment_capital_idr");
+    expect(
+      getCategoryQuestionIds({ ...base, investment_pt_pma: "yes" }),
+    ).toEqual(
+      expect.arrayContaining([
+        "investment_capital_idr",
+        "investment_paid_up_capital_idr",
+        "investment_role",
+      ]),
+    );
+  });
+
+  it("guilt: every other business answer keeps the meetings sequence", () => {
+    for (const { key } of QUESTIONS.business_activity.options) {
+      if (key === "exploring") continue;
+      expect(
+        getCategoryQuestionIds({
+          ...explorer,
+          business_activity: key,
+          wants_onshore_conversion: "yes",
+        }),
+      ).toEqual([
+        "business_activity",
+        "work_indonesia_compensation",
+        "stay_days",
+        "entry_pattern",
+      ]);
+    }
+  });
+
+  it("walks an offshore explorer to the verdict through the real reducer", () => {
+    let state = startOffshore("business");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "business_activity", "exploring");
+    state = answer(state, "family_sponsor_confirmed", "no");
+    state = answer(state, "wants_onshore_conversion", "no");
+    state = answer(state, "stay_days", "90");
+    expectQuestion(state, "review_gate");
   });
 });

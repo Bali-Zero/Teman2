@@ -1,5 +1,5 @@
 {
-  "label": "offshore/other/paid/sponsor_government",
+  "label": "offshore/work/sponsor_government/neither",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -8,15 +8,13 @@
     "birth_date",
     "category",
     "trip_scope",
-    "other_purpose",
-    "other_paid_activity",
     "sponsor_category",
     "sponsor_government_invitation",
     "sponsor_trade_office",
     "work_payer",
+    "work_indonesia_compensation",
     "work_sponsor_confirmed",
     "stay_days",
-    "entry_pattern",
     "review_gate"
   ],
   "overrides": {
@@ -42,7 +40,7 @@
     "intent.purposes": { "status": "KNOWN", "value": ["EMPLOYMENT"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.entry_pattern": { "status": "KNOWN", "value": "SINGLE" },
+    "intent.entry_pattern": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "intent.requested_product_code": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -56,10 +54,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "work.indonesia_source_compensation": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "work.indonesia_source_compensation": { "status": "KNOWN", "value": true },
     "work.indonesian_work_sponsor_confirmed": {
       "status": "KNOWN",
       "value": true
@@ -114,7 +109,7 @@
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.type": { "status": "KNOWN", "value": "GOVERNMENT" },
-    "sponsor.government_invitation": { "status": "KNOWN", "value": true },
+    "sponsor.government_invitation": { "status": "KNOWN", "value": false },
     "sponsor.government_collaboration": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -127,7 +122,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "sponsor.trade_office": { "status": "KNOWN", "value": true },
+    "sponsor.trade_office": { "status": "KNOWN", "value": false },
     "investment.establishes_indonesian_company": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

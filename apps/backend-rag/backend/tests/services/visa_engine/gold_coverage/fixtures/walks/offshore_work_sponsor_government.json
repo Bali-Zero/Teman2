@@ -9,6 +9,8 @@
     "category",
     "trip_scope",
     "sponsor_category",
+    "sponsor_government_invitation",
+    "sponsor_trade_office",
     "work_payer",
     "work_indonesia_compensation",
     "work_sponsor_confirmed",
@@ -107,10 +109,7 @@
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.type": { "status": "KNOWN", "value": "GOVERNMENT" },
-    "sponsor.government_invitation": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "sponsor.government_invitation": { "status": "KNOWN", "value": true },
     "sponsor.government_collaboration": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -123,7 +122,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "sponsor.trade_office": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "sponsor.trade_office": { "status": "KNOWN", "value": true },
     "investment.establishes_indonesian_company": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

@@ -1,5 +1,5 @@
 {
-  "label": "offshore/other/paid/sponsor_government",
+  "label": "offshore/work/sponsor_individual/not_diplomatic",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -8,15 +8,12 @@
     "birth_date",
     "category",
     "trip_scope",
-    "other_purpose",
-    "other_paid_activity",
     "sponsor_category",
-    "sponsor_government_invitation",
-    "sponsor_trade_office",
+    "sponsor_diplomatic_household",
     "work_payer",
+    "work_indonesia_compensation",
     "work_sponsor_confirmed",
     "stay_days",
-    "entry_pattern",
     "review_gate"
   ],
   "overrides": {
@@ -42,7 +39,7 @@
     "intent.purposes": { "status": "KNOWN", "value": ["EMPLOYMENT"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.entry_pattern": { "status": "KNOWN", "value": "SINGLE" },
+    "intent.entry_pattern": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "intent.requested_product_code": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -56,10 +53,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "work.indonesia_source_compensation": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "work.indonesia_source_compensation": { "status": "KNOWN", "value": true },
     "work.indonesian_work_sponsor_confirmed": {
       "status": "KNOWN",
       "value": true
@@ -113,8 +107,11 @@
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "sponsor.type": { "status": "KNOWN", "value": "GOVERNMENT" },
-    "sponsor.government_invitation": { "status": "KNOWN", "value": true },
+    "sponsor.type": { "status": "KNOWN", "value": "INDIVIDUAL" },
+    "sponsor.government_invitation": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "sponsor.government_collaboration": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -123,11 +120,8 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "sponsor.diplomatic_household": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
-    "sponsor.trade_office": { "status": "KNOWN", "value": true },
+    "sponsor.diplomatic_household": { "status": "KNOWN", "value": false },
+    "sponsor.trade_office": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "investment.establishes_indonesian_company": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

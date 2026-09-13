@@ -529,6 +529,15 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian government body, and you did not name one as your sponsor.",
     "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah Indonesia, dan Anda tidak menyebutkan instansi pemerintah sebagai penjamin Anda.",
   ),
+  // `hf.d12-onshore-conversion-excluded` (source 5e64ec6b…). Reachable on a
+  // corpus walk since W-VO-Q item 7: a business explorer who plans to switch
+  // permits inside Indonesia and answers "no" to every investor route. The
+  // only entry this window adds to the map; product names verbatim from the
+  // pack's `names.en` / `names.id`.
+  D12_NOT_CONVERTIBLE: text(
+    "The Visit Visa Pre-Investment — Multiple Entry (D12) cannot be changed into another permit from inside Indonesia, and you told us you plan to switch permits after you arrive. If you travel on it without switching, answer that question no and it is assessed again.",
+    "Visa Kunjungan Pra-Investasi (D12) tidak dapat dialihkan menjadi izin lain dari dalam Indonesia, sedangkan Anda menyampaikan akan beralih izin setelah tiba. Jika Anda bepergian dengan visa ini tanpa beralih izin, jawab pertanyaan tersebut dengan tidak dan penilaian akan diulang.",
+  ),
   PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR: text(
     "You told us the activity is paid and that your employer is not an Indonesian entity. An Indonesian work permit is issued to a sponsoring entity in Indonesia, so the work routes are closed on that answer. If the work is done from Indonesia for that same employer abroad and none of the pay comes from an Indonesian source, the open door is the Second Home Visa — Remote Worker (E33G); if you are coming for meetings rather than to work, it is the Business Visit Visa (C2).",
     "Anda menyampaikan bahwa aktivitas tersebut dibayar dan pemberi kerja Anda bukan badan usaha Indonesia. Izin kerja Indonesia diterbitkan kepada badan penjamin di Indonesia, sehingga jalur kerja tertutup atas jawaban tersebut. Jika pekerjaan dilakukan dari Indonesia untuk pemberi kerja yang sama di luar negeri dan tidak ada bayaran yang berasal dari sumber di Indonesia, pintu yang terbuka adalah Visa Rumah Kedua Pekerja Jarak Jauh (E33G); jika Anda datang untuk pertemuan dan bukan untuk bekerja, pintunya adalah Visa Kunjungan Bisnis (C2).",

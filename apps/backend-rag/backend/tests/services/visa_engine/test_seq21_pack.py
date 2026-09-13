@@ -147,6 +147,46 @@ NAMED_CAUSE_WALKS: dict[str, str] = {
 
 _GENERIC_CAUSE = "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
 
+#: W-VO-Q (mission SAETTA-VO3): what seq-21 ADDS to seq-20's candidates on each
+#: walk once the interview asks the ten qualification facts, measured
+#: 2026-09-14 over the 107-walk corpus at ``AS_OF``. 26 walks gain; none loses.
+#: The defaults answer "yes", so the `work`/`invest`/paid-`other` default walks
+#: gain several products at once; the one-product walks are W-VO-Q's own.
+EXPECTED_SEQ21_GAINS: dict[str, tuple[str, ...]] = {
+    # W-VO-Q item 7: the business explorer's default walk (INVESTMENT purpose,
+    # conversion "yes", so the investor route questions are asked).
+    "offshore/business/exploring": ("E28B", "E28D", "E28F"),
+    "offshore/invest/capital_market": ("E28B", "E28D", "E28F"),
+    "offshore/invest/capital_market/capital_market_only": ("E28C",),
+    "offshore/invest/family": ("E28B", "E28D", "E28F"),
+    "offshore/invest/merit": ("E28B", "E28D", "E28F"),
+    "offshore/invest/merit/currency_usd": ("E28B", "E28D", "E28F"),
+    "offshore/invest/pt_pma": ("E28B", "E28D", "E28F"),
+    "offshore/invest/pt_pma/company_only": ("E28B",),
+    "offshore/invest/pt_pma/foreign_branch_only": ("E28D",),
+    "offshore/invest/pt_pma/full_capital": ("E28B", "E28D", "E28F"),
+    "offshore/invest/pt_pma/ikn_subsidiary": ("E28B", "E28F"),
+    "offshore/invest/pt_pma/offshore_application": ("E28B", "E28D", "E28F"),
+    "offshore/invest/pt_pma/sponsor_government": ("E28B", "E28D", "E28F", "E33C"),
+    "offshore/invest/pt_pma/sponsor_government/not_world_figure": ("E28B", "E28D", "E28F"),
+    "offshore/invest/undecided": ("E28B", "E28D", "E28F"),
+    "offshore/invest/undecided/currency_still_unsure": ("E28B", "E28D", "E28F"),
+    "offshore/other": ("E33B",),
+    "offshore/other/paid/sponsor_government": ("E23V", "E33A"),
+    # The one state that moves: NEEDS_INPUT on `work.indonesian_work_sponsor_
+    # confirmed` ("unsure") on seq-20, SUPPORTED [E33B] on seq-21 — the
+    # default NONE sponsor answers the collaboration question "yes".
+    "offshore/other/paid/sponsor_unsure": ("E33B",),
+    "offshore/work": ("E33B",),
+    "offshore/work/sponsor_government": ("E23V", "E33A"),
+    "offshore/work/sponsor_government/invitation_only": ("E33A",),
+    "offshore/work/sponsor_government/trade_office_only": ("E23V",),
+    "offshore/work/sponsor_individual": ("E23U",),
+    "onshore/invest": ("E28B", "E28D", "E28F"),
+    "onshore/other": ("E33B",),
+    "onshore/work": ("E33B",),
+}
+
 
 def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -347,13 +387,43 @@ def _gold_overrides() -> dict[str, dict[str, Any]]:
     }
 
 
+def _as_before_the_questions(overrides: dict[str, Any]) -> dict[str, Any]:
+    """A walk's wire facts with the ten qualification facts back at
+    UNKNOWN(NOT_ASKED) — what the interview sent before W-VO-Q asked them.
+
+    Since W-VO-Q the corpus ANSWERS the ten questions (their first option is
+    "yes"), so the walks on the `work`, `invest` and paid-`other` branches
+    carry the very facts these witnesses need to control. A test that proves
+    what ONE qualifying fact does must start from a walk that carries none,
+    or it measures the corpus's answer instead of its own fixture."""
+    return {
+        key: (_UNKNOWN if key in QUALIFICATION_FACTS else value) for key, value in overrides.items()
+    }
+
+
 @pytest.fixture(scope="module")
-def gold_base(walks: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def unasked_walks(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Every walk the interview before W-VO-Q could produce, with the ten
+    facts back at UNKNOWN(NOT_ASKED). The business explorer (W-VO-Q item 7,
+    ``business_activity = exploring``) is left out: that answer did not exist
+    before the questions, so its "unasked" form is no interview anyone could
+    have walked. Its answers on both packs are pinned per walk in
+    ``test_interview_walk_census.py``."""
+    return {
+        label: {**spec, "overrides": _as_before_the_questions(spec["overrides"])}
+        for label, spec in walks.items()
+        if not label.startswith("offshore/business/exploring")
+    }
+
+
+@pytest.fixture(scope="module")
+def gold_base(unasked_walks: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """A REAL corpus walk as the fixture base, never a hand-built fact bag: a
     persona assembled from scratch would drift from what the interview
     actually sends, and the point of these nine fixtures is that a real
-    applicant can reach the product."""
-    return dict(walks["offshore/work/sponsor_government"]["overrides"])
+    applicant can reach the product. Taken without the ten qualification
+    answers, so each gold row supplies its product's fact alone."""
+    return dict(unasked_walks["offshore/work/sponsor_government"]["overrides"])
 
 
 # ---------------------------------------------------------------------------
@@ -939,6 +1009,10 @@ class TestSponsorTypeAloneIsNotEvidence:
     SUPPORT rules, which is exactly the shape PR #6362 shipped for its five.
     If the census does not move, the qualifying facts are decorative and this
     whole fold is theatre.
+
+    Replayed on the corpus WITHOUT the ten answers (``unasked_walks``): the
+    witness is about what the rule does when nothing established the
+    qualification, which is exactly the state W-VO-Q's answers would hide.
     """
 
     @staticmethod
@@ -957,10 +1031,10 @@ class TestSponsorTypeAloneIsNotEvidence:
         self,
         seq21_source: dict[str, Any],
         seq21_compiled: compiler.CompiledRulePack,
-        walks: dict[str, dict[str, Any]],
+        unasked_walks: dict[str, dict[str, Any]],
     ) -> None:
-        cured = _replay(seq21_compiled, walks)
-        uncured = _replay(_compiled(self._uncured(seq21_source)), walks)
+        cured = _replay(seq21_compiled, unasked_walks)
+        uncured = _replay(_compiled(self._uncured(seq21_source)), unasked_walks)
         moved = [label for label in cured if cured[label] != uncured[label]]
         # Measured 2026-09-14: 9 walks. It was 16 while E33B/E33C admitted
         # GOVERNMENT-or-NONE; aligning both premises to the catalogue removed
@@ -974,14 +1048,16 @@ class TestSponsorTypeAloneIsNotEvidence:
         self,
         seq21_source: dict[str, Any],
         seq21_compiled: compiler.CompiledRulePack,
-        walks: dict[str, dict[str, Any]],
+        unasked_walks: dict[str, dict[str, Any]],
     ) -> None:
         """The named guilt: ``offshore/work`` and ``offshore/other`` both
         declare ``sponsor.type = NONE``. Un-cured, the pack offers them E33B
         with nothing having established a collaboration."""
         label = "offshore/work"
-        cured = _decide(seq21_compiled, walks[label]["overrides"], label)
-        uncured = _decide(_compiled(self._uncured(seq21_source)), walks[label]["overrides"], label)
+        cured = _decide(seq21_compiled, unasked_walks[label]["overrides"], label)
+        uncured = _decide(
+            _compiled(self._uncured(seq21_source)), unasked_walks[label]["overrides"], label
+        )
         assert "E33B" not in cured["candidates"]
         assert "E33B" in uncured["candidates"]
 
@@ -989,15 +1065,17 @@ class TestSponsorTypeAloneIsNotEvidence:
         self,
         seq21_source: dict[str, Any],
         seq21_compiled: compiler.CompiledRulePack,
-        walks: dict[str, dict[str, Any]],
+        unasked_walks: dict[str, dict[str, Any]],
     ) -> None:
         """The dossier's §4 finding, reproduced: un-cured, ONE answer produces
         E23V + E33A together because nothing tells them apart. (The dossier
         measured three with E33B; E33B's premise is now the catalogue's NONE,
         so a government sponsor no longer reaches it even un-cured.)"""
         label = "offshore/work/sponsor_government"
-        cured = _decide(seq21_compiled, walks[label]["overrides"], label)
-        uncured = _decide(_compiled(self._uncured(seq21_source)), walks[label]["overrides"], label)
+        cured = _decide(seq21_compiled, unasked_walks[label]["overrides"], label)
+        uncured = _decide(
+            _compiled(self._uncured(seq21_source)), unasked_walks[label]["overrides"], label
+        )
         assert cured["candidates"] == ["E23"]
         assert {"E23V", "E33A"} <= set(uncured["candidates"])
         assert "E33B" not in uncured["candidates"]
@@ -1009,19 +1087,19 @@ class TestSponsorTypeAloneIsNotEvidence:
 
 
 class TestCensusReplay:
-    def test_no_walk_changes_state_or_candidates(
+    def test_without_the_answers_no_walk_changes_state_or_candidates(
         self,
         seq20_compiled: compiler.CompiledRulePack,
         seq21_compiled: compiler.CompiledRulePack,
-        walks: dict[str, dict[str, Any]],
+        unasked_walks: dict[str, dict[str, Any]],
     ) -> None:
-        """The honest measurement, and it is a NEGATIVE one: the corpus
-        carries the ten new facts only as UNKNOWN/NOT_ASKED — no walk answers
-        them until W-VO-Q adds the questions — so no walk gains a product. What must NOT happen is a regression — a walk losing
-        its answer, or an ``on_unknown: NEEDS_INPUT`` rule turning a decided
-        dead end into a question."""
-        before = _replay(seq20_compiled, walks)
-        after = _replay(seq21_compiled, walks)
+        """The fold's own no-regression claim, kept: with the ten facts
+        UNKNOWN (the interview before W-VO-Q), no walk gains a product and —
+        what must never happen — no walk loses its answer, and no
+        ``on_unknown: NEEDS_INPUT`` rule turns a decided dead end into a
+        question."""
+        before = _replay(seq20_compiled, unasked_walks)
+        after = _replay(seq21_compiled, unasked_walks)
         drift = [
             f"{label}: {before[label]['state']} {before[label]['candidates']} -> "
             f"{after[label]['state']} {after[label]['candidates']}"
@@ -1031,19 +1109,18 @@ class TestCensusReplay:
         ]
         assert drift == []
 
-    def test_the_census_is_76_answers_15_no_paths_2_questions_1_privacy_hold(
+    def test_without_the_answers_the_census_is_89_answers_15_no_paths_2_questions(
         self,
         seq21_compiled: compiler.CompiledRulePack,
-        walks: dict[str, dict[str, Any]],
+        unasked_walks: dict[str, dict[str, Any]],
     ) -> None:
-        """Measured on the 94-walk corpus (W-VO-E added ten walks; this pin
-        read 67 / 15 / 2 / 0 over the 84-walk corpus it was written against).
-        Nine of the ten answer; the tenth is a minor, which
-        ``_apply_minor_privacy_hold`` holds at the public level on any pack —
-        so the one hold is pinned by walk, not only by count."""
-        replayed = _replay(seq21_compiled, walks)
+        """67 / 15 / 2 / 0 over the 84-walk corpus this fold was measured on;
+        89 / 15 / 2 / 1 over W-VO-Q's 107 walks (W-VO-E's nine adult walks and
+        W-VO-Q's thirteen are all answers on the signed pack, and the one hold is W-VO-E's
+        minor walk, held by the privacy adapter, not by this pack)."""
+        replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 76
+        assert census["SUPPORTED_CANDIDATES"] == 89
         assert census["NO_SUPPORTED_PATH"] == 15
         assert census["NEEDS_INPUT"] == 2
         assert census["HUMAN_REVIEW_REQUIRED"] == 1
@@ -1053,6 +1130,42 @@ class TestCensusReplay:
             if actual["state"] == "HUMAN_REVIEW_REQUIRED"
         ]
         assert held == ["offshore/family/PARENT/spNat=IT/minor"]
+
+    def test_with_the_answers_walks_only_gain_the_nine_products(
+        self,
+        seq20_compiled: compiler.CompiledRulePack,
+        seq21_compiled: compiler.CompiledRulePack,
+        walks: dict[str, dict[str, Any]],
+    ) -> None:
+        """W-VO-Q's measured effect, pinned walk by walk: with the interview
+        ASKING the ten facts, seq-21 adds exactly ``EXPECTED_SEQ21_GAINS`` to
+        what seq-20 answers, every added code is one of the nine products this
+        fold made supportable, no walk loses a candidate, and the only state
+        that moves is one NEEDS_INPUT walk becoming an answer."""
+        before = _replay(seq20_compiled, walks)
+        after = _replay(seq21_compiled, walks)
+        gains: dict[str, tuple[str, ...]] = {}
+        for label in sorted(before):
+            lost = [
+                code
+                for code in before[label]["candidates"]
+                if code not in after[label]["candidates"]
+            ]
+            assert lost == [], f"{label}: seq-21 drops {lost}"
+            gained = tuple(
+                code
+                for code in after[label]["candidates"]
+                if code not in before[label]["candidates"]
+            )
+            if gained:
+                gains[label] = gained
+            if before[label]["state"] != after[label]["state"]:
+                assert (before[label]["state"], after[label]["state"]) == (
+                    "NEEDS_INPUT",
+                    "SUPPORTED_CANDIDATES",
+                ), label
+        assert gains == EXPECTED_SEQ21_GAINS
+        assert {code for codes in gains.values() for code in codes} == set(TARGET_PRODUCT_CODES)
 
     def test_no_walk_regresses_onto_requested_product_code(
         self,

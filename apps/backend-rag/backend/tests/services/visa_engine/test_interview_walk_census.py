@@ -2,12 +2,16 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **94 real interview walks** — every distinct
+the user lives in: replay the **111 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
-Current ENGINE census (W-VO-E, 2026-09-13): **1 HUMAN_REVIEW_REQUIRED / 2
-NEEDS_INPUT / 15 NO_SUPPORTED_PATH / 76 SUPPORTED_CANDIDATES**; the FUNNEL
+Current ENGINE census (W-VO-Q, 2026-09-14), on signed seq-20: **1
+HUMAN_REVIEW_REQUIRED / 2 NEEDS_INPUT / 16 NO_SUPPORTED_PATH / 92
+SUPPORTED_CANDIDATES** (W-VO-E's 94-walk figure was 76); on signed seq-21
+**1 / 1 / 16 / 93** — the pins are kept per signed sequence
+(``EXPECTED_OUTCOME_BY_SEQUENCE``), so the census stays green on both sides
+of the seq-21 signature. The FUNNEL
 census the applicant actually meets is the second column of the table under
 "THE DISCLOSURE-FLAG LAYER" below. The paragraphs below are the historical
 record of how it got here, each keeping the count that was true when it was
@@ -154,13 +158,14 @@ two different questions:
   is ``None``, which no evaluated decision is — council round 1,
   tp1-qwen3.8-max, on the word "unconditional".)
 
-MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 94 walks,
+MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 94 walks
+(re-measured 2026-09-14 over W-VO-Q's 111 — see below the table),
 both censuses in the same run (``test_the_flagged_census_is_the_funnel_the_
 applicant_meets``):
-   - **76 SUPPORTED_CANDIDATES means 76 walks reach candidates AT ENGINE
-     LEVEL, with no disclosure flags supplied.** It does NOT mean 76
+   - **92 SUPPORTED_CANDIDATES means 92 walks reach candidates AT ENGINE
+     LEVEL, with no disclosure flags supplied.** It does NOT mean 92
      applicants see a recommendation without human review — the FUNNEL
-     column, 69, is the one an applicant meets.
+     column, 85, is the one an applicant meets.
    - **The hold counts are a property of these fixtures, not of
      production.** The ENGINE column's single hold was ``== 0`` until
      W-VO-E; it now allows exactly one and pins its walk and its reason code
@@ -181,11 +186,27 @@ applicant_meets``):
 ===========================  ======  =======
 state                        ENGINE  FUNNEL
 ===========================  ======  =======
-SUPPORTED_CANDIDATES             76       69
-NO_SUPPORTED_PATH                15       15
+SUPPORTED_CANDIDATES             92       85
+NO_SUPPORTED_PATH                16       16
 NEEDS_INPUT                       2        1
 HUMAN_REVIEW_REQUIRED             1        9
 ===========================  ======  =======
+
+W-VO-Q (mission SAETTA-VO3) moved the corpus 94 -> 111 and the table
+above is re-measured on it (2026-09-14, signed seq-20): ENGINE and FUNNEL
+both +16 SUPPORTED_CANDIDATES (76 -> 92, 69 -> 85) and +1
+NO_SUPPORTED_PATH (the business explorer who converts onshore with no
+investor route, on the named cause ``D12_NOT_CONVERTIBLE``), and no new
+hold — none of its seventeen walks raises a disclosure flag, so the per-flag
+table below is unchanged. With the signed seq-21 bundle as the highest pack
+the ENGINE column reads 93/16/1/1 (``offshore/other/paid/sponsor_unsure``
+moves NEEDS_INPUT -> SUPPORTED_CANDIDATES [E33B]) and the FUNNEL column is
+identical, because that walk is held by its NOT_CERTAIN flag on both. (Its
+capital-market walk first answered the `undecided` vehicle and was held by
+ACTIVITY_BOUNDARY; council round 1 (council/journal.jsonl) caught that the
+funnel then named E28C to nobody, and the tree gained the
+``capital_market`` vehicle the pack decides.) The history of the 94-walk
+columns follows unchanged.
 
 W-VO-E moved both columns by the same +9/+1 shape — +9
 SUPPORTED_CANDIDATES and +1 HUMAN_REVIEW_REQUIRED, i.e. ENGINE 67/15/2/0 ->
@@ -206,6 +227,10 @@ ACTIVITY_BOUNDARY         6  SUPPORTED_CANDIDATES -> HUMAN_REVIEW_REQUIRED (×6)
 NOT_CERTAIN               2  SUPPORTED_CANDIDATES -> HUMAN_REVIEW_REQUIRED (×1)
                              NEEDS_INPUT -> HUMAN_REVIEW_REQUIRED (×1)
 =================  ========  ==================================================
+
+(On signed seq-21 the NOT_CERTAIN row reads SUPPORTED_CANDIDATES ->
+HUMAN_REVIEW_REQUIRED ×2: the sponsor_unsure walk is answered at engine
+level there, and its flag still rewrites it.)
 
 The other nine flags in ``DisclosedReviewFlag`` rewrite ZERO walks: no
 corpus walk answers ``trip_scope = "multiple"`` (``MULTI_PURPOSE_TRIP``),
@@ -268,15 +293,18 @@ that same PR.
 from __future__ import annotations
 
 import copy
+import functools
 import json
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from backend.scripts.visa_engine import gold_coverage_eval
+from backend.scripts.visa_engine.compile_pack import load_rule_pack_payload, wrap_as_unsigned_pack
 from backend.scripts.visa_engine.gold_coverage_eval import _evaluate
 from backend.scripts.visa_engine.gold_replay_driver import (
     PACKS_DIR,
@@ -285,7 +313,7 @@ from backend.scripts.visa_engine.gold_replay_driver import (
     select_highest_repository_pack,
 )
 from backend.services.visa_engine import ast as ast_module
-from backend.services.visa_engine import evaluate_path, evaluator
+from backend.services.visa_engine import compiler, evaluate_path, evaluator
 from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
 from backend.services.visa_engine.ast import KnownFact, UnknownFact
 from backend.services.visa_engine.enums import (
@@ -296,6 +324,7 @@ from backend.services.visa_engine.enums import (
     UnknownReason,
     VisaProductStatus,
 )
+from backend.tests.services.visa_engine.gold_replay import _decision_actual
 from backend.tests.services.visa_engine.test_evaluator_gold import Persona
 
 CORPUS_DIR = Path(__file__).resolve().parent / "gold_coverage" / "fixtures" / "walks"
@@ -310,6 +339,73 @@ CORPUS_DIR = Path(__file__).resolve().parent / "gold_coverage" / "fixtures" / "w
 # `observed_at`, which rejects a signature dated after the observation.
 _, _HIGHEST_SIGNED_PACK = select_highest_repository_pack(PACKS_DIR)
 _AS_OF = _parse_utc(_HIGHEST_SIGNED_PACK["protected"]["signed_at"])
+
+#: The sequence every per-walk pin below is read for. W-VO-Q (mission
+#: SAETTA-VO3): the pins are kept PER SIGNED SEQUENCE, because the census has
+#: to stay green on both sides of a signature — on main while seq-20 is the
+#: highest signed pack, and in the PR that lands the signed seq-21 bundle,
+#: which changes no walk's facts but does change what the engine answers. A
+#: signed sequence with no pins fails `test_the_census_pins_the_signed_sequence`
+#: by name instead of quietly grading against the previous one.
+_SIGNED_SEQUENCE = int(_HIGHEST_SIGNED_PACK["payload"]["sequence"])
+
+
+@dataclass(frozen=True)
+class PackUnderTest:
+    """A compiled pack and the instant the reachability guard grades it at."""
+
+    compiled: Any
+    as_of: datetime
+
+
+def _signed_pack() -> PackUnderTest:
+    """The default: the highest SIGNED pack, verified, at its own ``signed_at``."""
+
+    _pack_path, compiled = gold_coverage_eval._verified_compiled_pack(_AS_OF)
+    return PackUnderTest(compiled=compiled, as_of=_AS_OF)
+
+
+def _candidate_source_pack_path() -> Path | None:
+    """The highest-sequence UNSIGNED production source pack above the highest
+    signed one, or ``None`` when every source pack on disk is already signed.
+
+    W-VO-Q (mission SAETTA-VO3): the CANDIDATE mode of the reachability guard.
+    A tree change that exists to make an unsigned pack's products reachable
+    has to be proven against THAT pack before the owner signs it — the signed
+    default above cannot see a rule that is not signed yet. Once the candidate
+    is signed it stops being "above the signed one", this returns ``None``,
+    and the candidate tests skip: the signed guard covers it from then on."""
+
+    signed_sequence = int(_HIGHEST_SIGNED_PACK["payload"]["sequence"])
+    above: list[tuple[int, Path]] = []
+    for path in sorted(PACKS_DIR.glob("rulepack-prod-*.source.json")):
+        sequence = int(json.loads(path.read_text(encoding="utf-8"))["sequence"])
+        if sequence > signed_sequence:
+            above.append((sequence, path))
+    return max(above)[1] if above else None
+
+
+@functools.lru_cache(maxsize=1)
+def _candidate_pack() -> PackUnderTest | None:
+    """The candidate compiled through ``wrap_as_unsigned_pack`` — a placeholder
+    envelope, never a trust claim (the same path ``test_seq21_pack.py`` uses
+    to exercise the real evaluator on an unsigned pack).
+
+    Graded 12 hours after the LATEST ``valid_period.from`` among its rules, so
+    every rule the candidate inserts is in force — evaluating a candidate at
+    the INCUMBENT's ``signed_at`` reports "nothing moved" for rules that are
+    not effective yet, the mistake the first seq-21 census made. For seq-21
+    (every new rule valid from 2026-09-13T00:00Z since #6479) this is
+    2026-09-13T12:00Z."""
+
+    path = _candidate_source_pack_path()
+    if path is None:
+        return None
+    payload = load_rule_pack_payload(path)
+    compiled = compiler.build_compiled_pack(wrap_as_unsigned_pack(payload))
+    latest = max(rule.valid_period.from_ for rule in payload.rules)
+    return PackUnderTest(compiled=compiled, as_of=latest + timedelta(hours=12))
+
 
 #: Why an allowlisted NEEDS_INPUT is a DEAD END and not a question the funnel
 #: could ask. Each value is checked against the walk's own `asked` history.
@@ -406,22 +502,36 @@ class DeadEnd:
 #:   as it did pre-cure, but `family_sponsor_confirmed` IS nameable as a
 #:   follow-up (asked unconditionally by the `family`/`diaspora`/`invest`/
 #:   `other` categories, which is what `followUpPrerequisitesMet` checks).
-WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
-    "offshore/other/paid/sponsor_unsure": (
-        DeadEnd(
-            fact="work.indonesian_work_sponsor_confirmed",
-            source_question="work_sponsor_confirmed",
-            why_unaskable=ANSWER_NEVER_CERTIFIED,
-        ),
+#:
+#: W-VO-Q: on seq-21 the first row is CURED, not excused. The walk answers
+#: `sponsor_category`'s first option (NONE), so the tree now asks it the
+#: government-collaboration question (`el.e33b.government-collaboration`),
+#: and its "yes" names E33B whatever the uncertified E23 sponsor answer is —
+#: SUPPORTED_CANDIDATES [E33B], nothing left to ask. The row stays on seq-20,
+#: which reads none of the ten facts.
+_STILL_UNSURE_RETIREMENT_ROW: tuple[DeadEnd, ...] = (
+    DeadEnd(
+        fact="family.sponsor_confirmed",
+        source_question="family_sponsor_confirmed",
+        why_unaskable=QUESTION_NOT_IN_THIS_WALK,
     ),
-    "offshore/retirement/undecided/age64/still_unsure": (
-        DeadEnd(
-            fact="family.sponsor_confirmed",
-            source_question="family_sponsor_confirmed",
-            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
+)
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] = {
+    20: {
+        "offshore/other/paid/sponsor_unsure": (
+            DeadEnd(
+                fact="work.indonesian_work_sponsor_confirmed",
+                source_question="work_sponsor_confirmed",
+                why_unaskable=ANSWER_NEVER_CERTIFIED,
+            ),
         ),
-    ),
+        "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
+    },
+    21: {"offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW},
 }
+WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
+    _SIGNED_SEQUENCE, {}
+)
 
 
 #: Products the highest signed pack gives a SUPPORT rule and NO interview
@@ -481,7 +591,10 @@ UNREACHABLE_BY_RULING: dict[str, RuledUnreachable] = {
 #: Candidates are pinned too — a pack edit that adds or drops a product for a
 #: walk that already had an answer is exactly as much of a shift as a state
 #: change, and this table is the only place either becomes visible.
-EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
+#:
+#: This literal is the seq-20 table; `EXPECTED_OUTCOME` (below it) is the one
+#: for the signed sequence under test, built from it and the seq-21 changes.
+_EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/business": ("NO_SUPPORTED_PATH", ()),
     # W-VO-E: the business visitor who is NOT paid from inside Indonesia —
     # `el.d2-*`, the multiple-entry business visa. The walk above answers
@@ -489,6 +602,20 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     # on BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED, which is a correct answer
     # to a different question; D2 had no walk at all.
     "offshore/business/no_local_compensation": ("SUPPORTED_CANDIDATES", ("D2",)),
+    # W-VO-Q item 7 (owner ruling 2026-09-14): the business explorer,
+    # INVESTMENT purpose. The default walk answers the conversion question
+    # `yes` (D12 excluded, the investor facts asked) and is decided by C2's
+    # sponsor; the two offshore-application walks name D12 with and without a
+    # sponsor; the explorer who converts onshore with no sponsor and no
+    # investor route ends on the named cause `D12_NOT_CONVERTIBLE`, never on
+    # a question.
+    "offshore/business/exploring": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/business/exploring/offshore_application": ("SUPPORTED_CANDIDATES", ("C2", "D12")),
+    "offshore/business/exploring/offshore_application/sponsor_no": (
+        "SUPPORTED_CANDIDATES",
+        ("D12",),
+    ),
+    "offshore/business/exploring/sponsor_no/no_route": ("NO_SUPPORTED_PATH", ()),
     "offshore/diaspora/CHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31G")),
     # D4a (owner ruling SHWEB-20260911, 2026-09-13): `family_sponsor_status_
     # code` is now a closed-catalogue FACT instead of always-UNVERIFIED — the
@@ -780,7 +907,101 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "onshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
     "onshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "onshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
+    # W-VO-Q (mission SAETTA-VO3): thirteen walks — the `capital_market`
+    # vehicle's default walk and twelve over the ten seq-21 qualification
+    # questions. On the pack signed TODAY (seq-20) none of the ten facts is
+    # read by any rule, so every one of them answers exactly what its
+    # branch's default walk answers — E23 on `work`, C2 on `invest`. What
+    # they change is the CANDIDATE pack's answer, pinned per walk in
+    # `test_seq21_pack.py`'s `EXPECTED_SEQ21_GAINS` and bound here by
+    # `test_every_support_bearing_product_of_the_candidate_pack_is_named_by_some_walk`.
+    "offshore/invest/pt_pma/below_published_threshold": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/pt_pma/company_only": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/pt_pma/foreign_branch_only": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/pt_pma/ikn_subsidiary": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/pt_pma/no_route": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/pt_pma/sponsor_government/not_world_figure": (
+        "SUPPORTED_CANDIDATES",
+        ("C2",),
+    ),
+    "offshore/invest/capital_market": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/capital_market/capital_market_only": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/work/no_government_collaboration": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "offshore/work/sponsor_government/invitation_only": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "offshore/work/sponsor_government/neither": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "offshore/work/sponsor_government/trade_office_only": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "offshore/work/sponsor_individual/not_diplomatic": ("SUPPORTED_CANDIDATES", ("E23",)),
 }
+
+#: W-VO-Q (mission SAETTA-VO3): the walks whose outcome seq-21 changes, and
+#: nothing else — every walk absent here answers on seq-21 exactly what it
+#: answers on seq-20. Measured 2026-09-14 with the owner-signed
+#: `rulepack-prod-021.signed.json` (payload fda8c312…98c7) as the highest
+#: signed pack, at its own `signed_at`, and again against the unsigned
+#: candidate source through `test_every_walk_ends_in_its_pinned_outcome_on_
+#: the_candidate_pack` (identical payload, so identical answers).
+#:
+#: Every change ADDS one of the nine products seq-21 makes supportable, on
+#: the answer that product's own rule reads (FACTS-FOR-THE-TREE.md), and no
+#: walk loses a candidate. The corpus answers each new yes/no question with
+#: its first option, "yes", which is why the default `work`, paid `other`
+#: and INVESTMENT-purpose walks gain E33B or E28B/D/F; the one-product walks
+#: and the honest "no" walks are the scenarios in `generate-walk-corpus.ts`.
+#: One STATE moves: `offshore/other/paid/sponsor_unsure` was NEEDS_INPUT on
+#: the uncertified E23 sponsor answer and is now answered by E33B, whose
+#: government-collaboration question the walk's NONE sponsor now asks.
+_SEQ21_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/business/exploring": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28D", "E28F")),
+    "offshore/invest/capital_market": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28D", "E28F")),
+    "offshore/invest/capital_market/capital_market_only": ("SUPPORTED_CANDIDATES", ("C2", "E28C")),
+    "offshore/invest/family": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28D", "E28F")),
+    "offshore/invest/merit": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28D", "E28F")),
+    "offshore/invest/merit/currency_usd": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28D", "E28F")),
+    "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28D", "E28F")),
+    "offshore/invest/pt_pma/company_only": ("SUPPORTED_CANDIDATES", ("C2", "E28B")),
+    "offshore/invest/pt_pma/foreign_branch_only": ("SUPPORTED_CANDIDATES", ("C2", "E28D")),
+    "offshore/invest/pt_pma/full_capital": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "D12", "E28A", "E28B", "E28D", "E28F"),
+    ),
+    "offshore/invest/pt_pma/ikn_subsidiary": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28F")),
+    "offshore/invest/pt_pma/offshore_application": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "D12", "E28B", "E28D", "E28F"),
+    ),
+    "offshore/invest/pt_pma/sponsor_government": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "E28B", "E28D", "E28F", "E33C"),
+    ),
+    "offshore/invest/pt_pma/sponsor_government/not_world_figure": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "E28B", "E28D", "E28F"),
+    ),
+    "offshore/invest/undecided": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28D", "E28F")),
+    "offshore/invest/undecided/currency_still_unsure": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "E28B", "E28D", "E28F"),
+    ),
+    "offshore/other": ("SUPPORTED_CANDIDATES", ("E23", "E33B")),
+    "offshore/other/paid/sponsor_government": ("SUPPORTED_CANDIDATES", ("E23", "E23V", "E33A")),
+    "offshore/other/paid/sponsor_unsure": ("SUPPORTED_CANDIDATES", ("E33B",)),
+    "offshore/work": ("SUPPORTED_CANDIDATES", ("E23", "E33B")),
+    "offshore/work/sponsor_government": ("SUPPORTED_CANDIDATES", ("E23", "E23V", "E33A")),
+    "offshore/work/sponsor_government/invitation_only": ("SUPPORTED_CANDIDATES", ("E23", "E33A")),
+    "offshore/work/sponsor_government/trade_office_only": ("SUPPORTED_CANDIDATES", ("E23", "E23V")),
+    "offshore/work/sponsor_individual": ("SUPPORTED_CANDIDATES", ("E23", "E23U")),
+    "onshore/invest": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28D", "E28F")),
+    "onshore/other": ("SUPPORTED_CANDIDATES", ("E23", "E33B")),
+    "onshore/work": ("SUPPORTED_CANDIDATES", ("E23", "E33B")),
+}
+
+EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] = {
+    20: _EXPECTED_OUTCOME_ON_SEQ20,
+    21: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ21_OUTCOME_CHANGES},
+}
+EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
+    _SIGNED_SEQUENCE, {}
+)
 
 #: The state distribution, restated as a total so a reviewer sees the shape of
 #: the funnel in one line. Derived from EXPECTED_OUTCOME on purpose: the two
@@ -804,10 +1025,15 @@ EXPECTED_STATE_CENSUS: dict[str, int] = dict(
 #: retirement/property/sponsor_no) are CLOSED (owner ruling 2026-09-13, see
 #: WALK_DEAD_END_ALLOWLIST above) rather than allowlisted, so they never
 #: reach NEEDS_INPUT and never appear here. Two facts remain, one each.
-EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {
-    "work.indonesian_work_sponsor_confirmed": 1,
-    "family.sponsor_confirmed": 1,
+#: W-VO-Q: one on seq-21, where the E23 sponsor row is cured (see
+#: `WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE`).
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
+    20: {"work.indonesian_work_sponsor_confirmed": 1, "family.sponsor_confirmed": 1},
+    21: {"family.sponsor_confirmed": 1},
 }
+EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
+    _SIGNED_SEQUENCE, {}
+)
 
 #: Which walks raise which disclosure flags — the OTHER half of the wire
 #: request, carried by the corpus since 2026-09-13 (W-VO-H schema half) and
@@ -832,7 +1058,8 @@ EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {
 #: walk's own answers, never chosen here:
 #:   - ACTIVITY_BOUNDARY on 6 walks: `investment_vehicle` answered `merit` /
 #:     `family` / `undecided` (the table in fact-mapper.ts lists only `pt_pma` /
-#:     `property` / `bank_deposit` as answers the signed pack decides), and
+#:     `property` / `bank_deposit` / `capital_market` as answers the pack
+#:     decides), and
 #:     `other_purpose` answered `medical` (only `transit` is decidable).
 #:   - NOT_CERTAIN on 2 walks: the two scenarios that answer a sponsor question
 #:     with the literal string `unsure`. The `still_unsure` walks deliberately
@@ -877,7 +1104,9 @@ PRIVACY_HELD_WALKS: set[str] = {"offshore/family/PARENT/spNat=IT/minor"}
 #: number. Measured 2026-09-13 over the 94-walk corpus: 69 SUPPORTED_CANDIDATES
 #: / 15 NO_SUPPORTED_PATH / 1 NEEDS_INPUT / 9 HUMAN_REVIEW_REQUIRED. (It read
 #: `60 / 15 / 1 / 8` — the 84-walk numbers — until council round 4 caught that
-#: W-VO-E had moved the corpus under it.)
+#: W-VO-E had moved the corpus under it.) Measured 2026-09-14 over W-VO-Q's
+#: 111-walk corpus: 85 / 16 / 1 / 9 on signed seq-20 AND on signed seq-21 —
+#: its seventeen walks raise no flag.
 EXPECTED_FLAGGED_STATE_CENSUS: dict[str, int] = dict(
     Counter(
         "HUMAN_REVIEW_REQUIRED" if label in EXPECTED_DISCLOSED_REVIEW_FLAGS else state
@@ -1028,7 +1257,9 @@ def _dead_end_violations(
     return violations
 
 
-def _decide(overrides: dict[str, Any], label: str) -> tuple[Any, Any, Any]:
+def _decide(
+    overrides: dict[str, Any], label: str, pack: PackUnderTest | None = None
+) -> tuple[Any, Any, Any]:
     """``(raw_decision, compiled, request)``.
 
     ``_evaluate`` returns the flattened ``actual`` view (codes only), which
@@ -1037,7 +1268,8 @@ def _decide(overrides: dict[str, Any], label: str) -> tuple[Any, Any, Any]:
     which pack, or which instant, is under test.
     """
 
-    _pack_path, compiled = gold_coverage_eval._verified_compiled_pack(_AS_OF)
+    pack = _signed_pack() if pack is None else pack
+    compiled = pack.compiled
     persona = Persona(
         id=0, label=label, overrides=overrides, expected_state=DecisionState.NEEDS_INPUT
     )
@@ -1045,17 +1277,19 @@ def _decide(overrides: dict[str, Any], label: str) -> tuple[Any, Any, Any]:
     decision = evaluator.evaluate(
         request.applicant_facts(),
         compiled,
-        effective_at=_AS_OF,
-        observed_at=_AS_OF,
+        effective_at=pack.as_of,
+        observed_at=pack.as_of,
         identity_provider=gold_coverage_eval._offline_identity_provider,
     )
     return decision, compiled, request
 
 
-def _engine_decision(overrides: dict[str, Any], label: str) -> Any:
+def _engine_decision(
+    overrides: dict[str, Any], label: str, pack: PackUnderTest | None = None
+) -> Any:
     """The RAW ``Decision`` — ``evaluator.evaluate``, no public shaping."""
 
-    decision, _compiled, _request = _decide(overrides, label)
+    decision, _compiled, _request = _decide(overrides, label, pack)
     return decision
 
 
@@ -1139,7 +1373,7 @@ def _scoped_expectation(*labels: str) -> dict[str, tuple[str, tuple[str, ...]]]:
     return {label: EXPECTED_OUTCOME[label] for label in labels if label in EXPECTED_OUTCOME}
 
 
-def _support_rules_by_product() -> dict[str, tuple[Any, ...]]:
+def _support_rules_by_product(pack: PackUnderTest | None = None) -> dict[str, tuple[Any, ...]]:
     """``product_code -> the compiled SUPPORT rules that can fire for it``,
     read from the COMPILED highest signed pack at ``_AS_OF``.
 
@@ -1172,16 +1406,17 @@ def _support_rules_by_product() -> dict[str, tuple[Any, ...]]:
     engine's by construction instead of by coincidence.
     """
 
-    _pack_path, compiled = gold_coverage_eval._verified_compiled_pack(_AS_OF)
+    pack = _signed_pack() if pack is None else pack
+    compiled = pack.compiled
     by_product: dict[str, tuple[Any, ...]] = {}
     for compiled_product in compiled.products:
         if compiled_product.product.status is not VisaProductStatus.ACTIVE:
             continue
-        if not evaluator._period_contains(compiled_product.product.valid_period, _AS_OF):
+        if not evaluator._period_contains(compiled_product.product.valid_period, pack.as_of):
             continue
         support = tuple(
             rule
-            for rule in compiled.rules_for(compiled_product, effective_at=_AS_OF)
+            for rule in compiled.rules_for(compiled_product, effective_at=pack.as_of)
             # `==`, not `is`: `RuleEffect.type` is the plain string
             # discriminator, and `RuleEffectType` is a `str` Enum, so equality
             # holds for both shapes while identity holds for neither today.
@@ -1192,14 +1427,15 @@ def _support_rules_by_product() -> dict[str, tuple[Any, ...]]:
     return by_product
 
 
-def _support_bearing_product_codes() -> set[str]:
+def _support_bearing_product_codes(pack: PackUnderTest | None = None) -> set[str]:
     """The product codes ``_support_rules_by_product`` finds a SUPPORT rule for."""
 
-    return set(_support_rules_by_product())
+    return set(_support_rules_by_product(pack))
 
 
 def _engine_named_products(
     walks: dict[str, dict[str, Any]],
+    pack: PackUnderTest | None = None,
 ) -> dict[str, tuple[str, ...]]:
     """``product_code -> the walks whose ENGINE decision names it``.
 
@@ -1213,7 +1449,49 @@ def _engine_named_products(
 
     named: dict[str, list[str]] = {}
     for label, spec in sorted(walks.items()):
-        for candidate in _engine_decision(spec["overrides"], label).candidates:
+        for candidate in _engine_decision(spec["overrides"], label, pack).candidates:
+            named.setdefault(candidate.product_code, []).append(label)
+    return {code: tuple(labels) for code, labels in sorted(named.items())}
+
+
+def _funnel_named_products(
+    walks: dict[str, dict[str, Any]],
+    pack: PackUnderTest | None = None,
+) -> dict[str, tuple[str, ...]]:
+    """``product_code -> the walks whose FUNNEL decision names it``.
+
+    The engine decision passed through ``apply_public_policy_adapters`` with
+    the disclosure flags the walk's own fixture carries — what the applicant
+    is shown. The flagged request is rebuilt field by field exactly as
+    ``gold_coverage_eval._evaluate`` rebuilds it (same field-set tripwire), so
+    this and the FUNNEL census cannot disagree on what a flag does; unlike
+    ``_evaluate`` it takes the pack under test, which is what lets the
+    candidate mode ask the applicant-level question at all.
+    """
+
+    named: dict[str, list[str]] = {}
+    for label, spec in sorted(walks.items()):
+        decision, compiled, request = _decide(spec["overrides"], label, pack)
+        flags = _walk_flags(spec)
+        if flags:
+            assert (
+                set(VisaOracleEvaluateRequest.model_fields)
+                == gold_coverage_eval._REBUILT_REQUEST_FIELDS
+            )
+            request = VisaOracleEvaluateRequest(
+                schema_version=request.schema_version,
+                assessment_id=request.assessment_id,
+                collected_at=request.collected_at,
+                facts=request.facts,
+                disclosed_review_flags=flags,  # type: ignore[arg-type]
+            )
+        public = evaluate_path.apply_public_policy_adapters(
+            decision,
+            request.applicant_facts(),
+            compiled,
+            disclosed_review_flags=request.effective_review_flags(),
+        )
+        for candidate in public.candidates:
             named.setdefault(candidate.product_code, []).append(label)
     return {code: tuple(labels) for code, labels in sorted(named.items())}
 
@@ -1222,11 +1500,12 @@ def _unreached_support_products(
     named: dict[str, tuple[str, ...]],
     *,
     excused: dict[str, RuledUnreachable] | None = None,
+    pack: PackUnderTest | None = None,
 ) -> list[str]:
     """SUPPORT-bearing products no walk names, minus the ruling rows."""
 
     excused = UNREACHABLE_BY_RULING if excused is None else excused
-    return sorted(_support_bearing_product_codes() - set(named) - set(excused))
+    return sorted(_support_bearing_product_codes(pack) - set(named) - set(excused))
 
 
 def _stale_ruling_rows(
@@ -1305,6 +1584,7 @@ def _proves_it_cannot_fire_without(condition: Any, fact: str) -> bool:
 def _ruling_rows_without_a_proven_dependency(
     *,
     excused: dict[str, RuledUnreachable] | None = None,
+    pack: PackUnderTest | None = None,
 ) -> list[str]:
     """Ruling rows carrying a SUPPORT route whose dependency on the forbidden
     fact this analysis cannot prove — either because the route genuinely no
@@ -1321,7 +1601,7 @@ def _ruling_rows_without_a_proven_dependency(
     """
 
     excused = UNREACHABLE_BY_RULING if excused is None else excused
-    support_rules = _support_rules_by_product()
+    support_rules = _support_rules_by_product(pack)
     offenders: list[str] = []
     for code, row in excused.items():
         rules = support_rules.get(code, ())
@@ -1350,7 +1630,34 @@ def engine_named(walks: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]
     return _engine_named_products(walks)
 
 
-def test_corpus_is_the_94_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+@pytest.fixture(scope="module")
+def funnel_named(walks: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]:
+    return _funnel_named_products(walks)
+
+
+@pytest.fixture(scope="module")
+def candidate_pack() -> PackUnderTest:
+    pack = _candidate_pack()
+    if pack is None:
+        pytest.skip("no unsigned production source pack sits above the highest signed one")
+    return pack
+
+
+@pytest.fixture(scope="module")
+def candidate_engine_named(
+    walks: dict[str, dict[str, Any]], candidate_pack: PackUnderTest
+) -> dict[str, tuple[str, ...]]:
+    return _engine_named_products(walks, candidate_pack)
+
+
+@pytest.fixture(scope="module")
+def candidate_funnel_named(
+    walks: dict[str, dict[str, Any]], candidate_pack: PackUnderTest
+) -> dict[str, tuple[str, ...]]:
+    return _funnel_named_products(walks, candidate_pack)
+
+
+def test_corpus_is_the_111_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
@@ -1413,9 +1720,22 @@ def test_corpus_is_the_94_real_interview_walks(walks: dict[str, dict[str, Any]])
     Indonesian employer/clients/pay/company, and a minor joining a parent.
     Eleven products that carried a SUPPORT rule in the signed pack and were
     named on zero walks are now named; the twelfth (BRIDGING) is
-    unreachable by owner ruling — see `UNREACHABLE_BY_RULING` below."""
+    unreachable by owner ruling — see `UNREACHABLE_BY_RULING` below.
 
-    assert len(walks) == 94, f"expected 94 interview walks, found {len(walks)}"
+    W-VO-Q (mission SAETTA-VO3) adds 17, corpus 94 -> 111, and DOES change
+    existing fixtures: the tree now asks the ten seq-21 qualification facts,
+    whose first option is "yes", so every default walk on the `work`,
+    INVESTMENT-purpose `invest` and paid-`other` branches gains the new
+    questions in `asked` and the facts KNOWN in `overrides`. No existing
+    walk's (state, candidates) moves on signed seq-20 — it reads none of the
+    ten — which `test_every_walk_ends_in_its_pinned_outcome` proves; on signed
+    seq-21 the moves are `_SEQ21_OUTCOME_CHANGES`, every one an added product.
+    The new walks are the `capital_market` vehicle's default walk, one seq-21
+    product per walk, the honest "no" on each question, and four business
+    explorers (item 7: the D12 walk, with and without a sponsor, the default
+    and the named dead end)."""
+
+    assert len(walks) == 111, f"expected 111 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -1427,7 +1747,82 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_2_dead_ends_15_no_paths_1_privacy_hold_and_76_answers(
+def test_the_census_pins_the_signed_sequence() -> None:
+    """A newly signed pack with no pins must fail HERE, by name — not as a
+    wall of "evaluated but not pinned" rows, and never by quietly grading the
+    corpus against the previous sequence's answers."""
+
+    assert _SIGNED_SEQUENCE in EXPECTED_OUTCOME_BY_SEQUENCE, (
+        f"rulepack-prod-{_SIGNED_SEQUENCE:03d} is the highest signed pack and the "
+        "census has no outcome pins for it: add its changes next to "
+        "`_SEQ21_OUTCOME_CHANGES`, and its rows to the per-sequence allowlist and "
+        "dead-end tables"
+    )
+    assert _SIGNED_SEQUENCE in WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE
+    assert _SIGNED_SEQUENCE in EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE
+    # The sequences share one corpus, so they must pin the same walks.
+    assert all(
+        sorted(pins) == sorted(_EXPECTED_OUTCOME_ON_SEQ20)
+        for pins in EXPECTED_OUTCOME_BY_SEQUENCE.values()
+    )
+    # Every seq-21 change is an ADDITION: no walk loses a candidate the
+    # seq-20 table gave it (the one state change keeps no candidate to lose).
+    for label, (_state, candidates) in _SEQ21_OUTCOME_CHANGES.items():
+        assert set(_EXPECTED_OUTCOME_ON_SEQ20[label][1]) <= set(candidates), label
+
+
+def _outcomes_on(
+    walks: dict[str, dict[str, Any]], pack: PackUnderTest
+) -> dict[str, dict[str, Any]]:
+    """``_evaluate_walks`` for a pack handed in rather than selected from disk:
+    the same evaluate → ``apply_public_policy_adapters`` path with no flags,
+    flattened by the same ``_decision_actual``. The innocence test below
+    proves the two paths agree on the signed pack."""
+
+    out: dict[str, dict[str, Any]] = {}
+    for label, spec in sorted(walks.items()):
+        decision, compiled, request = _decide(spec["overrides"], label, pack)
+        public = evaluate_path.apply_public_policy_adapters(
+            decision,
+            request.applicant_facts(),
+            compiled,
+            disclosed_review_flags=request.effective_review_flags(),
+        )
+        out[label] = _decision_actual(public)
+    return out
+
+
+def test_innocence_the_pack_handed_in_replay_is_the_census_replay(
+    walks: dict[str, dict[str, Any]],
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """``_outcomes_on`` is only a witness for the candidate if it IS the
+    census's own evaluation: on the signed pack the two agree walk by walk."""
+
+    assert _outcomes_on(walks, _signed_pack()) == outcomes
+
+
+def test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack(
+    walks: dict[str, dict[str, Any]],
+    candidate_pack: PackUnderTest,
+) -> None:
+    """The next sequence's pins, exercised BEFORE its signature: while seq-21
+    is an unsigned source above signed seq-20, the corpus is graded against
+    it with the seq-21 table, so those pins are proven on main today and not
+    first in the PR that lands the bundle. Once seq-21 is signed this skips
+    and ``test_every_walk_ends_in_its_pinned_outcome`` grades the same table
+    against the verified bytes."""
+
+    sequence = candidate_pack.compiled.sequence
+    assert sequence in EXPECTED_OUTCOME_BY_SEQUENCE, f"no pins for candidate seq-{sequence}"
+    replayed = _outcomes_on(walks, candidate_pack)
+    violations = _outcome_violations(replayed, EXPECTED_OUTCOME_BY_SEQUENCE[sequence])
+    assert not violations, "candidate-pack outcomes moved:\n  " + "\n  ".join(violations)
+    dead_ends = _dead_end_violations(replayed, WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[sequence])
+    assert not dead_ends, "candidate-pack dead ends:\n  " + "\n  ".join(dead_ends)
+
+
+def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
@@ -1484,20 +1879,35 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_1_privacy_hold_and_76_answ
     HUMAN_REVIEW_REQUIRED, the FIRST review-ending walk this census has ever
     pinned. Its cause is named and asserted below: `MINOR_GUARDIAN_PRIVACY_
     REVIEW`, raised by `_apply_minor_privacy_hold` on `derived.is_minor`
-    alone. No existing walk moves state OR bytes."""
+    alone. No existing walk moves state OR bytes.
+
+    W-VO-Q (THIS PR) adds 17 walks over a 94 -> 111 corpus. On signed
+    seq-20 (1/2/15/76 -> 1/2/16/92) sixteen answer — seq-20 reads none of
+    the ten qualification facts — and the seventeenth, the business explorer
+    who converts onshore with no investor route, ends NO_SUPPORTED_PATH on
+    ``D12_NOT_CONVERTIBLE``. No existing walk moves state. On signed seq-21
+    the census is 1/1/16/93: ``offshore/other/paid/sponsor_unsure`` is
+    answered by E33B (see ``_SEQ21_OUTCOME_CHANGES``). The literal is kept
+    per signed sequence, so the PR that lands the seq-21 bundle moves no pin
+    here."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
-    assert (
-        census
-        == EXPECTED_STATE_CENSUS
-        == {
+    by_sequence = {
+        20: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 2,
-            "NO_SUPPORTED_PATH": 15,
-            "SUPPORTED_CANDIDATES": 76,
-        }
-    )
-    assert census["NEEDS_INPUT"] == 2
+            "NO_SUPPORTED_PATH": 16,
+            "SUPPORTED_CANDIDATES": 92,
+        },
+        21: {
+            "HUMAN_REVIEW_REQUIRED": 1,
+            "NEEDS_INPUT": 1,
+            "NO_SUPPORTED_PATH": 16,
+            "SUPPORTED_CANDIDATES": 93,
+        },
+    }
+    assert census == EXPECTED_STATE_CENSUS == by_sequence[_SIGNED_SEQUENCE]
+    assert census["NEEDS_INPUT"] == len(WALK_DEAD_END_ALLOWLIST)
     # NOT a claim about production, and no longer a claim the corpus cannot
     # check. This fixture evaluates every walk WITHOUT its flags, so what it
     # reports is the PACK's own verdict — the ENGINE half. The disclosure arm
@@ -1523,7 +1933,7 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_1_privacy_hold_and_76_answ
     minor_walk = _load_walks()["offshore/family/PARENT/spNat=IT/minor"]
     public = _public_decision(minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor")
     assert [reason.code for reason in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
-    assert census["NO_SUPPORTED_PATH"] == 15
+    assert census["NO_SUPPORTED_PATH"] == 16
 
 
 def test_dead_end_fact_census_matches_the_blocking_fact_table(
@@ -1640,13 +2050,21 @@ def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
     An equality against a named 2-row dict is still not a loosened count in
     the sense PR-3 warned about: it names every row explicitly, and any
     additional row — however well argued — still has to move this literal in
-    the PR that adds it."""
+    the PR that adds it.
 
-    assert set(WALK_DEAD_END_ALLOWLIST) == {
+    W-VO-Q: named per signed sequence — the two rows on seq-20, and on seq-21
+    only the retirement row, because the tree's new government-collaboration
+    question cures the other (see `WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE`)."""
+
+    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == {
         "offshore/other/paid/sponsor_unsure",
         "offshore/retirement/undecided/age64/still_unsure",
     }
-    assert len(WALK_DEAD_END_ALLOWLIST) == 2
+    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[21]) == {
+        "offshore/retirement/undecided/age64/still_unsure",
+    }
+    assert WALK_DEAD_END_ALLOWLIST is WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[_SIGNED_SEQUENCE]
+    assert len(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == 2
 
 
 def _unaskable_violations(
@@ -1778,9 +2196,22 @@ def test_guilt_withdrawing_the_newly_asked_fact_restores_the_dead_end(
       left to bid with.
 
     With the allowlist empty, the first mutation is graded against ``{}`` —
-    the permanent form of the invariant, with no excuse available."""
+    the permanent form of the invariant, with no excuse available.
 
-    label = "offshore/invest/pt_pma"
+    Re-anchored a fourth time, by W-VO-Q, onto ``offshore/invest/pt_pma/
+    no_route``, because on signed seq-21 the old anchor's premise is false:
+    the default ``offshore/invest/pt_pma`` walk now answers the seq-21 route
+    questions with their first option ("yes"), so ``el.e28b/d/f.*`` name
+    E28B/E28D/E28F without reading ``family.sponsor_confirmed`` at all —
+    withdrawing the sponsor answer leaves an answer standing, not a dead end
+    (measured: SUPPORTED_CANDIDATES [E28B, E28D, E28F] withdrawn or denied).
+    ``no_route`` is the same investor who answers "no" to every route, so the
+    route rules are decided FALSE and C2's sponsor premise is again the only
+    thing between the walk and a dead end. Measured on seq-20 AND seq-21: the
+    withdrawn fact gives NEEDS_INPUT on exactly ``['family.sponsor_confirmed']``,
+    the denied fact NO_SUPPORTED_PATH — the shapes above, on both packs."""
+
+    label = "offshore/invest/pt_pma/no_route"
     assert "family_sponsor_confirmed" in walks[label]["asked"], (
         "this walk no longer asks the fact the test withdraws — re-anchor"
     )
@@ -1822,22 +2253,34 @@ def test_guilt_a_walk_that_loses_its_answer_is_caught(
     REPLACED by the two things this mutation actually witnesses — the exact
     state and the invariant's silence — rather than kept as an assertion that
     only passed because it was graded against the whole table (the PR-0 gate's
-    vacuity finding)."""
+    vacuity finding).
 
-    mutated = dict(walks["offshore/work"]["overrides"])
+    Re-anchored by W-VO-Q onto ``offshore/work/no_government_collaboration``,
+    because on signed seq-21 "E23 is the only product whose ELIGIBILITY rules
+    cover EMPLOYMENT" is false: E23U, E23V, E33A and E33B cover it too, and
+    ``offshore/work`` (sponsor NONE) now answers the government-collaboration
+    question "yes", so denying E23's sponsor leaves SUPPORTED_CANDIDATES [E33B]
+    — the applicant keeps an answer, exactly as the pack intends. The new
+    anchor is the same NONE-sponsored worker answering "no" to that question,
+    which is the premise the old sentence stated; measured on seq-20 AND
+    seq-21, denying the sponsor lands it on NO_SUPPORTED_PATH with no
+    candidate."""
+
+    label = "offshore/work/no_government_collaboration"
+    assert walks[label]["overrides"]["sponsor.government_collaboration"] == {
+        "status": "KNOWN",
+        "value": False,
+    }, "the anchor no longer answers the collaboration question 'no' — re-anchor"
+    mutated = dict(walks[label]["overrides"])
     mutated["work.indonesian_work_sponsor_confirmed"] = {"status": "KNOWN", "value": False}
-    actual = _evaluate(mutated, "offshore/work", as_of=_AS_OF)["actual"]
+    actual = _evaluate(mutated, label, as_of=_AS_OF)["actual"]
 
     assert actual["state"] == "NO_SUPPORTED_PATH"
     assert actual["candidates"] == []
-    assert _outcome_violations(
-        {"offshore/work": actual}, expected=_scoped_expectation("offshore/work")
-    )
+    assert _outcome_violations({label: actual}, expected=_scoped_expectation(label))
     # ...and the invariant stays SILENT, because losing an answer this way is
     # not a dead end. Scoped, so the silence is about this walk only.
-    assert not _dead_end_violations(
-        {"offshore/work": actual}, allowlist=_scoped_allowlist("offshore/work")
-    )
+    assert not _dead_end_violations({label: actual}, allowlist=_scoped_allowlist(label))
 
 
 def test_guilt_a_dead_end_on_an_unlisted_fact_is_caught() -> None:
@@ -1919,9 +2362,15 @@ def test_guilt_a_stale_allowlist_row_is_caught() -> None:
     The anchor is still the real cure: the state and candidate list fed in are
     the ones ``offshore/invest/pt_pma`` actually reaches now (pinned in
     ``EXPECTED_OUTCOME``), so if that walk ever stops answering C2 this test's
-    premise is visibly stale rather than quietly fictional."""
+    premise is visibly stale rather than quietly fictional.
 
-    label = "offshore/invest/pt_pma"
+    W-VO-Q moved the anchor to ``offshore/invest/pt_pma/no_route``: on signed
+    seq-21 the default ``pt_pma`` walk also names E28B/E28D/F off the route
+    questions it now answers "yes", so its pinned outcome is no longer the
+    bare C2 this row is built on. ``no_route`` answers every route "no" and
+    pins SUPPORTED_CANDIDATES [C2] on both sequences."""
+
+    label = "offshore/invest/pt_pma/no_route"
     assert EXPECTED_OUTCOME[label] == ("SUPPORTED_CANDIDATES", ("C2",)), (
         "the cured outcome this fabricated row is built on moved — re-anchor"
     )
@@ -2117,10 +2566,11 @@ def test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome(
     outcomes: dict[str, dict[str, Any]],
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
-    """The 86 walks that raise nothing are byte-for-byte the same decision in
+    """The 103 walks that raise nothing are byte-for-byte the same decision in
     both censuses — not merely the same state, the same candidates, missing
-    facts, reason codes and notices. (86 = 94 - 8; it said 76 until council
-    round 4, which is the 84-walk figure this window superseded.)
+    facts, reason codes and notices. (103 = 111 - 8 since W-VO-Q; 86 = 94 - 8
+    before it; it said 76 until council round 4, which is the 84-walk figure
+    W-VO-E superseded.)
 
     This is the innocence half of the guard: supplying flags must change
     NOTHING for a walk that raises none, or the flagged census would be
@@ -2235,6 +2685,27 @@ def test_the_flagged_rebuild_names_every_field_of_the_wire_model() -> None:
     )
 
 
+def test_the_products_the_applicant_is_never_shown_are_pinned_by_cause(
+    engine_named: dict[str, tuple[str, ...]],
+    funnel_named: dict[str, tuple[str, ...]],
+) -> None:
+    """The funnel half of the reachability guard, on the SIGNED pack.
+
+    ``test_every_product_the_candidate_pack_adds_is_named_to_the_applicant``
+    proves the nine seq-21 products reach the applicant only while seq-21 is
+    a candidate, and skips once it is signed. This keeps that property after
+    the signature, for every product: a product the engine names on some walk
+    but the applicant is shown on none may only be one of these two, each
+    for a named cause — C6, whose one witness (``offshore/other/
+    no_paid_activity/medical``) raises ACTIVITY_BOUNDARY, and E31E, held by
+    the minor-privacy adapter. Measured 2026-09-14 on signed seq-20 and
+    signed seq-21, the same pair on both."""
+
+    assert sorted(set(engine_named) - set(funnel_named)) == ["C6", "E31E"]
+    assert engine_named["C6"] == ("offshore/other/no_paid_activity/medical",)
+    assert set(engine_named["E31E"]) <= PRIVACY_HELD_WALKS
+
+
 def test_every_support_bearing_product_is_named_by_some_walk(
     engine_named: dict[str, tuple[str, ...]],
 ) -> None:
@@ -2267,6 +2738,155 @@ def test_every_support_bearing_product_is_named_by_some_walk(
         "or — only if an owner ruling forbids collecting one of those facts "
         "— add a row to UNREACHABLE_BY_RULING quoting the ruling."
     )
+
+
+#: The candidate pack's catalogue, measured 2026-09-14 on
+#: rulepack-prod-021.source.json: the same 38 product codes as seq-20, and
+#: every one of them carries a SUPPORT rule once seq-21's nine are in force.
+CANDIDATE_CATALOGUE_SIZE = 38
+
+
+def test_every_support_bearing_product_of_the_candidate_pack_is_named_by_some_walk(
+    candidate_pack: PackUnderTest,
+    candidate_engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """W-VO-Q's acceptance, measured rather than asserted: against the
+    UNSIGNED candidate (seq-21), every product in the catalogue carries a
+    SUPPORT rule, and every one of them is named by at least one interview
+    walk — except the one product an owner ruling forbids the funnel to reach
+    (``UNREACHABLE_BY_RULING``), which is still accounted for by name.
+
+    The signed default above cannot see this: seq-21's nine new SUPPORT rules
+    exist in no signed pack, so a tree that stopped asking their facts would
+    stay green there. This mode grades the same corpus against the pack that
+    will be signed, which is the only place the ten new questions can fail.
+    """
+
+    catalogue = {product.product_code for product in candidate_pack.compiled.products}
+    assert len(catalogue) == CANDIDATE_CATALOGUE_SIZE
+    assert _support_bearing_product_codes(candidate_pack) == catalogue, (
+        "the candidate pack no longer gives every catalogue product a SUPPORT rule"
+    )
+    unreached = _unreached_support_products(candidate_engine_named, pack=candidate_pack)
+    assert not unreached, (
+        "the candidate pack supports these products and no interview walk names "
+        f"any of them: {unreached}. Ask the fact their rule reads (tree.ts/flow.ts) "
+        "and give them a walk in `generate-walk-corpus.ts`."
+    )
+    assert _stale_ruling_rows(candidate_engine_named) == []
+    assert set(candidate_engine_named) | set(UNREACHABLE_BY_RULING) == catalogue
+
+
+def test_the_candidate_ruling_row_still_depends_on_its_forbidden_fact(
+    candidate_pack: PackUnderTest,
+) -> None:
+    """The BRIDGING excuse re-derived from the candidate, not carried over from
+    the signed pack: a new sequence is exactly where a free route could appear."""
+
+    assert _ruling_rows_without_a_proven_dependency(pack=candidate_pack) == []
+    assert set(UNREACHABLE_BY_RULING) <= _support_bearing_product_codes(candidate_pack)
+
+
+#: The nine products the candidate pack makes supportable, as the census
+#: measures them: named at engine level against seq-21 and on no walk against
+#: the signed pack.
+SEQ21_ADDED_PRODUCTS = ("E23U", "E23V", "E28B", "E28C", "E28D", "E28F", "E33A", "E33B", "E33C")
+
+
+def test_every_product_the_candidate_pack_adds_is_named_to_the_applicant(
+    engine_named: dict[str, tuple[str, ...]],
+    candidate_engine_named: dict[str, tuple[str, ...]],
+    candidate_funnel_named: dict[str, tuple[str, ...]],
+) -> None:
+    """The engine-level guard above answers "can an interview produce the
+    facts"; this answers "does an applicant who gives them SEE the product".
+    A walk whose answers also raise a disclosure flag is rewritten to
+    HUMAN_REVIEW_REQUIRED with no candidates, so a product whose only witness
+    is flagged is reachable on paper and named to nobody.
+
+    That is not hypothetical: E28C's first walk answered the `undecided`
+    vehicle, was held by ACTIVITY_BOUNDARY, and passed the engine-level guard
+    (council round 1 (council/journal.jsonl)). Scoped to the products seq-21 adds,
+    because the signed products' public reach is already pinned walk by walk
+    in EXPECTED_OUTCOME and E31E's minor-privacy hold is by design."""
+
+    added = tuple(sorted(set(candidate_engine_named) - set(engine_named)))
+    assert added == SEQ21_ADDED_PRODUCTS
+    unseen = sorted(set(added) - set(candidate_funnel_named))
+    assert not unseen, (
+        f"the candidate pack supports {unseen} on some walk, but every such walk "
+        "raises a disclosure flag, so no applicant is ever shown them"
+    )
+
+
+def test_guilt_a_seq21_product_whose_only_walk_is_flagged_is_caught(
+    walks: dict[str, dict[str, Any]],
+    candidate_pack: PackUnderTest,
+    candidate_engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """Guilt for the test above: give E28C's single witness the
+    ACTIVITY_BOUNDARY flag its old `undecided` vehicle raised, and the funnel
+    stops naming E28C while the engine still does."""
+
+    (label,) = candidate_engine_named["E28C"]
+    held = copy.deepcopy(walks[label])
+    held["disclosed_review_flags"] = ["ACTIVITY_BOUNDARY"]
+    assert "E28C" in _funnel_named_products({label: walks[label]}, candidate_pack)
+    assert "E28C" not in _funnel_named_products({label: held}, candidate_pack)
+    assert "E28C" in _engine_named_products({label: held}, candidate_pack)
+
+
+#: The one qualification fact each seq-21 product's SUPPORT rule adds
+#: (FACTS-FOR-THE-TREE.md) — the fact a tree that stopped asking would leave
+#: UNKNOWN(NOT_ASKED) on the wire.
+SEQ21_QUALIFYING_FACT = {
+    "E23U": "sponsor.diplomatic_household",
+    "E23V": "sponsor.trade_office",
+    "E28B": "investment.establishes_indonesian_company",
+    "E28C": "investment.capital_market_only",
+    "E28D": "investment.foreign_branch_or_subsidiary",
+    "E28F": "investment.ikn_subsidiary",
+    "E33A": "sponsor.government_invitation",
+    "E33B": "sponsor.government_collaboration",
+    "E33C": "sponsor.world_figure_invitation",
+}
+
+
+@pytest.mark.parametrize("product", SEQ21_ADDED_PRODUCTS)
+def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
+    walks: dict[str, dict[str, Any]],
+    candidate_pack: PackUnderTest,
+    candidate_engine_named: dict[str, tuple[str, ...]],
+    product: str,
+) -> None:
+    """Guilt, once per product seq-21 made supportable, on the WALKS and not
+    on the derived map: every walk that names the product has its qualifying
+    fact reset to UNKNOWN(NOT_ASKED) — the wire a tree that stopped asking
+    the question would send — and is re-evaluated against the candidate.
+    The candidate guard then names exactly that product; the signed guard
+    stays silent on the same map, which is why the candidate mode exists."""
+
+    assert sorted(SEQ21_QUALIFYING_FACT) == sorted(SEQ21_ADDED_PRODUCTS)
+    witnesses = candidate_engine_named.get(product, ())
+    assert witnesses, f"fixture drift: {product} must be named"
+    fact = SEQ21_QUALIFYING_FACT[product]
+    unasked: dict[str, dict[str, Any]] = {}
+    for label in witnesses:
+        spec = copy.deepcopy(walks[label])
+        assert fact in spec["overrides"], f"{label}: no {fact} on the wire"
+        spec["overrides"][fact] = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
+        unasked[label] = spec
+    renamed = _engine_named_products(unasked, candidate_pack)
+    assert product not in renamed
+    mutated: dict[str, list[str]] = {
+        code: [label for label in labels if label not in unasked]
+        for code, labels in candidate_engine_named.items()
+    }
+    for code, labels in renamed.items():
+        mutated.setdefault(code, []).extend(labels)
+    named = {code: tuple(labels) for code, labels in mutated.items() if labels}
+    assert _unreached_support_products(named, pack=candidate_pack) == [product]
+    assert product not in _unreached_support_products(named)
 
 
 def test_unreachable_by_ruling_holds_only_the_bridging_row() -> None:

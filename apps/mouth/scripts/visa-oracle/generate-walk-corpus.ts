@@ -213,6 +213,7 @@ export function enumerateScenarios(): Scenario[] {
     "bank_deposit",
     "merit",
     "family",
+    "capital_market",
     "undecided",
   ] as const;
   const RETIREMENT_BASES = [
@@ -751,6 +752,183 @@ export function enumerateScenarios(): Scenario[] {
       family_relation: "PARENT",
       family_sponsor_nationalities: "IT",
       birth_date: MINOR_APPLICANT_BIRTH_DATE,
+    },
+  });
+
+  // W-VO-Q (mission SAETTA-VO3): the ten seq-21 qualification questions.
+  // Their FIRST option is "yes", so the corpus's own default walks already
+  // answer them the way that names the product on the branches that ask
+  // them: `offshore/work` (NONE) reaches `el.e33b.government-collaboration`,
+  // `offshore/work/sponsor_government` reaches `el.e33a.government-
+  // invitation` AND `el.e23v.trade-office`, `offshore/work/sponsor_
+  // individual` reaches `el.e23u.diplomatic-household`, `offshore/invest/
+  // pt_pma/sponsor_government` reaches `el.e33c.world-figure-invitation`,
+  // and every INVESTMENT-purpose `invest` walk reaches `el.e28b/d/f.*`.
+  // The walks below are the ones a default cannot produce: one product per
+  // walk, where the shared defaults name several at once, and the honest
+  // "no" on each question, which must end on a decided outcome and never on
+  // the same question asked again.
+  scenarios.push({
+    label: "offshore/work/sponsor_government/invitation_only",
+    overrides: {
+      ...base,
+      category: "work",
+      sponsor_category: "GOVERNMENT",
+      sponsor_trade_office: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/work/sponsor_government/trade_office_only",
+    overrides: {
+      ...base,
+      category: "work",
+      sponsor_category: "GOVERNMENT",
+      sponsor_government_invitation: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/work/sponsor_government/neither",
+    overrides: {
+      ...base,
+      category: "work",
+      sponsor_category: "GOVERNMENT",
+      sponsor_government_invitation: "no",
+      sponsor_trade_office: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/work/sponsor_individual/not_diplomatic",
+    overrides: {
+      ...base,
+      category: "work",
+      sponsor_category: "INDIVIDUAL",
+      sponsor_diplomatic_household: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/work/no_government_collaboration",
+    overrides: {
+      ...base,
+      category: "work",
+      sponsor_government_collaboration: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/pt_pma/company_only",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      investment_foreign_branch: "no",
+      investment_ikn_subsidiary: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/pt_pma/foreign_branch_only",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      investment_establishes_company: "no",
+      investment_capital_market_only: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/pt_pma/ikn_subsidiary",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      investment_foreign_branch: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/capital_market/capital_market_only",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "capital_market",
+      investment_establishes_company: "no",
+      investment_foreign_branch: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/pt_pma/below_published_threshold",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      investment_meets_threshold: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/pt_pma/no_route",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      investment_establishes_company: "no",
+      investment_foreign_branch: "no",
+      investment_capital_market_only: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/pt_pma/sponsor_government/not_world_figure",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      sponsor_category: "GOVERNMENT",
+      sponsor_world_figure_invitation: "no",
+    },
+  });
+
+  // W-VO-Q item 7 (owner ruling 2026-09-14): the business visitor exploring
+  // whether to invest or open a business — INVESTMENT purpose, the one
+  // `el.d12-*` covers. The default walk answers the conversion question's
+  // first option (`yes`), which excludes D12 by regulation and asks the
+  // investor facts instead; the `offshore_application` walks are the
+  // explorer D12 exists for, with and without a sponsor (a "no" must still
+  // end on a product); the last is the explorer who converts onshore and
+  // answers "no" to every investor route, which must end on a named cause.
+  scenarios.push({
+    label: "offshore/business/exploring",
+    overrides: {
+      ...base,
+      category: "business",
+      business_activity: "exploring",
+    },
+  });
+  scenarios.push({
+    label: "offshore/business/exploring/offshore_application",
+    overrides: {
+      ...base,
+      category: "business",
+      business_activity: "exploring",
+      wants_onshore_conversion: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/business/exploring/offshore_application/sponsor_no",
+    overrides: {
+      ...base,
+      category: "business",
+      business_activity: "exploring",
+      family_sponsor_confirmed: "no",
+      wants_onshore_conversion: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/business/exploring/sponsor_no/no_route",
+    overrides: {
+      ...base,
+      category: "business",
+      business_activity: "exploring",
+      family_sponsor_confirmed: "no",
+      investment_pt_pma: "no",
+      investment_establishes_company: "no",
+      investment_foreign_branch: "no",
+      investment_capital_market_only: "no",
     },
   });
 
