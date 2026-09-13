@@ -61,9 +61,12 @@ decisions:
       (`adversarial_review:` and an "Adversarial review" section): added, `check_adversarial_review.py
       --files` PASS. (3) Detect Secrets — 14 unaudited "Hex High Entropy String" findings, every one a
       sha256 or git sha on its line (corpus, dataset, bundle, benchrunner, prompt, commit): added to
-      .secrets.baseline as is_secret:false by textual insertion (+128 lines, no other entry touched);
+      .secrets.baseline, each audited as a false positive, by textual insertion (+128 lines, no other entry touched);
       the CI sequence replayed locally ends `All findings audited (14 total)`. Auto-merge was disabled
-      before the fix commit and re-armed after, so the armed branch was never mutated.
+      before the fix commit and re-armed after, so the armed branch was never mutated. The second CI
+      run on af2fe6115f flagged one more finding, a Secret Keyword detector hit on this decision's own
+      earlier wording (a baseline field name followed by a colon); the wording was changed and the
+      CI sequence replayed again on the full changed-file set before the next push.
 receipts:
   - claim: The monorepo worktree was created by the broker for this task id.
     cmd: python3 scripts/agent_start.py --lane ops --task-id k2-gamma
