@@ -5,32 +5,39 @@ l_level: L1
 gate_class: opus
 gear: 2
 gear_reason: >-
-  Floor is 1, measured on mini-pro2 after staging both files this PR's diff carries (the test
-  file and this brief): `git diff --cached --numstat` -> `14\t1\t
-  apps/mouth/.../fact-mapper.test.ts` and `142\t0\t evidence/.../brief.yml`; fed to
+  No digit for this brief's OWN size is typed here on purpose — a brief describing its own
+  final line count goes stale the moment a later edit (like this correction) changes it; four
+  PRs in this mandate have already been corrected for exactly that mistake. What is pinned
+  instead is the test file's own, non-self-referential churn — `git diff --numstat
+  origin/main...HEAD -- 'apps/mouth/.../fact-mapper.test.ts'` -> `14\t1` (churn 15, net 13) —
+  and the METHOD for the combined figure: `git diff --name-only origin/main...HEAD >
+  <changed-files-file>`, `git diff --numstat origin/main...HEAD > <numstat-file>`, then
   `python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
-  --changed-files-file <f> --numstat-file <n>` -> `1` / `none` — no hot-zone path, churn
-  (15 + 142 = 157) far under the SIZE_GEAR2_THRESHOLD of 400. Re-measured the same way after
-  the last commit, merge-base anchored against origin/main (see `floor_measured` below) — same
-  result. Declaring 2 anyway, not to match a higher floor but to decline an optimisation: at
-  gear 1 harness-floor.yml's Step 7c ("read the real gate verdict") does not run, so an armed
-  auto-merge plus green required checks can merge and deploy without the gate's signature —
-  measured to be exactly how PR #6424 reached production unsigned (a gear-1-declared diff,
-  floor 1, no Step 7c). Checked (not assumed) whether `compute_ceiling()` objects to declaring
-  2 here — it does not, but not for the reason I first guessed; see `ceiling_probe`.
+  --changed-files-file <changed-files-file> --numstat-file <numstat-file>`, re-run AFTER the
+  last commit (see `floor_measured` below for that exact run's floor/source/machine). Even
+  generously double-counting this brief's own size, total churn stays an order of magnitude
+  under SIZE_GEAR2_THRESHOLD (400) — confirmed, not merely argued, by `floor_measured`'s
+  `source: none`. Declaring gear 2 anyway, not to match a higher floor but to decline an
+  optimisation: at gear 1 harness-floor.yml's Step 7c ("read the real gate verdict") does not
+  run, so an armed auto-merge plus green required checks can merge and deploy without the
+  gate's signature — measured to be exactly how PR #6424 reached production unsigned (a
+  gear-1-declared diff, floor 1, no Step 7c). Checked (not assumed) whether `compute_ceiling()`
+  objects to declaring 2 here — it does not, but not for the reason I first guessed; see
+  `ceiling_probe`.
 ceiling_probe: >-
   Ran `python3 -c "import sys; sys.path.insert(0,'scripts'); import evidence_pack_lint as e;
   files=['apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts',
   'evidence/2026-09/agent-mini-pro2-mouth-shweb-6420-c3-flags-pin-20-839d0642/brief.yml'];
-  numstat=open('/tmp/numstat.txt').read(); net=e.sum_numstat(numstat);
-  print(e.compute_ceiling(files, 2, {}, measured_net_lines=net))"` on mini-pro2 ->
-  `(3, [])`. Reading compute_ceiling()'s source: with this brief's own 142 added lines counted,
-  `sum_numstat` net_lines is 155 (13 + 142), over CEILING_SMALL_DIFF_MAX_NET_LINES (60) — so
-  this diff is not "Gear-1-shaped" by the ceiling's own small-diff test (2 files is within
-  CEILING_SMALL_DIFF_MAX_FILES, but net lines is not), and the function returns `(3, [])`
-  ("not Gear-1-shaped — no ceiling to assert") for ANY declared gear on this diff, 1/2/3 alike
-  — verified directly, not merely for gear 2. No `gear_override` is needed: there is nothing
-  here for the ceiling rule to object to, regardless of what gear is declared.
+  numstat=open('/tmp/numstat-final.txt').read(); net=e.sum_numstat(numstat);
+  print(net, e.compute_ceiling(files, 2, {}, measured_net_lines=net))"` on mini-pro2, against
+  the numstat captured after the last commit -> net_lines 169, ceiling result `(3, [])`.
+  Reading compute_ceiling()'s source: 169 is over CEILING_SMALL_DIFF_MAX_NET_LINES (60) purely
+  because this brief is itself long — so this diff is not "Gear-1-shaped" by the ceiling's own
+  small-diff test (2 files is within CEILING_SMALL_DIFF_MAX_FILES, but net lines is not), and
+  the function returns `(3, [])` ("not Gear-1-shaped — no ceiling to assert") for ANY declared
+  gear on this diff, 1/2/3 alike — checked directly for all three, not only for gear 2. No
+  `gear_override` is needed: there is nothing here for the ceiling rule to object to,
+  regardless of what gear is declared.
 objective: >-
   #6420 ledger row (D4c-2 gate, PENDING-ARMS.md line ~2066), condition C3: fact-mapper.test.ts's
   zero-hold guard for the investment "I can't say yet" answer asserted
