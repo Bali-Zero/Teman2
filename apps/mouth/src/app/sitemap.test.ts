@@ -224,9 +224,14 @@ describe("sitemap — visa funnel findability", () => {
   // `CaseType, Purpose` from `backend.services.garuda_flow.intake`. Judging a
   // string instead of the endpoint it names produced a false failure on a
   // faithful schema regeneration.
-  // These markers are EXACT, not prefixes: `.includes(marker)` requires the
-  // literal substring — for the two route markers, the closing quote must
-  // land immediately after the path. A differently-named near-miss like
+  // These markers are EXACT, not prefixes, and each one carries its own
+  // terminator so `.includes(marker)` cannot match a longer name: the two
+  // route markers end in the closing quote, and the two schema-name markers
+  // end in the colon openapi-typescript emits after a component name.
+  // Without that colon `VoaRequest` would also match a legitimate future
+  // `VoaRequestV2`, turning the guard RED on something that is not the
+  // retired type — an over-match, which is the same substring-instead-of-
+  // entity mistake this whole rewrite exists to correct. A differently-named near-miss like
   // `/api/visa/voa-v2` would be quoted as `"/api/visa/voa-v2"` in a
   // regenerated schema, which does NOT contain the substring
   // `"/api/visa/voa"` (the character after "voa" is `-`, not the closing
@@ -239,8 +244,8 @@ describe("sitemap — visa funnel findability", () => {
   const RETIRED_GARUDA_MARKERS = [
     '"/api/visa/voa"',
     '"/api/visa/voa/{hash}"',
-    "VoaRequest",
-    "VoaResponse",
+    "VoaRequest:",
+    "VoaResponse:",
     "submit_voa_api_visa_voa_post",
     "get_voa_api_visa_voa__hash__get",
   ] as const;

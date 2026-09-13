@@ -12,7 +12,7 @@ gear_note: >-
   (schema.d.ts 2,894; sitemap.test.ts 185; test_generate_openapi_schema_pin.py
   60; generate_openapi.py 45; the pin file 1), above SIZE_GEAR3_THRESHOLD
   (1828).
-base_sha: 88ef221d632a3e463b80cc439fbe39f473f37a12
+base_sha: 88ef221d632a3e463b80cc439fbe39f473f37a12 # pragma: allowlist secret (a git commit SHA, not a credential)
 objective: >-
   PR-RISYNC of the Visa Oracle rebuild (mandate SHWEB-20260911).
   `apps/mouth/src/lib/api/schema.d.ts` was 20 days behind the backend;

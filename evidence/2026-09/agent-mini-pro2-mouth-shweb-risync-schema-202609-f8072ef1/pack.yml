@@ -32,20 +32,20 @@ lanes:
 
 diff:
   files: 5
-  churn: 3252
-  measured_at: caa5df48bc
+  churn: see_command
+  measured_at: HEAD of this branch
   note: >-
-    Churn (added+deleted) summed across the 5 CODE files (evidence/*.yml
-    excluded, same convention as this repo's other Gear-3 packs) at the
-    last code commit named above, against merge-base
-    88ef221d632a3e463b80cc439fbe39f473f37a12 (== origin/main, unchanged
-    since fork): apps/mouth/src/lib/api/schema.d.ts (2854+40),
-    apps/mouth/src/app/sitemap.test.ts (166+19),
-    apps/backend-rag/backend/tests/unit/scripts/
-    test_generate_openapi_schema_pin.py (121+0, up from 60+0 after the
-    round-2 cures' docstrings + sanity assert),
-    apps/backend-rag/scripts/generate_openapi.py (47+4, up from 41+4),
-    apps/mouth/src/lib/api/schema.d.ts.openapi-sha256 (1+0) = 3252. Floor
+    No bare churn figure is recorded here, on purpose. This PR's own commits
+    keep moving it — it read 3185, then 3252, and the condition-fix push that
+    added this sentence moves it again — so any number typed here is stale
+    before it is read, exactly as `gear_reason` explains for the same reason.
+    It also did not reproduce across observers: the gate measured a different
+    total than this pack declared, which is the symptom that decided this
+    rewrite. The measurement IS the command, reproducible at whatever head it
+    runs on, over the 5 CODE files (evidence/*.yml excluded, the convention
+    this repo's other Gear-3 packs use), anchored on the merge base:
+    `git diff --numstat origin/main...HEAD -- <the 5 code files>` summed
+    added+deleted. Floor
     re-computed via `scripts/evidence_pack_lint.py --print-floor
     --changed-files-file <5 code files> --numstat-file <their numstat>`
     after this LAST code commit — 3, source `size` (unchanged from the
@@ -333,11 +333,12 @@ receipts:
       --print-floor --changed-files-file changed.txt --numstat-file
       numstat.txt
     result: >-
-      3 both times (and --print-floor-source on the same inputs: size both
-      times) — churn rose from 3185 (5 files) to 3252 (same 5 files; the
-      pytest and generate_openapi.py grew from the round-2 docstrings and
-      sanity assert) without crossing back below SIZE_GEAR3_THRESHOLD in
-      either direction.
+      3 both times, and --print-floor-source on the same inputs: size both
+      times. The churn figure itself is deliberately not quoted here — it
+      moved between measurements and did not reproduce across observers, so
+      the command above is the record; what is stable, and what this receipt
+      asserts, is that the floor stayed 3 and never approached
+      SIZE_GEAR3_THRESHOLD from below in either direction.
     exit: 0
     ts: 2026-09-13T09:53Z
     seat: session (Mini, implementer lane)
