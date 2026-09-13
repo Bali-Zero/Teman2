@@ -826,7 +826,7 @@ const en = {
     "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
   "outcome.alternatives_title": "The door that is open",
   "outcome.alternatives_intro":
-    "Same answers, a route the verified rules do support for them.",
+    "Another route the verified rules can assess for you.",
   "outcome.no_path_body":
     "The combination you described does not match a path supported by the verified decision rules.",
   "outcome.temporarily_unavailable_body":
@@ -1678,7 +1678,7 @@ const id: Record<Keys, string> = {
     "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
   "outcome.alternatives_title": "Pintu yang terbuka",
   "outcome.alternatives_intro":
-    "Jawaban yang sama, jalur yang memang didukung aturan terverifikasi.",
+    "Jalur lain yang dapat dinilai oleh aturan terverifikasi untuk Anda.",
   "outcome.no_path_body":
     "Kombinasi yang Anda jelaskan tidak cocok dengan jalur yang didukung oleh aturan keputusan terverifikasi.",
   "outcome.temporarily_unavailable_body":

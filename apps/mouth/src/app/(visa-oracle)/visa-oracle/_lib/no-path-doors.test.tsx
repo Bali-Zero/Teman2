@@ -205,6 +205,13 @@ describe("no-path doors — the evidence behind every named alternative", () => 
         facts,
       );
       expectDoorsProven(doors, row.doors, row.id);
+      // Council round 3: assert the abstention POSITIVELY where the pack
+      // shuts every door, so a row whose rules correctly render nothing is
+      // not a test that ran no assertion at all.
+      const anyDoorOpen = Object.values(
+        row.doors as Record<string, readonly string[]>,
+      ).some((codes) => codes.length > 0);
+      if (!anyDoorOpen) expect(doors).toHaveLength(0);
     });
   }
 

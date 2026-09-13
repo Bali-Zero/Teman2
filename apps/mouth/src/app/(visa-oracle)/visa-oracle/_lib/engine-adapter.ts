@@ -613,7 +613,11 @@ export function buildNoPathDoors(
   if (declaresIndonesianNationality(facts)) return doors;
 
   // 1. TOURISM — the purpose the applicant did NOT declare, and the one the
-  //    pack supports on all 17 non-supported corpus walks. Abstains beyond
+  //    pack supports on all 17 non-supported corpus walks. The sentence
+  //    promises only what SELECT_CATEGORY actually does: `flow.ts`'s
+  //    reducer truncates the interview back to the category question and
+  //    prunes the abandoned branch's facts, so the spine answers survive
+  //    and the branch's do not (council round 3). Abstains beyond
   //    the declared stay C1 covers (counterexample
   //    `stay-beyond-tourist-bound`), and when no stay was declared at all.
   const stayDays = Number(facts.stay_days);
@@ -627,8 +631,8 @@ export function buildNoPathDoors(
       productCode: "C1",
       productName: DOOR_PRODUCT_NAMES.C1,
       message: text(
-        "You were assessed only for the purpose you declared. A tourist visit — no paid activity in Indonesia — is a separate assessment on the C1 route: switch to it and the verified rules check it with the same answers.",
-        "Anda hanya dinilai untuk tujuan yang Anda nyatakan. Kunjungan wisata — tanpa aktivitas berbayar di Indonesia — adalah penilaian terpisah pada jalur C1: beralihlah ke sana dan aturan terverifikasi akan memeriksanya dengan jawaban yang sama.",
+        "You were assessed only for the purpose you declared. A tourist visit — no paid activity in Indonesia — is a separate assessment on the C1 route: switching keeps everything you told us before your purpose and asks the few questions that route needs.",
+        "Anda hanya dinilai untuk tujuan yang Anda nyatakan. Kunjungan wisata — tanpa aktivitas berbayar di Indonesia — adalah penilaian terpisah pada jalur C1: beralih ke sana tetap menyimpan semua jawaban sebelum tujuan Anda dan hanya menanyakan beberapa pertanyaan yang dibutuhkan jalur itu.",
       ),
       actionable: true,
     });
@@ -644,8 +648,8 @@ export function buildNoPathDoors(
       productCode: "E33",
       productName: DOOR_PRODUCT_NAMES.E33,
       message: text(
-        "The deposit or property you declared already meets what the verified rules ask for the Second Home route, and that route carries no age condition: switch to it and the rules check it with the same answers.",
-        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan terverifikasi untuk jalur Rumah Kedua, dan jalur tersebut tidak memiliki syarat usia: beralihlah ke sana dan aturan akan memeriksanya dengan jawaban yang sama.",
+        "The deposit or property you declared already meets what the verified rules ask for the Second Home route, and that route carries no age condition: switching keeps everything you told us before your purpose and asks the few questions that route needs.",
+        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan terverifikasi untuk jalur Rumah Kedua, dan jalur tersebut tidak memiliki syarat usia: beralih ke sana tetap menyimpan semua jawaban sebelum tujuan Anda dan hanya menanyakan beberapa pertanyaan yang dibutuhkan jalur itu.",
       ),
       actionable: true,
     });
