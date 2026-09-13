@@ -2,26 +2,28 @@ gear: 2
 gear_reason: >-
   Measured with the inputs CI uses — `git diff --name-only origin/main...HEAD > /tmp/f.txt &&
   git diff --numstat origin/main...HEAD > /tmp/n.txt && python3 scripts/evidence_pack_lint.py
-  --print-floor --changed-files-file /tmp/f.txt --numstat-file /tmp/n.txt` returns 2, self-
-  inclusive of THIS file — `--print-floor-source` reports "size": churn exceeds
-  SIZE_GEAR2_THRESHOLD (400) though nowhere near SIZE_GEAR3_THRESHOLD (1828), and no changed
-  path is hot-zone. No bare churn figure is given here on purpose: this file is part of the
-  diff it measures, so any number typed into this sentence goes stale the moment a commit
-  changes this sentence's own length — the command above is reproducible by CI (or by a human)
-  at whatever head it runs on, and IS the measurement. First measured at floor 1 (before this
-  brief.yml existed in the diff, so before it could count itself) — adding this file's own
-  bulk crossed the 400-line size term, so the number was corrected in a follow-up commit rather
-  than left stale: a `gear_reason` that excludes the evidence file itself from its own diff
-  measurement is exactly the omission named in this mandate's own history (PR-D4d's brief went
-  stale the same way, and this brief's own first cut repeated it once before being corrected).
-  Re-run without `--numstat-file` returns 1 (the size term needs numstat; the path term alone
-  stays "none") — recorded as the divergence this mandate asks to be named, not silently
-  picked.
+  --print-floor --changed-files-file /tmp/f.txt --numstat-file /tmp/n.txt`, re-run after the
+  LAST commit to this brief so it is self-inclusive of THIS file's own final size. The paired
+  `--print-floor-source` invocation (same two input files) names WHY: the "size" term (total
+  churn against SIZE_GEAR2_THRESHOLD (400) and SIZE_GEAR3_THRESHOLD (1828)) or the "path" term
+  (a changed path matching a hot-zone pattern), independently of each other — a caller who wants
+  the actual gear number or its source runs these two commands, which is also how the `gear:`
+  field above was set. No bare floor or churn figure is written into this prose on purpose: this
+  file is part of the diff it measures, so any number typed into this sentence goes stale the
+  moment a LATER commit changes this sentence's own length, and this mandate has already paid
+  for that lesson twice — once here (an earlier cut of this field quoted a specific returned
+  number that drifted the moment a follow-up commit changed this file's line count, fixed by a
+  correction commit rather than a permanently-correct number, because no number typed in prose
+  can stay one) and once on PR-D4d's brief, the identical failure in a different PR. Dropping
+  `--numstat-file` changes the size term's answer (it needs the raw per-file rows, not a
+  pre-summed total) while leaving the path term unaffected — run both files together, not
+  interchangeably, to reproduce the value in `gear:` above.
 task_id: shweb-w-oracle-d4c1-20260913
 mandate_id: SHWEB-20260911/W-ORACLE/PR-D4c-1
 colour: BLUE
 l_level: L1
 gate_class: opus
+base_sha: ab79f6275d88230971d0ce4f752d4ffa45e856a4 # pragma: allowlist secret (a git commit SHA, not a credential) - this IS the fix push's item-1 merge of origin/main, which brings in PR-RISYNC (726083cdfa)
 objective: >-
   Contract-only PR: add exactly one new wire fact, `investment.investment_amount_usd`, to the
   closed FactPath vocabulary, so a later PR (D4c-2) can ask an investment applicant for an
@@ -72,10 +74,25 @@ acceptance:
       cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=.
       pytest backend/tests/services/visa_engine/test_interview_walk_census.py
     result: >-
-      Before (git stash, pre-existing working tree): 2 passed (test_corpus_is_the_82_real_
-      interview_walks + test_every_walk_ends_in_its_pinned_outcome). After (this commit,
-      317e5023d3): 17 passed, same two tests among them — 82 walks, zero violations from
-      `_outcome_violations()` (per-key EXPECTED_OUTCOME diff, not a totals compare).
+      RETRACTED 2026-09-13 (PR-D4c-1 fix push, D4c1-fix-dispatch item 4). This field previously
+      read: "Before (git stash, pre-existing working tree): 2 passed
+      (test_corpus_is_the_82_real_interview_walks + test_every_walk_ends_in_its_pinned_outcome).
+      After (this commit, 317e5023d3): 17 passed, same two tests among them — 82 walks, zero
+      violations from `_outcome_violations()` (per-key EXPECTED_OUTCOME diff, not a totals
+      compare)." That claim is FALSE, quoted here in full rather than silently overwritten, so
+      the correction is visible to a future reader. `test_interview_walk_census.py` is byte-identical
+      at both instants (`git diff origin/main...317e5023d3 -- .../test_interview_walk_census.py`
+      is empty), so a file that never changed cannot legitimately report two different pass
+      counts for "the same" run — 2 and 17 were two DIFFERENT commands, not a before/after pair.
+      Reproduced directly: at 39c7ef4c4b (the true "before", 317e5023d3's own parent) the plain
+      probe above (no `-k`) gives 17 passed; the same commit filtered with
+      `-k "test_corpus_is_the_82_real_interview_walks or test_every_walk_ends_in_its_pinned_outcome"`
+      gives `2 passed, 15 deselected` — the "15 deselected" was dropped when that filtered run
+      got written up as if it were the whole file's baseline. The honest receipt is 17/17 at
+      BOTH instants: 17 passed at 39c7ef4c4b (before) and 17 passed at current HEAD (after,
+      re-verified this session), zero test added/removed/renamed, zero verdict change —
+      `test_every_walk_ends_in_its_pinned_outcome`'s own per-key EXPECTED_OUTCOME diff (not a
+      totals compare) passing at both instants is what actually proves the 82-walk census held.
   - text: >-
       WHEN the FactPath/registry parity suite runs, THEN the new fact SHALL be fully registered
       (enum member, FactSpec entry, applicant-path membership) with no orphaned or missing entry.
