@@ -673,6 +673,62 @@ const en = {
   "tree.sr_status.pending": "not yet reached",
   "tree.sr_status.pruned": "different interview branch",
 
+  "process.label": "Where you are in this process",
+  "process.step_of": "{{current}} of {{total}} answered",
+  "process.phases_label": "Stages",
+  "process.phase.location": "Where you are",
+  "process.phase.identity": "Who you are",
+  "process.phase.intent": "What you came for",
+  "process.phase.details": "The details of that purpose",
+  "process.phase.review": "Safety check and your answers",
+  "process.phase.outcome": "The engine’s answer",
+  "process.phase_status.done": "complete",
+  "process.phase_status.current": "open now",
+  "process.phase_status.partial": "in progress",
+  "process.phase_status.pending": "not started",
+  "process.phase_status.pruned": "not on this branch",
+  "process.decides_title": "What this question decides",
+  "process.decides_fact":
+    "Your answer sets {{plural:this fact|these facts}}, read by the engine:",
+  "process.decides_review":
+    "Your answer is a safety signal: it can send this case to a person, and the engine never reads it as eligibility.",
+  "process.decides_context":
+    "No engine fact is attached to this question. It steers what you are asked next, and can still feed a fact the engine derives from your answers together.",
+  "process.decides_none":
+    "No question is open. The engine has the answers you confirmed.",
+  "process.decides_awaiting":
+    "No question is open. Your answers are confirmed; the engine’s reply is not on screen yet.",
+  "process.decides_framing":
+    "Nothing is answered yet. Every question says what its answer decides before you answer it.",
+  "process.decides_confirmation":
+    "No question is open. Confirming these answers is what asks the engine — and asks it again if you have already been here.",
+  "process.categories_title": "Purpose branches",
+  "process.category_status.current": "open — being asked now",
+  "process.category_status.done": "answered",
+  "process.category_status.pruned": "closed",
+  "process.category_status.pending": "still open",
+  "process.pruned_because":
+    "{{count}} {{plural:branch|branches}} closed when you chose “{{category}}”. Nothing you answer inside it can reopen them — go back to the purpose question to change branch.",
+  "process.pruned_none":
+    "Every purpose branch is still open. Choosing one closes the others.",
+  "process.candidates_title": "Products the engine named",
+  "process.candidates_pending":
+    "No product is named yet. The engine is asked only after you confirm your answers — this interface never decides eligibility on its own.",
+  "process.candidates_none":
+    "The engine named no product for these answers. The outcome below says why.",
+  "process.candidates_undecided":
+    "The engine did not name a product for these answers. The outcome below says why.",
+  "process.candidates_follow_up":
+    "The engine has your answers and named a fact it still needs before it can decide. This question asks for it.",
+  "process.outcome_node":
+    "You are at the last node of this tree: the outcome below is that node, not a separate page.",
+  "process.jump_title": "Jump back to an answer",
+  "process.jump_aria": "Jump back to {{question}} — you answered {{answer}}",
+  "process.jump_empty": "No answer to jump back to yet.",
+  "process.answer_unsure": "Not sure",
+  "process.announce_prune":
+    "You chose {{category}}. {{count}} of the other purpose {{plural:branch|branches}} closed.",
+
   "paths.counter.label": "{{count}} interview {{plural:branch|branches}}",
   "paths.counter.aria":
     "{{count}} interview {{plural:branch|branches}} remaining",
@@ -1523,6 +1579,62 @@ const id: Record<Keys, string> = {
   "tree.sr_status.current": "langkah saat ini",
   "tree.sr_status.pending": "belum tercapai",
   "tree.sr_status.pruned": "cabang wawancara berbeda",
+
+  "process.label": "Posisi Anda dalam proses ini",
+  "process.step_of": "{{current}} dari {{total}} terjawab",
+  "process.phases_label": "Tahapan",
+  "process.phase.location": "Posisi Anda",
+  "process.phase.identity": "Identitas Anda",
+  "process.phase.intent": "Tujuan kedatangan Anda",
+  "process.phase.details": "Rincian tujuan tersebut",
+  "process.phase.review": "Pemeriksaan keamanan dan jawaban Anda",
+  "process.phase.outcome": "Jawaban mesin",
+  "process.phase_status.done": "selesai",
+  "process.phase_status.current": "sedang berjalan",
+  "process.phase_status.partial": "sedang berlangsung",
+  "process.phase_status.pending": "belum dimulai",
+  "process.phase_status.pruned": "bukan cabang ini",
+  "process.decides_title": "Yang ditentukan pertanyaan ini",
+  "process.decides_fact":
+    "Jawaban Anda menetapkan fakta berikut, yang dibaca mesin:",
+  "process.decides_review":
+    "Jawaban Anda adalah sinyal keamanan: kasus ini dapat diteruskan ke petugas, dan mesin tidak pernah membacanya sebagai kelayakan.",
+  "process.decides_context":
+    "Tidak ada fakta mesin yang melekat pada pertanyaan ini. Pertanyaan ini mengarahkan pertanyaan berikutnya, dan masih dapat menjadi bagian dari fakta yang diturunkan mesin dari jawaban Anda secara keseluruhan.",
+  "process.decides_none":
+    "Tidak ada pertanyaan yang terbuka. Mesin sudah menerima jawaban yang Anda konfirmasi.",
+  "process.decides_awaiting":
+    "Tidak ada pertanyaan yang terbuka. Jawaban Anda sudah dikonfirmasi; balasan mesin belum tampil di layar.",
+  "process.decides_framing":
+    "Belum ada yang dijawab. Setiap pertanyaan menjelaskan apa yang ditentukan jawabannya sebelum Anda menjawab.",
+  "process.decides_confirmation":
+    "Tidak ada pertanyaan yang terbuka. Mengonfirmasi jawaban inilah yang menanyakan mesin — dan menanyakannya lagi jika Anda pernah ke sini.",
+  "process.categories_title": "Cabang tujuan",
+  "process.category_status.current": "terbuka — sedang ditanyakan",
+  "process.category_status.done": "sudah dijawab",
+  "process.category_status.pruned": "ditutup",
+  "process.category_status.pending": "masih terbuka",
+  "process.pruned_because":
+    "{{count}} cabang ditutup ketika Anda memilih “{{category}}”. Jawaban di dalam cabang ini tidak dapat membukanya kembali — kembali ke pertanyaan tujuan untuk mengganti cabang.",
+  "process.pruned_none":
+    "Semua cabang tujuan masih terbuka. Memilih satu akan menutup yang lain.",
+  "process.candidates_title": "Produk yang disebut mesin",
+  "process.candidates_pending":
+    "Belum ada produk yang disebut. Mesin baru ditanya setelah Anda mengonfirmasi jawaban — antarmuka ini tidak pernah memutuskan kelayakan sendiri.",
+  "process.candidates_none":
+    "Mesin tidak menyebut produk apa pun untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
+  "process.candidates_undecided":
+    "Mesin tidak menyebut produk untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
+  "process.candidates_follow_up":
+    "Mesin sudah menerima jawaban Anda dan menyebut fakta yang masih diperlukan sebelum dapat memutuskan. Pertanyaan ini menanyakan fakta tersebut.",
+  "process.outcome_node":
+    "Anda berada di simpul terakhir pohon ini: hasil di bawah adalah simpul tersebut, bukan halaman terpisah.",
+  "process.jump_title": "Kembali ke sebuah jawaban",
+  "process.jump_aria": "Kembali ke {{question}} — Anda menjawab {{answer}}",
+  "process.jump_empty": "Belum ada jawaban untuk dituju.",
+  "process.answer_unsure": "Tidak yakin",
+  "process.announce_prune":
+    "Anda memilih {{category}}. {{count}} cabang tujuan lainnya ditutup.",
 
   "paths.counter.label": "{{count}} cabang wawancara",
   "paths.counter.aria": "{{count}} cabang wawancara tersisa",

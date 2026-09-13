@@ -1,0 +1,4 @@
+Quota exhausted: Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC.
+
+Please retry after the reset time, or switch to another API key / auth method. (cause: insufficient_quota: 429 Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC.)
+QWEN_EXIT=1

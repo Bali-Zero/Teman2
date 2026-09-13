@@ -1628,3 +1628,325 @@ function behavioralSteps(
 }
 
 export { QUESTIONS };
+
+// ─── Process projection (W-VO-T) ─────────────────────────────────────────
+//
+// Metadata ONLY. Every value below is READ from the same `getTreeSteps`
+// projection and from `QUESTIONS`; nothing here decides what to ask next,
+// and nothing here decides eligibility — the engine owns that and is
+// consulted once, at the verdict. This exists so a visitor can see WHERE
+// they are in the process instead of inferring it from one question at a
+// time.
+
+/** The five question groups `tree.ts` already declares, plus the terminal
+ * node. `framing` belongs to no phase: it is the door, not a step. */
+export const PROCESS_PHASES = [
+  "location",
+  "identity",
+  "intent",
+  "details",
+  "review",
+  "outcome",
+] as const;
+export type ProcessPhaseKey = (typeof PROCESS_PHASES)[number];
+
+/** A stage carries one value a STEP cannot: "started, not finished". A
+ * stage with three of its four answers is not "not started", and calling it
+ * that was the same class of false statement this rail exists to remove
+ * (council round 8: offshore + `invest` leaves `location` at 3 of 4). */
+export type ProcessPhaseStatus = TreeStepStatus | "partial";
+
+export interface ProcessPhase {
+  key: ProcessPhaseKey;
+  status: ProcessPhaseStatus;
+  /** Question steps of this phase already answered, and how many the
+   * CURRENT path holds — both move as the path narrows. */
+  answered: number;
+  total: number;
+}
+
+/** What the open question decides, in the engine's own vocabulary. */
+export interface ProcessDecision {
+  questionId: string;
+  mapping: "FACT" | "REVIEW_ONLY" | "HUMAN_CONTEXT";
+  factPaths: readonly string[];
+}
+
+export interface ProcessCategory {
+  key: CategoryKey;
+  /** `current` = chosen and still being asked, `done` = chosen and its
+   * branch fully answered, `pruned` = closed by the choice, `pending` =
+   * still open because no choice has been made. */
+  status: TreeStepStatus;
+}
+
+export interface ProcessModel {
+  trunk: readonly TreeStep[];
+  /** The kind of node the interview is on, so a renderer never has to be
+   * handed `current` a second time to tell framing from a verdict. */
+  node: OracleNode["kind"];
+  /** The category fan only exists once the interview has reached the
+   * purpose question — before that there is nothing to show as open. */
+  showCategories: boolean;
+  phases: readonly ProcessPhase[];
+  categories: readonly ProcessCategory[];
+  /** The chosen category, and how many branches its choice closed. */
+  chosenCategory: CategoryKey | null;
+  prunedCount: number;
+  answeredQuestions: number;
+  totalQuestions: number;
+  currentPhase: ProcessPhaseKey | null;
+  decision: ProcessDecision | null;
+  /** True at the terminal node — the outcome is the last node of this
+   * same tree, never a separate page. */
+  atOutcome: boolean;
+  /** True on a question the engine itself asked for after a verdict
+   * (`ASK_FOLLOW_UP`): the answers are in, the engine has spoken once and
+   * wants one more fact. Neither "still interviewing" nor "answered". */
+  atFollowUp: boolean;
+}
+
+function phaseOfStep(stepId: string): ProcessPhaseKey | null {
+  const question = QUESTIONS[stepId];
+  if (question) return question.group;
+  if (stepId === "confirmation") return "review";
+  if (stepId === "verdict") return "outcome";
+  return null; // framing
+}
+
+/**
+ * Project the interview as a visible PROCESS: phases with their progress,
+ * the purpose branches that are open/closed, and the fact the open
+ * question decides. Pure; `LivingTree`/`ProcessRail` render it.
+ */
+export function getProcessModel(
+  current: OracleNode,
+  facts: OracleFacts,
+  /**
+   * Whether a verdict node is already in `FlowState.history` on this
+   * attempt — read from the state by the caller, never guessed here. It is
+   * the ONLY evidence that an off-spine question is the engine's follow-up:
+   * `ASK_FOLLOW_UP` is the one action that appends such a question, and it
+   * is reachable only FROM the verdict. Without it the projection inferred
+   * "follow-up" from "not on the spine", and that inference was false on a
+   * reachable state (council round 6): SKIP on the first location question
+   * records `in_indonesia: "unsure"` and routes to `holds_stay_permit`,
+   * which the spine's `order` does not contain — so four clicks in, with no
+   * verdict anywhere in history, the rail marked confirmation and verdict
+   * "done" and told the visitor the engine had answered and asked for one
+   * more fact. Defaults to false: a caller that cannot prove a verdict
+   * happened must never claim one.
+   */
+  visitedVerdict = false,
+): ProcessModel {
+  const { trunk: spine, categoryLeaves } = getTreeSteps(current, facts);
+  // THE FOLLOW-UP CASE. `ASK_FOLLOW_UP` (flow's NEEDS_INPUT loop) appends a
+  // question that the current path's `order` does not contain, so
+  // `getTreeSteps`'s `currentIdx` comes back -1 and it marks EVERY trunk
+  // entry "pending" — correct for a trunk that has no current step, and a
+  // visible lie for a progress line ("step 0 of 13" to someone who has
+  // answered thirteen). Ground truth for a question step is its own fact,
+  // which `pruneFacts` already guarantees belongs to the current path; the
+  // non-question nodes are all behind a follow-up by construction, since a
+  // follow-up is only ever reached FROM the verdict.
+  const offSpine =
+    current.kind === "question" &&
+    !spine.some((step) => step.id === current.questionId);
+  // Off the spine is not the same thing as after the verdict — see
+  // `visitedVerdict` above. A question step's own fact is ground truth
+  // either way; the NON-question steps (framing, confirmation, verdict) are
+  // behind the visitor only when a verdict really happened, so without that
+  // proof they keep whatever `getTreeSteps` said and the projection
+  // under-claims rather than inventing a verdict.
+  const atFollowUp = offSpine && visitedVerdict;
+  const remapped: TreeStep[] = offSpine
+    ? spine.map((step) => ({
+        ...step,
+        status: Object.prototype.hasOwnProperty.call(QUESTIONS, step.id)
+          ? facts[step.id] === undefined
+            ? ("pending" as const)
+            : ("done" as const)
+          : // The framing node is behind ANY open question — the visitor
+            // left it to reach one — so it is done off the spine too.
+            atFollowUp || step.id === "framing"
+            ? ("done" as const)
+            : step.status,
+      }))
+    : spine;
+  // ...and the follow-up itself belongs ON the trunk, open or answered.
+  // Answered, it leaves a fact the spine has no step for: the count fell
+  // from 10/11 back to 10/10 the moment it was answered, and the answer
+  // lost its jump target — the one answer a visitor is most likely to want
+  // to correct, since the engine asked for it by name.
+  const spineIds = new Set(spine.map((step) => step.id));
+  const openId = current.kind === "question" ? current.questionId : null;
+  const extraIds = Object.keys(facts).filter(
+    (id) =>
+      Object.prototype.hasOwnProperty.call(QUESTIONS, id) &&
+      !spineIds.has(id) &&
+      id !== openId,
+  );
+  if (openId !== null && !spineIds.has(openId) && QUESTIONS[openId]) {
+    extraIds.push(openId);
+  }
+  const extras: TreeStep[] = extraIds.map((id) => ({
+    id,
+    labelI18nKey: `tree.${id}`,
+    status: (id === openId ? "current" : "done") as TreeStepStatus,
+  }));
+  // Each off-spine question joins the trunk inside its OWN stage, ahead of
+  // that stage's first step not yet done — so the jump list reads in the
+  // order the stages list reads, answers before the open question. Placing
+  // every extra just before the verdict put a location question asked
+  // second after "Your answers" and every pending step (council round 12).
+  // A question whose stage has no step on the spine still goes before the
+  // verdict: the outcome stays the LAST node of the tree, so an answered
+  // question never ends the breadcrumb while the visitor is looking at the
+  // verdict (council round 7).
+  // A question behind the frontier with no answer was never asked on this
+  // path. `getTreeSteps` rebuilds `order` from the facts and TODAY's clock
+  // (`shouldAskRenewalPaid`), so an interview resumed across the day its
+  // permit expires gains `renewal_paid` as "pending" behind a question the
+  // visitor already passed — and the rail turned that into "6 of 13
+  // answered" on a path that holds 12 (council round 13). Behind the
+  // frontier means before the current spine step or, at the engine's
+  // follow-up, anywhere on the spine: the verdict was reached, so every
+  // spine question it needed was answered. Ahead of the frontier, and on
+  // an off-spine question that is not a follow-up, unanswered steps are
+  // the path still to come and stay.
+  const frontier = offSpine
+    ? atFollowUp
+      ? remapped.length
+      : -1
+    : remapped.findIndex((step) => step.status === "current");
+  const onPath = remapped.filter(
+    (step, index) =>
+      !(
+        index < frontier &&
+        Object.prototype.hasOwnProperty.call(QUESTIONS, step.id) &&
+        facts[step.id] === undefined
+      ),
+  );
+  const trunk: TreeStep[] = [...onPath];
+  for (const extra of extras) {
+    const phase = phaseOfStep(extra.id);
+    const sameStage = trunk
+      .map((step, index) => ({ step, index }))
+      .filter(({ step }) => phase !== null && phaseOfStep(step.id) === phase);
+    const firstOpen = sameStage.find(({ step }) => step.status !== "done");
+    let at: number;
+    if (firstOpen) {
+      at = firstOpen.index;
+    } else if (sameStage.length > 0) {
+      at = sameStage[sameStage.length - 1].index + 1;
+    } else {
+      const verdictIdx = trunk.findIndex((step) => step.id === "verdict");
+      at = verdictIdx === -1 ? trunk.length : verdictIdx;
+    }
+    trunk.splice(at, 0, extra);
+  }
+  const questionSteps = trunk.filter((step) =>
+    Object.prototype.hasOwnProperty.call(QUESTIONS, step.id),
+  );
+  // The stage the open question belongs to, when that question is not on
+  // the spine. True of a follow-up AND of an ordinary off-spine question:
+  // in both cases the stage IS open, and saying so claims nothing about
+  // the engine.
+  const openOffSpinePhase =
+    offSpine && current.kind === "question"
+      ? (QUESTIONS[current.questionId]?.group ?? null)
+      : null;
+
+  // An answer is a FACT, never a navigation state: re-opening a question
+  // through `EDIT` makes its step "current" while `pruneFacts` keeps the
+  // answer, and counting statuses made the total fall by one the moment a
+  // visitor clicked edit (council round 8).
+  const isAnswered = (step: TreeStep): boolean =>
+    Object.prototype.hasOwnProperty.call(QUESTIONS, step.id)
+      ? facts[step.id] !== undefined
+      : step.status === "done";
+
+  const phases: ProcessPhase[] = PROCESS_PHASES.map((key) => {
+    const steps = trunk.filter((step) => phaseOfStep(step.id) === key);
+    const answered = steps.filter(isAnswered).length;
+    const status: ProcessPhaseStatus =
+      key === openOffSpinePhase || (atFollowUp && key === "outcome")
+        ? "current"
+        : steps.some((step) => step.status === "current")
+          ? "current"
+          : steps.length > 0 && steps.every((step) => step.status === "done")
+            ? "done"
+            : answered > 0
+              ? "partial"
+              : "pending";
+    return { key, status, answered, total: steps.length };
+  });
+
+  const chosen = facts.category as CategoryKey | undefined;
+  const chosenCategory =
+    chosen !== undefined && CATEGORY_KEYS.includes(chosen) ? chosen : null;
+  // The chosen branch is "done" only once every question the branch asks
+  // on THIS path has an answer — `behavioralSteps` is the same list
+  // `getTreeSteps` puts in the trunk, so the two can never disagree.
+  const branchIds = new Set(behavioralSteps(facts).map((step) => step.id));
+  const branchSteps = trunk.filter((step) => branchIds.has(step.id));
+  const branchComplete =
+    branchSteps.length > 0 &&
+    branchSteps.every((step) => step.status === "done");
+  const categories: ProcessCategory[] = CATEGORY_KEYS.map((key) => ({
+    key,
+    status:
+      chosenCategory === null
+        ? ("pending" as const)
+        : key === chosenCategory
+          ? branchComplete
+            ? ("done" as const)
+            : ("current" as const)
+          : ("pruned" as const),
+  }));
+
+  // Narrowed on the discriminant, never cast: `HUMAN_CONTEXT` is the one
+  // arm of `QuestionDecisionMapping` without `factPaths`, and a cast would
+  // survive a future arm that also lacks them.
+  const openQuestion =
+    current.kind === "question" ? QUESTIONS[current.questionId] : undefined;
+  const mapping = openQuestion?.decisionMapping;
+  const decision: ProcessDecision | null =
+    openQuestion && mapping
+      ? {
+          questionId: openQuestion.id,
+          mapping: mapping.kind,
+          factPaths: mapping.kind === "HUMAN_CONTEXT" ? [] : mapping.factPaths,
+        }
+      : null;
+
+  return {
+    trunk,
+    node: current.kind,
+    // The fan is shown while the purpose question is OPEN (choosing one
+    // closes the others) and once a real branch is chosen — never in between.
+    // `categoryLeaves` alone says "at or past the category step in `order`",
+    // which on the onshore urgent lane is true for a question the interview
+    // jumped over: the rail would then promise eleven open branches on a
+    // path that will never ask for one. The same holds for a purpose
+    // answered "unsure" (SKIP): no branch was chosen and none will be asked,
+    // so eleven "still open" chips would describe a choice that is behind
+    // the visitor (council round 10). The answer stays on the trunk.
+    showCategories:
+      chosenCategory !== null ||
+      (categoryLeaves !== null &&
+        current.kind === "question" &&
+        current.questionId === "category"),
+    phases,
+    categories,
+    chosenCategory,
+    prunedCount: categories.filter((c) => c.status === "pruned").length,
+    answeredQuestions: questionSteps.filter(isAnswered).length,
+    totalQuestions: questionSteps.length,
+    currentPhase:
+      phases.find((phase) => phase.status === "current")?.key ?? null,
+    decision,
+    atOutcome: current.kind === "verdict",
+    atFollowUp,
+  };
+}

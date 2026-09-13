@@ -98,6 +98,17 @@ async function expectEngineState(page: Page, state: FixtureState) {
   ).toBeVisible();
 }
 
+/**
+ * The product name as the CANDIDATE CARD renders it — scoped to the outcome
+ * column on purpose. The process rail (W-VO-T) now also names the engine's
+ * own product codes in the left column, so an unscoped text match resolves
+ * to two elements and trips strict mode; scoping keeps each assertion
+ * pointed at the surface it was written to check.
+ */
+function candidateCardText(page: Page) {
+  return page.locator(".oracle-main__content").getByText("Visit Visa C1");
+}
+
 async function expectNoWcagViolations(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -188,14 +199,14 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       expect(Object.keys(body.facts ?? {})).toHaveLength(APPLICANT_FACT_COUNT);
 
       if (state === "SUPPORTED_CANDIDATES") {
-        await expect(page.getByText("Visit Visa C1")).toBeVisible();
+        await expect(candidateCardText(page)).toBeVisible();
         await expectNoWcagViolations(page);
         await page.screenshot({
           path: testInfo.outputPath("visa-oracle-engine-desktop.png"),
           fullPage: true,
         });
       } else {
-        await expect(page.getByText("Visit Visa C1")).toHaveCount(0);
+        await expect(candidateCardText(page)).toHaveCount(0);
       }
     });
   }
@@ -222,7 +233,7 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         name: translate("en", "verdict.provenance_headline.SHADOW"),
       }),
     ).toBeVisible();
-    await expect(page.getByText("Visit Visa C1")).toHaveCount(0);
+    await expect(candidateCardText(page)).toHaveCount(0);
 
     await page.unroute("**/api/visa-oracle/evaluate**");
     await seedVerdictResume(page);
@@ -239,7 +250,7 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
       }),
     ).toBeVisible();
-    await expect(page.getByText("Visit Visa C1")).toHaveCount(0);
+    await expect(candidateCardText(page)).toHaveCount(0);
   });
 
   test("automatic network retry preserves exact body/key; explicit TEMP retry rotates both ids", async ({
@@ -443,7 +454,7 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await page.getByRole("button", { name: /see my options/i }).click();
 
     await expectEngineState(page, "SUPPORTED_CANDIDATES");
-    await expect(page.getByText("Visit Visa C1")).toBeVisible();
+    await expect(candidateCardText(page)).toBeVisible();
     await expect
       .poll(() =>
         page.evaluate((key) => sessionStorage.getItem(key), RESUME_KEY),

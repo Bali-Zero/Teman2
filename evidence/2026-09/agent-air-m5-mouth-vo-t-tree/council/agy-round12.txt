@@ -1,0 +1,9 @@
+[author header] cmd: agy --model gemini-3.1-pro-high --effort high --print-timeout 20m --sandbox --disable-slash-commands --print "<prompt: rules + round-10/11 dispositions + git diff origin/main...HEAD -- apps/mouth at 400286e6a6>" ; started 2026-09-14T01:36:14+08:00
+
+- FILE: `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts` (inside `getProcessModel`, around lines where `remapped` and `trunk` are assembled)
+  - **What is wrong:** `getProcessModel` unconditionally appends all off-spine questions (`extras`) immediately before `verdictIdx` at the end of the tree. Additionally, when `offSpine` is true but `atFollowUp` is false, the `remapped` mapping allows the non-question `framing` node to inherit its `step.status` from `getTreeSteps` (which is `"pending"` due to `currentIdx === -1`).
+  - **Why it matters:** This visually breaks the chronological tree order for early off-spine questions that are NOT engine follow-ups (such as `holds_stay_permit` on the onshore `permit_expiry` lane). A visitor at step 3 will see their current `location` question placed at the very bottom of the rail after all future pending steps and `confirmation`, and will see the initial `framing` step stuck as "pending". This makes the process projection contradict the chronological history held in `flowReducer`.
+  - **Minimal fix:** Calculate the insertion point for `extras` based on the step's phase (e.g., after the last `"done"` step in that phase) rather than hardcoding it before `verdictIdx`. Update `remapped` to explicitly map the `framing` node to `"done"` when `offSpine` is true.
+
+VERDICT: DEFECT
+AGY_EXIT=0

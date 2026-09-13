@@ -1,0 +1,151 @@
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09bcf-7733-7db1-874e-ceecc09ece62
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none. Do not write any file.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called after the
+applicant confirms their answers (and again for an engine-requested follow-up).
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree. On a 390px viewport the rail collapses to a progress line
+with the current category and a "jump" sheet.
+
+Files in the diff: `_components/ProcessRail.tsx` (new), `ProcessRail.test.tsx`
+(new), `LivingTree.tsx`, `LivingTree.test.tsx`, `OracleShell.tsx`,
+`_lib/flow.ts` (new `getProcessModel` projection + `PROCESS_PHASES`), `_lib/i18n.ts`
+(EN + ID copy), `e2e/visa-oracle-process.spec.ts` (new), `e2e/visa-oracle-v2.spec.ts`
+(five text assertions scoped to the main content column).
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column; that dual mount pre-exists on origin/main in LivingTree).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds, a stage
+  status that contradicts the facts on record).
+- `getProcessModel` disagreeing with `getTreeSteps` / `flowReducer` in any
+  reachable state — including: category answered with the reserved value
+  "unsure", the onshore `permit_expiry` lane, `EDIT` on an answered question,
+  an engine follow-up question asked after the verdict (`ASK_FOLLOW_UP`), the
+  confirmation card after `REVIEW_ANSWERS`, and the framing node.
+- The duplicated rail producing duplicated ids, duplicated live-region
+  announcements, or two elements a strict-mode Playwright locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+
+## Round 11 — what round 10 found, and what was done with it
+
+Round 10 was a full review by two seats. Their findings, and the disposition:
+
+CURED (each pinned by a new test in ProcessRail.test.tsx, proven red when the cure is reverted):
+1. flow.ts `showCategories` read `chosen !== undefined`, so a purpose answered
+   "unsure" (SKIP) showed eleven chips "still open" + "Choosing one closes the
+   others". Now `chosenCategory !== null || <purpose question open>`.
+2. ProcessRail.tsx: every empty ENGINE outcome other than NO_SUPPORTED_PATH
+   said the outcome "says what it is waiting for" — false on
+   HUMAN_REVIEW_REQUIRED / TEMPORARILY_UNAVAILABLE. The copy
+   (`process.candidates_undecided`, EN + ID) is now neutral: "says why" /
+   "menjelaskan alasannya".
+3. i18n `process.decides_framing` promised every question "states the fact it
+   sets"; HUMAN_CONTEXT questions attach none. Now "says what its answer
+   decides" (EN + ID).
+4. e2e/visa-oracle-process.spec.ts re-seeded the SAME page with a new
+   addInitScript per screenshot (undefined evaluation order). Each state now
+   renders on its own page and the state is asserted before capture.
+
+REFUTED, with evidence:
+5. "visitedVerdict = history.some(verdict) stays true after jumping back" —
+   flowReducer's BACK slices history, EDIT / REVIEW_ANSWERS / SELECT_CATEGORY
+   truncate it to the target node, so a jump back before the verdict removes
+   the verdict node. Pinned by a reducer replay test: verdict -> EDIT
+   in_indonesia -> SKIP in_indonesia reaches holds_stay_permit with no verdict
+   in history and atFollowUp false.
+6. "the mobile sheet and the desktop column both mount a TreePanel, so jump
+   targets exist twice" — `git show origin/main:.../LivingTree.tsx` already
+   has the two `<TreePanel` mounts (lines 150 and 162) with the same edit
+   buttons; this window added a data attribute to buttons that were already
+   duplicated. Recorded as a leftover (a breakpoint-aware mount is a
+   route-level hydration decision), not introduced here.
+
+Judge the WHOLE window diff again at its current HEAD — find a defect that is
+on disk now, or say there is none. Same output format, same last line.
+
+## How to read the diff (read-only shell access to the worktree)
+
+`origin/main` has moved past the merge-base with unrelated commits; use THREE dots:
+
+    git diff origin/main...HEAD -- apps/mouth
+
+HEAD is ca0e55e959.
+
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Failed
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+[… read-only tool output elided by the author; only the seat's own messages are kept below, in order — the run ended WITHOUT a verdict line: a Stop hook ended it while it was still verifying a lead …]
+codex
+[M5] Missione BLUE; non sono il Dux. Mandato: Gear-3 adversarial correctness review di `ca0e55e959` contro `origin/main...HEAD`. Worktree: `/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree`. Carico prima il protocollo Visa Oracle, Stadio-0 e Modus; poi verifico diff, reducer/proiezione e test senza scrivere file.
+codex
+GEAR 3: revisione avversariale del nodo pubblico Visa Oracle — hot-zone decision funnel, duplicazione responsive e projection/reducer consistency richiedono controllo profondo. Budget: un solo reviewer, nessun subagente, un pass statico completo più test mirati; nessuna mutazione.
+codex
+## STADIO-0 STUDY — Round 11 Visa Oracle
+
+1. Memory-hits: nessun hit preciso per `ProcessRail/getProcessModel`; la memoria generale conferma soltanto che Visa Oracle è una lane separata e che il verdict resta engine-owned. La cicatrice applicabile è “file:line phantom”: i path senza route group del prompt non esistono; il diff conferma i path reali sotto `(visa-oracle)`.
+2. Hot-files verificati: HEAD è esattamente `ca0e55e959…`; i 9 file del diff esistono, con i 7 sorgenti sotto `apps/mouth/src/app/(visa-oracle)/visa-oracle/...` e i 2 E2E sotto `apps/mouth/e2e/`. `oracle.css` non è nel diff.
+3. PII-risk: nessuno — revisione di codice/test con fixture sintetiche; non accedo a dati cliente.
+4. Criteri d’accettazione: (a) nessuna semantica branch/eligibility aggiunta, (b) projection coerente con reducer in tutti gli edge state richiesti, (c) nessun ID/live-region duplicato nelle due mount, (d) eventuale DEFECT sostenuto da file:riga e caso raggiungibile; altrimenti OK. La working tree contiene modifiche altrui fuori `apps/mouth`; le lascio intatte.
+codex
+Ho individuato una pista concreta da falsificare: la copy del follow-up dice “one more fact”, mentre il contratto backend consente una lista di `missing_facts`. Salvo il checkpoint e continuo nel rollover verificando se esiste davvero uno stato raggiungibile con più di un fatto, prima di chiamarlo difetto.
+codex
+Checkpoint saved; review continues in the rollover.
+CODEX_EXIT=0

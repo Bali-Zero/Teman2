@@ -1,0 +1,18 @@
+[author header] cmd: agy --model gemini-3.1-pro-high --effort high --print-timeout 20m --sandbox --disable-slash-commands --print "<prompt: rules + dispositions of rounds 10-13 + git diff origin/main...HEAD -- apps/mouth at cd79c56739>" ; started 2026-09-14T03:43:12+08:00
+
+CRITICAL INSTRUCTION 1: I am tasked with reviewing a diff and returning a single final line with the verdict. I do not need to use any tools because the diff is already provided in the prompt, and my only job is to evaluate it against the rules and state my findings.
+CRITICAL INSTRUCTION 2: Since no tools are needed, I will directly format my findings and verdict.
+
+I have reviewed the diff against the strict rules and the disposition history provided. The implementation correctly addresses the issues raised in previous council rounds without introducing new violations.
+
+- **Eligibility and product rules**: The interface accurately reflects that it does not decide eligibility itself. Products are only named when `outcome.provenance === "ENGINE"` and `outcome.candidates` is populated. Fallback states (e.g., `NETWORK_FAILURE` or `TEMPORARILY_UNAVAILABLE`) are handled without fabricating eligibility claims, which perfectly aligns with the requirement.
+- **Tree and routing semantics**: The core router and semantics (`getTreeSteps`, `computeNextNode`, etc.) are untouched. `getProcessModel` purely projects the state, correcting the `ASK_FOLLOW_UP` and off-spine issues by properly rebuilding the trunk chronologically, inserting answered off-spine steps in their correct phase. Unasked clock-dependent questions (like `renewal_paid` before expiry) are successfully filtered out of the projection.
+- **Styling**: `ProcessRail.tsx` adheres to the strict inline styling rules, mapping perfectly to existing `--oracle-*` custom properties.
+- **Accessibility and DOM correctness**: The removal of explicit `id` attributes ensures the dual-mount approach (mobile sheet and desktop rail) produces no duplicate IDs. The live region for pruning announcements is mounted exactly once per `LivingTree`. Reduced motion is explicitly checked and respected in Framer Motion animations. Both English and Indonesian copies faithfully represent the system's behavior without promising non-existent facts or actions.
+- **React Correctness**: The code respects hook rules, effectively handles optional prop narrowing without side effects, and operates with linear projection logic that prevents $O(n^2)$ blowups. 
+- **Tests**: The new `e2e` and unit tests drive the real state machine (`flowReducer` / `m()`) rather than inventing arbitrary fixtures.
+
+No defects found.
+
+VERDICT: OK
+AGY_EXIT=0

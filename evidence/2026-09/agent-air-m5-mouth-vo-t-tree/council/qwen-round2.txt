@@ -1,0 +1,38 @@
+## Findings
+
+**1. `ProcessRail.tsx` ~L208 + ~L300‑320 (`ProcessBranches`) — the outcome section is unreachable on any lane that never answers `category`.**
+`if (!model.showCategories) return null;` guards the *whole* component, and the candidates block (`process.candidates_title` / `candidates_pending` / `candidates_none` / `outcome_node`) lives at its tail. `showCategories` (flow.ts ~L1810) is `chosen !== undefined || (categoryLeaves && current.questionId === "category")`. On the onshore `permit_expiry` lane — which the diff's own comment names as jumping straight to `review_gate`, skipping `category` — `facts.category` is never set and the `category` question is never current, so `showCategories` is false **at the verdict too**. The visitor reaches the terminal node and the rail shows no outcome, no product codes the engine returned, and no `process.outcome_node` line. That breaks the window objective ("the outcome must read as the last node of the same tree") and rule 1's *only* sanctioned product surface on a reachable path. The guard is the right fix for the branch fan and the wrong scope for the outcome.
+*Minimal fix:* split the outcome/candidates block out of `ProcessBranches` (own exported part, or render it from `ProcessProgress`/`TreePanel`) gated only on `model.atOutcome`, and keep `showCategories` gating just the fan.
+
+**2. `flow.ts` ~L1725‑1740 (`offSpine` remap) — at a follow‑up question the phase list marks `review` and `outcome` as done, contradicting the same rail.**
+Every non‑question trunk step is forced to `"done"`. `phaseOfStep` maps `confirmation → review` and `verdict → outcome`, so both phases render `phase_status.done` while `atOutcome` is `false` and `ProcessBranches` prints `process.candidates_pending`. One panel says "Outcome: complete", the other says "no product named yet". The comment's premise ("a follow‑up is only ever reached FROM the verdict") does not make the *verdict step* done from the visitor's point of view — they have not seen it. *(Contingent on the trunk containing `confirmation`/`verdict` steps, which `phaseOfStep` itself assumes — unverified.)*
+*Minimal fix:* in the `offSpine` branch, keep non‑question steps at their `getTreeSteps` status, or explicitly cap at the last answered question instead of blanket `"done"`.
+
+**3. `flow.ts` ~L1795‑1805 — the `as { factPaths: readonly string[] }` cast deletes the only check that keeps this from throwing.**
+`mapping !== "HUMAN_CONTEXT"` is used to reach into `.factPaths` through a structural cast. If `REVIEW_ONLY` (or any other non‑`HUMAN_CONTEXT` kind) does not carry `factPaths`, the value is `undefined` and `model.decision.factPaths.length` throws during render on every such question — a hard crash in the rail, not a degraded label. The cast is also unnecessary if the union is well‑formed, which is exactly why it is suspicious. *(Actual mapping shapes unverified from this diff.)*
+*Minimal fix:* drop the cast; narrow with `decisionMapping.kind === "FACT" ? decisionMapping.factPaths : []`.
+
+**4. `ProcessRail.tsx` ~L19‑22 / `OracleShell.tsx` ~L890‑903 — `outcome.state` is carried but never read, so an engine failure renders as an eligibility statement.**
+`ProcessOutcomeSummary.state` is required, threaded from the shell, and unused. `ProcessBranches` branches only on `candidates.length`, so a refusal/error/incomplete engine state with an empty candidate list prints `process.candidates_none` — the interface asserting "no product for you" from data it did not inspect. Rule 1: the rail must not decide eligibility.
+*Minimal fix:* branch on `outcome.state` first and render a "the engine could not decide" copy for non‑success states, reserving `candidates_none` for a genuine empty success.
+
+**5. `LivingTree.tsx` ~L64 + `ProcessRail.tsx` — `model.trunk` is computed and never consumed; the diagnosed lie is fixed in only one of the two places.**
+`LivingTree` still renders `getTreeSteps(...).trunk` (all‑`pending` at a follow‑up) directly above `ProcessProgress`, which uses the corrected `model.trunk`. At a follow‑up the header reads "step 13 of 14 · phase done" while the trunk beside it paints every step unvisited. `ProcessModel.trunk` is dead public API.
+*Minimal fix:* either render `model.trunk` in `TreePanel`, or drop the field from `ProcessModel` and stop pretending the trunk is corrected.
+
+**6. `ProcessRail.tsx` ~L245 — `data-status={leaf.status === "current" ? "done" : leaf.status}` makes the visible state and the announced state disagree.**
+The chosen‑but‑still‑open branch is painted with the `done` chip style while its own sr‑only child announces `process.category_status.current`. Sighted and non‑sighted visitors get two different facts about the same chip, and any test locator on `[data-status="current"]` silently matches nothing.
+*Minimal fix:* keep `leaf.status` in `data-status` and, if `oracle.css` has no `current` chip style, express the open state with an inline style rather than by relabelling the attribute.
+
+**7. Unverified checklist items that this diff cannot certify (i18n/CSS files not supplied).**
+- ~22 new `process.*` keys, including the full `process.phase.{location,identity,intent,details,review,outcome}` (6), `process.phase_status.{pending,current,done,pruned}` (4) and `process.category_status.*` (4) sets, in **both EN and ID** (rule 4). A missing key in either locale renders a raw key or throws in `translate`.
+- `oracle-tabular-nums` and `oracle-sr-only` must already exist in the read‑only `oracle.css`; if not, the tabular alignment silently no‑ops (rule 3 forbids adding them).
+- `.oracle-tree__leaf` must already carry a `border-width`, or the inline `borderStyle: "dashed"` the comment credits with the contrast fix renders nothing and strikethrough is the only cue.
+- `formatFactDisplay` must be exported by `ConfirmationCard` with the `(language, stepId, value)` signature used at `LivingTree.tsx` ~L45.
+
+**8. Minor / not defects.** `--font-mono` (`S.fact`) is outside the sanctioned `--oracle-* / --space-* / --text-*` families, though it carries a fallback. `getProcessModel` runs 5× per render (once in `LivingTree`, twice each in `ProcessProgress`/`ProcessBranches` across the two panels), each internally re‑running `getTreeSteps` + `behavioralSteps` — linear, not quadratic, but it is redundant work on a keystroke‑driven tree; lift it once in `LivingTree` and pass the model down. `S.list`'s `listStyle: "none"` strips list semantics from the `<ol>`/`<ul>` under VoiceOver; add `role="list"`. Duplicate‑id and duplicate‑live‑region requirements are met: no `id` attributes are introduced, the `role="status"` region is rendered once outside both panels, and `data-process-rail={variant}` disambiguates the two copies for strict‑mode locators. Reduced motion is correctly threaded to both animated surfaces.
+
+The duplication, PII, hook‑rules and branching‑semantics rules are otherwise respected: no hooks are called before `ProcessBranches`' early return, `getTreeSteps`/`computeNextNode`/`fact-mapper`/`tree.ts` are untouched, and `getProcessModel` is pure projection.
+
+VERDICT: DEFECT
+QWEN_EXIT=0

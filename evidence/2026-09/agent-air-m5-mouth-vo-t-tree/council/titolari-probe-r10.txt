@@ -1,0 +1,12 @@
+[author header] re-probe of the two quota-dead titolari on resume, 2026-09-14T01:09:36+08:00 (M5)
+$ perl -e 'alarm 120; exec @ARGV' -- kimi -m kimi-code/k3 -p 'Reply with exactly: PROBE OK' < /dev/null
+kimi version 0.41.0
+error: failed to run prompt: provider.auth_error: 403 You've reached your monthly usage limit for this billing cycle. Your quota will be refreshed in the next cycle. To continue now, purchase extra usage or upgrade your plan: https://www.kimi.com/membership/subscription?tab=quota
+See log: /Users/balizero/.kimi-code/logs/kimi-code.log
+KIMI_EXIT=1
+
+$ perl -e 'alarm 120; exec @ARGV' -- qwen -p 'Reply with exactly: PROBE OK' < /dev/null
+Quota exhausted: Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC.
+
+Please retry after the reset time, or switch to another API key / auth method. (cause: insufficient_quota: 429 Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC.)
+QWEN_EXIT=1

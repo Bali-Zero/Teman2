@@ -1,0 +1,39 @@
+### Audit Summary against Review Criteria
+
+1. **Eligibility & Product Integrity (Rule 1)**
+   - Client never derives, ranks, or invents products.
+   - `outcome` in [`OracleShell.tsx`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx#L896-L910) is passed only when `current.kind === "verdict"`, `outcome !== null`, and `!evaluating`.
+   - `ProcessOutcome` in [`ProcessRail.tsx`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx#L335-L380) strictly gates candidate rendering on `outcome?.provenance === "ENGINE"`. Non-ENGINE provenance and empty candidates are explicitly distinguished (`NO_SUPPORTED_PATH` vs. undecided/pending).
+
+2. **Branching & Flow Semantics (Rule 2)**
+   - Existing functions (`getTreeSteps`, `computeNextNode`, `getCategoryQuestionIds`, `tree.ts`, `fact-mapper.ts`) remain untouched.
+   - `getProcessModel` in [`flow.ts`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts#L1714-L1882) operates strictly as a pure projection of `getTreeSteps(current, facts)` and `QUESTIONS`.
+
+3. **Styling & CSS Constraints (Rule 3)**
+   - `oracle.css` is untouched.
+   - All styling in [`ProcessRail.tsx`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx#L37-L113) and [`LivingTree.tsx`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/LivingTree.tsx#L178-L188) is inline, strictly reusing predefined CSS variables (`--space-*`, `--text-*`, `--oracle-*`) without introducing raw color values or violating contrast floors.
+
+4. **Accessibility & Dual Rail (Rule 4)**
+   - No DOM `id` attributes are introduced, preventing ID collisions between the mobile sheet and desktop column.
+   - Live region (`pruneAnnouncement`, `role="status"`, `data-process-announce`) is rendered exactly once at the root of `LivingTree`, outside the duplicated `TreePanel` instances.
+   - `useReducedMotion` is propagated to `ProcessBranches` to disable Framer Motion layout animations and scaling.
+   - Jump buttons provide full `aria-label` alternatives incorporating formatted answers (`answerFor`), with inner text masked via `aria-hidden="true"`.
+
+5. **Edge Cases & Reachable States**
+   - **`category: "unsure"`**: `CATEGORY_KEYS.includes("unsure")` evaluates to `false`, leaving `chosenCategory = null` and `prunedCount = 0`. Branches remain pending without emitting bogus prune announcements.
+   - **Onshore Urgent Lane (`permit_expiry` skipping `category`)**: `showCategories` correctly evaluates to `false` because `chosen === undefined` and `current.questionId !== "category"`. Empty phases (`total === 0`) are filtered out from the phase list.
+   - **Follow-up Question Post-Verdict (`ASK_FOLLOW_UP`)**: `visitedVerdict` (derived from `state.history`) guards against treating pre-verdict off-spine questions as engine follow-ups. Remapped trunk keeps answered/open follow-up steps addressable and editable, maintaining accurate question totals.
+   - **Framing Node**: `phaseOfStep("framing") === null`, decision copy falls back to `process.decides_framing`, and branches remain hidden.
+
+6. **React Correctness (Rule 6)**
+   - Stable keys used across all mapped lists (`step.id`, `leaf.key`, `key`, `candidate.code`).
+   - Hooks are called unconditionally at the top level. No render-time side effects.
+
+---
+
+### Findings
+
+No defects found.
+
+VERDICT: OK
+AGY_EXIT=0

@@ -1,0 +1,132 @@
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b97-e475-7582-a47f-3c3c27e777df
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds).
+- `getProcessModel` disagreeing with `getTreeSteps` in any reachable state —
+  including: category answered with the reserved value "unsure" (not a real
+  category key), the onshore `permit_expiry` lane that jumps straight to
+  `review_gate` skipping `category`, a follow-up question appended after the
+  verdict, and the framing node.
+- The duplicated rail (mobile + desktop) producing duplicated ids, duplicated
+  live-region announcements, or two elements that a strict-mode Playwright
+  locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+
+## Round 9 — the two findings you returned in round 8 are cured
+
+`origin/main` is an ANCESTOR of HEAD: `git diff origin/main -- apps/mouth` is
+exactly this window's own work. Judge only that.
+
+Round 8 (yours) returned two findings. Both are cured on disk, at depth 1:
+
+1. A stage holding some but not all of its answers reported `pending`, which
+   the copy renders as "not started" / "belum dimulai". `ProcessPhase.status`
+   is now `ProcessPhaseStatus = TreeStepStatus | "partial"`; a stage with at
+   least one answer and no open step is "partial" ("in progress" /
+   "sedang berlangsung"). Pinned by a test that replays offshore + `invest`
+   through the reducer and asserts 3 of 4, `data-status="partial"`, and that
+   the row does NOT say "not started".
+2. The answered count read STATUSES, so `EDIT` on an answered question made
+   the count fall by one while `pruneFacts` still held the answer. Counting
+   is now `facts[step.id] !== undefined` for every projected question step
+   (`isAnswered`), used by both `answeredQuestions` and each phase's
+   `answered`. Pinned by a test that walks the reducer, dispatches
+   `EDIT category`, and asserts the count equals the number of facts held.
+
+Settled in earlier rounds: `visitedVerdict` (no engine follow-up claimed
+without a verdict in history); the outcome is spliced back to the END of the
+trunk; the confirmation copy no longer denies an earlier submission; the
+`NO_SUPPORTED_PATH` "three alternatives" string is not this window's.
+
+Find a defect that is still on disk, in this window's own diff, or say there
+is none. Same output format, same last line.
+
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+[Air-M5] Verifico il diff rispetto a `origin/main` e i casi limite indicati, senza modificare file.
+
+[… 571 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Applico `modus` al solo incarico di revisione Gear-3: BLUE predefinito, revisore senza ruolo Dux, round 9, nel worktree indicato. Il confronto locale include anche numerosi articoli estranei al funnel; concentro la verifica sui file Visa Oracle del mandato.
+
+[… 3509 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Le due correzioni del round 8 sono presenti. La proiezione aggiunta legge il flusso esistente e l’annuncio di potatura è esterno alle due copie del rail. Sto verificando i ritorni ai nodi già visitati e le domande aggiunte dopo il verdetto.
+
+[… 1815 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Il replay in memoria ha controllato 6.146 stati, inclusi salti `EDIT`, tutte le categorie e `unsure`: nessuna discrepanza nel conteggio dei fatti, nella fase corrente o nell’unicità dei nodi. Completo il controllo sui follow-up e sulle stringhe EN/ID.
+
+[… 114 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+- Nessun difetto dimostrabile nel diff Visa Oracle. Le correzioni del round 8 risultano presenti; i replay eseguiti non mostrano regressioni nei conteggi, nella fase corrente o nei follow-up.
+
+VERDICT: OK
+tokens used
+105.618
+- Nessun difetto dimostrabile nel diff Visa Oracle. Le correzioni del round 8 risultano presenti; i replay eseguiti non mostrano regressioni nei conteggi, nella fase corrente o nei follow-up.
+
+VERDICT: OK
+CODEX_EXIT=0

@@ -1,0 +1,16 @@
+[author header] cmd: agy --model gemini-3.1-pro-high --effort high --print-timeout 20m --sandbox --disable-slash-commands --print "<prompt: rules + git diff origin/main...HEAD -- apps/mouth at b70bf889cf>" ; started 2026-09-14T01:15:20+08:00
+
+Here are the defects found in the diff based on the review criteria:
+
+1. **FILE:** `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts` (inside `getProcessModel`)
+   - **What is wrong:** The `showCategories` boolean checks `chosen !== undefined`, which evaluates to `true` when the visitor answers the category question with the reserved value `"unsure"`. Because `"unsure"` is not in `CATEGORY_KEYS`, `chosenCategory` becomes `null`, forcing all purpose branches to map their status to `"pending"`.
+   - **Why it matters:** The rail renders the branch fan and falsely states "Every purpose branch is still open." This contradicts the facts on record: the visitor has already answered the category step (marking it `"done"`) and bypassed the branches. 
+   - **Minimal fix:** Change `chosen !== undefined` to `chosenCategory !== null` in the `showCategories` condition so the fan correctly remains hidden when no specific purpose branch was chosen.
+
+2. **FILE:** `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx` (line 893)
+   - **What is wrong:** The `visitedVerdict` prop is derived using `state.history.some(node => node.kind === "verdict")`. Because the interview history is append-only, this flag remains permanently `true` for the rest of the session once the verdict is reached, even if the visitor jumps back and traverses a completely different path.
+   - **Why it matters:** If a visitor reaches the verdict, jumps back, and takes a route that asks an off-spine question (such as skipping the location question to reach `holds_stay_permit`), `atFollowUp` will evaluate to `true`. The interface will lie to the user, claiming "The engine has your answers and asked for one more fact..." for a question the engine never actually requested.
+   - **Minimal fix:** Determine `visitedVerdict` by checking if the *current* path originates from a verdict (e.g., checking if the last non-question node in the history was a verdict), rather than using `.some()` across the entire historical session.
+
+VERDICT: DEFECT
+AGY_EXIT=0

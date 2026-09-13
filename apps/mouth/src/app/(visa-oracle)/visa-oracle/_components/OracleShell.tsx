@@ -887,6 +887,27 @@ function OracleShellRuntime({
               current={current}
               facts={state.facts}
               onEditQuestion={handleEdit}
+              // Evidence, not inference: only a verdict already in this
+              // attempt's history lets the rail call an off-spine question
+              // the fact the engine asked for (council round 6).
+              visitedVerdict={state.history.some(
+                (node) => node.kind === "verdict",
+              )}
+              outcome={
+                // The rail may name a product ONLY from an engine answer
+                // that is already on screen — never from a local guess, and
+                // never while the request is still in flight.
+                current.kind === "verdict" && outcome !== null && !evaluating
+                  ? {
+                      state: outcome.state,
+                      provenance: outcome.provenance,
+                      candidates: outcome.candidates.map((candidate) => ({
+                        code: candidate.code,
+                        name: candidate.name,
+                      })),
+                    }
+                  : null
+              }
             />
           </div>
 

@@ -1,0 +1,208 @@
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09c4b-7e3b-78b1-af4e-5101893e03a8
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none. Do not write any file.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called after the
+applicant confirms their answers (and again for an engine-requested follow-up).
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree. On a 390px viewport the rail collapses to a progress line
+with the current category and a "jump" sheet.
+
+Files in the diff: `_components/ProcessRail.tsx` (new), `ProcessRail.test.tsx`
+(new), `LivingTree.tsx`, `LivingTree.test.tsx`, `OracleShell.tsx`,
+`_lib/flow.ts` (new `getProcessModel` projection + `PROCESS_PHASES`), `_lib/i18n.ts`
+(EN + ID copy), `e2e/visa-oracle-process.spec.ts` (new), `e2e/visa-oracle-v2.spec.ts`
+(five text assertions scoped to the main content column).
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column; that dual mount pre-exists on origin/main in LivingTree).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds, a stage
+  status that contradicts the facts on record).
+- `getProcessModel` disagreeing with `getTreeSteps` / `flowReducer` in any
+  reachable state — including: category answered with the reserved value
+  "unsure", the onshore `permit_expiry` lane, `EDIT` on an answered question,
+  an engine follow-up question asked after the verdict (`ASK_FOLLOW_UP`), the
+  confirmation card after `REVIEW_ANSWERS`, and the framing node.
+- The duplicated rail producing duplicated ids, duplicated live-region
+  announcements, or two elements a strict-mode Playwright locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+## Rounds 10 and 11 — dispositions
+
+Round 10 (two seats, full review) — CURED, each pinned by a test proven red
+when reverted: (1) a purpose answered "unsure" no longer shows eleven
+"still open" branches (`showCategories` reads `chosenCategory !== null` or
+the purpose question open); (2) `process.candidates_undecided` no longer
+says the engine is "waiting for" something on HUMAN_REVIEW_REQUIRED /
+TEMPORARILY_UNAVAILABLE — neutral "says why", EN + ID; (3)
+`process.decides_framing` no longer promises every question "sets a fact";
+(4) the process e2e renders each state on its own page and asserts the
+state before capture. REFUTED: `visitedVerdict` sticking after a jump back
+(BACK slices, EDIT / REVIEW_ANSWERS / SELECT_CATEGORY truncate history —
+pinned by a replay test); the duplicated TreePanel mount (two `<TreePanel`
+mounts with the same edit buttons already on origin/main — a leftover).
+
+Round 11 — CURED: `process.candidates_follow_up` said the engine "asked for
+one more fact"; a NEEDS_INPUT reply may name several, so the copy is now "named
+a fact it still needs … This question asks for it" (EN + ID), pinned by a test
+red under mutation. REFUTED: "orphaned answers from an abandoned branch are
+resurrected as off-spine extras" — `pruneFacts` keeps only facts whose
+question is in history, and EDIT truncates then prunes; a replay test walks
+work, EDITs category, answers tourism and asserts every fact's question is in
+history and the answered count equals the facts held.
+
+
+## Round 12 — disposition
+
+CURED: `getProcessModel` spliced EVERY off-spine question just before the
+verdict, so on the reachable lane ADVANCE -> SKIP in_indonesia ->
+holds_stay_permit the open location question sat after `confirmation` and
+every pending step, and `framing` read "pending" (measured through the
+reducer: `framing:pending | in_indonesia:done | overstay_days:pending | … |
+confirmation:pending | holds_stay_permit:current | verdict:pending`). Each
+extra now joins the trunk ahead of the first not-done step of its OWN stage
+(`phaseOfStep`), or after that stage's last step, or — when its stage has no
+step on the spine — before the verdict; `framing` is "done" whenever the
+visitor is at an off-spine question. Pinned by a replay test red under both
+reversions.
+
+NOT A FINDING: a lead that `behavioralSteps` was changed — the flow.ts hunk
+starts after `behavioralSteps` (`@@ -1628,3 +1628,285 @@`); the function is
+untouched by this diff.
+
+
+## Round 13 — disposition
+
+One seat returned OK on 748d8d2f6d; the other returned DEFECT, CURED:
+`getTreeSteps` rebuilds `order` from facts and today's clock
+(`shouldAskRenewalPaid`), so an interview that passed the permit questions
+before the expiry day and is rendered after it gained `renewal_paid:pending`
+behind the current question — measured: 6 of 12 answered became 6 of 13.
+`getProcessModel` now drops unanswered QUESTION steps behind the frontier
+(before the spine's current step, or the whole spine when `atFollowUp`);
+ahead of the frontier, and on an off-spine question that is not a follow-up,
+unanswered steps stay. Pinned by two fake-clock reducer replays, red when
+the filter is removed.
+
+Judge the WHOLE window diff at its current HEAD — find a defect on disk now,
+or say there is none. The LAST LINE must be the verdict.
+
+## Budget — read this
+
+Earlier runs of this seat were cut off by a session stop before they wrote a
+verdict. Be economical: read the diff and the functions it calls, do not dump
+whole files or run the full test suite, and write findings and the verdict
+line as soon as the criteria are checked.
+
+## How to read the diff (read-only shell)
+
+    git diff origin/main...HEAD -- apps/mouth
+
+(THREE dots.) HEAD is cd79c56739.
+
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Failed
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+[… read-only tool output elided by the author; the seat's own messages are kept, in order …]
+codex
+[M5] Missione BLUE, ruolo Dux: no — sono il reviewer indipendente Gear‑3; mandate `mouth-vo-t-tree`, worktree `/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree`. Userò `stadio-zero` per fissare il terreno e `differential-review` per il diff, poi controllerò solo i percorsi raggiungibili e i test mirati, senza modificare file.
+codex
+GEAR 3: review avversariale del funnel Visa Oracle — il diff tocca proiezione dello stato, accessibilità e comportamento pubblico; budget della seat: nessun subagente, un solo pass mirato.
+
+## STADIO-0 STUDY — Visa Oracle process rail
+
+1. Memory-hits: nessuna memoria corrente specifica su `ProcessRail`/`getProcessModel`; i richiami storici a Visa Oracle non sostituiscono il diff a `cd79c56739`.
+2. Hot-files verificati: worktree, HEAD e pacchetto evidenze esistono; ora verifico sul disco tutti i nove file indicati e i reducer/helper chiamati.
+3. PII-risk: nessuno — UI e fixture sintetiche; non accederò a dati cliente.
+4. Criteri-accettazione: nessuna violazione dimostrabile dei sei criteri; proiezione coerente in stati raggiungibili; test mirati del rail/processo con exit 0.
+codex
+Ho confermato che il nuovo rail non introduce ID DOM e che l’unico live region è fuori dalle due copie. Il punto più delicato rimane la proiezione di `getProcessModel`: sto confrontando conteggi, frontier filtering e follow-up contro stati prodotti dal reducer, non contro fixture costruite a mano.
+codex
+Ho raggiunto il rollover controllato della sessione. Salvo ora un handoff operativo minimo; la continuazione riprenderà dal controllo empirico degli stati raggiungibili e produrrà subito il verdetto.
+codex
+Checkpoint saved for automatic continuation.
+CODEX_EXIT=0
+
+==== automatic continuation of the same review (context-bridge rollover): session 01a09c4e-ee47-7ab0-947d-150ece6babfb, model gpt-5.6-sol, transcript ~/.codex/sessions/2026/09/14/rollout-2026-09-14T03-46-53-01a09c4e-ee47-7ab0-947d-150ece6babfb.jsonl — agent messages only ====
+codex
+[M5] Riprendo la review avversariale in sola lettura su HEAD, verificando prima stato del disco e mandato; poi eseguo solo i test mirati già installati e chiudo con il verdetto obbligatorio.
+codex
+Mandato confermato: BLUE, io sono solo il revisore Codex del council (non Dux), mandate `mouth-vo-t-tree`, worktree `/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree`. STADIO-0: nessuna PII; i file citati esistono e HEAD coincide; criterio binario è trovare un difetto riproducibile nel diff oppure restituire `VERDICT: OK`. Le modifiche sporche fuori da `apps/mouth` sono preesistenti e restano intatte.
+codex
+Il runner locale esiste già: posso evitare `pnpm exec` e il suo tentativo di installazione. Eseguo ora esclusivamente i due test mirati; nessuna suite completa né browser install.
+codex
+I test mirati sono verdi (53/53). Ora sto facendo un controllo indipendente del proiettore su stati realmente raggiungibili dal reducer, inclusi rami e salti temporali; il punto è falsificare conteggi, ordine e status, non riaffermare le fixture esistenti.
+codex
+Il rollover è scattato durante l’ultimo controllo statico. Salvo il punto operativo senza dati sensibili; la continuazione ripartirà dagli ultimi due controlli, senza rifare i 53 test né l’enumerazione già completata.
+codex
+Review checkpoint saved; continuation will complete the remaining checks and verdict.
+
+==== automatic continuation of the same review (context-bridge rollover): session 01a09c54-d870-7bb2-b509-9c34616587c7, model gpt-5.6-sol, transcript ~/.codex/sessions/2026/09/14/rollout-2026-09-14T03-53-21-01a09c54-d870-7bb2-b509-9c34616587c7.jsonl — agent messages only ====
+codex
+[M5] Continuing the same round-14 review from the checkpoint. I’ll use the mandatory `stadio-zero` and repo `modus` gates read-only, recheck HEAD/diff state, run only the three remaining compact checks, then issue the required verdict without touching files.
+codex
+Ground state is consistent: Air‑M5, the expected worktree, exact HEAD `cd79c56739…`, and no tracked `apps/mouth` status output. Mission: undeclared/BLUE; I am the non-Dux Gear‑3 adversarial council reviewer; mandate is round‑14 Visa Oracle process-rail correctness; worktree is `/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree`. PII scope is nil: only synthetic UI/reducer state is in scope. Acceptance is binary: the three pending probes either demonstrate a rule violation at a verified file:line, or the verdict is OK.
+codex
+STADIO‑0 is complete. The only relevant memory hit is a pre-existing Visa Oracle smoke-test debt unrelated to this diff; no active process-rail arm was found. The hot paths and assigned spec exist, and the checkpoint’s prior empirical coverage remains uncontested. I’m now checking only the unresolved mapping cardinality and the 390px collapsed-state contract against the current bytes.
+codex
+The blocked cardinality probe now passes on the current registry: 56 questions, 43 non-`HUMAN_CONTEXT` mappings, zero empty or invalid fact-path lists. The first `tsx` launcher was a stale shared-node_modules symlink; Node’s native type stripping reran the same read-only probe successfully. I have not rerun the already-green 53 tests.
+codex
+- No demonstrable defects found in the current diff at HEAD `cd79c56739`.
+
+VERDICT: OK

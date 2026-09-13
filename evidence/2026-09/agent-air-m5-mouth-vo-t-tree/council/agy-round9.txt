@@ -1,0 +1,16 @@
+### Findings
+
+No defects identified across the review criteria:
+
+1. **Eligibility & Product Determination (Rule 1)**: Verified. Product codes and candidates are projected strictly from `outcome.candidates` when `outcome.provenance === "ENGINE"` at the terminal verdict node ([`OracleShell.tsx`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx#L895-L910), [`ProcessRail.tsx`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx#L337-L368)). Non-engine provenance states and in-flight evaluation queries are treated as undecided/pending with zero client-side filtering or inference.
+2. **Branching & State Machine Invariants (Rule 2)**: Verified. `getProcessModel` in [`flow.ts`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts#L1722-L1908) is a pure projection over `getTreeSteps` and `QUESTIONS`. Edge cases resolve cleanly:
+   - **`facts.category === "unsure"` (SKIP)**: `chosenCategory` resolves to `null`, all 11 category chips remain `pending`, `prunedCount` is 0, live-region prune announcements are suppressed, and the trunk jump displays the translated unsure answer.
+   - **Onshore urgent `permit_expiry` lane**: Jumps over `category` to `review_gate` where `chosen === undefined` and `current.questionId !== "category"`, correctly setting `showCategories: false` and omitting the purpose fan.
+   - **Follow-up question after verdict (`ASK_FOLLOW_UP`)**: Verified via `visitedVerdict` check against `state.history`. Off-spine follow-up question is mapped to trunk before `verdict` without falsely marking the spine pending.
+   - **Framing node**: All phases evaluate to `pending`, `currentPhase` is `null`, `showCategories` is `false`, and `model.decision` correctly reflects framing copy.
+3. **CSS & Styling Constraints (Rule 3)**: Verified. No changes to `oracle.css`. Inline styles use only existing CSS custom properties (`--oracle-ink*`, `--oracle-border`, `--oracle-leaf-active`, `--oracle-bg-elevated`, `--space-*`, `--text-*`) with no raw or new color tokens.
+4. **Accessibility & DOM Uniqueness (Rule 4)**: Verified. Live-region prune announcement (`role="status"`, `data-process-announce`) is rendered once in [`LivingTree.tsx`](file:///apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/LivingTree.tsx#L126-L128) outside the duplicated tree panels. `ProcessRail` subcomponents differentiate mobile vs desktop instances with `data-process-rail={variant}`. Reduced motion preferences are checked via `useReducedMotion` and passed down to suppress motion transforms. Interactive jump buttons use `aria-label` while hiding internal textual and decorative spans via `aria-hidden="true"`.
+5. **PII & React Correctness (Rules 5–6)**: Verified. No PII is collected or exposed. All hook calls obey the Rules of Hooks, list keys (`step.id`, `key`, `path`, `leaf.key`, `candidate.code`) are unique and stable, and derived values do not trigger mutations or render-time side effects.
+
+VERDICT: OK
+AGY_EXIT=0

@@ -1,0 +1,268 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b06-a95b-72e1-8fe3-8753ffcce2f4
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+
+[...tool-output log trimmed: the codex CLI echoes every file it reads; the full stdout for this round was 10754 lines / 916192 bytes and is not committed...]
+
+codex
+Le correzioni del Round 2 risultano presenti; restano due difetti:
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:694` — Il rail afferma che ogni risposta `HUMAN_CONTEXT` “is never sent to the engine”. È falso: il percorso raggiungibile offshore `holds_stay_permit=no` genera `immigration.current_status_code=NO_STAY_PERMIT` (`fact-mapper.ts:680`), comportamento confermato da `fact-mapper.test.ts:714`. Inoltre `other_purpose=transit` genera `intent.purposes=TRANSIT`. Il test `ProcessRail.test.tsx:71` verifica soltanto la frase derivata dal metadato, non il payload effettivo. Correzione minima: usare copy neutrale e veritiera sui valori derivati/routing, e aggiungere un’asserzione cross-layer sul mapper.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:696` — Sul nodo `verdict` il rail dichiara immediatamente che il motore “has the answers”, ma la chiamata parte soltanto nel successivo `useEffect` (`OracleShell.tsx:580`) e può essere disabilitata, ancora in corso o fallire. La UI quindi promette una consegna non avvenuta. Correzione minima: dire soltanto che l’utente ha confermato le risposte, oppure selezionare il copy usando lo stato reale della valutazione.
+
+VERDICT: DEFECT
+hook: Stop
+hook: Stop Blocked
+codex
+[M5] Nessuna modifica è stata fatta da questa sessione; registro comunque il receipt dei controlli realmente eseguiti e il checkpoint del verdetto Gear‑3, così il passaggio resta verificabile.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc 'command -v npm; command -v node; command -v git' in /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+ succeeded in 21ms:
+/Users/balizero/.local/share/mise/shims/npm
+/Users/balizero/.local/share/mise/shims/node
+/opt/homebrew/bin/git
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "/Users/balizero/.local/share/mise/installs/python/3.11/bin/python3 /Users/balizero/.codex/hooks/nuzantara-context/context_bridge.py verify 01a09b06-a95b-72e1-8fe3-8753ffcce2f4 \"{\\\"commands\\\":[[\\\"/Users/balizero/.local/share/mise/shims/npm\\\",\\\"test\\\",\\\"--\\\",\\\"--run\\\",\\\"src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.test.tsx\\\",\\\"src/app/(visa-oracle)/visa-oracle/_components/LivingTree.test.tsx\\\"],[\\\"/Users/balizero/.local/share/mise/shims/npm\\\",\\\"test\\\",\\\"--\\\",\\\"--run\\\",\\\"src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts\\\",\\\"src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts\\\"],[\\\"/Users/balizero/.local/share/mise/shims/npm\\\",\\\"run\\\",\\\"typecheck\\\"]]}\"" in /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth
+ exited 1 in 15354ms:
+{"timestamp": 1789307744.663755, "fingerprint": "cdc894f3fc73d17e412354bcb381f853c66e2777eb27d9cee9aeb442a5f44a4c", "passed": false, "checks": [{"command_sha256": "d8e6e98d63454ead7fb2379a0cfa2b2f2d8ce4603479c77bc629bf585a17ced4", "exit_code": 1, "output_sha256": "2271e4dbde5133903589cd453fad962073c8116fa94b0c3936decb948e6f463d"}, {"command_sha256": "12b9144501e68b2f4633efbd032cf810af4ba4bd9b9a42d659d3e48fae23e604", "exit_code": 1, "output_sha256": "110ae02ef38b165d18ed9a0f93881bf200ded8a98b9edf435a8efb75d617d3da"}, {"command_sha256": "13af831927d90edf1181902c542e4f911891aab47b1fb38d20c5654d774980d3", "exit_code": 0, "output_sha256": "560a568f44cf454c7feeed6086299c5a92a337bcce5670a9cb70c096a74971e6"}]}  # pragma: allowlist secret - tool verification-receipt fingerprints, not credentials
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+Il primo receipt ha rieseguito il typecheck con successo, ma i due comandi Vitest sono partiti dal cwd gestito dal bridge e non hanno trovato correttamente il package. Li ripeto con `--prefix` assoluto; è un problema del wrapper di verifica, non dei test già verdi.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "'/Users/balizero/.local/share/mise/shims/npm' --prefix '/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth' test -- --run 'src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.test.tsx' 'src/app/(visa-oracle)/visa-oracle/_components/LivingTree.test.tsx'" in /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+ succeeded in 4142ms:
+
+> mouth@5.2.0 test
+> vitest --run src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.test.tsx src/app/(visa-oracle)/visa-oracle/_components/LivingTree.test.tsx
+
+ DEPRECATED  `test.poolOptions` was removed in Vitest 4. All previous `poolOptions` are now top-level options. Please, refer to the migration guide: https://vitest.dev/guide/migration#pool-rework
+
+ RUN  v4.1.10 /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth
+
+
+ Test Files  2 passed (2)
+      Tests  30 passed (30)
+   Start at  21:55:53
+   Duration  3.50s (transform 521ms, setup 769ms, import 1.66s, tests 1.17s, environment 2.55s)
+
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "/Users/balizero/.local/share/mise/installs/python/3.11/bin/python3 /Users/balizero/.codex/hooks/nuzantara-context/context_bridge.py verify 01a09b06-a95b-72e1-8fe3-8753ffcce2f4 \"{\\\"commands\\\":[[\\\"/Users/balizero/.local/share/mise/shims/npm\\\",\\\"--prefix\\\",\\\"/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth\\\",\\\"test\\\",\\\"--\\\",\\\"--run\\\",\\\"src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.test.tsx\\\",\\\"src/app/(visa-oracle)/visa-oracle/_components/LivingTree.test.tsx\\\"],[\\\"/Users/balizero/.local/share/mise/shims/npm\\\",\\\"--prefix\\\",\\\"/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth\\\",\\\"test\\\",\\\"--\\\",\\\"--run\\\",\\\"src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts\\\",\\\"src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts\\\"],[\\\"/Users/balizero/.local/share/mise/shims/npm\\\",\\\"--prefix\\\",\\\"/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth\\\",\\\"run\\\",\\\"typecheck\\\"]]}\"" in /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+ succeeded in 14547ms:
+{"timestamp": 1789307779.2131252, "fingerprint": "9255589770eb6b74f68e9f01ba26a9103c1b7d6abe1392271a70bf953d75ee34", "passed": true, "checks": [{"command_sha256": "1ab72be29dd71441667efd63342be1012d221e063227a213cd75b80c8f50ba5b", "exit_code": 0, "output_sha256": "97f4847c8b758bec080c60ccd435a876bfcd97b0777f3daefa16d6a88739d946"}, {"command_sha256": "56416149bd2504e76861ab2889791d868912ec67f5146d82adb00964b8bb3f6a", "exit_code": 0, "output_sha256": "3e6eeb8a1024e3dd016a5546d54194f121144b8e46f2ccd57816e566c962ac78"}, {"command_sha256": "3f2fcf44ad75d6ba005306cb2ef4fc5ff149868fb81fd7c20d2266e8504b0f08", "exit_code": 0, "output_sha256": "fc8b24b2a639c82f55ba80d4ce7226e8c34e84cee2823aff0c6550297aa7298f"}]}  # pragma: allowlist secret - tool verification-receipt fingerprints, not credentials
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "/Users/balizero/.local/share/mise/installs/python/3.11/bin/python3 /Users/balizero/.codex/hooks/nuzantara-context/context_bridge.py checkpoint 01a09b06-a95b-72e1-8fe3-8753ffcce2f4 \"{\\\"objective\\\":\\\"Complete the independent Gear-3 Round-3 correctness review of the current Visa Oracle process-rail diff without modifying code.\\\",\\\"next_action\\\":\\\"Handoff the DEFECT verdict to the author; this reviewer must not fix it.\\\",\\\"remaining\\\":[\\\"Correct the generic HUMAN_CONTEXT copy and replace its self-referential test with behavior grounded in the serialized mapper output.\\\",\\\"Correct the verdict-node copy so it does not claim the engine received answers before evaluation succeeds.\\\"],\\\"risks\\\":[\\\"Current UI can make two false claims about backend data flow; Round-2 regressions and TypeScript checks otherwise pass.\\\"]}\"" in /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+ exited 1 in 1428ms:
+{"error": "PermissionError"}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+Il receipt di verifica è ora valido e verde. Il checkpoint è stato rifiutato dal profilo filesystem read-only (`PermissionError`); tento una sola volta dalla directory del package, senza modificare il contenuto del passaggio.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "/Users/balizero/.local/share/mise/installs/python/3.11/bin/python3 /Users/balizero/.codex/hooks/nuzantara-context/context_bridge.py checkpoint 01a09b06-a95b-72e1-8fe3-8753ffcce2f4 \"{\\\"objective\\\":\\\"Complete the independent Gear-3 Round-3 correctness review of the current Visa Oracle process-rail diff without modifying code.\\\",\\\"next_action\\\":\\\"Handoff the DEFECT verdict to the author; this reviewer must not fix it.\\\",\\\"remaining\\\":[\\\"Correct the generic HUMAN_CONTEXT copy and replace its self-referential test with behavior grounded in the serialized mapper output.\\\",\\\"Correct the verdict-node copy so it does not claim the engine received answers before evaluation succeeds.\\\"],\\\"risks\\\":[\\\"Current UI can make two false claims about backend data flow; Round-2 regressions and TypeScript checks otherwise pass.\\\"]}\"" in /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth
+ exited 1 in 878ms:
+{"error": "PermissionError"}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+[M5] Verification receipt registered successfully: 30 component tests, 259 flow/mapper tests, and TypeScript check all passed. No code was modified. Checkpoint creation was attempted twice but blocked by the read-only filesystem (`PermissionError`).
+hook: Stop
+hook: Stop Completed
+tokens used
+227.390
+[M5] Verification receipt registered successfully: 30 component tests, 259 flow/mapper tests, and TypeScript check all passed. No code was modified. Checkpoint creation was attempted twice but blocked by the read-only filesystem (`PermissionError`).
+CODEX_EXIT=0

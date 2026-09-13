@@ -4,13 +4,21 @@ import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, TreePine } from "lucide-react";
 import {
-  getTreeSteps,
+  getProcessModel,
   isEditableTreeStep,
   type OracleNode,
+  type ProcessModel,
 } from "../_lib/flow";
 import type { Language } from "../_lib/flow";
 import type { OracleFacts } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
+import { formatFactDisplay } from "./ConfirmationCard";
+import {
+  ProcessBranches,
+  ProcessOutcome,
+  ProcessProgress,
+  type ProcessOutcomeSummary,
+} from "./ProcessRail";
 
 export interface LivingTreeProps {
   language: Language;
@@ -22,6 +30,27 @@ export interface LivingTreeProps {
    * confirmation card's own Edit buttons already use. Only ever called
    * for a step `isEditableTreeStep` accepts. */
   onEditQuestion: (questionId: string) => void;
+  /** Present only at the terminal node, and only once the engine has
+   * answered: the rail names the products the ENGINE returned and never
+   * derives one of its own. */
+  outcome?: ProcessOutcomeSummary | null;
+  /** True once a verdict node exists in this attempt's history. The rail
+   * may call a question "the fact the engine asked for" only on that
+   * evidence — see `getProcessModel`'s own parameter doc. */
+  visitedVerdict?: boolean;
+}
+
+/** The answer already on record for a completed step, rendered next to its
+ * jump target so the trunk reads as a list of decisions, not of labels. */
+function answerFor(
+  language: Language,
+  stepId: string,
+  facts: OracleFacts,
+): string | null {
+  const value = facts[stepId];
+  if (value === undefined) return null;
+  if (value === "unsure") return translate(language, "process.answer_unsure");
+  return formatFactDisplay(language, stepId, value);
 }
 
 /**
@@ -39,10 +68,19 @@ export function LivingTree({
   current,
   facts,
   onEditQuestion,
+  outcome = null,
+  visitedVerdict = false,
 }: LivingTreeProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const reducedMotion = useReducedMotion();
-  const { trunk, categoryLeaves } = getTreeSteps(current, facts);
+  // ONE projection for the whole rail — the breadcrumb, the screen-reader
+  // path, both panels and the two `ProcessRail` parts read the same trunk.
+  // `getProcessModel` corrects the one state `getTreeSteps` cannot resolve
+  // on its own (the appended follow-up question, where its `currentIdx`
+  // comes back -1 and every step reads "pending"); projecting it here means
+  // the correction reaches every view instead of the progress line alone.
+  const model = getProcessModel(current, facts, visitedVerdict);
+  const trunk = model.trunk;
   const visitedSteps = trunk.filter((step) => step.status !== "pending");
   const breadcrumbSteps = visitedSteps.slice(-4);
   const hasEarlierSteps = visitedSteps.length > breadcrumbSteps.length;
@@ -57,6 +95,20 @@ export function LivingTree({
         )}`,
     );
 
+  // The one live region for the whole rail — rendered ONCE, outside the two
+  // `TreePanel` copies (mobile sheet + desktop column), so a prune is
+  // announced a single time.
+  const pruneAnnouncement =
+    model.chosenCategory === null
+      ? ""
+      : translate(language, "process.announce_prune", {
+          count: model.prunedCount,
+          category: translate(
+            language,
+            `q.category.opt.${model.chosenCategory}` as I18nKey,
+          ),
+        });
+
   return (
     <>
       {/* Non-visual equivalent — always present, independent of viewport. */}
@@ -70,6 +122,10 @@ export function LivingTree({
           ))}
         </ol>
       </nav>
+
+      <p className="oracle-sr-only" role="status" data-process-announce>
+        {pruneAnnouncement}
+      </p>
 
       <nav
         className="oracle-breadcrumb"
@@ -122,11 +178,30 @@ export function LivingTree({
           style={{
             display: "inline-flex",
             alignItems: "center",
+            flexWrap: "wrap",
             gap: "0.4rem",
+            minWidth: 0,
+            textAlign: "left",
           }}
         >
           <TreePine aria-hidden="true" size={16} />
           {translate(language, "tree.sr_path_label")}
+          {" · "}
+          <span className="oracle-tabular-nums">
+            {translate(language, "process.step_of", {
+              current: model.answeredQuestions,
+              total: model.totalQuestions,
+            })}
+          </span>
+          {model.chosenCategory !== null && (
+            <>
+              {" · "}
+              {translate(
+                language,
+                `q.category.opt.${model.chosenCategory}` as I18nKey,
+              )}
+            </>
+          )}
         </span>
         <ChevronDown
           aria-hidden="true"
@@ -149,8 +224,10 @@ export function LivingTree({
           >
             <TreePanel
               language={language}
-              trunk={trunk}
-              categoryLeaves={categoryLeaves}
+              model={model}
+              facts={facts}
+              variant="mobile"
+              outcome={outcome}
               reducedMotion={!!reducedMotion}
               onEditQuestion={onEditQuestion}
             />
@@ -161,8 +238,10 @@ export function LivingTree({
       <div className="oracle-tree--desktop">
         <TreePanel
           language={language}
-          trunk={trunk}
-          categoryLeaves={categoryLeaves}
+          model={model}
+          facts={facts}
+          variant="desktop"
+          outcome={outcome}
           reducedMotion={!!reducedMotion}
           onEditQuestion={onEditQuestion}
         />
@@ -173,36 +252,70 @@ export function LivingTree({
 
 function TreePanel({
   language,
-  trunk,
-  categoryLeaves,
+  model,
+  facts,
+  variant,
+  outcome,
   reducedMotion,
   onEditQuestion,
 }: {
   language: Language;
-  trunk: ReturnType<typeof getTreeSteps>["trunk"];
-  categoryLeaves: ReturnType<typeof getTreeSteps>["categoryLeaves"];
+  model: ProcessModel;
+  facts: OracleFacts;
+  variant: "mobile" | "desktop";
+  outcome: ProcessOutcomeSummary | null;
   reducedMotion: boolean;
   onEditQuestion: (questionId: string) => void;
 }) {
   return (
     <div className="oracle-tree">
+      <ProcessProgress
+        language={language}
+        model={model}
+        variant={variant}
+        outcome={outcome}
+      />
+
       <div className="oracle-tree__trunk">
-        {trunk.map((step) => {
+        {model.trunk.map((step) => {
           const label = translate(language, step.labelI18nKey as I18nKey);
           if (isEditableTreeStep(step)) {
+            const answer = answerFor(language, step.id, facts);
             return (
               <button
                 key={step.id}
                 type="button"
                 className="oracle-tree__step oracle-tree__step--editable"
                 data-status={step.status}
+                data-process-jump={step.id}
                 onClick={() => onEditQuestion(step.id)}
-                aria-label={translate(language, "tree.edit_aria" as I18nKey, {
-                  question: label,
-                })}
+                aria-label={
+                  answer === null
+                    ? translate(language, "tree.edit_aria" as I18nKey, {
+                        question: label,
+                      })
+                    : translate(language, "process.jump_aria" as I18nKey, {
+                        question: label,
+                        answer,
+                      })
+                }
               >
                 <span className="oracle-tree__dot" aria-hidden="true" />
-                <span aria-hidden="true">{label}</span>
+                <span aria-hidden="true" style={{ minWidth: 0 }}>
+                  {label}
+                  {answer !== null && (
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: "var(--text-xs)",
+                        color: "var(--oracle-ink-faint)",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {answer}
+                    </span>
+                  )}
+                </span>
               </button>
             );
           }
@@ -221,46 +334,19 @@ function TreePanel({
         })}
       </div>
 
-      {categoryLeaves && (
-        <div className="oracle-tree__leaves" aria-hidden="true">
-          <AnimatePresence initial={false}>
-            {categoryLeaves
-              .filter(
-                (leaf) =>
-                  leaf.status !== "pruned" ||
-                  !categoryLeaves.some((l) => l.status === "done"),
-              )
-              .map((leaf) => (
-                <motion.span
-                  key={leaf.key}
-                  className="oracle-tree__leaf"
-                  data-status={leaf.status}
-                  layout={!reducedMotion}
-                  initial={
-                    reducedMotion ? undefined : { opacity: 0, scale: 0.8 }
-                  }
-                  animate={reducedMotion ? undefined : { opacity: 1, scale: 1 }}
-                  exit={
-                    reducedMotion
-                      ? undefined
-                      : {
-                          opacity: 0,
-                          scale: 0.6,
-                          rotate: -8,
-                          transition: { duration: 0.25 },
-                        }
-                  }
-                  transition={{
-                    duration: reducedMotion ? 0 : 0.3,
-                    ease: [0.4, 0, 0.2, 1],
-                  }}
-                >
-                  {translate(language, `q.category.opt.${leaf.key}` as I18nKey)}
-                </motion.span>
-              ))}
-          </AnimatePresence>
-        </div>
-      )}
+      <ProcessBranches
+        language={language}
+        model={model}
+        variant={variant}
+        reducedMotion={reducedMotion}
+      />
+
+      <ProcessOutcome
+        language={language}
+        model={model}
+        variant={variant}
+        outcome={outcome}
+      />
     </div>
   );
 }

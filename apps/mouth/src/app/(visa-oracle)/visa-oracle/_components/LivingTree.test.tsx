@@ -105,3 +105,115 @@ describe("LivingTree sr-only progress nav (category answered 'Not sure?')", () =
     ).toBeInTheDocument();
   });
 });
+
+describe("LivingTree jump sheet (W-VO-T)", () => {
+  const FACTS = {
+    in_indonesia: "no",
+    holds_stay_permit: "no",
+    overstay_days: "0",
+    nationalities: "IT",
+    birth_date: "1990-02-03",
+    category: "work",
+    trip_scope: "single",
+  };
+  const current = { kind: "question" as const, questionId: "work_payer" };
+
+  it("every answered question is a jump target that carries the answer itself", async () => {
+    const user = userEvent.setup();
+    const onEditQuestion = vi.fn();
+    const { container } = render(
+      <LivingTree
+        language="en"
+        current={current}
+        facts={FACTS}
+        onEditQuestion={onEditQuestion}
+      />,
+    );
+    const panel = container.querySelector<HTMLElement>(
+      '[data-process-part="progress"][data-process-rail="desktop"]',
+    )?.parentElement;
+    if (!panel) throw new Error("no desktop tree panel");
+
+    // Not only the last four the breadcrumb shows: the whole answered path.
+    const jumps = panel.querySelectorAll("[data-process-jump]");
+    expect(jumps.length).toBeGreaterThanOrEqual(7);
+
+    const target = within(panel).getByRole("button", {
+      name: "Jump back to Category — you answered Work & employment",
+    });
+    await user.click(target);
+    expect(onEditQuestion).toHaveBeenCalledWith("category");
+  });
+
+  it("the mobile progress line carries the step count and the open category", () => {
+    render(
+      <LivingTree
+        language="en"
+        current={current}
+        facts={FACTS}
+        onEditQuestion={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("button", { expanded: false });
+    expect(trigger.textContent).toContain("Your path so far");
+    expect(trigger.textContent).toMatch(/\d+ of \d+ answered/);
+    expect(trigger.textContent).toContain("Work & employment");
+  });
+
+  it("announces the branches an answer closed, exactly once", () => {
+    const { container } = render(
+      <LivingTree
+        language="en"
+        current={current}
+        facts={FACTS}
+        onEditQuestion={vi.fn()}
+      />,
+    );
+    const announcers = container.querySelectorAll("[data-process-announce]");
+    expect(announcers).toHaveLength(1);
+    expect(announcers[0].textContent).toBe(
+      "You chose Work & employment. 10 of the other purpose branches closed.",
+    );
+  });
+});
+
+describe("LivingTree at a follow-up question (W-VO-T, council round 2)", () => {
+  // Council round finding: the corrected trunk lived only inside the progress
+  // line, so at an appended follow-up the trunk beside it still painted
+  // every step "pending" — and every jump target disappeared, exactly when
+  // a visitor most wants to correct an answer.
+  const FACTS = {
+    in_indonesia: "no",
+    holds_stay_permit: "no",
+    overstay_days: "0",
+    nationalities: "IT",
+    birth_date: "1985-04-12",
+    category: "tourism",
+    trip_scope: "single",
+    stay_days: "30",
+    entry_pattern: "SINGLE",
+    review_gate: "none",
+  };
+
+  it("keeps every answered question reachable", () => {
+    const { container } = render(
+      <LivingTree
+        language="en"
+        current={{ kind: "question", questionId: "family_sponsor_confirmed" }}
+        facts={FACTS}
+        onEditQuestion={vi.fn()}
+        visitedVerdict
+      />,
+    );
+    const desktop = container.querySelector<HTMLElement>(
+      '[data-process-part="progress"][data-process-rail="desktop"]',
+    )?.parentElement;
+    if (!desktop) throw new Error("no desktop tree panel");
+    expect(
+      desktop.querySelectorAll("[data-process-jump]").length,
+    ).toBeGreaterThanOrEqual(Object.keys(FACTS).length);
+    expect(
+      desktop.querySelector('[data-process-jump="category"]'),
+    ).not.toBeNull();
+  });
+});
