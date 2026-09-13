@@ -1,0 +1,471 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: VO-E
+    role: build
+    seat: Claude Opus 5 (Dux of window W-VO-E, implements directly)
+  - lane: VO-E-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (OpenAI, codex exec --sandbox read-only, six rounds on the merge-base diff)
+  - lane: VO-E-council-gemini
+    role: review
+    seat: agy-gemini-3.1-pro (Google, agy --model gemini-3.1-pro-high -p, text-only, RESERVE seat — see seat_fallback_reason)
+council_run: council/journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve) replaces BOTH unavailable titolari, kimi-code/k3
+  and tp1-qwen3.8-max; codex-gpt-5.6-sol (titolare) sat every round. Observed,
+  not assumed, by liveness probes run immediately before seating the reserve,
+  2026-09-13T17:11:04Z: `kimi -p ... -m kimi-code/k3` exit 1, "provider.auth_error:
+  403 You've reached your monthly usage limit for this billing cycle"; `qwen -p ...`
+  exit 1, "Quota exhausted: Your token-plan 1-week quota has been exhausted. The
+  quota will reset at 09-18 08:39:00 UTC". An earlier Qwen attempt at
+  2026-09-13T14:35:20Z returned the same text (council/qwen-round2.txt). Both
+  probes are journaled as `unavailable`, never as seats. No seat_override is
+  declared: the quorum is two rostered seats, one titolare and one reserve.
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3 declared. The deterministic floor measured by
+      evidence_pack_lint.py --print-floor on the merge-base diff is 2 (first
+      instance: 13 files +1943/-14; resumed session on 45c863326b: 13 files
+      +2322/-37, floor 2; the final measure including this evidence is in the
+      receipts); the window brief declares 3 because the diff touches
+      apps/backend-rag/** (merging IS the deploy) and it is the largest
+      behaviour claim of the wave. gear = max(judgement, floor) = 3.
+  - id: D-seats
+    decision: >-
+      The COMMON council titolari are (codex-gpt-5.6-sol, kimi-code/k3,
+      tp1-qwen3.8-max). Kimi answered 403 (monthly limit) and Qwen 429 (weekly
+      quota until 2026-09-18 08:39 UTC) to probes run at 2026-09-13T17:11:04Z,
+      so the second seat is the rostered RESERVE agy-gemini-3.1-pro, declared
+      through seat_fallback_reason as the lint's second limb requires. The
+      first instance of this window had seated an unpinned "agy-gemini" under
+      a seat_override; that row stays in the journal, marked NOT COUNTED, the
+      override is withdrawn, and the reserve was re-run pinned to
+      gemini-3.1-pro on the final diff (rounds 6-7).
+  - id: D-no-tree-change
+    decision: >-
+      ELEVEN of the twelve unreachable products needed NO code change. Every
+      fact their SUPPORT rules read is already collected by a branch an
+      applicant can walk today (entry_pattern on the tourism branch,
+      sponsor_category and study_level on the study branch, the three remote
+      facts, the two investment capital questions, nationalities and stay_days
+      on the spine). What kept them dark is the corpus convention of answering
+      every question with its FIRST option. So the window adds walks and a
+      binding, and does not add questions nobody needed — measured, not
+      assumed: the ten new scenarios were probed through the real flow.ts +
+      fact-mapper.ts and replayed against the signed pack before a single line
+      of tree.ts was considered.
+  - id: D-bridging
+    decision: >-
+      BRIDGING is the twelfth and stays unreachable. All four of its SUPPORT
+      rules require `intent.requested_product_code` — the permit the applicant
+      wants to switch TO — and the owner's D4 ruling, quoted verbatim in
+      tree.ts's `family_sponsor_status_code` comment, is that the Oracle says
+      the product and NEVER asks which visa the applicant wants. Building the
+      question would have reached the product and overruled Zero to do it.
+      Verified rather than assumed: supplying the fact on an onshore
+      OTHER-purpose walk whose current_status_code is outside
+      hf.bridging.from-visit-itk's visit-class list returns SUPPORTED_CANDIDATES
+      [BRIDGING, C6]. Recorded as needs-input for Zero and as the single row of
+      UNREACHABLE_BY_RULING, which is itself guarded both ways.
+  - id: D-engine-level-guard
+    decision: >-
+      The guard reads the ENGINE decision, not the public one. The question it
+      asks is "can an interview produce facts under which the signed pack
+      supports this product", and the public layer's minor-privacy hold
+      (evaluate_path._apply_minor_privacy_hold, untouched here) would answer
+      "no" for E31E even though the interview reaches it perfectly well. Both
+      council seats were asked this explicitly and both agreed the engine
+      decision is the right subject. The public census keeps its own pin, one
+      line below, so the boundary stays visible rather than hidden.
+  - id: D-minor-walk
+    decision: >-
+      The minor walk is the first walk in the census history to end in a public
+      hold, so `census.get("HUMAN_REVIEW_REQUIRED", 0) == 0` had to move. It
+      was NOT replaced by `== 1`: the assertion now names the held walk and
+      asserts its review reason is exactly MINOR_GUARDIAN_PRIVACY_REVIEW. On
+      the first council round's insistence the comment says what that is — a
+      narrow, deliberate relaxation of the zero-hold invariant with the one
+      permitted cause pinned — instead of the "strictly stronger" it originally
+      claimed, which was false.
+  - id: D-council-round1
+    decision: >-
+      Round 1 (codex-gpt-5.6-sol, VERDICT DEFECT) found the SUPPORT universe
+      was read by scanning `product_version_ids` in the raw signed payload. A
+      GLOBAL-scope SUPPORT rule carries null there and applies to every
+      product, so such a rule would leave the guard green over the exact class
+      it exists to catch; the same scan counts out-of-period rules and
+      non-ACTIVE products, which is a false RED. Fixed at depth 1: the universe
+      is now derived from the COMPILED pack via rules_for(product,
+      effective_at=_AS_OF) with the product filter evaluator.evaluate itself
+      applies. Latent on seq-20 (6 GLOBAL rules, none SUPPORT; all 38 products
+      ACTIVE with open periods) — fixed anyway, because the guard's promise is
+      about future packs.
+  - id: D-council-round2
+    decision: >-
+      Round 2 (same seat, VERDICT DEFECT) confirmed round 1's fixes as real and
+      falsified the newer one. The ruling row's dependency test used
+      `forbidden_fact in rule.required_facts`, which is SYNTACTIC: the seat
+      reproduced, against the real evaluator, a rule shaped
+      any(eq(requested_product_code, "BRIDGING"), intersects(purposes, OTHER))
+      that mentions the fact and still evaluates TRUE while it is UNKNOWN.
+      Fixed at depth 1 with a soundness check on the AND-spine
+      (_condition_cannot_fire_without): under Kleene semantics an `all` node
+      cannot be TRUE while a child is not TRUE, a leaf on an UNKNOWN fact is
+      UNKNOWN, and known(fact) on it is FALSE — so a leaf reading the fact on
+      the spine keeps the rule away from TRUE. `unknown(fact)` is excluded
+      explicitly; anything under any/not is rejected (the safe direction). The
+      seat's own counterexample ships as the guilt test.
+  - id: D-council-round3
+    decision: >-
+      Round 3 (same seat, VERDICT DEFECT) confirmed round 2's AND-spine check
+      is SOUND — it found no false green — and falsified its NAME and its
+      failure message instead: the check is conservative, so "not proven
+      dependent" was being reported as "route reachable, delete the ruling
+      row", and the seat produced two legitimate ASTs it rejects
+      (not(unknown(fact)), and an `any` whose every branch reads the fact).
+      Fixed at depth 1: the predicate is renamed
+      _proves_it_cannot_fire_without, the message says what it can and cannot
+      conclude, and the two shapes the seat named are now proven rather than
+      rejected. Three stale sentences the same round named (the "signed pack's
+      own payload" source, "rules that READ the fact", and attributing all
+      eleven products to the first-option convention when several needed typed
+      synthetic values) were corrected in the same commit.
+  - id: D-council-round4
+    decision: >-
+      Round 4 reviewed the REBASE, not just this window's half, and returned
+      DEFECT on two TEXTUAL findings while clearing the logic in writing ("la
+      logica funzionale risulta corretta"). Both were merge damage this window
+      caused: the docstring still carried the sibling-era sentences saying the
+      review-FLAG arm is exercised by no walk and that a flag regression passes
+      the census invisibly — false since #6442 — and three counts still read
+      the 84-walk corpus (60/15/1/8, and "76 walks that raise nothing" in two
+      files). Fixed at depth 1 in 45c863326b: the two sentences are named as
+      retired rather than quietly deleted, and the counts are 69/15/1/9 and 86.
+      The same round independently re-derived every headline number in this
+      pack and cleared PRIVACY_HELD_WALKS as a real repair rather than a hole.
+  - id: D-council-round5-7
+    decision: >-
+      Round 5 (codex-gpt-5.6-sol, narrow, on head 45c863326b) returned OK on
+      round 4's fixes, re-deriving 76/15/2/1 and 69/15/1/9 itself. The window's
+      first instance crashed before filing it; the resumed session verified
+      the reviewed patch is byte-identical to that head's hand-written diff
+      (cmp exit 0) and trimmed the transcript. Round 6, the reserve
+      agy-gemini-3.1-pro on the FULL adversarial prompt, cleared (a) guard,
+      (b) ruling table and AND-spine soundness, (c) the by-name hold pin and
+      (e) generator determinism, and returned DEFECT on one MEDIUM textual
+      finding: the docstring's "+9/-1 shape" sums to eight walks, not ten.
+      Fixed at depth 1 in e7e1034edf (docstring only, +9/+1 with both
+      before/after rows). Both seats re-ran narrowly on the fix: codex round 6
+      OK (derived 67/15/2/0 and 60/15/1/8 from the merge-base file), agy round
+      7 OK.
+  - id: D-rebase
+    decision: >-
+      Mid-window, origin/main gained a SIBLING PR (#6442) that added a
+      disclosure-flag layer to the same two files plus 8 of the same fixtures —
+      cicatrix family #5. The branch was REBASED onto it rather than merged,
+      and four conflict rounds were resolved by hand keeping the sibling's
+      richer text and folding this window's corrections into it. The corpus was
+      regenerated afterwards and came out BYTE-IDENTICAL, which is the fact
+      that matters: the ten new walks raise no disclosure flag, so the
+      sibling's per-flag table is unchanged and every number in this pack was
+      re-measured on the rebased tree rather than carried over.
+  - id: D-privacy-held-walks
+    decision: >-
+      The sibling's test asserted "0 HUMAN_REVIEW_REQUIRED at engine level" and
+      "every funnel hold is a flag". The minor walk falsifies both, and it is
+      NOT a flag — _apply_minor_privacy_hold reads derived.is_minor alone. The
+      repair subtracts it BY NAME through a new PRIVACY_HELD_WALKS constant,
+      asserted equal to exactly that one label, on BOTH censuses. The two
+      causes are deliberately NOT summed into one number: a flag deletes a
+      proven verdict and a privacy hold fires on a derived fact, so a single
+      total would let a new hold of either kind hide behind the other.
+  - id: D-transcript-trim
+    decision: >-
+      Codex rounds 5 and 6 are trimmed by the same rule (council/trim rule stated
+      at the top of each file); the agy transcripts are committed complete, with
+      only the inlined patch omitted and identified by sha256. The first three
+      codex transcripts were 3.0 MB together — the seat's own tool
+      calls, hook lines and the full text of every file it read. Each is
+      trimmed here to the PROMPT (first 70 lines) and the FINAL ANSWER (from
+      the last speaker marker before the last VERDICT line, through that line),
+      with the rule stated at the top of each file so the trim is reproducible.
+      Nothing between those two parts is a claim, and nothing after the verdict
+      is review — it is the harness's checkpoint hook failing against the
+      read-only sandbox.
+  - id: D-probe-artifacts
+    decision: >-
+      The exploration harness (.probe-voe/ — a scenario prober driving the real
+      flow.ts, a backend replay script, and a browser walker) is deliberately
+      NOT committed. It is throwaway measurement scaffolding, not a consumer;
+      everything it proved is either in the corpus, in the guard, or in a
+      receipt below.
+receipts:
+  - claim: The worktree was created by the broker on the mouth lane for this task id.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id vo-e-reach
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach ; branch agent/air-m5/mouth/vo-e-reach at origin/main eecd7f0609"
+    exit: 0
+    ts: "2026-09-13T19:48:00+08:00"
+    seat: Claude Opus 5
+  - claim: The gap is real and 12 products wide, measured on origin/main before any edit.
+    cmd: replay all 84 committed walk fixtures against rulepack-prod-020.signed.json at _AS_OF (scratchpad census.py + engine_census.py, apps/backend-rag/.venv)
+    result: "84 walks, census 67 SUPPORTED / 15 NO_SUPPORTED_PATH / 2 NEEDS_INPUT, 17 distinct products named. SUPPORT-bearing products 29. Never named: A1, B1, BRIDGING, D1, D12, D2, E28A, E30B, E30E, E30F, E31E, E33G."
+    exit: 0
+    ts: "2026-09-13T20:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: Eleven of the twelve need no new question — the answers alone reach them through the UNMODIFIED interview.
+    cmd: drive runWalk() from generate-walk-corpus.ts over 10 candidate scenarios (real flow.ts + fact-mapper.ts), then replay the wire facts against the signed pack
+    result: "A1,B1,C1 / B1,C1 / C1,D1 / D2 / C2,D12 / C2,D12,E28A / E30,E30A,E30E,E30F / E30,E30B,E30E,E30F / E33G / (minor) HUMAN_REVIEW_REQUIRED with engine-level E31E. tree.ts, flow.ts and fact-mapper.ts untouched in the whole PR."
+    exit: 0
+    ts: "2026-09-13T20:40:00+08:00"
+    seat: Claude Opus 5
+  - claim: BRIDGING is unreachable only because of the forbidden fact, not because of anything else in its rules.
+    cmd: inject intent.requested_product_code=KNOWN("E23") (+ a non-visit-class current_status_code) into the onshore OTHER-purpose walk and replay
+    result: "SUPPORTED_CANDIDATES ['BRIDGING', 'C6']. With the fact left UNKNOWN the same walk answers ['C6'] alone."
+    exit: 0
+    ts: "2026-09-13T21:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: A1/A3 — the regenerated census names 27 products publicly and 28 at engine level, with no state regression.
+    cmd: npx tsx apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts ; then the same two replays
+    result: "wrote 94 walks. Public census 76 SUPPORTED / 15 NO_SUPPORTED_PATH / 2 NEEDS_INPUT / 1 HUMAN_REVIEW_REQUIRED, 27 distinct products. Engine level 28 distinct; only BRIDGING remains unnamed. NEEDS_INPUT and NO_SUPPORTED_PATH both unchanged. git status shows 10 new fixtures and ZERO modified ones."
+    exit: 0
+    ts: "2026-09-13T21:20:00+08:00"
+    seat: Claude Opus 5
+  - claim: A1 falls one short of "29 distinct" and the cause is named, not hidden.
+    cmd: compare the acceptance number against the measured one
+    result: "29 was reachable only by asking intent.requested_product_code, which the D4 ruling forbids (decision D-bridging). Measured 28 at engine level, 27 public (E31E is engine-named and publicly held by the minor-privacy adapter). The 12th product is a needs-input for Zero, not a silent miss."
+    exit: 0
+    ts: "2026-09-13T21:25:00+08:00"
+    seat: Claude Opus 5
+  - claim: A2 — the new guard goes RED, naming the product, when a walk that reaches one is deleted.
+    cmd: rm the offshore_remote_foreign_only.json fixture ; pytest -k "support_bearing or corpus_is_the" ; restore
+    result: "AssertionError: the signed pack supports these products and no interview walk names any of them: ['E33G'] — plus the corpus-count test at 93 != 94. Both green again after restoring the fixture."
+    exit: 1
+    ts: "2026-09-13T21:35:00+08:00"
+    seat: Claude Opus 5
+  - claim: The whole census suite is green, including the four guilt tests the guard rests on (PRE-rebase run).
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "25 passed in 14.23s (22 before this window, +3 new guard/guilt tests; a 4th guilt test replaced nothing and is counted in the 25)."
+    exit: 0
+    ts: "2026-09-13T22:38:00+08:00"
+    seat: Claude Opus 5
+  - claim: The rest of the visa_engine backend suite is unaffected (PRE-rebase run).
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/
+    result: "2323 passed, 1 skipped, 1 failed, 39 errors in 318s. Every failure/error is a LOCAL Postgres-state fault in DB-backed suites that never read the corpus — 'DependentObjectsStillExistError: cannot drop table visa_...', 'RuntimeError: migration 264 is applied on this database', '281 must be live in the deployed schema'. None of them touch the interview corpus or the census module."
+    exit: 1
+    ts: "2026-09-13T22:10:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4 — the corpus is byte-reproducible and the frontend suite is green.
+    cmd: vitest run "src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts" ; vitest run "src/app/(visa-oracle)"
+    result: "determinism: Test Files 1 passed, Tests 96 passed. Whole Oracle surface: Test Files 39 passed (39), Tests 779 passed (779)."
+    exit: 0
+    ts: "2026-09-13T22:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: Typecheck, eslint, ruff and prettier are green on every touched file.
+    cmd: tsc --noEmit ; eslint on the two TS files ; ruff check on the census module ; prettier --check on the TS files and the 94 fixtures
+    result: "tsc exit 0 ; eslint 0 errors (1 ignore-pattern warning) ; ruff All checks passed! ; prettier All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-13T22:40:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 (pre-merge half) — a browser walk on the LIVE funnel reaches the newly-named products through the real production engine.
+    cmd: playwright chromium against https://balizero.com/visa-oracle, answering the interview from the same scenarios via the real tree's i18n labels; the POST /api/visa-oracle/evaluate response captured per walk
+    result: "5 walks, HTTP 200, mode ENGINE, rule_pack sequence 20: tourism/SG/21d -> A1,B1 ; tourism/MULTIPLE -> D1 ; business/no-local-pay -> D2 ; invest/full-capital -> D12,E28A (screenshot shows 'Investor Visa (E28A)' as rank 3, 'Visit Visa Pre-Investment — Multiple Entry (D12)' rank 2) ; study/education-sponsor -> E30E,E30F. A 6th walk, remote/foreign-only -> E33G, was proven in an earlier single run. Screenshots under the session scratchpad shots-pre/."
+    exit: 0
+    ts: "2026-09-13T22:00:00+08:00"
+    seat: Claude Opus 5
+  - claim: The harness floor was computed BEFORE the gear was declared (PRE-rebase run).
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file /tmp/cf.txt --numstat-file /tmp/ns.txt
+    result: "floor 2 ; measured 13 files, +1943/-14. Declared gear 3 = max(brief's judgement, floor)."
+    exit: 0
+    ts: "2026-09-13T22:15:00+08:00"
+    seat: Claude Opus 5
+  - claim: POST-REBASE — the corpus regenerates byte-identically on top of the sibling's disclosure-flag layer, so the ten new walks raise no flag.
+    cmd: git rebase origin/main (4 conflict rounds, resolved by hand) ; npx tsx apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts ; git status
+    result: "new merge-base 137204768c. 94 fixtures written, ZERO modified — the 84 pre-existing walks keep their disclosed_review_flags byte for byte and none of the 10 new ones carries any."
+    exit: 0
+    ts: "2026-09-13T23:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: POST-REBASE — both censuses re-measured on the rebased tree, and the guard's universe with them.
+    cmd: import the rebased census module and call its own _load_walks/_evaluate_walks/_evaluate_walks_with_flags/_engine_named_products/_support_bearing_product_codes/_unreached_support_products (apps/backend-rag/.venv, PYTHONPATH=.)
+    result: "94 walks. ENGINE 76 SUPPORTED / 15 NO_SUPPORTED_PATH / 2 NEEDS_INPUT / 1 HUMAN_REVIEW_REQUIRED. FUNNEL 69 / 15 / 1 / 9. Distinct products: 28 engine, 27 public. SUPPORT-bearing 29, unreached [] after the single BRIDGING ruling. Flags ACTIVITY_BOUNDARY 6 + NOT_CERTAIN 2, unchanged from the 84-walk corpus. Engine-held walks: exactly offshore/family/PARENT/spNat=IT/minor. Products named ONLY by the ten new walks: A1, B1, D1, D2, D12, E28A, E30B, E30E, E30F, E31E, E33G."
+    exit: 0
+    ts: "2026-09-13T23:25:00+08:00"
+    seat: Claude Opus 5
+  - claim: POST-REBASE — the merged census suite is green, including the sibling's flag tests and this window's guard and guilt tests.
+    cmd: cd apps/backend-rag && JWT_SECRET_KEY=<throwaway> .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "33 passed in 121.43s (25 at the pre-rebase run above, +8 from the sibling's disclosure-flag layer, all of them still green with the minor walk in the corpus)."
+    exit: 0
+    ts: "2026-09-13T23:12:00+08:00"
+    seat: Claude Opus 5
+  - claim: POST-REBASE — A4 holds on the rebased corpus.
+    cmd: node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts" (cwd apps/mouth)
+    result: "Test Files 1 passed (1), Tests 96 passed (96), 14.49s — the 94 byte comparisons plus the file-set and count checks."
+    exit: 0
+    ts: "2026-09-13T23:45:00+08:00"
+    seat: Claude Opus 5
+  - claim: POST-REBASE — formatting and lint are green on every touched file, and ruff format is enforced here (the merge-base file is already clean under it).
+    cmd: prettier --check on the two TS files ; ruff check + ruff format on the census module ; ruff format --check on the merge-base copy of the same file
+    result: "prettier All matched files use Prettier code style! ; ruff check All checks passed! ; ruff format reformatted 1 file (my own 88-col wrapping) and the merge-base copy reported '1 file already formatted', which is why the reformat was applied rather than skipped."
+    exit: 0
+    ts: "2026-09-13T23:47:00+08:00"
+    seat: Claude Opus 5
+  - claim: POST-REBASE — the floor is unchanged and the diff is measured against the NEW merge-base.
+    cmd: git diff --numstat 137204768c -- apps/ ; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <file> --numstat-file <file>
+    result: "13 files, +2317/-33. Floor 2; gear stays 3 by judgement (backend-rag merge is the deploy). Excluding the 10 generated fixtures the hand-written half is 3 files, +849/-33 = 816 net — over the ~400-line guidance, stated in the PR body rather than split, because the guard, its four guilt tests and the corpus that feeds them are one concern and a split would ship a guard with no walks to guard."
+    exit: 0
+    ts: "2026-09-13T23:40:00+08:00"
+    seat: Claude Opus 5
+  - claim: The council actually sat — codex-gpt-5.6-sol six rounds, reserve agy-gemini-3.1-pro two rounds on the final state — and every transcript in this pack is the run that produced the verdict it records.
+    cmd: codex exec --sandbox read-only -m gpt-5.6-sol (rounds 1-6) ; agy --model gemini-3.1-pro-high -p (rounds 6-7, text-only, patch inlined) ; kimi -p / qwen -p liveness probes
+    result: "codex DEFECT / DEFECT / DEFECT / DEFECT / OK (45c863326b) / OK (e7e1034edf); agy-gemini-3.1-pro DEFECT (45c863326b, one MEDIUM docstring finding, fixed in e7e1034edf) / OK (e7e1034edf). Last line of council/codex-round6.txt and council/agy-gemini-3.1-pro-round7.txt is `VERDICT: OK`. kimi-code/k3 exit 1 (403 monthly limit) and tp1-qwen3.8-max exit 1 (429 weekly quota) at 2026-09-13T17:11:04Z, journaled unavailable. The unpinned round-3 `agy-gemini` row is journaled NOT COUNTED."
+    exit: 0
+    ts: "2026-09-13T19:30:18Z"
+    seat: Claude Opus 5
+  - claim: RESUMED SESSION — the floor on the COMPLETE change set, evidence staged, is 3, so gear 3 is also the floor and not only judgement.
+    cmd: git add evidence/... ; git diff --cached --name-only 137204768c ; git diff --cached --numstat 137204768c ; python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <cf> --numstat-file <ns>
+    result: "floor 3 on 26 files, +3742/-37 (measured with this pack staged, just before this receipt was added, so the committed count is a few lines higher). Without the evidence, 13 files +2322/-37, the same command printed 2."
+    exit: 0
+    ts: "2026-09-13T19:45:00Z"
+    seat: Claude Opus 5
+  - claim: RESUMED SESSION — the census suite is green on the final head.
+    cmd: cd apps/backend-rag && JWT_SECRET_KEY=<throwaway, 48 chars> API_KEYS=<throwaway> .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "33 passed in 64.74s on 45c863326b; 33 passed in 9.60s on e7e1034edf."
+    exit: 0
+    ts: "2026-09-13T19:29:03Z"
+    seat: Claude Opus 5
+  - claim: RESUMED SESSION — A2 guilt re-proved, the guard goes red naming the product when its walk is deleted.
+    cmd: cp -p offshore_remote_foreign_only.json to scratchpad ; rm it ; pytest -k "support_bearing_product_is_named or corpus_is_the" ; cp -p back ; git status --short apps/
+    result: "Run twice. First run: 2 failed, 31 deselected — 'AssertionError: expected 94 interview walks, found 93' and 'the signed pack supports these products and no interview walk names any of them: [''E33G'']'. Second run on e7e1034edf: 2 failed, 31 deselected in 6.57s. Each time restored from the cp backup (never git checkout); cmp exit 0 and git status --short apps/ empty afterwards."
+    exit: 1
+    ts: "2026-09-13T19:42:23Z"
+    seat: Claude Opus 5
+  - claim: RESUMED SESSION — A4 determinism, typecheck and format/lint on the touched files.
+    cmd: vitest run walk-corpus-determinism.test.ts ; tsc --noEmit -p tsconfig.json (apps/mouth) ; prettier --check (2 TS files + 94 fixtures) ; ruff check + ruff format --check (census module) ; eslint (2 TS files)
+    result: "vitest Test Files 1 passed, Tests 96 passed ; tsc exit 0 ; prettier exit 0 ; ruff All checks passed! and 1 file already formatted (re-run after e7e1034edf, same result) ; eslint 0 errors, both files matched by an ignore pattern (2 warnings)."
+    exit: 0
+    ts: "2026-09-13T17:13:46Z"
+    seat: Claude Opus 5
+  - claim: RESUMED SESSION — A5 pre-merge half, re-observed. Seven browser walks on the LIVE funnel end on the newly-named products, driven through the real tree's labels.
+    cmd: "playwright chromium against https://balizero.com/visa-oracle (.probe-voe/live-walk.ts, uncommitted), scenarios taken from enumerateScenarios() by label; product names confirmed by tesseract OCR of each full-page screenshot, because the script's own check is a substring match and D1 is a substring of D12"
+    result: "7/7 POST /api/visa-oracle/evaluate HTTP 200, mode ENGINE, state SUPPORTED_CANDIDATES. OCR: visa_free_30d 'Visa-Free Tourism Visit (A1)' rank 1 + 'Visa on Arrival — Tourism (B1)' rank 2 ; multiple_entry 'Visit Visa Tourism — Multiple Entry (D1)' rank 2 ; business/no_local_compensation 'Visit Visa Business — Multiple Entry (D2)' rank 1 ; invest/full_capital D12 rank 2 + 'Investor Visa (E28A)' rank 3 ; study/education_sponsor 'SEZ Education Visa (E30E)' rank 3 + 'Student Exchange Visa (E30F)' rank 4 ; study/vocational 'Higher Education Visa (E30B)' rank 2 ; remote/foreign_only 'Second Home Visa — Remote Worker (E33G)' rank 1. Screenshots: session scratchpad voe/shots-live-r6/*.png. A second run with an entity-exact matcher aborted on its first evaluate (net::ERR_ABORTED twice, then a 90s waitForResponse timeout) and produced no decision; it is not counted."
+    exit: 0
+    ts: "2026-09-13T19:32:37Z"
+    seat: Claude Opus 5
+dissent:
+  - seat: codex-gpt-5.6-sol (council round 1)
+    objection: >-
+      The SUPPORT universe was read by scanning product_version_ids in the raw
+      signed payload, so a GLOBAL-scope SUPPORT rule (product_version_ids null,
+      applies to every product) would leave the guard green over the exact
+      class it exists to catch; and the same scan counts rules outside their
+      valid_period and non-ACTIVE products, which can demand a walk for a
+      product the engine cannot emit.
+    status: CONFIRMED
+    cure: >-
+      Fixed at depth 1 — the universe is derived from the COMPILED pack through
+      rules_for(product, effective_at=_AS_OF), filtering products exactly as
+      evaluator.evaluate does. Council re-run on the corrected diff.
+  - seat: codex-gpt-5.6-sol (council round 2)
+    objection: >-
+      The ruling row's dependency test used membership in
+      CompiledRule.required_facts, which is the set of facts the AST MENTIONS.
+      A rule shaped any(eq(requested_product_code,"BRIDGING"),
+      intersects(purposes,OTHER)) mentions the forbidden fact and still
+      evaluates TRUE with it UNKNOWN — reproduced against the real evaluator —
+      so a future BRIDGING route free of the fact could stay excused and green.
+    status: CONFIRMED
+    cure: >-
+      Fixed at depth 1 with an AND-spine soundness check, and the seat's own
+      counterexample committed as the guilt test (it asserts the bypass really
+      evaluates TRUE through evaluate_condition before asserting the check
+      rejects it). Council re-run.
+  - seat: codex-gpt-5.6-sol (council round 3)
+    objection: >-
+      The AND-spine check is sound — the seat looked for a false green and
+      found none — but it is CONSERVATIVE, and both its name
+      (_condition_cannot_fire_without) and the guard's failure message turned
+      "my algorithm cannot prove this dependency" into "this route is
+      reachable, add a walk and delete the ruling row". Two legitimate ASTs it
+      rejected: not(unknown(fact)), which the real evaluator returns FALSE for
+      while the fact is UNKNOWN, and an `any` whose every branch reads the
+      fact.
+    status: CONFIRMED
+    cure: >-
+      Fixed at depth 1 — renamed _proves_it_cannot_fire_without, the message
+      now states what it can and cannot conclude, and both named shapes are
+      proven instead of rejected. The same round's three stale sentences were
+      corrected in the same commit.
+  - seat: codex-gpt-5.6-sol (council round 4, on the rebase)
+    objection: >-
+      The merge kept two sibling-era sentences that the disclosure-flag layer
+      had already falsified — "the review-FLAG arm of apply_public_policy_
+      adapters is not exercised by any walk here" and "a regression that ADDS a
+      disclosure flag passes this census invisibly" — and they contradicted the
+      file's own flagged-census test 1300 lines below. Three counts were still
+      the 84-walk figures: 60/15/1/8 for the funnel census, and "the 76 walks
+      that raise nothing" in both the innocence test and the generator.
+    status: CONFIRMED
+    cure: >-
+      Fixed at depth 1 in 45c863326b. The two sentences are named as retired
+      and credited to the round that caught them, rather than quietly deleted;
+      the counts are 69/15/1/9 and 86 (= 94 - 8), each carrying the superseded
+      figure so the next reader can tell a correction from a typo.
+  - seat: agy-gemini-3.1-pro (council round 6, reserve seat)
+    objection: >-
+      The census module docstring said W-VO-E "moved both columns by the same
+      +9/-1 shape", which sums to eight walks while the PR adds ten; it
+      contradicts the table directly above it.
+    status: CONFIRMED
+    cure: >-
+      Fixed at depth 1 in e7e1034edf (docstring only): "+9/+1", with ENGINE
+      67/15/2/0 to 76/15/2/1 and FUNNEL 60/15/1/8 to 69/15/1/9 stated and the
+      superseded wording named. codex round 6 derived the before rows from the
+      merge-base file and returned OK; agy round 7 returned OK.
+  - seat: Claude Opus 5 (self-refutation, on the window's own framing)
+    objection: >-
+      The window brief calls this class "12 products with a SUPPORT rule that
+      no interview branch reaches" and asks for questions to be added or
+      re-routed in tree.ts/flow.ts/fact-mapper.ts. That framing is measurably
+      wrong for eleven of the twelve: the branches DO reach them, and a real
+      visitor could always have got there. The gap was in the corpus and in the
+      absence of a binding, not in the tree.
+    status: CONFIRMED
+    cure: >-
+      Not cured — reported. Adding questions the interview does not need would
+      have added review volume for facts already collected. The PR says so in
+      its body, and the live browser walks prove the products were reachable
+      through the DEPLOYED UI before this PR merged.
+  - seat: Claude Opus 5 (self-refutation, on what "reachable" can mean)
+    objection: >-
+      E31E is named by the engine and held by the public layer on every walk
+      that reaches it, because _apply_minor_privacy_hold empties the candidates
+      of any known minor unconditionally. Counting it as "reached" could be
+      read as claiming a visitor sees it. They do not.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured — it is an owner ruling (Privacy Policy V1) and evaluate_path.py
+      is outside this window. Both counts are reported separately everywhere
+      (27 public, 28 engine), the held walk is pinned by cause in the census,
+      and the live proof deliberately uses five OTHER products.
+  - seat: Claude Opus 5 (self-refutation, on the council roster)
+    objection: >-
+      Two of the three council titolari are quota-exhausted, so the second
+      opinion comes from a reserve seat, and the window's first instance had
+      seated that reserve unpinned and under a seat_override.
+    status: CONFIRMED
+    cure: >-
+      The override is withdrawn. The reserve is the rostered agy-gemini-3.1-pro,
+      pinned by --model, re-run on the final diff, and declared through
+      seat_fallback_reason with the probe output quoted; the unpinned row stays
+      in the journal marked NOT COUNTED. It found a real defect the titolare had
+      passed, which is the point of a second family.
+leftovers:
+  - BRIDGING stays unreachable until Zero rules on asking `intent.requested_product_code`; the row in UNREACHABLE_BY_RULING is the durable receptor and goes red by itself if a future pack gives the product a route free of that fact.
+  - The coverage report's §A4 claim that "every one of the 38 has public_catalog: true" is wrong — BRIDGING and E30 are false in seq-20, and E30 is already named publicly by the funnel. Worth a line in whatever supersedes that report.
+  - E31E can be named to a visitor only if Zero relaxes the minor-guardian privacy hold (C3 item 3 of the coverage report). Until then it is engine-reachable and publicly held, by design.
+  - The nine products with ZERO SUPPORT rules (E23U, E23V, E28B, E28C, E28D, E28F, E33A, E33B, E33C) stay unreachable by construction; they are W-VO-F's subject and need seq-21 signed.
+  - Live proof walks are recorded as REAL demand. The UI hard-codes `traffic_source=real` (evaluation-client.ts, shadow-client.ts), and a synthetic label needs the driver token, which is a credential this window does not hold. The resumed session's seven walks carry public_ids d89f94b506af8203e98f, 93199941a2af37434b1c, 772e9a5b99363bcff4f0, 77270382828211fc53aa, 8050177d4e3c766bad24, ad2d11c3b2c5c583272d, e599dc8ac1e763bd5345, plus the first instance's pre-merge walks and any post-merge ones; whoever reads real-traffic telemetry for 2026-09-13/14 should exclude them.
+  - The 39 DB-backed errors in the visa_engine suite on this machine are a local Postgres schema-state fault, unrelated to this PR but worth an operator pass.

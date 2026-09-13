@@ -1,0 +1,45 @@
+### Executive Summary & Round 2 Assessment
+
+The Round 2 changes resolve the findings from Round 1 with genuine, deep fixes:
+1. **Dynamic, Engine-Parity SUPPORT Universe Extraction** (Real fix): `_support_rules_by_product` compiles the signed pack and queries `compiled.rules_for(compiled_product, effective_at=_AS_OF)` while filtering for `ACTIVE` status and valid periods. This correctly accounts for `GLOBAL`-scope SUPPORT rules and eliminates false-red risks from inactive/out-of-period rules.
+2. **Structured & Re-Derived Rulings** (Real fix): `UNREACHABLE_BY_RULING` uses the `RuledUnreachable` dataclass. The semantic rule-dependency analyzer (`_condition_cannot_fire_without`) evaluates the AST AND-spine under Kleene logic rather than relying on shallow syntax (`required_facts`), preventing circumvention via disjunctions (`any`).
+3. **Docstrings, Arithmetic & Naming Alignment** (Real fix): All historical census figures, walk counts (84 $\to$ 94), candidate tallies, qualification of the "first option" corpus convention, and the nuanced explanation of the public-hold assertion are accurate.
+
+---
+
+### Detailed Findings by Question
+
+#### (a) Guard Test Validity & Engine vs. Public Decision
+- **Vacuous Pass Analysis**: The guard `test_every_support_bearing_product_is_named_by_some_walk` cannot pass vacuously. It computes the difference between `_support_bearing_product_codes()` (dynamically extracted from the compiled pack) and the set of products returned by `_engine_named_products(walks)` minus `UNREACHABLE_BY_RULING`. If any unexcused support-bearing product is omitted from the walks, `_unreached_support_products` returns a non-empty list and fails the assertion.
+- **Engine vs. Public Decision**: Evaluating reachability against `_engine_decision` rather than `_public_decision` (or `EXPECTED_OUTCOME`) is correct. The goal of this test is to verify whether the interview questions and fact mappers can collect the facts required to satisfy the engine's eligibility rules. Downstream public policy adapters (such as `_apply_minor_privacy_hold`, which unconditionally sets state to `HUMAN_REVIEW_REQUIRED` and clears public candidates for minors) are product-level disclosure gates, not engine rule-unreachability bugs. Evaluating the public decision would hide the engine's ability to reach `E31E`.
+
+#### (b) Integrity of `UNREACHABLE_BY_RULING` & Guilt Tests
+- **Allowlist Leak Prevention**: `UNREACHABLE_BY_RULING` cannot be abused to silently bypass gaps:
+  1. `test_unreachable_by_ruling_holds_only_the_bridging_row` pins `set(UNREACHABLE_BY_RULING) == {"BRIDGING"}`. Any row added without updating this test fails immediately.
+  2. `test_every_ruled_unreachable_product_still_depends_on_its_forbidden_fact` checks that every effective SUPPORT route for the excused product requires `row.forbidden_fact` on its AND-spine.
+  3. `test_no_unreachable_by_ruling_row_is_stale` prevents keeping an excuse once a walk names the product.
+- **Guilt Test Efficacy**: All four guilt tests are genuine:
+  - `test_guilt_a_support_bearing_product_no_walk_names_is_caught`: Proves dropping `E33G` triggers a guard failure.
+  - `test_guilt_a_fabricated_ruling_row_that_is_reachable_is_caught`: Proves adding a reached product (`C1`) fails the staleness check.
+  - `test_guilt_a_ruling_row_whose_product_has_a_free_support_route_is_caught`: Proves excusing a product with an unconstrained support route (`C6`) fails.
+  - `test_guilt_a_rule_that_only_mentions_the_forbidden_fact_is_not_a_dependency`: Directly constructs an `any` AST branch and verifies that syntactic mention without logical necessity is rejected by `_condition_cannot_fire_without`.
+
+#### (c) Census Assertion Evolution: `HUMAN_REVIEW_REQUIRED`
+- **Argument for Weakening**: Relaxing `census.get("HUMAN_REVIEW_REQUIRED", 0) == 0` to allow `1` widens the numeric state allowance.
+- **Argument for Strengthening / Equal Strictness**: The replacement does not simply do `== 1`. It asserts the exact set of held walks (`held == {"offshore/family/PARENT/spNat=IT/minor"}`) and inspects the public decision output to assert `[reason.code for reason in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]`. Any other walk entering human review, or this walk triggering for an unexpected reason (e.g., disclosure flag regressions), will fail.
+- **Conclusion**: The assertion is not weakened; it is parameterized to allow the one tested minor privacy hold while maintaining zero tolerance for unexpected holds across all other 93 walks.
+
+#### (d) Verification of Claims, Numbers, and Test Names
+- **Counts and Arithmetic**:
+  - Walk count: $84 + 10 = 94$.
+  - State census: $1\text{ (REVIEW)} + 2\text{ (NEEDS\_INPUT)} + 15\text{ (NO\_PATH)} + 76\text{ (SUPPORTED)} = 94$.
+  - Product counts: $29\text{ total SUPPORT-bearing} - 17\text{ (previously reached)} = 12$. The 10 added walks reach 11 products (`A1`, `B1`, `D1`, `D2`, `D12`, `E28A`, `E30B`, `E30E`, `E30F`, `E31E`, `E33G`), leaving 1 excused (`BRIDGING`). $17 + 11 + 1 = 29$.
+- **Test Names**: `test_corpus_is_the_94_real_interview_walks`, `test_walk_state_census_is_2_dead_ends_15_no_paths_1_privacy_hold_and_76_answers`, and the guilt test names accurately describe their assertions.
+
+#### (e) Code Correctness (Python & TypeScript)
+- AST evaluation and fact reference extraction properly handle enum and string paths (`getattr(referenced, "value", referenced)`).
+- `_condition_cannot_fire_without` handles Kleene logic on `all` nodes and ignores `unknown(fact)` nodes safely.
+- TypeScript generator additions in [`generate-walk-corpus.ts`](file:///Users/balizero/.gemini/antigravity-cli/scratch/apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts) properly override necessary fields (`MINOR_APPLICANT_BIRTH_DATE`, stay days, capital amounts, sponsor categories) without side effects on existing base fixtures.
+- Determinism test fixture count matches `EXPECTED_WALK_COUNT = 94`.
+
+VERDICT: OK

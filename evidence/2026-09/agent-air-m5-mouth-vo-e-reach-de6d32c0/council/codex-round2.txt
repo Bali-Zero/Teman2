@@ -1,0 +1,145 @@
+TRIMMED TRANSCRIPT — codex-round2.txt
+
+The raw `codex exec` transcript of this round was 12243 lines / 1072289 bytes: the seat's
+own tool calls, every hook line and the full text of every file it read (this
+repository's docs are large, and the seat read several). Committing three of
+those is 3 MB of evidence nobody can review, so each is trimmed HERE to the two
+parts a reader needs: the PROMPT the seat was given, and its FINAL ANSWER up to
+and including the verdict line. Nothing between them is a claim — it is the
+seat's own navigation — and nothing after the verdict is review (it is the
+harness's checkpoint hook failing against the read-only sandbox). The trim is
+mechanical and reproducible: prompt = first 70 lines, answer = from the last
+`codex` speaker marker before the last VERDICT line, through that line.
+
+========================================================================
+PROMPT (first 70 lines, verbatim)
+========================================================================
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b27-f47e-7332-b21e-f8c4a4cac59d
+--------
+user
+You are an adversarial correctness reviewer. Read the patch at
+.probe-voe/review-diff.patch in this worktree (622 lines: the hand-written half of
+the change). The patch is the diff between origin/main (eecd7f06) and HEAD of a PR
+in the Nuzantara monorepo. The PR ALSO adds 10 generated JSON fixtures under
+apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/,
+omitted from the patch because they are machine-generated output of the modified
+generator and are byte-compared against a fresh generation by
+walk-corpus-determinism.test.ts.
+
+CONTEXT — what the change claims, so you can try to falsify it:
+
+1. The Visa Oracle interview (apps/mouth, tree.ts/flow.ts/fact-mapper.ts) is a
+   hand-written decision tree. A signed rule pack
+   (apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-020.signed.json)
+   decides which visa products a set of facts supports.
+2. generate-walk-corpus.ts drives the REAL interview state machine over a list of
+   scenarios and writes each walk's wire facts as a fixture; the backend census test
+   replays every fixture against the signed pack and pins the outcome.
+3. Measured before this PR: 29 products have at least one SUPPORT rule in the signed
+   pack, and only 17 were ever named by a walk. The 12 missing ones were invisible to
+   every test in the repo.
+4. This PR adds 10 scenarios (reaching 11 of the 12 products), pins their outcomes,
+   and adds a guard test that reads the SUPPORT-bearing product codes from the signed
+   pack payload and fails when any is named by no walk. The 12th product (BRIDGING)
+   is excused in a one-row UNREACHABLE_BY_RULING table because all its SUPPORT rules
+   need a fact an owner ruling forbids collecting.
+5. No file in tree.ts / flow.ts / fact-mapper.ts is touched: the claim is that every
+   fact those 11 products' rules read was ALREADY collected by the interview, and only
+   the corpus convention of answering each question with its FIRST option kept them
+   unexercised.
+
+Judge these specifically:
+(a) Is the new guard test real, or can it pass vacuously? Could it be green while the
+    class it exists to catch is present? Is reading the ENGINE decision (not the public
+    one) the right subject, given the public layer's minor-privacy hold?
+(b) Is UNREACHABLE_BY_RULING a hole? Can a future engineer silence a real gap with a row?
+    Are the guilt tests genuinely guilt (do they fail if the checker is broken)?
+(c) Does replacing the census assertion
+    `census.get("HUMAN_REVIEW_REQUIRED", 0) == 0` with an assertion that names the one
+    held walk and its reason WEAKEN the guard? Argue both ways and conclude.
+(d) Any claim in the comments/docstrings that the code does not support, any number that
+    cannot be true, or any test whose name lies about what it asserts.
+(e) Correctness bugs of any kind in the added Python or TypeScript.
+
+Rules: you may read any file in this worktree. Do not run git commands that write.
+Be specific: file + line + why. If you find nothing that would change the code, say so.
+End your answer with exactly one final line, either
+VERDICT: OK
+or
+VERDICT: DEFECT
+
+ROUND 2 ADDENDUM (2026-09-13): round 1 returned DEFECT and the findings were fixed
+at depth 1 in a second commit that is INSIDE the patch you are reading:
+(1) the SUPPORT universe is now derived from the COMPILED pack via
+rules_for(product, effective_at=_AS_OF), filtering products the way
+evaluator.evaluate filters them (ACTIVE + valid period), so a GLOBAL-scope SUPPORT
+rule is covered and an out-of-period rule or non-ACTIVE product cannot cause a false red;
+
+========================================================================
+FINAL ANSWER (transcript lines 12148-12201, verbatim)
+========================================================================
+codex
+[M5] Ho trovato un difetto sostanziale nel nuovo controllo delle deroghe.
+
+### Finding principale — HIGH
+
+[test_interview_walk_census.py:1006](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1006) verifica soltanto:
+
+```python
+forbidden_fact in rule.required_facts
+```
+
+Ma `required_facts` è l’insieme dei fatti sintatticamente menzionati nell’AST, non dei fatti logicamente indispensabili. Lo confermano [compiler.py:1282](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/services/visa_engine/compiler.py:1282) e [ast.py:411](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/services/visa_engine/ast.py:411).
+
+Un futuro SUPPORT valido potrebbe essere:
+
+```text
+any(
+  requested_product_code == "BRIDGING",
+  intent.purposes intersects ["OTHER"]
+)
+```
+
+Con `requested_product_code = UNKNOWN` e `purposes = OTHER`, l’AST restituisce `TRUE` per la semantica di [ast.py:630](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/services/visa_engine/ast.py:630), ma `required_facts` contiene comunque entrambi i fatti. Ho riprodotto esattamente questo risultato: `required_facts` include il fatto vietato mentre la condizione valuta `TRUE`.
+
+Quindi il test chiamato `test_every_ruled_unreachable_product_still_depends_on_its_forbidden_fact` non prova la dipendenza dichiarata. Una nuova route BRIDGING indipendente dal fatto vietato potrebbe lasciare tutto verde.
+
+Il guilt C6 a [test_interview_walk_census.py:1796](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1796) intercetta solo una regola che non menziona affatto il fatto; non intercetta il bypass tramite `any`. Serve un guilt con il fatto presente in un ramo opzionale, oppure un’analisi dell’AST che dimostri che il fatto è necessario su ogni percorso capace di produrre `TRUE`.
+
+Le quattro regole BRIDGING attuali sono tutte congiunzioni e richiedono davvero il fatto: la deroga è corretta oggi. Il difetto è precisamente nel futuro guard promesso dal test.
+
+### Valutazione richiesta
+
+**(a) Guard principale:** reale e non vacuo nello stato corrente. Il replay puro ha trovato 94 walk, 29 prodotti SUPPORT-bearing, 28 nominati e solo BRIDGING sottratto. La derivazione compilata a [test_interview_walk_census.py:920](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:920) replica correttamente i filtri dell’evaluator e include le regole GLOBAL. Questo fix Round 2 è reale.
+
+Usare la decisione ENGINE è corretto per l’invariante “l’intervista può produrre fatti che fanno supportare il prodotto”. Il hold pubblico sui minori, applicato a [evaluate_path.py:1033](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/services/visa_engine/evaluate_path.py:1033), è uno strato privacy successivo e non deve far sembrare E31E irraggiungibile. Il test pubblico separato conserva quel confine.
+
+**(b) `UNREACHABLE_BY_RULING`:** il contenuto esatto e lo stale mirror rendono impossibile aggiungere casualmente una riga senza modificare anche il test. I guilt E33G e C1 sono autentici per le rispettive funzioni. Tuttavia il controllo della dipendenza è incompleto per il motivo sopra; quindi il fix Round 2 è solo parziale, non cosmetico ma insufficiente.
+
+**(c) Census review:** sì, in senso logico sostituire `== 0` con un’eccezione indebolisce l’insieme degli stati rifiutati: ora un hold è ammesso. D’altra parte, lo zero assoluto era incompatibile con la policy privacy intenzionale. Il nuovo controllo pinna insieme conteggio, identità esatta del walk e reason code; è molto più forte di un semplice `== 1`. Conclusione: rilassamento intenzionale e correttamente circoscritto, non un difetto.
+
+**(d) Commenti ancora falsi o stantii:**
+
+- [test_interview_walk_census.py:136](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:136) continua a dire che l’asserzione “below” è `HUMAN_REVIEW_REQUIRED == 0`, mentre ora è uno.
+- [test_interview_walk_census.py:1620](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1620) dice che nessun walk esistente usa un minore, ma il PR ne aggiunge uno.
+- [generate-walk-corpus.ts:11](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts:11) dice che il walk dipende solo dal tree e non dalle risposte; l’intero nuovo blocco dimostra il contrario.
+- [walk-corpus-determinism.test.ts:74](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts:74) riporta una distribuzione numericamente falsa. Rispetto agli 84 walk precedenti, uno dei nuovi walk introduce tre prodotti, tre walk ne introducono due ciascuno e sei ne introducono uno; non “due walk tre e uno due”.
+
+Quindi anche il fix Round 2 sui commenti è incompleto.
+
+**(e) Altri bug:** nessun altro errore comportamentale individuato nei nuovi scenari TypeScript o nel guard principale Python. La rigenerazione è realmente byte-for-byte nel test. Il replay puro conferma il census `1/2/15/76`, i 29 prodotti e i conteggi C1/E33G dichiarati.
+
+I runner completi non erano utilizzabili nel sandbox read-only perché pytest richiede una directory temporanea scrivibile e il collegamento locale a `tsx` punta a un worktree assente. Ho quindi eseguito direttamente il replay e i sette controlli Python: passano tutti, inclusa la guilt C6, mentre il controesempio AST sopra dimostra il falso verde.
+
+VERDICT: DEFECT
+

@@ -1,0 +1,38 @@
+gear: 3
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO2 window W-VO-E (BLUE, host M5) — every product the engine knows can be reached by the interview
+objective: >-
+  Twelve of the 29 products that carry a SUPPORT rule in the highest signed
+  rule pack (rulepack-prod-020) were named on ZERO of the 84 interview walks,
+  measured 2026-09-13 — among them E33G (the digital-nomad permit, Bali Zero's
+  highest-volume public topic) and E28A (the Investor KITAS). The class was
+  invisible to every test in the repository: the gold-coverage floor proves
+  the pack CAN support a product when every fact arrives, the walk census
+  proves what the funnel answers, and neither notices a product that never
+  appears at all — a walk cannot lose a candidate it could never gain.
+  Make those products reachable through the interview and, so the gap cannot
+  reopen silently, bind the hand-written tree to the signed pack with a guard
+  that fails when a SUPPORT-bearing product is named by no walk.
+scope:
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/ (regenerated, 10 new files)
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
+constraints:
+  - Forbidden — any pack file (packs are immutable), evaluate_path.py, evaluator.py, models.py, oracle.css, pricing, and mapDisclosedReviewFlags (W-VO-G/H own those).
+  - A new interview question only where a SUPPORT rule genuinely depends on the fact, citing the rule id.
+  - A tree change MUST regenerate the corpus in the same PR (generate-walk-corpus.ts's own rule).
+  - No client PII — synthetic identities only. No vendor names in code comments.
+  - No ledger PR, no PENDING-ARMS.md edit, no gate status posted by this session (SAETTA rules).
+acceptance:
+  - A1 the regenerated census names >= 29 distinct products (17 today), with the per-product delta in the PR body.
+  - A2 a NEW guard test fails if any product with a SUPPORT rule in the highest signed pack is named on zero walks; it must go red when a named product is removed.
+  - A3 the state census does not regress — NEEDS_INPUT <= 2, NO_SUPPORTED_PATH <= 15.
+  - A4 walk-corpus-determinism.test.ts stays green (corpus byte-reproducible).
+  - A5 on live /visa-oracle after deploy, one walk per newly-reached product ends on that product's name.
+consumer_map:
+  - The live https://balizero.com/visa-oracle funnel — an applicant answering the interview now reaches eleven products the engine could always support and never offered; proven by browser walks against the production engine (seq-20), pre- and post-merge.
+  - The required GitHub check that runs backend/tests/services/visa_engine/ — test_every_support_bearing_product_is_named_by_some_walk now fails any future PR that makes a supported product unreachable.
+appetite:
+  budget: 8h active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

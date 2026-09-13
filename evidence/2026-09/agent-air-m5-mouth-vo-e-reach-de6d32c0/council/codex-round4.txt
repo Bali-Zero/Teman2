@@ -1,0 +1,105 @@
+TRIMMED TRANSCRIPT — codex-round4.txt
+
+The raw `codex exec` transcript of this round was 11031 lines / 1828221 bytes: the seat's
+own tool calls, every hook line and the full text of every file it read. Committing
+that is evidence nobody can review, so it is trimmed HERE to the two parts a reader
+needs: the PROMPT the seat was given, and its FINAL ANSWER up to and including the
+verdict line. Nothing between them is a claim — it is the seat's own navigation —
+and nothing after the verdict is review (it is the harness's checkpoint hook failing
+against the read-only sandbox). The trim is mechanical and reproducible: prompt =
+first 70 lines, answer = from the last `codex` speaker marker before the FIRST
+VERDICT line past line 200, through that line.
+
+========================================================================
+PROMPT (first 70 lines, verbatim)
+========================================================================
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b70-80f0-7701-b988-59f951971221
+--------
+user
+You are an adversarial correctness reviewer, ROUND 4 on the same patch you have
+reviewed three times (rounds 1-3 all returned DEFECT; every finding was fixed at
+depth 1 and the fixes are inside the patch you are about to read).
+
+Read the patch at .probe-voe/review-diff-r4.patch in this worktree (1104 lines: the
+hand-written half of the change, diffed against the CURRENT merge-base
+137204768c89fc0c37f84e1160f4682c1f6d99db). The PR ALSO adds 10 generated JSON fixtures
+under apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/,
+omitted from the patch because they are machine-generated output of the modified
+generator and are byte-compared against a fresh generation by
+walk-corpus-determinism.test.ts.
+
+CONTEXT — what the change claims, so you can try to falsify it:
+
+1. The Visa Oracle interview (apps/mouth, tree.ts/flow.ts/fact-mapper.ts) is a
+   hand-written decision tree. A signed rule pack (rulepack-prod-020.signed.json)
+   decides which visa products a set of facts supports.
+2. generate-walk-corpus.ts drives the REAL interview state machine over a list of
+   scenarios and writes each walk's wire facts as a fixture; the backend census test
+   replays every fixture against the signed pack and pins the outcome.
+3. Measured before this PR: 29 products carry at least one SUPPORT rule in the signed
+   pack and only 17 were ever named by a walk. The 12 missing ones were invisible to
+   every test in the repo.
+4. This PR adds 10 scenarios (reaching 11 of the 12 products), pins their outcomes, and
+   adds a guard test that derives the SUPPORT-bearing product codes from the COMPILED
+   signed pack and fails when any is named by no walk. The 12th (BRIDGING) is excused
+   in a one-row UNREACHABLE_BY_RULING table because all its SUPPORT rules need a fact
+   an owner ruling forbids collecting.
+5. No file in tree.ts / flow.ts / fact-mapper.ts is touched.
+
+WHAT IS NEW IN ROUND 4, and the only reason this round exists:
+
+A. The branch was REBASED onto a new origin/main that landed a SIBLING PR (#6442) on
+   the same two files: it added a disclosure-flag layer to the corpus — a second,
+   FUNNEL-level census (`flagged_outcomes`) alongside the ENGINE one, plus
+   EXPECTED_DISCLOSED_REVIEW_FLAGS. The conflicts were resolved by hand. Verify the
+   MERGE, not just my half: does the resolved file state both layers correctly, is any
+   sibling assertion silently weakened, is any of my text now contradicted by the
+   sibling's text (or the reverse)?
+B. The sibling's test `test_the_flagged_census_is_the_funnel_the_applicant_meets`
+   asserted `engine_census.get("HUMAN_REVIEW_REQUIRED", 0) == 0` and
+   `funnel_census["HUMAN_REVIEW_REQUIRED"] == len(EXPECTED_DISCLOSED_REVIEW_FLAGS)`.
+   My minor walk breaks BOTH, because it is held by `_apply_minor_privacy_hold`
+   (a public adapter reading `derived.is_minor`) and NOT by any disclosure flag.
+   I introduced `PRIVACY_HELD_WALKS` and subtracted that walk BY NAME on both censuses.
+   Judge that specifically: is this a real repair of the sibling's invariant or a
+   convenient hole? Could a future flag-driven hold hide inside PRIVACY_HELD_WALKS, or
+   a future privacy hold hide inside EXPECTED_DISCLOSED_REVIEW_FLAGS?
+C. Every number in the module docstring was re-measured after the rebase. Check the
+   arithmetic and the claims: ENGINE census 1/2/15/76, FUNNEL census 9/1/15/69, 94
+   walks, 29 SUPPORT-bearing products, 28 named at engine level, 27 named publicly,
+   11 products reachable only through the new walks, per-flag table unchanged
+   (ACTIVITY_BOUNDARY 6, NOT_CERTAIN 2).
+
+Judge these as well, as in the earlier rounds:
+(a) Is the guard test real, or can it pass vacuously?
+(b) Is UNREACHABLE_BY_RULING a hole? Are the guilt tests genuinely guilt?
+(c) Any claim in the comments/docstrings the code does not support, any number that
+
+========================================================================
+FINAL ANSWER (transcript lines 10970-10985, verbatim)
+========================================================================
+codex
+[Air-M5] Ho trovato due difetti testuali nel merge; la logica funzionale risulta corretta.
+
+1. `test_interview_walk_census.py:157-172` si contraddice con il layer del sibling e con lo stesso file a `:1491-1495`: dopo aver dichiarato che vengono misurati entrambi i censimenti, afferma che nessuna walk esercita il review-flag adapter e che una variazione dei flag passa invisibile. `flagged_outcomes` esercita invece esplicitamente quell’adapter e i test bidirezionali rilevano flag aggiunti o rimossi. Il testo va eliminato o qualificato come riferito esclusivamente al censimento ENGINE.
+
+2. Restano tre conteggi del corpus da 84 walk:
+
+   - `test_interview_walk_census.py:867`: `60 / 15 / 1 / 8` deve essere `69 / 15 / 1 / 9`.
+   - `test_interview_walk_census.py:2107`: le walk senza flag sono 86, non 76.
+   - `generate-walk-corpus.ts:779`: stesso `76` obsoleto; deve essere 86, oppure qualificato come “the pre-existing 76”.
+
+La verifica diretta sul pack firmato conferma invece 94 walk, ENGINE `1/2/15/76`, FUNNEL `9/1/15/69`, flag `6/2`, 29 prodotti SUPPORT, 28 nominati ENGINE e 27 pubblici.
+
+La separazione `PRIVACY_HELD_WALKS` è una riparazione reale considerando l’intera suite: `test_interview_walk_census.py:1506-1512` vincola esattamente gli hold ENGINE e la relativa reason; i controlli flag e la cardinalità FUNNEL impediscono anche la sovrapposizione inversa. Il guard non è vacuo e i guilt test di `UNREACHABLE_BY_RULING` sono effettivi; le verifiche dirette del ruling/dependency hanno passato.
+
+VERDICT: DEFECT

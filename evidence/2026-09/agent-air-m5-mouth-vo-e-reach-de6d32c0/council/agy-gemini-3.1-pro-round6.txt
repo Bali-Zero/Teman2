@@ -1,0 +1,100 @@
+TRANSCRIPT — agy-gemini-3.1-pro, council round 6
+
+cmd: agy --model gemini-3.1-pro-high --print-timeout 14m -p "<prompt>" < /dev/null
+     (text-only: the seat auto-denies tool permissions in this harness, and
+     --dangerously-skip-permissions is banned by the builder contract, so the
+     patch is INLINED in the prompt instead of read from disk)
+start: 2026-09-13T17:13:10Z   end: 2026-09-13T17:16:53Z (end, from the run's own `date -u`)   exit: 0
+inlined after the prompt text below: .probe-voe/review-diff-r5.patch = `git diff 137204768c 45c863326b` over the three hand-written files, sha256 440aca986799552699f7ba8de9f0837a49f389f4e69f479e1042dfef009c68eb
+The inlined patch is omitted here (it is the diff this PR already carries).
+
+========================================================================
+PROMPT (verbatim, patch omitted)
+========================================================================
+You are an adversarial correctness reviewer on a council for a pull request in the
+Nuzantara monorepo. You have NO tools in this run: the whole patch is inlined below.
+Judge only what is in front of you, and say so where a claim needs a file you cannot see.
+
+THE PATCH is the hand-written half of the change, diffed against merge-base
+137204768c89fc0c37f84e1160f4682c1f6d99db, head 45c863326b. The PR also adds 10
+machine-generated JSON walk fixtures under
+apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/,
+omitted here: the modified generator writes them and walk-corpus-determinism.test.ts
+byte-compares every fixture against a fresh generation.
+
+WHAT THE PR CLAIMS — try to falsify each:
+1. The Visa Oracle interview (tree.ts / flow.ts / fact-mapper.ts, hand-written) feeds
+   facts to a signed rule pack (rulepack-prod-020) that decides which visa products
+   the facts SUPPORT. 29 products carry a SUPPORT rule; before this PR only 17 were
+   named on any of the 84 corpus walks. The other 12 were invisible to every test.
+2. Eleven of the twelve need NO interview change: their facts are already collected;
+   the corpus just never answered the questions that way. So the PR adds 10 walk
+   scenarios (A1, B1, D1, D2, D12, E28A, E30B, E30E, E30F, E33G, and E31E at engine
+   level — the public layer holds any minor under a privacy hold) and touches no
+   interview file.
+3. A new guard, test_every_support_bearing_product_is_named_by_some_walk, derives the
+   SUPPORT universe from the COMPILED pack (rules_for(product, effective_at=_AS_OF),
+   ACTIVE products only) and fails when a SUPPORT-bearing product is named by no walk.
+4. BRIDGING, the twelfth, is excused in a one-row UNREACHABLE_BY_RULING table: all its
+   SUPPORT rules need intent.requested_product_code, which an owner ruling forbids the
+   interview to ask. The excuse is re-derived every run by an AND-spine proof
+   (_proves_it_cannot_fire_without) under Kleene three-valued semantics, and guarded
+   by guilt tests (stale row, fabricated row with a free route, a disjunction that
+   only MENTIONS the fact).
+5. Census on 94 walks: ENGINE 76 SUPPORTED / 15 NO_SUPPORTED_PATH / 2 NEEDS_INPUT /
+   1 HUMAN_REVIEW_REQUIRED; FUNNEL (with disclosure flags) 69 / 15 / 1 / 9. The one
+   engine hold is the minor walk, pinned BY NAME with its reason code
+   MINOR_GUARDIAN_PRIVACY_REVIEW via PRIVACY_HELD_WALKS, rather than by a count.
+   NEEDS_INPUT and NO_SUPPORTED_PATH did not regress.
+
+JUDGE SPECIFICALLY:
+(a) Can the guard pass vacuously, or stay green while the class it catches is present?
+    Is the ENGINE decision (not the public one) the right subject?
+(b) Is UNREACHABLE_BY_RULING a hole a future engineer could use to silence a real gap?
+    Is the AND-spine proof SOUND (never proves a dependency that does not exist)?
+    Do the guilt tests genuinely fail if the checker is broken?
+(c) Does replacing a zero-holds assertion with a by-name pin of the one held walk and
+    its reason weaken the census? Argue both ways, conclude.
+(d) Is there any false sentence, stale count, or comment that contradicts code in the
+    patch? Name file and hunk.
+(e) Anything in the generator change that could make the corpus non-deterministic.
+
+Report findings with severity (HIGH / MEDIUM / LOW). A LOW nit alone is not a defect.
+End your answer with exactly one final line, either
+VERDICT: OK
+or
+VERDICT: DEFECT
+
+===== PATCH BEGINS =====
+
+========================================================================
+ANSWER (verbatim, complete stdout+stderr)
+========================================================================
+Here is the evaluation of the PR's claims based on the provided patch:
+
+### (a) The Reachability Guard and the ENGINE Decision
+* **Can the guard pass vacuously or stay green while the class it catches is present?** No. The guard derives the universe of `SUPPORT`-bearing products dynamically using `compiled.rules_for(compiled_product, effective_at=_AS_OF)`. This ensures that even GLOBAL-scope support rules (which apply to all products but might lack explicit version mapping) are fully expanded. If an active product gains a support path, it immediately enters the denominator. The test will turn red unless a walk is provided or an explicit ruling excuse is filed.
+* **Is the ENGINE decision the right subject?** Yes. The guard tests whether the *interview tree* collects the necessary facts to fire a product's support rules. The public layer enforces external policy (like the `HUMAN_REVIEW_REQUIRED` privacy hold for minors). Grading this through the public funnel would falsely flag perfectly reachable engine products as unreachable, confusing policy interventions with tree completeness.
+
+### (b) UNREACHABLE_BY_RULING, the AND-Spine Proof, and Guilt Tests
+* **Is it a hole to silence real gaps?** No. `test_unreachable_by_ruling_holds_only_the_bridging_row` explicitly asserts that the table contains exactly `{"BRIDGING"}`. A future engineer cannot silently slip a new product into the allowlist; they must explicitly modify the guard rail test itself, leaving a clear audit trail.
+* **Is the AND-spine proof SOUND?** Yes. The `_proves_it_cannot_fire_without` function evaluates conditions under Kleene three-valued semantics. An `all` (AND) condition cannot evaluate to `TRUE` if any of its children evaluate to `FALSE` or `UNKNOWN`. Leaf predicates on `UNKNOWN` facts cleanly resolve to `UNKNOWN` or `FALSE` (except for `unknown(fact)`, which is explicitly caught and negated properly). By only returning `True` when a dependency is structurally proven, it remains conservative (sound). 
+* **Do the guilt tests genuinely fail if broken?** Yes. `test_guilt_a_rule_that_only_mentions_the_forbidden_fact_is_not_a_dependency` directly proves that the checker uses structural semantics rather than purely syntactic `required_facts` membership by feeding it an `any` bypass condition that *mentions* the fact but can still evaluate to true on another branch.
+
+### (c) Replacing a Zero-Holds Assertion with a By-Name Pin
+* **Weakens the census:** One could argue that replacing `== 0` with a pinned walk removes the universal "the engine holds nobody" invariant, allowing the engine to produce holds.
+* **Strengthens the census:** One could argue that because Privacy Policy V1 now *requires* the engine to emit a hold for minors, the `== 0` invariant is obsolete. By explicitly pinning the set of held walks (`held == {"offshore/family/PARENT/spNat=IT/minor"}`) and asserting its specific reason code (`MINOR_GUARDIAN_PRIVACY_REVIEW`), the test enforces the tightest possible bound on a set of size 1. It ensures no *other* walk can hold, and this walk cannot *stop* holding.
+* **Conclusion:** It **does not weaken** the census. It correctly replaces an outdated universal invariant with the most restrictive, exact-match constraint possible for the new expected state. 
+
+### (d) False Sentences, Stale Counts, or Contradictions
+* **Severity:** **MEDIUM**
+* **File:** `apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py`
+* **Hunk:** Around line 183
+* **Finding:** The comment claims `W-VO-E moved both columns by the same +9/-1 shape: nine of its ten new walks answer at both levels, and the tenth — the minor — is the single ENGINE hold.` 
+This contains a false statement that contradicts the tables and code directly adjacent to it. The PR adds 10 new walks (`84 -> 94`). 9 are `SUPPORTED_CANDIDATES` and 1 is `HUMAN_REVIEW_REQUIRED`. The net change is `+9` and `+1` (totaling `+10`). The phrase `+9/-1 shape` mathematically implies a net change of `+8` (adding 9, losing 1). The author meant to write a `+9/+1 shape`.
+
+### (e) Generator Non-Determinism
+* **Severity:** **LOW** (None found)
+* **Finding:** The changes in `generate-walk-corpus.ts` consist strictly of appending deterministic object literals to the `scenarios` array. All iterations, file sorting (`.sort()`), and object spread operators maintain deterministic execution. There is no source of non-determinism introduced here.
+
+VERDICT: DEFECT
