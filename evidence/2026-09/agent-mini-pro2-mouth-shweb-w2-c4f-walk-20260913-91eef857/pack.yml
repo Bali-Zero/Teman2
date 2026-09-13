@@ -74,10 +74,23 @@ the_conditions:
   - id: 6397-cond-1
     what: the guard header stops carrying a count
     done: >-
-      It said SEVENTEEN, and before that a sibling comment said FIVE. Both were wrong, both from
-      enumerations narrower than the thing counted. The header now points at the module that holds
-      the list and at the OK line that prints it, and keeps only the claim that does not change with
-      the count — exactly one accepted payload carries staff markers, /lkpm.
+      NOT DONE on the first attempt, and the gate was right to say so. I removed the count from one
+      paragraph of the header and LEFT IT in another paragraph of the SAME comment, sixteen lines
+      below the sentence promising not to repeat it — the fourth generation of one defect, inside
+      the change whose whole subject is that a number in prose goes stale in silence. The narrative
+      "five, then seventeen" was also still there, which would have kept the gate's own proof grep
+      dirty. Now: every count is gone from the file, the header points at the module that holds the
+      list and at the OK line that prints its size, and `grep -nE 'seventeen|forty-two|\b17\b|\b42\b'`
+      over the guard returns nothing. What the header keeps is the only claim that does not change
+      with the count — exactly one accepted payload carries staff markers, /lkpm.
+  - id: 6397-cond-4
+    what: the GUARD adopts walkAppRoutes, so the walks do not become three
+    done: >-
+      Listed here because its absence from this pack was itself a finding: the conditions ran
+      1/2/3/5 and a reader could not tell whether 4 was forgotten or judged out of scope. It is
+      done — the guard imports walkAppRoutes and its private recursive copy is gone, which is what
+      keeps the count at one walk rather than three. The tripwire asserts the import so a private
+      copy reappearing is red.
   - id: 6397-cond-2
     what: the baseline gains a reverse check
     done: >-
@@ -102,8 +115,11 @@ the_conditions:
   - id: cosmetics
     what: the unaccepted-route message and the PR body's file count
     done: >-
-      Unaccepted routes now print with a leading slash (/zz-probe, not zz-probe) — probed. The body
-      says 7 files, which is what the diff contains.
+      Unaccepted routes now print with a leading slash (/zz-probe, not zz-probe) — probed.
+      CORRECTION: this entry previously claimed "the body says 7 files". The body says no such
+      thing — I wrote the claim rather than the body. The diff is 7 code files and 12 with the
+      pack; the PR body states neither, and saying it did was the same species of error as the
+      counts this PR spent its length removing.
 
 constraints:
   - The chunk scan's behaviour does not change. Same 506 chunks, 0 skipped, same accepted public files.

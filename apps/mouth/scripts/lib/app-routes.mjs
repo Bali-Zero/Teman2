@@ -20,6 +20,11 @@
 //   @slot        a parallel-route slot — NOT a group, NOT a segment
 //   (..)name     an intercepting-route marker — also neither
 //   page.*       what makes a directory an actual route
+//   _folder      a PRIVATE folder, excluded from routing by Next — NOT modelled here;
+//                this walk would report it as a route. None exists under (workspace)
+//                today. Raised by a seat and declared rather than implemented, because
+//                over-reporting can only name a route no manifest contains, while
+//                changing the walk's behaviour was outside this PR's one authorised push.
 
 import nodeFs from "node:fs";
 import nodePath from "node:path";

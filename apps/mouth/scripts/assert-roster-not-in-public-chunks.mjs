@@ -53,8 +53,10 @@
 // this comment got that wrong by describing it as a future risk.
 //
 // MEASURED, and the count is NOT repeated here on purpose. It was written into this
-// comment twice and was wrong both times — five, then seventeen — because each number
-// came from an enumeration narrower than the thing it counted. The list now lives in
+// comment twice and was wrong both times, because each number came from an enumeration
+// narrower than the thing it counted. Naming those wrong numbers here would be a third
+// and a fourth count in the same comment, which is the defect and not the lesson. The
+// list now lives in
 // scripts/lib/prerendered-workspace-baseline.mjs, derived by scripts/lib/app-routes.mjs,
 // and the OK line below prints how many are accepted. A number in prose goes stale in
 // silence; a number the build prints cannot.
@@ -69,8 +71,10 @@
 //
 // THE BOUNDARY IS NOW A FLOOR, not just a paragraph. `.next/prerender-manifest.json`
 // is the mechanical test — if a `(workspace)` route is in it, its payload is a file —
-// and the check below enforces a BASELINE rather than a blanket rule: the seventeen
-// already-static routes are accepted with their measurement, and a NEW one fails.
+// and the check below enforces a BASELINE rather than a blanket rule: the routes that
+// are ALREADY static are accepted with their measurement — the list is in
+// scripts/lib/prerendered-workspace-baseline.mjs and its size is printed by the OK
+// line below — and a NEW one fails.
 // Asserting the blanket rule would fail every build today over an exposure that is
 // already escalated and owner-held, which teaches people to bypass the guard rather
 // than fixing anything. A route that becomes static tomorrow is a different matter:
@@ -173,8 +177,17 @@ if (all.length === 0) {
   process.exit(1);
 }
 
+// Reported by the OK line at the end, so the number it prints is MEASURED rather than
+// asserted — it used to read "0 unaccepted" as a literal, which is a claim about a run
+// that had not happened when the string was written. Declared HERE, at module scope:
+// the first attempt put it inside the block below, where the OK line cannot see it, and
+// the build failed with ReferenceError while a grep for the OK line simply showed
+// nothing — an absent line reading exactly like a pass, which is this mandate's oldest
+// lesson and was worth learning once more.
+let unacceptedCount = 0;
+
 // THE PRERENDER BASELINE. Derived from the filesystem, never from a list of names —
-// that is exactly how C4c's "five" happened.
+// that is exactly how the earlier hardcoded counts happened.
 {
   const WS_DIR = path.join("src", "app", "(workspace)");
   const MANIFEST = path.join(".next", "prerender-manifest.json");
@@ -238,6 +251,7 @@ if (all.length === 0) {
       );
     }
 
+    unacceptedCount = unaccepted.length;
     if (unaccepted.length > 0) {
       console.error(
         `ROSTER_CHUNK_ASSERT FAILED: ${unaccepted.length} (workspace) route(s) are now ` +
@@ -354,5 +368,5 @@ console.log(
     // not show it had run at all — the imperator went looking for a line that did not
     // exist. A check nobody can see is indistinguishable from a check nobody ran.
     `Prerender baseline: ${ACCEPTED_PRERENDERED_WORKSPACE_ROUTES.length} (workspace) ` +
-    `route(s) accepted as already static, 0 unaccepted.`,
+    `route(s) accepted as already static, ${unacceptedCount} unaccepted.`,
 );
