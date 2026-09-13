@@ -389,6 +389,14 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/bank_deposit": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/family": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/merit": ("SUPPORTED_CANDIDATES", ("C2",)),
+    # PR-D4c-2 (owner ruling SHWEB-20260911): the currency-bound
+    # `investment.investment_amount_usd` fact, asked only on the
+    # `merit`/`family`/`undecided` vehicles (`pt_pma` untouched — E28A's IDR-
+    # bound rules). An explicit USD answer is a silent extra fact under the
+    # pack signed today (no rule reads it yet — seq-22, unsigned): this walk
+    # answers exactly like its unmodified `merit` sibling above, C2, off the
+    # same `family.sponsor_confirmed == true` default.
+    "offshore/invest/merit/currency_usd": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2",)),
     # PR-D4d (seq-21 corpus prep, unsigned — activation caveat in the PR
@@ -400,6 +408,18 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     # and the walk answers exactly like its `pt_pma` sibling: C2.
     "offshore/invest/pt_pma/sponsor_government": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/undecided": ("SUPPORTED_CANDIDATES", ("C2",)),
+    # PR-D4c-2: the "I can't say yet" currency answer — the walk measuring
+    # this PR's zero-review-cost claim (see the PR body's NOT_CERTAIN proof;
+    # this census does not carry disclosure flags at all, bound 1 above, so
+    # it cannot witness that claim itself — only that the ENGINE-level
+    # verdict does not move). Neither amount fact is ever populated
+    # (`still_unsure` asks no further question), and this branch's
+    # verdict is decided by `family.sponsor_confirmed` alone, unaffected:
+    # C2, same as its unmodified `undecided` sibling above.
+    "offshore/invest/undecided/currency_still_unsure": (
+        "SUPPORTED_CANDIDATES",
+        ("C2",),
+    ),
     # C1 gate (PR-D3): below-threshold walks for D3-1's re-route. Owner
     # ruling 2026-09-13 CLOSED the twin-base dead end this pattern first
     # produced (see WALK_DEAD_END_ALLOWLIST above) — `fact-mapper.ts` now
@@ -743,12 +763,12 @@ def outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return _evaluate_walks(walks)
 
 
-def test_corpus_is_the_82_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_corpus_is_the_84_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
     43 before PR-3, 61 before PR-5, 67 before PR-D3, 78 before D4a, 76 before
-    PR-D4d. PR-5's 6 new walks are the 5 offshore `retirement` bases plus the
+    PR-D4d, 82 before PR-D4c-2. PR-5's 6 new walks are the 5 offshore `retirement` bases plus the
     onshore neutral `retirement` walk, each replayed with `birth_date`
     overridden to `RETIREMENT_AGE_64_BIRTH_DATE` (age 64 on `CORPUS_TODAY`)
     instead of the corpus-wide default 25 — the generator's own age
@@ -778,9 +798,24 @@ def test_corpus_is_the_82_real_interview_walks(walks: dict[str, dict[str, Any]])
     `sponsor_category` for the first time, so their wire `sponsor.type`
     moves UNKNOWN(NOT_ASKED) -> KNOWN(NONE) — a byte change with no state
     change, verified by `test_every_walk_ends_in_its_pinned_outcome` staying
-    green on their unmoved EXPECTED_OUTCOME entries."""
+    green on their unmoved EXPECTED_OUTCOME entries.
 
-    assert len(walks) == 82, f"expected 82 interview walks, found {len(walks)}"
+    PR-D4c-2 (THIS PR, owner ruling SHWEB-20260911) adds 2: an explicit USD
+    answer (`offshore/invest/merit/currency_usd`) and the explicit "I can't
+    say yet" answer (`offshore/invest/undecided/currency_still_unsure`) for
+    the new currency-bound `investment.investment_amount_usd` fact — corpus
+    grows 82 -> 84. Three more walks change BYTES only, not count or state:
+    `offshore/invest/merit`/`family`/`undecided` (unmodified) now also ask
+    `investment_currency` as their branch's new first question, and its
+    first OPTION is `idr` (tree.ts), so the untouched default answers it and
+    the now-reachable `investment_capital_idr` too — that fact moves
+    UNKNOWN(NOT_ASKED) -> KNOWN(1000000000) on all three, verified by
+    `test_every_walk_ends_in_its_pinned_outcome` staying green on their
+    unmoved EXPECTED_OUTCOME entries. `pt_pma`/`property`/`bank_deposit` are
+    untouched, byte-for-byte — that branch, and the E28A rules that read it,
+    are deliberately out of this PR's scope."""
+
+    assert len(walks) == 84, f"expected 84 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -792,7 +827,7 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_2_dead_ends_15_no_paths_and_65_answers(
+def test_walk_state_census_is_2_dead_ends_15_no_paths_and_67_answers(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
@@ -802,14 +837,24 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_65_answers(
     widening landed; 11/10/22 with PR-2's reorder on top; 0/10/51 over a
     43 → 61 corpus with PR-3's interview; 2/10/55 over a 61 → 67 corpus with
     PR-5's age dimension on top; 2/14/62 over a 67 → 78 corpus with PR-D3
-    (module docstring); 2/15/59 over a 78 → 76 corpus with D4a. PR-D4d (THIS
-    PR) adds 6 new walks, all SUPPORTED_CANDIDATES on the pack signed
-    TODAY (rulepack-prod-020 — none of them exercise a rule that reads
+    (module docstring); 2/15/59 over a 78 → 76 corpus with D4a. PR-D4d adds 6
+    new walks, all SUPPORTED_CANDIDATES on the pack signed TODAY
+    (rulepack-prod-020 — none of them exercise a rule that reads
     `sponsor.type` yet; that is seq-21, unsigned): 2/15/59 -> 2/15/65 over a
     76 -> 82 corpus. No existing walk's STATE moves — the four `other`-tile
     walks whose wire `sponsor.type` changes bytes (see the corpus-count
     test above) keep their pinned (state, candidates) exactly, which is
-    what `test_every_walk_ends_in_its_pinned_outcome` proves. D4a (owner
+    what `test_every_walk_ends_in_its_pinned_outcome` proves.
+
+    PR-D4c-2 (THIS PR) adds 2, both SUPPORTED_CANDIDATES [C2] on the pack
+    signed today (no seq-22 rule reads `investment.investment_amount_usd`
+    yet — the activation dependency stated in this PR's body): the explicit
+    USD answer and the explicit "I can't say yet" answer, both decided by
+    `family.sponsor_confirmed == true` alone, unaffected: 2/15/65 -> 2/15/67
+    over an 82 -> 84 corpus. No existing walk's STATE moves here either —
+    the three `offshore/invest/merit`/`family`/`undecided` walks whose wire
+    `investment.investment_capital_idr` changes bytes (see the corpus-count
+    test above) keep their pinned (state, candidates) exactly. D4a (owner
     ruling SHWEB-20260911) had two parts:
 
     1. The sponsor-status fix: one walk's STATE moves —
@@ -831,8 +876,8 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_65_answers(
        [C1, E31D] — are retired along with the question and hold they
        exercised. Corpus 78 → 76, SUPPORTED_CANDIDATES 61 → 59.
 
-    D4a net over both parts: 2/14/62 → 2/15/59. PR-D4d (THIS PR) adds 6:
-    2/15/59 → 2/15/65."""
+    D4a net over both parts: 2/14/62 → 2/15/59. PR-D4d adds 6: 2/15/59 →
+    2/15/65. PR-D4c-2 (THIS PR) adds 2: 2/15/65 → 2/15/67."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     assert (
@@ -841,7 +886,7 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_65_answers(
         == {
             "NEEDS_INPUT": 2,
             "NO_SUPPORTED_PATH": 15,
-            "SUPPORTED_CANDIDATES": 65,
+            "SUPPORTED_CANDIDATES": 67,
         }
     )
     assert census["NEEDS_INPUT"] == 2

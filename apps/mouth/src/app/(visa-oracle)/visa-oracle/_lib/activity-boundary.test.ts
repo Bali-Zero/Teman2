@@ -431,6 +431,13 @@ describe("ACTIVITY_BOUNDARY — the decision table itself", () => {
       // flow.ts); the engine reads that evidence, never this label.
       retirement_undecided_basis:
         "engine-inert routing label; the evidence carries the fact",
+      // PR-D4c-2: same shape as `secondhome_basis`/`retirement_undecided_basis`
+      // above — this only selects which amount question follows
+      // (`investment_capital_idr` or `investment_amount_usd`,
+      // `getCategoryQuestionIds` in flow.ts); the evidence question itself
+      // carries the fact a rule could ever read, never this label.
+      investment_currency:
+        "engine-inert routing label; the evidence carries the fact",
     };
     for (const question of Object.values(QUESTIONS)) {
       if (question.decisionMapping.kind !== "HUMAN_CONTEXT") continue;

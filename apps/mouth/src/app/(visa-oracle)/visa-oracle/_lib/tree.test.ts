@@ -79,6 +79,20 @@ describe("tree.ts — interview decision boundary", () => {
     });
   });
 
+  // PR-D4c-2 (imperator's ruling): the currency question's "not sure" must
+  // cost ZERO holds. `mapDisclosedReviewFlags` (fact-mapper.ts) raises
+  // NOT_CERTAIN on the exact-equality literal "unsure" — a `notSure: {
+  // mode: "human-review" }` on this question would let the applicant answer
+  // that literal and trip the flag on every walk that uses it, silently
+  // turning the cost from zero into one hold per walk. This guard goes red
+  // the moment someone re-attaches it.
+  it("omits notSure entirely on investment_currency — the mechanism that keeps its 'I can't say yet' answer at zero review cost", () => {
+    expect(QUESTIONS.investment_currency.notSure).toBeUndefined();
+    expect(QUESTIONS.investment_currency.options.map(({ key }) => key)).toEqual(
+      ["idr", "usd", "still_unsure"],
+    );
+  });
+
   // D4a (owner ruling SHWEB-20260911): promoted from HUMAN_CONTEXT/free-text
   // to a closed FACT question — see `mapFamilySponsorStatus` (fact-mapper.ts)
   // for the closed-catalogue trust argument this promotion had to clear.

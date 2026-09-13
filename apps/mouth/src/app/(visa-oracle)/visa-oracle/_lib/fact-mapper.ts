@@ -942,13 +942,21 @@ export function mapOracleFactsToApplicantFacts(
       Number.MAX_SAFE_INTEGER,
     ),
     "investment.proposed_role": enumFact(facts.investment_role, PROPOSED_ROLES),
-    // PR-D4c-1, 2026-09-13: contract-only — the wire key exists so a later
-    // PR (D4c-2) can ask an investment applicant for a USD amount, but no
-    // interview question collects it yet and no rule reads it. Same
-    // NOT_ASKED idiom as every other declared-but-not-yet-interviewed fact
-    // above (`immigration.last_entry_date`, `intent.desired_entry_date`,
-    // `intent.requested_product_code`).
-    "investment.investment_amount_usd": unknownFact(NOT_ASKED),
+    // PR-D4c-2, 2026-09-13: real answer, on the `merit`/`family`/`undecided`
+    // investment-vehicle branches only (`getCategoryQuestionIds`, flow.ts).
+    // `facts.investment_amount_usd` is populated only when
+    // `investment_currency === "usd"` was chosen; every other branch
+    // (including `pt_pma`, deliberately untouched) never asks the question
+    // at all, so `integerFact` resolves the same `UNKNOWN(NOT_ASKED)` this
+    // key always emitted under PR-D4c-1's contract-only placeholder — no
+    // existing walk's wire value moves. No conversion is performed: this is
+    // the literal USD figure the applicant typed, never derived from the
+    // sibling IDR fact or vice versa.
+    "investment.investment_amount_usd": integerFact(
+      facts.investment_amount_usd,
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ),
     "family.relation_to_sponsor": enumFact(
       facts.family_relation,
       FAMILY_RELATIONS,

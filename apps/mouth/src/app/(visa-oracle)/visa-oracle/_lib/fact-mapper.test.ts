@@ -948,6 +948,164 @@ describe("sponsor.type vocabulary — pack ⊆ SPONSOR_TYPES, one direction only
   });
 });
 
+describe("investment.investment_amount_usd — PR-D4c-2, currency-bound amount on the merit/family/undecided branches only", () => {
+  it("stays UNKNOWN(NOT_ASKED) when the branch never asks it — pt_pma is untouched (E28A innocence)", () => {
+    const wire = mapFacts({
+      category: "invest",
+      investment_vehicle: "pt_pma",
+    }).facts;
+    expect(wire["investment.investment_amount_usd"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it("stays UNKNOWN(NOT_ASKED) on the property/bank_deposit Second Home routes too", () => {
+    for (const vehicle of ["property", "bank_deposit"] as const) {
+      const wire = mapFacts({
+        category: "invest",
+        investment_vehicle: vehicle,
+      }).facts;
+      expect(wire["investment.investment_amount_usd"]).toEqual({
+        status: "UNKNOWN",
+        reason: "NOT_ASKED",
+      });
+    }
+  });
+
+  it("resolves KNOWN from investment_amount_usd when usd is the chosen currency", () => {
+    const wire = mapFacts({
+      category: "invest",
+      investment_vehicle: "merit",
+      investment_currency: "usd",
+      investment_amount_usd: "250000",
+    }).facts;
+    expect(wire["investment.investment_amount_usd"]).toEqual({
+      status: "KNOWN",
+      value: 250000,
+    });
+    // No conversion: the sibling IDR fact is never touched by a USD answer.
+    expect(wire["investment.investment_capital_idr"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it("resolves KNOWN from the EXISTING investment_capital_idr question when idr is chosen — reused, not duplicated", () => {
+    const wire = mapFacts({
+      category: "invest",
+      investment_vehicle: "family",
+      investment_currency: "idr",
+      investment_capital_idr: "5000000000",
+    }).facts;
+    expect(wire["investment.investment_capital_idr"]).toEqual({
+      status: "KNOWN",
+      value: 5_000_000_000,
+    });
+    // No conversion: the sibling USD fact is never touched by an IDR answer.
+    expect(wire["investment.investment_amount_usd"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it("emits NEITHER amount fact on the 'I can't say yet' answer — the honest UNKNOWN state", () => {
+    const wire = mapFacts({
+      category: "invest",
+      investment_vehicle: "undecided",
+      investment_currency: "still_unsure",
+    }).facts;
+    expect(wire["investment.investment_amount_usd"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+    expect(wire["investment.investment_capital_idr"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it("the 'I can't say yet' answer costs zero review holds — its value is never the literal \"unsure\"", () => {
+    // fact-mapper.ts's NOT_CERTAIN scan (`mapDisclosedReviewFlags`) is an
+    // EXACT-equality `Object.values(facts).includes("unsure")` — proven
+    // directly here: `"still_unsure" !== "unsure"`, so it cannot match.
+    expect(
+      mapDisclosedReviewFlags({
+        category: "invest",
+        investment_vehicle: "undecided",
+        investment_currency: "still_unsure",
+      }),
+    ).not.toContain("NOT_CERTAIN");
+  });
+});
+
+describe("investment.investment_amount_usd vocabulary — one-directional pin (PR-D4c-2, models PR-D4d's sponsor.type pin)", () => {
+  const PACKS_DIR = path.resolve(
+    REPO_ROOT,
+    "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+  );
+
+  function productionPackFiles(): string[] {
+    const files = fs
+      .readdirSync(PACKS_DIR)
+      .filter((name) => /^rulepack-prod-\d+\.source\.json$/.test(name))
+      .map((name) => path.join(PACKS_DIR, name));
+    if (files.length === 0) {
+      throw new Error(`no production packs found under ${PACKS_DIR}`);
+    }
+    return files;
+  }
+
+  /** Every numeric comparator value any production pack on disk compares
+   * `investment.investment_amount_usd` against, whichever operator a future
+   * seq-22 rule uses (`gte`/`lte`/`gt`/`lt`/`eq`) — all of them carry the
+   * threshold as a bare `value` beside the `fact` key. */
+  function investmentAmountUsdThresholds(file: string): number[] {
+    const values: number[] = [];
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) {
+        node.forEach(walk);
+        return;
+      }
+      if (node === null || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (
+        record.fact === "investment.investment_amount_usd" &&
+        typeof record.value === "number"
+      ) {
+        values.push(record.value);
+      }
+      Object.values(record).forEach(walk);
+    };
+    walk(JSON.parse(fs.readFileSync(file, "utf-8")));
+    return values;
+  }
+
+  /**
+   * ONE direction only, same posture as PR-D4d's sponsor.type pin above: a
+   * future PACK VALUE the UI has no way to ever send is what makes a rule
+   * unreachable through the funnel, however the pack itself reads — that is
+   * the failure this guards against. A bidirectional deep-equal would be RED
+   * TODAY, because no seq-22 rule reads this fact in any pack on disk yet
+   * (the activation dependency stated in this PR's body) — the pack-side set
+   * is empty by design, not by omission.
+   */
+  it("every investment.investment_amount_usd threshold any production pack compares against is inside the UI's own numberInput bounds", () => {
+    const { min, max, step } = QUESTIONS.investment_amount_usd.numberInput!;
+    const thresholds = productionPackFiles().flatMap((file) =>
+      investmentAmountUsdThresholds(file),
+    );
+    const unreachable = thresholds.filter(
+      (value) =>
+        !Number.isInteger(value) ||
+        value < min ||
+        value > max ||
+        (value - min) % step !== 0,
+    );
+    expect(unreachable).toEqual([]);
+  });
+});
+
 describe("mapPurposes — category -> intent.purposes", () => {
   it("maps every tile with a clean VisaPurpose match", () => {
     for (const [tile, purpose] of Object.entries(CATEGORY_TO_PURPOSE)) {
