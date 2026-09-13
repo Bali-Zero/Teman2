@@ -14,6 +14,15 @@ spend:
     suites in one process, provisioning precheck, round 3, this pack). Hops 1 of 3.
   adversarial_rounds: 3
   tokens: 1400000
+appetite_exceeded: >-
+  adversarial_rounds 3 against 2 declared: Codex round 1 rolled over its
+  context with no verdict, so a narrowed round 2 was needed to obtain one, and
+  round 3 verified the round-2 cure (fix-of-a-fix depth 1, the last allowed).
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro replaced kimi-code/k3 (HTTP 403 monthly limit) and
+  tp1-qwen3.8-max (HTTP 429 until 2026-09-18T08:39Z), both as observed and
+  stated in the B2.4 mandate from the imperator; codex-gpt-5.6-sol played as
+  titolare in all three rounds.
 result: >-
   SHIP PR-1, inert on Fly. The Pro daemon now carries the I26 support judge
   (unchanged RUBRIC, three concurrent repetitions, strict majority, split =
@@ -163,10 +172,22 @@ adversarial:
       fix-of-a-fix (depth 1): role == user and at least one character outside
       Unicode categories Z/C. No further round on this surface; the gate reads it.
 dissent:
-  - seat: agy-gemini-3.1-pro
-    status: REFUTED
-    objection: "BLOCK on four findings (import reach, surrogate crash, cap bytes, non-positive budget)"
-    disposition: "each refuted by a measurement or a line on disk, listed under adversarial round 1; no code changed for them"
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "round 2: history=[] reached the judge as query='' and could be ruled on context alone"
+    disposition: "cured in 025fc275e1; guilt = the empty-history parser and daemon cases"
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "round 3: a query of only U+200B/U+FEFF passes str.strip() and the real builder emits it"
+    disposition: "cured in 9a1f32406e; guilt = reverting the rule turns the builder-built cases red"
+  - seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    objection: "round 3 (seat marked UNSURE): a non-user last turn was read as the question; the real builder cannot produce it"
+    disposition: "cured anyway in 9a1f32406e (role == user), cheap and fail-closed"
+dissent_note: >-
+  The agy-gemini-3.1-pro round-1 BLOCK is not listed: each of its four findings
+  was refuted on disk (adversarial round 1), and the seat never retracted, so
+  neither CONFIRMED, PLAUSIBLE nor RETRACTED describes it honestly.
 vulnerabilities:
   - id: V1-no-ollama-fallback-on-daemon-path
     severity: declared-and-accepted
