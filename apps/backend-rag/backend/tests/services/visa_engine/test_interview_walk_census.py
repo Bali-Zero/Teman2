@@ -173,7 +173,8 @@ applicant_meets``):
      invisibly"; both stopped being true when the disclosure-flag layer
      landed. ``test_guilt_a_walk_that_gains_a_flag_is_caught`` and
      ``test_guilt_a_walk_that_loses_its_flag_is_caught`` are what stopped it
-     (council round 4, codex-gpt-5.6-sol, on exactly this contradiction).
+     (council round 4, ``council/codex-round4.txt``, on exactly this
+     contradiction).
      The ``work_role`` episode the old text cited remains the reason the
      layer exists at all.
 
@@ -190,7 +191,7 @@ W-VO-E moved both columns by the same +9/+1 shape — +9
 SUPPORTED_CANDIDATES and +1 HUMAN_REVIEW_REQUIRED, i.e. ENGINE 67/15/2/0 ->
 76/15/2/1 and FUNNEL 60/15/1/8 -> 69/15/1/9 (an earlier draft of this
 sentence said "+9/-1", which sums to eight walks, not ten — council round 6,
-agy-gemini-3.1-pro): nine of its ten new walks answer at both levels, and
+``council/agy-gemini-3.1-pro-round6.txt``): nine of its ten new walks answer at both levels, and
 the tenth — the minor — is the single ENGINE hold. The FUNNEL column keeps its 8 flag-driven holds and gains
 that same one: no new walk raises a disclosure flag (the per-flag table
 below is unchanged from the 84-walk corpus, measured, not derived).
@@ -439,7 +440,7 @@ WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
 #: hid A1/B1 (stay-day bounds), E28A (both capital bounds) and E31E (age).
 #: The twelfth is below.
 #: The excuse is STRUCTURED, not prose, on the first council round's finding
-#: (codex-gpt-5.6-sol, `council/codex-round1.txt`): a row that only carried a
+#: (council round 1, `council/codex-round1.txt`): a row that only carried a
 #: sentence would go on silencing this product even if a FUTURE pack gave it a
 #: SUPPORT route that does not read the forbidden fact at all. Naming the fact
 #: lets `test_every_ruled_unreachable_product_still_depends_on_its_forbidden_fact`
@@ -1149,7 +1150,7 @@ def _support_rules_by_product() -> dict[str, tuple[Any, ...]]:
     exists to close is precisely the one nobody remembered to look for.
 
     Compiled and effective-filtered rather than read off the raw JSON, on
-    the first council round's finding (codex-gpt-5.6-sol, 2026-09-13,
+    the first council round's finding (council round 1, 2026-09-13,
     ``council/codex-round1.txt``). Scanning ``product_version_ids`` in the
     payload gets BOTH directions wrong the moment a pack stops looking like
     today's:
@@ -1245,7 +1246,7 @@ def _proves_it_cannot_fire_without(condition: Any, fact: str) -> bool:
 
     One-directional on purpose, and the name says which direction: ``True``
     means proven, ``False`` means NOT PROVEN by this analysis — never "proven
-    reachable". Council round 3 (codex-gpt-5.6-sol) rejected the earlier name
+    reachable". Council round 3 (``council/codex-round3.txt``) rejected the earlier name
     (``_condition_cannot_fire_without``) for exactly that confusion: it read
     as a decision procedure, and the caller then turned "my conservative
     analysis could not prove it" into "this route is reachable, delete the
@@ -1253,7 +1254,7 @@ def _proves_it_cannot_fire_without(condition: Any, fact: str) -> bool:
     demands re-justification, not a silent pass — but it must not be reported
     as a proof of the opposite.
 
-    Council round 2 (codex-gpt-5.6-sol, ``council/codex-round2.txt``) showed
+    Council round 2 (``council/codex-round2.txt``) showed
     why membership in ``CompiledRule.required_facts`` is not this property:
     that set is SYNTACTIC — every fact the AST mentions — so a rule shaped
     ``any(eq(requested_product_code, "BRIDGING"), intersects(purposes, OTHER))``
@@ -2288,7 +2289,7 @@ def test_every_ruled_unreachable_product_still_depends_on_its_forbidden_fact() -
     on something the interview does collect, the product becomes reachable —
     and the guard above would stay green anyway, because the excuse subtracts
     the code unconditionally. This test is what turns that into a red (council
-    round 1, codex-gpt-5.6-sol).
+    round 1, ``council/codex-round1.txt``).
 
     The analysis is conservative (council round 3): it proves dependency, it
     never proves the absence of one, so a red here means "re-justify", not
