@@ -585,6 +585,7 @@ class TestPortalChallengeEndpoint:
         mock_db_pool._mock_conn.fetch = AsyncMock(
             side_effect=[roster_rows, activity_rows, recent_rows]
         )
+        mock_db_pool._mock_conn.fetchval = AsyncMock(return_value=20)
 
         client = self._make_client(mock_current_user, mock_db_pool)
         resp = client.get("/api/dashboard/portal-challenge")
@@ -632,3 +633,44 @@ class TestPortalChallengeEndpoint:
         entries = resp.json()["entries"]
         assert len(entries) == 1
         assert entries[0]["is_me"] is True
+
+    def test_team_total_activations_is_the_distinct_query_not_a_sum(
+        self, mock_current_user, mock_db_pool
+    ):
+        """A client activated via two rows credited to two different staff
+        members legitimately counts once for EACH creator's own tally, but
+        must count once — not twice — for the team total. Proven here by
+        mocking the dedicated distinct-count query to a value LOWER than
+        sum(activations) across the two creators and asserting the response
+        reports that mocked value, never the naive sum (17)."""
+        roster_rows = [
+            {
+                "email": "a@balizero.com",
+                "display_name": "A",
+                "department": "setup",
+                "role": "member",
+                "active": True,
+            },
+            {
+                "email": "b@balizero.com",
+                "display_name": "B",
+                "department": "setup",
+                "role": "member",
+                "active": True,
+            },
+        ]
+        activity_rows = [
+            {"creator_email": "a@balizero.com", "activations": 10, "invited": 10, "last_activation_at": None},
+            {"creator_email": "b@balizero.com", "activations": 7, "invited": 7, "last_activation_at": None},
+        ]
+        mock_db_pool._mock_conn.fetch = AsyncMock(side_effect=[roster_rows, activity_rows, []])
+        # sum(activations) would be 17; the real distinct-client count (one
+        # client shared by both creators) is 16 — the value this mock proves
+        # the endpoint actually uses.
+        mock_db_pool._mock_conn.fetchval = AsyncMock(return_value=16)
+
+        client = self._make_client(mock_current_user, mock_db_pool)
+        resp = client.get("/api/dashboard/portal-challenge")
+
+        assert resp.status_code == 200
+        assert resp.json()["team_total_activations"] == 16

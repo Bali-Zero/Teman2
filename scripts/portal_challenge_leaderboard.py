@@ -41,6 +41,7 @@ from backend.services.portal.challenge_leaderboard import (  # noqa: E402
     AwardedEntry,
     build_aggregates_sql,
     build_recent_activations_sql,
+    build_team_total_activations_sql,
     compute_awards,
     compute_status,
     merge_roster_and_activity,
@@ -103,6 +104,14 @@ def fetch_recent_activations() -> list[dict[str, str]]:
     return _run_sql(build_recent_activations_sql(), _RECENT_COLUMNS)
 
 
+def fetch_team_total_activations() -> int:
+    """DISTINCT client_id across the whole window — NOT sum(activations)
+    across members, which would double-count a client credited to two
+    different creators. Same query the endpoint uses."""
+    rows = _run_sql(build_team_total_activations_sql(), ["team_total_activations"])
+    return _parse_int(rows[0]["team_total_activations"]) if rows else 0
+
+
 def render_table(awarded: list[AwardedEntry], markdown: bool) -> str:
     headers = [
         "rank",
@@ -155,10 +164,12 @@ def main(argv: list[str] | None = None) -> int:
     members = fetch_members()
     awarded = compute_awards(members)
     status = compute_status(datetime.now(WINDOW_START.tzinfo))
+    team_total = fetch_team_total_activations()
 
     sys.stdout.write(
         f"Window: {WINDOW_START.isoformat()} -> {WINDOW_END.isoformat()} "
-        f"(status: {status})\n\n"
+        f"(status: {status})\n"
+        f"Team total activations (distinct clients): {team_total}\n\n"
     )
     sys.stdout.write(render_table(awarded, markdown=args.markdown) + "\n")
     return 0

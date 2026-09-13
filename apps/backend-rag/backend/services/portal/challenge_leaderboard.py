@@ -142,6 +142,11 @@ ORDER BY used_at DESC
 LIMIT 10;
 """.strip()
 
+_TEAM_TOTAL_SELECT = """
+SELECT COUNT(DISTINCT client_id) AS team_total_activations
+FROM window_activations;
+""".strip()
+
 ROSTER_SQL = """
 SELECT lower(email) AS email, name AS display_name, department, role, active
 FROM team_members
@@ -170,6 +175,17 @@ def build_recent_activations_sql() -> str:
     """Last 10 activation events in the window, most recent first. No client data."""
     start_ts, end_ts = _window_ts()
     return (_SHARED_CTES + "\n" + _RECENT_ACTIVATIONS_SELECT).format(start_ts=start_ts, end_ts=end_ts)
+
+
+def build_team_total_activations_sql() -> str:
+    """DISTINCT client_id across the WHOLE window, not a sum of per-creator
+    counts. A client whose two different invitation rows both got used_at
+    inside the window, credited to two different staff members, correctly
+    adds 1 to EACH creator's own `activations` (see `build_aggregates_sql`'s
+    per-creator GROUP BY) but must add only 1 to the team total — summing
+    `activations` across creators would double-count that client."""
+    start_ts, end_ts = _window_ts()
+    return (_SHARED_CTES + "\n" + _TEAM_TOTAL_SELECT).format(start_ts=start_ts, end_ts=end_ts)
 
 
 # ── Pure scoring ─────────────────────────────────────────────────────────

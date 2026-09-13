@@ -902,6 +902,7 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
         WINDOW_START,
         build_aggregates_sql,
         build_recent_activations_sql,
+        build_team_total_activations_sql,
         compute_awards,
         compute_status,
         member_key_from_email,
@@ -910,12 +911,13 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
 
     async with db_pool.acquire() as conn:
         # Sequential on ONE connection, not gathered: asyncpg forbids
-        # concurrent operations on a single connection. All three queries hit
+        # concurrent operations on a single connection. All four queries hit
         # small/indexed tables and this whole payload sits behind the 30s
-        # cache above, so 3 round trips per cache-miss is cheap.
+        # cache above, so 4 round trips per cache-miss is cheap.
         roster_records = await conn.fetch(ROSTER_SQL)
         activity_records = await conn.fetch(build_aggregates_sql())
         recent_records = await conn.fetch(build_recent_activations_sql())
+        team_total_activations = await conn.fetchval(build_team_total_activations_sql()) or 0
 
     members = merge_roster_and_activity(
         [dict(r) for r in roster_records], [dict(r) for r in activity_records]
@@ -936,7 +938,11 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
             "best_tax_fallback_idr": TAX_FALLBACK_BONUS_IDR,
             "best_tax_fallback_threshold": TAX_FALLBACK_THRESHOLD,
         },
-        "team_total_activations": sum(e.activations for e in awarded),
+        # DISTINCT client_id across the whole window, not sum(e.activations) —
+        # a client activated via two rows credited to two different creators
+        # would otherwise be double-counted here (each creator legitimately
+        # counts it once for their own tally).
+        "team_total_activations": int(team_total_activations),
         "entries": [
             {
                 "email": e.email,

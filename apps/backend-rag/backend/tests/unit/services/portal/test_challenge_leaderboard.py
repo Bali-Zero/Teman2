@@ -17,6 +17,7 @@ from backend.services.portal.challenge_leaderboard import (
     MemberActivations,
     build_aggregates_sql,
     build_recent_activations_sql,
+    build_team_total_activations_sql,
     compute_awards,
     compute_status,
     member_key_from_email,
@@ -254,3 +255,14 @@ class TestSqlBuilders:
         sql = build_recent_activations_sql()
         assert "2026-09-14" in sql
         assert "2026-09-30" in sql
+
+    def test_team_total_sql_counts_distinct_client_id_not_a_per_creator_sum(self):
+        sql = build_team_total_activations_sql()
+        assert "2026-09-14" in sql
+        assert "2026-09-30" in sql
+        assert "COUNT(DISTINCT client_id)" in sql
+        assert "FROM window_activations" in sql
+        # Must NOT group by creator — a per-creator GROUP BY here would just
+        # reproduce build_aggregates_sql()'s per-creator counts, which is
+        # exactly the double-counting shape this query exists to avoid.
+        assert "GROUP BY" not in sql
