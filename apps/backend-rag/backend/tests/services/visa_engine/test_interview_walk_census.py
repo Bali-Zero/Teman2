@@ -147,13 +147,13 @@ HUMAN_REVIEW_REQUIRED             0        8
 Per flag — ``test_every_disclosure_flag_reports_the_walks_it_rewrites``
 prints this table on every run:
 
-=================  ========  =========================================
+=================  ========  ==================================================
 flag               rewrites  from-state -> to-state
-=================  ========  =========================================
-ACTIVITY_BOUNDARY         6  SUPPORTED_CANDIDATES -> HUMAN_REVIEW (×6)
-NOT_CERTAIN               2  SUPPORTED_CANDIDATES -> HUMAN_REVIEW (×1)
-                             NEEDS_INPUT -> HUMAN_REVIEW (×1)
-=================  ========  =========================================
+=================  ========  ==================================================
+ACTIVITY_BOUNDARY         6  SUPPORTED_CANDIDATES -> HUMAN_REVIEW_REQUIRED (×6)
+NOT_CERTAIN               2  SUPPORTED_CANDIDATES -> HUMAN_REVIEW_REQUIRED (×1)
+                             NEEDS_INPUT -> HUMAN_REVIEW_REQUIRED (×1)
+=================  ========  ==================================================
 
 The other nine flags in ``DisclosedReviewFlag`` rewrite ZERO walks: no
 corpus walk answers ``trip_scope = "multiple"`` (``MULTI_PURPOSE_TRIP``),
