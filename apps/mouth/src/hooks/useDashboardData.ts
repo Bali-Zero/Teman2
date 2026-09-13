@@ -19,6 +19,7 @@ const DASHBOARD_QUERY_ROOTS = new Set([
   "compliance-radar",
   "team-stats",
   "role-metrics",
+  "portal-challenge",
 ]);
 
 export const dashboardQueryKey = (identity: string) =>

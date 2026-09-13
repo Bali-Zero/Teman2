@@ -1,0 +1,105 @@
+task: >-
+  A predominant, interactive "Portal Champion" live leaderboard hero widget at the top of the
+  kita.balizero.com staff dashboard, in the R19 (concept-F) design language, for the 14-29 Sept
+  2026 (WITA) client-portal-registration challenge. Reads GET /api/dashboard/portal-challenge,
+  a backend contract being built in parallel by another session and NOT deployed yet — the
+  widget degrades to a quiet placeholder rather than an error banner or a crash until that
+  endpoint ships (Bites line below names the two consumers separately for that reason).
+  R19 is page-local, copied idiom from apps/mouth/src/app/(workspace)/garuda-voa/r19.tsx (PR
+  #6411) and apps/mouth/src/app/portal/(authenticated)/page.tsx (PR #6373), scoped to a new
+  apps/mouth/src/app/(workspace)/dashboard/r19.tsx rather than touching the shared
+  [data-product="my"] theme block.
+lane: frontend/kita-portal-challenge-widget
+machine: air-m5
+date: 2026-09-14
+
+gear: 3
+gear_reason: >-
+  Deterministic floor from `git diff --cached --numstat` against this worktree's branch point
+  (HEAD b8162521, before any origin/main drift from unrelated concurrent PRs): 1185 net lines
+  across 8 files (547 PortalChallengeWidget.tsx, 277 PortalChallengeWidget.test.tsx, 150
+  r19.tsx, 101 r19.test.tsx, 67 dashboard.api.ts additions, 38 usePortalChallenge.ts, 4
+  page.tsx, 1 useDashboardData.ts) — above the ~400 net line PR-contract guideline. The
+  mandate's own UI requirement list (countdown, 3-tier podium, is_me card with progress bar,
+  tax strip with two branches, collapsible full ranking, live feed, rules drawer, loading/
+  error/empty states) does not fit in Gear 2 without cutting a required surface, so this brief
+  declares Gear 3 rather than under-scoping the widget to hit a smaller number. No hot-zone
+  path — everything is under apps/mouth/, confined to the dashboard folder plus two shared
+  files each touched by one line/one export.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    All 22 new tests (PortalChallengeWidget.test.tsx: podium holder/empty-with-gap, is_me card
+    with progress bar and placeholder-when-absent, tax strip's three branches (super bonus /
+    fallback / not-yet-eligible), empty/zero state, 404-or-error quiet placeholder, loading
+    skeleton, ranking-list expand/collapse, rules drawer open/close, countdown math,
+    relative-time formatting; r19.test.tsx: the widget's own no-red scanner) pass, plus the 31
+    pre-existing tests in the same directory/hook stay green (no regression).
+    probe: >-
+      cd apps/mouth && npx vitest run "src/app/(workspace)/dashboard/" \
+      "src/hooks/useDashboardData.test.tsx"
+    result: "53 tests passed (6 files, plus a follow-up 43/5 run after the temp-export revert
+      below) — verified in this turn, see conversation."
+  A2: >-
+    `npx tsc --noEmit -p tsconfig.json` exits clean (0 errors) for the whole apps/mouth
+    project with the new files included.
+    probe: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+    result: "Exit 0, no output — verified in this turn."
+  A3: >-
+    The widget renders correctly against the documented contract shape at both 1440px
+    (desktop) and 390px (mobile) under `next dev --webpack` with a temporary, non-committed
+    preview harness (apps/mouth/src/app/dev-preview-portal-challenge/page.tsx, deleted before
+    commit) that composed the SAME subcomponents the shipped widget uses (temporarily exported,
+    reverted to file-identical with the pre-export version before committing — diff verified
+    empty). Screenshots taken with Playwright and read back to confirm the R19 hairline/copper/
+    Fraunces-serif-numeral idiom, no green/blue/purple, no emoji, no forbidden phrases.
+    probe: >-
+      manual — screenshots at
+      /private/tmp/claude-501/-Users-balizero-nuzantara/2966fe01-8277-40f4-addf-8988d00e56f7/scratchpad/widget-1440.png,
+      widget-390.png, widget-drawer.png (rules drawer open state)
+    result: "Reviewed visually in this turn; iterated once (fixed an internally-inconsistent
+      mock fixture where a non-podium entry had more activations than the podium threshold)."
+
+out_of_scope: >-
+  The backend endpoint itself (GET /api/dashboard/portal-challenge) — built in parallel by
+  another session, not deployed as of this PR. Arming, merging or deploying this PR — the
+  orchestrator sequences it after the backend endpoint ships (explicit instruction from the
+  team lead's mandate). Live kita.balizero.com proof (blocked on the same deploy). Applying the
+  R19 forest/slate/copper hue values to kita's theme layer generally — kita reads the daylight
+  AA steps through the same token names, same caveat as garuda-voa's r19.tsx. A shared/reusable
+  R19 primitives package — this is the third page-local copy (portal, garuda-voa, dashboard);
+  extracting a shared module is a separate, cross-cutting decision this PR does not make.
+
+assumptions:
+  - text: >-
+      Podium-tier assignment is computed by the backend and delivered pre-resolved per entry
+      via `award_tier` (only entries actually on the podium carry a non-null value) — the
+      widget does not re-derive who "should" hold a tier from `rank` + `activations` alone. The
+      "how many are missing for the leader" figure for an unclaimed tier is computed
+      client-side as `threshold - max(activations among entries with award_tier === null)`,
+      since the contract does not name a field for this.
+    status: unverified
+    probe: >-
+      Confirm with the backend session (challenge-api) that award_tier is only ever set for
+      the top-3-by-rank entries whose activations clear their tier's threshold, and never for
+      a non-podium entry whose activations happen to exceed a threshold in isolation.
+  - text: >-
+      The Tim Tax strip reads `is_tax` per entry and computes which of the two bonus branches
+      is active from `award_tier`/`activations` client-side (podium-super-bonus branch if any
+      is_tax entry has a non-null award_tier, else the best is_tax entry's activations against
+      `best_tax_fallback_threshold`) rather than the backend naming an explicit
+      "active_bonus" field.
+    status: unverified
+    probe: >-
+      Confirm with the backend session whether a future contract revision adds an explicit
+      tax-bonus-branch field, which would let the widget stop re-deriving it.
+  - text: >-
+      "Aktivasi" in the UI copy and the widget's own naming means exactly what the mandate
+      defines (client registered AND logged in with PIN) — the widget trusts `activations` as
+      already filtered to that definition server-side and does not re-validate it.
+    status: verified
+    probe: n/a — restates the mandate's own stated rule, not a claim requiring an independent probe.

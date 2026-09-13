@@ -36,6 +36,7 @@ import {
   type SystemPulseService,
 } from "@balizero/core";
 import { getComplianceAlerts, getSystemPulse } from "./_lib/opsAdapters";
+import { PortalChallengeWidget } from "./PortalChallengeWidget";
 import { RefreshCw } from "lucide-react";
 
 // ── Category colors ────────────────────────────────────────
@@ -610,6 +611,9 @@ export default function DashboardPage() {
     <DashboardErrorBoundary>
       <div className="relative">
         <div className="p-2.5 space-y-2">
+          {/* ROW 0: Portal Champion challenge — predominant, above everything else */}
+          <PortalChallengeWidget identity={authIdentity} />
+
           {/* ROW 1: Zantara AI link */}
           <a
             href="https://zantara.balizero.com/chat"
