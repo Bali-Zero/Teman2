@@ -1,0 +1,9 @@
+kimi version 0.35.0
+error: failed to run prompt: provider.auth_error: 403 You've reached your monthly usage limit for this billing cycle. Your quota will be refreshed in the next cycle. To continue now, purchase extra usage or upgrade your plan: https://www.kimi.com/membership/subscription?tab=quota
+See log: /Users/nuzantara/.kimi-code/logs/kimi-code.log
+
+--- recorded, not retried ---
+kimi-code/k3 refused with provider.auth_error 403 "monthly usage limit for this billing cycle".
+That is a SEAT failure, not a review: no verdict was produced and none is claimed. The second-reader
+lane was filled by tp1-qwen3.8-max instead, which is in the allowed council set. Logged here so the
+journal's ok:false line has something a reader can check.
