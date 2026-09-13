@@ -104,6 +104,69 @@ test.describe("KBLI sector off-canvas page Page", () => {
     await expect(sheet).toBeVisible();
   });
 
+  test("closing after a section hop lands on /kbli, not on the previous sector", async ({
+    page,
+  }) => {
+    // The defect this suite did not cover: every strip hop pushes its own
+    // history entry, so a close that pops a fixed number lands the visitor
+    // back INSIDE the panel, one section behind.
+    await gotoKbli(page);
+    await page.locator('a[href="/kbli/sectors/A"]').first().click();
+    const sheet = page.getByTestId(panel);
+    await expect(sheet).toBeVisible();
+
+    await sheet.getByTestId("kbli-panel-next").click();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/B$/);
+    await expect(sheet).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(page).toHaveURL(/\/kbli$/);
+  });
+
+  test("closing after two hops and a drill-down still lands on /kbli", async ({
+    page,
+  }) => {
+    await gotoKbli(page);
+    await page.locator('a[href="/kbli/sectors/A"]').first().click();
+    const sheet = page.getByTestId(panel);
+    await sheet.getByTestId("kbli-panel-next").click();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/B$/);
+    await sheet.getByTestId("kbli-panel-next").click();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/C$/);
+
+    await sheet
+      .locator('[data-testid="kbli-panel-code-grid"] a')
+      .first()
+      .click();
+    await expect(sheet.getByTestId("kbli-panel-code-detail")).toBeVisible();
+
+    await page.getByRole("button", { name: "Close sector panel" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(page).toHaveURL(/\/kbli$/);
+  });
+
+  test("a hop then browser Back does not make close over-shoot past /kbli", async ({
+    page,
+  }) => {
+    // The other half of the same arithmetic, and the reason the count is read
+    // back off the history entry instead of only being incremented: after a
+    // Back the visitor is one entry from /kbli again, so close must pop one.
+    await gotoKbli(page);
+    await page.locator('a[href="/kbli/sectors/A"]').first().click();
+    const sheet = page.getByTestId(panel);
+    await sheet.getByTestId("kbli-panel-next").click();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/B$/);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/A$/);
+    await expect(sheet).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(page).toHaveURL(/\/kbli$/);
+  });
+
   test("a code drills down inside the panel and comes back", async ({
     page,
   }) => {

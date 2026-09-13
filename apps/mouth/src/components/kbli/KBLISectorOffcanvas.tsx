@@ -48,9 +48,20 @@ import { KBLIPanelCodeDetail } from "./KBLIPanelCodeDetail";
  * one for these three components.
  *
  * Closing is a history operation, not local state: the intercepted URL is
- * popped so the browser Back button and the X button do the same thing. When a
- * drill-down is open there are two entries to pop, not one — otherwise closing
- * from a code view would leave the user on the sector URL with no panel.
+ * popped so the browser Back button and the X button do the same thing. HOW
+ * MANY entries to pop is not a constant: the panel pushes one when it opens,
+ * one more for every section hop through the strip, and one more for a
+ * drill-down. Counting the drill-down alone — which is what this component did
+ * until a close after one strip hop was measured landing on the PREVIOUS
+ * sector URL with the panel still open — leaves the visitor inside the panel,
+ * one section back, with no exit but one Escape per hop they made.
+ *
+ * The count is carried by the history entries themselves, not by a bare
+ * counter: every entry the panel creates is tagged with the depth it sits at,
+ * so Back and Forward restore the right number instead of drifting. A counter
+ * that only ever increments would over-pop after a Back and drop the visitor
+ * out of /kbli entirely — exactly what the guard inside `close` prevents for
+ * the double-close case.
  */
 
 /** Kept in sync with the .kbli-panel-* exit animations in styles/kbli-theme.css. */
@@ -60,6 +71,58 @@ function codeFromLocation(): string | null {
   if (typeof window === "undefined") return null;
   const code = new URL(window.location.href).searchParams.get("code");
   return code && /^\d{5}$/.test(code) ? code : null;
+}
+
+/**
+ * Marker written on every history entry the panel creates: how many entries to
+ * pop from THAT entry to leave the panel, and the href it was written for.
+ * Next.js re-attaches its own internal state on top of whatever we pass to
+ * pushState/replaceState (`copyNextJsInternalHistoryState`), so carrying this
+ * extra key does not disturb the router.
+ *
+ * Two things about a section hop were MEASURED in a browser (next 16.3.5, dev),
+ * and both rule out the obvious implementations:
+ *
+ *   1. the component REMOUNTS — a fresh instance, so an instance ref cannot
+ *      carry the count across the hop;
+ *   2. the pushed entry arrives with NO custom history state — a router
+ *      navigation does not carry the previous entry's marker forward, so the
+ *      count cannot be read off the entry we came from either.
+ *
+ * What DOES survive a remount is module scope, and the one moment where the
+ * old depth and the destination are both known is the click itself, while the
+ * panel that is about to be replaced is still mounted. So a hop hands its
+ * depth over in `pendingHop`, tagged with the href it is for, and the marker
+ * on each entry is what makes Back and Forward restore the right number
+ * instead of drifting.
+ */
+const PANEL_MARK_KEY = "kbliPanel";
+
+type PanelMark = { depth: number; href: string };
+
+/**
+ * Set by the click that starts a section hop, consumed by the instance that
+ * mounts on arrival. Module scope, because the instance that knows the current
+ * depth is gone by then. Never read for any href other than the one it names.
+ */
+let pendingHop: PanelMark | null = null;
+
+const SECTOR_HREF = /^\/kbli\/sectors\/[^/]+$/;
+
+function hereHref(): string {
+  return window.location.pathname + window.location.search;
+}
+
+function readMark(): PanelMark | null {
+  if (typeof window === "undefined") return null;
+  const raw = (window.history.state as Record<string, unknown> | null)?.[
+    PANEL_MARK_KEY
+  ];
+  if (!raw || typeof raw !== "object") return null;
+  const { depth, href } = raw as Partial<PanelMark>;
+  if (typeof depth !== "number" || depth < 1) return null;
+  if (typeof href !== "string") return null;
+  return { depth, href };
 }
 
 export function KBLISectorOffcanvas({
@@ -84,19 +147,45 @@ export function KBLISectorOffcanvas({
   const [open, setOpen] = useState(true);
   const [activeCode, setActiveCode] = useState<string | null>(null);
   const closing = useRef(false);
+  /** Entries to pop to leave the panel from where we stand. */
+  const depth = useRef(0);
 
   // Back/Forward inside the panel: the drill-down pushed a history entry, so
-  // popstate is what tells us the user left (or re-entered) it.
+  // popstate is what tells us the user left (or re-entered) it — and the entry
+  // we landed on carries the pop depth that belongs to it.
   useEffect(() => {
-    const onPop = () => setActiveCode(codeFromLocation());
+    const onPop = () => {
+      setActiveCode(codeFromLocation());
+      const mark = readMark();
+      if (mark && mark.href === hereHref()) depth.current = mark.depth;
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   // A section swap through the strip re-renders this component with a new
-  // sectionId; any open drill-down belongs to the section we just left.
+  // sectionId; any open drill-down belongs to the section we just left, and
+  // the hop is one more entry between the visitor and /kbli. Whether this
+  // entry is one we tagged before (Back/Forward — its own depth wins) or a
+  // fresh push carrying an inherited marker (one deeper than the entry we came
+  // from) is decided by the href on the marker, never by a counter.
   useEffect(() => {
     setActiveCode(null);
+    const mark = readMark();
+    const here = hereHref();
+    if (mark && mark.href === here) {
+      depth.current = mark.depth;
+      return;
+    }
+    depth.current = (pendingHop?.href === here ? pendingHop.depth : 0) + 1;
+    pendingHop = null;
+    window.history.replaceState(
+      {
+        ...window.history.state,
+        [PANEL_MARK_KEY]: { depth: depth.current, href: here },
+      },
+      "",
+    );
   }, [sectionId]);
 
   const close = useCallback(() => {
@@ -104,9 +193,12 @@ export function KBLISectorOffcanvas({
     // entries — that would drop the user out of /kbli entirely.
     if (closing.current) return;
     closing.current = true;
+    pendingHop = null;
     setOpen(false);
 
-    const steps = codeFromLocation() ? 2 : 1;
+    // Never 0: if no effect has run yet there is still the entry that opened
+    // the panel.
+    const steps = Math.max(1, depth.current);
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -156,10 +248,43 @@ export function KBLISectorOffcanvas({
       if (!code || !details[code]) return;
 
       event.preventDefault();
-      window.history.pushState(null, "", `?code=${code}`);
+      const codeHref = `${window.location.pathname}?code=${code}`;
+      depth.current += 1;
+      window.history.pushState(
+        { [PANEL_MARK_KEY]: { depth: depth.current, href: codeHref } },
+        "",
+        codeHref,
+      );
       setActiveCode(code);
     },
     [details],
+  );
+
+  /**
+   * A section hop is a plain `<Link>` — deliberately, so the strip keeps
+   * working with JS off and in a new tab. That also means the panel learns
+   * about the hop only after it has already happened, in a fresh instance and
+   * on an entry with no state. This capture handler is the one place where the
+   * depth being left behind and the URL being navigated to are both known, so
+   * it hands them over.
+   *
+   * It only observes: nothing is prevented, no navigation is taken over. A
+   * modified click (new tab), a middle click or a hard `<a>` such as "open as
+   * full page" leaves this page entirely, and the note it would leave behind
+   * is discarded by the href check on the other side.
+   */
+  const notePendingHop = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
+      const href = (event.target as HTMLElement)
+        .closest("a")
+        ?.getAttribute("href");
+      if (!href || !SECTOR_HREF.test(href)) return;
+      pendingHop = { depth: depth.current, href };
+    },
+    [],
   );
 
   const backToGrid = useCallback(() => window.history.back(), []);
@@ -180,6 +305,7 @@ export function KBLISectorOffcanvas({
           // measured, not assumed — so it is set here explicitly.
           aria-modal="true"
           onCloseAutoFocus={restoreFocus}
+          onClickCapture={notePendingHop}
           className="kbli-panel-content fixed z-[510] flex flex-col overflow-hidden
                      border-white/[0.08] bg-[#141416]/95 backdrop-blur-2xl
                      shadow-[0_10px_60px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.04)]
