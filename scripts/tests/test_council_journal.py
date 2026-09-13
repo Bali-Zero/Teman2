@@ -197,7 +197,7 @@ def test_unknown_seat_is_recorded_but_not_counted(tmp_path: Path, capsys) -> Non
     believe it counted is not, so the tool says so out loud.
     """
     d = _pack_dir(tmp_path, council_run=cj.DEFAULT_JOURNAL_NAME)
-    assert _append(d, "agy-gemini-3.1-pro", note="constructive width") == 0
+    assert _append(d, "agy-gemini-flash-lite", note="constructive width") == 0
     assert "does NOT" in capsys.readouterr().out
     assert lint._read_council_journal_seats(d, cj.DEFAULT_JOURNAL_NAME) == set()
 

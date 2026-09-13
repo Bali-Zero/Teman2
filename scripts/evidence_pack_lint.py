@@ -2957,6 +2957,175 @@ def check_council_run_gear3(
     return verdict
 
 
+#: R9 v2 — SAETTA review policy, RULED by Zero 2026-09-13 (mission
+#: SAETTA-REVIEW-POLICY), verbatim: "ok inserire anche gemini 3.1 pro high
+#: nella lista - e non diminuiamo, ma una regola che tutti vengono invocati i
+#: revisori ma basta la risposta di uno". Every ELIGIBLE independent seat —
+#: titolari and reserves alike — is invoked once per frozen candidate; one
+#: completed substantive judgment is quorum; any unresolved finding blocks
+#: even beside a PASS. It supersedes the v1 "reserves only after a titolare
+#: fails" limb for every pack created after the ruling instant.
+COUNCIL_POLICY_V2 = "saetta-review-policy-v2"
+COUNCIL_POLICY_V2_CUTOFF = datetime.datetime(2026, 9, 13, 20, 28, 23, tzinfo=datetime.timezone.utc)
+COUNCIL_V2_MAX_TIMEOUT_S = 300
+
+#: seat -> (family, accepted resolved-model identities). One seat per family:
+#: model variants of one family are never counted as distinct families. The
+#: unsuffixed `agy-gemini-3.1-pro` stays in COUNCIL_REVIEW_SEATS for v1 packs
+#: only; the current agy catalog no longer lists it, so v2 names the exact
+#: `gemini-3.1-pro-high` and rejects a silent downgrade to plain Pro.
+COUNCIL_V2_SEATS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "codex-gpt-5.6-sol": ("openai", ("gpt-5.6-sol",)),
+    "kimi-code/k3": ("moonshot", ("kimi-code/k3", "k3")),
+    "tp1-qwen3.8-max": ("qwen", ("qwen3.8-max",)),
+    "tp1-glm-5.2": ("glm", ("glm-5.2",)),
+    "tp1-deepseek-v4-pro": ("deepseek", ("deepseek-v4-pro",)),
+    "agy-gemini-3.1-pro-high": ("google", ("gemini-3.1-pro-high",)),
+}
+
+#: A final Claude gate is never a council family; Anthropic is always recorded
+#: as contributing because a Claude session builds or gates every SAETTA slice.
+COUNCIL_V2_ALWAYS_CONTRIBUTING = frozenset({"anthropic"})
+COUNCIL_V2_DISPOSED = frozenset({"fixed", "rejected"})
+_SHA40 = re.compile(r"^[0-9a-f]{40}$")
+
+
+def _read_council_journal_lines(pack_dir: Path, council_run: Any) -> list[dict[str, Any]]:
+    """Every JSON-object line of the pack-confined journal (same confinement
+    as _read_council_journal_seats); [] on anything unreadable."""
+    if not isinstance(council_run, str) or not council_run.strip() or Path(council_run).is_absolute():
+        return []
+    root = pack_dir.resolve()
+    path = (pack_dir / council_run).resolve()
+    if root not in (path, *path.parents) or not path.is_file():
+        return []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    out: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(entry, dict):
+            out.append(entry)
+    return out
+
+
+def _parse_ts(value: Any) -> datetime.datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=datetime.timezone.utc)
+
+
+def council_policy_for(pack: dict[str, Any], pack_dir: Path, today: datetime.date | None = None) -> str:
+    """Which council contract binds this pack. Declaring v2 binds v2. Omitting
+    the version (or declaring v1) keeps v1 ONLY for a truly historical pack:
+    a journal whose every line is stamped before the ruling instant, or a lint
+    pinned to a day before it. A post-ruling pack cannot opt out by silence."""
+    if pack.get("council_policy") == COUNCIL_POLICY_V2:
+        return COUNCIL_POLICY_V2
+    if today is not None and today < COUNCIL_POLICY_V2_CUTOFF.date():
+        return "v1"
+    stamps = [_parse_ts(e.get("ts")) for e in _read_council_journal_lines(pack_dir, pack.get("council_run"))]
+    if stamps and all(s is not None and s < COUNCIL_POLICY_V2_CUTOFF for s in stamps):
+        return "v1"
+    return COUNCIL_POLICY_V2
+
+
+def _v2_judgment_problem(entry: dict[str, Any], accepted: tuple[str, ...], candidate: str) -> str | None:
+    dispatch = entry.get("dispatch") if isinstance(entry.get("dispatch"), dict) else {}
+    if entry.get("candidate_sha") != candidate:
+        return "candidate revision mismatch"
+    if entry.get("resolved_model") not in accepted:
+        return f"resolved model {entry.get('resolved_model')!r} is not {accepted[0]!r}"
+    if dispatch.get("timed_out") is not False or dispatch.get("exit_code") != 0:
+        return "a timed-out or failed process is not a judgment"
+    if not (isinstance(entry.get("verdict_sha256"), str) and len(entry["verdict_sha256"]) == 64):
+        return "no verdict digest"
+    if _parse_ts(entry.get("ts")) is None:
+        return "no ts"
+    return None
+
+
+def check_council_policy_v2(pack: dict[str, Any], pack_dir: Path, gear: int | None) -> list[str]:
+    """R9 v2 (no rollout clock, no seat_override escape — the owner ruled it).
+    GUILT: an eligible seat never invoked; an excluded family not recorded; a
+    second invocation on one revision; a PASS/BLOCK line bound to another
+    revision or another model; zero judgments; any finding not disposed as
+    fixed/rejected with a rationale. INNOCENCE: all eligible invoked, >=1
+    bound judgment, every finding disposed — other seats NON_JUDGMENT is fine."""
+    if gear != 3:
+        return []
+    rule = "council_policy_v2"
+    violations: list[str] = []
+    candidate = pack.get("candidate_sha")
+    if not (isinstance(candidate, str) and _SHA40.match(candidate)):
+        return [f"{rule}: pack must declare candidate_sha: <40-hex frozen candidate revision>"]
+    declared = pack.get("contributing_families")
+    contributing = set(declared) if isinstance(declared, list) else set()
+    if not COUNCIL_V2_ALWAYS_CONTRIBUTING <= contributing:
+        violations.append(f"{rule}: contributing_families must list {sorted(COUNCIL_V2_ALWAYS_CONTRIBUTING)} and every family that built or supervised")
+    lines = [e for e in _read_council_journal_lines(pack_dir, pack.get("council_run")) if e.get("policy") == COUNCIL_POLICY_V2]
+    judged_families: set[str] = set()
+    findings: list[str] = []
+    for seat, (family, accepted) in COUNCIL_V2_SEATS.items():
+        entries = [e for e in lines if e.get("seat") == seat]
+        if family in contributing:
+            if not any(e.get("eligible") is False and str(e.get("exclusion_reason") or "").strip() for e in entries):
+                violations.append(f"{rule}: seat {seat} (contributing family {family}) has no recorded exclusion")
+            continue
+        invoked = [
+            e for e in entries
+            if e.get("eligible") is True and e.get("invoked") is True
+            and isinstance(e.get("dispatch"), dict) and isinstance(e["dispatch"].get("pid"), int)
+            and isinstance(e["dispatch"].get("timeout_s"), (int, float))
+            and 0 < e["dispatch"]["timeout_s"] <= COUNCIL_V2_MAX_TIMEOUT_S
+        ]
+        if not invoked:
+            violations.append(f"{rule}: eligible seat {seat} was never invoked (all eligible seats are invoked, reserves included)")
+            continue
+        bound = [e for e in invoked if e.get("candidate_sha") == candidate]
+        if len(bound) > 1:
+            violations.append(f"{rule}: seat {seat} invoked {len(bound)} times on {candidate[:12]} — one invocation per revision")
+        for entry in invoked:
+            outcome = entry.get("outcome")
+            if outcome not in ("PASS", "BLOCK"):
+                continue
+            problem = _v2_judgment_problem(entry, accepted, candidate)
+            if problem:
+                violations.append(f"{rule}: seat {seat} {outcome} rejected — {problem}")
+                continue
+            judged_families.add(family)
+            raw = entry.get("findings")
+            ids = [str(f.get("id")) for f in raw if isinstance(f, dict) and f.get("id")] if isinstance(raw, list) else []
+            if outcome == "BLOCK" and not ids:
+                ids = ["verdict"]
+            findings += [f"{seat}#{i}" for i in ids]
+    if not judged_families:
+        violations.append(f"{rule}: zero completed substantive judgments bound to {candidate[:12]} — transport exit 0, quota/auth errors, empty output, wrong model and timeouts are NON_JUDGMENT, never PASS")
+    disposition = pack.get("findings_disposition") if isinstance(pack.get("findings_disposition"), dict) else {}
+    for key in findings:
+        item = disposition.get(key)
+        ok = isinstance(item, dict) and item.get("status") in COUNCIL_V2_DISPOSED and str(item.get("rationale") or "").strip()
+        if not ok:
+            violations.append(f"{rule}: finding {key} is unresolved — a PASS elsewhere does not mask it; dispose it as fixed|rejected with a rationale")
+    return violations
+
+
+def check_council_gear3(pack: dict[str, Any], pack_dir: Path, gear: int | None, today: datetime.date | None = None) -> tuple[list[str], str | None]:
+    """R9 dispatcher: v2 for every post-ruling pack, v1 for historical ones."""
+    if council_policy_for(pack, pack_dir, today) == COUNCIL_POLICY_V2:
+        return check_council_policy_v2(pack, pack_dir, gear), None
+    return check_council_run_gear3(pack, pack_dir, gear, today)
+
+
 def _pack_source_relpath(source_path: str, repo_root: Path) -> str:
     """POSIX-style, dot-segment-normalized repo-relative form of
     `source_path`, for comparing against EVIDENCE_ROOT_PACK_PATH. An
@@ -3254,7 +3423,7 @@ def lint(
     if seat_floor_notice:
         print(f"evidence_pack_lint: NOTICE — {seat_floor_notice}", file=sys.stderr)
 
-    council_violations, council_notice = check_council_run_gear3(pack, pack_path.parent, gear)
+    council_violations, council_notice = check_council_gear3(pack, pack_path.parent, gear)
     violations += council_violations
     if council_notice:
         print(f"evidence_pack_lint: NOTICE — {council_notice}", file=sys.stderr)

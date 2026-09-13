@@ -60,10 +60,17 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import datetime
+import hashlib
 import importlib.util
 import json
+import os
+import re
+import signal
+import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -239,7 +246,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     # finding fails a required check.
     results: dict[str, tuple[list[str], str | None]] = {}
     for label, day in (("before", before), ("on/after", flip)):
-        violations, notice = lint.check_council_run_gear3(
+        violations, notice = lint.check_council_gear3(
             pack, pack_dir=pack_dir, gear=3, today=day
         )
         results[label] = (list(violations or []), notice)
@@ -260,6 +267,222 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 1 if results["on/after"][0] else 0
 
 
+#: SAETTA review policy v2 routes (RULED 2026-09-13). Only first-party CLIs on their existing
+#: OAuth/subscription profiles; no raw model HTTP. `{prompt}` is replaced by the packet; a route
+#: with `stdin` feeds the packet on stdin instead. The review packet is code-only.
+AGY = "/Users/nuzantara/.local/bin/agy"
+KIMI = "/Users/nuzantara/.kimi-code/bin/kimi"
+SEAT_ROUTES: dict[str, dict[str, Any]] = {
+    "agy-gemini-3.1-pro-high": {
+        "host": "pro-local", "account_ref": "agy-oauth-default",
+        "argv": [AGY, "--model", "gemini-3.1-pro-high", "--effort", "high", "--mode", "plan",
+                 "--sandbox", "--output-format", "stream-json", "--print-timeout", "5m",
+                 "--add-dir", "{worktree}", "-p", "{prompt}"],
+    },
+    "kimi-code/k3": {
+        "host": "pro-local", "account_ref": "kimi-allegro-oauth",
+        "argv": [KIMI, "-m", "kimi-code/k3", "--output-format", "stream-json", "-p", "{prompt}"],
+    },
+    "codex-gpt-5.6-sol": {"host": "pro-local", "account_ref": "codex-oauth", "argv": None},
+}
+for _model in ("qwen3.8-max", "glm-5.2", "deepseek-v4-pro"):
+    SEAT_ROUTES[f"tp1-{_model}"] = {
+        "host": "m5-ssh-air", "account_ref": "tp1-qwen-code-profile",
+        "argv": ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "air",
+                 f"PATH=$HOME/.local/share/mise/shims:$PATH qwen -m {_model} --output-format stream-json"
+                 " -p 'Review the code packet on stdin.'"],
+        "stdin": True,
+    }
+
+_VERDICT = re.compile(r"VERDICT=(PASS|BLOCK)\b")
+_FINDING = re.compile(r"FINDING=([A-Za-z0-9_.-]{1,40})\|(high|medium|low)\|([^\n\\\"]{1,240})")
+_MODEL_KEYS = {"model", "modelId", "model_id", "modelVersion", "resolved_model", "modelName"}
+_SESSION_KEYS = {"session_id", "sessionId", "conversation_id", "conversationId", "cascade_id", "cascadeId"}
+_COUNT_KEYS = {"num_turns", "numTurns", "request_count", "api_requests", "retries", "retry_count"}
+_NON_JUDGMENT_HINTS = re.compile(r"\b(429|403|quota|rate.?limit|unauthori[sz]ed|sign.?in|not logged)\b", re.I)
+
+
+def _walk(node: Any, sink: dict[str, list]) -> None:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if isinstance(value, (str, int)) and not isinstance(value, bool):
+                if key in _MODEL_KEYS and isinstance(value, str):
+                    sink["models"].append(value)
+                elif key in _SESSION_KEYS:
+                    sink["sessions"].append(str(value))
+                elif key in _COUNT_KEYS and isinstance(value, int):
+                    sink["counts"].append((key, value))
+            if isinstance(value, str):
+                sink["text"].append(value)
+            else:
+                _walk(value, sink)
+    elif isinstance(node, list):
+        for item in node:
+            _walk(item, sink)
+
+
+def classify_output(seat: str, stdout: str, exit_code: int | None, timed_out: bool) -> dict[str, Any]:
+    """Turn one real process result into a journal verdict. Only a VERDICT= line from a process
+    that exited 0 in time, whose EVERY observed model identity is the exact requested one, is a
+    judgment; everything else is NON_JUDGMENT with the reason — never PASS."""
+    lint = _load_lint_module()
+    _family, accepted = lint.COUNCIL_V2_SEATS[seat]
+    sink: dict[str, list] = {"models": [], "sessions": [], "counts": [], "text": []}
+    for line in stdout.splitlines():
+        try:
+            _walk(json.loads(line), sink)
+        except (json.JSONDecodeError, RecursionError):
+            sink["text"].append(line)
+    blob = "\n".join(sink["text"])
+    models = sorted(set(sink["models"]))
+    result: dict[str, Any] = {
+        "observed_models": models,
+        "resolved_model": models[0] if len(models) == 1 else None,
+        "session_ref": hashlib.sha256(sink["sessions"][0].encode()).hexdigest()[:16] if sink["sessions"] else None,
+        "request_counts": dict(sink["counts"]) or None,
+        "findings": [],
+    }
+    verdicts = _VERDICT.findall(blob)
+    reason = None
+    if timed_out:
+        reason = "timeout"
+    elif exit_code != 0:
+        reason = f"exit_{exit_code}"
+    elif not verdicts:
+        reason = "quota_or_auth_error" if _NON_JUDGMENT_HINTS.search(blob) else "no_verdict"
+    elif not models:
+        reason = "model_identity_unproven"
+    elif any(m not in accepted for m in models):
+        reason = "model_mismatch"
+    if reason:
+        result.update(outcome="NON_JUDGMENT", non_judgment_reason=reason)
+        return result
+    result["outcome"] = verdicts[-1]
+    result["resolved_model"] = next(m for m in models if m in accepted)
+    result["verdict_sha256"] = hashlib.sha256(blob.encode()).hexdigest()
+    seen = set()
+    for fid, sev, text in _FINDING.findall(blob):
+        if fid not in seen:
+            seen.add(fid)
+            result["findings"].append({"id": fid, "severity": sev, "summary": text.strip()[:240]})
+    return result
+
+
+def _terminate(proc: subprocess.Popen) -> str:
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+        proc.wait(timeout=3)
+        return "sigterm"
+    except ProcessLookupError:
+        return "already_exited"
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait(timeout=3)
+        return "sigkill"
+
+
+def run_seat(seat: str, route: dict[str, Any], packet: str, worktree: str, timeout: float) -> dict[str, Any]:
+    argv = [a.replace("{worktree}", worktree).replace("{prompt}", packet) for a in route["argv"]]
+    started = time.monotonic()
+    proc = subprocess.Popen(
+        argv, stdin=subprocess.PIPE if route.get("stdin") else subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
+    )
+    timed_out, cleanup = False, "exited"
+    try:
+        out, err = proc.communicate(packet if route.get("stdin") else None, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        timed_out, cleanup = True, _terminate(proc)
+        out, err = proc.communicate()
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+            cleanup = "group_reaped"
+        except (ProcessLookupError, PermissionError):
+            pass
+    return {
+        "stdout": out or "", "stderr": err or "",
+        "dispatch": {
+            "pid": proc.pid, "binary": Path(argv[0]).name, "host": route["host"],
+            "exit_code": None if timed_out else proc.returncode, "timed_out": timed_out,
+            "timeout_s": timeout, "elapsed_s": round(time.monotonic() - started, 1), "cleanup": cleanup,
+        },
+    }
+
+
+def cmd_dispatch(args: argparse.Namespace) -> int:
+    lint = _load_lint_module()
+    pack_dir = Path(args.pack_dir)
+    journal, err = _resolve_journal(pack_dir, args.journal) if pack_dir.is_dir() else (None, "pack dir missing")
+    if journal is None:
+        print(f"council_journal: {err}", file=sys.stderr)
+        return 2
+    if not 0 < args.timeout <= lint.COUNCIL_V2_MAX_TIMEOUT_S:
+        print(f"council_journal: --timeout must be in (0, {lint.COUNCIL_V2_MAX_TIMEOUT_S}]", file=sys.stderr)
+        return 2
+    wt = args.worktree
+    head = subprocess.run(["git", "-C", wt, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    dirty = subprocess.run(["git", "-C", wt, "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True).stdout.strip()
+    if head != args.candidate_sha or dirty:
+        print("council_journal: worktree HEAD is not the frozen, clean candidate — refusing to dispatch", file=sys.stderr)
+        return 2
+    diff = subprocess.run(["git", "-C", wt, "diff", "--no-color", f"{args.base_sha}..{args.candidate_sha}"],
+                          capture_output=True, text=True, check=True).stdout
+    packet = (
+        f"You are an independent code reviewer. Review ONLY this diff, candidate commit {args.candidate_sha}. "
+        "Do not edit files. Report substantive defects only (correctness bugs, policy bypasses, a test that "
+        "hides a bug). Put each defect on its own line as FINDING=<short-id>|<high|medium|low>|<one sentence>. "
+        "End with exactly one line VERDICT=<PASS|BLOCK>; BLOCK if any high or medium finding.\n\n" + diff
+    )
+    contributing = set(args.contributing_family) | set(lint.COUNCIL_V2_ALWAYS_CONTRIBUTING)
+    capture = Path(args.capture_dir) / pack_dir.resolve().name
+    capture.mkdir(parents=True, exist_ok=True, mode=0o700)
+    entries: list[dict[str, Any]] = []
+    eligible: list[str] = []
+    for seat, (family, accepted) in lint.COUNCIL_V2_SEATS.items():
+        base = {"policy": lint.COUNCIL_POLICY_V2, "seat": seat, "family": family, "role": "review",
+                "requested_model": accepted[0], "candidate_sha": args.candidate_sha,
+                "account_ref": SEAT_ROUTES.get(seat, {}).get("account_ref")}
+        if family in contributing:
+            entries.append({**base, "eligible": False, "invoked": False, "ok": False,
+                            "exclusion_reason": f"contributing family {family}"})
+        elif not SEAT_ROUTES.get(seat, {}).get("argv"):
+            entries.append({**base, "eligible": True, "invoked": False, "ok": False, "outcome": "NON_JUDGMENT",
+                            "non_judgment_reason": "no first-party route"})
+        else:
+            eligible.append(seat)
+    # All eligible seats start together and every one runs to its own end: no early-success skip.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(eligible))) as pool:
+        futures = {s: pool.submit(run_seat, s, SEAT_ROUTES[s], packet, wt, args.timeout) for s in eligible}
+        for seat in eligible:
+            family, accepted = lint.COUNCIL_V2_SEATS[seat]
+            ran = futures[seat].result()
+            safe = re.sub(r"[^A-Za-z0-9_.-]", "_", seat)
+            raw = capture / f"{safe}.raw"
+            fd = os.open(raw, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(ran["stdout"] + "\n--stderr--\n" + ran["stderr"])
+            verdict = classify_output(seat, ran["stdout"], ran["dispatch"]["exit_code"], ran["dispatch"]["timed_out"])
+            entries.append({
+                "policy": lint.COUNCIL_POLICY_V2, "seat": seat, "family": family, "role": "review",
+                "requested_model": accepted[0], "candidate_sha": args.candidate_sha,
+                "account_ref": SEAT_ROUTES[seat]["account_ref"], "eligible": True, "invoked": True,
+                "dispatch": ran["dispatch"], "capture_sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                "ok": verdict["outcome"] in ("PASS", "BLOCK"), **verdict,
+            })
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with journal.open("a", encoding="utf-8") as handle:
+        for entry in entries:
+            handle.write(json.dumps({**entry, "ts": now}, ensure_ascii=False) + "\n")
+    for entry in entries:
+        print(f"council_journal: {entry['seat']}: eligible={entry['eligible']} invoked={entry['invoked']} "
+              f"outcome={entry.get('outcome', 'EXCLUDED')} {entry.get('non_judgment_reason', '')}".rstrip())
+    judged = [e for e in entries if e.get("outcome") in ("PASS", "BLOCK")]
+    blocked = [e for e in judged if e["outcome"] == "BLOCK" or e.get("findings")]
+    print(f"council_journal: judgments={len(judged)} with_findings={len(blocked)} -> {journal}")
+    return 0 if judged and not blocked else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -275,6 +498,20 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--note", default="", help="what the seat returned; required for --outcome ok")
     ap.add_argument("--journal", default=DEFAULT_JOURNAL_NAME)
     ap.set_defaults(func=cmd_append)
+
+    dp = sub.add_parser(
+        "dispatch",
+        help="SAETTA review policy v2: invoke EVERY eligible seat once on a frozen candidate",
+    )
+    dp.add_argument("--pack-dir", required=True)
+    dp.add_argument("--worktree", required=True)
+    dp.add_argument("--base-sha", required=True)
+    dp.add_argument("--candidate-sha", required=True)
+    dp.add_argument("--contributing-family", action="append", default=[])
+    dp.add_argument("--timeout", type=float, default=300.0)
+    dp.add_argument("--capture-dir", default="/tmp/saetta-review-captures")
+    dp.add_argument("--journal", default=DEFAULT_JOURNAL_NAME)
+    dp.set_defaults(func=cmd_dispatch)
 
     cp = sub.add_parser(
         "check", help="report what R9 says about this pack, before and after its flip date"

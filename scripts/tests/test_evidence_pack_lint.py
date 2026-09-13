@@ -2621,7 +2621,8 @@ def test_council_run_end_to_end_through_lint(tmp_repo):
         assert rc == 0
     else:
         assert rc == 1
-        assert any("council_run" in v for v in viol)
+        # A post-ruling pack with no journal cannot fall back to v1 by omitting council_policy.
+        assert any("council_policy_v2" in v for v in viol)
 
 
 # ---- rule 9: check_pack_not_at_deprecated_root -----------------------------

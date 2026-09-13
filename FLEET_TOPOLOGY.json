@@ -478,6 +478,25 @@
       "note": "equal peers; no permanent reviewer title (Zero 2026-09-06: 'Opus e Sol sono uguali'). RULED 2026-09-10 (PARABELLUM): the mission COLOUR fixes which general is eligible as Dux — Opus 5 on BLUE, Sol on ORANGE — and the Dux is also the release owner of its own mission. No automatic colour fallback; an undeclared mission is BLUE."
     }
   },
+  "council_policy_v2": {
+    "ruled": "2026-09-13 Zero (SAETTA-REVIEW-POLICY)",
+    "rule": "invoke every eligible independent seat once per frozen candidate; >=1 bound substantive judgment is quorum; any unresolved finding blocks; contributing families excluded and recorded",
+    "producer": "scripts/council_journal.py dispatch",
+    "enforcer": "scripts/evidence_pack_lint.py::check_council_policy_v2",
+    "seats": {
+      "codex-gpt-5.6-sol": "openai",
+      "kimi-code/k3": "moonshot",
+      "tp1-qwen3.8-max": "qwen",
+      "tp1-glm-5.2": "glm",
+      "tp1-deepseek-v4-pro": "deepseek",
+      "agy-gemini-3.1-pro-high": "google"
+    },
+    "routes": {
+      "agy-gemini-3.1-pro-high": "Pro/Mini agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox (M5 agy not signed in)",
+      "kimi-code/k3": "Pro kimi -m kimi-code/k3",
+      "tp1-*": "M5 via ssh air, Qwen Code CLI 0.23.0 existing profile"
+    }
+  },
   "pending_arms": [
     "cswap (or equivalent OAuth profile swapper) installed+tested on Pro and Air-M5 with the 4 real accounts",
     "~/.codex-o2 second CODEX_HOME created+logged in (zero@balizero.com); aliases codex-o1/codex-o2",
