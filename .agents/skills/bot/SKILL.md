@@ -26,6 +26,72 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-09-03 — keep current)
 
+- **🚢 LANE E SHIPPED, AND TWO OF THE FOUR ROOT CAUSES ARE NOW LIVE IN PRODUCTION — PROVEN ON THE
+  RUNNING MACHINE, NOT INFERRED FROM A MERGE (2026-09-03, later the same day).** #5613 and #5615
+  merged, `fly-deploy.yml` fired by itself on the push to main, the deploy landed `success` on sha
+  `580b107a`, and the proof was taken with `fly ssh console -C` on machine `1781e5eda03438` (the
+  `rag` process group — the one that carries the WhatsApp path):
+  - **The scripted greeting answers, in the client's language, without touching retrieval.**
+    `halo` → id, `hi` → en, `ciao` → it, `привет` → ru, `Selamat pagi, Kak` → id; and
+    `berapa harga PT PMA` → `None`, i.e. it still goes to retrieval. **The short-circuit runs
+    BEFORE the package build** — relative line 58 against 72 inside `_attempt()`. The order is the
+    whole point: after the build it would save nothing. Cycle 359's bare `halo` cost 7m45s.
+  - **The government-fee detector is live** and flags the cycle-359 offender text.
+  - **What is NOT proven, and must not be written up as if it were**: a real inbound `halo` from a
+    handset producing that reply on thread 30. That needs a phone; it is cycle 360 (E6).
+
+- **🛡️ E3 (cross-language abstain gate) — ARMED, after an adversarial round that returned BLOCK on
+  four findings, all cured (PR #5618).** Two blockers. The word-boundary guard had been drawn at
+  two characters, but **the collision is by VOCABULARY, not by length** — `oss` ⊂ `loss`/`cross`,
+  `hak` ⊂ `shake`, `imb` ⊂ `climb`, `nib` ⊂ `nibbled`; `"Apa itu OSS?"` against a quarterly-earnings
+  chunk scored **0.600** against a 0.15 gate. And the ten two-character identifiers, `PT` among
+  them, never reached the matcher at all, because a SECOND filter eight lines below the one that
+  kept them still read `len(w) > 2`.
+  - **The two lesser findings were cured BY CONSTRUCTION rather than case by case, and that is the
+    part worth reusing.** The keyword ratio is computed a second time over exactly the token set
+    the OLD rule would have produced, and the better of the two wins — so the floor is the score
+    the function returned before the change existed. **A new vocabulary can raise a score and can
+    never lower one.** Both findings became impossible instead of fixed.
+  - **The grader refused to sign off a hand-built collision list, and was right.** It had
+    collisions for 7 of 38 entries, none for 19, and **never attempted 12** — and it showed that
+    three of the author's own cases proved nothing (with a query of `"PT?"`, origin/main never
+    extracts a 2-letter identifier at all, so `here == main` there was an artefact of the query
+    shape). Enumeration is the wrong instrument for a structural property: the guard is now swept
+    over the whole vocabulary — every entry must count as a whole token and must not count inside
+    a longer one, 76 cases — so an identifier added tomorrow is covered the day it is added.
+  - Measured: the spec's four headline rows all land at **0.750** (they were 0.060 / 0.060 / 0.550
+    / 0.750), 129 passed on the file, 4319 on the RAG suites, whole unit tree green.
+
+- **🚦 THE MERGE-QUEUE READ THAT NEARLY SHIPPED A BLOCKED DIFF (2026-09-03).** `gh pr view` has no
+  `mergeQueueEntry` field, so three PRs reading `auto=null, merge=CLEAN` looked disarmed and were
+  in fact **in the queue at positions 1, 2 and 3**. **#5618 was at position 3 carrying the exact
+  SHA an adversarial review had just BLOCKED.** Cure: `dequeuePullRequest` — whose input field is
+  **`id`, NOT `pullRequestId`** — then push the fixes, then re-arm and VERIFY `headRefOid` is the
+  cured commit. `--disable-auto` would not have been enough: it keeps the old SHA.
+
+- **🩻 THREE INSTRUMENTS THAT ANSWERED A NEIGHBOURING QUESTION, all in this one session:**
+  - `attempt()` is a thin WRAPPER over `_attempt()`. Probing the wrapper printed
+    `short-circuit present: False` on a change that was in fact live in production. The number was
+    true and the question was wrong — it nearly became a phantom defect report. **When a probe
+    says a just-deployed change is absent, suspect the probe first.**
+  - **`.claude/skills/bot/SKILL.md` and `.agents/skills/bot/SKILL.md` are ONE INODE** (verified
+    `ls -li`: both `451389829`), and **only the `.agents/` path is tracked by git** — the other is
+    an untracked hardlink alias. They are not two copies to keep in sync: writing "both" appends
+    the same block TWICE to the same file, which is exactly what happened here and had to be
+    reverted. `cmp -s` says "identical" for a hardlink and proves nothing about there being two of
+    them. Edit the tracked path once.
+  - **`codex-spalla.sh` has TWO defects, and the second is the worse one** (NOT yet repaired):
+    `:266`/`:269` still pass **`--full-auto`**, removed in codex-cli **0.152.0** — empirically
+    `error: unexpected argument`, **exit 2**, so every second opinion since the upgrade is
+    NON-JUDGED rather than clean; and `:27` sets `BASE="${2:-main}"` resolved at `:85` against a
+    **bare LOCAL `main`**, never `origin/main`, with the `:88` fallback firing only if the ref is
+    missing entirely. Measured here: local `main` is **88 commits** behind, so a working review
+    would have graded **248 files / ~36,000 diff lines** instead of the PR's real **3 files / 571
+    lines** (`gh pr view` #5618: 565 additions, 6 deletions, 3 files). **A review of the wrong diff
+    is worse than no review — it comes back clean.** Both defects were re-measured by a second
+    seat rather than relayed, and that check corrected two of the six figures it was given
+    (84 → 88 commits, 319 → 571 lines). Publish measured numbers, never relayed ones.
+
 - **🧭 CYCLE 359's FOUR ROOT CAUSES: TWO CURED, ONE DRAFTED FOR ZERO, ONE STILL OPEN — AND THE
   CORNER'S OWN "GEMINI" BULLETS ARE CONFIRMED STALE (2026-09-03, lane E on Pro).** Re-measured
   before anything else, exactly as the mandate required: `SELECT generation_route, count(*) FROM
