@@ -1,0 +1,9 @@
+[author header] cmd: agy --model gemini-3.1-pro-high --effort high --print-timeout 20m --sandbox --disable-slash-commands --print "<prompt: rules + round-10 dispositions + git diff origin/main...HEAD -- apps/mouth at ca0e55e959>" ; started 2026-09-14T01:27:43+08:00
+
+1. FILE: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1779
+What is wrong: `extraIds` indiscriminately collects every key in `facts` that isn't in `spineIds` and appends them as `extras` just before the `verdict` node. Because `EDIT` keeps old answers in `facts` rather than eagerly scrubbing them, jumping back to change a branch leaves orphaned answers behind that `getProcessModel` incorrectly resurrects. 
+Why it matters: It produces a count that does not match what the reducer's active history holds, and stage statuses that contradict the facts on record. A visitor who explores multiple branches will see all their dead answers from pruned branches hallucinated onto the new trunk right before the outcome, wildly inflating the step count and scrambling the visual timeline.
+Minimal fix: Restrict `extraIds` to capture only genuine engine follow-up questions (e.g., by cross-referencing the active `history` to ensure the off-spine fact is actually part of the current path), so that orphaned answers are ignored.
+
+VERDICT: DEFECT
+AGY_EXIT=0

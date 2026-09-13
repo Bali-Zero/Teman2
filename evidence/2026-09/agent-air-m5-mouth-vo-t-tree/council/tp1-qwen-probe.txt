@@ -1,0 +1,2 @@
+tp1_call: HTTP 429: {"error":{"message":"Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC.","id":"<REDACTED>","type":"insufficient_quota","code":"insufficient_quota"}}
+TP1_EXIT=1

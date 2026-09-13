@@ -1,0 +1,113 @@
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09bc3-ece8-7291-8f05-03507911d1e7
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none. Do not write any file.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called after the
+applicant confirms their answers (and again for an engine-requested follow-up).
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree. On a 390px viewport the rail collapses to a progress line
+with the current category and a "jump" sheet.
+
+Files in the diff: `_components/ProcessRail.tsx` (new), `ProcessRail.test.tsx`
+(new), `LivingTree.tsx`, `LivingTree.test.tsx`, `OracleShell.tsx`,
+`_lib/flow.ts` (new `getProcessModel` projection + `PROCESS_PHASES`), `_lib/i18n.ts`
+(EN + ID copy), `e2e/visa-oracle-process.spec.ts` (new), `e2e/visa-oracle-v2.spec.ts`
+(five text assertions scoped to the main content column).
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column; that dual mount pre-exists on origin/main in LivingTree).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds, a stage
+  status that contradicts the facts on record).
+- `getProcessModel` disagreeing with `getTreeSteps` / `flowReducer` in any
+  reachable state — including: category answered with the reserved value
+  "unsure", the onshore `permit_expiry` lane, `EDIT` on an answered question,
+  an engine follow-up question asked after the verdict (`ASK_FOLLOW_UP`), the
+  confirmation card after `REVIEW_ANSWERS`, and the framing node.
+- The duplicated rail producing duplicated ids, duplicated live-region
+  announcements, or two elements a strict-mode Playwright locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+
+## How to read the diff (you have read-only shell access to the worktree)
+
+This is round 10 and a FULL review of the window's whole diff, not a delta:
+the previous rounds of this seat that reviewed the latest cures ran on a
+different model, so treat nothing as settled. `origin/main` has moved past
+the merge-base with unrelated commits, so use THREE dots:
+
+    git diff origin/main...HEAD -- apps/mouth
+
+HEAD is b70bf889cf. You may run `npx vitest run <file>` inside apps/mouth
+(read-only sandbox permitting), but report only what you can show.
+
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Failed
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+[… 12992 lines of read-only tool output elided by the author; the full run is kept out of the repo …]
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/LivingTree.tsx:225` — Opening the mobile sheet mounts a second `TreePanel` while the desktop panel at line 239 remains mounted; both emit identical `data-process-jump` selectors at line 290. Strict Playwright locators therefore match twice, and resizing to desktop can expose both panels. Render only the active viewport panel and unmount the mobile sheet at the desktop breakpoint.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:366` — Every empty ENGINE outcome except `NO_SUPPORTED_PATH` receives copy saying the engine is “waiting for” something. That is false for reachable `HUMAN_REVIEW_REQUIRED` and `TEMPORARILY_UNAVAILABLE` outcomes. Switch explicitly on every outcome state; reserve waiting copy for `NEEDS_INPUT`.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:701` and `:1608` — EN and ID promise that every question states “the fact it sets,” but `HUMAN_CONTEXT` questions deliberately have no attached fact and the open-question panel says exactly that. Change both framing strings to promise an explanation of what each question informs, not a fact it sets.
+
+- `apps/mouth/e2e/visa-oracle-process.spec.ts:102` — `seed()` installs another `page.addInitScript` on every iteration at line 323. Playwright leaves the evaluation order of multiple init scripts undefined, so later screenshots can restore an earlier state; the test checks only that a rail exists and cannot detect mislabeled renders. Use a fresh page or set storage then reload for each state, and assert the expected step/outcome before capture.
+
+VERDICT: DEFECT
+CODEX_EXIT=0

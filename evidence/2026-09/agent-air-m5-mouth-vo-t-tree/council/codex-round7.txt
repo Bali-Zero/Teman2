@@ -1,0 +1,131 @@
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b54-ff06-7b20-b3b3-1bceeaa0f04d
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds).
+- `getProcessModel` disagreeing with `getTreeSteps` in any reachable state —
+  including: category answered with the reserved value "unsure" (not a real
+  category key), the onshore `permit_expiry` lane that jumps straight to
+  `review_gate` skipping `category`, a follow-up question appended after the
+  verdict, and the framing node.
+- The duplicated rail (mobile + desktop) producing duplicated ids, duplicated
+  live-region announcements, or two elements that a strict-mode Playwright
+  locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+
+## Round 7 — read the CURRENT tree, and how to diff it
+
+This branch has now been merged with `origin/main`, so `origin/main` is an
+ANCESTOR of HEAD: `git diff origin/main -- apps/mouth` shows exactly this
+window's own work and nothing else. An earlier round was given a two-dot diff
+against an origin/main that was 28 commits AHEAD, and reported files this
+window never touched (`apps/mouth/src/app/visa/page.tsx`) — that finding was a
+harness artifact and is not in scope. Judge only what
+`git diff origin/main -- apps/mouth` shows.
+
+Two findings from round 6 are settled:
+- `getProcessModel` inferring "the engine asked for this fact" from "this
+  question is not on the spine" — CURED. It now takes a third argument
+  `visitedVerdict`, read from `FlowState.history` by `OracleShell`, and
+  `atFollowUp` is `offSpine && visitedVerdict`. Without that proof the
+  non-question steps keep whatever `getTreeSteps` said. Three tests in
+  `ProcessRail.test.tsx` replay `ADVANCE` + `SKIP(in_indonesia)` through the
+  real reducer and assert the verdict step is not marked done, the outcome
+  stage is not open, and the copy does not say the engine asked.
+- `verdict.state_description.NO_SUPPORTED_PATH` promising three alternatives —
+  that string is not this window's and no longer exists on `origin/main`.
+
+Your job: find a defect that is still on disk, in this window's own diff.
+Same output format, same last line.
+
+codex
+[Air-M5] Leggo il diff attuale rispetto a `origin/main` e verifico le proiezioni del rail contro reducer e percorso reale. Riporterò solo difetti dimostrabili nel lavoro di questa finestra.
+
+[… 775 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Applico le skill `visaoracle`, `modus` e `stadio-zero` al solo incarico di revisione: Gear 3, BLUE per default, ruolo revisore senza Dux, mandato Round 7, worktree `mouth-vo-t-tree`. Il diff contiene nove file; i criteri di accettazione sono quelli del mandato, senza accesso a dati cliente.
+
+[… 2888 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Sto verificando due punti delicati: le domande aggiunte dopo il verdetto e i conteggi quando il percorso salta intere tappe. Il rail distingue correttamente alcune condizioni già corrette nei round precedenti; controllo ora i casi che i test potrebbero non coprire.
+
+[… 2273 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Ho riprodotto due incongruenze con il reducer reale e un rendering in memoria: dopo una risposta aggiuntiva il verdetto non è più l’ultimo nodo del trunk; tornando alla conferma dopo il verdetto, il rail dichiara che nulla è stato inviato. Verifico le righe precise per il report.
+
+[… 115 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1784` — Supplemental questions are appended **after** `verdict`. Reproduced through the reducer: complete tourism → `ASK_FOLLOW_UP(family_sponsor_confirmed)` → answer. The trunk ends with `verdict: current`, then `family_sponsor_confirmed: done`; the breadcrumb consequently ends at an answered question instead of the current outcome. Minimal fix: insert supplemental questions before the terminal verdict.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:193` — Every confirmation renders “Nothing has been sent yet” (also in ID). After an engine response, `REVIEW_ANSWERS` returns here, making that statement false. Reproduced with the reducer and rendered component. Minimal fix: use EN/ID confirmation copy that describes the next submission without denying previous submissions.
+
+VERDICT: DEFECT
+tokens used
+103.329
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1784` — Supplemental questions are appended **after** `verdict`. Reproduced through the reducer: complete tourism → `ASK_FOLLOW_UP(family_sponsor_confirmed)` → answer. The trunk ends with `verdict: current`, then `family_sponsor_confirmed: done`; the breadcrumb consequently ends at an answered question instead of the current outcome. Minimal fix: insert supplemental questions before the terminal verdict.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:193` — Every confirmation renders “Nothing has been sent yet” (also in ID). After an engine response, `REVIEW_ANSWERS` returns here, making that statement false. Reproduced with the reducer and rendered component. Minimal fix: use EN/ID confirmation copy that describes the next submission without denying previous submissions.
+
+VERDICT: DEFECT
+CODEX_EXIT=0

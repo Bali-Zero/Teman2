@@ -1,0 +1,10 @@
+[author header] cmd: agy --model gemini-3.1-pro-high --effort high --print-timeout 20m --sandbox --disable-slash-commands --print "<prompt: rules + earlier dispositions + git diff origin/main...HEAD -- apps/mouth at 748d8d2f6d>" ; started 2026-09-14T03:29:38+08:00
+
+Findings:
+- No defects found. The `getProcessModel` projection safely and correctly reconstructs the state without branching changes or duplicating logic. It correctly handles off-spine steps, skipped questions, and engine follow-ups (`atFollowUp`) by tracking the facts directly and safely parsing the stages. 
+- The rail properly adheres to the product isolation rule by only rendering engine candidates explicitly passed down to `ProcessOutcome` from the parent once evaluated, never guessing eligibility.
+- Duplicate IDs and duplicate live-region announcements are avoided because the `data-process-announce` live region is rendered exactly once in `LivingTree`, safely outside the duplicated `TreePanel` instances.
+- Accessibility, strict Playwright locators, and `oracle.css` constraints are fully honoured.
+
+VERDICT: OK
+AGY_EXIT=0
