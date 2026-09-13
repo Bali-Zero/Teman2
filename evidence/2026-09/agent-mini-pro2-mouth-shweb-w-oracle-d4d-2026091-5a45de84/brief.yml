@@ -1,11 +1,13 @@
 gear: 2
 gear_reason: >-
-  Measured with the inputs CI uses — `scripts/evidence_pack_lint.py --print-floor
-  --changed-files-file <f> --numstat-file <n>` returns 2 (18 files touched, run against this
-  branch's real working-tree diff off `ac05dfc6f4`). Taking the floor without `--numstat-file`
-  under-reports it to 1 — measured in this same session — and that omission has been rejected
-  three times in this mandate (#6240, PR-O2's brief, PR-D3c's brief). No digit is typed: re-run
-  both invocations to check.
+  Measured with the inputs CI uses — the floor is computed with
+  `python3 scripts/evidence_pack_lint.py <evidence dir> --print-floor
+  --changed-files-file <f> --numstat-file <n>` on the 3-dot changed files and
+  numstat, run against this branch's real diff off `ac05dfc6f4`. Taking the
+  floor without `--numstat-file` under-reports it — measured in this same
+  session — and that omission has been rejected three times in this mandate
+  (#6240, PR-O2's brief, PR-D3c's brief). No digit is typed: re-run the
+  command to check.
 task_id: shweb-w-oracle-d4d-20260913
 mandate_id: SHWEB-20260911/W-ORACLE/PR-D4d
 colour: BLUE
