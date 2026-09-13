@@ -1,0 +1,68 @@
+gear: 2
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO window W-VO-C (BLUE, host M5) — the public visa door is the Oracle
+objective: >-
+  balizero.com/visa and balizero.com/visa/match have answered 200 with
+  index,follow since 2026-08-25, when Zero ruled «Due porte: 301 ->
+  /visa-oracle subito». For nineteen days a visitor arriving from a search
+  engine landed on a legacy free-text quiz that promises a visa AND a cost in
+  four questions, while the funnel carrying the signed, versioned RulePack
+  (/visa-oracle, ENGINE/ENFORCE since 2026-09-06, pack seq-20 2026.9.6) was the
+  one search engines cannot see. Retire both legacy doors to a permanent
+  redirect onto /visa-oracle, delete their bodies rather than shadow them, keep
+  every already-shared result link resolving, and stop advertising the retired
+  doors in the sitemap. Ship ONLY the unblocked half (A1, A2, A3, A5); the
+  robots half (A4) waits for Zero.
+scope:
+  - apps/mouth/src/app/visa/page.tsx
+  - apps/mouth/src/app/visa/page.test.tsx
+  - apps/mouth/src/app/visa/match/page.tsx
+  - apps/mouth/src/app/visa/match/page.test.tsx
+  - apps/mouth/src/app/sitemap.ts
+  - apps/mouth/src/app/sitemap.test.ts
+  - apps/mouth/e2e/visa-funnel-fusion.spec.ts
+constraints:
+  - Robots are NOT touched anywhere. /visa-oracle keeps robots {index:false, follow:false}; lifting it needs Zero's written ratification of the 2026-08-23 four-condition checklist plus the T2-copy fix (window override, and acceptance A4's own wording — "shipping a robots change without a quoted ruling is a fail").
+  - Forbidden — /visa/second-home* (live Merah Putih perimeter), /visa/voa (GARUDA), the visa engine, any rule pack, oracle.css.
+  - /visa/match/[hash] must keep answering 200 — a result link already shared with a visitor may not die with the door.
+  - No client PII — synthetic hashes only. No price stated anywhere (PricingTool is the sole price source and this window quotes none).
+  - No ledger PR, no PENDING-ARMS.md edit, no gate status posted by this window (SAETTA rule 2).
+acceptance:
+  - text: >-
+      A1 — WHEN a visitor requests https://balizero.com/visa or
+      https://balizero.com/visa/match on the promoted deploy, the response SHALL
+      be a permanent redirect (301 or 308) whose location is /visa-oracle.
+    probe: curl -sI https://balizero.com/visa
+  - text: >-
+      A2 — WHERE a URL is inside the Oracle perimeter, no response SHALL be a
+      200 carrying the legacy free-text quiz body. Structurally the quiz source
+      is deleted, and the retired-door guards SHALL fail if a quiz is ever put
+      back behind the redirect.
+    probe: npx vitest run src/app/visa src/app/sitemap.test.ts src/app/robots.test.ts src/__tests__/middleware.test.ts
+  - text: >-
+      A3 — WHEN https://balizero.com/sitemap.xml is fetched, it SHALL NOT list
+      /visa or /visa/match, and each absence SHALL be a named reason in
+      sitemap.test.ts's INTENTIONALLY_UNLISTED rather than a silent drop.
+    probe: curl -sS https://balizero.com/sitemap.xml
+  - text: >-
+      A4 — NOT SHIPPED. WHILE Zero has not ratified the 2026-08-23
+      four-condition indexability checklist, the /visa-oracle robots value SHALL
+      be left exactly as found (noindex, nofollow) and the question SHALL be
+      carried to the close line under "needs input" with the ruling quoted.
+    probe: grep the robots meta and the title
+  - text: >-
+      A5 — IF a visitor opens a /visa/match/<hash> link already shared with
+      them, the page SHALL still answer 200 with its own state; it SHALL NOT be
+      redirected away with the door.
+    probe: curl -sI https://balizero.com/visa/match/
+  - text: >-
+      A6 — WHEN the touched surfaces are checked locally, vitest, tsc --noEmit,
+      eslint and prettier SHALL all be green, and no check SHALL be skipped.
+    probe: npx tsc --noEmit
+consumer_map:
+  - The live balizero.com/visa and /visa/match doors served by the apps/mouth Vercel deploy on merge to main — the observation is the response header on the promoted build, not the diff.
+  - https://balizero.com/sitemap.xml, read by Googlebot and Bingbot — it stops advertising two URLs that only redirect.
+  - The required GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs the two retired-door guards and sitemap.test.ts on every future PR touching these routes.
+appetite:
+  budget: 180 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch
