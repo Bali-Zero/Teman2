@@ -1029,13 +1029,26 @@ describe("investment.investment_amount_usd — PR-D4c-2, currency-bound amount o
     // fact-mapper.ts's NOT_CERTAIN scan (`mapDisclosedReviewFlags`) is an
     // EXACT-equality `Object.values(facts).includes("unsure")` — proven
     // directly here: `"still_unsure" !== "unsure"`, so it cannot match.
+    //
+    // Exact-set pin, not `.not.toContain("NOT_CERTAIN")`: that only proves
+    // NOT_CERTAIN's absence and stays green when the set changes for a
+    // reason that has nothing to do with the currency answer. The single
+    // member here, `ACTIVITY_BOUNDARY`, is PRE-EXISTING — it comes from
+    // `investment_vehicle: "undecided"` (absent from
+    // `ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS.investment_vehicle`), never from
+    // `investment_currency`. Pinning the whole array is what actually proves
+    // the claim in this test's title: the currency answer adds NOTHING to
+    // the set, not merely that one named flag happens to be missing from it.
+    // Price of that, said out loud: if ACTIVITY_BOUNDARY's own trigger ever
+    // changes, this test goes red — that is intended. A pin that can never
+    // object isn't pinning anything.
     expect(
       mapDisclosedReviewFlags({
         category: "invest",
         investment_vehicle: "undecided",
         investment_currency: "still_unsure",
       }),
-    ).not.toContain("NOT_CERTAIN");
+    ).toEqual(["ACTIVITY_BOUNDARY"]);
   });
 });
 
