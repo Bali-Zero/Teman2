@@ -337,7 +337,10 @@ function MyPositionCard({
     >
       <div className="flex items-center justify-between">
         <span className={EYEBROW}>Posisi Saya</span>
-        <StatePill tone="you" label={`Rank #${me.rank}`} />
+        <StatePill
+          tone="you"
+          label={me.activations === 0 ? "Rank –" : `Rank #${me.rank}`}
+        />
       </div>
       <div className="flex items-baseline gap-2">
         <span
@@ -548,38 +551,43 @@ function LiveFeed({
   activations: PortalChallengeResponse["recent_activations"];
   now: number;
 }) {
-  if (activations.length === 0) return null;
   return (
     <div
       data-testid="live-feed"
       className={cn(CARD, "p-3 flex flex-col gap-1.5")}
     >
       <span className={cn(EYEBROW, "px-1")}>Aktivitas Terbaru</span>
-      <ul className="flex flex-col">
-        {activations.slice(0, 6).map((a, i) => {
-          const diffMs = Math.max(0, now - new Date(a.at).getTime());
-          const isRecent = diffMs < 60 * 60 * 1000;
-          return (
-            <li
-              key={`${a.display_name}-${a.at}-${i}`}
-              className="flex items-center gap-2 px-1 py-1 text-[11px]"
-            >
-              {isRecent && (
-                <span
-                  aria-hidden="true"
-                  className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--bz-copper)]"
-                />
-              )}
-              <span className="font-semibold text-[var(--tx-pure)] truncate flex-1">
-                {a.display_name}
-              </span>
-              <span className="text-[var(--tx-secondary)] whitespace-nowrap">
-                {relativeMinutes(a.at, now)}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      {activations.length === 0 ? (
+        <p className="px-1 py-2 text-[11px] text-[var(--tx-secondary)]">
+          Belum ada aktivitas — undangan pertama akan muncul di sini.
+        </p>
+      ) : (
+        <ul className="flex flex-col">
+          {activations.slice(0, 6).map((a, i) => {
+            const diffMs = Math.max(0, now - new Date(a.at).getTime());
+            const isRecent = diffMs < 60 * 60 * 1000;
+            return (
+              <li
+                key={`${a.display_name}-${a.at}-${i}`}
+                className="flex items-center gap-2 px-1 py-1 text-[11px]"
+              >
+                {isRecent && (
+                  <span
+                    aria-hidden="true"
+                    className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--bz-copper)]"
+                  />
+                )}
+                <span className="font-semibold text-[var(--tx-pure)] truncate flex-1">
+                  {a.display_name}
+                </span>
+                <span className="text-[var(--tx-secondary)] whitespace-nowrap">
+                  {relativeMinutes(a.at, now)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -758,12 +766,12 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
             </div>
             <div>
               <span
-                className="font-black tabular-nums leading-none text-[clamp(52px,8vw,84px)]"
-                style={SERIF}
+                className="block font-black tabular-nums text-[clamp(52px,8vw,84px)]"
+                style={{ ...SERIF, lineHeight: 0.9, marginBottom: "0.35em" }}
               >
                 {data.team_total_activations}
               </span>
-              <p className={cn("mt-1 text-[12px]", INK_SECONDARY)}>
+              <p className={cn("text-[12px]", INK_SECONDARY)}>
                 {isZeroState
                   ? "Belum ada klien aktivasi — jadilah yang pertama!"
                   : "klien aktivasi terkumpul dari seluruh tim"}

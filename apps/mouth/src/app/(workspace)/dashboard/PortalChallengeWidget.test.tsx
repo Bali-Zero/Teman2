@@ -188,6 +188,31 @@ describe("PortalChallengeWidget", () => {
     expect(screen.getByText(/jadilah yang pertama/i)).toBeInTheDocument();
     expect(screen.getByText("Belum ada aktivasi tercatat")).toBeInTheDocument();
     expect(screen.getAllByText("Ayo jadi yang pertama!")).toHaveLength(3);
+    // The feed card never disappears — it shows a quiet empty line instead.
+    const feed = within(screen.getByTestId("live-feed"));
+    expect(feed.getByText(/Belum ada aktivitas/i)).toBeInTheDocument();
+  });
+
+  it("shows a '–' rank instead of a lying Rank #N when the viewer has 0 activations", () => {
+    mockQuery(
+      response({
+        entries: [
+          entry({
+            is_me: true,
+            rank: 1,
+            activations: 0,
+            award_tier: null,
+            next_tier_threshold: 10,
+            to_next_tier: 10,
+            total_prize_idr: 0,
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const card = within(screen.getByTestId("my-position-card"));
+    expect(card.getByText("Rank –")).toBeInTheDocument();
+    expect(card.queryByText("Rank #1")).not.toBeInTheDocument();
   });
 
   it("ranks alphabetically with a '–' rank marker in the zero-activation state", () => {
