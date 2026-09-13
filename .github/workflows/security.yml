@@ -1066,11 +1066,17 @@ jobs:
         # pipe/tee here on purpose (W101/W97 — a pipe can mask the upstream
         # exit code): the exit status is captured explicitly via `$?` and
         # re-raised, so a finding still fails this step exactly as before.
+        # The output is printed before the exit code is re-raised, so a
+        # failing run under `bash -e`'s command-substitution trap is no
+        # longer mute.
         run: |
           set -uo pipefail
+          set +e
           OUT="$(python scripts/detect_secrets_check_unaudited.py 2>&1)"
           RC=$?
+          set -e
           printf '%s\n' "$OUT"
+          echo "detect_secrets_check_unaudited rc=$RC"
           printf '%s\n' "$OUT" > /tmp/unaudited-findings.txt
           exit "$RC"
 
