@@ -7,6 +7,12 @@ against the live backend contract (it sat 20 days behind once, silently).
 `compute_schema_sha256` is the ONE hashing implementation, imported by that
 test rather than reimplemented, so the writer and the checker cannot drift
 apart from each other the way the schema and the backend did.
+
+SCOPE (stated honestly, round-2 council MINOR): this pin covers the backend
+OpenAPI JSON, not `schema.d.ts` itself — it cannot detect `openapi-typescript`
+(the separate `generate:api` rendering step) diverging from that JSON on a
+tool version bump. See the test module's docstring for the full reasoning on
+why a second pin was deliberately not added.
 """
 
 from __future__ import annotations
