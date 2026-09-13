@@ -152,3 +152,32 @@ amendment is necessary" section).
 > Corrected 2026-08-21: this list said `alembic/env.py` — a **root-relative path that does not exist** in this repo, so for as long as the line has been read it has protected nothing. The only Alembic `env.py` in the tree belongs to **bali-intel-scraper**, not backend-rag. Do not read this as "migrations are unguarded": backend-rag's live migration surface is `apps/backend-rag/backend/db/migrations_v2/`, and it is gated server-side by `hot-zone-pr-gate.yml` and `auto-merge-whitelist.yml` — it never needed this list.
 
 **Codex sandbox**: `--sandbox read-only|workspace-write` only. NEVER `--dangerously-bypass`.
+
+> **RULED 2026-09-13 (Zero, verbatim «non va mai a revisione umana ma c'è sempre risposta
+> deterministica» · «senza rimandare a revisione umana ma spiegati deterministicamente»; and the
+> exception, ~23:05 WITA, verbatim «1 se ci sono questioni penali, revisione umana»): the Visa Oracle
+> never emits a human-review outcome to a visitor except for a disclosed criminal matter;
+> disclosures and by-design holds are named conditions on a deterministic verdict. Supersedes
+> MANDATE §1 T3 and the design note at fact-mapper.ts:447-455.**
+> - The criminal path keeps `HUMAN_REVIEW_REQUIRED` under the single named cause
+>   `CRIMINAL_MATTER_DISCLOSED`, explained in EN/ID with its next step (a consultant reviews it) —
+>   never a bare hold.
+> - Every other disclosure (health, prior refusal, PEP/sanctions, source of funds, diplomatic
+>   passport, "unsure", two declared purposes, activity boundary, ambiguous sponsor, conflicting
+>   immigration status), every pack rule whose effect is `REQUIRE_REVIEW` (the T3 assisted
+>   products included, next step `ASSISTED_APPLICATION`) and a stale or freshness-unknown decisive
+>   source is a condition: code, `source_refs`, i18n key, next step. The candidates the signed pack
+>   proved are kept.
+> - Minor without a confirmed guardian: `NO_SUPPORTED_PATH` under the named cause
+>   `GUARDIAN_MUST_APPLY`; privacy posture unchanged, no product named.
+> - Imperator decision (same night, ~23:30 WITA, binding on the implementation): a decisive or
+>   safety-critical source that is revoked, superseded, expired, not yet in force, non-primary or
+>   unresolvable (`DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE`, `SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE`)
+>   KEEPS the hold — the verdict would rest on something that is not law. It is an engine-integrity
+>   failure, not a visitor disclosure, and it is explained the same way (source id, next step: Bali
+>   Zero refreshes the source).
+> - Enforcement: `evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST` is exactly those three codes, compared
+>   by identity; any other review outcome reaching the end of `apply_public_policy_adapters` is
+>   converted. Scope: the visitor surface (`POST /api/visa-oracle/evaluate`). The engine vocabulary
+>   keeps `HUMAN_REVIEW_REQUIRED` for offline callers and rows already written. Guard:
+>   `apps/backend-rag/backend/tests/services/visa_engine/test_visitor_determinism_floor.py`.

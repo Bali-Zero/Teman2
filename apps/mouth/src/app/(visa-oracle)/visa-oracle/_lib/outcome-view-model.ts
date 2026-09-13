@@ -56,6 +56,31 @@ export interface OutcomeReason {
   sourceIds: readonly string[];
 }
 
+/** What a visitor is asked to DO about a named condition. Mirrors the
+ * engine's `ConditionNextStep` closed vocabulary one-for-one — a member added
+ * on one side and not the other is a type error here, which is the point. */
+export type OutcomeConditionNextStep =
+  | "ANSWER_AGAIN"
+  | "BRING_TO_CONSULTATION"
+  | "APPLY_THROUGH_GUARDIAN"
+  | "ASSISTED_APPLICATION"
+  | "NO_ACTION_NEEDED"
+  | "CONSULTANT_REVIEW"
+  | "AWAIT_SOURCE_REFRESH";
+
+/**
+ * A named condition carried BESIDE a verdict (RULED 2026-09-13).
+ *
+ * It is an `OutcomeReason` plus a next step, and the extension is deliberate:
+ * a condition renders through the SAME `REVIEW_REASON_COPY` table the old
+ * human-review sentences used, so every code that already had reviewed EN/ID
+ * copy keeps exactly the sentence it had. What the ruling changed is where
+ * that sentence appears — under a live verdict instead of instead of one.
+ */
+export interface OutcomeCondition extends OutcomeReason {
+  nextStep: OutcomeConditionNextStep;
+}
+
 export interface InterviewAssumption {
   id: string;
   questionId: string;
@@ -171,6 +196,11 @@ interface OutcomeBase {
   assumptions: readonly InterviewAssumption[];
   sources: readonly OutcomeSource[];
   nextSteps: OutcomeNextSteps;
+  /** Named conditions on this verdict. On `OutcomeBase` and not on one state
+   * because the whole ruling is that a condition does not pick a state: the
+   * same disclosed criminal record conditions a SUPPORTED verdict, a
+   * NEEDS_INPUT one and a NO_SUPPORTED_PATH one identically. */
+  conditions: readonly OutcomeCondition[];
 }
 
 export type SupportedCandidatesOutcome = OutcomeBase &

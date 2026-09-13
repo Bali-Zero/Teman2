@@ -444,13 +444,17 @@ const REVIEW_FLAG_MAP: Readonly<
 };
 
 /**
- * ACTIVITY_BOUNDARY is a HOLD, not a label: any disclosed flag makes the
- * backend rewrite the decision to HUMAN_REVIEW_REQUIRED with `candidates=()`
- * (`evaluate_path.py::_apply_disclosed_review_flags`), and `models.py` forbids
- * a non-empty candidate list in any other state — so raising it DELETES a
- * product the signed pack had already proven. It may be raised only for an
- * answer the signed vocabulary cannot decide, never for the mere fact that a
- * question was answered.
+ * SUPERSEDED DESIGN NOTE (RULED 2026-09-13, `docs/rules/RULINGS.md`, W-VO-D):
+ * this used to read "ACTIVITY_BOUNDARY is a HOLD, not a label: any disclosed
+ * flag makes the backend rewrite the decision to HUMAN_REVIEW_REQUIRED with
+ * `candidates=()`". Since that ruling only CRIMINAL_RECORD still holds (as the
+ * named cause CRIMINAL_MATTER_DISCLOSED); every other flag, this one included,
+ * keeps the verdict the signed pack proved and adds a named condition
+ * (`evaluate_path.py::_apply_disclosed_review_flags`). The narrowing rule below
+ * still stands for a different reason: a flag raised on a decidable answer puts
+ * a false "answer that again" condition in front of the visitor. It may be
+ * raised only for an answer the signed vocabulary cannot decide, never for the
+ * mere fact that a question was answered.
  *
  * Keyed by question id (`tree.ts`), listing per question the answers the pack
  * decides on its own. Every OTHER answer holds, including an option added to
@@ -469,7 +473,8 @@ const REVIEW_FLAG_MAP: Readonly<
  * defect this table exists to cure for the other questions. `dual` (Indonesian
  * dual citizenship) and `other` stay undecidable on purpose: `dual` is the
  * legally most sensitive diaspora status the owner named as a legitimate
- * human-review case, and no corpus walk exercises it — releasing it would
+ * human-review case (since 2026-09-13 a named condition, not a hold — see the
+ * superseded note above), and no corpus walk exercises it — releasing it would
  * open a branch never tested on the point that matters most; `other` is
  * fail-closed by construction, it names no specific status the pack can
  * reason about.

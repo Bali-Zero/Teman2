@@ -1161,6 +1161,12 @@ describe("review reasons cover every code the current pack can emit", () => {
   // discover them — they have to be named here, from three sources in
   // evaluate_path.py:
   //   - `_DISCLOSED_REVIEW_REASON_CODES` (11 `DisclosedReviewFlag` entries)
+  //   - `conditions.py::CRIMINAL_MATTER_REVIEW_CODE`, the ONE cause a visitor
+  //     may still be held on (RULED 2026-09-13, `docs/rules/RULINGS.md`).
+  //     `_disclosed_review_policy_adapter` substitutes it for the flag
+  //     table's raw `DISCLOSED_CRIMINAL_RECORD_REVIEW` before the decision
+  //     reaches a visitor; the raw code stays listed because the core path
+  //     (pre-adapter, back-office, `visa_decisions` rows) still emits it.
   //   - `_apply_minor_privacy_hold`'s `MINOR_GUARDIAN_PRIVACY_REVIEW`
   //   - the decisive-source gate (`_apply_decisive_source_gate` family,
   //     ~line 1030) and the safety-critical source hold
@@ -1172,6 +1178,7 @@ describe("review reasons cover every code the current pack can emit", () => {
   //     notice-report.json (persona 9/10, "actual").
   const PACK_INDEPENDENT_REVIEW_REASON_CODES = [
     "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
+    "CRIMINAL_MATTER_DISCLOSED",
     "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
     "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
     "DECISIVE_SOURCE_STALE",
@@ -1216,12 +1223,13 @@ describe("review reasons cover every code the current pack can emit", () => {
     ].sort();
     // Guard the guard: a glob/parse that silently found nothing would make
     // every assertion below vacuously true. 20 pack (16 HUMAN_REVIEW-stage +
-    // 4 HARD_FILTER with on_unknown=HUMAN_REVIEW, PR-O2) + 18
-    // pack-independent = 38, all of them mapped as of PR-O2. Floor raised
-    // from 32 to the measured 38 (round-1 refuter finding, Gemini 3.1 Pro +
-    // Kimi K3): 32 would still pass a regression that silently dropped up
-    // to 5 real codes.
-    expect(allRealCodes.length).toBeGreaterThanOrEqual(38);
+    // 4 HARD_FILTER with on_unknown=HUMAN_REVIEW, PR-O2) + 19
+    // pack-independent = 39, all of them mapped. Floor raised from 32 to
+    // the measured 38 (round-1 refuter finding, Gemini 3.1 Pro + Kimi K3):
+    // 32 would still pass a regression that silently dropped up to 5 real
+    // codes. 39 since VO-D: CRIMINAL_MATTER_DISCLOSED joined the
+    // pack-independent set (RULED 2026-09-13).
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(39);
 
     const unaccounted = allRealCodes.filter(
       (code) =>

@@ -36,6 +36,7 @@ import {
   type ServiceAvailabilityStatus,
 } from "../_lib/outcome-view-model";
 import { translate, type I18nKey } from "../_lib/i18n";
+import { CONDITION_NEXT_STEP_COPY } from "../_lib/engine-adapter";
 import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
 import {
   DISPLAY_ORDER,
@@ -180,6 +181,11 @@ export interface DemonstratedReviewCause {
  */
 const REVIEW_GATE_CAUSE_ITEM: Readonly<Record<string, string>> = {
   DISCLOSED_CRIMINAL_RECORD_REVIEW: "criminal_record",
+  // RULED 2026-09-13: the visitor surface substitutes the ONE named cause
+  // for the raw criminal code before it arrives, so the same tick has to
+  // demonstrate both — or the one path that still holds loses its "what
+  // you told us" attribution exactly where it matters most.
+  CRIMINAL_MATTER_DISCLOSED: "criminal_record",
   DISCLOSED_HEALTH_CONCERN_REVIEW: "health_flag",
   DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW: "prior_refusal",
   DISCLOSED_PEP_OR_SANCTIONS_REVIEW: "pep_or_sanctions",
@@ -915,6 +921,56 @@ export function OutcomeSheet({
               />
             ))}
           </div>
+        </section>
+      )}
+
+      {/* RULED 2026-09-13: the conditions block. It sits BELOW the verdict on
+          purpose — a condition qualifies an answer the visitor has already
+          been given, and putting it above would recreate, in layout, exactly
+          the "a human will look at this first" experience the ruling removed.
+          Every class name here already exists in `oracle.css`, which is
+          READ-ONLY by the D4 ruling. */}
+      {outcome.conditions.length > 0 && (
+        <section aria-labelledby="oracle-conditions-title">
+          <h2
+            id="oracle-conditions-title"
+            className="oracle-outcome__section-title"
+          >
+            {translate(language, "outcome.conditions_title" as I18nKey)}
+          </h2>
+          <ul className="oracle-reason-list">
+            {outcome.conditions.map((condition) => (
+              <li key={condition.code}>
+                <span>{localized(condition.message, language)}</span>
+                <span>
+                  {" "}
+                  {localized(
+                    CONDITION_NEXT_STEP_COPY[condition.nextStep],
+                    language,
+                  )}
+                </span>
+                {condition.sourceIds.length > 0 && (
+                  <span className="oracle-reason-list__sources">
+                    {condition.sourceIds.map((sourceId) => {
+                      const source = sourceIndex.get(sourceId);
+                      if (!source) return null;
+                      return (
+                        <a
+                          key={sourceId}
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {source.title}
+                          <ExternalLink aria-hidden="true" size={13} />
+                        </a>
+                      );
+                    })}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

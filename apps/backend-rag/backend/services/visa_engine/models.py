@@ -57,6 +57,7 @@ from backend.services.visa_engine.enums import (
     APPLICANT_FACT_PATHS,
     ApplicationChannel,
     ClockAnchor,
+    ConditionNextStep,
     DecisionState,
     EntryCount,
     EntryPattern,
@@ -93,6 +94,9 @@ Identifier = Annotated[str, Field(pattern=IDENTIFIER_PATTERN, min_length=1, max_
 
 #: ``$defs/ReasonCode``
 REASON_CODE_PATTERN = r"^[A-Z][A-Z0-9_]{0,127}$"
+#: i18n key of a ``DecisionCondition``'s applicant-facing explanation. Lowercase
+#: dotted segments so it cannot accidentally hold a rendered sentence.
+CONDITION_KEY_PATTERN = r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$"
 ReasonCode = Annotated[str, Field(pattern=REASON_CODE_PATTERN, min_length=1, max_length=128)]
 
 #: ``$defs/ProductCode``
@@ -1269,6 +1273,49 @@ class Reason(BaseModel):
         return v
 
 
+class DecisionCondition(BaseModel):
+    """A named condition carried BESIDE a deterministic outcome.
+
+    RULED 2026-09-13 (see ``docs/rules/RULINGS.md``): the Visa Oracle answers
+    a visitor with ``HUMAN_REVIEW_REQUIRED`` only for a disclosed criminal
+    matter or a decisive/safety-critical source that is no longer law.
+    Everything else that used to delete the verdict — a disclosed compliance
+    fact, a stale decisive source, a pack rule that asks for a human — becomes
+    one of these instead: the verdict survives, and the thing that would have
+    hidden it is NAMED. The held outcomes carry one too, so they explain
+    themselves.
+
+    ``explanation_key`` is an i18n KEY, never a sentence: the EN/ID text lives
+    in the mouth's ``i18n.ts`` so no applicant-facing prose is minted by the
+    engine (and so a condition can never smuggle PII into a signed decision).
+    ``source_refs`` may be empty and that is not an oversight — a condition
+    describing an applicant DISCLOSURE has no regulatory citation to borrow,
+    and borrowing one from the pack would be a false claim of provenance.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    code: ReasonCode
+    rule_ids: tuple[Identifier, ...] = Field(...)
+    source_refs: tuple[uuid.UUID, ...] = Field(...)
+    explanation_key: Annotated[str, Field(pattern=CONDITION_KEY_PATTERN)]
+    next_step: ConditionNextStep
+
+    @field_validator("rule_ids")
+    @classmethod
+    def _check_unique_rule_ids(cls, v: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(v)) != len(v):
+            raise ValueError("rule_ids must have unique items")
+        return v
+
+    @field_validator("source_refs")
+    @classmethod
+    def _check_unique_source_refs(cls, v: tuple[uuid.UUID, ...]) -> tuple[uuid.UUID, ...]:
+        if len(set(v)) != len(v):
+            raise ValueError("source_refs must have unique items")
+        return v
+
+
 class Candidate(BaseModel):
     """``$defs/Candidate`` (spec §2). ``covered_purposes`` is deliberately a
     bare ``str`` tuple, not ``tuple[VisaPurpose, ...]`` — spec §2's own
@@ -1365,6 +1412,11 @@ class Decision(BaseModel):
     outage: Outage | None
     quotes: tuple[PriceQuote, ...] = Field(...)
     notices: tuple[Reason, ...] = Field(...)
+    #: Named conditions on an otherwise deterministic verdict (RULED
+    #: 2026-09-13). Legal on EVERY state including SUPPORTED_CANDIDATES —
+    #: that is the whole point: a disclosure conditions a verdict, it does
+    #: not delete it.
+    conditions: tuple[DecisionCondition, ...] = Field(default=())
     trace_sha256: Sha256Hex | None
     decision_integrity: Fingerprint | None
 
@@ -1389,6 +1441,10 @@ class Decision(BaseModel):
     @model_validator(mode="after")
     def _check_state_conditionals(self) -> Decision:
         state = self.state
+        condition_codes = [condition.code for condition in self.conditions]
+        if len(set(condition_codes)) != len(condition_codes):
+            # One sentence per code on the sheet; a duplicate is a producer bug.
+            raise ValueError("conditions must have unique codes")
         identity_required = state in (
             DecisionState.SUPPORTED_CANDIDATES,
             DecisionState.NEEDS_INPUT,
@@ -1446,6 +1502,9 @@ class Decision(BaseModel):
                     "state=TEMPORARILY_UNAVAILABLE forbids missing_facts/review_reasons/"
                     "no_path_reasons"
                 )
+            if self.conditions:
+                # Nothing was evaluated, so there is no verdict to condition.
+                raise ValueError("state=TEMPORARILY_UNAVAILABLE forbids conditions")
             if self.outage is None:
                 raise ValueError("state=TEMPORARILY_UNAVAILABLE requires a non-null outage")
             if self.facts_fingerprint is not None:

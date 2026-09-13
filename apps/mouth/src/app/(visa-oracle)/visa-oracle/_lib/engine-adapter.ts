@@ -14,6 +14,8 @@ import type {
   OutcomeDocument,
   OutcomeNextSteps,
   OutcomePrice,
+  OutcomeCondition,
+  OutcomeConditionNextStep,
   OutcomeReason,
   OutcomeSource,
   OutcomeTimeline,
@@ -726,6 +728,17 @@ function reason(
 // cover yet), and every code the current pack can emit is accounted for,
 // either here or in that known-gap list.
 export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
+  // RULED 2026-09-13 ~23:05 WITA (Zero, verbatim: «1 se ci sono questioni
+  // penali, revisione umana»). The ONE cause a visitor may still be held on,
+  // and the whole point of the ruling's second half is that it arrives
+  // EXPLAINED: what we are not doing (guessing), who decides (Immigration,
+  // on the file), and what happens next (a consultant reviews it with you).
+  // No product is named, because none was proved — but nothing is hidden
+  // either, which is what separates this from the bare hold it replaces.
+  CRIMINAL_MATTER_DISCLOSED: text(
+    "You told us there is a criminal matter in your history. Indonesian immigration weighs this on the file itself, so we will not guess an answer here: a Bali Zero consultant reviews your case with you and tells you which permits stay open. Bring any court or police document you have to that conversation.",
+    "Anda memberi tahu kami bahwa ada perkara pidana dalam riwayat Anda. Imigrasi Indonesia menilai hal ini berdasarkan berkasnya sendiri, jadi kami tidak akan menebak jawabannya di sini: konsultan Bali Zero akan meninjau kasus Anda bersama Anda dan memberi tahu izin mana yang tetap terbuka. Bawalah dokumen pengadilan atau kepolisian yang Anda miliki ke percakapan tersebut.",
+  ),
   // D2-bis (owner ruling, 2026-09-12 20:50 WITA): every HUMAN_REVIEW string
   // must (1) name the specific fact/answer, in the applicant's own terms,
   // that the signed rules cannot decide, (2) state authoritatively that the
@@ -1047,6 +1060,69 @@ function reviewReason(
   };
 }
 
+// RULED 2026-09-13 (`docs/rules/RULINGS.md`): the Oracle never tells a
+// visitor "a human will look at this". What used to delete the verdict is now
+// a named condition ON it, and this is the one sentence that tells the person
+// what to DO about it. Keyed by the engine's `ConditionNextStep`, which is a
+// CLOSED vocabulary, so `Record<OutcomeConditionNextStep, …>` makes a member
+// added on the engine side and forgotten here a TypeScript error — the copy
+// cannot silently go missing.
+export const CONDITION_NEXT_STEP_COPY: Record<
+  OutcomeConditionNextStep,
+  LocalizedText
+> = {
+  ANSWER_AGAIN: text(
+    "Next step: answer that question again with a definite yes or no — the result below is what we can prove from everything else you told us.",
+    "Langkah berikutnya: jawab lagi pertanyaan itu dengan ya atau tidak yang pasti — hasil di bawah ini adalah yang dapat kami buktikan dari seluruh jawaban Anda yang lain.",
+  ),
+  BRING_TO_CONSULTATION: text(
+    "Next step: bring this to the consultation. It does not remove the options below; Immigration assesses it case by case, and Bali Zero prepares the file with you.",
+    "Langkah berikutnya: bawa hal ini ke konsultasi. Ini tidak menghapus pilihan di bawah; Imigrasi menilainya kasus per kasus, dan Bali Zero menyiapkan berkasnya bersama Anda.",
+  ),
+  APPLY_THROUGH_GUARDIAN: text(
+    "Next step: a parent or legal guardian applies on the applicant's behalf and starts this assessment in their own name.",
+    "Langkah berikutnya: orang tua atau wali yang sah mengajukan atas nama pemohon dan memulai penilaian ini dengan namanya sendiri.",
+  ),
+  ASSISTED_APPLICATION: text(
+    "Next step: this permit is prepared with a Bali Zero consultant rather than filed on its own — the eligibility below stands, the paperwork is assisted.",
+    "Langkah berikutnya: izin ini disiapkan bersama konsultan Bali Zero, bukan diajukan sendiri — kelayakan di bawah ini tetap berlaku, hanya berkasnya yang dibantu.",
+  ),
+  NO_ACTION_NEEDED: text(
+    "Nothing is required from you for this — it is recorded so you know it was taken into account.",
+    "Tidak ada yang perlu Anda lakukan untuk hal ini — dicatat agar Anda tahu hal ini sudah diperhitungkan.",
+  ),
+  // The ONE next step that belongs to a held outcome. It must not promise
+  // "the options below", because on this path there are none.
+  CONSULTANT_REVIEW: text(
+    "Next step: a Bali Zero consultant reviews this with you before any application is named. Bring the court or police document, in the original and in translation, to that conversation.",
+    "Langkah berikutnya: konsultan Bali Zero meninjau hal ini bersama Anda sebelum ada pengajuan yang disebutkan. Bawa dokumen pengadilan atau kepolisian, asli beserta terjemahannya, ke percakapan tersebut.",
+  ),
+  // The one next step whose actor is US. Saying "nothing is required from
+  // you" here would be true and useless; naming who is doing the work, and
+  // what it is, is what makes the hold readable instead of arbitrary.
+  AWAIT_SOURCE_REFRESH: text(
+    "Next step is ours, not yours: Bali Zero re-verifies the regulation cited below against the official source, and this assessment is re-run on the refreshed record. The source is named above so you can check it yourself in the meantime.",
+    "Langkah berikutnya ada pada kami, bukan pada Anda: Bali Zero memverifikasi ulang peraturan yang dikutip di bawah ini terhadap sumber resminya, dan penilaian ini dijalankan kembali atas catatan yang telah diperbarui. Sumbernya disebutkan di atas agar Anda dapat memeriksanya sendiri sementara itu.",
+  ),
+};
+
+function outcomeCondition(
+  item: {
+    code: string;
+    source_refs: readonly string[];
+    next_step: OutcomeConditionNextStep;
+  },
+  trustedIds: ReadonlySet<string>,
+): OutcomeCondition {
+  // The SAME copy table the review sentences used. Reusing it is what makes
+  // this window a re-siting of an explanation rather than a rewrite of forty
+  // reviewed bilingual strings.
+  return {
+    ...reviewReason(item.code, item.source_refs, trustedIds),
+    nextStep: item.next_step,
+  };
+}
+
 function outcomeSource(source: VisaOracleSourceRecord): OutcomeSource | null {
   const url = trustedPrimarySourceUrl(source.canonical_url);
   if (!url) return null;
@@ -1360,6 +1436,11 @@ function buildValidatedOutcome(
     assumptions: options.assumptions ?? [],
     sources,
     nextSteps: NEXT_STEPS,
+    // Built ONCE, outside the state switch, because the ruling's whole claim
+    // is that a condition is orthogonal to the verdict it rides on.
+    conditions: (response.decision.conditions ?? []).map((item) =>
+      outcomeCondition(item, trustedIds),
+    ),
   };
 
   switch (response.decision.state) {

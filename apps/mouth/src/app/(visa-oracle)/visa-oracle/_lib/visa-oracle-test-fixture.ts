@@ -156,6 +156,7 @@ export function makeVisaOracleResponse(
           : null,
       quotes: [],
       notices: [],
+      conditions: [],
       trace_sha256: evaluated ? SHA : null,
       decision_integrity: evaluated
         ? { algorithm: "HMAC-SHA256", key_id: "decision-key", digest: SHA }

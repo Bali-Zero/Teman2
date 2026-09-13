@@ -324,6 +324,11 @@ def replay_offline_decisions(
             effective_at=evaluated_at,
             observed_at=evaluated_at,
             identity_provider=_offline_identity_provider,
+            # RULED 2026-09-13: the offline replay mirrors the visitor
+            # endpoint, which evaluates with review-stage effects as
+            # conditions. Without this the replay would compare production
+            # against an engine mode production no longer serves.
+            review_as_conditions=True,
         )
         decisions.append(
             evaluate_path.apply_public_policy_adapters(

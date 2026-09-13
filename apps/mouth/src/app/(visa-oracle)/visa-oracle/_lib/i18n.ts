@@ -730,6 +730,7 @@ const en = {
   "verdict.provenance_description.PREVIEW":
     "This screen is test data for product review and cannot support a recommendation.",
 
+  "outcome.conditions_title": "Conditions on this answer",
   "outcome.comparison_title": "How the paths compare",
   "outcome.comparison_col.visa": "Path",
   "outcome.comparison_col.eligibility": "Eligibility",
@@ -1581,6 +1582,7 @@ const id: Record<Keys, string> = {
   "verdict.provenance_description.PREVIEW":
     "Layar ini memakai data uji untuk peninjauan produk dan tidak dapat mendukung rekomendasi.",
 
+  "outcome.conditions_title": "Ketentuan atas jawaban ini",
   "outcome.comparison_title": "Perbandingan jalur",
   "outcome.comparison_col.visa": "Jalur",
   "outcome.comparison_col.eligibility": "Kelayakan",

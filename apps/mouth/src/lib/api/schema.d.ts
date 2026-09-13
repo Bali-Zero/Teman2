@@ -20544,6 +20544,23 @@ export interface components {
       success: boolean;
     };
     /**
+     * ConditionNextStep
+     * @description What the visitor is asked to DO about a named condition.
+     *
+     *     A closed vocabulary on purpose: the mouth renders one EN/ID sentence per
+     *     member, so a new member is a deliberate copy change, never free text
+     *     arriving from a pack.
+     * @enum {string}
+     */
+    ConditionNextStep:
+      | "ANSWER_AGAIN"
+      | "BRING_TO_CONSULTATION"
+      | "APPLY_THROUGH_GUARDIAN"
+      | "ASSISTED_APPLICATION"
+      | "NO_ACTION_NEEDED"
+      | "CONSULTANT_REVIEW"
+      | "AWAIT_SOURCE_REFRESH";
+    /**
      * ConfirmationDecisionRequest
      * @description Body for POST /api/agentic-rag/confirm.
      */
@@ -20965,6 +20982,11 @@ export interface components {
     Decision: {
       /** Candidates */
       candidates: components["schemas"]["Candidate"][];
+      /**
+       * Conditions
+       * @default []
+       */
+      conditions: components["schemas"]["DecisionCondition"][];
       /** Decision Id */
       decision_id: string | null;
       decision_integrity: components["schemas"]["Fingerprint"] | null;
@@ -21007,6 +21029,34 @@ export interface components {
       /** Trace Sha256 */
       trace_sha256: string | null;
     } & (unknown & unknown & unknown & unknown & unknown);
+    /**
+     * DecisionCondition
+     * @description A named condition carried BESIDE a deterministic outcome.
+     *
+     *     RULED 2026-09-13 (see ``docs/rules/RULINGS.md``): the Visa Oracle never
+     *     answers a visitor with ``HUMAN_REVIEW_REQUIRED``. Everything that used to
+     *     delete the verdict — a disclosed compliance fact, a stale decisive source,
+     *     a pack rule that asks for a human — becomes one of these instead: the
+     *     verdict survives, and the thing that would have hidden it is NAMED.
+     *
+     *     ``explanation_key`` is an i18n KEY, never a sentence: the EN/ID text lives
+     *     in the mouth's ``i18n.ts`` so no applicant-facing prose is minted by the
+     *     engine (and so a condition can never smuggle PII into a signed decision).
+     *     ``source_refs`` may be empty and that is not an oversight — a condition
+     *     describing an applicant DISCLOSURE has no regulatory citation to borrow,
+     *     and borrowing one from the pack would be a false claim of provenance.
+     */
+    DecisionCondition: {
+      /** Code */
+      code: string;
+      /** Explanation Key */
+      explanation_key: string;
+      next_step: components["schemas"]["ConditionNextStep"];
+      /** Rule Ids */
+      rule_ids: string[];
+      /** Source Refs */
+      source_refs: string[];
+    };
     /** DecisionRecord */
     DecisionRecord: {
       /** Action Taken */

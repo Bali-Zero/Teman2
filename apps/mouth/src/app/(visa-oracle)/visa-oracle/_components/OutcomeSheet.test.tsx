@@ -106,6 +106,7 @@ function common() {
     assumptions: [],
     sources: [source],
     nextSteps,
+    conditions: [],
   };
 }
 
@@ -601,6 +602,15 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     ],
     [
       "DISCLOSED_CRIMINAL_RECORD_REVIEW",
+      "CRIMINAL_RECORD",
+      { review_gate: "criminal_record" },
+    ],
+    // The code a visitor actually receives on that same tick since VO-D
+    // (RULED 2026-09-13): if this row goes red, the held path has lost its
+    // attribution while the raw-code row above keeps passing on a code no
+    // visitor is sent anymore.
+    [
+      "CRIMINAL_MATTER_DISCLOSED",
       "CRIMINAL_RECORD",
       { review_gate: "criminal_record" },
     ],

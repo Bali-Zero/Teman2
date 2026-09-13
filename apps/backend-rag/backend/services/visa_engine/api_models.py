@@ -487,6 +487,7 @@ class VisaOracleEvaluateResponse(BaseModel):
             *self.decision.review_reasons,
             *self.decision.no_path_reasons,
             *self.decision.notices,
+            *self.decision.conditions,
         ):
             referenced.update(reason.source_refs)
         for candidate in self.display.candidates:

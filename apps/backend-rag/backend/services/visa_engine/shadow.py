@@ -462,6 +462,13 @@ def _build_grounding_summary(decision: Decision) -> list[dict[str, JsonValue]]:
         add_claim("NO_PATH_REASON", str(reason.code), reason.source_refs)
     for notice in decision.notices:
         add_claim("NOTICE", str(notice.code), notice.source_refs)
+    # RULED 2026-09-13. A condition is a CLAIM the applicant is shown, so it
+    # owes the same grounding record every other shown claim owes. Omitting it
+    # would have made the parity ledger quietly incomplete on exactly the
+    # sentences this window moved into view — and a ledger that stops covering
+    # what moved is worse than one that never covered it.
+    for condition in decision.conditions:
+        add_claim("CONDITION", str(condition.code), condition.source_refs)
 
     return [
         {
