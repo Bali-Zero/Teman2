@@ -218,7 +218,12 @@ async def test_human_send_happy_path_applies_staged_status() -> None:
     assert any(
         "status = 'sent'" in s and "wamid.SENT.1" in str(a) for s, a in conn.executed
     )
-    assert conn.sql_contains("UPDATE wa_outbox SET status = 'done'")
+    # B2.3b (research/operations/2026-09-11-bot-staff-room/B2-engine.md §4
+    # PR B2.3b): the terminal write now sets the carrier columns
+    # (abstained_at/evidence_score) in the SAME statement, so "wa_outbox"
+    # and "SET status = 'done'" are no longer on one line — pin just the
+    # clause that survives unchanged.
+    assert conn.sql_contains("SET status = 'done'")
     assert any(
         "UPDATE meta_inbox_messages" in s and "delivered" in str(a) for s, a in conn.executed
     )
@@ -769,7 +774,9 @@ async def test_fencing_aborts_send_when_takeover_happens_during_generation(
 
     assert result == "aborted_human"
     svc.send_message.assert_not_awaited()
-    assert not conn.sql_contains("UPDATE wa_outbox SET status = 'done'")
+    # B2.3b: same rewording as the happy-path pin above — "SET status =
+    # 'done'" alone still matches the terminal write's shape, negated here.
+    assert not conn.sql_contains("SET status = 'done'")
     assert conn.sql_contains("aborted_human_takeover_pre_send")
     assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
 

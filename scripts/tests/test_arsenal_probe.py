@@ -718,6 +718,44 @@ def test_probe_claude_pong_mentioning_login_stays_live(monkeypatch):
     assert status == ap.LIVE
 
 
+def test_probe_claude_trust_dialog_classifies_context_auth(monkeypatch):
+    # guilt: real exemplar captured in ~/.organism/arsenal/last.json on Mini
+    # (2026-09-13T10:08:14Z) — a per-project trust flag
+    # (projects["<path>"].hasTrustDialogAccepted in ~/.claude/.claude.json),
+    # not a credential death: it carries no 401/oauth-token/quota marker, only
+    # this short prose, and previously fell through classify_generic() to a
+    # bare UNKNOWN_ERR. The seat may be LIVE elsewhere (e.g. an interactive
+    # session in the same directory), so it belongs with agy's CONTEXT_AUTH
+    # split, not AUTH_DEAD.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(
+            1,
+            "",
+            'Please run claude interactively here once and accept the trust dialog, or set '
+            'projects["/Users/nuzantara/nuzantara"].hasTrustDialogAccepted: true in '
+            "/Users/nuzantara/.claude/.claude.json.",
+        ),
+    )
+    status, ev, latency = ap.probe_claude(timeout=5)
+    assert status == ap.CONTEXT_AUTH
+
+
+def test_probe_claude_pong_mentioning_trust_dialog_stays_live(monkeypatch):
+    # innocence: a LIVE answer that happens to mention "trust dialog" in
+    # prose must never be reclassified as a context limitation.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/claude", True))
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(0, "PONG (already past the trust dialog step)\n", ""),
+    )
+    status, ev, latency = ap.probe_claude(timeout=5)
+    assert status == ap.LIVE
+
+
 def _tp1_live_body(model: str, content: str = "PONG") -> str:
     return json.dumps(
         {

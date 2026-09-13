@@ -1,0 +1,399 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: VO2-W-VO-H-schema
+    role: build
+    seat: Claude Opus 5 (Dux of window vo-h-schema, implements directly)
+  - lane: VO2-W-VO-H-schema-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (codex exec --sandbox read-only, independent correctness review of the merge-base diff, 7 rounds, final VERDICT OK on the shipped head)
+  - lane: VO2-W-VO-H-schema-council-qwen
+    role: review
+    seat: tp1-qwen3.8-max (qwen -p, text-only, the merge-base diff supplied on stdin, 6 rounds, final VERDICT OK on the shipped head)
+  - lane: vo-h-schema-flag-layer-ground-truth
+    role: ground_truth
+    seat: session (M5) — this PR asserts no regulatory fact, so its ground truth is code and a signed pack already on origin/main, not a notebook
+    nb: >-
+      origin/main @ eecd7f06098b6d81cca61460b1f729f8d10c6f54, four files read verbatim and
+      all four UNTOUCHED by this diff: _lib/fact-mapper.ts (mapDisclosedReviewFlags +
+      ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS — the sole producer of every flag the corpus now
+      carries), services/visa_engine/evaluate_path.py (_apply_disclosed_review_flags +
+      _DISCLOSED_REVIEW_REASON_CODES — the rewrite this census finally measures and the
+      reason codes it pins), services/visa_engine/api_models.py (DisclosedReviewFlag, the
+      closed enum of 11 names, and VisaOracleEvaluateRequest, whose own default of () is
+      what makes the fixtures' omit-when-empty encoding the wire contract rather than a
+      convenience), and contracts/packs/rulepack-prod-020.signed.json (the highest signed
+      production pack, the one both censuses evaluate against).
+    query_hash: "c14263c5691c92beb2542d57ff5ba3fd991165015e6a816614b8bc127bbd7418"
+    note: >-
+      query_hash = sha256 of those four files concatenated in that order, taken with
+      `for f in <the four>; do git show eecd7f06:"$f"; done | shasum -a 256`. Per-file
+      digests, so a drift in any one is locatable: fact-mapper.ts
+      cce0ac0fd3f86625366891355d66b4cfe2e6e88e3796beef2a3bfc7a6bfc4473 ; evaluate_path.py
+      32fc622b57295f8a2a0e06fd9046f84536419585397a962327372ef7706e22eb ; api_models.py
+      ffa0b18024c83fd7a1a3df148778d51788465c47cdd0ed93b1407230521e1f86 ;
+      rulepack-prod-020.signed.json
+      9cdf2c3151003c6b9ebfd0f403bea37dd92f1af32eb6f37c585980f73e769cbb. No NotebookLM
+      query exists for this lane and none was invented: R8 fires here on the PATTERN
+      `*/visa_engine/*`, matched by backend/scripts/visa_engine/gold_coverage_eval.py — a
+      test-runner helper that states no visa rule, fee, eligibility condition or KBLI
+      code. What this PR measures is what those four files already do.
+council_run: council/journal.jsonl
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear DECLARED 3; the deterministic floor computed by
+      evidence_pack_lint.py --print-floor on the merge-base diff is 2, source
+      "size" (11 files, +588/-79 on the shipped head; no hot-zone path).
+      Declared gear is max(judgement, floor) and the judgement is 3 because
+      the window brief declares it: the diff lands under apps/backend-rag/**,
+      where merging IS the deploy. A two-seat council (codex-gpt-5.6-sol,
+      tp1-qwen3.8-max) was then run for real on the merge-base diff; each
+      seat's stdout is filed under council/ and the journal is council_run.
+  - id: D-net-lines
+    decision: >-
+      Net +509, above the contract's "≤ ~400 net lines where the work allows".
+      Declared rather than split. The excess is one file's PROSE - the census
+      module docstring carries the two measured census tables, the per-flag
+      rewrite table and the retired bound, and eight of the thirteen council
+      findings were corrections to exactly that prose. Splitting it out would
+      mean shipping the numbers in a PR body instead of next to the assertion
+      that produces them, which is the failure mode this window exists to end.
+      The executable change is small: one emitted field, one keyword-only
+      parameter, one pinned frozenset, three pinned tables and eight tests.
+  - id: D-kimi-unavailable
+    decision: >-
+      The third roster seat, kimi-code/k3, is QUOTA-EXHAUSTED for the month
+      and was not invoked at all. Quorum is met with the two remaining
+      roster seats; no line was written on Kimi's behalf.
+  - id: D-omit-when-empty
+    decision: >-
+      The fixture omits `disclosed_review_flags` when the walk raises none,
+      instead of always emitting an empty list. Two reasons, in this order.
+      (1) Contract: `api_models.py::VisaOracleEvaluateRequest` gives the field
+      a default of `()` precisely so a request without the key stays
+      wire-compatible, so an absent key IS the empty tuple on the real
+      boundary, not an unknown. (2) Collision: the window brief requires the
+      schema field to keep existing fixtures byte-stable or to serialize
+      behind W-VO-E, which regenerates the same corpus; `gh pr list --search
+      vo-e-reach --state open` showed no W-VO-E PR to base on, so byte
+      stability was the available option. It holds - 8 fixtures changed, 76
+      byte-identical. The encoding is NOT a silent default: the determinism
+      test binds every committed byte to the generator, and
+      EXPECTED_DISCLOSED_REVIEW_FLAGS pins the exact flag-carrying SET with a
+      both-directions comparison plus a "no fixture carries the field at all"
+      assertion that goes red if the generator ever stops emitting it.
+  - id: D-runner
+    decision: >-
+      The flags are threaded through `gold_coverage_eval._evaluate` as a new
+      keyword-only parameter defaulting to `()`, re-validated through
+      `VisaOracleEvaluateRequest`, rather than passed straight into
+      `apply_public_policy_adapters`. Reason - the census must not
+      re-implement "evaluate": sharing the one path with the coverage floor
+      and the gold replay is what stops those gates drifting on what the word
+      means. Re-validating instead of injecting means an unknown flag name in
+      a fixture is a loud ValidationError, never an ignored string.
+      `gold_coverage_eval.py` is a script under `backend/scripts/**`; nothing
+      under `backend/services/**` is touched, so the runtime service that the
+      merge deploys is byte-identical.
+  - id: D-derived-census
+    decision: >-
+      `EXPECTED_FLAGGED_STATE_CENSUS` is DERIVED from `EXPECTED_OUTCOME` plus
+      the flag table, not pinned as a third hand-maintained number. The
+      derivation is the claim under test - a flagged walk ends
+      HUMAN_REVIEW_REQUIRED whatever the pack decided, an unflagged walk keeps
+      its engine state - so the test goes red on a monotonicity break without
+      anyone re-pinning a count, and a wave PR edits one table instead of two.
+  - id: D-council-round1
+    decision: >-
+      Council round 1 (codex-gpt-5.6-sol, VERDICT DEFECT, LOW): the new
+      docstring said no corpus walk answers `unsure` to a sponsor question,
+      contradicting the two NOT_CERTAIN rows the same diff pins. True claim is
+      narrower - neither of the two questions AMBIGUOUS_SPONSOR actually reads
+      (`family_sponsor_status_code` / `family_sponsor_confirmed`) is answered
+      `unsure`; the two walks answer `work_sponsor_confirmed` and
+      `sponsor_category`, which raise the generic NOT_CERTAIN. Fixed at depth
+      1, prose only, and the council re-run.
+  - id: D-council-round2
+    decision: >-
+      Council round 2 (codex-gpt-5.6-sol, VERDICT DEFECT, LOW): the round-1
+      correction was confirmed accurate, but a SECOND sentence in the same
+      docstring - the "chosen sample, not a cover" bound, inherited unchanged
+      from origin/main - still said "no walk ever answers `unsure`". That
+      stopped being true when PR-D3 and PR-D4d added the two sponsor_unsure
+      walks. This is a distinct finding at a distinct location, not a
+      correction of the round-1 correction, so it is a depth-1 fix of its own.
+      Fixed, prose only; round 3 returned VERDICT OK.
+  - id: D-council-later-rounds
+    decision: >-
+      Thirteen council rounds ran in total (codex 7, qwen 6) because each
+      round found something the previous one had not, and every finding after
+      the first two came from a seat reading a diff the other seat had already
+      passed. The sequence, all recorded in council/journal.jsonl with the head
+      each seat judged: qwen-1 found two in-file comments still asserting the
+      retired bound, plus "for years" and an absolute "unconditional"; codex-4
+      found the unconditionality correction applied at one site and missed at
+      three, plus the "still_unsure costs zero holds" overclaim; codex-5 found
+      the per-flag table naming HUMAN_REVIEW, a state that does not exist;
+      qwen-5 found the real one - the by-hand request rebuild bound to nothing.
+      Three of the thirteen were the SAME cause from one seat and are marked
+      as such (see D-qwen-artifact). Both seats returned VERDICT OK on the
+      shipped head 51b35715d0.
+  - id: D-qwen-artifact
+    decision: >-
+      tp1-qwen3.8-max rounds 2 and 4 both returned DEFECT on a claimed
+      IndentationError in the `flagged_outcomes` fixture decorator. REJECTED
+      both times, with evidence, not with an opinion: the character it read as
+      a leading space is the unified diff's own `+` column; `ast.parse` on the
+      file returns without error; the module collects and passes; and
+      codex-gpt-5.6-sol executed the tests directly and reported the same
+      count. Round 4 re-raised it after being told this, which is the same
+      cause twice from one seat - so the INSTRUMENT was corrected rather than
+      the code: round 5 was given the real bytes of that file region alongside
+      the diff, dropped the finding, and found a genuine defect instead. Round
+      6 records the reading withdrawn as a paste artifact. No line was written
+      on the seat's behalf and no round was hidden.
+  - id: D-derivation-corrected
+    decision: >-
+      The grounding report (scratchpad/r3/vo-coverage.md SS B4) predicted "2
+      corpus walks raise a flag in production", marked derived-not-executed.
+      Executed, it is 8. The derivation reasoned only about the generator's
+      first-option default and missed the scenario OVERRIDES, which answer
+      `investment_vehicle` with merit/family/undecided and `other_purpose`
+      with medical - none of them in
+      `ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS`. Recorded in the census docstring
+      so the next reader inherits the corrected number, not the derivation.
+receipts:
+  - claim: The worktree was created by the broker on the backend-rag lane for this task id.
+    cmd: python3 scripts/agent_start.py --lane backend-rag --task-id vo-h-schema
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema ; branch agent/air-m5/backend-rag/vo-h-schema ; base eecd7f06098b6d81cca61460b1f729f8d10c6f54"
+    exit: 0
+    ts: "2026-09-13T19:47:00+08:00"
+    seat: Claude Opus 5
+  - claim: W-VO-E has no open PR to serialize behind, so the byte-stable option is the one available.
+    cmd: gh pr list --search "vo-e-reach" --state open --json number,title,headRefName
+    result: "one unrelated full-text match (#5037 agent/pro/visa-oracle/slice0-migrations); no W-VO-E branch open"
+    exit: 0
+    ts: "2026-09-13T19:45:00+08:00"
+    seat: Claude Opus 5
+  - claim: The flags each walk raises, measured by driving the REAL mapper, not derived.
+    cmd: tsx a scratch script importing enumerateScenarios/runWalk/mapOracleFactsToApplicantFacts from the worktree
+    result: "84 walks, 8 carry flags: ACTIVITY_BOUNDARY on offshore/invest/{family,merit,merit/currency_usd,undecided,undecided/currency_still_unsure} and offshore/other/no_paid_activity/medical ; NOT_CERTAIN on offshore/other/paid/sponsor_unsure and offshore/work/sponsor_unsure"
+    exit: 0
+    ts: "2026-09-13T19:52:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4-1 - regenerating the corpus changes exactly 8 fixtures; the other 76 are byte-identical and the file set stays 84.
+    cmd: tsx scripts/visa-oracle/generate-walk-corpus.ts ; git status --porcelain -- .../fixtures/walks/
+    result: "wrote 84 walks ; 8 modified files, each a 2-line diff adding the `disclosed_review_flags` key ; no file added or removed"
+    exit: 0
+    ts: "2026-09-13T19:55:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4-1 - the corpus is still byte-reproducible from the generator with the new field.
+    cmd: apps/mouth/node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts"
+    result: "Test Files 1 passed (1) ; Tests 86 passed (86)"
+    exit: 0
+    ts: "2026-09-13T19:56:55+08:00"
+    seat: Claude Opus 5
+  - claim: A4-2 and A4-3 - both censuses, and the per-flag rewrite table, measured in one pytest run.
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -s
+    result: >-
+      24 passed (17 before this PR). Printed - ENGINE 67 SUPPORTED / 15 NO_SUPPORTED_PATH /
+      2 NEEDS_INPUT / 0 HUMAN_REVIEW_REQUIRED ; FUNNEL 60 / 15 / 1 / 8. Per flag -
+      ACTIVITY_BOUNDARY 6 rewrites, all SUPPORTED_CANDIDATES -> HUMAN_REVIEW_REQUIRED ;
+      NOT_CERTAIN 2 rewrites, one SUPPORTED_CANDIDATES -> HUMAN_REVIEW_REQUIRED and one
+      NEEDS_INPUT -> HUMAN_REVIEW_REQUIRED.
+    exit: 0
+    ts: "2026-09-13T19:58:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4-4 - the guilt and innocence tests are the ones listed, and they pass on the final head.
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: >-
+      24 passed. New - test_the_corpus_carries_the_disclosure_flag_layer,
+      test_guilt_a_walk_that_loses_its_flag_is_caught,
+      test_guilt_a_walk_that_gains_a_flag_is_caught,
+      test_the_flagged_census_is_the_funnel_the_applicant_meets,
+      test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome,
+      test_every_disclosure_flag_reports_the_walks_it_rewrites,
+      test_guilt_a_fabricated_flag_deletes_a_proven_verdict.
+    exit: 0
+    ts: "2026-09-13T20:31:00+08:00"
+    seat: Claude Opus 5
+  - claim: D-runner - the new parameter is inert for every existing caller; the gates that share `_evaluate` stay green.
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/scripts/visa_engine/test_gold_coverage_eval.py backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_gold_replay_artifact.py backend/tests/scripts/visa_engine/test_gold_replay_driver.py
+    result: "30 passed"
+    exit: 0
+    ts: "2026-09-13T19:56:00+08:00"
+    seat: Claude Opus 5
+  - claim: The whole Visa Oracle frontend lib suite is unaffected by the generator change.
+    cmd: apps/mouth/node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/"
+    result: "Test Files 28 passed (28) ; Tests 651 passed (651)"
+    exit: 0
+    ts: "2026-09-13T19:57:02+08:00"
+    seat: Claude Opus 5
+  - claim: A4-5 - typecheck, prettier, ruff check and ruff format are clean on every touched file.
+    cmd: apps/mouth tsc --noEmit ; prettier --check on the generator and the 84 fixtures ; ruff check + ruff format --check on the two python files
+    result: "tsc exit 0, no diagnostics ; prettier - All matched files use Prettier code style ; ruff check - All checks passed ; ruff format --check - 2 files already formatted (one was reformatted once, before the first commit)"
+    exit: 0
+    ts: "2026-09-13T19:59:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4-5 - the wider visa_engine suite has no NEW failure; the reds are the pre-existing local-Postgres ones.
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ ; then grep the four failing files for any reference to this PR's surfaces
+    result: >-
+      2501 passed, 1 skipped, 1 failed, 39 errors in 80s. Every red is in
+      test_evaluate_endpoint.py / test_shadow_evidence.py / test_shadow_match.py /
+      test_visa_engine_retention_fk_registry.py and its cause is local database state
+      (asyncpg UndefinedTableError, DependentObjectsStillExistError, "migration 264 is
+      applied on this database"). grep -c for gold_coverage_eval|fixtures/walks|
+      interview_walk_census in those four files returns 0 each - none of them reads
+      anything this PR touches.
+    exit: 1
+    ts: "2026-09-13T19:59:30+08:00"
+    seat: Claude Opus 5
+  - claim: D-gear - the deterministic floor on the merge-base diff.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <cf> --numstat-file <ns>
+    result: "floor 2 ; floor source `size` ; measured 11 files, +471/-68"
+    exit: 0
+    ts: "2026-09-13T20:00:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4-4 - the field-set guard added in the last round has real guilt, not just a passing test.
+    cmd: PYTHONPATH=. .venv/bin/python -c "inject a sixth name into gold_coverage_eval._REBUILT_REQUEST_FIELDS, then call _evaluate with a flag"
+    result: "pinned == model: True ; GUARD FIRED: VisaOracleEvaluateRequest's field set moved to [...]"
+    exit: 0
+    ts: "2026-09-13T22:01:00+08:00"
+    seat: Claude Opus 5
+  - claim: Council seat 1, seven rounds on the merge-base diff, each round's stdout filed under council/.
+    cmd: 'perl -e ''alarm 660; exec @ARGV'' -- codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only --skip-git-repo-check -C <wt> "<prompt>" < /dev/null'
+    result: >-
+      r1 DEFECT (AMBIGUOUS_SPONSOR prose contradiction) ; r2 DEFECT (a second, inherited
+      "no walk ever answers unsure" sentence) ; r3 OK ; r4 DEFECT (the unconditionality
+      correction incomplete at three sites; the still_unsure overclaim) ; r5 DEFECT (the
+      per-flag table named HUMAN_REVIEW) ; r6 OK ; r7 OK on the shipped head 51b35715d0,
+      the seat re-executing the census itself and reproducing 84/84 generator byte
+      matches, ENGINE 67/15/2/0, FUNNEL 60/15/1/8, the 6/2 split, and the new field-set
+      guard failing on injected model drift.
+    exit: 0
+    ts: "2026-09-13T22:04:00+08:00"
+    seat: codex-gpt-5.6-sol
+  - claim: Council seat 2, six rounds, the merge-base diff supplied on stdin (text-only, no tool use).
+    cmd: 'cat <diff> | perl -e ''alarm 660; exec @ARGV'' -- qwen --approval-mode plan -m qwen3.8-max -p "<prompt>"'
+    result: >-
+      r1 DEFECT (two in-file comments still asserting the retired bound; "for years"; an
+      absolute "unconditional") ; r2 DEFECT (the rejected IndentationError artifact, plus
+      the JSON round-trip, the order claim and the "never move unobserved" overstatement,
+      all honoured) ; r3 OK ; r4 DEFECT (the same rejected artifact, re-raised) ; r5
+      DEFECT (the by-hand request rebuild bound to nothing - the last real defect, cured
+      with the seat's own proposed remedy) ; r6 OK on the shipped head 51b35715d0. The
+      first qwen invocation of all, before the prompt was made text-only, produced ZERO
+      bytes and was killed by the alarm at 660s (exit 142); it is not counted as a round.
+    exit: 0
+    ts: "2026-09-13T22:00:00+08:00"
+    seat: tp1-qwen3.8-max
+  - claim: The third roster seat was not invoked at all.
+    cmd: "(none - kimi-code/k3 is quota-exhausted for the month per the window brief)"
+    result: "NOT RUN. Recorded as unavailable in council/journal.jsonl with role `unavailable` and ok:false; no verdict line written on its behalf."
+    exit: 0
+    ts: "2026-09-13T19:40:00+08:00"
+    seat: Claude Opus 5
+  - claim: The codex transcripts are EXCERPTS, and the pack says so at the top of each file.
+    cmd: python trim keeping the session header + the seat's final answer + its VERDICT line, recording the raw byte count, line count and sha256 of the untrimmed stdout
+    result: >-
+      5.3 MB -> 88 KB across ten transcripts. The cut part is the codex harness preamble
+      (this repo's own AGENTS.md / army-map / model-roster, injected by the codex hooks)
+      and the full stdout of every probe the seat ran - none of it review content. The
+      qwen transcripts are untouched: they are 6-9 KB each and carry no preamble.
+    exit: 0
+    ts: "2026-09-13T22:06:00+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: codex-gpt-5.6-sol (council round 1)
+    objection: >-
+      The added census prose claimed no corpus walk answers `unsure` to a sponsor question,
+      while EXPECTED_DISCLOSED_REVIEW_FLAGS in the same diff pins two walks that do exactly
+      that (offshore/other/paid/sponsor_unsure, offshore/work/sponsor_unsure).
+    status: CONFIRMED
+    cure: >-
+      The sentence now names the two questions AMBIGUOUS_SPONSOR actually reads
+      (family_sponsor_status_code / family_sponsor_confirmed), states that the two walks
+      answer work_sponsor_confirmed and sponsor_category instead, and that what they raise
+      is the generic NOT_CERTAIN already counted in the table. Prose only; no table,
+      fixture or assertion moved. Council re-run on the corrected diff.
+  - seat: codex-gpt-5.6-sol (council round 2)
+    objection: >-
+      A second sentence in the same docstring - the "chosen sample, not a cover" bound,
+      inherited verbatim from origin/main - still said "no walk ever answers `unsure`",
+      contradicting the same two rows.
+    status: CONFIRMED
+    cure: >-
+      Restated as "first option unless the scenario overrides it, and exactly two of the 84
+      walks answer the literal `unsure`", naming the rows. A pre-existing false claim, but
+      one this PR's own table refutes, so leaving it would have shipped a visible
+      contradiction. Prose only; round 3 returned OK.
+  - seat: Claude Opus 5 (self-refutation, on the omit-when-empty encoding)
+    objection: >-
+      An absent `disclosed_review_flags` key is indistinguishable, read alone, from a
+      fixture generated before this field existed - the classic silent-default shape
+      (cicatrix #2). A census that reads the default would go green over a corpus that
+      quietly lost the layer.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured by always emitting the field - that was traded away deliberately for the
+      byte stability the brief asks for (D-omit-when-empty). Cured by three guards
+      instead - walk-corpus-determinism.test.ts makes a fixture that disagrees with the
+      generator by one byte impossible to commit;
+      test_the_corpus_carries_the_disclosure_flag_layer asserts the flag-carrying SET
+      equals the pinned table in BOTH directions AND that at least one fixture carries the
+      field at all, so a generator that stopped emitting it fails loudly instead of
+      silently; and the two guilt tests prove a lost flag and a gained flag are each
+      caught. Codex round 3 attacked this claim specifically and did not break it.
+  - seat: tp1-qwen3.8-max (council round 5)
+    objection: >-
+      `_evaluate`'s by-hand rebuild of `VisaOracleEvaluateRequest` names five fields and
+      nothing binds that list to the model. A sixth field added later would be dropped
+      from every FLAGGED evaluation and stay silent, because
+      `_apply_disclosed_review_flags` overwrites candidates, missing facts, no-path
+      reasons and quotes anyway - and the innocence test cannot see it either, since
+      unflagged walks never enter the rebuild.
+    status: CONFIRMED
+    cure: >-
+      The seat's own proposed remedy, in both places a red could usefully appear: a pinned
+      `_REBUILT_REQUEST_FIELDS` frozenset checked at the rebuild site, raising a
+      RuntimeError that names both sets, and
+      `test_the_flagged_rebuild_names_every_field_of_the_wire_model`, which fails at test
+      time without needing a flagged walk to run. Guilt checked by injecting a sixth name
+      into the pinned set - `_evaluate` raises on the first flagged walk.
+  - seat: tp1-qwen3.8-max (council rounds 2 and 4)
+    objection: >-
+      "The added `@pytest.fixture(scope=\"module\")` line for `flagged_outcomes` carries a
+      stray leading space, an IndentationError that stops the entire census module from
+      collecting, so every funnel measurement in this PR fails to run."
+    status: RETRACTED
+    cure: >-
+      REJECTED with evidence, twice, and finally withdrawn by the seat itself in round 6
+      as "a paste artifact". The character read as a leading space is the unified diff's
+      own `+` column. `ast.parse` on the file returns without error; the module collects
+      and passes; codex-gpt-5.6-sol executed the tests directly and reported the same
+      count. Because the same seat re-raised it after being told, the INSTRUMENT was
+      corrected rather than the code: round 5 received the real bytes of that file region
+      alongside the diff, dropped the finding, and found a genuine defect instead.
+  - seat: Claude Opus 5 (self-refutation, on what the funnel census proves)
+    objection: >-
+      The FUNNEL census counts 8 human-review walks and could be read as "8 applicants in
+      84 are held in production". It is not that - the corpus is a chosen enumeration that
+      answers every question with its first option unless a scenario overrides it. Nine of
+      the eleven flags rewrite ZERO walks here, including MULTI_PURPOSE_TRIP, which fires
+      on an ordinary answer every real two-purpose visitor gives.
+    status: CONFIRMED
+    cure: >-
+      Stated in the docstring where the numbers are, not in a PR body that no future
+      reader will open, and proved by
+      test_guilt_a_fabricated_flag_deletes_a_proven_verdict, which supplies
+      MULTI_PURPOSE_TRIP to a clean C1 walk and shows the verdict deleted - the one
+      measurement the corpus itself cannot make.
+leftovers:
+  - "MULTI_PURPOSE_TRIP and the seven review_gate compliance disclosures rewrite zero corpus walks because no scenario exercises them. Enumerating a `trip_scope = multiple` walk and a `review_gate` walk would make the census see them too; it is a generator/scenario change, and it belongs with the W-VO-H narrowing half that will decide what to do about them."
+  - "The derivation in scratchpad/r3/vo-coverage.md SS B4 (2 flagged walks) is superseded by the executed 8. The report is a scratchpad artifact and was not edited; the corrected number lives in the census docstring, which is the durable copy."
+  - "W-VO-E will regenerate this corpus from tree.ts changes. It must keep the disclosed_review_flags emission and re-pin EXPECTED_DISCLOSED_REVIEW_FLAGS for any walk it adds, removes or re-answers - the determinism test will name the file, and the flag table will name the walk."
+  - "Council nits left unfixed on purpose, because each further commit costs a fresh gate and both seats returned OK without them (tp1-qwen3.8-max rounds 3 and 6): the per-flag table's from-state column is printed but not asserted (it is derivable from EXPECTED_OUTCOME); `rulepack-prod-020.signed.json` named in the docstring is doc-rot on the next pack, though EXPECTED_STATE_CENSUS is what actually fires; the printed table uses `(x6)` where the docstring's copy uses `(x6)`-style ASCII and the two were aligned only by hand; the omit-when-empty rationale is now prose in three places (_evaluate, WalkFixture, the module docstring) and will drift; the field pin binds field NAMES, not values; and `_REBUILT_REQUEST_FIELDS` guards against a field ADDED to the model, not against a wrong value passed for one that exists."
+  - "The generator's `Key order is the file's line order (prettier preserves it)` comment is loose - what preserves the order is JS object insertion order; prettier simply never reorders keys. Unfixed for the same reason."

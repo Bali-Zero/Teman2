@@ -692,6 +692,21 @@
     }
   },
   "cron_scripts": {
+    "saetta.py": {
+      "description": "On-demand portable SAETTA bootstrap and native Claude Workflow launcher. No scheduler or daemon is installed.",
+      "type": "on-demand",
+      "schedule": "Explicit invocation only",
+      "location": "scripts/saetta.py",
+      "machine": "Pro, M5, Mini",
+      "produces": "Safe preflight JSON, resolved manifest arguments, bounded native Workflow invocation and smoke receipts",
+      "consumes": "Mission manifest, task briefs, installed OAuth seat and Codex context policy",
+      "consumed_by": "SAETTA imperator",
+      "monitored_by": "Invoking SAETTA imperator; completed native journal required",
+      "uses_llm": "Claude Opus 5 xhigh through installed subscription CLI; Sonnet smoke child",
+      "llm_interface": "claude CLI OAuth, native Workflow tool",
+      "tools_called": ["git", "claude", "codex", "node", "gh"],
+      "apis_called": []
+    },
     "fly-health-check.sh": {
       "description": "Fly.io health check: curl all 3 apps, verify HTTP 200, alert on failure. Every 30 min.",
       "produces": "Health status → Telegram alert on failure",

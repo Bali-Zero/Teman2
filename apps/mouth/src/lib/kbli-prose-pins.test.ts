@@ -31,6 +31,17 @@
 // REMEDIATION when this fails: the dataset moved. Update the sentence in each
 // language file to the recomputed value the failure message prints. Do not
 // update this test — it has no numbers of its own to update.
+//
+// IT/ID PROBES ARE NUMBER-WINDOW, NOT SENTENCE-REGEX (2026-09-13). The hourly
+// translator rewords the it/id articles on every run, and a probe anchored to
+// exact wording ("codici senza flag di blocco" → "codici non riportano il
+// flag bloccato" → "codici non portano il flag bloccato" …) turns into a
+// treadmill of alternations that a fresh reword breaks again. The EN probes
+// stay sentence-regex (EN is the human-authored source, not re-translated
+// hourly). For it/id, each claim instead asserts that its expected numbers —
+// still recomputed from the canonical, never hard-coded — appear in the file
+// IN ORDER within a WINDOW of characters of each other, which survives any
+// synonym/word-order reword but still catches a wrong or invented figure.
 // =============================================================================
 
 import fs from "fs";
@@ -74,6 +85,46 @@ function countFromCanonical() {
 /** `1041` → `1,041` (en) / `1.041` (it, id). */
 const group = (n: number, sep: string) =>
   n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+
+/** How many characters after one expected number the next one must land
+ * within, for the it/id number-window probes to count them as "the same
+ * claim" rather than two unrelated mentions of the same figure. */
+const NUMBER_WINDOW = 400;
+
+/**
+ * Does `numbers` occur, in that ORDER, somewhere in `text`, each subsequent
+ * one within `window` chars of the end of the previous one? Tries every
+ * occurrence of the first number as a starting point (a figure like "1.559"
+ * legitimately repeats across a translated article — e.g. once in the
+ * methodology paragraph, once in the headline), so it succeeds as soon as ONE
+ * window carries the whole sequence in order — which is what "the sentence
+ * still makes this claim, however it's worded" means for a prose pin.
+ */
+function numbersInOrderWithinWindow(
+  text: string,
+  numbers: string[],
+  window = NUMBER_WINDOW,
+): boolean {
+  if (numbers.length === 0) return true;
+  const [first, ...rest] = numbers;
+  let from = 0;
+  for (;;) {
+    const start = text.indexOf(first, from);
+    if (start === -1) return false;
+    let cursor = start + first.length;
+    let ok = true;
+    for (const n of rest) {
+      const idx = text.indexOf(n, cursor);
+      if (idx === -1 || idx > cursor + window) {
+        ok = false;
+        break;
+      }
+      cursor = idx + n.length;
+    }
+    if (ok) return true;
+    from = start + 1;
+  }
+}
 
 describe("KBLI prose pins — published aggregates agree with the canonical", () => {
   it("fails loudly if an input is missing, instead of passing blind", () => {
@@ -139,22 +190,15 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       anchors: (c: ReturnType<typeof countFromCanonical>) => [
         {
           what: "headline blocked count",
-          // "Di" (2026-08-11 wording) vs "Su" (2026-09-13 hourly-translator
-          // reword) — both precede the same classified/blocked clause.
-          re: /(?:Di|Su) ([\d.]+) codici KBLI classificati, ([\d.]+) sono bloccati/,
-          expect: [group(c.total, "."), group(c.blocked, ".")],
+          numbers: [group(c.total, "."), group(c.blocked, ".")],
         },
         {
           what: "not-blocked count",
-          // "codici senza flag di blocco" (original) vs "codici non
-          // riportano il flag bloccato" (2026-09-13 reword) — same claim.
-          re: /\(([\d.]+) (?:codici senza flag di blocco|codici non riportano il flag bloccato)/,
-          expect: [group(c.open, ".")],
+          numbers: [group(c.open, ".")],
         },
         {
           what: "closing count",
-          re: /supportata da ([\d.]+) codici contati/,
-          expect: [group(c.blocked, ".")],
+          numbers: [group(c.blocked, ".")],
         },
       ],
     },
@@ -165,22 +209,15 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       anchors: (c: ReturnType<typeof countFromCanonical>) => [
         {
           what: "headline blocked count",
-          // "terklasifikasi" (original) vs "yang diklasifikasikan"
-          // (2026-09-13 hourly-translator reword) — same claim.
-          re: /Dari ([\d.]+) kode KBLI (?:terklasifikasi|yang diklasifikasikan), ([\d.]+) diblokir/,
-          expect: [group(c.total, "."), group(c.blocked, ".")],
+          numbers: [group(c.total, "."), group(c.blocked, ".")],
         },
         {
           what: "not-blocked count",
-          // "kode tanpa penanda blokir" (original) vs "kode tidak membawa
-          // bendera diblokir" (2026-09-13 reword) — same claim.
-          re: /\(([\d.]+) kode (?:tanpa penanda blokir|tidak membawa bendera diblokir)/,
-          expect: [group(c.open, ".")],
+          numbers: [group(c.open, ".")],
         },
         {
           what: "closing count",
-          re: /didukung oleh ([\d.]+) kode yang dihitung/,
-          expect: [group(c.blocked, ".")],
+          numbers: [group(c.blocked, ".")],
         },
       ],
     },
@@ -194,15 +231,29 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
             path.join(ARTICLE_DIR, claim.file),
             "utf-8",
           );
-          const match = text.match(probe.re);
-          // A sentence that was reworded is a REAL failure, not a skip: the pin
-          // it carried is now unguarded, which is the state this file exists to
-          // make impossible.
-          expect(
-            match,
-            `anchor sentence not found in ${claim.file} — it was reworded; re-anchor this probe (${probe.re})`,
-          ).not.toBeNull();
-          expect(match!.slice(1)).toEqual(probe.expect);
+          if ("re" in probe) {
+            // EN: sentence-regex. EN is human-authored, not re-translated
+            // hourly, so a reword here is a real content change worth
+            // re-anchoring by hand.
+            const match = text.match(probe.re);
+            expect(
+              match,
+              `anchor sentence not found in ${claim.file} — it was reworded; re-anchor this probe (${probe.re})`,
+            ).not.toBeNull();
+            expect(match!.slice(1)).toEqual(probe.expect);
+          } else {
+            // it/id: number-window. Survives a translator reword; still
+            // fails if the expected figure(s) are missing or out of order.
+            const ok = numbersInOrderWithinWindow(text, probe.numbers);
+            expect(
+              ok,
+              `expected count${probe.numbers.length > 1 ? "s" : ""} ${probe.numbers.join(" → ")} not found ${
+                probe.numbers.length > 1
+                  ? `in that order within ${NUMBER_WINDOW} chars of each other `
+                  : ""
+              }in ${claim.file}`,
+            ).toBe(true);
+          }
         });
       }
     });

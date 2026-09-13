@@ -1,0 +1,22 @@
+# Harness floor measured in the round-5 worktree, before the round-5 commit.
+# base (merge-base with origin/main): bf783e8d2ad5c6c34aab22b8cb5fb3b82b64d1a4
+# working tree = the candidate; CI recomputes this on every push (harness-floor.yml).
+
+$ python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <cf> --numstat-file <ns>
+3
+
+$ git diff --numstat $(git merge-base HEAD origin/main)
+57	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/brief.yml
+220	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/codex-gpt-5.6-sol-round2.txt
+260	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/codex-gpt-5.6-sol-round3.txt
+405	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/codex-gpt-5.6-sol-round4.txt
+11	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/journal.jsonl
+3	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/kimi-code-k3-QUOTA-EXHAUSTED.txt
+14	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/tp1-qwen3.8-max-round1.txt
+25	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/tp1-qwen3.8-max-round2.txt
+19	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/tp1-qwen3.8-max-round3.txt
+17	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/tp1-qwen3.8-max-round4.txt
+29	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/floor-at-3a01ecc1c6.txt
+448	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/pack.yml
+448	10	scripts/kbli_bench/score_p2b.py
+584	0	scripts/tests/test_score_p2b.py

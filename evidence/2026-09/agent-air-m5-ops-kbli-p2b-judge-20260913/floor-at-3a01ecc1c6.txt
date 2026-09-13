@@ -1,0 +1,29 @@
+# Deterministic floor and diff measurement, branch agent/air-m5/ops/kbli-p2b-judge-20260913
+# at head 3a01ecc1c6cf87c30cf6ae2bba2b61ef07c11930, base
+# bf783e8d2ad5c6c34aab22b8cb5fb3b82b64d1a4, measured on M5 2026-09-13.
+#
+# The pack itself deliberately does NOT restate these figures in prose: any number a pack prints
+# about its own diff is invalidated by the commit that prints it. CI recomputes them on every
+# push (harness-floor.yml), and that recomputation — not this file — is the authority.
+#
+# $ python3 scripts/evidence_pack_lint.py \
+#     --numstat-file <numstat> --changed-files-file <changed> --commit-count 7 \
+#     --print-floor / --print-floor-source / --print-measured
+floor=3
+floor_source=size
+measured=13 files, +1997/-8, 7 commits
+
+# git diff --numstat $(git merge-base origin/main HEAD)...HEAD
+57	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/brief.yml
+220	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/codex-gpt-5.6-sol-round2.txt
+260	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/codex-gpt-5.6-sol-round3.txt
+405	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/codex-gpt-5.6-sol-round4.txt
+8	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/journal.jsonl
+3	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/kimi-code-k3-QUOTA-EXHAUSTED.txt
+14	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/tp1-qwen3.8-max-round1.txt
+25	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/tp1-qwen3.8-max-round2.txt
+19	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/tp1-qwen3.8-max-round3.txt
+17	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/council/tp1-qwen3.8-max-round4.txt
+218	0	evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/pack.yml
+340	8	scripts/kbli_bench/score_p2b.py
+411	0	scripts/tests/test_score_p2b.py

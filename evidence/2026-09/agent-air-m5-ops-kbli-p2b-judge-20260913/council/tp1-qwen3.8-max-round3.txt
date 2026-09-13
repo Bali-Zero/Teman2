@@ -1,0 +1,19 @@
+Defect — `scripts/kbli_bench/score_p2b.py`, `moratorium_scope_check`.
+
+The line
+
+```python
+TEMPORARINESS_TOKEN = r"\b(sementara|temporary|temporarily)\b(?!\s+itu\b)"
+```
+
+(with its use in `claims_temporary = bool(temp["asserted"])`) still treats a bare `sementara` as an asserted claim that the ban is temporary. It excludes only `sementara itu`, but bare `sementara` is also commonly the conjunction “while”.
+
+Triggering input, a correct answer that would be rejected:
+
+```text
+Sumber: B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku untuk KBLI kategori risiko Rendah dan Menengah Rendah. Larangan ini permanen, sementara kode di luar kategori tersebut tidak terpengaruh.
+```
+
+This answer cites the source, effective date, risk-class scope, and permanence. It does **not** assert that the ban is temporary; `sementara` here means “while”. Nevertheless, `moratorium_scope_check` marks `claims_temporary: True` and returns `pass: False`.
+
+VERDICT: DEFECT

@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
@@ -39,6 +40,7 @@ from backend.scripts.visa_engine.gold_replay_driver import (
     select_highest_repository_pack,
 )
 from backend.services.visa_engine import evaluate_path, evaluator
+from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
 from backend.services.visa_engine.bundle import verify_rule_pack
 from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.enums import DecisionState
@@ -119,9 +121,44 @@ def _verified_compiled_pack(observed_at: datetime) -> tuple[Path, CompiledRulePa
     return pack_path, build_compiled_pack(verified.pack)
 
 
+#: Every field ``_evaluate`` names when it rebuilds the request to carry
+#: disclosure flags. Pinned because the rebuild is BY HAND and nothing else ties
+#: it to the model (council round 5, tp1-qwen3.8-max): a sixth field added to
+#: ``VisaOracleEvaluateRequest`` would be dropped from the flagged request
+#: silently, and it would stay silent downstream because
+#: ``_apply_disclosed_review_flags`` overwrites candidates, missing facts,
+#: no-path reasons and quotes anyway — the flagged decision would look exactly
+#: as expected while being computed from a request the browser never sends.
+_REBUILT_REQUEST_FIELDS = frozenset(
+    {
+        "schema_version",
+        "assessment_id",
+        "collected_at",
+        "facts",
+        "disclosed_review_flags",
+    }
+)
+
+
 def _evaluate(
-    overrides: dict[str, dict[str, Any]], label: str, *, as_of: datetime | None = None
+    overrides: dict[str, dict[str, Any]],
+    label: str,
+    *,
+    as_of: datetime | None = None,
+    disclosed_review_flags: Sequence[str] = (),
 ) -> dict[str, Any]:
+    # `disclosed_review_flags` defaults to the empty sequence, so every existing
+    # caller — the coverage floor, the authoring CLI — evaluates exactly as
+    # before. It exists because a walk's facts are only HALF its wire request:
+    # the browser also sends whatever `mapDisclosedReviewFlags` (fact-mapper.ts)
+    # raised, and `evaluate_path.py::_apply_disclosed_review_flags` rewrites the
+    # whole decision to HUMAN_REVIEW_REQUIRED on any one of them. Evaluating
+    # facts alone therefore measures a funnel the applicant never meets — which
+    # is why the interview-walk census reported 0 human review from the day it
+    # was written (2026-09-06) until the corpus gained this field. The
+    # flags are validated through `VisaOracleEvaluateRequest`, never injected
+    # into `apply_public_policy_adapters` directly, so an unknown flag name is a
+    # loud ValidationError here and not a silently ignored string.
     # `as_of` defaults to None so production behaviour (evaluate at the real
     # wall clock) is unchanged. It exists so a TEST can pin the instant to the
     # pack's own `created_at` instead: the selected pack's `source_records`
@@ -139,6 +176,32 @@ def _evaluate(
         id=0, label=label, overrides=overrides, expected_state=DecisionState.NEEDS_INPUT
     )
     request = build_persona_request(persona)
+    if disclosed_review_flags:
+        # Rebuilt field by field from the ALREADY-VALIDATED request, never via
+        # a JSON dump/re-validate round trip of the whole payload (council
+        # round 2, tp1-qwen3.8-max): only the flags are new input and only the
+        # flags need validating. A round trip would put every fact through
+        # JSON coercion and alias resolution on the path the census uses and
+        # NOT on the path every other caller uses, so a coercion asymmetry
+        # would move a flagged walk's facts while the census still saw the
+        # HUMAN_REVIEW_REQUIRED it expected. `facts` is handed over as the
+        # model object it already is — same idiom as
+        # `VisaOracleEvaluateRequest.applicant_facts()` itself.
+        model_fields = set(VisaOracleEvaluateRequest.model_fields)
+        if model_fields != _REBUILT_REQUEST_FIELDS:
+            raise RuntimeError(
+                "VisaOracleEvaluateRequest's field set moved to "
+                f"{sorted(model_fields)}; the by-hand rebuild below names "
+                f"{sorted(_REBUILT_REQUEST_FIELDS)} and must move with it, or the "
+                "flagged evaluation silently drops a field the browser sends"
+            )
+        request = VisaOracleEvaluateRequest(
+            schema_version=request.schema_version,
+            assessment_id=request.assessment_id,
+            collected_at=request.collected_at,
+            facts=request.facts,
+            disclosed_review_flags=tuple(disclosed_review_flags),  # type: ignore[arg-type]
+        )
     facts = request.applicant_facts()
     decision = evaluator.evaluate(
         facts,

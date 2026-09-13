@@ -1,0 +1,44 @@
+## Round-2 items — all three verified as fixed
+
+**1. JSON round trip: GONE.** `_evaluate` now rebuilds `VisaOracleEvaluateRequest(schema_version=…, assessment_id=…, collected_at=…, facts=request.facts, disclosed_review_flags=tuple(...))` — no `model_dump_json`/`model_validate_json` in the hunk, and `facts` crosses as the model object. The residual I checked: any field on that model *beyond* the five copied ones would be silently reset. It has no false-green path here — for a flagged walk the adapter rewrites the whole decision, so a benign dropped field cannot move a measured number, and a drop that nulled `decision_id`/`public_id` would hit the adapter's early return, leave the engine state, and turn `funnel_census["HUMAN_REVIEW_REQUIRED"] == 8` red. Not a defect.
+
+**2. `_walk_flags` order claim: consistent now.** "A SET in tuple clothing", both sorters named, and `_flag_table_violations` compares `tuple(sorted(carried)) != tuple(sorted(pinned))` — no assertion anywhere depends on emission order.
+
+**3. Reach of the guard: honestly scoped.** The new text says the table is compared against the *committed fixtures*, never re-derived from `mapDisclosedReviewFlags`, and that a mapper regression goes red in the frontend lane first, reaching this table only on commit. That matches `_load_walks` reading JSON off disk.
+
+**IndentationError: withdrawn.** I accept the `ast.parse()` + 24-green evidence, and the stdin copy corroborates it independently — every hunk header in it carries a spurious leading space (` @@ -25,6 +25,7 @@`), which `git diff` never emits. The `+ ` on the decorator line is the same transport artifact. Depth-1 rule: I don't re-litigate it.
+
+## A — omit-when-empty
+
+The claim survives attack because the defence is layered, not doubled, and each layer catches a different mutation:
+
+- Mapper stops raising a flag → committed bytes disagree with regeneration → red in `walk-corpus-determinism.test.ts` **before** anything reaches this table.
+- Total loss (generator emits the field nowhere) → `assert carrying` fires with the regeneration command in its message.
+- **Partial** loss — the case the first two guards miss (regenerate *and* delete the matching table rows in one wave PR) → the hardcoded `{"ACTIVITY_BOUNDARY": 6, "NOT_CERTAIN": 2}` in `test_every_disclosure_flag_reports_the_walks_it_rewrites` goes red, at both family granularity and single-walk granularity (6→5).
+- Stale pin → the `set(pins) - set(walks)` arm plus `carrying == set(EXPECTED_DISCLOSED_REVIEW_FLAGS)`.
+
+The only way through all four is editing the pin in the same PR, which is the repo's normal reviewable-wave discipline. Claim holds.
+
+## B — guilt and innocence are real
+
+Both guilt tests are graded against `_scoped_flag_table`, and the scoping is correct in *both* directions, which is where this usually breaks: for `offshore/work/sponsor_unsure` it returns the pinned row (UNDER-match produces exactly one violation), and for `offshore/tourism` — unpinned — it returns `{}`, so `pins.get(label, ())` yields `[]` and the OVER-match message is exact. Neither assertion is satisfiable by a `_flag_table_violations` that always returns `[]` or always returns a violation, because `test_the_corpus_carries_the_disclosure_flag_layer` calls the same helper unscoped against the real corpus.
+
+`test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome` compares whole decision dicts (candidates, missing facts, reason codes), not just state, and its length arithmetic `len(outcomes) - len(EXPECTED_DISCLOSED_REVIEW_FLAGS)` also fails on a pin that isn't in the corpus. It is near-tautological today only because `if disclosed_review_flags:` guards the rebuild — which is exactly the regression it locks in.
+
+The flags genuinely reach the engine rather than the table: `test_guilt_a_fabricated_flag_deletes_a_proven_verdict` supplies `MULTI_PURPOSE_TRIP` on a walk the table never mentions and asserts `candidates == []` and the exact reason code. A dropped-flag `_evaluate` cannot pass it.
+
+## C — no caller behaviour change
+
+Keyword-only, immutable `()` default, and the rebuild sits behind `if disclosed_review_flags:`. `_evaluate_walks` and every `gold_coverage_eval`/CLI caller pass positionally plus `as_of=`, so the empty path is byte-identical to before. No `**kwargs`, no shadowed name. The old bound-1 worry ("the census can no longer share `_evaluate` unchanged — which is the coverage-floor gate") is resolved by optionality rather than by forking the helper. Correct call.
+
+## D — constants and arithmetic
+
+Everything reconciles. 67/15/2/0 = 84 and 60/15/1/8 = 84; the deltas (−7 SUPPORTED, −1 NEEDS_INPUT, +8 REVIEW) equal the per-flag table exactly (ACTIVITY_BOUNDARY 6 from SUPPORTED; NOT_CERTAIN 1 from SUPPORTED + 1 from NEEDS_INPUT). The 8 changed fixtures are precisely the 8 table rows, with matching flag names. The "nine zero-rewriting flags" decomposes as MULTI_PURPOSE_TRIP + AMBIGUOUS_SPONSOR + seven compliance disclosures = 9, consistent with 11 total. The `…_UNCERTAINTY_REVIEW` naming asymmetry (not `NOT_CERTAIN_REVIEW`) is a real oddity, but it is asserted against the adapter's own output, so green tests settle it. `EXPECTED_REVIEW_REASON_FOR_FLAG` restating `_DISCLOSED_REVIEW_REASON_CODES` instead of importing it is correct — importing would make the assertion self-satisfying.
+
+Nits only: (i) the same rationale is now prose in three places (`_evaluate`, the TS `WalkFixture`, the module docstring) and will drift; (ii) the docstring's per-flag RST table is misaligned on the `NOT_CERTAIN` row and uses a continuation row simple tables don't support, and its shape differs from what the test actually prints (`flag | walks rewritten | …`, `(x6)` vs `(×6)`); (iii) "Key order is the file's line order (prettier preserves it)" is really JS insertion order — prettier never reorders keys; (iv) the "loud ValidationError" claim for an unknown flag is untested (harmless — the table check catches a rename independently); (v) `rulepack-prod-020` in the docstring will go stale on the next pack, though `EXPECTED_STATE_CENSUS` is what actually fires.
+
+## E — PII / credentials
+
+Clean. Synthetic scenario labels and interview answers only; no client identifiers, no names, no env vars, no keys, no endpoint URLs.
+
+VERDICT: OK

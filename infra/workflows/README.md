@@ -6,6 +6,30 @@ in the `sota-architecture-loop` skill but only ever EXECUTED via ad-hoc, ephemer
 session files (`<session>/workflows/scripts/*.js`) that vanish. These are the durable,
 citable artifacts.
 
+## saetta.js — portable BLUE missions
+
+Prepare a mission with `scripts/saetta.py` (preflight, prepare, native smoke, run).
+Its manifest names durable briefs, repository-relative write scopes and task
+dependencies. `maxParallel` is 1–3. Unordered slices must have disjoint literal
+file/directory scopes; overlap requires a dependency. Each brief supplies numeric
+active-time/child budgets and the authorized release and prove-live steps. Use a
+dedicated broker worktree on the launch host.
+
+The scheduler requires a complete Dux result, an independent exact-head PASS,
+agent-attested receipt read-back, merge and live proof before releasing dependencies.
+The native DSL has no filesystem or GitHub access: gate/release seats perform
+those checks; the scheduler checks their structured verdicts and target equality.
+Any missing stage keeps those dependencies closed while unrelated tasks proceed.
+One mission receipt closes the run; only the imperator can rule on its BLOCK.
+This is a successor for new missions, not an in-place update of active session
+scripts. Native-app branches without PR gates and ORANGE missions are not accepted.
+An unobserved merge stays BLOCK even when the queue merges later; the imperator
+must reconcile that target and its live proof before starting a successor.
+
+Behavioral tests: `node --test infra/workflows/tests/test-saetta.mjs`.
+These stub agent responses to exercise the real scheduler; native runtime smoke
+and live release receipts remain separate, required evidence.
+
 ## verify-template.js — generator≠grader (gather → adversarial-verify → synthesize)
 
 The one principle of the whole self-loop: **judging < generating**. A finding survives

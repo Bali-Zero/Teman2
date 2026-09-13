@@ -1,0 +1,328 @@
+brief_ref: evidence/brief.yml
+council_run: council/journal.jsonl
+
+lanes:
+  - lane: sast-pins-build
+    role: build
+    seat: >-
+      Claude Sonnet 5 (session actions-pins). Cherry-picked dependabot's upstream
+      sonarqube-scan-action commit (d159c7a920) and sbom-action commit (22fecf7ad8)
+      verbatim from PRs #5529/#5528 onto a fresh worktree off origin/main, then
+      reset-soft and re-committed as a single change touching only
+      .github/workflows/sbom.yml and .github/workflows/sonarqube.yml. (Numbers about
+      this branch's own commit count are deliberately not narrated here — see the
+      receipt below, computed fresh at lint time via `git rev-list --count`, since a
+      frozen figure in this field would drift with every later commit added to this
+      same evidence pack.)
+  - lane: sast-pins-review-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (titolare), dispatched read-only (`codex exec --sandbox
+      read-only -m gpt-5.6-sol -c model_reasoning_effort=xhigh`) with the diff and
+      the SHA-provenance claims embedded in the prompt. Verdict recorded in
+      council/journal.jsonl; full transcript council/codex-gpt-5.6-sol.txt.
+  - lane: sast-pins-review-kimi
+    role: review
+    seat: >-
+      kimi-code/k3 (titolare), dispatched via `kimi -p`. Returned HTTP 403
+      insufficient_quota ("monthly usage limit") immediately — a NON-JUDGEMENT, not
+      counted, recorded in council/journal.jsonl rather than silently dropped.
+  - lane: sast-pins-review-tp1
+    role: review
+    seat: >-
+      tp1-qwen3.8-max (titolare), dispatched directly against the sanctioned
+      TP1/Bailian door (same request shape as
+      scripts/arsenal_probe.py::probe_tp1_model, credential loaded from
+      ~/.qwen/settings.json — no paid per-token API installed). Returned HTTP 429
+      insufficient_quota ("token-plan 1-week quota exhausted, resets 09-18
+      08:39:00 UTC") — the whole TP1 door, shared across all 7 TP1 seats, not just
+      this model. NON-JUDGEMENT, not counted, recorded in council/journal.jsonl.
+  - lane: sast-pins-review-agy
+    role: review
+    seat: >-
+      agy-gemini-3.1-pro (RESERVE), seated after both other titolari above returned
+      quota-exhaustion errors before producing any judgement. Dispatched via
+      `agy -p ... --model gemini-3.1-pro-high` (free OAuth CLI under the AI/Flow
+      subscription, never a metered API). Verdict recorded in
+      council/journal.jsonl; because a reserve is counted, this pack carries
+      `seat_fallback_reason` below.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane; D3's non-Anthropic build-seat requirement does not bind by its
+  own terms (">= 2 build lanes"). Cross-family pressure sits on REVIEW instead:
+  codex (OpenAI family) and agy (Google family) are both non-Anthropic, and
+  between them they are the only two seats, of four dispatched, that produced a
+  judgement on this diff.
+
+diff:
+  files: 2
+  net_lines: 3
+  measured_at: >-
+    `git diff --numstat $(git merge-base origin/main HEAD)...HEAD -- .github/workflows/sbom.yml
+    .github/workflows/sonarqube.yml` (three-dot, merge-base f1fbf388098315a56c16ccae17676e97e4d26ea8)
+    at 2026-09-13T14:38:07Z, restricted to the two changed workflow files only: sbom.yml
+    has two inserted and two deleted lines, sonarqube.yml has one inserted and one
+    deleted line — three SHA/comment substitutions total across those two files, no
+    other lines touched there. This is NOT the whole-branch numstat the harness-floor
+    countable-claims rule computes (which also counts every line this evidence pack
+    itself adds, e.g. this pack.yml and the council transcripts) — that whole-branch
+    figure is deliberately not asserted here as a frozen number, since it grows with
+    every later commit to this same pack; reproduce it fresh with
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` over the WHOLE
+    branch (two-dot, no path filter) at read time, per the receipt below.
+
+seat_fallback_reason: >-
+  Both other titolari were dispatched and returned real, observed quota-exhaustion
+  errors before either produced a judgement — not assumed, not inferred from
+  silence. kimi-code/k3: HTTP 403 insufficient_quota, "You've reached your monthly
+  usage limit for this billing cycle" (2026-09-13T13:56Z, `kimi -p` stderr,
+  `kimi version 0.41.0`). tp1-qwen3.8-max: HTTP 429 insufficient_quota, "Your
+  token-plan 1-week quota has been exhausted. The quota will reset at 09-18
+  08:39:00 UTC" (2026-09-13T13:57Z, direct call to the TP1 chat-completions
+  endpoint with the same request shape scripts/arsenal_probe.py::probe_tp1_model
+  uses). Because the TP1 quota is shared across all seven TP1 seats
+  (scripts/arsenal_probe.py's TP1_SEAT_MODELS), that single 429 also rules out
+  every TP1-hosted reserve (tp1-deepseek-v4-pro, tp1-glm-5.2) for the same window
+  — agy-gemini-3.1-pro was the only reserve on a distinct door. codex-gpt-5.6-sol
+  (titolare) ran successfully and is the first counted seat; agy-gemini-3.1-pro
+  (reserve) is the second, replacing kimi-code/k3 and tp1-qwen3.8-max jointly.
+
+residual_risks:
+  - >-
+    AGY'S REVIEW IS TEXT-ONLY. Unlike codex-gpt-5.6-sol, which ran live network
+    lookups against both upstream repositories (git tags, commits, action.yml
+    manifests) via `codex exec --sandbox read-only`, agy-gemini-3.1-pro's dispatch
+    explicitly asked it NOT to run shell commands (its default `--sandbox` mode
+    could not obtain command-execution permission in headless print mode and
+    auto-denied, so the retry ran text-only rather than reaching for
+    `--dangerously-skip-permissions`, which this session will not use). Its PASS
+    verdict is therefore a consistency read of the diff and the claims already
+    verified by codex, not an independent second confirmation of the upstream
+    SHAs. The upstream SHA-to-tag/branch match is independently established by
+    this pack's own receipts (gh api calls run directly by the build seat) and by
+    codex's live verification — agy's verdict adds a second READING of the same
+    diff, not a second INDEPENDENT measurement of the upstream refs.
+  - >-
+    THE TP1 DOOR OUTAGE IS SYSTEMIC AND TIME-BOUNDED, NOT DIFF-SPECIFIC. The 429
+    affects every TP1-hosted seat (one titolare, two reserves) until
+    2026-09-18T08:39Z per the door's own error message; any other Gear-3 PR
+    dispatched in this window inherits the same reduced bench (effectively
+    codex + agy only, since kimi is also down on an unrelated monthly quota with
+    no stated reset). This is the same "a single quota reset can take the quorum
+    to zero" shape the roster split (PR #5569) was ruled to fix, and it held here:
+    the six-seat roster still produced a valid 2-seat quorum on two of six seats
+    reachable. Declared, not cured — a door-diversity fix is out of scope for a
+    two-line CI pin bump.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      Both dependabot commits cherry-pick cleanly onto a fresh worktree off
+      origin/main with zero conflicts, and the resulting diff touches only the
+      two target workflow files.
+    cmd: >-
+      python3 scripts/agent_start.py --lane infra --task-id sast-pins47ab &&
+      git fetch origin <dep-sonar-branch>:refs/remotes/origin/dep-sonar
+      <dep-sbom-branch>:refs/remotes/origin/dep-sbom && git cherry-pick
+      d159c7a920 22fecf7ad8 && git diff origin/main --stat
+    result: >-
+      WORKTREE_READY .worktrees/infra-sast-pins47ab, branch
+      agent/air-m5/infra/sast-pins47ab. Both cherry-picks applied clean (no
+      conflict markers). `git diff origin/main --stat`: sbom.yml (2 lines),
+      sonarqube.yml (1 line), 3 insertions(+), 3 deletions(-) — no other file
+      touched. Commits later squashed via `git reset --soft origin/main` into one
+      commit 56060b2e64.
+    exit: 0
+    ts: "2026-09-13T13:54:35+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      anchore/sbom-action's new pin exactly matches the commit its own annotated
+      tag v0.24.2 peels to.
+    cmd: >-
+      gh api repos/anchore/sbom-action/git/ref/tags/v0.24.2 --jq '.object' ;
+      gh api repos/anchore/sbom-action/git/tags/<peeled-tag-sha> --jq '{tag, object}'
+    result: >-
+      The lightweight ref resolves to tag object 006b7ce8314066bdf1765b4500370d40fa6917a3
+      (type "tag", i.e. annotated). That tag object peels to commit
+      3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 — an exact match to the new `uses:`
+      SHA in both sbom.yml occurrences.
+    exit: 0
+    ts: "2026-09-13T13:47:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      sonarsource/sonarqube-scan-action's new pin is the current HEAD of the
+      `master` branch it is pinned against (this action publishes no semver tag
+      for that branch's tip; the workflow's own trailing comment reads "# master",
+      unchanged by this diff).
+    cmd: >-
+      gh api repos/SonarSource/sonarqube-scan-action/branches/master
+      --jq '.commit.sha' ; gh api repos/SonarSource/sonarqube-scan-action/commits/5bc5285b684b9f0e940031dc8ddc4b6387a2f493
+      --jq '{sha, date: .commit.committer.date, message: .commit.message}'
+    result: >-
+      Both calls return 5bc5285b684b9f0e940031dc8ddc4b6387a2f493 — an exact match
+      to the new `uses:` SHA in sonarqube.yml. Commit dated 2026-08-31, message
+      "Rename code-quality teams to code-orchestration in CODEOWNERS" (a
+      CODEOWNERS-only change, corroborated independently by codex-gpt-5.6-sol's
+      own live lookup in council/codex-gpt-5.6-sol.txt).
+    exit: 0
+    ts: "2026-09-13T13:48:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: "actionlint is clean on the pin-line change itself; pre-existing sbom.yml notices are not a regression."
+    cmd: >-
+      actionlint .github/workflows/sbom.yml .github/workflows/sonarqube.yml ;
+      actionlint <(git show origin/main:.github/workflows/sbom.yml)
+    result: >-
+      sonarqube.yml: 0 findings. sbom.yml: 7 shellcheck SC2086/SC2129 notices, all
+      inside the pre-existing "SBOM summary" run: script (line 74), none
+      touching the two `uses:` lines this PR changes. Re-running actionlint
+      against origin/main's own copy of sbom.yml reproduces the identical 7
+      notices at the identical positions — confirmed pre-existing, not introduced
+      by this diff.
+    exit: 1
+    ts: "2026-09-13T13:59:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: "The deterministic floor for this diff is 3 (hot-zone path), both before and after merging the widened-council-roster PR (#5569) into this branch."
+    cmd: >-
+      git diff origin/main --name-only > /tmp/changed.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --changed-files-file /tmp/changed.txt
+    result: >-
+      floor=3, source=path — measured twice: once before merging origin/main
+      (which then only carried #6402-era evidence_pack_lint.py), and again after
+      `git merge origin/main` brought in PR #5569's six-seat roster split. Both
+      runs agree: floor 3, source path.
+    exit: 0
+    ts: "2026-09-13T14:36:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: "This pack's council journal genuinely reaches quorum via one titolare + one reserve, verified by running the checker's own resolver against this pack directory."
+    cmd: >-
+      python3 -c "import sys; sys.path.insert(0,'scripts'); from
+      evidence_pack_lint import _read_council_journal_seats; from pathlib import
+      Path; print(_read_council_journal_seats(Path('evidence/2026-09/agent-air-m5-infra-sast-pins47ab'),
+      'council/journal.jsonl'))"
+    result: >-
+      {'codex-gpt-5.6-sol', 'agy-gemini-3.1-pro'} — exactly the two ok:true review
+      lines; kimi-code/k3 and tp1-qwen3.8-max's ok:false NON-JUDGEMENT lines
+      correctly excluded. agy-gemini-3.1-pro intersects
+      COUNCIL_REVIEW_SEATS_FALLBACK, matching the seat_fallback_reason declared
+      above.
+    exit: 0
+    ts: "2026-09-13T14:38:30+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      Gate R1 fix (REWORK-BUILD on 544f92bb…): the whole-branch numstat and commit
+      count the harness-floor countable-claims rule actually computes, reproduced
+      independently rather than copied from the gate comment. This number is
+      deliberately NOT restated in `diff.measured_at` or `lanes[0].seat` above (both
+      are in the COUNTABLE_SUBTREES the rule scans) because it grows by one commit
+      and by this receipt's own line count the moment this fix commit lands — stating
+      it there would immediately re-create the exact contradiction being cured here.
+    cmd: >-
+      MB=$(git merge-base origin/main HEAD); git diff --numstat --cached "$MB" |
+      awk '{a+=$1;d+=$2} END{print "+"a" / -"d}'; git rev-list --count "$MB"..HEAD
+    result: >-
+      Measured with this fix staged but not yet committed: +5699/-3 over 3 commits
+      on the branch so far. The gate's own reproduction (before this fix) measured
+      +5676/-3 over 3 commits at SHA 544f92bb…; the delta (+23) is this receipt's own
+      addition plus the pack.yml rewording and the 10-line `.secrets.baseline` audit
+      entry. Once this fix is committed and pushed, the branch will carry 4 commits
+      and a correspondingly larger whole-branch total — reproduce the two commands
+      above at read time for the live figure, per the same convention
+      agent-nuzantara-infra-council-seats-roster-eab0e08d/pack.yml's own diff.measured_at
+      uses for a pack that is part of the diff it describes.
+    exit: 0
+    ts: "2026-09-13T15:24:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      Gate R1 condition 1: the unaudited Detect Secrets finding on
+      council/codex-gpt-5.6-sol.txt is a public upstream git commit SHA quoted in a
+      web-search query, not a credential — audited as a false positive in
+      `.secrets.baseline`, same class and same minimal-diff shape as #6276's audit of
+      three evidence-pack content digests.
+    cmd: >-
+      python3 scripts/detect_secrets_check_file.py
+      evidence/2026-09/agent-air-m5-infra-sast-pins47ab/council/codex-gpt-5.6-sol.txt
+    result: >-
+      Before the audit: "1 unaudited finding(s): line 5004: Hex High Entropy String".
+      Line 5004 reads `web search: "5bc5285b684b9f0e940031dc8ddc4b6387a2f493"
+      "SonarSource/sonarqube-scan-action" ...` — the exact upstream commit SHA this
+      PR bumps to, quoted verbatim by codex-gpt-5.6-sol while verifying it against
+      GitHub, inside its own search query. Hashed via a scratch copy of the real
+      baseline (never scanned in place — `detect-secrets scan --baseline
+      .secrets.baseline <file>` MUTATES that argument file, which the first attempt
+      at this fix did by mistake and then reverted with `git checkout --
+      .secrets.baseline` before it was staged): hashed_secret
+      a929907173f9c6df6d03c22b31bb4c2378aed375. Added as a single new 10-line entry
+      in `.secrets.baseline` with `is_secret` set to `false`. After the audit:
+      "clean (1 pre-audited finding(s) carried from baseline)". The other four
+      touched/new evidence files and both workflow files scan clean with zero
+      findings (canary-verified).
+    exit: 0
+    ts: "2026-09-13T15:20:00+08:00"
+    seat: Claude Sonnet 5
+
+dissent:
+  - seat: Claude Sonnet 5 (self-refutation, on the secrets-audit mechanics)
+    status: CONFIRMED
+    objection: >-
+      While auditing the Detect Secrets finding for gate condition 1, the first
+      three attempts ran `detect-secrets scan --baseline .secrets.baseline <file>`
+      directly against the real repo baseline. That command MUTATES its
+      `--baseline` argument file in place rather than printing to stdout — a
+      behavior `scripts/detect_secrets_check_file.py`'s own docstring already
+      exists to work around (it scans via a disposable scratch copy in a
+      TemporaryDirectory for exactly this reason), which this session read only
+      after the mistake, not before it. The result was a 68,105-line unintended
+      rewrite of `.secrets.baseline` (reformatted key order/indent, `version` key
+      dropped, a `generated_at` timestamp added) — caught by `git diff --stat`
+      before staging, never committed or pushed.
+    cure: >-
+      `git checkout -- .secrets.baseline` (git -C form, worktree-isolation
+      compliant) reverted the file to HEAD before anything was staged. The audit
+      was redone correctly: `detect-secrets scan` against a throwaway copy in the
+      scratchpad directory to obtain the finding's real hashed_secret under the
+      correct repo-relative key, then a single 10-line surgical insertion (Edit
+      tool, exact old_string/new_string match) into the real file — verified
+      afterward with `git diff --stat` (10 insertions, 0 deletions, matching
+      #6276's precedent shape) and with `python3 -c "import json;
+      json.load(open('.secrets.baseline'))"` for JSON validity.
+  - seat: Claude Sonnet 5 (self-refutation, on the council substitution)
+    status: CONFIRMED
+    objection: >-
+      Two of three titolari (kimi-code/k3, tp1-qwen3.8-max) were unreachable
+      by quota, not by transient timeout — so this pack cannot claim they were
+      merely slow. Verified by reading each door's own error body rather than
+      inferring from a timeout: kimi's stderr states a monthly billing-cycle
+      limit; TP1's JSON body states a 1-week quota with an exact reset
+      timestamp. Recorded honestly as NON-JUDGEMENT lines in the journal
+      instead of omitting the two dead titolari and presenting only the two
+      that answered.
+    cure: >-
+      Not cured — a quota reset is outside this session's control. Reported
+      to team-lead before proceeding, per instruction; team-lead directed use
+      of the widened six-seat roster (PR #5569, merged into this branch) and
+      the agy-gemini-3.1-pro reserve door specifically.
+  - seat: codex-gpt-5.6-sol, on the diff itself
+    status: RETRACTED
+    objection: >-
+      Considered whether the intermediate sbom-action tag v0.24.1's Syft bump
+      (v1.42.3 -> v1.51.1) constitutes an undisclosed breaking change, since the
+      workflow does not pin `syft-version`. Retracted after checking both
+      action.yml manifests directly: identical inputs, defaults, runtime
+      (node24), entrypoint, and no declared outputs between v0.24.0 and
+      v0.24.2; Syft's own v1.51.1 changelog carries fixes and additions, no
+      documented breaking change to the SBOM output formats this workflow
+      requests (spdx-json, cyclonedx-json). Verdict: PASS, with the Syft-bump
+      note kept as a LOW finding for the record rather than a defeating input.
+  - seat: agy-gemini-3.1-pro, on the diff itself
+    status: RETRACTED
+    objection: >-
+      Considered whether the trailing-comment change on the Anchore lines
+      ("# v0" -> "# v0.24.2") signals a semver-range widening that could later
+      auto-track newer minors unexpectedly. Retracted: the `uses:` value is a
+      full 40-character commit SHA, not a floating tag or branch reference —
+      the trailing comment is documentation only and carries no resolution
+      behavior; the pin is exactly as immutable after this diff as before it.
+      Verdict: PASS, no defeating input.

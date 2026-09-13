@@ -1,0 +1,11 @@
+SHA256 CHECK: match
+
+NOTE: `apps/backend-rag/backend/services/integrations/wa_outbox_worker.py`:1021-1025. The reset of `persist_abstained` and `persist_score` inside the exception handler ensures no stale values can survive a failed generation loop (Attack 3). Because these carrier fields are strictly local variables within `_process_claimed_row`, their state never leaks across requeues.
+
+NOTE: `apps/backend-rag/backend/services/integrations/wa_outbox_worker.py`:1449. The equality claim of `NOW()` (Attack 4) is mathematically sound. Because both the `wa_outbox` UPDATE and the `meta_inbox_messages` UPDATE are executed inside a single `async with conn.transaction():` context, PostgreSQL evaluates `NOW()` exactly once as the transaction start time. 
+
+NOTE: `apps/backend-rag/backend/services/integrations/wa_codex_leg.py`:705-710. The isolation of the sealed label vs the forced abstention (Attack 6) is solid. The support-negative branch builds a fresh literal `data={"abstain": True, ...}` to pass into `finalize_wa_answer`, cleanly separating the generator's operational requirement from the original `evidence_inputs` dictionary. The `CodexLegResult` then correctly passes the pristine wire value.
+
+NOTE: `apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py`. The real-DB fixture accurately traps PostgreSQL binding issues (Attack 5). The mapping of a Python `float` or `None` to `$5::numeric` evaluates smoothly since asyncpg coerces floats naturally and `None` passes cleanly as `NULL::numeric`. The mutant experiment correctly identifies exactly 1 failure for the support-negative route leaking a True label, verifying the test suite does not vacantly pass (Attack 7).
+
+VERDICT {"ok": true, "candidate": "6c6836a0 2edc25cc 5f2602cf 275ac990 229ca6d2 ddf41304", "blockers": 0, "majors": 0, "minors": 0}

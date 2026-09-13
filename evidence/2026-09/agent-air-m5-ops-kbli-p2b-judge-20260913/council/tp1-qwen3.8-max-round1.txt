@@ -1,0 +1,14 @@
+Defect in Diff B:
+
+- File: `scripts/kbli_bench/score_p2b.py`
+- Line: the definition of `<REDACTED>` (line 136 in the new hunk):
+  `<REDACTED> = r"((hanya|bersifat|only|merely)\s+(bersifat\s+)?(sementara|temporary)|is\s+temporary)"`
+- Triggering input: a correct Q23 answer such as:
+
+  `"Sumber: B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku untuk KBLI kategori risiko rendah dan menengah rendah. Larangan ini permanen dan tidak bersifat sementara."`
+
+Why it breaks: all required criteria are present (`source`, `13 Mei 2026`, `menengah rendah`, `permanen`), and the sentence explicitly says the ban is *not* temporary. But `moratorium_scope_check()` lower-cases the text and runs `re.search(<REDACTED>, t)`, which matches the substring `"bersifat sementara"` inside `"tidak bersifat sementara"`. So `forbidden["claims_temporary"]` becomes `True`, and `pass` becomes `False`.
+
+This rejects a correct answer.
+
+VERDICT: DEFECT

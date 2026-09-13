@@ -300,3 +300,123 @@ it("freshness orders same-day articles by publication time, not by date alone", 
     rmSync(cwd, { recursive: true, force: true });
   }
 });
+
+/**
+ * The committed artifact, not the generator.
+ *
+ * public/llms.txt is what crawlers read, and it went stale: its freshness block
+ * listed two articles TWICE (PP 20/2026 and CoreTax) while the generator that would
+ * have rewritten it had long since stopped producing them. Every test in this file
+ * exercised the generator against a temp fixture, so all of them stayed green while
+ * the published file said something false.
+ *
+ * This one reads the file that ships.
+ */
+it("the committed llms.txt lists each URL once in the freshness block", () => {
+  const llms = readFileSync(join(app, "public/llms.txt"), "utf8");
+  const header = "## Recently Published & Updated (Freshness Signal)";
+  const start = llms.indexOf(header);
+  expect(
+    start,
+    `${header} missing from public/llms.txt`,
+  ).toBeGreaterThanOrEqual(0);
+  const after = llms.slice(start + header.length);
+  const end = after.indexOf("\n## ");
+  const block = end === -1 ? after : after.slice(0, end);
+
+  const urls = [...block.matchAll(/\((https:\/\/[^)]+)\)/g)].map((m) => m[1]);
+  expect(
+    urls.length,
+    "the freshness block lists no URLs at all",
+  ).toBeGreaterThan(0);
+
+  const counts = new Map<string, number>();
+  for (const u of urls) counts.set(u, (counts.get(u) ?? 0) + 1);
+  const duplicated = [...counts.entries()]
+    .filter(([, n]) => n > 1)
+    .map(([u, n]) => `${u} (${n}x)`);
+  expect(
+    duplicated,
+    `public/llms.txt repeats these URLs in the freshness block — regenerate it with ` +
+      `\`LLMS_GENERATE_ARTICLES_ONLY=1 npx tsx scripts/generate-llms-full.ts\`: ` +
+      duplicated.join(", "),
+  ).toEqual([]);
+});
+
+/**
+ * And the generator rule that keeps it that way.
+ *
+ * `isCanonical` drops translations; it does NOT give one entry per URL. Thirteen
+ * content folders collapse to six public segments — `tax/` and `tax-legal/` both
+ * publish under `/taxes/` — so two canonical files sharing a slug across them emit
+ * the same URL twice. That is reachable today, which is why the de-duplication is a
+ * rule and not a tidy-up.
+ */
+it("the freshness block keeps one entry per URL, with the most recent date", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "llms-dup-"));
+  try {
+    const output = join(cwd, "public");
+    mkdirSync(output, { recursive: true });
+    mkdirSync(join(cwd, "data"), { recursive: true });
+    // Two folders that collapse to the SAME public segment, same slug, two dates.
+    for (const [folder, slug, date] of [
+      ["tax", "shared-slug", "2026-07-25"],
+      ["tax-legal", "shared-slug", "2026-08-30"],
+      // A third, DISTINCT article, newer than both halves of the duplicate, so the
+      // ordering assertion below has something to order.
+      ["tax", "newest-one", "2026-09-09"],
+    ] as const) {
+      const dir = join(cwd, "src/content/articles", folder);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, `${slug}.mdx`),
+        `---\ntitle: ${slug} from ${folder}\npublishedAt: '${date}'\n---\nBody\n`,
+      );
+    }
+    writeFileSync(
+      join(output, "llms.txt"),
+      "# Directory\n## Recently Published & Updated (Freshness Signal)\n\nold\n\n## Services\nKeep\n",
+    );
+    const { scripts } = JSON.parse(
+      readFileSync(join(app, "package.json"), "utf8"),
+    );
+    void scripts;
+    // process.execPath, not the resolved cli file as the executable: the resolved
+    // entry is a plain .mjs with no exec bit, which fails EACCES on a clean checkout.
+    // Two other call sites in this file take the risk; this one does not.
+    execFileSync(
+      process.execPath,
+      [require.resolve("tsx/cli"), join(app, "scripts/generate-llms-full.ts")],
+      {
+        cwd,
+        env: { ...process.env, LLMS_GENERATE_ARTICLES_ONLY: "1" },
+        stdio: "pipe",
+      },
+    );
+
+    const block = readFileSync(join(output, "llms.txt"), "utf8");
+    const lines = block
+      .split("\n")
+      .filter((l) => l.includes("https://balizero.com/taxes/shared-slug"));
+    expect(
+      lines,
+      `the shared URL should appear once, got:\n${lines.join("\n")}`,
+    ).toHaveLength(1);
+    // The most recent of the two dates wins.
+    expect(lines[0]).toContain("(2026-08-30)");
+    expect(lines[0]).toContain("shared-slug from tax-legal");
+
+    // And the block stays ordered by date, with a third article newer than both
+    // halves of the duplicate. De-duplicating keeps the FIRST sighting of a URL, which
+    // is only the freshest because the array is sorted date-DESC upstream; this
+    // asserts the property that dependency is there to provide, so losing the sort
+    // shows up here rather than in a published file.
+    const dates = [...block.matchAll(/\((\d{4}-\d{2}-\d{2})\)/g)].map(
+      (m) => m[1],
+    );
+    expect(dates.length).toBeGreaterThan(1);
+    expect(dates).toEqual([...dates].sort().reverse());
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});

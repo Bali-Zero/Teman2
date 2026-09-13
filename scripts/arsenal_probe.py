@@ -622,6 +622,17 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
     # _AUTH_DEAD_PAT keeps its existing guilt+innocence corpus untouched.
     if not live and re.search(r"not logged in", combined, re.IGNORECASE):
         return AUTH_DEAD, ev or "claude not logged in", latency_ms
+    # Real exemplar captured in ~/.organism/arsenal/last.json on Mini
+    # (2026-09-13T10:08:14Z): a per-PROJECT trust flag
+    # (projects["<path>"].hasTrustDialogAccepted in ~/.claude/.claude.json),
+    # not a credential — `hasTrustDialogAccepted` was False for this exact
+    # project even though an interactive session in the same directory works
+    # fine, so the seat is a host/context limitation here, not dead. Same
+    # class as agy's CONTEXT_AUTH split above (seat may be LIVE elsewhere);
+    # fell through classify_generic() to a bare UNKNOWN_ERR because it
+    # carries no 401/oauth-token/quota marker, only this short prose.
+    if not live and re.search(r"trust dialog|hasTrustDialogAccepted", combined, re.IGNORECASE):
+        return CONTEXT_AUTH, ev or "claude project trust dialog not accepted", latency_ms
     status = classify_generic(combined, live, "claude", is_ssh_context())
     return status, ev, latency_ms
 
