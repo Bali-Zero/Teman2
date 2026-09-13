@@ -120,7 +120,9 @@ class TestSponsorTypeRolloutDefault:
         under the fact-vocabulary-extension mandate, see the module
         docstring and ``TestFactVocabularyExtensionRolloutDefaults0823``),
         then to five on 2026-08-24 (``immigration_renewal_paid``, F4 — see
-        ``TestFactVocabularyExtensionRolloutDefault0824``). Widening is
+        ``TestFactVocabularyExtensionRolloutDefault0824``), then to six on
+        2026-09-13 (``investment_amount_usd``, PR-D4c-1 — see
+        ``TestFactVocabularyExtensionRolloutDefaultD4c1``). Widening is
         deliberate and tracked HERE — this stops a field from
         silently acquiring a default under cover of an existing one without
         anyone updating the expected set. When any one field's interview
@@ -128,6 +130,16 @@ class TestSponsorTypeRolloutDefault:
         field and is the thing that tells whoever removed it the follow-up
         is complete: drop that field from the expected set (and, once the
         set is empty, delete this test along with the 40-key test above).
+
+        Why ``investment_amount_usd`` is a legitimate transitional exception
+        here and not a loosening of "every fact is required": the interview
+        that will ALWAYS send this key ships in a following lane, D4c-2 (the
+        mapper + the question itself); PR-D4c-1 is contract-only — it
+        declares the wire key so D4c-2 can exist, but asks nothing yet. The
+        expected removal: once D4c-2 ships and is verified live on Vercel
+        (SERVITA), a PR of its own — straight after, no other work folded in
+        — drops the ``default=`` from ``investment_amount_usd`` in
+        ``models.py`` and removes the field from the set below.
         """
         optional = {
             name
@@ -140,6 +152,7 @@ class TestSponsorTypeRolloutDefault:
             "family_stepchild_birth_certificate_confirmed",
             "family_sponsor_permit_basis",
             "immigration_renewal_paid",
+            "investment_amount_usd",
         }, (
             "ApplicantFactsData's optional-field set changed. If you added a "
             "field with a default, don't: every fact is required so that an "
@@ -304,6 +317,79 @@ class TestFactVocabularyExtensionRolloutDefault0824:
     def test_extra_forbidden_still_bites_for_this_field_too(self) -> None:
         body = _all_unknown_facts()
         body["immigration.renewal_paidx"] = dict(_UNKNOWN)
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+
+class TestFactVocabularyExtensionRolloutDefaultD4c1:
+    """Same mechanism again, for the one fact PR-D4c-1 (2026-09-13) added:
+    ``investment.investment_amount_usd`` (a ``MoneyFact``, same shape as the
+    two existing IDR amounts — contract-only, no question/mapper/rule yet;
+    D4c-2 adds those). Wire-compatibility requirement is identical to the
+    2026-08-24 set: "a request that omits the new fact must still work,
+    yielding UNKNOWN".
+    """
+
+    _WIRE_KEY = "investment.investment_amount_usd"
+
+    def test_a_body_omitting_investment_amount_usd_still_validates(self) -> None:
+        body = _all_unknown_facts()
+        del body[self._WIRE_KEY]
+        assert self._WIRE_KEY not in body
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert isinstance(facts.investment_amount_usd, M.UnknownFact)
+        assert facts.investment_amount_usd.status == "UNKNOWN"
+        assert facts.investment_amount_usd.reason == enums.UnknownReason.NOT_ASKED
+
+    def test_the_default_asserts_unknown_and_never_a_value(self) -> None:
+        assert isinstance(M._INVESTMENT_AMOUNT_USD_ROLLOUT_DEFAULT, M.UnknownFact)
+        assert M._INVESTMENT_AMOUNT_USD_ROLLOUT_DEFAULT.status == "UNKNOWN"
+        assert not hasattr(M._INVESTMENT_AMOUNT_USD_ROLLOUT_DEFAULT, "value")
+
+    def test_a_supplied_value_is_honoured_and_not_clobbered(self) -> None:
+        """Innocence: the default must not overwrite a caller who DID answer.
+
+        A KNOWN zero is deliberately exercised too: it is a real, meaningful
+        answer (an applicant with a confirmed-zero committed amount), not a
+        state the default mechanism may collapse into UNKNOWN — the same
+        distinction ``immigration_renewal_paid``'s KNOWN-False test makes for
+        booleans.
+        """
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": 50_000}
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert facts.investment_amount_usd.status == "KNOWN"
+        assert facts.investment_amount_usd.value == 50_000
+
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": 0}
+        facts_zero = M.ApplicantFactsData.model_validate(body)
+        assert facts_zero.investment_amount_usd.status == "KNOWN"
+        assert facts_zero.investment_amount_usd.value == 0
+
+    def test_integer_type_is_still_enforced_on_a_supplied_value(self) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": "a lot"}  # a string, not an int
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+    def test_negative_amount_is_still_rejected(self) -> None:
+        """Tolerating ABSENCE must not tolerate a nonsensical value —
+        ``KnownMoney.value`` is ``ge=0`` regardless of currency."""
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": -1}
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+    def test_extra_forbidden_still_bites_for_this_field_too(self) -> None:
+        body = _all_unknown_facts()
+        body["investment.investment_amount_usdx"] = dict(_UNKNOWN)
 
         with pytest.raises(ValidationError):
             M.ApplicantFactsData.model_validate(body)

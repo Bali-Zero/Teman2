@@ -1,0 +1,196 @@
+gear: 2
+gear_reason: >-
+  Measured with the inputs CI uses — `git diff --name-only origin/main...HEAD > /tmp/f.txt &&
+  git diff --numstat origin/main...HEAD > /tmp/n.txt && python3 scripts/evidence_pack_lint.py
+  --print-floor --changed-files-file /tmp/f.txt --numstat-file /tmp/n.txt`, re-run after the
+  LAST commit to this brief so it is self-inclusive of THIS file's own final size. The paired
+  `--print-floor-source` invocation (same two input files) names WHY: the "size" term (total
+  churn against SIZE_GEAR2_THRESHOLD (400) and SIZE_GEAR3_THRESHOLD (1828)) or the "path" term
+  (a changed path matching a hot-zone pattern), independently of each other — a caller who wants
+  the actual gear number or its source runs these two commands, which is also how the `gear:`
+  field above was set. No bare floor or churn figure is written into this prose on purpose: this
+  file is part of the diff it measures, so any number typed into this sentence goes stale the
+  moment a LATER commit changes this sentence's own length, and this mandate has already paid
+  for that lesson twice — once here (an earlier cut of this field quoted a specific returned
+  number that drifted the moment a follow-up commit changed this file's line count, fixed by a
+  correction commit rather than a permanently-correct number, because no number typed in prose
+  can stay one) and once on PR-D4d's brief, the identical failure in a different PR. Dropping
+  `--numstat-file` changes the size term's answer (it needs the raw per-file rows, not a
+  pre-summed total) while leaving the path term unaffected — run both files together, not
+  interchangeably, to reproduce the value in `gear:` above.
+task_id: shweb-w-oracle-d4c1-20260913
+mandate_id: SHWEB-20260911/W-ORACLE/PR-D4c-1
+colour: BLUE
+l_level: L1
+gate_class: opus
+base_sha: ab79f6275d88230971d0ce4f752d4ffa45e856a4 # pragma: allowlist secret (a git commit SHA, not a credential) - this IS the fix push's item-1 merge of origin/main, which brings in PR-RISYNC (726083cdfa)
+objective: >-
+  Contract-only PR: add exactly one new wire fact, `investment.investment_amount_usd`, to the
+  closed FactPath vocabulary, so a later PR (D4c-2) can ask an investment applicant for an
+  amount in USD. `fact-mapper.ts` builds a typed literal against apps/mouth's generated OpenAPI
+  types, and `ApplicantFactsData` is `frozen=True, extra="forbid"` — a closed object that
+  rejects an undeclared key at request time — so the key must exist on the wire before D4c-2 can
+  send it. No question, no mapper change, no corpus walk, no rule: this PR adds vocabulary only.
+  The transitional default (`UnknownFact(status="UNKNOWN", reason="NOT_ASKED")`, following
+  `_RENEWAL_PAID_ROLLOUT_DEFAULT` verbatim) is what makes the Fly/Vercel deploy-order split not
+  matter, exactly as it did for `immigration.renewal_paid` (2026-08-24) and the three
+  2026-08-23 facts before it.
+scope:
+  - apps/backend-rag/backend/services/visa_engine/enums.py, models.py, fact_registry.py,
+    shadow.py (docstring only) — the vocabulary, the field, the transitional default, and the
+    registry metadata entry the enum/registry parity tests require.
+  - apps/backend-rag/backend/services/visa_engine/contracts/*.schema.json — regenerated snapshot
+    (never hand-edited), same commit as the code per the drift tripwire's own rule (cicatrix W86).
+  - apps/backend-rag/backend/tests/services/visa_engine/{test_fact_registry.py,
+    test_sponsor_type_rollout.py, test_shadow_match.py, test_evaluation_trace.py,
+    gold_harness/loader.py, gold_harness/fixtures/personas/*.json} — the tripwire tests and
+    fixtures this addition necessarily moves.
+  - this brief.
+constraints:
+  - Contract only — no question, no mapper change, no corpus walk, no rule reads the new fact.
+    Walk census verified unchanged (82 walks, zero verdict moves) at both instants.
+  - No currency key (D4c-2's currency chooser is a UI-only discriminator, never sent on the
+    wire, same shape as `investment_vehicle`) and no stay-duration fact (the 5y/10y threshold
+    split is an open P4 question for Zero, not pre-empted here).
+  - No rule-pack edit of any kind; `sign_pack.py`/`activate_pack.py` never run;
+    `VISA_ENGINE_EVALUATE_MODE` never touched.
+  - Never hand-edit a generated file. `contracts/*.schema.json` regenerated via
+    `SE.export_schemas()`, verified against the live export by
+    `test_every_exported_schema_matches_its_committed_snapshot`.
+  - >-
+    apps/mouth is deliberately NOT touched in this PR's commit — see self_report below. This
+    departs from the dispatch brief's item 5 ("regenerate openapi.json/schema.d.ts"), and is the
+    one blocking finding this session surfaces rather than resolving unilaterally.
+  - No push, no PR, no arming, no merge — commit locally, report; the orchestrator ships.
+  - Zero PII in any artifact touched.
+acceptance:
+  - text: >-
+      WHEN the 82-walk interview census runs against the highest signed PRODUCTION pack, THEN
+      every walk SHALL match its pinned (state, candidates) in EXPECTED_OUTCOME key-by-key, at
+      both instants (before this PR's commit and after it) — zero verdict changes, because no
+      rule references the new fact.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=.
+      pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: >-
+      RETRACTED 2026-09-13 (PR-D4c-1 fix push, D4c1-fix-dispatch item 4). This field previously
+      read: "Before (git stash, pre-existing working tree): 2 passed
+      (test_corpus_is_the_82_real_interview_walks + test_every_walk_ends_in_its_pinned_outcome).
+      After (this commit, 317e5023d3): 17 passed, same two tests among them — 82 walks, zero
+      violations from `_outcome_violations()` (per-key EXPECTED_OUTCOME diff, not a totals
+      compare)." That claim is FALSE, quoted here in full rather than silently overwritten, so
+      the correction is visible to a future reader. `test_interview_walk_census.py` is byte-identical
+      at both instants (`git diff origin/main...317e5023d3 -- .../test_interview_walk_census.py`
+      is empty), so a file that never changed cannot legitimately report two different pass
+      counts for "the same" run — 2 and 17 were two DIFFERENT commands, not a before/after pair.
+      Reproduced directly: at 39c7ef4c4b (the true "before", 317e5023d3's own parent) the plain
+      probe above (no `-k`) gives 17 passed; the same commit filtered with
+      `-k "test_corpus_is_the_82_real_interview_walks or test_every_walk_ends_in_its_pinned_outcome"`
+      gives `2 passed, 15 deselected` — the "15 deselected" was dropped when that filtered run
+      got written up as if it were the whole file's baseline. The honest receipt is 17/17 at
+      BOTH instants: 17 passed at 39c7ef4c4b (before) and 17 passed at current HEAD (after,
+      re-verified this session), zero test added/removed/renamed, zero verdict change —
+      `test_every_walk_ends_in_its_pinned_outcome`'s own per-key EXPECTED_OUTCOME diff (not a
+      totals compare) passing at both instants is what actually proves the 82-walk census held.
+  - text: >-
+      WHEN the FactPath/registry parity suite runs, THEN the new fact SHALL be fully registered
+      (enum member, FactSpec entry, applicant-path membership) with no orphaned or missing entry.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/services/visa_engine/test_fact_registry.py
+    result: "104 passed (was 104 passed pre-change too — the 3 count literals moved 49->50/45->46 in the same commit, not left red)."
+  - text: >-
+      WHEN the transitional-default rollout suite runs, THEN the sixth optional field
+      (`investment_amount_usd`) SHALL be pinned by name with its legitimate-exception rationale,
+      and its own KNOWN/UNKNOWN/extra-forbidden/type-enforcement/negative-value cases SHALL pass.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/services/visa_engine/test_sponsor_type_rollout.py
+    result: "32 passed (26 pre-existing + 6 new: TestFactVocabularyExtensionRolloutDefaultD4c1's 6 cases; 1 pre-existing test (the optional-field-set pin) updated in place, not left red)."
+  - text: >-
+      WHEN the JSON Schema contract snapshot is compared against a live `export_schemas()` call,
+      THEN it SHALL match byte-for-byte (normalized), proving the committed snapshot was
+      regenerated, not hand-edited.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/services/visa_engine/test_schema_contracts.py
+    result: "149 passed, including test_every_exported_schema_matches_its_committed_snapshot."
+  - text: >-
+      WHEN the golden trace-hash test runs, THEN its literal SHALL reflect the new fact's
+      presence in `canonical_fact_payload`, verified — not assumed — to move for the documented
+      reason (whole-snapshot HMAC) and not because any trace node or gold-persona decision
+      changed.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -c
+      "from backend.tests.services.visa_engine.test_evaluation_trace import _business_result;
+      c,r = _business_result(); print(r.trace.sha256(), len(r.trace.ordered_nodes))" &&
+      PYTHONPATH=. pytest backend/tests/services/visa_engine/test_evaluation_trace.py
+      backend/tests/services/visa_engine/test_gold_replay_artifact.py
+    result: >-
+      Node count 84 (unchanged from the 2026-08-24 measurement). Hash moved
+      cbdf4e61dfadcb510f679ee772c6691532adb431f90ad81f9e0ef0e8bf34eebd ->
+      64d4f54e275cec97ae2ccd108171e487ab5a41ea297a691c8cc7426304930ce4, literal updated in the
+      same commit. test_gold_replay_artifact.py: 8 passed (zero divergence across all 23 gold
+      personas). test_evaluation_trace.py: 4 passed.
+  - text: >-
+      WHEN the broader visa_engine test tree runs, THEN it SHALL show no NEW failure beyond the
+      pre-existing, host-independent Postgres failures this brief was told about in advance.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest
+      backend/tests/services/visa_engine/
+    result: >-
+      2329 passed, 1 skipped, 1 pre-existing failure
+      (test_visa_engine_retention_fk_registry.py::test_restore_only_reapplies_the_entry_that_was_
+      actually_unwound — confirmed via `git stash` to fail identically on the unmodified working
+      tree, a DB-schema-state issue unrelated to this change), 31 pre-existing errors (all
+      `asyncpg.exceptions.TooManyColumnsError`, the same class the dispatch brief named — do not
+      quote this total on another host, it differs).
+pii: none
+self_report:
+  note: >-
+    Two premises in the dispatch brief turned out wrong, both discovered by running the actual
+    commands rather than trusting the brief's framing — reported rather than silently worked
+    around, per this mandate's own stop-and-report rule.
+
+    (1) "Both are tracked" (of openapi.json/schema.d.ts) is false for openapi.json:
+    `git check-ignore -v apps/backend-rag/openapi.json` shows it is `.gitignore`d
+    (`.gitignore:780`, untracked since commit 7070c5ea3f, "untrack 124 runtime artifacts"). It
+    was still regenerated (needed as `generate:api`'s input) and verified to contain the new key
+    at the right path, but there was never anything to commit for it.
+
+    (2) schema.d.ts itself is real and tracked, but was last regenerated 2026-08-24
+    (`git log -1 -- apps/mouth/src/lib/api/schema.d.ts` = 6ee7f50d1e) — 20 days stale against
+    the live backend surface at HEAD. `create_app()` unconditionally uses `include_routers()`
+    (the full monolithic union, confirmed by reading app_factory.py), so a faithful
+    `npm run contract:visa-oracle` regen is correct but pulls in ~15 unrelated endpoint groups
+    added to main since then (compliance/obligations, crm/garuda/assignment-targets,
+    visa/voa/*, workspace-marketing/*) — verified this is pre-existing drift on origin/main
+    itself, not a fork-point artifact (`git diff HEAD origin/main -- apps/mouth/src/lib/api/
+    schema.d.ts` is empty; the two newer origin/main commits are unrelated). Measured:
+    raw regen diff before prettier, 109048 lines (formatting-only, tool default 4-space vs.
+    repo's prettier 2-space); after `npx prettier --write` (the repo's own pre-commit gate would
+    otherwise reject it), 2923 lines (2876 insertions, 47 deletions) — still far past
+    evidence_pack_lint.py's SIZE_GEAR2_THRESHOLD (400) and SIZE_GEAR3_THRESHOLD (1828, churn),
+    which would force this contract-only PR's floor to Gear 3 on size alone. Committing it would
+    also bundle ~15 endpoint groups nobody asked this PR to touch into a diff framed everywhere
+    else (dispatch, this brief, the commit message) as "exactly one wire key."
+
+    Decision taken: commit the backend-rag Python-side vocabulary change in full (floor
+    verified at Gear 1); do NOT commit the schema.d.ts regeneration. apps/mouth is therefore
+    untouched by this commit — the one respect in which this session's diff is narrower than
+    the dispatch brief asked for. The regenerated openapi.json/schema.d.ts were produced locally
+    (openapi.json still present on disk, gitignored either way; schema.d.ts was reverted to
+    HEAD with `git checkout --`) to prove the mechanism works and the new key appears correctly
+    in both, but neither is staged. Recommendation, not a decision made on Zero's behalf: either
+    accept the full schema.d.ts catch-up in a follow-up commit/PR with Gear-3 evidence (a
+    reviewer would then see the ~15 unrelated groups named, as here), or run a separate,
+    dedicated "resync schema.d.ts to current backend" PR first (its own concern, no code
+    change), after which D4c-2's own contract regen — which needs this anyway for
+    `fact-mapper.ts` — would produce a small, easily-reviewed diff limited to whatever is new by
+    then.
