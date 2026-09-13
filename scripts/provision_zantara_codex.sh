@@ -88,6 +88,8 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 for src in "${BACKEND_SRC}/services/integrations/wa_codex_daemon.py" \
     "${BACKEND_SRC}/llm/codex_exec_client.py" "${WRAPPER_SRC}" "${PLIST_SRC}" \
+    "${BACKEND_SRC}/services/rag/agentic/_support_signal.py" \
+    "${BACKEND_SRC}/services/integrations/wa_completion_envelope.py" \
     "${PROBE_SCRIPT_SRC}" "${PROBE_WRAPPER_SRC}" "${PROBE_PLIST_SRC}"; do
     if [ ! -f "$src" ]; then
         log "ERROR: source file missing: $src (run from a current repo checkout)"
