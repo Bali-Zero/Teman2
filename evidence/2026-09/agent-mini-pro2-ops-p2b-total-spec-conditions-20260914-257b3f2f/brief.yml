@@ -1,0 +1,153 @@
+# Brief — discharge the four conditions the #6469 gate posted on the P2b total criterion
+gear: 2
+gear_reason: >-
+  Deterministic floor is 1, measured with
+  `python scripts/evidence_pack_lint.py --print-floor --changed-files-file <name-only>
+  --numstat-file <numstat>` over the COMPLETE staged set including this brief: 250 net lines, no
+  hot-zone path. Measured twice, as the predecessor's brief learned to: 97 net without this brief
+  staged, still floor 1, so here the order does not change the class. Gear 2 is a deliberate RAISE
+  above the floor, which CI permits — the floor is a minimum and never a ceiling. The raise is not
+  decoration: condition C1 changes what the P2b scorer counts, moving four Indonesian clause shapes
+  out of `clear` and into `deferred_to_judge`, and a change to what a benchmark counts as a failure
+  wants a verdict even when it is small. The author of this diff must NOT sign it.
+task_id: p2b-total-spec-conditions-20260914
+mandate_id: KBLI-P2b / discharge of the #6469 gate conditions
+colour: BLUE
+l_level: L2
+host: Mini-Pro2
+worktree: .worktrees/ops-p2b-total-spec-conditions-20260914
+branch: agent/mini-pro2/ops/p2b-total-spec-conditions-20260914
+base: origin/main at 316a8e84fa (fast-forwarded onto it before every measurement below)
+pii_scan: clean
+pii_scan_note: >-
+  No personal data. Indonesian and English clause fixtures about KBLI code counts, two regex
+  constants, one specification document and two evidence briefs. No client identifiers, no staff
+  names.
+
+host_note: >-
+  Opened on Mini and not on M5 because M5's broker REFUSED the lane for memory distress (swap
+  89.7% used, load ~5.4x per core). AGENT_RAM_ADMISSION_OVERRIDE was NOT used. Mini is the route
+  the broker itself names. That is why the branch prefix is mini-pro2 while the predecessor's is
+  air-m5.
+
+predecessor: >-
+  PR #6469 merged with a PASS-WITH-CONDITIONS gate verdict carrying four conditions. Its own
+  discharge instruction is quoted verbatim in the verdict comment: every condition discharges in a
+  follow-up PR opened from a fresh origin/main, and none of them changes the behaviour merged
+  there. This is that follow-up. The branch was fast-forwarded onto origin/main at 316a8e84fa
+  before any measurement below, so none of these numbers were taken against a stale base.
+
+objective: >-
+  Close the four conditions, and close them where the gate found them rather than where they were
+  convenient: one real behaviour hole, one dangling reference, one comment that named the wrong
+  tests, and one brief whose own claim the gate had measured as false.
+
+the_finding: >-
+  C1 was a real hole and not a style note. The coexistence net — the probe that decides whether a
+  clause is UNDECIDABLE rather than clear — was built from the same COUNTED_NOUN as the entity that
+  CONVICTS. One set used twice is not a set guarded by a wider one: any noun form the entity did
+  not recognise could not reach `undecidable` either, so it fell through to `clear`. Measured, four
+  ordinary Indonesian forms are real quoted totals and all four were clear, which is a MISSED
+  TOTAL, the direction that inflates the benchmark score: `kode2` and `kbli2` (standard shorthand
+  for the reduplicated plural), `kodepun` (the -pun clitic written joined), and `kodenyalah`
+  (stacked -nya + -lah). The cure gives the net its own, deliberately wider noun —
+  `\b(?:kbli|kode|codes?)\w*` — and records the asymmetry in the spec as a rule: what CONVICTS
+  stays closed and is a spec change to widen; what DEFERS stays open, because an unrecognised form
+  belongs to the judge and never to silence.
+
+scope:
+  - scripts/kbli_bench/score_p2b.py # C1 the net gets its own noun; C3 the comment names the tests that bite
+  - scripts/tests/test_score_p2b.py # C1 four fixtures; C2 the dangling path; C3 the growth-pinning test
+  - docs/specs/p2b-quoting-a-moratorium-total-v1.md # new 2.4 records the asymmetry; table and criterion 7
+  - evidence/2026-09/agent-air-m5-ops-p2b-total-spec-20260914-55748dd7/brief.yml # C4 and C4b
+
+constraints:
+  - "One concern: discharging the #6469 conditions. No other scorer surface touched."
+  - >-
+    Nothing merged by #6469 changes behaviour here except C1, which is the condition that asked
+    for a behaviour change. C2, C3 and C4 are a reference, a comment and a record.
+  - >-
+    The predecessor's brief is AMENDED, not rewritten. Its false claim keeps its original wording
+    verbatim under an ORIGINAL CLAIM label, with the correction above it. Deleting the claim would
+    delete the evidence that it was made.
+  - >-
+    The two declared open findings of the PR before it (row identity over row count; reduceRow's
+    six-item cap) are still NOT addressed and stay declared. So does that PR's unmet council
+    quorum.
+  - >-
+    An unquoted hash opens a YAML comment, so no plain list item here ends with a bare PR number.
+
+timestamp_note: >-
+  The receipt timestamps below are real UTC taken from `date -u` on the machine that ran each
+  command, and they are EARLIER than the ones in the predecessor's brief (09:05Z on the 14th),
+  which this PR follows. The predecessor's were approximate and ran ahead of the clock. Noted here
+  rather than back-dated, because a follow-up whose evidence appears to predate its parent is the
+  kind of thing a reader should be told about instead of left to discover.
+
+receipts:
+  - claim: "C1 bites — reverting the net to reuse the entity turns the four new fixtures red"
+    cmd: "replace TOTAL_NUM_AND_NOUN_COEXIST_NOUN with COUNTED_NOUN, pytest, restore with cp"
+    result: >-
+      4 failed, 76 passed. The four failures are exactly the four §2.4 clauses, by name:
+      "Ada 48 kode2", "Ada 518 kbli2", "Ada 48 kodepun", "Kodenyalah 48". Restored from a cp
+      backup, never with git checkout.
+    exit: 0
+    ts: "2026-09-13T20:38:36Z"
+    seat: claude-opus-5
+  - claim: "C3 bites — a criterion silently ADDED to the deferral list is caught"
+    cmd: "append a fourth fake criterion to deferred_to_judge, pytest, restore with cp"
+    result: >-
+      1 failed, 79 passed, and the single failure is
+      test_the_deferral_list_is_exactly_these_three. Before this PR the list was pinned by bare
+      count in one place and by exact value in another, so growth was catchable only by accident.
+    exit: 0
+    ts: "2026-09-13T20:38:36Z"
+    seat: claude-opus-5
+  - claim: "C2 — the path both files cite exists in the tree that cites it"
+    cmd: "grep the citation in both files, then ls the target"
+    result: >-
+      score_p2b.py line 172 and test_score_p2b.py line 637 both name
+      docs/specs/p2b-quoting-a-moratorium-total-v1.md; the file is present, 10501 bytes. The
+      merged copy of the test file named a path that did not exist.
+    exit: 0
+    ts: "2026-09-13T20:38:36Z"
+    seat: claude-opus-5
+  - claim: "suite green on a fresh base, nothing else regressed"
+    cmd: "git merge --ff-only origin/main, then python3.11 -m pytest scripts/tests/test_score_p2b.py -q"
+    result: "fast-forward e54beb6b97..316a8e84fa with the four modifications intact; 80 passed"
+    exit: 0
+    ts: "2026-09-13T20:38:36Z"
+    seat: claude-opus-5
+  - claim: "the benchmark result files that landed on main meanwhile are not recomputed by anything this touches"
+    cmd: "grep -rln kbli_bench/results across py/yml/ts/mjs/sh, excluding the results tree itself"
+    result: >-
+      Four hits, none of them a consumer that would re-score: two are the k2-gamma evidence
+      documents that describe the run, two are the detect-secrets triage script and its test. No
+      job re-scores a committed p2b_score.json, so widening the net does not silently invalidate a
+      merged result.
+    exit: 0
+    ts: "2026-09-13T20:38:36Z"
+    seat: claude-opus-5
+
+open_findings_for_the_gate: >-
+  (1) The asymmetry is now doctrine, and doctrine has a cost: the net will hand the judge clauses
+  that are not totals at all, because `\w*` accepts any tail. `kodenya`, `kodepun` and `kodex`
+  are indistinguishable to it. This is deliberate — a judge read is the cheap failure and a missed
+  total is the expensive one — but it is a real widening of the judge's bill and the gate should
+  weigh it rather than assume it was free. The left boundary still binds both sides, so `barcodes`
+  and `mengkode` reach neither outcome.
+  (2) The predecessor's unmet council quorum is still uncured and still on main. This PR does not
+  claim to close it, and no ledger row closes it either.
+  (3) The author of this diff must NOT sign it. A fresh session outside the contribution chain
+  signs, per the generator-is-never-grader rule.
+
+lesson:
+  what: >-
+    The gate found a hole that seven adversarial council rounds, a spec, and its own author had all
+    walked past: the guard and the thing that excuses the guard were reading the same set.
+  why_it_matters: >-
+    Deriving the safety net from the entity it is supposed to catch means the net inherits every
+    blind spot the entity has, and inherits it invisibly — the tests still pass, because the
+    fixtures were written from the same understanding as the code. A net must be wider than what it
+    catches, and "wider" has to be written down as a rule, or the next edit will quietly re-narrow
+    it. Criterion 7 exists so that re-narrowing is a red test and not a judgement call.
