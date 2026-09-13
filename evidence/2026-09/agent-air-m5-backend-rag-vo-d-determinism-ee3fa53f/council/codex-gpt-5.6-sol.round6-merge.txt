@@ -1,0 +1,29 @@
+# EXCERPT of codex exec stdout (council seat codex-gpt-5.6-sol), judged head e0dde5c53d
+# raw: 142730 bytes, 2693 lines, sha256 c128a177635e5ecd52530eb34e689444732a621847f4c44c80f844d309ed6670
+# kept: the seat's own narrative blocks, the command line of every tool call, and the final answer;
+# cut: harness preamble (repo AGENTS/skills injected by the seat's hooks), hook status lines, and each command's stdout.
+
+codex:
+  [Air-M5] Missione BLUE, council seat indipendente in sola lettura. Verifico esclusivamente la risoluzione del merge `e0dde5c53d` e le regressioni S21 sugli invarianti VO-D indicati.
+exec: /bin/zsh -lc "git show --remerge-diff --format= --stat --oneline e0dde5c53d && git show --remerge-diff --format= --unified=50 e0dde5c53d -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/__tests__/engine-adapter.test.ts' 'apps/backend-rag/openapi.sha256'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+codex:
+  Il remerge sintetico non può partire nel sandbox perché Git tenta di creare oggetti temporanei. Ricostruisco quindi le due risoluzioni in modo equivalente e read-only, confrontando il merge con entrambi i parent e con le blob stages disponibili nella storia.
+exec: /bin/zsh -lc "git show -s --format='%H%n%P%n%s' e0dde5c53d && git diff-tree --cc --no-commit-id -p --unified=40 e0dde5c53d -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/__tests__/engine-adapter.test.ts' 'apps/backend-rag/openapi.sha256'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "rg --files | rg 'engine-adapter.*test|openapi.*sha|sha.*openapi|openapi' | head -120" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff-tree --cc --no-commit-id -p --unified=50 e0dde5c53d -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' 'apps/mouth/src/lib/api/schema.d.ts.openapi-sha256'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff fb26b98115 e0dde5c53d --unified=12 -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' 'apps/mouth/src/lib/api/schema.d.ts.openapi-sha256'; git diff 77af6c7ada8 e0dde5c53d --unified=12 -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' 'apps/mouth/src/lib/api/schema.d.ts.openapi-sha256'" in /Users/balizero/nuzantara/.workt
+exec: /bin/zsh -lc "for rev in fb26b98115 77af6c7ada8 e0dde5c53d; do printf '%s ' \""'$rev"; git show "$rev:apps/mouth/src/lib/api/schema.d.ts.openapi-sha256"; done; git diff 77af6c7ada8 e0dde5c53d --unified=8 -- '"'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' | tail -90" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "for rev in fb26b98115 77af6c7ada8 e0dde5c53d; do printf '%s ' \""'$rev"; git show "${rev}:apps/mouth/src/lib/api/schema.d.ts.openapi-sha256"; done; shasum -a 256 apps/mouth/src/lib/api/openapi.yaml; git status --short --branch' in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --stat 0c38b8fab6 e0dde5c53d -- apps/backend-rag/backend/services/visa_engine/enums.py apps/backend-rag/backend/services/visa_engine/models.py 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts'; git diff --unified=4 0c38b8fab6 e0dde5c53d -- apps/backend-rag/backend/services/visa_engine/enum
+exec: /bin/zsh -lc "git diff --unified=5 0c38b8fab6 e0dde5c53d -- apps/backend-rag/backend/services/visa_engine/models.py 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts' | rg -n -C 5 '"'^'"\\+.*(government_invitation|government_collaboration|world_figure_invitation|diplomatic_household|trade_office|establishes_indonesian_company|capital_market_only|foreign_branch_or_subsidiary|ikn_sub
+exec: /bin/zsh -lc "git diff --unified=6 0c38b8fab6 e0dde5c53d -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts'; git diff --unified=6 0c38b8fab6 e0dde5c53d -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=8 0c38b8fab6 e0dde5c53d -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | tail -75" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "rg -n \"VISITOR_REVIEW_CAUSE_ALLOWLIST|HUMAN_REVIEW_REQUIRED|DecisionCondition|GUARDIAN_MUST_APPLY|APPLY_THROUGH_GUARDIAN|NO_SUPPORTED_PATH|REVIEW_REASON_COPY|function buildEngineOutcome|function condition|missing.*copy|throw new Error\" apps/backend-rag/backend/services/visa_engine apps/mouth/src/app/'(visa-oracle)'/visa-oracle/_lib/engine-adapter.ts | head -120" in /Users/balizero/
+exec: /bin/zsh -lc "sed -n '1515,1605p' apps/backend-rag/backend/services/visa_engine/evaluate_path.py; sed -n '1375,1425p' apps/backend-rag/backend/services/visa_engine/models.py; sed -n '1535,1610p' apps/backend-rag/backend/services/visa_engine/models.py" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "sed -n '1395,1438p' apps/backend-rag/backend/services/visa_engine/models.py; sed -n '1510,1610p' apps/backend-rag/backend/services/visa_engine/models.py; sed -n '1728,1838p' 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "sed -n '1580,1610p' apps/backend-rag/backend/services/visa_engine/models.py; sed -n '1748,1838p' 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+codex:
+  No findings.
+  
+  VERDICT: OK
+tokens used: 41.429

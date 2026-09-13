@@ -1,0 +1,23 @@
+# agy-gemini-3.1-pro council round4, judged head 0c38b8fab6, full stdout (text-only run, diff embedded in the prompt; no preamble to cut)
+
+I have reviewed the diff and the prior round results according to the strict constraints.
+
+### Verifications & Findings
+
+1. **Round 3 Finding 1 (NO_SUPPORTED_PATH `purpose_feasible` scoping)**: **ACCEPTED**. 
+   The rejection is valid. `purpose_feasible` is a boolean field on the `ProductProof` dataclass and correctly governs whether a condition on an excluded product is shown. Scoping conditions to products the applicant actually declared intent for correctly prevents the engine from spamming visitors with conditions for visas they never requested.
+
+2. **Round 3 Finding 2 (Trace effect omission for conditions)**: **VERIFIED**. 
+   `evaluator.py:719-743`. The fix correctly binds `condition_rule_ids` to the set of per-product rules that evaluated to TRUE or UNKNOWN in the `HUMAN_REVIEW` stage. Because Python evaluates closures by reference at call time, the `finish()` helper successfully resolves the updated `condition_rule_ids` set and applies the `REQUIRE_REVIEW` trace effect before sealing the evaluation.
+
+3. **Round 1 & 2 Fixes (Adapter Integrity & Wholesale Conversion)**: **VERIFIED**.
+   * **Minor adapter (`evaluate_path.py:1174-1184`)**: It explicitly checks `any(reason.code in SOURCE_INTEGRITY_HOLD_CODES...)` to return early if a decisive source failed, fully preserving the integrity hold. Otherwise, it safely maps prior `decision.conditions` and `decision.review_reasons` into the new `NO_SUPPORTED_PATH` outcome.
+   * **Criminal adapter (`evaluate_path.py:1451-1473`)**: It safely partitions `decision.review_reasons` into `standing_holds` (source integrity) and `displaced_reasons` (other non-criminal disclosures), placing the former in the new `review_reasons` and the latter into `conditions`. No sentence or hold is silently dropped.
+   * **Determinism floor (`evaluate_path.py:1552-1565`)**: It correctly calculates `allowed` holding causes and checks `len(allowed) == len(reasons)`. If a mixed state arrives, it accurately segregates the `allowed` causes to `review_reasons` while delegating the remainder into `conditions`.
+
+4. **Safety & Fail-OPEN Invariants**: **VERIFIED**.
+   * **Hard Filters**: Evaluator securely routes `HARD_FILTER` rules with `on_unknown=HUMAN_REVIEW` to `needs_input` when `review_as_conditions=True` (`evaluator.py:386-397`), ensuring a fail-closed behavior (the visitor is stopped and asked for the missing fact) rather than silently waiving the safety check.
+   * **Freshness Waiver (`engine-adapter.ts:1512-1522`)**: The `freshnessPendingIds` subset is strictly constructed exclusively from the `source_refs` of explicit freshness condition codes. The mouth enforces all other strict requirements (`is_primary_authority`, `VERIFIED`, `APPLICABLE`) unconditionally.
+   * **Seal Back-compat (`decision_seal.py:48-52`)**: The design to omit an empty `conditions` array from `_sealed_core` is cryptographically sound. Any attacker attempting to inject a forged condition payload would force the `conditions` key into the core, producing a mismatched digest against the original seal. 
+
+VERDICT: OK

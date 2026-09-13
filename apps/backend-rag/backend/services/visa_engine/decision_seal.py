@@ -37,6 +37,25 @@ def _integrity_digest(
     ).hexdigest()
 
 
+def _sealed_core(decision: Decision) -> dict[str, object]:
+    """The authenticated bytes of a decision, minus its own seal fields.
+
+    ``conditions`` (added 2026-09-13) is left OUT of the core when it is
+    empty. A decision minted before the field existed was sealed over a core
+    without that key, and an idempotency replay re-verifies such an envelope
+    after the deploy; dumping ``"conditions": []`` into it would turn every
+    one of those honest replays into a seal failure. Omitting only the EMPTY
+    value keeps that core byte-identical, while a decision that carries even
+    one condition authenticates it — adding, removing or editing a condition
+    still changes the digest.
+    """
+
+    exclude = {"trace_sha256", "decision_integrity"}
+    if not decision.conditions:
+        exclude.add("conditions")
+    return decision.model_dump(mode="json", exclude=exclude)
+
+
 def seal_decision(
     decision: Decision,
     *,
@@ -57,10 +76,7 @@ def seal_decision(
         raise ValueError("cannot seal a decision without an evaluation trace")
     if trace is not None and not trace.matches(trace_sha256):
         raise ValueError("decision trace_sha256 does not match the evaluation trace")
-    core = decision.model_dump(
-        mode="json",
-        exclude={"trace_sha256", "decision_integrity"},
-    )
+    core = _sealed_core(decision)
     sealed_payload = {
         **core,
         "trace_sha256": trace_sha256,
@@ -89,10 +105,7 @@ def verify_decision_seal(
         return False
     if trace is not None and not trace.matches(trace_sha256):
         return False
-    core = decision.model_dump(
-        mode="json",
-        exclude={"trace_sha256", "decision_integrity"},
-    )
+    core = _sealed_core(decision)
     expected_integrity = _integrity_digest(
         core,
         trace_sha256=trace_sha256,

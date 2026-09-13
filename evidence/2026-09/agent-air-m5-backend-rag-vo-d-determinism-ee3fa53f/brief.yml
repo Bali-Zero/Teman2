@@ -1,0 +1,69 @@
+gear: 3
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO3 FRECCIA window W-VO-D vo-d-determinism (BLUE, host M5) — the Visa Oracle gives a visitor a deterministic answer, and holds only where Zero's exception or the imperator decision says so
+objective: >-
+  RULED 2026-09-13 (Zero, verbatim «non va mai a revisione umana ma c'è sempre
+  risposta deterministica» and «1 se ci sono questioni penali, revisione
+  umana»), plus the imperator decision of the same night: a decisive or
+  safety-critical source that is not applicable law keeps the hold. On the
+  visitor surface (POST /api/visa-oracle/evaluate) HUMAN_REVIEW_REQUIRED may
+  reach a visitor only with causes in {CRIMINAL_MATTER_DISCLOSED,
+  DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE,
+  SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE}. Every other disclosure,
+  pack review rule and stale or freshness-unknown source becomes a named
+  condition (code, source_refs, explanation key, next step) on a
+  deterministic verdict with the proven candidates kept; a minor becomes
+  NO_SUPPORTED_PATH under GUARDIAN_MUST_APPLY with no product named. The
+  mouth renders the conditions in EN and ID.
+scope:
+  - apps/backend-rag/backend/services/visa_engine/{conditions,enums,models,evaluator,evaluate_path,api_models,decision_seal,schema_export,shadow}.py
+  - apps/backend-rag/backend/services/visa_engine/contracts/contract.schema.json
+  - apps/backend-rag/backend/scripts/visa_engine/{gold_coverage_eval,gold_replay_driver,probe_evaluate}.py
+  - apps/backend-rag/backend/tests/services/visa_engine/** and backend/tests/scripts/visa_engine/** (guards and pins moved with a reason each)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/{_lib,_components}/** (parser, view model, adapter, OutcomeSheet, i18n, fact-mapper comment)
+  - apps/mouth/src/lib/api/schema.d.ts and its openapi sha pin (regenerated, never hand-edited)
+  - docs/rules/RULINGS.md (one row)
+constraints:
+  - No rule pack, no tree.ts branching, no oracle.css, no pricing, no corpus generator, no sign_pack.py / activate_pack.py.
+  - The 16 cases of test_real_signed_invalid_decisive_source_never_emits_candidate stay green and untouched.
+  - Engine default stays review_as_conditions=False; only the visitor surface and its census/replay drivers opt in.
+  - Pre-existing sealed idempotency envelopes must still verify (empty conditions omitted from the sealed core).
+  - No client PII (synthetic walks only); no vendor names in code comments added by this diff; no price from memory.
+  - No PENDING-ARMS.md edit, no gate status posted by this seat, push once.
+acceptance:
+  - text: >-
+      D-1. WHEN any gold persona or interview walk is evaluated through the visitor chain, the
+      outcome SHALL NOT be HUMAN_REVIEW_REQUIRED unless every review cause is in
+      VISITOR_REVIEW_CAUSE_ALLOWLIST, WHILE the allowlist is exactly the three named codes.
+    probe: ".venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/visa_engine/test_visitor_determinism_floor.py"
+  - text: >-
+      D-2. WHEN a non-criminal disclosure flag is supplied, the decision SHALL keep its state and
+      candidates and gain one named condition; IF CRIMINAL_RECORD is supplied, THEN the decision
+      SHALL hold on CRIMINAL_MATTER_DISCLOSED with next step CONSULTANT_REVIEW, keeping any
+      integrity hold and naming every cause it replaces.
+    probe: ".venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/visa_engine backend/tests/scripts/visa_engine"
+  - text: >-
+      D-3. WHEN a decisive or safety-critical source is stale or freshness-unknown, the candidates
+      SHALL be kept under a condition naming the source; WHILE a *_PRIMARY_SOURCE_NOT_APPLICABLE
+      source SHALL keep the hold (the 16 invalid-source cases green, untouched).
+    probe: ".venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/visa_engine backend/tests/scripts/visa_engine"
+  - text: >-
+      D-4. WHEN the contract changes, contract.schema.json and schema.d.ts SHALL be regenerated
+      and their drift and sha pins SHALL pass.
+    probe: ".venv/bin/python -m pytest -p no:cacheprovider backend/tests/unit/scripts/test_generate_openapi_schema_pin.py backend/tests/services/visa_engine/test_schema_contracts.py"
+  - text: >-
+      D-5. WHEN a conditioned outcome reaches the mouth, OutcomeSheet SHALL render every condition
+      with its EN/ID copy and next step, WHILE a condition already shown as the verdict's cause
+      renders only its next step.
+    probe: 'node_modules/.bin/vitest run "src/app/(visa-oracle)"'
+  - text: >-
+      D-6. WHEN the merge is deployed, POST /api/visa-oracle/evaluate?traffic_source=synthetic_driver
+      with a flagged synthetic walk SHALL return a conditioned outcome, never HUMAN_REVIEW_REQUIRED.
+    probe: "backend.scripts.visa_engine.probe_evaluate --url https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate"
+consumer_map:
+  - The visitor on POST /api/visa-oracle/evaluate and the mouth OutcomeSheet that renders its conditions (EN/ID).
+  - The required backend check running test_visitor_determinism_floor.py and test_interview_walk_census.py on every future PR touching the Oracle engine or pack - a new review emitter goes red there.
+  - The offline replay floor (test_gold_replay_driver.py) and the census driver, which now evaluate in the visitor mode.
+appetite:
+  budget: 8 hours active, 1 PR (backend contract and its mouth consumer are coupled; see pack D-one-pr)
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

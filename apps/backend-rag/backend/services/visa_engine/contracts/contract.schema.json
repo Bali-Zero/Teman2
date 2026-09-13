@@ -1839,6 +1839,20 @@
       "title": "ClockPolicy",
       "type": "object"
     },
+    "ConditionNextStep": {
+      "description": "What the visitor is asked to DO about a named condition.\n\nA closed vocabulary on purpose: the mouth renders one EN/ID sentence per\nmember, so a new member is a deliberate copy change, never free text\narriving from a pack.",
+      "enum": [
+        "ANSWER_AGAIN",
+        "BRING_TO_CONSULTATION",
+        "APPLY_THROUGH_GUARDIAN",
+        "ASSISTED_APPLICATION",
+        "NO_ACTION_NEEDED",
+        "CONSULTANT_REVIEW",
+        "AWAIT_SOURCE_REFRESH"
+      ],
+      "title": "ConditionNextStep",
+      "type": "string"
+    },
     "ContainsAllCondition": {
       "additionalProperties": false,
       "description": "True iff the fact's set-value is a superset of ``values``.",
@@ -2060,6 +2074,9 @@
               "candidates": {
                 "maxItems": 0
               },
+              "conditions": {
+                "maxItems": 0
+              },
               "facts_fingerprint": {
                 "type": "null"
               },
@@ -2090,6 +2107,14 @@
           },
           "maxItems": 256,
           "title": "Candidates",
+          "type": "array"
+        },
+        "conditions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DecisionCondition"
+          },
+          "title": "Conditions",
           "type": "array"
         },
         "decision_id": {
@@ -2252,8 +2277,56 @@
       "title": "Decision",
       "type": "object"
     },
+    "DecisionCondition": {
+      "additionalProperties": false,
+      "description": "A named condition carried BESIDE a deterministic outcome.\n\nRULED 2026-09-13 (see ``docs/rules/RULINGS.md``): the Visa Oracle answers\na visitor with ``HUMAN_REVIEW_REQUIRED`` only for a disclosed criminal\nmatter or a decisive/safety-critical source that is no longer law.\nEverything else that used to delete the verdict \u2014 a disclosed compliance\nfact, a stale decisive source, a pack rule that asks for a human \u2014 becomes\none of these instead: the verdict survives, and the thing that would have\nhidden it is NAMED. The held outcomes carry one too, so they explain\nthemselves.\n\n``explanation_key`` is an i18n KEY, never a sentence: the EN/ID text lives\nin the mouth's ``i18n.ts`` so no applicant-facing prose is minted by the\nengine (and so a condition can never smuggle PII into a signed decision).\n``source_refs`` may be empty and that is not an oversight \u2014 a condition\ndescribing an applicant DISCLOSURE has no regulatory citation to borrow,\nand borrowing one from the pack would be a false claim of provenance.",
+      "properties": {
+        "code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "explanation_key": {
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$",
+          "title": "Explanation Key",
+          "type": "string"
+        },
+        "next_step": {
+          "$ref": "#/$defs/ConditionNextStep"
+        },
+        "rule_ids": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Rule Ids",
+          "type": "array"
+        },
+        "source_refs": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "rule_ids",
+        "source_refs",
+        "explanation_key",
+        "next_step"
+      ],
+      "title": "DecisionCondition",
+      "type": "object"
+    },
     "DecisionState": {
-      "description": "The exactly-one-of-five global states a Decision resolves to (spec \u00a75.3).\n\nPrecedence (highest first): TEMPORARILY_UNAVAILABLE (unavailable pack\nfails closed) > HUMAN_REVIEW_REQUIRED > SUPPORTED_CANDIDATES >\nNEEDS_INPUT > NO_SUPPORTED_PATH.",
+      "description": "The exactly-one-of-five global states a Decision resolves to (spec \u00a75.3).\n\nPrecedence (highest first): TEMPORARILY_UNAVAILABLE (unavailable pack\nfails closed) > HUMAN_REVIEW_REQUIRED > SUPPORTED_CANDIDATES >\nNEEDS_INPUT > NO_SUPPORTED_PATH.\n\nThat table is the ENGINE default. On the visitor surface (RULED\n2026-09-13, ``docs/rules/RULINGS.md``) the evaluator runs with\n``review_as_conditions=True``: a review-stage effect no longer outranks\nSUPPORTED_CANDIDATES, it rides beside the verdict as a named condition,\nand HUMAN_REVIEW_REQUIRED reaches a visitor only for a cause in\n``evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST``.",
       "enum": [
         "NEEDS_INPUT",
         "SUPPORTED_CANDIDATES",

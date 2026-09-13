@@ -3,6 +3,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import {
+  CONDITION_COPY,
+  CONDITION_NEXT_STEP_COPY,
   REVIEW_REASON_COPY,
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
@@ -154,6 +156,136 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       mutate(response);
       expect(() => buildEngineOutcome(response)).toThrow();
     }
+  });
+
+  // RULED 2026-09-13 (W-VO-D): a stale or freshness-unknown decisive source
+  // conditions the verdict instead of deleting it. The waiver is by ENTITY —
+  // the exact source id the backend named in a freshness condition — never by
+  // state: an unnamed stale ref must still fail closed.
+  it("keeps a verdict whose stale source is named by a freshness condition", () => {
+    const response = makeVisaOracleResponse();
+    response.sources[0].freshness.status = "STALE";
+    response.decision.conditions = [
+      {
+        code: "DECISIVE_SOURCE_STALE",
+        rule_ids: ["support-c1"],
+        source_refs: [response.sources[0].source_record_id],
+        explanation_key: "oracle.condition.decisive_source_stale",
+        next_step: "AWAIT_SOURCE_REFRESH",
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.state).toBe("SUPPORTED_CANDIDATES");
+    expect(outcome.candidates.map((candidate) => candidate.code)).toEqual([
+      "C1",
+    ]);
+    expect(
+      outcome.conditions.map((condition) => [
+        condition.code,
+        condition.nextStep,
+      ]),
+    ).toEqual([["DECISIVE_SOURCE_STALE", "AWAIT_SOURCE_REFRESH"]]);
+  });
+
+  it("never words a condition on a live verdict as a hold", () => {
+    // Render finding (W-VO-D): the review sentences say "before any path can
+    // be confirmed", which contradicts the verdict printed above a condition.
+    const disclosures = [
+      "DISCLOSED_HEALTH_CONCERN_REVIEW",
+      "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
+      "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
+      "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
+      "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
+      "DISCLOSED_UNCERTAINTY_REVIEW",
+      "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
+      "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+      "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+      "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
+    ];
+    for (const code of disclosures) {
+      expect(code in CONDITION_COPY).toBe(true);
+    }
+    for (const copy of [
+      ...Object.values(CONDITION_COPY),
+      ...Object.values(CONDITION_NEXT_STEP_COPY),
+    ]) {
+      for (const sentence of [copy.en, copy.id]) {
+        expect(sentence).not.toMatch(
+          /before any path|is held|options below|di bawah ini/i,
+        );
+      }
+    }
+    const response = makeVisaOracleResponse();
+    response.decision.conditions = [
+      {
+        code: "DISCLOSED_HEALTH_CONCERN_REVIEW",
+        rule_ids: [],
+        source_refs: [],
+        explanation_key: "oracle.condition.disclosed_health_concern_review",
+        next_step: "BRING_TO_CONSULTATION",
+      },
+      {
+        code: "SOME_FUTURE_PACK_CODE",
+        rule_ids: [],
+        source_refs: [],
+        explanation_key: "oracle.condition.some_future_pack_code",
+        next_step: "BRING_TO_CONSULTATION",
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions[0].message).toEqual(
+      CONDITION_COPY.DISCLOSED_HEALTH_CONCERN_REVIEW,
+    );
+    expect(outcome.conditions[1].message.en).not.toContain("SOME_FUTURE");
+  });
+
+  it("still fails closed when the stale ref is not the one a condition names", () => {
+    for (const conditions of [
+      [],
+      [
+        {
+          code: "DISCLOSED_HEALTH_CONCERN_REVIEW",
+          rule_ids: [],
+          source_refs: [],
+          explanation_key: "oracle.condition.disclosed_health_concern_review",
+          next_step: "BRING_TO_CONSULTATION" as const,
+        },
+      ],
+    ]) {
+      const response = makeVisaOracleResponse();
+      response.sources[0].freshness.status = "STALE";
+      response.decision.conditions = conditions;
+      expect(() => buildEngineOutcome(response)).toThrow();
+    }
+  });
+
+  it("answers a minor with the named guardian cause and never names a door", () => {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = [
+      {
+        code: "GUARDIAN_MUST_APPLY",
+        rule_ids: ["system.privacy.minor-guardian-review"],
+        source_refs: [],
+      },
+    ];
+    response.decision.conditions = [
+      {
+        code: "GUARDIAN_MUST_APPLY",
+        rule_ids: ["system.privacy.minor-guardian-review"],
+        source_refs: [],
+        explanation_key: "oracle.condition.guardian_must_apply",
+        next_step: "APPLY_THROUGH_GUARDIAN",
+      },
+    ];
+    const outcome = buildEngineOutcome(response, {
+      facts: { category: "business", stay_days: "30" },
+    });
+    expect(outcome.state).toBe("NO_SUPPORTED_PATH");
+    if (outcome.state !== "NO_SUPPORTED_PATH") return;
+    expect(outcome.noPathReasons[0].message.en).toContain("under 18");
+    expect(outcome.noPathReasons[0].message.id).toContain("di bawah 18");
+    expect(outcome.alternatives).toEqual([]);
+    expect(outcome.conditions[0].nextStep).toBe("APPLY_THROUGH_GUARDIAN");
   });
 
   it("never renders a known operational or service axis without decisive evidence", () => {
@@ -1208,6 +1340,12 @@ describe("review reasons cover every code the current pack can emit", () => {
   // discover them — they have to be named here, from three sources in
   // evaluate_path.py:
   //   - `_DISCLOSED_REVIEW_REASON_CODES` (11 `DisclosedReviewFlag` entries)
+  //   - `conditions.py::CRIMINAL_MATTER_REVIEW_CODE`, the ONE cause a visitor
+  //     may still be held on (RULED 2026-09-13, `docs/rules/RULINGS.md`).
+  //     `_disclosed_review_policy_adapter` substitutes it for the flag
+  //     table's raw `DISCLOSED_CRIMINAL_RECORD_REVIEW` before the decision
+  //     reaches a visitor; the raw code stays listed because the core path
+  //     (pre-adapter, back-office, `visa_decisions` rows) still emits it.
   //   - `_apply_minor_privacy_hold`'s `MINOR_GUARDIAN_PRIVACY_REVIEW`
   //   - the decisive-source gate (`_apply_decisive_source_gate` family,
   //     ~line 1030) and the safety-critical source hold
@@ -1219,6 +1357,7 @@ describe("review reasons cover every code the current pack can emit", () => {
   //     notice-report.json (persona 9/10, "actual").
   const PACK_INDEPENDENT_REVIEW_REASON_CODES = [
     "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
+    "CRIMINAL_MATTER_DISCLOSED",
     "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
     "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
     "DECISIVE_SOURCE_STALE",
@@ -1263,17 +1402,18 @@ describe("review reasons cover every code the current pack can emit", () => {
     ].sort();
     // Guard the guard: a glob/parse that silently found nothing would make
     // every assertion below vacuously true. 20 pack (16 HUMAN_REVIEW-stage +
-    // 4 HARD_FILTER with on_unknown=HUMAN_REVIEW, PR-O2) + 18
-    // pack-independent = 38, all of them mapped as of PR-O2. Floor raised
-    // from 32 to the measured 38 (round-1 refuter finding, Gemini 3.1 Pro +
-    // Kimi K3): 32 would still pass a regression that silently dropped up
-    // to 5 real codes.
+    // 4 HARD_FILTER with on_unknown=HUMAN_REVIEW, PR-O2) + 19
+    // pack-independent = 39, all of them mapped. Floor raised from 32 to
+    // the measured 38 (round-1 refuter finding):
+    // 32 would still pass a regression that silently dropped up to 5 real
+    // codes. 39 since VO-D: CRIMINAL_MATTER_DISCLOSED joined the
+    // pack-independent set (RULED 2026-09-13).
     //
-    // Unchanged at 38 by W-VO-S21 (2026-09-13): the unsigned seq-21 source
+    // Unchanged by W-VO-S21 (2026-09-13): the unsigned seq-21 source
     // retires eight of the 20 pack codes, but `reviewReasonCodesInPack()`
     // reads the signed seq-20 payload too, so all 20 are still counted
     // while seq-20 is the newest pack that can be in force.
-    expect(allRealCodes.length).toBeGreaterThanOrEqual(38);
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(39);
 
     const unaccounted = allRealCodes.filter(
       (code) =>

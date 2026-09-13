@@ -872,8 +872,13 @@ class TestE33GWitnesses:
     ) -> None:
         before = _evaluate(seq19_compiled, _REMOTE_CLEAN)
         after = _evaluate(seq20_compiled, _REMOTE_CLEAN)
-        assert before["state"] == "HUMAN_REVIEW_REQUIRED"
-        assert "E33G_INCOME_EVIDENCE_REVIEW" in before["review_reason_codes"]
+        # PIN MOVED 2026-09-13 (W-VO-D): `_evaluate` runs the engine default
+        # mode through `apply_public_policy_adapters`, whose last adapter now
+        # converts a review outcome outside the visitor allowlist into
+        # NO_SUPPORTED_PATH carrying the same codes. seq-19's review is still
+        # measured; it just no longer reaches a visitor as a hold.
+        assert before["state"] == "NO_SUPPORTED_PATH"
+        assert "E33G_INCOME_EVIDENCE_REVIEW" in before["no_path_reason_codes"]
         assert after["state"] == "SUPPORTED_CANDIDATES"
         assert "E33G" in after["candidates"]
 
@@ -887,7 +892,11 @@ class TestE33GWitnesses:
             seq20_compiled,
             {**_REMOTE_CLEAN, "work.serves_indonesian_clients": _known(True)},
         )
-        assert after["state"] == "HUMAN_REVIEW_REQUIRED"
+        # PIN MOVED 2026-09-13 (W-VO-D), same cause as the guilt test above:
+        # the rule still fires and still withholds E33G; the visitor-path floor
+        # names it as a no-path cause instead of a hold.
+        assert after["state"] == "NO_SUPPORTED_PATH"
+        assert "LOCAL_MARKET_ACTIVITY_REVIEW" in after["no_path_reason_codes"]
         assert "E33G" not in after["candidates"]
 
     def test_innocence_an_indonesian_employer_is_still_barred_from_e33g(

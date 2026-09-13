@@ -42,7 +42,9 @@ actually ships now, not what an earlier draft of this module claimed.
 2. **P0-B — the global state-assembly order was inverted relative to the
    frozen precedence table.** ``enums.DecisionState``'s own docstring is
    unambiguous: ``HUMAN_REVIEW_REQUIRED`` outranks ``SUPPORTED_CANDIDATES``
-   unconditionally. An earlier draft of this module checked ``supported``
+   unconditionally in the engine default mode (the visitor surface's
+   ``review_as_conditions`` mode produces no review state at all, RULED
+   2026-09-13). An earlier draft of this module checked ``supported``
    before ``review`` in the outer loop (copied verbatim from the spec's own
    ``evaluate()`` pseudocode ordering) on the theory that a PRODUCTS-scoped
    review trigger could never coexist with an unrelated SUPPORTED product in
@@ -209,6 +211,12 @@ from typing import Literal, TypeVar
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine.ast import ConditionResult, FactSnapshot, UnknownFact
 from backend.services.visa_engine.compiler import CompiledProduct, CompiledRule, CompiledRulePack
+from backend.services.visa_engine.conditions import (
+    conditions_from_reasons as _conditions_from_reasons,
+)
+from backend.services.visa_engine.conditions import (
+    dedupe_conditions as _dedupe_conditions,
+)
 from backend.services.visa_engine.enums import (
     DecisionState,
     Environment,
@@ -229,6 +237,7 @@ from backend.services.visa_engine.models import (
     ApplicantFacts,
     Candidate,
     Decision,
+    DecisionCondition,
     Fingerprint,
     Outage,
     PriceQuote,
@@ -276,6 +285,11 @@ class ProductProof:
     support_rules: tuple[CompiledRule, ...] = ()
     #: Populated for SUPPORTED — union of ``support_rules``' covered purposes.
     covered_purposes: frozenset[str] = frozenset()
+    #: RULED 2026-09-13: review reasons converted to CONDITIONS instead of
+    #: a REVIEW status, under ``review_as_conditions``. Unlike every other
+    #: field here this one is NOT read conditionally on ``status`` — a
+    #: condition rides on whatever verdict the product reached.
+    conditions: tuple[Reason, ...] = ()
     #: Populated for UNSUPPORTED — the declared purposes no TRUE (or
     #: potentially-TRUE-via-an-unresolved-unknown) rule could ever cover.
     missing_purposes: frozenset[str] = frozenset()
@@ -354,6 +368,8 @@ def _safety_unknowns(entries: Sequence[_StageResult]) -> tuple[_StageResult, ...
 
 def _partition_unknowns_by_policy(
     entries: Sequence[_StageResult],
+    *,
+    review_as_conditions: bool = False,
 ) -> tuple[tuple[_StageResult, ...], tuple[_StageResult, ...]]:
     """Split an already-``_safety_unknowns``-filtered sequence into
     ``(review_unknowns, input_unknowns)`` by each rule's own ``on_unknown``
@@ -366,7 +382,21 @@ def _partition_unknowns_by_policy(
     human — do not just ask the applicant for more facts". A
     ``NEEDS_INPUT``-tagged UNKNOWN contributes a missing fact, exactly as
     before.
+
+    ``review_as_conditions`` (RULED 2026-09-13, the visitor surface) routes
+    EVERY unknown into the ``needs_input`` half instead. This is the
+    fail-CLOSED half of that ruling and the distinction is load-bearing: an
+    ``on_unknown=HUMAN_REVIEW`` rule is UNRESOLVED, not permissive, so the
+    deterministic answer owed to a visitor is "the tree asks you the fact",
+    never "we proceed as if the rule had not fired". Dropping such an
+    unknown on the floor would fail OPEN on a safety-critical HARD_FILTER —
+    four of them live in ``rulepack-prod-020`` (``hf.bridging.offshore``,
+    ``hf.bridging.from-visit-itk``, ``hf.bridging.to-bridging``,
+    ``hf.b1.not-voa-nationality``) — which is the guard family this repo
+    already carries scars for.
     """
+    if review_as_conditions:
+        return (), tuple(entries)
     review = tuple(
         entry for entry in entries if entry[0].on_unknown is OnUnknownAction.HUMAN_REVIEW
     )
@@ -635,6 +665,7 @@ def evaluate_product(
     facts: FactSnapshot,
     purposes: frozenset[str],
     fact_registry: FactRegistry = DEFAULT_FACT_REGISTRY,
+    review_as_conditions: bool = False,
     _trace_sink: list[_TraceEntry] | None = None,
 ) -> ProductProof:
     """Evaluate one product's HARD_FILTER -> HUMAN_REVIEW -> ELIGIBILITY
@@ -685,6 +716,11 @@ def evaluate_product(
         else frozenset()
     )
     purpose_feasible = purposes <= declared_coverage
+    # Review-stage rules named as conditions (``review_as_conditions``) did
+    # apply their effect: the trace must say so on every proof that carries
+    # them, exactly as it does for the same rules on a REVIEW proof (council
+    # round 3). Rebound below, read by ``finish`` at call time.
+    condition_rule_ids: frozenset[str] = frozenset()
 
     def finish(
         proof: ProductProof,
@@ -704,6 +740,7 @@ def evaluate_product(
                         applied_effect=(
                             _effect_for_result(rule, result)
                             if rule.rule_id in applied_rule_ids
+                            or rule.rule_id in condition_rule_ids
                             else None
                         ),
                     )
@@ -722,26 +759,47 @@ def evaluate_product(
             ),
         )
     hard_safety = _safety_unknowns(hard_results)
-    hard_review_unknowns, hard_input_unknowns = _partition_unknowns_by_policy(hard_safety)
+    hard_review_unknowns, hard_input_unknowns = _partition_unknowns_by_policy(
+        hard_safety, review_as_conditions=review_as_conditions
+    )
 
-    if any(result.truth is TruthValue.TRUE for _, result in review_results):
-        return finish(
-            ProductProof(
-                product=product,
-                status=ProductProofStatus.REVIEW,
-                reasons=_true_reasons(review_results),
-            ),
-            applied_rule_ids=frozenset(
-                rule.rule_id for rule, result in review_results if result.truth is TruthValue.TRUE
-            ),
-        )
+    true_review = tuple(
+        (rule, result) for rule, result in review_results if result.truth is TruthValue.TRUE
+    )
     review_safety = _safety_unknowns(review_results)
-    review_review_unknowns, review_input_unknowns = _partition_unknowns_by_policy(review_safety)
+    if review_as_conditions:
+        # RULED 2026-09-13. Every rule reaching this branch has
+        # ``stage == HUMAN_REVIEW``, and ``STAGE_EFFECT_TYPE`` pins that stage
+        # to ``REQUIRE_REVIEW`` — an effect that can only ever ADD a human
+        # step, never exclude a product and never support one. Converting it
+        # to a condition is therefore structurally incapable of failing open:
+        # the strongest thing the rule could have done to this applicant was
+        # "a person looks at it", and that is exactly what the condition says,
+        # in EN and ID, with the rule's own citations attached. Its UNKNOWNs
+        # convert for the same reason, and are NOT turned into a question —
+        # asking an applicant a fact whose only possible effect is to summon a
+        # reviewer is noise, not determinism.
+        conditions = _dedupe_reasons(_true_reasons(true_review) + _unknown_reasons(review_safety))
+        condition_rule_ids = frozenset(rule.rule_id for rule, _ in true_review + review_safety)
+        review_review_unknowns, review_input_unknowns = (), ()
+    else:
+        conditions = ()
+        if true_review:
+            return finish(
+                ProductProof(
+                    product=product,
+                    status=ProductProofStatus.REVIEW,
+                    reasons=_true_reasons(review_results),
+                ),
+                applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_review),
+            )
+        review_review_unknowns, review_input_unknowns = _partition_unknowns_by_policy(review_safety)
 
     if hard_review_unknowns or review_review_unknowns:
         return finish(
             ProductProof(
                 product=product,
+                conditions=conditions,
                 status=ProductProofStatus.REVIEW,
                 reasons=_unknown_reasons(hard_review_unknowns + review_review_unknowns),
             ),
@@ -761,7 +819,9 @@ def evaluate_product(
         else frozenset()
     )
     support_safety = _safety_unknowns(support_results)
-    support_review_unknowns, support_input_unknowns = _partition_unknowns_by_policy(support_safety)
+    support_review_unknowns, support_input_unknowns = _partition_unknowns_by_policy(
+        support_safety, review_as_conditions=review_as_conditions
+    )
 
     # P0-A fix (gate round 1 item 1, see module docstring): the previous
     # check asked "does ANY unknown SUPPORT rule's covered_purposes
@@ -801,6 +861,7 @@ def evaluate_product(
         return finish(
             ProductProof(
                 product=product,
+                conditions=conditions,
                 status=ProductProofStatus.UNSUPPORTED,
                 missing_purposes=purposes - naive_potential_coverage,
             ),
@@ -814,6 +875,7 @@ def evaluate_product(
         return finish(
             ProductProof(
                 product=product,
+                conditions=conditions,
                 status=ProductProofStatus.BLOCKED_UNKNOWN,
                 missing_facts=missing,
             ),
@@ -826,6 +888,7 @@ def evaluate_product(
         return finish(
             ProductProof(
                 product=product,
+                conditions=conditions,
                 status=ProductProofStatus.SUPPORTED,
                 support_rules=tuple(rule for rule, _ in true_support),
                 covered_purposes=covered,
@@ -853,6 +916,7 @@ def evaluate_product(
         return finish(
             ProductProof(
                 product=product,
+                conditions=conditions,
                 status=ProductProofStatus.UNSUPPORTED,
                 missing_purposes=missing_purposes,
             ),
@@ -879,6 +943,7 @@ def evaluate_product(
         return finish(
             ProductProof(
                 product=product,
+                conditions=conditions,
                 status=ProductProofStatus.REVIEW,
                 reasons=_unknown_reasons(relevant_review),
             ),
@@ -888,6 +953,7 @@ def evaluate_product(
     return finish(
         ProductProof(
             product=product,
+            conditions=conditions,
             status=ProductProofStatus.BLOCKED_UNKNOWN,
             missing_facts=missing,
         ),
@@ -1187,6 +1253,7 @@ def _assemble(
     no_path_reasons: tuple[Reason, ...] = (),
     quotes: tuple[PriceQuote, ...] = (),
     notices: tuple[Reason, ...] = (),
+    conditions: tuple[DecisionCondition, ...] = (),
     outage: Outage | None = None,
 ) -> Decision:
     """Build the final ``Decision``. ``evaluated_at`` is set to ``observed_at``
@@ -1212,6 +1279,7 @@ def _assemble(
         outage=outage,
         quotes=quotes,
         notices=notices,
+        conditions=conditions,
         trace_sha256=None,
         decision_integrity=None,
     )
@@ -1337,6 +1405,7 @@ def evaluate_with_trace(
     observed_at: datetime,
     fact_registry: FactRegistry = DEFAULT_FACT_REGISTRY,
     identity_provider: IdentityProvider = _placeholder_identity_provider,
+    review_as_conditions: bool = False,
 ) -> EvaluationResult:
     """Assemble one ``Decision`` plus its same-pass evaluation trace.
 
@@ -1362,6 +1431,15 @@ def evaluate_with_trace(
     inverted, matching the spec's own pseudocode literally but violating the
     frozen precedence table whenever a PRODUCTS-scoped review trigger
     coexisted with a different, genuinely SUPPORTED product).
+
+    ``review_as_conditions=True`` (RULED 2026-09-13, the visitor surface)
+    removes step 1 from the table rather than reordering it: a TRUE
+    HUMAN_REVIEW-stage rule, GLOBAL or per-product, becomes a
+    ``DecisionCondition`` on whichever of steps 2-4 the proof reaches, and
+    every UNKNOWN that would have escalated to review is asked as a missing
+    fact instead. Review can then never outrank SUPPORT, because no review
+    state is produced. The default (``False``) keeps the frozen table above
+    for offline evidence callers.
     """
     rule_pack_ref = RulePackRef(
         rule_pack_id=compiled_pack.rule_pack_id,
@@ -1463,6 +1541,18 @@ def evaluate_with_trace(
         global_review_reasons = _dedupe_reasons(
             _true_reasons(global_true_entries) + _unknown_reasons(global_unknown_review_entries)
         )
+    # RULED 2026-09-13. `global_review_rules` is filtered on
+    # `stage is RuleStage.HUMAN_REVIEW` six lines up, and `STAGE_EFFECT_TYPE`
+    # pins that stage to `REQUIRE_REVIEW`, so a GLOBAL rule arriving here can
+    # only ever have ADDED a human step. Naming it as a condition and letting
+    # the decision continue cannot let an applicant past a filter, because no
+    # rule in this list is a filter. The GLOBAL hard filters (`hf.citizen`,
+    # `hf.overstay-exceeds-60-days` in rulepack-prod-020) are a different
+    # list, are untouched by this branch, and still exclude.
+    global_conditions: tuple[DecisionCondition, ...] = ()
+    if review_as_conditions:
+        global_conditions = _conditions_from_reasons(global_review_reasons)
+        global_review_reasons = ()
 
     purposes_fact = snapshot.values.get(FactPath.INTENT_PURPOSES)
     if purposes_fact is None or isinstance(purposes_fact, UnknownFact):
@@ -1476,7 +1566,11 @@ def evaluate_with_trace(
                 state=DecisionState.HUMAN_REVIEW_REQUIRED,
                 review_reasons=global_review_reasons,
             )
-        return assemble(state=DecisionState.NEEDS_INPUT, missing_facts=(FactPath.INTENT_PURPOSES,))
+        return assemble(
+            state=DecisionState.NEEDS_INPUT,
+            missing_facts=(FactPath.INTENT_PURPOSES,),
+            conditions=global_conditions,
+        )
     purposes: frozenset[str] = frozenset(purposes_fact.value)  # type: ignore[union-attr]
 
     products = sorted(
@@ -1499,6 +1593,7 @@ def evaluate_with_trace(
             facts=snapshot,
             purposes=purposes,
             fact_registry=fact_registry,
+            review_as_conditions=review_as_conditions,
             _trace_sink=trace_entries,
         )
         for compiled_product in products
@@ -1508,6 +1603,9 @@ def evaluate_with_trace(
     # before SUPPORTED — frozen precedence ranks HUMAN_REVIEW_REQUIRED above
     # SUPPORTED_CANDIDATES unconditionally, not only when the review trigger
     # happens to be GLOBAL (GLOBAL review triggers are handled first below).
+    # Under `review_as_conditions` both branches below are empty by
+    # construction (global reasons were moved to `global_conditions`, and no
+    # proof can reach REVIEW), so the order is moot on the visitor surface.
     if global_review_reasons:
         return assemble(
             state=DecisionState.HUMAN_REVIEW_REQUIRED,
@@ -1528,7 +1626,23 @@ def evaluate_with_trace(
             effective_at=effective_at,
             trace_sink=trace_entries,
         )
-        return assemble(state=DecisionState.SUPPORTED_CANDIDATES, candidates=candidates)
+        offered = {candidate.product_code for candidate in candidates}
+        # A product's condition ships only when that product is actually
+        # OFFERED. A condition on a product the applicant was never going to
+        # see is noise, and noise is how a real condition stops being read.
+        product_conditions = _conditions_from_reasons(
+            _dedupe_reasons(
+                reason
+                for proof in supported
+                if proof.product.product_code in offered
+                for reason in proof.conditions
+            )
+        )
+        return assemble(
+            state=DecisionState.SUPPORTED_CANDIDATES,
+            candidates=candidates,
+            conditions=_dedupe_conditions(global_conditions + product_conditions),
+        )
 
     blocked = [proof for proof in proofs if proof.status is ProductProofStatus.BLOCKED_UNKNOWN]
     if blocked:
@@ -1543,7 +1657,11 @@ def evaluate_with_trace(
         # this can never produce an empty set.
         smallest = min(blocked, key=lambda proof: len(proof.missing_facts))
         missing = tuple(sorted(smallest.missing_facts, key=lambda path: path.value))
-        return assemble(state=DecisionState.NEEDS_INPUT, missing_facts=missing)
+        return assemble(
+            state=DecisionState.NEEDS_INPUT,
+            missing_facts=missing,
+            conditions=global_conditions,
+        )
 
     # PR-2 gate follow-up (2026-09-06): scope the applicant-facing reasons to
     # products that ever CLAIMED to cover the declared purposes. Before the
@@ -1579,7 +1697,26 @@ def evaluate_with_trace(
     no_path_reasons = _dedupe_reasons(reason for proof in excluded for reason in proof.reasons)
     if not no_path_reasons:
         no_path_reasons = (_fallback_no_path_reason(products, compiled_pack),)
-    return assemble(state=DecisionState.NO_SUPPORTED_PATH, no_path_reasons=no_path_reasons)
+    # The SUPPORTED branch ships a product's condition only when that product
+    # is offered, because there a condition on an unoffered product is noise.
+    # Here the opposite holds and the same rule would be a silence: nothing is
+    # offered, so a condition is the only thing that can still explain what
+    # stopped this applicant. Measured on gold persona 12 — a remote worker
+    # serving Indonesian clients — which reached NO_SUPPORTED_PATH carrying
+    # neither its `LOCAL_MARKET_ACTIVITY_REVIEW` condition nor any other
+    # account of itself. Scoped by `purpose_feasible`, the SAME filter the
+    # reasons above use, so it cannot start naming products this applicant
+    # was never shopping for.
+    proof_conditions = _conditions_from_reasons(
+        _dedupe_reasons(
+            reason for proof in proofs if proof.purpose_feasible for reason in proof.conditions
+        )
+    )
+    return assemble(
+        state=DecisionState.NO_SUPPORTED_PATH,
+        no_path_reasons=no_path_reasons,
+        conditions=_dedupe_conditions(global_conditions + proof_conditions),
+    )
 
 
 def evaluate(
@@ -1590,6 +1727,7 @@ def evaluate(
     observed_at: datetime,
     fact_registry: FactRegistry = DEFAULT_FACT_REGISTRY,
     identity_provider: IdentityProvider = _placeholder_identity_provider,
+    review_as_conditions: bool = False,
 ) -> Decision:
     """Compatibility facade returning only the public, trace-bound decision."""
 
@@ -1600,4 +1738,5 @@ def evaluate(
         observed_at=observed_at,
         fact_registry=fact_registry,
         identity_provider=identity_provider,
+        review_as_conditions=review_as_conditions,
     ).decision

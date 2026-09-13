@@ -1,9 +1,7 @@
 import type { VisaOracleEvaluateResponse } from "./visa-oracle-contract";
 
 export type VisaOracleResponseErrorCode =
-  | "MALFORMED_RESPONSE"
-  | "RESPONSE_INVARIANT"
-  | "NON_ENGINE_MODE";
+  "MALFORMED_RESPONSE" | "RESPONSE_INVARIANT" | "NON_ENGINE_MODE";
 
 export class VisaOracleResponseError extends Error {
   constructor(public readonly code: VisaOracleResponseErrorCode) {
@@ -44,6 +42,16 @@ const APPLICABILITY = new Set([
   "UNKNOWN",
 ]);
 const FRESHNESS = new Set(["CURRENT", "STALE", "UNKNOWN"]);
+/** Mirrors `enums.ConditionNextStep` (RULED 2026-09-13). */
+const CONDITION_NEXT_STEPS = new Set([
+  "ANSWER_AGAIN",
+  "BRING_TO_CONSULTATION",
+  "APPLY_THROUGH_GUARDIAN",
+  "ASSISTED_APPLICATION",
+  "NO_ACTION_NEEDED",
+  "CONSULTANT_REVIEW",
+  "AWAIT_SOURCE_REFRESH",
+]);
 const UTC_INSTANT =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?:Z|\+00:00)$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -298,6 +306,12 @@ export function parseVisaOracleEvaluateResponse(
   const reviewReasons = array(decision.review_reasons);
   const noPathReasons = array(decision.no_path_reasons);
   const notices = array(decision.notices);
+  // RULED 2026-09-13. Tolerant on ABSENCE (a cached response minted before
+  // the field existed is not malformed) and strict on SHAPE — the one
+  // combination that keeps an old payload readable without letting a
+  // malformed new one through.
+  const conditions =
+    decision.conditions === undefined ? [] : array(decision.conditions);
   const candidates = array(decision.candidates);
   const quotes = array(decision.quotes);
   if (decision.outage !== null) {
@@ -338,6 +352,12 @@ export function parseVisaOracleEvaluateResponse(
   const referencedSources: string[] = [];
   for (const reasonValue of [...reviewReasons, ...noPathReasons, ...notices]) {
     referencedSources.push(...reason(reasonValue));
+  }
+  for (const conditionValue of conditions) {
+    const condition = record(conditionValue);
+    referencedSources.push(...reason(condition));
+    string(condition.explanation_key);
+    oneOf(condition.next_step, CONDITION_NEXT_STEPS);
   }
 
   const display = record(response.display);

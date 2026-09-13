@@ -44,6 +44,13 @@ class DecisionState(str, Enum):
     Precedence (highest first): TEMPORARILY_UNAVAILABLE (unavailable pack
     fails closed) > HUMAN_REVIEW_REQUIRED > SUPPORTED_CANDIDATES >
     NEEDS_INPUT > NO_SUPPORTED_PATH.
+
+    That table is the ENGINE default. On the visitor surface (RULED
+    2026-09-13, ``docs/rules/RULINGS.md``) the evaluator runs with
+    ``review_as_conditions=True``: a review-stage effect no longer outranks
+    SUPPORTED_CANDIDATES, it rides beside the verdict as a named condition,
+    and HUMAN_REVIEW_REQUIRED reaches a visitor only for a cause in
+    ``evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST``.
     """
 
     NEEDS_INPUT = "NEEDS_INPUT"
@@ -811,3 +818,28 @@ class PiiClass(str, Enum):
     NONE = "NONE"
     PERSONAL = "PERSONAL"
     SENSITIVE = "SENSITIVE"
+
+
+class ConditionNextStep(str, Enum):
+    """What the visitor is asked to DO about a named condition.
+
+    A closed vocabulary on purpose: the mouth renders one EN/ID sentence per
+    member, so a new member is a deliberate copy change, never free text
+    arriving from a pack.
+    """
+
+    ANSWER_AGAIN = "ANSWER_AGAIN"
+    BRING_TO_CONSULTATION = "BRING_TO_CONSULTATION"
+    APPLY_THROUGH_GUARDIAN = "APPLY_THROUGH_GUARDIAN"
+    ASSISTED_APPLICATION = "ASSISTED_APPLICATION"
+    NO_ACTION_NEEDED = "NO_ACTION_NEEDED"
+    #: The one next step that belongs to a HELD outcome rather than a live
+    #: one (RULED 2026-09-13, criminal-matter exception): there are no
+    #: candidates under it to qualify, so it must not borrow
+    #: BRING_TO_CONSULTATION's "it does not remove the options below".
+    CONSULTANT_REVIEW = "CONSULTANT_REVIEW"
+    #: The cure is OURS, not the visitor's: a source record we cite has to
+    #: be re-verified. Distinct from NO_ACTION_NEEDED because "nothing to
+    #: do" and "somebody is doing something, just not you" are different
+    #: promises, and only one of them is true here.
+    AWAIT_SOURCE_REFRESH = "AWAIT_SOURCE_REFRESH"

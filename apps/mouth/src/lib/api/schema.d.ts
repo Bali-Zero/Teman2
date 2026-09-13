@@ -20645,6 +20645,23 @@ export interface components {
       success: boolean;
     };
     /**
+     * ConditionNextStep
+     * @description What the visitor is asked to DO about a named condition.
+     *
+     *     A closed vocabulary on purpose: the mouth renders one EN/ID sentence per
+     *     member, so a new member is a deliberate copy change, never free text
+     *     arriving from a pack.
+     * @enum {string}
+     */
+    ConditionNextStep:
+      | "ANSWER_AGAIN"
+      | "BRING_TO_CONSULTATION"
+      | "APPLY_THROUGH_GUARDIAN"
+      | "ASSISTED_APPLICATION"
+      | "NO_ACTION_NEEDED"
+      | "CONSULTANT_REVIEW"
+      | "AWAIT_SOURCE_REFRESH";
+    /**
      * ConfirmationDecisionRequest
      * @description Body for POST /api/agentic-rag/confirm.
      */
@@ -21066,6 +21083,11 @@ export interface components {
     Decision: {
       /** Candidates */
       candidates: components["schemas"]["Candidate"][];
+      /**
+       * Conditions
+       * @default []
+       */
+      conditions: components["schemas"]["DecisionCondition"][];
       /** Decision Id */
       decision_id: string | null;
       decision_integrity: components["schemas"]["Fingerprint"] | null;
@@ -21108,6 +21130,37 @@ export interface components {
       /** Trace Sha256 */
       trace_sha256: string | null;
     } & (unknown & unknown & unknown & unknown & unknown);
+    /**
+     * DecisionCondition
+     * @description A named condition carried BESIDE a deterministic outcome.
+     *
+     *     RULED 2026-09-13 (see ``docs/rules/RULINGS.md``): the Visa Oracle answers
+     *     a visitor with ``HUMAN_REVIEW_REQUIRED`` only for a disclosed criminal
+     *     matter or a decisive/safety-critical source that is no longer law.
+     *     Everything else that used to delete the verdict — a disclosed compliance
+     *     fact, a stale decisive source, a pack rule that asks for a human — becomes
+     *     one of these instead: the verdict survives, and the thing that would have
+     *     hidden it is NAMED. The held outcomes carry one too, so they explain
+     *     themselves.
+     *
+     *     ``explanation_key`` is an i18n KEY, never a sentence: the EN/ID text lives
+     *     in the mouth's ``i18n.ts`` so no applicant-facing prose is minted by the
+     *     engine (and so a condition can never smuggle PII into a signed decision).
+     *     ``source_refs`` may be empty and that is not an oversight — a condition
+     *     describing an applicant DISCLOSURE has no regulatory citation to borrow,
+     *     and borrowing one from the pack would be a false claim of provenance.
+     */
+    DecisionCondition: {
+      /** Code */
+      code: string;
+      /** Explanation Key */
+      explanation_key: string;
+      next_step: components["schemas"]["ConditionNextStep"];
+      /** Rule Ids */
+      rule_ids: string[];
+      /** Source Refs */
+      source_refs: string[];
+    };
     /** DecisionRecord */
     DecisionRecord: {
       /** Action Taken */
@@ -21144,6 +21197,13 @@ export interface components {
      *     Precedence (highest first): TEMPORARILY_UNAVAILABLE (unavailable pack
      *     fails closed) > HUMAN_REVIEW_REQUIRED > SUPPORTED_CANDIDATES >
      *     NEEDS_INPUT > NO_SUPPORTED_PATH.
+     *
+     *     That table is the ENGINE default. On the visitor surface (RULED
+     *     2026-09-13, ``docs/rules/RULINGS.md``) the evaluator runs with
+     *     ``review_as_conditions=True``: a review-stage effect no longer outranks
+     *     SUPPORTED_CANDIDATES, it rides beside the verdict as a named condition,
+     *     and HUMAN_REVIEW_REQUIRED reaches a visitor only for a cause in
+     *     ``evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST``.
      * @enum {string}
      */
     DecisionState:

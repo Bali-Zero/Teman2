@@ -321,3 +321,47 @@ def test_transport_error_never_logs_driver_token(
         assert probe_evaluate.run(args) == 3
 
     assert token not in caplog.text
+
+
+def test_small_summary_names_the_conditions_on_a_verdict(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """RULED 2026-09-13 (W-VO-D): a SUPPORTED state reads the same with or
+    without conditions, so the prove-live summary names them — codes and next
+    steps only, never explanation text or applicant input."""
+
+    monkeypatch.delenv(probe_evaluate.FULL_BODY_ENV, raising=False)
+    token = _write_token(tmp_path / "driver-token")
+    payload_path = tmp_path / "facts.json"
+    _write_payload(payload_path)
+
+    async def fake_post(**_kwargs: object) -> _Response:
+        return _Response(
+            {
+                "mode": "ENGINE",
+                "decision": {
+                    "state": "SUPPORTED_CANDIDATES",
+                    "candidates": [{"product_code": "C1"}],
+                    "conditions": [
+                        {
+                            "code": "DISCLOSED_HEALTH_CONCERN_REVIEW",
+                            "next_step": "BRING_TO_CONSULTATION",
+                            "explanation_key": "oracle.condition.disclosed_health_concern_review",
+                        }
+                    ],
+                },
+            }
+        )
+
+    monkeypatch.setattr(probe_evaluate, "_post_evaluate", fake_post)
+    args = probe_evaluate._parse_args(
+        ["--payload", str(payload_path), "--driver-token-file", str(tmp_path / "driver-token")]
+    )
+    assert probe_evaluate.run(args) == 0
+
+    output = capsys.readouterr().out
+    assert "conditions[1]: DISCLOSED_HEALTH_CONCERN_REVIEW/BRING_TO_CONSULTATION" in output
+    assert "oracle.condition." not in output
+    assert token not in output

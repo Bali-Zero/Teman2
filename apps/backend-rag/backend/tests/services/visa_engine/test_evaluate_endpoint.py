@@ -71,6 +71,7 @@ from backend.services.visa_engine.compiler import CompiledRulePack, build_compil
 from backend.services.visa_engine.crypto import FactsFingerprintKey, resolve_engine_hmac_keyring
 from backend.services.visa_engine.decision_seal import seal_decision, verify_decision_seal
 from backend.services.visa_engine.enums import (
+    ConditionNextStep,
     DecisionState,
     EngineMode,
     Environment,
@@ -86,6 +87,7 @@ from backend.services.visa_engine.idempotency import (
 from backend.services.visa_engine.models import (
     ApplicantFacts,
     Decision,
+    DecisionCondition,
     Outage,
     PriceQuote,
     Reason,
@@ -2056,12 +2058,30 @@ async def test_disclosed_review_flag_can_only_replace_support_with_review(
         baseline,
         (DisclosedReviewFlag.CRIMINAL_RECORD,),
     )
+    # RULED 2026-09-13, Zero's own exception: a disclosed CRIMINAL matter is
+    # the one disclosure that still takes the verdict away. The applicant-facing
+    # cause is now CRIMINAL_MATTER_DISCLOSED — the flag table's raw
+    # DISCLOSED_CRIMINAL_RECORD_REVIEW never reaches a person — and the hold
+    # EXPLAINS itself through a condition rather than arriving bare.
     assert reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
     assert reviewed.candidates == ()
-    assert [reason.code for reason in reviewed.review_reasons] == [
-        "DISCLOSED_CRIMINAL_RECORD_REVIEW"
-    ]
+    assert [reason.code for reason in reviewed.review_reasons] == ["CRIMINAL_MATTER_DISCLOSED"]
     assert reviewed.review_reasons[0].source_refs == ()
+    criminal = [c for c in reviewed.conditions if c.code == "CRIMINAL_MATTER_DISCLOSED"]
+    assert len(criminal) == 1 and criminal[0].source_refs == ()
+
+    # The innocence half, in the same test because it is the same claim: no
+    # OTHER disclosure may do this. A health concern conditions the verdict and
+    # leaves every candidate where the signed pack put it.
+    conditioned = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.HEALTH_CONCERN,),
+    )
+    assert conditioned.state.value == "SUPPORTED_CANDIDATES"
+    assert [c.product_code for c in conditioned.candidates] == [
+        c.product_code for c in baseline.candidates
+    ]
+    assert {c.code for c in conditioned.conditions} == {"DISCLOSED_HEALTH_CONCERN_REVIEW"}
 
 
 def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
@@ -2089,11 +2109,60 @@ def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
     )
     assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
 
+    # RULED 2026-09-13. The PRIVACY posture is unchanged and is what this test
+    # has always been about: a minor is still never shown a product, and the
+    # adapter still cannot create or keep a candidate. What changed is that the
+    # answer is now deterministic and actionable — a named NO_SUPPORTED_PATH
+    # cause (GUARDIAN_MUST_APPLY) plus a condition whose next step is
+    # APPLY_THROUGH_GUARDIAN — instead of a bare hold that told a child's
+    # parent nothing at all.
     held = evaluate_path._apply_minor_privacy_hold(baseline, minor_facts)
-    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    assert held.state is DecisionState.NO_SUPPORTED_PATH
     assert held.candidates == ()
-    assert [reason.code for reason in held.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
-    assert held.review_reasons[0].source_refs == ()
+    assert held.quotes == ()
+    assert [reason.code for reason in held.no_path_reasons] == ["GUARDIAN_MUST_APPLY"]
+    assert held.no_path_reasons[0].source_refs == ()
+    assert {c.code for c in held.conditions} == {"GUARDIAN_MUST_APPLY"}
+    assert held.conditions[0].next_step is ConditionNextStep.APPLY_THROUGH_GUARDIAN
+
+
+def test_minor_privacy_hold_keeps_conditions_and_an_integrity_hold() -> None:
+    """Council round 1: the minor adapter must neither drop conditions already
+    on a decision nor dissolve a source-integrity hold (imperator decision
+    2026-09-13); a criminal disclosure must not drop that hold either."""
+
+    compiled = gold_loader.load_and_compile_rule_pack()
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    baseline = evaluate(
+        facts,
+        compiled,
+        effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+        observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+    integrity = Reason(
+        code="DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+        rule_ids=("system.tamper-test",),
+        source_refs=(),
+    )
+    held = evaluate_path._apply_source_gate_outcome(baseline, (integrity,))
+    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    minor_wire = facts.model_dump(mode="json", by_alias=True)
+    minor_wire["facts"]["person.birth_date"] = {"status": "KNOWN", "value": "2015-01-01"}
+    minor_facts = ApplicantFacts.model_validate(minor_wire)
+
+    minor_held = evaluate_path._apply_minor_privacy_hold(held, minor_facts)
+    assert minor_held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    assert [r.code for r in minor_held.review_reasons] == [integrity.code]
+    assert {c.code for c in minor_held.conditions} == {integrity.code, "GUARDIAN_MUST_APPLY"}
+    assert minor_held.candidates == ()
+
+    criminal = evaluate_path._apply_disclosed_review_flags(
+        held, (DisclosedReviewFlag.CRIMINAL_RECORD,)
+    )
+    assert [r.code for r in criminal.review_reasons] == [
+        integrity.code,
+        "CRIMINAL_MATTER_DISCLOSED",
+    ]
 
 
 def test_unknown_minor_status_cannot_preserve_supported_candidates() -> None:
@@ -2155,14 +2224,20 @@ async def test_public_evaluation_applies_minor_privacy_hold_before_persistence(
         evaluation_time=gold_loader.GOLD_EFFECTIVE_AT,
     )
 
-    assert body["decision"]["state"] == "HUMAN_REVIEW_REQUIRED"
+    # RULED 2026-09-13: the same privacy hold, now stated as a deterministic
+    # cause the parent can act on. Asserted on the WIRE body, which is what
+    # this test uniquely covers — the adapter runs before persistence and the
+    # new state has to survive the projection.
+    assert body["decision"]["state"] == "NO_SUPPORTED_PATH"
+    assert [r["code"] for r in body["decision"]["no_path_reasons"]] == ["GUARDIAN_MUST_APPLY"]
+    assert [c["code"] for c in body["decision"]["conditions"]] == ["GUARDIAN_MUST_APPLY"]
     assert body["decision"]["candidates"] == []
-    assert [reason["code"] for reason in body["decision"]["review_reasons"]] == [
-        "MINOR_GUARDIAN_PRIVACY_REVIEW"
-    ]
+    assert body["decision"]["review_reasons"] == []
     assert body["display"] == {"candidates": []}
     assert len(save_calls) == 1
-    assert save_calls[0]["decision"].state is DecisionState.HUMAN_REVIEW_REQUIRED
+    # PIN MOVED 2026-09-13: what is persisted is what the visitor was shown —
+    # the adapter still runs before persistence, and its output state changed.
+    assert save_calls[0]["decision"].state is DecisionState.NO_SUPPORTED_PATH
 
 
 @pytest.mark.parametrize(
@@ -2290,10 +2365,19 @@ async def test_offshore_positive_overstay_conflict_forces_human_review(
         canonical_request=b"{}",
         idempotency_key=None,
     )
-    assert response.decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    # RULED 2026-09-13. The cross-fact conflict is still DETECTED and still
+    # SHOWN — it moved from the list that deletes the verdict to the list that
+    # qualifies it. What the endpoint may still hold on is the engine-integrity
+    # case beside it, and this fixture pack carries one, so the state is
+    # asserted through the allowlist rather than pinned to a literal: the claim
+    # under test is the conflict's visibility, not which gate fired hardest.
     assert "CONFLICTING_IMMIGRATION_STATUS_REVIEW" in {
-        reason.code for reason in response.decision.review_reasons
+        condition.code for condition in response.decision.conditions
     }
+    if response.decision.state is DecisionState.HUMAN_REVIEW_REQUIRED:
+        assert {reason.code for reason in response.decision.review_reasons} <= (
+            evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST
+        )
 
 
 async def test_source_projection_exposes_bitemporal_freshness_without_invented_ttl(
@@ -2344,18 +2428,25 @@ async def test_source_projection_exposes_bitemporal_freshness_without_invented_t
     assert body["decision"]["decision_integrity"] is not None
 
 
-def test_real_signed_decisive_source_without_freshness_policy_abstains() -> None:
+def test_real_signed_decisive_source_without_freshness_policy_conditions() -> None:
     compiled, decision, held = _real_signed_decisive_source_case()
     assert decision.state is DecisionState.SUPPORTED_CANDIDATES
     assert decision.candidates
-    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
-    assert held.candidates == ()
+    # RULED 2026-09-13: freshness is OUR overdue re-verification, not a
+    # change in the law, so it conditions the verdict instead of deleting
+    # it. Every check this test made is kept — same codes, same source
+    # gate, same strength — and the survival of the verdict is now ALSO
+    # asserted, which the hold version could not check.
+    assert held.state is DecisionState.SUPPORTED_CANDIDATES
+    assert [c.product_code for c in held.candidates] == [
+        c.product_code for c in decision.candidates
+    ]
     assert held.no_path_reasons == ()
-    assert {reason.code for reason in held.review_reasons} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
+    assert held.review_reasons == ()
+    assert {c.code for c in held.conditions} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
     safety_held = evaluate_path._apply_safety_critical_source_hold(decision, compiled)
-    assert {reason.code for reason in safety_held.review_reasons} == {
-        "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN"
-    }
+    assert safety_held.state is DecisionState.SUPPORTED_CANDIDATES
+    assert {c.code for c in safety_held.conditions} == {"SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN"}
 
 
 def test_real_signed_source_is_current_at_inclusive_freshness_boundary() -> None:
@@ -2382,19 +2473,24 @@ def test_real_signed_source_is_current_at_inclusive_freshness_boundary() -> None
     }
 
 
-def test_real_signed_stale_source_forces_decisive_and_safety_holds() -> None:
+def test_real_signed_stale_source_conditions_decisive_and_safety_verdicts() -> None:
     compiled, decision, held = _real_signed_decisive_source_case(
         freshness_max_age_seconds=89_999,
     )
-    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
-    assert held.candidates == ()
-    assert {reason.code for reason in held.review_reasons} == {"DECISIVE_SOURCE_STALE"}
+    # RULED 2026-09-13: freshness is OUR overdue re-verification, not a
+    # change in the law, so it conditions the verdict instead of deleting
+    # it. Every check this test made is kept — same codes, same source
+    # gate, same strength — and the survival of the verdict is now ALSO
+    # asserted, which the hold version could not check.
+    assert held.state is DecisionState.SUPPORTED_CANDIDATES
+    assert [c.product_code for c in held.candidates] == [
+        c.product_code for c in decision.candidates
+    ]
+    assert {c.code for c in held.conditions} == {"DECISIVE_SOURCE_STALE"}
 
     safety_held = evaluate_path._apply_safety_critical_source_hold(decision, compiled)
-    assert safety_held.state is DecisionState.HUMAN_REVIEW_REQUIRED
-    assert {reason.code for reason in safety_held.review_reasons} == {
-        "SAFETY_CRITICAL_SOURCE_STALE"
-    }
+    assert safety_held.state is DecisionState.SUPPORTED_CANDIDATES
+    assert {c.code for c in safety_held.conditions} == {"SAFETY_CRITICAL_SOURCE_STALE"}
 
 
 @pytest.mark.parametrize("defect", ["REVOKED", "non_primary", "expired"])
@@ -2441,8 +2537,13 @@ def test_future_verified_at_projects_unknown_and_never_passes_decisive_gate() ->
         "verified_in_future_before_signing",
         freshness_max_age_seconds=90_000,
     )
-    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
-    assert {reason.code for reason in held.review_reasons} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
+    # RULED 2026-09-13: freshness is OUR overdue re-verification, not a
+    # change in the law, so it conditions the verdict instead of deleting
+    # it. Every check this test made is kept — same codes, same source
+    # gate, same strength — and the survival of the verdict is now ALSO
+    # asserted, which the hold version could not check.
+    assert held.state is DecisionState.SUPPORTED_CANDIDATES
+    assert {c.code for c in held.conditions} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
     sources = evaluate_path._build_sources_dto(
         decision,
         compiled,
@@ -2507,7 +2608,13 @@ def test_real_signed_exact_official_hosts_are_primary_but_still_freshness_unknow
 ) -> None:
     _, decision, held = _real_signed_decisive_source_case(official_host=official_host)
     assert decision.state is DecisionState.SUPPORTED_CANDIDATES
-    assert {reason.code for reason in held.review_reasons} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
+    # RULED 2026-09-13: freshness is OUR overdue re-verification, not a
+    # change in the law, so it conditions the verdict instead of deleting
+    # it. Every check this test made is kept — same codes, same source
+    # gate, same strength — and the survival of the verdict is now ALSO
+    # asserted, which the hold version could not check.
+    assert held.state is DecisionState.SUPPORTED_CANDIDATES
+    assert {c.code for c in held.conditions} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
 
 
 def test_real_signed_regional_official_host_is_projectable_but_not_decisive_primary() -> None:
@@ -2546,10 +2653,15 @@ def test_real_signed_no_path_also_abstains_without_freshness_policy() -> None:
     )
     assert decision.state is DecisionState.NO_SUPPORTED_PATH
     assert decision.no_path_reasons
-    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
-    assert held.no_path_reasons == ()
+    # RULED 2026-09-13: freshness is OUR overdue re-verification, not a
+    # change in the law, so it conditions the verdict instead of deleting
+    # it. Every check this test made is kept — same codes, same source
+    # gate, same strength — and the survival of the verdict is now ALSO
+    # asserted, which the hold version could not check.
+    assert held.state is DecisionState.NO_SUPPORTED_PATH
+    assert held.no_path_reasons == decision.no_path_reasons
     assert held.candidates == ()
-    assert {reason.code for reason in held.review_reasons} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
+    assert {c.code for c in held.conditions} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
 
 
 def test_revoked_signed_source_is_projected_for_human_review_without_candidates() -> None:
@@ -2868,6 +2980,18 @@ def test_decision_seal_detects_tampering_of_every_top_level_field() -> None:
         "outage": Outage(code="TAMPERED_OUTAGE", retryable=True),
         "quotes": (tamper_quote,),
         "notices": (*sealed.notices, tamper_reason),
+        # Added 2026-09-13. The untampered decision carries NO condition, so
+        # this also proves the back-compat omission of an empty `conditions`
+        # from the sealed core cannot be abused: adding one breaks the seal.
+        "conditions": (
+            DecisionCondition(
+                code="TAMPERED_CONDITION",
+                rule_ids=("system.tamper-test",),
+                source_refs=(),
+                explanation_key="oracle.condition.tampered_condition",
+                next_step=ConditionNextStep.NO_ACTION_NEEDED,
+            ),
+        ),
         "trace_sha256": "0" * 64,
         "decision_integrity": sealed.decision_integrity.model_copy(update={"digest": "0" * 64}),
     }
@@ -2899,7 +3023,12 @@ async def test_enforce_mode_is_engine_after_durable_persistence(
 @pytest.mark.parametrize(
     ("engine_mode", "expected_mode", "expected_state"),
     [
-        ("SHADOW", "CURATED", "HUMAN_REVIEW_REQUIRED"),
+        # PIN MOVED 2026-09-13: the fixture leaves `immigration.overstay_days`
+        # UNKNOWN; under the visitor surface's `review_as_conditions` an
+        # unresolved review-tagged fact is ASKED (NEEDS_INPUT), not held. The
+        # claim under test — SHADOW still answers, ENFORCE fails closed — is
+        # unchanged.
+        ("SHADOW", "CURATED", "NEEDS_INPUT"),
         ("ENFORCE", "ENGINE", "TEMPORARILY_UNAVAILABLE"),
     ],
 )

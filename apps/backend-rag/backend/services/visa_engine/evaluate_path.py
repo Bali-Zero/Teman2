@@ -102,7 +102,7 @@ import logging
 import os
 import secrets
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timezone
@@ -124,6 +124,19 @@ from backend.services.visa_engine.api_models import (
 from backend.services.visa_engine.ast import UnknownFact
 from backend.services.visa_engine.bundle import StaticTrustStore, verify_rule_pack
 from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
+from backend.services.visa_engine.conditions import (
+    CRIMINAL_MATTER_REVIEW_CODE,
+    SOURCE_INTEGRITY_HOLD_CODES,
+)
+from backend.services.visa_engine.conditions import (
+    condition_from_reason as _condition_from_reason,
+)
+from backend.services.visa_engine.conditions import (
+    conditions_from_reasons as _conditions_from_reasons,
+)
+from backend.services.visa_engine.conditions import (
+    dedupe_conditions as _dedupe_conditions,
+)
 from backend.services.visa_engine.crypto import (
     resolve_engine_hmac_keyring,
     resolve_identity_provider,
@@ -828,6 +841,12 @@ def _build_sources_dto(
         collect(candidate.source_refs)
     for reason in (*decision.review_reasons, *decision.no_path_reasons, *decision.notices):
         collect(reason.source_refs)
+    # A condition is shown to the applicant WITH its citation (a stale
+    # decisive source names the record that is overdue), so its refs must be
+    # joinable exactly like a reason's. Collected last so the pre-existing
+    # first-seen order of every earlier ref is unchanged.
+    for condition in decision.conditions:
+        collect(condition.source_refs)
 
     index = {
         source.source_record_id: source for source in compiled.source_pack.payload.source_records
@@ -1030,6 +1049,88 @@ _DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = Map
 )
 
 
+def _attach_conditions(decision: Decision, reasons: Sequence[Reason]) -> Decision:
+    """Add named conditions to a decision without touching its verdict.
+
+    The ONE mutation every converted hold performs, so no adapter can quietly
+    reach for `state`/`candidates` again. `trace_sha256` survives (the trace
+    described the evaluation, and the evaluation did not change);
+    `decision_integrity` is dropped because the payload did change and a seal
+    that no longer covers its bytes is worse than no seal.
+    """
+
+    if not reasons:
+        return decision
+    payload = decision.model_dump(mode="python")
+    payload.update(
+        {
+            "conditions": _dedupe_conditions(
+                (*decision.conditions, *_conditions_from_reasons(reasons))
+            ),
+            "trace_sha256": decision.trace_sha256,
+            "decision_integrity": None,
+        }
+    )
+    return Decision.model_validate(payload)
+
+
+def _apply_source_gate_outcome(decision: Decision, reasons: Sequence[Reason]) -> Decision:
+    """Split one source gate's findings into "still your answer" and "not ours to give".
+
+    RULED 2026-09-13 (imperator's binding correction to the determinism
+    ruling). Both halves are named to the applicant either way — the split is
+    about whether the VERDICT survives, never about whether the finding is
+    disclosed:
+
+    * ``*_SOURCE_STALE`` / ``*_SOURCE_FRESHNESS_UNKNOWN`` — the cited law has
+      not changed; OUR re-verification of it is overdue. Withholding a verdict
+      the signed pack proved, over our own paperwork, is precisely what the
+      determinism ruling forbids. Candidates, quotes and missing facts survive
+      untouched and the pending refresh rides as a condition carrying the
+      offending ``source_record_id``s.
+    * ``*_PRIMARY_SOURCE_NOT_APPLICABLE`` — the citation was revoked,
+      superseded, has expired, is not yet in force, is not a primary authority,
+      or does not resolve at all. There is nothing under the verdict to stand
+      on, so there is no deterministic answer to give and inventing one would
+      be the dishonest half of "always answer". The hold stays, and it is
+      EXPLAINED: same codes, same source ids, a next step that says who fixes
+      it (us), so it is never the bare shutter this window removed everywhere
+      else.
+
+    Membership is tested on CODE IDENTITY against a frozenset, never on a
+    substring of the code — ``"NOT_APPLICABLE" in code`` would silently
+    capture any future code that merely ends that way (guard family #3).
+    """
+
+    if not reasons:
+        return decision
+    holding = tuple(reason for reason in reasons if reason.code in SOURCE_INTEGRITY_HOLD_CODES)
+    if not holding:
+        return _attach_conditions(decision, reasons)
+    payload = decision.model_dump(mode="python")
+    payload.update(
+        {
+            "state": "HUMAN_REVIEW_REQUIRED",
+            "candidates": (),
+            "missing_facts": (),
+            "review_reasons": holding,
+            "no_path_reasons": (),
+            # EVERY finding becomes a condition, including the holding ones:
+            # the hold explains itself through the same EN/ID machinery as a
+            # live verdict's conditions, and a freshness note raised in the
+            # same pass is not swallowed by the integrity failure beside it.
+            "conditions": _dedupe_conditions(
+                (*decision.conditions, *_conditions_from_reasons(reasons))
+            ),
+            "outage": None,
+            "quotes": (),
+            "trace_sha256": decision.trace_sha256,
+            "decision_integrity": None,
+        }
+    )
+    return Decision.model_validate(payload)
+
+
 def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Decision:
     """Apply Privacy Policy V1's non-eligibility guardian safety boundary.
 
@@ -1070,22 +1171,39 @@ def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Deci
     if minor_fact.value is not True:
         return decision
 
-    reason = Reason(
-        code="MINOR_GUARDIAN_PRIVACY_REVIEW",
+    # RULED 2026-09-13: the privacy posture is unchanged — a minor is still
+    # never shown a product — but the ANSWER is now deterministic and says
+    # what to do. `GUARDIAN_MUST_APPLY` is a no-path CAUSE, so the sheet
+    # renders it through the same cause-naming machinery #6441 shipped, and
+    # the condition carries the next step (`APPLY_THROUGH_GUARDIAN`). The
+    # applicant-facing text names no product, which is the whole reason this
+    # adapter exists.
+    cause = Reason(
+        code="GUARDIAN_MUST_APPLY",
         rule_ids=("system.privacy.minor-guardian-review",),
         source_refs=(),
     )
-    existing_reasons = (
-        decision.review_reasons if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED else ()
+    held = decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    if held and any(
+        reason.code in SOURCE_INTEGRITY_HOLD_CODES for reason in decision.review_reasons
+    ):
+        # The source-integrity hold is not ours to dissolve (it names no
+        # product either, so the privacy posture already holds): keep it, and
+        # add the guardian step beside it.
+        return _attach_conditions(decision, (cause,))
+    carried = (
+        *decision.conditions,
+        *(_conditions_from_reasons(decision.review_reasons) if held else ()),
     )
     payload = decision.model_dump(mode="python")
     payload.update(
         {
-            "state": "HUMAN_REVIEW_REQUIRED",
+            "state": "NO_SUPPORTED_PATH",
             "candidates": (),
             "missing_facts": (),
-            "review_reasons": (*existing_reasons, reason),
-            "no_path_reasons": (),
+            "review_reasons": (),
+            "no_path_reasons": (cause,),
+            "conditions": _dedupe_conditions((*carried, _condition_from_reason(cause))),
             "outage": None,
             "quotes": (),
             "decision_integrity": None,
@@ -1181,21 +1299,15 @@ def _apply_decisive_source_authority_hold(
     if not reasons:
         return decision
 
-    payload = decision.model_dump(mode="python")
-    payload.update(
-        {
-            "state": "HUMAN_REVIEW_REQUIRED",
-            "candidates": (),
-            "missing_facts": (),
-            "review_reasons": tuple(reasons),
-            "no_path_reasons": (),
-            "outage": None,
-            "quotes": (),
-            "trace_sha256": decision.trace_sha256,
-            "decision_integrity": None,
-        }
-    )
-    return Decision.model_validate(payload)
+    # RULED 2026-09-13. Freshness and applicability are properties of OUR
+    # evidence, not of the applicant: the rule the pack proved is the same
+    # rule either way, and the cure is a source refresh by Bali Zero, never
+    # anything the visitor can do. So the verdict stands and the pending
+    # refresh is NAMED, with the offending `source_record_id`s attached so the
+    # sheet can show exactly which record is behind. What actually gets this
+    # fixed — `scripts/visa_freshness_sentinel.py` — reads the SOURCE records,
+    # not these decisions, so its alert is untouched by this change.
+    return _apply_source_gate_outcome(decision, reasons)
 
 
 def _apply_safety_critical_source_hold(
@@ -1284,21 +1396,10 @@ def _apply_safety_critical_source_hold(
                 source_refs=tuple(sorted(stale_refs, key=str)),
             )
         )
-    payload = decision.model_dump(mode="python")
-    payload.update(
-        {
-            "state": "HUMAN_REVIEW_REQUIRED",
-            "candidates": (),
-            "missing_facts": (),
-            "review_reasons": tuple(reasons),
-            "no_path_reasons": (),
-            "outage": None,
-            "quotes": (),
-            "trace_sha256": decision.trace_sha256,
-            "decision_integrity": None,
-        }
-    )
-    return Decision.model_validate(payload)
+    # Same reading as `_apply_decisive_source_authority_hold` above: a
+    # safety-critical rule whose SOURCE went stale has not become wrong, our
+    # re-verification of it has gone overdue. Named, not hidden.
+    return _apply_source_gate_outcome(decision, reasons)
 
 
 def _apply_disclosed_review_flags(
@@ -1329,19 +1430,170 @@ def _apply_disclosed_review_flags(
         )
         for flag in flags
     )
-    existing_reasons = (
-        decision.review_reasons if decision.state.value == "HUMAN_REVIEW_REQUIRED" else ()
+    # RULED 2026-09-13 ~23:05 WITA (Zero, verbatim: «1 se ci sono questioni
+    # penali, revisione umana»). A disclosed CRIMINAL matter is the single
+    # disclosure that still takes the verdict away, and the split is made
+    # HERE, on the flag ENTITY, not on a spelling: `DisclosedReviewFlag` is a
+    # closed enum, so membership is an identity test that no renamed reason
+    # code can slip past.
+    criminal = DisclosedReviewFlag.CRIMINAL_RECORD in flags
+    criminal_cause = Reason(
+        code=CRIMINAL_MATTER_REVIEW_CODE,
+        rule_ids=("system.disclosed-review.criminal-matter",),
+        source_refs=(),
+    )
+    other_reasons = tuple(
+        reason
+        for flag, reason in zip(flags, disclosed_reasons, strict=True)
+        if flag is not DisclosedReviewFlag.CRIMINAL_RECORD
+    )
+    held = decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    standing_holds = tuple(
+        reason
+        for reason in decision.review_reasons
+        if held and reason.code in SOURCE_INTEGRITY_HOLD_CODES
+    )
+    # A review cause the criminal hold replaces is still owed its sentence:
+    # it rides as a condition, never silently dropped (council round 2).
+    displaced_reasons = tuple(
+        reason
+        for reason in decision.review_reasons
+        if held and reason.code not in SOURCE_INTEGRITY_HOLD_CODES
     )
     payload = decision.model_dump(mode="python")
     payload.update(
         {
+            # The identity still forks on the flag set: two applicants whose
+            # facts match but whose disclosures differ are two different
+            # decisions, and the replay identity has to say so.
             "decision_id": decision_id,
             "public_id": public_id,
+            # Every OTHER disclosure stays a condition even on the criminal
+            # path. A person who discloses both a criminal matter and a health
+            # concern is owed both sentences: the hold explains itself, and the
+            # health note is still named rather than swallowed by it.
+            "conditions": _dedupe_conditions(
+                (*decision.conditions, *_conditions_from_reasons(other_reasons))
+            ),
+            "decision_integrity": None,
+        }
+    )
+    if not criminal:
+        return Decision.model_validate(payload)
+    payload.update(
+        {
             "state": "HUMAN_REVIEW_REQUIRED",
             "candidates": (),
             "missing_facts": (),
-            "review_reasons": (*existing_reasons, *disclosed_reasons),
+            # ONE cause, named. Not the raw `DISCLOSED_CRIMINAL_RECORD_REVIEW`
+            # the flag table mints: the applicant-facing cause the owner asked
+            # for is CRIMINAL_MATTER_DISCLOSED, and it carries no citation
+            # because a disclosure is not a regulatory claim.
+            "review_reasons": (*standing_holds, criminal_cause),
+            # The hold is EXPLAINED, not bare — Zero asked for the exception,
+            # not for the silence the exception used to come with. The same
+            # cause rides as a condition so it carries a next step
+            # (`CONSULTANT_REVIEW`) through the identical EN/ID machinery every
+            # other condition uses, instead of a second, divergent copy path
+            # that only this one outcome would exercise.
+            "conditions": _dedupe_conditions(
+                (
+                    *decision.conditions,
+                    *_conditions_from_reasons(displaced_reasons),
+                    *_conditions_from_reasons(other_reasons),
+                    _condition_from_reason(criminal_cause),
+                )
+            ),
             "no_path_reasons": (),
+            "outage": None,
+            "quotes": (),
+        }
+    )
+    return Decision.model_validate(payload)
+
+
+#: The ONLY review causes a visitor may still be shown: the disclosed criminal
+#: matter (Zero) and the two source-integrity holds (imperator decision,
+#: 2026-09-13). A frozenset and not a
+#: substring test: `_apply_visitor_determinism_floor` decides on CODE IDENTITY,
+#: so a future `CRIMINAL_MATTER_DISCLOSED_PENDING` does NOT inherit the
+#: exception by looking like it (guard family #3, OVER-match).
+VISITOR_REVIEW_CAUSE_ALLOWLIST: frozenset[str] = (
+    frozenset({CRIMINAL_MATTER_REVIEW_CODE}) | SOURCE_INTEGRITY_HOLD_CODES
+)
+
+
+def _apply_visitor_determinism_floor(decision: Decision) -> Decision:
+    """The last word: only an allowlisted review cause survives to a visitor.
+
+    RULED 2026-09-13 (`docs/rules/RULINGS.md`), Zero verbatim, in two
+    sentences that must be read together: *«non va mai a revisione umana ma
+    c'è sempre risposta deterministica»* and, answering what should happen to
+    the compliance disclosures, *«1 se ci sono questioni penali, revisione
+    umana»*. So the rule is not "never" — it is "never, except a disclosed
+    criminal matter, and even that one is explained". The imperator decision
+    of the same day adds the engine-integrity holds: a decisive or
+    safety-critical source that is not applicable law
+    (`*_PRIMARY_SOURCE_NOT_APPLICABLE`) keeps the hold, because no verdict
+    may stand on it.
+
+    This adapter enforces the EXCEPT clause as an allowlist on the reason
+    code. A review outcome whose causes are all allowlisted passes through
+    untouched; one that carries an allowlisted cause beside others keeps the
+    hold on the allowlisted causes and names the others as conditions; one
+    with no allowlisted cause becomes NO_SUPPORTED_PATH carrying the same
+    codes. That shape is why the guard test can pin the allowlist exactly and
+    have it mean something: a new emitter does not add a path, it gets
+    converted here until somebody deliberately widens the allowlist.
+
+    On the ENDPOINT this adapter is a NET and finds nothing: `evaluate_path`
+    asks the evaluator for `review_as_conditions=True`, so a pack rule whose
+    effect is `REQUIRE_REVIEW` has already become a condition on a live
+    verdict — candidates intact — long before here. The net exists for any
+    caller of `apply_public_policy_adapters` that evaluates in the engine's
+    default mode (the census and replay drivers now pass
+    `review_as_conditions=True` like the endpoint): it still gets the
+    guarantee, just the poorer version of it, because a decision that
+    short-circuited at the review gate never computed the candidates this
+    adapter would have to preserve.
+
+    That asymmetry is deliberate and is the reason this is not the primary
+    mechanism. A floor can promise "never HUMAN_REVIEW_REQUIRED"; only the
+    evaluator can promise "and you keep your candidates".
+    """
+
+    if decision.state is not DecisionState.HUMAN_REVIEW_REQUIRED:
+        return decision
+    reasons = decision.review_reasons
+    allowed = tuple(reason for reason in reasons if reason.code in VISITOR_REVIEW_CAUSE_ALLOWLIST)
+    if allowed:
+        if len(allowed) == len(reasons):
+            return decision
+        # An allowlisted hold can never be lost to a cause standing beside it:
+        # keep the hold on the allowlisted causes, name the rest as conditions.
+        payload = decision.model_dump(mode="python")
+        payload.update(
+            {
+                "review_reasons": allowed,
+                "conditions": _dedupe_conditions(
+                    (*decision.conditions, *_conditions_from_reasons(reasons))
+                ),
+                "trace_sha256": decision.trace_sha256,
+                "decision_integrity": None,
+            }
+        )
+        return Decision.model_validate(payload)
+    payload = decision.model_dump(mode="python")
+    payload.update(
+        {
+            "state": "NO_SUPPORTED_PATH",
+            "candidates": (),
+            "missing_facts": (),
+            "review_reasons": (),
+            "no_path_reasons": reasons,
+            "conditions": _dedupe_conditions(
+                (*decision.conditions, *_conditions_from_reasons(reasons))
+            ),
             "outage": None,
             "quotes": (),
             "trace_sha256": decision.trace_sha256,
@@ -1349,6 +1601,15 @@ def _apply_disclosed_review_flags(
         }
     )
     return Decision.model_validate(payload)
+
+
+def _visitor_determinism_floor_adapter(
+    decision: Decision,
+    _facts: ApplicantFacts,
+    _compiled: CompiledRulePack,
+    _disclosed_review_flags: tuple[DisclosedReviewFlag, ...],
+) -> Decision:
+    return _apply_visitor_determinism_floor(decision)
 
 
 _PublicPolicyAdapter: TypeAlias = Callable[
@@ -1396,11 +1657,29 @@ def _disclosed_review_policy_adapter(
 # This ordered registry is both the executable chain and report provenance.
 # Adding, removing, or reordering a public adapter therefore changes behavior
 # and the offline evidence manifest in the same diff.
+#
+# ORDER CHANGED 2026-09-13, and it is a real behaviour change, not tidying.
+# The two source gates judge the CITATIONS UNDER A VERDICT, and until this
+# window every verdict they could see came from the signed pack. Once
+# `_apply_minor_privacy_hold` stopped emitting `HUMAN_REVIEW_REQUIRED` (which
+# the gates skip) and started emitting `NO_SUPPORTED_PATH` (which they do
+# not), they began judging the privacy cause itself — a cause that carries
+# `source_refs=()` deliberately, because a product/privacy control has no
+# regulatory citation to claim. `not decisive_refs` read that empty tuple as
+# "this decision rests on nothing" and raised
+# `DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE` on a perfectly sound outcome.
+# Measured on gold persona 6 before the fix. Running the gates FIRST restores
+# what they were always written to check and needs no exception carved into a
+# safety gate — the alternative fix, and the worse one.
 _PUBLIC_POLICY_ADAPTERS: tuple[tuple[str, _PublicPolicyAdapter], ...] = (
-    ("_apply_minor_privacy_hold", _minor_privacy_policy_adapter),
     ("_apply_decisive_source_authority_hold", _decisive_source_policy_adapter),
     ("_apply_safety_critical_source_hold", _safety_critical_source_policy_adapter),
+    ("_apply_minor_privacy_hold", _minor_privacy_policy_adapter),
     ("_apply_disclosed_review_flags", _disclosed_review_policy_adapter),
+    # LAST on purpose: every adapter above may still hand it a review state
+    # (an offline caller's engine-mode decision), and none of them may run
+    # after the floor has already decided the visitor's verdict is final.
+    ("_apply_visitor_determinism_floor", _visitor_determinism_floor_adapter),
 )
 PUBLIC_POLICY_ADAPTER_NAMES: tuple[str, ...] = tuple(
     name for name, _adapter in _PUBLIC_POLICY_ADAPTERS
@@ -1731,6 +2010,10 @@ async def run_evaluation(
             effective_at=now,
             observed_at=now,
             identity_provider=identity_provider,
+            # RULED 2026-09-13: the VISITOR surface, and the only caller that
+            # asks for this. Offline evidence tools keep the engine default so
+            # the raw proof algebra stays comparable across the archive.
+            review_as_conditions=True,
         )
         decision = apply_public_policy_adapters(
             evaluation.decision,

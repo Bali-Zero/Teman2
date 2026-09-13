@@ -1,0 +1,5 @@
+# agy-gemini-3.1-pro council merge round, second pass: the author's adjudication of round5b's two findings, with evidence, embedded; judged merge commit e0dde5c53d; full stdout
+
+FINDING 1: ACCEPT REJECTION - The provided evidence confirms the engine emits the `effect.reason_code` (`E33A_SPONSOR_NOT_GOVERNMENT`), which perfectly matches the copy key, invalidating the finding.
+FINDING 2: ACCEPT REJECTION - The provided evidence proves the logic is byte-identical to `origin/main` (pre-existing) and does not violate any strict VO-D merge invariants, placing it out of scope.
+VERDICT: OK

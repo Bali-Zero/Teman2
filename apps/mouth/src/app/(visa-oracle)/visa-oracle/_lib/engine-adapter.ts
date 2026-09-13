@@ -14,6 +14,8 @@ import type {
   OutcomeDocument,
   OutcomeNextSteps,
   OutcomePrice,
+  OutcomeCondition,
+  OutcomeConditionNextStep,
   OutcomeReason,
   OutcomeSource,
   OutcomeTimeline,
@@ -107,6 +109,13 @@ export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
 export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
 
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
+  // RULED 2026-09-13 (W-VO-D): `_apply_minor_privacy_hold` answers a minor
+  // with NO_SUPPORTED_PATH under this named cause. Privacy posture kept: the
+  // sentence names no product, and `buildNoPathDoors` opens no door for it.
+  GUARDIAN_MUST_APPLY: text(
+    "The applicant is under 18. This assessment cannot recommend a permit to a minor directly: a parent or legal guardian has to apply on the applicant's behalf.",
+    "Pemohon berusia di bawah 18 tahun. Penilaian ini tidak dapat merekomendasikan izin langsung kepada anak di bawah umur: orang tua atau wali yang sah harus mengajukan atas nama pemohon.",
+  ),
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
     "Kewarganegaraan Anda ada dalam daftar bebas visa (BVK) untuk wisata atau transit, dan masa tinggal Anda 30 hari atau kurang.",
@@ -673,11 +682,27 @@ function declaresIndonesianNationality(facts: OracleFacts): boolean {
  * because the applicant declared no basis to point at). Naming one honest
  * door beats naming three that need a caveat.
  */
+/** The one uncited no-path cause (`evaluate_path._apply_minor_privacy_hold`). */
+const GUARDIAN_MUST_APPLY_CODE = "GUARDIAN_MUST_APPLY";
+
+/** Freshness conditions (RULED 2026-09-13): the cited law is unchanged, our
+ * re-verification is overdue, and the backend keeps the verdict. Only a ref
+ * NAMED by one of these conditions may be served while not CURRENT. */
+const SOURCE_FRESHNESS_CONDITION_CODES: ReadonlySet<string> = new Set([
+  "DECISIVE_SOURCE_STALE",
+  "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+  "SAFETY_CRITICAL_SOURCE_STALE",
+  "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+]);
+
 export function buildNoPathDoors(
   noPathReasonCodes: readonly string[],
   facts: OracleFacts,
 ): NoSupportedPathAlternative[] {
   const doors: NoSupportedPathAlternative[] = [];
+  // Privacy posture (RULED 2026-09-13): a door names a product, and no
+  // product is ever named to a minor.
+  if (noPathReasonCodes.includes(GUARDIAN_MUST_APPLY_CODE)) return doors;
   const category = facts.category;
   if (category === undefined || category === "unsure") return doors;
   // Shuts every door under every purpose — measured, not assumed.
@@ -816,6 +841,17 @@ function reason(
 // cover yet), and every code the current pack can emit is accounted for,
 // either here or in that known-gap list.
 export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
+  // RULED 2026-09-13 ~23:05 WITA (Zero, verbatim: «1 se ci sono questioni
+  // penali, revisione umana»). The ONE cause a visitor may still be held on,
+  // and the whole point of the ruling's second half is that it arrives
+  // EXPLAINED: what we are not doing (guessing), who decides (Immigration,
+  // on the file), and what happens next (a consultant reviews it with you).
+  // No product is named, because none was proved — but nothing is hidden
+  // either, which is what separates this from the bare hold it replaces.
+  CRIMINAL_MATTER_DISCLOSED: text(
+    "You told us there is a criminal matter in your history. Indonesian immigration weighs this on the file itself, so we will not guess an answer here: a Bali Zero consultant reviews your case with you and tells you which permits stay open. Bring any court or police document you have to that conversation.",
+    "Anda memberi tahu kami bahwa ada perkara pidana dalam riwayat Anda. Imigrasi Indonesia menilai hal ini berdasarkan berkasnya sendiri, jadi kami tidak akan menebak jawabannya di sini: konsultan Bali Zero akan meninjau kasus Anda bersama Anda dan memberi tahu izin mana yang tetap terbuka. Bawalah dokumen pengadilan atau kepolisian yang Anda miliki ke percakapan tersebut.",
+  ),
   // D2-bis (owner ruling, 2026-09-12 20:50 WITA): every HUMAN_REVIEW string
   // must (1) name the specific fact/answer, in the applicant's own terms,
   // that the signed rules cannot decide, (2) state authoritatively that the
@@ -1137,6 +1173,163 @@ function reviewReason(
   };
 }
 
+// RULED 2026-09-13 (`docs/rules/RULINGS.md`): the Oracle never tells a
+// visitor "a human will look at this". What used to delete the verdict is now
+// a named condition ON it, and this is the one sentence that tells the person
+// what to DO about it. Keyed by the engine's `ConditionNextStep`, which is a
+// CLOSED vocabulary, so `Record<OutcomeConditionNextStep, …>` makes a member
+// added on the engine side and forgotten here a TypeScript error — the copy
+// cannot silently go missing.
+export const CONDITION_NEXT_STEP_COPY: Record<
+  OutcomeConditionNextStep,
+  LocalizedText
+> = {
+  ANSWER_AGAIN: text(
+    "Next step: answer that question again with a definite answer if you can — the result may then change.",
+    "Langkah berikutnya: jawab lagi pertanyaan itu dengan jawaban yang pasti jika bisa — hasilnya kemudian dapat berubah.",
+  ),
+  BRING_TO_CONSULTATION: text(
+    "Next step: bring this to the consultation. It does not change the result shown; Immigration assesses it case by case, and Bali Zero prepares the file with you.",
+    "Langkah berikutnya: bawa hal ini ke konsultasi. Ini tidak mengubah hasil yang ditampilkan; Imigrasi menilainya kasus per kasus, dan Bali Zero menyiapkan berkasnya bersama Anda.",
+  ),
+  APPLY_THROUGH_GUARDIAN: text(
+    "Next step: a parent or legal guardian applies on the applicant's behalf and starts this assessment in their own name.",
+    "Langkah berikutnya: orang tua atau wali yang sah mengajukan atas nama pemohon dan memulai penilaian ini dengan namanya sendiri.",
+  ),
+  ASSISTED_APPLICATION: text(
+    "Next step: this permit is prepared with a Bali Zero consultant rather than filed on its own — the eligibility shown stands, the paperwork is assisted.",
+    "Langkah berikutnya: izin ini disiapkan bersama konsultan Bali Zero, bukan diajukan sendiri — kelayakan yang ditampilkan tetap berlaku, hanya berkasnya yang dibantu.",
+  ),
+  NO_ACTION_NEEDED: text(
+    "Nothing is required from you for this — it is recorded so you know it was taken into account.",
+    "Tidak ada yang perlu Anda lakukan untuk hal ini — dicatat agar Anda tahu hal ini sudah diperhitungkan.",
+  ),
+  // The ONE next step that belongs to a held outcome. It must not promise
+  // "the options below", because on this path there are none.
+  CONSULTANT_REVIEW: text(
+    "Next step: a Bali Zero consultant reviews this with you before any application is named. Bring the court or police document, in the original and in translation, to that conversation.",
+    "Langkah berikutnya: konsultan Bali Zero meninjau hal ini bersama Anda sebelum ada pengajuan yang disebutkan. Bawa dokumen pengadilan atau kepolisian, asli beserta terjemahannya, ke percakapan tersebut.",
+  ),
+  // The one next step whose actor is US. Saying "nothing is required from
+  // you" here would be true and useless; naming who is doing the work, and
+  // what it is, is what makes the hold readable instead of arbitrary.
+  AWAIT_SOURCE_REFRESH: text(
+    "Next step is ours, not yours: Bali Zero re-verifies the regulation cited with this note against the official source, and the assessment is re-run on the refreshed record. The source is linked here so you can check it yourself in the meantime.",
+    "Langkah berikutnya ada pada kami, bukan pada Anda: Bali Zero memverifikasi ulang peraturan yang dikutip pada catatan ini terhadap sumber resminya, dan penilaian dijalankan kembali atas catatan yang telah diperbarui. Sumbernya ditautkan di sini agar Anda dapat memeriksanya sendiri sementara itu.",
+  ),
+};
+
+// A condition rides BESIDE a verdict, so it cannot reuse the review sentences
+// above: those were written for a hold ("a person needs to review the details
+// before any path can be confirmed") and would contradict the answer printed
+// right above them. Render found it (W-VO-D, 2026-09-13). Each sentence names
+// what was taken into account and that the result shown stands; the next step
+// is appended from CONDITION_NEXT_STEP_COPY. A code without an entry here
+// gets CONDITION_GENERIC_COPY — never a review sentence, never a raw code.
+export const CONDITION_COPY: Record<string, LocalizedText> = {
+  DISCLOSED_HEALTH_CONCERN_REVIEW: text(
+    "You flagged a health condition immigration may ask about. The result shown still stands; the health point is assessed by Immigration on the application itself.",
+    "Anda menandai kondisi kesehatan yang mungkin ditanyakan imigrasi. Hasil yang ditampilkan tetap berlaku; hal kesehatan ini dinilai Imigrasi pada permohonannya sendiri.",
+  ),
+  DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW: text(
+    "You flagged a prior visa refusal. The result shown still stands; the earlier refusal is assessed by Immigration on the application itself.",
+    "Anda menandai penolakan visa sebelumnya. Hasil yang ditampilkan tetap berlaku; penolakan sebelumnya dinilai Imigrasi pada permohonannya sendiri.",
+  ),
+  DISCLOSED_PEP_OR_SANCTIONS_REVIEW: text(
+    "You flagged a politically-exposed-person or sanctions-list point. The result shown still stands; that point is checked on the application itself.",
+    "Anda menandai status orang yang terekspos secara politik atau daftar sanksi. Hasil yang ditampilkan tetap berlaku; hal tersebut diperiksa pada permohonannya sendiri.",
+  ),
+  DISCLOSED_SOURCE_OF_FUNDS_REVIEW: text(
+    "You flagged that the source of your funds is not yet documented. The result shown still stands; the funds are evidenced with documents when the application is prepared.",
+    "Anda menandai bahwa sumber dana Anda belum terdokumentasi. Hasil yang ditampilkan tetap berlaku; dana tersebut dibuktikan dengan dokumen saat permohonan disiapkan.",
+  ),
+  DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW: text(
+    "You said you hold a diplomatic passport. The result shown still stands for the facts you gave; the passport type is confirmed when the application is prepared.",
+    "Anda menyatakan memegang paspor diplomatik. Hasil yang ditampilkan tetap berlaku untuk fakta yang Anda berikan; jenis paspor dikonfirmasi saat permohonan disiapkan.",
+  ),
+  DISCLOSED_UNCERTAINTY_REVIEW: text(
+    "You answered “Not sure” to one question. The result shown is what the verified rules prove from everything else you told us.",
+    "Anda menjawab “Tidak yakin” pada satu pertanyaan. Hasil yang ditampilkan adalah yang dibuktikan aturan terverifikasi dari seluruh jawaban Anda yang lain.",
+  ),
+  DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW: text(
+    "You said your trip has more than one purpose. The result shown covers the purposes you declared.",
+    "Anda menyatakan perjalanan Anda memiliki lebih dari satu tujuan. Hasil yang ditampilkan mencakup tujuan yang Anda nyatakan.",
+  ),
+  DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: text(
+    "One of your answers about your planned activity is one the verified rules cannot decide on their own. The result shown is what they prove from your other answers.",
+    "Salah satu jawaban Anda tentang kegiatan yang direncanakan tidak dapat diputuskan sendiri oleh aturan terverifikasi. Hasil yang ditampilkan adalah yang dibuktikan dari jawaban Anda yang lain.",
+  ),
+  DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW: text(
+    "Whether your sponsor holds a stay permit of their own was not established. The result shown is what the verified rules prove from your other answers.",
+    "Apakah sponsor Anda memegang izin tinggal sendiri belum dapat dipastikan. Hasil yang ditampilkan adalah yang dibuktikan aturan terverifikasi dari jawaban Anda yang lain.",
+  ),
+  CONFLICTING_IMMIGRATION_STATUS_REVIEW: text(
+    "Two of your answers about your current immigration status do not agree. The result shown is what the verified rules prove; the correct status is confirmed on your documents.",
+    "Dua jawaban Anda tentang status imigrasi saat ini tidak sejalan. Hasil yang ditampilkan adalah yang dibuktikan aturan terverifikasi; status yang benar dikonfirmasi pada dokumen Anda.",
+  ),
+  ACTIVE_OVERSTAY: text(
+    "You reported active overstay days. Clearing the overstay with Immigration comes before any new application.",
+    "Anda melaporkan hari overstay yang masih berjalan. Penyelesaian overstay dengan Imigrasi dilakukan sebelum permohonan baru.",
+  ),
+  CALLING_VISA_REVIEW: text(
+    "Your nationality is on Indonesia's Calling Visa list, or it was not established. Calling-visa nationals follow an additional clearance step with Immigration.",
+    "Kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, atau belum dapat dipastikan. Warga negara calling visa menjalani tahap izin tambahan dengan Imigrasi.",
+  ),
+  CITIZENSHIP_LIST_DIVERGENCE: text(
+    "You declared nationalities that fall into different eligibility lists. The passport you travel on decides which list applies.",
+    "Anda menyatakan kewarganegaraan yang masuk ke daftar kelayakan berbeda. Paspor yang Anda gunakan untuk bepergian menentukan daftar mana yang berlaku.",
+  ),
+  LOCAL_MARKET_ACTIVITY_REVIEW: text(
+    "You said your remote work serves Indonesian clients. The Remote Worker visa (E33G) is for income from outside Indonesia only.",
+    "Anda menyatakan pekerjaan jarak jauh Anda melayani klien Indonesia. Visa Pekerja Jarak Jauh (E33G) hanya untuk penghasilan dari luar Indonesia.",
+  ),
+  GUARDIAN_MUST_APPLY: text(
+    "The applicant is under 18: a parent or legal guardian applies on the applicant's behalf.",
+    "Pemohon berusia di bawah 18 tahun: orang tua atau wali yang sah mengajukan atas nama pemohon.",
+  ),
+  MINOR_WITHOUT_CONFIRMED_GUARDIAN: text(
+    "The applicant is a minor whose sponsor is not yet confirmed.",
+    "Pemohon adalah anak di bawah umur yang sponsornya belum dikonfirmasi.",
+  ),
+  DECISIVE_SOURCE_STALE: text(
+    "A regulation this result cites is past its re-verification date. The regulation has not changed because of that; our check of it is overdue.",
+    "Peraturan yang dikutip hasil ini telah melewati tanggal verifikasi ulangnya. Peraturannya tidak berubah karena itu; pemeriksaan kami atasnya yang tertunda.",
+  ),
+  DECISIVE_SOURCE_FRESHNESS_UNKNOWN: text(
+    "A regulation this result cites has no recorded re-verification schedule, so we cannot show it as current.",
+    "Peraturan yang dikutip hasil ini tidak memiliki jadwal verifikasi ulang tercatat, sehingga kami tidak dapat menampilkannya sebagai terkini.",
+  ),
+  SAFETY_CRITICAL_SOURCE_STALE: text(
+    "A safety-critical regulation used in this evaluation is past its re-verification date. The regulation has not changed because of that; our check of it is overdue.",
+    "Peraturan kritis keselamatan yang dipakai dalam evaluasi ini telah melewati tanggal verifikasi ulangnya. Peraturannya tidak berubah karena itu; pemeriksaan kami atasnya yang tertunda.",
+  ),
+  SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN: text(
+    "A safety-critical regulation used in this evaluation has no recorded re-verification schedule, so we cannot show it as current.",
+    "Peraturan kritis keselamatan yang dipakai dalam evaluasi ini tidak memiliki jadwal verifikasi ulang tercatat, sehingga kami tidak dapat menampilkannya sebagai terkini.",
+  ),
+};
+
+export const CONDITION_GENERIC_COPY: LocalizedText = text(
+  "An additional point from the verified rules applies to this result.",
+  "Satu ketentuan tambahan dari aturan terverifikasi berlaku untuk hasil ini.",
+);
+
+function outcomeCondition(
+  item: {
+    code: string;
+    source_refs: readonly string[];
+    next_step: OutcomeConditionNextStep;
+  },
+  trustedIds: ReadonlySet<string>,
+): OutcomeCondition {
+  return {
+    code: item.code,
+    message: CONDITION_COPY[item.code] ?? CONDITION_GENERIC_COPY,
+    sourceIds: item.source_refs.filter((id) => trustedIds.has(id)),
+    nextStep: item.next_step,
+  };
+}
+
 function outcomeSource(source: VisaOracleSourceRecord): OutcomeSource | null {
   const url = trustedPrimarySourceUrl(source.canonical_url);
   if (!url) return null;
@@ -1175,6 +1368,7 @@ function decisiveSource(
   source: VisaOracleSourceRecord | undefined,
   decisionEffectiveAt: string,
   decisionObservedAt: string,
+  freshnessPending = false,
 ): boolean {
   if (!source) return false;
   const effectiveAt = Date.parse(decisionEffectiveAt);
@@ -1196,7 +1390,7 @@ function decisiveSource(
     source.is_primary_authority &&
     source.status === "VERIFIED" &&
     source.applicability.status === "APPLICABLE" &&
-    source.freshness.status === "CURRENT" &&
+    (source.freshness.status === "CURRENT" || freshnessPending) &&
     trustedPrimarySourceUrl(source.canonical_url) !== null &&
     legalFrom <= effectiveAt &&
     (legalTo === null || effectiveAt < legalTo) &&
@@ -1405,6 +1599,16 @@ function buildValidatedOutcome(
     .filter((source): source is OutcomeSource => source !== null);
   const trustedIds = new Set(sources.map((source) => source.id));
 
+  // Every other decisive requirement (primary, VERIFIED, APPLICABLE, trusted
+  // URL, clocks) still binds a pending-freshness ref; only CURRENT is waived,
+  // and only for the exact ids the backend named in a freshness condition.
+  const freshnessPendingIds = new Set(
+    (response.decision.conditions ?? [])
+      .filter((condition) =>
+        SOURCE_FRESHNESS_CONDITION_CODES.has(condition.code),
+      )
+      .flatMap((condition) => condition.source_refs),
+  );
   const requireDecisiveRefs = (sourceIds: readonly string[]) => {
     if (
       sourceIds.length === 0 ||
@@ -1414,6 +1618,7 @@ function buildValidatedOutcome(
             sourcesById.get(id),
             response.decision.effective_at,
             response.decision.observed_at,
+            freshnessPendingIds.has(id),
           ),
       )
     ) {
@@ -1450,6 +1655,11 @@ function buildValidatedOutcome(
     assumptions: options.assumptions ?? [],
     sources,
     nextSteps: NEXT_STEPS,
+    // Built ONCE, outside the state switch, because the ruling's whole claim
+    // is that a condition is orthogonal to the verdict it rides on.
+    conditions: (response.decision.conditions ?? []).map((item) =>
+      outcomeCondition(item, trustedIds),
+    ),
   };
 
   switch (response.decision.state) {
@@ -1561,7 +1771,15 @@ function buildValidatedOutcome(
         candidates: [],
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
-          requireDecisiveRefs(item.source_refs);
+          // The minor privacy cause is a product/privacy control with no
+          // regulatory citation by design; every other no-path reason still
+          // has to stand on decisive sources.
+          if (!(
+            item.code === GUARDIAN_MUST_APPLY_CODE &&
+            item.source_refs.length === 0
+          )) {
+            requireDecisiveRefs(item.source_refs);
+          }
           return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives: buildNoPathDoors(

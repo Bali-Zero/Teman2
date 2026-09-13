@@ -1,0 +1,24 @@
+# agy-gemini-3.1-pro council round1b, judged head b7f96ab96b, full stdout (text-only run, diff embedded in the prompt; no preamble to cut)
+
+Here are the findings from the review:
+
+- **`apps/backend-rag/backend/services/visa_engine/evaluate_path.py`:1184**
+  - **Severity:** HIGH
+  - **Why:** In `_apply_minor_privacy_hold`, the assignment `carried = _conditions_from_reasons(...) if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED else decision.conditions` completely drops any existing `decision.conditions` (e.g. from the evaluator, or source gates) when the state is `HUMAN_REVIEW_REQUIRED`.
+- **`apps/backend-rag/backend/services/visa_engine/evaluate_path.py`:1112**
+  - **Severity:** HIGH
+  - **Why:** `_apply_source_gate_outcome` overwrites `review_reasons` with `holding` instead of appending it. If a prior source gate already added an allowlisted hold (like `DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE`), a subsequent gate failure will silently wipe it out.
+- **`apps/backend-rag/backend/services/visa_engine/evaluate_path.py`:1461**
+  - **Severity:** HIGH
+  - **Why:** In `_apply_disclosed_review_flags`, when a criminal matter is disclosed, `review_reasons` is overwritten with just `(criminal_cause,)`. This drops any allowlisted source integrity holds that were already present on the decision.
+- **`apps/backend-rag/backend/services/visa_engine/evaluate_path.py`:1515**
+  - **Severity:** HIGH
+  - **Why:** In `_apply_visitor_determinism_floor`, `all(reason.code in VISITOR_REVIEW_CAUSE_ALLOWLIST ...)` evaluates to `False` if an offline caller's decision contains a mix of allowlisted holds and non-allowlisted holds. This converts the entire decision to `NO_SUPPORTED_PATH`, causing the allowlisted hold (e.g., a criminal disclosure) to be lost.
+- **`apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts`:1437**
+  - **Severity:** HIGH
+  - **Why:** The `CRIMINAL_MATTER_DISCLOSED` review reason deliberately has empty `source_refs`. When the frontend maps review reasons for a `HUMAN_REVIEW_REQUIRED` outcome, it passes them to `requireDecisiveRefs`, which unconditionally throws a `RESPONSE_INVARIANT` error if `sourceIds.length === 0`. This will crash the frontend instead of displaying the hold.
+- **`apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts`:1305** and **`apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py`:148, 1755**
+  - **Severity:** LOW
+  - **Why:** AI vendor names and model names ("Gemini 3.1 Pro", "Kimi K3", "codex-gpt-5.6-sol", "tp1-qwen3.8-max") are left in the comments, which violates the strict prohibition against vendor names in comments.
+
+VERDICT: DEFECT

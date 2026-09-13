@@ -68,6 +68,9 @@ function buildFallback(
     assumptions: options.assumptions ?? [],
     sources: [],
     nextSteps: NEXT_STEPS,
+    // A fallback never carries conditions: nothing was evaluated, so
+    // there is no verdict for a condition to qualify.
+    conditions: [],
     outage: {
       code: options.code,
       message: OUTAGE_MESSAGES[provenance],
@@ -125,6 +128,10 @@ export function buildDegradedHumanReviewOutcome(options: {
     assessment: null,
     state: "HUMAN_REVIEW_REQUIRED",
     candidates: [],
+    // The degraded guard never saw a decision, so it has no condition to
+    // name — and must not invent the criminal-matter one just because
+    // that is now the only shape a real held outcome takes.
+    conditions: [],
     pathsRemaining: 1,
     assumptions: options.assumptions ?? [],
     sources: [],

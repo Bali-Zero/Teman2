@@ -342,6 +342,7 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "review_reasons": {"maxItems": 0},
                     "no_path_reasons": {"maxItems": 0},
                     "quotes": {"maxItems": 0},
+                    "conditions": {"maxItems": 0},
                     "outage": {"type": "object"},
                     "facts_fingerprint": {"type": "null"},
                 }

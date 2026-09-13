@@ -261,6 +261,23 @@ def _summarize_response(response: httpx.Response) -> str:
     state = decision.get("state")
     lines.append(f"mode={mode!r} state={state!r}")
 
+    # RULED 2026-09-13. The state alone stopped being the whole answer the
+    # day a verdict could arrive CONDITIONED: `state='SUPPORTED_CANDIDATES'`
+    # reads identically whether three conditions ride on it or none, and the
+    # prove-live this script exists for is precisely "did the condition
+    # survive to the wire". Codes and next steps only — never the explanation
+    # text, which is the mouth's, and never anything an applicant typed.
+    conditions = decision.get("conditions")
+    if isinstance(conditions, list) and conditions:
+        rendered = ", ".join(
+            "{}/{}".format(item.get("code"), item.get("next_step"))
+            for item in conditions
+            if isinstance(item, dict)
+        )
+        lines.append(f"conditions[{len(conditions)}]: {rendered}")
+    else:
+        lines.append("conditions: none")
+
     rule_pack = decision.get("rule_pack")
     if isinstance(rule_pack, dict):
         lines.append(
