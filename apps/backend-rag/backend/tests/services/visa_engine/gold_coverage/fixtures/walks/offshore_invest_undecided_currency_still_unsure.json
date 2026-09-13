@@ -1,5 +1,5 @@
 {
-  "label": "offshore/invest/family",
+  "label": "offshore/invest/undecided/currency_still_unsure",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -11,7 +11,6 @@
     "sponsor_category",
     "investment_vehicle",
     "investment_currency",
-    "investment_capital_idr",
     "family_sponsor_confirmed",
     "wants_onshore_conversion",
     "stay_days",
@@ -70,8 +69,8 @@
       "reason": "NOT_ASKED"
     },
     "investment.investment_capital_idr": {
-      "status": "KNOWN",
-      "value": 1000000000
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "investment.paid_up_capital_idr": {
       "status": "UNKNOWN",
