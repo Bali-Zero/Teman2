@@ -3,15 +3,20 @@ gear_reason: >-
   Measured with the inputs CI uses — `git diff --name-only origin/main...HEAD > /tmp/f.txt &&
   git diff --numstat origin/main...HEAD > /tmp/n.txt && python3 scripts/evidence_pack_lint.py
   --print-floor --changed-files-file /tmp/f.txt --numstat-file /tmp/n.txt` returns 2, self-
-  inclusive of THIS file (35 files, +477/-35, churn 512) — `--print-floor-source` reports
-  "size": 512 exceeds SIZE_GEAR2_THRESHOLD (400) though nowhere near SIZE_GEAR3_THRESHOLD
-  (1828), and no changed path is hot-zone. First measured at 1 (34 files, +308/-35, churn 343,
-  before this brief.yml existed in the diff) — adding this file's own ~170 lines crossed the
-  400-line size term, so the number was corrected here rather than left stale: a `gear_reason`
-  that excludes the evidence file itself from its own diff measurement is exactly the omission
-  named in this mandate's own history (PR-D4d's brief went stale the same way). Re-run without
-  `--numstat-file` returns 1 (the size term needs numstat; the path term alone stays "none") —
-  recorded as the divergence this mandate asks to be named, not silently picked.
+  inclusive of THIS file — `--print-floor-source` reports "size": churn exceeds
+  SIZE_GEAR2_THRESHOLD (400) though nowhere near SIZE_GEAR3_THRESHOLD (1828), and no changed
+  path is hot-zone. No bare churn figure is given here on purpose: this file is part of the
+  diff it measures, so any number typed into this sentence goes stale the moment a commit
+  changes this sentence's own length — the command above is reproducible by CI (or by a human)
+  at whatever head it runs on, and IS the measurement. First measured at floor 1 (before this
+  brief.yml existed in the diff, so before it could count itself) — adding this file's own
+  bulk crossed the 400-line size term, so the number was corrected in a follow-up commit rather
+  than left stale: a `gear_reason` that excludes the evidence file itself from its own diff
+  measurement is exactly the omission named in this mandate's own history (PR-D4d's brief went
+  stale the same way, and this brief's own first cut repeated it once before being corrected).
+  Re-run without `--numstat-file` returns 1 (the size term needs numstat; the path term alone
+  stays "none") — recorded as the divergence this mandate asks to be named, not silently
+  picked.
 task_id: shweb-w-oracle-d4c1-20260913
 mandate_id: SHWEB-20260911/W-ORACLE/PR-D4c-1
 colour: BLUE
