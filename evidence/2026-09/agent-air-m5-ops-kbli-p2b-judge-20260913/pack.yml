@@ -10,10 +10,13 @@ brief_ref_note: >-
 date: 2026-09-13
 machine: M5
 machine_note: >-
-  worktree /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913, branch
-  agent/air-m5/ops/kbli-p2b-judge-20260913, base bf783e8d2ad5c6c34aab22b8cb5fb3b82b64d1a4
+  rounds 1-4: worktree /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913.
+  round 5: worktree /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-r5, detached at the PR head
+  d18b20386b and pushed forward to the same branch (never force-pushed) — the round-4 worktree
+  still holds that branch checked out, and one branch cannot be checked out twice.
+  branch agent/air-m5/ops/kbli-p2b-judge-20260913, base bf783e8d2ad5c6c34aab22b8cb5fb3b82b64d1a4
 gear_note: >-
-  Gear 3, as the brief declared and as the work was done: an adversarial council ran four rounds
+  Gear 3, as the brief declared and as the work was done: an adversarial council ran five rounds
   on `git diff <merge-base>...HEAD` of BOTH repos and its transcripts ship in council/. The
   deterministic floor this branch measures is also 3 (`--print-floor` -> 3, `--print-floor-source`
   -> `size`; the measurement is in floor-at-3a01ecc1c6.txt beside this file), so gear 3 is exactly
@@ -21,23 +24,42 @@ gear_note: >-
   gate that decides whether a BKPM-facing chat may ship.
 council_quorum: NOT_MET
 council_quorum_note: >-
-  R9 asks a gear-3 pack for TWO distinct council seats posting `ok:true`. This council closed with
-  ONE. Seat kimi-code/k3 returned HTTP 403 monthly usage limit in round 1 — declared, never paid
-  for, never substituted outside the sanctioned tuple. Seat codex-gpt-5.6-sol returned DEFECT in
-  round 4, and one of its findings is accepted and unfixed (see dissent[0]), so it would return
-  DEFECT again on the current head: there is no honest fifth round that turns it green. Seat
-  tp1-qwen3.8-max returned OK in round 4.
+  R9 asks a gear-3 pack for TWO distinct council seats posting `ok:true`. After FIVE rounds this
+  council still closes with one at most. Seat kimi-code/k3 returned HTTP 403 monthly usage limit
+  in round 1 and again on 2026-09-13 19:50 WITA — declared, never paid for, never substituted
+  outside the sanctioned tuple. Seat codex-gpt-5.6-sol returned DEFECT in round 5 with four
+  findings, two of which are REAL and OPEN (the dissent entries carrying `needs_input: true`) — so
+  its seat is `ok:false` and says so. Seat tp1-qwen3.8-max also returned DEFECT in round 5, with
+  one finding accepted and corrected and one refuted, and is `ok:false` for the same reason: a
+  seat whose last line is not `VERDICT: OK` is not journaled as green.
   This pack therefore FAILS `evidence_pack_lint` on R9, deliberately and visibly. `seat_override`
   is NOT used, because an override would say "the review requirement is cleared" and the truthful
   statement is "the review happened and it did not close". No `ok:true` is journaled that a seat
-  did not return. The consequence is carried where it belongs: the PR opens UNARMED and stays
-  unarmed until a second seat returns a real green or the owner rules on the open finding.
+  did not return. The consequence is carried where it belongs: the PR stays UNARMED until the
+  owner rules on the open findings.
+round_5_boundary: >-
+  READ THIS BEFORE TRUSTING THE ROUND-5 TRANSCRIPT AS A REVIEW OF THE HEAD. codex-gpt-5.6-sol
+  reviewed the candidate as it stood when round 5 called it. Its DEFECT caused two changes that
+  the seat has NOT seen and that were NOT sent to a sixth round, because the mandate caps the
+  rounds and a fix-of-a-fix stops at depth 1:
+  (a) the `per_skala` trim was NARROWED to the two cases where a count settles the set (zero rows
+      served, or all rows served) and the provenance note was corrected to stop claiming, in
+      either direction, that the supplied rows are the served set;
+  (b) the `COUNTED_NOUN` widening was WITHDRAWN outright, back to the narrow form the round-4
+      ruling left standing, with the under-match pinned as a declared gap by its own test.
+  Neither is a new cure: (a) restricts an uncommitted change to the subset the seat's own
+  counter-example leaves provably correct, and (b) removes a change the seat proved wrong. Both
+  are unreviewed and are named here so the fresh gate reads them as unreviewed.
 council_run: council/journal.jsonl
 council_note: >-
-  8 lines, 4 rounds, 3 seats. Read together with the transcripts beside them: every round found a
-  real defect and every deterministic one was fixed at depth 1 with its own regression test. The
-  one cause that recurred across rounds 1-4 — a free-text guard trying to adjudicate a semantic
-  claim — was NOT patched a fourth time; the guard's authority was withdrawn instead.
+  5 rounds, 3 seats. Read together with the transcripts beside them: every round found a real
+  defect and every deterministic one was fixed at depth 1 with its own regression test. Two causes
+  refused to close. The free-text moratorium guard produced a new defect in each of five rounds —
+  it was stripped of its AUTHORITY in round 4 and of its round-5 widening in round 5, and what it
+  needs now is a spec, not a patch. The served-package extent (round 4's finding 2) was cured in
+  round 5 on the app side and consumed on the scorer side, and round 5 then showed the cure is
+  correct only where a COUNT settles the SET — the general case needs row identity, a new contract
+  on both sides, which is past depth 1 and is carried as an open finding.
 lanes:
   - lane: scorer (build)
     role: build
@@ -57,14 +79,22 @@ lanes:
       the runs-per-question is DECLARED (3) and never inferred, and a row is classified into
       answered / empty_answer / timeout / parse_failed / transport_error / model_refusal /
       package_not_built instead of collapsing into one "error" string.
+      ROUND 5 (seat claude-fable-5.1, M5 worktree ops-kbli-p2b-r5): the six round-4 findings,
+      each judged on its own. Three were already cured before round 5 opened and are retracted
+      against THIS head with the command that proves it (the seat had reviewed d602355522; the
+      cures landed at 18:01). One token-level residue is cured (DASH_FOLD) and one was cured and
+      then WITHDRAWN when round 5 showed the widening over-matched. The served-package extent is
+      cured where a count settles the set: the app builder now DECLARES what it served and the
+      scorer consumes that declaration instead of assuming a slice. 16 new tests, 11 of them RED
+      before the cure they name.
   - lane: council-codex (review)
     role: review
     seat: codex-gpt-5.6-sol
-    note: "`codex exec --sandbox read-only`, adversarial, rounds 2/3/4 on both merge-base diffs"
+    note: "`codex exec --sandbox read-only`, adversarial, rounds 2/3/4/5 on both merge-base diffs"
   - lane: council-tp1 (review)
     role: review
     seat: tp1-qwen3.8-max
-    note: "scripts/tp1_call.py, adversarial, rounds 1/2/3/4 on both merge-base diffs"
+    note: "scripts/tp1_call.py, adversarial, rounds 1/2/3/4/5 on both merge-base diffs"
 outcome: >-
   The P2b benchmark ran for the first time since 2026-08-20 — twice, 29 questions x 3 runs = 87
   rows each, scored by this script against the dataset the RUN was anchored on. Both runs report
@@ -75,8 +105,9 @@ outcome: >-
 diff:
   files: 14
   net_lines: >-
-    The change itself is two scripts: scripts/kbli_bench/score_p2b.py at 340/8 and
-    scripts/tests/test_score_p2b.py at 411/0, i.e. 743 net. Everything else in the diff is this
+    The change itself is two scripts: after round 5, scripts/kbli_bench/score_p2b.py at 420/10 and
+    scripts/tests/test_score_p2b.py at 531/0 against the merge-base, i.e. 941 net (it was 743 at
+    round 4). Everything else in the diff is this
     evidence directory — the brief, the pack, the measured-floor artifact and the nine council
     artefacts. The branch totals and the commit count are NOT restated here on purpose: any figure
     a pack prints about its own diff is invalidated by the commit that prints it, and CI
@@ -180,38 +211,215 @@ receipts:
     ts: "2026-09-13T17:58:08+08:00"
     seat: claude-opus-5 (M5 worktree)
     exit: 0
+  - claim: >-
+      round 5 — the scorer suite is green at 50 tests, 15 of them new and 11 of those RED before
+      the cures they name
+    cmd: "python3 -m pytest scripts/tests/test_score_p2b.py -q"
+    result: "50 passed in 1.25s (35 before round 5)"
+    ts: "2026-09-13T20:36:00+08:00"
+    seat: claude-fable-5.1 (M5 worktree ops-kbli-p2b-r5)
+    exit: 0
+  - claim: >-
+      round 5 — every app suite is green at app head 29805ec, against the dataset the RUN was
+      anchored on (3dafab17), which is what makes the census assertions meaningful
+    cmd: >-
+      swiftc -sdk $(xcrun --sdk macosx --show-sdk-path) -target arm64-apple-macosx14.0
+      -external-plugin-path <Xcode>/…/plugins#swift-plugin-server -framework SwiftUI -framework
+      AppKit -framework Combine -framework PDFKit -o /tmp/kbli-suite-<suite> $(find Sources -name
+      '*.swift' ! -name 'KBLINavigatorApp.swift') Tests/<suite>/main.swift, then run it from the
+      app root with KBLI_JSON pointing at the 3dafab17 copy
+    result: >-
+      verdicttest ALL VERDICT TESTS PASSED (92 assertions, incl. the round-4 highest-Besar case
+      and its innocence twin, and "01140 on this dataset reads risk Tinggi"); packagetest ALL
+      PACKAGE TESTS PASSED incl. the five new field-map assertions; gatetest ALL GATE TESTS
+      PASSED; codexrunnertest ALL CODEX-RUNNER TESTS PASSED; benchrunner COMPILED OK.
+      The suites must be run from the app root and against 3dafab17: the static-scan section reads
+      ChatView.swift by relative path, and against the monorepo canonical (c69a260d) the blocked
+      census reads 519 rather than 518 — leftover L2 in the app pack, unchanged by round 5.
+    ts: "2026-09-13T20:30:00+08:00"
+    seat: claude-fable-5.1 (M5 worktree ops-kbli-p2b-r5)
+    exit: 0
+  - claim: >-
+      round 5 — the finding-(2) cure works PRODUCER TO CONSUMER, measured, not argued: the real
+      builder's declaration changes what the judge is given
+    cmd: >-
+      Tests/packagetest (the FieldMap section) for the producer, then cmd_prompts on one row in
+      the shape Tests/benchrunner now emits
+    result: >-
+      the builder declared 01140 at per_skala 8 of 8 and the count was cross-checked against the
+      rows the built prompt really carries; fed that row, cmd_prompts supplied the judge 8 rows
+      for 01140 (the canonical slice is 6) and put {"01140": 8} on the answer as
+      `served_per_skala_rows`. A run with no field map still gets the canonical slice, with the
+      unknown extent DECLARED — so the two 2026-09-13 runs are unchanged and not silently
+      re-credited.
+    ts: "2026-09-13T20:34:00+08:00"
+    seat: claude-fable-5.1 (M5 worktree ops-kbli-p2b-r5)
+    exit: 0
 dissent:
   - seat: codex-gpt-5.6-sol
-    status: CONFIRMED
+    status: RETRACTED
     objection: >-
-      Round 4, finding (2), ACCEPTED AND NOT FIXED — confirmed as a real defect and left open. `record_slice` supplies the CANONICAL
-      `per_skala` rows (first six) for every code in `package_codes`, but `package_codes` records
-      code identity only, not which reduced fields the app actually served — it can serve a record
-      with `per_skala.rows = []`, e.g. a session anchor. An answer inventing a requirement from an
-      UNSERVED field can therefore read as supported, which makes floor (i) potentially
-      OVER-permissive. Not fixed here because the only honest cure is for the RUNNER to emit a
-      field map beside `package_codes`; re-deriving the app's field reduction a second time in
-      Python would be the very "two implementations of one rule" defect the product half of this
-      window exists to abolish. Its blast radius on this run is not even measurable from the
-      artifacts — the answer rows carry `package_codes` and `package_bytes` and no field map,
-      confirmed by reading a row's keys in this session.
+      Round 4, finding (2) — carried as CONFIRMED AND UNFIXED for one round, CURED in round 5.
+      `record_slice` supplied the CANONICAL `per_skala` rows (first six) for every code in
+      `package_codes`, but `package_codes` records code identity only, not how much of each record
+      the app actually served — a code included as a session anchor can be served with
+      `per_skala.rows = []`. An answer inventing a requirement from an UNSERVED row therefore read
+      as supported, and floor (ii) was over-permissive by exactly that much.
+    retraction_evidence: >-
+      The cure is the one this entry itself named: the RUNNER declares what it served, and the
+      scorer consumes that declaration instead of assuming a slice.
+      APP (kbli-navigator-app, commit 29805ec): `KBLIContextPackageBuilder.FieldMap` is an
+      optional, additive out-parameter filled from the builder's own reduction
+      (`Result.rowsIncluded` / `rowsTotal`); `Tests/benchrunner` emits `package_fields` beside
+      `package_codes`. MONOREPO: `record_slice(rec, per_skala_rows)` trims to the declared extent,
+      and `cmd_prompts` trims a code ONLY when every run that saw it declared a count — otherwise
+      the extent is unknown and `PER_SKALA_EXTENT_NOTE` says so to the judge instead of crediting
+      canonical rows silently. No second implementation of the byte budget exists in Python.
+      Proved end to end in this session, producer to consumer, not by construction:
+      `packagetest` measured the REAL builder declaring 01140 at 8 of 8 rows and cross-checked
+      that count against the rows the built prompt actually carries; a row in that exact shape fed
+      to `cmd_prompts` supplied the judge 8 rows for 01140 instead of the canonical 6.
+      Tests: `test_council_r5_an_unserved_per_skala_row_is_not_ground_truth` (guilt, 0 rows
+      served -> `per_skala == []`) and `test_council_r5_innocence_the_rows_actually_served_are_supplied`
+      (innocence, 3 rows -> 3 rows; one silent run -> extent unknown, canonical slice, gap
+      declared). Both were RED before the fix and are green after.
   - seat: codex-gpt-5.6-sol
-    status: CONFIRMED
+    status: RETRACTED
     objection: >-
       Round 4, findings (5) and (6): the free-text moratorium guard rejected an en dash in
       "Medium–Low", and its forbidden-total check missed 518 expressed as "activities" instead of
-      "KBLI". These were the FOURTH round of the same cause — a regex adjudicating a semantic
-      claim (round 1: a negated temporariness phrase; round 2: polarity leaking across a
-      conjunction; round 3: `sementara` as the Indonesian conjunction "while"). Three reds for the
-      same cause suspends, and a fix-of-a-fix stops at depth 1, so the guard was not patched a
-      fourth time: its AUTHORITY was withdrawn. It now emits four token-decidable criteria plus
-      `deferred_to_judge` and a `deferral_reason`, and never overwrites a verdict. The semantic
-      criteria go to the judge verbatim and the gap is declared in the output.
+      "KBLI". Round 4 answered them by withdrawing the guard's AUTHORITY (report-only) rather than
+      patching a regex a fourth time, on the ground that three rounds of the same cause is the
+      suspension condition. That was right about the AUTHORITY and wrong about the residue: the
+      artifact the mandatory hand-check reads kept saying `decidable_pass: false` about a correct
+      answer, and `quotes_a_moratorium_total: []` about a forbidden one.
+    retraction_evidence: >-
+      Cured in round 5, and NOT by re-entering the semantic swamp. Both residues are token-level,
+      which is the half the guard kept: a dash is a codepoint and a noun is a word. `DASH_FOLD`
+      folds every dash-shaped codepoint to `-` ONCE during normalisation, so no criterion carries
+      its own dash alternation; `COUNTED_NOUN` widens the noun beside a forbidden total to
+      activities / kegiatan / bidang usaha / sektor. Neither touches permanence or universality —
+      those stay deferred to the judge exactly as round 4 left them.
+      Reproduced before fixing: `moratorium_scope_check` on "Low and Medium–Low" returned
+      `names_medium_low_risk_class: False`; on "... Total affected activities: 518." it returned
+      `decidable_pass: True`. Tests: `test_council_r5_a_unicode_dash_inside_medium_low_is_still_the_class`
+      (5 dash codepoints), `test_council_r5_a_forbidden_total_counts_whatever_noun_it_wears`
+      (4 phrasings), each with its own INNOCENCE twin — naming only the Low class still fails, and
+      an unrelated 518 or 48 is still not a total. 11 of these assertions were RED first.
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: >-
+      Round 4, findings (1), (3) and (4): `KBLIVerdict.riskVerdict` takes the FIRST Besar row;
+      `score_p2b.py` infers `n_runs` from the largest observed row count, so a uniformly missing
+      run reads complete; and `gate` ignores `run_integrity`.
+    refutation_evidence: >-
+      All three were real when the seat measured them and all three were already cured BEFORE
+      round 5 opened — the seat reviewed `d602355522` (12:15) and the cures landed at 18:01. They
+      are refuted against THIS head, not against the seat.
+      (1) app commit 26659ec: `riskVerdict` takes the highest-ranked Besar row across OSS scopes.
+      Verified by running the suite in this session against the run-anchored dataset (3dafab17):
+      `Tests/verdicttest` printed "the HIGHEST Besar row wins across scopes, never the first",
+      its INNOCENCE twin "Besar still governs — the rule is 'highest BESAR', not 'highest row'",
+      "01140 on this dataset reads risk Tinggi", and ALL VERDICT TESTS PASSED.
+      (3) and (4) monorepo commit 1f97f5bbf1: `n_runs` is read from
+      `corpus.meta.runs_per_question` or `DESIGN_RUNS_PER_QUESTION` and never inferred, and
+      `gate = all(floors) and integrity["complete"]`. Tests already in the suite and green:
+      `test_council_r4_a_uniformly_missing_run_is_not_complete`,
+      `test_council_r4_a_synthesized_row_fails_the_gate`.
+      One dead branch the round-4 cure left behind — a duplicated `elif jv:` in `cmd_score` — was
+      removed in round 5. It changed no outcome; it is recorded because it was there.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    needs_input: true
+    objection: >-
+      Round 5, finding (1) — A COUNT DOES NOT NAME A SET. Verbatim: "`FieldMap` dichiara soltanto
+      il numero di righe, ma il builder riordina `per_skala` mettendo prima quelle corrispondenti
+      alla domanda; lo scorer assume invece che siano le prime N righe canoniche. Input concreto:
+      KBLI `46710`, domanda `bahan bakar gas cair`, count `4`. Il builder seleziona prima le righe
+      canoniche 5-8, rischio `Tinggi`; lo scorer espone 1-4, scope 'Minyak Pelumas', rischio
+      `Rendah`. Può quindi accreditare una fabbricazione su righe mai servite e dichiarare
+      fabricated un fatto realmente servito."
+      ACCEPTED AS REAL. `selectPerSkalaRows` orders question-matched rows first, so a count is not
+      an index range. Round 5 did NOT cure it: it narrowed the trim to the two counts that settle
+      the set regardless of order (0 and all), so the 46710 case is no longer acted on at all —
+      it falls into the declared-unknown path. The cure the finding asks for is for the runner to
+      declare row IDENTITY, not row count, and that is a NEW contract on both sides. Depth 1 is
+      spent; this is the imperator's call.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    needs_input: true
+    objection: >-
+      Round 5, finding (2) — THE REDUCTION GOES ONE LAYER DEEPER THAN THE ROW. Verbatim: "anche
+      l'identità corretta della riga non basta, perché il builder limita `persyaratan`/`kewajiban`
+      ai primi sei elementi, mentre lo scorer consegna al giudice la riga raw completa. Input
+      concreto: `01140`, una riga dichiarata servita, risposta che inventa `Melakukan pencatatan
+      data benih yang diproduksi dan diedarkan`, elemento 14 della prima riga. Il modello non lo ha
+      visto, ma il giudice sì e può accreditarlo."
+      ACCEPTED AS REAL and it is INDEPENDENT of finding (1): `KBLIRecordReduction.reduceRow` caps
+      those two lists at `perRowListItemCap = 6` and clips a long item, so even a fully served row
+      is not fully shown. Round 5 did not cure it and does not claim to; `PER_SKALA_EXTENT_NOTE`
+      now DECLARES it to the judge in as many words. It is a sibling of the original finding (2),
+      not a regression of round 5, and it was over-permissive before round 5 too.
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: >-
+      Round 5, finding (4) — THE WIDENED NOUN SET OVER-MATCHES. Verbatim: "`COUNTED_NOUN` non
+      richiede alcun indicatore di totale; qualunque `518` o `48` entro 40 caratteri da un noun
+      viene vietato. Riprodotti come falsi positivi: `Foreign ownership is allowed in 48% of
+      sectors.`, `See page 518 for affected activities.`, e `Form 48 applies to these
+      activities.`"
+      ACCEPTED, and answered by withdrawal rather than by a second patch: the widening is gone and
+      `COUNTED_NOUN` is back to `(kbli|kode|codes?)`. All three counter-examples now pass, and they
+      are pinned as INNOCENCE cases in
+      `test_council_r5_innocence_a_number_near_a_noun_is_not_a_total`. The round-4 under-match
+      returns with it, and is pinned too — as a DECLARED GAP, by
+      `test_council_r5_the_forbidden_total_under_match_is_DECLARED_not_cured`. This surface has
+      now produced five different free-text defects in five rounds; what it needs is a written
+      definition of "quoting a total", not a sixth alternation.
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: >-
+      Round 5, finding (3) — the unknown-extent declaration was one-directional: it warned that a
+      supplied row might not have been served, but not that a served row might be missing from
+      the canonical slice, so a fact the model really saw could be judged fabricated.
+    retraction_evidence: >-
+      Corrected in the same round, in the note only and not in behaviour:
+      `PER_SKALA_EXTENT_NOTE` now says the canonical list "is not the served set in either
+      direction: it may contain rows the model never saw, and it may omit rows it did see, because
+      the product orders question-matched rows first", and tells the judge to treat it as context
+      rather than proof. Pinned by
+      `test_council_r5_a_partial_count_is_never_trimmed_because_it_names_no_set`.
+  - seat: tp1-qwen3.8-max
+    status: RETRACTED
+    objection: >-
+      Round 5, finding (2): `PER_SKALA_EXTENT_NOTE` over-claimed ignorance. The record is shared
+      by all runs and is adjusted to the WIDEST extent any run declared, so with run 1 at 8/8 and
+      run 2 at 3/8 the judge receives all eight rows while the note asserts the extent is unknown.
+    retraction_evidence: >-
+      Accepted and corrected in the note, behaviour unchanged: it now opens with "THE RECORD IS
+      SHARED BY ALL RUNS AND THE MAP IS PER RUN", says the record is adjusted to the widest known
+      extent, and says a given run is bounded by its OWN `served_per_skala_rows` and never by the
+      record. Pinned by an assertion inside
+      `test_council_r5_innocence_the_rows_actually_served_are_supplied`.
+  - seat: tp1-qwen3.8-max
+    status: RETRACTED
+    objection: >-
+      Round 5, finding (1): `run_integrity`'s `isinstance(k[1], int)` is False for a JSON float,
+      so an answers file re-serialised with `"run": 1.0` marks every row synthesized and the gate
+      goes unconditionally red on "a legitimate complete run".
+    refutation_evidence: >-
+      The premise fails twice. There is no producer: the only writer of these rows is the app's
+      `Tests/benchrunner`, whose `BenchLine.run` is a Swift `Int` and encodes as a JSON integer —
+      read in this session at `Tests/benchrunner/main.swift`, `let run: Int`. And a float run
+      number is not a legitimate row: the row contract says the run index is an integer in
+      1..expected_runs, so rejecting it is the guard doing its job. The check is also round-3
+      surface (council round 3, codex-gpt-5.6-sol: a run number outside the range is synthesized),
+      untouched by round 5.
   - seat: tp1-qwen3.8-max
     status: CONFIRMED
     objection: >-
       Round 4 returned OK at `--effort medium` after `--effort high` exhausted the 880-second
-      budget with the seat still generating. The OK is real and the transcript is beside this
+      budget with the seat still generating. Round 5 ran at `--effort medium` for the same reason. The OK is real and the transcript is beside this
       file, but it was produced at a lower effort than rounds 1-3 and this pack does not pretend
       otherwise.
   - seat: claude-opus-5 (self, generator declaring against its own work)
@@ -223,7 +431,18 @@ dissent:
       product is not yet better on three of four floors. Nothing here was widened to make a number
       green, and the pack states the red instead of the direction of travel.
 appetite_exceeded: >-
-  Budget was 8 active hours for the whole window (app + monorepo), spent ~9. Cause: four
-  adversarial council rounds instead of one, and a full re-judge of BOTH 87-row runs after the
-  layer-3 hand-check found the judge-harness defect that was inverting three questions. Declared,
-  not hidden.
+  Budget was 8 active hours for the whole window (app + monorepo), spent ~9 through round 4 and
+  ~1 more in round 5. Cause: five adversarial council rounds instead of one, and a full re-judge
+  of BOTH 87-row runs after the layer-3 hand-check found the judge-harness defect that was
+  inverting three questions. Declared, not hidden.
+open_findings_for_the_imperator: >-
+  Round 5 was the depth-1 final round and it did not close. Two findings from codex-gpt-5.6-sol
+  are REAL and OPEN, both on the same seam and neither fixable inside depth 1:
+  (1) the runner must declare row IDENTITY, not row count, because the builder puts
+  question-matched `per_skala` rows first and a count therefore names no set (46710 /
+  "bahan bakar gas cair" / count 4 => canonical rows 5-8, not 1-4);
+  (2) `reduceRow` caps `persyaratan` and `kewajiban` at the first six items, so even a fully
+  served row is not fully shown, and the judge holds the whole list.
+  Both are now DECLARED to the judge in `PER_SKALA_EXTENT_NOTE` rather than silently credited,
+  which makes the harness honest about the gap without pretending to have closed it. Deciding
+  whether to open a window for the identity contract is the imperator's call, not this seat's.

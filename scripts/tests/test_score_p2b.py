@@ -409,3 +409,176 @@ def test_judge_is_told_about_the_derived_verdict_block(score_mod, tmp_path, monk
     assert "is NOT inventing a regulatory fact" in note
     # the derivation is stated, so the judge can check it FOLLOWS instead of hunting the string
     assert "NON_CLASSIFICABILE" in note and "dominates" in note
+
+
+# ── council round 5 — the three findings that were still live at d18b2038 ─────────────────
+@pytest.mark.parametrize(
+    "dash, name",
+    [("–", "en dash"), ("—", "em dash"), ("−", "minus sign"),
+     ("‑", "non-breaking hyphen"), ("­", "soft hyphen")],
+)
+def test_council_r5_a_unicode_dash_inside_medium_low_is_still_the_class(score_mod, dash, name):
+    """Council round 4, codex-gpt-5.6-sol, finding (5). `Medium–Low` written with the typographic
+    dash a model actually produces was read as NOT naming the class, because the criterion
+    accepted only ASCII `-`. The class rule is report-only since 1f97f5bb, so this no longer
+    overwrites a verdict — it still lied in the artifact the mandatory hand-check reads."""
+    text = (
+        "Since 13 May 2026 the moratorium covers the Low and Medium%sLow risk classes across "
+        "Bali. The restriction is permanent. Source: Gubernur letter B.27.000/642/PM/DPMPTSP."
+    ) % dash
+    r = score_mod.moratorium_scope_check(text)
+    assert r["required"]["names_medium_low_risk_class"] is True, (name, r["required"])
+    assert r["required"]["names_low_risk_class"] is True, (name, r["required"])
+    assert r["decidable_pass"] is True, (name, r)
+
+
+def test_council_r5_innocence_a_dash_does_not_invent_the_class(score_mod):
+    """INNOCENCE: normalising dashes must not make an answer that names only the Low class read
+    as naming both — the round-3 defect must not come back through the normaliser."""
+    text = (
+        "Since 13 May 2026 the moratorium covers the Low risk class – island-wide. The "
+        "restriction is permanent. Source: Gubernur letter B.27.000/642/PM/DPMPTSP."
+    )
+    r = score_mod.moratorium_scope_check(text)
+    assert r["required"]["names_medium_low_risk_class"] is False, r["required"]
+    assert r["decidable_pass"] is False
+
+
+@pytest.mark.parametrize(
+    "tail",
+    ["Total affected activities: 518.",
+     "Total kegiatan terdampak: 518.",
+     "In total 48 business activities are covered.",
+     "Jumlah bidang usaha yang terkena: 48."],
+)
+def test_council_r5_the_forbidden_total_under_match_is_DECLARED_not_cured(score_mod, tail):
+    """A DECLARED GAP, pinned so it cannot change silently — not a passing criterion.
+
+    Council round 4 (finding 6) was right: a total expressed as `activities` slips past a guard
+    that looks for a number beside `KBLI`, `kode` or `code`. Round 5 widened the noun set and
+    council round 5 (codex-gpt-5.6-sol) immediately produced three false positives from the
+    widening ALONE — "allowed in 48% of sectors", "See page 518 for affected activities",
+    "Form 48 applies to these activities". That is the fifth round of one cause on a surface
+    already suspended for it, so the widening was WITHDRAWN rather than patched again.
+
+    What the criterion actually does today, therefore, is: miss these. The guard is report-only
+    (it cannot overwrite a verdict), the gap is stated in the pack, and the spec it needs is
+    "what counts as quoting a total" — written down, not another alternation. This test exists so
+    the next person meets the gap as a fact instead of rediscovering it as a bug."""
+    r = score_mod.moratorium_scope_check(GOOD + " " + tail)
+    assert r["forbidden"]["quotes_a_moratorium_total"] == [], (
+        tail, "the under-match is declared; if this now catches it, update the pack's open finding")
+
+
+@pytest.mark.parametrize(
+    "tail",
+    ["Kepemilikan asing tetap 100% di luar kategori itu.",
+     "Surat itu bernomor 518/XI dan tidak relevan di sini.",
+     "Biaya notaris sekitar 48 juta rupiah.",
+     "Foreign ownership is allowed in 48% of sectors.",
+     "See page 518 for affected activities.",
+     "Form 48 applies to these activities."],
+)
+def test_council_r5_innocence_a_number_near_a_noun_is_not_a_total(score_mod, tail):
+    """INNOCENCE, and the last three cases are council round 5's own counter-examples to the
+    widening that round 5 then withdrew. A noun standing near a number is not a quoted total."""
+    r = score_mod.moratorium_scope_check(GOOD + " " + tail)
+    assert r["forbidden"]["quotes_a_moratorium_total"] == [], (tail, r["forbidden"])
+    assert r["decidable_pass"] is True
+
+
+def test_council_r5_an_unserved_per_skala_row_is_not_ground_truth(score_mod, tmp_path, monkeypatch):
+    """Council round 4, codex-gpt-5.6-sol, finding (2) — the one this pack carried as CONFIRMED
+    and unfixed. `package_codes` records code identity only, so a code served with
+    `per_skala.rows = []` (a session anchor under budget pressure) still reached the judge
+    carrying the canonical first six rows: a requirement invented from a row the model never saw
+    read as supported. The cure is the field map the RUNNER emits, consumed here — never a second
+    implementation of the app's reduction in Python."""
+    corpus = {"questions": [{"id": "T05", "class": "structured", "text": "01140",
+                             "expected": {"codes": ["01140"]}}]}
+    cp = tmp_path / "corpus.json"
+    cp.write_text(json.dumps(corpus))
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text(json.dumps({
+        "qid": "T05", "run": 1, "raw_answer": "01140 needs a Surat Keterangan kelayakan.",
+        "gate_ok": True, "package_codes": ["01140"],
+        "package_fields": {"01140": {"per_skala_rows_included": 0, "per_skala_rows_total": 8}},
+    }))
+    outdir = tmp_path / "prompts"
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_prompts(str(cp), str(ap), str(outdir))
+    payload = json.loads((outdir / "T05.txt").read_text().split("INPUT:\n", 1)[1])
+    assert payload["ground_truth_records"]["01140"]["per_skala"] == [], \
+        "a code served with zero rows must not arrive carrying the canonical rows"
+    assert payload["answers"][0]["served_per_skala_rows"] == {"01140": 0}
+    note = payload["ground_truth_provenance"]["per_skala_extent"]
+    assert "per_skala" in note and "extent" in note
+
+
+def test_council_r5_innocence_the_rows_actually_served_are_supplied(score_mod, tmp_path, monkeypatch):
+    """INNOCENCE: the cure trims to what was served, it does not withhold. A run served three
+    rows gets three rows, and a run whose runner emitted no field map keeps the canonical slice
+    with the gap DECLARED rather than silently credited."""
+    corpus = {"questions": [{"id": "T06", "class": "structured", "text": "01140",
+                             "expected": {"codes": ["01140"]}}]}
+    cp = tmp_path / "corpus.json"
+    cp.write_text(json.dumps(corpus))
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in [
+        {"qid": "T06", "run": 1, "raw_answer": "01140.", "gate_ok": True,
+         "package_codes": ["01140"],
+         "package_fields": {"01140": {"per_skala_rows_included": 3, "per_skala_rows_total": 8}}},
+        {"qid": "T06", "run": 2, "raw_answer": "01140.", "gate_ok": True,
+         "package_codes": ["01140"]},
+    ]))
+    outdir = tmp_path / "prompts"
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_prompts(str(cp), str(ap), str(outdir))
+    payload = json.loads((outdir / "T06.txt").read_text().split("INPUT:\n", 1)[1])
+    # run 2 declares nothing, so the extent is unknown: the canonical slice stands, declared
+    assert len(payload["ground_truth_records"]["01140"]["per_skala"]) == 6
+    assert payload["answers"][0]["served_per_skala_rows"] == {"01140": 3}
+    assert payload["answers"][1]["served_per_skala_rows"] is None
+    note = payload["ground_truth_provenance"]["per_skala_extent"]
+    assert "not the served set in either direction" in note
+    # council round 5, tp1-qwen3.8-max: the record is shared across runs and the map is per run,
+    # so the note must say which of the two bounds a given run — not imply the record does
+    assert "THE RECORD IS SHARED BY ALL RUNS AND THE MAP IS PER RUN" in note
+
+
+def test_council_r5_a_partial_count_is_never_trimmed_because_it_names_no_set(score_mod, tmp_path, monkeypatch):
+    """Council round 5, codex-gpt-5.6-sol: a COUNT only settles the SET at the two ends. The
+    builder orders question-matched rows FIRST, so "4 rows served" for 46710 means canonical rows
+    5-8, not 1-4 — slicing would hand the judge four rows the model never saw and hide four it
+    did. Every intermediate count therefore leaves the canonical slice in place and declares the
+    extent unknown; only 0 and all-of-them are acted on."""
+    corpus = {"questions": [{"id": "T07", "class": "structured", "text": "01140",
+                             "expected": {"codes": ["01140"]}}]}
+    cp = tmp_path / "corpus.json"
+    cp.write_text(json.dumps(corpus))
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in [
+        {"qid": "T07", "run": 1, "raw_answer": "01140.", "gate_ok": True, "package_codes": ["01140"],
+         "package_fields": {"01140": {"per_skala_rows_included": 4, "per_skala_rows_total": 8}}},
+        {"qid": "T07", "run": 2, "raw_answer": "01140.", "gate_ok": True, "package_codes": ["01140"],
+         "package_fields": {"01140": {"per_skala_rows_included": 8, "per_skala_rows_total": 8}}},
+    ]))
+    outdir = tmp_path / "prompts"
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_prompts(str(cp), str(ap), str(outdir))
+    payload = json.loads((outdir / "T07.txt").read_text().split("INPUT:\n", 1)[1])
+    # widest declared extent is 8 = every row, so the canonical list IS the served set: 8 rows
+    assert len(payload["ground_truth_records"]["01140"]["per_skala"]) == 8
+
+    # and with the partial count ALONE, nothing is trimmed to it — the canonical slice stands
+    ap.write_text(json.dumps(
+        {"qid": "T07", "run": 1, "raw_answer": "01140.", "gate_ok": True, "package_codes": ["01140"],
+         "package_fields": {"01140": {"per_skala_rows_included": 4, "per_skala_rows_total": 8}}}))
+    outdir2 = tmp_path / "prompts2"
+    score_mod.cmd_prompts(str(cp), str(ap), str(outdir2))
+    payload2 = json.loads((outdir2 / "T07.txt").read_text().split("INPUT:\n", 1)[1])
+    rows = payload2["ground_truth_records"]["01140"]["per_skala"]
+    assert len(rows) == 6, "a partial count names no set; it must not slice the canonical rows"
+    note = payload2["ground_truth_provenance"]["per_skala_extent"]
+    assert "persyaratan" in note and "kewajiban" in note, \
+        "the within-row item cap is a reduction the judge is not shown — it must be declared"

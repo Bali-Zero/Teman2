@@ -139,6 +139,28 @@ MORATORIUM_EFFECTIVE_PATTERNS = [
 # so the low-class test has to run on the text with the medium-low spans removed.
 MEDIUM_LOW = r"(menengah\s+rendah|medium[\s-]*low)"
 LOW_ONLY = r"(\brendah\b|\blow\b)"
+# A dash is not a spelling choice the criteria get to have an opinion about. Council round 4
+# (codex-gpt-5.6-sol, finding 5): "Medium–Low" with the typographic dash a model actually
+# produces was read as NOT naming the class, because `medium[\s-]*low` accepts only ASCII `-`.
+# Fold every dash-shaped codepoint to `-` ONCE, before any criterion looks at the text, so no
+# criterion has to carry its own dash alternation. The soft hyphen is invisible and folds too.
+DASH_FOLD = {ord(c): "-" for c in "­‐‑‒–—―−﹘﹣－"}
+# WITHDRAWN, and the withdrawal is the finding.
+#
+# Council round 4 (finding 6) was right that "Total affected activities: 518" slipped past a
+# guard that only looked for a number beside `KBLI`, `kode` or `code`. Round 5 widened the noun
+# set — and council round 5 (codex-gpt-5.6-sol) immediately produced three false positives from
+# the widening alone: "Foreign ownership is allowed in 48% of sectors.", "See page 518 for
+# affected activities.", "Form 48 applies to these activities." A noun near a number is not a
+# total; what makes 518 forbidden is being quoted AS THE COUNT of what the moratorium covers, and
+# that is a claim about meaning.
+#
+# This is the FIFTH round of one cause on this surface, and the surface was already suspended for
+# it at round 4 (see moratorium_scope_check's docstring). So the widening is withdrawn rather than
+# patched a second time: the criterion goes back to the narrow form the ruling left standing, the
+# under-match is DECLARED here and carried as an open finding, and nothing pretends to decide it.
+# The spec this needs is "what counts as quoting a total", written down — not another alternation.
+COUNTED_NOUN = r"(kbli|kode|codes?)"
 BAN_WORDS = r"(dilarang|diblokir|terkena|ditutup|banned|blocked|moratorium|moratoria)"
 UNIVERSAL_WORDS = r"((semua|seluruh)\s+kbli|all\s+kbli|every\s+kbli|setiap\s+kbli)"
 
@@ -182,13 +204,13 @@ def moratorium_scope_check(text: str) -> dict:
       • whether the answer states the ban is permanent
       • whether the answer claims the ban covers every KBLI
     """
-    t = re.sub(r"\s+", " ", (text or "")).lower()
+    t = re.sub(r"\s+", " ", (text or "")).lower().translate(DASH_FOLD)
     clauses = re.split(r"[.;\n]", t)
 
     totals = []
     for cl in clauses:
-        if re.search(r"\b(518|48)\b[^.;]{0,40}(kbli|kode|codes?)", cl) or \
-           re.search(r"(kbli|kode|codes?)[^.;]{0,40}\b(518|48)\b", cl):
+        if re.search(rf"\b(518|48)\b[^.;]{{0,40}}{COUNTED_NOUN}", cl) or \
+           re.search(rf"{COUNTED_NOUN}[^.;]{{0,40}}\b(518|48)\b", cl):
             totals.append(cl.strip()[:120])
 
     names_medium_low = bool(re.search(MEDIUM_LOW, t))
@@ -312,7 +334,21 @@ ALLOW_TOP = [
 ]
 
 
-def record_slice(rec: dict) -> dict:
+# The canonical slice the scorer falls back to when nothing declares what was actually served.
+CANONICAL_PER_SKALA_ROWS = 6
+
+
+def record_slice(rec: dict, per_skala_rows: int | None = None) -> dict:
+    """`per_skala_rows` is the number of rows the RUNNER declared it served for this code.
+
+    It is used ONLY where a COUNT is enough to know the SET, and that is exactly two cases:
+    zero rows served (the set is empty) and all rows served (the set is everything). Council
+    round 5 (codex-gpt-5.6-sol) showed why nothing in between may be trimmed: the builder orders
+    question-matched rows FIRST, so "4 rows served" for 46710 means canonical rows 5-8, not 1-4 —
+    slicing `[:4]` would hand the judge four rows the model never saw while hiding four it did.
+    A count cannot name a set once the order is not physical. For every intermediate count the
+    canonical slice stands and the extent is DECLARED unknown, exactly as for `None`.
+    """
     out = {}
     for k in ALLOW_TOP:
         if k not in rec:
@@ -328,9 +364,63 @@ def record_slice(rec: dict) -> dict:
         if k == "uraian" and isinstance(v, str):
             v = v[:2000]
         if k == "per_skala" and isinstance(v, list):
-            v = v[:6]
+            if per_skala_rows == 0:
+                v = []
+            elif per_skala_rows is not None and per_skala_rows >= len(v):
+                pass          # every row was served: the canonical list IS the served set
+            else:
+                v = v[:CANONICAL_PER_SKALA_ROWS]
         out[k] = v
     return out
+
+
+def served_per_skala_map(row: dict) -> dict | None:
+    """The rows-per-code map the runner recorded beside `package_codes`, or None when that run
+    was produced before the runner emitted one. Only integer counts are read; anything else is
+    treated as undeclared, because a half-read map is worse than an absent one."""
+    fields = row.get("package_fields")
+    if not isinstance(fields, dict):
+        return None
+    out = {}
+    for code, spec in fields.items():
+        if isinstance(spec, dict) and isinstance(spec.get("per_skala_rows_included"), int):
+            out[code] = spec["per_skala_rows_included"]
+    return out or None
+
+
+# WHAT `package_codes` DOES NOT SAY.
+#
+# Council round 4 (codex-gpt-5.6-sol), the finding this pack carried as CONFIRMED and unfixed
+# for one round: `package_codes` records code IDENTITY only. The app serves each record's
+# `per_skala.rows` up to a byte budget and can serve ZERO of them — so the judge, handed the
+# canonical first six rows for every code in `package_codes`, could count a requirement invented
+# from a row the model never saw as supported by the record. Floor (ii) was OVER-permissive by
+# exactly that much.
+#
+# The cure is the same shape as the `pma_bali_verdict` one: provenance, not a second
+# implementation. Re-deriving the app's byte-budget reduction in Python would be the very "two
+# implementations of one rule" defect this window exists to abolish. The RUNNER declares what it
+# served (`package_fields`), the scorer TRIMS to it when every run that saw the code declares a
+# count, and DECLARES the gap when any run does not.
+PER_SKALA_EXTENT_NOTE = (
+    "`per_skala` is the field whose served extent varies: the product fills its rows up to a byte "
+    "budget and may serve NONE of them for a code it included as an anchor. Each answer below "
+    "carries `served_per_skala_rows`, the {code: rows_served} map the runner recorded for THAT "
+    "run. THE RECORD IS SHARED BY ALL RUNS AND THE MAP IS PER RUN: the record below is adjusted "
+    "to the WIDEST extent any run is known to have been served, and a given run is bounded by its "
+    "OWN `served_per_skala_rows`, never by the record. The adjustment happens only where a count "
+    "settles the set: zero rows served for every run that saw the code means `per_skala` is "
+    "empty, and all rows served means the list below is the whole of what that run saw. IN EVERY "
+    "OTHER CASE — a partial count, or a run whose map is null — the list below is the CANONICAL "
+    "first rows and is not the served set in either direction: it may contain rows that run never "
+    "saw, and it may omit rows it did see, because the product orders question-matched rows "
+    "first. Treat it as context, not as proof, and say in your reason that the served extent was "
+    "undeclared for that run. Two further reductions are NOT represented "
+    "below and apply even when every row was served: inside each row the product caps "
+    "`persyaratan` and `kewajiban` at the first six items (with a visible '…N more' marker) and "
+    "clips a long item, so an item past the sixth was not shown to the model even though you can "
+    "read it here."
+)
 
 
 # WHAT THE MODEL SAW THAT THE RAW RECORD DOES NOT SHOW.
@@ -421,7 +511,23 @@ def cmd_prompts(corpus_p, answers_p, outdir):
                     served_codes.append(c)
         gt_codes = [c for c in expected_codes if c in by_code]
         gt_codes += [c for c in served_codes if c in by_code and c not in gt_codes]
-        recs = {c: record_slice(by_code[c]) for c in gt_codes}
+
+        # How much of `per_skala` the model was actually shown — DECLARED by the runner per run,
+        # never inferred here (see PER_SKALA_EXTENT_NOTE). A code is trimmed only when every run
+        # that saw it declared a count; one silent run and the extent is unknown for that code.
+        field_maps = [served_per_skala_map(r) for r in runs]
+
+        def served_extent(code: str) -> int | None:
+            counts = []
+            for r, m in zip(runs, field_maps):
+                if code not in (r.get("package_codes") or []):
+                    continue
+                if m is None or code not in m:
+                    return None
+                counts.append(m[code])
+            return max(counts) if counts else None
+
+        recs = {c: record_slice(by_code[c], served_extent(c)) for c in gt_codes}
         payload = {
             "qid": qid, "class": q["class"], "question": q["text"],
             "expected": q.get("expected", {}),
@@ -431,9 +537,11 @@ def cmd_prompts(corpus_p, answers_p, outdir):
                 "served_package_codes": served_codes,
                 "rule": "records supplied = expected.codes UNION the package codes served to the model",
                 "derived_fields_in_the_served_package": DERIVED_FIELDS_NOTE,
+                "per_skala_extent": PER_SKALA_EXTENT_NOTE,
             },
             "answers": [{"run": r["run"], "text": served_text(r),
-                         "package_codes": r.get("package_codes") or []} for r in runs],
+                         "package_codes": r.get("package_codes") or [],
+                         "served_per_skala_rows": m} for r, m in zip(runs, field_maps)],
         }
         if is_moratorium_scope_question(q):
             # The criteria a regex cannot decide, stated to the judge verbatim rather than
@@ -475,8 +583,6 @@ def cmd_score(corpus_p, answers_p, judgedir):
             if viol:
                 fabrications.append({"qid": qid, "run": r["run"], "violations": viol})
                 verdict = "fabricated"
-            elif jv:
-                verdict = jv
             elif jv:
                 verdict = jv
             else:

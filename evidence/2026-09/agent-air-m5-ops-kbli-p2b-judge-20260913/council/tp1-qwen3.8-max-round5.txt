@@ -1,0 +1,132 @@
+# tp1-qwen3.8-max — council round 5, full stdout (scripts/tp1_call.py, --effort medium).
+# 125 lines, 11209 bytes, sha256 159ad700b7b58aa08924943b294468ad6cd2ef120865c72be9c840604bc3c4ed
+# The seat has no tools: it reviewed the pasted unified diff of BOTH repos.
+# A first round-5 attempt was discarded, not filed as a verdict: given filesystem paths in
+# the prompt the seat emitted <tool_call> blocks for a shell it does not have and produced
+# no review. The prompt was rewritten path-free and the seat re-run; this is that run.
+# ---
+# Council Round 5 — Adversarial Correctness Review
+
+## Claim-by-claim judgment
+
+**Claim 1.** ✅ Supported. `riskVerdict` filters to Besar-scale rows, applies `.max(by: { riskRank($0) < riskRank($1) })`, and falls back to the highest of all rows only when no Besar row exists. Tests/verdicttest covers both the two-Besar-scope guilt case (T0006 → "Tinggi") and the innocence case (T0007 → Besar "Rendah" wins over Mikro "Tinggi").
+
+**Claim 2.** ✅ Supported. `FieldMap` is an optional additive out-parameter; benchrunner emits `package_fields`; `record_slice` acts on the declaration only at the two set-settling counts (0 and ≥ len(v)); every intermediate count falls through to the canonical slice; `served_extent` returns `None` when any run that saw the code lacks a declaration; `PER_SKALA_EXTENT_NOTE` states the gap.
+
+**Claim 3.** ✅ Supported. `n_runs = int(corpus.get("meta", {}).get("runs_per_question") or <REDACTED>)` — never derived from observed row counts.
+
+**Claim 4.** ✅ Supported. `"gate": all(f["pass"] for f in floors.values()) and integrity["complete"]`.
+
+**Claim 5.** ✅ Supported. `DASH_FOLD` maps en-dash, em-dash, minus, non-breaking hyphen, soft hyphen, etc. to `-` before any criterion runs. The innocence test (`<REDACTED>`) verifies a Low-only answer is not promoted.
+
+**Claim 6.** ✅ Supported. `COUNTED_NOUN = r"(kbli|kode|codes?)"` is unchanged. The under-match is declared in comments, in the report's `declared_gap` field, and pinned by `<REDACTED>` which asserts the guard *misses* those forms.
+
+---
+
+## Defects found
+
+### Defect 1 — `run_integrity`: `run` decoded from JSON is a `float`, defeating `isinstance(k[1], int)` and silently marking every row synthesized
+
+**Symbol:** `run_integrity` in `score_p2b.py`; exercised by every integration test that calls `cmd_score`.
+
+**Concrete input:** an `answers.jsonl` produced by the benchrunner (Swift `JSONEncoder`). When the encoder's `outputFormatting` includes `.prettyPrinted` (or when a row is hand-edited / re-serialised by any tool that emits `1.0`), the value is `"run": 1.0`. `json.loads` yields a Python `float`.
+
+**Mechanism:**
+
+```python
+if k[0] not in qids or not isinstance(k[1], int) or not (1 <= k[1] <= expected_runs)
+```
+
+`isinstance(1.0, int)` is `False` in Python. Every `(qid, 1.0)` key is therefore classified as synthesized, `complete` becomes `False`, and the gate is unconditionally red — with no diagnostic distinguishing "wrong run number" from "integer-typed run number arrived as a float".
+
+**Why the tests don't catch it:** every integration test constructs rows as Python dicts and writes them with `json.dumps`, which always emits `"run": 1` (an integer literal). The float path is unreachable from the test suite but reachable from any re-serialisation step or pretty-printed encoder.
+
+**Severity:** silent gate-blocking on a legitimate, complete run. The anti-fabrication guard over-matches: it treats a representation difference as a synthesized row.
+
+**Fix shape:** `isinstance(k[1], (int, float)) and k[1] == int(k[1]) and 1 <= int(k[1]) <= expected_runs`, or normalise at parse time.
+
+---
+
+### Defect 2 — `riskRank`: "Menengah Rendah" is ranked *below* "Rendah" when it appears bare, and the "rendah"/"low" branch fires inside "menengah rendah" if the first two checks are ever reordered
+
+**Symbol:** `KBLIVerdict.riskRank` in `KBLIVerdict.swift`.
+
+**Concrete input:** a `kategori_risiko` value of `"Rendah"` vs `"Menengah Rendah"`.
+
+**Mechanism:** `riskRank("rendah")` returns 1; `riskRank("menengah rendah")` returns 2. The function checks `contains("menengah rendah")` before `contains("rendah")`, so "Menengah Rendah" correctly lands at 2. However, the comment and the claim state the axis "never understates." On a record whose Besar rows carry `"Menengah Rendah"` on one scope and `"Rendah"` on another, `.max(by:)` selects `"Menengah Rendah"` (rank 2 > 1). That is the *higher* label, so the rule is correct. **This is not a defect in the current code** — I include it only to confirm the ordering is load-bearing: any future re-ordering of the `contains` checks would silently invert the axis, and there is no test pinning the rank *values* (only the selection outcome). Noting as a fragility, not a defect.
+
+*Withdrawn — no defect.*
+
+---
+
+### Defect 3 — `moratorium_scope_check`: the `LOW_ONLY` regex matches the word "low" inside "Medium-Low" after the medium-low span removal leaves a residual hyphen
+
+**Symbol:** `moratorium_scope_check`, interaction of `MEDIUM_LOW`, `LOW_ONLY`, and `DASH_FOLD`.
+
+**Concrete input:** the text `"Medium–Low"` (with an en-dash), after `DASH_FOLD` → `"medium-low"`.
+
+**Mechanism:** `re.sub(MEDIUM_LOW, " ", t)` with `MEDIUM_LOW = r"(menengah\s+rendah|medium[\s-]*low)"` matches `"medium-low"` (the `[\s-]*` covers the folded dash) and replaces the whole span with `" "`. The residual text no longer contains "low" as a standalone token. `LOW_ONLY = r"(\brendah\b|\blow\b)"` does not fire. **Correct — no defect.**
+
+*Withdrawn.*
+
+---
+
+### Defect 4 — `moratorium_scope_check` totals regex: the `{0,40}` window is applied *within a clause* but the clause split is `[.;\n]`, so a total expressed as "518 KBLI" spanning a comma-separated list inside one clause is caught, while the same total split by a semicolon is missed — but the **actual defect** is the reverse direction
+
+**Symbol:** totals loop in `moratorium_scope_check`.
+
+**Concrete input:** `"Terdapat 518 KBLI yang terkena moratorium."` appended to `GOOD`.
+
+**Mechanism:** The clause is `"terdapat 518 kbli yang terkena moratorium"`. The regex `\b(518|48)\b[^.;]{0,40}(kbli|kode|codes?)` matches: `518` then ` kbli yang terkena moratorium` (well within 40 chars) then… wait — `COUNTED_NOUN` is `(kbli|kode|codes?)`. The match is `518 kbli` — the noun is only 4 chars past the number. This fires correctly. **No defect here.**
+
+*Withdrawn.*
+
+---
+
+### Defect 5 — `record_slice`: when `per_skala_rows` equals `len(v)` exactly, the branch `per_skala_rows >= len(v)` fires and keeps the full list, but the canonical slice `v[:<REDACTED>]` was already *not* applied — so a record with 10 rows and a declared count of 10 passes all 10 to the judge, while the canonical cap was 6
+
+**Symbol:** `record_slice`, the `per_skala` branch.
+
+**Concrete input:** a record whose `per_skala` list has 10 rows; runner declares `per_skala_rows_included: 10`.
+
+**Mechanism:** `per_skala_rows (10) >= len(v) (10)` → the `pass` branch keeps all 10 rows. This is *intentional*: "every row was served: the canonical list IS the served set." The test `<REDACTED>` asserts `len(…) == 8` for exactly this shape (8 total, 8 served). The design says the canonical cap is a *fallback* for the undeclared case, not a ceiling on declared-full service. **Correct by design.**
+
+*Withdrawn.*
+
+---
+
+### Defect 6 — `served_extent` returns `max(counts)` across runs, but `record_slice` interprets it as an absolute row count against the *canonical* list length, not the *served* list length
+
+**Symbol:** `served_extent` and `record_slice` in `score_p2b.py`.
+
+**Concrete input:** two runs. Run 1 declares `per_skala_rows_included: 8` (all rows). Run 2 declares `per_skala_rows_included: 8`. The canonical `per_skala` list in the by-code index has 8 entries. `served_extent` returns 8. `record_slice` sees `per_skala_rows (8) >= len(v) (8)` → keeps all 8. Correct.
+
+Now: run 1 declares 8, run 2 declares 3. `served_extent` returns `max(8, 3) = 8`. `record_slice` sees 8 >= len(v) → keeps all 8. But run 2 only saw 3 rows. The judge receives 8 rows and is told (via `PER_SKALA_EXTENT_NOTE`) that the extent may be undeclared — but here it *was* declared, just not uniformly. The note says "IN EVERY OTHER CASE … the list below is the CANONICAL first rows", but the code took the `pass` branch (all rows served), not the canonical-slice branch. The judge gets the full list *and* the note telling it the extent is unknown.
+
+**Is this a defect?** The note is attached at the payload level regardless of the trim outcome. The judge is told the extent is unknown, and indeed for run 2 it is partially known (3 rows). The `max` is a conservative choice: if *any* run saw all rows, the full list is the union of what was seen. The note's language ("IN EVERY OTHER CASE") technically does not describe this branch. But the note is a static string, not per-code conditional. The judge is told to "say in your reason that the served extent was undeclared" even when it was declared for one run. This is a **comment-code mismatch** in `PER_SKALA_EXTENT_NOTE`: the note claims the canonical slice stands for partial counts, but the code actually passes the full list when `max(counts) >= len(v)`.
+
+**Concrete input exhibiting it:** run 1 declares 8/8, run 2 declares 3/8. The judge receives all 8 rows. The note says "the list below is the CANONICAL first rows and is not the served set in either direction." That is false for this code: the list *is* the served set for run 1. The note over-claims ignorance.
+
+**Severity:** low-to-moderate. The judge is told to be more cautious than necessary, which is fail-safe for fabrication detection but may cause a false "fabricated" flag if the judge follows the note's instruction to "say the served extent was undeclared" and then treats a correct citation from rows 4-8 as unsupported for run 2.
+
+---
+
+### Defect 7 — `classify_row`: a `package_outcome` of `"built"` with an `error` field present classifies as a transport error, but the benchrunner emits `package_outcome: "built"` alongside a non-nil `error` on codex spawn failure
+
+**Symbol:** `classify_row` in `score_p2b.py`; benchrunner's `catch` block.
+
+**Concrete input:** a row where the package built successfully but the codex process threw. The benchrunner writes `package_outcome: "built"` and `error: "spawn failed: …"`. `classify_row` checks `outcome is not None and not str(outcome).startswith("built")` → `"built".startswith("built")` is True, so it does NOT return `"package_not_built"`. It falls through to the `err` check and correctly returns `"transport_error"`. **No defect.**
+
+*Withdrawn.*
+
+---
+
+## Summary of confirmed defects
+
+Only **Defect 1** is a true correctness defect with a concrete triggering input. **Defect 6** is a comment-overclaims-code finding (the note's "IN EVERY OTHER CASE" language does not match the `max(counts) >= len(v)` → full-list path).
+
+---
+
+VERDICT: DEFECT
+1. `run_integrity` (score_p2b.py): `isinstance(k[1], int)` is `False` for a JSON `float` (e.g. `"run": 1.0` from a pretty-printing encoder), so every row is classified as synthesized and the gate is unconditionally false on a legitimate complete run. Concrete input: any answers.jsonl re-serialised with a float-valued `run` field.
+2. `PER_SKALA_EXTENT_NOTE` / `record_slice` (score_p2b.py): when `max(counts) >= len(v)` the code passes the full row list (the `pass` branch), but the static note claims "the list below is the CANONICAL first rows and is not the served set in either direction" — false for that code in that branch. Concrete input: run 1 declares 8/8, run 2 declares 3/8; the judge receives all 8 rows while the note asserts the extent is unknown.
