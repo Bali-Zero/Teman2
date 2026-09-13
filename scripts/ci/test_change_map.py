@@ -3,11 +3,16 @@
 
 from __future__ import annotations
 
+import ast
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -39,7 +44,120 @@ def _locate_repo_root(rel: Path) -> Path | None:
     return next((c for c in candidates if (c / rel).is_file()), None)
 
 
+def _is_flat_extraction_copy(repo_root: Path, *, this_file: Path | None = None) -> bool:
+    """True when the file actually EXECUTING this test is a flat-extracted
+    copy of itself (tests.yml's trusted-classifier corpus dumps this exact
+    file into ``$RUNNER_TEMP/trusted-classifier/`` with no ``scripts/ci/``
+    ancestry — see this module's other flat-layout note above), rather than
+    the real nested ``scripts/ci/test_change_map.py`` the checkout carries
+    under ``repo_root``.
+
+    Distinct from ``_locate_repo_root``'s own concern: the checkout can be
+    FOUND (via cwd/GITHUB_WORKSPACE) even while THIS FILE is executing from a
+    flat copy dumped elsewhere by the extraction step — reachability of the
+    census and the identity of the currently-running test file are two
+    different questions, and #5679→#5692 only ever fixed the first one.
+
+    ``this_file`` is injectable (defaults to the real ``__file__``) purely so
+    the guilt/innocence tests below can exercise both branches deterministically
+    without needing to actually BECOME a flat copy mid-process.
+    """
+    this_file = this_file if this_file is not None else Path(__file__)
+    canonical = (repo_root / "scripts" / "ci" / "test_change_map.py").resolve()
+    return this_file.resolve() != canonical
+
+
+def _staleness_verdict(
+    completed: subprocess.CompletedProcess[str], *, is_flat: bool
+) -> tuple[bool, str]:
+    """Pure decision logic for a completed ``scripts_coupling_census.py
+    --check`` run: (should_pass, message_to_print_or_fail_with).
+
+    A stale FLEET-WIDE census (drifted because some OTHER merged PR touched
+    scripts/**, unrelated to whatever diff THIS run is judging) must never
+    force every PR's trusted-classifier corpus to distrust itself and fall
+    back to run_all=true — diagnosed 2026-09-05, the fleet-wide outage from
+    18:46Z the same day #5679/#5692 already fixed a DIFFERENT flat-layout
+    trap for. So a stale census WARNS (still passes) inside the flat
+    extraction, and still FAILS in the real repo layout (local dev, the
+    nightly scripts/tests/ sweep, scripts/tests/test_scripts_coupling_fresh.py)
+    where staleness is exactly the fact those tools exist to catch.
+    """
+    if completed.returncode == 0:
+        return True, ""
+    message = (
+        "SCRIPTS_COUPLING is stale or the census failed — run "
+        "`python3 scripts/ci/scripts_coupling_census.py --write`.\n"
+        f"stdout: {completed.stdout}\nstderr: {completed.stderr}"
+    )
+    if is_flat:
+        return True, (
+            "WARNING: SCRIPTS_COUPLING stale on this base — classification "
+            "may under-match new scripts until regenerated (run "
+            "scripts_coupling_census.py --write)"
+        )
+    return False, message
+
+
 class ChangeMapTests(unittest.TestCase):
+    def test_guilt_e33_backend_vocabulary_runs_its_article_ratchet(self) -> None:
+        result = cm.classify(
+            ["apps/backend-rag/backend/services/visa_check/e33_claim_guard.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertEqual(result["reason"], "classified")
+        self.assertEqual(
+            result["suggested_jobs"], ["backend-tests", "frontend-tests", "e2e-tests"]
+        )
+
+    def test_innocence_sibling_e33_files_do_not_select_the_article_ratchet(self) -> None:
+        for path in ("e33_lifecycle.py", "e33_claim_guard_notes.py"):
+            result = cm.classify(
+                ["apps/backend-rag/backend/services/visa_check/" + path]
+            )
+            self.assertFalse(result["run_all"])
+            self.assertFalse(result["domains"]["mouth"])
+            self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
+    def test_garuda_contract_explicitly_selects_both_consumers(self) -> None:
+        for path in (
+            "products/garuda-voa/contracts/openapi.yaml",
+            "products/garuda-voa/contracts/README.md",
+            "products/garuda-voa/contracts/nested/future-schema.yaml",
+        ):
+            for files in ([path], [path, "docs/contract-notes.md"]):
+                with self.subTest(files=files):
+                    result = cm.classify(files)
+                    self.assertFalse(result["run_all"])
+                    self.assertEqual(result["reason"], "classified")
+                    self.assertEqual(result["unknown_paths"], [])
+                    self.assertTrue(result["domains"]["backend_python"])
+                    self.assertTrue(result["domains"]["mouth"])
+                    self.assertEqual(
+                        result["suggested_jobs"],
+                        ["backend-tests", "frontend-tests", "e2e-tests"],
+                    )
+
+    def test_garuda_contract_prefix_keeps_unknown_siblings_fail_open(self) -> None:
+        for path in (
+            "products/garuda-voa/contracts-extra/openapi.yaml",
+            "products/other-product/contracts/openapi.yaml",
+            "products/README.md",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertTrue(result["run_all"])
+                self.assertEqual(result["reason"], "unclassified_paths")
+                self.assertEqual(result["unknown_paths"], [path])
+                self.assertEqual(result["suggested_jobs"], list(cm.TEST_JOBS))
+
+    def test_unrelated_docs_do_not_select_garuda_consumers(self) -> None:
+        result = cm.classify(["docs/contract-notes.md"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertEqual(result["suggested_jobs"], [])
+
     def test_guilt_backend_change_runs_backend_and_e2e(self) -> None:
         result = cm.classify(["apps/backend-rag/backend/app/main.py"])
         self.assertFalse(result["run_all"])
@@ -669,12 +787,113 @@ class ChangeMapTests(unittest.TestCase):
             self.skipTest(
                 f"git unavailable in this sandbox: {completed.stderr.strip()[-200:]}"
             )
+        should_pass, message = _staleness_verdict(
+            completed, is_flat=_is_flat_extraction_copy(repo_root)
+        )
+        if message.startswith("WARNING"):
+            print(message)
+        self.assertTrue(should_pass, message)
+
+    def test_census_trees_cover_every_app_tests_yml_runs(self) -> None:
+        """``TREES`` is the census's INPUT corpus, and it was hand-written.
+
+        ``apps/admin-dashboard-local`` runs ``npx vitest run`` inside the
+        REQUIRED ``(mouth, true)`` leg of frontend-tests, yet was absent
+        from ``TREES`` for as long as the census existed — so any repo-root
+        ``scripts/`` file that tree imports or invokes was invisible to the
+        coupling census. That is the UNDER-match direction (superscar #3):
+        it SKIPS a suite that should have run, which is the expensive
+        mistake, not the cheap one.
+
+        Note the trap the fix had to avoid: ``apps/admin-dashboard`` is a
+        PREFIX of ``apps/admin-dashboard-local`` and covers none of it.
+        Coverage is asserted by tree ENTITY, never by substring.
+
+        This re-derives the requirement from ``tests.yml`` on every run
+        rather than trusting the one-off audit that found the gap — the
+        next app added to a job leg has to be declared, or this goes red.
+        """
+
+        rel = Path("scripts") / "ci" / "scripts_coupling_census.py"
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "scripts_coupling_census.py not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — TREES coverage is asserted where the checkout is present"
+            )
+        workflow = repo_root / ".github" / "workflows" / "tests.yml"
+        if not workflow.is_file():
+            self.skipTest("tests.yml absent from this checkout")
+        text = workflow.read_text(encoding="utf-8")
+
+        # TREES is read as a LITERAL from the source: importing the census
+        # would pull it into tests.yml's trusted-extraction closure, and it
+        # has no business there (it shells out to `git grep` and writes).
+        tree_node = next(
+            (
+                node.value
+                for node in ast.parse(
+                    (repo_root / rel).read_text(encoding="utf-8")
+                ).body
+                if isinstance(node, ast.Assign)
+                and any(
+                    isinstance(t, ast.Name) and t.id == "TREES" for t in node.targets
+                )
+            ),
+            None,
+        )
+        self.assertIsNotNone(tree_node, "TREES assignment not found in the census")
+        trees = ast.literal_eval(tree_node)
+
+        entered = set(
+            re.findall(r"(?:cd|working-directory:)\s+apps/([A-Za-z0-9._-]+)", text)
+        )
+        # `cd apps/${{ matrix.app }}` — resolve it, never skip it. A form
+        # this guard cannot resolve must FAIL, not pass quietly: a guard
+        # that fail-opens on the case it does not understand is the whole
+        # family #2 pattern in miniature.
+        expressions = []
+        for match in re.finditer(r"apps/\$\{\{([^}]*)\}\}", text):
+            expr = match.group(1).strip()
+            expressions.append(expr)
+            # Name the LINE, not just the expression: the next person to hit
+            # this is reading a red CI log, not this file, and "an expression
+            # I cannot resolve" without a location is a hunt.
+            line_no = text.count("\n", 0, match.start()) + 1
+            self.assertEqual(
+                expr,
+                "matrix.app",
+                f".github/workflows/tests.yml:{line_no} enters apps/ through an "
+                f"expression this guard cannot resolve: {match.group(0)!r}\n"
+                f"    {text.splitlines()[line_no - 1].strip()}\n"
+                "Teach this test the form (see the `- app:` matrix handling just "
+                "below) — do not let it through, or the tree it names goes "
+                "unchecked against the census TREES list.",
+            )
+        if expressions:
+            matrix_apps = set(
+                re.findall(r"^\s*-\s*app:\s*([A-Za-z0-9._-]+)\s*$", text, re.MULTILINE)
+            )
+            self.assertTrue(
+                matrix_apps,
+                "tests.yml uses `apps/${{ matrix.app }}` but declares no `- app:` "
+                "matrix values this guard can read",
+            )
+            entered |= matrix_apps
+
+        uncovered = sorted(
+            tree
+            for tree in (f"apps/{name}" for name in entered)
+            if not any(tree == t or tree.startswith(f"{t}/") for t in trees)
+        )
         self.assertEqual(
-            completed.returncode,
-            0,
-            "SCRIPTS_COUPLING is stale or the census failed — run "
-            "`python3 scripts/ci/scripts_coupling_census.py --write`.\n"
-            f"stdout: {completed.stdout}\nstderr: {completed.stderr}",
+            uncovered,
+            [],
+            "tests.yml executes code from these trees, but the coupling census "
+            f"does not read them: {uncovered}. Any repo-root scripts/ file they "
+            "import or invoke is invisible to SCRIPTS_COUPLING — the UNDER-match "
+            "direction. Add each to TREES in scripts_coupling_census.py and re-run "
+            "--write.",
         )
 
     def test_guilt_fleet_ops_combined_with_backend_change_still_runs_backend(
@@ -719,6 +938,66 @@ class ChangeMapTests(unittest.TestCase):
         self.assertFalse(result["run_all"])
         self.assertTrue(result["domains"]["backend_python"])
         self.assertIn("backend-tests", result["suggested_jobs"])
+
+    def test_innocence_secrets_baseline_and_prettierignore_skip_every_test_job(
+        self,
+    ) -> None:
+        # Measured 7-day window 2026-09-02..09 (379 merge_group runs of
+        # tests.yml): .secrets.baseline sat in unknown_paths on 6
+        # merge-queue batches (PRs #5825, #5833, #5841, #5846, #6031, #6046)
+        # and 10 pull_request runs; .prettierignore was unknown on 6 queue
+        # batches (all re-queues of PR #5769, 2026-09-05). Neither is read
+        # by any of the six tests.yml product suites.
+        for path in (".secrets.baseline", ".prettierignore"):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["reason"], "classified")
+                self.assertEqual(result["unknown_paths"], [])
+                self.assertEqual(result["suggested_jobs"], [])
+
+    def test_guilt_fleet_topology_edit_runs_the_backend_suite_that_reads_it(
+        self,
+    ) -> None:
+        # FLEET_TOPOLOGY.json is read by backend code (verified by grep,
+        # 2026-09-10): apps/backend-rag/backend/llm/deepseek_client.py,
+        # apps/backend-rag/backend/app/routers/article_composer.py, and
+        # apps/backend-rag/backend/tests/services/council/test_no_deepseek_regression.py.
+        # Before this entry it fell into unknown_paths and forced run_all
+        # (all six suites); backend_python is the narrower, correct guilt.
+        result = cm.classify(["FLEET_TOPOLOGY.json"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertEqual(
+            result["suggested_jobs"], cm._suggested_jobs({"backend_python"}, False)
+        )
+        self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
+    def test_guilt_secrets_baseline_combined_with_backend_change_still_selects_backend(
+        self,
+    ) -> None:
+        # security_sensitive contributes nothing to _suggested_jobs() on its
+        # own (2026-09-05); it must not suppress a co-changed backend_python
+        # path either.
+        result = cm.classify(
+            [".secrets.baseline", "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
+    def test_innocence_siblings_of_the_new_exact_rules_stay_fail_open(self) -> None:
+        # EXACT means exact: a file that merely resembles one of the three
+        # new EXACT_RULES entries above must not inherit its classification.
+        for path in (
+            ".secrets.baseline.bak",
+            "apps/x/FLEET_TOPOLOGY.json",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertTrue(result["run_all"])
+                self.assertEqual(result["unknown_paths"], [path])
 
     def test_innocence_guard_conformance_registry_skips_every_test_job(self) -> None:
         # infra/guard-conformance/ is more specific than the "infra/"
@@ -973,6 +1252,223 @@ class ChangeMapTests(unittest.TestCase):
         parsed = json.loads(completed.stdout)
         self.assertEqual(parsed["mode"], "enforcing")
         self.assertFalse(parsed["run_all"])
+
+
+class CensusCheckDiagnosticTests(unittest.TestCase):
+    """The census's --check diagnostic must name what actually moved.
+
+    It did not. ``_render_block`` packs many paths per line, and ``_check``
+    read one path per LINE, so every line collapsed into a single bogus
+    token with ``", "`` inside it — identical on both sides. On 2026-09-05 a
+    genuine one-path delta printed ~100 items "newly coupled" AND ~100 "no
+    longer coupled", and an earlier session read that as a total reshuffle.
+    A diagnostic that lies is worse than none: this is what the red on
+    `Classifier corpus trust (visibility only)` shows a human.
+    """
+
+    def _census_module(self):
+        rel = Path("scripts") / "ci" / "scripts_coupling_census.py"
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "scripts_coupling_census.py not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — the diagnostic is asserted where the checkout is present"
+            )
+        # Load by path, never by name: tests.yml's trusted extraction copies
+        # a FIXED six-file list flat, and the census is deliberately not in
+        # it (it shells out to `git grep` and writes files). Its own
+        # `import change_map` resolves from sys.modules, already imported
+        # at the top of this file.
+        spec = importlib.util.spec_from_file_location(
+            "scripts_coupling_census_under_test", repo_root / rel
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def _run_check(self, census, on_disk_block: str, embedded: set[str]):
+        """Point the census at a synthetic block and return (rc, stderr)."""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "change_map.py"
+            target.write_text(
+                "# header\n" + on_disk_block + "\n# trailer\n", encoding="utf-8"
+            )
+            original = census.CHANGE_MAP_PATH
+            census.CHANGE_MAP_PATH = target
+            err = io.StringIO()
+            try:
+                with contextlib.redirect_stderr(err), contextlib.redirect_stdout(
+                    io.StringIO()
+                ):
+                    rc = census._check(embedded)
+            finally:
+                census.CHANGE_MAP_PATH = original
+        return rc, err.getvalue()
+
+    def test_guilt_one_added_path_is_named_and_nothing_else_is(self) -> None:
+        census = self._census_module()
+        base = {"scripts/a.py", "scripts/b.py", "scripts/c.py"}
+        rc, stderr = self._run_check(
+            census, census._render_block(base), base | {"scripts/zz_new.py"}
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn("+ newly coupled (1): scripts/zz_new.py", stderr)
+        self.assertNotIn("- no longer coupled", stderr)
+        # The signature of the old line-per-path reading: a "path" carrying
+        # the separator of the packed line it was cut from.
+        self.assertNotIn('", "', stderr)
+
+    def test_guilt_one_removed_path_is_named_and_nothing_else_is(self) -> None:
+        census = self._census_module()
+        base = {"scripts/a.py", "scripts/b.py", "scripts/c.py"}
+        rc, stderr = self._run_check(
+            census, census._render_block(base | {"scripts/zz_gone.py"}), base
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn("- no longer coupled (1): scripts/zz_gone.py", stderr)
+        self.assertNotIn("+ newly coupled", stderr)
+        self.assertNotIn('", "', stderr)
+
+    def test_guilt_a_rewrapped_block_says_the_set_is_identical(self) -> None:
+        # Same paths, one per line instead of packed. The verdict stays
+        # STALE — the block must be byte-identical to what --write emits —
+        # but the old code answered that with an EMPTY diagnostic or with
+        # garbage, which reads like "everything changed".
+        census = self._census_module()
+        paths = {"scripts/a.py", "scripts/b.py", "scripts/c.py"}
+        rewrapped = "\n".join(
+            [
+                census.BEGIN_MARKER,
+                "SCRIPTS_COUPLING: frozenset[str] = frozenset(",
+                "    (",
+                *[f'        "{p}",' for p in sorted(paths)],
+                "    )",
+                ")",
+                census.END_MARKER,
+            ]
+        )
+        rc, stderr = self._run_check(census, rewrapped, paths)
+        self.assertEqual(rc, 1)
+        self.assertIn("the coupled SET is identical (3 paths)", stderr)
+        self.assertNotIn("+ newly coupled", stderr)
+        self.assertNotIn("- no longer coupled", stderr)
+
+    def test_innocence_an_up_to_date_block_exits_zero_and_says_nothing(self) -> None:
+        census = self._census_module()
+        paths = {"scripts/a.py", "scripts/b.py", "scripts/c.py"}
+        rc, stderr = self._run_check(census, census._render_block(paths), paths)
+        self.assertEqual(rc, 0)
+        self.assertEqual(stderr, "")
+
+    def test_innocence_block_paths_reads_a_packed_line_as_many_paths(self) -> None:
+        # The unit fact the three guilt cases rest on: one rendered line
+        # carries several paths, and every one of them must come back.
+        census = self._census_module()
+        paths = {f"scripts/pack_{i}.py" for i in range(12)}
+        block = census._render_block(paths)
+        self.assertEqual(census._block_paths(block), paths)
+
+
+class StalenessVerdictTests(unittest.TestCase):
+    """Guilt + innocence for _staleness_verdict, added 2026-09-05: a stale
+    SCRIPTS_COUPLING must WARN+PASS in the flat trusted-classifier layout and
+    still FAIL in the real repo layout. Pure-logic, hermetic — no subprocess,
+    no real census invocation; a synthetic CompletedProcess stands in for a
+    deliberately stale (or fresh) census run, matching this repo's
+    established mocked-subprocess pattern for GH-Actions-adjacent decision
+    functions (see scripts/ci/test_codeql_merge_group_carryover.py)."""
+
+    @staticmethod
+    def _completed(returncode: int) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args=[], returncode=returncode, stdout="", stderr="stale" if returncode else ""
+        )
+
+    def test_innocence_fresh_always_passes_silently_either_layout(self) -> None:
+        for is_flat in (True, False):
+            with self.subTest(is_flat=is_flat):
+                should_pass, message = _staleness_verdict(self._completed(0), is_flat=is_flat)
+                self.assertTrue(should_pass)
+                self.assertEqual(message, "")
+
+    def test_guilt_stale_in_the_repo_layout_fails(self) -> None:
+        should_pass, message = _staleness_verdict(self._completed(1), is_flat=False)
+        self.assertFalse(should_pass)
+        self.assertIn("SCRIPTS_COUPLING is stale or the census failed", message)
+
+    def test_innocence_stale_in_the_flat_layout_warns_and_passes(self) -> None:
+        should_pass, message = _staleness_verdict(self._completed(1), is_flat=True)
+        self.assertTrue(should_pass)
+        self.assertTrue(message.startswith("WARNING: SCRIPTS_COUPLING stale on this base"))
+
+
+class FlatExtractionDetectionTests(unittest.TestCase):
+    """Guilt + innocence for _is_flat_extraction_copy against the REAL
+    tests.yml extraction shape (not a hand-picked path), reusing
+    test_trusted_extraction_layout.py's own flat-copy helper — the same
+    corpus list, the same copy mechanics tests.yml's "Extract trusted
+    classifier (base ref)" step actually runs.
+
+    Both tests below construct the ``this_file`` value explicitly rather
+    than trusting the ambient ``__file__`` of whatever process is currently
+    executing this class. That is NOT paranoia: test_trusted_extraction_
+    layout.py's own innocence test flat-copies this entire file (this class
+    included) and re-runs it as a subprocess, so these tests routinely
+    execute AS the flat copy too — asserting against the real, ambient
+    execution context would make the innocence case fail exactly when
+    that sibling's own exercise sweeps this file up, and the guilt case
+    would need test_trusted_extraction_layout itself importable, which is
+    not guaranteed inside a flat copy that never includes it."""
+
+    def setUp(self) -> None:
+        rel = Path("scripts") / "ci" / "test_change_map.py"
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "checkout not reachable via cwd/GITHUB_WORKSPACE/__file__ — "
+                "see _locate_repo_root's docstring"
+            )
+        self.repo_root = repo_root
+
+    def test_innocence_the_canonical_nested_path_is_not_flat(self) -> None:
+        canonical = self.repo_root / "scripts" / "ci" / "test_change_map.py"
+        self.assertFalse(_is_flat_extraction_copy(self.repo_root, this_file=canonical))
+
+    def test_guilt_a_real_flat_copy_of_this_file_is_detected(self) -> None:
+        # importlib, not a static `import test_trusted_extraction_layout`
+        # statement: this repo's own scripts/tests/test_classifier_extraction_
+        # closure.py walks the AST of every trusted-corpus file for exactly
+        # that shape and fails the corpus closed if a sibling it names is not
+        # ALSO in tests.yml's/security.yml's extraction list (the #5070
+        # class of bug this PR's whole mandate traces back to) —
+        # test_trusted_extraction_layout.py is deliberately NOT in that list
+        # (it is not part of the trusted-classifier corpus itself), and this
+        # dependency is genuinely optional here (see the except clause
+        # below), not a hard requirement a static import would declare it as.
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        try:
+            tel = importlib.import_module("test_trusted_extraction_layout")
+        except ImportError:
+            self.skipTest(
+                "test_trusted_extraction_layout.py not importable from this "
+                "file's own directory — this test is itself executing from a "
+                "flat-extracted copy (a sibling's own flat-copy exercise "
+                "reached this file too), where that helper module is not "
+                "part of the corpus. The guilt case runs wherever the real "
+                "nested checkout executes this test instead."
+            )
+        files = tel._tests_yml_extraction_list()
+        with tempfile.TemporaryDirectory(prefix="staleness-gating-flat-") as tmp:
+            dest = Path(tmp)
+            tel._extract_flat(files, dest)
+            flat_copy = dest / "test_change_map.py"
+            self.assertTrue(
+                flat_copy.is_file(),
+                "tests.yml's extraction list no longer carries test_change_map.py — "
+                "update the corpus this guilt fixture depends on.",
+            )
+            self.assertTrue(_is_flat_extraction_copy(self.repo_root, this_file=flat_copy))
 
 
 if __name__ == "__main__":

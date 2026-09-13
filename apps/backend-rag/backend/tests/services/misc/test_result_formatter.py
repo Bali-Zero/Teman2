@@ -29,6 +29,11 @@ def test_format_search_results_normalizes_scores_and_preserves_metadata_copy() -
                 "pricing_priority": "high",
             },
             "score": 0.95,
+            # B1.1: the formatter stamps provenance on every entry. This caller
+            # declares no kind, so the entry carries the UNKNOWN default — and
+            # `score_raw` is ABSENT, not None, because this raw_results has no
+            # "scores" array, so nothing was consumed to record.
+            "score_kind": "unknown",
         }
     ]
     assert metadata == {"type": "visa"}
@@ -56,7 +61,15 @@ def test_format_search_results_handles_missing_optional_arrays_and_negative_dist
         "general",
     )
 
-    assert formatted == [{"id": None, "text": "Fallback result", "metadata": {}, "score": 1.0}]
+    assert formatted == [
+        {
+            "id": None,
+            "text": "Fallback result",
+            "metadata": {},
+            "score": 1.0,
+            "score_kind": "unknown",  # B1.1: undeclared caller -> UNKNOWN, no score_raw
+        }
+    ]
 
 
 def test_format_search_results_returns_empty_for_no_documents() -> None:

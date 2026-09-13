@@ -507,19 +507,22 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 49-path fact vocabulary (45 applicant + 4 derived; spec §2 ``FactPath``)
+# FactPath — the closed 50-path fact vocabulary (46 applicant + 4 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 45 applicant-collected
+    """Every fact path the engine may ever reference — 46 applicant-collected
     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
     and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
-    and by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
-    comment for the grounding).
+    by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
+    comment for the grounding), and by ``investment.investment_amount_usd``
+    (2026-09-13, PR-D4c-1 — contract-only: a later PR, D4c-2, asks an
+    investment applicant for a USD amount; this PR only declares the wire
+    key so that question can exist, and no rule reads it yet).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -570,6 +573,14 @@ class FactPath(str, Enum):
     INVESTMENT_INVESTMENT_CAPITAL_IDR = "investment.investment_capital_idr"
     INVESTMENT_PAID_UP_CAPITAL_IDR = "investment.paid_up_capital_idr"
     INVESTMENT_PROPOSED_ROLE = "investment.proposed_role"
+    # investment.investment_amount_usd — added 2026-09-13 (PR-D4c-1,
+    # contract-only). D4c-2 will ask an investment applicant for an amount
+    # in USD; the currency chooser that decides which amount question to
+    # show is a UI-only discriminator (same shape as `investment_vehicle`)
+    # and is never sent on the wire, so this is the only new wire key. See
+    # `models.py`'s `investment_amount_usd` field for the transitional
+    # default this PR ships alongside it.
+    INVESTMENT_INVESTMENT_AMOUNT_USD = "investment.investment_amount_usd"
     # family.*
     FAMILY_RELATION_TO_SPONSOR = "family.relation_to_sponsor"
     FAMILY_SPONSOR_NATIONALITIES = "family.sponsor_nationalities"
@@ -681,7 +692,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_ACTIVE_STAY_PERMIT = "derived.has_active_stay_permit"
 
 
-#: The 45 applicant-collected paths (everything except ``derived.*``).
+#: The 46 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )

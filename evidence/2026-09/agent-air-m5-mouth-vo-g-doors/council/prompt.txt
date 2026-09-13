@@ -1,0 +1,17 @@
+You are an adversarial reviewer. Review ONLY the diff below (Visa Oracle, Next.js app apps/mouth).
+
+WHAT IT CLAIMS TO DO
+When the deterministic visa engine returns NO_SUPPORTED_PATH, the outcome sheet must (a) state the cause in words in EN and ID, never a raw machine code, and (b) name a product ("door") that the SIGNED rule pack actually supports for the SAME stated facts. The proof is the committed fixture no-path-doors.replay.json, produced by replay-no-path-doors.py: it replays every non-supported interview walk against rulepack-prod-020.signed.json with exactly ONE declared field changed (intent.purposes, or person.birth_date for the age counterfactual) and records which products the pack then supports. no-path-doors.test.tsx holds every rendered door against that evidence.
+
+HUNT FOR, IN ORDER:
+1. A door rule in buildNoPathDoors that can fire on facts for which the replay does NOT support that product (OVER-match), or a walk where no door fires at all (UNDER-match). The rules are: tourism/C1 for any declared category != tourism; second_home/E33 only when a declared Second Home basis clears the pack threshold; retirement/E33F only when AGE_BELOW_55 is the SOLE reason code and the category is retirement.
+2. Copy that asserts something the rule pack does not say, or restates a legal figure/price not carried by the pack.
+3. A test that cannot fail (tautology), or that asserts on data it also produced.
+4. Any way the raw reason code can still reach a reader.
+5. i18n: an EN string without its ID counterpart, or a mistranslation that changes meaning.
+6. React/TS correctness bugs, and any behaviour change outside NO_SUPPORTED_PATH.
+
+Reply with concrete findings (file + line + why), then EXACTLY one final line:
+VERDICT: OK
+or
+VERDICT: DEFECT

@@ -1,0 +1,223 @@
+task_id: backend-rag-b2-2-harness
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: d3b4a12ce9ab2b90e4480d7dd7ce8fb139b380ec # pragma: allowlist secret
+mandate: B2
+colour: BLUE
+pr: B2.2-harness (live retrieval sample on the B1.5 vectors + the I15 residual-cosine batch record)
+envelope: 20260912T091907Z-435d # generation authority (the B1-ack that triggered wave 2)
+checkpoint_refs:
+  - 20260913T060919Z-5ef7 # CP29 OPENED-SUCCESSOR-2
+  - 20260913T061154Z-0f6f # CP30 council gate red on the cured bytes
+  - 20260913T061329Z-2961 # CP31 no threshold consumer routes through QueryRouter
+  - 20260913T061649Z-3809 # CP32 spec written
+rulings:
+  - "I48 (20260913T051715Z-70d8) F1-F6 cures"
+  - "I49 (20260913T053422Z-751e) exactly 5 provider attempts"
+  - "I51/I52 (20260913T060641Z-28f0) batch executed once by the imperator; INCOMPATIBLE recorded verbatim"
+  - "I53 (20260913T061310Z-47af) spec first, one build, Codex r3; tp1-qwen3.8-max for Kimi; deadline renewed"
+  - "I54 (20260913T061514Z-5082) spec S1-S6 adopted, replaces I48 F4; report rule"
+  - "I55 (20260913T065921Z-04c5) spec amendment: collection resolution, error shape, filter, BM25 vocab_size"
+deadline: "2026-09-13T18:00:00Z"
+objective: >-
+  B2 §4 PR B2.2, the LIVE half of criterion 5. B2.2's threshold PR (#6383)
+  kept tax 0.10 / visa 0.12 on the replay record. README queue item 7 case (i)
+  holds (authorization recorded, B1.5 artifact verified), so a live
+  retrieval sample through a no-send / no-generation harness is MANDATORY.
+  This PR ships the harness, its no-network proof, the sample report beside
+  the frozen mandatory manifest, and the record of the I15 batch that
+  re-measured the V1/V2 residual cosines (V1 INCOMPATIBLE, not broken).
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
+  tokens: 2500000
+harness_contract:
+  why: >-
+    Written because the round-2 review showed the I48 cures of F3/F4/F6 were
+    built on an under-specified surface (Builder Contract §1: a fix-of-a-fix
+    stops, write the spec). F4 named QueryRouter.route_query; no production
+    consumer of the tax/visa thresholds routes through it.
+  HC1_consumer: >-
+    The WA bot package builder — the B2 §1 organ — reads the thresholds at
+    wa_package_builder.py:629 (build_abstain_policy). Its retrieval is
+    deterministic and LLM-free: QueryPlanner().plan(query) (:520;
+    query_planner.py:7), every planned collection deduped in priority order
+    (:527-530), one hybrid_search(collection_override=collection,
+    fallback_to_plain=False) per collection (:262-268). The harness replicates
+    THAT, records the planned collection list per case, and records an empty
+    plan as `unbuildable:no_collections` (production raises
+    PackageUnbuildable) — neither a retrieval failure nor a scored case. The
+    orchestrator label site (orchestrator_response.py:93) is NOT reproducible:
+    its collection is chosen by the LLM tool call or federated over
+    AVAILABLE_COLLECTIONS and passed as collection_override (tools.py:159-209),
+    which bypasses every router — a limitation written in the report.
+  HC2_retrieval: >-
+    Per planned collection, the non-cached Qdrant request of
+    SearchService.hybrid_search (search_service.py:1132-1207) without
+    constructing SearchService: vector_db = CollectionManager.get_collection;
+    the filter exactly as _prepare_search_context builds it for the WA
+    builder's user_level with tier_filter=None and apply_filters=None; dense =
+    the artifact vector; sparse = BM25Vectorizer(settings.bm25_vocab_size,
+    settings.bm25_k1, settings.bm25_b).generate_query_sparse_vector(query)
+    — BM25 PRECONDITION (I54), verified before the build: the vectorizer is
+    fitted on NOTHING and reads no file; token ids are
+    md5(token) mod vocab_size (bm25_vectorizer.py:4, :119, :202-218), so it is
+    local and deterministic offline, with no artifact sha256 to pin; its only
+    inputs are vocab_size/k1/b from Settings (config.py:383-391), and the
+    report records the values used plus the PRESENCE count of BM25_* in the
+    production environment (never a value), because a vocab_size differing
+    from the one the index was built with changes every sparse index;
+    WA builder constants recorded: user_level _SEARCH_USER_LEVEL = 1
+    (wa_package_builder.py:91), limit _CHUNKS_PER_COLLECTION_LIMIT = 3 (:64);
+    vector_db.hybrid_search(query_embedding, query_sparse, filter,
+    limit=_CHUNKS_PER_COLLECTION_LIMIT, prefetch_limit=limit*3); an empty
+    sparse vector or a vector_db without hybrid_search takes the dense branch
+    of :1186-1195 exactly; score_kind declared by the same presence rule
+    ("search_type" in raw_results); formatted by the unchanged
+    format_search_results(..., primary_collection=None, query=query,
+    score_kind=declared_kind); chunks shaped as :278-296 before scoring.
+  HC3_embedding_fidelity: >-
+    Production embeds get_keyword_translator().translate(query)
+    (_prepare_search_context); B1.5 embedded the raw query
+    (build_query_vectors.py:409). The translator is local. Per case the plan
+    records translation_changes_query; a case where it is true is
+    `embedding_divergent`: retrieved and reported in its own column, EXCLUDED
+    from any threshold inference, and its translated vector is never
+    generated.
+  HC4_not_traversed: >-
+    No SearchService instance, no Redis cache get or set, no QueryExpander, no
+    reranker, no fallback_to_plain, no health monitor write, no SurfaceRouter
+    (absent from the WA path), no embedding, no generation, no send. Qdrant
+    same-host read retries (qdrant_db.py _retry_with_backoff) stay allowed.
+  HC5_import_boundary: >-
+    Module scope imports only the standard library and modules proven not to
+    construct Settings. Settings, CollectionManager, the scorer and every
+    backend service are imported lazily AFTER the plan-file check. A test
+    imports the harness in a fresh subprocess and asserts
+    backend.app.core.config is absent from sys.modules until the plan check
+    has passed, and that a bad plan file exits non-zero with it still absent.
+  HC6_pins_plan_stop: >-
+    F1 unchanged: no flag overrides the artifact pin; no --collection flag.
+    F3 unchanged: --execute consumes the inspected plan FILE by sha256 and
+    requires plan == recomputation (the plan now carries per-case planned
+    collections and translation_changes_query). F2: an absent collection, a
+    collection whose points_count is 0, any exception from get_collection /
+    hybrid_search / search, or zero hits across ALL planned collections of a
+    case is a HARD STOP — exit non-zero, nothing scored, nothing written.
+    Zero hits on one collection of several is recorded per collection
+    (production returns [] there).
+  HC7_guards: >-
+    One FRESH subprocess installs guards BEFORE importing the harness on:
+    EmbeddingsGenerator.generate_query_embedding and
+    create_embeddings_generator; CodexExecClient.generate; the WA sender call
+    wa_outbox_worker.py uses; CacheService.set (backend.core.cache); the
+    Ze-Rank / CrossEncoder rerank calls; QueryExpander. The guilt cases run in
+    that SAME subprocess: an attempted call to each turns the run red and no
+    report file exists. SemanticCache.cache_result: zero-caller receipt, the
+    grep command and its empty output pasted in pack.yml.
+  HC8_error_record: >-
+    A retrieval failure records a fixed message, the exception class name and
+    an int status only when the exception carries an int status_code in
+    100..599 — never str(exc). A test raises an exception whose message holds a
+    secret-shaped string and asserts it appears in neither stderr nor any file.
+  HC9_output: >-
+    Opaque references only (collection-scoped ids, score hashes); no chunk
+    text. support=None is the UPPER BOUND under the fail-closed-only rule —
+    "a false acceptance seen is real; a pass does not prove support" — in the
+    docstring, the report header and pack.yml. Canary baseline absent on Pro:
+    overlap UNVERIFIABLE, never 0.
+  HC10_report_rule: >-
+    I54. Per case: the label decision at the WA consumer's score kind (both
+    gates) beside the frozen manifest's expected label; where the manifest's
+    expected label was attested at a different score kind, both are shown
+    with NO verdict and NO relabel; every case whose real score lands in
+    [0.10, 0.15) for tax or [0.12, 0.15) for visa is NAMED — that band is the
+    number B2.2 exists to find. The orchestrator label site is out of the
+    sample by construction (HC1), and the report says why.
+harness_contract_amendment_I55:
+  why: >-
+    Ruling I55 (20260913T065921Z-04c5), the one allowed correction of the
+    spec, from an independent read against origin/main; each claim below was
+    re-read on disk by the Dux before this amendment was written. Where an
+    item conflicts with HC1-HC10, this block wins.
+  A55_1_collection_resolution: >-
+    QueryPlanner._DOMAIN_COLLECTIONS (query_planner.py:254-262) plans
+    'nuzantara_general_hybrid' FIRST for TAX, PROPERTY and PRICING; the name
+    has zero occurrences in collection_manager.py and collection_registry.py.
+    Production (search_service.py:526-532) gets None from get_collection,
+    logs an error and SILENTLY SUBSTITUTES legal_unified. The harness resolves
+    every planned collection through the REAL path production takes for a
+    collection_override (the legacy route's canonicalize_collection_name,
+    then get_collection, then the :526-532 substitution — called, or
+    replicated verbatim with a test pinning parity) and records per case per
+    collection: collection_planned, collection_resolved, substituted.
+    Replaces HC6's "absent collection = HARD STOP". HARD STOP is reserved for:
+    a Qdrant response carrying an 'error' key, QdrantConnectionError, a
+    RESOLVED collection absent in Qdrant, any other exception, or zero hits
+    across ALL resolved collections of a case. The substitution itself is a
+    FINDING for the pack (production silently re-routes the first
+    TAX/PROPERTY/PRICING collection to legal_unified) and a named debt for
+    B2.3/B3, not fixed here.
+  A55_2_error_shape: >-
+    qdrant_db.py hybrid_search does not raise on HTTP errors: it may fall back
+    to dense on some 400s (:1353-1362) or RETURN a dict with 'error' and empty
+    lists (:1363-1375); only non-HTTP failures raise QdrantConnectionError
+    (:1376-1378). A returned 'error' key is a HARD STOP, never zero evidence;
+    a dense fallback taken inside hybrid_search is recorded per case as a
+    score_kind divergence and EXCLUDED from inference. The error record stays
+    fixed message + exception class name + int status only when present
+    (HC8).
+  A55_3_filter: >-
+    The per-collection filter is built through the REAL function path, never
+    by hand: _requires_current_law_guard (search_service.py:247-254) is true
+    only for canonicalized legal_unified / tax_genius, and a hand-built filter
+    would drop that guard silently. A test pins that a legal_unified case
+    carries the current-law guard.
+  A55_4_bm25: >-
+    On the QUERY side only vocab_size determines the sparse vector
+    (bm25_vectorizer.py:288-319: _hash_token + log(1+count); k1/b are
+    document-side). The report records vocab_size as the sparse determinant
+    and the PRESENCE count of BM25_VOCAB_SIZE in the production environment.
+  A55_5_paths: >-
+    Consumer apps/backend-rag/backend/services/rag/agentic/wa_package_builder.py;
+    service apps/backend-rag/backend/services/search/search_service.py; chunk
+    shaping wa_package_builder.py:287-291.
+  measured_before_amendment: >-
+    get_keyword_translator().translate changes 15 of the 23 B1.5 queries
+    (06:5xZ, local, network blocked): 8 inferable cases, fewer than 12. A
+    follow-up I15 batch re-embedding the 15 translated queries needs 15
+    provider attempts, above the 12 that remain of 40 — it needs a NEW
+    authorization, and is named as a debt with that count.
+acceptance:
+  - id: A1
+    text: >-
+      The harness meets HC1-HC9, each with a test on this head; the suites
+      backend/tests/services/rag, backend/tests/unit/services/rag and
+      backend/tests/unit/services/integrations are green with counts, ruff
+      clean.
+  - id: A2
+    text: >-
+      Codex r3 (codex-gpt-5.6-sol) and tp1-qwen3.8-max each post a VERDICT with
+      ok:true bound to the shipped sha256s, recorded through council_journal.
+      A Codex r3 BLOCK on the same surface suspends the harness (I53).
+  - id: A3
+    text: >-
+      The live sample ran once on the 23 B1.5 vectors, read-only, plan file
+      inspected and sha-pinned, and its per-case report sits beside the frozen
+      mandatory manifest with no relabel; any §6 disagreement suspends.
+  - id: A4
+    text: >-
+      The I15 batch record b2-2-precall.json ships byte-identical (sha256
+      00a6691237d6df9c0a228678ee1753ab04d5c3207c3dc4ba75100e06dd9d89fd) with
+      the EXECUTED tool bytes (measure_residual_cosines.py ecf47c04...); V1
+      INCOMPATIBLE recorded verbatim; the V1 score_raw re-pin and the 0.32
+      boundary second anchor (0.370, margin 0.050) are NAMED DEBTS (I52).
+seats:
+  dux: "Opus 5 xhigh (successor-2 session 7dc466d9, Pro)"
+  implementer: "Sonnet 5"
+  adversarial_reviewer: "codex-gpt-5.6-sol (CODEX_HOME=~/.codex-acct2, read-only sandbox)"
+  second_quorum_seat: "tp1-qwen3.8-max (I53 R-c; kimi-code/k3 unavailable: 403 monthly quota, exit 1 in 5 s)"
+  second_reader: "Gemini 3.1 Pro (agy) — contracts/data, not counted toward quorum"
+  gate: "a FRESH Opus 5 session outside the contribution chain"
+brief_ref: evidence/brief.yml

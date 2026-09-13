@@ -10,6 +10,8 @@ import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 interface NewsPageClientProps {
   articles: ArticleListItem[];
+  /** Seeded from /news?q= on the server, so the filter runs on first paint. */
+  initialQuery?: string;
 }
 
 const SECTIONS = [
@@ -98,8 +100,9 @@ const CATEGORY_ACCENT: Record<string, string> = {
 
 export default function NewsPageClient({
   articles: serverArticles,
+  initialQuery,
 }: NewsPageClientProps) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery ?? "");
 
   const articles = serverArticles || [];
 

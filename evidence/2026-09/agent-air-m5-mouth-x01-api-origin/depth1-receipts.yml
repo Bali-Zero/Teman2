@@ -1,0 +1,59 @@
+rework_base: ac8b2ce25acf
+depth: 1
+builder: OpenAI GPT-6 (exact backend variant not exposed)
+source_sha256:
+  apps/mouth/DOCUMENTATION.md: 847ba2339be408381d4191c18fdc513396e20d5a71e5962a8c9a456e3625a9d7 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  apps/mouth/src/app/api-client-same-origin.test.ts: 09b7b94cb276ac8a61efe39dd3ed10b5ba4d5893f53a79b50607ceb12c2dabc1 # pragma: allowlist secret - verified artifact SHA-256, not credential
+review:
+  seat: kimi-code/k3
+  started_at: "2026-09-05T13:25:12.316120+00:00"
+  prompt_sha256: f7e76ffcc610ea684a05db6aee1d3ece41eb860605fe094247d0d354234d3e09 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  timeout_seconds: 240
+  environment_keys:
+    - HOME
+    - PATH
+    - LANG
+    - LC_ALL
+    - TERM
+    - TMPDIR
+    - USER
+    - SHELL
+  command: /Users/balizero/.kimi-code/bin/kimi -m kimi-code/k3 -p <supplied prompt>
+  exit: 0
+  finished_at: "2026-09-05T13:26:25.469971+00:00"
+  stdout_sha256: a7d296f14d9a0c0ed15bf40cbb59d124df571cb6b0a12f900f2ed4889c3b5933 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  committed_answer_sha256: 4f32749f74a7745ca14b6fe52013f0e784935e630d1d1f50c436bd6d339f4aac # pragma: allowlist secret - verified artifact SHA-256, not credential
+probes:
+  - name: browser-guilt
+    command: npx --offline vitest run src/app/api-client-same-origin.test.ts
+    cwd: apps/mouth
+    started_at: "2026-09-05T13:25:36.593232+00:00"
+    finished_at: "2026-09-05T13:25:40.847551+00:00"
+    exit: 1
+    log_sha256: 0ec597cbb0f250a761c7db0905d9b5e69b7f49c8c465e5bae38c3fbc4a6eb23f # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - name: server-cleanup-innocence
+    command: npx --offline vitest run src/app/api-client-same-origin.test.ts
+    cwd: apps/mouth
+    started_at: "2026-09-05T13:25:40.848767+00:00"
+    finished_at: "2026-09-05T13:25:45.825100+00:00"
+    exit: 0
+    log_sha256: 99e4226fd6d460e30b8672bb01ec2681c7bed3c24a84da8d465e4c396d7f8b0a # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - name: reverse-lock-guilt
+    command: npx --offline vitest run src/app/api-client-same-origin.test.ts
+    cwd: apps/mouth
+    started_at: "2026-09-05T13:25:45.825576+00:00"
+    finished_at: "2026-09-05T13:25:50.368165+00:00"
+    exit: 1
+    log_sha256: ac2f5fa0d4b355b780a63e5d2aaf609a0aaa5bcb0d9853ff496d5b307d3a2eed # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - name: restored-candidate
+    command: npx --offline vitest run src/app/api-client-same-origin.test.ts
+    cwd: apps/mouth
+    started_at: "2026-09-05T13:25:50.369323+00:00"
+    finished_at: "2026-09-05T13:25:55.015048+00:00"
+    exit: 0
+    log_sha256: da1d70ea710110e8a52582aa849d99cda63d4d73b72aa4f6ff3bde45a287d94b # pragma: allowlist secret - verified artifact SHA-256, not credential
+probe_driver_sha256: d0d72c4fd6aa0b5e9125249453a38a8656fa6a1d874e943d2b39f033f8a7045f # pragma: allowlist secret - verified artifact SHA-256, not credential
+notes:
+  - Server cleanup was simulated in memory by removing env access from read source; no handler file changed.
+  - Probe driver is local .agent/x01-depth1/probes.py; actual output hashes bind its four runs.
+  - Committed reviewer answer trims trailing blank lines only; stdout_sha256 binds the unmodified local stdout.

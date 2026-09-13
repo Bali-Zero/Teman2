@@ -352,7 +352,7 @@ export default function ServicesPage() {
               {
                 n: "01",
                 title: "Scope it",
-                body: "WhatsApp or Visa Check for a first read — free, under 15 min.",
+                body: "WhatsApp or Visa Check for a first read — free.",
                 accent: "#c8102e",
               },
               {

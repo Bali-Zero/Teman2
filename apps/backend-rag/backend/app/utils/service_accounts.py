@@ -18,6 +18,24 @@ caller allowed here", and for those a service account genuinely is a
 non-client. See the module-level note in ``services/whatsapp_identity.py`` for
 one such case that is correct as written.
 
+External partners are the third class. A partner is a person — reached through
+the partner portal (``/portal/partner``, see ``routers/auth.py::_redirect_for_role``
+and ``routers/partners.py::_is_partner_role``) — who is not on the team. The
+platform copies ``team_members.role`` verbatim into the JWT, so a ``partner``
+token reaches every gate a colleague's does. :func:`is_human_team_member`
+refuses it; :data:`NON_HUMAN_ROLES` and its SQL renderings deliberately do
+NOT list it, because whether a partner belongs in a roster or a dropdown is a
+product decision, not an authentication one.
+
+:func:`is_human_team_member` is an ALLOW-list over :data:`TEAM_ROLES`, not a
+denylist. A denylist answered "is this one of the roles we have already
+thought of as foreign", so an unknown role, an empty one, or the ``user``
+default that ``deps/auth.py`` substitutes for a token without a role all
+walked through as colleagues. The allow-list is the census of what
+production actually issues (see :data:`TEAM_ROLES`); adding a job title to
+``team_members`` means adding it here, and the roster tripwire in the tests
+catches a roster entry this list does not know.
+
 This module imports nothing itself, and the package it lives in
 (``backend.app.utils``) is kept free of import-time settings access, so
 importing this module never requires production secrets to be configured.
@@ -36,18 +54,76 @@ SERVICE_ROLES = frozenset({"monitoring"})
 #: Everything that must be excluded from people-shaped artifacts.
 NON_HUMAN_ROLES = CLIENT_ROLES | SERVICE_ROLES
 
+#: Roles held by people who are not on the team: external partners, who log in
+#: through the same door as staff and land on ``/portal/partner``.
+EXTERNAL_ROLES = frozenset({"partner"})
+
+#: Everything an "is this caller a colleague" gate must refuse.
+NON_TEAM_ROLES = NON_HUMAN_ROLES | EXTERNAL_ROLES
+
 
 def normalize_role(role: str | None) -> str:
     """Return a role in the canonical form the comparisons below expect."""
     return (role or "").strip().lower()
 
 
+#: Every role a colleague can hold, normalised. The census of 2026-09-06 over
+#: the live ``team_members`` rows (job titles, free text; ``SELECT lower(role),
+#: active, count(*) ... GROUP BY 1, 2``, active and inactive rows alike — an
+#: inactive colleague can be reactivated and must not find the door shut) run
+#: through the repo's read-only Postgres wrapper, the ``nuzantara_readonly``
+#: one-true-way documented in ``docs/runbooks/prod-db-writes.md``. That wrapper
+#: is named by description and not by file path on purpose: the CI coupling
+#: census counts a literal repo-root script path anywhere under ``apps/`` as a
+#: runtime coupling, comments included, and nothing in this module imports or
+#: invokes one — recording it would make every future change to a read-only
+#: query wrapper buy the six heavy backend suites. Plus the repo roster
+#: (``backend/data/team_members.json``)
+#: plus the two legacy tokens fixtures and older code paths still use. A
+#: superset of ``services/crm/partners/service.py::INTERNAL_ROLES_ALWAYS_ALLOWED``
+#: (CATA-6), which the tests pin so the two cannot drift apart.
+#:
+#: Deliberately absent, because none of them is a person: the ``user`` default
+#: ``deps/auth.py`` substitutes for a token without a role, and the pseudo-users
+#: ``middleware/hybrid_auth.py`` builds for a shared key (``internal``, the
+#: X-Internal-Key holder) or for nobody at all (``public``). The internal-key
+#: callers reach ``/api/crm/clients/*`` routes that never asked this predicate.
+TEAM_ROLES = frozenset(
+    normalize_role(role)
+    for role in (
+        # legacy / fixture conventions
+        "admin",
+        "team",
+        # production team_members.role values (job titles), census 2026-09-06
+        "Founder",
+        "CEO",
+        "Board Member",
+        "Team Leader",
+        "Supervisor",
+        "Tax Lead",
+        "Tax Manager",
+        "Tax Care",
+        "Accounting",
+        "Marketing & Accounting",
+        "Marketing Advisory",
+        "Executive Consultant",
+        "Specialist Advisor",
+        "Junior Consultant",
+        "Consultant",
+        "Reception",
+        "member",
+    )
+)
+
+
 def is_human_team_member(role: str | None) -> bool:
     """True when the role belongs to a person on the team.
 
-    Neither clients nor service accounts qualify.
+    An allow-list: only a role in :data:`TEAM_ROLES` qualifies. Clients,
+    service accounts, external partners, unknown roles, an empty role and the
+    ``user`` default all fail closed.
     """
-    return normalize_role(role) not in NON_HUMAN_ROLES
+    return normalize_role(role) in TEAM_ROLES
 
 
 def non_human_roles_sql_array() -> list[str]:

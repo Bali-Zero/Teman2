@@ -98,6 +98,17 @@ export const CATEGORY_KEYS = [
   "remote",
   "family",
   "retirement",
+  // Second Home is its OWN tile, not a retirement sub-branch (owner ruling
+  // 3, 2026-09-06). `intent.purposes` must carry `SECOND_HOME` ALONE:
+  // every E33 support rule is gated on `intent.purposes ∩ SECOND_HOME`
+  // while `hit_policy.eligibility = COVER_ALL_DECLARED_PURPOSES` drops the
+  // product the moment a second purpose rides along — so routing second
+  // home through `retirement` (which emits `RETIREMENT`) could never
+  // recommend it, no matter how the `secondhome.*` facts were answered.
+  // Measured 2026-09-06: `purposes = ["SECOND_HOME"]` + a USD 2M property
+  // returns `SUPPORTED_CANDIDATES [E33]` on the signed seq-19 pack, while
+  // the same evidence under `RETIREMENT` returns no path.
+  "second_home",
   "study",
   "diaspora",
   "other",
@@ -107,6 +118,59 @@ export type CategoryKey = (typeof CATEGORY_KEYS)[number];
 /** Every category has a finite interview branch. This set describes UI
  * coverage only; it never means a visa path is legally supported. */
 export const BEHAVIORAL_CATEGORIES = new Set<CategoryKey>(CATEGORY_KEYS);
+
+/**
+ * 29 real ITAS/ITAP product codes — every one `category: "LIMITED_STAY"` in
+ * the signed pack, i.e. an actual stay permit a person can currently hold,
+ * not merely a visa product applied for. Verbatim from
+ * `rulepack-prod-007.source.json` (`products[].product_code`, filtered to
+ * `E`-prefix) and re-verified against the CURRENT signed pack
+ * (`rulepack-prod-020.source.json`, 2026-09-13): all 9
+ * `family.sponsor_status_code` rules (`el.e31{b,e,h,j}-*`) read this exact
+ * 29-value set via `op:"in"`, byte-identical to this list — see
+ * `fact-mapper.test.ts`'s "sponsor status code catalogue tracks the signed
+ * pack" for the test that pins the two together.
+ *
+ * Single source of truth for THREE consumers: `stay_permit_code`'s options
+ * (the applicant's own permit), `family_sponsor_status_code`'s options
+ * (D4a, owner ruling SHWEB-20260911, added 2026-09-13 — the sponsor's
+ * permit) and that same question's closed-catalogue trust decision in
+ * `mapFamilySponsorStatus` (fact-mapper.ts). "I'm not sure" is the existing
+ * universal `notSure` affordance on both questions, not a listed option —
+ * `enumFact()` already resolves the literal string "unsure" to
+ * UNKNOWN(UNVERIFIED), never a guessed KNOWN.
+ */
+export const STAY_PERMIT_CODES = [
+  "E23",
+  "E23U",
+  "E23V",
+  "E28A",
+  "E28B",
+  "E28C",
+  "E28D",
+  "E28F",
+  "E30",
+  "E30A",
+  "E30B",
+  "E30E",
+  "E30F",
+  "E31A",
+  "E31B",
+  "E31C",
+  "E31D",
+  "E31E",
+  "E31F",
+  "E31G",
+  "E31H",
+  "E31J",
+  "E33",
+  "E33A",
+  "E33B",
+  "E33C",
+  "E33E",
+  "E33F",
+  "E33G",
+] as const;
 
 export const QUESTIONS: Record<string, OracleQuestion> = {
   in_indonesia: {
@@ -205,13 +269,8 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.holds_stay_permit" },
     notSure: { mode: "human-review" },
   },
-  // 29 real product codes, verbatim from `rulepack-prod-007.source.json`
-  // (`products[].product_code` + `products[].names`), not invented — every
-  // one is `category: "LIMITED_STAY"`, i.e. an actual ITAS a person can
-  // currently hold, not merely a visa product applied for. "I'm not sure"
-  // is the existing universal `notSure` affordance below, not a listed
-  // option — `enumFact()` already resolves the literal string "unsure" to
-  // UNKNOWN(UNVERIFIED), never a guessed KNOWN (fact-mapper.ts).
+  // Options derived from `STAY_PERMIT_CODES` above — see that constant's
+  // doc comment for provenance and the sibling consumers.
   stay_permit_code: {
     id: "stay_permit_code",
     i18nKey: "q.stay_permit_code",
@@ -222,37 +281,10 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       factPaths: ["immigration.current_status_code"],
     },
     sensitive: true,
-    options: [
-      { key: "E23", labelI18nKey: "q.stay_permit_code.opt.E23" },
-      { key: "E23U", labelI18nKey: "q.stay_permit_code.opt.E23U" },
-      { key: "E23V", labelI18nKey: "q.stay_permit_code.opt.E23V" },
-      { key: "E28A", labelI18nKey: "q.stay_permit_code.opt.E28A" },
-      { key: "E28B", labelI18nKey: "q.stay_permit_code.opt.E28B" },
-      { key: "E28C", labelI18nKey: "q.stay_permit_code.opt.E28C" },
-      { key: "E28D", labelI18nKey: "q.stay_permit_code.opt.E28D" },
-      { key: "E28F", labelI18nKey: "q.stay_permit_code.opt.E28F" },
-      { key: "E30", labelI18nKey: "q.stay_permit_code.opt.E30" },
-      { key: "E30A", labelI18nKey: "q.stay_permit_code.opt.E30A" },
-      { key: "E30B", labelI18nKey: "q.stay_permit_code.opt.E30B" },
-      { key: "E30E", labelI18nKey: "q.stay_permit_code.opt.E30E" },
-      { key: "E30F", labelI18nKey: "q.stay_permit_code.opt.E30F" },
-      { key: "E31A", labelI18nKey: "q.stay_permit_code.opt.E31A" },
-      { key: "E31B", labelI18nKey: "q.stay_permit_code.opt.E31B" },
-      { key: "E31C", labelI18nKey: "q.stay_permit_code.opt.E31C" },
-      { key: "E31D", labelI18nKey: "q.stay_permit_code.opt.E31D" },
-      { key: "E31E", labelI18nKey: "q.stay_permit_code.opt.E31E" },
-      { key: "E31F", labelI18nKey: "q.stay_permit_code.opt.E31F" },
-      { key: "E31G", labelI18nKey: "q.stay_permit_code.opt.E31G" },
-      { key: "E31H", labelI18nKey: "q.stay_permit_code.opt.E31H" },
-      { key: "E31J", labelI18nKey: "q.stay_permit_code.opt.E31J" },
-      { key: "E33", labelI18nKey: "q.stay_permit_code.opt.E33" },
-      { key: "E33A", labelI18nKey: "q.stay_permit_code.opt.E33A" },
-      { key: "E33B", labelI18nKey: "q.stay_permit_code.opt.E33B" },
-      { key: "E33C", labelI18nKey: "q.stay_permit_code.opt.E33C" },
-      { key: "E33E", labelI18nKey: "q.stay_permit_code.opt.E33E" },
-      { key: "E33F", labelI18nKey: "q.stay_permit_code.opt.E33F" },
-      { key: "E33G", labelI18nKey: "q.stay_permit_code.opt.E33G" },
-    ],
+    options: STAY_PERMIT_CODES.map((key) => ({
+      key,
+      labelI18nKey: `q.stay_permit_code.opt.${key}`,
+    })),
     whyWeAsk: { i18nKey: "why.stay_permit_code" },
     notSure: { mode: "human-review" },
   },
@@ -382,10 +414,14 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     i18nKey: "q.category",
     kind: "tiles",
     group: "intent",
+    // `unknownValues: ["diaspora"]` removed 2026-09-06 (owner ruling 4):
+    // diaspora now maps to the `FAMILY` purpose like any other tile — see
+    // `CATEGORY_TO_PURPOSE` in fact-mapper.ts. Every tile now yields a
+    // KNOWN `intent.purposes`, so no option on this question serializes as
+    // UNKNOWN any more.
     decisionMapping: {
       kind: "FACT",
       factPaths: ["intent.purposes"],
-      unknownValues: ["diaspora"],
     },
     sensitive: false,
     whyWeAsk: { i18nKey: "why.category" },
@@ -427,12 +463,14 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
    * family/work/study "is the sponsor confirmed?" booleans elsewhere in
    * this file, and it is not the sponsor's identity either — just the
    * category. Maps to the single optional `sponsor.type`
-   * FactPath (spec staged-rollout field). No rule in the currently
-   * active pack reads it yet; the question exists to collect the fact
-   * ahead of the rules that will (design doc §4, category-conditional
-   * questions). Asked only where the category makes the sponsor
-   * discriminating — see `FIXED_CATEGORY_QUESTIONS`/`getCategoryQuestionIds`
-   * in flow.ts for exactly which categories include it. */
+   * FactPath (spec staged-rollout field). Corrected PR-D4d: the prior
+   * claim here ("no rule in the currently active pack reads it yet") was
+   * false — the ACTIVE pack (rulepack-prod-020.signed.json) already carries
+   * five conditions on `sponsor.type` (`el.e30e/e30f-student-support`,
+   * `hf.e33a/b/c`), and a draft pack (seq-21, unsigned) adds seven more.
+   * Asked only where the category makes the sponsor discriminating — see
+   * `FIXED_CATEGORY_QUESTIONS`/`getCategoryQuestionIds` in flow.ts for
+   * exactly which categories include it. */
   sponsor_category: {
     id: "sponsor_category",
     i18nKey: "q.sponsor_category",
@@ -540,23 +578,21 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.work_sponsor_confirmed" },
     notSure: { mode: "human-review" },
   },
-  work_role: {
-    id: "work_role",
-    i18nKey: "q.work_role",
-    kind: "choice",
-    group: "details",
-    decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
-    options: [
-      { key: "executive", labelI18nKey: "q.work_role.opt.executive" },
-      { key: "manager", labelI18nKey: "q.work_role.opt.manager" },
-      { key: "specialist", labelI18nKey: "q.work_role.opt.specialist" },
-      { key: "performer", labelI18nKey: "q.work_role.opt.performer" },
-      { key: "other", labelI18nKey: "q.work_role.opt.other" },
-    ],
-    whyWeAsk: { i18nKey: "why.work_role" },
-    notSure: { mode: "human-review" },
-  },
+  // `work_role` deleted 2026-09-06 (owner ruling 6, overruling
+  // `research/visa/doctrine-factory/e4/question-registry-audit.md` §3's
+  // REVIEW_ONLY disposition). It was `HUMAN_CONTEXT`: it mapped to no
+  // FactPath, so no rule in any signed pack could read it — the E23 support
+  // rule `el.e23-employment-support` requires only `intent.purposes`,
+  // `work.employer_is_indonesian_entity` and
+  // `work.indonesian_work_sponsor_confirmed`, and the one rule that does
+  // read a role (`el.e23-operational-work-boundary` →
+  // `investment.proposed_role`) is written from the INVEST branch's
+  // `investment_role`, never from here. Its only live effect was the
+  // presence-triggered `ACTIVITY_BOUNDARY` disclosure flag in
+  // fact-mapper.ts, which — because it sat fifth in the fixed `work`
+  // sequence and was therefore ALWAYS answered — suppressed E23 for 100%
+  // of employment interviews. A question that costs the user time and
+  // whose only effect is to hide the answer is worse than no question.
   remote_clients: {
     id: "remote_clients",
     i18nKey: "q.remote_clients",
@@ -689,6 +725,77 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.investment_capital_idr" },
     notSure: { mode: "human-review" },
   },
+  // PR-D4c-2 (owner ruling SHWEB-20260911): router for the `merit`/`family`/
+  // `undecided` investment-vehicle branches ONLY — deliberately never added
+  // to `pt_pma` (see `getCategoryQuestionIds` in flow.ts for the reachability
+  // argument: `pt_pma` already collects `investment_capital_idr` unconditionally,
+  // and E28A's three rules all read it with `on_unknown: NEEDS_INPUT`, so
+  // making it UNKNOWN there would dead-end the exact applicants that branch
+  // serves — the defect PR-D4b already had to cure once). HUMAN_CONTEXT, same
+  // idiom as its `investment_vehicle`/`retirement_basis`/`secondhome_basis`
+  // siblings: it selects which evidence question follows next
+  // (`investment_capital_idr` for `idr`, `investment_amount_usd` for `usd`,
+  // neither for `still_unsure`) and is never itself sent as an engine fact.
+  //
+  // `notSure` is DELIBERATELY OMITTED (imperator's ruling: the "not sure"
+  // answer here must cost zero holds). `mapDisclosedReviewFlags`
+  // (fact-mapper.ts) raises `NOT_CERTAIN` on the exact-equality literal
+  // `"unsure"` over every fact value; `still_unsure` is a REAL third option
+  // (`"still_unsure" !== "unsure"`), not the generic NotSure affordance —
+  // same shape as `retirement_undecided_basis` immediately below, which is
+  // the shipped precedent this mirrors. Choosing it asks no amount question,
+  // so both `investment.investment_capital_idr` and
+  // `investment.investment_amount_usd` stay genuinely UNKNOWN(NOT_ASKED) —
+  // the honest state, not a guess.
+  investment_currency: {
+    id: "investment_currency",
+    i18nKey: "q.investment_currency",
+    kind: "choice",
+    group: "details",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    sensitive: false,
+    options: [
+      { key: "idr", labelI18nKey: "q.investment_currency.opt.idr" },
+      { key: "usd", labelI18nKey: "q.investment_currency.opt.usd" },
+      {
+        key: "still_unsure",
+        labelI18nKey: "q.investment_currency.opt.still_unsure",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.investment_currency" },
+  },
+  // PR-D4c-2: the USD sibling of `investment_capital_idr` above, asked only
+  // once `investment_currency === "usd"` (see `getCategoryQuestionIds`).
+  // Modeled on `investment_capital_idr` exactly — same bounds, same
+  // sensitivity, same `notSure` (unlike the currency router above, THIS
+  // question's own "not sure" is the ordinary human-review hold: not
+  // knowing the EXACT amount, once a currency has been chosen, is a real
+  // disclosed uncertainty, not the zero-cost case). No conversion is ever
+  // performed on this value — `investment.investment_amount_usd` is a plain
+  // `integerFact`, currency encoded in the fact NAME alone (the existing
+  // `investment.*_idr` / `secondhome.*_usd` convention), never an
+  // `{amount, currency}` pair.
+  investment_amount_usd: {
+    id: "investment_amount_usd",
+    i18nKey: "q.investment_amount_usd",
+    kind: "number",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["investment.investment_amount_usd"],
+    },
+    sensitive: true,
+    options: [],
+    numberInput: {
+      min: 0,
+      max: Number.MAX_SAFE_INTEGER,
+      step: 1,
+      labelI18nKey: "q.investment_amount_usd.label",
+      unitI18nKey: "q.unit.usd",
+    },
+    whyWeAsk: { i18nKey: "why.investment_amount_usd" },
+    notSure: { mode: "human-review" },
+  },
   investment_paid_up_capital_idr: {
     id: "investment_paid_up_capital_idr",
     i18nKey: "q.investment_paid_up_capital_idr",
@@ -755,6 +862,13 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "PARENT", labelI18nKey: "q.family_relation.opt.PARENT" },
       { key: "SIBLING", labelI18nKey: "q.family_relation.opt.SIBLING" },
       { key: "DEPENDENT", labelI18nKey: "q.family_relation.opt.DEPENDENT" },
+      // STEPCHILD was half-shipped by the 2026-08-23 owner ruling: the
+      // wire vocabulary (`FAMILY_RELATIONS` in fact-mapper.ts), the two
+      // evidence questions, the branch in `getCategoryQuestionIds`
+      // (flow.ts) and BOTH i18n labels all landed — but this option row
+      // never did, so the branch was unreachable and E31D could not be
+      // named by any interview. Added 2026-09-06.
+      { key: "STEPCHILD", labelI18nKey: "q.family_relation.opt.STEPCHILD" },
       { key: "OTHER", labelI18nKey: "q.family_relation.opt.OTHER" },
     ],
     whyWeAsk: { i18nKey: "why.family_relation" },
@@ -796,19 +910,36 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.family_sponsor_nationalities" },
     notSure: { mode: "human-review" },
   },
+  // D4a (owner ruling SHWEB-20260911, 2026-09-13): closed SELECT over the
+  // same signed catalogue as `stay_permit_code` above (`STAY_PERMIT_CODES`),
+  // replacing the old free-text `codeInput`. The question NAMES the
+  // product (Zero's D4 ruling: the Oracle says the product, it never asks
+  // which visa the applicant wants) via the same `q.stay_permit_code.opt.*`
+  // labels `stay_permit_code` already uses ("E23 — Working Visa", etc.) —
+  // reused rather than re-typed so the two catalogues can never drift apart
+  // on label text either. "I'm not sure" stays the universal `notSure`
+  // affordance, unchanged.
+  //
+  // Promoted to `FACT`/`family.sponsor_status_code` from `HUMAN_CONTEXT`.
+  // See `mapFamilySponsorStatus` (fact-mapper.ts) for the closed-catalogue
+  // trust argument, and
+  // `research/visa/doctrine-factory/e5/inc6-pack-edits/
+  // HELD-fix4-sponsor-status-2026-08-23.json` for the fail-open history
+  // this promotion had to reason past before it was safe.
   family_sponsor_status_code: {
     id: "family_sponsor_status_code",
     i18nKey: "q.family_sponsor_status_code",
-    kind: "status-code",
+    kind: "choice",
     group: "details",
-    decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: true,
-    options: [],
-    codeInput: {
-      labelI18nKey: "q.family_sponsor_status_code.label",
-      multiple: false,
-      maxLength: 64,
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["family.sponsor_status_code"],
     },
+    sensitive: true,
+    options: STAY_PERMIT_CODES.map((key) => ({
+      key,
+      labelI18nKey: `q.stay_permit_code.opt.${key}`,
+    })),
     whyWeAsk: { i18nKey: "why.family_sponsor_status_code" },
     notSure: { mode: "human-review" },
   },
@@ -895,6 +1026,21 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.family_stepchild_birth_certificate_confirmed" },
     notSure: { mode: "human-review" },
   },
+  // D3-4 (PR-D3, owner ruling SHWEB-20260911) had added
+  // `family_stepchild_sponsor_permit_confirmed` here — "does your sponsor
+  // hold a valid KITAS/KITAP of their own?", holding on `no`/`unsure`
+  // (`mapDisclosedReviewFlags`, fact-mapper.ts). REMOVED (owner ruling
+  // SHWEB-20260911, 2026-09-13, fresh grader review): no such requirement
+  // exists for E31D. Permenkumham 11/2024 Pasal 33 ayat (2) huruf h names
+  // no permit at all for E31D's entry, unlike its E31E neighbour, which
+  // explicitly requires the sponsor to hold an "Izin Tinggal Terbatas atau
+  // Izin Tinggal Tetap" — and Pasal 193 makes E31D's guarantor an
+  // Indonesian-citizen (WNI) *Penanggung Jawab*, who cannot hold a
+  // KITAS/KITAP by definition. Asking the question was the same OVER-match
+  // shape NARROW-1 (fact-mapper.ts) cured elsewhere: a hold with nothing in
+  // the pack behind it. `el.e31d-stepchild-support` is untouched — it still
+  // reads `family.relation_to_sponsor` / `family.sponsor_confirmed` / the
+  // two stepchild certificates above, never a sponsor permit fact.
   // Sponsor permit basis (2026-08-23 owner ruling — Permenkumham 11/2024
   // Pasal 33 ayat (7) blocks family-reunification chaining for four
   // specific ayat (2) huruf h categories; `family.sponsor_status_code` is
@@ -999,6 +1145,64 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.retirement_basis" },
+    notSure: { mode: "human-review" },
+  },
+  // D3-3 (PR-D3, owner ruling SHWEB-20260911): `undecided` stopped being a
+  // dead end. Instead of holding on the bare label, this presents the two
+  // bases the pack can actually decide (`el.e33e.retirement`'s deposit/
+  // passive-income facts, `el.e33f.retirement`'s family-sponsor fact) and
+  // routes to whichever's evidence questions. `still_unsure` is a REAL third
+  // option, not the generic NotSure affordance (deliberately absent here):
+  // choosing it asks no further evidence question, so `family.
+  // sponsor_confirmed` stays genuinely UNKNOWN and the engine's own
+  // `on_unknown: NEEDS_INPUT` on `el.e33f.retirement` fires — NEEDS_INPUT,
+  // never HUMAN_REVIEW, and `engine-adapter.ts`'s `questionForFact` already
+  // names `family_sponsor_confirmed`'s own question in that message.
+  retirement_undecided_basis: {
+    id: "retirement_undecided_basis",
+    i18nKey: "q.retirement_undecided_basis",
+    kind: "choice",
+    group: "details",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    sensitive: false,
+    options: [
+      {
+        key: "deposit_or_income",
+        labelI18nKey: "q.retirement_undecided_basis.opt.deposit_or_income",
+      },
+      {
+        key: "family_sponsor",
+        labelI18nKey: "q.retirement_undecided_basis.opt.family_sponsor",
+      },
+      {
+        key: "still_unsure",
+        labelI18nKey: "q.retirement_undecided_basis.opt.still_unsure",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.retirement_undecided_basis" },
+  },
+  // Router for the `second_home` category (owner ruling 3, 2026-09-06).
+  // HUMAN_CONTEXT on purpose, exactly like its `retirement_basis` sibling:
+  // it selects which evidence questions follow, and the evidence questions
+  // themselves — not this one — carry the signed `secondhome.*` facts the
+  // E33 rules read. Only the two bases E33 actually has support rules for
+  // are offered (`el.e33.deposit-basis`, `el.e33.property-basis`); a third
+  // "neither" option would collect an answer no rule could use.
+  secondhome_basis: {
+    id: "secondhome_basis",
+    i18nKey: "q.secondhome_basis",
+    kind: "choice",
+    group: "details",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    sensitive: false,
+    options: [
+      {
+        key: "bank_deposit",
+        labelI18nKey: "q.secondhome_basis.opt.bank_deposit",
+      },
+      { key: "property", labelI18nKey: "q.secondhome_basis.opt.property" },
+    ],
+    whyWeAsk: { i18nKey: "why.secondhome_basis" },
     notSure: { mode: "human-review" },
   },
   secondhome_deposit_usd: {
@@ -1263,6 +1467,36 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     ],
   },
 };
+
+/**
+ * The prompt to render for `question` given the answers so far.
+ *
+ * Almost every question has exactly one prompt and this returns
+ * `question.i18nKey` unchanged. The exception is
+ * `wants_onshore_conversion`, which two different walks ask from opposite
+ * standpoints: onshore it is about a status change from inside the
+ * country, offshore it is a plan for after arrival. Adversarial review
+ * 2026-09-06 (finding 9) accepted the offshore wording as a fix — asked in
+ * the present tense, it puts an applicant who is not in Indonesia in the
+ * position of answering about a country they have not reached. The
+ * question id, the option keys and the fact sent to the engine are
+ * identical on both walks; only the sentence changes.
+ *
+ * The hint follows the prompt: callers derive it as `<key>.hint`, so the
+ * offshore variant carries its own.
+ */
+export function questionPromptI18nKey(
+  question: OracleQuestion,
+  facts: OracleFacts,
+): string {
+  if (
+    question.id === "wants_onshore_conversion" &&
+    facts.in_indonesia === "no"
+  ) {
+    return "q.wants_onshore_conversion.offshore";
+  }
+  return question.i18nKey;
+}
 
 /** Sub-items shown inside the review-gate checklist (design doc §4 shared
  * review-gate). Finding #5 (adversarial review 2026-07-17): "None of

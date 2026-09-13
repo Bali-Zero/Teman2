@@ -31,6 +31,8 @@ fixture that mimicked it would only confirm my own idea of it (W114).
 """
 from __future__ import annotations
 
+import io
+import json
 import pathlib
 import shlex
 import subprocess
@@ -66,8 +68,8 @@ def repo(tmp_path, monkeypatch):
     """A clone with a real `origin`, whose main carries, in order:
 
         0. a seed commit              (README)                <- something to be BEHIND
-        1. a frontend commit          (apps/mouth/page.tsx)   <- the only right answer
-        2. an e2e-only commit         (apps/mouth/e2e/…)      <- excluded on purpose
+        1. a frontend commit          (apps/mouth/page.tsx)
+        2. an e2e-only commit         (apps/mouth/e2e/…)      <- latest mouth change
         3. a docs commit              (docs/…)                <- what HEAD usually is here
 
     The seed exists because the first draft used `rev-list --max-parents=0` as "an older
@@ -132,7 +134,7 @@ def test_a_docs_only_head_does_not_become_the_target(repo):
     Vercel skipped and could never build."""
     work, shas = repo
     sha, how = vpd._deploy_relevant_head()
-    assert sha == shas["frontend"], "target must be the newest BUNDLE-relevant commit"
+    assert sha == shas["e2e"], "target must be the newest mouth or shared-input commit"
     assert sha != shas["docs"], "targeting main HEAD is the defect this test exists for"
     assert "bundle-relevant" in how
 
@@ -162,14 +164,13 @@ def test_production_behind_the_target_is_still_reported_stale(repo):
     assert vpd._production_includes(shas["frontend"], shas["seed"]) is False
 
 
-def test_an_e2e_only_commit_does_not_move_the_target(repo):
-    """e2e specs run in CI and never reach the bundle. If they moved the target, every spec
-    edit would demand a production deploy with nothing for a user to see."""
+def test_an_e2e_only_commit_moves_the_target(repo):
+    """The September 6 contract covers all mouth paths, matching Vercel's build trigger."""
     work, shas = repo
-    _commit(work, "apps/mouth/e2e/another.spec.ts", "test('y', () => {})\n")
+    newer = _commit(work, "apps/mouth/e2e/another.spec.ts", "test('y', () => {})\n")
     _run(work, "push", "-q", "origin", "main")
     sha, _how = vpd._deploy_relevant_head()
-    assert sha == shas["frontend"]
+    assert sha == newer
 
 
 def test_a_later_frontend_commit_does_move_the_target(repo):
@@ -212,4 +213,31 @@ def test_git_returning_empty_output_is_not_treated_as_failure(repo, monkeypatch)
     work, shas = repo
     assert vpd._git("fetch", "--no-tags", "--quiet", "origin", "main") == ""
     sha, how = vpd._deploy_relevant_head()
-    assert sha == shas["frontend"] and "bundle-relevant" in how
+    assert sha == shas["e2e"] and "bundle-relevant" in how
+
+
+@pytest.mark.parametrize("kita_current", [True, False])
+def test_served_commit_observes_kita_when_the_apex_disagrees(
+    repo: tuple[pathlib.Path, dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+    kita_current: bool,
+) -> None:
+    _work, shas = repo
+    kita_commit = shas["docs"] if kita_current else shas["seed"]
+    apex_commit = shas["seed"] if kita_current else shas["docs"]
+    calls: list[str] = []
+
+    def urlopen(url: str, timeout: int) -> io.BytesIO:
+        calls.append(url)
+        assert timeout == 25
+        commits = {
+            "https://kita.balizero.com/api/health": kita_commit,
+            "https://balizero.com/api/health": apex_commit,
+        }
+        return io.BytesIO(json.dumps({"commit": commits[url]}).encode())
+
+    monkeypatch.setattr(vpd.urllib.request, "urlopen", urlopen)
+    served = vpd._served_commit()
+    assert calls == ["https://kita.balizero.com/api/health"]
+    assert served == kita_commit
+    assert vpd._production_includes(shas["frontend"], served) is kita_current

@@ -1,0 +1,74 @@
+VERDICT: **BLOCK**
+
+---
+
+### HIGH — Missing test file for C2 (`chunk-exception-contract.test.ts`) leaves contract logic unverified
+
+- **Claim:** The behavioral unit test promised for C2 and cited in the tripwire test does not exist in the PR commit.
+- **Why it breaks:** C2 was explicitly opened because the previous contract ran inside the guard with no behavioral test—the test suite only asserted that a specific line of code appeared in the guard's source text. This PR extracts `chunk-exception-contract.mjs` and updates the comment in `apps/mouth/src/lib/client-roster-boundary.test.ts` to claim:
+  > *"the contract's BEHAVIOUR is now executed by `src/lib/chunk-exception-contract.test.ts`, which imports the same module the guard does."*
+  
+  However, `chunk-exception-contract.test.ts` is omitted from the PR. The tripwire test only asserts `expect(guard).toContain("chunkExceptionViolations(")`. If `chunkExceptionViolations` is modified to `return []`, the tripwire test still passes and the entire suite stays green. C2 remains unfulfilled.
+- **What to check:** Check `git status` / PR diff for `src/lib/chunk-exception-contract.test.ts` (or `apps/mouth/src/lib/chunk-exception-contract.test.ts`). Verify that the test file is committed, executes `chunkExceptionViolations`, and covers invalid closers (unanchored strings, missing `#`/`C` prefixes), blank/empty prefixes, stale closers, and inherited prototype keys.
+
+---
+
+### HIGH — C3 prerender baseline check is blind to all nested `(workspace)` routes
+
+- **Claim:** The guard only discovers 1-level-deep directories with an immediate `page.tsx`, allowing any nested static route in `(workspace)` to land in `.next/server/app` undetected.
+- **Why it breaks:** In `apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs`:
+  ```javascript
+  const workspaceRoutes = fs
+    .readdirSync(WS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .filter((name) => fs.existsSync(path.join(WS_DIR, name, "page.tsx")));
+  ```
+  `fs.readdirSync(WS_DIR)` is non-recursive. It only collects direct child directory names (`["accounting", "admin", ...]`).
+  In `unacceptedPrerenderedWorkspaceRoutes`:
+  ```javascript
+  return workspaceRoutes
+    .filter((r) => prerendered.has(`/${r}`))
+    .filter((r) => !ok.has(r))
+    .sort();
+  ```
+  If a developer adds:
+  1. A subroute to an existing workspace route (e.g. `src/app/(workspace)/admin/roles/page.tsx`, `src/app/(workspace)/lkpm/export/page.tsx`), or
+  2. A new workspace section structured with nested routes and no root `page.tsx` (e.g. `src/app/(workspace)/billing/invoices/page.tsx`),
+  
+  the route is never in `workspaceRoutes`. Next.js prerenders it into `.next/server/app/...` without a session, but `unacceptedPrerenderedWorkspaceRoutes` never checks it against `prerender-manifest.json`. The build succeeds in complete silence, contradicting the core C3 guarantee.
+- **What to check:** Add a static test route at `src/app/(workspace)/admin/test-static/page.tsx` and build. Observe that the guard exits 0 without catching it. Replace shallow `readdirSync` with a recursive directory walker to collect all route paths relative to `WS_DIR`, or cross-reference all keys in `.next/prerender-manifest.json` whose source route maps to `(workspace)`.
+
+---
+
+### MEDIUM — Prerender baseline silently skips validation if `.next/prerender-manifest.json` is missing
+
+- **Claim:** The guard exits green without error if `.next/prerender-manifest.json` does not exist on disk.
+- **Why it breaks:** The check is wrapped in:
+  ```javascript
+  if (fs.existsSync(WS_DIR) && fs.existsSync(MANIFEST)) {
+  ```
+  If `MANIFEST` exists but contains malformed JSON, the catch block halts the build:
+  > *"Refusing to report success on a baseline it could not check."*
+  
+  However, if `MANIFEST` does not exist at all (e.g., custom build target, failed/skipped static generation step, or corrupted artifact), `fs.existsSync(MANIFEST)` evaluates to `false`. The entire baseline block is silently bypassed, scanning chunks and reporting a clean exit without verifying the baseline.
+- **What to check:** Delete or rename `.next/prerender-manifest.json` and run `node apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs`. Observe that it exits 0 instead of failing with `Refusing to report success on a baseline it could not check`.
+
+---
+
+### MEDIUM — No reverse stale check on `ACCEPTED_PRERENDERED_WORKSPACE_ROUTES`
+
+- **Claim:** Stale entries in the accepted baseline are never flagged when routes are made dynamic or deleted.
+- **Why it breaks:** The comment in `prerendered-workspace-baseline.mjs` states:
+  > *"THE ACCEPTED SET MUST SHRINK. Every entry here is exposure, not design. When the workspace gains a server-side session gate, this list should empty out..."*
+  
+  Unlike `chunkExceptionViolations` (which checks both directions to prevent stale closing-PR claims), `unacceptedPrerenderedWorkspaceRoutes` only filters `workspaceRoutes` for routes that are prerendered and not in `accepted`. If `/lkpm` (the sole route leaking staff markers) is converted to dynamic, the guard stays green without requiring `/lkpm` to be removed from `ACCEPTED_PRERENDERED_WORKSPACE_ROUTES`. If a subsequent PR accidentally makes `/lkpm` static again, the guard will silently wave it through because the baseline never enforced shrinking.
+- **What to check:** Pass `prerenderedPaths` without `"/lkpm"` into `unacceptedPrerenderedWorkspaceRoutes`. Observe that it returns `[]` without flagging that `lkpm` is a stale accepted entry.
+
+---
+
+### LOW — Hardcoded `.page.tsx` extension misses `.jsx`/`.js` page entries
+
+- **Claim:** `fs.existsSync(path.join(WS_DIR, name, "page.tsx"))` ignores other valid Next.js App Router page extensions.
+- **Why it breaks:** If a workspace route uses `page.jsx` or `page.js`, `fs.existsSync(... "page.tsx")` returns `false`. The route is excluded from `workspaceRoutes` and evades baseline checking.
+- **What to check:** Create `src/app/(workspace)/billing/page.jsx` and observe that `workspaceRoutes` filters it out. Use a regex or check against `page.{tsx,jsx,js,ts}`.

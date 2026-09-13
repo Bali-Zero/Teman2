@@ -86,6 +86,11 @@ _GOVERNMENT_FEE_RE = re.compile(
 REVIEW_FLAG_FIELD = "government_fee_reviewed"
 REVIEW_NOTE_FIELD = "government_fee_review_note"
 
+_RULING = (
+    "Zero's ruling is ONE all-inclusive client-facing price — never a "
+    "PNBP-versus-service-fee split (2026-07-17, re-ruled 2026-09-01)."
+)
+
 
 @dataclass(frozen=True)
 class GovernmentFeeFinding:
@@ -129,7 +134,23 @@ def row_is_refused(row: dict) -> str | None:
     return (
         "states a government-fee figure to a client "
         f"(tokens: {', '.join(finding.tokens)}) without "
-        f"{REVIEW_FLAG_FIELD}=true and a non-empty {REVIEW_NOTE_FIELD}. "
-        "Zero's ruling is ONE all-inclusive client-facing price — never a "
-        "PNBP-versus-service-fee split (2026-07-17, re-ruled 2026-09-01)."
+        f"{REVIEW_FLAG_FIELD}=true and a non-empty {REVIEW_NOTE_FIELD}. " + _RULING
+    )
+
+
+def text_is_refused(text: str | None) -> str | None:
+    """Return the refusal reason for free text that has no row to carry the marker.
+
+    Training-data markdown — `scripts/reingest_training_data.py` and the two
+    other scripts that write local files into `training_conversations_hybrid` —
+    is chunked prose, not a corpus row: nothing can hold a reviewer's note, so
+    this gate has no escape hatch and its reason offers none. A refused chunk
+    is cured by editing the file (RULED Zero 2026-09-11).
+    """
+    finding = scan_government_fee(text)
+    if finding is None or not finding.states_a_figure:
+        return None
+    return (
+        f"states a government-fee figure to a client (tokens: {', '.join(finding.tokens)}). "
+        + _RULING
     )

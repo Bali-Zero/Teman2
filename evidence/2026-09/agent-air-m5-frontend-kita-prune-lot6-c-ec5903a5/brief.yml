@@ -1,0 +1,77 @@
+task_id: kita-prune-lot6-c-process
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: aa9a28b235604d76c172334fb9242d9cd2e66477 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 611 lines over 4 files (135 added, 476 deleted),
+# below SIZE_GEAR3_THRESHOLD. No hot-zone path, no PII path, no ground-truth path.
+objective: >-
+  Lot 6 PR-C of the kita.balizero.com surface pruning (audit shared with the owner on
+  2026-09-12): on /process, replace the hardcoded 8-code "Process Type" filter (codes
+  migration-066 disabled, so selecting one emptied the list) with the live
+  GET /api/crm/practices/types/catalog catalog, and drop the 3 "Status" filter options that
+  never matched a real kanban column; remove the two quick-stat chips that duplicated filter
+  chips below them. On /process/[id], reduce the Edit modal to status + assignee + start date
+  (dropping the priority/payment/price fields it duplicated from inline editors), wire the
+  assignee dropdown to the already-loaded useTeamMemberOptions instead of 3 hardcoded emails,
+  fix a mislabeled trackApiCall route string, and collapse the client-profile (5 instances),
+  WhatsApp (3), Email (3) and payment-status-cycle (2, post modal fix) duplicates down to one
+  primary instance each.
+constraints:
+  - >-
+    Deletions and reductions only, one concern per commit (2 commits, page.tsx + its test each).
+    No new feature, no redesign, no backend change. The one narrow exception the mandate
+    allowed: wiring the already-existing `api.crm.getPracticeTypesCatalog()` client method
+    (verified present, zero new client code needed) to the filter is a bugfix, not a feature.
+  - >-
+    The live-catalog route and the canonical 6-state status list were verified on disk before
+    use, not assumed: `grep -n "types/catalog" apps/backend-rag/backend/app/routers/*.py` found
+    the route, and `apps/mouth/src/lib/api/crm/state-machine.ts` was the pre-existing frontend
+    mirror of the backend state machine.
+  - >-
+    "Most prominent" for the 5/3/3/2 duplicate groups was judged as: main content area over
+    menu/sidebar/breadcrumb chrome. The choice and the exact removed locations are recorded in
+    the PR body's "Kept on purpose" section for the codeowner to challenge if wrong.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+  tokens: 400000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file
+      touched by this PR (process/page.test.tsx, process/[id]/page.test.tsx,
+      process/new/page.test.tsx untouched and unaffected).
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+  - text: >-
+      A4 Bites: WHEN an operator opens https://kita.balizero.com/process and expands Filters,
+      the Process Type dropdown SHALL list live catalog service names grouped by category
+      (never the 8 retired legacy codes), and selecting one SHALL NOT empty the list.
+    probe: manual QA on kita.balizero.com/process post-deploy (no backend change to curl)
+assumptions:
+  - text: >-
+      `api.crm.getPracticeTypesCatalog()` already existed (used by process/new/page.tsx and
+      SelectServiceCard.tsx) with the exact category/service shape the catalog endpoint
+      returns, so /process's filter needed only a fetch-on-mount + optgroup render, not a new
+      client method.
+    status: verified
+    probe: 'grep -n "getPracticeTypesCatalog" apps/mouth/src/lib/api/crm/crm.api.ts apps/mouth/src/app/(workspace)/process/new/page.tsx'
+  - text: >-
+      The 3 removed Status filter options (waiting_payment, submitted_to_gov, approved) never
+      matched any practice: matchesStatusFilter() in kanban-colors.ts compares the selected
+      filter value directly against getStatusColumn()'s 5-value output, which those 3 strings
+      never equal.
+    status: verified
+    probe: "cat apps/mouth/src/components/process/kanban-colors.ts — matchesStatusFilter/getStatusColumn"
+  - text: >-
+      The footer "Pro Tip: right-click or use the menu on cards..." on /process is NOT
+      decorative (the audit's guess): the context menu it describes is wired via onContextMenu
+      on both the kanban card and the list row.
+    status: verified
+    probe: 'grep -n "onContextMenu" "apps/mouth/src/app/(workspace)/process/page.tsx"'

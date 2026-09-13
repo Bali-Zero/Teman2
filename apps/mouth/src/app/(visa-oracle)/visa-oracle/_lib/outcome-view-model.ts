@@ -68,24 +68,25 @@ export interface OutcomeMissingInput extends OutcomeReason {
   /** Present when the missing engine fact maps to a question the interview
    * can reopen. Omitted facts require a human handoff instead of a fake field. */
   questionId?: string;
+  /**
+   * `true` when `questionId` names a question this interview has NOT yet
+   * asked (added 2026-09-06). The two cases must not be conflated in the
+   * UI: an ALREADY-ASKED question is reopened by truncating history back to
+   * it (destructive — every answer after it is discarded), while a
+   * never-asked one is APPENDED to the interview and nothing is lost. Only
+   * ever set alongside `questionId`.
+   */
+  followUp?: true;
 }
 
 export type LegalSupportStatus =
-  | "SUPPORTED"
-  | "CONDITIONAL"
-  | "NOT_SUPPORTED"
-  | "UNKNOWN";
+  "SUPPORTED" | "CONDITIONAL" | "NOT_SUPPORTED" | "UNKNOWN";
 
 export type OperationalAvailabilityStatus =
-  | "AVAILABLE"
-  | "TEMPORARILY_UNAVAILABLE"
-  | "UNKNOWN";
+  "AVAILABLE" | "TEMPORARILY_UNAVAILABLE" | "UNKNOWN";
 
 export type ServiceAvailabilityStatus =
-  | "AVAILABLE"
-  | "CONTACT_REQUIRED"
-  | "NOT_OFFERED"
-  | "UNKNOWN";
+  "AVAILABLE" | "CONTACT_REQUIRED" | "NOT_OFFERED" | "UNKNOWN";
 
 export interface OutcomeStatusAxis<Status extends string> {
   status: Status;
@@ -193,8 +194,25 @@ export type HumanReviewOutcome = OutcomeBase &
   };
 
 export interface NoSupportedPathAlternative {
+  /** The interview tile this door belongs to. */
   category: CategoryKey;
+  /**
+   * The product the signed pack supports behind this door, by code, plus the
+   * pack's own name for it. NEVER an adapter's opinion: every code rendered
+   * here is one a replay of the signed pack returned for this applicant's own
+   * stated facts (`_lib/fixtures/no-path-doors.replay.json`). Optional
+   * because a door may still name a category alone.
+   */
+  productCode?: string;
+  productName?: LocalizedText;
   message?: LocalizedText;
+  /**
+   * `false` when nothing the visitor can answer today opens this door — a
+   * fact about the world has to change first (turning 55). Rendered as a
+   * sentence and never as a button, because the button would restart an
+   * interview that ends in exactly the same place.
+   */
+  actionable?: boolean;
 }
 
 export type NoSupportedPathOutcome = OutcomeBase &

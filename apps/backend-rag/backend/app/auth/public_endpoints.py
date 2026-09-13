@@ -41,6 +41,104 @@ class Category(str, Enum):
     BRIDGE = "bridge"
 
 
+def path_matches_template(path: str, template: str) -> bool:
+    """FastAPI-style template match: SAME number of `/`-separated segments,
+    literal segments equal, `{param}` segments non-empty.
+
+    Extracted from `PublicEndpoint.matches` so a second caller cannot own a
+    second copy of this logic (cicatrix #3 — a guard that drifts from the
+    matcher it claims to mirror is worse than no guard). The other caller is
+    `middleware/hybrid_auth.py::contract_401_envelope`, which needs exactly
+    this shape to decide whether a refused path is a frozen-contract
+    operation rather than an arbitrary descendant of its prefix.
+
+    What segment COUNT does and does not reject, measured rather than assumed
+    (the previous wording of this paragraph claimed `/a/b/` fails against
+    `/a/b`; it does not — Kimi K3 caught that by running this function,
+    second-reader review of #6235):
+
+      - `/a//b` FAILS against `/a/b` — the inner double slash survives
+        `strip("/")` and leaves an empty segment, so the counts differ (3 vs 2).
+      - `/a/b/c` FAILS against `/a/b` — one segment too many.
+      - `/a/b/` MATCHES `/a/b`, and so does `//a/b//`. `strip("/")` removes
+        leading and trailing slashes BEFORE splitting, so a trailing slash
+        never produces a segment. That is the long-standing behaviour of
+        every `match="template"` public entry, deliberately left unchanged
+        here: the path is CLASSIFIED as the slash-less operation, which is a
+        statement about THIS function and nothing else.
+
+        Whether the slash-less operation then SERVES it is a routing question
+        this function cannot answer, and no unit test here answers it either:
+        three adversarial rounds established that a test running in the same
+        process as the router it inspects cannot distinguish the contract's
+        operation from a counterfeit installed ahead of it. So the observable
+        half is pinned here — for two paths on `garuda_staff_router` and one on
+        `garuda_orders_router`,
+        `test_a_trailing_slash_answers_307_to_the_slash_less_path_with_the_same_envelope`
+        asserts a 307 to the slash-less path and an identical envelope, and
+        claims nothing about which route produced it — while the claim that
+        those paths ARE the frozen contract's operations is anchored where it
+        has an external reference:
+        `backend/tests/app/routers/test_garuda_voa_openapi_parity.py`, which
+        builds the schema from the deployed `main_api` singleton and compares
+        it operation by operation against the frozen `openapi.yaml`. Where it
+        runs, stated as what is measured rather than as a promise:
+        `scripts/ci/shard_tests.py enumerate` lists it (the only directory it
+        excludes outright is `EXCLUDED_DIRS = ("backend/tests/e2e",)`, `:82`; it
+        also selects by target root and keeps only `test_*.py` / `*_test.py`,
+        `:124`), so it is partitioned
+        into the `Backend Shard N` matrix; those shards are gated by the
+        change-map (`tests.yml:875-907`, fail-OPEN to running) and fan into
+        `Backend Tests (Python)` (`tests.yml:1197-1198`). Whether that job is
+        REQUIRED on `main` is branch-protection CONFIGURATION: no test in this
+        repo pins it, and it can change without a line of code changing, so this
+        docstring cannot assert it as a property. What was measured, via the
+        branch-protection API: `Backend Tests (Python)` is AMONG `main`'s
+        required contexts — one of 13 when the full set was re-read on
+        2026-09-13, first observed 2026-09-12. A dated observation about
+        membership, not a guarantee this file can keep. The first version of
+        this sentence said the set was EXACTLY that one context, which was
+        false: it came from reading a `grep`-filtered view of the API output as
+        if the surviving line were the whole set. Either way "on every PR" would overstate a job the
+        change-map can skip. Named here as the anchor, not re-proved here.
+
+        NOT `.github/workflows/garuda-contract-parity.yml`, whose NAME invites
+        exactly that mistake: it installs only pytest and pyyaml (`:50`) and its
+        suite (`products/garuda-voa/contracts/tests/`) never imports FastAPI and
+        never builds the live schema, so it cannot compare the frozen OpenAPI
+        document against the live generated one. It is NOT, however, a suite
+        that only checks a document against itself — that wording shipped in
+        #6275 and an adversarial round refuted it:
+        `test_reason_codes_match_the_engine_enum_exactly`
+        (`test_contract_invariants.py:380`) compares `reason-codes.yaml` against
+        the engine's `DeclineCode` enum, which is real parity — just not the
+        frozen-vs-live parity claimed here. Note the narrower verb: that suite
+        DOES import one engine module
+        (`test_contract_invariants.py:53`, a function-local
+        `from backend.services.garuda_flow.eligibility import DeclineCode` after
+        a `sys.path` insert), so "never imports the app" — the wording shipped in
+        #6275 — is false, and was caught by the gate on that PR. What it never
+        does is construct the running application. That distinction is
+        measured, not assumed -- the parity file's own header records the
+        drift the misreading allowed (2026-08-24/25), and this paragraph named
+        the workflow before the gate on #6275 caught it. Registry-wide
+        behaviour is a ledger row (PENDING-ARMS, #6267 gate condition 2).
+
+        The matching itself is pinned both ways by
+        `test_path_matches_template_trailing_and_inner_slashes` in
+        `tests/unit/middleware/test_public_endpoints_registry.py`, so a
+        future change to it is a decision, not an accident.
+    """
+    template_parts = template.strip("/").split("/")
+    path_parts = path.strip("/").split("/")
+    if len(template_parts) != len(path_parts):
+        return False
+    return all(
+        bool(actual) if expected.startswith("{") and expected.endswith("}") else actual == expected
+        for expected, actual in zip(template_parts, path_parts, strict=True)
+    )
+
+
 @dataclass(frozen=True)
 class PublicEndpoint:
     prefix: str
@@ -53,16 +151,7 @@ class PublicEndpoint:
         if self.match == "exact":
             return path == self.prefix
         if self.match == "template":
-            prefix_parts = self.prefix.strip("/").split("/")
-            path_parts = path.strip("/").split("/")
-            if len(prefix_parts) != len(path_parts):
-                return False
-            return all(
-                bool(actual)
-                if expected.startswith("{") and expected.endswith("}")
-                else actual == expected
-                for expected, actual in zip(prefix_parts, path_parts, strict=True)
-            )
+            return path_matches_template(path, self.prefix)
         return path.startswith(self.prefix)
 
 
@@ -701,10 +790,20 @@ _VISA_ORACLE = (
     # `test_garuda_voa_public_root_allowlist.py` pins both halves: every
     # public route below answers anonymously through the REAL mounted app
     # (`main_api.app`, not a bare `FastAPI()+include_router()` double — the
-    # note above was only caught that way), and the staff route still 401s
-    # with the middleware's OWN "Authentication required" body (never the
-    # handler's SESSION_REQUIRED) — the second assertion is what stays red
-    # if a future edit ever widens one of these entries into a prefix.
+    # note above was only caught that way), and every staff route is still
+    # refused by the middleware itself. That second assertion used to read
+    # the middleware's OWN "Authentication required" body; since the W3C
+    # contract-closure PR the middleware serves the frozen contract's
+    # SESSION_REQUIRED envelope on `/api/visa/voa/staff/**`
+    # (`hybrid_auth.contract_401_envelope` — a response-SHAPE change, body
+    # plus the contract's three privacy headers, never a grant: it matches
+    # the frozen OPERATION TEMPLATES via `path_matches_template` below, so it
+    # can claim neither the bare `/api/visa/voa/staff` nor an arbitrary
+    # descendant of it), so the body no longer discriminates and the test
+    # asserts two things that cannot go blind instead:
+    # `find_entry(<staff path>) is None` (reads THIS registry directly) and
+    # the `WWW-Authenticate: Bearer` header the middleware's 401 branch sets
+    # and no GARUDA router ever does.
     PublicEndpoint(
         "/api/visa/voa/eligibility-checks",
         Category.VISA_ORACLE,

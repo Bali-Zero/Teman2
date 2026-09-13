@@ -90,6 +90,13 @@ fi
 if [[ -d "$MONOREPO_ROOT/apps/team-agent/mcp-wrapper" ]]; then
   echo "📋 Copying MCP wrapper from monorepo..."
   cp -r "$MONOREPO_ROOT/apps/team-agent/mcp-wrapper/"* "$WRAPPER_DIR/"
+  # permissions.py loads the shared strict YAML loader from scripts/lib, which this
+  # copy does not otherwise ship. Without it the wrapper raises at import (server.py
+  # builds the PermissionChecker at module scope) and never starts. Staged as a COPY
+  # of the repo's single source, never edited here — if this file drifts from
+  # scripts/lib/yaml_strict.py, re-run this bootstrap rather than patching it.
+  mkdir -p "$WRAPPER_DIR/lib"
+  cp "$MONOREPO_ROOT/scripts/lib/yaml_strict.py" "$WRAPPER_DIR/lib/yaml_strict.py"
   echo "✅ MCP wrapper installed"
 else
   echo "⚠️  MCP wrapper not found"

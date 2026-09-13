@@ -1,0 +1,75 @@
+{
+  "contract": "studio-web-contract-v1",
+  "window": "SHWEB-20260911 / W3-SH-EDITORIAL",
+  "frozenAt": "2026-09-12T02:30:00Z",
+  "baseSha": "70b43c5459489ce9c8d524eefc94d53a7009866d",
+  "w1MergeCommit": "6734f95a34",
+  "w1InBase": true,
+  "frozen": {
+    "factRegistry": {
+      "path": "research/secondhome/e33-fact-registry.json",
+      "sha256": "c056bb86d7bf710d5eea764f525ab5b67e717301ac91323893bbe09239821716",
+      "writable": false,
+      "reason": "SSOT; mutable only with a new admissible source (W3 has none)"
+    },
+    "letterTracker": {
+      "path": "research/secondhome/e33-letter-response-tracker.md",
+      "sha256": "18ed25c0170f0e3770f39910b5372876d7ff8151d53914cbf0d0d61822bff696",
+      "writable": false,
+      "reason": "no reply received; 16 facts stay pending"
+    },
+    "categories": {
+      "path": "apps/mouth/src/lib/blog/categories.ts",
+      "sha256": "37856352e22e2d32666172a7e4adf0b08deffcfcf13ceadd5b45fb86c73aaef1",
+      "writable": false,
+      "reason": "global loader/category/sitemap surface — forbidden to W3",
+      "articleUrlRule": "/<normalizeCategory(folder)>/<publicSlug(file)> — never /blog/<slug>",
+      "immigrationMapsTo": "visas"
+    },
+    "llmsGenerator": {
+      "path": "apps/mouth/scripts/generate-llms-full.ts",
+      "sha256": "c98d1731e92fc64a2282d07905c8e69eb8a69f811d7325ae6db4436c54bc5336",
+      "writable": "EXCEPTION-ONLY",
+      "reason": "W1 owns this file. The single named exception is the C5 debt inherited from PR #6243's gate: freshness ties are broken by filesystem order (readdirSync + date-only sort + slice(0,5)). W3 adds a deterministic secondary key and its test; nothing else in this file."
+    },
+    "corpus": {
+      "path": "apps/mouth/src/content/articles/**/*.mdx",
+      "fileCount": 3409,
+      "aggregateSha256": "28671592530315ba9acb8524df12ce48f7c65ac2aa378e38fb41dda576e244e3",
+      "aggregateRule": "sha256 of (sorted per-file `shasum -a 256` lines)"
+    }
+  },
+  "e33Corpus": {
+    "method": "lexical selection on /E33[A-Z]?\\b|second\\s*home|rumah\\s*kedua|\\bSHV\\b/i over every .mdx under apps/mouth/src/content/articles",
+    "families": 128,
+    "files": 498,
+    "noIndexFiles": 19,
+    "familiesCarryingSupersededThresholdToken": 23,
+    "note": "23 is a LEXICAL count of the token `IDR/Rp 2 miliar|2B|2 billion` inside an E33-touching file; it is NOT 23 defects. Several are legitimate non-E33 figures (paid-up capital, property prices). The defect set is the co-occurrence set below."
+  },
+  "defectMetric": {
+    "name": "second_home_line_with_superseded_threshold",
+    "definition": "a line of the generated llms-full.txt matching BOTH /second\\s*home|rumah\\s*kedua|\\bSHV\\b/i AND the superseded-threshold pattern",
+    "probe": "research/secondhome/probe-superseded-threshold.py",
+    "servedBaseline": 27,
+    "servedBaselineMeasuredAt": "2026-09-12T02:2xZ",
+    "servedBaselineSourceFamilies": 10,
+    "target": 0
+  },
+  "writableSurfaces": [
+    "apps/mouth/src/content/articles/**/*.mdx (only the E33/Second Home claims named in the disposition ledger)",
+    "research/secondhome/** (editorial ledger, census, probe)",
+    "evidence/2026-09/agent-air-m5-mouth-shweb-w3-editorial-20260911-cc099459/**",
+    "apps/mouth/scripts/generate-llms-full.ts (freshness tie-break ONLY, per the exception above)",
+    "apps/mouth/src/lib/llms-article-exports.test.ts (the freshness determinism test)"
+  ],
+  "forbiddenSurfaces": [
+    "research/secondhome/e33-fact-registry.json",
+    "research/secondhome/e33-letter-response-tracker.md",
+    "any price value (PricingTool is the sole source; no decomposition into PNBP + fee)",
+    "apps/backend-rag/** and any DB/migration",
+    "package-lock.json / any lockfile / evidence manifests of other windows",
+    "apps/mouth/src/components/** (WEB), ArticleClient, blog types/loader/categories, sitemap",
+    "apps/mouth/public/llms*.txt (build-generated artifacts; not hand-edited, not regenerated into the commit)"
+  ]
+}

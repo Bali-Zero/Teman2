@@ -1,0 +1,62 @@
+**VERDICT: GO-WITH-CONDITIONS**
+
+The refactor succeeds in its core mission: it unifies the App Router directory grammar into a single tested source of truth, eliminates the duplicate walks between the guard and proxy test, activates the reverse baseline check (`staleAcceptedRoutes`), and converts the no-op rot test in [prerendered-workspace-baseline.test.ts](file:///Users/nuzantara/Desktop/nuzantara/apps/mouth/src/lib/prerendered-workspace-baseline.test.ts#L113-L135) into an assertion against the real filesystem.
+
+However, two edge-case conditions must be addressed before this module is treated as a general grammar authority across the app.
+
+---
+
+### 1. SEVERITY: MEDIUM
+- **Claim:** A missing or unparseable `prerender-manifest.json` triggers a false-positive warning instructing the developer to delete all 42 accepted baseline routes.
+- **Why:** In [assert-roster-not-in-public-chunks.mjs](file:///Users/nuzantara/Desktop/nuzantara/apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs#L205-L232):
+  ```javascript
+  let prerenderedPaths = [];
+  try {
+    prerenderedPaths = Object.keys(JSON.parse(fs.readFileSync(...)).routes);
+  } catch {
+    // Manifest missing or unparseable: report nothing rather than crash
+  }
+  const unaccepted = unacceptedPrerenderedWorkspaceRoutes({ workspaceRoutes, prerenderedPaths });
+  const stale = staleAcceptedRoutes({ workspaceRoutes, prerenderedPaths });
+  ```
+  The catch block comment explicitly intends to *"report nothing rather than crash"*. For `unacceptedPrerenderedWorkspaceRoutes`, an empty `prerenderedPaths` array yields `[]` because it filters for `prerendered.has(...)`. 
+  However, `staleAcceptedRoutes` checks `!prerendered.has("/" + r)`. When `prerenderedPaths` is `[]`, this condition evaluates to `true` for every accepted route. The guard will emit a loud `console.warn` claiming all 42 entries are no longer prerendered and telling the developer that *"the exposure shrank; prune them from scripts/lib/prerendered-workspace-baseline.mjs"*, which is false.
+- **What to check:** In [assert-roster-not-in-public-chunks.mjs](file:///Users/nuzantara/Desktop/nuzantara/apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs#L221), gate the execution of `staleAcceptedRoutes` so it only runs when `prerender-manifest.json` was successfully read and parsed (e.g. `if (manifestLoaded) { ... }`).
+
+---
+
+### 2. SEVERITY: MEDIUM
+- **Claim:** `walkAppRoutes` cannot discover root-level routes (`dir/page.*` or `dir/(group)/page.*`), returning `[]` instead of the root route (`""`).
+- **Why:** In [app-routes.mjs](file:///Users/nuzantara/Desktop/nuzantara/apps/mouth/scripts/lib/app-routes.mjs#L64-L82):
+  1. `visit(current, segments)` loops over `fs.readdirSync(current)` and executes `if (!isDir) continue;`. It never inspects `current` for a root `page.*` file, so a page directly inside `dir` is completely ignored.
+  2. For a top-level route group (e.g. `dir/(marketing)`), `segments` is `[]`, so `next` is `[]`. Line 78 requires `next.length > 0`:
+     ```javascript
+     const next = isRouteGroup(name) ? segments : [...segments, name];
+     if (next.length > 0 && PAGE_FILES.some((f) => fs.existsSync(path.join(full, f)))) {
+       out.push(next.join("/"));
+     }
+     ```
+     Because `next.length === 0`, any page inside `(group)` directly under `dir` is dropped.
+  In [app-routes.test.ts](file:///Users/nuzantara/Desktop/nuzantara/apps/mouth/src/lib/app-routes.test.ts#L58-L61), this is codified as:
+  ```typescript
+  it("treats a page at the group level as the parent's route, not a route of its own", () => {
+    const io = fakeIo({ "/app": ["(g)"], "/app/(g)": ["page.tsx"] });
+    expect(walkAppRoutes("/app", io)).toEqual([]);
+  });
+  ```
+  Returning `[]` does not treat it as the parent's route; it drops the route entirely. While harmless for `src/app/(workspace)` today (which has no root page), if `walkAppRoutes` is ever imported by a consumer scanning `src/app`, it will omit `/`.
+- **What to check:** Either document in `app-routes.mjs` that `walkAppRoutes` only models subtrees with no root page, or check `dir` / root groups for `page.*` and emit `""` (the root route path without leading slash) when `segments.length === 0`.
+
+---
+
+### 3. SEVERITY: LOW
+- **Claim:** Unchecked circular symlinks in `walkAppRoutes` cause unbounded recursion and stack overflow.
+- **Why:** In [app-routes.mjs](file:///Users/nuzantara/Desktop/nuzantara/apps/mouth/scripts/lib/app-routes.mjs#L66-L73), symlinks to directories are resolved via `fs.statSync(full).isDirectory()` and traversed via `visit(full, next)`. If a developer or build artifact creates a directory symlink pointing to an ancestor (e.g. `(workspace)/link -> ..`), `walkAppRoutes` will crash with `RangeError: Maximum call stack size exceeded`.
+- **What to check:** Track visited paths or realpaths in a `Set<string>` passed down through `visit` to guard against cycle traversal.
+
+---
+
+### 4. SEVERITY: LOW
+- **Claim:** Next.js private folders (`_folder`) are not modelled by `app-routes.mjs`.
+- **Why:** In Next.js App Router, any directory prefixed with an underscore (e.g. `_components`, `_lib`) opts that folder and all its subfolders out of routing. In [app-routes.mjs](file:///Users/nuzantara/Desktop/nuzantara/apps/mouth/scripts/lib/app-routes.mjs#L42-L44), `isUnmodelledConvention` only matches `@` and `^\(\.{1,3}\)`. If a developer places a component test or sub-page under `clients/_components/dialog/page.tsx`, `walkAppRoutes` will treat `_components` as a valid route segment.
+- **What to check:** Either skip folders starting with `_` (`if (name.startsWith("_")) continue;`), or add `name.startsWith("_")` to `isUnmodelledConvention` so it fails loudly if encountered.

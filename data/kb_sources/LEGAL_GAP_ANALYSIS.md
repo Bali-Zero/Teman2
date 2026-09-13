@@ -109,3 +109,7 @@ _Generated: 2026-03-26 by Gemini 3.1 Pro + DeepSeek R1 671b parallel analysis_
 - pajak.go.id — PMK e regolamenti DJP
 - atrbpn.go.id — Permen ATR/BPN
 - bkpm.go.id — Perka BKPM
+
+## Manifest delle fonti primarie scaricate
+
+- PSE + PDP (PP 71/2019, Permenkominfo 5/2020 e 10/2021, UU 27/2022, PMK 37/2025): [MANIFEST-pse-pdp-2026-09.md](../source_documents/t0_regulations/MANIFEST-pse-pdp-2026-09.md) — URL della fonte, sha256, pagine e data di efficacia. Non ancora ingestionati in `legal_unified`.

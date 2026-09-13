@@ -1,0 +1,148 @@
+task_id: oracle-interview-decisive-branches
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --changed-files-file ... --numstat-file ...` returns
+# 3, source `size`. RAISED from 2 when the walk corpus was regenerated and the
+# backend census re-pinned in this same PR (the rule PR-0 set: a PR that
+# changes the interview regenerates the corpus and re-pins the census with
+# it). No total is narrated here — it goes stale on the next commit and this
+# file would then lie about its own diff. The SHAPE is stable and is what the
+# floor reads: the churn is the interview branch logic plus its unit tests
+# plus one backend test module; the 61 generated walk fixtures live under a
+# `fixtures/` directory and are excluded from the size term by
+# `_is_size_term_excluded`, so they are not what floors this.
+# Still no rulepack, no migration, no signed artifact, no secret.
+objective: >-
+  Make the Visa Oracle interview ask the facts the signed seq-19 engine
+  still needs, so a walk ends on a verdict instead of a question list. Spec
+  section 4, PR-3 (research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md):
+  (1) ask wants_onshore_conversion in the OFFSHORE invest branch, where
+  hf.d12-onshore-conversion-excluded is on_unknown NEEDS_INPUT and D12's own
+  target population sits; (2) ask family_sponsor_confirmed in the invest and
+  other branches, the facts el.c2.business and el.c6.social require;
+  (3) ask work_payer in the remote branch, the only input to
+  work.employer_is_indonesian_entity; (4) map diaspora to the FAMILY purpose
+  and reuse the family question set, which mapPurposes previously returned
+  NOT_APPLICABLE for; (5) offer the STEPCHILD option the flow already
+  branches on; (6) the NEEDS_INPUT follow-up loop — when the engine names a
+  fact whose question exists but this walk never asked, append that question
+  and re-evaluate instead of rendering a row nobody can act on.
+  Two owner-ruled additions the PR body discloses ride the same diff because
+  they change the same question list: ruling 3 gives Second Home its own
+  category tile with its own basis and evidence questions, split out of
+  retirement, and ruling 6 deletes the work_role question, whose five options
+  identify no restricted position and which no rule in the pack reads.
+constraints:
+  - >-
+    NO ENGINE CHANGE. The rulepack, the evaluator, every signed artifact and
+    every migration are untouched: the only backend file in this diff is the
+    walk-census TEST module, re-pinned to what the unchanged
+    rulepack-prod-020.signed.json produces once the interview supplies the
+    facts. Outside apps/mouth/src/app/(visa-oracle)/visa-oracle/ the diff is
+    exactly the corpus generator, the generated walk fixtures it emits, and
+    that census module. (This constraint said "FRONTEND ONLY, no file
+    outside the visa-oracle tree" while the corpus regeneration was still
+    expected to ride a separate PR; PR-0's rule puts it here instead, so the
+    constraint is restated to the boundary that is actually held.)
+  - >-
+    NEVER derive wants_onshore_conversion. It is forward-looking intent, so
+    inferring false from "offshore and holding no permit" is a measured
+    fail-open: an investor planning to enter on D12 and change status
+    onshore answers true, and a derived false returns a confident D12
+    recommendation with zero review reasons for a visa that by regulation
+    cannot be converted onshore. Same reasoning bars deriving work_payer
+    from remote_employer_country.
+  - >-
+    Every question added keeps its notSure human-review affordance, so an
+    unsure answer still routes to a person rather than to a guess.
+  - >-
+    The NEEDS_INPUT follow-up may append a question only when this
+    interview's own answers satisfy that question's prerequisites
+    (adversarial review 2026-09-06, finding 1). A question whose branch
+    condition the applicant has already answered the other way keeps the
+    pre-existing human-handoff row.
+acceptance:
+  - text: >-
+      A1: WHEN getCategoryQuestionIds runs for an OFFSHORE invest walk,
+      SHALL include wants_onshore_conversion exactly once, and WHERE the
+      same walk is ONSHORE SHALL NOT include it, because the spine already
+      asks it after overstay_days.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts
+  - text: >-
+      A2: WHEN the invest and other branches are walked, SHALL each ask
+      family_sponsor_confirmed exactly once; and WHEN the remote branch is
+      walked, SHALL ask work_payer before remote_employer_country.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts
+  - text: >-
+      A3: WHEN a diaspora walk is computed, SHALL ask the diaspora context
+      questions followed by the identical family sequence, and mapPurposes
+      SHALL return FAMILY rather than NOT_APPLICABLE.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts
+  - text: >-
+      A4: WHEN the category is second_home, SHALL ask secondhome_basis and
+      only the evidence questions its answer selects, and intent.purposes
+      SHALL carry SECOND_HOME alone (owner ruling 3).
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts
+  - text: >-
+      A5: WHERE work_role is concerned, SHALL be absent from the work branch
+      and from QUESTIONS entirely (owner ruling 6), and the E23 result copy
+      SHALL state both that the employer must obtain RPTKA approval and that
+      some positions are closed to foreign nationals — the caveat the
+      adversarial review required in place of the deleted blanket hold.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/tree.test.ts
+  - text: >-
+      A6: WHEN a NEEDS_INPUT names a fact collected by exactly one
+      registered question that this walk never asked, and this interview's
+      answers satisfy that question's prerequisites, the outcome row SHALL
+      carry followUp true and clicking it SHALL append the question while
+      keeping every fact already answered — never restarting the interview.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
+  - text: >-
+      A7: IF the named fact's question is gated by a condition this
+      interview's answers contradict — family.marriage_registered on a
+      CHILD-relation walk — THEN no follow-up affordance SHALL be rendered
+      and the human-handoff row SHALL stand. Guilt half of the guard
+      (superscar family 3).
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
+  - text: >-
+      A8: WHEN an OFFSHORE walk is asked about onshore conversion, the
+      prompt SHALL be the post-arrival plan wording, never the present-tense
+      status question, while the fact sent to the engine stays identical.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
+  - text: >-
+      A9: WHEN the gold-oracle SHADOW baseline is replayed, SHALL stay green
+      against the new question set, and `npx tsc --noEmit` SHALL report no
+      error inside the visa-oracle tree.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/gold-oracle-baseline.test.ts
+  - text: >-
+      A10: WHEN the interview tree changes, the walk corpus SHALL be
+      regenerated in the SAME PR by the generator, the generator's scenario
+      enumeration SHALL cover every branch getCategoryQuestionIds gained
+      (second_home bases, STEPCHILD, diaspora crossed like family), any
+      fixture the generator no longer emits SHALL be deleted, and the
+      committed corpus SHALL remain byte-for-byte reproducible.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
+  - text: >-
+      A11: WHEN the regenerated corpus is replayed against the highest signed
+      pack, EXPECTED_OUTCOME, the state census and the blocking-fact census
+      SHALL be re-pinned to the MEASURED values, every allowlist row the new
+      questions cure SHALL be DELETED (not restated, not loosened into a
+      range), and any guilt test whose subject the cure removed SHALL be
+      re-anchored onto a case that still fails rather than left to pass
+      vacuously.
+    probe: >-
+      apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+appetite:
+  wall_clock_hours: 3

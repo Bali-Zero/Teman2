@@ -1,0 +1,22 @@
+{
+  "recorded_at": "2026-09-06T02:21:27.949220+00:00",
+  "scope": "Final corrected source; focused fixtures and regenerated synthetic native receipts; no operational activation",
+  "pytest": {
+    "command": "/Users/balizero/nuzantara/.venv/bin/python -m pytest scripts/tests/test_codex_shadow.py scripts/tests/test_codex_shadow_launch.py scripts/tests/test_conductor_app_server_rpc.py scripts/tests/test_conductor_adapter_contracts.py scripts/tests/test_codex_shadow_probe.py -q",
+    "exit_code": 0,
+    "result": "125 passed in 2.22s"
+  },
+  "ruff": {
+    "exit_code": 0,
+    "result": "All checks passed!",
+    "scope": "Nine changed native/shared Python source and test files"
+  },
+  "source_manifest": "source-manifest.json",
+  "source_commit": "c03b182fcd",
+  "native_receipts": [
+    "discovery.json",
+    "native-invoke.json",
+    "native-cancel.json"
+  ],
+  "normalization": "Selected JSON is formatted for the repository; semantic equivalence to original probe JSON is verified separately."
+}

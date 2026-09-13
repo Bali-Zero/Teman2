@@ -1,0 +1,40 @@
+gear: 2
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO2 window W-VO-G, UI half (BLUE, host M5) — a dead end names the door that IS open
+objective: >-
+  On origin/main the Visa Oracle ends 15 of its 84 interview walks in
+  NO_SUPPORTED_PATH and 2 in NEEDS_INPUT. Seven of the 15 rendered
+  `Verified reason: AGE_BELOW_55` — a raw machine code — because four EXCLUDE
+  codes reachable on a real dead end had no entry in SUPPORT_REASON_COPY, and
+  three more rendered the generic catalogue sentence
+  OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES. None of the 15 pointed the
+  visitor at anything. Make every dead end state its cause in words in EN and
+  ID, and — where the SIGNED pack can be shown to support one — name the other
+  route by product code, with a button that switches the interview to it.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-view-model.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/no-path-doors.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json
+  - apps/mouth/scripts/visa-oracle/replay-no-path-doors.py
+  - apps/mouth/e2e/visa-oracle-no-path-doors.spec.ts
+constraints:
+  - Never assert an alternative product from prose — only where a replay of the signed pack on the applicant's own stated facts returns it.
+  - No price and no threshold figure without a resolved PricingTool quote or a bound the signed pack itself carries.
+  - oracle.css is READ-ONLY by ruling; the Oracle keeps its own --oracle-* scale; no red hex.
+  - Forbidden — any pack file, evaluate_path.py / evaluator.py / models.py, tree.ts / flow.ts / fact-mapper.ts and the walk corpus (W-VO-E owns them, running in parallel), the seq-22 pack half (needs a signature), PENDING-ARMS.md.
+  - No client PII — the corpus identities are synthetic and stay synthetic.
+acceptance:
+  - A1 each of the 15 NO_SUPPORTED_PATH walks renders a named cause in EN and ID; the raw code and the generic catalogue sentence appear in zero of them.
+  - A2 each walk that has one renders an alternative product BY CODE, and that product is one the signed pack returns for those stated facts — proven by a replay fixture, never asserted.
+  - A3 the 2 NEEDS_INPUT walks name the missing fact and offer the question that resolves it.
+  - A4 no price or threshold figure appears without a quote or a pack-carried bound.
+  - A5 local production-build screenshots of three dead ends at 1440 and 390, EN and ID.
+consumer_map:
+  - The live balizero.com/visa-oracle outcome sheet served by the apps/mouth Vercel deploy on merge to main — every visitor whose interview ends in NO_SUPPORTED_PATH reads this copy.
+  - The required GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs no-path-doors.test.tsx on every future PR touching this surface.
+appetite:
+  budget: 5 hours active, 1 PR
+  stop_loss: three reds on the same cause suspends; a door that cannot be proven is withdrawn, never softened into prose

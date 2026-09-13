@@ -1,92 +1,30 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Star, MapPin, ArrowUpRight, BadgeCheck } from "lucide-react";
-import { rosterBySlug, initialsOf } from "@/data/team-roster";
+import type { SocialProofMember } from "./socialProofRoster";
 import {
   GOOGLE_MAPS_URL,
   ratingWithReviews,
   reviewCount,
 } from "@/lib/trust-figures";
+import styles from "./SocialProof.module.css";
 
 // Top team members for the homepage. name/role/photo come from the roster SSOT
 // (apps/mouth/src/data/team-roster.ts); this component keeps only the editorial
 // `department` caption + accent + role overrides. `department` here is a marketing
 // caption, NOT the SSOT dept.
-interface TeamMember {
-  name: string;
-  role: string;
-  department: string;
-  photo?: string;
-  initials: string;
-  accent: string;
-}
-
-interface SPEntry {
-  slug: string;
-  department: string;
-  accent: string;
-  roleOverride?: string;
-}
-
-function resolveSP(e: SPEntry): TeamMember {
-  const r = rosterBySlug(e.slug);
-  const name = r?.name ?? e.slug;
-  return {
-    name,
-    role: e.roleOverride ?? r?.role ?? "",
-    department: e.department,
-    photo: r?.photo,
-    initials: initialsOf(name),
-    accent: e.accent,
-  };
-}
-
-// Founders — shown first and larger. The two men who started Bali Zero
-// and still run it. Friends for 30 years, partners in the business.
-const FOUNDERS_SPEC: SPEntry[] = [
-  {
-    slug: "zainal",
-    roleOverride: "CEO",
-    department: "Founder · Since the beginning",
-    accent: "#ff2d4c",
-  },
-  {
-    slug: "heru",
-    roleOverride: "Komisaris",
-    department: "Founder · Partner for 30 years",
-    accent: "#a78bfa",
-  },
-];
-const FOUNDERS: TeamMember[] = FOUNDERS_SPEC.map(resolveSP);
-
-const TEAM_SPEC: SPEntry[] = [
-  {
-    slug: "ruslana",
-    roleOverride: "Special Advisory",
-    department: "Leadership",
-    accent: "#a78bfa",
-  },
-  {
-    slug: "veronika",
-    roleOverride: "Manager",
-    department: "Leadership",
-    accent: "#06b6d4",
-  },
-  {
-    slug: "adit",
-    roleOverride: "Supervisor Lead",
-    department: "Setup",
-    accent: "#f59e0b",
-  },
-  {
-    slug: "angel",
-    roleOverride: "Supervisor",
-    department: "Tax",
-    accent: "#22c55e",
-  },
-];
-const TEAM: TeamMember[] = TEAM_SPEC.map(resolveSP);
+//
+// WHO IS SHOWN is decided in `socialProofRoster.ts`, on the server: it applies
+// `publicEntries()` and hands this component the finished rows. The specs no longer
+// live below, so there is no slug here to add — and that is the point, because a
+// constant naming staff in a "use client" file ships to the browser.
+//
+// VARIANTS. `default` is what /v2 renders and is unchanged. `founder-band` is
+// opt-in and used only by the home: the founders alone, in the R19 band rhythm.
+/** Rows resolved on the server by `socialProofRoster()` — see that file for why. */
+type TeamMember = SocialProofMember;
 
 // Curated review snippets — canonical across homepage + (blog)/_components/GoogleReviewsBlock.
 const REVIEWS = [
@@ -127,7 +65,26 @@ const REVIEWS = [
   },
 ];
 
-export function SocialProof() {
+export type SocialProofVariant = "default" | "founder-band";
+
+export function SocialProof({
+  variant = "default",
+  founders,
+  team,
+}: {
+  /** Opt-in only. Omitted → the default render, unchanged, which /v2 uses. */
+  variant?: SocialProofVariant;
+  /**
+   * The people to show, resolved on the SERVER by `socialProofRoster()`.
+   * Required, and deliberately so: a default of `[]` here would let a caller
+   * that forgot them render a silently empty band, and an import-time default
+   * would put the roster back in this client bundle — which is the whole defect
+   * this prop exists to fix.
+   */
+  founders: SocialProofMember[];
+  team: SocialProofMember[];
+}) {
+  const founderBand = variant === "founder-band";
   return (
     <section
       className="py-12 md:py-20 px-5 md:px-10"
@@ -148,7 +105,7 @@ export function SocialProof() {
             }}
           >
             <BadgeCheck size={12} strokeWidth={2} />
-            5,000+ expats and founders · since 2019
+            5,000+ expats and founders · since 2020
           </div>
           <h2
             className="tracking-tight mb-4"
@@ -170,7 +127,7 @@ export function SocialProof() {
             className="text-[14px] max-w-xl mx-auto"
             style={{ color: "var(--text-secondary)" }}
           >
-            Real consultants handling real cases in Bali since 2019. AI drafts
+            Real consultants handling real cases in Bali since 2020. AI drafts
             the analysis. Our licensed Indonesian team signs the filings.
           </p>
         </div>
@@ -317,128 +274,177 @@ export function SocialProof() {
                   Zainal & Heru
                 </div>
               </div>
-              <a
-                href="/team"
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
-                style={{ color: "var(--rp-accent, #5c8aff)" }}
-              >
-                All 18+
-                <ArrowUpRight size={13} strokeWidth={2} />
-              </a>
-            </div>
-
-            {/* Founders — portraits side by side, prominent */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              {FOUNDERS.map((f) => (
-                <div
-                  key={f.name}
-                  className="relative rounded-2xl overflow-hidden"
-                  style={{
-                    aspectRatio: "3 / 4",
-                    background: `linear-gradient(135deg, ${f.accent} 0%, color-mix(in srgb, ${f.accent} 40%, #000) 100%)`,
-                    border: `1px solid color-mix(in srgb, ${f.accent} 35%, transparent)`,
-                  }}
+              {founderBand ? null : (
+                <a
+                  href="/team"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                  style={{ color: "var(--rp-accent, #5c8aff)" }}
                 >
-                  {f.photo && (
-                    <Image
-                      src={f.photo}
-                      alt={`${f.name} — ${f.role}`}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 200px"
-                      style={{ objectFit: "cover" }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  )}
-                  {/* Bottom gradient for caption legibility */}
-                  <div
-                    className="absolute inset-x-0 bottom-0 pt-8 pb-3 px-3"
-                    style={{
-                      background:
-                        "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 100%)",
-                    }}
-                  >
-                    <div
-                      className="text-[13px] font-extrabold tracking-tight leading-tight"
-                      style={{ color: "#fff" }}
-                    >
-                      {f.name}
-                    </div>
-                    <div
-                      className="text-[10px] mt-0.5"
-                      style={{ color: "rgba(255,255,255,0.75)" }}
-                    >
-                      {f.role} · {f.department.replace("Founder · ", "")}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  All 18+
+                  <ArrowUpRight size={13} strokeWidth={2} />
+                </a>
+              )}
             </div>
 
-            <div
-              className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2.5"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              The team behind them
-            </div>
-
-            <ul className="flex flex-col gap-3 flex-1 list-none p-0 m-0">
-              {TEAM.map((m) => (
-                <li
-                  key={m.name}
-                  className="flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors"
-                  style={{
-                    background: "var(--rp-row-bg, rgba(255, 255, 255, 0.03))",
-                    border:
-                      "1px solid var(--rp-card-border, rgba(255, 255, 255, 0.08))",
-                  }}
-                >
-                  {/* Photo or initials disc */}
-                  <div
-                    className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-                    style={{
-                      background: `linear-gradient(135deg, ${m.accent} 0%, color-mix(in srgb, ${m.accent} 50%, #000) 100%)`,
-                    }}
-                  >
-                    {m.photo ? (
-                      <Image
-                        src={m.photo}
-                        alt={m.name}
-                        fill
-                        sizes="44px"
-                        style={{ objectFit: "cover" }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
+            {founderBand ? (
+              <>
+                {/* R19 band rhythm: the two founders, then the one link out. */}
+                <div className={styles.founderBand}>
+                  {founders.map((f) => (
+                    <figure className={styles.founder} key={f.name}>
+                      <div
+                        className={styles.founderPortrait}
+                        style={{
+                          background: `linear-gradient(135deg, ${f.accent} 0%, color-mix(in srgb, ${f.accent} 40%, #000) 100%)`,
                         }}
-                      />
-                    ) : (
-                      <span
-                        className="text-[13px] font-extrabold"
-                        style={{ color: "#ffffff" }}
                       >
-                        {m.initials}
-                      </span>
-                    )}
-                  </div>
+                        {f.photo ? (
+                          <Image
+                            src={f.photo}
+                            alt={`${f.name} — ${f.role}`}
+                            fill
+                            sizes="(max-width: 700px) 60px, 78px"
+                          />
+                        ) : (
+                          <span
+                            className={styles.founderInitials}
+                            aria-hidden="true"
+                          >
+                            {f.initials}
+                          </span>
+                        )}
+                      </div>
+                      <figcaption className={styles.founderCaption}>
+                        <strong className={styles.founderName}>{f.name}</strong>
+                        <span className={styles.founderRole}>
+                          {f.role} · {f.department.replace("Founder · ", "")}
+                        </span>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+                <Link href="/team" className={styles.bandLink}>
+                  Meet the team
+                  <ArrowUpRight size={14} strokeWidth={2} aria-hidden="true" />
+                </Link>
+              </>
+            ) : (
+              <>
+                {/* Founders — portraits side by side, prominent */}
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  {founders.map((f) => (
+                    <div
+                      key={f.name}
+                      className="relative rounded-2xl overflow-hidden"
+                      style={{
+                        aspectRatio: "3 / 4",
+                        background: `linear-gradient(135deg, ${f.accent} 0%, color-mix(in srgb, ${f.accent} 40%, #000) 100%)`,
+                        border: `1px solid color-mix(in srgb, ${f.accent} 35%, transparent)`,
+                      }}
+                    >
+                      {f.photo && (
+                        <Image
+                          src={f.photo}
+                          alt={`${f.name} — ${f.role}`}
+                          fill
+                          sizes="(max-width: 768px) 50vw, 200px"
+                          style={{ objectFit: "cover" }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      )}
+                      {/* Bottom gradient for caption legibility */}
+                      <div
+                        className="absolute inset-x-0 bottom-0 pt-8 pb-3 px-3"
+                        style={{
+                          background:
+                            "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 100%)",
+                        }}
+                      >
+                        <div
+                          className="text-[13px] font-extrabold tracking-tight leading-tight"
+                          style={{ color: "#fff" }}
+                        >
+                          {f.name}
+                        </div>
+                        <div
+                          className="text-[10px] mt-0.5"
+                          style={{ color: "rgba(255,255,255,0.75)" }}
+                        >
+                          {f.role} · {f.department.replace("Founder · ", "")}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className="text-[14px] font-bold tracking-tight truncate"
-                      style={{ color: "var(--text-primary)" }}
+                <div
+                  className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2.5"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  The team behind them
+                </div>
+
+                <ul className="flex flex-col gap-3 flex-1 list-none p-0 m-0">
+                  {team.map((m) => (
+                    <li
+                      key={m.name}
+                      className="flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors"
+                      style={{
+                        background:
+                          "var(--rp-row-bg, rgba(255, 255, 255, 0.03))",
+                        border:
+                          "1px solid var(--rp-card-border, rgba(255, 255, 255, 0.08))",
+                      }}
                     >
-                      {m.name}
-                    </div>
-                    <div
-                      className="text-[11px] truncate"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {m.role} · {m.department}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      {/* Photo or initials disc */}
+                      <div
+                        className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                        style={{
+                          background: `linear-gradient(135deg, ${m.accent} 0%, color-mix(in srgb, ${m.accent} 50%, #000) 100%)`,
+                        }}
+                      >
+                        {m.photo ? (
+                          <Image
+                            src={m.photo}
+                            alt={m.name}
+                            fill
+                            sizes="44px"
+                            style={{ objectFit: "cover" }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <span
+                            className="text-[13px] font-extrabold"
+                            style={{ color: "#ffffff" }}
+                          >
+                            {m.initials}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div
+                          className="text-[14px] font-bold tracking-tight truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {m.name}
+                        </div>
+                        <div
+                          className="text-[11px] truncate"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          {m.role} · {m.department}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         </div>
 
@@ -453,7 +459,7 @@ export function SocialProof() {
         >
           <TrustItem
             icon={<BadgeCheck size={14} strokeWidth={2} />}
-            label="5,000+ Clients since 2019"
+            label="5,000+ Clients since 2020"
           />
           <TrustItem
             icon={<Star size={14} strokeWidth={0} fill="currentColor" />}

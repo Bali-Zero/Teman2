@@ -1,0 +1,96 @@
+# SECOND READER REVIEW: SPEC-VS-ARTEFACT, FIXTURE INTEGRITY & COHORT HONESTY
+
+**Role:** Second Reader (review-only, outside author chain).  
+**Scope:** Specification (D3, D4, Build Contract), Reference Implementations ([`research_os_admission_reference.py`](file:///Users/nuzantara/nuzantara/apps/backend-rag/backend/tests/unit/research_os/research_os_admission_reference.py), [`research_os_reader_reference.py`](file:///Users/nuzantara/nuzantara/apps/backend-rag/backend/tests/unit/research_os/research_os_reader_reference.py)), and the Seed Cohort Fixture Bundle.
+
+---
+
+## 1. SPEC-vs-ARTEFACT
+
+Below is the complete enumeration of discrepancies where the reference code deviates from the spec's requirements—specifically highlighting where **PRESENCE** is checked instead of **RESOLUTION** or **DERIVATION**.
+
+### A. D4 Admission Rules (`research_os_admission_reference.py`)
+
+1. **Rule 3 (`source_version_missing`) — Presence instead of Resolution:**
+   * **Spec:** Rule 3 requires verifying that a valid `document_version_id` resolves for the tuple `(document_id, body hash)` within the source snapshot.
+   * **Artefact:** Line 186 executes `lambda r, s: bool(r.get("document_version_id"))`. It tests only whether a truthy string is present on the legacy record, completely ignoring the `source` snapshot `s` and failing to resolve the version against the source body or document registry.
+2. **Rule 2 (`content_hash_is_url`) & Body Hash Verification — Negative exclusion instead of Content Hash Derivation:**
+   * **Spec:** D4 demands "source version and body hash (never a URL hash as content hash)".
+   * **Artefact:** `_content_hash_is_url` only checks if `stored == sha256(document_id)`. If an incoming record carries a random or corrupt hash string that is not the URL hash, Rule 2 passes and no subsequent rule checks whether `document_content_hash == sha256(source.body)`.
+3. **Rule 10 (`family_identity_unresolvable`) — Presence on legacy record instead of Resolution from Admission Manifest:**
+   * **Spec:** D4 and Build Spec §3 explicitly dictate that the stable family identity is minted and persisted in the *admission manifest* (`research_os_naga_admission`) and **never** written back into legacy NAGA.
+   * **Artefact:** Line 194 executes `lambda r, s: bool(r.get("manifest_family_id"))` directly against the legacy record `r`, and `admit()` returns `Admitted(..., family_id=str(record["manifest_family_id"]))`. The code requires the legacy record itself to carry the manifest identity (a presence check), rather than resolving or minting it from a manifest store.
+4. **`counts()` Function — Metric semantic divergence:**
+   * **Spec:** Build Spec §3 specifies three distinct metrics: `documented_mapping_coverage` (number of schema paths documented, i.e., 32), `available_source_information` ("of those [32 paths], the ones the legacy record carries ANY source information for" — i.e., path coverage), and `admissible_records` (count of records passing all rules).
+   * **Artefact:** In `counts()`, `available` counts the number of *records* that have any source information (`if record.get("document_content_hash") or ...: available += 1`), rather than measuring required canonical path coverage across the schema.
+
+---
+
+### B. D3 Bitemporal Reader (`research_os_reader_reference.py`)
+
+1. **Runtime `KeyError` on Edge References (`claim_id` vs `object_id`):**
+   * **Spec & Schema:** In `research-os-core` and the canonical fixture, [`ObjectSuccessorEdge`](file:///Users/nuzantara/nuzantara/packages/research-os-core/research_os/models/successor_edge.py) uses [`ExactObjectRef`](file:///Users/nuzantara/nuzantara/packages/research-os-core/research_os/primitives.py) containing `object_id`, `object_kind`, and `object_hash`.
+   * **Artefact:** Lines 152–153 in `_integrity_reasons` and lines 201–204 in `_current_at` access `edge["predecessor_ref"]["claim_id"]` and `edge["successor_ref"]["claim_id"]`. Passing any schema-valid canonical edge throws an immediate `KeyError: 'claim_id'`.
+2. **Family Grouping Failure from Identifier Prefix Mismatch:**
+   * **Spec & Schema:** [`Claim.claim_family_id`](file:///Users/nuzantara/nuzantara/packages/research-os-core/research_os/models/claim.py) is a UUID (`<uuid>`), whereas [`ObjectSuccessorEdge.family_id`](file:///Users/nuzantara/nuzantara/packages/research-os-core/research_os/models/successor_edge.py) is a `RegisteredName` (e.g., `naga.claim_family.<uuid>`).
+   * **Artefact:** In `_group()`, `families.get(edge.get("family_id", ""))` looks up the edge's prefixed `family_id` against `families` keyed by the claim's bare UUID. The lookup returns `None`, silently discarding all edges. Furthermore, if mapped, line 161 (`member["claim_family_id"] != family.family_id`) triggers a false `family_identity_mismatch` quarantine.
+3. **`_is_consequential` Relies on Artificial Non-Canonical Field:**
+   * **Spec:** Step 4 demands that consequential regulatory/numeric claims without `valid_from` quarantine per `CONTRACTS.md:266`.
+   * **Artefact:** `_is_consequential` checks `member.get("consequential", False)`. This field does not exist in the canonical `Claim` schema; genuine canonical claims with numeric statements and null `valid_from` bypass quarantine unless an artificial `consequential: true` flag is injected.
+4. **`ambiguous_subject_key` Quarantine Collapses Family IDs:**
+   * **Spec:** `Quarantine` carries `family_ids: tuple[str, ...]`.
+   * **Artefact:** When multiple families are admissible, `read()` executes `quarantined.setdefault(",".join(sorted(...)), ...)`. `tuple(sorted(quarantined))` produces a 1-tuple containing a single concatenated string `('fam1,fam2',)` rather than separate family IDs.
+5. **Static Unlinked Terminal Members Missed in Step 2 Integrity Check:**
+   * **Spec:** D3 step 2 requires mirroring `graph.py`, which quarantines two unlinked terminal members in the same family regardless of system time.
+   * **Artefact:** `_integrity_reasons` only iterates over `family.edges`. If a family contains two unlinked claims and zero edges, step 2 reports no quarantine reasons; it is only detected in step 3 if both happen to have `recorded_at <= S`.
+
+---
+
+## 2. THE FIXTURE BUNDLE
+
+### A. Internal Consistency of Canonical Objects
+
+* **Hash Verification:** **PASSED.** Every `object_hash` across all 5 seed records (`Claim`, `Evidence`, `IntelEvent`) and the correction pair (`Claim` predecessor/successor, `ObjectSuccessorEdge`) matches the exact RFC 8785 canonical hash. All `quote_hash` and `document_content_hash` fields match SHA-256 digests.
+* **Schema Validation:** **PASSED.** All canonical objects validate against their respective schemas (`claim.schema.json`, `evidence.schema.json`, `intel_event.schema.json`, `object_successor_edge.schema.json`) and pass Pydantic model validation.
+* **Cross-References:** **PASSED.** Every `evidence_refs` points to an existing `Evidence` with matching hash; every `source_event_ref` points to an existing `IntelEvent` with matching hash; `record.source_event_ref` matches `source.intel_events`.
+* **Placeholders:** **PASSED.** No placeholder tokens (`TODO`, `FIXME`, dummy hashes) exist.
+
+### B. Defects & Missing Attributes in Fixtures
+
+1. **Correction Pair Claims Lack `subject_key` Extension:**
+   * In `records[0..4]`, claims carry the `com.balizero.research-os.naga` extension defining `subject_key`.
+   * In `correction_pair.claims`, neither the predecessor (`1ee6eeea...`) nor the successor (`184ca5a4...`) carries `extensions`. They are completely invisible to `read(subject_key, ...)`.
+2. **Correction Pair Claims Lack Evidence:**
+   * Both claims in `correction_pair` carry `evidence_refs: []`, violating the requirement that consequential regulatory claims carry supporting evidence.
+
+### C. The Correction Pair Atomicity
+
+* **Identical Predecessor Hash Binding:** **YES.** Predecessor hash `aef8d8c458ea2ee871b49b5490175d3b0aeb8f9cc9e9bc21012111c9ef477082` is bound identically in `Claim.supersedes_claim_ref.object_hash` and `ObjectSuccessorEdge.predecessor_ref.object_hash`.
+* **System-Time Ordering:** **YES.** Successor `recorded_at` (`2026-07-10T00:00:00Z`) is strictly later than predecessor `recorded_at` (`2026-02-01T00:00:00Z`). Edge `recorded_at` matches the successor.
+* **Predecessor Untouched:** **YES.** Predecessor preserves `valid_to: null`, `status: "supported"`, and has no successor edge written into its payload (satisfying Ruling B1).
+
+---
+
+## 3. THE COHORT'S HONESTY
+
+### A. Labelling and Synthetic Declarations
+
+The bundle exhibits rigorous synthetic labelling at the fixture and record layers:
+* Envelope carries `"synthetic": true` and `z2b_production_eligibility: "NOT PRODUCTION-ELIGIBLE"`.
+* All records in `records` carry `"synthetic": true`.
+* All document URIs use `https://example.go.id/` and explicitly contain `-synth-`.
+* Source bodies explicitly begin with `SYNTHETIC GAZETTE TEXT` and contain `(fiktif, untuk pengujian)`.
+* Scope domains and jurisdictions carry `.synthetic` and `national (synthetic)`.
+
+### B. Domain Proximity & Indonesian Regulatory Fidelity
+
+Despite explicit synthetic flags, the legal structures and figures closely mimic real Indonesian statutory instruments, creating domain proximity risks:
+1. **LKPM Filing Deadline (Record 3):** `quarterly, due by the 10th of the following month` matches the actual regulatory schedule under BKPM regulations (Perka BKPM No. 5/2021).
+2. **DKP-TKA Compensation Fee (Record 4):** States `USD 1,200 per worker per month`. Under PP 34/2021, the statutory rate is exactly `USD 100 per worker per month` (USD 1,200 per year). This conflates an annual statutory tariff into a monthly one using identical legal terms.
+3. **PMA Minimum Capital (Record 2):** States `Rp11.000.000.000` (IDR 11 Billion). This is a slight perturbation of the real Indonesian statutory PMA capital threshold of `Rp10.000.000.000` (IDR 10 Billion) under PP 5/2021.
+4. **KITAS Renewal Administrative Fees (Record 1 & Correction Pair):** Mimics the structure of Indonesian immigration non-tax state revenue (PNBP) under PP 28/2019.
+
+### C. Completeness of Non-Production Declaration
+
+* **Envelope Declaration:** **COMPLETE.** The `z2b_production_eligibility` declaration explicitly defines the Z2b seed cohort as empty for production writes, forbidding any row from being committed to production via `--apply`.
+* **Residual Mistake Vector:** If raw canonical objects are extracted from this fixture file and stored directly into `research_os_objects`, the canonical object schemas themselves do not carry an `is_synthetic` flag (only `scope.jurisdiction: "national (synthetic)"` and `-synth-` in the statement object ID). Downstream LLMs or automated ingestion pipelines querying `research_os_objects` without inspecting the scope string could mistake these rows for authentic Indonesian regulations due to their high lexical realism.

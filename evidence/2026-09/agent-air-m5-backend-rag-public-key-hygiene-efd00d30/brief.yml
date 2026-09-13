@@ -1,0 +1,12 @@
+gear: 1
+objective: Annotate four identical pinned public Ed25519 verification keys for the existing secret scanner.
+constraints:
+  - Only same-line comments on the four assigned public key literals; no logic, key, trust-store or baseline changes.
+  - No private key access, signing or runtime module execution.
+acceptance:
+  - WHEN the scanner reads the four existing files, the four public-key findings SHALL disappear and other findings
+    SHALL remain unchanged.
+  - WHEN a separate synthetic unannotated canary is scanned, its findings SHALL remain detectable.
+  - WHEN source meaning is compared with the parent, AST, compiled code and public-key bytes SHALL remain identical.
+consumer_map:
+  - Detect Secrets scans the changed files and honors each existing same-line allowlist pragma.

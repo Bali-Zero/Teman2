@@ -1,0 +1,29 @@
+task_id: e33-practice-owner
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Reject an E33 create-case request whose optional practice belongs to a different client
+  or does not exist, before inserting a case. Preserve client authorization and creation
+  without a practice. This is S-02 of the owner-requested three-product collaboration.
+constraints:
+  - Only e33_cases.py, its router tests and this branch's evidence are changed.
+  - Synthetic data and mock database only; backend tests execute on Pro.
+  - Draft PR only. Independent Fable review is pending; no merge, arming or deployment.
+acceptance:
+  - text: >-
+      WHEN the practice is missing or belongs to another client, create_case SHALL return
+      the same 422 response and never insert. Valid admin/team requests and omitted/null
+      practice requests SHALL retain their successful behavior.
+    probe: backend/tests/routers/test_e33_cases.py
+  - text: The changed Python files SHALL pass Ruff lint without collateral reformatting.
+    probe: ruff check backend/app/routers/e33_cases.py backend/tests/routers/test_e33_cases.py
+consumer_map:
+  - Staff E33 console POST /api/e33/cases consumes the pre-insert relationship check.
+risks:
+  - Verification uses the real router with a mocked pool, not a production database.
+  - The existing FK handler still handles deletion between lookup and insertion.
+  - Ruff format reports nine inherited hunks outside the change; formatting is not clean.
+grader: Independent Fable review requested by the coordinating session; not yet performed.
+budget: Existing subscription only; no paid API calls.
+pii: none

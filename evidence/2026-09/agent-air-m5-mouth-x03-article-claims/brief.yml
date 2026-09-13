@@ -1,0 +1,12 @@
+gear: 1
+objective: Ratchet inherited E33 lexical patterns over articles and translation siblings.
+scope:
+  - apps/mouth/src/i18n/secondhome-article-claims.test.ts
+  - apps/mouth/src/i18n/secondhome-article-claims.baseline.json
+constraints:
+  - No article edits or new legal rules; matches are not legal findings.
+acceptance:
+  - Existing corpus passes; new hits, removed allowances and duplicates fail.
+  - A real temporary MDX with USD 1,500 fails naming its path.
+consumer_map:
+  - Required mouth Vitest includes this sibling test through src/**/*.test.{ts,tsx}.

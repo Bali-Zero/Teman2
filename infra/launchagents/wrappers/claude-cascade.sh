@@ -244,7 +244,14 @@ retryable_failure_detected() {
 typeset -a ISOLATED_PROVIDER_ENV
 build_isolated_provider_env() {
     local name
-    ISOLATED_PROVIDER_ENV=(env)
+    # TERM_PROGRAM is not a credential, but context_window_guard.py reads it to
+    # pick the jump seat: ghostty → it opens a GUI window and writes a
+    # seat=ghostty file this wrapper ignores by design, so a cascade run by
+    # hand from a terminal would hand its mandate to a window nobody asked
+    # for and accept the seat's partial output as complete. The seat must
+    # always look headless. TERM_PROGRAM_VERSION goes with it (Ghostty exports
+    # both; the guard keys on the first, the second is cheap hardening).
+    ISOLATED_PROVIDER_ENV=(env -u TERM_PROGRAM -u TERM_PROGRAM_VERSION)
     for name in ${(k)parameters}; do
         case "$name" in
             CLAUDE_CODE_OAUTH_TOKEN|CLAUDE_CODE_OAUTH_TOKEN_*|\
@@ -350,6 +357,194 @@ build_claude_args() {
     CLAUDE_ARGS+=("${EXTRA_ARGS[@]}")
 }
 
+
+# ---------------------------------------------------------------------------
+# WINDOW JUMP, headless half (Ruling Zero 2026-09-09 «tutti i seat», research/
+# operations/2026-09-09-window-jump-automatic-handoff-it.md §4b). In `-p` mode
+# context_window_guard.py trips exactly as in a window: it writes
+# ~/.organism/context-guard/pending-jump-<session>.json (seat=headless) and
+# denies every tool, so the session ends its turn early with partial output.
+# Nothing can open a "window" here — the wrapper IS the window: every
+# invocation gets its OWN session id (--session-id, a fresh UUID each time, so
+# a hop can never resume or fork the previous transcript), and after the run
+# the wrapper looks for THAT session's jump file — never "the newest file in
+# this cwd" (Pro runs many seats from one checkout; cross-family review found
+# the heuristic could hand one seat's trip to another). On a trip it
+# re-invokes the SAME seat with a fresh id, a short continuation prompt on
+# stdin and NZ_JUMP_FROM=<previous id> in the env, which context_jump_resume.py
+# (SessionStart) uses to inject exactly that mandate + handoff. Hop outputs are
+# ACCUMULATED and emitted only when the chain ends cleanly: a failed hop emits
+# nothing, so the cascade's next seat starts from a clean stdout (the handoff
+# on disk keeps the partial work). Every hop goes through the same quota/auth
+# classification as the first run. Cap JUMP_MAX_HOPS per run (the guard caps
+# the chain as well). Kill switch: CONTEXT_JUMP_OFF=1 (same as the guard).
+# ---------------------------------------------------------------------------
+JUMP_MAX_HOPS="${JUMP_MAX_HOPS:-3}"
+# Guard threshold for a headless seat. The guard's default (40% of the
+# window) exists for CONTEXT QUALITY (Zero, 2026-09-09: short windows per
+# role reason better than a full or compacted one). Measured live on Pro
+# 2026-09-09 (pro-healer tick, Sonnet 200K): the tick needs ~90K, tripped at
+# 80K, and every hop restarted at ~47K (system prompt + injected handoff),
+# redid ~35 tool calls and tripped again — the chain reached the cap
+# INCOMPLETE, so the quality rule bought nothing and cost 3x. A cron tick
+# that cannot finish inside 40% must be allowed to finish; 80% is a measured
+# exception for the headless tier, not a new default for windows (Astra,
+# 2026-09-09: 80% of 200K is 160K; Codex's 40% of 258K is already 103K).
+# An explicit CONTEXT_GUARD_PCT in the caller's env wins.
+JUMP_GUARD_PCT="${JUMP_GUARD_PCT:-80}"
+JUMP_STATE_DIR="${JUMP_STATE_DIR:-$HOME/.organism/context-guard}"
+
+new_session_id() {
+    REPLY="$(python3 -c 'import uuid; print(uuid.uuid4())' 2>/dev/null || uuidgen | tr 'A-Z' 'a-z')"
+}
+
+headless_jump_raised_by() {
+    # $1 = session id of the run that just returned. Prints its jump file when
+    # the guard tripped in that run (seat=headless, not yet claimed), else nothing.
+    [ "${CONTEXT_JUMP_OFF:-0}" = "1" ] && return 1
+    local f="$JUMP_STATE_DIR/pending-jump-$1.json"
+    [ -f "$f" ] || return 1
+    python3 - "$f" <<'PY' 2>/dev/null
+import json, sys
+try:
+    j = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+if not isinstance(j, dict) or j.get("to_session") or j.get("seat") != "headless":
+    sys.exit(1)
+print(sys.argv[1])
+PY
+}
+
+cascade_cap_escalation() {
+    # $1 = seat label, $2 = hops taken, $3 = the pending jump file ("" when the
+    # guard refused to write one), $4 = session id of the run that tripped.
+    # Receptor for the headless cap (Ruling Zero 2026-09-09 «tutto ciò che
+    # succede nel sistema non deve aspettare me per un fix»): a chain that hits
+    # JUMP_MAX_HOPS with a jump still pending is a mandate that silently ended
+    # INCOMPLETE — superscar #2 (Esiste≠Armato) with a green exit code. It
+    # becomes one HIGH line on the escalations board so the next SessionStart
+    # surfaces it. Board: CASCADE_ESCALATIONS_FILE, else the first known
+    # checkout's shared/escalations_pro.jsonl. Dedupe: one line per pending
+    # session id (the file's from_session). Kill switch:
+    # CASCADE_CAP_ESCALATION_OFF=1. Never fails the run: the emitted hops are
+    # real work; a broken board is a stderr warning, not a lost answer. No
+    # ~/Desktop candidate on purpose: a launchd wrapper touching Desktop trips
+    # macOS TCC (W84-tcc-dead, scripts/lint_tcc_desktop_paths.py) — every
+    # machine has ~/nuzantara, and NUZANTARA_ROOT names any other checkout.
+    [ "${CASCADE_CAP_ESCALATION_OFF:-0}" = "1" ] && return 0
+    local board="${CASCADE_ESCALATIONS_FILE:-}" cand
+    if [ -z "$board" ]; then
+        for cand in "${NUZANTARA_ROOT:+$NUZANTARA_ROOT/shared/escalations_pro.jsonl}" \
+                    "$HOME/nuzantara/shared/escalations_pro.jsonl"; do
+            [ -n "$cand" ] && [ -f "$cand" ] && { board="$cand"; break; }
+        done
+    fi
+    if [ -z "$board" ]; then
+        echo "  [cap] $1 — cap escalation NOT written: no escalations board found (set CASCADE_ESCALATIONS_FILE)" >&2
+        return 0
+    fi
+    CAP_SEAT="$1" CAP_HOPS="$2" CAP_JUMP_FILE="$3" CAP_SID="${4:-}" CAP_BOARD="$board" CAP_MAX="$JUMP_MAX_HOPS" \
+    CAP_HANDOFF="$HOME/.claude/state/precompact-handoff-${4:-}.json" \
+    python3 - <<'PY' 2>&1 | sed 's/^/  [cap] /' >&2
+import json, os, socket, time
+seat, hops, jf, board, sid_env = (os.environ[k] for k in ("CAP_SEAT", "CAP_HOPS", "CAP_JUMP_FILE", "CAP_BOARD", "CAP_SID"))
+j = {}
+if jf:
+    try:
+        j = json.load(open(jf))
+    except Exception:
+        j = {}
+sid = str(j.get("from_session") or sid_env or (os.path.basename(jf)[len("pending-jump-"):-len(".json")] if jf else "unknown"))
+handoff = j.get("handoff_path") or (os.environ["CAP_HANDOFF"] if sid_env and os.path.exists(os.environ["CAP_HANDOFF"]) else None)
+try:
+    for line in open(board, encoding="utf-8"):
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        if d.get("type") == "cascade_headless_cap" and d.get("session") == sid:
+            print(f"{seat} — cap escalation already on the board for session {sid[:8]} (dedupe)")
+            raise SystemExit(0)
+except FileNotFoundError:
+    pass
+host = socket.gethostname().split(".")[0].lower()
+rec = {
+    "job": f"cascade-headless-cap-{seat}-{sid[:8]}",
+    "type": "cascade_headless_cap",
+    "priority": "HIGH",
+    "status": "pending",
+    "error_summary": (
+        f"headless window jump hit cap {os.environ['CAP_MAX']} on seat {seat} with a jump still "
+        f"pending: the mandate ended INCOMPLETE with exit 0 ({hops} hops"
+        f"{'' if jf else ', guard refused the jump: its chain cap or CONTEXT_JUMP_OFF'}); "
+        f"handoff {handoff or '?'}"
+    ),
+    "seat": seat,
+    "hops": int(hops),
+    "session": sid,
+    "jump_file": jf or None,
+    "handoff_path": handoff,
+    "cwd": j.get("cwd"),
+    "model": j.get("model"),
+    "cure_lane": {
+        "owner": "session",
+        "note": "read the handoff first; continue the mandate in a fresh headless seat run "
+                "with the handoff as its first context, then mark this job resolved; "
+                "raising JUMP_MAX_HOPS does not help (the guard caps the chain at 3 on its own); "
+                "never rerun blind (Builder Contract §1)",
+    },
+    "machine": host,
+    "_writer": host,
+    # a NUMBER: scripts/sentinel_lib/escalations.py sorts entries on the raw
+    # value and the live board carries floats — one string would TypeError
+    # the whole read (codex #1, 2026-09-09)
+    "ts": time.time(),
+}
+os.makedirs(os.path.dirname(os.path.abspath(board)), exist_ok=True)
+with open(board, "a", encoding="utf-8") as fh:
+    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+print(f"{seat} — cap escalation HIGH written to {board} (session {sid[:8]})")
+PY
+    return 0
+}
+
+guard_tripped_in_run() {
+    # $1 = session id. True when context_window_guard.py tripped in that run.
+    # Signals, either one: (a) the guard's OWN marker
+    # ~/.claude/state/context-window-guard/<session>.last-handoff, written by
+    # _mark_handoff_written() after a successful handoff — NOT the handoff
+    # file itself, which precompact-mnemos.py also writes on an ordinary
+    # compaction (codex #2, 2026-09-09: a compaction would read as INCOMPLETE);
+    # (b) the pending-jump file for that session, whatever its state — the
+    # guard creates it even when the handoff write failed (codex #3). The
+    # pending file alone is not enough: at the guard's chain cap the run trips,
+    # marks, and refuses the jump (kimi #1, seen live on Pro hop 2). The jump
+    # kill switch does not silence detection: the operator turned off the
+    # jump, not the report (codex #4).
+    [ -f "${CONTEXT_GUARD_STATE_DIR:-$HOME/.claude/state/context-window-guard}/$1.last-handoff" ] \
+        || [ -f "$JUMP_STATE_DIR/pending-jump-$1.json" ]
+}
+
+claude_seat_invoke() {
+    # $1 = session id for this invocation; $2 = previous session id (hop) or "".
+    # Uses try_claude's own locals (bin, oauth_token, config_dir, label,
+    # tmpout, tmperr) — zsh dynamic scoping — so hops run the SAME seat.
+    local -a hop_env
+    hop_env=(CONTEXT_GUARD_PCT="${CONTEXT_GUARD_PCT:-$JUMP_GUARD_PCT}")
+    [ -n "${2:-}" ] && hop_env+=(NZ_JUMP_FROM="$2")
+    if [ -n "$oauth_token" ]; then
+        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
+            CLAUDE_CONFIG_DIR="$config_dir" \
+            CLAUDE_CODE_OAUTH_TOKEN="$oauth_token" "${hop_env[@]}" \
+            "$bin" "${CLAUDE_ARGS[@]}" --session-id "$1"
+    else
+        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
+            CLAUDE_CONFIG_DIR="$config_dir" "${hop_env[@]}" \
+            "$bin" "${CLAUDE_ARGS[@]}" --session-id "$1"
+    fi
+}
+
 try_claude() {
     local bin="$1"
     local label="$2"
@@ -375,18 +570,10 @@ try_claude() {
     build_isolated_provider_env
 
     echo "  [try] $label ($bin)" >&2
-    if [ -n "$oauth_token" ]; then
-        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
-            CLAUDE_CONFIG_DIR="$config_dir" \
-            CLAUDE_CODE_OAUTH_TOKEN="$oauth_token" \
-            "$bin" "${CLAUDE_ARGS[@]}"
-        exit_code=$?
-    else
-        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
-            CLAUDE_CONFIG_DIR="$config_dir" \
-            "$bin" "${CLAUDE_ARGS[@]}"
-        exit_code=$?
-    fi
+    local run_sid
+    new_session_id; run_sid="$REPLY"
+    claude_seat_invoke "$run_sid" ""
+    exit_code=$?
 
     # Some Claude CLI auth/quota failures incorrectly return exit 0. Content
     # classification therefore precedes the exit-code success check.
@@ -406,9 +593,62 @@ try_claude() {
         return 97
     fi
 
-    cat "$tmpout"
-    rm -f "$tmpout" "$tmperr"
-    echo "[claude-cascade] used: $label" >&2
+    # Window jump, headless half: the run tripped the context guard → fresh
+    # session on the same seat, continuation prompt, outputs accumulated.
+    local hop=0 jump_file hop_prompt_file saved_prompt_file prev_sid acc
+    new_temp_file; acc="$REPLY"
+    cat "$tmpout" >"$acc"
+    while jump_file="$(headless_jump_raised_by "$run_sid")" && [ -n "$jump_file" ] \
+          && [ "$hop" -lt "$JUMP_MAX_HOPS" ]; do
+        hop=$((hop + 1))
+        prev_sid="$run_sid"
+        new_session_id; run_sid="$REPLY"
+        echo "  [jump] $label — context guard tripped ($(basename "$jump_file")): fresh session $run_sid, hop $hop/$JUMP_MAX_HOPS" >&2
+        new_temp_file
+        hop_prompt_file="$REPLY"
+        printf '%s' "Sei la sessione successiva di $prev_sid (salto $hop). Il mandato originale e lo stato raggiunto sono nel contesto iniettato da context_jump_resume: continua da lì, senza chiedere, e non ripetere il lavoro già verificato." >"$hop_prompt_file"
+        saved_prompt_file="$PROMPT_FILE"
+        PROMPT_FILE="$hop_prompt_file"
+        : >"$tmpout"; : >"$tmperr"
+        claude_seat_invoke "$run_sid" "$prev_sid"
+        exit_code=$?
+        PROMPT_FILE="$saved_prompt_file"
+        rm -f "$hop_prompt_file"
+        # Same classification as the first run: a quota banner with exit 0 on
+        # a hop must cascade to the next seat, not pass as the seat's answer.
+        if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
+            echo "  [retry] $label hop $hop quota/auth failure (partial work kept in $jump_file)" >&2
+            rm -f "$tmpout" "$tmperr" "$acc"
+            return 98
+        fi
+        if [ "$exit_code" -ne 0 ] || [ ! -s "$tmpout" ]; then
+            echo "  [error] $label hop $hop exit=$exit_code (empty=$([ -s "$tmpout" ] && echo no || echo yes)) — nothing emitted, partial work kept in $jump_file" >&2
+            rm -f "$tmpout" "$tmperr" "$acc"
+            return 96
+        fi
+        cat "$tmpout" >>"$acc"
+    done
+    # The loop ends either because the last run did not trip (clean chain) or
+    # because nobody will continue it: our cap, or the guard's own chain cap /
+    # kill switch (it tripped, wrote the handoff, refused the jump file). Both
+    # are an INCOMPLETE mandate wearing exit 0 — say so and raise it.
+    if guard_tripped_in_run "$run_sid"; then
+        jump_file="$(headless_jump_raised_by "$run_sid" || true)"
+        if [ "${CONTEXT_JUMP_OFF:-0}" = "1" ]; then
+            echo "  [cap] $label — guard tripped on session $run_sid, jump disabled (CONTEXT_JUMP_OFF=1): mandate may be INCOMPLETE" >&2
+        elif [ "$hop" -ge "$JUMP_MAX_HOPS" ]; then
+            local pending_desc="no jump file: guard refused"
+            [ -n "$jump_file" ] && pending_desc="$(basename "$jump_file")"
+            echo "  [cap] $label — cap $JUMP_MAX_HOPS reached with a jump still pending ($pending_desc): mandate may be INCOMPLETE" >&2
+        else
+            echo "  [cap] $label — guard tripped on session $run_sid after hop $hop but raised no jump (its chain cap): mandate may be INCOMPLETE" >&2
+        fi
+        cascade_cap_escalation "$label" "$hop" "${jump_file:-}" "$run_sid"
+    fi
+
+    cat "$acc"
+    rm -f "$tmpout" "$tmperr" "$acc"
+    echo "[claude-cascade] used: $label$([ "$hop" -gt 0 ] && echo " (hops: $hop)")" >&2
     return 0
 }
 

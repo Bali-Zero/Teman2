@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 88ee800ce53c07dba4c6213a8bb11dda00e2c4e331962ec1addc27b22be6118d
+checksum: 9104b0aec4d131448483391eee77e3995aa37792e46bfd125321a803ca919df0 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1788,15 +1788,29 @@ organs:
 - id: pro.automations_reference
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 90000
-  owner_module: scripts/generate-automations-all.sh
+  expected_hb_seconds: 93600
+  owner_module: scripts/automations-reference-cron-wrapper.sh
   dependencies: []
   recovery_action: launchctl_kickstart
   recovery_params:
     host: pro
     label: com.nuzantara.automations-reference
-  severity_on_silence: info
+  severity_on_silence: warning
+  notes: Nightly (23:15 WITA) regeneration of docs/AUTOMATIONS_REFERENCE.md, runs
+    scripts/generate_automations_reference.py inside an isolated worktree
+    (scripts/agent_start.py, lane=docs) via scripts/automations-reference-cron-wrapper.sh
+    so the main checkout is never written to directly — ends the two-authors overwrite
+    between Pro's live regen and the hand-edited committed copy (PENDING-ARMS ledger,
+    2026-09-11). Output is promoted via an auto-merge PR only when something actually
+    changed. The retired xlsx export step (scripts/generate_automations_excel.py,
+    28 of 28 runs failed on missing openpyxl) is not carried over. Kill switch
+    AUTOMATIONS_REFERENCE_ENABLED=false.
   cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.automations_reference.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.prime_tunnel
   runtime: pro_launchd
   type: daemon
@@ -2368,6 +2382,31 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.launchd_liveness.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.secrets_permissions_audit
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 14400
+  owner_module: scripts/secrets_permissions_audit.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.secrets-permissions-audit
+  severity_on_silence: error
+  notes: 'The credential-custody detector on a schedule (mission S2): hourly --notify
+    run over the default roots, ~/nuzantara/.secrets included; custody findings leave
+    as one p0 through tg_notify.py, .env* modes as one digest. Never chmods. Silence
+    means a loosened credential file goes unseen, hence error. Pro-only (plist paths).
+    Heartbeat status ok / error (blind scan or gateway refusal) / disabled. Kill switch
+    env var SECRETS_PERMISSIONS_AUDIT_ENABLED, set to false. 14400 = 4x the plist''s own 3600s
+    cadence (self-reporting cron, not bridge-fed): launchd coalesces the intervals missed
+    while the host sleeps and fires once on wake, so 2x would page every morning on a
+    machine that ever sleeps (Kimi council seat, finding L2).'
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.secrets_permissions_audit.json
     timestamp_field: ts
     status_field: status
 - id: pro.kbli_surface_conformance

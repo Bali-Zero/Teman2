@@ -1,0 +1,5 @@
+{"seat":"codex-gpt-5.6-sol","role":"review","round":1,"ok":false,"verdict":"DEFECT","transcript":"council/codex-round1.txt","ts":"2026-09-13T20:36:00+08:00"}
+{"seat":"codex-gpt-5.6-sol","role":"review","round":2,"ok":false,"verdict":"DEFECT","transcript":"council/codex-round2.txt","ts":"2026-09-13T20:52:00+08:00"}
+{"seat":"codex-gpt-5.6-sol","role":"review","round":3,"ok":false,"verdict":"DEFECT","transcript":"council/codex-round3.txt","ts":"2026-09-13T20:59:00+08:00"}
+{"seat":"tp1-qwen3.8-max","role":"review","round":1,"ok":false,"verdict":"NO OUTPUT","note":"qwen -p with the 64KB diff prompt produced an empty stdout inside the 900s ceiling; no verdict was returned and none is invented","ts":"2026-09-13T21:10:00+08:00"}
+{"seat":"kimi-code/k3","role":"review","round":0,"ok":false,"verdict":"UNAVAILABLE","note":"Moonshot quota exhausted for the month (Dux instruction, 2026-09-13)","ts":"2026-09-13T21:10:00+08:00"}

@@ -461,6 +461,51 @@ def render_json(report: Report) -> str:
     }, indent=2)
 
 
+def _load_registry_strictly(registry_path: Path) -> dict:
+    """Load the gate registry through the shared strict policy loader.
+
+    Loaded by PATH: scripts/lib is not an importable package, and this script is run
+    both from the repo and from a $HOME deploy copy by
+    infra/launchagents/com.nuzantara.verify-the-verifiers.plist. There is no fallback to
+    yaml.safe_load — a meta-verifier that quietly downgrades to the permissive loader
+    when the strict one is missing is the exact shape of the disease it exists to catch.
+    """
+    import importlib.util
+
+    strict_path = REPO_ROOT / "scripts" / "lib" / "yaml_strict.py"
+    module = sys.modules.get("nuzantara_yaml_strict")
+    if module is None:
+        spec = importlib.util.spec_from_file_location("nuzantara_yaml_strict", strict_path)
+        if spec is None or spec.loader is None or not strict_path.is_file():
+            raise RuntimeError(f"strict policy loader not found at {strict_path}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["nuzantara_yaml_strict"] = module
+        spec.loader.exec_module(module)
+    registry = module.load_policy(registry_path)
+
+    # The same defect one level DOWN. `gates:` is a LIST, so a repeated `id:` produces
+    # two independent results rather than shadowing one — but render_json emits gates
+    # keyed by id, and every consumer that builds a dict from that output silently keeps
+    # the last. "Last one wins in silence" belongs to any keyed collection built without
+    # a collision check, not to YAML; curing it only at the key layer leaves it here.
+    gates = registry.get("gates")
+    if isinstance(gates, list):
+        seen: dict[str, int] = {}
+        for index, gate in enumerate(gates, start=1):
+            if not isinstance(gate, dict):
+                continue
+            gid = gate.get("id")
+            if gid is None:
+                raise RuntimeError(f"gate #{index} has no `id` — it cannot be reported on")
+            if gid in seen:
+                raise RuntimeError(
+                    f"gate #{index} repeats the id `{gid}` first used at gate #{seen[gid]} — "
+                    f"the JSON report is keyed by id, so a consumer would keep only one."
+                )
+            seen[gid] = index
+    return registry
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Meta-verifier — check safety gates are armed (P1 §4).")
     parser.add_argument("--registry", default=str(DEFAULT_REGISTRY),
@@ -486,10 +531,24 @@ def main(argv: list[str] | None = None) -> int:
     if not registry_path.exists():
         print(f"FATAL: registry not found: {registry_path}", file=sys.stderr)
         return 3
+    # The registry is a POLICY document — it decides which safety gates get checked at
+    # all — so it is loaded STRICTLY, not with yaml.safe_load. safe_load lets a duplicate
+    # top-level key win in silence: a second `gates:` appended at the end of the file
+    # replaces the 34 above it and reviews as an added block. MINIMUM_GATES catches that
+    # by COUNT, but only by count — a replacement list of 34 harmless-looking entries
+    # clears the floor and checks nothing real. The strict loader refuses the ambiguity
+    # itself, which is the layer where it is legible.
+    #
+    # NOT converted, deliberately: the yaml.safe_load at check_ci_workflow, which parses a
+    # GitHub Actions workflow to judge whether a gate is armed. That file is the SUBJECT of
+    # a verdict, not a policy governing the judge, and GitHub Actions itself resolves a
+    # duplicate key by last-wins — a checker that refused where the runtime accepts would
+    # be reporting on a file that does not exist. Refusing everything that parses YAML is
+    # the over-match twin of this defect (superscar #3).
     try:
-        registry = yaml.safe_load(registry_path.read_text())
-    except yaml.YAMLError as exc:
-        print(f"FATAL: registry unparseable: {exc}", file=sys.stderr)
+        registry = _load_registry_strictly(registry_path)
+    except Exception as exc:  # noqa: BLE001 — the loader's own error type is path-loaded
+        print(f"FATAL: registry refused: {exc}", file=sys.stderr)
         return 3
 
     # A registry that carries no gates is not an empty to-do list, it is a disarmed

@@ -1,0 +1,46 @@
+task_id: oracle-activity-boundary-narrowing
+gear: 2
+l_level: L2
+gate_class: opus
+objective:
+  "Narrow the ACTIVITY_BOUNDARY disclosed-review flag so it is raised only for an ANSWER the
+  signed vocabulary cannot decide, never for the mere fact that a question was answered. A disclosed flag
+  is terminal backend-side (`evaluate_path.py::_apply_disclosed_review_flags` rewrites the decision to
+  HUMAN_REVIEW_REQUIRED with `candidates=()`), so one over-broad clause DELETES a product the signed pack
+  had already proven. This PR also absorbs the merge of #5855, which rewrote the interview underneath
+  it."
+constraints:
+  - "The `business_activity` clause may only be removed AFTER the seq-20 fold compiles the D2 local-compensation
+    prohibition — removing it before that is a measured fail-open. Precondition SATISFIED: rule-pack seq-20
+    (payload_sha256 df02287b...) was signed and activated in production on 2026-09-06 carrying EXCLUDE `hf.d2.indonesia-source-compensation`."
+  - "Re-anchoring a walk-census row onto #5855's new question sequence is NOT licence to weaken it. Every
+    row still drives the REAL `flowReducer`; each edit is annotated with which question #5855 inserted or
+    deleted, so the diff shows re-anchoring and not relaxation."
+  - "No client PII: every walk and probe is synthetic, and the production probes carry no identifying fact."
+acceptance:
+  - text:
+      "A1: WHEN the visa-oracle suite runs SHALL pass with zero failures, including the walk census
+      driven through the real reducer."
+    probe: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/"
+  - text:
+      "A2: WHERE a HUMAN_CONTEXT question exists in `tree.ts`, SHALL be either classified in ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS
+      or explicitly exempted — a new one must be filed, not defaulted."
+    probe:
+      drove flowReducer from initialFlowState(en) through each category with a temporary probe test,
+      dumped the exact question order, then edited each branch to match; probe deleted before commit
+  - text:
+      "A3: WHEN `secondhome_basis=property` is answered SHALL raise no flag, because production returns
+      SUPPORTED_CANDIDATES [E33] for `offshore/second_home/property` and holding it would delete that proven
+      candidate."
+    probe:
+      POST https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate?traffic_source=real with the offshore_second_home_property
+      walk's 45-fact overrides taken verbatim from origin/main
+  - text:
+      "A4: WHEN the deterministic floor is recomputed from this PR's changed files SHALL be 2, and
+      the declared gear SHALL equal it."
+    probe:
+      git diff --numstat origin/main...HEAD > /tmp/pr4.numstat && git diff --name-only origin/main...HEAD
+      > /tmp/pr4.files && python3 scripts/evidence_pack_lint.py --print-floor --numstat-file /tmp/pr4.numstat
+      --changed-files-file /tmp/pr4.files
+appetite:
+  wall_clock_hours: 2

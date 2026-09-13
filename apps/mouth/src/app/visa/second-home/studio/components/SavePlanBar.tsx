@@ -335,25 +335,43 @@ const clearButtonLayoutStyle: React.CSSProperties = {
  *  abandoned-branch answer (e.g. a leftover `capital` value after
  *  switching to the property route) never leaks into a shared link. */
 export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
-  const [savedFeedback, setSavedFeedback] = useState(false);
-  const [copiedFeedback, setCopiedFeedback] = useState(false);
+  const [feedback, setFeedback] = useState<
+    | "savedConfirmation"
+    | "saveFailed"
+    | "copiedConfirmation"
+    | "copyFailed"
+    | null
+  >(null);
+  const [showManualLink, setShowManualLink] = useState(false);
+
+  useEffect(() => {
+    if (feedback !== "savedConfirmation" && feedback !== "copiedConfirmation")
+      return;
+    const timeout = window.setTimeout(() => setFeedback(null), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
+
+  function planLink(): string {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}${STUDIO_PATH}#p=${encodePlanFragment(relevantPlan(plan))}`;
+  }
 
   function handleSave() {
-    savePlan(plan);
-    setSavedFeedback(true);
-    window.setTimeout(() => setSavedFeedback(false), 2500);
+    const saved = savePlan(plan);
+    setFeedback(saved ? "savedConfirmation" : "saveFailed");
+    setShowManualLink(!saved);
   }
 
   async function handleCopyLink() {
     if (typeof window === "undefined") return;
-    const url = `${window.location.origin}${STUDIO_PATH}#p=${encodePlanFragment(relevantPlan(plan))}`;
+    setFeedback(null);
     try {
-      await navigator.clipboard.writeText(url);
-      setCopiedFeedback(true);
-      window.setTimeout(() => setCopiedFeedback(false), 2500);
+      await navigator.clipboard.writeText(planLink());
+      setFeedback("copiedConfirmation");
+      setShowManualLink(false);
     } catch {
-      // Clipboard blocked (permissions/private mode) — silent no-op; the
-      // user can still select the link text manually if we ever render it.
+      setFeedback("copyFailed");
+      setShowManualLink(true);
     }
   }
 
@@ -477,7 +495,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
         </button>
       </div>
       <div role="status" aria-live="polite" style={{ minHeight: "1.2em" }}>
-        {savedFeedback ? (
+        {feedback ? (
           <p
             style={{
               margin: 0,
@@ -485,18 +503,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
               color: "var(--text-primary)",
             }}
           >
-            {getCopy("savePlanBar.savedConfirmation")}
-          </p>
-        ) : null}
-        {copiedFeedback ? (
-          <p
-            style={{
-              margin: 0,
-              fontSize: "var(--text-sm, 0.85rem)",
-              color: "var(--text-primary)",
-            }}
-          >
-            {getCopy("savePlanBar.copiedConfirmation")}
+            {getCopy(`savePlanBar.${feedback}`)}
           </p>
         ) : null}
         {clearArmed ? (
@@ -511,6 +518,31 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
           </p>
         ) : null}
       </div>
+      {showManualLink ? (
+        <label
+          style={{
+            display: "grid",
+            gap: "var(--space-2, 0.5rem)",
+            minWidth: 0,
+          }}
+        >
+          {getCopy("savePlanBar.manualLinkLabel")}
+          <input
+            type="text"
+            readOnly
+            value={planLink()}
+            onFocus={(event) => event.currentTarget.select()}
+            style={{
+              ...buttonStyle,
+              cursor: "text",
+              width: "100%",
+              minWidth: 0,
+              boxSizing: "border-box",
+              background: "var(--surface-base)",
+            }}
+          />
+        </label>
+      ) : null}
       <p
         style={{
           margin: 0,

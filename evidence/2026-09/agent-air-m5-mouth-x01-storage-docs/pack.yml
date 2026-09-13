@@ -1,0 +1,30 @@
+brief_ref: evidence/2026-09/agent-air-m5-mouth-x01-storage-docs/brief.yml
+lanes:
+  - lane: x01-storage-docs
+    role: build
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - lane: x01-storage-docs-review
+    role: review
+    seat: kimi-code/k3 via existing OAuth CLI
+dissent: []
+pii_scan: clean
+receipts:
+  - claim: The documented token path matches the actual constructor and behaves as documented in server and browser contexts.
+    cmd: node .agent/verify-snippet.cjs
+    result: TypeScript 6.0.3 AST comparison and parse/transpile passed; server smoke returned null with zero storage calls; browser smoke read auth_token once. The old snippet fails the same verification. This one-time local probe is not a new repository test.
+    exit: 0
+    ts: "2026-09-05T19:58:24.796Z"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: An independent Kimi reader found the documentation change accurate and within the abridged token-path scope.
+    cmd: kimi -m kimi-code/k3 -p <documentation diff, actual source excerpt and probe result>
+    result: PASS; no factual errors or scope creep. Static supplied-source review; the reviewer did not re-execute the probe. Only this review receipt followed the review.
+    exit: 0
+    ts: "2026-09-05T19:59:16.969816+00:00"
+    seat: kimi-code/k3
+source:
+  path: apps/mouth/src/lib/api/client.ts
+  blob: 31f5c2881a41ce52d8de0f6b97bcf40eb46abf6a # pragma: allowlist secret - verified public source Git blob, not credential
+  base: 2421a3dd053cf9cab97665114bb4f5496d06ab44 # pragma: allowlist secret - verified public main Git commit, not credential
+limits:
+  - The comparison covers the abridged constructor token path; profile and impersonation initialization remain omitted by the existing abridgement.
+  - Syntax and isolated constructor smoke do not claim full application typechecking, runtime tests or production behavior.

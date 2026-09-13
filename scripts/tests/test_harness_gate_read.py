@@ -533,3 +533,176 @@ def test_module_docstring_does_not_prescribe_workflow_dispatch_as_the_cure():
     assert _mentions_are_all_prohibitions(doc, "gh workflow run harness-floor.yml --ref"), (
         "module docstring must not prescribe workflow_dispatch as the recovery path"
     )
+
+
+# ---------------------------------------------------------------------------
+# WORKFLOW GEAR THRESHOLD (RULED 2026-09-10, Zero: the final gate verdict is
+# required from Gear 2; Gear 1 stays advisory).
+#
+# These are STATIC proofs over .github/workflows/harness-floor.yml, not over
+# the script above — they belong here because the workflow's `if:` is the
+# ONLY thing that decides whether this script is ever invoked. The script can
+# be flawless and the gate still unenforced if Step 7c's condition drifts back
+# to `gear == '3'`; that condition shipped for three weeks and let every
+# Gear-2 diff merge unsigned, which is the exact regression this section pins.
+#
+# GUILT     — Step 7c firing only at gear == '3' (the pre-ruling condition),
+#             or the "not applicable" step swallowing gear 2.
+# INNOCENCE — gear 1 must still resolve to success without ever reading a
+#             verdict (a typo PR must not wait on a human-shaped gate), and
+#             the floor-1/no-brief path must stay a plain pass.
+# ---------------------------------------------------------------------------
+
+WORKFLOW_PATH = REPO / ".github" / "workflows" / "harness-floor.yml"
+
+
+def _harness_floor_steps() -> list[dict]:
+    import yaml  # imported lazily: only this section needs it
+    doc = yaml.safe_load(WORKFLOW_PATH.read_text())
+    return doc["jobs"]["harness-floor"]["steps"]
+
+
+def _eval_if(expr: str, ctx: dict[str, str]) -> bool:
+    """Evaluate a GitHub Actions `if:` over `ctx`, for the `&&`-joined
+    `<context.path> ==|!= '<literal>'` shape both gear steps use.
+
+    The FIX the #6100 gate demanded: the partition pin below used to decide membership with `in`
+    against the raw expression text — superscar #3 UNDER-match on an expression guard. The
+    reviewer's counterexample `gear != '1' && gear != '2'` leaves Gear 2 covered by NEITHER step,
+    and the substring version stayed green on it (pinned below). Only reading the expression
+    catches a clause a mutation ADDS rather than removes. Unmodelled input FAILS rather than
+    passing vacuously: an unparseable clause or a path absent from `ctx` raises, so a condition
+    that grows an `||` or a function call reads as a broken test, never a satisfied one."""
+    for clause in (c.strip() for c in expr.replace("\n", " ").split("&&")):
+        if not clause:
+            continue
+        match = re.fullmatch(r"([A-Za-z0-9_.]+)\s*(==|!=)\s*'([^']*)'", clause)
+        if match is None:
+            raise AssertionError(f"unsupported clause in an `if:` — extend _eval_if: {clause!r}")
+        path, operator, literal = match.groups()
+        if path not in ctx:
+            raise AssertionError(f"`if:` reads an unmodelled context path {path!r} — extend the ctx")
+        if ((ctx[path] == literal) is not (operator == "==")):
+            return False
+    return True
+
+
+def _ctx_for_gear(gear: str) -> dict[str, str]:
+    """The context a Gear-`gear` PR presents to Steps 7a/7c: enforcement on, a brief of its own
+    present (the only path on which gearcheck runs at all), and that brief's declared gear."""
+    return {
+        "steps.kill_switch.outputs.disabled": "false",
+        "steps.brief.outputs.present": "true",
+        "steps.gearcheck.outputs.gear": gear,
+    }
+
+
+def _step_by_name_fragment(fragment: str) -> dict:
+    matches = [s for s in _harness_floor_steps() if fragment in str(s.get("name", ""))]
+    assert len(matches) == 1, (
+        f"expected exactly one harness-floor.yml step whose name contains {fragment!r}, "
+        f"found {len(matches)}: {[s.get('name') for s in matches]}"
+    )
+    return matches[0]
+
+
+def test_verdict_read_step_fires_from_gear_2_not_only_gear_3():
+    """The ruling, expressed as the one condition that enforces it.
+
+    `gear != '1'` is asserted rather than `gear == '2' or gear == '3'` because the gearcheck step
+    has already rejected anything outside {1,2,3} (its own `^[123]$` validation) — so the negative
+    form is the total one, and a future Gear 4 would inherit the gate rather than silently escape
+    it (fail-closed, superscar #3 UNDER-match)."""
+    cond = _step_by_name_fragment("read the real gate verdict")["if"]
+    for gear in ("2", "3"):
+        assert _eval_if(cond, _ctx_for_gear(gear)), (
+            f"Step 7c must read the harness/fable-gate verdict at gear {gear}. Its pre-2026-09-10 "
+            f"condition (gear == '3') let a Gear-2 diff merge with no verdict on its head sha at "
+            f"all — got: {cond!r}"
+        )
+
+
+def test_the_not_applicable_step_exempts_gear_1_only():
+    """INNOCENCE side. Gear 1 keeps its unconditional pass — the gate must never make a typo PR
+    wait for a human-shaped verdict — but it is now the ONLY gear that gets one."""
+    cond = _step_by_name_fragment("fable-gate not applicable")["if"]
+    assert "steps.gearcheck.outputs.gear == '1'" in cond, (
+        f"the not-applicable step must be scoped to gear 1 alone — got: {cond!r}"
+    )
+    assert "steps.gearcheck.outputs.gear != '3'" not in cond, (
+        "the old `gear != '3'` exemption passed Gear-2 briefs through with no verdict read"
+    )
+
+
+def test_the_two_gear_steps_partition_every_gear_with_no_gap_and_no_overlap():
+    """Guilt+innocence as a PAIR, not two independent assertions: a gear that falls through BOTH
+    steps would silently pass (no verdict read, no notice), and one caught by both would be a
+    contradiction. Since gearcheck admits exactly {1,2,3}, `== '1'` and `!= '1'` must be the two
+    halves — this fails if either side is edited alone."""
+    exempt = _step_by_name_fragment("fable-gate not applicable")["if"]
+    gated = _step_by_name_fragment("read the real gate verdict")["if"]
+    for gear, expect_gated in (("1", False), ("2", True), ("3", True)):
+        ctx = _ctx_for_gear(gear)
+        in_exempt, in_gated = _eval_if(exempt, ctx), _eval_if(gated, ctx)
+        assert in_gated is expect_gated, f"gear {gear}: expected gated={expect_gated}"
+        assert in_exempt or in_gated, f"gear {gear} is matched by NEITHER step — silent pass"
+        assert not (in_exempt and in_gated), f"gear {gear} is matched by BOTH steps"
+
+
+def test_the_partition_check_catches_the_gear_2_escape_mutation():
+    """The guilt pin for the pin — the counterexample the #6100 gate supplied. ADDING a clause is
+    what the substring version could not see: the mutant still CONTAINS the string that version
+    asserted, so it stayed green while Gear 2 fell through both steps into a silent pass."""
+    mutant = (
+        "steps.kill_switch.outputs.disabled != 'true' &&\n"
+        "steps.brief.outputs.present == 'true' &&\n"
+        "steps.gearcheck.outputs.gear != '1' &&\n"
+        "steps.gearcheck.outputs.gear != '2'\n"
+    )
+    assert "steps.gearcheck.outputs.gear != '1'" in mutant, (
+        "the mutant must keep the substring the old pin matched on — that is what made it invisible"
+    )
+    assert _eval_if(mutant, _ctx_for_gear("2")) is False, (
+        "a Gear-2 PR must NOT reach the verdict read under this mutant — if it does, the "
+        "counterexample is not being modelled and this pin proves nothing"
+    )
+    assert _eval_if(mutant, _ctx_for_gear("3")) is True, (
+        "innocence: the mutant still gates Gear 3, so the pin is catching the Gear-2 hole "
+        "specifically, not just any change to the expression"
+    )
+
+
+def test_floor_1_with_no_brief_still_resolves_to_success():
+    """The pending-forever trap, pinned. This job is a REQUIRED check on every PR in the repo, so
+    the ordinary small diff — no evidence/brief.yml, floor 1 — has to reach a green conclusion
+    with no external input. Widening the gate to Gear 2 must not have touched this path."""
+    step = _step_by_name_fragment("Not a harness task")
+    cond = step["if"]
+    assert "steps.detfloor.outputs.floor == '1'" in cond, (
+        f"floor==1 with no brief must still take the trivial-pass path — got: {cond!r}"
+    )
+    assert "exit 1" not in str(step.get("run", "")), (
+        "the floor-1/no-brief path must not be able to fail"
+    )
+
+
+def test_floor_2_without_a_brief_is_a_failure_not_a_pass():
+    """The FLOOR half of the same threshold. A floor>=2 diff that ships no brief at all cannot
+    reach Step 7c (there is no gear to read), so the enforcement for it lives in Step 5c — which
+    must still fail rather than default to 'not a harness task'."""
+    step = _step_by_name_fragment("floor >= 2 diff with no evidence/brief.yml")
+    assert "steps.detfloor.outputs.floor != '1'" in step["if"], (
+        f"Step 5c must cover every floor above 1 — got: {step['if']!r}"
+    )
+    assert "exit 1" in str(step["run"]), "Step 5c must fail, never notice-and-pass"
+
+
+def test_the_evidence_pack_validation_stays_gear_3_only():
+    """A deliberate NON-change, pinned so a future 'symmetry' edit does not sneak it in: the
+    ruling moved the VERDICT threshold to Gear 2, not the Evidence Pack. harness-v2 §6 closes a
+    Gear-2 task on a session verdict + AI review + CI; demanding a pack of it would be a second,
+    unruled gate riding along with this one."""
+    cond = _step_by_name_fragment("validate evidence/pack.yml")["if"]
+    assert "steps.gearcheck.outputs.gear == '3'" in cond, (
+        f"Evidence Pack validation must remain Gear-3-only — got: {cond!r}"
+    )

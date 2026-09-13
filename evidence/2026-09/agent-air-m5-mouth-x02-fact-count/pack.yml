@@ -1,0 +1,51 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: x02
+    role: build
+    seat: OpenAI GPT-6 (this Codex session; exact variant not exposed)
+  - lane: x02-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+receipts:
+  - claim: Focused mapper, shadow and compiler tests pass.
+    cmd: cd apps/mouth && npx vitest run src/lib/api/applicant-fact-paths.test.ts src/app/\(visa-oracle\)/visa-oracle/_lib/{fact-mapper,shadow-client}.test.ts
+    result: 115 passed in 3 files; 115 passed again after schema restore.
+    exit: 0
+    ts: "2026-09-05T11:09:04+00:00"
+    seat: Codex parent
+  - claim: A contract addition fails one central assertion.
+    cmd:
+      Insert test.guilt_fact in schema.d.ts ApplicantFactsData, run same suite, restore
+      original bytes in finally.
+    result: 1 failed / 114 passed; central diagnostic names test.guilt_fact.
+    exit: 1
+    ts: "2026-09-05T11:09:04+00:00"
+    seat: Codex parent
+  - claim: Four handwritten expectations are removed.
+    cmd:
+      git grep -nE "toHaveLength\(45\)|toBe\(45\)" HEAD -- <three test paths>; rg
+      same pattern on working files
+    result: "Old head: 4 hits, exit 0; working files: 0 hits, exit 1."
+    exit: 0
+    ts: "2026-09-05T11:09:35+00:00"
+    seat: Codex parent
+  - claim: Playwright can collect the edited E2E file and its new import.
+    cmd: cd apps/mouth && npx playwright test e2e/visa-oracle-v2.spec.ts --list
+    result: 72 tests collected; E2E browser scenarios not executed.
+    exit: 0
+    ts: "2026-09-05T11:10:10+00:00"
+    seat: Codex parent
+  - claim: Independent Kimi reviewed the supplied final diff.
+    cmd: kimi -m kimi-code/k3 -p <supplied diff and new witness files>
+    result: PASS. Prompt SHA-256 53bdc79a31886286af2c4faa640ba4eeb2b6a3f97031f9c0edc8f7a17ff984b9
+    exit: 0
+    ts: "2026-09-05T11:11:19.754706+00:00"
+    seat: kimi-code/k3
+dissent: []
+residual_risks:
+  - "Kimi requested schema closure and CI discovery verification: measured 45 property
+    signatures, zero index signatures; Vitest src include covers witness."
+  - Browser E2E was collected, not executed; required CI and independent Anthropic gate
+    remain pending.

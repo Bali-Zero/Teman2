@@ -24,6 +24,7 @@ Exit codes
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import sys
@@ -36,18 +37,27 @@ except ImportError:  # pragma: no cover
     sys.stderr.write("PyYAML is required (pip install pyyaml)\n")
     sys.exit(1)
 
+# scripts/lib is not an importable package, so the shared matcher is loaded by path.
+_spec = importlib.util.spec_from_file_location(
+    "nuzantara_cve_exceptions", Path(__file__).resolve().parent / "lib" / "cve_exceptions.py"
+)
+assert _spec is not None and _spec.loader is not None
+cve_exceptions = importlib.util.module_from_spec(_spec)
+sys.modules["nuzantara_cve_exceptions"] = cve_exceptions
+_spec.loader.exec_module(cve_exceptions)
+
 
 BLOCKING_SEVERITIES = {"high", "critical"}
 
 
-def _load_accepted_cves(exceptions_path: Path) -> set[str]:
-    if not exceptions_path.is_file():
-        return set()
-    data = yaml.safe_load(exceptions_path.read_text()) or {}
-    raw = data.get("exceptions") if isinstance(data, dict) else None
-    if not isinstance(raw, list):
-        return set()
-    return {e["cve_id"] for e in raw if isinstance(e, dict) and "cve_id" in e}
+def _load_accepted_cves(exceptions_path: Path) -> set[cve_exceptions.AcceptedKey]:
+    """Thin shim over the shared matcher — see scripts/lib/cve_exceptions.py.
+
+    The two filters used to carry independent copies of this, both keying on the CVE id
+    alone while ignoring the `package` their own schema requires. Two copies of a
+    security-matching rule that must agree is one copy too many (superscar #1).
+    """
+    return cve_exceptions.load_accepted(exceptions_path)
 
 
 def _extract_findings(report: Any) -> list[dict[str, Any]]:
@@ -121,9 +131,11 @@ def main(argv: list[str]) -> int:
         if severity and severity not in BLOCKING_SEVERITIES:
             continue
         cve = _cve_id(finding)
-        package = finding.get("package_name") or finding.get("package") or "(unknown)"
+        # "(unknown)" is for DISPLAY only — see the note in filter_snyk_findings.py.
+        raw_package = finding.get("package_name") or finding.get("package")
+        package = raw_package or "(unknown)"
         label = cve if cve else f"safety-{finding.get('vulnerability_id', '?')}"
-        if cve and cve in accepted:
+        if cve and cve_exceptions.is_accepted(accepted, cve, raw_package):
             accepted_hits.append((label, package, severity or "unknown"))
         else:
             unaccepted.append((label, package, severity or "unknown"))

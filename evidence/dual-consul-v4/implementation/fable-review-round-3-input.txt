@@ -1,0 +1,488 @@
+New empirical prerequisite review, distinct from the two accepted source review rounds. After your JSON shape question, production READ ONLY presence query returned both autonomous_lab_runs and outbox absent. Prior306 would fail its FK. No rows or credentials read. The final narrow correction backfills exact legacy124 apply SQL before lease creation, preserving foundation on rollback. Review ONLY this prerequisite correction and source-grounded clarifications, not unchanged previously passed executor/adapter code. No tool calls; return PASS/REWORK and concrete blockers, END_DUAL_CONSUL_REVIEW. No disagreement cycle occurred; this is a newly observed deployment prerequisite.
+
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-05T23:43:02.425178+00:00",
+  "timestamp_semantics": "Recording timestamp; not an exact query start. Actual output observed this session.",
+  "scope": "production schema presence and aggregate JSON shape only; no client or mission contents read",
+  "connection": "existing scripts/pg.sh on Pro using the configured read-only role and already-running proxy",
+  "first_attempt": {
+    "transaction": "BEGIN READ ONLY",
+    "schema_presence": {
+      "lab_runs_present": false,
+      "lab_outbox_present": false
+    },
+    "aggregate_query_exit": 3,
+    "error": "relation public.autonomous_lab_runs does not exist",
+    "mutation": false
+  },
+  "independent_presence_recheck": {
+    "exit": 0,
+    "stdout": "BEGIN\n{\"lab_runs_present\" : false, \"lab_outbox_present\" : false, \"read_only\" : \"on\"}\nROLLBACK\n",
+    "sql": "BEGIN READ ONLY; SELECT json_build_object('lab_runs_present', to_regclass('public.autonomous_lab_runs') IS NOT NULL, 'lab_outbox_present', to_regclass('public.autonomous_lab_events_outbox') IS NOT NULL, 'read_only', current_setting('transaction_read_only')); ROLLBACK;"
+  },
+  "local_dev_check": {
+    "status": "not_verified",
+    "reason": "Configured local read-only credential unavailable; no fallback to privileged access."
+  },
+  "consequence": "Migration 306 must backfill the exact legacy 124 Lab foundation before adding its foreign key. No corrupted legacy Lab JSON rows exist in the inspected production tables because those tables are absent. Other databases remain unverified."
+}
+
+diff --git a/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql b/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
+index 0f83e5cc85..b27a3f93dc 100644
+--- a/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
++++ b/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
+@@ -4,6 +4,125 @@
+ -- Retained approval tombstones prevent revoke A -> bind B -> resurrect A.
+ SET LOCAL lock_timeout = '5s';
+ 
++-- The legacy Python migration 124 is not guaranteed to have run before the SQL
++-- migration chain. Backfill its canonical Lab tables/indexes before the lease FK.
++-- This immutable snapshot reuses every apply() statement verbatim after dedent;
++-- the focused parity test detects drift. No worker or scheduler is activated.
++-- BEGIN LEGACY 124 APPLY SNAPSHOT
++CREATE TABLE IF NOT EXISTS autonomous_lab_runs (
++    run_id TEXT PRIMARY KEY,
++    idempotency_key TEXT NOT NULL UNIQUE,
++
++    status TEXT NOT NULL DEFAULT 'pending'
++        CHECK (status IN (
++            'pending',
++            'running',
++            'paused',
++            'succeeded',
++            'failed',
++            'cancelled'
++        )),
++    priority INTEGER NOT NULL DEFAULT 0,
++
++    -- Machine placement and worker ownership.
++    machine_role TEXT
++        CHECK (
++            machine_role IS NULL
++            OR machine_role IN (
++                'air_m5_cockpit',
++                'pro_runtime',
++                'mini_scheduler',
++                'unknown'
++            )
++        ),
++    worker_id TEXT,
++
++    -- Receipt-safe control-plane payloads only.
++    objective TEXT NOT NULL,
++    receipt JSONB NOT NULL,
++    target_paths TEXT[] NOT NULL DEFAULT '{}',
++    metadata JSONB NOT NULL DEFAULT '{}',
++
++    -- Retry and lease state.
++    attempts INTEGER NOT NULL DEFAULT 0,
++    max_attempts INTEGER NOT NULL DEFAULT 3,
++    next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    claimed_at TIMESTAMPTZ,
++    heartbeat_at TIMESTAMPTZ,
++    completed_at TIMESTAMPTZ,
++    last_error TEXT,
++
++    -- Audit.
++    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
++);
++
++CREATE INDEX IF NOT EXISTS idx_autonomous_lab_runs_claimable
++    ON autonomous_lab_runs (priority DESC, created_at ASC)
++    WHERE status = 'pending';
++
++CREATE INDEX IF NOT EXISTS idx_autonomous_lab_runs_status_updated
++    ON autonomous_lab_runs (status, updated_at);
++
++CREATE INDEX IF NOT EXISTS idx_autonomous_lab_runs_worker
++    ON autonomous_lab_runs (worker_id)
++    WHERE worker_id IS NOT NULL;
++
++CREATE TABLE IF NOT EXISTS autonomous_lab_events_outbox (
++    event_id BIGSERIAL PRIMARY KEY,
++    run_id TEXT NOT NULL
++        REFERENCES autonomous_lab_runs(run_id)
++        ON DELETE CASCADE,
++    event_type TEXT NOT NULL
++        CHECK (event_type IN (
++            'run_enqueued',
++            'run_claimed',
++            'run_checkpointed',
++            'run_paused',
++            'run_succeeded',
++            'run_failed',
++            'run_cancelled',
++            'material_ingested',
++            'run_drafted',
++            'experiment_ready',
++            'verification_failed',
++            'candidate_ready',
++            'evaluation_recorded',
++            'curator_decision_recorded',
++            'shadow_run_completed'
++        )),
++    payload JSONB NOT NULL,
++
++    status TEXT NOT NULL DEFAULT 'pending'
++        CHECK (status IN (
++            'pending',
++            'in_progress',
++            'consumed',
++            'failed_dlq'
++        )),
++    attempts INTEGER NOT NULL DEFAULT 0,
++    max_attempts INTEGER NOT NULL DEFAULT 5,
++    next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    claimed_by TEXT,
++    claimed_at TIMESTAMPTZ,
++    consumed_at TIMESTAMPTZ,
++    last_error TEXT,
++
++    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
++);
++
++CREATE INDEX IF NOT EXISTS idx_autonomous_lab_outbox_claimable
++    ON autonomous_lab_events_outbox (created_at ASC)
++    WHERE status = 'pending';
++
++CREATE INDEX IF NOT EXISTS idx_autonomous_lab_outbox_run_id
++    ON autonomous_lab_events_outbox (run_id);
++
++CREATE INDEX IF NOT EXISTS idx_autonomous_lab_outbox_status_updated
++    ON autonomous_lab_events_outbox (status, updated_at);
++-- END LEGACY 124 APPLY SNAPSHOT
++
+ CREATE TABLE public.autonomous_lab_consul_leases (
+     run_id TEXT PRIMARY KEY REFERENCES public.autonomous_lab_runs(run_id),
+     owner_id TEXT NOT NULL CHECK (owner_id ~ '^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,191}$'),
+@@ -24,4 +143,6 @@ CREATE TABLE public.autonomous_lab_consul_leases (
+ );
+ 
+ -- === ROLLBACK ===
++-- Preserve shared Lab tables and their data, including tables bootstrapped above.
++-- Reverting this slice removes only its lease table.
+ DROP TABLE IF EXISTS public.autonomous_lab_consul_leases;
+diff --git a/apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py b/apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py
+index 137aec6b57..3966a2066e 100644
+--- a/apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py
++++ b/apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py
+@@ -12,6 +12,7 @@ import os
+ from collections.abc import AsyncIterator
+ from contextlib import suppress
+ from pathlib import Path
++from textwrap import dedent
+ from typing import Any
+ from urllib.parse import unquote, urlsplit
+ 
+@@ -127,6 +128,65 @@ async def _counts(conn: asyncpg.Connection) -> tuple[int, int, int]:
+     )
+ 
+ 
++async def test_migration_306_reuses_every_canonical_124_statement() -> None:
++    statements: list[str] = []
++
++    class Recorder:
++        async def execute(self, sql: str) -> None:
++            statements.append(dedent(sql).strip())
++
++    await apply_lab(Recorder())
++    forward, _ = split_migration_sql(
++        (MIGRATIONS / "306_autonomous_lab_consul_leases.sql").read_text()
++    )
++    snapshot = (
++        forward.split("-- BEGIN LEGACY 124 APPLY SNAPSHOT\n", 1)[1]
++        .split("-- END LEGACY 124 APPLY SNAPSHOT", 1)[0]
++        .strip()
++    )
++    assert statements
++    assert snapshot == "\n\n".join(statements)
++
++
++async def test_migration_306_bootstraps_absent_lab_and_preserves_rows_on_rollback(
++    dual_db: asyncpg.Connection,
++) -> None:
++    await dual_db.execute(
++        "DROP TABLE public.autonomous_lab_consul_leases, "
++        "public.autonomous_lab_events_outbox, public.autonomous_lab_runs"
++    )
++    assert await dual_db.fetchval(
++        "SELECT to_regclass('public.autonomous_lab_runs') IS NULL "
++        "AND to_regclass('public.autonomous_lab_events_outbox') IS NULL"
++    )
++    forward, rollback = split_migration_sql(
++        (MIGRATIONS / "306_autonomous_lab_consul_leases.sql").read_text()
++    )
++    async with dual_db.transaction():
++        await dual_db.execute(forward)
++    run_id = "consul-bootstrap-proof"
++    store = await _enqueue(dual_db, run_id)
++    request = make_request(await dual_db.fetchval("SELECT clock_timestamp()"), run_id)
++    worker = AutonomousLabWorker(
++        placement=store.placement,
++        state_store=store,
++        stage_nodes=(ConsulSyntheticStage(dual_db, request, OWNER),),
++    )
++    assert (await worker.tick(dual_db, worker_id=OWNER)).status.value == "succeeded"
++    assert await _counts(dual_db) == (1, 1, 1)
++    assert rollback is not None
++    async with dual_db.transaction():
++        await dual_db.execute(rollback)
++    assert await dual_db.fetchval(
++        "SELECT to_regclass('public.autonomous_lab_consul_leases') IS NULL"
++    )
++    assert (
++        await dual_db.fetchval("SELECT status FROM autonomous_lab_runs WHERE run_id=$1", run_id)
++        == "succeeded"
++    )
++    assert await _counts(dual_db) == (1, 1, 1)
++
++
+ async def test_migration_306_rollback_and_reapply_preserve_existing_lifecycle(
+     dual_db: asyncpg.Connection,
+ ) -> None:
+
+ACTUAL EXISTING SOURCE packages/research-os-core/research_os/models/action_intent.py:84-93
+    @model_validator(mode="after")
+    def validate_action_intent(self) -> ActionIntent:
+        validate_extensions(self.extensions)
+        expected = object_hash(self)
+        if self.object_hash != expected:
+            raise PydanticCustomError(
+                "object_hash_mismatch",
+                "object_hash does not match the canonical object",
+            )
+        return self
+ACTUAL EXISTING SOURCE packages/research-os-core/research_os/models/approval_receipt.py:186-193
+        validate_extensions(self.extensions)
+        expected = object_hash(self)
+        if self.object_hash != expected:
+            raise PydanticCustomError(
+                "object_hash_mismatch",
+                "object_hash does not match the canonical object",
+            )
+        return self
+ACTUAL EXISTING SOURCE packages/research-os-core/research_os/models/verification_receipt.py:119-128
+    @model_validator(mode="after")
+    def validate_receipt(self) -> VerificationReceipt:
+        validate_extensions(self.extensions)
+        expected = object_hash(self)
+        if self.object_hash != expected:
+            raise PydanticCustomError(
+                "object_hash_mismatch",
+                "object_hash does not match the canonical object",
+            )
+        return self
+ACTUAL EXISTING SOURCE apps/backend-rag/backend/db/migration_base.py:638-683
+        # transaction. Apply the forward portion only; the rollback string is
+        # stored separately on `self.rollback_sql` for `rollback_migration()`.
+        sql_forward, _embedded_rollback = split_migration_sql(sql)
+
+        # Validate SQL
+        try:
+            self._validate_sql(sql_forward)
+        except MigrationError as e:
+            logger.error(f"SQL validation failed for {self.migration_name}: {e}")
+            raise
+
+        # Sanitize URL for logging
+        safe_url = self._sanitize_db_url(settings.database_url)
+        logger.info(f"Applying migration {self.migration_name} to {safe_url}")
+
+        # Connect to database
+        try:
+            conn = await asyncpg.connect(settings.database_url)
+        except Exception as e:
+            raise MigrationError(f"Cannot connect to database: {e}") from e
+
+        import time
+
+        start_time = time.time()
+
+        try:
+            # Use transaction for atomicity
+            async with conn.transaction():
+                # Check dependencies
+                await self._check_dependencies(conn)
+
+                # Check if already applied
+                if await self._is_applied(conn):
+                    execution_time_ms = int((time.time() - start_time) * 1000)
+                    await self._log_migration(
+                        conn,
+                        sql,
+                        execution_time_ms,
+                        self.rollback_sql,
+                    )
+                    logger.info(
+                        "Migration %s already applied; migration ledgers reconciled",
+                        self.migration_name,
+                    )
+                    return True
+
+CANONICAL LEGACY FOUNDATION
+"""Migration 124: Autonomous Lab runtime queue and events outbox.
+
+Purpose:
+- Create ``autonomous_lab_runs`` for idempotent, resumable Lab work.
+- Create ``autonomous_lab_events_outbox`` for ack-after-success Lab events.
+
+This is the v1 control-plane foundation only. Workers remain feature-gated and
+must run on Pro/Mini according to the machine-placement policy.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+async def apply(conn: Any) -> None:
+    """Apply migration 124."""
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS autonomous_lab_runs (
+            run_id TEXT PRIMARY KEY,
+            idempotency_key TEXT NOT NULL UNIQUE,
+
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN (
+                    'pending',
+                    'running',
+                    'paused',
+                    'succeeded',
+                    'failed',
+                    'cancelled'
+                )),
+            priority INTEGER NOT NULL DEFAULT 0,
+
+            -- Machine placement and worker ownership.
+            machine_role TEXT
+                CHECK (
+                    machine_role IS NULL
+                    OR machine_role IN (
+                        'air_m5_cockpit',
+                        'pro_runtime',
+                        'mini_scheduler',
+                        'unknown'
+                    )
+                ),
+            worker_id TEXT,
+
+            -- Receipt-safe control-plane payloads only.
+            objective TEXT NOT NULL,
+            receipt JSONB NOT NULL,
+            target_paths TEXT[] NOT NULL DEFAULT '{}',
+            metadata JSONB NOT NULL DEFAULT '{}',
+
+            -- Retry and lease state.
+            attempts INTEGER NOT NULL DEFAULT 0,
+            max_attempts INTEGER NOT NULL DEFAULT 3,
+            next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            claimed_at TIMESTAMPTZ,
+            heartbeat_at TIMESTAMPTZ,
+            completed_at TIMESTAMPTZ,
+            last_error TEXT,
+
+            -- Audit.
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    """)
+
+    await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_autonomous_lab_runs_claimable
+            ON autonomous_lab_runs (priority DESC, created_at ASC)
+            WHERE status = 'pending';
+    """)
+    await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_autonomous_lab_runs_status_updated
+            ON autonomous_lab_runs (status, updated_at);
+    """)
+    await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_autonomous_lab_runs_worker
+            ON autonomous_lab_runs (worker_id)
+            WHERE worker_id IS NOT NULL;
+    """)
+
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS autonomous_lab_events_outbox (
+            event_id BIGSERIAL PRIMARY KEY,
+            run_id TEXT NOT NULL
+                REFERENCES autonomous_lab_runs(run_id)
+                ON DELETE CASCADE,
+            event_type TEXT NOT NULL
+                CHECK (event_type IN (
+                    'run_enqueued',
+                    'run_claimed',
+                    'run_checkpointed',
+                    'run_paused',
+                    'run_succeeded',
+                    'run_failed',
+                    'run_cancelled',
+                    'material_ingested',
+                    'run_drafted',
+                    'experiment_ready',
+                    'verification_failed',
+                    'candidate_ready',
+                    'evaluation_recorded',
+                    'curator_decision_recorded',
+                    'shadow_run_completed'
+                )),
+            payload JSONB NOT NULL,
+
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN (
+                    'pending',
+                    'in_progress',
+                    'consumed',
+                    'failed_dlq'
+                )),
+            attempts INTEGER NOT NULL DEFAULT 0,
+            max_attempts INTEGER NOT NULL DEFAULT 5,
+            next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            claimed_by TEXT,
+            claimed_at TIMESTAMPTZ,
+            consumed_at TIMESTAMPTZ,
+            last_error TEXT,
+
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    """)
+
+    await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_autonomous_lab_outbox_claimable
+            ON autonomous_lab_events_outbox (created_at ASC)
+            WHERE status = 'pending';
+    """)
+    await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_autonomous_lab_outbox_run_id
+            ON autonomous_lab_events_outbox (run_id);
+    """)
+    await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_autonomous_lab_outbox_status_updated
+            ON autonomous_lab_events_outbox (status, updated_at);
+    """)
+
+    logger.info("Migration 124: autonomous_lab_runs + autonomous_lab_events_outbox applied")
+
+
+async def rollback(conn: Any) -> None:
+    """Rollback migration 124."""
+    await conn.execute("DROP INDEX IF EXISTS idx_autonomous_lab_outbox_status_updated;")
+    await conn.execute("DROP INDEX IF EXISTS idx_autonomous_lab_outbox_run_id;")
+    await conn.execute("DROP INDEX IF EXISTS idx_autonomous_lab_outbox_claimable;")
+    await conn.execute("DROP TABLE IF EXISTS autonomous_lab_events_outbox;")
+
+    await conn.execute("DROP INDEX IF EXISTS idx_autonomous_lab_runs_worker;")
+    await conn.execute("DROP INDEX IF EXISTS idx_autonomous_lab_runs_status_updated;")
+    await conn.execute("DROP INDEX IF EXISTS idx_autonomous_lab_runs_claimable;")
+    await conn.execute("DROP TABLE IF EXISTS autonomous_lab_runs;")
+
+    logger.info("Migration 124 rollback: autonomous_lab runtime tables dropped")
+
+Test observation from independent code worker:18 PostgreSQL tests PASSED2.22s, including exact eight-statement parity and absence→306-only→worker success→rollback preserves shared state. Root confirmation is running. Squawk (existing CI rule set) reports0 issues. No prod writes or fleet activation. Local dev readonly credential unavailable, explicitly unverified; no privileged fallback. The original source review remains scoped to its hashes, this review updates the changed migration/test hashes.

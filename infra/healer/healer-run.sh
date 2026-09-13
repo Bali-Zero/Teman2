@@ -249,6 +249,28 @@ elif [ "$REG_EXIT" -eq 2 ]; then
     ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "
 fi
 
+# Receptor 8: a REQUIRED check red on main (Zero 2026-09-09: "nulla aspetta
+# Zero per un fix"). Walks main back to each context's newest non-skipped
+# conclusion (HEAD-only reads GREEN on a docs-only merge while every PR is
+# BLOCKED). Writes ONE HIGH line per (context, sha) on the escalations board,
+# resolves it when the context turns green; never reruns. exit 1 = red,
+# exit 2 = BLIND (gh/protection unreadable) — actionable, same as receptor 4.
+# Kill switch: HEALER_MAIN_RED_OFF=1.
+MAIN_RED_OUT=$(python3 scripts/healer_receptor_main_red.py --json --writer mini 2>/dev/null)
+MAIN_RED_EXIT=$?
+if [ "$MAIN_RED_EXIT" -eq 1 ]; then
+    MAIN_RED_CTX=$(printf '%s' "$MAIN_RED_OUT" | python3 -c "
+import json,sys
+try:
+    print(','.join(json.load(sys.stdin).get('red',[])) or '?')
+except Exception:
+    print('?')
+" 2>/dev/null)
+    ACTIONABLE=1; REASONS="${REASONS}main-required-red:${MAIN_RED_CTX:-?} "
+elif [ "$MAIN_RED_EXIT" -eq 2 ]; then
+    ACTIONABLE=1; REASONS="${REASONS}main-red-receptor-blind "
+fi
+
 # Receptor 5: arsenal seats (scripts/arsenal_probe.py) — the quota-cascade can
 # silently thin to 2-deep (codex 401, agy keychain, glm 401/529, deepseek 402).
 # Live-probe at most ~daily (self-throttled by report age — keeps the "healthy

@@ -25,15 +25,20 @@ Hits under a subtree ``change_map.py`` already routes via ``PREFIX_RULES``
 from the generated constant to save PR churn.
 
 USAGE
-  python3 scripts/ci/scripts_coupling_census.py            # print counts
-  python3 scripts/ci/scripts_coupling_census.py --write     # rewrite the
-                                                              marker block
-  python3 scripts/ci/scripts_coupling_census.py --check     # exit 1 if stale
+  python3 scripts/ci/scripts_coupling_census.py                # print counts
+  python3 scripts/ci/scripts_coupling_census.py --write         # rewrite the marker block
+  python3 scripts/ci/scripts_coupling_census.py --check         # exit 1 if stale
+  python3 scripts/ci/scripts_coupling_census.py --check --warn-only
+      # --warn-only: never exit nonzero; print a WARNING verdict instead of
+      # STALE. Added 2026-09-05 for a caller that must observe staleness as a
+      # fleet-wide data-freshness fact WITHOUT treating it as this specific
+      # run's own failure (tests.yml's flat trusted-classifier corpus).
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -51,6 +56,12 @@ TREES = [
     "apps/evaluator",
     "apps/mouth",
     "apps/admin-dashboard",
+    # NOT covered by "apps/admin-dashboard" above — a different tree whose
+    # name merely starts with it. Its vitest suite runs inside the REQUIRED
+    # `(mouth, true)` leg of frontend-tests (tests.yml, "Run
+    # admin-dashboard-local tests"), so code it executes belongs in the
+    # census corpus. Held by test_census_trees_cover_every_app_tests_yml_runs.
+    "apps/admin-dashboard-local",
     "apps/wa-mirror",
     "packages/core",
     ".github/workflows/tests.yml",
@@ -179,6 +190,28 @@ def _render_block(paths: set[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
+_QUOTED_TOKEN = re.compile(r'"([^"]+)"')
+
+
+def _block_paths(block: str) -> set[str]:
+    """Every ``scripts/`` path quoted inside a rendered marker block.
+
+    ``_render_block`` PACKS as many paths per line as fit in
+    ``MAX_LINE_WIDTH``, so reading one path per line is wrong: it yields a
+    single bogus token per line with ``", "`` embedded in it, identical on
+    both sides of the comparison. That is what made a one-path delta render
+    as ~100 items churning in both directions, and it is why the whole
+    diagnostic was unreadable at the moment it was needed.
+    """
+
+    return {
+        token
+        for line in block.splitlines()
+        for token in _QUOTED_TOKEN.findall(line)
+        if token.startswith("scripts/")
+    }
+
+
 def _existing_block(text: str) -> str | None:
     try:
         start = text.index(BEGIN_MARKER)
@@ -205,41 +238,49 @@ def _write(embedded: set[str]) -> None:
     print(f"scripts_coupling_census: wrote {len(embedded)} paths to {CHANGE_MAP_PATH}")
 
 
-def _check(embedded: set[str]) -> int:
+def _check(embedded: set[str], *, warn_only: bool = False) -> int:
     text = CHANGE_MAP_PATH.read_text(encoding="utf-8")
     existing = _existing_block(text)
     fresh = _render_block(embedded)
+    ok_exit, stale_exit = 0, (0 if warn_only else 1)
     if existing is None:
         print(
             f"scripts_coupling_census: no marker block found in {CHANGE_MAP_PATH} "
             "— run --write.",
             file=sys.stderr,
         )
-        return 1
+        return stale_exit
     if existing.strip() == fresh.strip():
         print("scripts_coupling_census: SCRIPTS_COUPLING is up to date.")
-        return 0
-    existing_paths = {
-        line.strip().strip('",')
-        for line in existing.splitlines()
-        if line.strip().startswith('"')
-    }
-    fresh_paths = {
-        line.strip().strip('",')
-        for line in fresh.splitlines()
-        if line.strip().startswith('"')
-    }
+        return ok_exit
+    existing_paths = _block_paths(existing)
+    fresh_paths = _block_paths(fresh)
     added = sorted(fresh_paths - existing_paths)
     removed = sorted(existing_paths - fresh_paths)
+    verdict = "WARNING" if warn_only else "STALE"
     print(
-        "scripts_coupling_census: SCRIPTS_COUPLING is STALE — run "
+        f"scripts_coupling_census: SCRIPTS_COUPLING is {verdict} — run "
         "`python3 scripts/ci/scripts_coupling_census.py --write`.",
         file=sys.stderr,
     )
+    if not added and not removed:
+        # The verdict above stays TEXT-based on purpose: the block is a
+        # generated artifact and must be byte-identical to what --write
+        # emits. But "stale with an identical set" is a different fact from
+        # "stale because a path moved", and saying nothing at all here made
+        # the two indistinguishable.
+        print(
+            f"  the coupled SET is identical ({len(fresh_paths)} paths) — only the "
+            "line layout of the generated block differs (rewrap at "
+            f"MAX_LINE_WIDTH={MAX_LINE_WIDTH}). Run --write.",
+            file=sys.stderr,
+        )
     for label, paths in (("+ newly coupled", added), ("- no longer coupled", removed)):
         if paths:
-            print(f"  {label} ({len(paths)}): {paths[:10]}{' …' if len(paths) > 10 else ''}", file=sys.stderr)
-    return 1
+            shown = ", ".join(paths[:10])
+            more = f" … (+{len(paths) - 10} more)" if len(paths) > 10 else ""
+            print(f"  {label} ({len(paths)}): {shown}{more}", file=sys.stderr)
+    return stale_exit
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -247,7 +288,14 @@ def main(argv: list[str] | None = None) -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--write", action="store_true", help="rewrite the marker block")
     mode.add_argument("--check", action="store_true", help="exit 1 if the block is stale")
+    parser.add_argument(
+        "--warn-only",
+        action="store_true",
+        help="with --check: never exit nonzero, print a WARNING verdict instead of STALE",
+    )
     args = parser.parse_args(argv)
+    if args.warn_only and not args.check:
+        parser.error("--warn-only requires --check")
 
     coupled, unresolved, embedded = _census()
 
@@ -255,7 +303,7 @@ def main(argv: list[str] | None = None) -> int:
         _write(embedded)
         return 0
     if args.check:
-        return _check(embedded)
+        return _check(embedded, warn_only=args.warn_only)
 
     per_dir: dict[str, int] = {}
     for path in coupled:

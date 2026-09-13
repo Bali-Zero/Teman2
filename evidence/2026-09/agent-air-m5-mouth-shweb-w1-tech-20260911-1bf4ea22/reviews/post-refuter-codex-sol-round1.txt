@@ -1,0 +1,26 @@
+VERDICT: REWORK
+
+FINDINGS:
+1. [BLOCKER] The reviewed SHA is no longer PR #6243’s HEAD, and later changes exceed declared D1/D2/D3 — evidence: the live GitHub page reports 5 commits at d5e267c; the worktree subsequently moved to 10ce4e8, whose history adds d5e267c and 10ce4e8 after b87db24. Those commits add .secrets.baseline and declare D4/size-exception changes — required action: freeze the final pushed SHA, update the contract lock, and rerun POST review against that exact HEAD.
+2. [BLOCKER] The PRE-review’s mandatory production-build condition was not met at b87db24 — evidence: pre-review-codex-sol.txt:19-23 requires the full build before CANDIDATO; b87db24:brief.yml:75-80 still records npm run build as “partial” and browser verification as “pending.” apps/mouth/package.json:7 is the command Vercel runs through vercel.json:4-5, but no successful build log exists for b87db24 — required action: capture an exact-HEAD Vercel/Pro npm run build exit 0 plus preview browser verification before requesting another POST verdict.
+3. [MAJOR] Several “verified” acceptance claims lack durable execution evidence — evidence: b87db24:brief.yml:67-68 claims 19 pytest passes plus a restored-waiver red mutation; line 77 claims TSC, ESLint, and diff-check success. The evidence directory contains only negative-old-build-flag.log, npm-audit-gate.log, and vitest-targeted.log; none records those pytest/mutation/TSC/ESLint commands — required action: add exact command, SHA, exit code, and output logs, or downgrade those statuses from verified.
+4. [MINOR] One renamed test still states a false provenance claim — evidence: scripts/ci/test_npm_audit_gate.py:126 calls node_modules/some-future-prod-dep/node_modules/js-yaml a “production path,” while lines 127-129 admit this case only exercises an unwaived synthetic path. The first renamed test also does not independently pin WAIVE == {}; it only exercises four historical advisory/node pairs — required action: rename the second test to describe a hypothetical unvetted path and either narrow the first name to the tested historical nodes or add an explicit empty-WAIVE pin under a declared delta.
+
+UNVERIFIED: I could not execute pytest or the export Vitest in this read-only environment because no writable temporary directory was available (pytest: “No usable temporary directory”; Vitest: EPERM during mkdtemp). I did not run the heavy Next/Vercel build on Air-M5. Production exports and preview UI remain unverified. Static inspection of b87db24 found no D1/D2/D3 scope breach, no incorrect claim in the appended research “Adversarial review,” and no demonstrated defect in freshness ordering, canonical detection, ID export generation, KBLI skipping, or tsx resolution; those conclusions do not extend to the later d5e267c/10ce4e8 changes.
+hook: Stop
+hook: Stop Blocked
+Registro il checkpoint operativo della review read-only; nessuna modifica è stata fatta da questa sessione.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed

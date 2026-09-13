@@ -1,0 +1,130 @@
+gear: 2
+l_level: L1
+brief_ref: evidence/2026-09/agent-air-m5-db-voa-runner-invariant-994edd07/brief.yml
+plan_ref: >-
+  docs/plans/2026-09-11-garuda-voa-final-spec.md §3 row W1R and §5. PR #6237,
+  branch agent/air-m5/db/voa-runner-invariant, base c0a4a3bffe, head 994edd0758.
+grader: >-
+  pending — the final on-disk gate is the Imperatore's (nuzantara-52), requested with
+  PR number and head sha. This session ships but does not sign its own gate.
+lanes:
+  - lane: w1r-build
+    role: build
+    seat: claude-opus-5 (xhigh, GARUDA VOA W1R, M5) — Dux; no Sonnet delegation was needed at this size.
+    outcome: two commits, 4 files, +429/-38 (net 391)
+  - lane: w1r-refute-primary
+    role: review
+    seat: codex gpt-5.6-sol (`codex exec --sandbox read-only`, account O1, outside the contribution chain)
+    outcome: >-
+      REFUTED. Strongest finding: the pool-wiring was untested — the real-PG pool test builds its
+      OWN pool with its OWN hook and would pass if `_create_pool` dropped `setup=` entirely, and the
+      connect-diagnostic tests make create_pool raise before any hook runs. FIXED in 994edd07 with a
+      test that runs the real `_create_pool` and asserts the captured hook carries the frozen mode.
+      Two further findings judged PRE-EXISTING (#6123) and out of perimeter — named in the PR body,
+      not silently dropped: (1) the connection-time-role guard is unreachable when current_user is
+      already the runtime role; (2) the connect retry budget can outlive Fly's release timeout.
+      One Sol claim was checked and NOT adopted: it read ZERO-DECISIONS.md's "staged" as meaning the
+      next release_command would take the dedicated branch. This window's Imperatore states
+      MIGRATION_DATABASE_URL is absent from Fly (0/224 names); the single-DSN path is a no-op either
+      way, so nothing in this diff depends on which is true.
+  - lane: w1r-second-reader
+    role: review
+    seat: gemini-3.1-pro via `agy --effort high` (long read of spec §5 + Astra's patch + migration_base.py entire)
+    outcome: >-
+      Answered the assigned question — no comment anywhere still credits RESET ALL — and found a
+      real gap the question did not ask about: `assume_runtime_role`'s `dedicated=None` default
+      re-read `settings`, i.e. classified the PROCESS for a connection that cannot carry its own URL.
+      FIXED: the parameter is now required, with a test that omitting it raises TypeError.
+  - lane: probation
+    role: read
+    seat: deepseek-v4-pro
+    outcome: NOT used — in PROBATION, never in the quorum.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Builder Anthropic (Opus 5); refuter OpenAI (gpt-5.6-sol); second reader Google (gemini-3.1-pro).
+  Three families, generator never grader. Both non-Anthropic seats changed the diff.
+seat_incidents:
+  - seat: agy (gemini)
+    error: "--print took '--model' as its prompt"
+    resolution: >-
+      REGOLA SEAT step 2 (check the invocation) — re-invoked as `--model ... --print="$(...)"`.
+      Succeeded on the retry; no account rotation needed, no SUSPEND.
+    ts: 2026-09-11T09:52Z
+  - seat: codex
+    error: "`timeout` not present on this shell (zsh, macOS) — first dispatch died at exit 127"
+    resolution: "re-dispatched without the wrapper; the seat itself was never the fault."
+    ts: 2026-09-11T09:50Z
+diff:
+  net_lines: "4 files, +429/-38 = 391 net against merge base c0a4a3bffe"
+  behaviour_change: >-
+    None while MIGRATION_DATABASE_URL is unset (CI, laptops, Fly today): the classifier returns
+    False for every URL and assume_runtime_role returns before any catalogue read. With the secret
+    set, an explicitly-selected legacy URL stops inheriting dedicated-role checks it cannot satisfy,
+    and the connect diagnostic names the DSN it actually dialled.
+receipts:
+  - claim: "the six suites + backend/tests/db against a REAL PostgreSQL are green"
+    cmd: ".venv/bin/python -m pytest backend/tests/db/ backend/tests/unit/app/test_config.py -p no:randomly"
+    result: "534 passed, 17 skipped in 168.33s"
+    exit: 0
+    ts: 2026-09-11T10:15Z
+    seat: W1R (M5 worktree, local PG17 cluster; no real-PG test was skipped)
+  - claim: "the explicit-legacy regression fails without the cure and passes with it"
+    cmd: "pytest -k 'explicit_legacy or frozen_mode or settings_mutation or pool_setup_hook'"
+    result: "13 passed"
+    exit: 0
+    ts: 2026-09-11T10:02Z
+    seat: W1R
+  - claim: "RESET ALL keeps the role and DISCARD ALL drops it — the comment is now falsifiable"
+    cmd: "pytest -k test_real_pg_reset_all_keeps_the_role_and_discard_all_drops_it"
+    result: "1 passed (real PG17 sandbox; statement_cache_size=0, since DISCARD ALL also deallocates asyncpg's prepared statements)"
+    exit: 0
+    ts: 2026-09-11T10:02Z
+    seat: W1R
+  - claim: "the perimeter is runner + its tests only"
+    cmd: "gh pr diff 6237 --name-only"
+    result: "migration_base.py, migration_manager.py, test_migration_runner_dedicated_role.py, test_migration_manager_connect_diag.py"
+    exit: 0
+    ts: 2026-09-11T10:22Z
+    seat: W1R (run BEFORE arming)
+  - claim: "auto-merge armed at PR-open; the branch is now read-only"
+    cmd: "gh pr view 6237 --json autoMergeRequest,mergeStateStatus,mergeable"
+    result: '{"auto":"2026-09-11T10:22:58Z","mergeable":"MERGEABLE","state":"BLOCKED"}'
+    exit: 0
+    ts: 2026-09-11T10:23Z
+    seat: W1R
+  - claim: "Bites — the next deploy's release_command exits 0"
+    cmd: "pending: the Fly deploy triggered by this merge (apps/backend-rag merge IS the deploy)"
+    result: pending
+    exit: null
+    ts: null
+    seat: W1R (to be recorded on PR #6237 after the deploy, never as 'PR merged')
+pii_scan: clean
+pii: none
+dissent:
+  - seat: codex gpt-5.6-sol (Sol)
+    objection: >-
+      ZERO-DECISIONS.md records MIGRATION_DATABASE_URL as "staged", and Fly makes a staged secret
+      visible to Machines started or updated afterwards — so the next release_command would take
+      the DEDICATED branch, not the single-DSN one.
+    status: PLAUSIBLE
+    resolution: NOT ADOPTED
+    why: >-
+      This window's Imperatore measured 0/224 secret names on Fly and instructed the lane not to
+      wait for it. The claim was not re-measured here (the fly secret list is not this session's
+      to read), so it is recorded as unresolved rather than refuted. It changes nothing in this
+      diff either way: the single-DSN path is an unconditional no-op, and the dedicated path is
+      exactly what the new tests pin.
+  - seat: codex gpt-5.6-sol (Sol)
+    objection: >-
+      The connection-time-role guard is inert when current_user is already the runtime role, so a
+      migration's RESET ROLE cannot reach the migrator and a ledger-owned ALTER can abort the Fly
+      release. REFUTED verdict rests on this.
+    status: CONFIRMED
+    resolution: ACCEPTED AS TRUE, DEFERRED
+    why: >-
+      Verified as pre-existing in #6123 (2a9941ab), not introduced by this diff, and LATENT rather
+      than live: OPERATOR-D.md's provisioning issues CREATE ROLE ... LOGIN INHERIT and GRANT and
+      never ALTER ROLE ... SET role, so no connection-time role setting exists on the migrator.
+      Out of the mandated perimeter (runner invariant) and would breach the <=400-line bar. Named
+      in the PR body with its discriminator (pg_settings.reset_val for the 'role' GUC) so it is
+      inherited, not lost. It bears on W1S, whose 304 bracket depends on that RESET ROLE.

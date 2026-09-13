@@ -37,20 +37,6 @@ interface Props {
   isLoading: boolean;
 }
 
-const EXCLUDED_NAMES = [
-  "amanda",
-  "zainal",
-  "ruslana",
-  "zero",
-  "nina",
-  "anna",
-  "marta",
-];
-function isExcluded(name: string): boolean {
-  const n = name.toLowerCase();
-  return EXCLUDED_NAMES.some((ex) => n.includes(ex));
-}
-
 const ROW_ACCENTS = [
   "var(--state-info)",
   "var(--state-success)",
@@ -160,12 +146,7 @@ function Cell({
 const COLS = "190px 1fr 1fr 1fr 1fr";
 
 export function TeamActivityPanel({ members, overview, isLoading }: Props) {
-  const safeMembers = Array.isArray(members) ? members : [];
-
-  const filteredMembers = React.useMemo(
-    () => safeMembers.filter((m) => !isExcluded(m.name)),
-    [safeMembers],
-  );
+  const filteredMembers = Array.isArray(members) ? members : [];
 
   const maxima = React.useMemo(
     () => ({

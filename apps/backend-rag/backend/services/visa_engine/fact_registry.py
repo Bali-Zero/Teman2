@@ -224,8 +224,9 @@ def _spec(
 #: interview can ask who the sponsor is (2026-08-10), plus the two
 #: ``family.stepchild_*`` evidence paths, ``family.sponsor_permit_basis``
 #: and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
-#: plus ``immigration.renewal_paid`` (2026-08-24, F4, owner ruling)
-#: — 49 entries total.
+#: plus ``immigration.renewal_paid`` (2026-08-24, F4, owner ruling), plus
+#: ``investment.investment_amount_usd`` (2026-09-13, PR-D4c-1, contract-only)
+#: — 50 entries total.
 #: PII classification rationale: immigration status/violation history and
 #: investment capital amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in
@@ -366,6 +367,16 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
                 "OTHER",
             }
         ),
+    ),
+    # investment.investment_amount_usd — PR-D4c-1, 2026-09-13, contract-only.
+    # No rule references this fact yet (D4c-2 adds the mapper/question);
+    # SENSITIVE tier matches the two IDR amounts above (investment capital
+    # amounts are financial-data-class per the module-level PII rationale).
+    _spec(
+        FactPath.INVESTMENT_INVESTMENT_AMOUNT_USD,
+        FactValueKind.INTEGER,
+        "money_usd",
+        pii_class=PiiClass.SENSITIVE,
     ),
     _spec(
         FactPath.FAMILY_RELATION_TO_SPONSOR,

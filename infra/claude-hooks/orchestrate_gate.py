@@ -56,6 +56,19 @@ read (`is_subagent_context`, right below `GATED_TOOLS`):
 A main-session transcript with zero dispatches past the threshold keeps
 blocking exactly as before — this exemption is scoped to the two markers
 above, never to "transcript looks quiet."
+
+DELEGATION COUNTS TOO (2026-09-07, W2 hook-canon repair, defect 2). A session
+that delegates to an ALREADY-LIVE agent via `SendMessage` — no new seat, the
+correct move when a peer already exists — was penalised exactly like a
+session that delegates nothing: the counter only recognised NEW dispatches.
+Measured 2026-09-07: three real `SendMessage` delegations to a live agent,
+zero counted, hard-blocked anyway. `SendMessage` is now a DISPATCH_TOOLS
+member for the same reason `Agent` is: it is positive evidence that the
+session is orchestrating rather than doing everything itself. Known
+coarseness, inherited from the pre-existing `Agent` detector and not newly
+introduced here: neither this nor the `Agent` check verifies the delegation
+carried real work — both are "some qualifying tool fired," not a quality
+judgment.
 """
 import json
 import os
@@ -80,14 +93,18 @@ except Exception:
 HARD_BLOCK_THRESHOLD = 800
 RECENT_LINES = 300
 
-# Tool names that mean "a subagent was dispatched". `Agent` is the CURRENT
-# harness tool; `Task`/`TaskCreate` are its predecessors, kept so an older
+# Tool names that count as "this session is orchestrating, not doing
+# everything itself". `Agent` is the CURRENT harness tool for spawning a NEW
+# subagent; `Task`/`TaskCreate` are its predecessors, kept so an older
 # transcript still reads correctly. Measured 2026-08-12 on live M5 transcripts:
 # the quoted forms of Task/TaskCreate score ZERO occurrences ever, while
 # `"name":"Agent"` is what a real dispatch actually writes — this gate spent
 # an unknown stretch of its life with 4 of its 5 keywords pointing at a
-# vocabulary the harness had stopped emitting.
-DISPATCH_TOOLS = ("Agent", "Task", "TaskCreate")
+# vocabulary the harness had stopped emitting. `SendMessage` (2026-09-07,
+# defect 2 of the W2 hook-canon repair) is DELEGATION rather than a new
+# spawn — reusing a live agent instead of spawning a redundant one — and must
+# count identically; see the module docstring's DELEGATION COUNTS TOO note.
+DISPATCH_TOOLS = ("Agent", "Task", "TaskCreate", "SendMessage")
 # JSON spacing is not ours to assume: match `"name":"Agent"` and `"name": "Agent"`.
 DISPATCH_TOOL_RE = re.compile(
     r'"(?:name|tool_name)"\s*:\s*"(?:%s)"' % "|".join(DISPATCH_TOOLS)
@@ -296,7 +313,8 @@ def main():
             f"\n[ORCHESTRATE-GATE] Session {verdict['total_lines']} lines, zero subagent "
             f"dispatch in last {RECENT_LINES} lines. Direct {tool_name} BLOCKED.\n"
             f"Choose: (a) Agent(subagent_type=Explore|backend-verifier|frontend-browser|"
-            f"nb-curator|mcp-health|spalla-review|general-purpose, model=\"sonnet\", ...) "
+            f"nb-curator|mcp-health|spalla-review|general-purpose, model=\"sonnet\", ...), "
+            f"or SendMessage to an already-live agent if one exists (reusing it counts too), "
             f"or (b) `export ORCHESTRATE_GATE_OFF=1` if intentional direct work.\n"
         )
         print(msg, file=sys.stderr)

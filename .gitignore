@@ -135,6 +135,16 @@ reports/
 # nothing. Git cannot re-include a file whose PARENT directory is excluded, so the directory
 # itself is un-excluded here — negating only the contents would not work.
 !research/**/reports/
+# Same disease, second victim (2026-09-10): the weekly measure-only CI reports
+# (scripts/ci/change_map_coverage.py, scripts/ci/flaky_harvest.py) write their committed,
+# reviewable output to docs/reports/<name>/<date>.md — a normal deliverable, not generated
+# noise — and the bare `reports/` rule above silently ate it too, identically to the research
+# incident documented right above. Un-exclude the whole docs/reports tree rather than adding
+# a third one-off negation the next report generator would also need to discover. The
+# DIRECTORY itself is un-excluded, not just its contents: git cannot re-include files under a
+# parent directory it is still excluding.
+!docs/reports/
+!docs/reports/**
 *.md.report
 *.json.report
 sentinel-results/

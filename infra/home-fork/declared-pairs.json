@@ -17,7 +17,7 @@
       "live": "~/.nuzantara-cron/verify_connectome_run.sh",
       "repo": "scripts/verify_connectome_run.sh",
       "machines": ["m5"],
-      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara-deploy/scripts/verify_connectome_run.sh), not from a HOME copy, so there is nothing to mirror there."
+      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara/scripts/verify_connectome_run.sh — ~/nuzantara-deploy until the one-tree retire of 2026-09-10), not from a HOME copy, so there is nothing to mirror there."
     },
     {
       "live": "~/scripts/regulatory-watcher-run.sh",
@@ -409,6 +409,30 @@
       "live": "~/.claude/hooks/model_routing_gate.py",
       "repo": "infra/claude-hooks/model_routing_gate.py",
       "_note": "Undeclared from 2026-07-14 until 2026-08-22, so lint_home_fork.py reported clean over a live Agent-gating hook it was never looking at — W107, census the producers not the one that bit you. Installed by infra/claude-hooks/install_phase_aware.sh. Doctrine correction 2026-08-20 (Fable 5 out of the workflow, Opus 5 xhigh is the final on-disk gate) and the arsenal-routing floor (docs/mandates/2026-08-22-arsenal-routing-mandate.md D2) both ship in this same PR — the live copy under ~/.claude/hooks/ is operator[control-plane] on each machine until refreshed, so lint_home_fork.py --check will report DRIFT here on every machine until then; that is expected, not a regression.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/context_window_guard.py",
+      "repo": "infra/claude-hooks/context_window_guard.py",
+      "_note": "Declared at birth (2026-09-09, PR #5969 follow-up) and armed the same day on M5/Pro/Mini by the shipping session per Ruling Zero 2026-09-09 (HOME registrations are the session's job); the healer keeps the three live copies aligned to canon. The per-seat window override lives in ~/.claude/settings.json env (CONTEXT_WINDOW_TOKENS), not in this file.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/window_jump.sh",
+      "repo": "infra/claude-hooks/window_jump.sh",
+      "_note": "Window jump (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-jump-automatic-handoff-it.md). Declared at birth; armed by the shipping session on the seats where it applies. The GESTURE: AppleScript ⌘N + nz-jump, then /exit into the old window by name. macOS+Ghostty only — Pro/Mini carry the file for parity but the guard only spawns it when TERM_PROGRAM=ghostty.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/scripts/nz-jump",
+      "repo": "infra/claude-hooks/nz-jump.sh",
+      "_note": "Window jump (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-jump-automatic-handoff-it.md). Declared at birth; armed by the shipping session on the seats where it applies. The one word typed into the new window; starts a FRESH claude with the continuation prompt (never --resume/--continue/--fork-session).",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/context_jump_resume.py",
+      "repo": "infra/claude-hooks/context_jump_resume.py",
+      "_note": "Window jump (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-jump-automatic-handoff-it.md). Declared at birth; armed by the shipping session on the seats where it applies. SessionStart injector (matcher startup): injects the handoff as additionalContext and stamps to_session in pending-jump.json. Mute when no fresh unclaimed jump from this cwd.",
       "machines": ["all"]
     },
     {
@@ -942,6 +966,60 @@
       "repo": "infra/launchagents/com.nuzantara.kb-probe-history.6h.plist",
       "machines": ["pro"],
       "_note": "The plist twin of the pair above; installed on Pro only."
+    },
+    {
+      "live": "~/.claude/hooks/bash_call_log.sh",
+      "repo": "infra/claude-hooks/bash_call_log.sh",
+      "machines": ["all"],
+      "_note": "Per-call hook diet (2026-09-09): infra/claude-hooks/install_hook_diet.py copies this into ~/.claude/hooks/ on install, replacing three separate inline PostToolUse Bash loggers in settings.json with one registration. Declared so a future fix landing in the repo does not go silently unsynced on a machine that already ran the installer once (superscar #1)."
+    },
+    {
+      "live": "~/.claude/hooks/redact_secrets.py",
+      "repo": "infra/claude-hooks/redact_secrets.py",
+      "machines": ["all"],
+      "_note": "Sidecar of bash_call_log.sh above, installed alongside it by the same installer — the earliest-anchor secret-redaction pattern applied to command-history.log (superscar #4 lineage, ported from .claude/hooks/codex-spalla-trigger.sh)."
+    },
+    {
+      "live": "~/.claude/hooks/child_workflow.py",
+      "repo": "infra/claude-hooks/child_workflow.py",
+      "machines": ["all"],
+      "_note": "Child-only router; installed parent guards are invoked without modifying their source. Local installation is recorded in the per-seat child-workflow manifest."
+    },
+    {
+      "live": "~/.claude/hooks/child_context.py",
+      "repo": "infra/claude-hooks/child_context.py",
+      "machines": ["all"],
+      "_note": "Child-local usage accounting and expiring native CLI capacity calibration; no daemon or API client."
+    },
+    {
+      "live": "~/.claude/hooks/mandate_budget.py",
+      "repo": "infra/codex-hooks/mandate_budget.py",
+      "machines": ["all"],
+      "_note": "Shared root ledger for the Claude and Codex child adapters; exact source bytes copied, no launcher."
+    },
+    {
+      "live": "~/.codex/hooks/nuzantara-context/context_bridge.py",
+      "repo": "infra/codex-hooks/context_bridge.py",
+      "machines": ["all"],
+      "_note": "CODEX_HOME half of the child adapter, undeclared from birth until 2026-09-10 (PARABELLUM \u00a74.7): the Claude copies under ~/.claude/hooks/ were declared and the Codex ones were not, so lint_home_fork.py reported clean over the seat that actually enforces the Codex context wall \u2014 superscar #1 and W107, census the producers not the one that bit you. Installed by infra/codex-hooks/install.py, which copies the exact source bytes into $CODEX_HOME/hooks/nuzantara-context/. Expect DRIFT on each host between this PR merging and the installer being re-run there; that is the pair doing its job, not a regression."
+    },
+    {
+      "live": "~/.codex/hooks/nuzantara-context/rpc.py",
+      "repo": "infra/codex-hooks/rpc.py",
+      "machines": ["all"],
+      "_note": "CODEX_HOME half of the child adapter, undeclared from birth until 2026-09-10 (PARABELLUM \u00a74.7): the Claude copies under ~/.claude/hooks/ were declared and the Codex ones were not, so lint_home_fork.py reported clean over the seat that actually enforces the Codex context wall \u2014 superscar #1 and W107, census the producers not the one that bit you. Installed by infra/codex-hooks/install.py, which copies the exact source bytes into $CODEX_HOME/hooks/nuzantara-context/. Expect DRIFT on each host between this PR merging and the installer being re-run there; that is the pair doing its job, not a regression."
+    },
+    {
+      "live": "~/.codex/hooks/nuzantara-context/mandate_budget.py",
+      "repo": "infra/codex-hooks/mandate_budget.py",
+      "machines": ["all"],
+      "_note": "CODEX_HOME half of the child adapter, undeclared from birth until 2026-09-10 (PARABELLUM \u00a74.7): the Claude copies under ~/.claude/hooks/ were declared and the Codex ones were not, so lint_home_fork.py reported clean over the seat that actually enforces the Codex context wall \u2014 superscar #1 and W107, census the producers not the one that bit you. Installed by infra/codex-hooks/install.py, which copies the exact source bytes into $CODEX_HOME/hooks/nuzantara-context/. Expect DRIFT on each host between this PR merging and the installer being re-run there; that is the pair doing its job, not a regression."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.automations-reference.plist",
+      "repo": "infra/launchagents/com.nuzantara.automations-reference.plist",
+      "machines": ["pro"],
+      "_note": "Born 2026-09-11 to end the two-authors overwrite of docs/AUTOMATIONS_REFERENCE.md (Pro's 23:15 live regen into the main checkout vs the hand-edited committed copy, PENDING-ARMS #6137). The plist now points at scripts/automations-reference-cron-wrapper.sh, which runs the generator in an isolated worktree and promotes via PR instead."
     }
   ],
   "allow": [

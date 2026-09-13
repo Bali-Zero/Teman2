@@ -1,0 +1,35 @@
+task_id: pse-self-registration
+gear: 1
+l_level: L2
+gate_class: opus
+grader: Fresh Opus 5 on-disk gate commissioned by the imperator; no verdict asserted here.
+pii: none
+objective: >
+  Write docs/ops/pse-registration-balizero.md, the data sheet a Bali Zero staff member uses to
+  file the domestic PSE self-registration on OSS-RBA: one section per system with Indonesian
+  users (balizero.com and www, kita., my., zantara., tax., prime., the Fly API nuzantara-rag)
+  with purpose, URL, hosting and region read from the repo, data categories, privacy policy URL,
+  responsible-officer placeholder and KBLI to confirm; the OSS-RBA checklist from the prep-check
+  section 3; and the "not located in the registry on 2026-09-11" note with the tdpse-list API
+  method. Link it from the nearest docs index.
+constraints:
+  - Docs only. Never touch fly.toml, .env*, zantara_core.py or lockfiles; fly.toml is read, not edited.
+  - No personal names and no personal data values; emails only as generic role addresses.
+  - Responsible officer stays the literal placeholder `<to be named by the owner>`.
+  - Hosting facts come from the repo (apps/backend-rag/fly.toml, apps/mouth/vercel.json,
+    apps/mouth/src/proxy.ts) or a dated live probe, each named next to the fact.
+acceptance:
+  - text:
+      Every URL in the doc SHALL return HTTP 200 or 3xx to `curl -sI -m 20`, except the
+      POST-only Komdigi API, which SHALL return 200 to its documented POST.
+    probe: "grep -oE 'https?://[^ )`|]+' docs/ops/pse-registration-balizero.md | sort -u | xargs -n1 curl -sI -m 20 -o /dev/null -w '%{url_effective} %{http_code}\\n'"
+  - text: The responsible-officer placeholder SHALL appear at least once.
+    probe: "grep -c '<to be named by the owner>' docs/ops/pse-registration-balizero.md"
+  - text: The only email in the doc SHALL be a generic role address.
+    probe: "grep -n '@' docs/ops/pse-registration-balizero.md"
+  - text: The doc SHALL be linked from docs/DOCUMENTATION_INDEX.md.
+    probe: "grep -n 'pse-registration-balizero' docs/DOCUMENTATION_INDEX.md"
+  - text: The docs-sync gate and Prettier SHALL pass on the changed markdown.
+    probe: "bash scripts/ci/docs_sync_gate.sh check <changed-files> && npx prettier --check docs/ops/pse-registration-balizero.md docs/DOCUMENTATION_INDEX.md"
+consumer_map:
+  - The staff member filing the PSE self-registration on OSS-RBA, reading the checklist and the curl table.

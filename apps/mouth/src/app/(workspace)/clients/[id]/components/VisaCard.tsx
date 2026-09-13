@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { api } from "@/lib/api";
 import { fileToBase64 } from "@/lib/utils";
+import { useOcrPolling } from "@/hooks/useOcrPolling";
 import type { ClientProfile, ClientDocument } from "@/lib/api/crm/crm.types";
 import {
   extractDriveFileId,
@@ -40,36 +41,18 @@ export function VisaCard({
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [ocrPolling, setOcrPolling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasTriggeredVisaOcr = useRef(false);
 
   // Poll OCR status after upload
-  const pollOcrStatus = useCallback(async () => {
-    setOcrPolling(true);
-    let attempts = 0;
-    const maxAttempts = 10;
-    const poll = async () => {
-      try {
-        const status = (await api.request(
-          `/api/crm/clients/${clientId}/ocr-status`,
-        )) as {
-          pending_ocr: number;
-        };
-        if (status.pending_ocr === 0 || attempts >= maxAttempts) {
-          setOcrPolling(false);
-          await onRefresh();
-          return;
-        }
-        attempts++;
-        setTimeout(poll, 3000);
-      } catch {
-        setOcrPolling(false);
-        await onRefresh();
-      }
-    };
-    setTimeout(poll, 2000);
-  }, [clientId, onRefresh]);
+  // NOTE: cleanupOnUnmount=false reproduces this copy's original gap — it
+  // never guarded against firing setState after unmount. Not fixed here
+  // per the "no behaviour change" mandate; see PR body.
+  const { ocrPolling, pollOcrStatus } = useOcrPolling({
+    clientId,
+    onDone: onRefresh,
+    cleanupOnUnmount: false,
+  });
 
   // Find latest visa/KITAS document
   const visaDocs = documents.filter(

@@ -1,0 +1,5 @@
+npm audit: non-waived high/critical vulnerabilities found:
+   ('js-yaml', 'high', ['GHSA-2883-xcg3-v3hh'], 'not waived')
+   ('mysql2', 'high', ['GHSA-3f6p-5ww8-9rcr', 'GHSA-rgwj-5xj2-c3m3'], 'not waived')
+   ('sharp', 'high', ['GHSA-rgj7-g3m4-5g8c'], 'not waived')
+gate_rc=1 at=2026-09-11T11:36:43Z head=ccb05384b1 cmd='npm audit --audit-level=high --omit=dev --json > audit.json; python3 scripts/ci/npm_audit_gate.py audit.json'

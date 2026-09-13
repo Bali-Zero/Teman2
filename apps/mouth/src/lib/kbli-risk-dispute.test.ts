@@ -22,8 +22,11 @@ describe("riskDispute — the /kbli/82990 disease reader", () => {
     // Round-3 BLOCKER 2: 46100's l4_bali.status is BLOCCATO_DIPENDE_SCOPE,
     // which IS tier-derived per `_l4bali_basis.RISK_DERIVED_STATUSES` — the
     // round-1 hand-typed list had wrongly reported this as false.
+    // recordTiers 4 → 2 on 2026-09-11: OSS re-published 46100 with only Rendah
+    // and Tinggi scopes (September L2 re-ingestion, spec 2026-09-11 §7); the
+    // dispute kind and the tier-derived flag are unchanged.
     expect(riskDispute("46100")).toEqual({
-      recordTiers: ["Menengah Rendah", "Menengah Tinggi", "Rendah", "Tinggi"],
+      recordTiers: ["Rendah", "Tinggi"],
       kind: "universal_claim",
       baliDependsOnTier: true,
     });

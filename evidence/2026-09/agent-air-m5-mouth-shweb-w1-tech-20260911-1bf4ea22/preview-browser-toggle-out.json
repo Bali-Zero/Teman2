@@ -1,0 +1,70 @@
+{
+  "measuredAt": "2026-09-11T13:48:06.946Z",
+  "origin": "https://mouth-41fxy12oi-nuzantara-2026.vercel.app",
+  "scenarios": {
+    "t1_property_to_deposit_under55": {
+      "plan": {
+        "v": 1,
+        "age": "under_55",
+        "route": "property",
+        "capital": "ready_130k",
+        "seniorFunding": null,
+        "property": "buying_completed_strata",
+        "family": {
+          "spouse": false,
+          "children": 0,
+          "parents": 0
+        },
+        "horizon": "asap",
+        "location": "in_indonesia",
+        "checklist": {}
+      },
+      "mainBand": "edge_case",
+      "mainPrice": {
+        "rendered": false
+      },
+      "triggerFound": true,
+      "previewText": "You are comparing a different route. Your saved plan has not changed.\nBack to your result\n\nYOUR FIT-CHECK RESULT\n\nYour answers show a strong match\n\nYour age, intended route and stated financial position align with the core criteria presented in this fit-check. The next step is to verify your evidence and confirm the correct application path. This is a preliminary fit-check result, not an approval. The final decision rests with Imigrasi.\n\nMatching product: E33\n\nUSD 130,000, held in your own name at a state-owned (BUMN) Indonesian bank, is the core requirement for the base E33 deposit route — yo",
+      "previewPrice": {
+        "rendered": true,
+        "text": "35.000.000 IDR",
+        "fontFamily": "cormorant, \"cormorant Fallback\", ui-serif, Georgia, Cambria, \"Times New Roman\", serif",
+        "fontVariantNumeric": "tabular-nums",
+        "fontSize": "38.4px"
+      },
+      "cormorantLoaded": true
+    },
+    "t2_property_to_deposit_60plus_income_abroad": {
+      "plan": {
+        "v": 1,
+        "age": "60_plus",
+        "route": "property",
+        "capital": null,
+        "seniorFunding": "income_only_3k",
+        "property": "buying_completed_strata",
+        "family": {
+          "spouse": false,
+          "children": 0,
+          "parents": 0
+        },
+        "horizon": "asap",
+        "location": "abroad",
+        "checklist": {}
+      },
+      "mainBand": "edge_case",
+      "mainPrice": {
+        "rendered": false
+      },
+      "triggerFound": true,
+      "previewText": "You are comparing a different route. Your saved plan has not changed.\nBack to your result\n\nYOUR FIT-CHECK RESULT\n\nYour answers show a strong match\n\nYour age, intended route and stated financial position align with the core criteria presented in this fit-check. The next step is to verify your evidence and confirm the correct application path. This is a preliminary fit-check result, not an approval. The final decision rests with Imigrasi.\n\nMatching product: E33F\n\nUSD 3,000/month income alone matches the E33F senior pattern — a 1-year permit, with a 6-year cumulative cap.\nYour typical timeline\nGa",
+      "previewPrice": {
+        "rendered": true,
+        "text": "14.000.000 IDR",
+        "fontFamily": "cormorant, \"cormorant Fallback\", ui-serif, Georgia, Cambria, \"Times New Roman\", serif",
+        "fontVariantNumeric": "tabular-nums",
+        "fontSize": "38.4px"
+      },
+      "cormorantLoaded": true
+    }
+  }
+}

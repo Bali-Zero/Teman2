@@ -1,0 +1,344 @@
+task_id: visa-seq20-sign
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-06
+machine: M5
+lanes:
+  - lane: seq-20 signed bundle + signed-bundle gate + census re-pin + triage rule
+    role: build
+    seat: claude-opus-5 (builder seat in worktree .worktrees/backend-rag-visa-seq20-sign, branch agent/air-m5/backend-rag/visa-seq20-sign)
+    note: >-
+      Landed the SIGNED seq-20 bundle produced by the owner's offline Ed25519 ceremony
+      and the three gates that make it observable. (a) test_seq20_signed_bundle.py:
+      verification through the repo's own bundle.verify_rule_pack against the PINNED
+      production trust store, independent digest recomputation off disk for both the
+      source and the signed payload, JCS equality between them, the five fold edits
+      asserted against the SIGNED bytes with their rule ids IMPORTED from
+      fold_pack_seq20 rather than retyped, five tampering shapes rejected on in-memory
+      deepcopies, and a final re-read-from-disk test proving the guilt tests mutated
+      nothing. No pytest.mark.skipif anywhere: a missing artifact must be RED, not a
+      false green. (b) test_interview_walk_census.py re-pinned from seq-19's 36/7 to
+      seq-20's MEASURED 21/22, with 15 cured allowlist rows DELETED, 9 moved rows
+      CORRECTED onto family.sponsor_confirmed, and two guilt tests re-anchored because
+      this very pack cured their seq-19 subjects. (c) a content-keyed secrets-triage
+      rule for the new test module's two entropy findings, with the count-bump test.
+      NOTHING WAS SIGNED OR ACTIVATED IN THIS SESSION: this seat holds no private key,
+      read no key material, and passed `--yes` to nothing.
+
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane, so D3's seat-diversity requirement does not attach (it binds packs
+  with >= 2 build lanes). No review lane is declared because this is an EXTERNAL-shaped
+  build handoff under CLAUDE.md §5: this seat prepares and never ships — it does not
+  merge, arm or deploy — and a separate Consul session reads the diff and grades it.
+  Declaring a review lane here would put the grader inside the generator's own pack,
+  which is the boundary that separation exists to hold. The Consul's read is the
+  review; it is not this seat's to record.
+
+seat_override: >-
+  R8 ground_truth: this diff hits GROUND_TRUTH_PATH_PATTERNS (`*/visa_engine/*`), but
+  it introduces NO regulatory claim of its own — it introduces no rule, no bound and no
+  reason code. Every legal proposition inside rulepack-prod-020.signed.json was authored
+  and ruled BEFORE this PR and merged in #5854 as the UNSIGNED source; this PR adds the
+  operator's signature over bytes that are PROVEN byte-identical to that already-reviewed
+  source under JCS (receipt below). The census re-pin is a MEASUREMENT of what those
+  already-ruled rules produce, not a new claim. A fresh NB/ground-truth lane would be
+  re-litigating the fold PR's own reviewed content.
+  .
+  R9 council_run: no council journal is declared either, and for the same reason plus
+  one more. This PR compiles no claim to adversarially review — the bytes were reviewed
+  and merged as #5854, and this diff proves them unchanged rather than restating them —
+  and, under CLAUDE.md §5's external-builder exception, this seat is a PREPARER that does
+  not merge, arm or deploy. A separate Consul session reads and grades the diff. Running
+  council seats from inside the generator's own pack would move the adversarial read to
+  the wrong side of the generator-is-never-grader boundary, not add one.
+
+outcome: >-
+  The signed seq-20 bundle is on the branch as a verified PRODUCTION CANDIDATE, and it
+  is verified by the repo's own code rather than by the signer's self-report: sequence
+  20, environment PRODUCTION, kid prod-2026-07-1, 109 rules, chain anchor
+  bac5da8e…e6ea (seq-19), payload digest df02287b…1a4d, unsigned_dev False. The digest
+  is recomputed independently off disk from both the signed payload and
+  rulepack-prod-020.source.json and the two are JCS-equal, so the artifact in version
+  control IS the artifact that was signed. Landing it moves
+  test_interview_walk_census.py off seq-19 by itself — that module reads the HIGHEST
+  SIGNED pack on disk — and the census is re-pinned to the measured
+  21 NEEDS_INPUT / 22 SUPPORTED_CANDIDATES / 0 NO_SUPPORTED_PATH, up from 36/7. The
+  guard was re-pinned, never weakened: the 21 surviving dead ends keep an honest reason
+  naming the blocking fact and its source question, and the two guilt tests whose
+  seq-19 subjects this pack CURED were re-anchored onto walks that still dead-end, so
+  neither passes vacuously. CORRECTED BY THE GRADING SESSION: the sentence that stood
+  here said "nothing was activated", which was true when the builder seat wrote it and
+  is FALSE now. The activation ceremony ran BEFORE this PR, on the owner's explicit
+  instruction, inverting the wave spec's order — seq-20 is the ACTIVE production pack
+  (activation_id e08ebea9-d50f-48a6-989e-b7e4698f96ad). The auditability window that
+  inversion opens is closed by measurement: the blob committed here was read back out
+  of git and verified with verify_rule_pack against the pinned production trust store,
+  and it carries the same payload_sha256 and rule_pack_id the live engine reports.
+diff:
+  files: 7
+  net_lines: >-
+    9293/0 rulepack-prod-020.signed.json (the SIGNED artifact — generated by the offline
+    ceremony, not review surface, and the entire Gear-3 size floor by itself), 411/0
+    test_seq20_signed_bundle.py (new), 112/89 test_interview_walk_census.py (re-pin),
+    38/0 scripts/detect_secrets_auto_triage.py (one content-keyed rule + its rationale),
+    3/2 scripts/tests/test_detect_secrets_auto_triage.py (count bump + audit-trail line),
+    84/0 scripts/ci/observe_visa_seq20_signed.py (new, bites-observable), plus the
+    LIVE STATE record in .agents/skills/visaoracle/SKILL.md and this evidence pack. No
+    total is narrated here on purpose: the grading session added commits after the
+    builder measured, so any literal written into this file is stale the moment the
+    file itself changes. The shape is what matters and it is stable — the generated
+    signed artifact is the overwhelming majority of the diff by itself; strip it and
+    the authored review surface is a few hundred added lines against ninety-one
+    removed, all of it test, record and tooling.
+  measured_at: >-
+    `git diff --numstat $(git merge-base HEAD origin/main)` for the tracked files plus
+    `wc -l` for the untracked new files, merge-base dc7189f4af09857a6d7fbe26e33f3f553921c216
+    — the commit this branch was cut from, which is also the seq-20 FOLD merge (#5854).
+    Anchoring on the merge-base rather than on the moving origin/main tip keeps these
+    numbers this PR's own diff instead of inflated by drift.
+  shape: >-
+    One signed pack artifact, one new gate suite for it, one re-pin of an existing
+    downstream census the artifact MOVES, one content-keyed secrets-triage rule with its
+    count-bump test, and one bites-observable CI wrapper. No visa_engine CODE file is
+    touched: the engine, the evaluator, the interview tree and the fold script are all
+    untouched by design — curing the 21 surviving dead ends is PR-3 of this wave.
+pii_scan: clean
+bites:
+  consumer: >-
+    apps/backend-rag's test_interview_walk_census.py — the module that reads the HIGHEST
+    SIGNED production pack on disk via `select_highest_repository_pack`, so landing this
+    bundle moves it off seq-19 without anything else changing — AND
+    test_seq20_signed_bundle.py, the gate that verifies the bundle itself. Both ship in
+    this PR; neither is a future job.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq20_signed.py
+  expect: exit0
+bites_note: >-
+  scripts/ci/observe_visa_seq20_signed.py takes NO arguments — every path and command in
+  it is a literal, the bar scripts/ci/bites_parse.py::_guard_observable_script sets. Run
+  in this worktree at the head this pack describes: 23 passed (signed bundle), 11 passed
+  (walk census), "observe_visa_seq20_signed: both consumers green", exit 0. The census
+  consumer is not decorative: BEFORE this PR re-pinned it, that same module ran 4 FAILED
+  / 7 passed against the seq-20 bundle sitting in this worktree — the concrete proof that
+  landing a signed pack is observed by a downstream gate rather than merely present on
+  disk. That red output is recorded verbatim as a receipt below.
+receipts:
+  - claim: >-
+      the gear floor for this PR's changed-file list is Gear 3, sourced from size — the
+      9,293-line signed artifact floors it by itself
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --numstat-file <numstat of the 7 changed files> --changed-files-file <their paths>
+    result: "3 / size"
+    ts: "2026-09-06T15:05:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the committed rulepack-prod-020.signed.json verifies against the PINNED production
+      Ed25519 key with the repo's own verify_rule_pack, and every declared field is read
+      out of that call's return value rather than out of the signer's self-report; five
+      tampering shapes are rejected and the file on disk is provably unmutated afterwards
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python3 -m pytest
+      backend/tests/services/visa_engine/test_seq20_signed_bundle.py
+    result: >-
+      23 passed — unsigned_dev False, kid prod-2026-07-1, environment PRODUCTION,
+      sequence 20, rule_pack_id ac0a792d-a38d-512e-9ead-54a5d008fb68, 109 rules,
+      previous_payload_sha256 bac5da8e…e6ea, payload_sha256 df02287b…1a4d
+    ts: "2026-09-06T15:03:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the signed payload and the tracked rulepack-prod-020.source.json are the SAME
+      document — the artifact in version control is the artifact that was signed
+    cmd: >-
+      TestDigestRecomputedIndependently inside the module above —
+      hashlib.sha256(canonicalize_json(...)).hexdigest() computed straight off disk for
+      the source file and for the signed envelope's payload, plus a JCS byte-equality
+      assertion between them, none of it going through verify_rule_pack
+    result: >-
+      both hash to df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d and
+      canonicalize_json(signed["payload"]) == canonicalize_json(source) — green inside
+      the 23
+    ts: "2026-09-06T15:03:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      landing this bundle MOVES a downstream gate — test_interview_walk_census.py reads
+      the highest SIGNED pack on disk and went red against seq-20 before the re-pin
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python3 -m pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+      (run with the signed bundle present and the census still pinned to seq-19)
+    result: >-
+      4 failed, 7 passed — test_every_walk_ends_in_its_pinned_outcome (18 walks moved),
+      test_walk_state_census_is_36_dead_ends_and_7_answers
+      ("{'NEEDS_INPUT': 21, 'SUPPORTED_CANDIDATES': 22}" != "{'NEEDS_INPUT': 36,
+      'SUPPORTED_CANDIDATES': 7}"), test_dead_end_fact_census_matches_the_blocking_fact_table,
+      and test_no_walk_dead_ends_outside_the_allowlist (24 violations: 15 "stale allowlist
+      row, delete it in the PR that cured it" and 9 "dead-ends on ['family.sponsor_confirmed'],
+      allowlist says [...]")
+    ts: "2026-09-06T14:47:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      every re-pinned census number is MEASURED against the seq-20 signed pack, per walk,
+      never carried over from the fold PR's prediction and never guessed
+    cmd: >-
+      a scratch script importing _load_walks/_evaluate_walks/_AS_OF from the census module
+      itself and printing (state, candidates, missing_facts) for all 43 walks plus both
+      Counter totals, run under PYTHONPATH=. .venv/bin/python3
+    result: >-
+      pack selected = sequence 20, signed_at 2026-09-06T14:59:27.320080Z;
+      STATE_CENSUS {'NEEDS_INPUT': 21, 'SUPPORTED_CANDIDATES': 22};
+      FACT_CENSUS {'family.sponsor_confirmed': 9, 'process.wants_onshore_conversion': 7,
+      'intent.purposes': 2, 'investment.investment_capital_idr': 2,
+      'investment.paid_up_capital_idr': 2, 'sponsor.type': 1}
+    ts: "2026-09-06T14:52:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the 9 walks whose block MOVED to family.sponsor_confirmed are genuinely still dead
+      ends — the reason recorded in the allowlist is CHECKED, not asserted
+    cmd: >-
+      for each of the 9 walks, printed `"family_sponsor_confirmed" in walk["asked"]` and
+      the walk's own wire override for that fact; then grepped flow.ts for every site that
+      emits the question id
+    result: >-
+      asked=False for all 9, override={'status': 'UNKNOWN', 'reason': 'NOT_ASKED'} for all
+      9; flow.ts emits family_sponsor_confirmed only at :708 (family arm) and :657-659
+      (retirement) — no invest/business/other branch asks it. QUESTION_NOT_IN_THIS_WALK is
+      therefore the accurate reason, and the module's own
+      test_every_allowlisted_dead_end_is_genuinely_unaskable_in_its_own_walk re-checks it
+      against each walk's `asked` history on every run.
+    ts: "2026-09-06T14:55:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the guard was RE-PINNED, not weakened — the two guilt tests whose seq-19 subjects
+      this pack cured were re-anchored onto walks that still dead-end, so neither passes
+      vacuously
+    cmd: >-
+      measured the re-anchored mutation on the real engine before editing the test —
+      onshore/business with sponsor.type set KNOWN, and checked that offshore/business is
+      still in the post-re-pin allowlist
+    result: >-
+      onshore/business + sponsor.type=NONE -> still NEEDS_INPUT, block MOVES to
+      ['investment.investment_capital_idr', 'investment.paid_up_capital_idr'] — the exact
+      block-moves-rather-than-lifts shape the seq-19 anchor (onshore/tourism, now
+      SUPPORTED [C1]) used to exercise. The stale-row guilt test was re-anchored onto
+      offshore/business, which IS still allowlisted, and now asserts that membership
+      explicitly so a future cure cannot silently turn it into an unlisted-walk test.
+    ts: "2026-09-06T14:56:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the re-pinned census module is fully green, including all five test_guilt_* tests
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python3 -m pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "11 passed (was 4 failed / 7 passed before the re-pin)"
+    ts: "2026-09-06T15:01:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the new test module's entropy findings are exactly two, and the new content-keyed
+      rule auto-approves both with ZERO unaudited residue
+    cmd: >-
+      detect-secrets scan on the new module, then detect_secrets_auto_triage.triage(...,
+      apply=True) over those findings in a scratch baseline copy
+    result: >-
+      scan: 2 findings — line 97 Base64 High Entropy String (the pinned PUBLIC
+      verification key) and line 108 Hex High Entropy String (SEQ20_PAYLOAD_SHA256).
+      triage: {'auto_approved': 2, 'hard_blocked': 0, 'no_rule': 0, 'total': 2},
+      residue []. The tracked .secrets.baseline is NOT touched by this PR — CI's own scan
+      step updates it in place before the triage step runs, exactly as it did for
+      test_seq19_signed_bundle.py, which is likewise absent from the tracked baseline.
+    ts: "2026-09-06T15:00:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: the secrets-triage guard suite is green with the bumped rule count
+    cmd: python3 -m pytest scripts/tests/test_detect_secrets_auto_triage.py
+    result: "107 passed — CONTENT_KEYED_RULES is now 26 (was 25)"
+    ts: "2026-09-06T14:58:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: the evidence-pack contract's own guilt+innocence suite is green, as CI runs it
+    cmd: >-
+      python3 -m pytest scripts/tests/test_evidence_pack_lint.py;
+      python3 scripts/evidence_pack_lint.py --selftest
+      (both taken from .github/workflows/guard-conformance.yml, not invented)
+    result: "344 passed; SELFTEST PASS"
+    ts: "2026-09-06T15:07:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the bites observe target drives BOTH named consumers and exits 0 only when both are
+      green
+    cmd: python3 scripts/ci/observe_visa_seq20_signed.py
+    result: >-
+      "23 passed" (test_seq20_signed_bundle.py), "11 passed"
+      (test_interview_walk_census.py), "observe_visa_seq20_signed: both consumers green"
+    ts: "2026-09-06T15:11:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      nothing was signed and nothing was activated by THIS session — the bundle arrived
+      already produced by the owner's offline ceremony
+    cmd: >-
+      grep of this session's own command history for sign_pack.py / activate_pack.py /
+      `--yes`, and inspection of the artifact's protected.signed_at against the session
+      start
+    result: >-
+      zero invocations of either script; protected.signed_at is 2026-09-06T14:59:27.320080Z,
+      produced outside this seat. No private key was read, held or written; the only key
+      material anywhere in this diff is the PUBLIC verification key already pinned in four
+      other committed modules.
+    ts: "2026-09-06T15:12:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+dissent:
+  - seat: claude-opus-5 (this worktree session), self-caught
+    status: CONFIRMED
+    objection: >-
+      The mandate for this lane specified a THREE-alternative secrets-triage rule (public
+      key, seq-19 chain anchor, seq-20 payload digest), mirroring the seq-19 rule. Only TWO
+      of those literals exist in the new test module: it IMPORTS SEQ19_PAYLOAD_SHA256 from
+      fold_pack_seq20 rather than retyping it, which is the anti-drift shape the rest of
+      this module follows for rule ids. The rule therefore ships with two alternatives, and
+      the audit-trail line says so rather than repeating the three-anchor wording. A third
+      alternative would be regex that can never match — a pre-authorisation of a line
+      nobody has written, which is exactly what a content-keyed list must not carry. The
+      seq-19 anchor is already covered by fold_pack_seq20.py's own rule in the same list.
+      Verified empirically, not argued: detect-secrets finds exactly 2 findings in the file
+      and the rule auto-approves exactly those 2, residue [].
+  - seat: claude-opus-5 (this worktree session), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      21 of 43 interview walks still dead-end, and 9 of them dead-end on a NEW fact
+      (family.sponsor_confirmed) that no walk blocked on under seq-19. Read carelessly that
+      looks like a regression this PR introduced. It is not: those 9 walks dead-ended
+      before too, on process.wants_onshore_conversion / intent.requested_product_code /
+      sponsor.type. What moved is WHICH fact is smallest-missing, because edit 1's stay-day
+      widening made C2 reachable for the business/investment arm and C2 carries a
+      family.sponsor_confirmed premise. Zero walks lost an answer. Deliberately NOT cured
+      here: the cure is a new interview question in the invest/other branches, which is
+      PR-3's mandate and a different app (apps/mouth's tree.ts/flow.ts) with its own walk-
+      corpus regeneration. Folding it in would break one-PR-one-concern. Recorded so the
+      new shape is on the record as a known, owned gap rather than a silence — the
+      allowlist row carries the same explanation with the flow.ts line anchors.
+  - seat: claude-opus-5 (this worktree session), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      This pack declares no independent review lane, so the diff it describes has been read
+      only by the seat that wrote it. That is a real limit on this artifact and it is stated
+      rather than papered over. It is also the intended shape here: CLAUDE.md §5's external-
+      builder exception makes this seat a preparer that never merges, arms or deploys, and
+      a separate Consul session grades the diff and ships it. Generator is never grader —
+      so the grading is deliberately NOT in this pack.
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 0
+appetite_exceeded: ""

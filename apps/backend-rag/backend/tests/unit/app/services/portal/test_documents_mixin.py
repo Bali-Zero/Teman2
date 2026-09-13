@@ -1,6 +1,7 @@
 """Unit tests for PortalService document mixin helpers and failure paths."""
 
 import inspect
+import json
 from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,6 +10,7 @@ import pytest
 
 from backend.services.pii.violation_store import hash_subject
 from backend.services.portal.portal_service import PortalService
+from backend.services.portal.upload_validation import DuplicateDocumentError
 
 
 class _AsyncCtx:
@@ -374,7 +376,7 @@ async def test_upload_document_rejects_recent_duplicate() -> None:
         }
     )
 
-    with pytest.raises(ValueError, match="File already uploaded recently"):
+    with pytest.raises(DuplicateDocumentError, match="File already uploaded recently"):
         await service.upload_document(
             client_id=1,
             file_content=b"%PDF-1.4 clean passport",
@@ -385,6 +387,40 @@ async def test_upload_document_rejects_recent_duplicate() -> None:
         )
 
     assert mock_conn.fetchrow.await_count == 1
+    # The typed error is still a ValueError: every pre-existing
+    # `except ValueError` around upload_document keeps its behaviour.
+    assert issubclass(DuplicateDocumentError, ValueError)
+
+
+@pytest.mark.asyncio
+async def test_upload_document_duplicate_check_ignores_soft_deleted_rows() -> None:
+    """Re-uploading a file the client just REMOVED must not be a duplicate.
+
+    Born 2026-09-11 on my.balizero.com: upload -> Remove -> upload again of
+    the same file came back 404 "Client not found". The duplicate query
+    matched the soft-deleted row (same name, < 1 hour), raised ValueError,
+    and the router's generic ValueError branch renamed it. The predicate
+    must exclude `deleted_at IS NOT NULL` rows, and it must be the FIRST
+    fetchrow (the duplicate check runs before the practice/client lookups).
+    """
+    service, mock_conn = _make_service_with_fetchrow(row=None)
+    # duplicate check -> None, client lookup -> None (stops there, no Drive)
+    mock_conn.fetchrow.side_effect = [None, None]
+
+    with pytest.raises(ValueError, match="Client 1 not found"):
+        await service.upload_document(
+            client_id=1,
+            file_content=b"%PDF-1.4 clean passport",
+            file_name="passport.pdf",
+            document_type="passport",
+            mime_type="application/pdf",
+            current_user={"client_id": 1, "email": "client@example.com"},
+        )
+
+    duplicate_sql = mock_conn.fetchrow.await_args_list[0].args[0]
+    assert "FROM documents" in duplicate_sql
+    assert "deleted_at IS NULL" in duplicate_sql
+    assert "INTERVAL '1 hour'" in duplicate_sql
 
 
 @pytest.mark.asyncio
@@ -749,63 +785,94 @@ async def test_download_document_returns_none_without_drive_file_id() -> None:
     assert result is None
 
 
+# =============================================================================
+# F-01 (2026-09-11 portal live audit) — every portal download proxy asked
+# GoogleDriveService for the SYSTEM OAuth token, which `_refresh_token`
+# returns None for BY DESIGN since 2026-05-10 ("OAuth SYSTEM disabled — Drive
+# operations use ServiceAccountDriveService"). So the vault DOWNLOAD button
+# 500'd on every click, for every document, since that date.
+#
+# The tests that guarded this path passed by mocking `get_valid_token` to
+# return "access-token" — a value production could not obtain. That is
+# superscar #2 (esiste≠armato) inside the test suite: green, and guarding
+# nothing. They are replaced, not extended.
+# =============================================================================
+
+
+class _DriveHttpError(Exception):
+    """The shape of googleapiclient.errors.HttpError that matters here."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__(f"drive returned {status}")
+        self.resp = MagicMock(status=status)
+
+
+def _sa_drive_mock(
+    *,
+    metadata: Any,
+    content: Any = b"PDF_BYTES",
+) -> MagicMock:
+    def _mock(value: Any) -> AsyncMock:
+        if isinstance(value, Exception):
+            return AsyncMock(side_effect=value)
+        return AsyncMock(return_value=value)
+
+    sa = MagicMock()
+    sa.get_file_metadata = _mock(metadata)
+    sa.download_file_content = _mock(content)
+    return sa
+
+
+def _download_row() -> dict[str, Any]:
+    return {
+        "id": 10,
+        "file_name": "passport.pdf",
+        "file_id": "drive_file_10",
+        "file_url": None,
+        "mime_type": "application/pdf",
+        "status": "received",
+    }
+
+
 @pytest.mark.asyncio
-async def test_download_document_raises_when_drive_not_connected() -> None:
-    service, _mock_conn = _make_service_with_fetchrow(
-        {
-            "id": 10,
-            "file_name": "passport.pdf",
-            "file_id": "drive_file_10",
-            "file_url": None,
-            "mime_type": "application/pdf",
-            "status": "received",
-        }
-    )
+async def test_download_document_never_consults_the_dead_oauth_token() -> None:
+    """Guilt-proof: restore `get_valid_token(SYSTEM)` as the credential and
+    this fails — production always gets None there, which is the 500."""
+    service, _mock_conn = _make_service_with_fetchrow(_download_row())
+    sa = _sa_drive_mock(metadata={"name": "passport.pdf", "mimeType": "application/pdf"})
 
-    with patch(
-        "backend.services.integrations.google_drive_service.GoogleDriveService"
-    ) as drive_cls:
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value=None)
+    with (
+        patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            return_value=sa,
+        ),
+        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as oauth_cls,
+    ):
+        oauth_cls.SYSTEM_USER_ID = "SYSTEM"
+        oauth_cls.return_value.get_valid_token = AsyncMock(return_value=None)
 
-        with pytest.raises(RuntimeError, match="Google Drive is not connected"):
-            await service.download_document(
-                client_id=1,
-                document_id=10,
-                current_user={"client_id": 1, "email": "client@example.com"},
-            )
+        result = await service.download_document(
+            client_id=1,
+            document_id=10,
+            current_user={"client_id": 1, "email": "client@example.com"},
+        )
+
+    assert result is not None
+    oauth_cls.return_value.get_valid_token.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_download_document_streams_drive_file() -> None:
-    service, mock_conn = _make_service_with_fetchrow(
-        {
-            "id": 10,
-            "file_name": "passport.pdf",
-            "file_id": "drive_file_10",
-            "file_url": None,
-            "mime_type": "application/pdf",
-            "status": "received",
-        }
+    service, mock_conn = _make_service_with_fetchrow(_download_row())
+    sa = _sa_drive_mock(
+        metadata={"name": "passport-renamed.pdf", "mimeType": "application/pdf"},
+        content=b"PDF_BYTES",
     )
-    meta_response = MagicMock(status_code=200)
-    meta_response.json.return_value = {
-        "name": "passport-renamed.pdf",
-        "mimeType": "application/pdf",
-    }
-    download_response = MagicMock(status_code=200, content=b"PDF_BYTES")
-    async_http = MagicMock()
-    async_http.get = AsyncMock(side_effect=[meta_response, download_response])
 
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
         result = await service.download_document(
             client_id=1,
             document_id=10,
@@ -817,53 +884,70 @@ async def test_download_document_streams_drive_file() -> None:
         "file_name": "passport-renamed.pdf",
         "mime_type": "application/pdf",
     }
+    sa.download_file_content.assert_awaited_once_with("drive_file_10")
     fetch_sql = mock_conn.fetchrow.call_args.args[0]
     assert "deleted_at IS NULL" in fetch_sql
     assert "COALESCE(is_archived, FALSE) = FALSE" in fetch_sql
 
 
 @pytest.mark.asyncio
+async def test_download_document_falls_back_to_stored_name_and_mime() -> None:
+    service, _mock_conn = _make_service_with_fetchrow(_download_row())
+    sa = _sa_drive_mock(metadata={}, content=b"BYTES")
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
+    ):
+        result = await service.download_document(
+            client_id=1,
+            document_id=10,
+            current_user={"client_id": 1, "email": "client@example.com"},
+        )
+
+    assert result == {
+        "content": b"BYTES",
+        "file_name": "passport.pdf",
+        "mime_type": "application/pdf",
+    }
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("meta_status", "download_status", "expected_error"),
+    ("metadata", "content", "expected_error"),
     [
-        (404, None, None),
-        (503, None, "Failed to fetch document metadata"),
-        (200, 404, None),
-        (200, 500, "Failed to download document"),
+        ("__404_META__", b"", None),
+        ("__503_META__", b"", "Failed to fetch document metadata"),
+        ("__OK_META__", "__404_MEDIA__", None),
+        ("__OK_META__", "__500_MEDIA__", "Failed to download document"),
     ],
 )
 async def test_download_document_handles_drive_failures(
-    meta_status: int,
-    download_status: int | None,
+    metadata: str,
+    content: Any,
     expected_error: str | None,
 ) -> None:
-    service, _mock_conn = _make_service_with_fetchrow(
-        {
-            "id": 10,
-            "file_name": "passport.pdf",
-            "file_id": "drive_file_10",
-            "file_url": None,
-            "mime_type": "application/pdf",
-            "status": "received",
-        }
-    )
-    meta_response = MagicMock(status_code=meta_status)
-    meta_response.json.return_value = {"name": "passport.pdf", "mimeType": "application/pdf"}
-    responses = [meta_response]
-    if download_status is not None:
-        responses.append(MagicMock(status_code=download_status, content=b""))
-    async_http = MagicMock()
-    async_http.get = AsyncMock(side_effect=responses)
+    """A missing file is a 404 for the client; anything else must stay a
+    failure — never a silent "your document does not exist"."""
+    resolved_meta: Any = {"name": "p.pdf", "mimeType": "application/pdf"}
+    if metadata == "__404_META__":
+        resolved_meta = _DriveHttpError(404)
+    elif metadata == "__503_META__":
+        resolved_meta = _DriveHttpError(503)
 
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    resolved_content: Any = content
+    if content == "__404_MEDIA__":
+        resolved_content = _DriveHttpError(404)
+    elif content == "__500_MEDIA__":
+        resolved_content = _DriveHttpError(500)
+
+    service, _mock_conn = _make_service_with_fetchrow(_download_row())
+    sa = _sa_drive_mock(metadata=resolved_meta, content=resolved_content)
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
         if expected_error:
             with pytest.raises(RuntimeError, match=expected_error):
                 await service.download_document(
@@ -1024,6 +1108,251 @@ async def test_upload_to_drive_uses_service_account_fallback() -> None:
     service._upload_with_service_account.assert_awaited_once()
 
 
+# =============================================================================
+# BUG C REGRESSION — _upload_with_service_account never had a working Drive
+# client (drive-sa-upload-attr worktree). team_drive.drive_service does not
+# exist on TeamDriveService; every prior test of this branch mocked
+# _upload_with_service_account itself (see test_upload_to_drive_uses_
+# service_account_fallback above), so the branch's own body had never
+# actually executed, in production or in a test. These exercise the real
+# method — only the external Google Drive API boundary
+# (ServiceAccountDriveService) is mocked, not the method's own control flow.
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_upload_with_service_account_routes_through_service_account_drive_service() -> None:
+    """Guilt-proof: restore `team_drive.drive_service.files()...execute()`
+    (the old body) and this fails — result["success"] stays False with
+    "...has no attribute 'drive_service'" in result["error"], because nothing
+    in that old code path can reach ServiceAccountDriveService at all.
+    """
+    service = PortalService(MagicMock())
+    result: dict[str, Any] = {
+        "success": False,
+        "file_id": None,
+        "file_url": None,
+        "folder_path": "",
+        "error": None,
+    }
+
+    mock_sa_instance = MagicMock()
+    mock_sa_instance.upload_file_to_folder = AsyncMock(
+        return_value={
+            "id": "sa_file_1",
+            "name": "20260910_000000_passport.pdf",
+            "webViewLink": "https://drive.google.com/file/d/sa_file_1/view",
+        }
+    )
+
+    mock_conn = AsyncMock()
+    # client already has its CRM root folder; 00_Profile subfolder id is in
+    # client_drive_subfolders, so no Drive list call is needed
+    mock_conn.fetchrow.return_value = {
+        "google_drive_folder_id": "crm_root_1",
+        "client_type": "individual",
+    }
+    mock_conn.fetchval.return_value = "profile_subfolder_1"
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=mock_sa_instance,
+    ) as sa_cls:
+        out = await service._upload_with_service_account(
+            conn=mock_conn,
+            client_id=1,
+            client_name="Client One!",
+            document_type="passport_scan",
+            file_content=b"PDF",
+            file_name="passport.pdf",
+            mime_type="application/pdf",
+            result=result,
+        )
+
+    sa_cls.assert_called_once()
+    mock_sa_instance.upload_file_to_folder.assert_awaited_once()
+    call_kwargs = mock_sa_instance.upload_file_to_folder.call_args.kwargs
+    assert call_kwargs["file_content"] == b"PDF"
+    assert call_kwargs["file_name"].endswith("_passport.pdf")
+    assert call_kwargs["mime_type"] == "application/pdf"
+    # THE finding: the file lands in the client's own category subfolder,
+    # never in the global root the old body passed.
+    assert call_kwargs["folder_id"] == "profile_subfolder_1"
+
+    assert out["success"] is True
+    assert out["file_id"] == "sa_file_1"
+    assert out["file_url"] == "https://drive.google.com/file/d/sa_file_1/view"
+    assert out["method"] == "service_account"
+    assert out["folder_path"] == "1_Client One!/00_Profile"
+
+
+@pytest.mark.asyncio
+async def test_upload_with_service_account_surfaces_drive_errors_without_raising() -> None:
+    """A real Drive-side failure (bad/expired credential, API error) must
+    still return an error dict, never raise — the method's own error
+    contract, now actually exercised end to end instead of asserted in the
+    abstract."""
+    service = PortalService(MagicMock())
+    result: dict[str, Any] = {
+        "success": False,
+        "file_id": None,
+        "file_url": None,
+        "folder_path": "",
+        "error": None,
+    }
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        side_effect=ValueError("GOOGLE_SERVICE_ACCOUNT_JSON not configured in settings"),
+    ):
+        out = await service._upload_with_service_account(
+            conn=AsyncMock(),
+            client_id=1,
+            client_name="Client One",
+            document_type="passport",
+            file_content=b"PDF",
+            file_name="passport.pdf",
+            mime_type="application/pdf",
+            result=result,
+        )
+
+    assert out["success"] is False
+    assert "Service Account upload failed" in out["error"]
+    assert "GOOGLE_SERVICE_ACCOUNT_JSON" in out["error"]
+
+
+# =============================================================================
+# F2 (2026-09-11 portal↔CRM bridge audit) — the live Service Account branch
+# uploaded flat into settings.google_drive_root_folder_id, the global root
+# shared by EVERY client, so no portal upload was ever visible from the
+# client's Drive folder in the CRM. These pin the per-client destination.
+# =============================================================================
+
+
+def _sa_service_and_conn(
+    *,
+    root: str | None,
+    subfolder_row: str | None,
+) -> tuple[PortalService, AsyncMock, MagicMock]:
+    service = PortalService(MagicMock())
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = (
+        {"google_drive_folder_id": root, "client_type": "individual"} if root is not None else None
+    )
+    mock_conn.fetchval.return_value = subfolder_row
+
+    sa = MagicMock()
+    sa.upload_file_to_folder = AsyncMock(
+        return_value={"id": "sa_file_2", "webViewLink": "https://drive.google.com/x"}
+    )
+    sa.ensure_client_folder = AsyncMock(return_value={"root_folder_id": "made_root_9"})
+    sa.find_folder = AsyncMock(return_value=None)
+    sa.create_folder = AsyncMock(return_value={"id": "made_subfolder_9"})
+    return service, mock_conn, sa
+
+
+def _blank_result() -> dict[str, Any]:
+    return {
+        "success": False,
+        "file_id": None,
+        "file_url": None,
+        "folder_path": "",
+        "error": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_service_account_upload_creates_client_root_and_category_subfolder() -> None:
+    """No root on the client row and no persisted subfolder: go through the
+    idempotent ensure_client_folder chokepoint, then create the category
+    subfolder under THAT root — not under the global one."""
+    service, mock_conn, sa = _sa_service_and_conn(root=None, subfolder_row=None)
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
+    ):
+        out = await service._upload_with_service_account(
+            conn=mock_conn,
+            client_id=42,
+            client_name="Client Two",
+            document_type="kitas",
+            file_content=b"PDF",
+            file_name="kitas.pdf",
+            mime_type="application/pdf",
+            result=_blank_result(),
+        )
+
+    sa.ensure_client_folder.assert_awaited_once()
+    assert sa.ensure_client_folder.call_args.kwargs["client_id"] == 42
+    sa.find_folder.assert_awaited_once_with("01_Immigration", "made_root_9")
+    assert sa.create_folder.call_args.kwargs == {
+        "name": "01_Immigration",
+        "parent_id": "made_root_9",
+    }
+    assert sa.upload_file_to_folder.call_args.kwargs["folder_id"] == "made_subfolder_9"
+    assert out["success"] is True
+    assert out["folder_path"] == "42_Client Two/01_Immigration"
+
+
+@pytest.mark.asyncio
+async def test_service_account_upload_reuses_existing_category_subfolder_from_drive() -> None:
+    """Root known, no client_drive_subfolders row, but the folder exists in
+    Drive: reuse it instead of creating a twin."""
+    service, mock_conn, sa = _sa_service_and_conn(root="crm_root_7", subfolder_row=None)
+    sa.find_folder = AsyncMock(return_value={"id": "found_tax_7"})
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
+    ):
+        out = await service._upload_with_service_account(
+            conn=mock_conn,
+            client_id=7,
+            client_name="Client Three",
+            document_type="spt_tahunan",
+            file_content=b"PDF",
+            file_name="spt.pdf",
+            mime_type="application/pdf",
+            result=_blank_result(),
+        )
+
+    sa.ensure_client_folder.assert_not_awaited()
+    sa.create_folder.assert_not_awaited()
+    assert sa.upload_file_to_folder.call_args.kwargs["folder_id"] == "found_tax_7"
+    assert out["folder_path"] == "7_Client Three/03_Tax"
+
+
+@pytest.mark.asyncio
+async def test_service_account_upload_fails_closed_when_folder_unresolvable() -> None:
+    """Guilt-proof for the regression shape: if the client folder cannot be
+    resolved, REFUSE — never fall back to the shared global root, which is
+    what silently swallowed every portal upload before this fix. The caller
+    turns an unsuccessful drive_result into 'Document storage is
+    unavailable', so the client is told rather than misled."""
+    service, mock_conn, sa = _sa_service_and_conn(root=None, subfolder_row=None)
+    sa.ensure_client_folder = AsyncMock(side_effect=RuntimeError("Drive 404"))
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
+    ):
+        out = await service._upload_with_service_account(
+            conn=mock_conn,
+            client_id=8,
+            client_name="Client Four",
+            document_type="passport",
+            file_content=b"PDF",
+            file_name="p.pdf",
+            mime_type="application/pdf",
+            result=_blank_result(),
+        )
+
+    sa.upload_file_to_folder.assert_not_awaited()
+    assert out["success"] is False
+    assert "Drive 404" in out["error"]
+
+
 @pytest.mark.asyncio
 async def test_upload_to_drive_oauth_success() -> None:
     service, _mock_conn = _make_service_with_fetchrow(row=None)
@@ -1113,6 +1442,65 @@ def test_team_drive_service_has_service_account_available_attribute() -> None:
         # Case 4: auth is None → safe fallback
         service.auth = None
         assert service.service_account_available is False
+
+
+def test_service_account_available_reflects_a_real_credential() -> None:
+    """Effect guard, not shape: True only when a usable SA credential exists.
+
+    The test above (BUG B) mocked `auth.service_account_available` directly,
+    so it stayed green even though `DriveAuthManager` never defined that
+    attribute at all — `getattr(auth, "service_account_available", False)`
+    silently fell through to `False` forever, on every real deploy, no matter
+    how valid the configured credential was. This is BUG C: the fallback in
+    `_upload_to_drive` could never engage despite `ServiceAccountDriveService`
+    constructing fine from the exact same credential.
+
+    Guilt-proof: revert `DriveAuthManager.service_account_available` (the
+    `@property` added in drive_auth.py) and this test fails — the True-branch
+    assertions below observe `False` instead.
+    """
+    from backend.app.core.config import settings
+    from backend.services.integrations.drive.drive_auth import DriveAuthManager
+    from backend.services.integrations.team_drive_service import TeamDriveService
+
+    valid_sa_json = json.dumps(
+        {
+            "type": "service_account",
+            "project_id": "test-project",
+            "private_key_id": "abc123",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n",
+            "client_email": "test@test-project.iam.gserviceaccount.com",
+        }
+    )
+    original = settings.google_credentials_json
+    try:
+        # Present + structurally valid → the auth manager itself must report True.
+        settings.google_credentials_json = valid_sa_json
+        auth = DriveAuthManager(db_pool=MagicMock(), http_client=MagicMock())
+        assert auth.service_account_available is True
+
+        # The facade `_upload_to_drive` actually reads must agree — real auth
+        # manager, not a mock standing in for it.
+        with (
+            patch("backend.services.integrations.team_drive_service.DriveOperationsManager"),
+            patch("backend.services.integrations.team_drive_service.DrivePermissionsManager"),
+            patch("backend.services.integrations.team_drive_service.DriveAuditLogger"),
+            patch("httpx.AsyncClient"),
+        ):
+            team_drive = TeamDriveService(db_pool=MagicMock())
+            assert team_drive.service_account_available is True
+
+        # Absent credential → no fallback, must stay False.
+        settings.google_credentials_json = None
+        auth_no_cred = DriveAuthManager(db_pool=MagicMock(), http_client=MagicMock())
+        assert auth_no_cred.service_account_available is False
+
+        # Malformed JSON → False, never raises.
+        settings.google_credentials_json = "{not json"
+        auth_bad_json = DriveAuthManager(db_pool=MagicMock(), http_client=MagicMock())
+        assert auth_bad_json.service_account_available is False
+    finally:
+        settings.google_credentials_json = original
 
 
 @pytest.mark.asyncio

@@ -120,14 +120,19 @@ class TestSponsorTypeRolloutDefault:
         under the fact-vocabulary-extension mandate, see the module
         docstring and ``TestFactVocabularyExtensionRolloutDefaults0823``),
         then to five on 2026-08-24 (``immigration_renewal_paid``, F4 — see
-        ``TestFactVocabularyExtensionRolloutDefault0824``). Widening is
-        deliberate and tracked HERE — this stops a field from
-        silently acquiring a default under cover of an existing one without
-        anyone updating the expected set. When any one field's interview
-        ships and its default is removed, this test goes red for that
-        field and is the thing that tells whoever removed it the follow-up
-        is complete: drop that field from the expected set (and, once the
-        set is empty, delete this test along with the 40-key test above).
+        ``TestFactVocabularyExtensionRolloutDefault0824``). It widened again,
+        briefly, to six on 2026-09-13 (``investment_amount_usd``, PR-D4c-1)
+        and narrowed back to five the same day once D4c-2's interview
+        question shipped and the ``default=`` came out of ``models.py`` —
+        the ``TestFactVocabularyExtensionRolloutDefaultD4c1`` class that
+        pinned that field's transitional window is gone with it. Widening
+        is deliberate and tracked HERE — this stops a field from silently
+        acquiring a default under cover of an existing one without anyone
+        updating the expected set. When any one field's interview ships and
+        its default is removed, this test goes red for that field and is
+        the thing that tells whoever removed it the follow-up is complete:
+        drop that field from the expected set (and, once the set is empty,
+        delete this test along with the 40-key test above).
         """
         optional = {
             name
@@ -304,6 +309,56 @@ class TestFactVocabularyExtensionRolloutDefault0824:
     def test_extra_forbidden_still_bites_for_this_field_too(self) -> None:
         body = _all_unknown_facts()
         body["immigration.renewal_paidx"] = dict(_UNKNOWN)
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+
+class TestInvestmentAmountUsdIsRequiredAndTyped:
+    """``investment.investment_amount_usd`` graduated out of the transitional
+    mechanism the same day it joined it: PR-D4c-1 (2026-09-13) added the
+    field with a rollout default so the wire key could exist before D4c-2's
+    interview question did; PR-D4c-2's follow-up removed that default once
+    the question shipped. ``TestFactVocabularyExtensionRolloutDefaultD4c1``,
+    which pinned the now-retired transitional window, is gone with it — but
+    three of its assertions still mean something now that the field is
+    required and typed like every other fact, and are re-homed here rather
+    than lost with the class: a supplied value is honoured, the integer
+    type is still enforced, and a negative value is still rejected. The
+    ``extra_forbidden`` case is not repeated — ``TestFactVocabularyExtension
+    RolloutDefault0824`` above already covers it for this same model.
+    """
+
+    _WIRE_KEY = "investment.investment_amount_usd"
+
+    def test_a_supplied_value_is_honoured(self) -> None:
+        """A KNOWN zero is deliberately exercised too: it is a real,
+        meaningful answer (an applicant with a confirmed-zero committed
+        amount), not a state that collapses into UNKNOWN."""
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": 50_000}
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert facts.investment_amount_usd.status == "KNOWN"
+        assert facts.investment_amount_usd.value == 50_000
+
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": 0}
+        facts_zero = M.ApplicantFactsData.model_validate(body)
+        assert facts_zero.investment_amount_usd.status == "KNOWN"
+        assert facts_zero.investment_amount_usd.value == 0
+
+    def test_integer_type_is_enforced_on_a_supplied_value(self) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": "a lot"}  # a string, not an int
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+    def test_negative_amount_is_rejected(self) -> None:
+        """``KnownMoney.value`` is ``ge=0`` regardless of currency."""
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": -1}
 
         with pytest.raises(ValidationError):
             M.ApplicantFactsData.model_validate(body)

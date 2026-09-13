@@ -79,6 +79,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "home<->home",              # the SAME control-plane file on two machines (global CLAUDE.md, 2026-08-31)
     "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
     "process<->cwd",            # a headless claude CLI process vs. its own working dir / worktree registration (2026-09-01)
+    "model<->calibration",      # configured child models vs. their stored context-window calibration (2026-09-10)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -1697,6 +1698,108 @@ def probe_headless_zombies(root: Path, args: dict, timeout: int) -> tuple[str, i
     return classify_headless_zombies(processes, registered)
 
 
+# -------------------------------------------------------- child calibration
+
+def _cc_current_version(bound: int) -> str | None:
+    """Running `claude` CLI's version, or None if undeterminable — never raises."""
+    try:
+        out = subprocess.run(["claude", "--version"], capture_output=True, text=True, timeout=bound)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.split()[0] if out.returncode == 0 and out.stdout.strip() else None
+
+def _cc_classify_model(cc, model: str, version: str | None, scope_val: str | None,
+                       dir_ok: bool, dir_files: list[Path]) -> tuple[str, str | None]:
+    """UNKNOWN wins if version/scope/dir is undeterminable. Else VALID/EXPIRED
+    come from the exact (model, version, scope) path (TTL reused via `cc.TTL`
+    — #3); VERSION-MISMATCH from a scan for the same model+scope under
+    another version; MISSING is what's left."""
+    if version is None or scope_val is None or not dir_ok:
+        return "UNKNOWN", None
+    current = cc.scoped_path(model, version, scope_val)
+    if current.exists():
+        try:
+            rec = json.loads(current.read_text())
+            m, v, w, s, obs = rec["model"], rec["version"], rec["window"], rec["scope"], rec["observed_at"]
+        except (OSError, ValueError, KeyError, TypeError):
+            return "UNKNOWN", None  # malformed record AT the configured model's path
+        if (m != model or v != version or s != scope_val or type(w) is not int
+                or not (16000 <= w <= 2_000_000) or isinstance(obs, bool) or not isinstance(obs, (int, float))):
+            return "UNKNOWN", None
+        age = time.time() - obs
+        return ("VALID" if 0 <= age <= cc.TTL else "EXPIRED"), None
+    for f in dir_files:
+        try:
+            rec = json.loads(f.read_text())
+        except (OSError, ValueError):
+            continue  # unrelated malformed file — not this model's expected path, not a finding
+        if (isinstance(rec, dict) and rec.get("model") == model
+                and rec.get("scope") == scope_val and rec.get("version") != version):
+            return "VERSION-MISMATCH", rec.get("version") if isinstance(rec.get("version"), str) else None
+    return "MISSING", None
+
+def probe_child_calibration(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """VALID/MISSING/EXPIRED/VERSION-MISMATCH/UNKNOWN per (host, profile, model).
+    Read-only (#1); child_context.py absence degrades to UNPROBEABLE, never a
+    crash (#2/#3). Only `configured` models are classified — a retired
+    model's stale record is no finding (§2). Evidence: host, profile dir
+    name, model, status only — no scope hash/session_id/content (#4)."""
+    import importlib.util
+    cc_path = root / "infra" / "claude-hooks" / "child_context.py"
+    try:
+        cc_spec = importlib.util.spec_from_file_location("_child_context_probe", cc_path)
+        cc = importlib.util.module_from_spec(cc_spec)
+        cc_spec.loader.exec_module(cc)
+    except Exception:
+        return UNPROBEABLE, 0, [f"{cc_path} unavailable — calibration is UNKNOWN for every triple"]
+
+    roster = list(dict.fromkeys(args.get("models", [])))  # verbatim, de-duped, never de-suffixed
+    version = _cc_current_version(min(timeout, 5))
+    host = machine_label()
+    ev, n_bad, triples = [], 0, 0
+    for prof in args.get("profiles", ["~/.claude"]):
+        profile_dir = Path(os.path.expanduser(prof))
+        if not profile_dir.is_dir():
+            continue  # this profile doesn't exist on this machine — not a finding
+        configured = list(roster)
+        for name in ("settings.json", "settings.local.json"):
+            fp = profile_dir / name
+            if not fp.is_file():
+                continue
+            try:
+                data = json.loads(fp.read_text())
+            except (OSError, ValueError):
+                continue
+            m = data.get("model") if isinstance(data, dict) else None
+            if isinstance(m, str) and m not in configured:
+                configured.append(m)  # taken VERBATIM — a `[1m]` spelling stays exactly that
+
+        old_seat = os.environ.get("CLAUDE_CONFIG_DIR")
+        os.environ["CLAUDE_CONFIG_DIR"] = str(profile_dir)
+        try:
+            try:
+                scope_val = cc.scope(str(root))
+            except Exception:
+                scope_val = None
+            capdir = cc.scoped_path("_probe_", "_probe_", "_probe_").parent
+            try:
+                dir_files = list(capdir.glob("*.json")) if capdir.is_dir() else []
+                dir_ok = True
+            except OSError:
+                dir_files, dir_ok = [], False
+            for model in configured:
+                triples += 1
+                status, other_v = _cc_classify_model(cc, model, version, scope_val, dir_ok, dir_files)
+                n_bad += status != "VALID"
+                detail = f" (other version: {other_v})" if other_v else ""
+                ev.append(f"{host}:{prof}:{model}: {status}{detail}")
+        finally:
+            (os.environ.pop("CLAUDE_CONFIG_DIR", None) if old_seat is None
+             else os.environ.__setitem__("CLAUDE_CONFIG_DIR", old_seat))
+    if triples == 0:
+        return UNPROBEABLE, 0, ["no configured profile exists on this machine"]
+    return (DIVERGED if n_bad else RECONCILED), n_bad, ev
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -1707,6 +1810,7 @@ BUILTINS = {
     "canon_blocks": probe_canon_blocks,
     "door_canon_parity": probe_door_canon_parity,
     "headless_zombies": probe_headless_zombies,
+    "child_calibration": probe_child_calibration,
 }
 
 
@@ -2200,6 +2304,17 @@ DEFAULT_REGISTRY: list[dict] = [
                     "it, this receptor never does. P2 (unregistered worktree): `git worktree "
                     "list` no longer knows this path -- re-register with `git worktree add` if "
                     "the work is still wanted, or let the process finish and clean up by hand.",
+    },
+    {
+        "id": "child_calibration", "type": "builtin", "target": "child_calibration",
+        "class": "model<->calibration", "severity": "P3",
+        "boundary": "configured child models <-> ~/.claude/state/child-context-capacities/",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 15,
+        "args": {"models": ["claude-haiku-4-5-20251001", "claude-sonnet-5", "claude-opus-5"],
+                 "profiles": ["~/.claude", "~/.claude-acct2"]},
+        "fix_hint": "MISSING/EXPIRED/VERSION-MISMATCH: re-run the owned native calibration probe "
+                    "(child_context.py::calibrate) for that model/profile. UNKNOWN: fix the "
+                    "unreadable input (CLI version, scope, or the capacities dir) first.",
     },
 ]
 

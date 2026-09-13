@@ -1,0 +1,95 @@
+gear: 3
+task_id: ops-pro-one-tree-retire
+l_level: L1
+objective: >-
+  Carry the repo-side canon of Zero's one-tree ruling (2026-09-10): the 18 LaunchAgents on
+  Pro that executed from the frozen runtime checkout /Users/nuzantara/nuzantara-deploy are
+  repointed at the main checkout /Users/nuzantara/nuzantara, which the 15-min puller holds
+  at origin/main. The live repoint is already done and proven agent by agent; this PR is
+  what makes it survive, because pro-healer restores declared home-fork pairs FROM this
+  canon and had already undone one of them mid-lane.
+scope:
+  - infra/launchagents/
+  - infra/launchagents/wrappers/pro-git-pull-main.sh
+  - infra/openclaw/wr2/wr2-script-wrapper.sh
+  - infra/home-fork/declared-pairs.json
+  - scripts/runtime-reconcile.sh
+  - .claude/skills/modus/PENDING-ARMS.md
+constraints:
+  - >-
+    No agent is repointed whose script is absent from the main checkout. All 17 payload
+    paths were checked on disk before any plist was touched.
+  - >-
+    Nothing in the frozen tree is destroyed. It carries zero modifications to tracked
+    files; all 18 dirty entries are untracked artifacts, two of them a 769 MB PII
+    quarantine and a key directory that are deliberately NOT copied anywhere — the
+    retire is a rename, which preserves them in place, and a second copy of a secret is
+    superscar #4.
+  - >-
+    Every plist keeps a .bak-20260910 beside it on Pro before the edit.
+  - >-
+    The tree rename happens only AFTER this merges. runtime-reconcile runs with
+    STRICT=1 and under the old invariants the tree's absence is a P0 Telegram page.
+  - >-
+    No paid per-token Anthropic endpoint, no secret printed, no client PII in any
+    artifact this PR adds.
+acceptance:
+  - text: >-
+      On Pro, no LaunchAgent plist SHALL execute from the retired tree —
+      grep -lE '<string>[^<]*nuzantara-deploy' ~/Library/LaunchAgents/*.plist returns nothing.
+    probe: grep-on-pro
+  - text: >-
+      bash ~/scripts/runtime-reconcile.sh SHALL exit 0 and log
+      "all runtime invariants hold (runtime_exists=true, one tree)" once the tree is renamed
+      and the merged canon is live.
+    probe: runtime-reconcile-exit-and-log
+  - text: >-
+      Each of the four KeepAlive daemons SHALL show a NEW pid and a fresh line of its own
+      output after the repoint — not merely a zero exit code (W84: read the log content).
+    probe: launchctl-print-plus-log-tail
+  - text: >-
+      Every changed plist SHALL pass plutil -lint and every changed shell file bash -n.
+    probe: plutil-lint-and-bash-n
+assumptions:
+  - assumption: >-
+      The main checkout is a healthy substitute for the frozen one — every payload the 18
+      agents run exists there at origin/main.
+    status: verified
+    evidence: >-
+      17 payload paths and 3 interpreters (backend-rag venv, war-room venv, node) checked
+      on disk on Pro before the first edit. One gap found and it is symmetric:
+      apps/wa-meta-inbox/node_modules is absent from BOTH trees, so wa-meta-inbox has no
+      dependencies to lose, and its server.cjs is byte-identical across the two.
+  - assumption: >-
+      The frozen tree holds nothing that needs merging back.
+    status: verified
+    evidence: >-
+      git status --porcelain in the deploy tree returns 18 entries, all "??" — zero
+      modifications to tracked files. Manifest written to
+      ~/.nuzantara-backups/deploy-tree-retire-20260910/.
+  - assumption: >-
+      The live repoint survives without this PR.
+    status: unverified # tested and found FALSE — see the evidence below
+    evidence: >-
+      At 20:29 WITA pro-healer logged "1 home-fork refresh (web-lead-funnel.plist,
+      cmp-clean)" and launchctl print went back to showing the deploy path six minutes
+      after the main-checkout path had been proven. Three of the 18 are declared pairs.
+  - assumption: >-
+      The weekly agents are proven by the same standard as the rest.
+    status: unverified
+    evidence: >-
+      wr3.reflexion.weekly and web-lead-funnel are proven statically only. Running them by
+      hand sends the owner a Telegram report and spends LLM budget, which this lane was not
+      authorized to do. First real heartbeat Sunday 02:30 and Monday 09:00 WITA. Ledgered.
+consumer_map:
+  - >-
+    launchd on Pro loads every plist under infra/launchagents/ through the installers in
+    the same directory; pro-healer re-copies the declared pairs from this canon.
+  - >-
+    com.nuzantara.runtime-reconcile executes ~/scripts/runtime-reconcile.sh, the live half
+    of the declared pair whose repo half this PR rewrites.
+  - >-
+    com.nuzantara.git-pull-main.15min executes ~/scripts/pro-git-pull-main.sh, the live half
+    of the wrapper canon changed here.
+  - >-
+    scripts/pending_arms_report.py reads the two new ledger rows.

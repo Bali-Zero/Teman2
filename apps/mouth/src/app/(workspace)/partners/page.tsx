@@ -240,20 +240,6 @@ export default function PartnersPage() {
         <div className="flex items-center gap-2">
           {/* Variant defaults are already token-driven (outline = --border,
               default = copper --accent) — no per-button color overrides. */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/partners/orphaned")}
-          >
-            Orphaned
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/partners/finance")}
-          >
-            Finance Queue
-          </Button>
           <Button onClick={() => router.push("/partners/new")} size="sm">
             <Plus size={16} className="mr-1" />
             New Partner

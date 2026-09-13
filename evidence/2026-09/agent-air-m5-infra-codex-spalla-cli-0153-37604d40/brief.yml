@@ -1,0 +1,96 @@
+task_id: codex-spalla-cli-0153
+gear: 2
+l_level: L1
+gate_class: opus
+# Floor recomputed on THIS PR's final changed-file list (this brief
+# included): `python3 scripts/evidence_pack_lint.py --print-floor
+# --numstat-file <numstat> --changed-files-file <files>` -> 2, source
+# "size" (net lines >= 400, most of it the new 306-line test file).
+# No hot-zone path is touched: .claude/scripts/, .claude/commands/,
+# scripts/tests/ and evidence/ are all outside HOTZONE_PATTERNS.
+# Declared gear 2 == floor.
+objective: |
+  Un-break the codex second-opinion dispatch path after codex-cli removed
+  `--full-auto` (removed in 0.149.1; current 0.153.x). Ledger 2026-09-01
+  (.claude/skills/modus/PENDING-ARMS.md): on 0.151.0 the clap usage error
+  printed AT EXIT 0, so every caller judging by return code read "codex
+  never ran" as a clean review — every spalla verdict since the removal
+  was un-judged.
+
+  The fix: review mode dispatches `codex exec --sandbox read-only -c
+  model_reasoning_effort=xhigh -`; exec mode `--sandbox workspace-write`
+  (full-auto's old semantics spelled out); prompt on stdin unchanged. A
+  verdict guard makes the exit code carry the truth: codex exit 0 without
+  a verdict line (BLOCKER|MEDIUM|LOW|LGTM at line start in the first 50
+  transcript lines) exits the wrapper 6, so "ran and found nothing" and
+  "never ran" are distinguishable independent of future CLI drift. The
+  seat lib resolves from `git rev-parse --show-toplevel`, and a missing
+  lib is a loud exit 1 instead of a silent dispatch on a possibly-401-dead
+  default seat. A `--self-test` mode pushes a trivial prompt through the
+  real dispatch path and requires a verdict line — proving flags, seat
+  and auth on demand, no diff needed.
+constraints:
+  - "Never reintroduce `--full-auto`; the invocation is spelled out for
+    codex-cli 0.153.x and the argv-pin tests make a regression red."
+  - "The verdict guard keys on the wrapper EXIT CODE, never on transcript
+    prose alone — a caller must be able to judge by `$?` only."
+  - "Tests run against a fake `codex` shim on PATH inside a tmp git repo
+    with HOME redirected — they never touch real `~/logs`, a real seat, or
+    a real dispatch. The ONE live call is the explicit `--self-test`,
+    separately recorded."
+  - "Known debt deliberately NOT in this PR (one PR, one concern):
+    MODEL_TOPOLOGY.json's `codex_fix` (consumed by
+    scripts/sentinel_lib/repairer.py::dispatch_codex_fix) carries the same
+    removed flag, and .claude/agents/wr2-design-architect.md,
+    .claude/agents/wr2-external-bench.md and docs/codex/CODEX_SPALLA.md
+    still document the dead flag."
+acceptance:
+  - text: >-
+      WHEN the wrapper dispatches in review mode, `--full-auto` SHALL NOT
+      appear on the codex argv and `--sandbox read-only` SHALL; in exec
+      mode `--sandbox workspace-write` SHALL appear instead.
+    probe: >-
+      python3 -m pytest scripts/tests/test_codex_spalla.py -q -k "review_mode or exec_mode"
+  - text: >-
+      IF codex exits 0 having printed only a clap usage error (the 0.151.0
+      shape that produced un-judged "clean" reviews), THEN the wrapper
+      SHALL exit 6 — and a prompt ECHO containing a verdict word SHALL NOT
+      count as a verdict.
+    probe: >-
+      python3 -m pytest scripts/tests/test_codex_spalla.py -q -k "zero_exit_without_verdict or prompt_echo or self_test_without_verdict"
+  - text: >-
+      WHEN the seat lib is missing, the wrapper SHALL fail loud at exit 1
+      rather than dispatch on a possibly-dead default seat; an empty diff
+      SHALL still be refused at exit 2.
+    probe: >-
+      python3 -m pytest scripts/tests/test_codex_spalla.py -q -k "missing_seat_lib or empty_diff"
+  - text: >-
+      WHEN the full test file runs, 11 tests SHALL pass, including the
+      guilt cases above and the fixture-honesty self-check.
+    probe: >-
+      python3 -m pytest scripts/tests/test_codex_spalla.py -q
+  - text: >-
+      WHEN `.claude/scripts/codex-spalla.sh --self-test` runs against the
+      REAL codex CLI, it SHALL exit 0 and record a verdict line in a
+      transcript under ~/logs/codex-spalla/ — proving flags, seat and auth
+      end to end with no diff needed.
+    probe: >-
+      .claude/scripts/codex-spalla.sh --self-test — recorded runs:
+      builder 20260905T221542Z-8b79 (LGTM, codex 0.153.4, M5); independent
+      review seat 20260906T022748Z-8a70 (LGTM, from the detached review
+      worktree infra-cli-dispatch-review-20260906); brief-author re-run
+      20260906T041128Z-12677 (LGTM, seat ~/.codex-acct2, from THIS branch's
+      worktree at the pushed HEAD)
+  - text: >-
+      WHEN the deterministic floor is recomputed on this PR's final
+      changed-file list (this brief included), it SHALL be 2 via the size
+      term alone, and the declared gear SHALL satisfy gear >= floor.
+    probe: >-
+      git diff --numstat/--name-only origin/main...HEAD into
+      scripts/evidence_pack_lint.py --print-floor / --print-floor-source
+grader: |
+  Generator != grader: this brief's author is a builder seat (Kimi, M5).
+  The grader should re-run the pytest probes and the floor recompute
+  verbatim rather than re-read this file's claims, and confirm the two
+  --self-test transcripts named above exist on M5 and carry a verdict
+  line.

@@ -15,7 +15,6 @@ describe("ZeroRoleWidget", () => {
           visti_scadenza: 3,
           fatture_overdue: 2,
           agenti_count: 46,
-          fly_uptime: 99.9,
         }}
         alerts={[]}
       />,
@@ -30,7 +29,6 @@ describe("ZeroRoleWidget", () => {
           visti_scadenza: 3,
           fatture_overdue: 0,
           agenti_count: 0,
-          fly_uptime: 100,
         }}
         alerts={[]}
       />,
@@ -46,7 +44,6 @@ describe("TeamRoleWidget", () => {
         metrics={{
           assigned_cases: 7,
           prossima_scadenza: "2026-03-20",
-          doc_mancanti: 2,
           clienti_assegnati: 4,
           stalled_count: 1,
         }}
@@ -61,7 +58,6 @@ describe("TeamRoleWidget", () => {
         metrics={{
           assigned_cases: 0,
           prossima_scadenza: "2026-03-20",
-          doc_mancanti: 0,
           clienti_assegnati: 0,
           stalled_count: 0,
         }}
@@ -91,19 +87,18 @@ describe("TaxRoleWidget", () => {
 });
 
 describe("MarketingRoleWidget", () => {
-  it("renders subscriber delta", () => {
+  it("renders new leads count", () => {
     render(
       <MarketingRoleWidget
         metrics={{
           articoli_pubblicati: 8,
           articoli_in_review: 3,
-          subscriber_delta: 42,
           lead_nuovi: 5,
         }}
         alerts={[]}
       />,
     );
-    expect(screen.getByText(/42/)).toBeInTheDocument();
+    expect(screen.getByText(/5 lead nuovi/)).toBeInTheDocument();
   });
 });
 

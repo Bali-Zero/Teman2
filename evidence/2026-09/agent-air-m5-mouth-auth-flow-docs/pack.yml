@@ -1,0 +1,35 @@
+brief_ref: evidence/2026-09/agent-air-m5-mouth-auth-flow-docs/brief.yml
+lanes:
+  - lane: auth-flow-docs
+    role: build
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - lane: auth-flow-docs-review
+    role: review
+    seat: kimi-code/k3 via existing OAuth CLI
+dissent: []
+pii_scan: clean
+receipts:
+  - claim: The documented gates and storage description match existing source; all four session states preserve the production access decisions.
+    cmd: node .agent/verify-auth-docs.cjs
+    result: AST guards match agents/page.tsx; imports, SessionState and initial pending state checked; parse/transpile passed. Pending/unknown neither redirect nor reach the protected-load position; anonymous redirects only; authenticated reaches it. Six runtime-source blobs and all unrelated documentation bytes are unchanged.
+    exit: 0
+    ts: "2026-09-05T20:36:48.425Z"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: An independent Kimi reader found the documentation accurate against the supplied production source excerpts.
+    cmd: python .agent/run-kimi-review.py
+    result: PASS; no in-scope errors. Static supplied-source review, not probe re-execution. The documentation has not changed since review; only evidence receipts and reference line anchors were completed afterward.
+    exit: 0
+    ts: "2026-09-05T20:38:08.889002+00:00"
+    seat: kimi-code/k3
+references:
+  - apps/mouth/src/app/agents/page.tsx:105
+  - apps/mouth/src/hooks/useSessionState.ts:28
+  - apps/mouth/src/lib/api/types/api-client.types.ts:16
+  - apps/mouth/src/lib/api/client.ts:251
+  - apps/mouth/src/lib/api/client.ts:369
+  - apps/mouth/src/lib/api/public-auth.ts:86
+  - apps/mouth/src/lib/utils/storage.ts:64
+limits:
+  - The one-time local probe under .agent is not a repository test; its state smoke checks the documented guards, not a mounted page or network session.
+  - The snippet is explicitly an in-component fragment. Page-specific role checks, data loading and rendering remain with each actual page.
+  - The existing server-side cookie example is outside this correction and remains byte-identical.

@@ -1,0 +1,6 @@
+--- a/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
++++ b/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
+@@ -835 +834,0 @@
+-          <ConsentBanner />
+@@ -836,0 +836 @@
++        <ConsentBanner />

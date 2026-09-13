@@ -1,0 +1,79 @@
+gear: 3
+task_id: db-voa-migrator-role
+l_level: L2
+gate_class: opus
+objective: >-
+  Execute option D of the GARUDA VOA step-5 privilege decision, RULED by Zero on
+  2026-09-11 (ZERO-DECISIONS.md item 1): the migration runner learns a second DSN,
+  MIGRATION_DATABASE_URL, authenticating as a dedicated non-superuser role that is a
+  member of both backend_rag_v2 (runtime, owns tables) and visa_ledger_owner (owns the
+  SECURITY DEFINER retention binders). The runner assumes backend_rag_v2 right after
+  connecting, so every object a migration creates is owned exactly as today; a migration
+  that needs the ledger owner brackets that one block in RESET ROLE / SET ROLE. This PR
+  ships the runner half only. The role and the Fly secret are Zero's operator[secret]
+  step; migration 304 and PR #5526 follow in a separate PR once the role is proven.
+scope:
+  - apps/backend-rag/backend/app/core/config.py
+  - apps/backend-rag/backend/db/migration_base.py
+  - apps/backend-rag/backend/db/migration_manager.py
+  - apps/backend-rag/backend/db/migrate.py
+  - apps/backend-rag/backend/tests/db/test_migration_runner_dedicated_role.py
+  - apps/backend-rag/backend/tests/unit/app/test_config.py
+  - docs/plans/2026-08-24-garuda-voa-live/STEP5-PRIVILEGE-DECISION.md
+  - docs/plans/2026-09-03-relaunch-lanes/ZERO-DECISIONS.md
+  - docs/plans/2026-09-03-relaunch-lanes/LANE-A-garuda-voa.md
+  - .claude/skills/modus/PENDING-ARMS.md
+constraints:
+  - >-
+    Zero behaviour change in production until the secret exists: with
+    MIGRATION_DATABASE_URL unset the runner resolves the same DATABASE_URL as before and
+    assume_runtime_role is a no-op for a session that already IS backend_rag_v2.
+  - >-
+    No superuser credential may enter the deploy loop under option D's name: a dedicated
+    DSN that authenticates as a superuser is refused before any statement runs.
+  - >-
+    CI keeps applying migrations as its `test` superuser through the single DSN — the
+    refusal is a property of the dedicated DSN only, asserted by a test.
+  - >-
+    No migration file changes in this PR. 304's bracket is PR #5526's, after the role is
+    measured in production.
+acceptance:
+  - text: >-
+      WHEN MIGRATION_DATABASE_URL is set, THEN the runner (manager pool, per-migration
+      connect, CLI precheck) connects with it and DATABASE_URL is untouched for the runtime.
+    status: verified
+    probe: "pytest backend/tests/db/test_migration_runner_dedicated_role.py -k runner_dsn"
+  - text: >-
+      WHEN the dedicated session is a superuser, or not a member of backend_rag_v2, THEN
+      the runner raises MigrationError before issuing SET ROLE (guilt, both shapes).
+    status: verified
+    probe: 'pytest ... -k ''guilt'' ; mutant `if False and row["is_super"]` -> 3 failed'
+  - text: >-
+      WHEN a real Postgres holds runtime/ledger/migrator roles shaped like production, THEN
+      after assume_runtime_role a table is runtime-owned, RESET ROLE lets the migrator
+      transfer a function to the ledger role, SET ROLE restores runtime ownership for later
+      DDL, and resolve_applied_as records `runtime (session_user=migrator)`.
+    status: verified
+    probe: "pytest ... -k real_pg_option_d_choreography (local superuser Postgres, M5)"
+  - text: >-
+      WHEN the same transfer is attempted connected AS the runtime role (the pre-ruling
+      production shape), THEN Postgres raises insufficient_privilege — the 2026-08-26 abort.
+    status: verified
+    probe: "pytest ... -k runtime_role_alone_cannot_do_the_transfer"
+  - text: >-
+      The existing runner suites keep passing.
+    status: verified
+    probe: "pytest test_migration_114_115_116_roundtrip.py test_retention_binder_scope_survives_a_non_owner_runner.py test_legacy_promotion_migrations.py test_post_d1_migrations_guard_ledger_owned_ddl.py -> 65 passed"
+risks:
+  - >-
+    Merging under apps/backend-rag/** deploys. The release_command will run the NEW runner
+    with the OLD single DSN: the only new code on that path is assume_runtime_role's
+    catalogue SELECT + the no-op branch. Post-merge proof: `fly releases` shows the new
+    image and `_schema_versions` gains no row (no pending migration) with no abort.
+  - >-
+    asyncpg pool `init` runs assume_runtime_role on every pooled connection; a transient
+    failure there surfaces as a pool creation error, i.e. a loud abort, not a silent
+    wrong-role apply.
+pii: none
+appetite:
+  adversarial_rounds: 2

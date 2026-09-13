@@ -560,3 +560,81 @@ def test_innocence_a_report_with_armed_and_skipped_gates_is_still_green() -> Non
         VTV.GateResult("b", "claude_hook", VTV.SKIPPED, "scope=local"),
     ])
     assert rep.ok is True
+
+
+# --------------------------------------------------------------------------- #
+# The registry is a POLICY document and is loaded STRICTLY
+#
+# yaml.safe_load lets a duplicate top-level key win in silence, so a second `gates:`
+# appended at the end replaces the 34 above it and reviews as an added block.
+# MINIMUM_GATES catches that by COUNT — but only by count: a replacement list of 34
+# harmless-looking entries clears the floor while checking nothing real. And one level
+# further down, `gates:` is a LIST, so a repeated `id:` does not shadow — it produces
+# two results, while render_json emits gates KEYED BY ID and any consumer building a
+# dict from that output silently keeps the last. "Last one wins in silence" belongs to
+# any keyed collection built without a collision check, not to YAML.
+# --------------------------------------------------------------------------- #
+
+def _armed_gate(tmp_path: Path, gate_id: str) -> str:
+    """One genuinely ARMED lint gate, as registry YAML text."""
+    lint = tmp_path / f"{gate_id}.py"
+    lint.write_text("# lint\n")
+    consumer = tmp_path / f"{gate_id}.yml"
+    consumer.write_text(f"python {lint}\n")
+    return f"  - id: {gate_id}\n    kind: lint_script\n    target: {lint}\n    consumer: {consumer}\n"
+
+
+def test_guilt_a_duplicated_gates_key_is_refused(tmp_path) -> None:
+    """The append attack: safe_load would take the second block and say nothing."""
+    reg = tmp_path / "gates.yaml"
+    reg.write_text(
+        "version: 1\ngates:\n" + _armed_gate(tmp_path, "real")
+        + "gates:\n" + _armed_gate(tmp_path, "impostor")
+    )
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 3
+
+
+def test_guilt_a_repeated_gate_ID_is_refused(tmp_path) -> None:
+    """One level down: no duplicate YAML key at all, and the JSON report is id-keyed."""
+    reg = tmp_path / "gates.yaml"
+    reg.write_text(
+        "version: 1\ngates:\n" + _armed_gate(tmp_path, "twin") + _armed_gate(tmp_path, "twin")
+    )
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 3
+
+
+def test_guilt_a_gate_without_an_id_is_refused(tmp_path) -> None:
+    """A gate with no id cannot appear in a report, so it cannot be verified."""
+    reg = tmp_path / "gates.yaml"
+    reg.write_text("version: 1\ngates:\n  - kind: lint_script\n    target: /nope\n")
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 3
+
+
+def test_guilt_an_alias_in_the_registry_is_refused(tmp_path) -> None:
+    """An anchor defined far from its use puts the governing value out of the reader's eye."""
+    reg = tmp_path / "gates.yaml"
+    reg.write_text(
+        "anchor: &a\n  id: x\n  kind: lint_script\n  target: /nope\ngates:\n  - *a\n"
+    )
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 3
+
+
+def test_innocence_the_shipped_registry_still_loads_through_the_strict_loader() -> None:
+    """A loader strict enough to refuse the file actually shipped would be useless."""
+    registry = VTV._load_registry_strictly(VTV.DEFAULT_REGISTRY)
+    assert len(registry["gates"]) >= VTV.MINIMUM_GATES
+
+
+def test_innocence_the_shipped_registry_has_no_repeated_gate_id() -> None:
+    """The over-match direction, asserted on the real file rather than assumed."""
+    registry = VTV._load_registry_strictly(VTV.DEFAULT_REGISTRY)
+    ids = [g["id"] for g in registry["gates"]]
+    assert len(ids) == len(set(ids))
+
+
+def test_innocence_two_DIFFERENT_gate_ids_are_not_a_collision(tmp_path) -> None:
+    reg = tmp_path / "gates.yaml"
+    reg.write_text(
+        "version: 1\ngates:\n" + _armed_gate(tmp_path, "one") + _armed_gate(tmp_path, "two")
+    )
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 0
