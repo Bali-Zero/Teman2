@@ -284,6 +284,14 @@ const en = {
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
     "This label only chooses which exact facts to ask next. It never chooses a visa path.",
+  "q.investment_currency": "Which currency can you commit an amount in?",
+  "q.investment_currency.hint":
+    "This only decides which amount question comes next. No conversion is ever performed between currencies.",
+  "q.investment_currency.opt.idr": "Indonesian rupiah (IDR)",
+  "q.investment_currency.opt.usd": "US dollars (USD)",
+  "q.investment_currency.opt.still_unsure": "I can't say yet",
+  "why.investment_currency":
+    "This only chooses which amount question follows. It never chooses a visa path, and no figure is converted between currencies.",
   "q.investment_pt_pma": "Is the PT PMA commitment already concrete?",
   "q.investment_pt_pma.hint":
     "Answer no for an idea, early discussion, or uncommitted plan.",
@@ -295,6 +303,13 @@ const en = {
   "q.investment_capital_idr.label": "Committed investment capital",
   "why.investment_capital_idr":
     "The amount is sent as a financial decision fact. No threshold is shown or inferred here.",
+  "q.investment_amount_usd":
+    "What investment amount is committed, in US dollars?",
+  "q.investment_amount_usd.hint":
+    "Enter the exact whole-dollar amount you can support with evidence.",
+  "q.investment_amount_usd.label": "Committed investment amount",
+  "why.investment_amount_usd":
+    "The amount is sent as a financial decision fact, in the currency you chose. No threshold is shown or inferred here, and no conversion is performed.",
   "q.investment_paid_up_capital_idr":
     "How much paid-up capital is already documented?",
   "q.investment_paid_up_capital_idr.hint":
@@ -1122,6 +1137,15 @@ const id: Record<Keys, string> = {
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
     "Label ini hanya menentukan fakta persis yang ditanyakan berikutnya. Label ini tidak pernah memilih jalur visa.",
+  "q.investment_currency":
+    "Dalam mata uang apa Anda dapat mengomitmenkan jumlah investasi?",
+  "q.investment_currency.hint":
+    "Ini hanya menentukan pertanyaan jumlah berikutnya. Tidak ada konversi yang pernah dilakukan antar mata uang.",
+  "q.investment_currency.opt.idr": "Rupiah Indonesia (IDR)",
+  "q.investment_currency.opt.usd": "Dolar AS (USD)",
+  "q.investment_currency.opt.still_unsure": "Saya belum bisa memastikan",
+  "why.investment_currency":
+    "Ini hanya memilih pertanyaan jumlah mana yang mengikuti. Ini tidak pernah memilih jalur visa, dan tidak ada angka yang dikonversi antar mata uang.",
   "q.investment_pt_pma": "Apakah komitmen PT PMA sudah konkret?",
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
@@ -1134,6 +1158,13 @@ const id: Record<Keys, string> = {
   "q.investment_capital_idr.label": "Modal investasi yang dikomitmenkan",
   "why.investment_capital_idr":
     "Jumlah dikirim sebagai fakta keputusan finansial. Tidak ada ambang yang ditampilkan atau disimpulkan di sini.",
+  "q.investment_amount_usd":
+    "Berapa jumlah investasi yang dikomitmenkan, dalam dolar AS?",
+  "q.investment_amount_usd.hint":
+    "Masukkan jumlah dolar utuh yang tepat dan dapat Anda dukung dengan bukti.",
+  "q.investment_amount_usd.label": "Jumlah investasi yang dikomitmenkan",
+  "why.investment_amount_usd":
+    "Jumlah ini dikirim sebagai fakta keputusan finansial, dalam mata uang yang Anda pilih. Tidak ada ambang yang ditampilkan atau disimpulkan di sini, dan tidak ada konversi yang dilakukan.",
   "q.investment_paid_up_capital_idr":
     "Berapa modal disetor yang sudah terdokumentasi?",
   "q.investment_paid_up_capital_idr.hint":

@@ -725,6 +725,77 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.investment_capital_idr" },
     notSure: { mode: "human-review" },
   },
+  // PR-D4c-2 (owner ruling SHWEB-20260911): router for the `merit`/`family`/
+  // `undecided` investment-vehicle branches ONLY — deliberately never added
+  // to `pt_pma` (see `getCategoryQuestionIds` in flow.ts for the reachability
+  // argument: `pt_pma` already collects `investment_capital_idr` unconditionally,
+  // and E28A's three rules all read it with `on_unknown: NEEDS_INPUT`, so
+  // making it UNKNOWN there would dead-end the exact applicants that branch
+  // serves — the defect PR-D4b already had to cure once). HUMAN_CONTEXT, same
+  // idiom as its `investment_vehicle`/`retirement_basis`/`secondhome_basis`
+  // siblings: it selects which evidence question follows next
+  // (`investment_capital_idr` for `idr`, `investment_amount_usd` for `usd`,
+  // neither for `still_unsure`) and is never itself sent as an engine fact.
+  //
+  // `notSure` is DELIBERATELY OMITTED (imperator's ruling: the "not sure"
+  // answer here must cost zero holds). `mapDisclosedReviewFlags`
+  // (fact-mapper.ts) raises `NOT_CERTAIN` on the exact-equality literal
+  // `"unsure"` over every fact value; `still_unsure` is a REAL third option
+  // (`"still_unsure" !== "unsure"`), not the generic NotSure affordance —
+  // same shape as `retirement_undecided_basis` immediately below, which is
+  // the shipped precedent this mirrors. Choosing it asks no amount question,
+  // so both `investment.investment_capital_idr` and
+  // `investment.investment_amount_usd` stay genuinely UNKNOWN(NOT_ASKED) —
+  // the honest state, not a guess.
+  investment_currency: {
+    id: "investment_currency",
+    i18nKey: "q.investment_currency",
+    kind: "choice",
+    group: "details",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    sensitive: false,
+    options: [
+      { key: "idr", labelI18nKey: "q.investment_currency.opt.idr" },
+      { key: "usd", labelI18nKey: "q.investment_currency.opt.usd" },
+      {
+        key: "still_unsure",
+        labelI18nKey: "q.investment_currency.opt.still_unsure",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.investment_currency" },
+  },
+  // PR-D4c-2: the USD sibling of `investment_capital_idr` above, asked only
+  // once `investment_currency === "usd"` (see `getCategoryQuestionIds`).
+  // Modeled on `investment_capital_idr` exactly — same bounds, same
+  // sensitivity, same `notSure` (unlike the currency router above, THIS
+  // question's own "not sure" is the ordinary human-review hold: not
+  // knowing the EXACT amount, once a currency has been chosen, is a real
+  // disclosed uncertainty, not the zero-cost case). No conversion is ever
+  // performed on this value — `investment.investment_amount_usd` is a plain
+  // `integerFact`, currency encoded in the fact NAME alone (the existing
+  // `investment.*_idr` / `secondhome.*_usd` convention), never an
+  // `{amount, currency}` pair.
+  investment_amount_usd: {
+    id: "investment_amount_usd",
+    i18nKey: "q.investment_amount_usd",
+    kind: "number",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["investment.investment_amount_usd"],
+    },
+    sensitive: true,
+    options: [],
+    numberInput: {
+      min: 0,
+      max: Number.MAX_SAFE_INTEGER,
+      step: 1,
+      labelI18nKey: "q.investment_amount_usd.label",
+      unitI18nKey: "q.unit.usd",
+    },
+    whyWeAsk: { i18nKey: "why.investment_amount_usd" },
+    notSure: { mode: "human-review" },
+  },
   investment_paid_up_capital_idr: {
     id: "investment_paid_up_capital_idr",
     i18nKey: "q.investment_paid_up_capital_idr",
