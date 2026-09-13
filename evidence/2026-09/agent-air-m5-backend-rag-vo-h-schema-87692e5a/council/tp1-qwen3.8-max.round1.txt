@@ -1,0 +1,44 @@
+**BLOCKER — `test_interview_walk_census.py`, the `flagged_outcomes` fixture hunk (`@@ -763,6 +921,11 @@`):**
+
+```
++ @pytest.fixture(scope="module")
++def flagged_outcomes(walks: ...
+```
+
+Every other added line in this diff is `+` immediately followed by content; this one is `+` **space** content, i.e. the decorator line begins with a leading space at module level. That is an `IndentationError: unexpected indent` — the module never imports, so the whole census (all pre-existing guards plus the 6 new tests) errors at collection. Fails closed, but the PR cannot merge and the file it replaces was the only guard. If that space is a transport artifact of the diff handed to me, it is a no-op; as written it is a hard red.
+
+**A — omit-when-empty.** The claim mostly holds, and for the reason stated: `_flag_table_violations` compares `sorted(carried)` vs `sorted(pinned)` per label, plus stale rows pinned-but-absent, and `test_the_corpus_carries_the_disclosure_flag_layer` additionally asserts `carrying` is non-empty, so a generator that stops emitting the field reddens all 8 rows at once rather than reading as "84 walks raise nothing". Two residual gaps, neither fatal:
+- Both sides of the pin move together. A future narrowing of `mapDisclosedReviewFlags` (a NON-GOAL file, but the next PR's target) is cured by regenerate + re-pin in one commit, and the census goes green at 0 human review again — the exact bound the section declares RETIRED. There is no independent oracle (e.g. a floor like "≥N walks must be held", or a fact-mapper-side test that `investment_vehicle=merit` raises `ACTIVITY_BOUNDARY`). The layer is now *observed*, not *protected*.
+- The determinism test binds bytes, not semantics: it catches mapper drift only because the committed bytes are frozen, so its guilt is "you changed the corpus", never "the funnel lost a hold".
+
+**B — guilt is real, innocence is vacuous.**
+- Guilt: both `_flag_table_violations` tests mutate real input (`pop` would `KeyError` if the key were absent) and the scoped-table helper is correctly used — grading a single label against the whole table would have made the OVER-match test fail spuriously, and `_scoped_flag_table` avoids that. Good.
+- Innocence: `test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome` cannot fail. `_evaluate` guards with `if disclosed_review_flags:`, so an unflagged walk takes a byte-identical path in both fixtures — the test asserts f(x) == f(x). It never exercises the `model_dump(mode="json", by_alias=True)` → `model_validate` round-trip, which is the only place facts could be silently lost. And because `_apply_disclosed_review_flags` clears candidates/missing_facts/reasons, a lossy round-trip on a *flagged* walk is masked by monotonicity in both the derived census and the per-flag table. Nothing in the file proves the round-trip preserves facts.
+- `test_every_disclosure_flag_reports_the_walks_it_rewrites`: the from/to states are measured, but the counts (`{"ACTIVITY_BOUNDARY": 6, "NOT_CERTAIN": 2}`) are computed from `EXPECTED_DISCLOSED_REVIEW_FLAGS` — the pin — not from the corpus. `per_flag` is built by iterating the table, so that final assert is a tautology over the pin. The docstring's "the number in a PR body is the number the test measured" is an overclaim for the count column.
+
+**C — existing callers.** No. The parameter is keyword-only, defaults to `()`, and the injection is behind a truthiness guard, so the coverage floor and authoring CLI construct the identical request object. `Sequence` and `VisaOracleEvaluateRequest` imports are additive; `api_models` is already in the same package the script imports from.
+
+**D — constants / claims the diff cannot support.**
+1. **`by_alias=True` dump, snake_case insertion.** `wire = request.model_dump(mode="json", by_alias=True)` then `wire["disclosed_review_flags"] = ...`. If that field carries a camelCase alias, the injected key is an extra key and the alias field takes its default `()` — the flags never reach the engine. It fails closed (funnel census would equal engine census and miss the derived pin), but the comment's stronger claim — "an unknown flag name is a loud ValidationError here and not a silently ignored string" — depends on `extra="forbid"` plus name population, neither visible in the diff. Verify both before trusting the comment.
+2. **Unverifiable names, must be checked against source:** `actual["review_reason_codes"]` (key not shown anywhere in the diff), `DISCLOSED_UNCERTAINTY_REVIEW` for `NOT_CERTAIN` (the one mapping not derivable from the flag name — `DISCLOSED_NOT_CERTAIN_REVIEW` is equally plausible), `import copy` and `Counter` (both used by new code, neither added in the diff), and `EXPECTED_OUTCOME` being defined above line ~615 since `EXPECTED_FLAGGED_STATE_CENSUS` evaluates at import time.
+3. **Arithmetic checks out.** 67/15/2/0 and 60/15/1/8 both sum to 84; the delta is 7 SUPPORTED + 1 NEEDS_INPUT → HR, which matches the per-flag table (6 ACTIVITY_BOUNDARY from SUPPORTED, NOT_CERTAIN 1 SUPPORTED + 1 NEEDS_INPUT) and `len(EXPECTED_DISCLOSED_REVIEW_FLAGS) == 8`. The `still_unsure` walks correctly carry `ACTIVITY_BOUNDARY`, not `NOT_CERTAIN`, consistent with the docstring's different-literal claim.
+4. **Docstring rot:** "MEASURED 2026-09-13 on `rulepack-prod-020.signed.json`" hardcodes a pack the test resolves dynamically via `select_highest_repository_pack`. On the next pack bump the docstring asserts a pack that is not the one under test. Same for the 96-char `print(f"{state:<26}...")` and the 95-char `def _evaluate_walks_with_flags(...)` if this repo's ruff line-length is 88.
+5. Generator side is sound: spread-conditional keeps key order last so the 76 unflagged fixtures stay byte-identical, and `wire.disclosed_review_flags.length` assumes a non-optional array — consistent with the imported `DisclosedReviewFlagWire` type.
+
+**E — PII / credentials.** Clean. Synthetic scenario labels, mapped fact keys and enum answers only; no KTP/passport/NPWP/akta, no client identifiers, no env vars or keys.
+
+VERDICT: DEFECT - the added `flagged_outcomes` decorator line carries a leading space (`+ @pytest.fixture(...)`), an IndentationError that stops `test_interview_walk_census.py` from importing and reddens the entire census it is meant to extend.
+l, bound 1 above, so it cannot witness that claim itself"*. After this diff the census does carry them, "bound 1 above" no longer exists, and this contradicts the new table's own comment at `:628-632`, which says the `still_unsure` zero-hold claim *"is now MEASURED by this table rather than asserted in a PR body"* — about **the very walk this comment sits on**.
+- `test_interview_walk_census.py:1056-1060`: *"The corpus carries no disclosure flags, so the review arm of `apply_public_policy_adapters` is unreachable from here by construction … Bound 1 of the module docstring."* False after this PR — the review arm is reachable in this module through `flagged_outcomes`, and the new test at `:1620-1622` asserts both halves. The `== 0` assertion it annotates stays correct for the ENGINE census; only its stated *reason* is now wrong, which is exactly the misreading this repo's "read the numbers with their bounds attached" doctrine exists to prevent.
+
+Lesser, same category: `gold_coverage_eval.py`'s new comment says the census *"reported 0 human review for years"* — the file dates to PR-0, 2026-09-06, i.e. one week (its own retired text said so). And "unconditional" (docstring `:124`, table comment `:652`, assertion message `:1679`) glosses over the early return when `decision_id`/`public_id` is `None` (`evaluate_path.py:1318-1320`); unreachable for real decisions, but it is stated as absolute.
+
+## E — PII / credentials
+
+Clean. Fixtures are fully synthetic: `ASSESSMENT_ID = "x"` (`generate-walk-corpus.ts:85`), fixed `CORPUS_TODAY` (`:82`), fact values are enums/booleans/integers. No fixture carries a name, passport, NPWP or contact value; nothing in the diff reads a token or `.env`.
+
+## Note for the gate
+
+Generator≠grader is not satisfied by this review: the two printed tables are confirmed by derivation and by the pre-existing literal triple, **not by a run**. A gate seat with a shell should still execute `walk-corpus-determinism.test.ts` and the census module before merge; that is the only link I could not close.
+
+VERDICT: DEFECT - test_interview_walk_census.py:439-441 and :1056-1060 still assert the bound this PR retires — "this census does not carry disclosure flags at all, bound 1 above" — leaving the file contradicting both its new docstring and its own new flag table, with a cross-reference to a section the diff deleted.

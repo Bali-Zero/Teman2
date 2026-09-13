@@ -140,5 +140,6 @@
       "reason": "NOT_ASKED"
     },
     "commercial.wants_quote": { "status": "UNKNOWN", "reason": "NOT_ASKED" }
-  }
+  },
+  "disclosed_review_flags": ["NOT_CERTAIN"]
 }

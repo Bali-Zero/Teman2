@@ -1,0 +1,59 @@
+gear: 3
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO2 window W-VO-H schema half (BLUE, host M5) — the interview-walk census finally sees the disclosure-flag layer
+objective: >-
+  The Visa Oracle interview-walk corpus stored a walk's mapped FACTS only, so
+  the backend census test evaluated all 84 walks with
+  disclosed_review_flags = () and reported 0 HUMAN_REVIEW_REQUIRED — for a
+  funnel in which evaluate_path.py::_apply_disclosed_review_flags
+  (unconditional, monotone: one flag rewrites the decision to
+  HUMAN_REVIEW_REQUIRED with candidates=()) actually rewrites 8 of them. Make
+  the corpus carry the OTHER half of the wire request — the flags
+  mapDisclosedReviewFlags raises for the same answers — so a walk whose
+  verdict a flag deletes is COUNTED as human review in the census, with the
+  flag name, and deliver the per-flag table Zero needs to rule on
+  MULTI_PURPOSE_TRIP and NOT_CERTAIN (the W-VO-H narrowing half).
+scope:
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/*.json
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+  - apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py
+constraints:
+  - MEASURE ONLY, never narrow — no change to _apply_disclosed_review_flags, to mapDisclosedReviewFlags or its tables, to tree.ts, to flow.ts, or to any rule pack (packs are immutable).
+  - Nothing under the runtime service (backend/services/**) may change; gold_coverage_eval.py is a script under backend/scripts/**.
+  - The new _evaluate parameter must be inert for every existing caller (coverage floor, gold_coverage_replay.py, the authoring CLI).
+  - Coordinate with W-VO-E, which regenerates the same corpus from tree.ts changes — add the field with a default that keeps existing fixtures byte-stable, or serialize behind its branch.
+  - No client PII (synthetic identities only); no vendor names in code comments; no price from memory.
+  - No ledger PR, no PENDING-ARMS.md edit, no gate status posted by this seat.
+acceptance:
+  - text: >-
+      A4-1. WHEN the generator is re-run, the committed corpus SHALL still match its output
+      byte for byte, WHILE the file set stays at 84 and only the walks that raise a flag
+      change.
+    probe: 'apps/mouth/node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts"'
+  - text: >-
+      A4-2. WHEN the census runs, it SHALL report a FUNNEL-level state distribution beside
+      the ENGINE one, WHILE the ENGINE census does not move from 67 SUPPORTED_CANDIDATES /
+      15 NO_SUPPORTED_PATH / 2 NEEDS_INPUT / 0 HUMAN_REVIEW_REQUIRED.
+    probe: "PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -s"
+  - text: >-
+      A4-3. WHERE a flag rewrites at least one walk, the census SHALL print that flag, the
+      number of walks it rewrites, and each from-state -> to-state transition.
+    probe: "PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -s"
+  - text: >-
+      A4-4. IF a fixture loses a flag, gains one, or a flag is fabricated on a clean walk,
+      THEN a test SHALL go red; WHILE a walk that raises no flag SHALL keep its whole
+      engine outcome, field for field, when flags are supplied.
+    probe: "PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py"
+  - text: >-
+      A4-5. WHEN every touched file is linted and the surrounding suites are run, they
+      SHALL be green, WHILE the only reds are the pre-existing local-Postgres ones that
+      reference nothing this PR touches.
+    probe: "apps/mouth tsc --noEmit ; prettier --check on the generator and the 84 fixtures ; ruff check + ruff format --check on the two python files"
+consumer_map:
+  - The required GitHub check that runs backend/tests/services/visa_engine/test_interview_walk_census.py on every future PR touching the Oracle interview or the pack - it now fails on a disclosure-flag regression, which it could not see before.
+  - The required Frontend Tests check that runs walk-corpus-determinism.test.ts - it binds the committed corpus, including the new field, to the generator's output.
+  - The W-VO-H narrowing half and Zero's ruling on MULTI_PURPOSE_TRIP / NOT_CERTAIN, which need the measured per-flag rewrite table this PR produces.
+appetite:
+  budget: 180 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

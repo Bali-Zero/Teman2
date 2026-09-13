@@ -1,0 +1,29 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09add-c0db-7de3-a0a8-19d9d3668d3f
+--------
+
+-- EXCERPT ---------------------------------------------------------------
+Raw stdout was 1435537 bytes / 8906 lines; sha256 c327dd6059d81ef4788ea75f5dfdb87c0789042ebf0751f34f62fa881ecc3311.
+The cut part is the codex harness preamble and its per-tool-call echoes:
+this repo's own doctrine files (AGENTS.md, army-map, model roster) injected
+by the codex hooks, plus the full stdout of every rg/python probe the seat
+ran. None of it is review content and committing 5.3 MB of it would bury
+the PR. Kept below: the session header above, the seat's own final answer,
+and its VERDICT line verbatim.
+--------------------------------------------------------------------------
+
+codex
+LOW — The new transition table names a nonexistent state: [`test_interview_walk_census.py:153`](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:153) uses `HUMAN_REVIEW` on lines 153–155, while the actual and asserted state is `HUMAN_REVIEW_REQUIRED` ([line 141](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:141), [line 1706](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1706)). Because the table claims exact state transitions, this is a wrong constant, not merely formatting.
+
+All four Round-4 corrections otherwise verify correctly. Direct execution confirmed the 67/15/2/0 → 60/15/1/8 census, 76 unchanged unflagged outcomes, eight exact generator/fixture matches, correct reason codes, preserved fact-object identity, unchanged omitted-argument callers, and no introduced PII or credentials.
+
+VERDICT: DEFECT - The new census docstring reports the nonexistent HUMAN_REVIEW state instead of HUMAN_REVIEW_REQUIRED.

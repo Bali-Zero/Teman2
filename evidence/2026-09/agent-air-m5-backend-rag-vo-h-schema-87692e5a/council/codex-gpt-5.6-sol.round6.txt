@@ -1,0 +1,33 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09ae5-4b6d-76c1-97c3-6b647d71d836
+--------
+
+-- EXCERPT ---------------------------------------------------------------
+Raw stdout was 864899 bytes / 8645 lines; sha256 5f28c935d6ea747077c003088562787e3d991dfc1f861a3eae4c271559eb9051.
+The cut part is the codex harness preamble and its per-tool-call echoes:
+this repo's own doctrine files (AGENTS.md, army-map, model roster) injected
+by the codex hooks, plus the full stdout of every rg/python probe the seat
+ran. None of it is review content and committing 5.3 MB of it would bury
+the PR. Kept below: the session header above, the seat's own final answer,
+and its VERDICT line verbatim.
+--------------------------------------------------------------------------
+
+codex
+No defect found.
+
+- Omit-when-empty is guarded: generator output matched all 84 committed fixtures byte-for-byte, with exactly 8 flagged walks ([generator](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts:604), [determinism test](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts:79)). The bidirectional pinned table catches both lost and unexpected flags ([census](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:658)).
+- Guilt and innocence are real: each scoped fixture mutation produced exactly one targeted violation; the fabricated flag deleted C1, emptied candidates, and emitted the correct reason ([tests](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1598), [fabricated hold](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1725)).
+- Existing callers retain behavior because the new argument is keyword-only, defaults empty, and reconstruction occurs only for a non-empty sequence ([gold_coverage_eval.py](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py:124)).
+- Direct execution confirmed ENGINE `67/15/2/0`, FUNNEL `60/15/1/8`, and flag counts `6/2`. All seven new census assertions passed.
+- Reason codes match the production mapping. The round-5 abbreviation is gone; every destination is `HUMAN_REVIEW_REQUIRED`. No non-goal files, PII, or credentials appear in the diff.
+
+VERDICT: OK
