@@ -173,6 +173,18 @@ receipts:
     exit: 0
     ts: "2026-09-13T10:00:00+08:00"
     seat: Claude Opus 5
+  - claim: The Detect Secrets red was this PR's own pack digest, named from the job log before any gesture, then cured at depth 1.
+    cmd: gh api .../jobs/103656272077/logs ; detect-secrets scan evidence/.../pack.yml ; surgical insert into .secrets.baseline ; python3 scripts/detect_secrets_check_unaudited.py
+    result: "Residue by file: 1 evidence/2026-09/agent-air-m5-mouth-vo-b-why-eef1d557/pack.yml, type Hex High Entropy String, line 20 = the ground_truth lane's query_hash. Audited in place (is_secret false, +10 lines, JSON re-parsed OK, no reserialization of the other 8265 entries). check_unaudited: All findings audited (8266 total)."
+    exit: 0
+    ts: "2026-09-13T10:12:00+08:00"
+    seat: Claude Opus 5
+  - claim: The Harness floor recompute red is the expected PENDING gate read, not a code red.
+    cmd: gh pr checks 6404
+    result: "2 reds at the first push: Detect Secrets (cured above) and Harness floor recompute, which stays red with harness_gate_read PENDING until a fresh gate posts harness/fable-gate on the head sha. The GATE reruns it, not this window. Every other check passed (38 green)."
+    exit: 0
+    ts: "2026-09-13T10:05:00+08:00"
+    seat: Claude Opus 5
 dissent:
   - seat: Claude Opus 5 (self-refutation, on the attribution)
     objection: >-
@@ -222,4 +234,6 @@ leftovers:
   - "CONFLICTING_IMMIGRATION_STATUS_REVIEW has no trigger in fact-mapper.ts at all today, so it can never carry a demonstrated cause from the frontend."
   - "Folding demonstratedReviewCauses and mapDisclosedReviewFlags into one exported helper needs a fact-mapper.ts change — a separate mandate, see the first dissent."
   - "The shared apps/mouth/node_modules/.bin/tsx shim now points into .worktrees/mouth-vo-c-doors (a sibling window's pnpm store), so `npm run build` in any mouth worktree dies on its llms prebuild; `next build` directly is unaffected. Cicatrix family #5, sibling race on the shared checkout — imperator-level, not cured from inside this window."
+  - "Detect Secrets went red on this PR's own pack: every ground_truth lane's query_hash is a 64-char sha256, which detect-secrets reads as a Hex High Entropy String. Auto-triage has a content-keyed rule for a pack's measured_at: line but none for query_hash:, so the digest was hand-audited in .secrets.baseline (+10 lines, is_secret false). The durable cure is a query_hash: rule mirroring the measured_at: one in scripts/detect_secrets_auto_triage.py — a guard change, separate mandate."
+  - "evidence_pack_lint emits an acceptance-probe NOTICE naming three kbli_filiera probes that belong to the STALE repo-root evidence/brief.yml (the KBLI L2 PR-A brief), not to this window's brief. It resolves brief_ref against the repo root when run locally; in CI the harness stages this PR's own brief at that path. Cosmetic locally, but the stale root brief.yml/pack.yml pair is a trap for every window that lints locally."
   - "Only the EN screenshots were captured; the ID rendering of the same block is pinned by the unit test and by the axe-clean keyboard-only ID e2e journey, not by an image."
