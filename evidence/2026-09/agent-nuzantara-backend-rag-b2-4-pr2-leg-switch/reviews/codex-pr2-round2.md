@@ -1,0 +1,9 @@
+VERDICT: FIX-FIRST
+
+1. **MAJOR** — `apps/backend-rag/backend/services/rag/agentic/_support_signal.py:466`. `L/N/P/S` still admits invisible code points: U+3164 HANGUL FILLER (`Lo`), U+115F/U+1160 Hangul fillers (`Lo`), U+FFA0 HALFWIDTH HANGUL FILLER (`Lo`), and U+2800 BRAILLE PATTERN BLANK (`So`). A builder-produced query containing only one of these reaches the offer and passes the daemon parser. Minimal fix: exclude these blank/filler code points before the category test and add builder-shaped regression cases.
+
+2. **INFO** — `apps/backend-rag/backend/db/migrations_v2/315_wa_outbox_fall_off_reason_support_judge_absent.sql:88`. The rollback works as declared: `NOT VALID` preserves historical counter rows while enforcing the narrow constraint on new/updated rows. Forward re-apply drops it before adding the widened validated constraint, so retained rows do not break re-application. **UNSURE:** the permitted diff cannot establish whether another migration later executes `VALIDATE CONSTRAINT`; such validation would fail while retained `support_judge_absent` rows exist. Minimal fix: none here unless such validation exists.
+
+3. **INFO** — `apps/backend-rag/backend/services/integrations/wa_codex_leg.py:743`. The leg imports the shared predicate, and the daemon parser receives it through `support_inputs_from_wire`; delayed daemon provisioning creates no ordinary release gap because the deployed leg rejects normal builder packages before offering them. The invisible `Lo`/`So` counterexamples above bypass both versions.
+
+4. **INFO** — `apps/backend-rag/backend/tests/unit/services/integrations/test_wa_codex_leg_support_negative.py:294`. `assert_not_awaited()` plus `call_count == 0` excludes both awaited and merely-called offers; the asserted `support_no_visible_query` reason pins the intended pre-offer branch. Minimal fix: none.

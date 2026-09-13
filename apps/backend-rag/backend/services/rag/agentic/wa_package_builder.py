@@ -47,7 +47,7 @@ from backend.prompts.zantara_core import (
 from backend.services.misc.pricing_intent import has_pricing_intent
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
-from backend.services.rag.agentic._support_signal import SupportDecision, evaluate_support
+from backend.services.rag.agentic._support_signal import SupportVerdict
 from backend.services.rag.agentic.query_plan import QueryDomain
 from backend.services.rag.agentic.query_planner import QueryPlanner
 from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
@@ -598,47 +598,47 @@ async def build_context_package(
 
     persona_digest = _build_persona_digest()
 
-    # B2.1 support signal (research/operations/2026-09-11-bot-staff-room/
-    # B2-engine.md §4 B2.1 "Input wiring (PII)"): the judge's production
-    # input is the package's REDACTED query and capped REDACTED context —
-    # never the raw `query` argument the scorer call below separately takes
-    # for its own, unrelated, in-process lexical-overlap use — and never
-    # `reversal_map`. `payload_history`/`chunks` already hold the POST-DLP
-    # content at this point: reassigned above from `dlp_result` when
-    # `dlp=True`, unchanged from their pre-DLP build when `dlp=False`.
+    # B2.4 PR-2 (design B2-4-design.md §1.1 step 1, §2 item 3): the builder
+    # no longer judges at all. The daemon judges the CLAIMED job with a
+    # real Codex seat, BEFORE generating (§1.1 step 3) — consulting a judge
+    # here, in-container, was rejected by ruling I96 regardless of `dlp`
+    # (§1.4 "in-container judge ... rejected by I96"). `evaluate_support()`
+    # itself is UNCHANGED and still imported by other callers (the B2.1
+    # harness) — this function simply never calls it any more.
     #
-    # dlp=False (today: only the Gemini leg, which never reaches this
-    # branch's consumer — the codex leg always builds with dlp=True): there
-    # is no redaction to hand the judge. `evaluate_support`'s Codex judge
-    # reaches the SAME external seat, through the SAME adapter, that DLP
-    # exists to protect against on an unredacted build — consulting it here
-    # would reopen exactly the hole G-P3 was built to close. So the seat is
-    # NOT consulted on an unredacted build (option (i)): `support_decision`
-    # stays `None`, `calculate_evidence_score` receives `support=None`
-    # (its documented "not consulted, no change" contract), and
-    # `evidence_inputs` records "absent" rather than implying a verdict that
-    # was never actually made.
-    support_decision: SupportDecision | None = None
-    if dlp:
-        redacted_query = payload_history[-1]["content"] if payload_history else ""
-        redacted_context = "\n\n".join(chunk["text"] for chunk in chunks)
-        support_decision = await evaluate_support(redacted_query, redacted_context)
-
-    # Evidence inputs are FROZEN here — finalization (spec §2.3) reads these
-    # fields, it never recomputes them against a possibly-drifted retrieval.
+    # Both scorer calls below are PURE (no I/O, no LLM) and run
+    # unconditionally, regardless of `dlp`:
+    #   - `evidence_score`/`abstain` keep the `support=None` "not consulted,
+    #     no change" value — byte-identical to what a SUPPORTED verdict
+    #     would produce (reasoning_utils.calculate_evidence_score L790),
+    #     the only branch the daemon-side release ever reads.
+    #   - `evidence_score_unsupported`/`abstain_unsupported` is the SAME
+    #     sources/context/query scored as though the judge had already
+    #     ruled NOT_SUPPORTED — the carrier `wa_codex_leg` reaches for
+    #     whenever it must abstain (a real NOT_SUPPORTED/UNKNOWN verdict
+    #     from the broker, or a package with no visible question) without
+    #     ever recomputing the scorer itself.
     abstain_policy = build_abstain_policy(query)
+    scorer_sources = [
+        {
+            "score": chunk["score"],
+            "score_kind": score_provenance.kind_of(chunk),
+            "score_raw": score_provenance.raw_of(chunk),
+        }
+        for chunk in chunks
+    ]
+    scorer_context = [chunk["text"] for chunk in chunks]
     evidence_score = calculate_evidence_score(
-        sources=[
-            {
-                "score": chunk["score"],
-                "score_kind": score_provenance.kind_of(chunk),
-                "score_raw": score_provenance.raw_of(chunk),
-            }
-            for chunk in chunks
-        ],
-        context_gathered=[chunk["text"] for chunk in chunks],
+        sources=scorer_sources,
+        context_gathered=scorer_context,
         query=query,
-        support=support_decision.verdict if support_decision is not None else None,
+        support=None,
+    )
+    evidence_score_unsupported = calculate_evidence_score(
+        sources=scorer_sources,
+        context_gathered=scorer_context,
+        query=query,
+        support=SupportVerdict.NOT_SUPPORTED,
     )
     evidence_inputs: dict[str, Any] = {
         "evidence_score": evidence_score,
@@ -652,23 +652,20 @@ async def build_context_package(
         # of the sealed wire) instead of one indistinguishable from a
         # properly-redacted build.
         "dlp": dlp,
-        # B2.1 additive keys (nothing above removed, no existing key's
-        # meaning changed). `support_verdict` is the string a downstream
-        # reader (wa_codex_leg's Terminal route) compares against
-        # `SupportVerdict.SUPPORTED.value`; `None` means "not consulted"
-        # (dlp=False), distinct from a consulted-but-`UNAVAILABLE` verdict.
-        "support_verdict": (
-            support_decision.verdict.value if support_decision is not None else None
-        ),
-        "support_votes": (
-            [vote.value for vote in support_decision.votes]
-            if support_decision is not None
-            else []
-        ),
-        "support_judge": support_decision.judge if support_decision is not None else "absent",
-        "support_fallback_used": (
-            support_decision.fallback_used if support_decision is not None else False
-        ),
+        # B2.4 PR-2: the judge moved to the daemon (design §1.1) — this
+        # builder never consults it, so `support_verdict`/`support_votes`
+        # always describe "not consulted here", and `support_judge` names
+        # WHERE the verdict will actually come from instead of a dead
+        # "absent" placeholder (nothing failed — the seat just hasn't run
+        # yet).
+        "support_verdict": None,
+        "support_votes": [],
+        "support_judge": "deferred:broker",
+        "support_fallback_used": False,
+        # B2.4 PR-2 additive pair: the pure NOT_SUPPORTED-scored carrier
+        # `wa_codex_leg` uses for every abstain disposition (see above).
+        "evidence_score_unsupported": evidence_score_unsupported,
+        "abstain_unsupported": abstain_policy.label_abstains(evidence_score_unsupported),
     }
 
     package_hash = _package_hash(

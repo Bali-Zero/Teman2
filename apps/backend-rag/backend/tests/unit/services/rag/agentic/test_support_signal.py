@@ -518,12 +518,23 @@ class TestSupportInputsFromWire:
             pytest.param("   ", id="spaces"),
             pytest.param("​", id="zero-width-space"),
             pytest.param("﻿​ \t\n", id="bom-zero-width-whitespace"),
+            pytest.param("️", id="variation-selector-16-alone"),
+            pytest.param("́", id="combining-acute-alone"),
+            pytest.param("‍️", id="zwj-plus-variation-selector"),
         ],
     )
     def test_query_without_a_visible_character_raises(self, query: str) -> None:
         """Codex round 3 (MAJOR): `str.strip()` keeps U+200B/U+FEFF, and the
         REAL builder emits such a query unchanged — built here through
-        `_sanitize_history`, not a hand-written history."""
+        `_sanitize_history`, not a hand-written history.
+
+        PR-2 round-1 MAJOR (Codex): U+FE0F (variation selector) and U+0301
+        (combining acute) are Unicode category `Mn` — neither `Z`
+        (separator) nor `C` (other/control/format) — so the OLD
+        `category(c)[0] not in "ZC"` rule let a query made only of one
+        through as "visible". A bare combining mark has no base character
+        to modify and carries no content by itself. `has_visible_character`
+        now requires `L`/`N`/`P`/`S` explicitly."""
         wire = wa_package_builder._canonical_wire(  # noqa: SLF001
             {
                 "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001
@@ -557,6 +568,28 @@ class TestSupportInputsFromWire:
 
     def test_visible_query_keeps_its_format_characters(self) -> None:
         query = "​Berapa lama proses PT PMA?﻿"
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001
+                "chunks": [],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        assert support_inputs_from_wire(wire) == (query, "")
+
+    def test_visible_query_with_a_trailing_emoji_variation_selector_still_passes(
+        self,
+    ) -> None:
+        """Innocence pair to the Mn-alone guilt cases above: a REAL
+        Indonesian question ending in an emoji + U+FE0F must still pass —
+        the emoji's own base character is category `So` (symbol), so the
+        query carries a visible character regardless of the trailing
+        variation selector."""
+        query = "Berapa lama proses PT PMA? \U0001f44d️"
         wire = wa_package_builder._canonical_wire(  # noqa: SLF001
             {
                 "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001

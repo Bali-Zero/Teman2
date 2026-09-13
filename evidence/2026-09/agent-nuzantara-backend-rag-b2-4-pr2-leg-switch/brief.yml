@@ -1,0 +1,59 @@
+task_id: backend-rag-b2-4-pr2-leg-switch
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: b8162521b58ea441c9890e41c2ae0bfa2a70cb65 # pragma: allowlist secret
+mandate: B2.4
+colour: BLUE
+pr: B2.4 PR-2 (the Fly leg releases only on the broker judge's authenticated verdict)
+envelope: I96 (Desk) — generation authority under Zero's full delegation
+checkpoint_refs:
+  - 20260913T200021Z-0e26 # B2.4 OPEN, acked RULING I97
+  - 20260913T210810Z-050c # PR-1 armed, acked
+  - 20260913T214732Z-6e05 # NEEDS-ZERO, acked and relayed
+  - 20260913T215324Z-1981 # A5 proven after Zero re-provisioned Pro
+rulings:
+  - "I96 fail-closed gate stays; judge on the Pro broker side; judge latency outside the 10 s build; majority-of-3 + votes preserved; absent judge LOUD"
+  - "I97 shape APPROVED; C2 PR-2 refuses an old daemon (envelope absent -> fall-off, never raw text) with a test; PR-2 opened only after A5"
+deadline: "2026-09-14T08:00:00Z"
+objective: >-
+  Switch the Fly WhatsApp leg to the broker-side judge shipped in PR-1 (merged
+  b8162521b5, daemon re-provisioned and proven A5): the package build stops
+  judging, the leg offers every job, and after consume it releases text only
+  when wa_completion_envelope authenticates a SUPPORTED verdict for this claim's
+  package_hash; NOT_SUPPORTED/UNKNOWN serve the terminal stub with the
+  unsupported evidence pair; an absent or unauthenticated verdict and an
+  unavailable judge fall off as support_judge_absent (migration 315), loudly.
+  A package with no visible question is stubbed before the offer (V4).
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
+  tokens: 1200000
+acceptance:
+  - id: A1
+    text: >-
+      Diff = wa_package_builder.py (no judge call; support_verdict None,
+      support_judge deferred:broker, evidence_score_unsupported /
+      abstain_unsupported), wa_codex_leg.py (unconditional offer, V4 pre-offer
+      stub, post-consume decode branches), _support_signal.py (shared
+      has_visible_character), migration 315, tests, this directory.
+      wa_completion_envelope.py, wa_codex_daemon.py and wa_broker.py untouched.
+  - id: A2
+    text: >-
+      Leg tests prove every decode branch, C2 (old-daemon raw text and a forged
+      look-alike JSON never released), REATTACHED hash mismatch -> no_verdict,
+      FAILED support_judge_unavailable -> support_judge_absent:unavailable, and
+      V4 never offers; builder tests prove no judge call and the unsupported pair.
+  - id: A3
+    text: >-
+      Bites after deploy: a production wa_outbox row for a supported synthetic
+      fact question served with abstained_at NULL, evidence_score above the
+      label threshold and a Fly log naming judge codex:gpt-5.6-terra with votes;
+      the Nusa Penida ferry question still served support_abstain with a real
+      judge named.
+seats:
+  dux: "Opus 5 xhigh (Pro)"
+  implementer: "Sonnet 5 subagent, verified by the Dux"
+  adversarial_reviewer: "codex-gpt-5.6-sol (CODEX_HOME=~/.codex-acct2, read-only, effort high)"
+  second_quorum_seat: "agy-gemini-3.1-pro (fallback: kimi-code/k3 HTTP 403; tp1-qwen HTTP 429 until 2026-09-18T08:39Z)"
+  gate: "a FRESH Opus 5 session outside the contribution chain, commissioned by the imperator"

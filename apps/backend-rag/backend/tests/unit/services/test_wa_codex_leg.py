@@ -37,10 +37,22 @@ from backend.services.integrations.wa_broker import (
     WaitOutcome,
     WaitResult,
 )
+from backend.services.integrations.wa_completion_envelope import encode_completion
 from backend.services.integrations.wa_finalize import (
     FinalizeOutcome,
     FinalizeResult,
 )
+from backend.services.rag.agentic._support_signal import SupportVerdict
+
+# B2.4 PR-2: every consumed completion is now a MAC-authenticated envelope
+# (`wa_completion_envelope.py`), never the model's raw text — this file's
+# `_wire_stubs` seals its `consume` text into a SUPPORTED envelope under
+# this key so the huge pre-existing test suite below keeps exercising the
+# offer/wait/consume/drift/carrier machinery unchanged, without every test
+# needing to know the envelope exists. The envelope-decode SWITCH itself
+# (SUPPORTED/NOT_SUPPORTED/absent/forged/REATTACHED-hash-mismatch) is owned
+# by the sibling `test_wa_codex_leg_support_negative.py`.
+_TEST_BROKER_KEY = "unit-test-broker-key-not-a-real-secret"
 
 
 class ScriptedConn:
@@ -186,6 +198,9 @@ def _wire_stubs(
     # The autoreply kill switch gates the leg BEFORE the provider switch
     # (Codex r1 finding 2) — armed here so every test past gate 0 runs.
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    # `wa_codex_leg.settings` is the shared Settings singleton — mutating
+    # the attribute here is what a real deploy's Fly secret would do.
+    monkeypatch.setattr(wa_codex_leg.settings, "wa_broker_key", _TEST_BROKER_KEY, raising=False)
 
     load = AsyncMock(return_value=(query, [{"role": "user", "content": "hi"}]))
     monkeypatch.setattr(wa_codex_leg, "_load_thread_context", load)
@@ -206,6 +221,25 @@ def _wire_stubs(
         else FinalizeResult(outcome=FinalizeOutcome.SEND, text=consume or "")
     )
     monkeypatch.setattr(wa_codex_leg, "finalize_wa_answer", fin)
+
+    # B2.4 PR-2: the broker never hands back raw model text any more — it
+    # is a MAC-authenticated envelope (`wa_completion_envelope.py`) sealed
+    # over THIS build's own `package_hash`, with a SUPPORTED verdict and
+    # `consume` as its answer. `consume=None` (the consume-lost shape)
+    # stays `None` — there is no envelope to decode when consume itself
+    # never happened.
+    consume_wire = (
+        encode_completion(
+            key=_TEST_BROKER_KEY,
+            package_hash=(build or _GOOD_BUILD).get("package_hash") or _GOOD_BUILD["package_hash"],
+            verdict=SupportVerdict.SUPPORTED,
+            votes=(SupportVerdict.SUPPORTED, SupportVerdict.SUPPORTED, SupportVerdict.SUPPORTED),
+            judge="codex:gpt-5.6-terra",
+            answer=consume,
+        )
+        if consume is not None
+        else None
+    )
 
     stub = SimpleNamespace(
         # Real enums/dataclasses so identity comparisons are meaningful.
@@ -230,7 +264,7 @@ def _wire_stubs(
         wait_for_job=AsyncMock(
             return_value=wait if wait is not None else WaitResult(WaitOutcome.COMPLETED)
         ),
-        consume_result=AsyncMock(return_value=consume),
+        consume_result=AsyncMock(return_value=consume_wire),
         discard_completion=AsyncMock(return_value=None),
         record_breaker_result=AsyncMock(return_value=None),
     )
