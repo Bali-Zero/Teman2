@@ -252,6 +252,35 @@ async def verify_client_access(
     )
 
 
+async def is_active_tax_department_member(current_user: dict, conn) -> bool:
+    """True when the caller's ACTIVE `team_members` row has `department = 'tax'`.
+
+    The judgment is on the row's `department` COLUMN, looked up fresh by
+    email — never on the address's shape (never a `.tax@` substring test,
+    scar #3: a guard belongs on the entity, not a spelling of it). `role`
+    (e.g. "Tax Manager", "Tax Lead", "Tax Care") is a job title, not the
+    department grouping used here.
+
+    Used to widen client-level access for the tax department (Zero,
+    2026-09-14: tax must be able to invite ANY client to the portal, not
+    only clients assigned to them) without touching `verify_client_access`'s
+    general assigned/admin rule, which every other router still relies on.
+    """
+    if not current_user:
+        return False
+    email = (current_user.get("email") or "").lower().strip()
+    if not email:
+        return False
+    row = await conn.fetchrow(
+        "SELECT department, active FROM team_members WHERE lower(email) = $1",
+        email,
+    )
+    if not row:
+        return False
+    department = (_record_value(row, "department") or "").lower().strip()
+    return bool(_record_value(row, "active")) and department == "tax"
+
+
 async def verify_client_write_access(
     client_id: int,
     current_user: dict,

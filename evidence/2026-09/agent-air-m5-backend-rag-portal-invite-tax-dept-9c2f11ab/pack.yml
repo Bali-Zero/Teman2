@@ -1,0 +1,98 @@
+task_id: portal-invite-tax-dept
+gear: 2
+gate_class: sonnet
+brief_ref: evidence/brief.yml
+date: 2026-09-14
+machine: M5
+lanes:
+  - lane: backend-rag/portal-invite-tax-dept
+    role: build
+    seat: claude-sonnet-5 (M5 worktree agent)
+    note: >-
+      one new helper `is_active_tax_department_member()` in crm_utils.py, one new
+      wrapper `_verify_invite_write_access()` in portal_invite.py replacing the two
+      direct `verify_client_access(write=True)` calls on send/resend; 14 new pytest
+      cases (6 router-level guilt+innocence, 8 helper-level guilt+innocence).
+outcome: >-
+  An active tax-department team member (team_members.department = 'tax') can now
+  send and resend the client-portal invitation for any client, not only clients
+  assigned to them. `get_client_invitations` (read) and `verify_client_access` itself
+  are unchanged, so no other router's RBAC widened.
+diff:
+  files: 6
+  net_lines: >-
+    452 insertions(+), 11 deletions(-) across 6 files (2 source, 2 test, 2 evidence-pack) — see
+    `git diff --numstat origin/main...HEAD`. Churn (added+deleted, the floor's SIZE term) is 463,
+    which crosses SIZE_GEAR2_THRESHOLD (400) once the evidence-pack files themselves are counted
+    — the code+test diff alone (284/11, churn 295) stays under it.
+  shape: >-
+    `is_active_tax_department_member(current_user, conn)` in crm_utils.py (email-keyed
+    team_members lookup, exact-match on normalised department + active flag);
+    `_verify_invite_write_access(client_id, current_user, conn)` in portal_invite.py
+    (tax-department bypass with its own 404 check, falling back to the existing
+    `verify_client_access(write=True)`), wired into `send_invitation` and
+    `resend_invitation` only.
+pii_scan: clean
+receipts:
+  - claim: "import chain intact after the change"
+    cmd: 'PYTHONPATH=. .venv/bin/python -c "from backend.app.dependencies import get_current_user; print(''OK'')"'
+    result: "OK"
+    ts: "2026-09-14T00:00:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "A1 — active tax-department, unassigned caller gets 200 on send/resend"
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/test_portal_invite.py -k tax_department"
+    result: "3 passed, 14 deselected"
+    ts: "2026-09-14T00:01:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "A2 — tax-department caller against a nonexistent client still 404s"
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/test_portal_invite.py -k missing_client"
+    result: "1 passed, 16 deselected"
+    ts: "2026-09-14T00:02:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "A3 — non-tax non-assigned staff and inactive tax rows still 403; full portal_invite + crm_utils suites green"
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/test_portal_invite.py backend/tests/unit/test_crm_utils.py"
+    result: "36 passed"
+    ts: "2026-09-14T00:03:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: 'A4 — department match is exact on the normalised value, not a substring (e.g. "Tax Team" fails)'
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/test_crm_utils.py::TestIsActiveTaxDepartmentMember"
+    result: "8 passed"
+    ts: "2026-09-14T00:04:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "no regression across the wider portal/crm router unit-test surface"
+    cmd: 'PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/ -k "portal or crm"'
+    result: "574 passed, 1112 deselected"
+    ts: "2026-09-14T00:05:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "RAG critical-path pre-deploy tests unaffected"
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py"
+    result: "91 passed"
+    ts: "2026-09-14T00:06:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "ruff is clean on all 4 touched files"
+    cmd: "PYTHONPATH=. .venv/bin/python -m ruff check backend/app/routers/portal_invite.py backend/app/utils/crm_utils.py backend/tests/unit/routers/test_portal_invite.py backend/tests/unit/test_crm_utils.py"
+    result: "All checks passed!"
+    ts: "2026-09-14T00:07:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: >-
+      the gear floor for this diff, measured against origin/main AFTER the evidence-pack files
+      were added to the diff, is 2 (no hot-zone path; churn 463 lines over 6 files crosses
+      SIZE_GEAR2_THRESHOLD=400). `Harness floor recompute` on PR #6480 caught the pack's
+      earlier gear:1 declaration, which had been computed before the evidence-pack files
+      existed (code+test churn alone is 295, below the Gear-2 threshold) — corrected here per
+      team-lead's direction, no code change.
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf --numstat-file ns"
+    result: "2"
+    ts: "2026-09-14T01:00:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+dissent: []
+appetite_exceeded: ""

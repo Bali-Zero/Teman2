@@ -318,6 +318,151 @@ async def test_resend_invitation_allows_a_realistic_free_text_role(
 
 
 @pytest.mark.asyncio
+async def test_send_invitation_allows_unassigned_tax_department_member(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_db_pool: MagicMock,
+) -> None:
+    """Innocence (Zero, 2026-09-14): an active tax-department member may
+    invite a client they are not assigned to and did not create."""
+    fake_service = FakeInviteService()
+    monkeypatch.setattr(
+        "backend.app.routers.portal_invite.settings.frontend_portal_url",
+        "https://my.balizero.com",
+    )
+    # First fetchrow = department lookup (tax, active); second = the client
+    # row, assigned to someone else entirely — the point being tested.
+    mock_db_pool._mock_conn.fetchrow.side_effect = [
+        {"department": "tax", "active": True},
+        {"id": 11898, "assigned_to": "surya@balizero.com", "created_by": "surya@balizero.com"},
+    ]
+
+    with patch(
+        "backend.app.routers.portal_invite.send_portal_invite_email",
+        new=AsyncMock(),
+    ):
+        response = await send_invitation(
+            SendInviteRequest(client_id=11898, email="client@example.com"),
+            current_user={"email": "kadek.tax@balizero.com", "role": "Tax Manager"},
+            invite_service=fake_service,  # type: ignore[arg-type]
+            db_pool=mock_db_pool,
+        )
+
+    assert response["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_send_invitation_rejects_inactive_tax_department_member(
+    mock_db_pool: MagicMock,
+) -> None:
+    """Guilt: a deactivated tax-department row must not bypass ownership."""
+    mock_db_pool._mock_conn.fetchrow.side_effect = [
+        {"department": "tax", "active": False},
+        {"id": 11898, "assigned_to": "surya@balizero.com", "created_by": "surya@balizero.com"},
+    ]
+
+    with pytest.raises(HTTPException) as exc:
+        await send_invitation(
+            SendInviteRequest(client_id=11898, email="client@example.com"),
+            current_user={"email": "kadek.tax@balizero.com", "role": "Tax Manager"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+            db_pool=mock_db_pool,
+        )
+
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_send_invitation_rejects_non_tax_non_assigned_staff(
+    mock_db_pool: MagicMock,
+) -> None:
+    """Guilt: a non-tax, non-admin, non-assigned team member is still
+    refused — the widening is scoped to `department = 'tax'`, not to every
+    role that also fails `verify_client_access`."""
+    mock_db_pool._mock_conn.fetchrow.side_effect = [
+        {"department": "marketing", "active": True},
+        {"id": 11898, "assigned_to": "surya@balizero.com", "created_by": "surya@balizero.com"},
+    ]
+
+    with pytest.raises(HTTPException) as exc:
+        await send_invitation(
+            SendInviteRequest(client_id=11898, email="client@example.com"),
+            current_user={"email": "reception@balizero.com", "role": "Reception"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+            db_pool=mock_db_pool,
+        )
+
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_send_invitation_tax_member_gets_404_for_missing_client(
+    mock_db_pool: MagicMock,
+) -> None:
+    """The tax-department bypass still checks the client row exists — it is
+    not a blanket skip of every check."""
+    mock_db_pool._mock_conn.fetchrow.side_effect = [
+        {"department": "tax", "active": True},
+        None,
+    ]
+
+    with pytest.raises(HTTPException) as exc:
+        await send_invitation(
+            SendInviteRequest(client_id=999999, email="client@example.com"),
+            current_user={"email": "kadek.tax@balizero.com", "role": "Tax Manager"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+            db_pool=mock_db_pool,
+        )
+
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_resend_invitation_allows_unassigned_tax_department_member(
+    mock_db_pool: MagicMock,
+) -> None:
+    """Innocence (Zero, 2026-09-14): same widening on the resend path."""
+    fake_service = FakeInviteService()
+    mock_db_pool._mock_conn.fetchrow.side_effect = [
+        {"department": "tax", "active": True},
+        {"id": 11898, "assigned_to": "surya@balizero.com", "created_by": "surya@balizero.com"},
+    ]
+
+    async def _resend_invitation(*, client_id: int, created_by: str) -> dict[str, object]:
+        return {"client_id": client_id, "created_by": created_by}
+
+    fake_service.resend_invitation = _resend_invitation  # type: ignore[assignment]
+
+    response = await resend_invitation(
+        client_id=11898,
+        current_user={"email": "kadek.tax@balizero.com", "role": "Tax Manager"},
+        invite_service=fake_service,  # type: ignore[arg-type]
+        db_pool=mock_db_pool,
+    )
+
+    assert response["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_resend_invitation_rejects_non_tax_non_assigned_staff(
+    mock_db_pool: MagicMock,
+) -> None:
+    mock_db_pool._mock_conn.fetchrow.side_effect = [
+        {"department": None, "active": True},
+        {"id": 11898, "assigned_to": "surya@balizero.com", "created_by": "surya@balizero.com"},
+    ]
+
+    with pytest.raises(HTTPException) as exc:
+        await resend_invitation(
+            client_id=11898,
+            current_user={"email": "reception@balizero.com", "role": "Reception"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+            db_pool=mock_db_pool,
+        )
+
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_mailed_link_uses_the_live_portal_default_and_the_real_path(
     mock_db_pool: MagicMock,
 ) -> None:
