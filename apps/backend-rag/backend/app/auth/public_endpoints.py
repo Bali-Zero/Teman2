@@ -89,10 +89,14 @@ def path_matches_template(path: str, template: str) -> bool:
         `:124`), so it is partitioned
         into the `Backend Shard N` matrix; those shards are gated by the
         change-map (`tests.yml:875-907`, fail-OPEN to running) and fan into
-        `Backend Tests (Python)` (`tests.yml:1197-1198`), which is the required
-        status check on `main`. The shards themselves are NOT the required
-        context, and "on every PR" would overstate a job the change-map can
-        skip. Named here as the anchor, not re-proved here.
+        `Backend Tests (Python)` (`tests.yml:1197-1198`). Whether that job is
+        REQUIRED on `main` is branch-protection CONFIGURATION: no test in this
+        repo pins it, and it can change without a line of code changing, so this
+        docstring cannot assert it as a property. Measured once, 2026-09-12, via
+        the branch-protection API: `main`'s required contexts were exactly
+        `["Backend Tests (Python)"]` — a dated observation, not a guarantee this
+        file can keep. Either way "on every PR" would overstate a job the
+        change-map can skip. Named here as the anchor, not re-proved here.
 
         NOT `.github/workflows/garuda-contract-parity.yml`, whose NAME invites
         exactly that mistake: it installs only pytest and pyyaml (`:50`) and its

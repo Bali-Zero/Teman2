@@ -19,6 +19,15 @@ lanes:
       contribution chain. One round, ~12 minutes, rc 0: VERDICT BLOCK with 10 numbered
       findings — 8 PASS, 1 BLOCK, 1 narrowing. Cured at depth 1; see journal.jsonl and
       dissent below.
+  - lane: voa-6275b-prose-refute-tp1
+    role: review
+    seat: >-
+      tp1-qwen3.8-max (`scripts/tp1_call.py --model qwen3.8-max --effort high --max-tokens
+      16000`, streaming), OUT of the contribution chain, second council seat. One delivered
+      round 10:04:04Z-10:11:49Z: VERDICT BLOCK over 34 individually adjudicated claims. A
+      first attempt died with RemoteDisconnected and produced no verdict; recorded, not
+      hidden. kimi-code/k3 was attempted before it and returned 403 quota-exhausted — see
+      journal.jsonl.
 seat_diversity: exempt
 seat_diversity_note: >-
   One build lane, so D3's seat-diversity requirement does not attach.
@@ -40,7 +49,7 @@ outcome:
   behaviour_change: none
 diff:
   files: 1
-  added: 28
+  added: 32
   removed: 7
   note: >-
     Docstring text only. The docstring-stripped AST is identical to origin/main,
@@ -128,7 +137,55 @@ receipts:
     ts: "2026-09-12T06:06:09Z"
     seat: claude-opus-5 (M5, build lane)
     exit: 0
+  - claim: >-
+      The second seat's BLOCK is cured at depth 1, and its unseeable claims are
+      re-verified in-repo rather than treated as refuted.
+    cmd: >-
+      head -30 on the parity suite's header; sed on
+      test_contract_invariants.py:51-53; grep -n for the shard filename filter;
+      then AST, ruff and pytest re-run on the cured file
+    result: >-
+      The parity header does carry "Measured 2026-08-24/25" at :5;
+      sys.path.insert sits at :52 immediately before the :53 import; the
+      filename filter is at scripts/ci/shard_tests.py:124 — so the three MINORs
+      and two MAJORs about "not shown in the evidence" were properties of the
+      excerpt window given to the seat, not defects, and the sentences stand.
+      The one finding that lands is cured: the docstring no longer ASSERTS that
+      Backend Tests (Python) is required on main; it states that requiredness is
+      branch-protection configuration no test pins, and reports the 2026-09-12
+      API measurement as a dated observation. After the cure: docstring-stripped
+      AST still identical to origin/main, ruff clean, 233 passed.
+    ts: "2026-09-13T10:13:53Z"
+    seat: claude-opus-5 (M5, build lane)
+    exit: 0
 dissent:
+  - seat: tp1-qwen3.8-max
+    status: CONFIRMED
+    objection: >-
+      BLOCK: the docstring asserts that `Backend Tests (Python)` IS the required
+      status check on `main`, and nothing in the material establishes branch
+      protection — it is a repository-policy claim, not a code fact.
+    resolution: >-
+      ACCEPTED and cured at depth 1, and the reasoning is worth more than the
+      edit: requiredness is MUTABLE configuration that no test in this repo
+      pins, so a docstring asserting it would go silently false the day someone
+      edits branch protection. That is the defect class this PR exists to cure,
+      committed by the build lane while curing it — twice now, once caught by
+      each seat. The sentence is now a dated measurement, explicitly not a
+      property of the file.
+  - seat: tp1-qwen3.8-max
+    status: RETRACTED
+    objection: >-
+      BLOCK on the parity header's 2026-08-24/25 drift dates and on the #6275
+      chronology, plus MINORs on three line numbers, all as "unsupported by the
+      supplied material".
+    resolution: >-
+      RETRACTED against in-repo measurement: the parity file's header carries
+      "Measured 2026-08-24/25" at :5, `sys.path.insert` is at :52 directly above
+      the :53 import, and the filename filter is at shard_tests.py:124. The seat
+      was given excerpts rather than the repo, so these are limits of its
+      evidence window. Recorded in full rather than dropped, because the same
+      window is what makes its surviving BLOCK credible.
   - seat: codex-gpt-5.6-sol
     status: CONFIRMED
     objection: >-
