@@ -115,7 +115,9 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.app.core.config import settings
 from backend.services.integrations import wa_broker
+from backend.services.integrations.wa_completion_envelope import decode_completion
 from backend.services.integrations.wa_finalize import (
     FinalizeOutcome,
     finalize_wa_answer,
@@ -136,7 +138,10 @@ from backend.services.integrations.wa_inbox_bot import (
     _tell_a_human,
     is_bot_autoreply_enabled,
 )
-from backend.services.rag.agentic._support_signal import SupportVerdict
+from backend.services.rag.agentic._support_signal import (
+    SupportVerdict,
+    has_visible_character,
+)
 from backend.services.rag.agentic.wa_dlp import restore_text
 
 logger = logging.getLogger(__name__)
@@ -178,6 +183,13 @@ _KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
         "finalize_defect",
         "internal_error",
         "unknown",
+        # B2.4 PR-2 (design B2-4-design.md §1.3, ruling I96-5): the SQL-
+        # countable durable counter for "no authenticated verdict travelled
+        # back" — collapses two log-only details (`no_verdict`: decode
+        # failed/absent/MAC-or-hash mismatch; `unavailable`: the daemon's
+        # own judge could not rule) into ONE bounded column value; the
+        # detail lives only in the ERROR log next to each raise site.
+        "support_judge_absent",
     }
 )
 
@@ -208,6 +220,7 @@ _FALL_OFF_REASON_PREFIX_MAP: dict[str, str] = {
     "consume_lost": "consume_lost",
     "finalize": "finalize_defect",
     "internal_error": "internal_error",
+    "support_judge_absent": "support_judge_absent",
 }
 
 # Migration 291: the package-builder leg's "unbuildable" head carries a
@@ -467,6 +480,75 @@ class CodexLegResult:
     package_ref: str | None = None
 
 
+async def _stub_unsupported(
+    *,
+    parsed_wire: dict[str, Any],
+    evidence_inputs: dict[str, Any],
+    query: str,
+    thread_id: int,
+    tell_a_human: Any,
+    package_hash: str,
+    reason: str,
+    carry_evidence: bool = True,
+) -> CodexLegResult:
+    """The shared terminal-abstention stub (B2.4 PR-2): generates NOTHING
+    and hands an empty answer straight to the UNCHANGED finalizer's safe-
+    abstention path — since ``answer=""``, ``_abstain_answer_worth_sending``
+    always returns "" regardless of ``context_length``/``evidence_score``,
+    so the localized safe-abstention text is served and a human is told.
+
+    Reused by BOTH callers that must never release substantive advice: the
+    pre-offer V4 residual (no visible question) and the post-consume
+    NOT_SUPPORTED/UNKNOWN branch (design B2-4-design.md §1.1 step 4). The
+    evidence carrier is ALWAYS the ``*_unsupported`` pair — the pure
+    scorer's own NOT_SUPPORTED-scored values — never the plain
+    ``evidence_score``/``abstain`` (those stay the `support=None` values
+    per `wa_package_builder.py` and would leak a relevance figure a
+    verdict this negative must never carry).
+
+    ``carry_evidence=False`` nulls the three carrier fields (D6: REATTACHED
+    legs never carry another claim's package reference — I83, unchanged by
+    this PR).
+    """
+    price_sources: list[str] = [
+        str(chunk.get("text", "")) for chunk in parsed_wire.get("chunks", [])
+    ]
+    if parsed_wire.get("pricing_block") is not None:
+        price_sources.append(
+            json.dumps(parsed_wire["pricing_block"], ensure_ascii=False, sort_keys=True)
+        )
+    stub_result = await finalize_wa_answer(
+        data={
+            "answer": "",
+            "abstain": True,
+            "abstain_reason": "support_unsupported",
+            "context_length": evidence_inputs.get("context_length"),
+            "evidence_score": evidence_inputs.get("evidence_score_unsupported"),
+        },
+        query=query,
+        thread_id=thread_id,
+        tell_a_human=tell_a_human,
+        provider="codex",
+        price_sources=price_sources,
+        secret_scan=True,
+        canary_tokens=_canary_tokens(),
+    )
+    return CodexLegResult(
+        text=stub_result.text,
+        reason=reason,
+        served_by="support_abstain",
+        evidence_abstain_label=(
+            bool(evidence_inputs.get("abstain_unsupported")) if carry_evidence else None
+        ),
+        evidence_score=(
+            _normalize_evidence_score(evidence_inputs.get("evidence_score_unsupported"))
+            if carry_evidence
+            else None
+        ),
+        package_ref=package_hash if carry_evidence else None,
+    )
+
+
 async def attempt(
     pool: asyncpg.Pool,
     *,
@@ -642,75 +724,36 @@ async def _attempt(
     async def _tell(reason: str) -> bool:
         return await _tell_a_human(phone=phone, reason=reason, thread_id=thread_id)
 
-    # B2.1 support-negative branch (Terminal route — research/operations/
-    # 2026-09-11-bot-staff-room/B2-engine.md §4 B2.1 "Terminal route"),
-    # BEFORE the broker offer below. Stopping package construction is NOT
-    # this disposition: an unbuildable package returns a fall-off reason
-    # that the worker raises as `codex_leg_fell_off` into its retry ladder
-    # (spec: five attempts for a question that can never become
-    # answerable). The sealed `evidence_inputs` already carry the support
-    # signal's verdict (TASK 1, `wa_package_builder.build_context_package`)
-    # — when it is anything other than SUPPORTED, this leg generates
-    # NOTHING and hands the sealed decision straight to the UNCHANGED
-    # finalizer's safe-abstention path with an empty "answer": since
-    # `answer=""`, `_abstain_answer_worth_sending` always returns "" (its
-    # own length gate on `_ABSTAIN_MIN_SENDABLE_CHARS` fails regardless of
-    # `context_length`/`evidence_score`), so the localized safe-abstention
-    # stub is served and a human is told (`human_reason="rag_abstain"`) —
-    # never the release of unsupported substantive advice. `abstain=True`
-    # is forced here rather than read from the sealed `evidence_inputs`:
-    # this branch exists precisely because the answer must not release, so
-    # the disposition must not depend on whether the scorer's own
-    # fail-closed relevance-zeroing (B2.1 §2 point 5) already produced the
-    # same label by a different path.
-    #
-    # `support_verdict` absent (`None`) means "not consulted" (the package
-    # was built with `dlp=False` — never true for this leg's own build call
-    # above, which always passes `dlp=True`, but the field is read
-    # defensively rather than assumed) — that case does NOT enter this
-    # branch, matching `calculate_evidence_score`'s own "not consulted, no
-    # change" contract.
-    support_verdict = evidence_inputs.get("support_verdict")
-    if support_verdict is not None and support_verdict != SupportVerdict.SUPPORTED.value:
-        unsupported_price_sources: list[str] = [
-            str(chunk.get("text", "")) for chunk in parsed_wire.get("chunks", [])
-        ]
-        if parsed_wire.get("pricing_block") is not None:
-            unsupported_price_sources.append(
-                json.dumps(parsed_wire["pricing_block"], ensure_ascii=False, sort_keys=True)
-            )
-        unsupported_result = await finalize_wa_answer(
-            data={
-                "answer": "",
-                "abstain": True,
-                "abstain_reason": "support_unsupported",
-                "context_length": evidence_inputs.get("context_length"),
-                "evidence_score": evidence_inputs.get("evidence_score"),
-            },
+    # B2.4 PR-2, named residual V4 (design B2-4-design.md §2 item B): the
+    # builder no longer judges (support_verdict is always None now — see
+    # wa_package_builder.py), so the OLD pre-offer support-negative branch
+    # is gone; the leg offers UNCONDITIONALLY. The ONE exception is a
+    # package whose final user turn carries no visible character at all —
+    # `support_inputs_from_wire`'s SAME rule (`has_visible_character`,
+    # shared so the two never drift), applied leniently here: a malformed
+    # or empty history is not this residual's problem (the offer/wait path
+    # below still runs and the daemon's own stricter check is the real
+    # backstop for that) — only a STRUCTURALLY normal last turn with no
+    # visible character is caught, so a question-less package never
+    # reaches the daemon and never folds into the broker breaker over a
+    # leg-side bug rather than a seat failure.
+    history_field = parsed_wire.get("history")
+    last_turn = history_field[-1] if isinstance(history_field, list) and history_field else None
+    last_query = last_turn.get("content") if isinstance(last_turn, dict) else None
+    if isinstance(last_query, str) and not has_visible_character(last_query):
+        logger.info(
+            "wa_codex_leg: package has no visible question, stubbing before offer "
+            "(outbox=%s)",
+            outbox_id,
+        )
+        return await _stub_unsupported(
+            parsed_wire=parsed_wire,
+            evidence_inputs=evidence_inputs,
             query=query,
             thread_id=thread_id,
             tell_a_human=_tell,
-            provider="codex",
-            price_sources=unsupported_price_sources,
-            secret_scan=True,
-            canary_tokens=_canary_tokens(),
-        )
-        logger.info(
-            "wa_codex_leg: support signal unsupported (outbox=%s verdict=%s) — "
-            "terminal stub, no broker offer",
-            outbox_id,
-            support_verdict,
-        )
-        return CodexLegResult(
-            text=unsupported_result.text,
-            reason="support_unsupported",
-            served_by="support_abstain",
-            # The sealed label, NOT the `abstain=True` forced above for
-            # `finalize_wa_answer` — D6 carries the frozen wire's own
-            # verdict, never this branch's forced disposition.
-            evidence_abstain_label=bool(evidence_inputs.get("abstain")),
-            evidence_score=_normalize_evidence_score(evidence_inputs.get("evidence_score")),
-            package_ref=package_hash,
+            package_hash=package_hash,
+            reason="support_no_visible_query",
         )
 
     # The offer boundary is FAIL-CLOSED only where the outcome is
@@ -876,6 +919,21 @@ async def _attempt(
         )
         return CodexLegResult(fail=f"wait_error:{type(exc).__name__}")
     if wait.outcome is not wa_broker.WaitOutcome.COMPLETED:
+        # B2.4 PR-2 (design §1.1 step 4, ruling I96-5 "loud absent judge"):
+        # the daemon's OWN judge coming back unable to rule is not an
+        # ordinary typed failure — it is the fail-closed gate itself
+        # firing, so it gets the SAME durable counter and an ERROR (not
+        # INFO) log, distinct from every other wait outcome below.
+        if (
+            wait.outcome is wa_broker.WaitOutcome.FAILED
+            and wait.error_class == "support_judge_unavailable"
+        ):
+            logger.error(
+                "wa_codex_leg: support judge unavailable (outbox=%s job=%s)",
+                outbox_id,
+                offer.job_id,
+            )
+            return CodexLegResult(reason="support_judge_absent:unavailable")
         # FAILED and DEADLINE were folded into the breaker by their
         # transition owners (complete_job / the wait CAS) — no fold here.
         logger.info(
@@ -995,6 +1053,71 @@ async def _attempt(
             offer.job_id,
         )
         return CodexLegResult(reason="consume_lost")
+
+    # B2.4 PR-2 (design B2-4-design.md §1.1 step 4, §1.2): the consumed
+    # text is NEVER the model's raw answer any more — it is a completion
+    # envelope the daemon sealed with a MAC under WA_BROKER_KEY, binding
+    # the verdict (and, on SUPPORTED, the answer) to THIS CLAIM's own
+    # `package_hash`. Decoding against that hash makes the REATTACHED case
+    # (design §1.5) fall out for free: a prior leg's envelope for a
+    # DIFFERENT package_hash fails the hash check inside `decode_completion`
+    # exactly like any other forgery — no separate branch needed here.
+    broker_key = getattr(settings, "wa_broker_key", None)
+    completion = decode_completion(text, key=broker_key, package_hash=package_hash)
+    if completion is None:
+        # Absent, invalid, MAC mismatch, hash mismatch — including RAW
+        # model text an OLD (un-provisioned) daemon still forwards, and a
+        # forged look-alike JSON a prompt-injected client message could
+        # make the model print (ruling I96 C2): NEVER released. Loud
+        # (I96-5): this is the fail-closed gate itself firing, not an
+        # ordinary fall-off, hence ERROR (not INFO/WARNING).
+        logger.error(
+            "wa_codex_leg: support verdict absent or unauthenticated "
+            "(outbox=%s job=%s)",
+            outbox_id,
+            offer.job_id,
+        )
+        return CodexLegResult(reason="support_judge_absent:no_verdict")
+
+    votes_repr = ",".join(vote.value for vote in completion.votes)
+    if completion.verdict is not SupportVerdict.SUPPORTED:
+        logger.info(
+            "wa_codex_leg: support verdict %s judge=%s votes=%s "
+            "(outbox=%s job=%s) — terminal stub",
+            completion.verdict.value,
+            completion.judge,
+            votes_repr,
+            outbox_id,
+            offer.job_id,
+        )
+        # D6/I83 (unchanged): a REATTACHED completion was offered by an
+        # EARLIER claim with its OWN package — this claim's rebuilt sealed
+        # wire does not describe the package that actually generated the
+        # verdict, so the carrier stays NULL exactly as the SUPPORTED
+        # release below already does for REATTACHED.
+        return await _stub_unsupported(
+            parsed_wire=parsed_wire,
+            evidence_inputs=evidence_inputs,
+            query=query,
+            thread_id=thread_id,
+            tell_a_human=_tell,
+            package_hash=package_hash,
+            reason="support_unsupported",
+            carry_evidence=offer.outcome is wa_broker.OfferOutcome.OFFERED,
+        )
+
+    logger.info(
+        "wa_codex_leg: support verdict SUPPORTED judge=%s votes=%s "
+        "(outbox=%s job=%s)",
+        completion.judge,
+        votes_repr,
+        outbox_id,
+        offer.job_id,
+    )
+    # The envelope's authenticated answer IS the model text from here on —
+    # never the raw wire `text` above, which is the envelope's own sealed
+    # JSON, not the answer.
+    text = completion.answer
 
     # G-P3 restore: the generator answered against a REDACTED package (its
     # prompt carried `[PII-CATEGORY-N]` placeholders, never the customer's
