@@ -1013,9 +1013,9 @@ class TestCensusReplay:
         seq21_compiled: compiler.CompiledRulePack,
         walks: dict[str, dict[str, Any]],
     ) -> None:
-        """The honest measurement, and it is a NEGATIVE one: the corpus does
-        not yet carry the ten new facts (W-VO-Q adds the questions), so no walk
-        gains a product. What must NOT happen is a regression — a walk losing
+        """The honest measurement, and it is a NEGATIVE one: the corpus
+        carries the ten new facts only as UNKNOWN/NOT_ASKED — no walk answers
+        them until W-VO-Q adds the questions — so no walk gains a product. What must NOT happen is a regression — a walk losing
         its answer, or an ``on_unknown: NEEDS_INPUT`` rule turning a decided
         dead end into a question."""
         before = _replay(seq20_compiled, walks)
@@ -1107,8 +1107,9 @@ class TestCensusReplay:
         ``SUPPORT_REASON_COPY`` renders as ``Verified reason: <CODE>``. seq-21
         makes E33A purpose-feasible on a paid-work walk, which surfaces the
         seq-20 code ``E33A_SPONSOR_NOT_GOVERNMENT`` there for the first time;
-        this measures every code the candidate emits on the 84 walks against
-        the copy keys parsed out of ``engine-adapter.ts``."""
+        this measures every code the candidate emits on the corpus walks (94
+        since W-VO-E) against the copy keys parsed out of
+        ``engine-adapter.ts``."""
         adapter = (
             Path(__file__).resolve().parents[5]
             / "mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts"
