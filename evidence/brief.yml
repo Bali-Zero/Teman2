@@ -1,123 +1,59 @@
-task_id: visa-oracle-d4c2-investment-amount-usd
+task_id: kbli-l2-pr-a-vault-adapter
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff: 2, source `size` — measured with
-# `git diff --name-only origin/main...HEAD` and `git diff --numstat origin/main...HEAD` fed to
-# `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <f>`,
-# re-run after every commit in this PR including this file's own (17 files, ~727 added / ~33
-# removed lines at 51fd4474b4): floor stayed 2 throughout. No pack edit, no engine-adapter.ts, no
-# hot-zone path touched. Gear 2 declared to match the floor.
+# Floor for this diff: 2, source `size` (440 added lines: adapter, flags, tests, six one-line
+# fixtures, spec §6). No hot-zone path. Gear 2 declared to match the floor; no pack below Gear 3.
 objective: >-
-  PR-D4c-2 of the Visa Oracle rebuild (mandate SHWEB-20260911): replace fact-mapper.ts's
-  investment.investment_amount_usd unconditional unknownFact(NOT_ASKED) placeholder (PR-D4c-1,
-  contract-only) with a real answer, on the merit/family/undecided investment-vehicle branches
-  only — never on pt_pma, whose IDR-bound E28A rules would dead-end if a currency choice made
-  investment.investment_capital_idr UNKNOWN there. A new investment_currency choice (idr / usd /
-  an explicit "I can't say yet", notSure deliberately omitted) routes to the reused
-  investment_capital_idr question for idr or a new investment_amount_usd question for usd; the
-  "can't say" answer costs zero review holds because its value is the literal "still_unsure",
-  never "unsure" (the exact string mapDisclosedReviewFlags's NOT_CERTAIN scan matches). No
-  currency conversion anywhere, no threshold figure in copy (no rule reads this fact until
-  seq-22 is signed and active).
+  PR-A of docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md: make the KBLI L2
+  risk transform reproducible from a frozen vault snapshot. Adds the pure adapter
+  scripts/kbli_filiera/vault_to_risk_jsonl.py (vault -> the jsonl the transform already reads),
+  --root/--raw flags on scripts/build_kbli_l2_oss_risk.py with defaults equal to today's
+  literals, a machine-readable SUMMARY line, adapter tests, a six-code reproduction test on
+  real July-vault fixtures, and the spec's §6 recording the full-scale rule-4/rule-5 outcome.
 constraints:
   - >-
-    No rule-pack edit of any kind; sign_pack.py / activate_pack.py never run;
-    VISA_ENGINE_EVALUATE_MODE never touched. engine-adapter.ts untouched. Frontend + corpus only:
-    tree.ts, flow.ts, fact-mapper.ts, generate-walk-corpus.ts and its fixtures, and tests.
+    No logic change in the transform: flags, derived paths and one SUMMARY print only.
+    apps/backend-rag/scripts/build_kbli_l2_oss_risk.py untouched (its merge is a deploy).
   - >-
-    pt_pma is byte-identical: offshore_invest_pt_pma.json (E28A's own walk) is unchanged by
-    `git diff`, and its pinned (state, candidates) in EXPECTED_OUTCOME is untouched —
-    SUPPORTED_CANDIDATES [C2], the same as on main.
+    No data file changes: the canonical corpus, its five copies and the sidecar are
+    byte-identical to origin/main. --apply was run only on /tmp copies.
   - >-
-    No conversion anywhere — not in fact-mapper.ts, not in copy, not in a fixture. No FX rate.
-    investment.investment_capital_idr and investment.investment_amount_usd are never both KNOWN
-    from the same answer, and neither is ever derived from the other.
-  - >-
-    No pre-existing walk's verdict moves. Three walks (offshore/invest/merit/family/undecided)
-    change wire bytes only (investment.investment_capital_idr NOT_ASKED -> KNOWN(1000000000),
-    since investment_currency's first option is idr) — verified key by key against
-    EXPECTED_OUTCOME, not by comparing totals.
+    No network, no credentials: the adapter reads a vault on disk; vaults were never modified
+    (the September vault is chmod a-w with a sha256 manifest).
 acceptance:
   - text: >-
-      A1: WHEN `PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py`
-      runs from apps/backend-rag (venv activated) SHALL pass all 17 tests, including the E28A
-      innocence walk (offshore/invest/pt_pma, unchanged) and the corpus/state-census literals at
-      84 walks / 2 NEEDS_INPUT / 15 NO_SUPPORTED_PATH / 67 SUPPORTED_CANDIDATES.
-    probe: >-
-      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
-      backend/tests/services/visa_engine/test_interview_walk_census.py
+      A1: WHEN `python3 -m pytest scripts/kbli_filiera/tests -q` runs SHALL pass, including the
+      adapter determinism/ordering/404/exit-2 tests and the six-code reproduction test that
+      asserts the L2-owned field set equal to the canonical slice.
+    probe: python3 -m pytest scripts/kbli_filiera/tests -q
   - text: >-
-      A2 (widened acceptance, discharging the #6416 ledger row): WHEN
-      `PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/` runs from
-      apps/backend-rag (venv activated) SHALL pass all 176 tests — this is the directory whose
-      stale `test_not_asked_facts_are_exactly_the_six_hardcoded_in_the_mapper` literal an earlier
-      probe scoped to backend/tests/services/ never ran; fixed here (six -> five,
-      investment.investment_amount_usd drops out the same way immigration.renewal_paid did).
-    probe: >-
-      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
-      backend/tests/scripts/visa_engine/
+      A2 Bites: WHEN the adapter runs over the frozen July vault and the transform dry-runs with
+      --root /tmp/l2/root --raw /tmp/l2/july.jsonl SHALL print one line starting with SUMMARY
+      carrying no_oss_risk=221 and l4_changed=21 (this scripts/ copy; the backend copy gives 0),
+      and the field-level table of an --apply on that /tmp copy (spec §6, measured before this
+      PR was opened) SHALL show 0 codes differing on skala_usaha/kategori_risiko/scope_index
+      and exactly 1 (49213) on the other L2-owned fields, counted on rows common to both sides
+      (20111's 12 new rows are reported on the row-count line).
+    probe: set -o pipefail; python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | grep '^SUMMARY'
   - text: >-
-      A3: WHEN `npx vitest run` runs in apps/mouth (the FULL suite) SHALL pass every test — this
-      includes fact-mapper.test.ts, which reads models.py off disk, so a fact change can turn a
-      frontend test red.
-    probe: cd apps/mouth && npx vitest run
-  - text: >-
-      A4: WHEN `npx tsc --noEmit` runs in apps/mouth SHALL exit 0.
-    probe: cd apps/mouth && npx tsc --noEmit
-  - text: >-
-      A5: WHEN `npx eslint "src/app/(visa-oracle)/visa-oracle/**"` runs in apps/mouth SHALL exit
-      0 (6 pre-existing warnings, 0 errors, none in a file this PR touches).
-    probe: cd apps/mouth && npx eslint "src/app/(visa-oracle)/visa-oracle/**"
-  - text: >-
-      A6 (the zero-review-cost claim, measured directly): WHEN
-      `mapDisclosedReviewFlags({ category: "invest", investment_vehicle: "undecided",
-      investment_currency: "still_unsure" })` runs SHALL NOT include "NOT_CERTAIN" in its
-      returned array — proven by fact-mapper.test.ts's
-      "the 'I can't say yet' answer costs zero review holds" test, part of the A3 full-suite run.
-      The committed corpus fixture for this exact walk
-      (offshore_invest_undecided_currency_still_unsure.json) carries neither
-      investment.investment_capital_idr nor investment.investment_amount_usd as KNOWN — the
-      honest silence — and its pinned outcome in EXPECTED_OUTCOME is SUPPORTED_CANDIDATES [C2],
-      unaffected (that census does not carry disclosed_review_flags at all — bound 1 of its own
-      module docstring — so the NOT_CERTAIN proof is the frontend unit test, not the census).
-    probe: >-
-      cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts"
-      -t "costs zero review holds"
-  - text: >-
-      A7 Bites: the consumer is the live Vercel site, pinned. Once merged and deployed, a session
-      SHALL observe that on https://balizero.com/visa-oracle, the merit/family/undecided
-      investment branches serve the new investment_currency question, and the deployed
-      JS chunk for the (visa-oracle) route carries the string "investment_currency" (grep the
-      built chunk, or DOM-inspect the rendered option keys) — an observation to be made after
-      merge, not a promise about a future job.
-    probe: "post-merge: curl/grep the deployed apps/mouth (visa-oracle) route's chunk for investment_currency, or DOM-inspect the rendered question"
+      A3: WHEN the transform's source is read SHALL still define ROOT as /tmp/kbli-l2-risk and
+      RAW as /tmp/oss_risk_raw.jsonl and use them as the --root/--raw defaults (grep count 2),
+      so the June run is still reproducible.
+    probe: grep -c 'Path("/tmp/kbli-l2-risk")\|Path("/tmp/oss_risk_raw.jsonl")' scripts/build_kbli_l2_oss_risk.py
 assumptions:
   - text: >-
-      Branches ask what flow.ts's getCategoryQuestionIds actually asks — pt_pma/property/
-      bank_deposit ask something today, merit/family/undecided ask nothing — verified by reading
-      flow.ts directly before building on it (not assumed from the brief's own table).
+      The vault ruang_lingkup.json has the same response shape the June fetcher stored under
+      "data" ({success,data,meta,code}), so the adapter's records are the transform's native
+      input; shape compatibility is what is proven, not byte identity with the lost June file.
     status: verified
-    probe: "Read apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:691-756 in this worktree"
+    probe: "rule-5 recheck — adapter-driven change set equals the raw-vault change set under the same triple definition (181/181 with the pinned triple of spec §6)"
   - text: >-
-      The NOT_CERTAIN mechanism is exact-equality over the literal string "unsure", not a
-      substring or prefix match, so "still_unsure" cannot trip it.
+      jangka_waktu, fiktif_positif and jangka_waktu_source are owned by layers after L2, so
+      their divergence is not a transform defect.
     status: verified
-    probe: 'Read fact-mapper.ts:566 — `if (Object.values(facts).includes("unsure")) flags.add("NOT_CERTAIN")`'
+    probe: "scripts/enrich_kbli_jangka_waktu.py (2026-06-28) writes jangka_waktu_source; canonical carries it on 4,200 rows of 941 codes"
   - text: >-
-      E28A's three rules (el.e28a.investment, hf.e28a.total-investment-below-min,
-      hf.e28a.paid-capital-below-min) are all on_unknown NEEDS_INPUT and read
-      investment.investment_capital_idr / paid_up_capital_idr / proposed_role /
-      pt_pma_committed — reachable ONLY via the pt_pma branch's own dedicated questions, which
-      this PR never touches.
+      The apps/backend-rag copy of the transform is the one whose L4 logic the canonical reflects.
     status: verified
-    probe: "grep the signed rulepack-prod-020 source for el.e28a.* and hf.e28a.* rule bodies; the pt_pma branch (flow.ts:701-708) is untouched by this diff"
-  - text: >-
-      Adding investment_currency/investment_amount_usd to merit/family/undecided cannot move any
-      pre-existing walk's verdict, because those three branches' overall outcome is decided by
-      C2's own el.c2.business rule (family.sponsor_confirmed == true), independent of any
-      investment.* fact — measured directly on the regenerated corpus, not inferred.
-    status: verified
-    probe: >-
-      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
-      backend/tests/services/visa_engine/test_interview_walk_census.py::test_every_walk_ends_in_its_pinned_outcome
+    probe: "full-scale run of both copies on the July jsonl — l4_bali.blocked flips: scripts/ 21, backend 0"
