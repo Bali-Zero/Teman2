@@ -1,0 +1,76 @@
+task: >-
+  PR #6066, Lane 3 of the 2026-09-10 queue-time mandate: a weekly, measure-only change-map
+  coverage report. `scripts/ci/change_map_coverage.py` reads the last 7 days of `tests.yml`
+  merge_group/pull_request runs and reports, per lane: batches per classifier reason; per
+  heavy-job runs/skipped/skip %; batches eligible for a skip that still ran the full
+  battery; the top `unknown_paths` that kept a batch in the full battery (with PR numbers);
+  and the domains that legitimately forced each suite. The job->domain map is derived from
+  `change_map._suggested_jobs` at import time so it cannot drift from the live classifier.
+  Output goes to `docs/reports/change-map-coverage/<date>.md` and the fleet mailbox
+  (`scripts/fleet_mail.sh`, key `change-map-coverage:weekly`). No allowlist, workflow or
+  classifier change. Cron wrapper `scripts/change_map_coverage_cron.sh` targets Mini, Monday
+  03:00 WITA, NOT installed (deploy step is separate).
+lane: infra/change-map-coverage
+machine: M5
+date: 2026-09-10
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against the
+  merge-base with origin/main measures churn 1109, all additions (185
+  docs/reports/change-map-coverage/2026-09-10.md, 31
+  docs/reports/change-map-coverage/README.md, 69 scripts/change_map_coverage_cron.sh, 577
+  scripts/ci/change_map_coverage.py, 247 scripts/ci/test_change_map_coverage.py) — above
+  SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path
+  (scripts/ci, scripts/, docs/reports/ are not a HOTZONE_PATTERNS match). Confirmed locally
+  via `scripts/evidence_pack_lint.py --print-floor --print-floor-source`, matching the value
+  the `Harness floor recompute` check reported. This brief is written retroactively — it was
+  absent at PR-open, which is what floored the check red — and adds no functional change to
+  the diff it documents.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The job->domain map used for classification is derived from `change_map._suggested_jobs`
+    at import time (never a hand-copied duplicate), and per-lane stats (batches per
+    classifier reason, heavy-job skip %, batches eligible-for-skip-but-ran) are computed
+    correctly against a synthetic run corpus.
+    probe: >-
+      python3 -m unittest
+      scripts.ci.test_change_map_coverage.TestJobTriggerDomains
+      scripts.ci.test_change_map_coverage.TestReasonCounts
+      scripts.ci.test_change_map_coverage.TestJobStats
+      scripts.ci.test_change_map_coverage.TestEligibleForSkipButRan -v
+  A2: >-
+    First live report (docs/reports/change-map-coverage/2026-09-10.md) measured 390
+    merge_group batches (221 classified, 26 unclassified, 140 enumeration_failed, 39.3%
+    Backend skip) and 694 pull_request batches (446 classified, 60 unclassified, 183
+    enumeration_failed); the 140 enumeration_failed merge_group batches are attributed to
+    the 2026-09-02..04 stale SCRIPTS_COUPLING census cluster, root-caused separately in
+    #6060, with 0 since 2026-09-05.
+    probe: cat docs/reports/change-map-coverage/2026-09-10.md
+  A3: >-
+    The full 16-test corpus (PR-number parsing, job-trigger domains, reason counts, job
+    stats, eligible-for-skip detection, unknown-path frequency, legitimate-domain counts,
+    report rendering, dry-run mailbox send) stays green.
+    probe: python3 -m unittest scripts.ci.test_change_map_coverage -v
+
+out_of_scope: >-
+  Changing the merge-queue skip allowlist, the `tests.yml` classifier, or any workflow
+  wiring — this PR is measure-only by design. Installing the
+  `change_map_coverage_cron.sh` crontab entry on Mini (a separate deploy step). The
+  `docs/reports/` `.gitignore` negation this PR depends on (PR #6063, landed separately).
+  Resolving `pull_request`-lane PR numbers (today derived from the queue ref name only, so
+  `pull_request` rows show none — a stated known limitation, not fixed here).
+
+assumptions:
+  - text: >-
+      This brief was authored by a separate session after PR-open, to satisfy the
+      `Harness floor recompute` check's SIZE-floor requirement — the acceptance probes above
+      are drawn from the PR body's own reported test count/results and the first report's
+      committed numbers, not independently re-run by the session writing this brief.
+    status: unverified
+    probe: "Re-run `python3 -m unittest scripts.ci.test_change_map_coverage -v` on this PR's head and confirm 16 passed."

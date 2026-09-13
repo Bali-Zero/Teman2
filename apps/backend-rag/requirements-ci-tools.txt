@@ -13,5 +13,5 @@
 #
 # mypy>=2.2.0 floor already tracked informally in requirements-test.txt (used
 # by the .pre-commit-config.yaml mypy-dependencies-py hook) — 2.3.0 satisfies it.
-mypy==2.3.0
+mypy==2.3.1
 pip-audit==2.10.1
