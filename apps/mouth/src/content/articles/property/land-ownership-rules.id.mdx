@@ -73,81 +73,73 @@ tableOfContents: true
 canonicalUrl: "https://balizero.com/id/property/land-ownership-rules"
 ogImage: "/static/insights/property/land-ownership.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "fcd5ef7ae4c68879ce98a38cce5fb6af591772bf5be17fdaa4b0a323ebb6e210"
+source_sha256: "33f8515d30353d9c223bd359e1745f863423544da90567dac243f7d1d177eb9e"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Aturan Kepemilikan Tanah Indonesia 2026: Panduan untuk Warga Asing
 
-# Aturan Kepemilikan Tanah Indonesia 2026: Panduan Orang Asing
-
-Orang asing tidak dapat secara langsung memiliki tanah hak milik di Indonesia. Namun, ada cara legal untuk mengamankan hak properti. Inilah panduan lengkap Anda.
+Warga asing tidak dapat secara langsung memiliki tanah hak milik di Indonesia. Namun, ada cara legal untuk mengamankan hak atas properti. Berikut panduan lengkap Anda.
 
 ## Aturan Dasar
 
-<InfoCard variant="warning" title="Batasan Fundamental">
+<InfoCard variant="warning" title="Pembatasan Fundamental">
 **Hukum Indonesia (Undang-Undang Agraria 1960):**
 
-- Hanya warga negara Indonesia yang dapat memegang **Hak Milik** (freehold)
-- Orang asing dapat memegang **hak pakai** tertentu
-- Tanah secara otomatis kembali ke negara jika orang asing memegang Hak Milik
+- Hanya warga negara Indonesia yang dapat memegang **Hak Milik** (hak milik)
+- Warga asing dapat memegang hak-hak **penggunaan tertentu**
+- Tanah akan otomatis kembali ke negara jika warga asing memegang Hak Milik
 
-Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
+Ini adalah hukum konstitusional - tidak dapat dilangkahi secara legal.
 
 </InfoCard>
 
 ---
 
-## Jenis Gelar Tanah
+## Jenis-Jenis Sertifikat Tanah
 
 <ComparisonTable
-  title="Gelar Tanah Indonesia"
+  title="Sertifikat Tanah Indonesia"
   description="Memahami berbagai hak"
   items={[
     {
       name: "Hak Milik",
       subtitle: "Freehold",
       values: {
-        Pemilik: "Hanya WNI",
-        Durasi: "Selamanya",
-        Hak: "Kepemilikan penuh",
-        "Orang Asing": "Tidak diizinkan",
+        Owner: "Warga negara Indonesia saja",
+        Duration: "Selamanya",
+        Rights: "Kepemilikan penuh",
+        Foreigner: "Tidak diizinkan",
       },
     },
     {
       name: "Hak Guna Bangunan (HGB)",
-      subtitle: "Right to Build",
+      subtitle: "Hak untuk Membangun",
       values: {
-        Pemilik: "WNI/PT PMA",
-        Durasi: "30+20+30 tahun",
-        Hak: "Membangun di atas tanah",
-        "Orang Asing": "Hanya via PT PMA",
+        Owner: "Warga negara Indonesia/PT PMA",
+        Duration: "30+20+20 tahun",
+        Rights: "Membangun di atas tanah",
+        Foreigner: "Melalui PT PMA saja",
       },
       highlight: true,
     },
     {
       name: "Hak Pakai",
-      subtitle: "Right to Use",
+      subtitle: "Hak untuk Menggunakan",
       values: {
-        Pemilik: "WNI/Orang Asing",
-        Durasi: "30+20+30 tahun",
-        Hak: "Pakai, bangun tempat tinggal",
-        "Orang Asing": "Diizinkan (dengan syarat)",
+        Owner: "Warga negara Indonesia/Warga asing",
+        Duration: "30+20+20 tahun",
+        Rights: "Menggunakan, membangun tempat tinggal",
+        Foreigner: "Diizinkan (dengan syarat)",
       },
     },
     {
       name: "Hak Sewa",
       subtitle: "Leasehold",
       values: {
-        Pemilik: "Siapa pun",
-        Durasi: "Sesuai kesepakatan (biasanya 25-30 tahun)",
-        Hak: "Gunakan selama sewa",
-        "Orang Asing": "Diizinkan",
+        Owner: "Siapapun",
+        Duration: "Sesuai kesepakatan (biasanya 25-30 tahun)",
+        Rights: "Menggunakan selama masa sewa",
+        Foreigner: "Diizinkan",
       },
     },
   ]}
@@ -155,10 +147,10 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
 
 ---
 
-## Opsi Legal Bagi Orang Asing
+## Opsi Legal untuk Warga Asing
 
 <DecisionTree
-  title="Struktur Mana yang Sesuai?"
+  title="Struktur Mana?"
   description="Temukan jalur legal Anda menuju properti"
   nodes={[
     {
@@ -175,7 +167,7 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
       question: "Untuk penggunaan pribadi atau investasi?",
       options: [
         { label: "Tempat tinggal pribadi", next: "hakpakai" },
-        { label: "Investasi/penyewaan", next: "ptpma" },
+        { label: "Investasi/sewa", next: "ptpma" },
       ],
     },
     {
@@ -183,7 +175,7 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
       result: {
         title: "PT PMA dengan HGB",
         description:
-          "Perusahaan investasi asing (PT PMA) dapat memegang gelar HGB untuk tujuan komersial. Struktur paling aman untuk investasi properti bisnis.",
+          "Perusahaan investasi asing (PT PMA) dapat memegang sertifikat HGB untuk tujuan komersial. Struktur paling aman untuk investasi properti bisnis.",
       },
     },
     {
@@ -191,15 +183,15 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
       result: {
         title: "Sangat Terbatas",
         description:
-          "Tanah pertanian sangat dibatasi bagi orang asing. PT PMA dengan lisensi khusus dapat mengakses melalui HGU (hak guna usaha) hanya untuk proyek skala besar.",
+          "Tanah pertanian sangat dibatasi bagi warga asing. PT PMA dengan lisensi khusus dapat mengakses melalui HGU (hak guna usaha) hanya untuk proyek berskala besar.",
       },
     },
     {
       id: "hakpakai",
       result: {
-        title: "Hak Pakai",
+        title: "Hak Pakai (Hak Penggunaan)",
         description:
-          "Orang asing dengan KITAS/KITAP dapat memegang Hak Pakai atas properti residensial. Jangka waktu 30+20+30 tahun. Harus untuk tempat tinggal pribadi saja, bukan komersial.",
+          "Warga asing dengan KITAS/KITAP dapat memegang Hak Pakai atas properti residensial. Periode 30+20+20 tahun. Harus hanya untuk tempat tinggal pribadi, bukan komersial.",
       },
     },
     {
@@ -207,7 +199,7 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
       result: {
         title: "PT PMA dengan HGB",
         description:
-          "Mendirikan perusahaan investasi asing untuk memegang gelar HGB. Dapat digunakan untuk investasi, penyewaan, atau pengembangan. Lebih kompleks tetapi lebih fleksibel.",
+          "Bentukkan perusahaan investasi asing untuk memegang sertifikat HGB. Dapat digunakan untuk investasi, sewa, atau pengembangan. Lebih kompleks tetapi lebih fleksibel.",
       },
     },
   ]}
@@ -215,19 +207,19 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
 
 ---
 
-## Hak Pakai Bagi Orang Asing
+## Hak Pakai untuk Warga Asing
 
 ### Persyaratan
 
 <Checklist
   title="Persyaratan Hak Pakai"
-  description="Apa yang dibutuhkan orang asing"
+  description="Apa yang dibutuhkan warga asing"
   persistKey="hak-pakai-checklist"
   items={[
     {
       id: "kitas",
-      label: "KITAS/KITAP yang Valid",
-      description: "Diperlukan izin tinggal legal",
+      label: "KITAS/KITAP yang valid",
+      description: "Izin tinggal legal diperlukan",
       required: true,
       category: "visa",
     },
@@ -241,20 +233,20 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
     {
       id: "minvalue",
       label: "Nilai properti minimum",
-      description: "Bervariasi per wilayah (Rp 5M+ di Bali)",
+      description: "Bervariasi per daerah (IDR 5M+ di Bali)",
       required: true,
       category: "property",
     },
     {
       id: "single",
-      label: "Maksimum satu properti",
-      description: "Per individu asing",
+      label: "Maksimal satu properti",
+      description: "Per individu warga asing",
       required: true,
       category: "limits",
     },
     {
       id: "notary",
-      label: "Akta yang dinotariskan",
+      label: "Akta notaris",
       description: "Melalui PPAT",
       required: true,
       category: "legal",
@@ -262,7 +254,7 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
     {
       id: "convert",
       label: "Konversi dari Hak Milik",
-      description: "Jika membeli dari orang Indonesia",
+      description: "Jika membeli dari warga negara Indonesia",
       required: true,
       category: "process",
     },
@@ -280,22 +272,22 @@ Ini adalah hukum konstitusional - tidak dapat dilewati secara legal.
 
 ### Nilai Properti Minimum
 
-| Wilayah      | Nilai Minimum |
-| ------------ | ------------- |
-| Bali         | Rp 5 miliar   |
-| Jakarta      | Rp 10 miliar  |
-| Jawa Lainnya | Rp 5 miliar   |
-| Wilayah Lain | Rp 2-5 miliar |
+| Region        | Nilai Minimum   |
+| ------------- | --------------- |
+| Bali          | IDR 5 miliar    |
+| Jakarta       | IDR 10 miliar   |
+| Jawa Lainnya  | IDR 5 miliar    |
+| Daerah lain   | IDR 2-5 miliar  |
 
 <InfoCard variant="note" title="Durasi Hak Pakai">
-**Jangka waktu Hak Pakai:** 30 + 20 + 30 tahun = total 80 tahun
+**Periode Hak Pakai:** 30 + 20 + 20 tahun = total 70 tahun
 
 Perpanjangan tunduk pada:
 
-- Izin tinggal yang tetap valid
+- Izin tinggal tetap valid
 - Tanah digunakan sesuai tujuan
 - Tidak ada pelanggaran
-- Permohonan diajukan sebelum kedaluwarsa
+- Pengajuan sebelum kedaluwarsa
 </InfoCard>
 
 ---
@@ -304,140 +296,140 @@ Perpanjangan tunduk pada:
 
 ### Cara Kerjanya
 
-1. **Mendirikan PT PMA** - Perusahaan investasi asing
-2. **Mendaftarkan aktivitas properti** - Dalam izin usaha
-3. **Mendapatkan gelar HGB** - Perusahaan memegang gelar
+1. **Bentuk PT PMA** - Perusahaan investasi asing
+2. **Daftarkan aktivitas properti** - Dalam izin usaha
+3. **Dapatkan sertifikat HGB** - Perusahaan memegang sertifikat
 4. **Anda mengendalikan perusahaan** - Kepemilikan tidak langsung
 
 ### Keuntungan
 
-| Keuntungan           | Detail                          |
-| -------------------- | ------------------------------- |
-| Penggunaan komersial | Dapat menyewakan properti       |
-| Banyak properti      | Tidak ada batasan satu properti |
-| Operasi bisnis       | Aktivitas komersial penuh       |
-| Dapat dialihkan      | Jual saham, bukan properti      |
-| Pembiayaan bank      | Lebih mudah didapatkan          |
+| Manfaat             | Detail                    |
+| ------------------- | -------------------------- |
+| Penggunaan komersial | Dapat menyewakan properti      |
+| Properti multiple   | Tidak ada batasan satu properti   |
+| Operasi bisnis      | Aktivitas komersial penuh |
+| Dapat ditransfer    | Jual saham, bukan properti  |
+| Pembiayaan bank     | Lebih mudah diperoleh           |
 
-### Kerugian
+### Kekurangan
 
-| Tantangan               | Detail                |
-| ----------------------- | --------------------- |
-| Biaya pendirian         | Rp 100-200 jt+        |
-| Kepatuhan berkelanjutan | Pelaporan, pajak      |
-| Persyaratan modal       | Investasi minimum     |
-| Kompleksitas            | Beban legal dan admin |
-| Biaya operasional       | Akuntansi, lisensi    |
+| Tantangan            | Detail                |
+| -------------------- | ---------------------- |
+| Biaya setup          | IDR 100-200M+          |
+| Kepatuhan berkelanjutan   | Pelaporan, pajak         |
+| Persyaratan modal    | Investasi minimum     |
+| Kompleksitas         | Beban hukum dan admin |
+| Biaya operasional    | Akuntansi, lisensi   |
 
 ---
 
-## Pengaturan Hak Sewa
+## Perjanjian Sewa
 
 ### Sewa Jangka Panjang
 
 <InfoCard variant="tip" title="Alternatif Lebih Sederhana">
-**Hak Sewa (Leasehold)** seringkali lebih sederhana:
+**Leasehold (Hak Sewa)** sering kali lebih sederhana:
 
-- Sewa tanah dari pemilik WNI
-- Jangka waktu umum: 25-30 tahun
+- Sewa tanah dari pemilik Indonesia
+- Periode tipikal: 25-30 tahun
 - Dapat membangun dengan izin
 - Kompleksitas lebih rendah daripada PT PMA
 - Tidak ada persyaratan nilai minimum
 
-Banyak ekspatriat lebih menyukai ini karena kesederhanaannya.
+Banyak ekspatriat lebih memilih ini untuk kesederhanaan.
 
 </InfoCard>
 
 ### Struktur Sewa
 
-| Elemen        | Jangka Waktu Umum                  |
-| ------------- | ---------------------------------- |
-| Durasi        | 25-30 tahun                        |
-| Perpanjangan  | Seringkali dapat dinegosiasikan    |
-| Pendaftaran   | Perjanjian yang dinotariskan       |
-| Hak membangun | Biasanya termasuk                  |
-| Perbaikan     | Kembali ke pemilik atau kompensasi |
+| Elemen         | Periode Tipikal                  |
+| --------------- | ------------------------------ |
+| Durasi        | 25-30 tahun                    |
+| Perpanjangan       | Sering dapat dinegosiasikan               |
+| Pendaftaran    | Perjanjian notaris            |
+| Hak bangunan | Biasanya termasuk               |
+| Peningkatan    | Kembali ke pemilik atau dikompensasi |
 
 ---
 
-## Bagaimana dengan Nominee?
+## Bagaimana dengan Nomine?
 
-<InfoCard variant="warning" title="Pengaturan Nominee">
-**Nominee = WNI memegang gelar untuk orang asing**
+<InfoCard variant="warning" title="Perjanjian Nomine">
+**Nomine = Orang Indonesia memegang sertifikat untuk warga asing**
 
-**Kenyataannya:**
+**Kenyataan:**
 
 - Umum tetapi **berisiko secara legal**
-- Hukum pertanahan tidak mengakui nominee
-- Nominee dapat mengklaim kepemilikan sebenarnya
-- Pengadilan mungkin tidak melindungi orang asing
-- Dapat dibatalkan jika ditentang
+- Hukum tanah tidak mengakui nomine
+- Nomine dapat mengklaim kepemilikan sejati
+- Pengadilan mungkin tidak melindungi warga asing
+- Dapat dibatalkan jika ditantang
 
 **Jika Anda menggunakan nominee:**
 
 - Gunakan perjanjian hukum yang komprehensif
-- Pahami bahwa Anda memiliki perlindungan TERBATAS
-- Pertimbangkan PT PMA sebagai gantinya untuk keamanan
+- Pahami Anda memiliki perlindungan TERBATAS
+- Pertimbangkan PT PMA sebagai alternatif untuk keamanan
 </InfoCard>
 
-### Risiko Nominee
+### Risiko Nomine
 
-| Risiko                    | Konsekuensi               |
-| ------------------------- | ------------------------- |
-| Nominee klaim kepemilikan | Dapat kehilangan properti |
-| Nominee meninggal         | Komplikasi warisan        |
-| Utang nominee             | Properti dapat disita     |
-| Perceraian nominee        | Pasangan dapat mengklaim  |
-| Tantangan legal           | Pengaturan batal          |
+| Risiko                     | Konsekuensi               |
+| ------------------------ | ------------------------- |
+| Nomine mengklaim kepemilikan | Mungkin kehilangan properti         |
+| Nomine meninggal          | Komplikasi warisan        |
+| Hutang nomine            | Properti dapat disita    |
+| Perceraian nomine        | Pasangan mungkin mengklaim          |
+| Tantangan hukum          | Perjanjian batal          |
 
 ---
 
-## Apartemen/Strata Title
+## Sertifikat Apartemen/Situs Bersama
 
-### Opsi Lebih Baik untuk Orang Asing
+### Opsi Lebih Baik untuk Warga Asing
 
-<InfoCard variant="note" title="Strata Title (Hak Milik Sarusun)">
+<InfoCard variant="note" title="Situs Bersama (Hak Milik Sarusun)">
 **Apartemen berbeda!**
 
-Orang asing dapat memegang strata title (HMSRS) secara langsung:
+Warga asing dapat memegang situs bersama (HMSRS) secara langsung:
 
-- Tidak butuh PT PMA
-- Tidak butuh KITAS (cek pengembangan spesifik)
+- Tidak perlu PT PMA
+- Tidak perlu KITAS (periksa pengembangan spesifik)
 - Persyaratan nilai minimum tetap berlaku
 - Proses transaksi lebih mudah
 
-Banyak orang asing memilih apartemen karena kesederhanaannya.
+Banyak warga asing memilih apartemen untuk kesederhanaan.
 
 </InfoCard>
 
 ### Persyaratan
 
-| Persyaratan    | Detail                       |
-| -------------- | ---------------------------- |
-| Nilai minimum  | Bervariasi per wilayah       |
-| Jenis bangunan | Apartemen/strata saja        |
-| Dokumentasi    | Paspor, perjanjian pembelian |
-| Pendaftaran    | Melalui pengembang/BPN       |
+| Persyaratan   | Detail                      |
+| ------------- | ---------------------------- |
+| Nilai minimum | Bervariasi per daerah             |
+| Jenis bangunan | Apartemen/situs bersama saja       |
+| Dokumentasi | Paspor, perjanjian pembelian |
+| Pendaftaran  | Melalui pengembang/BPN        |
 
 ---
 
-## Checklist Uji Tuntas (Due Diligence)
+## Daftar Periksa Due Diligence
 
 <Checklist
-  title="Uji Tuntas Properti"
+  title="Due Diligence Properti"
   description="Sebelum pembelian properti apa pun"
   persistKey="property-dd-checklist"
   items={[
     {
       id: "certificate",
       label: "Verifikasi sertifikat tanah",
-      description: "Cek di kantor BPN",
+      description: "Periksa di kantor BPN",
       required: true,
       category: "title",
     },
     {
       id: "zoning",
-      label: "Cek status zonasi",
+      label: "Periksa status zonasi",
       description: "Penggunaan yang diizinkan",
       required: true,
       category: "title",
@@ -445,28 +437,28 @@ Banyak orang asing memilih apartemen karena kesederhanaannya.
     {
       id: "owner",
       label: "Verifikasi penjual adalah pemilik",
-      description: "Cocokkan sertifikat",
+      description: "Sesuaikan dengan sertifikat",
       required: true,
       category: "seller",
     },
     {
       id: "encumbrances",
-      label: "Cek adanya hipotek/jaminan",
-      description: "Gelar bersih",
+      label: "Periksa hipotek/beban",
+      description: "Sertifikat bersih",
       required: true,
       category: "title",
     },
     {
       id: "tax",
-      label: "Verifikasi pajak terbayar",
+      label: "Verifikasi pajak dibayar",
       description: "PBB terbaru",
       required: true,
       category: "financial",
     },
     {
       id: "boundaries",
-      label: "Survei batas tanah",
-      description: "Cocokkan sertifikat",
+      label: "Survei batas",
+      description: "Sesuaikan dengan sertifikat",
       required: true,
       category: "physical",
     },
@@ -479,16 +471,16 @@ Banyak orang asing memilih apartemen karena kesederhanaannya.
     },
     {
       id: "building",
-      label: "Cek izin bangunan",
+      label: "Periksa izin bangunan",
       description: "IMB/PBG jika berlaku",
       required: true,
       category: "permits",
     },
   ]}
   categories={[
-    { id: "title", label: "Gelar", color: "blue" },
+    { id: "title", label: "Sertifikat", color: "blue" },
     { id: "seller", label: "Penjual", color: "green" },
-    { id: "financial", label: "Finansial", color: "amber" },
+    { id: "financial", label: "Keuangan", color: "amber" },
     { id: "physical", label: "Fisik", color: "purple" },
     { id: "permits", label: "Izin", color: "cyan" },
   ]}
@@ -501,33 +493,33 @@ Banyak orang asing memilih apartemen karena kesederhanaannya.
 
 ### Biaya Pembelian
 
-| Biaya                   | Tarif                   |
+| Biaya                    | Tarif                    |
 | ----------------------- | ----------------------- |
-| BPHTB (pajak perolehan) | 5% dari nilai transaksi |
-| Biaya Notaris/PPAT      | 0.5-1%                  |
-| Pendaftaran (AJB)       | ~1%                     |
-| Biaya Hukum             | Bervariasi              |
+| BPHTB (pajak akuisisi) | 5% dari nilai transaksi |
+| Biaya notaris/PPAT        | 0.5-1%                  |
+| Pendaftaran (AJB)      | ~1%                     |
+| Biaya hukum              | Bervariasi                  |
 
 ### Biaya Berkelanjutan
 
 | Biaya                 | Frekuensi              |
-| --------------------- | ---------------------- |
-| PBB (pajak tanah)     | Tahunan                |
-| Pemeliharaan bangunan | Berkelanjutan          |
-| Kepatuhan PT PMA      | Tahunan (jika berlaku) |
+| -------------------- | ---------------------- |
+| PBB (pajak tanah)       | Tahunan                 |
+| Pemeliharaan bangunan | Berkelanjutan                |
+| Kepatuhan PT PMA    | Tahunan (jika berlaku) |
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Kepemilikan tanah Indonesia, properti orang asing, Hak Pakai, HGB, PT PMA, nominee"
-  placeholder="Tanyakan tentang kepemilikan properti..."
+  context="Kepemilikan tanah Indonesia, properti warga asing, Hak Pakai, HGB, PT PMA, nomine"
+  placeholder="Tanya tentang kepemilikan properti..."
   suggestedQuestions={[
-    "Bisakah saya membeli sawah sebagai orang asing?",
-    "Apakah pengaturan nominee aman?",
-    "Berapa lama pendirian PT PMA?",
-    "Bisakah saya mendapat pinjaman bank sebagai orang asing?",
+    "Apakah saya bisa membeli sawah sebagai warga asing?",
+    "Apakah perjanjian nominee aman?",
+    "Berapa lama proses setup PT PMA?",
+    "Apakah saya bisa mendapatkan pinjaman bank sebagai warga asing?",
   ]}
 />
 
@@ -535,6 +527,6 @@ Banyak orang asing memilih apartemen karena kesederhanaannya.
 
 ## Artikel Terkait
 
-- [Panduan Investasi Properti](/id/insights/property/property-investment-guide)
-- [Pembelian Villa di Bali](/id/insights/property/villa-purchase-bali)
-- [Panduan Pendirian PT PMA](/business/pt-pma-registration-guide?lang=id)
+- [Panduan Investasi Properti](/insights/property/property-investment-guide)
+- [Pembelian Villa Bali](/insights/property/villa-purchase-bali)
+- [Panduan Setup PT PMA](/business/pt-pma-registration-guide)

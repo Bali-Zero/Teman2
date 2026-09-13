@@ -72,27 +72,18 @@ tags:
 canonicalUrl: "https://balizero.com/id/lifestyle/health-insurance-foreigners"
 ogImage: "/static/insights/lifestyle/health-insurance.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "d065c5ae3bfce8cb9b7d7a9a636e6fa32b2399af53c017372bf0a85a30eab3e4"
+source_sha256: "e0c3a5e1241fb2b65c90a9d3478f63372b81cec88ee7231a54c8804e2cb7fd97"
 ---
 
-import {
-  ComparisonTable,
-  DecisionTree,
-  Checklist,
-  InfoCard,
-  Calculator,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Asuransi Kesehatan untuk Warga Asing di Indonesia 2026
 
-# Asuransi Kesehatan untuk Orang Asing di Indonesia 2026
+Layanan kesehatan di Indonesia bervariasi mulai dari klinik dasar hingga rumah sakit kelas dunia. Memiliki asuransi yang tepat sangat penting untuk ketenangan pikiran.
 
-Layanan kesehatan di Indonesia berkisar dari klinik dasar hingga rumah sakit kelas dunia. Memiliki asuransi yang tepat sangat penting untuk ketenangan pikiran Anda.
-
-## Ikhtisar Opsi Asuransi
+## Gambaran Umum Pilihan Asuransi
 
 <DecisionTree
   title="Pilih Asuransi Anda"
-  description="Temukan cakupan yang tepat untuk situasi Anda"
+  description="Temukan perlindungan yang sesuai dengan situasi Anda"
   nodes={[
     {
       id: "start",
@@ -100,14 +91,14 @@ Layanan kesehatan di Indonesia berkisar dari klinik dasar hingga rumah sakit kel
       options: [
         { label: "Pemegang KITAS (bekerja)", next: "kitas" },
         { label: "Pemegang KITAS (lainnya)", next: "kitas-other" },
-        { label: "Turis / tanpa KITAS", next: "tourist" },
+        { label: "Wisatawan / tanpa KITAS", next: "tourist" },
       ],
     },
     {
       id: "kitas",
       question: "Apakah pemberi kerja Anda menyediakan asuransi?",
       options: [
-        { label: "Ya, asuransi perusahaan", next: "employer" },
+        { label: "Ya, asuransi pemberi kerja", next: "employer" },
         { label: "Tidak, saya butuh sendiri", next: "own-insurance" },
       ],
     },
@@ -116,7 +107,7 @@ Layanan kesehatan di Indonesia berkisar dari klinik dasar hingga rumah sakit kel
       result: {
         title: "BPJS + Tambahan Internasional",
         description:
-          "BPJS Kesehatan wajib bagi pemegang KITAS. Pertimbangkan untuk menambah asuransi internasional untuk cakupan dan rumah sakit yang lebih baik.",
+          "BPJS Kesehatan wajib bagi pemegang KITAS. Pertimbangkan menambahkan asuransi internasional untuk cakupan lebih baik dan akses rumah sakit.",
       },
     },
     {
@@ -124,15 +115,15 @@ Layanan kesehatan di Indonesia berkisar dari klinik dasar hingga rumah sakit kel
       result: {
         title: "Asuransi Perjalanan / Internasional",
         description:
-          "Tanpa KITAS, Anda membutuhkan asuransi perjalanan internasional atau asuransi kesehatan global. BPJS tidak tersedia bagi turis.",
+          "Tanpa KITAS, Anda memerlukan asuransi perjalanan internasional atau asuransi kesehatan global. BPJS tidak tersedia untuk wisatawan.",
       },
     },
     {
       id: "employer",
       result: {
-        title: "Tinjau Cakupan Perusahaan",
+        title: "Tinjau Cakupan Pemberi Kerja",
         description:
-          "Periksa apakah asuransi perusahaan sudah cukup. Banyak yang menambah asuransi internasional pribadi untuk akses rumah sakit yang lebih baik dan cakupan di luar negeri.",
+          "Periksa apakah asuransi pemberi kerja sudah cukup. Banyak yang menambahkan asuransi internasional pribadi untuk akses rumah sakit lebih baik dan cakupan di luar negeri.",
       },
     },
     {
@@ -140,7 +131,7 @@ Layanan kesehatan di Indonesia berkisar dari klinik dasar hingga rumah sakit kel
       result: {
         title: "BPJS + Asuransi Internasional",
         description:
-          "Anda wajib memiliki BPJS (mandatori). Tambahkan asuransi internasional untuk rumah sakit premium dan cakupan komprehensif.",
+          "Anda harus memiliki BPJS (wajib). Tambahkan asuransi internasional untuk rumah sakit premium dan cakupan komprehensif.",
       },
     },
   ]}
@@ -148,30 +139,30 @@ Layanan kesehatan di Indonesia berkisar dari klinik dasar hingga rumah sakit kel
 
 ---
 
-## Jenis Asuransi
+## Jenis-Jenis Asuransi
 
 <ComparisonTable
-  title="Perbandingan Opsi Asuransi"
+  title="Pilihan Asuransi Dibandingkan"
   description="Memahami pilihan Anda"
   items={[
     {
       name: "BPJS Kesehatan",
       subtitle: "Asuransi kesehatan nasional",
       values: {
-        "Biaya Bulanan": "Rp 150rb-600rb",
+        "Biaya Bulanan": "IDR 150K-600K",
         "Akses Rumah Sakit": "Publik + mitra",
-        Cakupan: "Komprehensif dasar",
-        "Orang Asing": "Hanya pemegang KITAS",
+        Coverage: "Komprehensif dasar",
+        Warga Asing: "Hanya pemegang KITAS",
       },
     },
     {
-      name: "Asuransi Swasta Lokal",
+      name: "Asuransi Pribadi Lokal",
       subtitle: "Perusahaan Indonesia",
       values: {
-        "Biaya Bulanan": "Rp 300rb-2jt",
+        "Biaya Bulanan": "IDR 300K-2M",
         "Akses Rumah Sakit": "Jaringan luas",
-        Cakupan: "Rawat inap yang baik",
-        "Orang Asing": "Biasanya diterima",
+        Coverage: "Rawat inap baik",
+        Warga Asing: "Biasanya diterima",
       },
     },
     {
@@ -180,19 +171,19 @@ Layanan kesehatan di Indonesia berkisar dari klinik dasar hingga rumah sakit kel
       values: {
         "Biaya Bulanan": "USD 100-500",
         "Akses Rumah Sakit": "Rumah sakit premium",
-        Cakupan: "Global komprehensif",
-        "Orang Asing": "Dirancang untuk ekspat",
+        Coverage: "Global komprehensif",
+        Warga Asing: "Dirancang untuk ekspatriat",
       },
       highlight: true,
     },
     {
       name: "Asuransi Perjalanan",
-      subtitle: "Cakupan jangka pendek",
+      subtitle: "Perlindungan jangka pendek",
       values: {
         "Biaya Bulanan": "USD 30-100",
         "Akses Rumah Sakit": "Fokus darurat",
-        Cakupan: "Darurat + evakuasi",
-        "Orang Asing": "Siapa saja",
+        Coverage: "Darurat + evakuasi",
+        Warga Asing: "Semua orang",
       },
     },
   ]}
@@ -204,66 +195,66 @@ Layanan kesehatan di Indonesia berkisar dari klinik dasar hingga rumah sakit kel
 
 ### Apa itu BPJS?
 
-<InfoCard variant="note" title="Wajib bagi Pemegang KITAS">
-**BPJS Kesehatan** adalah asuransi kesehatan nasional Indonesia. Ini **wajib** bagi:
-- Warga Negara Indonesia
-- Orang asing dengan KITAS yang bekerja 6 bulan lebih
+<InfoCard variant="note" title="Wajib untuk Pemegang KITAS">
+**BPJS Kesehatan** adalah asuransi kesehatan nasional Indonesia. Ini **wajib** untuk:
+- Warga negara Indonesia
+- Warga asing dengan KITAS yang bekerja 6+ bulan
 
-Pemberi kerja wajib mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
+Pemberi kerja Anda harus mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
 
 </InfoCard>
 
 ### Kelas BPJS
 
-| Kelas   | Premi Bulanan | Tipe Kamar   | Catatan |
-| ------- | ------------- | ------------ | ------- |
-| Kelas 1 | Rp 150.000    | VIP tunggal  | Terbaik |
-| Kelas 2 | Rp 100.000    | Semi-pribadi | Bagus   |
-| Kelas 3 | Rp 42.000     | Bangsal      | Dasar   |
+| Class   | Premi Bulanan    | Tipe Kamar     | Catatan |
+| ------- | ----------------- | --------------- | ------- |
+| Class 1 | IDR 150.000       | VIP single      | Terbaik |
+| Class 2 | IDR 100.000       | Semi-private    | Baik    |
+| Class 3 | IDR 42.000        | Kamar Rawat     | Dasar   |
 
 ### Cakupan BPJS
 
-- Rawat jalan
-- Rawat inap
+- Perawatan rawat jalan
+- Rawat inap rumah sakit
 - Operasi
 - Obat-obatan (formularium)
-- Layanan darurat
+- Perawatan darurat
 - Rujukan spesialis
 
 ### Keterbatasan BPJS
 
-- Waktu tunggu yang lama adalah hal umum
-- Kualitas bervariasi tiap rumah sakit
-- Diperlukan sistem rujukan
-- Beberapa obat tidak ditanggung
-- Rumah sakit premium seringkali tidak termasuk
+- Waktu tunggu yang panjang umum terjadi
+- Kualitas bervariasi tergantung rumah sakit
+- Sistem rujukan diperlukan
+- Beberapa obat tidak dicakup
+- Rumah sakit premium sering tidak termasuk
 
 ---
 
 ## Asuransi Internasional
 
-### Mengapa Banyak Ekspat Memilih Internasional
+### Mengapa Banyak Ekspatriat Memilih Asuransi Internasional
 
-1. **Pilihan rumah sakit** - Akses ke rumah sakit swasta premium
-2. **Tanpa rujukan** - Langsung ke dokter spesialis
-3. **Cakupan global** - Terlindungi saat bepergian
-4. **Dukungan bahasa Inggris** - Komunikasi yang mudah
+1. **Pilihan Rumah Sakit** - Akses ke rumah sakit swasta premium
+2. **Tanpa Rujukan** - Langsung ke spesialis
+3. **Cakupan Global** - Dicakup saat bepergian
+4. **Dukungan Bahasa Inggris** - Komunikasi mudah
 5. **Evakuasi** - Evakuasi medis jika diperlukan
 
 ### Penyedia Populer
 
-| Penyedia            | Mulai Dari     | Catatan          |
-| ------------------- | -------------- | ---------------- |
-| Cigna Global        | ~USD 200/bulan | Jaringan luas    |
-| Allianz             | ~USD 150/bulan | Reputasi baik    |
-| AXA                 | ~USD 150/bulan | Jangkauan global |
-| Pacific Cross       | ~USD 100/month | Fokus Asia       |
-| April International | ~USD 120/month | Spesialis ekspat |
+| Penyedia            | Mulai Dari      | Catatan             |
+| ------------------- | ---------------- | -------------------- |
+| Cigna Global        | ~USD 200/bulan  | Jaringan luas       |
+| Allianz             | ~USD 150/bulan  | Reputasi baik       |
+| AXA                 | ~USD 150/bulan  | Jangkauan global    |
+| Pacific Cross       | ~USD 100/bulan  | Fokus Asia          |
+| April International | ~USD 120/bulan  | Spesialis ekspatriat|
 
-<InfoCard variant="tip" title="Dapatkan Beberapa Penawaran">
+<InfoCard variant="tip" title="Dapatkan Banyak Penawaran">
 
-  Biaya asuransi sangat bervariasi berdasarkan: - Usia - Tingkat cakupan -
-  Deductible - Cakupan geografis - Kondisi yang sudah ada sebelumnya
+  Biaya asuransi bervariasi secara signifikan berdasarkan: - Usia - Tingkat cakupan -
+  Deductible - Cakupan geografis - Kondisi kesehatan sebelumnya
 </InfoCard>
 
 ---
@@ -272,15 +263,15 @@ Pemberi kerja wajib mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
 
 ### Bali
 
-- **BIMC Hospital** (Kuta, Nusa Dua) - Favorit ekspat
+- **BIMC Hospital** (Kuta, Nusa Dua) - Favorit ekspatriat
 - **Siloam** (Kuta) - Fasilitas modern
 - **Kasih Ibu** - Rumah sakit umum yang baik
 
 ### Jakarta
 
-- **Pondok Indah Hospital** - Tingkat teratas
+- **Pondok Indah Hospital** - Kelas atas
 - **RS Medistra** - Standar internasional
-- **Siloam Semanggi** - Jaringan luas
+- **Siloam Semanggi** - Jaringan besar
 - **Mayapada** - Komprehensif
 
 ---
@@ -293,7 +284,7 @@ Pemberi kerja wajib mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
   fields={[
     {
       id: "type",
-      label: "Jenis Asuransi",
+      label: "Tipe Asuransi",
       type: "select",
       options: [
         { value: "bpjs", label: "Hanya BPJS Kelas 1" },
@@ -317,15 +308,15 @@ Pemberi kerja wajib mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
     }
   ]}
   calculateResult={(values) => {
-    // Biaya dasar per jenis
+    // Base costs by type
     const baseCosts = {
-      "bpjs": 1800000, // Kelas 1 tahunan
+      "bpjs": 1800000, // Class 1 annual
       "local": 12000000,
       "international": 36000000,
       "premium": 72000000
     };
 
-    // Pengali usia
+    // Age multipliers
     const ageMultipliers = {
       "young": 0.7,
       "middle": 1.0,
@@ -353,23 +344,23 @@ Pemberi kerja wajib mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
 
 ---
 
-## Cakupan Apa yang Anda Butuhkan?
+## Perlindungan Apa yang Anda Butuhkan?
 
 <Checklist
   title="Daftar Periksa Cakupan Asuransi"
-  description="Cakupan penting yang perlu dicari"
+  description="Perlindungan penting untuk dicari"
   persistKey="insurance-coverage-checklist"
   items={[
     {
       id: "inpatient",
-      label: "Rawat inap",
+      label: "Rawat inap rumah sakit",
       description: "Kamar, makan, operasi",
       required: true,
       category: "core",
     },
     {
       id: "outpatient",
-      label: "Rawat jalan",
+      label: "Perawatan rawat jalan",
       description: "Kunjungan dokter, tes",
       required: true,
       category: "core",
@@ -377,7 +368,7 @@ Pemberi kerja wajib mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
     {
       id: "emergency",
       label: "Perawatan darurat",
-      description: "Layanan darurat 24/7",
+      description: "Perawatan darurat 24/7",
       required: true,
       category: "core",
     },
@@ -405,20 +396,20 @@ Pemberi kerja wajib mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
     {
       id: "dental",
       label: "Perawatan gigi",
-      description: "Seringkali terpisah atau terbatas",
+      description: "Sering terpisah atau terbatas",
       required: false,
       category: "optional",
     },
     {
       id: "vision",
-      label: "Perawatan mata",
+      label: "Perawatan penglihatan",
       description: "Pemeriksaan mata, kacamata",
       required: false,
       category: "optional",
     },
   ]}
   categories={[
-    { id: "core", label: "Utama", color: "blue" },
+    { id: "core", label: "Inti", color: "blue" },
     { id: "emergency", label: "Darurat", color: "red" },
     { id: "optional", label: "Opsional", color: "green" },
   ]}
@@ -427,16 +418,16 @@ Pemberi kerja wajib mendaftarkan Anda atau Anda mendaftarkan diri sendiri.
 
 ---
 
-## Kondisi yang Sudah Ada Sebelumnya
+## Kondisi Kesehatan Sebelumnya
 
-<InfoCard variant="warning" title="Keterbukaan itu Penting">
-Kebanyakan asuransi internasional akan:
-- Menanyakan kondisi yang sudah ada sebelumnya
-- Mungkin mengecualikannya di awal
+<InfoCard variant="warning" title="Pembungkaman Penting">
+Sebagian besar penanggung internasional akan:
+- Bertanya tentang kondisi kesehatan sebelumnya
+- Mungkin mengecualikannya pada awalnya
 - Menawarkan cakupan setelah masa tunggu
 - Premi mungkin lebih tinggi
 
-**Jangan pernah menyembunyikan kondisi medis** - klaim dapat ditolak jika tidak diungkapkan.
+**Jangan pernah menyembunyikan kondisi** - klaim dapat ditolak jika tidak diungkapkan.
 
 </InfoCard>
 
@@ -445,13 +436,13 @@ Kebanyakan asuransi internasional akan:
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Asuransi kesehatan Indonesia, BPJS, asuransi ekspat, cakupan medis"
+  context="Asuransi kesehatan Indonesia, BPJS, asuransi ekspatriat, cakupan medis"
   placeholder="Tanya tentang asuransi kesehatan..."
   suggestedQuestions={[
-    "Apakah BPJS cukup bagi ekspat?",
-    "Bagaimana jika saya punya kondisi medis yang sudah ada sebelumnya?",
+    "Apakah BPJS sudah cukup untuk ekspatriat?",
+    "Bagaimana jika saya memiliki kondisi kesehatan sebelumnya?",
     "Rumah sakit mana yang menerima asuransi internasional?",
-    "Apakah saya butuh asuransi untuk aplikasi visa?",
+    "Apakah saya perlu asuransi untuk aplikasi visa?",
   ]}
 />
 
@@ -461,4 +452,4 @@ Kebanyakan asuransi internasional akan:
 
 - [Biaya Hidup di Bali](/insights/lifestyle/cost-of-living-bali)
 - [Visa Pensiun Indonesia](/insights/immigration/retirement-visa-indonesia)
-- [Panduan Izin Kerja KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=id)
+- [Pandum Izin Kerja KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)

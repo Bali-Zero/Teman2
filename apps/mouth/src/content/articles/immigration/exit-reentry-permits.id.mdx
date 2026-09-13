@@ -62,34 +62,27 @@ faq:
     answer: "Biaya pemerintah untuk MERP biasanya sudah termasuk dalam paket aplikasi KITAS atau sekitar Rp 1.000.000 - 1.500.000 tergantung durasi."
   - question: "Berapa lama proses pembuatan MERP?"
     answer: "Proses biasanya memakan waktu 3-5 hari kerja jika dilakukan secara terpisah, atau bersamaan dengan penerbitan kartu KITAS."
-source_sha256: "9a4a71fec049c57848add57df19cb8787f4b3c920940ef6e6f77cb7f0e6b1dcb"
+source_sha256: "5bead864857460b5b6f5c281129787e1cbd47b1ea989599b9129b78f5b2d57b7"
 ---
-
-import {
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
 
 # Izin Keluar & Masuk Kembali Indonesia 2026: Panduan Pemegang KITAS
 
-Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda wajib memahami aturan izin keluar dan masuk kembali agar status tinggal Anda tetap aman.
+Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda harus memahami aturan izin keluar dan masuk kembali. Berikut adalah panduan Anda.
 
-## Jenis-Jenis Izin
+## Jenis-jenis Izin
 
 <ComparisonTable
-  title="Tipe Izin Keluar/Masuk Kembali"
+  title="Jenis Izin Keluar/Masuk Kembali"
   description="Mana yang Anda butuhkan?"
   items={[
     {
       name: "MERP",
       subtitle: "Multiple Exit Re-Entry",
       values: {
-        Perjalanan: "Tak Terbatas",
-        Durasi: "Sesuai KITAS",
-        Biaya: "Rp 1-1,5 Juta",
-        "Cocok untuk": "Sering bepergian",
+        Trips: "Tanpa batas",
+        Duration: "Sesuai dengan masa berlaku KITAS",
+        Cost: "IDR 1-1.5M",
+        "Best for": "Penumpang reguler",
       },
       highlight: true,
     },
@@ -97,20 +90,20 @@ Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda wajib memahami
       name: "SERP",
       subtitle: "Single Exit Re-Entry",
       values: {
-        Perjalanan: "Satu Kali",
-        Durasi: "Periode Tertentu",
-        Biaya: "~Rp 500 Ribu",
-        "Cocok untuk": "Sekali jalan",
+        Trips: "Satu kali perjalanan",
+        Duration: "Periode tertentu",
+        Cost: "~IDR 500K",
+        "Best for": "Perjalanan sekali pakai",
       },
     },
     {
       name: "EPO",
       subtitle: "Exit Permit Only",
       values: {
-        Perjalanan: "Keluar Saja",
-        Durasi: "N/A",
-        Biaya: "~Rp 500 Ribu",
-        "Cocok untuk": "Pulang selamanya",
+        Trips: "Hanya keluar (tanpa kembali)",
+        Duration: "N/A",
+        Cost: "~IDR 500K",
+        "Best for": "Keluar secara permanen",
       },
     },
   ]}
@@ -122,15 +115,102 @@ Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda wajib memahami
 
 ### Apa itu MERP?
 
-<InfoCard variant="note" title="Pilihan Paling Populer">
+<InfoCard variant="note" title="Pilihan Paling Umum">
 **MERP memungkinkan:**
 
-- Keluar dan masuk Indonesia berkali-kali tanpa batas.
-- Berlaku selama masa aktif KITAS Anda.
-- Tidak perlu mengajukan izin setiap kali akan bepergian.
-- Sangat praktis untuk pebisnis atau traveler.
+- Keluar dan masuk tanpa batas
+- Berlaku selama masa berlaku KITAS
+- Tidak perlu mengajukan setiap kali perjalanan
+- Paling nyaman untuk pelancong bisnis
 
-Sebagian besar pemegang KITAS mendapatkan MERP secara otomatis saat pembuatan KITAS.
+Sebagian besar pemegang KITAS mendapatkan MERP sejak awal.
+
+</InfoCard>
+
+### Detail MERP
+
+| Fitur       | Detail                       |
+| ------------- | ----------------------------- |
+| Berlaku      | Sama dengan masa berlaku KITAS        |
+| Perjalanan diizinkan | Tanpa batas                     |
+| Pengajuan    | Biasanya bersamaan dengan pemrosesan KITAS |
+| Biaya         | IDR 1-1.5M biasanya          |
+| Pemrosesan    | 3-5 hari kerja              |
+
+### Mengajukan MERP
+
+<Checklist
+  title="Pengajuan MERP"
+  description="Yang Anda butuhkan"
+  persistKey="merp-checklist"
+  items={[
+    {
+      id: "kitas",
+      label: "KITAS yang valid",
+      description: "Kartu/stiker KITAS saat ini",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "passport",
+      label: "Paspor",
+      description: "Asli + fotokopi",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "form",
+      label: "Formulir pengajuan",
+      description: "Formulir imigrasi",
+      required: true,
+      category: "application",
+    },
+    {
+      id: "photo",
+      label: "Foto paspor",
+      description: "Foto terbaru",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "fee",
+      label: "Pembayaran",
+      description: "Biaya pemerintah",
+      required: true,
+      category: "payment",
+    },
+  ]}
+  categories={[
+    { id: "documents", label: "Dokumen", color: "blue" },
+    { id: "application", label: "Pengajuan", color: "green" },
+    { id: "payment", label: "Pembayaran", color: "amber" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## SERP (Single Exit Re-Entry Permit)
+
+### Kapan Digunakan
+
+| Kasus Penggunaan         | SERP Masuk Akal     |
+| ---------------- | -------------------- |
+| Satu perjalanan yang direncanakan | Masa berlaku KITAS singkat |
+| Hemat anggaran | Menghemat uang vs MERP  |
+| Perjalanan jarang      | Tidak sering bepergian   |
+
+### Keterbatasan SERP
+
+<InfoCard variant="warning" title="Hanya Satu Perjalanan">
+**SERP hanya mengizinkan SATU kali keluar dan masuk kembali:**
+
+- Digunakan habis setelah satu perjalanan
+- Harus mengajukan lagi untuk perjalanan berikutnya
+- Kurang nyaman dibanding MERP
+- Pertimbangkan MERP jika Anda mungkin bepergian lebih sering
+
+Jika Anda kemungkinan akan bepergian beberapa kali, MERP lebih bernilai.
 
 </InfoCard>
 
@@ -140,23 +220,90 @@ Sebagian besar pemegang KITAS mendapatkan MERP secara otomatis saat pembuatan KI
 
 ### Apa itu EPO?
 
-| Tujuan              | Detail                                       |
-| ------------------- | -------------------------------------------- |
-| Keberangkatan Final | Meninggalkan Indonesia selamanya             |
-| Pembatalan KITAS    | Wajib dilakukan saat kontrak habis           |
-| Tidak Bisa Kembali  | Tidak bisa masuk lagi dengan KITAS yang sama |
+| Tujuan           | Detail                         |
+| ----------------- | ------------------------------- |
+| Keberangkatan akhir   | Meninggalkan Indonesia secara permanen   |
+| Pembatalan KITAS | Biasanya menyertai pembatalan |
+| Tidak kembali         | Tidak dapat masuk kembali dengan KITAS yang sama   |
 
-### Kapan EPO Dibutuhkan?
+### Kapan EPO Diperlukan
 
 <InfoCard variant="warning" title="Keluar Permanen">
-**EPO diperlukan saat:**
+**EPO diperlukan ketika:**
 
-- Berhenti bekerja di Indonesia.
-- Tidak memperpanjang KITAS.
-- Ganti ke jenis visa lain (misal: dari KITAS ke B211).
-- Pindah domisili ke luar negeri secara permanen.
+- Mengakhiri pekerjaan di Indonesia
+- Tidak memperbarui KITAS
+- Beralih ke jenis visa lain
+- Meninggalkan Indonesia secara permanen
 
-EPO secara efektif menghapus status KITAS Anda dari sistem.
+EPO secara efektif membatalkan KITAS Anda.
+
+</InfoCard>
+
+### Proses EPO
+
+| Langkah | Tindakan                       |
+| ---- | ---------------------------- |
+| 1    | Ajukan pembatalan KITAS |
+| 2    | Ajukan EPO                |
+| 3    | Bayar biaya                     |
+| 4    | Menerima EPO                  |
+| 5    | Harus keberangkatan dalam 7 hari    |
+
+---
+
+## Pertimbangan Praktis
+
+### Sebelum Berpergian
+
+| Periksa                | Tindakan                   |
+| -------------------- | ------------------------ |
+| Berlaku MERP        | Pastikan masih berlaku       |
+| Berlaku KITAS       | Harus mencakup periode perjalanan |
+| Berlaku paspor    | Biasanya 6+ bulan        |
+| Kembali dalam izin   | Jangan melebihi waktu di luar negeri    |
+
+### Di Imigrasi
+
+| Keberangkatan        | Masuk Kembali            |
+| ---------------- | ----------------- |
+| Tunjukkan paspor    | Tunjukkan paspor     |
+| KITAS discan    | KITAS discan     |
+| MERP diverifikasi    | MERP diverifikasi     |
+| Stempel keluar diberikan | Stempel masuk diberikan |
+
+### Masalah Umum
+
+| Masalah                   | Solusi                    |
+| ----------------------- | --------------------------- |
+| Tidak ada MERP                 | Ajukan sebelum bepergian         |
+| MERP kadaluarsa            | Perbarui atau dapatkan SERP           |
+| KITAS hilang di luar negeri       | Hubungi kedutaan segera |
+| Kelebihan waktu KITAS di luar negeri | Hubungi imigrasi/agen   |
+
+---
+
+## Ringkasan Biaya
+
+| Izin | Biaya Pemerintah | Biaya Agen    | Total       |
+| ------ | -------------- | ------------ | ----------- |
+| MERP   | IDR 800K-1M    | IDR 500K-1M  | IDR 1.3-2M  |
+| SERP   | IDR 300-500K   | IDR 300-500K | IDR 600K-1M |
+| EPO    | IDR 300-500K   | IDR 300-500K | IDR 600K-1M |
+
+---
+
+## Pemegang KITAP
+
+<InfoCard variant="note" title="KITAP Berbeda">
+**Pemegang KITAP:**
+
+- MERP biasanya sudah termasuk secara otomatis
+- Berlaku lebih lama (5 tahun)
+- Beban administratif lebih sedikit
+- Kebebasan perjalanan sama
+
+KITAP lebih nyaman untuk pelancong sering.
 
 </InfoCard>
 
@@ -166,12 +313,38 @@ EPO secara efektif menghapus status KITAS Anda dari sistem.
 
 ### Untuk Pemegang KITAS
 
-| Tip                  | Mengapa                         |
-| -------------------- | ------------------------------- |
-| Urus MERP Sejak Awal | Agar bisa berangkat mendadak    |
-| Simpan Salinan       | Paspor, KITAS, dan MERP         |
-| Cek Masa Berlaku     | Paspor minimal 6 bulan          |
-| Gunakan Agen         | Untuk proses perpanjangan cepat |
+| Tips               | Mengapa                     |
+| ----------------- | ----------------------- |
+| Dapatkan MERP lebih awal    | Jangan tunggu sampai perjalanan   |
+| Simpan salinan       | Paspor, KITAS, MERP   |
+| Pantau berlakunya    | Atur pengingat kalender  |
+| Gunakan agen         | Untuk perbaruan            |
+| Kenali sponsor Anda | Mungkin perlu persetujuan mereka |
+
+### Situasi Darurat
+
+| Situasi                  | Tindakan                        |
+| -------------------------- | ----------------------------- |
+| Paspor hilang di luar negeri       | Kedutaan Indonesia            |
+| KITAS kadaluarsa saat di luar negeri | Hubungi sponsor/agen         |
+| Darurat medis          | Bantuan kedutaan            |
+| Darurat keluarga           | Dapat bepergian, atur izin nanti |
+
+---
+
+## Perubahan di 2024/2026
+
+<InfoCard variant="note" title="Pembaruan Terbaru">
+**Perubahan terbaru:**
+
+- MERP digital semakin umum
+- Beberapa integrasi dengan sistem visa
+- Pemrosesan mungkin lebih cepat
+- Selalu periksa persyaratan saat ini
+
+Persyaratan dapat berubah - verifikasi sebelum bepergian.
+
+</InfoCard>
 
 ---
 
@@ -179,12 +352,12 @@ EPO secara efektif menghapus status KITAS Anda dari sistem.
 
 <AskZantara
   context="Exit permit, re-entry permit, MERP, KITAS travel, EPO Indonesia"
-  placeholder="Tanya tentang izin keluar/masuk..."
+  placeholder="Tanya tentang izin keluar/masuk kembali..."
   suggestedQuestions={[
-    "Apakah saya butuh MERP untuk setiap perjalanan?",
-    "Bagaimana jika KITAS saya habis saat saya di luar negeri?",
-    "Berapa lama proses pembuatan MERP?",
-    "Bisakah saya membatalkan EPO?",
+    "Apakah saya perlu MERP untuk setiap perjalanan?",
+    "Bagaimana jika KITAS saya kadaluarsa saat di luar negeri?",
+    "Berapa lama waktu pemrosesan MERP?",
+    "Bisakah saya membatalkan EPO dan tinggal?",
   ]}
 />
 
@@ -192,6 +365,6 @@ EPO secara efektif menghapus status KITAS Anda dari sistem.
 
 ## Artikel Terkait
 
-- [Panduan KITAS Kerja](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=id)
-- [Grafik Perbandingan Visa](/visas/indonesia-visa-timeline-comparison?lang=id)
-- [Sanksi Overstay](/visas/visa-overstay-penalties-indonesia-guide?lang=id)
+- [Panduan Izin Kerja KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
+- [Grafik Perbandingan Visa](/visas/indonesia-visa-timeline-comparison)
+- [Sanksi Kelebihan Waktu](/visas/visa-overstay-penalties-indonesia-guide)
