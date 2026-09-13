@@ -456,9 +456,15 @@ def support_inputs_from_wire(wire: str) -> tuple[str, str]:
 
     Raises ``ValueError`` — with a message that names WHAT is wrong, never
     any wire content — when the wire is not a readable package: not JSON,
-    not a JSON object, ``history``/``chunks`` not lists, the last history
-    entry not a ``{"content": str, ...}`` dict, or any chunk not a
-    ``{"text": str, ...}`` dict.
+    not a JSON object, ``history``/``chunks`` not lists, ``history`` empty,
+    the last history entry not a ``{"content": str, ...}`` dict, that
+    entry's content blank after stripping, or any chunk not a
+    ``{"text": str, ...}`` dict. An empty or blank-content history is a
+    malformed CLAIMED package, never a legitimate "nothing to ask" —
+    `wa_package_builder._sanitize_history` always appends the current query
+    as the final user turn, so the real builder never produces one; without
+    this check a malformed package could be judged against context alone
+    and, on a lucky vote split, reach generation.
     """
     try:
         payload = json.loads(wire)
@@ -470,13 +476,14 @@ def support_inputs_from_wire(wire: str) -> tuple[str, str]:
     history = payload.get("history")
     if not isinstance(history, list):
         raise ValueError("support_inputs_from_wire: 'history' is not a list")
-    if history:
-        last_turn = history[-1]
-        if not isinstance(last_turn, dict) or not isinstance(last_turn.get("content"), str):
-            raise ValueError("support_inputs_from_wire: last history entry is malformed")
-        query = last_turn["content"]
-    else:
-        query = ""
+    if not history:
+        raise ValueError("support_inputs_from_wire: 'history' is empty")
+    last_turn = history[-1]
+    if not isinstance(last_turn, dict) or not isinstance(last_turn.get("content"), str):
+        raise ValueError("support_inputs_from_wire: last history entry is malformed")
+    query = last_turn["content"]
+    if not query.strip():
+        raise ValueError("support_inputs_from_wire: last history entry's content is blank")
 
     chunks = payload.get("chunks")
     if not isinstance(chunks, list):

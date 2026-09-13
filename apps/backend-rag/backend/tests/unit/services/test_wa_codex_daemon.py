@@ -68,6 +68,30 @@ _PACKAGE_WIRE = json.dumps(
     }
 )
 _MALFORMED_PACKAGE_WIRE = json.dumps({"nothing": "readable here"})
+# Dux review round 2 (MAJOR, Codex red-team): an empty history, or a history
+# whose last turn carries no question, is likewise a malformed CLAIMED
+# package — `wa_package_builder._sanitize_history` always appends the query
+# as the final user turn, so the real builder never produces either shape.
+_EMPTY_HISTORY_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
+_BLANK_CONTENT_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [{"role": "user", "content": "   "}],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
 _RESULT_TEXT = "SYNTHETIC-MODEL-ANSWER-c71e"
 _JUDGE_PROMPT = RUBRIC.format(query=_SYNTHETIC_QUERY, context=_SYNTHETIC_CONTEXT)
 
@@ -825,9 +849,17 @@ class TestSupportJudgeStage:
         assert body["error_class"] == "support_judge_unavailable"
         assert body["result_text"] is None
 
+    @pytest.mark.parametrize(
+        "wire",
+        [
+            pytest.param(_MALFORMED_PACKAGE_WIRE, id="unreadable"),
+            pytest.param(_EMPTY_HISTORY_PACKAGE_WIRE, id="empty-history"),
+            pytest.param(_BLANK_CONTENT_PACKAGE_WIRE, id="blank-content"),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_malformed_package_reports_support_judge_unavailable(self) -> None:
-        payload = _claim_payload(package=_MALFORMED_PACKAGE_WIRE)
+    async def test_malformed_package_reports_support_judge_unavailable(self, wire: str) -> None:
+        payload = _claim_payload(package=wire)
         broker = _Broker(claim_results=[payload])
         codex = _StubCodex()
         daemon = _daemon(broker, codex)

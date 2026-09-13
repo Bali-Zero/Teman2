@@ -22,7 +22,7 @@ Covers:
 
 from __future__ import annotations
 
-import importlib
+import importlib.util
 import itertools
 import json
 import socket
@@ -416,7 +416,18 @@ class TestImportIsFree:
         monkeypatch.setattr(socket.socket, "connect", _blocked_connect)
         module_name = "backend.services.rag.agentic._support_signal"
         assert module_name in sys.modules
-        importlib.reload(sys.modules[module_name])
+        # Execute a FRESH copy under a private name instead of
+        # `importlib.reload`: a reload rebinds `SupportVerdict` in the shared
+        # module, so every later test holding the old enum (the B2.4
+        # completion envelope's `isinstance` check) fails by run order alone.
+        # `@dataclass` resolves its module through `sys.modules`, so the probe
+        # is registered for the test's lifetime only.
+        probe_name = "_support_signal_import_probe"
+        spec = importlib.util.spec_from_file_location(probe_name, sys.modules[module_name].__file__)
+        assert spec is not None and spec.loader is not None
+        probe = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, probe_name, probe)
+        spec.loader.exec_module(probe)
 
 
 # ---------------------------------------------------------------------------
@@ -481,7 +492,12 @@ class TestSupportInputsFromWire:
         assert query == history[-1]["content"]
         assert context == "\n\n".join(chunk["text"] for chunk in chunks)
 
-    def test_matches_the_builder_formula_empty_history(self) -> None:
+    def test_empty_history_raises(self) -> None:
+        """Dux review round 2 (MAJOR, Codex red-team): the real builder
+        (`wa_package_builder._sanitize_history`) always appends the current
+        query as the final user turn, so an empty history is never a
+        legitimate "nothing to ask" — it is a malformed claimed package
+        that must not be judged against context alone."""
         wire = wa_package_builder._canonical_wire(  # noqa: SLF001
             {
                 "history": [],
@@ -493,10 +509,25 @@ class TestSupportInputsFromWire:
             }
         )
 
-        query, context = support_inputs_from_wire(wire)
+        with pytest.raises(ValueError, match="'history' is empty"):
+            support_inputs_from_wire(wire)
 
-        assert query == ""
-        assert context == "only chunk"
+    def test_blank_content_raises(self) -> None:
+        """Same reasoning as empty history: a history whose last turn's
+        content is blank (or all whitespace) carries no question either."""
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": [{"role": "user", "content": "   "}],
+                "chunks": [{"collection": "c", "text": "only chunk", "score": 1.0}],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        with pytest.raises(ValueError, match="content is blank"):
+            support_inputs_from_wire(wire)
 
     def test_matches_the_builder_formula_zero_chunks(self) -> None:
         wire = wa_package_builder._canonical_wire(  # noqa: SLF001
