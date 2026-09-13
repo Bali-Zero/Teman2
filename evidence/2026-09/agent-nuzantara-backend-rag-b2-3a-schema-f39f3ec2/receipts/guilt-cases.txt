@@ -1,0 +1,52 @@
+### bytes 6b5d3d8b — guilt cases, ended 2026-09-13T11:52:46Z
+### guilt-drift pg17d (planted abstained_at TEXT)
+rollback_ok= True
+## apply-all over a planted TEXT abstained_at (expect failure)
+apply_rc=1
+column "abstained_at" of relation "wa_outbox" already exists
+## probe: after failed apply over drift
+abstained_at|text|YES|<none>
+column_count=17
+sv_314=0 sm_314=0
+relfilenode=18525
+cohort_sha256=7e0375a6e45cd5e888bddd2e311fd4b4d205fcb9c599c02214c2ca7024a84af2
+## apply-all after removing the plant (expect success)
+2026-09-13 19:52:43,099 - backend.db.migration_base - INFO - ✅ Migration 314_wa_outbox_evidence applied successfully in 9ms
+## probe: after clean apply
+abstained_at|timestamp with time zone|YES|<none>
+evidence_score|numeric|YES|<none>
+column_count=18
+sv_314=1 sm_314=1
+relfilenode=18525
+cohort_sha256=7e0375a6e45cd5e888bddd2e311fd4b4d205fcb9c599c02214c2ca7024a84af2
+rc=0
+### guilt-missing pg15d (planted evidence_score NUMERIC DEFAULT 1 then DROP DEFAULT)
+rollback_ok= True
+planted_atthasmissing=t
+apply_rc=1
+column "evidence_score" of relation "wa_outbox" already exists
+## probe: after failed apply over a missing-value column
+evidence_score|numeric|YES|<none>
+column_count=17
+sv_314=0 sm_314=0
+relfilenode=18525
+cohort_sha256=45190630ffaf26a050194fe31a16b252ef15e389e4acba739b5e595c7f452b60
+2026-09-13 19:52:45,286 - backend.db.migration_base - INFO - ✅ Migration 314_wa_outbox_evidence applied successfully in 14ms
+## probe: after clean apply
+abstained_at|timestamp with time zone|YES|<none>
+evidence_score|numeric|YES|<none>
+column_count=18
+sv_314=1 sm_314=1
+relfilenode=18525
+cohort_sha256=45190630ffaf26a050194fe31a16b252ef15e389e4acba739b5e595c7f452b60
+rc=0
+### guilt-resolution pg15d (forward SQL in psql, BEGIN/ROLLBACK, SET LOCAL search_path = shadow, pg_catalog, public; shadow.wa_outbox + shadow.timestamptz domain over text): r3 bytes df347c3b vs these bytes
+rollback_ok= True
+### forward bytes r3 under SET LOCAL search_path = shadow, pg_catalog, public
+  ERROR:  314_wa_outbox_evidence: column shape drift on public.wa_outbox (abstained_at): expected nullable, no default, timestamptz / numeric
+### forward bytes r4 under SET LOCAL search_path = shadow, pg_catalog, public
+NOTICE:  schema "shadow" already exists, skipping
+NOTICE:  relation "wa_outbox" already exists, skipping
+  public_cols=abstained_at:timestamp with time zone,evidence_score:numeric
+  shadow_cols=0
+### superseded bytes df347c3b — search_path shadow,public on forward SQL (11:42:15Z, transcribed from session tool output): r2 bytes public_new_cols=0 shadow_new_cols=2; df347c3b public_new_cols=2 shadow_new_cols=0
