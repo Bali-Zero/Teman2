@@ -232,6 +232,7 @@ from backend.scripts.visa_engine.gold_replay_driver import (
     select_highest_repository_pack,
 )
 from backend.services.visa_engine import evaluate_path, evaluator
+from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
 from backend.services.visa_engine.enums import DecisionState
 from backend.tests.services.visa_engine.test_evaluator_gold import Persona
 
@@ -1751,3 +1752,22 @@ def test_guilt_a_fabricated_flag_deletes_a_proven_verdict(
     assert held["state"] == "HUMAN_REVIEW_REQUIRED"
     assert held["candidates"] == []
     assert held["review_reason_codes"] == ["DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW"]
+
+
+def test_the_flagged_rebuild_names_every_field_of_the_wire_model() -> None:
+    """The FUNNEL census's one new code path rebuilds ``VisaOracleEvaluateRequest``
+    BY HAND, and nothing in the rebuild itself ties it to the model.
+
+    Council round 5, tp1-qwen3.8-max: a sixth field added to the request model
+    would be dropped from every flagged evaluation, and would stay invisible —
+    ``test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome`` cannot
+    see it (unflagged walks never enter the rebuild) and the flagged
+    assertions cannot either, because ``_apply_disclosed_review_flags``
+    overwrites candidates, missing facts, no-path reasons and quotes whatever
+    the facts were. So the binding is asserted here, where the red names the
+    cause, as well as raised at the rebuild site.
+    """
+
+    assert set(VisaOracleEvaluateRequest.model_fields) == set(
+        gold_coverage_eval._REBUILT_REQUEST_FIELDS
+    )

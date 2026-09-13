@@ -121,6 +121,25 @@ def _verified_compiled_pack(observed_at: datetime) -> tuple[Path, CompiledRulePa
     return pack_path, build_compiled_pack(verified.pack)
 
 
+#: Every field ``_evaluate`` names when it rebuilds the request to carry
+#: disclosure flags. Pinned because the rebuild is BY HAND and nothing else ties
+#: it to the model (council round 5, tp1-qwen3.8-max): a sixth field added to
+#: ``VisaOracleEvaluateRequest`` would be dropped from the flagged request
+#: silently, and it would stay silent downstream because
+#: ``_apply_disclosed_review_flags`` overwrites candidates, missing facts,
+#: no-path reasons and quotes anyway — the flagged decision would look exactly
+#: as expected while being computed from a request the browser never sends.
+_REBUILT_REQUEST_FIELDS = frozenset(
+    {
+        "schema_version",
+        "assessment_id",
+        "collected_at",
+        "facts",
+        "disclosed_review_flags",
+    }
+)
+
+
 def _evaluate(
     overrides: dict[str, dict[str, Any]],
     label: str,
@@ -168,6 +187,14 @@ def _evaluate(
         # HUMAN_REVIEW_REQUIRED it expected. `facts` is handed over as the
         # model object it already is — same idiom as
         # `VisaOracleEvaluateRequest.applicant_facts()` itself.
+        model_fields = set(VisaOracleEvaluateRequest.model_fields)
+        if model_fields != _REBUILT_REQUEST_FIELDS:
+            raise RuntimeError(
+                "VisaOracleEvaluateRequest's field set moved to "
+                f"{sorted(model_fields)}; the by-hand rebuild below names "
+                f"{sorted(_REBUILT_REQUEST_FIELDS)} and must move with it, or the "
+                "flagged evaluation silently drops a field the browser sends"
+            )
         request = VisaOracleEvaluateRequest(
             schema_version=request.schema_version,
             assessment_id=request.assessment_id,
