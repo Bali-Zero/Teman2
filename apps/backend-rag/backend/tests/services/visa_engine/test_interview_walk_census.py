@@ -138,6 +138,18 @@ two different questions:
 MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 84 walks,
 both censuses in the same run (``test_the_flagged_census_is_the_funnel_the_
 applicant_meets``):
+   - **51 SUPPORTED_CANDIDATES means 51 walks reach candidates AT ENGINE
+     LEVEL, with no disclosure flags supplied.** It does NOT mean 51
+     applicants see a recommendation without human review.
+   - **The public-hold assertion below is a property of these fixtures, not
+     of production.** It was ``HUMAN_REVIEW_REQUIRED == 0`` until W-VO-E; it
+     now allows exactly one hold and pins its walk and its reason code
+     (``MINOR_GUARDIAN_PRIVACY_REVIEW``). Either way the review-FLAG arm of
+     ``apply_public_policy_adapters`` is not exercised by any walk here.
+   - **A regression that ADDS a disclosure flag — or fails to REMOVE one —
+     passes this census invisibly.** That is not hypothetical: it is exactly
+     what ``work_role`` did, and it is why the E23 claim in this PR rests on
+     a separate replay rather than on this table.
 
 ===========================  ======  =======
 state                        ENGINE  FUNNEL
@@ -236,11 +248,16 @@ from backend.scripts.visa_engine.gold_replay_driver import (
     build_persona_request,
     select_highest_repository_pack,
 )
+from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine import evaluate_path, evaluator
 from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
+from backend.services.visa_engine.ast import KnownFact, UnknownFact
 from backend.services.visa_engine.enums import (
     DecisionState,
+    FactPath,
     RuleEffectType,
+    TruthValue,
+    UnknownReason,
     VisaProductStatus,
 )
 from backend.tests.services.visa_engine.test_evaluator_gold import Persona
@@ -1167,6 +1184,43 @@ def _stale_ruling_rows(
     return sorted(set(excused) & set(named))
 
 
+def _condition_cannot_fire_without(condition: Any, fact: str) -> bool:
+    """Whether ``condition`` is UNABLE to evaluate TRUE while ``fact`` is UNKNOWN.
+
+    Council round 2 (codex-gpt-5.6-sol, ``council/codex-round2.txt``) showed
+    why membership in ``CompiledRule.required_facts`` is not this property:
+    that set is SYNTACTIC — every fact the AST mentions — so a rule shaped
+    ``any(eq(requested_product_code, "BRIDGING"), intersects(purposes, OTHER))``
+    lists the forbidden fact and still evaluates TRUE with the fact UNKNOWN.
+    The seat reproduced exactly that. A ruling row justified by such a rule
+    would be an excuse for a route the funnel can already walk.
+
+    So the test is structural and sound rather than syntactic: under Kleene
+    semantics (``ast.py``) an ``all`` node is FALSE if any child is FALSE and
+    UNKNOWN if any child is UNKNOWN, so it can never be TRUE when a child is
+    not TRUE. A scalar/set leaf on an UNKNOWN fact is UNKNOWN; ``known(fact)``
+    on an UNKNOWN fact is FALSE. Either way, a leaf reading the fact anywhere
+    on the AND-spine keeps the whole condition away from TRUE.
+
+    ``unknown(fact)`` is the one leaf that is TRUE *because* the fact is
+    missing, and is excluded explicitly — a rule that fires ON the absence is
+    the opposite of a rule that depends on the presence. Nothing else is
+    accepted: a fact buried under ``any`` or ``not`` may be irrelevant to the
+    branch that actually fires, and this returns False there, which is the
+    safe direction (the row must then be re-justified or dropped).
+    """
+
+    op = getattr(condition, "op", None)
+    if op == "all":
+        return any(_condition_cannot_fire_without(arg, fact) for arg in condition.args)
+    if op == "unknown":
+        return False
+    referenced = getattr(condition, "fact", None)
+    if referenced is None:
+        return False
+    return getattr(referenced, "value", referenced) == fact
+
+
 def _ruling_rows_with_a_reachable_route(
     *,
     excused: dict[str, RuledUnreachable] | None = None,
@@ -1185,7 +1239,10 @@ def _ruling_rows_with_a_reachable_route(
     offenders: list[str] = []
     for code, row in excused.items():
         rules = support_rules.get(code, ())
-        if any(row.forbidden_fact not in rule.required_facts for rule in rules):
+        if any(
+            not _condition_cannot_fire_without(rule.when, row.forbidden_fact)
+            for rule in rules
+        ):
             offenders.append(code)
     return sorted(offenders)
 
@@ -1811,8 +1868,12 @@ def test_d4a_e31e_minor_named_at_engine_level_privacy_held_at_public_level(
 ) -> None:
     """D4a (owner ruling SHWEB-20260911) proof for E31E specifically.
 
-    No EXISTING corpus walk exercises a minor identity: every family/diaspora
-    walk uses the corpus's default 25-year-old birth date, so
+    No corpus walk exercised a minor identity when this test was written, and
+    the ad-hoc override below is how it proved the point; W-VO-E later added
+    `offshore/family/PARENT/spNat=IT/minor`, a real walk on the same facts,
+    which is why this test now has a corpus sibling rather than being the only
+    witness. Every OTHER family/diaspora
+    walk still uses the corpus's default 25-year-old birth date, so
     `el.e31e-child-itas-support`'s `derived.age_years < 18` gate fails
     regardless of this PR's fix. This test overrides ONLY `person.birth_date`
     on the real `offshore/family/PARENT/spNat=IT` walk — relation PARENT,
@@ -2209,3 +2270,48 @@ def test_guilt_a_ruling_row_whose_product_has_a_free_support_route_is_caught() -
         )
     }
     assert _ruling_rows_with_a_reachable_route(excused=fabricated) == ["C6"]
+
+
+def test_guilt_a_rule_that_only_mentions_the_forbidden_fact_is_not_a_dependency() -> None:
+    """Guilt for the SEMANTIC half of the dependency check — the round-2
+    council finding, as its own counterexample.
+
+    ``any(eq(requested_product_code, "BRIDGING"), intersects(purposes, OTHER))``
+    MENTIONS the forbidden fact, so `required_facts` contains it and a
+    membership test would call the ruling row justified. The condition
+    nonetheless evaluates TRUE with the fact UNKNOWN, on the OTHER branch —
+    verified here against the real evaluator, not asserted. The AND-spine
+    test must reject it, and must still accept the conjunction shape every
+    real BRIDGING rule uses.
+    """
+
+    forbidden = "intent.requested_product_code"
+    bypass = ast_module.AnyCondition(
+        op="any",
+        args=(
+            ast_module.EqCondition(
+                op="eq", fact=FactPath.INTENT_REQUESTED_PRODUCT_CODE, value="BRIDGING"
+            ),
+            ast_module.IntersectsCondition(
+                op="intersects", fact=FactPath.INTENT_PURPOSES, values=("OTHER",)
+            ),
+        ),
+    )
+    snapshot = ast_module.FactSnapshot(
+        values={
+            FactPath.INTENT_REQUESTED_PRODUCT_CODE: UnknownFact(UnknownReason.NOT_ASKED),
+            FactPath.INTENT_PURPOSES: KnownFact(frozenset({"OTHER"})),
+        }
+    )
+    assert forbidden in {
+        str(path) for path in ast_module.collect_fact_paths(bypass)
+    }, "the counterexample must MENTION the fact — that is what makes it a trap"
+    assert ast_module.evaluate_condition(bypass, snapshot).truth is TruthValue.TRUE
+    assert _condition_cannot_fire_without(bypass, forbidden) is False
+
+    # Innocence: the shape the four real BRIDGING rules use is accepted, and
+    # the real rules themselves are what the row rests on.
+    conjunction = ast_module.AllCondition(op="all", args=(bypass.args[0], bypass.args[1]))
+    assert _condition_cannot_fire_without(conjunction, forbidden) is True
+    for rule in _support_rules_by_product()["BRIDGING"]:
+        assert _condition_cannot_fire_without(rule.when, forbidden), rule.rule_id

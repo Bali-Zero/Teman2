@@ -8,7 +8,9 @@
  * `mapOracleFactsToApplicantFacts` from `fact-mapper.ts`. Every question a
  * scenario does not OVERRIDE is answered with its FIRST option; typed
  * questions get one fixed synthetic identity (see `answerFor`), notably 121
- * stay-days, so the walk depends only on the tree and not on the answers.
+ * stay-days, so a walk that overrides nothing depends only on the tree. What
+ * a scenario DOES override is the answer that product's rules read, and the
+ * override list is the walk's whole content — see the W-VO-E block below.
  *
  * The enumerated scenarios are the two-arm spine (offshore / onshore) crossed
  * with the eleven `CATEGORY_KEYS`, plus the sub-branches that exist today
