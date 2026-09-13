@@ -1,7 +1,12 @@
 task_id: kbli-p2b-judge-20260913
 gear: 3
 gate_class: opus
-brief_ref: evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/brief.yml
+brief_ref: evidence/brief.yml
+brief_ref_note: >-
+  The literal staged name the CI contract requires (harness-floor.yml stages the pack and the
+  brief side by side as evidence/pack.yml + evidence/brief.yml under a synthetic --repo-root and
+  resolves this field against THAT tree, not against the repo). The real file lives at
+  evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/brief.yml.
 date: 2026-09-13
 machine: M5
 machine_note: >-
@@ -10,9 +15,10 @@ machine_note: >-
 gear_note: >-
   Gear 3, as the brief declared and as the work was done: an adversarial council ran four rounds
   on `git diff <merge-base>...HEAD` of BOTH repos and its transcripts ship in council/. The
-  deterministic floor this diff measures is 2 (`--print-floor` -> 2, source `size`, on 2 files
-  +751/-8 over 5 commits), so gear 3 is above the floor and is claimed for the RISK of the change,
-  not for its size: this script decides the gate that decides whether a BKPM-facing chat may ship.
+  deterministic floor this branch measures is also 3 (`--print-floor` -> 3, `--print-floor-source`
+  -> `size`; the measurement is in floor-at-3a01ecc1c6.txt beside this file), so gear 3 is exactly
+  the floor, not a courtesy above it. It would be the right gear anyway: this script decides the
+  gate that decides whether a BKPM-facing chat may ship.
 council_quorum: NOT_MET
 council_quorum_note: >-
   R9 asks a gear-3 pack for TWO distinct council seats posting `ok:true`. This council closed with
@@ -67,22 +73,27 @@ outcome: >-
   exists to stop grading by discretion, went correct/correct/correct -> wrong/wrong/wrong on an
   IDENTICAL package. That is the PR working, not the PR failing.
 diff:
-  files: 2
+  files: 14
   net_lines: >-
-    751 insertions, 8 deletions across two files (scripts/kbli_bench/score_p2b.py 340/8;
-    scripts/tests/test_score_p2b.py 411/0), 5 commits — `git diff --numstat
-    $(git merge-base origin/main HEAD)...HEAD`. This is 743 net, past the ~400 soft cap of the
-    builder contract, and it is DECLARED rather than split: 411 of the 751 lines are the test
-    file, and the four council rounds each added guilt+innocence cases to it rather than new
-    surface to the scorer. The scorer itself is 340 lines, of which the judge-union block, the
-    class rule, the row classifier, the run-integrity block and the floors' arithmetic are five
-    named concerns of ONE concern — "the scorer stops guessing" — and splitting them across PRs
-    would have shipped a harness that half-lies for the duration.
+    The change itself is two scripts: scripts/kbli_bench/score_p2b.py at 340/8 and
+    scripts/tests/test_score_p2b.py at 411/0, i.e. 743 net. Everything else in the diff is this
+    evidence directory — the brief, the pack, the measured-floor artifact and the nine council
+    artefacts. The branch totals and the commit count are NOT restated here on purpose: any figure
+    a pack prints about its own diff is invalidated by the commit that prints it, and CI
+    recomputes them on every push (harness-floor.yml) — the reading taken at head 3a01ecc1c6 is in
+    floor-at-3a01ecc1c6.txt. The code half is past the ~400 soft cap of the builder contract and
+    it is DECLARED rather than split: 411 of its 751 added lines are the test file, and the four
+    council rounds each added guilt+innocence cases to it rather than new surface to the scorer.
+    The scorer's own 340 lines are the judge-union block, the class rule, the row classifier, the
+    run-integrity block and the floors' arithmetic — five named parts of ONE concern, "the scorer
+    stops guessing" — and splitting them across PRs would have shipped a harness that half-lies
+    for the duration.
   shape: >-
-    Harness only. No product code, no dataset, no corpus. `scripts/kbli_bench/p2b_corpus.json`
-    is FROZEN at sha256 487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7 and is
-    byte-identical to origin/main — the class rule selects its question from the corpus's own
-    declared expectations, never from a hard-coded qid.
+    Harness and evidence only. No product code, no dataset, no corpus.
+    `scripts/kbli_bench/p2b_corpus.json` is FROZEN at sha256
+    487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7 and is byte-identical to
+    origin/main — the class rule selects its question from the corpus's own declared expectations,
+    never from a hard-coded qid.
 pii_scan: clean
 pii_scan_note: >-
   The benchmark corpus is Indonesian regulatory text (KBLI codes, PMA status, a provincial
@@ -97,13 +108,13 @@ receipts:
     ts: "2026-09-13T18:14:00+08:00"
     seat: claude-opus-5 (M5 worktree)
     exit: 0
-  - claim: "this diff's deterministic floor is 2, source size — 2 files, +751/-8, 5 commits"
+  - claim: "this branch's deterministic floor is 3, source size, and gear 3 is declared to match it"
     cmd: >-
-      python3 scripts/evidence_pack_lint.py --numstat-file $SCRATCH/mono.numstat
-      --changed-files-file $SCRATCH/mono.changed --commit-count 5 --print-floor
-      (then --print-floor-source, then --print-measured)
-    result: "2 / size / '2 files, +751/-8, 5 commits'"
-    ts: "2026-09-13T18:23:00+08:00"
+      python3 scripts/evidence_pack_lint.py --numstat-file <numstat> --changed-files-file
+      <changed> --print-floor, then --print-floor-source, then --print-measured — the literal
+      output is committed beside this pack as floor-at-3a01ecc1c6.txt rather than retyped here
+    result: "floor 3, source size; the full reading and the raw numstat are in floor-at-3a01ecc1c6.txt"
+    ts: "2026-09-13T18:41:00+08:00"
     seat: claude-opus-5 (M5 worktree)
     exit: 0
   - claim: >-
