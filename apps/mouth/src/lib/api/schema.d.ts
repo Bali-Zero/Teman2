@@ -19090,12 +19090,11 @@ export interface components {
     /**
      * ApplicantFactsData
      * @description ``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-     *     with all keys required except the six transitional fields documented on
+     *     with all keys required except the five transitional fields documented on
      *     ``sponsor_type``, the three ``family.stepchild_*``/
-     *     ``family.sponsor_permit_basis`` fields (2026-08-23),
-     *     ``immigration_renewal_paid`` (2026-08-24), and ``investment_amount_usd``
-     *     (2026-09-13, PR-D4c-1) below — all the same rollout mechanism. Field
-     *     order mirrors ``enums.FactPath``'s
+     *     ``family.sponsor_permit_basis`` fields (2026-08-23), and
+     *     ``immigration_renewal_paid`` (2026-08-24) below — all the same rollout
+     *     mechanism. Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
      *     grouping.
@@ -19223,13 +19222,7 @@ export interface components {
       "intent.stay_days":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownNonNegativeInteger"];
-      /**
-       * Investment.Investment Amount Usd
-       * @default {
-       *       "reason": "NOT_ASKED",
-       *       "status": "UNKNOWN"
-       *     }
-       */
+      /** Investment.Investment Amount Usd */
       "investment.investment_amount_usd":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownMoney"];
