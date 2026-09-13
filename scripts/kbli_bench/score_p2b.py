@@ -131,53 +131,13 @@ MORATORIUM_EFFECTIVE_PATTERNS = [
     r"2026-05-13", r"13[\s/.-]+0?5[\s/.-]+2026", r"13\s+mei\s+2026", r"13\s+may\s+2026",
     r"may\s+13,?\s+2026", r"mei\s+13,?\s+2026",
 ]
-MORATORIUM_RISK_SCOPE = r"(menengah\s+rendah|medium[\s-]*low)"
-
-# PERMANENCE AND ITS NEGATION — the part this rule got wrong twice, both times caught by the
-# council, and the reason it is now written as POLARITY rather than as substring presence.
-#
-#   round 1 (tp1-qwen3.8-max): "tidak bersifat sementara" — the CORRECT answer — was rejected,
-#           because the forbidden pattern matched "bersifat sementara" inside it. Over-match.
-#   round 2 (tp1-qwen3.8-max): "Larangan ini tidak permanen dan hanya sementara" — a WRONG
-#           answer — passed, because "permanen" was read as a permanence statement inside
-#           "tidak permanen", and the negator "tidak" leaked across the conjunction "dan" to
-#           suppress the real temporariness claim. Under-match, in both directions at once.
-#   round 2 (codex-gpt-5.6-sol): "Larangan ini tidak bersifat sementara" as the SOLE permanence
-#           statement failed, because permanence was only ever looked for as the word "permanen".
-#
-# So: find each token, decide its POLARITY, and let the two criteria read the polarities.
-# Permanence is established by a non-negated permanence word OR by a negated temporariness word.
-# A temporariness CLAIM is a non-negated temporariness word. Negation is scoped: it reaches at
-# most two words forward and never crosses a conjunction or a punctuation mark, which is exactly
-# what let "tidak permanen dan …" silence a claim it does not govern.
-PERMANENCE_TOKEN = r"\b(permanen|permanent|selamanya|indefinite|indefinitely)\b"
-# "sementara itu" is Indonesian for "meanwhile" and says nothing about the ban's duration.
-TEMPORARINESS_TOKEN = r"\b(sementara|temporary|temporarily)\b(?!\s+itu\b)"
-NEGATORS = r"\b(tidak|bukan|belum|tak|non|not|never|no)\b"
-NEG_SCOPE_BREAKERS = r"(\b(dan|atau|tetapi|namun|melainkan|serta|and|or|but|however)\b|[.,;:!?])"
+# The moratorium covers TWO risk classes, Low AND Medium-Low. Naming only the second is a
+# wrong answer (council round 3, codex-gpt-5.6-sol), and "menengah rendah" CONTAINS "rendah",
+# so the low-class test has to run on the text with the medium-low spans removed.
+MEDIUM_LOW = r"(menengah\s+rendah|medium[\s-]*low)"
+LOW_ONLY = r"(\brendah\b|\blow\b)"
 BAN_WORDS = r"(dilarang|diblokir|terkena|ditutup|banned|blocked|moratorium|moratoria)"
 UNIVERSAL_WORDS = r"((semua|seluruh)\s+kbli|all\s+kbli|every\s+kbli|setiap\s+kbli)"
-
-
-def _is_negated(text: str, idx: int, window: int = 48) -> bool:
-    """True when a negator governs the token starting at `idx`: it sits in the same clause, at
-    most two words earlier, with no conjunction or punctuation between the two."""
-    prefix = text[max(0, idx - window):idx]
-    cut = 0
-    for m in re.finditer(NEG_SCOPE_BREAKERS, prefix):
-        cut = m.end()
-    span = prefix[cut:]
-    return bool(re.search(NEGATORS + r"\s+(\w+\s+){0,2}$", span))
-
-
-def _polarity(text: str, pattern: str) -> dict:
-    """Split every occurrence of `pattern` into negated and asserted."""
-    out = {"asserted": [], "negated": []}
-    for m in re.finditer(pattern, text):
-        key = "negated" if _is_negated(text, m.start()) else "asserted"
-        out[key].append(m.group(0))
-    return out
-
 
 def is_moratorium_scope_question(q: dict) -> bool:
     """True for the corpus question whose own expected behaviour names the Gubernur letter.
@@ -186,43 +146,83 @@ def is_moratorium_scope_question(q: dict) -> bool:
 
 
 def moratorium_scope_check(text: str) -> dict:
-    """Deterministic acceptance for the moratorium-scope class. Returns every criterion with
-    its own boolean so the report shows WHICH one failed, never a bare verdict."""
+    """DECIDABLE CRITERIA ONLY, and it can only FAIL a question — never pass one on its own.
+
+    THE SPEC THIS FUNCTION IS THE ANSWER TO, written because the surface turned out to be
+    under-specified rather than merely buggy. Three council rounds produced three different
+    defects in the same place, each one a new way for a regex to be wrong about a sentence:
+
+      round 1  "tidak bersifat sementara" (= "not temporary", the CORRECT answer) was rejected
+               because the forbidden pattern matched the substring inside the negation.
+      round 2  "tidak permanen dan hanya sementara" (a WRONG answer) passed, because "permanen"
+               was read inside "tidak permanen" and the negator leaked across the conjunction.
+      round 3  "Larangan ini permanen, sementara kode di luar kategori tidak terpengaruh" (a
+               CORRECT answer) was rejected, because `sementara` is ALSO the Indonesian
+               conjunction "while"; and "all KBLI are banned, including the Medium-Low class"
+               (a FORBIDDEN answer) passed, because a qualifier anywhere in the clause exempted
+               the universal claim.
+
+    The pattern is not three bugs. "Does this free-text sentence assert that the ban is
+    permanent, and does it claim the ban covers every KBLI" is a question about meaning, and a
+    regex will keep losing it — a fix of a fix stops at depth 1, and this surface reached it.
+    So the deterministic rule is reduced to what TOKENS decide, and the two semantic criteria
+    are DECLARED as a gap and routed to the judge, which has the ground-truth record and is
+    given the criteria verbatim (see `class_rule_expectations` in the judge payload).
+
+    Decidable here, and each one can only be true or false about literal tokens:
+      • the Gubernur letter is cited exactly
+      • the effective date is cited in one of the accepted forms
+      • BOTH risk classes are named, Low and Medium-Low, not just the second
+      • no code TOTAL is quoted: neither 518 (every blocked record, five causes conflated)
+        nor 48 (only the codes whose status names the moratorium) answers "which KBLI"
+    Deferred to the judge, declared, not guessed:
+      • whether the answer states the ban is permanent
+      • whether the answer claims the ban covers every KBLI
+    """
     t = re.sub(r"\s+", " ", (text or "")).lower()
     clauses = re.split(r"[.;\n]", t)
-    universal_unqualified = []
-    for cl in clauses:
-        if re.search(UNIVERSAL_WORDS, cl) and re.search(BAN_WORDS, cl):
-            if not re.search(MORATORIUM_RISK_SCOPE, cl):
-                universal_unqualified.append(cl.strip()[:120])
+
     totals = []
     for cl in clauses:
         if re.search(r"\b(518|48)\b[^.;]{0,40}(kbli|kode|codes?)", cl) or \
            re.search(r"(kbli|kode|codes?)[^.;]{0,40}\b(518|48)\b", cl):
             totals.append(cl.strip()[:120])
 
-    perm = _polarity(t, PERMANENCE_TOKEN)
-    temp = _polarity(t, TEMPORARINESS_TOKEN)
-    # "permanent" (not negated) OR "not temporary" (negated temporariness) both establish it.
-    states_permanence = bool(perm["asserted"]) or bool(temp["negated"])
-    # any temporariness word the text ASSERTS is a claim that the ban is temporary
-    claims_temporary = bool(temp["asserted"])
+    names_medium_low = bool(re.search(MEDIUM_LOW, t))
+    # strip the medium-low spans before looking for the low class, or "menengah rendah" answers
+    # its own question
+    t_without_medium_low = re.sub(MEDIUM_LOW, " ", t)
+    names_low = bool(re.search(LOW_ONLY, t_without_medium_low))
 
     required = {
         "cites_source_letter": MORATORIUM_SOURCE.lower() in t,
         "cites_effective_date": any(re.search(p, t) for p in MORATORIUM_EFFECTIVE_PATTERNS),
-        "states_risk_class_scope": bool(re.search(MORATORIUM_RISK_SCOPE, t)),
-        "states_permanence": states_permanence,
+        "names_low_risk_class": names_low,
+        "names_medium_low_risk_class": names_medium_low,
     }
-    forbidden = {
-        "claims_temporary": claims_temporary,
-        "claims_every_kbli_banned": universal_unqualified,
-        "quotes_a_moratorium_total": totals,
+    forbidden = {"quotes_a_moratorium_total": totals}
+    return {
+        "decidable_pass": all(required.values()) and not totals,
+        "required": required,
+        "forbidden": forbidden,
+        "deferred_to_judge": ["states_permanence", "claims_every_kbli_banned"],
+        "deferral_reason": (
+            "permanence and universality are judgements about meaning in free text; three council "
+            "rounds produced three different regex defects on them, so they are stated to the judge "
+            "as explicit expectations instead of guessed at deterministically"
+        ),
     }
-    ok = all(required.values()) and not claims_temporary \
-        and not universal_unqualified and not totals
-    return {"pass": ok, "required": required, "forbidden": forbidden,
-            "polarity": {"permanence": perm, "temporariness": temp}}
+
+
+CLASS_RULE_EXPECTATIONS = {
+    "bali_moratorium_scope": [
+        "The answer must state that the restriction is PERMANENT (or, equivalently, that it is "
+        "not temporary). An answer that calls it temporary is WRONG.",
+        "The answer must NOT claim the moratorium covers every KBLI. It covers the Low and "
+        "Medium-Low risk classes only. 'All KBLI in the Low and Medium-Low classes' is correct; "
+        "'all KBLI' with a class mentioned only as an example is WRONG.",
+    ],
+}
 
 
 # ── run integrity: four DISTINCT failure categories, never one "error" ────────────────────
@@ -277,7 +277,12 @@ def run_integrity(rows: list, corpus: dict, expected_runs: int) -> dict:
     seen = defaultdict(int)
     for r in rows:
         seen[(r.get("qid"), r.get("run"))] += 1
-    synthesized = [k for k in seen if k[0] not in qids or not isinstance(k[1], int)]
+    # A run number outside 1..expected_runs is a synthesized row, and counting rows alone does
+    # not catch it: runs 1,2,4 for one question and 1,2,3 for another still total 6 of 6
+    # (council round 3, codex-gpt-5.6-sol).
+    synthesized = [k for k in seen
+                   if k[0] not in qids or not isinstance(k[1], int)
+                   or not (1 <= k[1] <= expected_runs)]
     duplicates = [k for k, n in seen.items() if n > 1]
     expected_rows = len(qids) * expected_runs
     return {
@@ -399,6 +404,10 @@ def cmd_prompts(corpus_p, answers_p, outdir):
             "answers": [{"run": r["run"], "text": served_text(r),
                          "package_codes": r.get("package_codes") or []} for r in runs],
         }
+        if is_moratorium_scope_question(q):
+            # The criteria a regex cannot decide, stated to the judge verbatim rather than
+            # guessed at in code (see moratorium_scope_check's docstring).
+            payload["class_rule_expectations"] = CLASS_RULE_EXPECTATIONS["bali_moratorium_scope"]
         (out / f"{qid}.txt").write_text(JUDGE_RUBRIC + "\n\nINPUT:\n" + json.dumps(payload, ensure_ascii=False, indent=1))
     print(f"wrote {len(list(out.glob('*.txt')))} judge prompts to {out}")
 
@@ -436,16 +445,17 @@ def cmd_score(corpus_p, answers_p, judgedir):
                 fabrications.append({"qid": qid, "run": r["run"], "violations": viol})
                 verdict = "fabricated"
             elif class_rule:
-                # The class rule OVERRIDES the judge for this question: the criteria are written
-                # down, so "correct" here means "met them", not "a model thought so".
+                # The class rule can only FAIL a question, never pass one: its criteria are the
+                # decidable half, and the two semantic ones are deferred to the judge with the
+                # expectations stated verbatim in the payload.
                 chk = moratorium_scope_check(text)
                 class_rule_results.setdefault(qid, {})[r["run"]] = chk
-                if chk["pass"]:
-                    verdict = "correct"
-                elif looks_abstained(text):
-                    verdict = "abstained"
+                if not chk["decidable_pass"]:
+                    verdict = "abstained" if looks_abstained(text) else "wrong"
+                elif jv:
+                    verdict = jv
                 else:
-                    verdict = "wrong"
+                    verdict = "abstained" if looks_abstained(text) else "unjudged"
             elif jv:
                 verdict = jv
             else:
