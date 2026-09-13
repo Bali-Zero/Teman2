@@ -57,63 +57,8 @@ vi.mock("next/link", () => ({
     href: string;
   }) => <a href={href}>{children}</a>,
 }));
-vi.mock("@/components/workspace/HeroLiveWindow", () => ({
-  HeroLiveWindow: () => <div data-testid="hero-live-window">Hero</div>,
-}));
-
 // Mock dashboard components
 vi.mock("@/components/dashboard", () => ({
-  StatsCard: ({
-    title,
-    value,
-    href,
-  }: {
-    title: string;
-    value: string | number;
-    href: string;
-  }) => (
-    <div data-testid={`stats-card-${title.toLowerCase().replaceAll(" ", "-")}`}>
-      <a href={href}>
-        {title}: {value}
-      </a>
-    </div>
-  ),
-  CasesPreview: ({
-    cases,
-    isLoading,
-  }: {
-    cases: unknown[];
-    isLoading: boolean;
-  }) => (
-    <div data-testid="cases-preview">
-      {isLoading ? "Loading..." : `${cases.length} cases`}
-    </div>
-  ),
-  WhatsAppPreview: ({
-    messages,
-    isLoading,
-    onDelete,
-  }: {
-    messages: unknown[];
-    isLoading: boolean;
-    onDelete: (id: string) => void;
-  }) => (
-    <div data-testid="whatsapp-preview">
-      {isLoading ? (
-        "Loading..."
-      ) : (
-        <>
-          <span>{messages.length} messages</span>
-          <button
-            onClick={() => onDelete("1")}
-            data-testid="delete-message-btn"
-          >
-            Delete
-          </button>
-        </>
-      )}
-    </div>
-  ),
   AiPulseWidget: () => <div data-testid="ai-pulse-widget">AI Pulse</div>,
   FinancialRealityWidget: ({
     revenue,
@@ -135,33 +80,6 @@ vi.mock("@/components/dashboard", () => ({
   ),
   MiniSparkline: ({ data }: { data: unknown[] }) => (
     <div data-testid="mini-sparkline">{data?.length ?? 0} points</div>
-  ),
-  ZantaraPortalCard: () => (
-    <div data-testid="zantara-portal-card">Zantara AI</div>
-  ),
-  DashboardStatCard: ({
-    label,
-    value,
-  }: {
-    label: string;
-    value: string | number;
-  }) => (
-    <div
-      data-testid={`dash-stat-card-${label.toLowerCase().replaceAll(" ", "-")}`}
-    >
-      {label}: {value}
-    </div>
-  ),
-  LiveActivityFeed: ({
-    events,
-    isLoading,
-  }: {
-    events: unknown[];
-    isLoading: boolean;
-  }) => (
-    <div data-testid="live-activity-feed">
-      {isLoading ? "Loading..." : `${events.length} events`}
-    </div>
   ),
   RoleWidget: ({ role }: { role: string }) => (
     <div data-testid="role-widget">{role}</div>
@@ -289,7 +207,7 @@ describe("DashboardPage - Unit Tests", () => {
     render(<DashboardPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId("live-activity-feed")).toBeInTheDocument();
+      expect(screen.getByTestId("role-widget")).toBeInTheDocument();
     });
   });
 
@@ -335,23 +253,10 @@ describe("DashboardPage - Unit Tests", () => {
     render(<DashboardPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId("zantara-portal-card")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Zantara AI/i }),
+      ).toBeInTheDocument();
     });
-  });
-
-  it("renders the metric bar before the hero news window (P0.1)", async () => {
-    render(<DashboardPage />, { wrapper: createWrapper() });
-
-    // "My Cases" is the first metric-bar KPI for a non-zero user.
-    const metricLabel = await screen.findByText("My Cases");
-    const hero = screen.getByTestId("hero-live-window");
-
-    // The hero (news) must FOLLOW the metric bar in DOM order — action
-    // above the fold, news below (audit P0.1).
-    expect(
-      metricLabel.compareDocumentPosition(hero) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
   });
 
   it("renders the ops panels with live adapter data (WS2 slice 2)", async () => {

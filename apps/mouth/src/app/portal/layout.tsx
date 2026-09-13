@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import "./r19-fonts.css";
+
 /**
  * The client portal is a private product surface, including its public
  * authentication and recovery screens. None of its URLs should inherit the

@@ -1,0 +1,61 @@
+Revisione dei due diff su `f56d3e5dc1`, senza modifiche. I riferimenti seguenti sono relativi ad `apps/backend-rag/backend/`.
+
+1. **NOT-A-DEFECT — dichiarazione completa in `search()`.**  
+   I tre percorsi assegnano `declared_kind`: successo hybrid a `services/search/search_service.py:672`, fallback dense a `:693`, BM25 disabilitato a `:715`, prima del formatter a `:718`. La discriminante è correttamente la **presenza** di `search_type`, coerente con `:1180` e con il produttore Qdrant (`core/qdrant_db.py:1338`, fallback a `:1362`). L’espansione multipla restituisce subito a `:609`; risultato vuoto o eccezione proseguono attraverso le assegnazioni ordinarie (`:608–611`). Gli altri errori fanno uscire la funzione o propagano: nessun percorso raggiunge il formatter con variabile non assegnata. Non esiste un loop che possa conservarne il valore precedente.
+
+2. **NOT-A-DEFECT — gli altri tre produttori sono dense-only.**  
+   `_single_query_search` chiama esclusivamente `vector_db.search` (`services/search/search_service.py:891`); `search_single_collection` altrettanto (`:1458`); `search_collection` chiama `client.search` (`:1650`). Il metodo Qdrant usa `/points/search` e una query dense (`core/qdrant_db.py:489–499`). La fusione dell’espansione multipla aggiunge separatamente `rrf_score`, senza sostituire `score` (`services/search/search_service.py:941–942`): non rende errata la provenienza dichiarata del campo `score`.
+
+3. **NOT-A-DEFECT — nessun chiamante produttivo esterno dimenticato.**  
+   Il grep dell’intero backend trova cinque invocazioni produttive, tutte in `services/search/search_service.py`: `:718`, `:900`, `:1201`, `:1468`, `:1657`; tutte dichiarano il tipo. Fuori dal file restano import/export, commenti, docstring e test. Alcuni test preesistenti esercitano ancora il default, per esempio `tests/services/misc/test_result_formatter.py:15`: non costituiscono un produttore live privo di dichiarazione.
+
+4. **NOT-A-DEFECT — oracle precedente verificato e rifiuto pertinente.**  
+   Ho ricalcolato i literal usando **le funzioni del commit base `1d726045c9`**, estratte con `git show`. Risultato: **320 byte**, digest  
+   `466643afc3c393d49fcaddd4a92f5f8be63d64e88dc351c6c90921edc84a4454`,  
+   identico al valore congelato in `tests/unit/services/rag/agentic/test_score_contract_crossing.py:487`. Il test confronta effettivamente i byte a `:527`. Il negativo modifica lo score a `:535` e richiede il messaggio specifico di mismatch a `:536`, generato da `services/rag/agentic/wa_package_builder.py:166–170`. Controprova indipendente: gli stessi byte alterati **vengono accettati con il loro digest corretto**. Il rifiuto non dipende da un errore estraneo.
+
+5. **NOT-A-DEFECT — la proiezione `score_raw` è numericamente neutra.**  
+   Il nuovo campo entra in un dizionario temporaneo passato allo scorer (`services/rag/agentic/wa_package_builder.py:603–614`). `calculate_evidence_score` legge soltanto `score` dai source, a `services/rag/agentic/reasoning_utils.py:610` e `:662`; nessun ramo legge `score_raw`. Quindi anche `None` è innocuo. Ho verificato **240 confronti equivalenti**, inclusi `None` e zero, senza differenze numeriche. Questa specifica cura non modifica chunk, hash o byte serviti. La PR complessiva aggiunge invece metadati ai nuovi pacchetti, cambiandone intenzionalmente la serializzazione; non va confusa con la sola proiezione dello scorer.
+
+6. **NOT-A-DEFECT — 13c attraversa davvero il successo hybrid.**  
+   I test esercitano il metodo di ricerca e il formatter reale, con il produttore simulato; non dimostrano da soli l’intera catena fino allo scorer. Eseguendo i loro corpi contro le funzioni reali, 13a/13b chiamano dense una volta; **13c chiama hybrid una volta e dense zero volte** (`tests/unit/services/rag/agentic/test_score_contract_crossing.py:619–632`). Ho inoltre forzato un’eccezione dentro il ramo hybrid: il fallback avviene e **13c fallisce**, perché produce `DENSE_FORMATTED`, incompatibile con l’asserzione a `:632`. Il fallback non può quindi mascherare il successo atteso.
+
+7. **NOT-A-DEFECT — nessuna regressione delle superfici 1–7 già assolte.**  
+   Ricontrollati: discriminante Qdrant (`core/qdrant_db.py:1338`); formula e boost invariati (`services/misc/result_formatter.py:90–106`); vocabolario validato (`core/score_provenance.py:132`); conservazione dello zero (`services/misc/result_formatter.py:136`); cache legacy dichiarata UNKNOWN (`services/search/search_service.py:1124`); trasporto del pacchetto come testo (`services/integrations/wa_broker.py:692`, `services/integrations/wa_codex_daemon.py:495`). Anche il doppio rerank conserva la distinzione tra score precedente e `vector_score` originale (`core/reranker.py:177–187`, `services/rag/reranker.py:349–359`): il commento ristretto a `core/score_provenance.py:58–62` ora descrive correttamente quel comportamento.
+
+Limite della verifica: pytest si è fermato durante la raccolta perché `tiktoken` richiede una directory temporanea scrivibile. Le prove riportate sono esecuzioni isolate in memoria delle funzioni reali e dei corpi dei test, non un pass della suite completa.
+
+VERDICT: SHIP
+codex
+Il controllo automatico segnala modifiche, ma questa revisione è stata interamente in sola lettura. Ricontrollo HEAD e stato Git; non registrerò un successo pytest, perché la raccolta si è fermata.
+
+exec
+/bin/zsh -lc 'git status --short' in /Users/nuzantara/nuzantara/.worktrees/backend-rag-b1-score-contract
+exec
+/bin/zsh -lc 'git rev-parse HEAD' in /Users/nuzantara/nuzantara/.worktrees/backend-rag-b1-score-contract
+exec
+/bin/zsh -lc 'git diff --exit-code HEAD --' in /Users/nuzantara/nuzantara/.worktrees/backend-rag-b1-score-contract
+ succeeded in 1801ms:
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-c2Kx8rcS' (errno=Operation not permitted)
+f56d3e5dc1b2c2213537b7ad3b45d2fe88bb5b3a
+
+ succeeded in 1853ms:
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-GwKanET9' (errno=Operation not permitted)
+
+ succeeded in 2232ms:
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-eAhXC7lB' (errno=Operation not permitted)
+?? evidence/2026-09/agent-nuzantara-backend-rag-b1-score-contract-107e45b6/codex-round-1-verdict.txt
+?? evidence/2026-09/agent-nuzantara-backend-rag-b1-score-contract-107e45b6/pack.yml
+
+codex
+Confermato: `git diff HEAD` vuoto, HEAD ancora `f56d3e5dc1`. Restano soltanto i due file non tracciati già presenti all’avvio. Nessuna modifica effettuata dalla revisione; nessun successo pytest dichiarato.
+
+VERDICT: SHIP
+tokens used
+162.215
+Confermato: `git diff HEAD` vuoto, HEAD ancora `f56d3e5dc1`. Restano soltanto i due file non tracciati già presenti all’avvio. Nessuna modifica effettuata dalla revisione; nessun successo pytest dichiarato.
+
+VERDICT: SHIP

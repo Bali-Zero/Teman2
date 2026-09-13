@@ -34,6 +34,7 @@ import type {
   VisaHistoryItem,
   PortalDocument,
 } from "@/lib/api/portal/portal.types";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 // Day surface (concept .panel): warm-paper card, hairline warm border, soft
 // navy shadow (near-invisible on dark). Shared by every card on this page.
@@ -112,6 +113,7 @@ function getStatusCode(error: unknown): number | undefined {
 export default function VisaPage() {
   const router = useRouter();
   const { error: showErrorToast } = useToast();
+  const { formatDate } = usePortalDateFormat();
   const [visaInfo, setVisaInfo] = useState<VisaInfo | null>(null);
   const [needsClientSelection, setNeedsClientSelection] = useState(false);
   const [needsClientConnection, setNeedsClientConnection] = useState(false);
@@ -313,25 +315,19 @@ export default function VisaPage() {
             >
               <InfoRow
                 label="Issue Date"
-                value={new Date(visaInfo.current.issueDate).toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  },
-                )}
+                value={formatDate(visaInfo.current.issueDate, {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               />
               <InfoRow
                 label="Expiry Date"
-                value={new Date(visaInfo.current.expiryDate).toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  },
-                )}
+                value={formatDate(visaInfo.current.expiryDate, {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
                 chip={
                   visaInfo.current.daysRemaining !== null
                     ? {

@@ -939,6 +939,66 @@ class ChangeMapTests(unittest.TestCase):
         self.assertTrue(result["domains"]["backend_python"])
         self.assertIn("backend-tests", result["suggested_jobs"])
 
+    def test_innocence_secrets_baseline_and_prettierignore_skip_every_test_job(
+        self,
+    ) -> None:
+        # Measured 7-day window 2026-09-02..09 (379 merge_group runs of
+        # tests.yml): .secrets.baseline sat in unknown_paths on 6
+        # merge-queue batches (PRs #5825, #5833, #5841, #5846, #6031, #6046)
+        # and 10 pull_request runs; .prettierignore was unknown on 6 queue
+        # batches (all re-queues of PR #5769, 2026-09-05). Neither is read
+        # by any of the six tests.yml product suites.
+        for path in (".secrets.baseline", ".prettierignore"):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["reason"], "classified")
+                self.assertEqual(result["unknown_paths"], [])
+                self.assertEqual(result["suggested_jobs"], [])
+
+    def test_guilt_fleet_topology_edit_runs_the_backend_suite_that_reads_it(
+        self,
+    ) -> None:
+        # FLEET_TOPOLOGY.json is read by backend code (verified by grep,
+        # 2026-09-10): apps/backend-rag/backend/llm/deepseek_client.py,
+        # apps/backend-rag/backend/app/routers/article_composer.py, and
+        # apps/backend-rag/backend/tests/services/council/test_no_deepseek_regression.py.
+        # Before this entry it fell into unknown_paths and forced run_all
+        # (all six suites); backend_python is the narrower, correct guilt.
+        result = cm.classify(["FLEET_TOPOLOGY.json"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertEqual(
+            result["suggested_jobs"], cm._suggested_jobs({"backend_python"}, False)
+        )
+        self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
+    def test_guilt_secrets_baseline_combined_with_backend_change_still_selects_backend(
+        self,
+    ) -> None:
+        # security_sensitive contributes nothing to _suggested_jobs() on its
+        # own (2026-09-05); it must not suppress a co-changed backend_python
+        # path either.
+        result = cm.classify(
+            [".secrets.baseline", "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
+    def test_innocence_siblings_of_the_new_exact_rules_stay_fail_open(self) -> None:
+        # EXACT means exact: a file that merely resembles one of the three
+        # new EXACT_RULES entries above must not inherit its classification.
+        for path in (
+            ".secrets.baseline.bak",
+            "apps/x/FLEET_TOPOLOGY.json",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertTrue(result["run_all"])
+                self.assertEqual(result["unknown_paths"], [path])
+
     def test_innocence_guard_conformance_registry_skips_every_test_job(self) -> None:
         # infra/guard-conformance/ is more specific than the "infra/"
         # catch-all and must win — before this entry the registry inherited

@@ -1,4 +1,7 @@
-# The exact string held in the Vercel project's `commandForIgnoringBuildStep`.
+# The exact string held in the Vercel project's `commandForIgnoringBuildStep` — and, since
+# 2026-09-10, in apps/mouth/vercel.json as `ignoreCommand`, which OVERRIDES the dashboard field
+# (the dashboard copy is the fallback if the key is ever dropped from the file). The corpus
+# asserts the two are byte-identical; change this line and the JSON together.
 #
 # It lives here for one reason: on 2026-07-29 that field held a bare invocation of
 # scripts/ci/vercel_should_build.sh, the script was not on main yet, bash exited 127, and

@@ -1,0 +1,74 @@
+gear: 2
+gear_reason: >-
+  Measured with the inputs CI uses — `scripts/evidence_pack_lint.py --print-floor
+  --changed-files-file <f> --numstat-file <n>` returns 2. Taking the floor without
+  `--numstat-file` under-reports it and has been rejected three times in this mandate (#6240,
+  PR-O2's brief, PR-D3c's brief); it is measured here, not inferred from the shape of the diff.
+  No digit is typed: re-run both invocations to check.
+task_id: shweb-w-oracle-d4a-20260913
+mandate_id: SHWEB-20260911/W-ORACLE/PR-D4a
+colour: BLUE
+l_level: L1
+gate_class: opus
+objective: >-
+  Zero's D4 ruling: the Oracle NAMES the product and never asks which visa. Four products —
+  E31B, E31E, E31H, E31J — were not held but INVISIBLE: nine ELIGIBILITY rules read
+  `family.sponsor_status_code` with `on_unknown: NO_EFFECT`, while the UI took that code as free
+  text and the mapper sent UNVERIFIED, so the fact arrived UNKNOWN and those rules contributed
+  neither support nor review. The question becomes a select over the signed pack's own closed
+  catalogue, the mapper emits a KNOWN fact, and the STEPCHILD/E31D hold — which rested on a
+  requirement the regulation does not impose for that product — is removed.
+scope:
+  - apps/mouth — the visa-oracle interview, its fact mapping and its tests
+  - apps/backend-rag/backend/tests/services/visa_engine — the walk corpus and its census
+  - this brief
+constraints:
+  - Frontend only. No rule-pack change, no evaluate_path.py, no evaluator.
+  - >-
+    `engine-adapter.ts` and `engine-adapter.test.ts` are NOT touched: a sibling PR (D3c) owns them.
+    Verified — `git diff --name-only origin/main...HEAD | grep -c engine-adapter` returns 0.
+  - >-
+    The catalogue is never hand-pasted: the select reuses the existing `STAY_PERMIT_CODES` array
+    and a bidirectional test asserts it equals the signed pack's `op:in` set exactly, failing on an
+    extra code as well as a missing one.
+  - No client PII in any file added or edited.
+acceptance:
+  - text: WHEN the visa-oracle frontend suite runs, THEN every test SHALL pass.
+    status: verified
+    probe: "cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)' --maxWorkers=2"
+  - text: WHEN the project typechecks, THEN it SHALL succeed.
+    status: verified
+    probe: "cd apps/mouth && npx --no-install tsc --noEmit -p ."
+  - text: >-
+      WHEN the backend walk-census test runs, THEN every walk SHALL match its EXPECTED_OUTCOME,
+      including the walks whose sponsor status is now a known fact.
+    status: verified
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -q -o addopts=''"
+  - text: >-
+      WHEN the signed pack is read, THEN no E31D rule SHALL reference family.sponsor_status_code —
+      the premise on which the STEPCHILD hold was removed. It must go red if a future pack adds one.
+    status: verified
+    probe: |
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python - <<'PY'
+      import json, glob, sys
+      p = sorted(glob.glob("backend/services/visa_engine/contracts/packs/rulepack-prod-*.signed.json"))[-1]
+      d = json.load(open(p))
+      bad = []
+      def walk(n, rid):
+          if isinstance(n, dict):
+              if n.get("fact") == "family.sponsor_status_code" and rid.startswith("el.e31d"):
+                  bad.append(rid)
+              for v in n.values(): walk(v, rid)
+          elif isinstance(n, list):
+              for v in n: walk(v, rid)
+      for r in d["payload"]["rules"]:
+          walk(r.get("when"), r["rule_id"])
+      if bad:
+          print("FAIL: an E31D rule reads the sponsor's status code:", sorted(set(bad))); sys.exit(1)
+      print(f"OK: no E31D rule in {p.split('/')[-1]} reads family.sponsor_status_code")
+      PY
+pii: none
+self_report:
+  note: >-
+    The reachable-product movement and the cross-track finding below are this session's record;
+    the four probes above are reproducible.

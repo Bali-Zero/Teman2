@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "LLMS_GENERATE_FULL_ONLY=1 tsx scripts/generate-llms-full.ts && next build --webpack && node scripts/assert-public-login-bundle.mjs",
+    "build": "LLMS_GENERATE_ARTICLES_ONLY=1 tsx scripts/generate-llms-full.ts && next build --webpack && node scripts/assert-public-login-bundle.mjs && node scripts/assert-roster-not-in-public-chunks.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -101,7 +101,7 @@
     "lighthouse": "^13.1.0",
     "lint-staged": "^17.3.0",
     "openapi-typescript": "^7.10.1",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"

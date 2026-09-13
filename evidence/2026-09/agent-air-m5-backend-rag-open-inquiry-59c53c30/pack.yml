@@ -1,0 +1,342 @@
+task_id: crm-open-inquiry-backend
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+    note: >-
+      GROUND: located the kita CRM (apps/mouth, not admin-dashboard), read
+      practice_state_machine.py, crm_practices.py (create/update/catalog),
+      the practice_types catalog and column nullability in prod via the
+      read-only scripts/pg.sh role, counted 40 INNER JOINs on
+      practice_types across the backend (the reason for a placeholder row
+      instead of NULL). BUILD: migration 311, PracticeCreate/PracticeUpdate
+      changes, validate_service_selected, catalog exclusion, 12 new unit
+      tests. Applied every CONFIRMED spalla finding in a second commit.
+      Authored this pack.
+  - lane: independent-diff-review
+    role: review
+    seat: claude-opus-5
+    note: >-
+      Agent tool, subagent_type spalla-review, model opus, fresh context,
+      read-only, diff-bounded prompt with an explicit downstream-consumer
+      grep mandate. SEAT-VERDICT: not-ok. 6 findings, 5 fixed, 1 accepted
+      — see dissent. External seats (codex, kimi, agy, qwen) were all
+      TIMEOUT in the organism probe at session start (2026-09-11), so the
+      spalla ran on the Claude seat, on a model different from the author.
+  - lane: independent-diff-review-2
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      scripts/kimi_client.py (credential-scrubbed child, prompt-only, no
+      tools), bounded prompt = diff of a14aac2464 + the round-1 summary.
+      SEAT-VERDICT: not-ok. 4 findings, 2 fixed, 1 refuted with a receipt,
+      1 accepted — see dissent. 95 s wall clock.
+  - lane: independent-diff-review-3
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      `codex exec --sandbox read-only --skip-git-repo-check -` (codex-cli
+      0.154.0, model gpt-6-astra, xhigh), bounded prompt = diff of
+      a14aac2464, no repo access, no tests. SEAT-VERDICT: not-ok. 2
+      findings: 1 already closed by the kimi round, 1 refuted with a pinned
+      test — see dissent. The installed 0.147 CLI refused the configured
+      model; upgraded to 0.154.0 for this run. 69 s wall clock.
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5
+    note: "Pending — gate_verdict is posted by the final-gate seat via scripts/harness_fable_gate.py on the head sha, not here."
+
+spend:
+  wall_clock_hours: 2.6
+  adversarial_rounds: 3
+
+appetite_exceeded: >-
+  Three adversarial rounds instead of the one declared, 2.6 h instead of
+  2: the Claude spalla surfaced two HIGH defects worth a fix commit, and
+  the Gear-3 council rule requires two external seats (kimi, codex), the
+  second of which needed a CLI upgrade before it would answer. Each round
+  produced a real fix or a receipt-backed refutation; none was ceremony.
+
+cloud_ok: >-
+  SYMBIOSIS Law 2 output boundary, CLAUDE.md Builder Contract 4. The
+  pii_local rule fires on the PATH (backend/app/routers/crm_practices.py,
+  backend/services/crm/**), not on the CONTENT, and rightly so: those are
+  PII-bearing modules. What travelled to the non-local seats (the Claude
+  spalla subagent, kimi-code/k3 via scripts/kimi_client.py with credentials
+  scrubbed, codex via `codex exec --sandbox read-only`) is the git diff of
+  code, SQL catalog text and unit tests with synthetic fixtures — no client
+  row, no CRM content, no log excerpt. Verified by the pii_scan grep below
+  before dispatch.
+pii_scan: clean
+pii_scan_note: >-
+  The diff is Python (router, state machine, unit tests with synthetic
+  fixtures such as client_id 42 and team@balizero.com) and one SQL catalog
+  row (a service name and description). No client row is read, written or
+  logged by the change. The only prod reads during GROUND were schema and
+  aggregate queries through the read-only role (column nullability, the
+  catalog codes/prices already public on the pricing page, a count of
+  NULL-type practices). `git diff origin/main...HEAD` grepped for
+  phone/email/passport/KTP/NPWP/16-digit shapes prints nothing
+  (2026-09-11T14:39:41Z). The spalla prompt carried only the diff and
+  file paths.
+
+receipts:
+  - probe: A1
+    claim: >-
+      WHEN the state-machine and crm_practices unit suites are run SHALL
+      pass all cases including the new TestValidateServiceSelected and
+      TestOpenInquiry classes (8 endpoint cases after the spalla round).
+    cmd: >-
+      cd apps/backend-rag && .venv/bin/python -m pytest
+      backend/tests/services/crm/test_practice_state_machine.py
+      backend/tests/unit/routers/test_crm_practices.py -p no:cacheprovider
+    result: "159 passed in 1.06s (after the kimi and codex rounds)"
+    exit: 0
+    ts: "2026-09-11T15:50:03Z"
+    seat: claude-fable-5-1 (build)
+
+  - probe: A2
+    claim: >-
+      lint_migration_numbers.py and lint_migration_rollback.py SHALL report
+      zero violations with 311 in the tree.
+    cmd: >-
+      python3 scripts/lint_migration_numbers.py && python3
+      scripts/lint_migration_rollback.py
+    result: >-
+      "✅ migration-numbers lint: 188 files, all unique prefixes" / "✅
+      migration-rollback lint: 183 post-cutoff migrations, all have
+      ROLLBACK marker"
+    exit: 0
+    ts: "2026-09-11T14:39:32Z"
+    seat: claude-fable-5-1 (build)
+    note: >-
+      Slot 310 was taken on the worktree base (310_practice_status_log.sql)
+      while the checkout inspected at GROUND ended at 309; the W41
+      pre-commit lint caught the collision on the first commit attempt and
+      the file was renumbered to 311 before anything was committed.
+
+  - probe: A3
+    claim: >-
+      The deterministic gear floor recomputed from this PR's own
+      changed-file set (after the spalla-fix commit a14aac2464) equals 3.
+    cmd: >-
+      git diff --name-only origin/main...HEAD > cf.txt && git diff
+      --numstat origin/main...HEAD > ns.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      cf.txt --numstat-file ns.txt
+    result: "3 (source: path — migrations_v2; 489 net lines after the fix commit)"
+    exit: 0
+    ts: "2026-09-11T14:44:26Z"
+    seat: claude-fable-5-1 (build)
+
+  - probe: A4-static
+    claim: >-
+      split_migration_sql on 311 yields a forward section with none of
+      migration_base's DANGEROUS_PATTERNS (DROP DATABASE/SCHEMA, TRUNCATE)
+      nor DELETE/DROP TABLE, and a rollback that is a soft-disable only.
+    cmd: >-
+      cd apps/backend-rag && .venv/bin/python -c "from
+      backend.db.migration_base import split_migration_sql; ..." (inline
+      script in the session transcript)
+    result: >-
+      "forward len 1601 rollback len 217" / DROP DATABASE False / DROP
+      SCHEMA False / TRUNCATE False / DELETE FROM False / DROP TABLE False /
+      "rollback is soft-disable UPDATE: True"
+    exit: 0
+    ts: "2026-09-11T14:39:36Z"
+    seat: claude-fable-5-1 (build)
+
+  - probe: A4-dry-run-attempted
+    claim: "`backend.db.migrate apply-all --dry-run` lists 311 as pending."
+    cmd: >-
+      cd apps/backend-rag && .venv/bin/python -m backend.db.migrate
+      apply-all --dry-run
+    result: >-
+      MigrationError: runner cannot connect via DATABASE_URL
+      (backend_rag_v2@localhost:15432) — InvalidPasswordError. Same outcome
+      as the migration-309 pack on this machine class: the session holds no
+      credential for the runner role and did not look for one. Left to the
+      release_command on deploy, proven post-merge by A5.
+    exit: 1
+    ts: "2026-09-11T14:40:32Z"
+    seat: claude-fable-5-1 (build)
+
+  - probe: prod-baseline
+    claim: >-
+      Before merge, practice_types has no open_inquiry row, and
+      practices.practice_type_id is nullable with 2 legacy NULL rows (none
+      in inquiry) — the reason the gate blocks only the explicit
+      placeholder code.
+    cmd: >-
+      scripts/pg.sh -A -F'|' -c "SELECT code, is_active FROM practice_types
+      WHERE code='open_inquiry'" ; scripts/pg.sh -A -F'|' -c "SELECT
+      count(*), count(*) FILTER (WHERE status='inquiry') FROM practices
+      WHERE practice_type_id IS NULL"
+    result: "(0 righe) / 2|0"
+    exit: 0
+    ts: "2026-09-11T14:35:00Z"
+    seat: claude-fable-5-1 (build)
+
+  - probe: siblings
+    claim: >-
+      No other open PR or live worktree touches crm_practices.py,
+      practice_state_machine.py or migrations_v2 at the time of the pack.
+    cmd: >-
+      gh pr list --state open --json number,files (filtered on the three
+      paths) ; python3 scripts/agent_start.py --list
+    result: >-
+      Only #6251 (this PR) on those paths. Worktrees: open-inquiry (this
+      lane), shweb-w1-tech-20260911 (mouth, unrelated), two ORPHAN ops
+      lanes (garuda-voa-0911, practice-status-log-revive — the latter
+      shipped 310_practice_status_log.sql already on main).
+    exit: 0
+    ts: "2026-09-11T14:39:41Z"
+    seat: claude-fable-5-1 (build)
+
+dissent:
+  - seat: claude-opus-5
+    objection: >-
+      (HIGH) The service gate only runs inside the status-change branch, so
+      a PATCH carrying only practice_type_code='open_inquiry' could regress
+      a live on_process/completed practice to the placeholder.
+    status: CONFIRMED
+    disposition: >-
+      Fixed in a14aac2464: setting the placeholder is refused (400) unless
+      the effective status (new or current, normalized) is inquiry or
+      cancelled. Regression test
+      test_update_cannot_regress_live_practice_to_placeholder.
+  - seat: claude-opus-5
+    objection: >-
+      (HIGH) An open inquiry is created with quoted_price NULL (the
+      placeholder has no base_price) and nothing back-fills it when the
+      service is chosen; invoice_service float()s quoted_price inside a
+      spawn()ed task at sending_invoice, failing silently (scar family #2).
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the PATCH type lookup now selects base_price and back-fills
+      quoted_price when it is NULL and the caller did not set it in the
+      same request. Test
+      test_update_service_backfills_quoted_price_from_base_price pins the
+      SQL and parameters.
+  - seat: claude-opus-5
+    objection: >-
+      (MEDIUM) The 42703 backward-compat fallback SELECT does not join
+      practice_types, so old_practice_type_code stays None and the gate is
+      silently off on that branch.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the fallback query now carries the same LEFT JOIN and pt.code
+      and assigns old_practice_type_code.
+  - seat: claude-opus-5
+    objection: >-
+      (MEDIUM) If migration 311 is not applied, every POST without a
+      service 404s as "Practice type 'open_inquiry' not found" — the
+      default path of the new form — with no test for the missing-row
+      case.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the missing placeholder now returns 503 with an explicit
+      "migration 311 not applied" hint (test updated to pin it). Process
+      guard: the mouth PR ships only after the Bites observation A5 shows
+      the row live; the release_command applies 311 before the new code
+      serves traffic.
+  - seat: claude-opus-5
+    objection: >-
+      (LOW) The PATCH lookup filters is_active = true while create_practice's
+      lookup does not; a soft-disabled type stays creatable but not
+      patchable, and the 311 rollback stops the no-service POST path.
+    status: PLAUSIBLE
+    disposition: >-
+      No code change. create_practice's unfiltered lookup is pre-existing
+      behaviour that programmatic callers may rely on; tightening it is a
+      separate concern. The rollback of 311 stopping the no-service POST is
+      the intended effect of rolling the feature back (the mouth form is
+      rolled back with it); the 503 message names the cause.
+  - seat: claude-opus-5
+    objection: >-
+      (LOW) mock_db_conn.execute.assert_not_called() does not prove no
+      write — the UPDATE runs through conn.fetchrow(...RETURNING...).
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the blocked-transition test asserts fetchrow.call_count == 1
+      (the old-row read only).
+  - seat: kimi-code/k3
+    objection: >-
+      (HIGH) The rollback soft-disable after the `-- === ROLLBACK ===`
+      marker is live SQL, so every apply would seed the row and immediately
+      deactivate it, leaving PATCH unable to resolve the placeholder.
+    status: PLAUSIBLE
+    disposition: >-
+      Refuted, no code change. backend.db.migration_base.split_migration_sql
+      splits the file on that marker before apply (receipt A4-static:
+      forward 1601 bytes, rollback 217 bytes) and sibling migration 220 has
+      the identical shape with its rows active in prod today
+      (company_dissolving|t, other_custom|t in the catalog read at GROUND).
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) The 42703 fallback SELECT does not fetch quoted_price, so a
+      later service pick on such a row back-fills over an existing price.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the fallback now selects p.quoted_price and assigns
+      old_quoted_price, so the back-fill condition sees the real value.
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) create_practice's lookup has no is_active filter while the PATCH
+      lookup requires it — asymmetric across the placeholder lifecycle.
+    status: PLAUSIBLE
+    disposition: >-
+      Same point as the Claude spalla's LOW; accepted and documented, no
+      code change (pre-existing behaviour of the create path).
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) validate_service_selected does not normalize to_state while the
+      sibling check in update_practice does.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the gate normalizes the target state before the
+      inquiry/cancelled check.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      (MEDIUM) The 42703 fallback leaves old_quoted_price None without
+      reading the existing quote, so a later service selection back-fills
+      base_price over a negotiated price.
+    status: CONFIRMED
+    disposition: >-
+      Same defect as kimi's LOW, closed in 4cd4ecb85f (fallback SELECT now
+      carries p.quoted_price). Codex reviewed the pre-fix diff.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      (MEDIUM) An explicit quoted_price: null in the same PATCH as a service
+      pick suppresses the back-fill (key-presence check) and leaves the
+      quote NULL while satisfying the service gate.
+    status: PLAUSIBLE
+    disposition: >-
+      Refuted, no code change: quoted_price is not in
+      PRACTICE_CLEARABLE_FIELDS, so the field loop raises 400
+      "quoted_price cannot be null" before any SQL runs. Pinned by
+      test_update_explicit_null_quoted_price_is_rejected_not_backfilled
+      (fetchrow.call_count == 2: old row + type lookup, no UPDATE).
+
+bites:
+  consumer: >-
+    kita.balizero.com /process/new and /process/[id] (mouth PR, shipped
+    next from a fresh main) calling POST/PATCH /api/crm/practices on
+    nuzantara-rag.fly.dev; until then the API itself.
+  where: >-
+    production — merging this PR deploys backend-rag; fly.toml's
+    release_command runs `backend.db.migrate apply-all`, which seeds the
+    open_inquiry row before the new code serves.
+  observe: >-
+    scripts/pg.sh -A -F'|' -c "SELECT code, category, is_active FROM
+    practice_types WHERE code='open_inquiry'" ; then an authenticated GET
+    https://nuzantara-rag.fly.dev/api/crm/practices/types/catalog.
+  expect: >-
+    One row `open_inquiry|inquiry|t` (0 rows before merge, receipt
+    prod-baseline); the catalog JSON contains no "open_inquiry" and no
+    "inquiry" category.

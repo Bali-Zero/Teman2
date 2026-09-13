@@ -1,0 +1,299 @@
+{
+  "verified_at": "2026-09-09T14:24:17.434661+08:00",
+  "unit_tests_passed": 18,
+  "ruff": "passed",
+  "profiles": [
+    {
+      "machine": "Air-M5",
+      "seat": "/Users/balizero/.codex",
+      "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "enabled": true,
+      "trusted_events": [
+        "preToolUse",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "stop"
+      ],
+      "artifact_matches_manifest": true,
+      "existing_hooks_preserved": true,
+      "thresholds": {
+        "imperator": 0.2,
+        "builder": 0.4
+      },
+      "source_sha256": {
+        "context_bridge.py": "f77d4920a8a6f5649f74b13fb966b19aecc1504419cd65d112c82adb6f303e0a",
+        "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae"
+      },
+      "original_backup": "/Users/balizero/.codex/state/nuzantara-context-backups/1788932681130067000",
+      "lifecycle_probe": {
+        "thread_id": "01a084ce-eb06-7a11-9ed3-d6e54fedadad",
+        "turn_status": "completed",
+        "model": "gpt-6-astra",
+        "trusted_hooks": 6,
+        "event_counts": {
+          "SessionStart": 1,
+          "PreToolUse": 1,
+          "PostToolUse": 1,
+          "Stop": 1
+        },
+        "used_tokens": 37967,
+        "context_window": 258400,
+        "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+        "passed": true
+      },
+      "handoff_probe": {
+        "passed": true,
+        "chain": [
+          "01a084ce-eb06-7a11-9ed3-d6e54fedadad",
+          "01a084cf-3ce2-7900-b08a-9e48ba46b1df",
+          "01a084cf-8d50-7583-a366-63a0e2181205"
+        ],
+        "model": "gpt-6-astra",
+        "completed_hops": 2,
+        "exact_source_binding": true,
+        "permission_policy_preserved": true,
+        "failed_launch_preserves_source": true
+      },
+      "installed": true
+    },
+    {
+      "machine": "Air-M5",
+      "seat": "/Users/balizero/.codex-o2",
+      "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "enabled": true,
+      "trusted_events": [
+        "preToolUse",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "stop"
+      ],
+      "artifact_matches_manifest": true,
+      "existing_hooks_preserved": true,
+      "thresholds": {
+        "imperator": 0.2,
+        "builder": 0.4
+      },
+      "source_sha256": {
+        "context_bridge.py": "f77d4920a8a6f5649f74b13fb966b19aecc1504419cd65d112c82adb6f303e0a",
+        "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae"
+      },
+      "original_backup": "/Users/balizero/.codex-o2/state/nuzantara-context-backups/1788933263261013000",
+      "lifecycle_probe": {},
+      "handoff_probe": {},
+      "installed": true
+    },
+    {
+      "machine": "Air-M5",
+      "seat": "/Users/balizero/.codex-acct2",
+      "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "enabled": true,
+      "trusted_events": [
+        "preToolUse",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "stop"
+      ],
+      "artifact_matches_manifest": true,
+      "existing_hooks_preserved": true,
+      "thresholds": {
+        "imperator": 0.2,
+        "builder": 0.4
+      },
+      "source_sha256": {
+        "context_bridge.py": "f77d4920a8a6f5649f74b13fb966b19aecc1504419cd65d112c82adb6f303e0a",
+        "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae"
+      },
+      "original_backup": "/Users/balizero/.codex-acct2/state/nuzantara-context-backups/1788933263292821000",
+      "lifecycle_probe": {},
+      "handoff_probe": {},
+      "installed": true
+    },
+    {
+      "machine": "Pro",
+      "seat": "/Users/nuzantara/.codex",
+      "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "enabled": true,
+      "trusted_events": [
+        "preToolUse",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "stop"
+      ],
+      "artifact_matches_manifest": true,
+      "existing_hooks_preserved": true,
+      "thresholds": {
+        "imperator": 0.2,
+        "builder": 0.4
+      },
+      "source_sha256": {
+        "context_bridge.py": "f77d4920a8a6f5649f74b13fb966b19aecc1504419cd65d112c82adb6f303e0a",
+        "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae"
+      },
+      "original_backup": "/Users/nuzantara/.codex/state/nuzantara-context-backups/1788933283781791000",
+      "lifecycle_probe": {
+        "thread_id": "01a084ce-f883-7592-abcb-1a5c90913c02",
+        "turn_status": "completed",
+        "model": "gpt-6-astra",
+        "trusted_hooks": 6,
+        "event_counts": {
+          "SessionStart": 1,
+          "PreToolUse": 1,
+          "PostToolUse": 1,
+          "Stop": 1
+        },
+        "used_tokens": 42173,
+        "context_window": 258400,
+        "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+        "passed": true
+      },
+      "handoff_probe": {
+        "passed": true,
+        "chain": [
+          "01a084ce-f883-7592-abcb-1a5c90913c02",
+          "01a084cf-bc7c-7300-8001-3c6c7f66676e",
+          "01a084d0-1000-7f22-abce-375d414ef75e"
+        ],
+        "model": "gpt-6-astra",
+        "completed_hops": 2,
+        "exact_source_binding": true,
+        "permission_policy_preserved": true,
+        "failed_launch_preserves_source": true
+      },
+      "installed": true
+    },
+    {
+      "machine": "Pro",
+      "seat": "/Users/nuzantara/.codex-acct2",
+      "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "enabled": true,
+      "trusted_events": [
+        "preToolUse",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "stop"
+      ],
+      "artifact_matches_manifest": true,
+      "existing_hooks_preserved": true,
+      "thresholds": {
+        "imperator": 0.2,
+        "builder": 0.4
+      },
+      "source_sha256": {
+        "context_bridge.py": "f77d4920a8a6f5649f74b13fb966b19aecc1504419cd65d112c82adb6f303e0a",
+        "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae"
+      },
+      "original_backup": "/Users/nuzantara/.codex-acct2/state/nuzantara-context-backups/1788933283996188000",
+      "lifecycle_probe": {},
+      "handoff_probe": {},
+      "installed": true
+    },
+    {
+      "machine": "Mini",
+      "seat": "/Users/nuzantara/.codex",
+      "binary": "/Applications/Codex.app/Contents/Resources/codex",
+      "enabled": true,
+      "trusted_events": [
+        "preToolUse",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "stop"
+      ],
+      "artifact_matches_manifest": true,
+      "existing_hooks_preserved": true,
+      "thresholds": {
+        "imperator": 0.2,
+        "builder": 0.4
+      },
+      "source_sha256": {
+        "context_bridge.py": "f77d4920a8a6f5649f74b13fb966b19aecc1504419cd65d112c82adb6f303e0a",
+        "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae"
+      },
+      "original_backup": "/Users/nuzantara/.codex/state/nuzantara-context-backups/1788933287768427000",
+      "lifecycle_probe": {
+        "thread_id": "01a084ce-f2bf-7103-972e-c47e0f5e831b",
+        "turn_status": "completed",
+        "model": "gpt-6-astra",
+        "trusted_hooks": 6,
+        "event_counts": {
+          "SessionStart": 1,
+          "PreToolUse": 1,
+          "PostToolUse": 1,
+          "Stop": 1
+        },
+        "used_tokens": 17813,
+        "context_window": 258400,
+        "binary": "/Applications/Codex.app/Contents/Resources/codex",
+        "passed": true
+      },
+      "handoff_probe": {
+        "passed": true,
+        "chain": [
+          "01a084ce-f2bf-7103-972e-c47e0f5e831b",
+          "01a084cf-26ed-7081-8996-6877eb22fb61",
+          "01a084cf-4ef3-7a50-bc83-49d964b8303b"
+        ],
+        "model": "gpt-6-astra",
+        "completed_hops": 2,
+        "exact_source_binding": true,
+        "permission_policy_preserved": true,
+        "failed_launch_preserves_source": true
+      },
+      "installed": true
+    },
+    {
+      "machine": "Mini",
+      "seat": "/Users/nuzantara/.codex-acct2",
+      "binary": "/Applications/Codex.app/Contents/Resources/codex",
+      "enabled": true,
+      "trusted_events": [
+        "preToolUse",
+        "postToolUse",
+        "preCompact",
+        "postCompact",
+        "sessionStart",
+        "stop"
+      ],
+      "artifact_matches_manifest": true,
+      "existing_hooks_preserved": true,
+      "thresholds": {
+        "imperator": 0.2,
+        "builder": 0.4
+      },
+      "source_sha256": {
+        "context_bridge.py": "f77d4920a8a6f5649f74b13fb966b19aecc1504419cd65d112c82adb6f303e0a",
+        "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae"
+      },
+      "original_backup": "/Users/nuzantara/.codex-acct2/state/nuzantara-context-backups/1788933287872190000",
+      "lifecycle_probe": {},
+      "handoff_probe": {},
+      "installed": true
+    }
+  ],
+  "readonly_helper_probe": {
+    "machine": "Air-M5",
+    "thread_id": "01a084cc-fa0a-74c2-a0ad-d8aa28dff6d4",
+    "passed": true
+  },
+  "limits": [
+    "Existing open sessions were not restarted.",
+    "Secondary seats have configuration and trust verification; live model probes ran on the primary seat of each host.",
+    "PreCompact/PostCompact behavior has regression coverage; no forced production compaction was performed.",
+    "The isolated --ignore-user-config --ephemeral autofix runner remains outside user hook configuration."
+  ],
+  "probe_revision": {
+    "live_positive_probes_context_bridge_sha256": "8f813b1cda64314ce173c96da4bff27fc36349e9c7d1e7608c3d613b109e1555",
+    "final_revision_note": "The final revision adds denial of tool execution for an unacknowledged child. All 18 regression tests passed after that change; configuration, trust and installed hashes were reverified on all seven seats. The earlier real lifecycle and two-hop probes are retained as consumer evidence, not represented as new executions."
+  }
+}

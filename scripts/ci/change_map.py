@@ -74,6 +74,33 @@ EXACT_RULES: dict[str, set[str] | frozenset[str]] = {
     # touch.
     ".claude/settings.json": {"fleet_ops"},
     ".claude/settings.local.json": {"fleet_ops"},
+    # detect-secrets baseline, not app code — .github/workflows/security.yml
+    # and immune-enforcement.yml read it to run the secrets scanner; none of
+    # the six tests.yml product suites do (verified: no match in tests.yml,
+    # apps/, packages/). Measured 7-day window 2026-09-02..09 (379
+    # merge_group runs of tests.yml): before this entry it sat in
+    # unknown_paths on 6 merge-queue batches (PRs #5825, #5833, #5841,
+    # #5846, #6031, #6046, 2026-09-06..09) and 10 pull_request runs, forcing
+    # run_all=True on top of an otherwise docs/evidence-only diff each time.
+    # `security_sensitive` is the domain scripts/ci/security_gate_flags.py
+    # reads to pick scanners; since 2026-09-05 it grants none of the six
+    # product suites on its own (see the `_suggested_jobs` comment below).
+    ".secrets.baseline": {"security_sensitive"},
+    # prettier-changed-files.yml and the husky pre-commit hook read this;
+    # none of the six product suites do. Measured 7-day window
+    # 2026-09-02..09: unknown_paths on 6 merge-queue batches, all re-queues
+    # of PR #5769 on 2026-09-05.
+    ".prettierignore": {"fleet_ops"},
+    # Fleet topology map. Before this entry it fell into unknown_paths and
+    # forced run_all=True (all six product suites) although it IS read by
+    # backend code (verified by grep, 2026-09-10):
+    # apps/backend-rag/backend/llm/deepseek_client.py,
+    # apps/backend-rag/backend/app/routers/article_composer.py, and
+    # apps/backend-rag/backend/tests/services/council/test_no_deepseek_regression.py.
+    # backend_python is the narrower, correct guilt — backend-tests +
+    # e2e-tests, not all six. Measured 7-day window 2026-09-02..09: unknown
+    # on 1 merge-queue batch and 6 pull_request runs.
+    "FLEET_TOPOLOGY.json": {"backend_python"},
     "package.json": {
         "mouth",
         "admin_dashboard",

@@ -8,8 +8,18 @@ and the new window is opened by window_jump.sh / nz-jump (interactive) or by
 the cascade wrapper re-invoking `claude -p` (headless). This hook runs at the
 start of EVERY session (SessionStart, matcher `startup`) and:
 
-  - picks the FRESHEST jump file that is unclaimed (`to_session` null), fresh
-    (< MAX_AGE_S), raised from THIS cwd (realpath) and not by this session;
+  - picks ONLY the jump this window was opened FOR: `NZ_JUMP_FROM=<from>` in
+    the env, set by nz-jump.sh (interactive, typed by window_jump.sh or by a
+    human) and by the cascade wrapper's hop (headless). That file must still be
+    unclaimed (`to_session` null), fresh (< MAX_AGE_S) and not our own;
+  - a window opened BY HAND (plain `claude`, no NZ_JUMP_FROM) gets NOTHING.
+    Until 2026-09-09 it fell back to "the freshest unclaimed same-cwd jump",
+    so for 15 minutes after every guard trip any window Zero opened in
+    ~/nuzantara was handed a stale mandate plus "continua senza chiedere" and
+    started working on its own instead of waiting for the owner's prompt
+    (Zero, Pro 2026-09-09 23:50: "quando apro comincia a fare quello che vuole
+    e non aspetta il mio prompt"). The launcher knows the id, so it says it;
+    nobody else is a continuation;
   - injects it as `additionalContext` (the documented SessionStart field): the
     original mandate in full (carried in the jump file across hops — the hop-2
     transcript's first prompt is nz-jump's stub, not the mandate), successful
@@ -46,34 +56,32 @@ def _load(p: Path):
 
 def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = None,
               want: str | None = None):
-    """The jump this session was opened FOR.
+    """The jump this session was opened FOR — and only that one.
 
     `want` (NZ_JUMP_FROM in the env, set by nz-jump.sh and by the cascade
-    wrapper's hop) names the originating session outright: only that file is
-    considered, still only if unclaimed, fresh and not our own. Without it —
-    a window opened by hand — fall back to the freshest unclaimed, fresh,
-    same-cwd jump not raised by this session. Cross-family review (codex,
-    2026-09-09) showed the fallback alone lets a stranger session in the same
-    cwd claim a jump meant for another window; the launcher knows the id, so
-    it says it."""
+    wrapper's hop) names the originating session outright: that file is
+    considered, still only if unclaimed, fresh and not our own. Without it
+    the answer is None: a window opened by hand is Zero's window, not a
+    continuation. Cross-family review (codex, 2026-09-09) had already shown
+    the old same-cwd fallback let a stranger session claim a jump meant for
+    another window; the same evening it handed a hand-opened interactive
+    session a stale mandate. `cwd` is kept in the signature for the payload
+    but is no longer a filter — the launcher has already cd'd into the jump's
+    cwd, and a hand-opened window is refused whatever its cwd."""
+    if not want:
+        return None
     now = time.time() if now is None else now
-    best, best_ts = None, -1.0
-    candidates = [state_dir / f"pending-jump-{want}.json"] if want else state_dir.glob("pending-jump-*.json")
-    for p in candidates:
-        j = _load(p)
-        if not isinstance(j, dict) or j.get("to_session"):
-            continue
-        try:
-            ts = float(j.get("ts") or 0)
-        except (TypeError, ValueError):
-            continue
-        if now - ts > MAX_AGE_S or j.get("from_session") == session_id:
-            continue
-        if not want and j.get("cwd") and os.path.realpath(str(j["cwd"])) != os.path.realpath(cwd):
-            continue
-        if ts > best_ts:
-            best, best_ts = (p, j), ts
-    return best
+    p = state_dir / f"pending-jump-{want}.json"
+    j = _load(p)
+    if not isinstance(j, dict) or j.get("to_session"):
+        return None
+    try:
+        ts = float(j.get("ts") or 0)
+    except (TypeError, ValueError):
+        return None
+    if now - ts > MAX_AGE_S or j.get("from_session") == session_id:
+        return None
+    return (p, j)
 
 
 def build_context(jump: dict, handoff: dict | None) -> str:

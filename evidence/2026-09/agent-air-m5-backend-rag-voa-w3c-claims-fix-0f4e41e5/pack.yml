@@ -1,0 +1,274 @@
+task_id: voa-w3c-claims-fix
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-11
+machine: air-m5 (M5)
+lanes:
+  - lane: voa-w3c-claims-fix-build
+    role: build
+    seat:
+      "claude-opus-5 xhigh (Dux, builder seat in worktree backend-rag-voa-w3c-claims-fix,
+      branch agent/air-m5/backend-rag/voa-w3c-claims-fix; continuation after window jump 1 of
+      session facf1b39). Cured two false claims #6235 shipped in its own prose; under refuter
+      pressure the assertions were then rebuilt to a written spec (Imperatore decision #8),
+      and the remaining test prose was cut to one line per docstring by Zero's ruling B — no
+      assertion changed in that last round, proven by a docstring-stripped AST hash."
+  - lane: voa-w3c-claims-fix-refute-codex
+    role: review
+    seat:
+      "codex gpt-5.6-sol (`codex exec -m gpt-5.6-sol --sandbox read-only`), OUT of the contribution
+      chain. O1 BLOCK, O2 BLOCK (same cause, suspended, spec written by the Imperatore), O3
+      against the spec: BLOCK on docstring prose only (assertions conformed), after which Zero
+      ruled option B."
+seat_diversity: exempt
+seat_diversity_note:
+  One build lane, so D3's seat-diversity requirement does not attach (it
+  binds packs with >= 2 build lanes).
+seat_override:
+  "R9 council_run: only one COUNCIL_REVIEW_SEATS-qualifying seat (codex-gpt-5.6-sol)
+  was dispatched, across three rounds, so the journal does not reach the 2-distinct-seat quorum
+  by itself. Kimi K3 second-reader was deliberately NOT invoked: this PR does not modify products/garuda-voa/contracts/openapi.yaml
+  nor any data file, and the two-reader rule binds contract/data diffs (same disposition as
+  #6235's pack). The fresh gate the Imperatore commissions on the final head is the second
+  independent reader of this diff; that is stated here rather than implied."
+council_run: journal.jsonl
+outcome:
+  "No served behaviour changes. (A) test_privacy_headers_match_the_staff_router_they_stand_in_for
+  now asserts one multiset equality on raw (lower-cased name, value) pairs: headers after
+  garuda_staff_router._privacy_headers runs on a bare Response() == headers before + the middleware's
+  contract headers. An added header outside the middleware set, a deleted header, a duplicated
+  pair and an overwrite to a different value are all red by construction, each proven by a
+  guilt mutation. (B) public_endpoints.path_matches_template's docstring now states the measured
+  behaviour: an inner double slash, an extra or missing segment and an empty {param} fail;
+  a leading/trailing slash MATCHES, so the path is CLASSIFIED as the slash-less operation
+  — and is not SERVED by it: past the middleware FastAPI's default redirect_slashes answers
+  307 to the slash-less path. Both facts are pinned: ten parametrized matcher cases, two trailing-slash
+  staff paths in the envelope suite, and a router test that compares Location by whole equality
+  including the host."
+diff:
+  files: 6
+  net_lines:
+    "Deliberately NOT restated as a literal here (same reasoning as #6235's pack:
+    a number that changes when you write it down cannot be written down). The linter measures
+    it itself, merge-base-anchored, from `git diff --no-renames --numstat $(git merge-base
+    BASE HEAD) HEAD` over the whole pull request, and harness-floor.yml hands it that measurement
+    through --numstat-file. Shape, in prose: the docstring rewrite in public_endpoints.py;
+    in the envelope suite, two trailing-slash staff paths, the rewritten multiset header test
+    and the new redirect test; in the registry suite, one parametrized matcher test. The evidence
+    directory is the rest."
+  behaviour_change:
+    None. No router, middleware, service, migration or contract file changes;
+    public_endpoints.py changes a docstring only.
+  shape:
+    One docstring corrected to measured behaviour, one test rewritten to a single multiset
+    equality, two tests added (matcher slash cases, router trailing-slash redirect), two parametrized
+    paths added.
+pii_scan: clean
+pii_scan_note:
+  Docstring and unit tests only; synthetic identifiers (prc_abc123, ord_abc123);
+  no client data, no credential, no PII path touched.
+receipts:
+  - claim:
+      the deterministic gear floor for this PR's changed-file set is 3 (apps/backend-rag/backend/app/auth/*
+      is a HOTZONE_PATTERNS hit)
+    cmd:
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file
+      cf.txt --numstat-file ns.txt (cf.txt = the 3 code files + the 3 evidence files; ns.txt
+      = git diff --numstat of the working tree)
+    result: 3 / path
+    ts: "2026-09-11T13:55:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: codex round 1 (O1) on the first cure
+    cmd: codex exec -m gpt-5.6-sol --sandbox read-only (13:20:23Z-13:27:30Z, rc 0)
+    result:
+      'VERDICT BLOCK. #1 BLOCK a difference of header NAMES missed a _privacy_headers
+      overwrite of a header a bare Response already carries (content-length). #2 MINOR .title()
+      is not HTTP header-name normalisation. #3 BLOCK the new docstring sentence "resolves to
+      the SAME operation" was false: the router''s default redirect_slashes answers 307. #4
+      SURVIVES every documented matcher case confirmed by execution. #5 SURVIVES all ten parametrized
+      cases call the function, none vacuous.'
+    ts: "2026-09-11T13:27:30Z"
+    seat: codex-gpt-5.6-sol
+    exit: 1
+  - claim:
+      the router answers 307 to the slash-less operation for a trailing-slash staff path,
+      on both routers that carry frozen staff operations
+    cmd:
+      FastAPI() + include_router(garuda_staff_router.router) and, separately, garuda_orders_router.router;
+      TestClient GET/POST <path>/ with follow_redirects=False
+    result:
+      "GET /api/visa/voa/staff/practices/ 307 -> /api/visa/voa/staff/practices; POST .../prc_abc123/transitions/
+      307 -> .../transitions; POST .../orders/ord_abc123/late-resolution/ 307 -> .../late-resolution.
+      grep for redirect_slashes under apps/backend-rag/backend: zero hits. Live, unauthenticated:
+      curl https://nuzantara-rag.fly.dev/api/visa/voa/staff/practices/ -> 401 with SESSION_REQUIRED
+      (grep -c = 1)."
+    ts: "2026-09-11T13:33:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: codex round 2 (O2) on the depth-1 cure
+    cmd: codex exec -m gpt-5.6-sol --sandbox read-only (13:31:44Z-13:42:21Z, rc 0)
+    result:
+      'VERDICT BLOCK. O1 #1, #2, #3 CURED, each confirmed by the refuter''s own mutations
+      and probes; production constructors main_api.py:719 and app_factory.py:685 keep redirect_slashes=True
+      (AST scan of 257 FastAPI() calls, no override); late-resolution on garuda_orders_router
+      identical. #7 BLOCK "WHOLE SETS" and "the one change this cannot see" were false: a set
+      difference of headers.raw still passed when content-length was DELETED or a privacy pair
+      DUPLICATED. #8 MINOR the Location endswith assertion accepted a redirect to another host.
+      The Dux classified #7 as the SAME CAUSE as O1 #1 and suspended rather than patch at depth
+      2.'
+    ts: "2026-09-11T13:42:21Z"
+    seat: codex-gpt-5.6-sol
+    exit: 1
+  - claim: "one cure conforming to Imperatore decision #8, guilt and innocence proven"
+    cmd:
+      each mutation applied to garuda_staff_router.py (backup copy, restored with cp, git
+      diff --quiet verified), targeted test rerun
+    result:
+      "INNOCENCE unmutated tree 3 passed. GUILT all RED: del content-length -> 1 failed;
+      duplicate Cache-Control pair appended -> 1 failed; fourth header -> 1 failed; router route
+      /practices/ returning 307 to https://elsewhere.invalid/... -> 1 failed. Router byte-identical
+      to HEAD afterwards."
+    ts: "2026-09-11T13:46:23Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: affected suites green, lint reproduced as CI runs it
+    cmd:
+      PYTHONPATH=. pytest backend/tests/unit/middleware/ backend/tests/app/routers/test_garuda_staff_public_prefix_guard.py
+      backend/tests/app/routers/test_garuda_voa_public_root_allowlist.py backend/tests/app/routers/test_garuda_voa_flag_ordering.py
+      backend/tests/app/routers/test_garuda_staff_actor_async_verifier.py backend/tests/app/routers/test_garuda_voa_openapi_parity.py;
+      ruff check backend/app/ --select F401,F821,F822,F823 (fly-deploy.yml); ruff check + ruff
+      format --check on the three changed files (pre-commit hooks)
+    result: "268 passed; ruff: All checks passed; 3 files already formatted"
+    ts: "2026-09-11T13:46:23Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: "codex round 3 (O3) against spec #8"
+    cmd: codex exec -m gpt-5.6-sol --sandbox read-only (13:54:08Z-14:04:40Z, rc 0)
+    result:
+      "VERDICT BLOCK. Spec (2) CONFORMS (whole Location equality; the elsewhere.invalid
+      mutation red). Spec (1): the multiset ASSERTION conforms — the refuter reproduced delete,
+      duplicate, different-value overwrite and outside addition individually, all red — but
+      the DOCSTRING does not. #1 BLOCK the privacy test docstring (a sentence carried over from
+      #6235, 3313c26e5a) promised a refusal indistinguishable from the router's, while the
+      test checks headers only. #2 MAJOR the redirect test docstring said the slash-less operation's
+      unauthenticated answer is the same envelope; in the test's bare app a bodyless POST following
+      the 307 gets 422. #3 MAJOR the same docstring said a router answering the trailing-slash
+      path itself fails; an explicit handler returning 307 to the exact expected URL passes.
+      SURVIVES: multiset assertion, whole Location equality, public_endpoints.path_matches_template
+      docstring and its ten cases. The Dux classified the BLOCK as the same cause as O1 #1 /
+      O2 #7 (prose claiming more than the assertion) and the PR was suspended definitively and
+      handed to Zero."
+    ts: "2026-09-11T14:04:40Z"
+    seat: codex-gpt-5.6-sol
+    exit: 1
+  - claim: Zero's ruling B, applied as a prose-only round with no Sol O4
+    cmd:
+      'ruling relayed by the GARUDA VOA Imperatore (nuzantara-52, session 5d507d16-54eb-4c72-8749-5f6cdd31e6eb)
+      at 14:08Z: every docstring of the touched tests is ONE line stating exactly what the assertion
+      checks; the words "indistinguishable" and "cannot see" and any sentence about the router
+      or the operation beyond what the test calls are forbidden; the sentence inherited from
+      #6235 is removed; no assertion or code change; public_endpoints.path_matches_template''s
+      docstring stays (O3 SURVIVES, interpretation confirmed by the Imperatore)'
+    result:
+      'three test docstrings and five inline case comments rewritten to one line each;
+      grep for "indistinguishable" and "cannot see" in both test files: zero hits'
+    ts: "2026-09-11T15:50:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: the ruling-B round changed prose only — no assertion, no code
+    cmd:
+      sha256 of ast.dump() with every module/class/function docstring removed (comments never
+      reach the AST), for both test files, on a cp backup taken immediately before the round
+      vs the rewritten files; cmp on public_endpoints.py
+    result:
+      "test_hybrid_auth_contract_401_envelope.py 815d9ffe4963b6c3 before and after; test_public_endpoints_registry.py
+      efe35550dc0264c1 before and after; public_endpoints.py byte-identical. Affected suites
+      re-run: 268 passed; ruff check and ruff format clean."
+    ts: "2026-09-11T15:55:57Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: the brief's three acceptance probes, run individually as written
+    cmd:
+      "Probe 1 — guilt mutations on _privacy_headers, each rerunning test_privacy_headers_match_the_staff_router_they_stand_in_for:
+      fourth header, deleted content-length, duplicated Cache-Control pair — all FAIL; unmutated
+      tree PASS. Probe 2 — PYTHONPATH=. pytest backend/tests/unit/middleware/test_public_endpoints_registry.py
+      -k test_path_matches_template_trailing_and_inner_slashes (10 cases) Probe 3 — the two
+      trailing-slash entries added to _STAFF_PATHS in test_hybrid_auth_contract_401_envelope.py
+      pass; post-merge on the promoted commit: curl -s https://nuzantara-rag.fly.dev/api/visa/voa/staff/practices
+      | grep -c SESSION_REQUIRED == 1 (unchanged from #6235)"
+    result:
+      "probe 1: each mutation 1 failed, unmutated tree passed. probe 2: 10 passed, 23
+      deselected. probe 3: 7 passed, 22 deselected."
+    ts: "2026-09-12T02:06:19Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      "O1 #1 BLOCK. Subtracting header NAMES misses any _privacy_headers overwrite
+      of a header a bare Response already carries."
+    resolution:
+      "SUPERSEDED by the spec #8 cure: multiset equality on raw pairs; the content-length
+      overwrite mutation is red."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "O1 #2 MINOR. .title() is not HTTP header-name normalisation."
+    resolution: Names compare lower-cased on both sides; confirmed CURED in O2.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      'O1 #3 BLOCK. "a trailing-slash request resolves to the SAME operation" is false;
+      the router answers 307 while the middleware intercepts first.'
+    resolution:
+      Behaviour unchanged on purpose; the docstring now says CLASSIFIED, not SERVED,
+      and the 307 is pinned by a router test. Confirmed CURED in O2, including the production
+      constructors and the orders router.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      'O2 #7 BLOCK. The set-difference probe still passed a deleted content-length
+      and a duplicated privacy pair, so "WHOLE SETS" and "the one change this cannot see" were
+      false.'
+    resolution:
+      "Same cause as O1 #1, so the Dux suspended instead of a depth-2 patch; the Imperatore
+      wrote spec #8 (multiset equality, docstring states exactly that). One conforming cure;
+      delete and duplicate mutations are red."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      "O2 #8 MINOR. The Location endswith assertion accepted a redirect to another
+      host."
+    resolution:
+      "Location compared by whole equality with the testserver host (spec #8 part
+      2); the elsewhere.invalid mutation is red."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      "O3 #1 BLOCK. The privacy-header test docstring promised a middleware refusal
+      indistinguishable from the router's, but the assertion compares headers only."
+    resolution:
+      'Cured by Zero''s ruling B: the docstring is now the single line "Asserts after
+      == before + middleware as Counters of (lower-cased name, value) pairs."; the inherited
+      sentence is gone. Assertion unchanged (AST hash).'
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      "O3 #2 MAJOR. The redirect test docstring claimed the slash-less operation's
+      unauthenticated answer is the same envelope; the test never calls it, and in its bare
+      app a bodyless POST following the 307 gets 422."
+    resolution:
+      'Cured by ruling B: the docstring states only what the test asserts — 307, Location
+      == "http://testserver" + path.rstrip("/"), equal envelopes — with no sentence about the
+      operation. Assertion unchanged (AST hash).'
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      "O3 #3 MAJOR. The redirect test docstring claimed a router answering the trailing-slash
+      path itself fails; an explicit handler returning 307 to the exact expected URL passes."
+    resolution:
+      "Cured by ruling B: that sentence is removed, not repaired; the docstring claims
+      nothing about router structure. Assertion unchanged (AST hash)."
+appetite_exceeded: ""

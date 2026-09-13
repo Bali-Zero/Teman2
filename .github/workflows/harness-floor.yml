@@ -11,11 +11,24 @@ name: Harness floor recompute
 # gate session) would leave that context "Expected — Waiting for status" FOREVER on every ordinary
 # PR if it were simply added to required_status_checks, AND (separately) never carries over to the
 # merge queue's synthetic test-merge SHA at all (see (a) below). So THIS JOB — not a status it
-# posts — is the thing branch protection requires: for any PR that is not declaring Gear-3 (no
-# evidence/brief.yml, or a brief declaring gear < 3), the job itself concludes success — the same
-# pattern "Hot-zone enforcement" already uses (unconditionally required, internally a no-op for
-# PRs it does not apply to). Only on a Gear-3 brief does this job's own conclusion depend on
-# READING (never writing) whether the gate session already posted a real verdict.
+# posts — is the thing branch protection requires: for any PR that is not declaring Gear >= 2 (no
+# evidence/brief.yml and floor 1, or a brief declaring gear 1), the job itself concludes success —
+# the same pattern "Hot-zone enforcement" already uses (unconditionally required, internally a
+# no-op for PRs it does not apply to). On a brief declaring Gear 2 OR Gear 3 this job's own
+# conclusion depends on READING (never writing) whether the gate session already posted a real
+# verdict.
+#
+# WIDENED 2026-09-10 (RULED, Zero — PARABELLUM lane 6; docs/rules/RULINGS.md, the RULED 2026-09-10
+# PARABELLUM block): the verdict threshold moved from Gear 3 to **Gear 2**. Gear 1 stays advisory.
+# WHY, measured the same night: #6089 and #6090 (both Gear 1) went through the merge queue before
+# or against their gate verdict — harmless at Gear 1, but the identical shape at Gear 2 ships an
+# UNSIGNED Gear-2 diff, and Gear 2 is where this fleet does most of its load-bearing work. Only the
+# `if:` on the two Gear steps below changed (7a now fires at gear == 1, 7c at gear != 1); the
+# EVIDENCE-PACK validation in Step 7b stays Gear-3-only, because harness-v2 §6 asks a Gear-2 task
+# for a session verdict + AI review + CI, never for a pack. Nothing else in the redesign moved:
+# floor 1 still resolves to success with no human-shaped wait (a typo PR must never sit on a gate),
+# the kill switch, the brief-absent/floor<2 path, the bootstrap sentinels and the read-only relay
+# semantics below are untouched.
 #
 # Floor recompute (harness-v2 §1 "il modello può solo alzare la classe, mai abbassarla sotto il
 # floor"): the deterministic floor is computed ONCE, unconditionally (brief or not — adversarial-
@@ -191,7 +204,9 @@ name: Harness floor recompute
 # STILL OPEN, and it is NOT this note (do not read the above as "the gate is fully trustworthy"):
 # verdict provenance. scripts/harness_fable_gate.py never verifies WHO posted a verdict — any
 # credential with `statuses: write` can post PASS on any SHA. Before the redesign that was inert
-# because nothing read the status; now it is load-bearing, so the severity went UP. Tracked in
+# because nothing read the status; now it is load-bearing, so the severity went UP — and the
+# 2026-09-10 widening to Gear 2 raises it again, because the set of PRs whose merge depends on an
+# unauthenticated status just grew from the Gear-3 tail to every mid-size diff. Tracked in
 # modus PENDING-ARMS as design gap (b) of the 2026-08-10 entry, owner there: "me (next session)
 # for the design work". Its SIBLING — the repo-wide required-check NAME-spoofing gap — is the one
 # with its own 2026-08-21 entry, whose owner field adds the CI-integrity lane qualifier. Both rows
@@ -811,7 +826,7 @@ jobs:
           FLOOR: ${{ steps.detfloor.outputs.floor }}
           SOURCE: ${{ steps.detfloor.outputs.source }}
         run: |
-          echo "::error::this diff's deterministic floor is $FLOOR (source: $SOURCE — hot-zone path and/or blast-radius size, see evidence_pack_lint.py's compute_floor()) but carries no evidence/brief.yml — a floor>=2 diff requires at minimum a brief declaring gear>=$FLOOR (Gear 3 additionally requires a pack + gate verdict, Step 7b/7c below); it cannot silently pass as 'not a harness task'"
+          echo "::error::this diff's deterministic floor is $FLOOR (source: $SOURCE — hot-zone path and/or blast-radius size, see evidence_pack_lint.py's compute_floor()) but carries no evidence/brief.yml — a floor>=2 diff requires at minimum a brief declaring gear>=$FLOOR (a brief declaring gear>=2 additionally requires a harness/fable-gate verdict on this head sha, Step 7c below — RULED 2026-09-10; Gear 3 requires an Evidence Pack on top of that, Step 7b); it cannot silently pass as 'not a harness task'"
           exit 1
 
       # -----------------------------------------------------------------
@@ -844,21 +859,26 @@ jobs:
           fi
 
       # -----------------------------------------------------------------
-      # Step 7a — floor satisfied, but this is not a Gear-3 task: the gate
-      # verdict does not apply (harness-v2 §6 — Gear 2 closes with a
-      # session verdict + AI-review + CI, Gear 1 with CI alone). Nothing to
-      # publish — this job's own `exit 0` is the passing check-run for a
-      # Gear-1/2 harness task, never blocked on a gate it was never meant
-      # to pass through.
+      # Step 7a — floor satisfied and this is a Gear-1 task: the gate
+      # verdict does not apply. Nothing to publish — this job's own
+      # `exit 0` is the passing check-run, never blocked on a gate a
+      # typo-sized diff was never meant to pass through.
+      #
+      # NARROWED 2026-09-10 (RULED, Zero — see the WIDENED note in the file
+      # header): this condition was `gear != '3'`, which passed every
+      # Gear-2 brief straight through with no verdict read at all. Gear 1
+      # is now the ONLY gear that skips the read. The floor side of the
+      # same threshold already lives in Step 5a/5b/5c and did not move:
+      # floor==1 with no brief still resolves to success there.
       # -----------------------------------------------------------------
-      - name: Not a Gear-3 task (gear < 3 — fable-gate not applicable)
+      - name: Not a gated task (gear 1 — fable-gate not applicable)
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present == 'true' &&
-          steps.gearcheck.outputs.gear != '3'
+          steps.gearcheck.outputs.gear == '1'
         env:
           GEAR: ${{ steps.gearcheck.outputs.gear }}
-        run: echo "::notice::gear ${GEAR} — fable-gate is Gear-3 only, not applicable — passing"
+        run: echo "::notice::gear ${GEAR} — the final gate verdict is required from Gear 2 (RULED 2026-09-10); Gear 1 stays advisory — passing"
 
       # -----------------------------------------------------------------
       # Step 7b — Gear-3, floor satisfied: validate the ACTUAL Evidence
@@ -1077,9 +1097,20 @@ jobs:
             "${EXTRA_ARGS[@]}"
 
       # -----------------------------------------------------------------
-      # Step 7c — Gear-3, floor satisfied, pack conformant: this job's own
-      # conclusion now depends on READING whether the gate session already
-      # posted a real `harness/fable-gate` verdict — never on writing one.
+      # Step 7c — Gear >= 2, floor satisfied (and, at Gear 3 only, pack
+      # conformant): this job's own conclusion now depends on READING
+      # whether the gate session already posted a real
+      # `harness/fable-gate` verdict — never on writing one.
+      #
+      # WIDENED 2026-09-10 from `gear == '3'` to `gear != '1'` (RULED,
+      # Zero — full rationale in the file header). A Gear-2 PR reaches
+      # this step WITHOUT passing Step 7b: no Evidence Pack is demanded of
+      # it (harness-v2 §6), only the verdict. The verdict is posted by
+      # scripts/harness_fable_gate.py from a FRESH session on the mission
+      # colour's gate seat, outside the contribution chain — and when the
+      # builder runs as a subagent Dux it cannot commission its own gate:
+      # the level ABOVE it does (.claude/skills/modus/SKILL.md, "Gate
+      # commission depth", 2026-09-10).
       # scripts/ci/harness_gate_read.py (scripts/tests/test_harness_gate_read.py
       # is its guilt+innocence corpus, including static proofs it can never
       # publish) resolves the PR's REAL head sha for each event shape
@@ -1115,11 +1146,11 @@ jobs:
       # harness_gate_read.py's own PR_NUMBER_RE already parses — cannot be
       # spoofed by a fork PR's content).
       # -----------------------------------------------------------------
-      - name: Gear-3 — read the real gate verdict
+      - name: Gear >= 2 — read the real gate verdict
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present == 'true' &&
-          steps.gearcheck.outputs.gear == '3'
+          steps.gearcheck.outputs.gear != '1'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

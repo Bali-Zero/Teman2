@@ -1,0 +1,52 @@
+task_id: nuzantara-co-id-holding
+gear: 1
+gear_reason: >-
+  Computed, not chosen. scripts/evidence_pack_lint.py --print-floor over this branch's own
+  changed-file set (scripts/ci/hotzone_changed_files.sh, merge-base be45266252) and its
+  numstat returns 1, --print-floor-source returns `none`: no HOTZONE_PATTERNS hit
+  (apps/mouth/src/proxy.ts is not a hot-zone path) and 319 net lines over 6 files stay under
+  the size thresholds. The lane design allowed 2 or 3; a declared gear above the floor on a
+  Gear-1-shaped diff is what compute_ceiling exists to flag, so the brief follows the floor.
+l_level: L1
+gate_class: opus
+objective: >-
+  Wire nuzantara.co.id into apps/mouth the way tax.balizero.com is wired (lane F of the
+  2026-09-11 compliance-stack build). A NUZANTARA_DOMAIN constant in proxy.ts rewrites every
+  path on nuzantara.co.id and www.nuzantara.co.id to the (nuzantara) route group at
+  /nuzantara/*, with X-Robots-Tag noindex, nofollow. The group layout (lang="id") overrides
+  every Bali Zero metadata field the root layout sets and declares robots index:false
+  follow:false; the one Bahasa Indonesia page carries the name, the promise line, three
+  services without prices, an env-driven WhatsApp link with a visible placeholder, and the
+  <nama PT> PT PMA footer line. docs/ops/nuzantara-co-id-dns-setup.md is the operator runbook
+  (Vercel domain add, the A and CNAME records on Cloudflare, the OSS-RBA PSE gate), linked
+  from the new docs/ops/README.md index.
+constraints:
+  - >-
+    No price, no "AI" wording, no taboo phrase from skills/bali-zero-brand/voice/forbidden-phrases.md
+    in the page or layout copy. No invented WhatsApp number: NEXT_PUBLIC_NUZANTARA_WA unset
+    renders the literal placeholder "<nomor WhatsApp>".
+  - >-
+    Not touched: fly.toml, .env*, zantara_core.py, lockfiles, sitemap.ts (a static list that
+    never auto-lists routes), robots.ts (adding the host there would block the crawl and hide
+    the noindex, the trap robots.ts's own comment describes).
+  - >-
+    Declared residual, not fixed: the root layout's hardcoded <head> (llms/AI-sitemap/AI-plugin
+    link titles, the ai-content-declaration meta key, Bali Zero JSON-LD) still renders on every
+    route including this one. Removing it per host needs a host-aware root layout, which is a
+    separate concern. The visible body has zero "AI" tokens (measured on the built HTML).
+acceptance:
+  - >-
+    WHEN a request arrives with Host nuzantara.co.id or www.nuzantara.co.id, THEN proxy()
+    rewrites it under /nuzantara with X-Robots-Tag noindex, nofollow; lookalike hosts are not
+    rewritten. probe: cd apps/mouth && npx vitest run src/__tests__/middleware.test.ts
+  - >-
+    WHEN apps/mouth builds, THEN /nuzantara is prerendered static with <title>Nuzantara</title>,
+    meta robots noindex, nofollow and canonical https://nuzantara.co.id.
+    probe: cd apps/mouth && npm run build && grep -o '<meta name="robots"[^>]*>' .next/server/app/nuzantara.html
+  - >-
+    WHEN the page and layout copy are grepped for AI, THEN zero hits.
+    probe: grep -i -E "\bAI\b" "apps/mouth/src/app/(nuzantara)/nuzantara/page.tsx" "apps/mouth/src/app/(nuzantara)/nuzantara/layout.tsx"
+  - >-
+    WHEN docs/ops is opened, THEN the index links the runbook.
+    probe: grep -n "nuzantara-co-id-dns-setup.md" docs/ops/README.md
+pii_scan: clean

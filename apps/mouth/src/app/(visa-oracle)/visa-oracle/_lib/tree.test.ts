@@ -3,6 +3,7 @@ import * as treeRegistry from "./tree";
 import {
   CATEGORY_KEYS,
   QUESTIONS,
+  STAY_PERMIT_CODES,
   daysRemaining,
   formatIsoDateForDisplay,
   getLane,
@@ -71,14 +72,44 @@ describe("tree.ts — interview decision boundary", () => {
     });
   });
 
-  it("keeps free-text sponsor status and legacy buckets outside engine facts", () => {
-    expect(QUESTIONS.family_sponsor_status_code.decisionMapping).toEqual({
-      kind: "HUMAN_CONTEXT",
-    });
+  it("keeps the other_purpose catch-all outside engine facts", () => {
     expect(QUESTIONS.other_purpose.decisionMapping.kind).toBe("HUMAN_CONTEXT");
     expect(QUESTIONS.other_purpose.notSure).toEqual({
       mode: "human-review",
     });
+  });
+
+  // PR-D4c-2 (imperator's ruling): the currency question's "not sure" must
+  // cost ZERO holds. `mapDisclosedReviewFlags` (fact-mapper.ts) raises
+  // NOT_CERTAIN on the exact-equality literal "unsure" — a `notSure: {
+  // mode: "human-review" }` on this question would let the applicant answer
+  // that literal and trip the flag on every walk that uses it, silently
+  // turning the cost from zero into one hold per walk. This guard goes red
+  // the moment someone re-attaches it.
+  it("omits notSure entirely on investment_currency — the mechanism that keeps its 'I can't say yet' answer at zero review cost", () => {
+    expect(QUESTIONS.investment_currency.notSure).toBeUndefined();
+    expect(QUESTIONS.investment_currency.options.map(({ key }) => key)).toEqual(
+      ["idr", "usd", "still_unsure"],
+    );
+  });
+
+  // D4a (owner ruling SHWEB-20260911): promoted from HUMAN_CONTEXT/free-text
+  // to a closed FACT question — see `mapFamilySponsorStatus` (fact-mapper.ts)
+  // for the closed-catalogue trust argument this promotion had to clear.
+  it("promotes family_sponsor_status_code to a closed FACT question over the signed catalogue (D4a)", () => {
+    expect(QUESTIONS.family_sponsor_status_code.kind).toBe("choice");
+    expect(QUESTIONS.family_sponsor_status_code.decisionMapping).toEqual({
+      kind: "FACT",
+      factPaths: ["family.sponsor_status_code"],
+    });
+    expect(
+      QUESTIONS.family_sponsor_status_code.options.map(({ key }) => key),
+    ).toEqual([...STAY_PERMIT_CODES]);
+    // Same closed catalogue as `stay_permit_code`, not a second hand-typed
+    // copy of it.
+    expect(QUESTIONS.family_sponsor_status_code.options).toEqual(
+      QUESTIONS.stay_permit_code.options,
+    );
   });
 
   // 2026-08-23: `family_sponsor_permit_basis` shipped as FACT in PR #4650,

@@ -55,7 +55,8 @@ if command -v timeout >/dev/null 2>&1; then _TIMEOUT=(timeout 4)
 elif command -v gtimeout >/dev/null 2>&1; then _TIMEOUT=(gtimeout 4); fi
 
 "${_TIMEOUT[@]}" "$PY" - "$ESC_FILE" "$TASKS_DIR" "$FRESH_DAYS" <<'PYEOF' 2>/dev/null || exit 0
-import json, os, re, sys, time
+import json, math, os, re, sys, time
+from datetime import datetime, timezone
 
 esc_file, tasks_dir, fresh_days = sys.argv[1], sys.argv[2], int(sys.argv[3])
 now = time.time()
@@ -82,6 +83,35 @@ def _normalize_cause(summary: str) -> str:
     s = _SHA_RE.sub("<sha>", s)
     s = _NUM_RE.sub("#", s)
     return " ".join(s.split())
+
+def _ts(value) -> float:
+    # Board readers never trust writer discipline on ts: a string next to the
+    # floats (W54 dlq_autopilot ISO-8601; #6012 receptor str(now)) would
+    # TypeError the net-pending comparisons below and silence the WHOLE board
+    # at SessionStart. Numbers pass, numeric/ISO strings parse, junk is 0.0
+    # (oldest, still listed). Mirrors sentinel_lib.escalations.ts_epoch —
+    # this hook runs before any sys.path setup, so it cannot import it.
+    if isinstance(value, bool):
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value) if math.isfinite(value) else 0.0
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return 0.0
+        try:
+            number = float(text)
+            return number if math.isfinite(number) else 0.0
+        except ValueError:
+            pass
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return 0.0
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.timestamp()
+    return 0.0
 
 # --- 1. live board: shared/escalations_pro.jsonl ---
 # D2.3's writer is append-only (sentinel_lib.escalations.mark_resolved): a
@@ -111,7 +141,7 @@ if os.path.isfile(esc_file):
         for d in raw:
             if str(d.get("status", "pending")).lower() == "resolved":
                 job = d.get("job") or "?"
-                ts = d.get("resolved_at", d.get("ts", 0)) or 0
+                ts = _ts(d.get("resolved_at", d.get("ts", 0)))
                 if ts >= resolved_latest_ts.get(job, -1):
                     resolved_latest_ts[job] = ts
 
@@ -119,13 +149,13 @@ if os.path.isfile(esc_file):
             if str(d.get("status", "pending")).lower() == "resolved":
                 continue  # resolution marker itself is never a board item
             job = d.get("job") or d.get("type") or "?"
-            entry_ts = d.get("ts", 0) or 0
+            entry_ts = _ts(d.get("ts", 0))
             if job in resolved_latest_ts and entry_ts <= resolved_latest_ts[job]:
                 continue  # covered by a later resolution — net-resolved, not open
             prio = str(d.get("priority") or d.get("severity") or "NORMAL").upper()
             summ = " ".join((d.get("error_summary") or "").split())[:80]
             if prio == "HIGH":
-                high.append(("escalations_pro.jsonl", job, summ, float(entry_ts) if entry_ts else 0.0))
+                high.append(("escalations_pro.jsonl", job, summ, entry_ts))
             else:
                 normal_pending += 1
     except Exception:

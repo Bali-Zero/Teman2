@@ -1,0 +1,36 @@
+{
+  "expected_candidates": ["E33G"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "French remote employee, clean foreign income, no Indonesian employer, clients, or compensation",
+  "legal_citations": [
+    "Permenkumham 22/2023 jo. Permenkumham 11/2024",
+    "Kepmen M.IP-08.GR.01.01/2025"
+  ],
+  "overrides": {
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["REMOTE_WORK"]
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["FR"]
+    },
+    "work.employer_country_code": {
+      "status": "KNOWN",
+      "value": "FR"
+    },
+    "work.employer_is_indonesian_entity": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "work.indonesia_source_compensation": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "work.serves_indonesian_clients": {
+      "status": "KNOWN",
+      "value": false
+    }
+  },
+  "product_code": "E33G"
+}

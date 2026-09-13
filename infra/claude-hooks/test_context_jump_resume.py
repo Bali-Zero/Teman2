@@ -1,9 +1,12 @@
 """Guilt + innocence for context_jump_resume.py (SessionStart injector).
 
 Runs the hook as a subprocess with HOME pointed at a temp dir (same isolation
-as every sibling gate here). Guilt: a fresh unclaimed jump from this cwd is
-injected and stamped. Innocence: consumed, stale, foreign-cwd, kill switch,
-the originating session itself, and a session with no jump at all stay mute.
+as every sibling gate here). Guilt: the jump named by NZ_JUMP_FROM, fresh and
+unclaimed, is injected and stamped. Innocence: consumed, stale, kill switch,
+the originating session itself, a session with no jump at all — and, since
+2026-09-09, a window opened BY HAND (no NZ_JUMP_FROM) with a fresh unclaimed
+jump sitting right there in its own cwd: that window is the owner's, it stays
+mute and stamps nothing.
 """
 from __future__ import annotations
 
@@ -51,7 +54,7 @@ def _run(home, session_id="new", cwd=None, env_extra=None):
 # ---------------- guilt ----------------
 def test_fresh_unclaimed_jump_is_injected_and_stamped():
     home = _home_with_jump(os.getcwd())
-    rc, out, jump = _run(home)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
     assert rc == 0 and out is not None
     ctx = out["hookSpecificOutput"]["additionalContext"]
     assert "SALTO DI FINESTRA" in ctx and "MANDATO IN CATENA" in ctx  # jump-file mandate wins
@@ -61,7 +64,7 @@ def test_fresh_unclaimed_jump_is_injected_and_stamped():
 
 def test_missing_handoff_still_injects_a_recovery_context():
     home = _home_with_jump(os.getcwd(), handoff=False)
-    rc, out, jump = _run(home)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
     assert rc == 0 and "handoff non leggibile" in out["hookSpecificOutput"]["additionalContext"]
     assert jump["to_session"] == "new"
 
@@ -69,44 +72,55 @@ def test_missing_handoff_still_injects_a_recovery_context():
 # ---------------- innocence ----------------
 def test_already_claimed_jump_is_mute():
     home = _home_with_jump(os.getcwd(), to_session="someone-else")
-    rc, out, jump = _run(home)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
     assert rc == 0 and out is None and jump["to_session"] == "someone-else"
 
 
 def test_stale_jump_is_mute():
     home = _home_with_jump(os.getcwd(), age_s=20 * 60)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and jump["to_session"] is None
+
+
+def test_hand_opened_window_never_claims_a_jump():
+    # Zero opens a plain `claude` in ~/nuzantara two minutes after a guard trip:
+    # a fresh, unclaimed jump from THIS cwd is sitting there. No NZ_JUMP_FROM
+    # -> the window is the owner's, not a continuation: mute, nothing stamped.
+    home = _home_with_jump(os.getcwd())
     rc, out, jump = _run(home)
     assert rc == 0 and out is None and jump["to_session"] is None
 
 
-def test_foreign_cwd_is_mute():
+def test_explicit_from_session_is_honoured_whatever_the_cwd():
+    # the launcher already cd'd into the jump's cwd; the id is the evidence
     home = _home_with_jump("/somewhere/else")
-    rc, out, jump = _run(home)
-    assert rc == 0 and out is None and jump["to_session"] is None
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is not None and jump["to_session"] == "new"
 
 
 def test_originating_session_never_claims_its_own_jump():
     home = _home_with_jump(os.getcwd())
-    rc, out, jump = _run(home, session_id="old")
+    rc, out, jump = _run(home, session_id="old", env_extra={"NZ_JUMP_FROM": "old"})
     assert rc == 0 and out is None and jump["to_session"] is None
 
 
 def test_kill_switch_is_mute():
     home = _home_with_jump(os.getcwd())
-    rc, out, jump = _run(home, env_extra={"CONTEXT_JUMP_OFF": "1"})
+    rc, out, jump = _run(home, env_extra={"CONTEXT_JUMP_OFF": "1", "NZ_JUMP_FROM": "old"})
     assert rc == 0 and out is None and jump["to_session"] is None
 
 
-def test_freshest_unclaimed_jump_wins_and_only_it_is_stamped():
+def test_two_fresh_jumps_and_no_launcher_id_stamp_nothing():
+    # the 2026-09-09 fallback picked the freshest; now neither is touched
     home = _home_with_jump(os.getcwd(), age_s=120)
     d = home / ".organism" / "context-guard"
     (d / "pending-jump-newer.json").write_text(json.dumps({
         "from_session": "newer", "to_session": None, "cwd": os.getcwd(), "hops": 1,
         "ts": time.time(), "mandate": "NEWER"}))
     rc, out, old = _run(home)
-    assert "NEWER" in out["hookSpecificOutput"]["additionalContext"]
+    assert rc == 0 and out is None
     assert old["to_session"] is None
-    assert json.loads((d / "pending-jump-newer.json").read_text())["to_session"] == "new"
+    assert json.loads((d / "pending-jump-newer.json").read_text())["to_session"] is None
 
 
 def test_no_jump_file_is_mute():

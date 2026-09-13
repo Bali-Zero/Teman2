@@ -1,0 +1,18 @@
+You are the POST refuter (Codex Sol, read-only, cross-family) for mission SHWEB-20260911 / W1-SH-TECH, colour BLUE, on PR #6243, HEAD b87db24a309a8003ae3ae3b0a3253dbdbe37411a, base ea50eb262f9ed96ce070cb407b55202002b0dae8. You are outside the contribution chain (patch author: Astra; adopter/Dux: Claude). Default to defective. Do NOT edit anything.
+
+The current working directory is the branch worktree at that HEAD. Judge the committed range `git diff ea50eb262f..HEAD` against:
+- evidence/2026-09/agent-air-m5-mouth-shweb-w1-tech-20260911-1bf4ea22/brief.yml (scope, constraints, declared deltas D1/D2/D3, acceptance)
+- evidence/2026-09/agent-air-m5-mouth-shweb-w1-tech-20260911-1bf4ea22/contract-lock.json (invariantsAtHead, expectedGateOutcomeAtHead, preReview dispositions)
+- the PRE-review you (Codex Sol) gave before BUILD: evidence/.../reviews/pre-review-codex-sol.txt — check its CONDITIONS were actually met, not just claimed.
+
+Find, with evidence (file:line or command + output):
+1. Any change outside the declared scope/deltas, or a delta larger than declared (D1: names/docstring/comment only; D2: whitespace only; D3: frontmatter + appended section, 0 body lines removed).
+2. Any correctness defect in apps/mouth/scripts/generate-llms-full.ts or apps/mouth/src/lib/llms-article-exports.test.ts that the brief's probes would miss (e.g. freshness ordering, canonical detection, ID export content, KBLI skipped, a CI environment where the export test can't resolve tsx or times out at 15 s).
+3. Whether the renamed tests in scripts/ci/test_npm_audit_gate.py still say something false, and whether any claim in research/secondhome/2026-09-11-f7-reverification.md's new "Adversarial review" section misstates what the PRE-review seats actually found (compare with evidence/.../reviews/*.txt).
+4. Any claim in the brief/contract-lock/evidence logs that the logs in the evidence directory do not support (e.g. counts, exit codes, test names).
+5. Anything that would make the Vercel production build (`npm run build` in apps/mouth, see apps/mouth/vercel.json) fail or regress that local vitest cannot show.
+
+Output (plain text):
+VERDICT: PASS | PASS-WITH-CONDITIONS | REWORK
+FINDINGS: numbered, `[BLOCKER|MAJOR|MINOR] claim — evidence — required action`
+UNVERIFIED: what you could not check and why

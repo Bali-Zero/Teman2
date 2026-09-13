@@ -89,6 +89,13 @@ async def test_vector_search_uses_selected_collection_and_deduplicates_results()
             "title": "PT PMA checklist",
             "url": "https://example.test/pma",
             "score": 0.92,
+            # B1.1: this projection CARRIES the chunk's provenance rather than
+            # guessing it from "score". FakeRetriever's hits declare none, so
+            # the kind is the UNKNOWN default and the raw is None — and unlike
+            # the formatter, this projection always emits both keys, so `None`
+            # is present rather than absent.
+            "score_kind": "unknown",
+            "score_raw": None,
             "collection": "legal_unified",
             "doc_id": "doc-1",
             "snippet": "PT PMA requires shareholder identity documents.",

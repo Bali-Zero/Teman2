@@ -1,0 +1,263 @@
+{
+  "schema": "B1.4 robustness probe, NOT the frozen mandatory manifest",
+  "provenance": "Distractor construction proposed verbatim in substance by the second reader (Gemini 3.1 Pro) in its TRIVIAL verdict of 2026-09-12; written into this schema by the Dux so the unchanged support_probe.py harness consumes it.",
+  "synthetic": true,
+  "cases": [
+    {
+      "case_id": "fp-price-suf",
+      "pair_id": "fp-price",
+      "stratum": "sufficient",
+      "query": "How much is a PT PMA company setup, all in?",
+      "query_lang": "EN",
+      "context": [
+        "The all-in cost for a full PT PMA company setup is IDR 32,000,000, covering notary, OSS registration and the licence package."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "the all-in price of a PT PMA company setup",
+      "provenance_fixture": {
+        "inventory_row": "probe (not from the frozen inventory)",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "Provenance held identical to the mandatory pairs' 0.72 so the only thing that varies between the two members is the TEXT."
+      },
+      "synthetic": true,
+      "origin": "B1.4 robustness probe — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; NOT part of the frozen mandatory manifest",
+      "company_prefix": false,
+      "generic_overlap": false,
+      "fee_policy": "not_applicable",
+      "expected_generation_gate": null,
+      "expected_label_gate": null,
+      "spec_pair": null,
+      "supporting_span": "is IDR 32,000,000"
+    },
+    {
+      "case_id": "fp-price-ins",
+      "pair_id": "fp-price",
+      "stratum": "relevant_insufficient",
+      "query": "How much is a PT PMA company setup, all in?",
+      "query_lang": "EN",
+      "context": [
+        "The government fee for the basic licence is IDR 2,000,000, but the all-in cost for a full PT PMA company setup depends on the consultant and is not stated here."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "the all-in price of a PT PMA company setup",
+      "provenance_fixture": {
+        "inventory_row": "probe (not from the frozen inventory)",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "Provenance held identical to the mandatory pairs' 0.72 so the only thing that varies between the two members is the TEXT."
+      },
+      "synthetic": true,
+      "origin": "B1.4 robustness probe — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; NOT part of the frozen mandatory manifest",
+      "company_prefix": false,
+      "generic_overlap": false,
+      "fee_policy": "not_applicable",
+      "expected_generation_gate": null,
+      "expected_label_gate": null,
+      "spec_pair": null,
+      "missing_fact_explanation": "An amount is present, but it is the basic-licence government fee, not the all-in setup price the question asks for; the text says the all-in cost is not stated."
+    },
+    {
+      "case_id": "fp-duration-suf",
+      "pair_id": "fp-duration",
+      "stratum": "sufficient",
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "Total waktu pendirian PT PMA adalah 4 sampai 6 minggu sejak akta ditandatangani."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "the total processing time to establish a PT PMA",
+      "provenance_fixture": {
+        "inventory_row": "probe (not from the frozen inventory)",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "Provenance held identical to the mandatory pairs' 0.72 so the only thing that varies between the two members is the TEXT."
+      },
+      "synthetic": true,
+      "origin": "B1.4 robustness probe — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; NOT part of the frozen mandatory manifest",
+      "company_prefix": false,
+      "generic_overlap": false,
+      "fee_policy": "not_applicable",
+      "expected_generation_gate": null,
+      "expected_label_gate": null,
+      "spec_pair": null,
+      "supporting_span": "adalah 4 sampai 6 minggu"
+    },
+    {
+      "case_id": "fp-duration-ins",
+      "pair_id": "fp-duration",
+      "stratum": "relevant_insufficient",
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "context": [
+        "Penyusunan draf akta notaris biasanya memakan waktu 3 sampai 4 hari, tetapi total waktu proses pendirian PT PMA tidak disebutkan di sini."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "the total processing time to establish a PT PMA",
+      "provenance_fixture": {
+        "inventory_row": "probe (not from the frozen inventory)",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "Provenance held identical to the mandatory pairs' 0.72 so the only thing that varies between the two members is the TEXT."
+      },
+      "synthetic": true,
+      "origin": "B1.4 robustness probe — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; NOT part of the frozen mandatory manifest",
+      "company_prefix": false,
+      "generic_overlap": false,
+      "fee_policy": "not_applicable",
+      "expected_generation_gate": null,
+      "expected_label_gate": null,
+      "spec_pair": null,
+      "missing_fact_explanation": "A duration is present, but it is the notarial-deed drafting time, not the total establishment time; the text says the total is not stated."
+    },
+    {
+      "case_id": "fp-capital-suf",
+      "pair_id": "fp-capital",
+      "stratum": "sufficient",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "The minimum paid-up capital required for a PT PMA is IDR 10,000,000,000, and it must be deposited before the licence is issued."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "the legal minimum paid-up capital of a PT PMA",
+      "provenance_fixture": {
+        "inventory_row": "probe (not from the frozen inventory)",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "Provenance held identical to the mandatory pairs' 0.72 so the only thing that varies between the two members is the TEXT."
+      },
+      "synthetic": true,
+      "origin": "B1.4 robustness probe — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; NOT part of the frozen mandatory manifest",
+      "company_prefix": false,
+      "generic_overlap": false,
+      "fee_policy": "not_applicable",
+      "expected_generation_gate": null,
+      "expected_label_gate": null,
+      "spec_pair": null,
+      "supporting_span": "minimum paid-up capital required for a PT PMA is IDR 10,000,000,000"
+    },
+    {
+      "case_id": "fp-capital-ins",
+      "pair_id": "fp-capital",
+      "stratum": "relevant_insufficient",
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "context": [
+        "Foreign investors often inject up to IDR 10,000,000,000 in capital to fund operations, though the legal minimum paid-up capital required by BKPM is not detailed in this summary."
+      ],
+      "context_lang": "EN",
+      "requested_fact": "the legal minimum paid-up capital of a PT PMA",
+      "provenance_fixture": {
+        "inventory_row": "probe (not from the frozen inventory)",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "Provenance held identical to the mandatory pairs' 0.72 so the only thing that varies between the two members is the TEXT."
+      },
+      "synthetic": true,
+      "origin": "B1.4 robustness probe — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; NOT part of the frozen mandatory manifest",
+      "company_prefix": false,
+      "generic_overlap": false,
+      "fee_policy": "not_applicable",
+      "expected_generation_gate": null,
+      "expected_label_gate": null,
+      "spec_pair": null,
+      "missing_fact_explanation": "Both an amount and the word capital are present, but they describe what investors typically inject, not the legal minimum; the text says the legal minimum is not detailed."
+    },
+    {
+      "case_id": "fp-req-suf",
+      "pair_id": "fp-req",
+      "stratum": "sufficient",
+      "query": "Apa saja syarat untuk NIB di OSS?",
+      "query_lang": "ID",
+      "context": [
+        "Syarat NIB di OSS: akta pendirian yang sudah disahkan (SK Kemenkumham), NPWP perusahaan, kode KBLI yang dipilih, dan alamat usaha yang sesuai."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "the checklist of requirements for an OSS NIB",
+      "provenance_fixture": {
+        "inventory_row": "probe (not from the frozen inventory)",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "Provenance held identical to the mandatory pairs' 0.72 so the only thing that varies between the two members is the TEXT."
+      },
+      "synthetic": true,
+      "origin": "B1.4 robustness probe — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; NOT part of the frozen mandatory manifest",
+      "company_prefix": false,
+      "generic_overlap": false,
+      "fee_policy": "not_applicable",
+      "expected_generation_gate": null,
+      "expected_label_gate": null,
+      "spec_pair": null,
+      "supporting_span": "akta pendirian ... NPWP ... KBLI ... alamat usaha"
+    },
+    {
+      "case_id": "fp-req-ins",
+      "pair_id": "fp-req",
+      "stratum": "relevant_insufficient",
+      "query": "Apa saja syarat untuk NIB di OSS?",
+      "query_lang": "ID",
+      "context": [
+        "Pada tahap awal ini Anda belum perlu menyerahkan kode KBLI maupun alamat usaha; daftar syarat NIB yang sebenarnya diberikan kemudian."
+      ],
+      "context_lang": "ID",
+      "requested_fact": "the checklist of requirements for an OSS NIB",
+      "provenance_fixture": {
+        "inventory_row": "probe (not from the frozen inventory)",
+        "sources": [
+          {
+            "score": 0.72,
+            "score_kind": "unknown",
+            "score_raw": null
+          }
+        ],
+        "note": "Provenance held identical to the mandatory pairs' 0.72 so the only thing that varies between the two members is the TEXT."
+      },
+      "synthetic": true,
+      "origin": "B1.4 robustness probe — distractor pairs proposed by the second reader (Gemini 3.1 Pro) after it ruled the frozen pairs TRIVIAL; NOT part of the frozen mandatory manifest",
+      "company_prefix": false,
+      "generic_overlap": false,
+      "fee_policy": "not_applicable",
+      "expected_generation_gate": null,
+      "expected_label_gate": null,
+      "spec_pair": null,
+      "missing_fact_explanation": "Two lexicon tokens (KBLI, alamat) are present but under a negation — the text says they are NOT needed yet and that the real checklist comes later."
+    }
+  ]
+}

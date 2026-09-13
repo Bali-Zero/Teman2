@@ -1,0 +1,97 @@
+You are an ADVERSARIAL red-team reviewer (Gear-3 council, R9, round 4) for ONE frozen candidate file of the Nuzantara repo. You did not write it. Try to break it. Read-only: modify nothing, touch no network database.
+
+READING BUDGET (hard — a previous run of this seat exhausted its context by reading broad docs and produced no verdict): do NOT read AGENTS.md, CLAUDE.md, docs/, research/ or any file not listed here. If you read the repo at all, use line-ranged reads only (sed -n 'A,Bp'), at most these: apps/backend-rag/backend/db/migration_base.py 342-380 and 830-930; apps/backend-rag/backend/db/migration_manager.py 343-420; .github/workflows/fly-deploy.yml 140-160 and 262-300; apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql 1-20; the candidate itself. Everything else you need is below.
+
+CANDIDATE: apps/backend-rag/backend/db/migrations_v2/314_wa_outbox_evidence.sql
+SHA256 OF THE FROZEN BYTES, in groups of 8: 6b5d3d8b b99d8d37 d8ccbd97 414264df 6fb888a4 731bb015 ac9458c9 3ee8db9f
+Base: origin/main 461a4a93ac. The PR adds this one SQL file plus evidence/ only.
+
+SPEC (B2-engine.md §4 B2.3a, verbatim): "migrations_v2/NNN_wa_outbox_evidence.sql: abstained_at timestamptz NULL, evidence_score numeric NULL, no defaults, no backfill, forward SQL above -- === ROLLBACK ===. Required green: migration-number lint, Squawk, backend.db.migrate apply-all --dry-run, isolated up/down/up validation." §6: "the migration would touch a row" -> stop. §3: "Normal rollback = retire the writer (revert B2.3b) and KEEP the nullable columns and the applied migration history; a production schema down is a separately authorized destructive operation after dependent writers are drained, never part of a routine rollback." D6: abstained_at = successful-send timestamp of a GENERATED reply whose frozen evidence label was true; evidence_score = the same sealed package's frozen score; scripted/unscored NULL; two PRs because fly-deploy.yml runs pre-deploy migrations on the PREVIOUS image.
+
+RUNNER FACTS: migration_base.py splits at the ROLLBACK marker, executes the forward section with one conn.execute inside `async with conn.transaction()` (:879), stores the rollback text in _schema_versions.rollback_sql; migration_manager.rollback_migration (:343) executes it inside a transaction and clears both ledgers. No workflow or deploy script calls rollback_migration (grep of .github, scripts, apps outside tests: only the migration_base wrapper and a legacy script). migrate.py has no rollback subcommand.
+
+ROUND 1 (on the previous bytes, sha 8064d528…): tp1-qwen3.8-max ACCEPT ok:true 0/0/3 MINOR + 3 NOTE; codex-gpt-5.6-sol rolled over with no verdict, having noted (a) unbounded ACCESS EXCLUSIVE wait without lock_timeout and (b) the comment "an abstain decision left no row" being literally imprecise. Dux dispositions applied in THESE bytes: (a)+TP1-M2 -> SET LOCAL lock_timeout '5s' + statement_timeout '30s' in the forward section (306 precedent), SET LOCAL lock_timeout in the rollback; (b) -> comment reworded; TP1-M1 (IF NOT EXISTS masks a pre-existing column of another shape) -> a DO-block postcondition over pg_attribute/pg_attrdef raising on type/nullability/default drift; TP1-M3 (stored destructive rollback vs §3) -> NOT changed: the runner requires a rollback section for post-cutoff migrations and the spec requires up/down/up; policy stated in the comment; no deploy path invokes it; TP1-N4 (row-shape consumers) -> checked: no `SELECT * FROM wa_outbox`, `INSERT INTO wa_outbox VALUES/SELECT`, `wa_outbox.*` or `RETURNING *` outside tests and migrations; no reader of abstained_at outside a test docstring.
+
+ROUND 2 (on bytes 705e9165…): codex-gpt-5.6-sol VERDICT ok:false 0/1/1 — MAJOR: bare `wa_outbox` resolves through search_path, so with `search_path=shadow,public` and a `shadow.wa_outbox` the ALTERs, the check and the rollback hit the shadow relation while 314 is recorded; MINOR: the postcondition misses `pg_attribute.atthasmissing` (a constant default added then dropped leaves non-NULL values for old rows). Dux dispositions applied in THESE bytes: every reference is now `public.wa_outbox` (production measured read-only 11:39Z: wa_outbox exists only in public; schemas public + mata_garuda; no role search_path setting; 49 existing migrations already qualify `public.`), the regclass is 'public.wa_outbox', and the postcondition adds `OR a.atthasmissing`; comments added for both. Round-2 NOTEs (timeouts can fail a correct deploy atomically, rerun applies; destructive rollback protected by policy only) accepted as recorded, no change.
+
+ROUND 3 (on bytes df347c3b…): codex-gpt-5.6-sol VERDICT ok:false 0/1/0 — MAJOR: the DO-block postcondition's catalog references (pg_attribute, pg_attrdef, format_type, regclass) resolve through search_path, so with an explicit `search_path = public, shadow, pg_catalog` forged shadow catalogs can hide drift. This is the second red of the search_path family. Dux disposition in THESE bytes: the cause is REMOVED, not patched — no IF NOT EXISTS and no DO block at all: a same-named column in any shape makes plain ADD COLUMN raise inside the transaction, so no catalog read is needed; the table stays `public.wa_outbox`; the two types are the SQL keywords TIMESTAMP WITH TIME ZONE and NUMERIC, which the grammar binds to pg_catalog (the previous bytes spelled TIMESTAMPTZ, a type NAME that resolves through search_path). A third red of the same cause suspends this PR (Builder Contract §1).
+
+DUX RECEIPTS ON THESE BYTES (docker postgres 15.19 and 17.11, CI test credentials, fresh bootstrap + apply-all to 313 with the file moved aside, 7 synthetic outbox rows, 2026-09-13T11:52:38Z-11:52:46Z): dry-run lists only 314; up -> abstained_at|timestamp with time zone|YES|<none>, evidence_score|numeric|YES|<none>, 18 columns, 314 in both ledgers; down (rollback_migration) -> 16 columns, 314 in neither; up again identical; rerun "No pending migrations"; sha256 of (id, status, xmin) and pg_relation_filenode unchanged at every step on both servers. Guilt 1 (pg17): planted `abstained_at TEXT` -> apply-all exit 1 `column "abstained_at" of relation "wa_outbox" already exists`, 314 unrecorded, evidence_score not added. Guilt 2 (pg15): planted `evidence_score NUMERIC DEFAULT 1` then DROP DEFAULT (atthasmissing=t) -> apply-all exit 1 `column "evidence_score" ... already exists`, 314 unrecorded. Guilt 3 (pg15, forward section in psql inside BEGIN/ROLLBACK with `SET LOCAL search_path = shadow, pg_catalog, public`, a `shadow.wa_outbox` table and a `shadow.timestamptz` domain over text): round-3 bytes -> their own postcondition raised "column shape drift ... (abstained_at)" (i.e. TIMESTAMPTZ resolved to the shadow domain); THESE bytes -> public columns abstained_at:timestamp with time zone, evidence_score:numeric; shadow new columns 0. Lints: number + rollback green; Squawk 2.65.0 (CI) and 2.60.0 with the CI exclude list: 0 issues.
+
+THE FILE (exact bytes):
+-----BEGIN FILE-----
+-- 314_wa_outbox_evidence.sql
+--
+-- B2.3a — the abstain record's SCHEMA, and nothing else (staff-room spec
+-- research/operations/2026-09-11-bot-staff-room/README.md §0 D6 and
+-- B2-engine.md §4 B2.3a). Before this, an abstain decision left no durable
+-- trace on the outbox row that carried the reply: the sealed evidence label
+-- and score are parsed in wa_codex_leg.py and consumed by wa_finalize, and
+-- consumption clears the broker's copy (wa_broker.py), so nothing durable
+-- says which generated reply went out under a true abstain label or with
+-- which frozen score. Cycle 360 (B3) has to read that in SQL.
+--
+-- MEANING (D6, one meaning each, nothing inferred from reply text):
+--   abstained_at   = the successful-send timestamp of a GENERATED reply
+--                    whose frozen evidence label was true. It does NOT mean
+--                    a refusal stub was delivered.
+--   evidence_score = the same sealed package's frozen score.
+-- Scripted and unscored routes keep both NULL. The final disposition is
+-- recorded separately by B3.
+--
+-- WHY A SCHEMA-ONLY FILE: fly-deploy.yml runs the pre-deploy migration job
+-- on the PREVIOUS image and applies new SQL again after the new image
+-- starts. A writer shipped in the same PR would meet absent columns during
+-- that window, so the carrier and the fenced worker write (B2.3b) open only
+-- after this file is proven applied in production.
+--
+-- Nullable, no default, no backfill: on Postgres >= 11 an ADD COLUMN with
+-- no default is a catalog change — no table rewrite, no row touched — and
+-- the running image never reads either column, so a mixed-version deploy is
+-- safe in both directions.
+--
+-- NUMBERING: measured on fresh origin/main 461a4a93ac with `git ls-tree`:
+-- 313_garuda_practice_artifacts.sql is the last file. Open PRs carrying
+-- migrations_v2 SQL at cut time: #5037 (293/294/295), #5526 (304), #5337
+-- (304, a constraint on this table, no column of this file). A number is
+-- reserved only by merging it (cicatrix W40).
+--
+-- LOCKS: ADD COLUMN still takes ACCESS EXCLUSIVE on wa_outbox, and a DDL
+-- waiting for it queues every worker read and write behind itself. The
+-- runner executes this file inside one transaction, so SET LOCAL bounds that
+-- queue to at most 5 s for this migration (same form as 306); past it the
+-- migration aborts atomically, 314 stays unrecorded and a rerun applies it.
+--
+-- FAIL FAST, NO IF NOT EXISTS: a same-named column that already exists, in
+-- any shape (type, default, nullability, a leftover fast-default value, a
+-- CHECK), is drift this migration must not adopt. Plain ADD COLUMN raises on
+-- it, inside the transaction, so 314 is never recorded over it. No catalog
+-- query is needed to decide that.
+--
+-- NAME RESOLUTION: the table is always `public.wa_outbox` (production
+-- 2026-09-13: it exists only in public), and the two types are written as
+-- the SQL keywords TIMESTAMP WITH TIME ZONE and NUMERIC, which the parser
+-- binds to pg_catalog directly. Nothing in this file resolves through the
+-- connection's search_path.
+
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '30s';
+
+ALTER TABLE public.wa_outbox ADD COLUMN abstained_at TIMESTAMP WITH TIME ZONE NULL;
+ALTER TABLE public.wa_outbox ADD COLUMN evidence_score NUMERIC NULL;
+
+-- === ROLLBACK ===
+-- For isolated up/down/up validation. In production the routine rollback of
+-- the abstain record is reverting B2.3b (the writer) while KEEPING these
+-- nullable columns and the applied history; dropping them there is a
+-- separately authorized destructive operation after dependent writers are
+-- drained (B2-engine.md §3), never part of a routine rollback.
+SET LOCAL lock_timeout = '5s';
+ALTER TABLE public.wa_outbox DROP COLUMN IF EXISTS evidence_score;
+ALTER TABLE public.wa_outbox DROP COLUMN IF EXISTS abstained_at;
+-----END FILE-----
+
+ATTACK: (1) row touch / rewrite / lock-scan on PG 15 and 17; (2) SET LOCAL inside the runner's transaction; (3) any remaining search_path, type or relation resolution dependency (including the SET statements and the rollback section); (4) removal of IF NOT EXISTS — any legitimate path where 314's forward SQL runs against a table that already has either column and SHOULD succeed (CI bootstrap via SQLModel create_all, a re-run after partial failure, a test harness), making this a regression; (5) rollback correctness and the §3 hazard; (6) previous-image / fresh-image window; (7) any false claim in a comment; (8) any spec clause not met ("abstained_at timestamptz NULL, evidence_score numeric NULL, no defaults, no backfill, forward SQL above -- === ROLLBACK ===").
+
+OUTPUT: findings first, each BLOCKER/MAJOR/MINOR/NOTE with a falsifiable reason. LAST line of the answer, exactly one line (write the sha256 as the eight groups given above, space-separated, not as one string):
+VERDICT {"ok": <true only if no BLOCKER and no MAJOR>, "sha256_groups": "<the eight groups>", "blockers": <n>, "majors": <n>, "minors": <n>}

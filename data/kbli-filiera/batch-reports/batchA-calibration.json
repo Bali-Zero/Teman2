@@ -78,7 +78,7 @@
         "0181b72ccb224bd7d53017f67be1e7c9ba6d3e8efbef3524c0a6d4f3f37335df"
       ],
       "eligibility_predicate": "canonical record has kode_kbli_2025 set AND _l2_source is non-null AND per_skala is non-empty (the OSS-native Batch-C class)",
-      "eligible_population": 1336,
+      "eligible_population": 1340,
       "selection_rule": "among eligible codes, the 8 with the lowest sha256(code + \"|\" + manifest_digest) hex digest, sorted ascending — deterministic, never conductor-picked"
     },
     "reveal_rule": "Plaintext code lists for both control classes are revealed in the lot report AFTER the lot closes (plan §5). Never before."
@@ -99,12 +99,12 @@
     "total_sonnet_tokens": 3375127
   },
   "pinned_revisions": {
-    "canonical_git_revision": "45bbc1f42a0c74d12c3021f56a54565a747a01c7",
+    "canonical_git_revision": "e222dc0826955ddda8626cf208a7813e5de5b394",
     "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "manifest_path": "data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json",
     "manifest_sha256": "e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d",
     "membership_path": "data/kbli-filiera/membership/batch-a-members.json",
-    "membership_sha256": "aa0a0a6980117d57321e625fdad4e1a89f19f5b34125614d8d9921fb50f60497"
+    "membership_sha256": "0fc393ddf009b39ba39b4a7a0797097f96fc382b8a7bb177df1445445cba1fac"
   },
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md"
 }

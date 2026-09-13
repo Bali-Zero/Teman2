@@ -343,6 +343,7 @@ export function ScenarioToggle({ plan }: ScenarioToggleProps) {
             style={{
               fontFamily: "var(--font-serif, Georgia, serif)",
               fontSize: "clamp(1.8rem, 4.5vw, 2.4rem)",
+              fontVariantNumeric: "tabular-nums",
               color: "var(--accent-funnel-text, var(--accent-funnel))",
             }}
           >

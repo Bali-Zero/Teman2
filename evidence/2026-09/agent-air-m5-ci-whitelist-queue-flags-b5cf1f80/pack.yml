@@ -1,0 +1,155 @@
+task_id: ci-whitelist-queue-flags
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-09
+machine: M5
+lanes:
+  - lane: drop the queue-rejected flags, judge the PR's live arm state
+    role: build
+    seat: claude-fable-5-1 (this worktree session on M5, branch agent/air-m5/ci/whitelist-queue-flags-0909; Zero's manual seat choice for this session)
+    note: >-
+      Read the #5978 run log (rejection verbatim), confirmed the ruleset and
+      delete_branch_on_merge via gh api, rewrote the "Enable auto-merge" step:
+      `gh pr merge --auto --match-head-commit` only, then a GraphQL read of
+      autoMergeRequest/mergeQueueEntry decides the step's exit — RED when both
+      are null or the read fails. Extended the fake-gh shim in the test with an
+      `api graphql` branch (GH_ARMED_OUTPUT/GH_ARMED_EXIT) and added three
+      guilt/innocence tests plus the negative pin on the two flags.
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p`, non-Anthropic, agentic file access, fresh context)
+    note: >-
+      OK. Found no green-while-unarmed path; confirmed -f/-F typing, jq
+      null-safety and set -e coverage; reproduced that the 26 CODEOWNERS-drift
+      failures predate this diff. Two nits (stale header comment, missing
+      ::error:: on a failed verdict read) — both cured in this revision.
+    verdict: OK
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol --sandbox read-only`, non-Anthropic, fresh context, no shared prompt with the kimi lane)
+    note: >-
+      OK. No green-while-unarmed path (GraphQL failure, non-`true` output or unarmed state → RED); quoting/jq correct, SC2016 a false positive; no regression. Declared, non-blocking limit: the fake gh returns post-jq output, so the real query/jq filter is exercised only by the live Bites observation on the next dependabot PR. First attempt (effort=high) checkpointed without a verdict and was re-run at medium effort.
+    verdict: OK
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (Claude, Fable 5.1 on Zero's manual seat) and two review
+  lanes, both non-Anthropic and cross-family from each other: kimi-code/k3 and
+  codex-gpt-5.6-sol, same brief, no sight of each other's answer. The first
+  codex attempt (reasoning_effort=high) consumed its context on repository
+  archaeology and checkpointed without a verdict; it was re-run at medium
+  effort against the diff file with stdin closed — recorded as-is, not hidden.
+outcome: >-
+  A whitelisted PR that the step cannot arm is now a RED check on that PR
+  instead of a CLEAN PR nobody owns. The two flags the merge queue rejects are
+  gone; the merge method stays with the ruleset and branch deletion with the
+  repo setting. The verdict is the PR's own state, so "already queued" is
+  success and a swallowed rejection can no longer read as green.
+diff:
+  files: 5
+  net_lines: >-
+    Measured, not estimated. Review surface: 85/8 added/removed across the
+    workflow and its test; evidence files are the remainder. Floor is
+    `path` (hot-zone .github/workflows/**), not size.
+  measured_at: >-
+    `git diff --cached --numstat <merge-base>` in this worktree, merge-base
+    9ca6bb23e7ef18db9f5d9c6c2d86e0d822462d68 (the commit this branch was cut from).
+  shape: >-
+    One step body rewritten (flags dropped, verdict read added, two ::error::
+    paths), one header comment corrected, one fake-gh branch and four test
+    functions added, one argv pin shortened plus a negative pin. No other step,
+    no allowlist, no protected-path list touched.
+behaviour_change: >-
+  YES, CI-visible in two directions. (1) Whitelisted PRs (dependabot, docs
+  auto-sync, chore/fmt) are armed again on open/synchronize with no hand
+  gesture. (2) A whitelisted PR that cannot be armed — token denied, GraphQL
+  down, PR already merged on a `labeled` event — now shows this check RED
+  where before it showed green; that is the intended fail-closed direction
+  (kimi named the already-merged `labeled` case explicitly; it is rare and
+  safe).
+pii_scan: clean
+bites:
+  consumer: >-
+    The "Evaluate auto-merge eligibility" check on the next whitelisted PR
+    opened after merge (dependabot opens several per day). Not a future job:
+    the workflow runs on pull_request_target for that PR and its step body is
+    this diff.
+  where: ci
+  observe: >-
+    gh api graphql -f query='query($n:Int!){repository(owner:"Bali-Zero",name:"Teman2"){pullRequest(number:$n){autoMergeRequest{enabledAt} mergeQueueEntry{state}}}}' -F n=<next dependabot PR>
+  expect: autoMergeRequest non-null or mergeQueueEntry non-null, with no session having run `gh pr merge --auto` by hand
+bites_note: >-
+  Pre-merge observation on this PR: the four new/updated tests pass locally
+  and actionlint reports no error. The live observation on a real dependabot
+  PR is what closes the loop and is not claimed here.
+receipts:
+  - claim: the check was green while arming nothing, on the exact flags this cure removes
+    cmd: gh run view <run of PR #5978 'Evaluate auto-merge eligibility'> --log
+    result: >-
+      "Enabling auto-merge --squash for PR #5978" → "X Cannot use `-d` or
+      `--delete-branch` when merge queue enabled" → "##[warning]Auto-merge enable
+      failed (possibly already enabled, or required checks not configured yet)."
+      → job SUCCESS; `gh pr view 5978 --json autoMergeRequest` → null, PR CLEAN
+      for 6h until armed by hand this session.
+    ts: "2026-09-09T09:40:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+  - claim: the merge queue owns the method and the repo owns branch deletion
+    cmd: gh api repos/{owner}/{repo}/rulesets/19779175; gh api repos/{owner}/{repo} --jq '{delete_branch_on_merge, allow_auto_merge}'
+    result: 'enforcement active, merge_method SQUASH; {"allow_auto_merge":true,"delete_branch_on_merge":true}'
+    ts: "2026-09-09T09:42:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+  - claim: the new pins and guilt/innocence tests pass at this head
+    cmd: python3 -m pytest scripts/tests/test_auto_merge_whitelist.py -q -k "pinned or guilt_step or already_queued or unverifiable"
+    result: "4 passed, 74 deselected"
+    ts: "2026-09-09T10:45:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+  - claim: the 26 failing tests in the same file are pre-existing, not this diff
+    cmd: python3 -m pytest /Users/balizero/nuzantara/scripts/tests/test_auto_merge_whitelist.py -q --rootdir=/Users/balizero/nuzantara
+    result: "26 failed, 49 passed on the untouched main checkout — all test_every_tier1_codeowners_path_blocks_auto_merge[...]; kimi reproduced the same on a pre-diff baseline"
+    ts: "2026-09-09T10:30:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 1
+  - claim: actionlint reports no error on the workflow
+    cmd: actionlint .github/workflows/auto-merge-whitelist.yml
+    result: "0 lines matching 'error'; only pre-existing shellcheck style/info notes (SC2129 on another step, SC2016 on the intentionally single-quoted GraphQL query)"
+    ts: "2026-09-09T10:45:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+  - claim: the deterministic floor is 3 by path
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <files> --numstat-file <numstat>
+    result: "3 / path"
+    ts: "2026-09-09T10:32:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+dissent:
+  - seat: kimi-code/k3 (cross-family)
+    status: CONFIRMED
+    objection: >-
+      OK with two nits, both cured: the file header still advertised
+      `--auto --squash`, and a failed verdict read died under `set -e` without
+      its own ::error:: annotation. One behaviour edge named and ACCEPTED: a
+      `labeled` event on an already-merged whitelisted PR now goes red (both
+      fields null post-merge) where the old swallow was green — rare, and the
+      fail-closed direction is the point of this PR.
+  - seat: codex-gpt-5.6-sol (cross-family)
+    status: CONFIRMED
+    objection: >-
+      OK, one declared limit not cured here: the fake gh returns the post-jq
+      output directly, so the unit tests do not exercise the real GraphQL query
+      or the jq filter. Accepted because the Bites observation on the next
+      dependabot PR exercises exactly that path live, and a fake that parsed
+      GraphQL would be a second implementation of GitHub to keep in sync.
+  - seat: claude-fable-5-1 (this worktree session — the builder's own standing objection)
+    status: PLAUSIBLE
+    objection: >-
+      The way this cure could be wrong, stated plainly: it assumes GITHUB_TOKEN
+      on a pull_request_target run can read autoMergeRequest/mergeQueueEntry.
+      If it cannot, every whitelisted PR's check goes RED — loud, not silent, and
+      the first dependabot PR after merge will show it within one run. The
+      alternative (keep the warning-and-exit-0) is the disease itself.
+spend:
+  wall_clock_hours: 1.5

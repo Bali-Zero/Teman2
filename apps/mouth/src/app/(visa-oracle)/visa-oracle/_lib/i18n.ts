@@ -284,6 +284,14 @@ const en = {
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
     "This label only chooses which exact facts to ask next. It never chooses a visa path.",
+  "q.investment_currency": "Which currency can you commit an amount in?",
+  "q.investment_currency.hint":
+    "This only decides which amount question comes next. No conversion is ever performed between currencies.",
+  "q.investment_currency.opt.idr": "Indonesian rupiah (IDR)",
+  "q.investment_currency.opt.usd": "US dollars (USD)",
+  "q.investment_currency.opt.still_unsure": "I can't say yet",
+  "why.investment_currency":
+    "This only chooses which amount question follows. It never chooses a visa path, and no figure is converted between currencies.",
   "q.investment_pt_pma": "Is the PT PMA commitment already concrete?",
   "q.investment_pt_pma.hint":
     "Answer no for an idea, early discussion, or uncommitted plan.",
@@ -295,6 +303,13 @@ const en = {
   "q.investment_capital_idr.label": "Committed investment capital",
   "why.investment_capital_idr":
     "The amount is sent as a financial decision fact. No threshold is shown or inferred here.",
+  "q.investment_amount_usd":
+    "What investment amount is committed, in US dollars?",
+  "q.investment_amount_usd.hint":
+    "Enter the exact whole-dollar amount you can support with evidence.",
+  "q.investment_amount_usd.label": "Committed investment amount",
+  "why.investment_amount_usd":
+    "The amount is sent as a financial decision fact, in the currency you chose. No threshold is shown or inferred here, and no conversion is performed.",
   "q.investment_paid_up_capital_idr":
     "How much paid-up capital is already documented?",
   "q.investment_paid_up_capital_idr.hint":
@@ -344,12 +359,11 @@ const en = {
   "why.family_sponsor_nationalities":
     "Sponsor nationality is a separate engine fact and is never copied from your own passports.",
   "q.family_sponsor_status_code":
-    "What status code appears on your sponsor’s current permit?",
+    "Which stay permit does your sponsor currently hold?",
   "q.family_sponsor_status_code.hint":
-    "Enter the printed product code, for example E31. Use Not sure if you cannot verify it.",
-  "q.family_sponsor_status_code.label": "Sponsor permit code",
+    "Choose the option printed on your sponsor’s KITAS/KITAP card — this asks about your sponsor’s permit, not your own status. Choose “I’m not sure” if you cannot confirm it.",
   "why.family_sponsor_status_code":
-    "The code is sent exactly as typed. The interface does not translate a description into a permit code.",
+    "Confirms your sponsor already holds a qualifying stay permit before we name a family visa product for you.",
   "q.family_sponsor_permit_basis":
     "What is the basis of your sponsor's own stay permit?",
   "q.family_sponsor_permit_basis.hint":
@@ -406,6 +420,16 @@ const en = {
   "q.retirement_basis.opt.undecided": "I have not chosen a basis",
   "why.retirement_basis":
     "There is no matching engine fact for this label. It only routes the next exact inputs.",
+  "q.retirement_undecided_basis": "Which of these can you document today?",
+  "q.retirement_undecided_basis.hint":
+    "Pick whichever basis you can support with evidence. If neither applies, say so — a person is not needed to answer that.",
+  "q.retirement_undecided_basis.opt.deposit_or_income":
+    "A bank deposit or documented passive income",
+  "q.retirement_undecided_basis.opt.family_sponsor":
+    "A confirmed family sponsor",
+  "q.retirement_undecided_basis.opt.still_unsure": "I still can't say",
+  "why.retirement_undecided_basis":
+    "There is no matching engine fact for this label either. It only routes the next exact inputs, same as the basis question above.",
   "q.secondhome_basis": "Which Second Home basis can you document today?",
   "q.secondhome_basis.hint":
     "Pick the one you can evidence now. Use Not sure rather than guessing.",
@@ -686,7 +710,7 @@ const en = {
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Nothing here is guessed. A Bali Zero advisor reviews cases like yours by hand.",
   "verdict.state_description.NO_SUPPORTED_PATH":
-    "We won’t force a fit that isn’t there — three alternatives worth a look.",
+    "We won’t force a fit that isn’t there — here is what your answers do open.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "We’d rather say so plainly than fake a result.",
   "verdict.state_description.NEEDS_INPUT":
@@ -800,15 +824,21 @@ const en = {
     "It is not an approval, a guarantee, or a filing.",
   "outcome.disclaimer.complex_to_human":
     "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
-  "outcome.alternatives_title": "Three paths worth a look instead",
+  "outcome.alternatives_title": "The door that is open",
   "outcome.alternatives_intro":
-    "None of these are a downgrade — they’re simply what fits.",
+    "Another route the verified rules can assess for you.",
   "outcome.no_path_body":
     "The combination you described does not match a path supported by the verified decision rules.",
   "outcome.temporarily_unavailable_body":
     "The decision service cannot verify this case right now. No fallback path has been fabricated.",
   "outcome.human_review_body":
     "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+  "outcome.review_group_case.title": "What a person will check about your case",
+  "outcome.review_group_system.title":
+    "Checks on our side, not on your answers",
+  "outcome.review_cause_unsure": "You answered “Not sure” to: {{question}}",
+  "outcome.review_cause_answer": "You answered “{{answer}}” to: {{question}}",
+  "outcome.review_cause_edit_aria": "Edit your answer to: {{question}}",
   "outcome.overstay_reassurance":
     "Overstay is fixable. It is not the end of your story here.",
 
@@ -1107,6 +1137,15 @@ const id: Record<Keys, string> = {
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
     "Label ini hanya menentukan fakta persis yang ditanyakan berikutnya. Label ini tidak pernah memilih jalur visa.",
+  "q.investment_currency":
+    "Dalam mata uang apa Anda dapat mengomitmenkan jumlah investasi?",
+  "q.investment_currency.hint":
+    "Ini hanya menentukan pertanyaan jumlah berikutnya. Tidak ada konversi yang pernah dilakukan antar mata uang.",
+  "q.investment_currency.opt.idr": "Rupiah Indonesia (IDR)",
+  "q.investment_currency.opt.usd": "Dolar AS (USD)",
+  "q.investment_currency.opt.still_unsure": "Saya belum bisa memastikan",
+  "why.investment_currency":
+    "Ini hanya memilih pertanyaan jumlah mana yang mengikuti. Ini tidak pernah memilih jalur visa, dan tidak ada angka yang dikonversi antar mata uang.",
   "q.investment_pt_pma": "Apakah komitmen PT PMA sudah konkret?",
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
@@ -1119,6 +1158,13 @@ const id: Record<Keys, string> = {
   "q.investment_capital_idr.label": "Modal investasi yang dikomitmenkan",
   "why.investment_capital_idr":
     "Jumlah dikirim sebagai fakta keputusan finansial. Tidak ada ambang yang ditampilkan atau disimpulkan di sini.",
+  "q.investment_amount_usd":
+    "Berapa jumlah investasi yang dikomitmenkan, dalam dolar AS?",
+  "q.investment_amount_usd.hint":
+    "Masukkan jumlah dolar utuh yang tepat dan dapat Anda dukung dengan bukti.",
+  "q.investment_amount_usd.label": "Jumlah investasi yang dikomitmenkan",
+  "why.investment_amount_usd":
+    "Jumlah ini dikirim sebagai fakta keputusan finansial, dalam mata uang yang Anda pilih. Tidak ada ambang yang ditampilkan atau disimpulkan di sini, dan tidak ada konversi yang dilakukan.",
   "q.investment_paid_up_capital_idr":
     "Berapa modal disetor yang sudah terdokumentasi?",
   "q.investment_paid_up_capital_idr.hint":
@@ -1168,12 +1214,11 @@ const id: Record<Keys, string> = {
   "why.family_sponsor_nationalities":
     "Kewarganegaraan sponsor adalah fakta mesin terpisah dan tidak pernah disalin dari paspor Anda.",
   "q.family_sponsor_status_code":
-    "Kode status apa yang tercantum pada izin sponsor saat ini?",
+    "Izin tinggal apa yang saat ini dimiliki sponsor Anda?",
   "q.family_sponsor_status_code.hint":
-    "Masukkan kode produk yang tercetak, misalnya E31. Pilih Tidak yakin jika tidak dapat memverifikasinya.",
-  "q.family_sponsor_status_code.label": "Kode izin sponsor",
+    "Pilih opsi yang tertera di kartu KITAS/KITAP sponsor Anda — ini menanyakan izin sponsor Anda, bukan status Anda sendiri. Pilih “Saya tidak yakin” jika tidak dapat memastikannya.",
   "why.family_sponsor_status_code":
-    "Kode dikirim persis seperti yang diketik. Antarmuka tidak menerjemahkan deskripsi menjadi kode izin.",
+    "Memastikan sponsor Anda sudah memiliki izin tinggal yang memenuhi syarat sebelum kami menyebutkan produk visa keluarga untuk Anda.",
   "q.family_sponsor_permit_basis":
     "Apa dasar izin tinggal sponsor Anda sendiri?",
   "q.family_sponsor_permit_basis.hint":
@@ -1229,6 +1274,18 @@ const id: Record<Keys, string> = {
   "q.retirement_basis.opt.undecided": "Saya belum memilih dasar",
   "why.retirement_basis":
     "Tidak ada fakta mesin yang cocok untuk label ini. Label hanya mengarahkan input persis berikutnya.",
+  "q.retirement_undecided_basis":
+    "Yang mana dari berikut yang dapat Anda buktikan saat ini?",
+  "q.retirement_undecided_basis.hint":
+    "Pilih dasar yang dapat Anda dukung dengan bukti. Jika tidak ada yang berlaku, sampaikan saja — tidak diperlukan peninjauan orang untuk itu.",
+  "q.retirement_undecided_basis.opt.deposit_or_income":
+    "Deposito bank atau penghasilan pasif yang terdokumentasi",
+  "q.retirement_undecided_basis.opt.family_sponsor":
+    "Sponsor keluarga yang dikonfirmasi",
+  "q.retirement_undecided_basis.opt.still_unsure":
+    "Saya masih belum bisa memastikan",
+  "why.retirement_undecided_basis":
+    "Tidak ada fakta mesin yang cocok untuk label ini juga. Hanya mengarahkan input persis berikutnya, sama seperti pertanyaan dasar di atas.",
   "q.secondhome_basis":
     "Dasar Second Home mana yang dapat Anda buktikan saat ini?",
   "q.secondhome_basis.hint":
@@ -1502,7 +1559,7 @@ const id: Record<Keys, string> = {
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Tidak ada yang ditebak di sini. Konsultan Bali Zero meninjau kasus seperti ini secara langsung.",
   "verdict.state_description.NO_SUPPORTED_PATH":
-    "Kami tidak akan memaksakan jalur yang tidak cocok — tiga alternatif yang layak dilihat.",
+    "Kami tidak akan memaksakan jalur yang tidak cocok — inilah yang dibuka oleh jawaban Anda.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "Kami lebih memilih berterus terang daripada memalsukan hasil.",
   "verdict.state_description.NEEDS_INPUT":
@@ -1619,15 +1676,24 @@ const id: Record<Keys, string> = {
     "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "outcome.disclaimer.complex_to_human":
     "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
-  "outcome.alternatives_title": "Tiga jalur alternatif yang layak dilihat",
+  "outcome.alternatives_title": "Pintu yang terbuka",
   "outcome.alternatives_intro":
-    "Ini bukan penurunan kelas — hanya yang paling sesuai.",
+    "Jalur lain yang dapat dinilai oleh aturan terverifikasi untuk Anda.",
   "outcome.no_path_body":
     "Kombinasi yang Anda jelaskan tidak cocok dengan jalur yang didukung oleh aturan keputusan terverifikasi.",
   "outcome.temporarily_unavailable_body":
     "Layanan keputusan belum dapat memverifikasi kasus ini. Tidak ada jalur cadangan yang dibuat-buat.",
   "outcome.human_review_body":
     "Kasus Anda butuh penilaian manusia — tidak ada yang ditebak atas nama Anda.",
+  "outcome.review_group_case.title":
+    "Yang akan diperiksa seseorang pada kasus Anda",
+  "outcome.review_group_system.title":
+    "Pemeriksaan di pihak kami, bukan pada jawaban Anda",
+  "outcome.review_cause_unsure":
+    "Anda menjawab “Tidak yakin” pada: {{question}}",
+  "outcome.review_cause_answer":
+    "Anda menjawab “{{answer}}” pada: {{question}}",
+  "outcome.review_cause_edit_aria": "Ubah jawaban Anda pada: {{question}}",
   "outcome.overstay_reassurance":
     "Overstay bisa diselesaikan. Ini bukan akhir cerita Anda di sini.",
 

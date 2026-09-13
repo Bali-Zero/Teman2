@@ -727,12 +727,20 @@ def create_app() -> FastAPI:
     # wrapper above, not replacing it — see that function's own call to
     # `default_openapi()` for why chaining (not reassigning `app.openapi`
     # directly) is required to keep both fixes live.
-    from backend.app.routers.garuda_voa_public import strip_unreachable_validation_errors
+    from backend.app.routers.garuda_voa_public import (
+        mark_idempotency_key_required,
+        strip_unreachable_validation_errors,
+    )
 
     default_openapi_with_visa_conditionals = app.openapi
 
     def _openapi_with_garuda_voa_fix() -> dict[str, Any]:
-        return strip_unreachable_validation_errors(default_openapi_with_visa_conditionals())
+        # Two scoped GARUDA transforms, composed in one wrapper: the 422
+        # strip, and the `Idempotency-Key` required flag the frozen contract
+        # declares and FastAPI cannot infer from an optional `Header`.
+        return mark_idempotency_key_required(
+            strip_unreachable_validation_errors(default_openapi_with_visa_conditionals())
+        )
 
     app.openapi = _openapi_with_garuda_voa_fix
 

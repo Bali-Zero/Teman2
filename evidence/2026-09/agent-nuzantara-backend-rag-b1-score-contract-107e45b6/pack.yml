@@ -1,0 +1,529 @@
+task_id: backend-rag-b1-score-contract
+mandate: B1
+colour: BLUE
+pr: B1.1
+head_sha: f56d3e5dc1b2c2213537b7ad3b45d2fe88bb5b3a # pragma: allowlist secret
+# NOTICE 3 from the fresh gate: `head_sha` above is the CODE commit, not the
+# branch tip — defensible but the field name misleads, so both are named here.
+code_sha: f56d3e5dc1b2c2213537b7ad3b45d2fe88bb5b3a # pragma: allowlist secret — last commit touching apps/
+gated_sha: fbcb10fd3cce67c9f247254a51eabdb8574e638b # pragma: allowlist secret — what the fresh Opus 5 gate signed
+reviewed_sha: 4675f04bca2925e4502286dc5949857bdb5ff032 # pragma: allowlist secret — what round 1 read
+base_sha: 1d726045c9ca75ab64a75e92b062e52b0b763a98 # pragma: allowlist secret
+brief_ref: evidence/brief.yml
+gear: 3
+
+spend:
+  wall_clock_hours: 4.4
+  adversarial_rounds: 2
+  tokens: 900000
+  children: 3
+  child_depth: 1
+
+result: >-
+  Every score that can reach `calculate_evidence_score` now declares what it IS
+  (`score_kind`) and what its writer consumed to produce it (`score_raw`), on
+  every path, with no number moved and no served behaviour changed. The sealed
+  package carries that provenance inside its own bytes, so the scorer provably
+  receives the provenance that was sealed.
+
+measured:
+  fusion:
+    server: "qdrant 1.16.3 (prod), read-only probe, one existing point's own stored vectors"
+    formula: "sum over contributing lists of 1/(2 + rank0)"
+    exact_rows: 10
+    k60_one_based_refuted_rows: 10
+    prefetch_limit: 30
+    hybrid_formatted_band: [0.5082, 1.0] # AT prefetch_limit=30, not universally
+    dense_formatted_band: [0.5, 1.0]
+    artifact: measured-fusion-table.md
+    band_is_conditional: >-
+      CORRECTION (Codex round 1, finding 8's tail): the 1/31 fusion floor is NOT
+      general. search_service.py:1272 calls hybrid_search with limit*3 and
+      hybrid_search itself sets prefetch_limit=limit*3, so the reranking path
+      overfetches 9x and P exceeds 30 whenever limit > 3. The measured band above
+      holds AT prefetch_limit=30; a deeper prefetch lowers the raw floor.
+    f_b1_1a_survives_any_prefetch: >-
+      The finding does not depend on the band: formatted = 1/(2 - s) with fusion
+      s > 0 is strictly above 0.5 for every prefetch depth, so
+      reasoning_utils.py:665's `0 < top_source_cosine < 0.5` guard is unreachable
+      on every hybrid path regardless of P.
+  finding_F_B1_1a: >-
+    `reasoning_utils.py:665`'s guard `0 < top_source_cosine < 0.5 and
+    final_score > 0.15` cannot be entered from any live path, because every
+    live producer lands at or above 0.5 after the formatter. The
+    semantic-alignment penalty is dead code in production. Measured, not read.
+    Not touched by this PR (the file is read-only here); recorded for B2.
+  outbox_in_flight:
+    failed: 241
+    done: 179
+    pending: 0
+    generating: 0
+    newest: "2026-09-01T09:27:53Z"
+    conclusion: "no package in flight; the §4(d) digest STOP is not triggered"
+
+inventory:
+  - {
+      n: 1,
+      writer: "result_formatter.py:89 via search_service hybrid branch",
+      kind: hybrid_rrf_formatted,
+      raw: "fusion output",
+    }
+  - {
+      n: 2,
+      writer: "same formatter via dense branch + qdrant_db.py:1362 internal fallback",
+      kind: dense_formatted,
+      raw: "cosine",
+    }
+  - {
+      n: 3,
+      writer: "core/reranker.py:169-180 and services/rag/reranker.py:345-352",
+      kind: reranked,
+      raw: "the replaced value",
+    }
+  - {
+      n: 4,
+      writer: "wa_package_builder.py:529",
+      kind: curated_synthetic,
+      raw: null,
+    }
+  - {
+      n: 5,
+      writer: "search_service.py:1100-1103 cache hit",
+      kind: unknown,
+      raw: null,
+    }
+  - {
+      n: 6,
+      writer: "tools.py:279-288 source projection",
+      kind: "carries 1-5 through",
+      raw: "carried",
+    }
+  - {
+      n: 7,
+      writer: "wa_package_builder.py:289 then the scorer projection",
+      kind: "carries through",
+      raw: "carried",
+    }
+
+contracts_documented_not_edited:
+  - "_reasoning_evidence.py:365-371 flat 0.85 — a WHOLE-PACKAGE label, `sources` untouched; two production call sites, reasoning.py:657 and :1375"
+  - "orchestrator_core.py:428-441 FAQ fast path — sources carry NO score key at all"
+  - "orchestrator_core.py:1084-1103 KG fast path — splats **ev from outside the file; a number MAY appear with undeclared meaning (declared unknown, not guessed)"
+  - "both fast paths set no evidence_score and inherit the Pydantic default 0.0 at schema.py:91"
+
+rulings:
+  R1: >-
+    `search_type` keeps its existing mislabel (a dense fallback is served as
+    "hybrid_rrf"). It is a SERVED field — the rag_vector_search metric label
+    (app/metrics.py:852) and part of the cached dict — so correcting it is a
+    behaviour change and belongs to B2. The kind is declared by the branch that
+    knows, discriminating on the key's PRESENCE and never its value. Staff room:
+    ACCEPTED. Recorded as a declared residual.
+  R2: >-
+    Provenance lives inside the sealed bytes, so package_hash and wire_text()
+    change — the stated objective of B1 §1, not a side effect. Staff room:
+    ACCEPTED with one condition, satisfied: a package sealed before score_kind
+    existed still verifies hash==wire through the real
+    ContextPackage.__post_init__.
+
+residuals:
+  - "R1's search_type mislabel — B2"
+  - >-
+    TestDetectTeamQuery::test_dynamic_company_name_marker_matches and
+    ::test_dynamic_company_name_uppercase_in_query fail under cross-file order
+    pollution, IDENTICALLY on the base sha and on this branch (2 failed, 819
+    passed, 2 skipped, 8 xfailed on both). The file alone is 84 passed on both
+    trees. Pre-existing; not this PR's concern.
+  - >-
+    The eleventh tripwire of #5618's "eleven" is unrecorded anywhere (three
+    independent sources each assert eleven and itemise nine plus one). Explicitly
+    unresolved per D3. Detail in B1-2-inventory.md.
+  - >-
+    Ledger-only PR is blocked at B1's close: #6081, #6080 and #5072 are OPEN and
+    DIRTY on .claude/skills/modus/PENDING-ARMS.md (merge=union never self-clears).
+    Fleet-level, reported.
+
+deviations:
+  - >-
+    Load rule: the wide innocence run executed at 1-min load 18.06, above the
+    8.0 threshold. The ten-wait ladder was exhausted (final reading 18.74)
+    without the machine clearing, the load coming from other fleet sessions.
+    Pre-accepted by the staff room; declared here rather than hidden.
+  - >-
+    Net lines: the TOTAL is deliberately not narrated here as a literal. It is
+    self-referential — writing the count into the pack changes the pack and so
+    changes the count, which is how the previous literal ("1185 insertions across
+    14 files", generation 1's) went stale through the cure commit, the evidence
+    tidy and the gear correction. The countable-claims rule exists to catch
+    exactly that and it did. Measure it instead:
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    What IS stable and therefore stated: the modified SOURCE is ~146 changed
+    lines across seven writers, the code has been frozen since f56d3e5dc1, and
+    the bulk of the diff is one 508-line crossing test module plus this evidence
+    pack. One concern throughout. The size is also why the deterministic floor
+    computes to 3 — past ~1800 net lines the floor's "size" term binds on its
+    own, independently of any hot-zone path.
+
+adversarial:
+  round_1:
+    seat: "codex CLI, ChatGPT subscription, default account model, --sandbox read-only, effort high"
+    outside_chain: true
+    reviewed_sha: 4675f04bca2925e4502286dc5949857bdb5ff032 # pragma: allowlist secret
+    artifact: codex-round-1-verdict.txt # mechanical extract, 44 lines
+    artifact_sha256: 4c962e0ee5a216f4736d1f4adbf256b50d2a122510a328bee2e0470a535af2be # pragma: allowlist secret
+    full_trace_path: ~/.claude/state/b1-evidence/4675f04bca-codex-round-1.txt # 441268 B, outside every worktree
+    full_trace_sha256: 2823537a3f9cbf4203493daf6c5324d9cc6b1e7132c2518f0bb8fe5abe8b980d # pragma: allowlist secret
+    verdict: REWORK
+    cleared: >-
+      7 of 10 surfaces NOT-A-DEFECT, two of them by executed probe rather than
+      argument: R1's key-presence discriminator holds in BOTH directions; the new
+      keys change no number; stamp()'s ValueError is unreachable at runtime; a raw
+      cosine of exactly 0.0 survives; the cache's in-place UNKNOWN alias is real on
+      the LRU fallback but invents no origin; R2's hash compatibility holds because
+      the broker stores and returns the package as TEXT.
+    confirmed_and_cured:
+      - id: F9
+        severity: BLOCKER
+        finding: >-
+          Four of five format_search_results call sites took the UNKNOWN default
+          (search_service.py :705 :886 :1451 :1637) while feeding raw_results from a
+          dense search(), so results of KNOWN origin reached the scorer undeclared
+          through the reranker-skipped route. Re-measured by the Dux on disk before
+          acceptance, not taken on trust.
+        cure: >-
+          Declared per BRANCH. The naive call-site fix was REJECTED by the Dux:
+          search()'s one formatter call serves three branches, so stamping DENSE
+          there would have cured the blocker by minting a fresh lie on genuinely
+          hybrid results. The hybrid branch discriminates on the "search_type" key's
+          PRESENCE, identical to :1180. Test 13c is the guard for that wrong cure.
+      - id: F10
+        severity: MEDIUM
+        finding: "wa_package_builder.py:604's scorer projection dropped score_raw one line from its consumer."
+        cure: "score_raw crosses the projection; case 10 asserts its exact values {0.5, 1/3}."
+      - id: F8
+        severity: MEDIUM
+        finding: >-
+          The R2 backward-compat test — the staff room's own condition on R2 — was
+          TAUTOLOGICAL: it computed the "old" digest with the new _package_hash and
+          verified it with the new serializer. Codex proved it by running that test
+          against the base sha, where it also passes.
+        cure: >-
+          Rebuilt on literal wire bytes and a digest frozen by executing base
+          1d726045c9's own _canonical_wire/_package_hash in a throwaway checkout,
+          plus an altered-bytes rejection test.
+      - id: F7
+        severity: COMMENT
+        finding: "score_provenance.py:59 equated score_raw with vector_score unconditionally; under a second rerank it is the previous rerank's output."
+        cure: "Comment narrowed to 'the value that pass replaced'. The comment was introduced by this diff."
+
+  round_2:
+    seat: "codex CLI, ChatGPT subscription, default account model, --sandbox read-only, effort high"
+    outside_chain: true
+    reviewed_sha: f56d3e5dc1b2c2213537b7ad3b45d2fe88bb5b3a # pragma: allowlist secret
+    artifact: codex-round-2-verdict.txt # mechanical extract, 61 lines
+    artifact_sha256: edd49edbf8c7e2fa01b066ebc152b3586293fdd8e920618c8bcd4a344675d017 # pragma: allowlist secret
+    full_trace_path: ~/.claude/state/b1-evidence/f56d3e5dc1-codex-round-2.txt # 846309 B, outside every worktree
+    full_trace_sha256: 0a7b6a2cb8f8407cc9aafc0c690d7fe98b91ea43b639cc02a98215a30bfe100b # pragma: allowlist secret
+    verdict: SHIP
+    surfaces: "7 of 7 NOT-A-DEFECT"
+    cleared_by_execution_not_argument:
+      - >-
+        The frozen compat literals were RECOMPUTED independently from base
+        1d726045c9's helpers extracted with git show: 320 bytes, digest
+        466643afc3c3…4454, identical to the literal at test line 487. The
+        reviewer also showed the altered bytes are ACCEPTED under their own
+        correct digest, so the rejection is the hash's and not an unrelated error.
+      - >-
+        13c was proven to exercise the hybrid SUCCESS branch: hybrid called once,
+        dense zero times. The reviewer then forced an exception inside the hybrid
+        branch and 13c went RED — the fallback cannot masquerade as the success
+        it asserts.
+      - >-
+        score_raw reaching calculate_evidence_score is numerically inert across
+        240 equivalent comparisons including None and zero; no branch of that
+        function reads the key.
+    declared_limit: >-
+      The reviewer could NOT run pytest (tiktoken needs a writable temp dir under
+      the read-only sandbox) and said so rather than claiming a suite pass — its
+      evidence is isolated in-memory execution of the real functions and the test
+      bodies. The suite result in this pack is the Dux's own run, not the
+      reviewer's.
+    no_residue: "git diff HEAD empty and HEAD still f56d3e5dc1 after the review; only the two evidence files untracked, as at start"
+
+load_bearing_proof:
+  method: "each new assertion run against the mutation it was written for, in a copy restored afterwards with cp (never git checkout --)"
+  results:
+    - "search()'s dense branches -> UNKNOWN: 13a RED"
+    - "_single_query_search's declaration deleted: 13b RED"
+    - "hybrid branch swept into DENSE (the wrong cure): 13c RED"
+    - "scorer projection re-narrowed to {score, score_kind}: case 10 RED"
+    - "_canonical_wire separators changed coherently: compat test RED — the tautological version stayed GREEN under the same mutation"
+  file_green: "18 passed (was 14 at the reviewed sha)"
+
+renewal:
+  granted_by: "staff room docs-bot-staff-room-v6-fa (B1-design.md §6 — the one renewal, now spent)"
+  granted_at: 2026-09-11T00:01:49Z
+  previous_deadline: 2026-09-11T01:38:35Z
+  new_deadline: 2026-09-11T03:08:35Z
+  counters_touched: none
+  applied_via: >-
+    infra/codex-hooks/mandate_budget.py renew(root=~/.claude/state/child-mandates,
+    mandate="B1", seconds computed at call time, who="staff-room
+    docs-bot-staff-room-v6-fa"). Executed 2026-09-11T00:06:26Z, seconds=10929,
+    and RE-READ from disk afterwards: deadline now 2026-09-11T03:08:35Z, a
+    "renewals" list appended, created/mandate_id untouched. No reservations or
+    attempts existed to touch — B1's children were Claude subagents, which never
+    reserve.
+  ledger_root_finding: >-
+    FLEET FINDING, and g2's own error first. The Dux initially reported "no
+    ledger exists" after searching ~/.codex/state/nuzantara-context/mandates
+    keyed by SESSION ID. Both halves were wrong: the ledger lives under
+    ~/.claude/state/child-mandates and is keyed by MANDATE ID —
+    sha256("B1")=5b950e77941d01cd… , created 2026-09-10T20:38:35Z by generation 1.
+    Two roots and two key conventions coexist for the same module; a session that
+    guesses will conclude a real budget is absent and, if it is less careful than
+    it should be, fabricate one. Corrected by the staff room, verified on disk
+    here before acting. R1 uses the ~/.claude root too.
+  clock_correction: >-
+    Checkpoint 8 stated "~01:02Z". `date -u` read 2026-09-11T00:01:45Z. The Dux
+    had derived Z from a local WITA timestamp instead of reading the clock, and
+    the error was load-bearing: it made a comfortable 1h37 look like 36 minutes
+    and nearly bought a premature stop. Caught by the staff room, verified here.
+
+pii_scan: clean
+
+lanes:
+  # ONE build lane, declared as one on purpose. An earlier draft split it in two
+  # ("implement" and "cure") and that tripped D3's seat-diversity rule, which is
+  # the rule working: two build lanes would have to be built by two different
+  # families. But B1.1 was never two lanes — it is a single lane that a Sonnet 5
+  # child implemented and the Opus 5 Dux then cured after REWORK, sequentially,
+  # on the same files and the same concern. Collapsing it is the accurate
+  # description, not a way past the guard; splitting it back would be the
+  # inaccurate one. Seat diversity for this PR lives in the REVIEW lane, which is
+  # non-Anthropic by construction and is where generator-is-never-grader binds.
+  - {
+      lane: "B1.1 score contract",
+      role: build,
+      seat: "claude-sonnet-5 (implementer child) then claude-opus-5 (Dux cure)",
+      state: "delivered",
+    }
+  - {
+      lane: "B1.1 adversarial rounds 1 and 2",
+      role: review,
+      seat: "codex (ChatGPT subscription, default account model)",
+      state: "REWORK then SHIP",
+    }
+
+appetite_exceeded: >-
+  wall_clock 4.4h against a declared 2h ceiling. The cause is named, not
+  smoothed: the first adversarial round died unnoticed with generation 1 and had
+  to be re-run from scratch, and it then returned REWORK with a real BLOCKER, so
+  a second implement-and-verify cycle plus a second round were spent inside the
+  same PR. The staff room granted the one renewal (deadline 01:38:35Z ->
+  03:08:35Z) and it is recorded as spent above. Adversarial rounds stayed within
+  the appetite of 2.
+
+dissent:
+  - seat: "claude-opus-5 (Dux) vs the staff room's literal ruling"
+    status: CONFIRMED
+    objection: >-
+      The ruling read "the four dense sites declare DENSE_FORMATTED". Implemented
+      literally it is DEFECTIVE at one of the four: search()'s single formatter
+      call is fed by three branches including hybrid success, so a blanket DENSE
+      would have cured a mislabel by minting a new one. The Dux declined the
+      literal instruction, declared the departure at checkpoint 8 before the
+      reviewer saw the code, and wrote test 13c specifically to fail the literal
+      version. The staff room then confirmed the per-branch reading was what the
+      ruling meant.
+  - seat: "codex (round 2), self-declared limit"
+    status: CONFIRMED
+    objection: >-
+      The reviewer could not run pytest under its read-only sandbox (tiktoken
+      needs a writable temp dir) and refused to claim a suite pass. Its SHIP rests
+      on isolated execution of the real functions plus the Dux's own suite run —
+      recorded as a limit of the review, not papered over.
+  - seat: "claude-opus-5 (Dux) vs codex round 1, on one point"
+    status: PLAUSIBLE
+    objection: >-
+      Round 1 called the cache's in-place UNKNOWN stamp a non-defect because
+      UNKNOWN means "nothing declared". Accepted for this PR, but it remains an
+      in-place mutation of a shared LRU object visible to later readers; if it is
+      ever made to write a DECLARED kind it becomes a real defect. Recorded for B2
+      rather than silently agreed.
+
+bites:
+  consumer: >-
+    `calculate_evidence_score` (reasoning_utils.py:610/:662) reached through the
+    ORDINARY dense search path — SearchService.search() -> format_search_results
+    -> VectorSearchTool -> the reasoning loop. That consumer ships in this PR; it
+    is not a future job. Second consumer, same PR: the sealed WA package, whose
+    own bytes now carry the provenance (wa_package_builder wire_text).
+  observation: >-
+    AFTER merge (which is the deploy for apps/backend-rag), run ONE read-only
+    in-container probe on the deployed image: perform a search on an existing
+    collection and print ONLY the `score_kind` labels of the returned results —
+    no document text, no metadata, no ids. Pre-deploy the labels are `unknown` on
+    that path; post-deploy they must read `dense_formatted` (or
+    `hybrid_rrf_formatted` where the hybrid branch served it). Labels only: the
+    observation is a set of vocabulary constants and carries no client data.
+  why_not_an_http_probe: >-
+    Deliberately not a curl assertion, and NOT because the field is absent from
+    the schema — `AgenticQueryResponse.sources` is `list[Any]`
+    (app/routers/agentic_rag.py:475), a passthrough that would serve any key it
+    is handed. The reason no served byte changes is a key ALLOWLIST downstream:
+    `_normalize_citations` (services/rag/agentic/pipeline.py:274-282) rebuilds
+    every citation on a fixed set — title/url/collection/score/snippet/metadata —
+    so score_kind/score_raw are dropped there, and reasoning.py:1114-1115 /
+    :1707-1708 replace state.sources with that projection BEFORE the response
+    (agentic_rag.py:712) and before the SSE `sources` event (reasoning.py:1724).
+    The grep over app/routers/ and app/schemas/ returns zero hits and is true,
+    but it is NOT the load-bearing fact; the allowlist is. This correction is the
+    fresh gate's (NOTICE 2) — the Dux's original wording gave a true conclusion
+    for a false reason, which is the kind of evidence that teaches the next reader
+    the wrong lesson.
+  degraded_path_residual: >-
+    DECLARED, not assumed. The allowlist is bypassed where `self.response_pipeline`
+    is falsy or the pipeline raises (reasoning.py:1697 guard, :1709 except
+    ValueError/RuntimeError/KeyError): there state.sources stays the raw tool
+    projection from tools.py:280-291 and the two keys DO reach the wire,
+    additively. Payload is BOUNDED: score_kind is one of the 7 closed-vocabulary
+    literals (stamp raises ValueError on anything else,
+    core/score_provenance.py:133-136) and score_raw is a float or null
+    (raw_of, :118-122), sitting beside the `score` that path already served
+    pre-PR, alongside title/url/doc_id/collection/snippet (tools.py:293). Knowledge
+    corpus — visa/legal/KBLI — not client records: no PII and no new information
+    class crosses the output boundary. UNVERIFIABLE and not guessed: how often
+    response_pipeline is absent or raises in production was NOT measured (the gate
+    is read-only and read no logs).
+  second_observation_deferred: >-
+    The sealed-package half cannot be observed without real traffic: wa_outbox
+    holds only terminal rows, newest 2026-09-01, pending 0. When the next real
+    package is built, its stored bytes contain score_kind. Declared as deferred
+    rather than asserted now.
+
+evidence_extraction:
+  why: >-
+    The committed artifacts were the RAW CLI traces — 1.28 MB of 1.29 MB, ~20161
+    of the PR's 21860 insertions, mostly exec echoes and repeated
+    "git: warning: confstr() failed" noise around ~200 lines of actual judgement.
+    The Dux raised this against its own commit before pushing; the staff room
+    ruled that "preserve it" meant durability, not a megabyte of CLI noise in git
+    history forever. The fresh gate independently measured the same thing
+    (NOTICE 1) and made the replacement a pre-push condition.
+  command: >-
+    awk '/^Riferimenti relativi a|^Revisione dei due diff/{s=NR} {l[NR]=$0}
+    END{for(i=s;i<=NR;i++) print l[i]}' <full-trace> > <extract>
+  mechanical_not_editorial: >-
+    Marker-anchored, last-occurrence to EOF. Nothing is hand-picked and nothing
+    the reviewer said is dropped from the report body — including the 12 lines
+    where round 2 re-checks `git status` to show it changed nothing, which stay
+    because removing them would be curation.
+  reproducible: >-
+    Re-run the command on the full trace at full_trace_path and the result must
+    hash to artifact_sha256. Both digests are recorded above, so the extract can
+    be checked against the trace and the trace against what the reviewer emitted.
+  kg_entity_note: >-
+    NOTICE 4 from the gate: core/score_provenance.py:70's KG_ENTITY is vocabulary
+    with no writer yet. That is deliberate scoping, not an oversight — the
+    inventory declares the KG fast path as `unknown` rather than claiming it is
+    covered, and the constant is reserved for B2.
+
+gear_floor_correction:
+  what: >-
+    The brief and pack declared gear 2. CI's "Harness floor recompute" computed
+    the deterministic floor as 3 and went RED. Corrected to gear 3 — which is the
+    ACCURATE declaration, not a number picked to green a gate: what was actually
+    done here is Gear-3 shaped (two independent adversarial rounds, a REWORK with
+    a confirmed BLOCKER, mutation-proof on every new assertion, a fresh Opus 5
+    gate outside the chain), and Gear 3's effort requirement is xhigh, which is
+    what this mandate has run at from the open. Declaring 2 understated the work.
+  floor_source: >-
+    "size", NOT a hot-zone path — 1883 net lines (1863 + 20). Reproduced locally
+    in CI's exact shape before believing the message: `--print-floor` WITHOUT
+    `--numstat-file` prints floor 1 source "none"; WITH it, floor 3 source "size".
+  gate_effort_deviation: >-
+    DECLARED, not hidden. The fresh Opus 5 gate signed PASS on fbcb10fd3c running
+    at the SUBAGENT DEFAULT effort — this session dispatched it with the model
+    pinned to Opus 5 and did NOT set an effort override, so "max" cannot be
+    claimed and is not. Gear 3 normally binds the final gate to max effort; here
+    the floor was raised to 3 by SIZE *after* the gate had signed, not by
+    hot-zone risk, and the staff room accepted the deviation on that basis. No
+    re-run: the gate's own receipts (seven pytest runs incl. random order, the
+    base-sha literals re-derived independently, four self-chosen mutations, two
+    null runs declared) are what the signature rests on, and the code they
+    covered is byte-identical to what ships.
+  fleet_finding_two_traps: >-
+    Both cost this session time and will bite the next lane. (1) `evidence/brief.yml`
+    still exists at repo ROOT, tracked on main from #6082 and belonging to a
+    DIFFERENT lane; `evidence_pack_lint.py` run bare reads THAT file, so it kept
+    reporting "declared 2" after this PR's own brief had been changed to 3. CI is
+    unaffected — `scripts/ci/evidence_paths.py --resolve brief
+    --changed-files-file` resolves the per-PR brief — but a human or agent
+    debugging locally is measuring another lane's declaration. (2) The lint reads
+    the COMMITTED brief, not the working tree: an uncommitted correction is
+    invisible to it, which reads exactly like "my fix did nothing". (3) The same
+    is true of `evidence/pack.yml` at root — also a different lane's, narrating
+    "4 files, +538/-2". Reproducing CI's staged tree with `--repo-root` pointed
+    at the real worktree makes the lint read BOTH root files instead of the
+    staged ones, so a local reproduction reports four violations that belong to
+    another PR entirely. The reproduction that is actually faithful is CI's own
+    decisive step: `git show <sha>:<per-PR brief>` then compare its gear to
+    `--print-floor --changed-files-file … --numstat-file …`. That is the check
+    that was red, and it is the one to re-run locally.
+
+council_run: council-journal.jsonl
+
+receipts:
+  - claim: "the crossing suite is green at the shipped code sha"
+    cmd: "PYTHONPATH=. SKIP_SENTRY_INIT=1 .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_score_contract_crossing.py"
+    exit: 0
+    ts: 2026-09-11T00:06:00Z
+    seat: claude-opus-5
+    output: "18 passed, 1 warning in 7.06s (was 14 at the reviewed sha)"
+  - claim: "the cures move nothing in the two suites that own the touched files"
+    cmd: "PYTHONPATH=. SKIP_SENTRY_INIT=1 .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/ backend/tests/unit/services/search/"
+    exit: 0
+    ts: 2026-09-11T00:01:00Z
+    seat: claude-opus-5
+    output: "2144 passed, 30 skipped, 8 xfailed, 1 warning in 52.34s"
+  - claim: "the fresh gate re-ran the same wide suite itself, in two execution orders"
+    cmd: "same command, with and without -p no:randomly, in the gate's own session"
+    exit: 0
+    ts: 2026-09-11T00:24:00Z
+    seat: claude-opus-5-gate
+    output: "2144 passed, 30 skipped, 8 xfailed both orders (39.58s fixed, 22.43s random)"
+  - claim: "every new assertion is load-bearing — each fails under the mutation it was written for"
+    cmd: "mutate source in a cp-backed copy, run pytest -k <case>, restore, verify byte-identical"
+    exit: 0
+    ts: 2026-09-11T00:00:00Z
+    seat: claude-opus-5
+    output: >-
+      dense branches -> UNKNOWN: 13a 1 failed; :907 declaration deleted: 13b 1 failed;
+      hybrid branch swept into DENSE: 13c 1 failed; projection re-narrowed: case 10
+      1 failed; _canonical_wire separators changed coherently: compat test 1 failed
+      while the tautological version stayed GREEN under the same mutation
+  - claim: "the frozen compat literals really are what the BASE sha produces"
+    cmd: "git worktree add --detach <tmp> 1d726045c9; run the base's own _canonical_wire/_package_hash on the test's inputs"
+    exit: 0
+    ts: 2026-09-10T23:58:00Z
+    seat: claude-opus-5
+    output: "BASE_DIGEST 466643afc3c393d49fcaddd4a92f5f8be63d64e88dc351c6c90921edc84a4454, SELFCHECK True; re-derived independently by the gate and by kimi-code/k3, both matching"
+  - claim: "the shipped sha differs from the gated sha by evidence files only"
+    cmd: "git diff fbcb10fd3c HEAD -- apps/ scripts/ packages/ | wc -l"
+    exit: 0
+    ts: 2026-09-11T01:01:00Z
+    seat: claude-opus-5
+    output: "0"
+  - claim: "the gear declaration now clears the deterministic floor, reproduced the way CI computes it"
+    cmd: "git show HEAD:<per-PR brief> > /tmp/b.yml; GEAR=$(yaml gear); FLOOR=$(evidence_pack_lint.py --print-floor --changed-files-file ... --numstat-file ...)"
+    exit: 0
+    ts: 2026-09-11T01:00:00Z
+    seat: claude-opus-5
+    output: "GEAR=3 FLOOR=3 -> PASS (without --numstat-file the same flag prints floor 1 source none — the bare form is not CI-equivalent)"
+  - claim: "both council seats are live subscription seats and answered"
+    cmd: "kimi -p 'reply with exactly: PONG' -m kimi-code/k3 ; codex exec --sandbox read-only -m gpt-5.6-sol 'reply with exactly: PONG'"
+    exit: 0
+    ts: 2026-09-11T00:52:00Z
+    seat: claude-opus-5
+    output: "both PONG. Note: the known 400 'not supported with a ChatGPT account' trap is on gpt-5.6-codex, NOT on gpt-5.6-sol"

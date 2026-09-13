@@ -1,0 +1,220 @@
+task_id: backend-rag-b1-5-query-vectors
+mandate: B1
+colour: BLUE
+pr: B1.5
+base_sha: fb39ef3f847b12a8735a0365e009541e668b0eb0 # pragma: allowlist secret
+base_sha_of_the_batch_run: 70b23c196e3475f5254ea50b6a82dd6e670932b9 # pragma: allowlist secret
+supersedes: >-
+  PR #6284, same code and same evidence content, closed rather than committed
+  on: its branch was armed and therefore frozen when the fresh gate returned
+  REWORK-BUILD on the pack-lint step. Only pack.yml and the council journal
+  differ from it.
+brief_ref: evidence/brief.yml
+gear: 3
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
+  tokens: 400000
+  children: 0
+  child_depth: 0
+  provider_cost:
+    what: "23 OpenAI text-embedding-3-small query embeddings"
+    authorized_by: "README queue item 7 (README.md:89), Zero, 2026-09-11 ~15:00 WITA"
+    ceiling: "40 total provider attempts including retries"
+    attempts_made: 23
+    estimated_cost_usd: "< 0.01"
+result: >-
+  The approved query/vector artifact B2.2's live retrieval sample depends on
+  exists, is checked in, and verifies offline. 23 synthetic EN/ID queries,
+  selected label-free from the frozen B1.3 manifest, embedded in ONE batch
+  through the product's own embedding path with the SDK's retries disabled;
+  0 failures; 23 of the 40 authorized attempts spent.
+frozen:
+  artifact_path: apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/query_vectors_b1_5.json
+  artifact_sha256: 0021c3275b7bd9f812f0ce52fc06da1330e89a9d1c40a4c105ca932720083012 # pragma: allowlist secret
+  query_list_sha256: 6b1beb37e45384ae0a3254da45ba700a29b6301a99799d59f9fc5b666ee13e02 # pragma: allowlist secret
+  manifest_consumed: apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/manifest_mandatory.json
+  manifest_sha256: 9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f # pragma: allowlist secret
+  model: text-embedding-3-small
+  dimension: 1536
+  language_coverage: [EN, ID]
+  handoff: "B2.2 retrieval harness"
+  as_run_harness_sha256: f8fd312070c67101c98070c43c691212eadbdb3ddee00fef93b6db7ea6128cbb # pragma: allowlist secret
+  as_run_note: >-
+    The artifact was produced by build_query_vectors.py at the sha256 above.
+    The file SHIPPED in this PR is not byte-identical to it: after the batch,
+    the council's findings were cured (global attempt budget, failure-aware
+    verification, the canary re-check the dry-run promised, and error records
+    reduced to the exception TYPE). None of those cures touches selection or
+    the call path, and that is not an assertion — re-running --dry-run on the
+    CURED file reproduces the identical query list sha256 6b1beb37e45384ae,
+    which is the same value recorded by the dry-run of the previous window,
+    by the aborted attempt and by the shipped artifact. The artifact was
+    therefore not regenerated and its sha256 is unchanged.
+measured:
+  batch:
+    at: "2026-09-12T05:33Z"
+    host: Nuzantara
+    attempts: 23
+    failures: 0
+    ceiling: 40
+    cwd: >-
+      the B1.5 worktree's apps/backend-rag, reset onto fresh origin/main
+      (70b23c196e) so the frozen manifest was present; the credential was
+      resolved by the product's own Settings loader through a symlink to the
+      main checkout's .env, created by one explicit command and removed by
+      another at 05:57:26Z. The main checkout's .env is unmodified
+      (-rw------- , 3524 bytes). The value was never read, printed, exported
+      or logged; only a boolean presence was ever observed.
+  aborted_attempt:
+    at: "2026-09-12T05:19:16Z"
+    provider_attempts: 0
+    cause: >-
+      Settings ValidationError (jwt_secret_key, api_keys): the .env symlink
+      created by the pre-flight command was removed by that same shell's
+      'trap ... EXIT' before --execute ran.
+    proof: >-
+      The only provider call is generate_query_embedding inside _run_batch,
+      reached only after _build_zero_retry_generator() returns; the
+      ValidationError was raised inside that function, at its import line. No
+      artifact was written and the receipt carries no completion block.
+    disposition: >-
+      Ruling I24a (fleet envelope 20260912T052244Z-5035), option A: the
+      receipt is kept immutable with a resolution block. It is preserved as
+      b1-5-precall-aborted.json rather than under the canonical name because
+      the harness refuses to run AT ALL while b1-5-precall.json exists; the
+      Dux reported that deviation to the staff room rather than choosing it
+      silently. Both receipts ship here.
+  tests:
+    at: "2026-09-12T08:22:55Z"
+    command: "pytest backend/tests/unit/services/rag/test_query_vectors_b1_5.py"
+    result: "12 passed, 0 skipped (re-measured on this successor head at 08:22:55Z; the predecessor pack wrote 11, which undercounted by one — corrected here rather than carried) — the real-artifact test LOADS the shipped artifact (it no longer takes its skip branch) and the guilt fixtures reject a wrong dimension, a mismatched mapping, an over-ceiling attempt count, an unreadable receipt and a receipt with no attempt count."
+  canary_baseline:
+    path: /Users/nuzantara/nuzantara/scripts/.rag_canary/embedding_baseline.json
+    exists: true
+    size_bytes: 453802
+    mtime: "2026-03-25T11:54:40"
+    overlap_with_selected_queries: 0
+    correction: >-
+      An earlier measurement by this window reported this file ABSENT and was
+      reported as such to the staff room twice. It was WRONG — the ls ran from
+      a different working directory than the one intended. The file has existed
+      untouched since 2026-03-25. The operational conclusion is unchanged,
+      because it holds REFERENCE-TEXT embeddings and zero of the 23 selected
+      queries is byte-identical to any of its texts, so no canary vector was
+      reusable and the bounded batch was necessary either way — but the fact
+      as previously stated was false and is corrected here rather than left in
+      the record.
+  known_gap:
+    what: "the product's llm_cost telemetry row for this batch was not persisted"
+    detail: >-
+      The run printed 'postgres write failed for llm_cost event ... password
+      authentication failed for user backend_rag_v2' and 'jsonl write failed
+      ... /data is not writable'. The embedding calls themselves succeeded; the
+      cost event has no row. Not chased: it would need a production credential
+      this PR has no business holding. The attempt count in the receipts is the
+      authoritative record of what was spent.
+pii_scan: clean
+receipts:
+  - claim: >-
+      The shipped artifact's sha256 equals the value the pre-call receipt's
+      completion block committed to (0021c3275b7bd9f8...).
+    cmd: "shasum -a 256 apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/query_vectors_b1_5.json"
+    exit: 0
+    ts: "2026-09-12T08:22:17Z"
+    seat: claude-opus-5
+  - claim: >-
+      b1-5-precall.json carries the completion block with attempts 23,
+      failures 0 and that same artifact sha256.
+    cmd: 'python3 -c "import json;print(json.load(open(''b1-5-precall.json''))[''completion''])"'
+    exit: 0
+    ts: "2026-09-12T08:22:17Z"
+    seat: claude-opus-5
+  - claim: >-
+      b1-5-precall-aborted.json carries a resolution block recording
+      provider_attempts 0 for the aborted first attempt.
+    cmd: 'python3 -c "import json;print(sorted(json.load(open(''b1-5-precall-aborted.json''))[''resolution'']))"'
+    exit: 0
+    ts: "2026-09-12T08:22:17Z"
+    seat: claude-opus-5
+  - claim: >-
+      The shipped test loads the real artifact on THIS successor head and
+      verifies dimension and mapping with no network call — 12 passed.
+    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/rag/test_query_vectors_b1_5.py"
+    exit: 0
+    ts: "2026-09-12T08:22:55Z"
+    seat: claude-opus-5
+lanes:
+  - { lane: harness-and-artifact, role: build, seat: claude-sonnet-5 }
+  - { lane: adversarial-review, role: review, seat: codex-gpt-5.6-sol }
+  - { lane: second-reader, role: review, seat: gemini-3.1-pro }
+  - { lane: third-seat, role: review, seat: kimi-code/k3 }
+council_run: council-journal.jsonl
+bites:
+  consumer: >-
+    B2.2's retrieval harness, which aborts on a missing vector (B1-design.md
+    §4 B1.5), and the test shipped in this PR
+    (backend/tests/unit/services/rag/test_query_vectors_b1_5.py), which is the
+    consumer that runs in CI on every commit from now on.
+  observation: >-
+    That test loads the real artifact on this head and verifies dimension and
+    mapping with no network call — 12 passed, 0 skipped, measured before this
+    PR was opened. A merged diff is not a live one; this one is observed.
+adversarial:
+  - {
+      seat: gemini-3.1-pro,
+      round: 1,
+      verdict: REWORK,
+      findings: 5,
+      cured: 3,
+      rejected: 1,
+      subsumed: 1,
+    }
+  - {
+      seat: codex-gpt-5.6-sol,
+      round: 1,
+      verdict: BLOCK,
+      findings: 4,
+      cured: 3,
+      dissent: 1,
+    }
+  - {
+      seat: kimi-code/k3,
+      round: 1,
+      verdict: ACCEPT-WITH-FINDINGS,
+      findings: 5,
+      disclosed: 1,
+      follow_ups: 2,
+      no_finding: 1,
+      already_recorded: 1,
+    }
+dissent:
+  - seat: "claude-opus-5 (Dux) vs codex gpt-5.6-sol"
+    status: PLAUSIBLE
+    objection: >-
+      Codex requires "request-level evidence that the successful window stayed
+      within 40 provider attempts" before moving from BLOCK to ACCEPT. The Dux
+      cannot produce it and will not pretend to: this window has no access to
+      the provider's usage dashboard. What CAN be shown is structural rather
+      than testimonial - the product's client is replaced, after construction,
+      with one built at max_retries=0 (observed as client.max_retries == 0 in a
+      pre-flight that made no call), so the SDK retries nothing and one call to
+      generate_query_embedding is exactly one provider attempt; the harness
+      counts every attempt itself and stops at the ceiling; both receipts here
+      account for every attempt (0 + 23); and the cured budget check makes a
+      future run subtract what prior receipts already spent. Residual risk,
+      stated plainly: if the SDK made a transport-level attempt this code
+      cannot observe, no receipt here would show it. A limit of the instrument,
+      recorded rather than papered over. CLOSED AS PLAUSIBLE rather than left
+      OPEN (the pack contract admits only CONFIRMED/PLAUSIBLE/RETRACTED): the
+      objection is well-founded — the evidence Codex asked for genuinely does
+      not exist — and it is not CONFIRMED because nothing observed contradicts
+      the structural account above, nor RETRACTED because Codex never withdrew
+      it. Residual risk stands as written.
+  - seat: "claude-opus-5 (Dux) vs gemini-3.1-pro"
+    status: CONFIRMED
+    objection: >-
+      Gemini called the hostname written into the receipt a PII leak. Rejected:
+      the owner's own machine name is not client data, the boundary this repo
+      enforces is about client and OSINT data, and every evidence pack in this
+      tree records its host. Recorded rather than silently dropped.

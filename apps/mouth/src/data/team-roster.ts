@@ -30,11 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type TeamDept =
-  | "leadership"
-  | "setup"
-  | "tax"
-  | "accounting"
-  | "support";
+  "leadership" | "setup" | "tax" | "accounting" | "support";
 
 export interface RosterMember {
   slug: string;
@@ -47,14 +43,11 @@ export interface RosterMember {
 }
 
 // Helper: initials from a display name (max 2).
-export function initialsOf(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0] ?? "")
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
+// Re-exported, not defined here: the helper itself lives in
+// `src/lib/team-initials.ts` so a "use client" component can use it WITHOUT
+// pulling this file — and therefore the whole roster — into a public JS chunk.
+// This re-export keeps the module's existing API for server-side callers.
+export { initialsOf } from "@/lib/team-initials";
 
 // ── THE ROSTER ───────────────────────────────────────────────────────────────
 // Verified 2026-06-15 against team_members DB + founder confirmation.

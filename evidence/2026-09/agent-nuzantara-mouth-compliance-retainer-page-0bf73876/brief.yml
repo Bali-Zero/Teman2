@@ -1,0 +1,90 @@
+task_id: compliance-retainer-page
+gear: 2
+l_level: L2
+gate_class: opus
+gear_note: >-
+  floor 2 by CI size term (run 34545271992); declared 2. Local evidence_pack_lint.py
+  --print-floor had printed 1 without --changed-files-file/--net-lines; the CI "Harness floor
+  recompute" reading (merge-base anchored, +681 net lines) on 3bc9475178 is authoritative.
+objective: >-
+  Add the unlisted /services/compliance page (apps/mouth) from Page 1 of the 2026-09-11
+  compliance-stack draft (~/Desktop/ricerca-nicchie-online-indonesia-2026-09-11/build/
+  page-content.draft.md): hero, who this is for, what you get every month, price list, how it
+  works, why now, FAQ. Renders the five compliance_retainers packages through
+  getExactPricingSnapshotEntries("compliance_retainers") against the committed mouth snapshot
+  (apps/mouth/data/bali-zero-prices.json, kept in parity with the backend SSOT by
+  scripts/sync_frontend_prices.py) — never a numeric literal in the TSX.
+constraints:
+  - No price literal anywhere in page.tsx; every figure comes from the pricing snapshot helper.
+  - >-
+    Unlisted: not added to the services grid (src/app/(blog)/services/page.tsx SERVICES array
+    untouched) or any nav; metadata carries robots index:false, follow:false.
+  - >-
+    Draft items flagged (verify) — the hosting-location statement, the specific LKPM article
+    number, named licensed partners — are either dropped or rephrased to the unflagged,
+    already-checked substance; nothing unverified is asserted as fact.
+  - >-
+    Source for the WHY_NOW LKPM bullet (cure 2026-09-11, replacing the unverified "PP 28/2025
+    fines" claim): apps/mouth/src/content/articles/business_regulations/
+    indonesia-extends-lkpm-quarterly-deadline-to-day-15-under-new-bkpm-rules.mdx (published
+    2026-07-11, ~line 50), primary source peraturan.bpk.go.id/Details/332573 (Permen BKPM 5/2025,
+    ditetapkan 2025-10-01).
+  - Zero forbidden-phrase hits against skills/bali-zero-brand/voice/forbidden-phrases.md
+    (sections A-E, G; section F's all-caps/no-question-mark title rule is a wr2-carousel-slide
+    rule, not applied here — FAQ questions and sentence-case H1/H2 already run across every
+    existing services page, e.g. services/[slug]/page.tsx).
+  - >-
+    No backend, pricing-sheet, router or lockfile change (that landed separately in W1 PR1,
+    already merged to main — the compliance_retainers category with the five exact keys).
+acceptance:
+  - text: >-
+      WHEN the page renders it SHALL show all five compliance_retainers packages (name + exact
+      IDR price string) sourced from getExactPricingSnapshotEntries, never a hardcoded literal.
+    probe: >-
+      npx vitest run "src/app/(blog)/services/compliance/page.test.tsx" (3 passed); bite proven by
+      hand: removing pmse_vat_assessment from the test's mocked entries turns the "renders all
+      five..." test red (expected length 5, got 4), restoring it goes green again.
+  - text: The page SHALL stay out of search indexing until the owner asks otherwise.
+    probe: >-
+      grep -n "robots" page.tsx -> "robots: { index: false, follow: false }"; test asserts
+      metadata.robots deep-equals that object.
+  - text: No numeric price literal SHALL appear in the page source.
+    probe: >-
+      grep -E "[0-9]{3},[0-9]{3}|USD [0-9]|[0-9]{1,3}\.[0-9]{3}\.[0-9]{3}" page.tsx -> 0 hits
+      (exit 1, no match).
+  - text: The page SHALL not be auto-listed in the sitemap or the services nav.
+    probe: >-
+      grep -n compliance apps/mouth/src/app/sitemap.ts -> 0 hits (sitemap.ts enumerates a fixed
+      servicePaths array, not a directory walk, so no exclusion entry was needed); the route is
+      absent from src/app/(blog)/services/page.tsx SERVICES array.
+  - text: Zero forbidden-phrase hits.
+    probe: >-
+      python3 one-off scan of skills/bali-zero-brand/voice/forbidden-phrases.md's `- \`phrase\``
+      list (59 phrases) against page.tsx.lower() -> HITS = [].
+  - text: Typecheck and lint SHALL be clean; formatting SHALL match prettier.
+    probe: >-
+      npx tsc --noEmit (exit 0); npx eslint page.tsx page.test.tsx (0 errors, 1 unrelated ignore
+      warning on the .test.tsx glob); npx prettier --check page.tsx page.test.tsx (both pass
+      after one --write pass).
+  - text: >-
+      The full app SHALL build, and /services/compliance SHALL resolve as its own static route,
+      not fall through to the existing [slug] catch-all.
+    probe: >-
+      npm run build (apps/mouth) completed end to end (LLMS_GENERATE_FULL_ONLY=1 tsx
+      generate-llms-full.ts && next build --webpack && node assert-public-login-bundle.mjs) —
+      the route table prints "○ /services/compliance" as its own static entry alongside the
+      pre-existing "ƒ /services/[slug]", and the chain's final step printed
+      "PUBLIC_LOGIN_BUNDLE_OK: inspected 8 assets; no internal API route prefixes found", which
+      only runs (via &&) after next build exits 0.
+consumer_map:
+  - "The founder's sales call: the live unlisted URL rendered from the API/snapshot prices."
+  - "W1 PR1 (backend-rag, already on main): the compliance_retainers category this page reads."
+risks:
+  - "The FAQ question 'Do we need PSE registration if we have no Indonesian office?' restates the
+    Page 2 draft's already-checked summary-box claim (no (verify) flag on it in the source draft);
+    it was not independently re-verified against a primary source in this PR."
+grader: >-
+  The final on-disk gate is a fresh Opus 5 session commissioned by the imperator; this Dux does
+  not post harness/fable-gate and did not arm auto-merge.
+budget: Existing subscription only; no paid API calls.
+pii: none

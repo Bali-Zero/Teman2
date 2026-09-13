@@ -1,0 +1,464 @@
+task_id: backend-rag-b2-engine
+mandate: B2
+colour: BLUE
+pr: B2.1
+base_sha: 50a3d4f76258032e789b379a1b40349486702231 # pragma: allowlist secret
+brief_ref: evidence/brief.yml
+gear: 3
+spend:
+  wall_clock_hours: 1.9
+  wall_clock_note: >-
+    Two windows on one mandate: b3e7d3f2 (09:3xZ-10:02Z, build + the three seat
+    measurements) and 6d08443a (10:03Z-, this window, the nz-jump successor
+    that scored them, cured two adversarial findings and wrote this pack).
+    Hops 2 of 3.
+  adversarial_rounds: 1
+  tokens: 1600000
+result: >-
+  SHIP, with ONE acceptance cell openly unmet and its cure REFUSED on a
+  measurement rather than closed by a relabel. The engine removes every
+  measured false acceptance the frozen benchmark had (26 of 38 negatives
+  accepted on the base, 0 now, both gates, all five negative strata) and
+  distinguishes all 16 counterfactual spec pairs (0 on the base) without
+  weakening one standing tripwire. What it does NOT do is reach 0 false
+  abstentions in the EN-query/ID-context cell: one case survives, the frozen
+  manifest's own DECLARED RESIDUAL, and the only cure available inside this
+  perimeter is measured to cost a false acceptance of unsupported advice in
+  the same cell. That trade is recorded in `vulnerabilities` and adjudicated
+  by the staff room, never by this Dux.
+frozen:
+  manifest_mandatory_sha256: 9d7ea833b52bdcb9cf4fcc09c7e608f7edcc8bf2d50c5df86c4fd9849142e48f # pragma: allowlist secret
+  manifest_mandatory_note: >-
+    BYTE-IDENTICAL to the value B1.3 pinned and B1.4/B1.5 re-pinned. No label,
+    context or band of it was edited by this PR; everything B2 adds is in the
+    append-only supplement and reported separately.
+  manifest_supplement_b2_sha256: 04d27190b140fc9f0d8e526e450886d817f3fd53ecf0550abf08dfd373489944 # pragma: allowlist secret
+  support_verdicts_b2_sha256: daa85c1a59456774008004cbcd9980346a54d642caa86b2dabbb398ee08b8a04 # pragma: allowlist secret
+  query_vectors_b1_5_sha256: 0021c3275b7bd9f812f0ce52fc06da1330e89a9d1c40a4c105ca932720083012 # pragma: allowlist secret
+measured:
+  benchmark_before:
+    at: "2026-09-12T09:25Z on base 50a3d4f762, by window b3e7d3f2"
+    false_abstention: "EN>EN 0/4 · EN>ID 1/6 · ID>EN 0/6 · ID>ID 0/4 (both gates)"
+    false_acceptance: "EN>EN 5/9 · EN>ID 8/10 · ID>EN 7/11 · ID>ID 6/8 (both gates) = 26 of 38"
+    spec_pairs: "0/16 distinguished at the generation gate"
+  benchmark_after:
+    at: "2026-09-12T10:2xZ on the cured tree, by window 6d08443a"
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py
+      --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json
+    false_abstention: "EN>EN 0/4 · EN>ID 1/6 · ID>EN 0/6 · ID>ID 0/4 (both gates)"
+    false_acceptance: "EN>EN 0/9 · EN>ID 0/10 · ID>EN 0/11 · ID>ID 0/8 (both gates) = 0 of 38"
+    spec_pairs: "16/16 distinguished at the generation gate"
+    note: >-
+      The BEFORE is the base measurement, never a re-run of the cured code
+      alone. The one surviving false abstention is the same case in both
+      columns: it is not a regression and not a cure.
+  support_signal_iii:
+    method: >-
+      Ruling I26 candidate (iii) — the Codex seat reached ONLY through the
+      UNCHANGED CodexExecClient.generate adapter, 3 repetitions per case,
+      majority vote, a SPLIT vote counting as NOT_SUPPORTED (fail-closed, K6),
+      per-repetition votes recorded per case.
+    runs:
+      - {
+          set: "mandatory (58)",
+          agree: "57/58",
+          pairs: "16/16",
+          at: "2026-09-12T09:49:41Z",
+          wall_s: 236.2,
+          fallbacks: 0,
+          judge: "codex:gpt-5.6-terra",
+        }
+      - {
+          set: "B distractors (8)",
+          agree: "8/8",
+          pairs: "4/4",
+          at: "2026-09-12T09:49:41Z",
+        }
+      - {
+          set: "C hard, monolingual (24)",
+          agree: "19/24",
+          pairs: "7/12",
+          at: "2026-09-12T09:49:41Z",
+        }
+      - {
+          set: "D hard, cross-language (12)",
+          agree: "9/12",
+          pairs: "3/6",
+          at: "2026-09-12T10:1xZ",
+          wall_s: 21.9,
+          fallbacks: 0,
+        }
+      - {
+          set: "validation, adversarially drawn (12)",
+          verdicts: "8 NOT_SUPPORTED / 4 SUPPORTED",
+          at: "2026-09-12T10:0xZ",
+          wall_s: 21.9,
+          fallbacks: 0,
+        }
+    mandatory_miss: >-
+      bs-95e82de0 only, an `irrelevant` case returning UNKNOWN (votes UNKNOWN,
+      UNKNOWN, NOT_SUPPORTED). UNKNOWN fails closed, so the DECISION is still
+      correct; it is counted as a verdict disagreement and not as a gate miss.
+    non_unanimous: "8 of 90 cases in the first run, 2 of 12 in Set D — majority-of-3 earned its keep on those and on nothing else."
+  support_signal_ii_fallback:
+    method: "local Ollama qwen3.8:27b-mlx on 127.0.0.1, same 3-rep majority, used ONLY as the recorded fallback when the Codex seat is absent."
+    runs:
+      - {
+          set: "mandatory (58)",
+          agree: "55/58",
+          pairs: "13/16",
+          at: "2026-09-12T10:00:28Z",
+          wall_s: 321.4,
+        }
+      - {
+          set: "B + C (32)",
+          agree: "31/32",
+          pairs: "15/16",
+          at: "2026-09-12T09:54:24Z",
+          wall_s: 208.3,
+        }
+    finding: >-
+      THE RANKING INVERTS BY SET. (ii) beats (iii) on the hard set (Set C
+      23/24 and 11/12 pairs against 19/24 and 7/12) and then loses THREE
+      `sufficient` mandatory cases to a unanimous NOT_SUPPORTED
+      (bs-37a4d621, bs-7cd45469, bs-cc8e039c) — three NEW false abstentions.
+      Neither judge dominates: (iii) is safe on the frozen set and blind on
+      the hard one, (ii) is the reverse. This is the D-SETC measurement due
+      BEFORE B2.2 fixes a threshold, and it says B2.2's design question is a
+      two-judge conjunction or a Set-C-aware prompt — not a number.
+  innocence:
+    at: "2026-09-12T10:1xZ, each file run on its own"
+    counts: >-
+      test_evidence_cross_language 122 passed + 2 xfailed (= origin/main) ·
+      test_evidence_scoring_abstain 29 (origin 26) ·
+      test_wa_package_builder 36 (origin 29, +7 added here) ·
+      test_wa_greeting 64 (=) · test_curated_qa_government_fee_gate 21 (=) ·
+      test_wa_finalize 79 (=). Every file at its origin/main count or better.
+  g1_direct_finalizer_characterization:
+    what: >-
+      A5's frozen table. Drives the REAL, UNCHANGED `finalize_wa_answer`
+      (provider CODEX, price_sources and secret_scan mandatory on that route)
+      once per MANDATORY NEGATIVE, with SUBSTANTIVE synthetic candidate text —
+      an answer carrying both a price and a duration, i.e. exactly what a
+      client must never receive unsupported. No network, no DB, no send:
+      `tell_a_human` is a recording closure.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python evidence/.../g1_characterize.py <out>"
+    at: "2026-09-12T10:3xZ"
+    negatives: 38
+    table: "outcome=send x released_candidate=False: 38 of 38 · defect_reason: none · tell_a_human: 'rag_abstain' on all 38 · substantive releases: 0"
+    deterministic: "identical inputs keep identical outcomes — the whole set re-run in the same process, row for row equal"
+    reading_it_honestly: >-
+      D8 replaced the substantive candidate with its localized stub and
+      notified a human in all 38 cases, so ZERO unsupported releases were
+      observed and A5 has nothing to document as a vulnerability. But the
+      thing that protected the client is the payload's `abstain` flag, and
+      D8 does not re-derive it — THIS PR is what makes that flag true for all
+      38 (on the base, 26 of those 38 crossed the gate). g1 is therefore
+      evidence that the finalizer honours a correct verdict, NOT that it
+      would catch a wrong one. That distinction is the reason the
+      support-negative branch sits BEFORE the broker offer instead of
+      trusting D8 to be a second gate.
+    artifacts:
+      - g1_direct_finalizer_characterization.json
+      - g1_characterize.py
+  full_suites:
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/rag | backend/tests/unit/services/rag | backend/tests/unit/services/integrations"
+    at: "2026-09-12T10:45Z"
+    result: "1714 passed / 12 skipped · 3046 passed / 30 skipped / 8 xfailed · 347 passed. 0 failed, 0 error."
+    what_it_caught: >-
+      THE REASON IT WAS RUN. The first pass came back 1 FAILED, and it was a
+      real integration break no targeted run could see:
+      `test_score_contract_crossing.py::test_10_scorer_projection_carries_score_kind_on_every_element`
+      — B1.1's own producer-to-consumer crossing test — monkeypatches
+      `calculate_evidence_score` with a fake whose signature refuses B2.1's
+      additive `support=` keyword, so the builder's call raised TypeError.
+      Not an assertion failure: the contract grew and the test that crosses
+      it broke. Cured by teaching the fake the keyword AND recording it, plus
+      an assertion that the keyword actually arrives — a bare `**kwargs`
+      would have swallowed a typo in its name and left the test merely
+      tolerant instead of honest.
+  suite:
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest <the 11 files this PR touches or must not break>"
+    result: "673 passed, 2 xfailed, 0 failed, 0 error"
+    at: "2026-09-12T10:2xZ"
+pii_scan: clean
+pii_scan_note: >-
+  Every case in the supplement is synthetic and marked `synthetic: true`; no
+  client text, name, number or document reaches any seat prompt, any artifact
+  or this pack. The support signal's PRODUCTION input is the package's already
+  REDACTED query and capped REDACTED context (the wa_package_builder DLP
+  gate), never the scorer's raw query argument.
+receipts:
+  - claim: >-
+      A5 (g1) — probe "the frozen direct-finalizer characterization table in
+      pack.yml": all 38 mandatory negatives cross the REAL unchanged
+      wa_finalize with substantive candidate text; 0 substantive releases, 38
+      stubs with a `rag_abstain` hand-off, identical inputs keeping identical
+      outcomes.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python <pack>/g1_characterize.py <out>"
+    exit: 0
+    ts: "2026-09-12T10:3xZ"
+    seat: claude-opus-5
+  - claim: >-
+      The frozen mandatory manifest is byte-identical to B1.3's pin after this
+      PR's changes.
+    cmd: "shasum -a 256 apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/manifest_mandatory.json"
+    exit: 0
+    ts: "2026-09-12T10:24:56Z"
+    seat: claude-opus-5
+  - claim: >-
+      A1, A2, A3 — probe "harness.py report on this head, per cell, next to
+      the baseline": the harness, run in CI-replay mode on the cured tree,
+      reports 0 false acceptances in every cell at both gates, 16/16 spec
+      pairs, and the one declared-residual false abstention of V1.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python backend/tests/benchmarks/evidence_sufficiency/harness.py --support-record backend/tests/benchmarks/evidence_sufficiency/support_verdicts_b2.json"
+    exit: 0
+    ts: "2026-09-12T10:2xZ"
+    seat: claude-opus-5
+  - claim: >-
+      A5, A6, A7 — probe "the new branch tests plus the two protected
+      wa_finalize tests green" and "pytest on the six files named in B1 §1":
+      the 11 files this PR touches or must not break are green, with the two
+      strict xfails still xfail and nothing weakened.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest <11 files>"
+    exit: 0
+    ts: "2026-09-12T10:2xZ"
+    seat: claude-opus-5
+  - claim: >-
+      The replay record's keys are exactly the keys the cured derivation
+      produces for the 114 cases it covers — no stale key survived the
+      re-keying, and no verdict was re-measured.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/services/rag/test_evidence_sufficiency_benchmark.py"
+    exit: 0
+    ts: "2026-09-12T10:2xZ"
+    seat: claude-opus-5
+  - claim: >-
+      A4 — probe "the supplement report plus the label-mutation invariance
+      test": every pair of the frozen manifest and of Set B is distinguished,
+      Set C and Set D are reported case by case in `measured`, and the
+      label-mutation invariance test passes WITH a support verdict supplied.
+      Same run also proves a `reranked` source at score 0.0 or negative
+      creates NO relevance against a nonsense query while a positive one
+      still reads WEAK.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_reasoning_utils_provenance_bands.py backend/tests/unit/services/rag/test_evidence_sufficiency_benchmark.py"
+    exit: 0
+    ts: "2026-09-12T10:2xZ"
+    seat: claude-opus-5
+lanes:
+  - {
+      lane: scorer-inversion-and-support-module,
+      role: build,
+      seat: claude-sonnet-5,
+    }
+  - { lane: set-c-authoring, role: ground_truth, seat: gemini-3.1-pro }
+  - {
+      lane: set-d-cross-language-queries,
+      role: ground_truth,
+      seat: gemini-3.1-pro,
+    }
+  - { lane: support-measurement-iii, role: read, seat: codex-gpt-5.6-sol }
+  - {
+      lane: support-measurement-ii-fallback,
+      role: read,
+      seat: "ollama:qwen3.8:27b-mlx",
+    }
+  - { lane: adversarial-review, role: review, seat: codex-gpt-5.6-sol }
+  - { lane: refuter, role: review, seat: kimi-code/k3 }
+  - {
+      lane: full-suite-verification,
+      role: read,
+      seat: claude-opus-5,
+      note: "dispatched to a sonnet child first; it reported done without ever producing a number, so the Dux ran the suites and the credit stays with the Dux",
+    }
+council_run: council-journal.jsonl
+bites:
+  consumer: >-
+    `wa_package_builder.build_context_package` -> `calculate_evidence_score`,
+    which now reads the support verdict and the provenance band, and the
+    support-negative branch in `wa_codex_leg` that sits BEFORE the broker
+    offer — both ship in this PR. The benchmark harness shipped in B1.3 is
+    the second consumer: it runs in CI on every commit from here, replaying
+    the frozen record, so a regression in either direction is caught by a
+    test and not by a client.
+  observation: >-
+    Made BEFORE reporting the work done, on this head, not on a promise: the
+    harness reports 0 of 38 false acceptances where the base accepted 26, and
+    16 of 16 counterfactual pairs where the base distinguished 0; the 11-file
+    suite is 670 passed / 2 xfailed / 0 failed; and the six innocence files
+    are each at their origin/main count or better. A merged diff is not a
+    live one — the live proof for the served path is the Fly release this
+    merge triggers, and it is a SEPARATE observation owed after the merge.
+adversarial:
+  - seat: kimi-code/k3
+    round: 1
+    verdict: REWORK-ARGUMENT
+    findings: 5
+    cured: 1
+    accepted_as_correction: 1
+    note: >-
+      Its first finding DESTROYED the Dux's stated reason for refusing the
+      one available cure ("5 Set C judge errors would become 5 releases"):
+      those cases already release today, so the raise has zero marginal
+      effect there. The Dux measured the claim instead of defending the
+      argument, confirmed it, withdrew the reason, and built Set D — the
+      cell the argument actually needed — which then produced a VALID reason
+      (see `vulnerabilities`). Its remaining findings (repetitions of one
+      model are correlated draws, not samples; winner's curse on a judge
+      elected against the same benchmark; Set C may measure its authoring
+      model's phrasing since the ranking inverts by judge family) are
+      ACCEPTED AS OPEN and carried to B2.2 by name, not cured here.
+  - seat: codex-gpt-5.6-sol
+    round: 1
+    verdict: FINDINGS-VIA-CHECKPOINT
+    findings: 3
+    cured: 3
+    note: >-
+      Disclosed rather than dressed up: the seat exhausted its own context
+      before writing a report, because the Dux fed it a 228 KB bundle — the
+      Dux's error, not the seat's. Its saved checkpoint named two hypotheses
+      and BOTH were true when the Dux ran them: (1) the replay key was not
+      injective, (2) a declared `reranked` kind with a non-positive score
+      created relevance. Re-dispatched on a 34 KB slice, the seat hit its own
+      context threshold a SECOND time and checkpointed a THIRD hypothesis,
+      which was also true: (3) a declared kind whose provenance band is NONE
+      could be lifted to WEAK by the keyword ratio alone — a
+      `dense_formatted` source at cosine 0.02 with a high ratio scored 0.28
+      against a 0.15 gate, i.e. the false-acceptance shape this inversion
+      exists to remove, leaking back through the one source that had
+      DECLARED its own irrelevance. All three reproduced before curing, all
+      three cured, six tests added. The seat never wrote a numbered report:
+      its findings reached this pack as hypotheses it saved on its way out,
+      and the proof in each case is the Dux's own reproduction, named here so
+      nobody credits the seat with a verdict it did not give.
+  - seat: gemini-3.1-pro
+    round: 1
+    verdict: ONE-MAJOR-REJECTED
+    findings: 1
+    rejected: 1
+    counts_toward_quorum: false
+    note: >-
+      Categories (c) and (d) explicitly yielded nothing. Its one MAJOR —
+      "the support-negative branch reads `context_length` from
+      `evidence_inputs` while the normal path reads it from the wire root,
+      and the test fixture nests it to mask the bug" — is REJECTED on disk,
+      not on authority: `wa_codex_leg.py:1005`, the PRE-EXISTING finalize
+      call, reads `evidence_inputs.get("context_length")` exactly like the
+      new branch at :657 (one line, not two, is added by this PR), and the
+      PRODUCER writes the key inside `evidence_inputs`
+      (`wa_package_builder.py:645`). So the new branch mirrors the existing
+      contract and the fixture models the real wire. The premise of the
+      finding — a divergence between the two paths — does not exist on this
+      checkout.
+
+dissent:
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      "Never raise" is a contingent property of THIS judge's measured error
+      direction, not an architectural invariant; the fallback judge errs the
+      other way, so the asymmetry must be stated as a calibration, not a law.
+    disposition: >-
+      ACCEPTED, and the Dux does not claim otherwise: the refusal in this PR
+      rests on the Set D measurement of THIS judge in THIS cell, and B2.2
+      re-opens the direction question when it fixes a threshold across two
+      judges. Recorded, not cured.
+vulnerabilities:
+  - id: V1-declared-residual-false-abstention
+    severity: named-and-open
+    what: >-
+      bs-17806bb4 — "What is the price of new company setup?" against the
+      Indonesian PT PMA chunk that DOES carry the price — scores 0.08 and
+      abstains at both gates, before and after this PR.
+    why: >-
+      Its provenance fixture in the FROZEN manifest declares
+      `score_kind: unknown` with `score_raw: null` (inventory row 5, "legacy
+      literal, no writer"), so the provenance-primary path never applies and
+      the UNCHANGED legacy lexical path runs; an English question naming no
+      identifier shares no token with Indonesian text, so the ratio is 0.
+    cure_that_exists_and_is_not_ours: >-
+      The chunk's REAL embedding cosine is 0.373 (measured 2026-09-03,
+      recorded in the xfail's own reason), above the 0.32 MODERATE boundary
+      this PR implements — a fixture that DECLARED `dense_formatted` would be
+      cured by the engine as built. That edit is banned to this PR twice
+      over (frozen manifest; byte-identical tripwires) and the xfail assigns
+      it to "the nine tripwires pinned to impossible cosines, corrected in
+      their own PR".
+    cure_refused_with_its_measurement: >-
+      Letting a SUPPORTED verdict RAISE the band by one step would close this
+      cell. REFUSED: Set D (`sup-d-dd0c1a97`) is a hard negative that the
+      seat wrongly calls SUPPORTED and that the scorer abstains TODAY at 0.08
+      held by the zero lexical band and by nothing else. One band step is the
+      whole margin, so the raise buys one false abstention and pays a
+      measured false acceptance of unsupported fee/duration advice in the
+      same cell. Two tests freeze that trade.
+  - id: V2-cross-language-unknown-provenance-is-blind
+    severity: named-and-open
+    what: >-
+      Set D found two MORE false abstentions of the same disease
+      (sup-d-4984a0c2, sup-d-4d058bdc: sufficient, judge correctly SUPPORTED,
+      scorer abstains at 0.08).
+    why: "An EN query against ID context with `unknown` provenance has no signal left: no lexical bridge, no band, and support may not create one."
+    disposition: "The cure is a DECLARED score_kind on the real retrieval path — B1.1 already emits one; what is missing is the FIXTURES. Carried to the provenance-fixture PR with V1."
+  - id: V3-hard-case-blindness-of-the-elected-judge
+    severity: named-and-open
+    what: "Candidate (iii) false-SUPPORTEDs 5 of 12 Set C hard negatives (3 unanimously) and 2 of 6 in Set D."
+    disposition: >-
+      NOT curable by a threshold, which is exactly why D-SETC demanded the
+      measurement BEFORE B2.2 fixes one. B2.2 owns the choice between a
+      two-judge conjunction and a Set-C-aware prompt; ruling I26's election
+      of (iii) stands unless the staff room revisits it on these numbers.
+  - id: V4-reranked-scale-unmeasured
+    severity: named-and-open
+    what: "A positive `reranked` score reads a flat conservative WEAK band because this repo has never measured the reranker's scale."
+    disposition: "Declared in the code, in the tests and here; needs a real reranker-score measurement in a follow-up. The 0.0/negative floor is no longer read as evidence (round-1 cure)."
+perimeter_decision:
+  support_rule: >-
+    RULED I30 (2026-09-12, staff room, on this PR's measurement): the support
+    signal is FAIL-CLOSED ONLY — it may ZERO relevance and never CREATE it, in
+    every band and both directions. Written into `reasoning_utils.py`'s module
+    docstring as a rule of the engine, and pinned by
+    `TestSupportIsFailClosedOnlyInBothDirections`: SUPPORTED must be worth
+    exactly what silence is worth on BOTH relevance paths, every other verdict
+    must zero relevance, and a SUPPORTED verdict must not rescue the declared
+    residual's shape. If a future judge's error direction inverts, that is a
+    new measurement and a new ruling, never a quiet edit.
+  ruling: >-
+    SIX paths reach a client without ever calling the scorer — widened from
+    the three the build spec named, after this window found three more. ALL
+    SIX stay EXCLUDED for B2.1, each with a tripwire that fails the day the
+    code stops matching the reason it was excluded for
+    (`test_b2_perimeter_exclusions.py`): the trusted-tool 0.85 bypass, the
+    FAQ fast path, the KG fast path, the semantic-cache read path, the
+    multi-agent coordinator branch, the specialized-service router branch.
+  residual_risk: >-
+    Any of those six can still release substantive advice without a support
+    verdict. The FAQ cache is DEFENDED (only pre-vetted metadata can enter
+    it); the semantic-cache write path has NO production caller today, which
+    is a zero-caller fact and not a contract — a future caller re-opens it.
+debts_from_b1_discharged:
+  - {
+      id: D-C4,
+      how: "a test that the manifest's pinned generic_word_definition agrees with EVERY recorded generic_overlap label, implemented literally from the manifest's own string, case by case",
+    }
+  - {
+      id: D-B15,
+      how: "a test binding query_vectors_b1_5.json's sha256 to the value recorded in the B1.5 receipt, replacing a by-hand check",
+    }
+  - {
+      id: D-SETC,
+      how: "Set C (24 cases) AND Set D (12, the cross-language cell Set C could not reach) in the append-only supplement, both judges measured on both, the finding written into `measured.support_signal_ii_fallback` and V3",
+    }
+deferred_by_name:
+  - "B2.2 — the live sample, the retrieval harness and the THRESHOLD, which these numbers say must be decided across two judges rather than as a single cut."
+  - "B2.3a — the schema slice (migrations_v2, previous-image deploy order)."
+  - "B2.3b — the carrier/writer slice."
+  - >-
+    OWED, and ruled so: the PROVENANCE-FIXTURE PR (RULED I30, 2026-09-12).
+    The nine tripwires pinned to impossible cosines, plus bs-17806bb4
+    declaring its real dense score — cut from FRESH origin/main AFTER B2.1
+    merges and proves live, and BEFORE B2.3. It is the ONLY PR allowed to
+    touch the frozen mandatory manifest; it re-pins the manifest sha256 in
+    its own pack, with a council of two counted seats. V1 and V2 are cured
+    there and nowhere else.
+  - "A reranker-score measurement, for V4."

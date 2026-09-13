@@ -147,7 +147,9 @@ class PortalService(
                     COUNT(*) as total_docs,
                     COUNT(*) FILTER (WHERE storage_type = 'google_drive') as drive_uploads,
                     COUNT(*) FILTER (WHERE expiry_date IS NOT NULL) as with_expiry,
-                    COUNT(*) FILTER (WHERE extracted_text IS NOT NULL AND extracted_text != '') as with_ocr
+                    COUNT(*) FILTER (
+                        WHERE ocr_status = 'completed' AND ocr_extracted_data IS NOT NULL
+                    ) as with_ocr
                 FROM documents
                 WHERE uploaded_source = 'client'
                 AND created_at > NOW() - INTERVAL '24 hours'

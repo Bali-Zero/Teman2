@@ -28,6 +28,7 @@ import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import type { PortalInvoice } from "@/lib/api/portal/portal.types";
 import { Money } from "@balizero/core";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 // Day masthead (GARUDA Day Edition): copper rule + Cormorant serif headline
 // per concept (--font-serif, wired on <html>); Inter everywhere else.
@@ -54,6 +55,7 @@ function BillingMasthead() {
 export default function BillingPage() {
   const { data, isLoading, isError, refetch } = usePortalBilling();
   const { error: toastError } = useToast();
+  const { formatDate } = usePortalDateFormat();
 
   const handleDownloadPdf = async (invoice: PortalInvoice) => {
     try {
@@ -258,14 +260,11 @@ export default function BillingPage() {
                       style={{ color: "var(--bz-text-2)" }}
                     >
                       Issued:{" "}
-                      {new Date(invoice.generated_at).toLocaleDateString(
-                        "en-US",
-                        {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        },
-                      )}
+                      {formatDate(invoice.generated_at, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </p>
                   )}
                 </div>

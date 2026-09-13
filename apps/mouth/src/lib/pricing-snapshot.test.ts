@@ -109,7 +109,7 @@ describe("generated PricingTool snapshot", () => {
         (count, rows) => count + Object.keys(rows).length,
         0,
       ),
-    ).toBe(113);
+    ).toBe(118);
   });
 
   it.each(selectedRows)("keeps %s:%s in parity", (category, key) => {

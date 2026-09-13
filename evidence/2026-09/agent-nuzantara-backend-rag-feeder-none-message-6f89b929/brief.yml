@@ -1,0 +1,38 @@
+task: >-
+  Fix a live bug in apps/evaluator/nlm_deep_research/peraturan_ingestion_trigger.py's
+  _ingest_to_backend: when the backend's terminal ingest-full response carries
+  message=null, `result.get("message", "")[:200]` returns None and `None[:200]`
+  raises TypeError, hiding the real failure reason and job id. Observed live
+  2026-09-10 19:00Z on job 88a120aa (status=failed, message=null,
+  error="pending: "). Coerce message/status/error to str before slicing and
+  include all three in the RuntimeError text.
+lane: backend-rag/feeder-none-message
+machine: Pro
+date: 2026-09-11
+
+gear: 1
+gear_reason: >-
+  Deterministic floor from `scripts/evidence_pack_lint.py --print-floor` against
+  origin/main...HEAD: one production file touched (peraturan_ingestion_trigger.py,
+  6 lines changed) plus one new test file, no hot-zone path, well under the
+  Gear-2 size threshold.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: >-
+    A terminal ingest-full response with status=failed and message=null no longer
+    raises TypeError; the RuntimeError text includes the job id, status and error.
+    probe: /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest apps/evaluator/tests/test_peraturan_ingestion_trigger.py -p no:cacheprovider
+  A2: >-
+    A terminal ingest-full response with a normal string message still surfaces
+    that message in the RuntimeError text (no regression on the happy-failure path).
+    probe: /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest apps/evaluator/tests/test_peraturan_ingestion_trigger.py::test_string_message_still_surfaced -p no:cacheprovider
+
+out_of_scope: >-
+  The intel_lake_outbox best-effort enqueue block (try/except around the
+  /Users/nuzantara/scripts import) — untouched per instruction. Any other
+  .get("message"/'message' slice pattern elsewhere in the repo; grep found only
+  this one occurrence in this file.

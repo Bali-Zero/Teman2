@@ -1,13 +1,39 @@
 "use client";
 
+/**
+ * GARUDA VOA — staff practice list.
+ *
+ * SAETTA-VOA W-VOA-V3 (2026-09-13): concept-F "RAPI" presentation pass, the
+ * same one shipped on the client portal. PRESENTATION ONLY — the profile
+ * probe, the admin/assigned narrowing, the abort-on-change load and the staff
+ * API contract are byte-for-byte the behaviour that was here before.
+ *
+ * The table stays a table: staff scan five columns and the semantics are worth
+ * keeping. What changes is the dressing — copper rule + Fraunces masthead,
+ * eyebrow column heads, hairlines instead of a filled card, copper numerals,
+ * and the seven states as OUTLINED pills in the four R19 meanings. No filled
+ * state row, and no red: see r19.tsx.
+ */
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ListPageHeader, FilterSelect } from "@balizero/core";
+import { FilterSelect } from "@balizero/core";
 import { Loader2, FolderKanban } from "lucide-react";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import { listStaffPractices } from "./api-client";
+import {
+  CARD,
+  EYEBROW,
+  FOCUS,
+  Masthead,
+  Notice,
+  PracticeStatePill,
+  SERIF,
+  pad2,
+} from "./r19";
 import type { StaffPracticeListRow, PracticeState } from "./types";
 
 const STATE_OPTIONS: PracticeState[] = [
@@ -20,39 +46,8 @@ const STATE_OPTIONS: PracticeState[] = [
   "Delivered",
 ];
 
-// Same badge palette family as the customer tracker (orders/OrderTracker.tsx)
-// — staff and customer surfaces read the same seven-state vocabulary and
-// must never drift into two different color stories for one state.
-const STATE_BADGE_STYLE: Record<PracticeState, React.CSSProperties> = {
-  Received: {
-    background: "var(--surface-raised)",
-    color: "var(--bz-text-2)",
-  },
-  "In review": {
-    background: "color-mix(in srgb, var(--state-info) 15%, transparent)",
-    color: "var(--state-info)",
-  },
-  Blocked: {
-    background: "color-mix(in srgb, var(--state-warning) 15%, transparent)",
-    color: "var(--state-warning)",
-  },
-  Submitted: {
-    background: "color-mix(in srgb, var(--state-info) 15%, transparent)",
-    color: "var(--state-info)",
-  },
-  Approved: {
-    background: "color-mix(in srgb, var(--state-success) 15%, transparent)",
-    color: "var(--state-success)",
-  },
-  Rejected: {
-    background: "color-mix(in srgb, var(--state-danger) 15%, transparent)",
-    color: "var(--state-danger)",
-  },
-  Delivered: {
-    background: "color-mix(in srgb, var(--state-success) 20%, transparent)",
-    color: "var(--state-success)",
-  },
-};
+const FILTER_SELECT_CLASS =
+  "h-11 rounded border border-[var(--bz-border-hover)] bg-[var(--bz-surface)] text-sm text-[var(--tx-pure)] focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]";
 
 function formatDate(iso: string): string {
   try {
@@ -128,19 +123,20 @@ export default function GarudaVoaStaffListPage() {
   const rows = useMemo(() => practices, [practices]);
 
   return (
-    <div className="space-y-6">
-      <ListPageHeader
-        title="GARUDA VOA — Staff practices"
+    <div className="space-y-9">
+      <Masthead
+        eyebrow="GARUDA VOA · staff"
+        title="Practices"
         subtitle="Review, block, submit and deliver visa-on-arrival practices"
       />
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <FilterSelect
           id="garuda-voa-state-filter"
           label="State"
           value={stateFilter}
           onChange={setStateFilter}
-          selectClassName="border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:ring-2 focus:ring-[var(--bz-accent)]/50"
+          selectClassName={FILTER_SELECT_CLASS}
         >
           <option value="">All states</option>
           {STATE_OPTIONS.map((state) => (
@@ -155,7 +151,7 @@ export default function GarudaVoaStaffListPage() {
             label="Assigned"
             value={assignedFilter}
             onChange={(v) => setAssignedFilter(v === "me" ? "me" : "all")}
-            selectClassName="border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:ring-2 focus:ring-[var(--bz-accent)]/50"
+            selectClassName={FILTER_SELECT_CLASS}
           >
             <option value="all">All staff</option>
             <option value="me">My work</option>
@@ -163,78 +159,137 @@ export default function GarudaVoaStaffListPage() {
         )}
       </div>
 
-      {loadError && (
-        <div
-          className="rounded-lg p-4 text-sm"
-          style={{
-            background:
-              "color-mix(in srgb, var(--state-danger) 10%, transparent)",
-            color: "var(--state-danger)",
-          }}
-          role="alert"
-        >
-          {loadError}
-        </div>
-      )}
+      {loadError && <Notice role="alert">{loadError}</Notice>}
 
       {isLoading ? (
         <div
-          className="flex items-center justify-center h-40"
+          className="flex h-40 items-center justify-center"
           data-testid="loading-skeleton"
         >
-          <Loader2 className="w-6 h-6 animate-spin text-[var(--bz-accent)]" />
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--bz-copper)]" />
         </div>
       ) : rows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--bz-border)] rounded-lg bg-[var(--bz-card)]/30">
-          <FolderKanban className="w-8 h-8 text-[var(--bz-text-2)] opacity-20 mb-2" />
-          <p className="text-xs text-[var(--bz-text-2)]">No practices</p>
+        <div
+          className={cn(
+            CARD,
+            "flex flex-col items-center justify-center gap-2 px-6 py-12",
+          )}
+        >
+          <FolderKanban
+            className="h-7 w-7 text-[var(--tx-secondary)] opacity-40"
+            aria-hidden="true"
+          />
+          <p
+            className="text-[20px] leading-[1.14] text-[var(--tx-pure)]"
+            style={SERIF}
+          >
+            No practices
+          </p>
+          <p className="text-[13px] text-[var(--tx-secondary)]">
+            Nothing matches this filter yet.
+          </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-[var(--bz-border)] bg-[var(--bz-card)]">
+        <div className={cn(CARD, "overflow-x-auto")}>
           <table className="w-full text-sm">
+            <caption className="sr-only">
+              GARUDA VOA staff practices, newest activity first
+            </caption>
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-[var(--bz-text-2)] border-b border-[var(--bz-border)]">
-                <th className="px-4 py-3">Practice</th>
-                <th className="px-4 py-3">Order</th>
-                <th className="px-4 py-3">State</th>
-                <th className="px-4 py-3">Assigned to</th>
-                <th className="px-4 py-3">Updated</th>
+              <tr className={cn("border-b border-[var(--bz-border)]", EYEBROW)}>
+                <th
+                  scope="col"
+                  className="w-[42px] px-3 py-3 text-left md:w-[52px] md:px-4"
+                >
+                  #
+                </th>
+                <th scope="col" className="px-3 py-3 text-left md:px-4">
+                  Practice
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3 text-left md:table-cell md:px-4"
+                >
+                  Order
+                </th>
+                <th scope="col" className="px-3 py-3 text-left md:px-4">
+                  State
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3 text-left md:table-cell md:px-4"
+                >
+                  Assigned to
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3 text-left md:table-cell md:px-4"
+                >
+                  Updated
+                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((practice) => (
-                <tr
-                  key={practice.practice_id}
-                  className="border-b border-[var(--bz-border)] last:border-0 cursor-pointer hover:bg-[var(--bz-card-hover)] transition-colors"
-                  onClick={() =>
-                    router.push(`/garuda-voa/${practice.practice_id}`)
-                  }
-                  data-testid={`garuda-voa-row-${practice.practice_id}`}
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--bz-text-1)]">
-                    {practice.practice_id}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--bz-text-2)]">
-                    {practice.order_id}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-                      style={STATE_BADGE_STYLE[practice.state]}
+              {rows.map((practice, index) => {
+                const shortDate = formatDate(practice.updated_at);
+                return (
+                  <tr
+                    key={practice.practice_id}
+                    className={cn(
+                      "cursor-pointer border-b border-[var(--bz-border)] transition-colors last:border-0 hover:bg-[var(--bz-card-hover)]",
+                      FOCUS,
+                    )}
+                    tabIndex={0}
+                    onClick={() =>
+                      router.push(`/garuda-voa/${practice.practice_id}`)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        router.push(`/garuda-voa/${practice.practice_id}`);
+                      }
+                    }}
+                    data-testid={`garuda-voa-row-${practice.practice_id}`}
+                  >
+                    <td
+                      className="px-3 py-3.5 text-[20px] leading-none tabular-nums text-[var(--bz-copper-text)] md:px-4"
+                      style={SERIF}
                     >
-                      {practice.state}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--bz-text-1)]">
-                    {practice.assigned_to
-                      ? practice.assigned_to.split("@")[0]
-                      : "Unassigned"}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--bz-text-2)]">
-                    {formatDate(practice.updated_at)}
-                  </td>
-                </tr>
-              ))}
+                      {pad2(index + 1)}
+                    </td>
+                    <td className="px-3 py-3.5 font-mono text-xs text-[var(--tx-pure)] md:px-4">
+                      {practice.practice_id}
+                      {/* Below md the three columns to the right are hidden
+                        rather than pushed off the edge of a 390px screen —
+                        their content moves here, under the id. */}
+                      <span className="mt-1 block font-sans text-[11px] text-[var(--tx-secondary)] md:hidden">
+                        {practice.assigned_to
+                          ? practice.assigned_to.split("@")[0]
+                          : "Unassigned"}{" "}
+                        · <span className="tabular-nums">{shortDate}</span>
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-3.5 md:px-4 font-mono text-xs text-[var(--tx-secondary)] md:table-cell">
+                      {practice.order_id}
+                    </td>
+                    <td className="px-3 py-3.5 md:px-4">
+                      <PracticeStatePill state={practice.state} />
+                    </td>
+                    <td className="hidden px-3 py-3.5 md:px-4 text-[var(--tx-pure)] md:table-cell">
+                      {practice.assigned_to ? (
+                        practice.assigned_to.split("@")[0]
+                      ) : (
+                        <span className="text-[var(--tx-secondary)]">
+                          Unassigned
+                        </span>
+                      )}
+                    </td>
+                    <td className="hidden px-3 py-3.5 md:px-4 tabular-nums text-[var(--tx-secondary)] md:table-cell">
+                      {shortDate}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

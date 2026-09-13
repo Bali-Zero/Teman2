@@ -1,0 +1,11 @@
+ DEPRECATED  `test.poolOptions` was removed in Vitest 4. All previous `poolOptions` are now top-level options. Please, refer to the migration guide: https://vitest.dev/guide/migration#pool-rework
+
+ RUN  v4.1.10 /Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911/apps/mouth
+
+
+ Test Files  31 passed (31)
+      Tests  552 passed (552)
+   Start at  19:34:12
+   Duration  28.72s (transform 15.05s, setup 14.05s, import 36.62s, tests 46.20s, environment 74.45s)
+
+rc=0 start=2026-09-11T11:34:11Z end=2026-09-11T11:34:41Z head=6d8c6a75e8

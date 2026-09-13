@@ -1,0 +1,67 @@
+task_id: kita-w2b-company-unify
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: e83615c7f7b7986b153833190f74e7d5514d3ee3 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn ~1125 lines over 12 files (2 added, 10 deleted,
+# 1 edited). No hot-zone path, no PII path, no ground-truth path.
+objective: >-
+  Wave 2b of the kita.balizero.com pruning: unify the duplicated company editorial component
+  tree in apps/mouth. CompanyTab (the CRM /clients/[id] Company tab) forked
+  src/components/portal/company/* into its own
+  src/app/(workspace)/clients/[id]/components/company/* with 0-118 diff lines per file. The
+  canonical tree is src/components/portal/company/*; CompanyTab now imports directly from it
+  and the 10 fork files are deleted.
+constraints:
+  - >-
+    Every one of the 10 drifted pairs classified cosmetic (stale color tokens predating the
+    WS3-slice-9 accessibility pass, a redundant "use client" directive, or a re-implementation
+    with the same props/behavior) or additive-already-supported (EditorialHero's `onEdit` is
+    optional in canonical and conditionally rendered; CompanyTab already supplies it on every
+    call site, so the CRM's always-visible edit affordance renders with zero canonical code
+    change). No pair required a new prop or a behavior branch in the canonical component.
+  - >-
+    Zero lines changed inside any canonical src/components/portal/company/* component — only
+    CompanyTab's imports were repointed and the 10 fork files were deleted.
+  - >-
+    CompanyDocUpload.tsx and EditCompanyModal.tsx (CRM-only, no canonical counterpart, grep-
+    verified to import neither editorial-tokens.ts nor any deleted sibling) are untouched and
+    stay in the CRM tree.
+  - No client PII in this pack, in the PR body, or in any test (placeholder company data only).
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+  tokens: 300000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every
+      file, including the pinned EditorialHero render test (portal read-only innocence +
+      CRM-additive guilt).
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+  - text: >-
+      A4: WHEN grepping apps/mouth/src for the 10 deleted fork paths SHALL return nothing.
+    probe: >-
+      grep -rn
+      "clients/\[id\]/components/company/\(EditorialHero\|IdentityRow\|FactBoxes\|DividerLabel\|KeyNumbersColumn\|PeopleColumn\|KBLIEditorial\|LegalTimeline\|StatusChip\|editorial-tokens\)"
+      apps/mouth/src || true
+assumptions:
+  - text: >-
+      CompanyTab.tsx passes `onEdit` on every EditorialHero call site, so canonical's existing
+      `{companyId && onEdit && (...)}` guard renders the edit pencil identically to the old
+      CRM fork's always-required prop — no widening needed.
+    status: verified
+    probe: >-
+      grep -n "onEdit" "apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx"
+  - text: >-
+      Neither CompanyDocUpload.tsx nor EditCompanyModal.tsx (the two CRM-only files with no
+      canonical counterpart) imports any of the 10 deleted sibling files.
+    status: verified
+    probe: >-
+      grep -n "^import.*from \"\./" "apps/mouth/src/app/(workspace)/clients/[id]/components/company/CompanyDocUpload.tsx" "apps/mouth/src/app/(workspace)/clients/[id]/components/company/EditCompanyModal.tsx"

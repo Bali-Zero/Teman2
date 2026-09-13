@@ -24,10 +24,13 @@ import {
   TRANSLATIONS,
   LOCALE_LABELS,
   type Locale,
+  type TeamMember,
 } from "@/components/book/book-data";
 
 interface BookPageProps {
   initialChapter?: string;
+  /** Resolved on the server by `bookTeamMembers()`; passed through to TeamGrid. */
+  teamMembers: TeamMember[];
 }
 
 // ─── Locale switcher ────────────────────────────────────────────────────────────
@@ -160,7 +163,7 @@ function ServicesSection({ locale }: { locale: Locale }) {
 }
 
 // ─── BookPage ───────────────────────────────────────────────────────────────────
-export function BookPage({ initialChapter }: BookPageProps) {
+export function BookPage({ initialChapter, teamMembers }: BookPageProps) {
   const [locale, setLocale] = useState<Locale>("en");
   const t = TRANSLATIONS[locale];
 
@@ -270,7 +273,7 @@ export function BookPage({ initialChapter }: BookPageProps) {
           title={CHAPTERS[3].title}
           subtitle={CHAPTERS[3].subtitle}
         />
-        <TeamGrid locale={locale} />
+        <TeamGrid locale={locale} members={teamMembers} />
       </ChapterSection>
 
       {/* ── Chapter 5: Services ───────────────────────────────────────────────── */}

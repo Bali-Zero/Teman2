@@ -1,11 +1,22 @@
 "use client";
 
+/**
+ * GARUDA VOA — staff practice detail and transitions.
+ *
+ * SAETTA-VOA W-VOA-V3 (2026-09-13): concept-F "RAPI" presentation pass.
+ * PRESENTATION ONLY. The command builder, the Idempotency-Key lifecycle, the
+ * read-only `resolved_block_id` prefill, the admin-only assignment picker and
+ * every 401/422 path are unchanged — the diff on this file is class names,
+ * hairlines, pills and copy placement.
+ */
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import {
@@ -16,6 +27,15 @@ import {
 } from "../api-client";
 import { useGarudaAssignmentTargets } from "../assignment-targets";
 import { getAllowedTransitions } from "../state-machine";
+import {
+  CARD,
+  EYEBROW,
+  FIELD,
+  FOCUS,
+  PracticeStatePill,
+  SECTION_H2,
+  SERIF,
+} from "../r19";
 import type {
   PracticeTransitionRequest,
   StaffPracticeView,
@@ -24,17 +44,6 @@ import type {
 
 function newIdempotencyKey(): string {
   return globalThis.crypto?.randomUUID?.() ?? `garuda-voa-staff-${Date.now()}`;
-}
-
-// Never render or link a customer document/artifact identifier here — the
-// staff surface shows practice metadata only (spec step8: "Never link
-// artifact ids").
-function StatusBadge({ state }: { state: string }) {
-  return (
-    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-[var(--surface-raised)] text-[var(--bz-text-1)]">
-      {state}
-    </span>
-  );
 }
 
 interface TransitionFormState {
@@ -107,6 +116,33 @@ function buildTransitionRequest(
     default:
       return null;
   }
+}
+
+/** Hairline definition pair — eyebrow label above the value, no boxes. */
+function Field({
+  label,
+  children,
+  className,
+  mono,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className={className}>
+      <p className={EYEBROW}>{label}</p>
+      <p
+        className={cn(
+          "mt-1.5 text-[var(--tx-pure)]",
+          mono ? "break-all font-mono text-xs" : "text-sm",
+        )}
+      >
+        {children}
+      </p>
+    </div>
+  );
 }
 
 export default function GarudaVoaStaffDetailPage() {
@@ -259,21 +295,30 @@ export default function GarudaVoaStaffDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--bz-accent)]" />
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--bz-copper)]" />
       </div>
     );
   }
 
   if (loadError || !practice) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-4">
-        <AlertCircle className="w-12 h-12 text-[var(--state-danger)]" />
-        <p className="text-[var(--bz-text-1)]">
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+        <AlertCircle
+          className="h-10 w-10 text-[var(--bz-copper)]"
+          aria-hidden="true"
+        />
+        <p
+          className="text-[24px] leading-[1.14] text-[var(--tx-pure)]"
+          style={SERIF}
+        >
           {loadError || "Practice not found"}
         </p>
-        <Button onClick={() => router.push("/garuda-voa")} variant="default">
-          <ArrowLeft className="w-4 h-4 mr-2" />
+        <Button
+          onClick={() => router.push("/garuda-voa")}
+          className="h-11 rounded bg-[var(--state-success)] px-5 text-[13px] font-semibold tracking-[0.02em] text-white hover:bg-[var(--state-success)]/90"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to practices
         </Button>
       </div>
@@ -286,71 +331,66 @@ export default function GarudaVoaStaffDetailPage() {
   );
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => router.push("/garuda-voa")}
-          className="flex items-center gap-2 text-[var(--bz-text-2)]"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-      </div>
+    <div className="mx-auto max-w-4xl space-y-8 p-6">
+      <button
+        type="button"
+        onClick={() => router.push("/garuda-voa")}
+        className={cn(
+          "inline-flex items-center gap-2 text-xs font-semibold text-[var(--bz-copper-text)] transition-colors hover:text-[var(--tx-pure)]",
+          FOCUS,
+        )}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to practices
+      </button>
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-[var(--bz-text-1)] font-mono">
+      <section>
+        <div
+          aria-hidden="true"
+          className="mb-4 h-[3px] w-14 rounded-sm bg-[var(--bz-copper)]"
+        />
+        <p className={EYEBROW}>GARUDA VOA · practice</p>
+        {/* Never render or link a customer document/artifact identifier here —
+            the staff surface shows practice metadata only (spec step8: "Never
+            link artifact ids"). */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2.5">
+          <h1
+            className="text-[26px] leading-[1.08] tracking-[-0.02em] text-[var(--tx-pure)] md:text-[30px]"
+            style={SERIF}
+          >
             {practice.practice_id}
           </h1>
-          <StatusBadge state={practice.state} />
+          <PracticeStatePill state={practice.state} />
         </div>
-      </div>
+      </section>
 
-      <div className="rounded-xl p-6 border border-[var(--bz-border)] bg-[var(--bz-card)] space-y-4">
-        <h2 className="text-lg font-semibold text-[var(--bz-text-1)]">
+      <section className={cn(CARD, "space-y-6 p-6")}>
+        <h2 className={cn(SECTION_H2, "text-[var(--tx-pure)]")} style={SERIF}>
           Practice details
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <label className="block text-[var(--bz-text-2)] mb-1">Order</label>
-            <p className="font-mono text-[var(--bz-text-1)]">
-              {practice.order_id}
-            </p>
-          </div>
-          <div>
-            <label className="block text-[var(--bz-text-2)] mb-1">
-              Updated
-            </label>
-            <p className="text-[var(--bz-text-1)]">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <Field label="Order" mono>
+            {practice.order_id}
+          </Field>
+          <Field label="Updated">
+            <span className="tabular-nums">
               {new Date(practice.updated_at).toLocaleString("en-GB")}
-            </p>
-          </div>
+            </span>
+          </Field>
           {practice.customer_reason_key && (
-            <div>
-              <label className="block text-[var(--bz-text-2)] mb-1">
-                Customer reason key
-              </label>
-              <p className="font-mono text-xs text-[var(--bz-text-1)]">
-                {practice.customer_reason_key}
-              </p>
-            </div>
+            <Field label="Customer reason key" mono>
+              {practice.customer_reason_key}
+            </Field>
           )}
           {practice.required_action_key && (
-            <div>
-              <label className="block text-[var(--bz-text-2)] mb-1">
-                Required action key
-              </label>
-              <p className="font-mono text-xs text-[var(--bz-text-1)]">
-                {practice.required_action_key}
-              </p>
-            </div>
+            <Field label="Required action key" mono>
+              {practice.required_action_key}
+            </Field>
           )}
           {practice.private_staff_note && (
             <div className="md:col-span-2">
-              <label className="block text-[var(--bz-text-2)] mb-1">
-                Private staff note
-              </label>
-              <p className="text-[var(--bz-text-1)] whitespace-pre-wrap">
+              <p className={EYEBROW}>Private staff note</p>
+              <p className="mt-1.5 whitespace-pre-wrap border-l-2 border-[var(--bz-copper)] pl-3.5 text-[15px] leading-[1.7] text-[var(--tx-pure)]">
                 {practice.private_staff_note}
               </p>
             </div>
@@ -358,11 +398,8 @@ export default function GarudaVoaStaffDetailPage() {
         </div>
 
         {isAdmin && (
-          <div className="pt-4 border-t border-[var(--bz-border)]">
-            <label
-              htmlFor="garuda-voa-assign"
-              className="block text-sm text-[var(--bz-text-2)] mb-1"
-            >
+          <div className="border-t border-[var(--bz-border)] pt-5">
+            <label htmlFor="garuda-voa-assign" className={cn(EYEBROW, "block")}>
               Assigned to
             </label>
             <select
@@ -370,7 +407,7 @@ export default function GarudaVoaStaffDetailPage() {
               value={practice.assigned_to || ""}
               disabled={isAssigning}
               onChange={(e) => handleAssign(e.target.value)}
-              className="w-full max-w-xs border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm"
+              className={cn(FIELD, "mt-1.5 max-w-xs")}
             >
               <option value="">Unassigned</option>
               {/* A practice assigned BEFORE this picker was narrowed (or to a
@@ -394,59 +431,70 @@ export default function GarudaVoaStaffDetailPage() {
               ))}
             </select>
             {assignmentTargetsUnavailable && (
-              <p className="mt-1 text-xs text-[var(--bz-text-2)]">
+              <p className="mt-2 text-xs text-[var(--bz-copper-text)]">
                 Assignee list unavailable — reload before assigning.
               </p>
             )}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="rounded-xl p-6 border border-[var(--bz-border)] bg-[var(--bz-card)] space-y-4">
-        <h2 className="text-lg font-semibold text-[var(--bz-text-1)]">
+      <section className={cn(CARD, "space-y-5 p-6")}>
+        <h2 className={cn(SECTION_H2, "text-[var(--tx-pure)]")} style={SERIF}>
           Transitions
         </h2>
         {allowedTransitions.length === 0 ? (
-          <p className="text-sm text-[var(--bz-text-2)]">
+          <p className="text-sm text-[var(--tx-secondary)]">
             No transitions are available from this state.
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {allowedTransitions.map((option) => (
-              <Button
-                key={option.transitionId}
-                variant={
-                  form.transitionId === option.transitionId
-                    ? "default"
-                    : "outline"
-                }
-                onClick={() => selectTransition(option.transitionId)}
-                data-testid={`transition-${option.transitionId}`}
-              >
-                {option.label}
-              </Button>
-            ))}
+          <div className="flex flex-wrap gap-2.5">
+            {allowedTransitions.map((option) => {
+              const isPicked = form.transitionId === option.transitionId;
+              return (
+                <button
+                  key={option.transitionId}
+                  type="button"
+                  onClick={() => selectTransition(option.transitionId)}
+                  data-testid={`transition-${option.transitionId}`}
+                  aria-pressed={isPicked}
+                  className={cn(
+                    "h-11 rounded-full border px-4 text-[13px] font-semibold transition-colors",
+                    isPicked
+                      ? "border-[var(--bz-copper)] bg-[color-mix(in_srgb,var(--bz-copper)_8%,transparent)] text-[var(--bz-copper-text)]"
+                      : "border-[var(--bz-border-hover)] text-[var(--tx-pure)] hover:border-[var(--bz-copper)]",
+                    FOCUS,
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
         )}
 
         {form.transitionId && (
-          <div className="space-y-3 pt-4 border-t border-[var(--bz-border)]">
+          <div className="space-y-4 border-t border-[var(--bz-border)] pt-5">
             {(form.transitionId === "PR-03" ||
               form.transitionId === "PR-05" ||
               form.transitionId === "PR-07" ||
               form.transitionId === "PR-08") && (
               <div>
-                <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+                <label
+                  htmlFor="garuda-voa-customer-reason-key"
+                  className={cn(EYEBROW, "block")}
+                >
                   Customer reason key
                 </label>
                 <input
+                  id="garuda-voa-customer-reason-key"
                   type="text"
                   value={form.customerReasonKey}
                   onChange={(e) =>
                     handleFieldChange("customerReasonKey", e.target.value)
                   }
                   placeholder="garuda_voa.practice.…"
-                  className="w-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm font-mono"
+                  className={cn(FIELD, "mt-1.5 font-mono")}
                 />
               </div>
             )}
@@ -454,17 +502,21 @@ export default function GarudaVoaStaffDetailPage() {
               form.transitionId === "PR-05" ||
               form.transitionId === "PR-08") && (
               <div>
-                <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+                <label
+                  htmlFor="garuda-voa-required-action-key"
+                  className={cn(EYEBROW, "block")}
+                >
                   Required action key
                 </label>
                 <input
+                  id="garuda-voa-required-action-key"
                   type="text"
                   value={form.requiredActionKey}
                   onChange={(e) =>
                     handleFieldChange("requiredActionKey", e.target.value)
                   }
                   placeholder="garuda_voa.action.…"
-                  className="w-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm font-mono"
+                  className={cn(FIELD, "mt-1.5 font-mono")}
                 />
               </div>
             )}
@@ -473,17 +525,21 @@ export default function GarudaVoaStaffDetailPage() {
               form.transitionId === "PR-07" ||
               form.transitionId === "PR-08") && (
               <div>
-                <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+                <label
+                  htmlFor="garuda-voa-private-staff-note"
+                  className={cn(EYEBROW, "block")}
+                >
                   Private staff note (never shown to the customer)
                 </label>
                 <textarea
+                  id="garuda-voa-private-staff-note"
                   value={form.privateStaffNote}
                   onChange={(e) =>
                     handleFieldChange("privateStaffNote", e.target.value)
                   }
                   rows={3}
                   maxLength={4000}
-                  className="w-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm"
+                  className={cn(FIELD, "mt-1.5")}
                 />
               </div>
             )}
@@ -491,16 +547,20 @@ export default function GarudaVoaStaffDetailPage() {
               form.transitionId === "PR-06" ||
               form.transitionId === "PR-07") && (
               <div>
-                <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+                <label
+                  htmlFor="garuda-voa-evidence-id"
+                  className={cn(EYEBROW, "block")}
+                >
                   Evidence id
                 </label>
                 <input
+                  id="garuda-voa-evidence-id"
                   type="text"
                   value={form.evidenceId}
                   onChange={(e) =>
                     handleFieldChange("evidenceId", e.target.value)
                   }
-                  className="w-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm font-mono"
+                  className={cn(FIELD, "mt-1.5 font-mono")}
                 />
               </div>
             )}
@@ -509,7 +569,7 @@ export default function GarudaVoaStaffDetailPage() {
               <div>
                 <label
                   htmlFor="garuda-voa-resolved-block-id"
-                  className="block text-sm text-[var(--bz-text-2)] mb-1"
+                  className={cn(EYEBROW, "block")}
                 >
                   Resolved block id
                 </label>
@@ -522,12 +582,15 @@ export default function GarudaVoaStaffDetailPage() {
                   value={practice.active_block_id ?? ""}
                   readOnly
                   disabled
-                  className="w-full border border-[var(--bz-border)] bg-[var(--surface-raised)] text-[var(--bz-text-2)] rounded-lg px-3 py-2 text-sm font-mono cursor-not-allowed"
+                  className={cn(
+                    FIELD,
+                    "mt-1.5 cursor-not-allowed font-mono text-[var(--tx-secondary)]",
+                  )}
                 />
                 {!practice.active_block_id && (
-                  <p className="mt-1 text-xs text-[var(--state-danger)]">
-                    No active block id on record — this transition cannot be
-                    applied yet.
+                  <p className="mt-2 text-xs text-[var(--bz-copper-text)]">
+                    Blocked — no active block id on record, so this transition
+                    cannot be applied yet.
                   </p>
                 )}
               </div>
@@ -535,53 +598,69 @@ export default function GarudaVoaStaffDetailPage() {
             {form.transitionId === "PR-11" && (
               <>
                 <div>
-                  <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+                  <label
+                    htmlFor="garuda-voa-artifact-id"
+                    className={cn(EYEBROW, "block")}
+                  >
                     Artifact id
                   </label>
                   <input
+                    id="garuda-voa-artifact-id"
                     type="text"
                     value={form.artifactId}
                     onChange={(e) =>
                       handleFieldChange("artifactId", e.target.value)
                     }
-                    className="w-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm font-mono"
+                    className={cn(FIELD, "mt-1.5 font-mono")}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+                  <label
+                    htmlFor="garuda-voa-artifact-digest"
+                    className={cn(EYEBROW, "block")}
+                  >
                     Artifact digest (sha256)
                   </label>
                   <input
+                    id="garuda-voa-artifact-digest"
                     type="text"
                     value={form.artifactDigest}
                     onChange={(e) =>
                       handleFieldChange("artifactDigest", e.target.value)
                     }
                     placeholder="64 hex characters"
-                    className="w-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm font-mono"
+                    className={cn(FIELD, "mt-1.5 font-mono")}
                   />
                 </div>
               </>
             )}
 
-            <div className="flex items-center gap-2 pt-2">
-              <Button onClick={submitTransition} disabled={isSubmitting}>
+            <div className="flex items-center gap-2.5 pt-1">
+              <Button
+                onClick={submitTransition}
+                disabled={isSubmitting}
+                className="h-11 rounded bg-[var(--state-success)] px-6 text-[13px] font-semibold tracking-[0.02em] text-white hover:bg-[var(--state-success)]/90"
+              >
                 {isSubmitting && (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 Apply
               </Button>
-              <Button
-                variant="outline"
+              <button
+                type="button"
                 onClick={() => setForm(EMPTY_FORM)}
                 disabled={isSubmitting}
+                className={cn(
+                  "h-11 rounded-full border border-[var(--bz-border-hover)] px-5 text-[13px] font-semibold text-[var(--tx-pure)] transition-colors hover:border-[var(--bz-copper)] disabled:opacity-50",
+                  FOCUS,
+                )}
               >
                 Cancel
-              </Button>
+              </button>
             </div>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

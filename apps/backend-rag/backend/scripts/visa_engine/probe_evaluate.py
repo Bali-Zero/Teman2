@@ -22,7 +22,11 @@ Usage (from ``apps/backend-rag``)::
       --url https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate \\
       --payload /path/to/facts.json
 
-Payload can also be piped on stdin (omit ``--payload``). The driver token is
+Payload can also be piped on stdin (omit ``--payload``). Since PR-D4c-2's
+follow-up (2026-09-13), ``investment.investment_amount_usd`` is required
+with no default: a saved ``facts.json`` from before that change, which omits
+the key, now gets a sanitized 422 where it used to get 200 -- add the key
+rather than assume the payload is still current. The driver token is
 read by default from ``~/.config/nuzantara/visa-signing/driver-token`` (the
 same custody location as the signing keys -- see
 ``docs/runbooks/visa-engine-key-ceremony.md`` and

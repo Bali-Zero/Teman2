@@ -25,6 +25,7 @@ from typing import Any
 import httpx
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
+from backend.core import score_provenance
 from backend.services.kbli_eye import KBLIEye
 from backend.services.kbli_pma_disclosure import (
     disclose_bali,
@@ -282,6 +283,11 @@ class VectorSearchTool(BaseTool):
                         "title": title,
                         "url": metadata.get("url", ""),
                         "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
+                        # B1.1: carry the chunk's declared score_kind/score_raw
+                        # through this projection (UNKNOWN/None when the
+                        # chunk declared none) — never guessed from "score".
+                        "score_kind": score_provenance.kind_of(chunk),
+                        "score_raw": score_provenance.raw_of(chunk),
                         "collection": source_col,
                         "doc_id": doc_id,
                         "snippet": text[:500],

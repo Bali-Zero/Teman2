@@ -29,6 +29,7 @@ from backend.app.utils.logging_utils import get_logger, sanitize_for_log
 from backend.core.cache import invalidate_cache
 from backend.services.portal.upload_validation import (
     PORTAL_UPLOAD_MIME_TYPES,
+    DuplicateDocumentError,
 )
 from backend.services.portal.upload_validation import (
     read_upload_bounded as _read_upload_bounded,
@@ -65,10 +66,19 @@ class SendMessageRequest(BaseModel):
 
 
 class UpdatePreferencesRequest(BaseModel):
-    """Request to update preferences"""
+    """Request to update LOCALE preferences.
 
-    email_notifications: bool | None = None
-    whatsapp_notifications: bool | None = None
+    Notification consent is not settable here: `notification_prefs`
+    (`PUT /api/portal/notifications/prefs`) is the single source of truth,
+    because it is the only store `alert_dispatcher` reads. Declaring
+    `email_notifications` / `whatsapp_notifications` on this endpoint is how
+    the two came to disagree live (portal audit F-04): it answered
+    `whatsapp_notifications: true` for an account whose enforced setting was
+    false. Pydantic ignores unknown keys by default, so an older client build
+    that still sends them keeps working — its values are simply no longer
+    written anywhere.
+    """
+
     language: Literal["it", "en", "id"] | None = None
     timezone: str | None = None
 
@@ -668,6 +678,17 @@ async def upload_document(
             "message": "Document uploaded successfully",
             "data": document,
         }
+    except DuplicateDocumentError as e:
+        # Same file name, same client, within the last hour: the client IS
+        # found — say what actually happened, as a conflict, not a 404.
+        logger.info(f"Duplicate upload rejected for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "A file with this name was uploaded less than an hour ago. "
+                "Rename the file or wait before uploading it again."
+            ),
+        ) from e
     except ValueError as e:
         # Client soft-deleted / gone -> not-found, not a 500 (see get_dashboard).
         logger.warning(f"Client not found in upload_document for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")

@@ -224,6 +224,27 @@ RETENTION_BINDING_TRIGGER_FUNCTIONS = (
     # how this blind spot reopens.
     "public.bind_garuda_voa_check_retention_policy()",
     "public.bind_garuda_magic_link_token_retention_policy()",
+    # Migration 313 (garuda_practice_artifacts), added 2026-09-12. Its binder
+    # is the same construct as the magic-link one above: SECURITY DEFINER, and
+    # its body takes a `SELECT ... FOR SHARE` on visa_decision_retention_
+    # policies -- a lock the runtime role cannot take with its SELECT grant.
+    # 313's own forward SQL refuses to record itself as applied while the
+    # function is still owned by the application role, but that guard fires
+    # ONCE, at apply time; this inventory is what keeps watching afterwards.
+    # Registered in the same PR that creates the function, because the two
+    # sentences above are exactly what was true of 285 and the omission there
+    # cost weeks of 500s.
+    #
+    # NOT registered here and still missing, all already on main, all the same
+    # class: bind_legacy_garuda_voa_checks_retention_policy(...) (281),
+    # bind_garuda_voa_check_result_retention_policy() (286) and
+    # bind_garuda_document_retention_policy() (304). Naming them is not
+    # curing them -- see PENDING-ARMS. They are out of this PR's concern and
+    # nothing in the test tree fails while they are absent, which is itself
+    # the defect: there is no parity canary between this list and the
+    # migrations that create SECURITY DEFINER binders, the way
+    # test_visa_engine_retention_fk_registry is one for the FK registry.
+    "public.bind_garuda_practice_artifact_retention_policy()",
 )
 SENSITIVE_FUNCTIONS = (
     ACTIVATION_FUNCTION,

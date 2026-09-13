@@ -1,0 +1,64 @@
+task_id: backend-rag-b2-3a-schema
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: 461a4a93ac095cd723515eda06a8955d82bcefda # pragma: allowlist secret
+mandate: B2
+colour: BLUE
+pr: B2.3a (the abstain record's schema — migrations_v2/314_wa_outbox_evidence.sql)
+envelope: 20260912T091907Z-435d # generation authority (the B1-ack that triggered wave 2)
+checkpoint_refs:
+  - 20260913T111331Z-3f22 # OPENED-SUCCESSOR-3, acked by 20260913T111357Z-3b03 (314 approved)
+rulings:
+  - "I58 (seed successor-3) B2.2 closes; remaining order B2.3a -> applied + probed -> B2.3b -> ledger -> B3 file"
+  - "3b03 (imperator ack 11:16Z) migration number 314 approved; pre-migration cohort recorded BEFORE merge with its sha256 in the pack"
+deadline: "2026-09-13T18:00:00Z"
+objective: >-
+  B2 §4 PR B2.3a. Add the two nullable wa_outbox columns D6 defines
+  (abstained_at timestamptz NULL, evidence_score numeric NULL), no defaults,
+  no backfill, forward SQL above the ROLLBACK marker, as ONE additive
+  migrations_v2 file that ships alone, because fly-deploy.yml runs the
+  pre-deploy migration job on the previous image and the writer (B2.3b) must
+  never meet absent columns.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+  tokens: 600000
+acceptance:
+  - id: A1
+    text: >-
+      One file, apps/backend-rag/backend/db/migrations_v2/314_wa_outbox_evidence.sql,
+      carrying exactly the two columns with D6's types, nullable, no default,
+      no backfill, forward SQL above `-- === ROLLBACK ===`; nothing else in
+      the diff outside evidence/.
+  - id: A2
+    text: >-
+      Green on this head: migration-number lint (CI shell + scripts/lint_migration_numbers.py),
+      scripts/lint_migration_rollback.py, Squawk with the CI exclude list at the CI
+      version, `backend.db.migrate apply-all --dry-run` naming exactly 314 as pending.
+  - id: A3
+    text: >-
+      Isolated up/down/up on throwaway Postgres 15 (CI parity) and 17 (production
+      parity): up -> both columns with exact types/nullability/no default and 314 in
+      both ledgers; down through the runner's own rollback_migration -> columns and
+      ledger rows gone; up again -> identical; a fingerprint of (id, status, xmin) over
+      a synthetic cohort and the table's relfilenode unchanged on every step (the
+      migration touches no row, B2 §6), with a guilt case proving the fingerprint moves
+      when a row is touched.
+  - id: A4
+    text: >-
+      Gear-3 council: codex-gpt-5.6-sol and tp1-qwen3.8-max each post a VERDICT
+      ok:true bound to the migration file's sha256, recorded through
+      council_journal.py; findings disposed in the PR body before arming.
+  - id: A5
+    text: >-
+      A fixed pre-migration production cohort (wa_outbox ids 1..420 with status,
+      read-only via scripts/pg.sh) recorded before merge with its sha256, re-read
+      unchanged after the deploy together with `\d wa_outbox` and the runner history.
+seats:
+  dux: "Opus 5 xhigh (successor-3 session 7566f29f, Pro)"
+  implementer: "none — a two-statement SQL file written by the Dux; no code lane opened"
+  adversarial_reviewer: "codex-gpt-5.6-sol (CODEX_HOME=~/.codex-acct2, read-only sandbox, effort high)"
+  second_quorum_seat: "tp1-qwen3.8-max (kimi-code/k3 quota-dead this month, 403)"
+  gate: "a FRESH Opus 5 session outside the contribution chain, commissioned by the imperator"
+brief_ref: evidence/brief.yml

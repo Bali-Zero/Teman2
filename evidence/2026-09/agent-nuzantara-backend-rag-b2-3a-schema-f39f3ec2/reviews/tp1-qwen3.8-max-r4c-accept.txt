@@ -1,0 +1,47 @@
+tp1-qwen3.8-max r4c on SHIPPED bytes 6b5d3d8b (prompt reviews/prompt-r4.txt; --effort medium --timeout 1800)
+tp1 r4c start 2026-09-13T12:19:03Z
+tp1 r4c exit=0 end 2026-09-13T12:21:33Z
+OUTCOME: VERDICT ACCEPT ok true 0/0/0 + 3 NOTE. stderr empty; stdout verbatim:
+----- seat answer verbatim -----
+## Adversarial Review — <REDACTED> (sha 6b5d3d8b …)
+
+### Findings
+
+**NOTE-1 — Comment inaccuracy: "TIMESTAMPTZ … resolves through search_path"**
+The NAME RESOLUTION block states the previous bytes "spelled TIMESTAMPTZ, a type NAME that resolves through search_path." In PostgreSQL's grammar (gram.y, `SimpleTypename` production), `TIMESTAMPTZ` is a type keyword on the same footing as `TIMESTAMP WITH TIME ZONE`; in DDL type position the parser binds it to `pg_catalog.timestamptz` without a search_path lookup. The actual Round-3 vulnerability was the DO-block's *catalog queries* (pg_attribute, format_type, regclass), not the ADD COLUMN's type token. The comment's causal explanation is therefore imprecise. Falsifiable: create a domain `"timestamptz"` in a non-public schema, set search_path to include it, and run `ALTER TABLE … ADD COLUMN x TIMESTAMPTZ`; the column will still be pg_catalog.timestamptz. Impact: none on correctness of these bytes (the DO block is gone; the keyword switch is harmless). NOTE only.
+
+**NOTE-2 — Rollback lacks `statement_timeout`**
+The forward section sets both `lock_timeout '5s'` and `statement_timeout '30s'`; the rollback sets only `lock_timeout '5s'`. DROP COLUMN on a table with no dependent objects is a metadata-only catalog change and will not hit the 30 s bound in practice, so this is an asymmetry without operational risk. Noted for completeness; 306's rollback form would need checking to confirm parity, but no correctness gap exists.
+
+**NOTE-3 — `IF EXISTS` asymmetry is intentional and correct**
+Forward uses bare ADD COLUMN (fail-fast on any drift); rollback uses DROP COLUMN IF EXISTS (idempotent for up/down/up validation). The asymmetry is deliberate and matches the spec's "no defaults, no backfill" + §3 policy. No finding beyond recording the design choice.
+
+---
+
+### Attack-vector walkthrough (no BLOCKER / MAJOR found)
+
+1. **Row touch / rewrite / lock-scan (PG 15 & 17):** ADD COLUMN … NULL with no DEFAULT is a pure catalog insert on PG ≥ 11 — no table rewrite, no row touched. ACCESS EXCLUSIVE is acquired but bounded by `lock_timeout '5s'`. §6 ("touch a row → stop") is satisfied. ✓
+
+2. **SET LOCAL inside the runner transaction:** migration_base.py :879 executes the whole forward text in one `conn.execute` inside `async with conn.transaction()`. SET LOCAL is transaction-scoped; both GUCs are visible to the subsequent ALTER TABLEs. DUX receipts on PG 15.19 and 17.11 confirm successful application. ✓
+
+3. **Residual search_path / type / relation resolution:** Every table reference is `public.wa_outbox`. Both types are grammar keywords (`TIMESTAMP WITH TIME ZONE`, `NUMERIC`) bound by the parser to pg_catalog. GUC names (`lock_timeout`, `statement_timeout`) are server parameters, not SQL objects. `DROP COLUMN IF EXISTS <name>` resolves the column within the already-qualified table. No identifier in the file is search_path-sensitive. Guilt-3 receipt (shadow schema + shadow domain, search_path reordered) confirms these bytes add columns only to `public.wa_outbox`. ✓
+
+4. **Removal of IF NOT EXISTS — legitimate re-run paths:** The runner's transaction makes the two ADD COLUMNs and the _schema_versions insert atomic. A partial failure rolls back both columns; a successful run records 314 so apply-all reports "No pending." SQLModel `create_all` bootstraps to 313 (receipts confirm) and does not create these columns. No concurrent-runner path is defined by the spec. No legitimate scenario requires idempotent ADD COLUMN here. ✓
+
+5. **Rollback correctness / §3 hazard:** The rollback section exists solely for isolated up/down/up validation (required by the runner for post-cutoff migrations). The comment explicitly states production rollback is reverting B2.3b while KEEPING the columns, per §3. Runner facts confirm no workflow, deploy script, or migrate.py subcommand invokes `rollback_migration`. The destructive SQL is unreachable in production. ✓
+
+6. **Previous-image / fresh-image window:** fly-deploy.yml applies migrations on the previous image. The previous image has no code referencing `abstained_at` or `evidence_score` (B2.3b is a separate PR). Nullable, no default, no backfill → no read/write incompatibility in either direction. ✓
+
+7. **False claims in comments:** All operational claims verified or consistent with receipts and spec. The TIMESTAMPTZ/search_path claim is the only inaccuracy (NOTE-1); it does not alter the file's behaviour.
+
+8. **Spec §4 B2.3a clause-by-clause:**
+   - `abstained_at timestamptz NULL` → `TIMESTAMP WITH TIME ZONE NULL` ✓
+   - `evidence_score numeric NULL` → `NUMERIC NULL` ✓
+   - No defaults ✓ (no DEFAULT clause)
+   - No backfill ✓ (no UPDATE)
+   - Forward SQL above `-- === ROLLBACK ===` ✓ (marker present, forward precedes it)
+   - Required-green items (number lint, Squawk, dry-run, up/down/up) confirmed by DUX receipts. ✓
+
+---
+
+VERDICT {"ok": true, "sha256_groups": "6b5d3d8b b99d8d37 d8ccbd97 414264df 6fb888a4 731bb015 ac9458c9 3ee8db9f", "blockers": 0, "majors": 0, "minors": 0}

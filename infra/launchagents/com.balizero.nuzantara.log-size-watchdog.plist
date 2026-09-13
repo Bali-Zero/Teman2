@@ -34,15 +34,15 @@
     <string>com.balizero.nuzantara.log-size-watchdog</string>
 
     <!--
-      Prefer the nuzantara-deploy worktree when present, but fall back to
-      the main repo path. This watchdog should not crash-loop with exit 127
-      when the deploy worktree itself is missing.
+      ONE TREE (2026-09-10): the frozen ~/nuzantara-deploy runtime checkout is
+      retired, so there is nothing to prefer over the main checkout and no
+      fallback branch to keep in sync. Single exec, single tree.
     -->
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
       <string>-lc</string>
-      <string>if [[ -x /Users/nuzantara/nuzantara-deploy/scripts/log_size_watchdog.sh ]]; then exec /Users/nuzantara/nuzantara-deploy/scripts/log_size_watchdog.sh; fi; exec /Users/nuzantara/nuzantara/scripts/log_size_watchdog.sh</string>
+      <string>exec /Users/nuzantara/nuzantara/scripts/log_size_watchdog.sh</string>
     </array>
 
     <key>StartInterval</key>

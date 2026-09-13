@@ -25,12 +25,7 @@ export function TeamRoleWidget({ metrics }: Props) {
       )}
       {metrics.stalled_count > 0 && (
         <div className="px-2 py-1.5 rounded-lg bg-[color-mix(in_srgb,var(--state-warning)_9%,transparent)] border border-[color-mix(in_srgb,var(--state-warning)_22%,transparent)] text-[9px] font-semibold text-[var(--state-warning)]">
-          ⚠️ {metrics.stalled_count} stalled &gt;14d
-        </div>
-      )}
-      {metrics.doc_mancanti > 0 && (
-        <div className="px-2 py-1.5 rounded-lg bg-[color-mix(in_srgb,var(--state-warning)_7%,transparent)] border border-[color-mix(in_srgb,var(--state-warning)_18%,transparent)] text-[9px] font-semibold text-[var(--state-warning)]">
-          📄 {metrics.doc_mancanti} missing documents
+          ⚠️ {metrics.stalled_count} stalled &gt;7d
         </div>
       )}
     </div>

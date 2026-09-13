@@ -6,8 +6,7 @@ import { join } from "node:path";
  * WS2 kita slice 6 (final sweep) — settings suite drain guard.
  *
  * Pins the token drain of the WORKSPACE settings surfaces (hub, appearance,
- * roles, integrations, backup, api, notifications, security, users, locale,
- * profile): no raw hex (two documented one-off families excepted and marked:
+ * integrations, profile): no raw hex (two documented one-off families excepted and marked:
  * role-color seeds required by <input type="color">, third-party brand
  * identity colors), no status rgba, no palette utilities. Statuses read
  * --state-*, purple reads --bz-neon-purple, decorative header icons read
@@ -17,14 +16,7 @@ import { join } from "node:path";
 const PAGES = {
   hub: join(__dirname, "..", "page.tsx"),
   appearance: join(__dirname, "..", "appearance", "page.tsx"),
-  roles: join(__dirname, "..", "roles", "page.tsx"),
   integrations: join(__dirname, "..", "integrations", "page.tsx"),
-  backup: join(__dirname, "..", "backup", "page.tsx"),
-  api: join(__dirname, "..", "api", "page.tsx"),
-  notifications: join(__dirname, "..", "notifications", "page.tsx"),
-  security: join(__dirname, "..", "security", "page.tsx"),
-  users: join(__dirname, "..", "users", "page.tsx"),
-  locale: join(__dirname, "..", "locale", "page.tsx"),
   profile: join(__dirname, "..", "profile", "page.tsx"),
 };
 
@@ -74,42 +66,11 @@ describe("settings suite drain guard (WS2 slice 6)", () => {
     expect(src).not.toContain("rgba(26,26,30"); // token-lint-ok: drain-guard assertion string, not a color use
   });
 
-  it("appearance: accent swatches read the neon token family", () => {
-    const src = readFileSync(PAGES.appearance, "utf8");
-    expect(src).toContain("var(--bz-neon-cyan)");
-    expect(src).toContain("var(--bz-neon-purple)");
-    expect(src).toContain("var(--bz-neon-rose)");
-  });
-
-  it("roles: purple reads --bz-neon-purple, overlay reads --surface-overlay, seeds are marked", () => {
-    const src = readFileSync(PAGES.roles, "utf8");
-    expect(src).toContain("var(--bz-neon-purple)");
-    expect(src).toContain("var(--surface-overlay)");
-    // The <input type="color"> seed hexes stay, but every one is a marked,
-    // documented one-off (picker requires #rrggbb values).
-    const markers = src.match(/token-lint-ok: role color/g) ?? [];
-    expect(markers.length).toBe(5);
-  });
-
-  it("integrations: brand hexes are marked one-offs, statuses read --state-*", () => {
+  it("integrations: the Google brand hex is a marked one-off, statuses read --state-*", () => {
     const src = readFileSync(PAGES.integrations, "utf8");
     const markers = src.match(/token-lint-ok: third-party brand/g) ?? [];
-    expect(markers.length).toBe(5);
+    expect(markers.length).toBe(1);
     expect(src).toContain("var(--state-success)");
-    expect(src).toContain("var(--state-danger)");
-  });
-
-  it("warning strips read --state-warning (backup + api)", () => {
-    for (const path of [PAGES.backup, PAGES.api]) {
-      const src = readFileSync(path, "utf8");
-      expect(src).toContain("var(--state-warning)");
-    }
-  });
-
-  it("security: 2FA strips and session badge read --state-*", () => {
-    const src = readFileSync(PAGES.security, "utf8");
-    expect(src).toContain("var(--state-success)");
-    expect(src).toContain("var(--state-warning)");
     expect(src).toContain("var(--state-danger)");
   });
 });

@@ -1,0 +1,132 @@
+task_id: voa-artifact-store-s2a-tigris-object-store
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed for THIS PR's actual changed-file set:
+# `git diff --name-only origin/main...HEAD > cf.txt && git diff --numstat
+# origin/main...HEAD > ns.txt && python3 scripts/evidence_pack_lint.py
+# --print-floor --changed-files-file cf.txt --numstat-file ns.txt` returns 3,
+# --print-floor-source returns `size`: 7 new files, 1993 net added lines, no
+# hot-zone path. Gear 3 declared to match the floor exactly.
+objective: >-
+  S2a of the GARUDA VOA W3A phase-2 split (Imperator decision #37,
+  2026-09-12): the PRIVATE object store a delivered VOA artifact's bytes
+  live in, and nothing that reads from it yet. Migration 313 (S1, live
+  since 13:08:52Z) gave `garuda_practices.artifact_id` a row to resolve
+  to; this PR gives the row somewhere to resolve bytes FROM — the port
+  (`ArtifactObjectStorePort`: put / fetch_and_verify / delete), the
+  record models, the Tigris adapter and its in-memory double. No caller
+  is wired: S2b binds the adapter into `service_initializer` fail-closed,
+  from fresh main, after this is live. The bucket itself
+  (`garuda-voa-artifacts`, spec §3) and its credentials are provisioning
+  by Zero, pending #G — this PR ships an adapter that REFUSES to construct
+  until they exist, which is the only thing it can prove without them.
+constraints:
+  - >-
+    Credentials are the adapter's own or it does not start. The only Tigris
+    bucket wired in this codebase today (`nuzantara-warroom-images`, fact
+    13 of the spec) exists to mint PUBLIC URLs; falling back to its AWS_*
+    pair on a missing GARUDA_ARTIFACTS_* variable would publish a
+    passport-bearing PDF to the open internet by accident of environment.
+    So: three scoped env vars, presence-checked with `bool(value)`, values
+    never formatted into a message; the public bucket's NAME is refused
+    outright; the endpoint must be https on a `.tigris.dev` host with no
+    userinfo, port, path, query or fragment (Sol O1 F2: an arbitrary
+    endpoint receives the body AND a SigV4 signature made with the
+    dedicated key). A malformed port is a configuration refusal, not a
+    raw ValueError (O3 N8).
+  - >-
+    Privacy is a bucket property, not an adapter property. Omitting `ACL`
+    on put does not make a bucket private when its policy grants public
+    reads (O1 F1). The adapter therefore carries `assert_private()`,
+    which probes PublicAccessBlock and PolicyStatus and refuses a bucket
+    either probe calls public; where the S3 API behind Tigris does not
+    implement a probe the answer is UNKNOWN, and two unknowns are a
+    refusal unless the caller passes `require_verified=False` and says why
+    (O2 F1). A malformed probe answer is UNKNOWN, never private (O3 N3).
+    What it cannot do is make the bucket private: that is provisioning.
+  - >-
+    Write-once, by the store and not by convention. `IfNoneMatch="*"` on
+    every put; HEAD before put so a store that silently ignores the
+    condition still refuses an existing key (O2 F5); a HEAD 200 without an
+    ETag is an EXISTING object, not absence (O3 N4). After a 412 on a
+    retry, the write is ours only if HEAD's ETag equals the MD5 of the
+    body we sent — an absent or non-MD5 ETag is a collision, the
+    conservative reading (O2 N1 / O3 N1).
+  - >-
+    Never trust the object about its own size. ContentLength above the
+    ceiling or disagreeing with the row is refused before a single byte is
+    read; the read itself is bounded at ceiling+1 whatever the header
+    says; a body shorter or longer than declared is a wire fault that
+    botocore surfaces as IncompleteReadError, retried like every other
+    transient and refused only when the budget is spent (O3 N6); and the
+    SHA-256 is verified before any byte is returned. Peak memory is the
+    growing buffer plus its final immutable copy — about twice the
+    ceiling, declared as such rather than as "the ceiling" (O3 N5).
+  - >-
+    `delete(key)` is exact-key, idempotent, hashed-log, wire-retried —
+    Imperator decision #39 on Sol O1 F11: spec :77 ("its object is deleted
+    IMMEDIATELY") wins over the phase-2 comment that deferred deletion to
+    the retention sweep; #7a is not touched. The port cannot tell a
+    superseded object from a live one, and its docstring says so: that
+    authority is the service's, in S5.
+  - >-
+    `products/garuda-voa/contracts/openapi.yaml` belongs to W3C; this PR
+    does not touch it, nor `fly.toml`, `.env*` or `zantara_core.py`.
+    Synthetic bytes only; no production bucket, database or credential was
+    read or written by this session. Every key in a log line or an
+    exception is `sha256(key)[:12]`, never the key (O1 F4).
+  - >-
+    Sol (`codex exec -m gpt-5.6-sol`, read-only, outside the contribution
+    chain) refutes before the PR opens; the default model in
+    ~/.codex/config.toml is gpt-6-astra, so the flag is explicit and the
+    log's `model:` header is checked on every run.
+acceptance:
+  - text: >-
+      A1: WHEN the garuda_artifacts suite runs with no network, no moto and
+      the fake client injected through `for_tests()` SHALL pass every case,
+      including the fake-parity seam grep that proves the production
+      constructor accepts no injected client.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/garuda_artifacts/ -p no:cacheprovider
+  - text: >-
+      A2: WHEN any one of the three scoped env vars is absent or empty SHALL
+      raise GarudaArtifactsStoreUnavailable naming the VARIABLE and never
+      its value, before boto3 is asked for a client.
+    probe: TestEnvVarGate in test_tigris_store.py; guilt mutation "env gate" below
+  - text: >-
+      A3: WHEN the endpoint is not https on a `.tigris.dev` host, or carries
+      userinfo, a port (well-formed or not), a path, a query or a fragment,
+      or the bucket is the public one, SHALL refuse to construct.
+    probe: TestEndpointAndBucketConfinement
+  - text: >-
+      A4: WHEN either privacy probe answers "public" SHALL refuse; WHEN both
+      answer UNKNOWN (unimplemented, absent or malformed) SHALL refuse
+      unless require_verified=False; "public" SHALL beat "unverified".
+    probe: TestBucketPrivacy; guilt mutation "ACL" below
+  - text: >-
+      A5: WHEN a body's declared or actual length disagrees with the row or
+      exceeds the ceiling SHALL refuse without returning bytes, reading at
+      most ceiling+1 bytes; WHEN the digest disagrees SHALL refuse; the
+      response body SHALL be closed on every path.
+    probe: TestFetchAndVerify, TestFetchAndVerifyBoundedRead; guilt mutations "unbounded read", "ContentLength" below
+  - text: >-
+      A6: WHEN a put targets an existing key SHALL raise
+      ArtifactAlreadyExists with zero put_object calls (HEAD layer) or via
+      412 (conditional layer); WHEN the first attempt commits but surfaces a
+      retryable error SHALL report success on the retry only if HEAD's ETag
+      is the MD5 of our body.
+    probe: TestPut, TestRetry
+  - text: >-
+      A7: WHEN delete is called SHALL call delete_object for exactly that
+      key, treat NoSuchKey/404 as success, retry a transient and raise a
+      permanent.
+    probe: TestDelete; guilt mutation "delete no-op" below
+  - text: >-
+      A8: WHEN the deterministic gear floor is recomputed from this PR's own
+      changed-file set SHALL equal 3, matching the declared gear.
+    probe: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf.txt --numstat-file ns.txt
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 3

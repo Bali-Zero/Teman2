@@ -1,0 +1,35 @@
+gear: 1
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-T2 (BLUE) — llms.txt prices every E33 product from PricingTool, refreshes the alerts block, and gains a guard
+objective: >-
+  apps/mouth/public/llms.txt published a single blended price line
+  "E33 - Retirement/Remote Worker KITAS: IDR 13.000.000-16.000.000". E33G is the
+  Remote Worker product, E33E/E33F the senior Second Home routes and E33 the
+  Second Home Visa itself, each with its own price in the official PricingTool
+  catalog. Publish one line per product with exactly the PricingTool figures;
+  make the "KITAS Bali" disambiguation bullet name the Second Home Visa; replace
+  the stale March 2026 alerts block with the site's own September 2026 articles;
+  and build the guard that was missing, so a superseded figure or a stale dated
+  header turns the required mouth test job red.
+scope:
+  - apps/mouth/public/llms.txt
+  - apps/mouth/src/lib/llms-public-file-guard.test.ts
+constraints:
+  - Prices come ONLY from the nuzantara-knowledge MCP tool search_service_pricing; no price from memory; every other price line stays byte-identical.
+  - Alerts bullets come ONLY from the site's own September 2026 articles (PRs #6215-#6219); no regulatory claim from memory; each URL confirmed 200 on balizero.com.
+  - The "KITAS Bali" bullet may name only codes already used in the file.
+  - Forbidden - every .mdx, llms-full.txt and its generator, llms-id.txt, llms-kbli.txt, public/.well-known/llms.txt, any pricing source, vitest config, workflows, PENDING-ARMS.md.
+  - No ledger PR, no PENDING-ARMS.md edit (SAETTA rule 2).
+acceptance:
+  - A1 on the served file - grep -c "E33G - Remote Worker" = 1, "E33 - Second Home" = 1, "E33E" >= 2, "E33F" >= 2, "Retirement/Remote Worker KITAS" = 0.
+  - A2 every IDR figure on the new lines equals the PricingTool value, tool output pasted in the pack.
+  - A3 the "KITAS Bali" bullet contains "Second Home"; "Regulatory Alerts (September 2026)" present and "(March 2026)" absent; the AI-CITATION comment says September 2026; every alerts bullet links a / path returning 200.
+  - A4 non-regression - git diff origin/main touches only the E33 price line, the KITAS Bali bullet, the alerts block, the AI-CITATION comment and the footer version 4.1 -> 4.2.
+  - A5 the guard passes on the real file (innocence) and every forbidden pattern individually convicts a mutated copy (guilt).
+  - A6 the required job Frontend Tests (Next.js) (mouth, true) collects the new test - proved by the job log naming the file.
+consumer_map:
+  - The live https://balizero.com/llms.txt served by the apps/mouth Vercel deploy on merge to main; AI search engines read it directly.
+  - The required GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs the new guard on every future PR that touches the file.
+appetite:
+  budget: 90 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

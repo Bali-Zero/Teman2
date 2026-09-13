@@ -8,6 +8,11 @@ export const VISA_ORACLE_TELEMETRY_EVENTS = [
   "visa_oracle_v2_parity_mismatch",
   "visa_oracle_v2_consent_granted",
   "visa_oracle_v2_handoff_opened",
+  // PR-O4 / Δ2: the contact panel stopped showing the visitor a
+  // configuration string, so this is the only remaining signal that the
+  // WhatsApp number never reached ConsentHandoff. Carries the terminal state
+  // at most — no number, no facts.
+  "visa_oracle_v2_handoff_unconfigured",
 ] as const;
 
 export type VisaOracleTelemetryEvent =

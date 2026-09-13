@@ -44,6 +44,7 @@ def include_routers(api: FastAPI) -> None:
         channels,  # Channel health, DLQ, unified conversations
         collective_memory,
         compliance_alerts,
+        compliance_obligations,  # [A2] obligations reviewer API, HITL bridge to compliance_alerts
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
         crm_clients,
@@ -307,6 +308,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
+    api.include_router(compliance_obligations.router)  # [A2] obligations reviewer API
     api.include_router(e33_cases.router)  # [E33] Second Home internal console
     api.include_router(lkpm.router)  # LKPM Investment Activity Reports
 
@@ -543,6 +545,7 @@ def include_light_routers(api: FastAPI) -> None:
         channel_health,  # [HEARTBEAT] Sprint 1.B 2026-05-02 — Cell-side bridge
         channels,  # Channel health, DLQ, unified conversations
         compliance_alerts,
+        compliance_obligations,  # [A2] obligations reviewer API, HITL bridge to compliance_alerts
         crm_analytics,
         crm_clients_documents,
         crm_company,
@@ -768,6 +771,7 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
+    api.include_router(compliance_obligations.router)  # [A2] obligations reviewer API
     api.include_router(e33_cases.router)  # [E33] Second Home internal console
     api.include_router(lkpm.router)
 

@@ -1,0 +1,104 @@
+task_id: kita-w2d-fake-constants
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: e83615c7f7b7986b153833190f74e7d5514d3ee3 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 520 lines over 15 files (355 added, 165 deleted).
+# No hot-zone path (HOTZONE_PATTERNS covers migrations_v2/auth/config.py/invoicing/pricing, not
+# these two routers or their tests); no PII path, no ground-truth path.
+objective: >-
+  Kita pruning wave 2, part D (backend fake constants behind dashboard metrics): the role-metrics
+  and system-metrics endpoints in apps/backend-rag returned literal placeholder numbers dressed up
+  as live data (uptime_percentage, a content-length-derived fake response time, a hardcoded
+  scheduler-interval guess, a QdrantClient constructor that never contacts the server, and five
+  `0`/`99.9` literals scattered across the role widgets). For each field: replace it with a real
+  one-table query when one exists, or remove it (and the matching apps/mouth cell) when it does
+  not and no live consumer reads it.
+constraints:
+  - >-
+    Backend-only additive change to two routers (dashboard_summary.py, intel_analytics.py) plus
+    their existing pytest modules, and the matching apps/mouth/src TS types, role-widget
+    components and their tests. No migration, no schema change, no new dependency, no paid API.
+  - >-
+    Merging apps/backend-rag/** auto-deploys to production (CLAUDE.md), so every new/changed
+    query is a single straightforward SELECT against a table the router already reads
+    (team_members, compliance_alerts, clients, lead_intents) via the same asyncpg pool, wrapped
+    in the file's existing try/except-log-and-zero pattern — never a new failure mode.
+  - >-
+    Fields with no real one-query source AND no live frontend consumer were removed outright
+    rather than "fixed" with another guess: fly_uptime (infra metric, not in Postgres),
+    doc_mancanti (would need an unverified user_id→email join through intake_gate_doc_counts),
+    subscriber_delta (Brevo-external, no local table), and the whole
+    uptime_percentage/avg_response_time_ms/next_scheduled_run/qdrant_health cluster in
+    /api/intel/metrics (intelligenceApi.getMetrics() has zero callers in any apps/mouth page —
+    the page that once rendered them, /intelligence/system-pulse, is already deleted).
+  - >-
+    No client PII in this pack, in the PR body or in any log.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 0
+  tokens: 400000
+acceptance:
+  - text: >-
+      A1: WHEN the two routers' pytest modules run on this head SHALL pass every test, including
+      the new ones proving each replaced field comes from its query and each removed field is
+      absent from the response.
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
+      backend/tests/unit/routers/test_dashboard_summary.py
+      backend/tests/unit/routers/test_intel_analytics.py
+  - text: >-
+      A2: WHEN the mutating-routes security gate runs on this head (route signatures were
+      untouched, but the gate is part of the CLAUDE.md pre-deploy sequence for router changes)
+      SHALL pass.
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
+      backend/tests/security/test_mutating_routes_are_gated.py
+  - text: >-
+      A3: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0 (the removed-field
+      types and the surviving role-widget cells stay consistent).
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A4: WHEN the touched mouth vitest files run on this head SHALL pass every test.
+    probe: >-
+      cd apps/mouth && npx vitest run
+      src/components/dashboard/role-widgets/__tests__/role-widgets.test.tsx
+      src/components/dashboard/__tests__/RoleWidget.test.tsx
+      src/types/__tests__/dashboard-role.types.test.ts
+      src/hooks/__tests__/useRoleMetrics.test.ts
+      src/lib/api/intelligence.api.test.ts
+assumptions:
+  - text: >-
+      intelligenceApi.getMetrics() (the /api/intel/metrics client) has zero callers in any
+      apps/mouth page component — only the dead type definition and its own test file reference
+      it — so uptime_percentage/avg_response_time_ms/next_scheduled_run/qdrant_health had no live
+      consumer to preserve.
+    status: verified
+    probe: >-
+      grep -rln "getMetrics\|SystemMetrics" apps/mouth/src | grep -v intelligence.api.ts | grep
+      -v intelligence.api.test.ts
+  - text: >-
+      Constructing backend.core.qdrant_db.QdrantClient never contacts the Qdrant server (only
+      __init__ argument assignment; the actual HTTP call is get_stats()/search()/etc, called
+      nowhere in get_system_metrics), so the old qdrant_health check was always "healthy" unless
+      the constructor itself raised — never a real health probe.
+    status: verified
+    probe: sed -n '256,300p' apps/backend-rag/backend/core/qdrant_db.py
+  - text: >-
+      team_members.active, compliance_alerts (category, status, client_id), clients.deleted_at
+      and lead_intents.created_at all exist as columns in the shipped schema, making
+      agenti_count/clienti_compliant/alert_pajak/lead_nuovi one-query-computable against tables
+      the router's own db_pool already reaches.
+    status: verified
+    probe: >-
+      grep -n "CREATE TABLE\|ALTER TABLE" apps/backend-rag/backend/db/migrations_v2/137_team_members_legacy_columns_and_defaults.sql
+      apps/backend-rag/backend/db/migrations_v2/114_compliance_alerts.sql
+      apps/backend-rag/backend/db/migrations_v2/122_lead_intents.sql
+  - text: >-
+      doc_mancanti (role=team) has no clean one-query source: the only pending-document-count
+      table (intake_gate_doc_counts) is keyed by user_email, mirrored from Pro, while
+      get_role_metrics only has user_id (used against practices.assigned_to) — resolving one to
+      the other is a join through an unverified identity mapping, not a single straightforward
+      query, so the field was removed instead of guessed at.
+    status: verified
+    probe: cat apps/backend-rag/backend/db/migrations_v2/219_intake_gate_doc_counts.sql
