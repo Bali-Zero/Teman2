@@ -1,0 +1,18 @@
+codex-gpt-5.6-sol r3 on the CURED B2.3b candidate (six files at 83b011608c; prompt reviews/prompt-r3-codex.txt, NARROWED to the cure delta 7402e56a13..83b011608c + named ranges, budget < 120K)
+dispatch: CODEX_HOME=~/.codex-acct2 codex exec -m gpt-5.6-sol --sandbox read-only -c model_reasoning_effort=high (secret-named env vars stripped)
+codex r3 start 2026-09-13T15:31:29Z head 83b011608c
+codex r3 exit=0 end 2026-09-13T15:34:35Z
+tree-after: shasum -c of the six files + prompt, 0 non-OK lines
+tokens used: 31,961 (no context rollover this round)
+OUTCOME: VERDICT ACCEPT, ok true, 0 BLOCKER / 0 MAJOR / 0 MINOR + 3 NOTE, bound to the six candidate sha256 values.
+The seat's final answer, verbatim (trimmed record: the transcript's tool reads above it are omitted; the seat itself ran shasum -a 256 on the six paths):
+
+SHA256 CHECK: match
+
+NOTE — apps/backend-rag/backend/services/integrations/wa_codex_leg.py:1078 — F1 is closed: OFFERED retains all carrier fields; REATTACHED and any unexpected non-OFFERED outcome return them as `None`. The accepted residual remains: even a same-package REATTACHED label-true completion is not counted. Falsifiable check: reattach a completed label-true job and verify all three result carrier fields are `None`.
+
+NOTE — apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:1411 — F2 is closed: `Decimal(repr(score))` preserves ordinary integers, finite floats, and exponent-form values exactly as NUMERIC values; `None` remains SQL NULL. No stale-carrier path is visible: values initialize per claim and reset on generation exceptions. Falsifiable check: persist `1e-05`, `0.42`, an integer, and `None`, then compare `evidence_score::text` or NUMERIC equality against their exact decimal values.
+
+NOTE — apps/backend-rag/backend/tests/unit/services/test_wa_codex_leg.py:1808 — The REATTACHED leg test fails against the former unconditional-carrier return. The PostgreSQL text assertions in `test_wa_outbox_worker_carrier.py:311` and `:346` fail against raw float binding. The worker-level REATTACHED test alone stubs carrier fields to `None`, but is not vacuous for its intended layer because it proves a successful fenced terminal write leaves both columns NULL; the leg-level test independently detects F1. No unrelated production change appears in the cure delta. Falsifiable check: revert each production cure independently and observe its corresponding new assertion fail.
+
+VERDICT {"ok": true, "candidate": "15e1f197 575e7feb 5f2602cf 0db0b0e2 229ca6d2 46b0ab5a", "blockers": 0, "majors": 0, "minors": 0}

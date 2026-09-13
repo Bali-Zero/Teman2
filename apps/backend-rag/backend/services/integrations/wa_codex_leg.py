@@ -105,6 +105,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import uuid
 from dataclasses import dataclass
@@ -413,6 +414,23 @@ def _window_margin_ok(thread: Any, *, margin_s: float) -> bool:
     return remaining.total_seconds() >= margin_s
 
 
+def _normalize_evidence_score(raw: Any) -> float | None:
+    """Coerce the sealed wire's ``evidence_score`` to a carrier-safe float.
+
+    Accepts ``int``/``float`` only — ``bool`` is excluded even though it is
+    an ``int`` subclass, so a stray ``True``/``False`` on the wire never
+    silently becomes 1.0/0.0 — and only a finite value (``math.isfinite``);
+    anything else (``None``, a string, NaN, +/-inf) returns ``None``. Pure:
+    no read, no write, no log — this carrier must never persist a value the
+    sealed wire did not actually mean as a score.
+    """
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return None
+    if not math.isfinite(raw):
+        return None
+    return float(raw)
+
+
 @dataclass
 class CodexLegResult:
     """Exactly one of four shapes: text (send it), stand_down (abort the
@@ -435,6 +453,18 @@ class CodexLegResult:
     # NULL on that row, so a log saying "codex leg served" was the only
     # record of it and it was false).
     served_by: str = "codex"
+    # B2.3b carrier (research/operations/2026-09-11-bot-staff-room/
+    # B2-engine.md §4 PR B2.3b): the sealed evidence label, its normalised
+    # score and the opaque package reference — carried, never recomputed
+    # and never inferred from `text`, from the parsed sealed wire
+    # (`evidence_inputs`/`package_hash`, both above) into the two
+    # text-bearing returns that follow the parse: the support-negative
+    # return and the completed return. Every other return (fall-off, fail,
+    # stand_down, scripted greeting, finalize defect) leaves all three
+    # None — there is no sealed decision to carry.
+    evidence_abstain_label: bool | None = None
+    evidence_score: float | None = None
+    package_ref: str | None = None
 
 
 async def attempt(
@@ -675,6 +705,12 @@ async def _attempt(
             text=unsupported_result.text,
             reason="support_unsupported",
             served_by="support_abstain",
+            # The sealed label, NOT the `abstain=True` forced above for
+            # `finalize_wa_answer` — D6 carries the frozen wire's own
+            # verdict, never this branch's forced disposition.
+            evidence_abstain_label=bool(evidence_inputs.get("abstain")),
+            evidence_score=_normalize_evidence_score(evidence_inputs.get("evidence_score")),
+            package_ref=package_hash,
         )
 
     # The offer boundary is FAIL-CLOSED only where the outcome is
@@ -1031,4 +1067,24 @@ async def _attempt(
             reason=f"finalize:{result.defect_reason or 'blank_send_text'}"
         )
 
-    return CodexLegResult(text=result.text, reason="completed")
+    # A REATTACHED completion was offered by an EARLIER claim with ITS OWN
+    # package (`wa_broker.py`'s reattach path selects the still-alive job by
+    # `outbox_id` alone and never compares `package_hash`; `OfferResult`
+    # carries no hash at all), so THIS claim's rebuilt sealed wire does not
+    # describe the package that actually generated `text` — carrying it
+    # here would attribute the completion to a package it never came from.
+    # Only OFFERED (this claim's own offer, first leg or a fresh retry leg)
+    # carries the three fields; REATTACHED leaves them None rather than
+    # naming another package (D6: nothing inferred).
+    if offer.outcome is wa_broker.OfferOutcome.OFFERED:
+        return CodexLegResult(
+            text=result.text,
+            reason="completed",
+            evidence_abstain_label=bool(evidence_inputs.get("abstain")),
+            evidence_score=_normalize_evidence_score(evidence_inputs.get("evidence_score")),
+            package_ref=package_hash,
+        )
+    return CodexLegResult(
+        text=result.text,
+        reason="completed",
+    )

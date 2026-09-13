@@ -1743,3 +1743,143 @@ def test_every_stored_fall_off_value_is_allowed_by_the_live_check_constraint() -
         f"{sorted(produced - allowed)} can be written by the code but is "
         f"rejected by the CHECK constraint in {newest.name}"
     )
+
+
+# ── B2.3b carrier (research/operations/2026-09-11-bot-staff-room/
+# B2-engine.md §4 PR B2.3b) — CodexLegResult's evidence_abstain_label/
+# evidence_score/package_ref, set ONLY on the completed return; every
+# fall-off/stand-down return leaves them at their None defaults. The
+# support-negative return is covered by the sibling
+# test_wa_codex_leg_support_negative.py, which owns that branch's fixtures.
+
+# A second sealed wire with abstain=true, distinct from _GOOD_WIRE (which
+# hardcodes abstain=false) — proves the completed return's carrier tracks
+# the WIRE's own value both ways, not a hardcoded default.
+_ABSTAIN_TRUE_WIRE = (
+    '{"history":[],"chunks":[{"text":"KITAS costs Rp 12.000.000","score":0.9}],'
+    '"pricing_block":null,"persona_digest":"pd",'
+    '"evidence_inputs":{"abstain":true,"context_length":2,'
+    '"evidence_score":0.1},"thread_epoch":3}'
+)
+
+
+@pytest.mark.asyncio
+async def test_completed_carries_sealed_label_false_score_and_package_ref(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _wire_stubs(monkeypatch)  # _GOOD_WIRE: abstain=false, evidence_score=0.85
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text == "the broker reply"
+    assert result.served_by == "codex"
+    assert result.evidence_abstain_label is False
+    assert result.evidence_score == 0.85
+    assert result.package_ref == "abc123"
+
+
+@pytest.mark.asyncio
+async def test_completed_carries_sealed_label_true(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _wire_stubs(
+        monkeypatch,
+        build={
+            "package_wire": _ABSTAIN_TRUE_WIRE,
+            "package_hash": "pkg-hash-completed-abstain-true",
+            "unbuildable": None,
+        },
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.evidence_abstain_label is True
+    assert result.evidence_score == 0.1
+    assert result.package_ref == "pkg-hash-completed-abstain-true"
+
+
+@pytest.mark.asyncio
+async def test_reattached_completion_carries_no_carrier_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """I83 (F1, option b): a REATTACHED completion was offered by an
+    EARLIER claim with its own package — this claim's rebuilt sealed wire
+    does not describe the package that generated the text, so the three
+    carrier fields stay None even though the completion still serves
+    (``served_by`` stays "codex", unlike the support-negative/fall-off/
+    stand-down branches which never reach here at all)."""
+    job_id = uuid.uuid4()
+    _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.REATTACHED, job_id=job_id, thread_epoch=3),
+    )
+    conn = ScriptedConn(fetchrow_results=[{"human_handling": False, "handling_version": 3}])
+    result = await _run(conn=conn)
+    assert result.text == "the broker reply"
+    assert result.served_by == "codex"
+    assert result.evidence_abstain_label is None
+    assert result.evidence_score is None
+    assert result.package_ref is None
+
+
+@pytest.mark.asyncio
+async def test_fall_off_return_carries_no_carrier_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pre-offer fall-off (here: package build error) never reaches the
+    sealed-wire parse — the carrier stays at its None defaults, never a
+    stale/partial value."""
+    _wire_stubs(monkeypatch, build_exc=RuntimeError("conn refused"))
+    result = await _run()
+    assert result.text is None
+    assert result.evidence_abstain_label is None
+    assert result.evidence_score is None
+    assert result.package_ref is None
+
+
+@pytest.mark.asyncio
+async def test_stand_down_return_carries_no_carrier_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The drift stand-down discards the completion — nothing sealed is
+    carried even though the wire WAS parsed (unlike the fall-off case
+    above)."""
+    _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"human_handling": True, "handling_version": 3},
+            {"id": 42},  # atomic stand-down abort: fenced RETURNING
+        ]
+    )
+    result = await _run(conn=conn)
+    assert result.stand_down is True
+    assert result.evidence_abstain_label is None
+    assert result.evidence_score is None
+    assert result.package_ref is None
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (0.42, 0.42),
+        (1, 1.0),
+        (0, 0.0),
+        (-0.5, -0.5),
+        (True, None),  # bool is an int subclass — must not become 1.0
+        (False, None),  # — likewise must not become 0.0
+        (float("nan"), None),
+        (float("inf"), None),
+        (float("-inf"), None),
+        ("0.5", None),  # a stringified number is not a number
+        (None, None),
+    ],
+)
+def test_normalize_evidence_score(raw: Any, expected: float | None) -> None:
+    result = wa_codex_leg._normalize_evidence_score(raw)
+    if expected is None:
+        assert result is None
+    else:
+        assert result == expected
+        assert isinstance(result, float)

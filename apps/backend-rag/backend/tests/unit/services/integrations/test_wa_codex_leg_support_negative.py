@@ -103,7 +103,9 @@ def _build_response(payload: dict[str, Any]) -> MagicMock:
     return resp
 
 
-def _wire(support_verdict: str | None, *, evidence_score: float = 0.85) -> str:
+def _wire(
+    support_verdict: str | None, *, evidence_score: float = 0.85, abstain: bool = False
+) -> str:
     """A sealed-wire JSON string carrying the additive B2.1 support keys.
 
     `support_verdict=None` OMITS the key entirely (models a pre-B2.1 /
@@ -111,7 +113,7 @@ def _wire(support_verdict: str | None, *, evidence_score: float = 0.85) -> str:
     `wa_package_builder.build_context_package`'s own `None` convention.
     """
     evidence_inputs: dict[str, Any] = {
-        "abstain": False,
+        "abstain": abstain,
         "context_length": 2,
         "evidence_score": evidence_score,
         "domain": "visa",
@@ -141,6 +143,8 @@ def _wire_stubs(
     finalize_result: FinalizeResult | None = None,
     consume_text: str = "the broker completion text",
     evidence_score: float = 0.85,
+    abstain: bool = False,
+    package_hash: str = "abc123",
 ) -> SimpleNamespace:
     monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
@@ -150,8 +154,8 @@ def _wire_stubs(
 
     client = MagicMock()
     build = {
-        "package_wire": _wire(support_verdict, evidence_score=evidence_score),
-        "package_hash": "abc123",
+        "package_wire": _wire(support_verdict, evidence_score=evidence_score, abstain=abstain),
+        "package_hash": package_hash,
         "unbuildable": None,
     }
     client.post = AsyncMock(return_value=_build_response(build))
@@ -302,3 +306,47 @@ async def test_missing_support_verdict_does_not_enter_the_unsupported_branch(
 
     stubs.offer_job.assert_awaited_once()
     assert result.text == "the real answer"
+
+
+# ── B2.3b carrier (research/operations/2026-09-11-bot-staff-room/
+# B2-engine.md §4 PR B2.3b) — the support-negative return's carrier fields.
+
+
+@pytest.mark.asyncio
+async def test_support_negative_carrier_is_the_sealed_label_not_the_forced_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """finalize_wa_answer above is always called with the FORCED
+    ``abstain=True`` (see test_unsupported_verdict_preserves_d6_shape) — the
+    sealed wire here sets its OWN ``abstain: False``, so a carrier that
+    accidentally echoed the forced value instead of the sealed one would
+    show True here and this test would catch it."""
+    _wire_stubs(
+        monkeypatch,
+        support_verdict="NOT_SUPPORTED",
+        abstain=False,
+        evidence_score=0.15,
+        package_hash="pkg-hash-support-neg-false",
+    )
+    result = await _run()
+    assert result.served_by == "support_abstain"
+    assert result.evidence_abstain_label is False
+    assert result.evidence_score == 0.15
+    assert result.package_ref == "pkg-hash-support-neg-false"
+
+
+@pytest.mark.asyncio
+async def test_support_negative_carrier_passes_through_a_true_sealed_label(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _wire_stubs(
+        monkeypatch,
+        support_verdict="UNKNOWN",
+        abstain=True,
+        evidence_score=0.05,
+        package_hash="pkg-hash-support-neg-true",
+    )
+    result = await _run()
+    assert result.evidence_abstain_label is True
+    assert result.evidence_score == 0.05
+    assert result.package_ref == "pkg-hash-support-neg-true"

@@ -1,0 +1,16 @@
+agy-gemini-3.1-pro r2 on the CURED B2.3b candidate (six files at 83b011608c; prompt reviews/prompt-r3-agy.txt: whole candidate aab2debe78..83b011608c with prompt-r2.txt's spec and attack list binding, F1/F2 first, exact line citations requested)
+dispatch: agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --print-timeout 45m (secret-named env vars stripped); fallback seat per I80
+agy r3-dispatch (seat round 2) start 2026-09-13T15:31:30Z head 83b011608c
+agy exit=0 end 2026-09-13T15:39:51Z
+tree-after: shasum -c of the six files + prompt, 0 non-OK lines
+OUTCOME: VERDICT ACCEPT, ok true, 0 BLOCKER / 0 MAJOR / 0 MINOR + 2 NOTE, bound to the six candidate sha256 values.
+Seat-quality note (Dux): the prompt asked for file:line on every finding; both NOTEs carry none. Disposed in pack dissent; the verdict line itself is well-formed and bound.
+The seat's complete output, verbatim:
+
+SHA256 CHECK: match
+
+NOTE: **F1 is fully closed and non-regressing.** The CURE correctly sets `evidence_abstain_label`, `evidence_score`, and `package_ref` strictly when `offer.outcome is wa_broker.OfferOutcome.OFFERED`. Because the `support-negative` (unsupported) branch terminates execution and returns its `CodexLegResult` *before* the broker offer phase, it correctly bypasses this check and preserves its own carrier fields.
+
+NOTE: **F2 float bindings and tests are mathematically exact.** The `decimal.Decimal(repr(persist_score))` approach successfully bypasses `asyncpg` float artifacts. All values the normaliser returns (including `float` coercions of `int`, huge/tiny floats, and exponent notation like `1e-10`) successfully parse through `Decimal()` and are exactly persisted into the `NUMERIC` column (Postgres expands exponent notation internally into mathematically exact numeric string outputs). `NULL` mapping is preserved properly through the ternary operator.
+
+VERDICT {"ok": true, "candidate": "15e1f197 575e7feb 5f2602cf 0db0b0e2 229ca6d2 46b0ab5a", "blockers": 0, "majors": 0, "minors": 0}
