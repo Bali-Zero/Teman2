@@ -1,0 +1,156 @@
+task_id: shweb-6420-c3-flags-pin-20260913
+mandate_id: SHWEB-20260911/W-ORACLE/D4c-2-C3
+colour: BLUE
+l_level: L1
+gate_class: opus
+gear: 2
+gear_reason: >-
+  No digit for this brief's OWN size is typed here on purpose — a brief describing its own
+  final line count goes stale the moment a later edit (like this correction) changes it; four
+  PRs in this mandate have already been corrected for exactly that mistake. What is pinned
+  instead is the test file's own, non-self-referential churn — `git diff --numstat
+  origin/main...HEAD -- 'apps/mouth/.../fact-mapper.test.ts'` -> `14\t1` (churn 15, net 13) —
+  and the METHOD for the combined figure: `git diff --name-only origin/main...HEAD >
+  <changed-files-file>`, `git diff --numstat origin/main...HEAD > <numstat-file>`, then
+  `python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+  --changed-files-file <changed-files-file> --numstat-file <numstat-file>`, re-run AFTER the
+  last commit (see `floor_measured` below for that exact run's floor/source/machine). Even
+  generously double-counting this brief's own size, total churn stays an order of magnitude
+  under SIZE_GEAR2_THRESHOLD (400) — confirmed, not merely argued, by `floor_measured`'s
+  `source: none`. Declaring gear 2 anyway, not to match a higher floor but to decline an
+  optimisation: at gear 1 harness-floor.yml's Step 7c ("read the real gate verdict") does not
+  run, so an armed auto-merge plus green required checks can merge and deploy without the
+  gate's signature — measured to be exactly how PR #6424 reached production unsigned (a
+  gear-1-declared diff, floor 1, no Step 7c). Checked (not assumed) whether `compute_ceiling()`
+  objects to declaring 2 here — it does not, but not for the reason I first guessed; see
+  `ceiling_probe`.
+ceiling_probe: >-
+  Ran `python3 -c "import sys; sys.path.insert(0,'scripts'); import evidence_pack_lint as e;
+  files=['apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts',
+  'evidence/2026-09/agent-mini-pro2-mouth-shweb-6420-c3-flags-pin-20-839d0642/brief.yml'];
+  numstat=open('/tmp/numstat-final.txt').read(); net=e.sum_numstat(numstat);
+  print(net, e.compute_ceiling(files, 2, {}, measured_net_lines=net))"` on mini-pro2, against
+  the numstat captured after the last commit -> net_lines 169, ceiling result `(3, [])`.
+  Reading compute_ceiling()'s source: 169 is over CEILING_SMALL_DIFF_MAX_NET_LINES (60) purely
+  because this brief is itself long — so this diff is not "Gear-1-shaped" by the ceiling's own
+  small-diff test (2 files is within CEILING_SMALL_DIFF_MAX_FILES, but net lines is not), and
+  the function returns `(3, [])` ("not Gear-1-shaped — no ceiling to assert") for ANY declared
+  gear on this diff, 1/2/3 alike — checked directly for all three, not only for gear 2. No
+  `gear_override` is needed: there is nothing here for the ceiling rule to object to,
+  regardless of what gear is declared.
+objective: >-
+  #6420 ledger row (D4c-2 gate, PENDING-ARMS.md line ~2066), condition C3: fact-mapper.test.ts's
+  zero-hold guard for the investment "I can't say yet" answer asserted
+  `.not.toContain("NOT_CERTAIN")` on `mapDisclosedReviewFlags({category:"invest",
+  investment_vehicle:"undecided", investment_currency:"still_unsure"})`. That assertion only
+  proves NOT_CERTAIN's absence and stays green whenever the returned flag set changes for a
+  reason unrelated to the thing being guarded. Replaced with an exact-set pin,
+  `toEqual(["ACTIVITY_BOUNDARY"])`, and proved by mutation that the pin catches a regression
+  the old assertion could not see.
+scope:
+  - "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts — the one assertion
+    and its explanatory comment"
+  - this PR's own evidence brief
+constraints:
+  - No production code changed. apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts
+    was mutated ONLY locally and transiently to produce the mutation-contrast proof below, then
+    reverted with `git checkout --` before this commit — `git status`/`git diff --stat` at
+    commit time show exactly one file besides the brief.
+  - No push, no PR, no arming, no merge — commit locally, orchestrator ships.
+  - Zero client PII.
+acceptance:
+  - text: >-
+      A1: WHEN `npx vitest run` runs on the touched file on mini-pro2 (hostname) THEN it SHALL
+      pass all 147 tests, exit 0.
+    probe: >-
+      cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts"
+  - text: >-
+      A2: WHEN `npx vitest run` runs for the FULL apps/mouth suite on mini-pro2 (hostname) THEN
+      it SHALL pass all 483 test files / 5209 tests, exit 0 — this count is only a fact
+      alongside its host: the same suite shows files red on M5 from a mixed pnpm/npm
+      node_modules while CI passes (D4c-2 row condition C1/C5).
+    probe: cd apps/mouth && npx vitest run
+  - text: "A3: WHEN `npx tsc --noEmit` runs in apps/mouth on mini-pro2 (hostname) THEN it SHALL exit 0."
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A4 (the contrast that IS the PR): WHEN `ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS.investment_vehicle`
+      in fact-mapper.ts is mutated to add "undecided" to its decidable list — which makes
+      `mapDisclosedReviewFlags` on this exact facts object return `[]` instead of
+      `["ACTIVITY_BOUNDARY"]`, with the literal "unsure" never appearing anywhere in the facts
+      object, so NOT_CERTAIN is not and was never at stake — THEN the new exact-set pin
+      (`toEqual(["ACTIVITY_BOUNDARY"])`) SHALL fail (RED) on that mutated source, WHILE the old
+      assertion (`.not.toContain("NOT_CERTAIN")`) SHALL still pass (GREEN) on the identical
+      mutated source. Both runs quoted verbatim in `mutation_contrast` below, measured on
+      mini-pro2 (hostname).
+    probe: >-
+      cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts"
+      -t "costs zero review holds"
+  - text: >-
+      A5: WHEN the floor is computed after the LAST commit on mini-pro2 (hostname) with both
+      `--changed-files-file` and `--numstat-file` (merge-base anchored, `origin/main...HEAD`)
+      THEN it SHALL be 1 (source `none`), and declared gear 2 SHALL be accepted (gear>=floor;
+      2>=1).
+    probe: >-
+      python3 scripts/ci/evidence_paths.py --ref "$(git branch --show-current)" && python3
+      scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file
+      <f> --numstat-file <n>
+literal_measured:
+  method: >-
+    Deliberately changed the assertion under test to
+    `.toEqual(["__PROBE_WRONG_VALUE__"])` and ran `npx vitest run
+    "src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts" -t "costs zero review holds"`
+    on mini-pro2, then read the AssertionError diff instead of taking the literal from the
+    dispatch brief. Reverted with a byte-for-byte restore (diffed against `git show
+    HEAD:<path>` afterward, confirmed identical) before making the real edit.
+  result: "AssertionError: expected [ 'ACTIVITY_BOUNDARY' ] to deeply equal [ '__PROBE_WRONG_VALUE__' ]"
+  literal: '["ACTIVITY_BOUNDARY"]'
+  machine: mini-pro2
+before_assertion: |-
+  ).not.toContain("NOT_CERTAIN");
+after_assertion: |-
+  ).toEqual(["ACTIVITY_BOUNDARY"]);
+mutation_contrast:
+  mutation: >-
+    In apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts, line 485, changed
+    `investment_vehicle: ["pt_pma", "property", "bank_deposit"]` to `investment_vehicle:
+    ["pt_pma", "property", "bank_deposit", "undecided"]` inside
+    ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS — a plausible-looking future edit ("undecided became
+    decidable") that makes `hasUndecidableActivityAnswer` return false for this test's facts,
+    dropping ACTIVITY_BOUNDARY from the returned set. NOT_CERTAIN is never involved: the facts
+    object's only string values are "invest"/"undecided"/"still_unsure", none of which is the
+    literal "unsure". Applied transiently, measured, then reverted with `git checkout --` (the
+    working tree carries no trace of it at commit time).
+  new_pin_result: >-
+    On mini-pro2, `npx vitest run
+    "src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts" -t "costs zero review holds"`
+    against the mutated source, with the file already carrying this PR's new assertion
+    (`.toEqual(["ACTIVITY_BOUNDARY"])`): exit code 1 (captured directly, not via `$?` after a
+    pipe). Output: "AssertionError: expected [] to deeply equal [ 'ACTIVITY_BOUNDARY' ]" — RED,
+    "Tests  1 failed | 146 skipped (147)".
+  old_assertion_result: >-
+    On mini-pro2, the SAME mutated source, with the assertion temporarily swapped back to
+    `.not.toContain("NOT_CERTAIN")`: exit code 0 (captured directly). Output: "Tests  1 passed |
+    146 skipped (147)" — GREEN. Confirms the old assertion is blind to exactly the regression
+    the new pin exists to catch.
+  conclusion: >-
+    The exact-set pin catches a flag-set regression (ACTIVITY_BOUNDARY silently lost) that the
+    absence-only assertion would have let merge silently, with NOT_CERTAIN never having been at
+    stake either way — the contrast the dispatch brief asked this PR to demonstrate, not merely
+    assert.
+floor_measured:
+  command: >-
+    git fetch origin main --quiet; git diff --name-only origin/main...HEAD >
+    /tmp/changed-files.txt; git diff --numstat origin/main...HEAD > /tmp/numstat.txt; python3
+    scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file
+    /tmp/changed-files.txt --numstat-file /tmp/numstat.txt
+  floor: 1
+  source: none
+  machine: mini-pro2
+  changed_files_count: 2
+pii: none
+self_report:
+  note: >-
+    `literal_measured`, `mutation_contrast` and `floor_measured` are this session's own
+    measurements, reproducible with the commands they each name — not machine-verified facts
+    baked into CI. `ceiling_probe` is likewise a direct call into
+    scripts/evidence_pack_lint.py's own `compute_ceiling()`, re-runnable verbatim.

@@ -1,0 +1,45 @@
+task_id: consul-native-main
+gear: 3
+gear_reason: Native runtime launch, credential isolation, authorization callbacks, and a substantial new transport surface warrant independent review; no migration is added in this increment.
+objective: Package the reviewed opt-in Codex App Server synthetic text consumer and required pure admission contracts against main, preserving source hashes, authority boundaries, and explicit model-identity limits.
+scope:
+  - Version-pinned isolated native launcher and bounded NDJSON RPC transport.
+  - Shared conductor admission, trusted host authorization callback, same-process native continuity, selected checkpoints, and supervised local cancellation.
+  - Synthetic Terra probes and explicit refusal when the requested model, response identity, hard cap, or operation cannot be established.
+  - Replace feature-base PR 5832 packaging with a main-base PR; original source and probe provenance remains historical and unchanged.
+constraints:
+  - Prepare only; no own merge, auto-merge, deploy, or fleet activation.
+  - No operational PostgreSQL broker wiring or distinct OS service identity is claimed.
+  - No model-side tools, delegates, client PII, remote effects, or general-purpose prompt runner.
+  - Existing Autonomous Lab and Research OS contracts remain in the preceding implementation.
+  - PR 5825 remains the first-merge dependency for the two overlapping admission module/test files; no PostgreSQL, lifecycle, MIR, or parent design-document duplication in this diff.
+  - No scheduler, general CI suite, workflow edits, or change_map/impact_map/advisory merge_group changes.
+  - Do not infer served Astra or transfer Air-M5 runtime qualification to Pro or Mini.
+acceptance:
+  - text: WHEN a requested model is absent or response identity is required, admission SHALL refuse without silent substitution.
+    probe: scripts/tests/test_codex_shadow.py
+  - text: WHEN input, configuration, authentication context, or mission binding changes, reuse SHALL fail closed; current authorization SHALL be checked around the native turn.
+    probe: scripts/tests/test_codex_shadow.py
+  - text: WHEN local cancellation completes, the receipt SHALL retain unknown remote cancellation.
+    status: verified for local stop only; native interrupt unacknowledged
+    probe: evidence/dual-consul-native/native-cancel.json
+  - text: WHEN an unexpected tool or delegation item event arrives, the shadow transport SHALL fail closed and stop its local process group without retaining raw tool parameters.
+    probe: scripts/tests/test_conductor_app_server_rpc.py
+  - text: WHEN a required hard token cap cannot be enforced, admission SHALL refuse that requirement.
+    probe: scripts/tests/test_conductor_adapter_contracts.py
+  - text: The isolated launcher SHALL omit refresh authority, preserve refresh metadata, and avoid source-auth writes.
+    probe: scripts/tests/test_codex_shadow_launch.py
+  - text: The new source SHALL receive independent native consul review on the final frozen artifact.
+    status: verified; corrected-source native delta PASS, source and selected evidence only
+    probe: evidence/dual-consul-native/review-2.json
+  - text: Catalog and turn evidence SHALL identify a reproducible manifest-bound producer and use the shared request_observed identity level.
+    status: implemented and regenerated under c03b182fcd; three conditions closed by native delta PASS
+    probe: scripts/tests/test_codex_shadow_probe.py
+risks:
+  - Runtime-configured model identity does not establish inference-response identity.
+  - Timeout and local shutdown do not bound remote consumption or prove remote cancellation.
+  - Native history is temporary and cannot support cross-process recovery after cleanup.
+  - Literal user-text hashes and contextual configuration/auth hashes do not establish the complete native effective prompt.
+  - The synthetic callback is not an operational PostgreSQL grant or a service-identity boundary.
+pii: none
+instruction_to_the_grader: Review the frozen new native source and actual probes, especially configuration layering, OAuth snapshot authority, late-response handling, admission checks, cancellation races, and claims that exceed the observed runtime surface. Do not import approval from the parent PR.

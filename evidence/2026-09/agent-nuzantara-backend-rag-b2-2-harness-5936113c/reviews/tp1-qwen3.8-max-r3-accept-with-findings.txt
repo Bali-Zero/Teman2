@@ -1,0 +1,23 @@
+VERDICT: ACCEPT-WITH-FINDINGS
+ok: true
+
+FINDINGS:
+1. MINOR (retrieval_harness.py:878-886): The harness does not skip empty-text hits like production does (wa_package_builder.py:285-287: `if not text: continue`). This could include chunks that production would skip, potentially affecting the evidence score if empty-text hits have non-zero scores. Cure: add `if not hit_map.get("text"): continue` before shaping the chunk.
+
+2. MINOR (retrieval_harness.py:880): The harness uses `resolved` (canonicalized/substituted) collection name in the chunk's `collection` field, while production uses the planned name (wa_package_builder.py:283: `"collection": collection`). This affects sort tie-breaking when chunks from different collections have exactly the same score, potentially changing which chunks survive the _MAX_CHUNKS cap. Cure: use the planned collection name in the chunk, or document this as an intentional divergence.
+
+NON-FINDINGS:
+- HC1/HC2: filter, BM25, hybrid_search params, score_kind rule, format_search_results all match production (retrieval_harness.py:750-890).
+- HC4: no path reaches embedding, generation, send, Redis, QueryExpander, reranker, or SearchService construction (retrieval_harness.py:1-100, module docstring).
+- HC5: module scope imports clean, _import_pure_leaf bypasses ancestor __init__.py and cleans up, test proves it in fresh subprocess (retrieval_harness.py:120-170, test_b2_2_retrieval_harness.py:TestHC5ImportBoundary).
+- HC6: all hard-stop conditions handled, --execute requires plan-file + plan-sha256 matching by sha AND recomputation, no flag overrides artifact pin (retrieval_harness.py:780-850, 1300-1380).
+- HC7: guards installed in fresh subprocess BEFORE importing harness, all guilt cases tested (test_b2_2_retrieval_harness.py:TestGuardsHC7).
+- HC8: exception text never leaks, fixed message + class name + int status only, chain severed with `from None` (retrieval_harness.py:310-325, test_b2_2_retrieval_harness.py:TestSafeExceptionSummaryNeverLeaksSecrets).
+- HC3/HC10: translation_changes_query recorded, embedding_divergent excluded from inference, report names relief-band cases, support=None sentence verbatim (retrieval_harness.py:950-1020, test_b2_2_retrieval_harness.py:TestBuildReport).
+- A55_1: collection resolution matches production, parity test pins source lines (retrieval_harness.py:770-795, test_b2_2_retrieval_harness.py:TestA55CollectionResolution).
+- A55_2: "error" key → hard stop, dense fallback → score_kind_divergent excluded from inference (retrieval_harness.py:840-860, test_b2_2_retrieval_harness.py:TestA55ErrorShape).
+- A55_3: filter built through REAL build_search_filter with correct parameters (retrieval_harness.py:609-630, test_b2_2_retrieval_harness.py:TestA55Filter).
+- A55_4: vocab_size reported as sparse determinant, k1/b as document-side params (retrieval_harness.py:1230-1250, test_b2_2_retrieval_harness.py:TestA55Bm25Determinant).
+- Builder disclosure 8: _import_pure_leaf correctly cleans up stubs, test proves no residue (retrieval_harness.py:120-170, test_b2_2_retrieval_harness.py:TestHC5StubBypassLeavesNoTrace).
+- Builder disclosure 9: A55_1 collection resolution replica exact, parity test pins it (test_b2_2_retrieval_harness.py:TestA55CollectionResolution.test_search_service_substitution_shape_parity).
+- Builder disclosure 10: A55_2 error shape handled correctly, "error" key → hard stop, dense fallback → score_kind_divergent (retrieval_harness.py:840-860).

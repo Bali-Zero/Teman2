@@ -1,0 +1,405 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: >-
+  infra/codex-hooks/FABLE-MEASUREMENTS-2026-09-09.md, sections "Fable review",
+  "Fable decisions after the review", "Fable re-review" and "Fable addendum" —
+  the review record this PR ships under, committed with the diff it judges.
+
+lanes:
+  - lane: build-child-adapter
+    role: build
+    seat: codex-gpt-5.6-astra
+  - lane: build-bridge-1.2.0
+    role: build
+    seat: claude-opus-5
+  - lane: review-independent
+    role: review
+    seat: claude-fable-5-1
+  - lane: review-panel
+    role: review
+    seat: kimi-code/k3
+  - lane: ship-verify
+    role: read
+    seat: claude-opus-5
+  - lane: council-cross-family
+    role: review
+    seat: codex-gpt-5.6-sol
+
+what_changed: |
+  30 files: 28 of the ship set (all new except infra/home-fork/declared-pairs.json,
+  +18) plus this PR's own brief.yml and pack.yml. The set
+  is b23fa5c9f5 + cherry-picked 7fab1715, byte-for-byte, plus the review
+  record and this pack.
+
+  Claude side (infra/claude-hooks/): child_workflow.py routes PreToolUse /
+  SubagentStart / SubagentStop for CHILDREN only and re-executes the installed
+  parent guards unmodified; child_context.py holds per-child usage accounting
+  and the expiring seat-local native capacity calibration.
+
+  Ledger (infra/codex-hooks/mandate_budget.py): one reservation per dispatch.
+  stop_lifecycle() releases the reservation and pauses the clock BEFORE any
+  recovery flag or legacy import; caps deny only under NUZANTARA_MANDATE_ID
+  (interactive observes, mandate enforces: max_active=8, active_ttl=1800,
+  MAX_SECONDS=3600, MAX_TOOL_CALLS=120); a young active row without a
+  transcript keeps its slot silently instead of flagging liveness UNKNOWN on
+  every parallel dispatch.
+
+  Codex side: context_bridge.py 1.2.0 accepts a continuation on the
+  DESTINATION's SessionStart claim under the launch nonce (not the first model
+  event), waits ACKNOWLEDGE_SECONDS=240 while blocking a single Stop for at
+  most 45 s, and re-arms transient failures up to MAX_LAUNCH_ATTEMPTS=3
+  without ever retrying past an operator cancel. rpc.py refuses
+  server-initiated approval requests. install.py / install_claude_children.py /
+  installation_status.py / the two native probes / two smokes are the arming
+  and observation surface.
+
+  declared-pairs.json gains exactly three entries (child_workflow.py,
+  child_context.py, mandate_budget.py -> ~/.claude/hooks/), applied on top of
+  main's CURRENT file so nothing that landed since the branch forked is lost.
+
+proof: |
+  Fable 5.1 reviewed every commit in this set, independently of its authors,
+  across three rounds — the verdicts and their evidence are committed in
+  FABLE-MEASUREMENTS-2026-09-09.md, not summarised here. Round 1 (1e73a58d):
+  NOT mergeable, three blockers each backed by live M5 state (reservation leak
+  -> 4th parallel dispatch denied; 900 s cap firing on ordinary Opus/Sonnet
+  children; no Opus calibration -> every Opus child capped at 64,000 tokens).
+  Round 2 (09d79d32): blockers closed in code AND live, plus Fable's own strict
+  native gate — one Sonnet 5 child, 12 sequential 110-second benchmark rounds,
+  1,427 s active, measurement=calibrated 1,000,000/400,000, zero denials, clock
+  paused at Stop — with two required changes R1/R2. Round 3 (7fab1715 +
+  b23fa5c9f5): R1/R2 accepted as delivered, bridge 1.2.0 reviewed with no
+  blocker and two non-blocking recommendations (see dissent).
+
+  This session's own contribution is the ship, and every claim it makes is a
+  receipt below: the cherry-pick is diff-identical to its source, the tree is
+  byte-identical to the reviewed tip, the suites pass, ruff is clean, and the
+  declared-pairs merge preserves main's newer entries.
+
+  Bites: the consumer is the HOME-fork healer (scripts/lint_home_fork.py) plus
+  the two installers. The observation is POST-MERGE and owed before this work
+  is reported done: healer executed on M5/Pro/Mini reconciling
+  ~/.claude/hooks/{child_workflow,child_context,mandate_budget}.py against
+  origin/main bytes, adapters reinstalled from origin/main only (never from a
+  worktree), then one strict (NUZANTARA_MANDATE_ID set) and one interactive
+  native child probe per host against the INSTALLED hooks.
+
+dissent:
+  - seat: claude-fable-5-1
+    objection: >-
+      Blocker 1 — STOP_VERIFY_ALLOW_DIRTY=1 returned from stop mode before
+      stop_guard(), so budget_observe(stopped=True) never ran, every
+      reservation stayed active forever, and max_active=3 then denied the
+      4th parallel dispatch of an ordinary interactive session. Observed live
+      on M5 (ledger 309ac271ed, three reservations still active at 18:58, the
+      denial text 3x in that session's transcript).
+    status: CONFIRMED
+    resolution: >-
+      Fixed in 09d79d32: stop_lifecycle() releases and pauses before any
+      recovery flag or legacy import; concurrency denial is gated on strict;
+      max_active raised to 8; suspect_zombie rows stop counting but are never
+      silently deleted. Pinned by
+      test_stop_releases_and_pauses_before_verification.
+  - seat: claude-fable-5-1
+    objection: >-
+      Blocker 2 — the 900 s active-time cap fired on ordinary Opus/Sonnet
+      builder children (four hits observed on M5 in one afternoon); wall-clock
+      including model thinking, never paused because the Stop bypass never
+      popped budget_started_at.
+    status: CONFIRMED
+    resolution: >-
+      MAX_SECONDS=3600, MAX_TOOL_CALLS=120, and time/tool overages deny only
+      under a mandate. Closed by Fable's own strict native run: 1,427 s active,
+      15 tool calls, no denial, clock paused at Stop.
+  - seat: claude-fable-5-1
+    objection: >-
+      Blocker 3 — no calibration existed for claude-opus-5, this repo's default
+      interactive model, so capacity() returned None and every Opus child was
+      capped at the 64,000-token UNKNOWN fallback (~1/15 of its real window).
+      Observed: children at 82k, 78k, 71k tokens all denied.
+    status: CONFIRMED
+    resolution: >-
+      calibrate() binds the model through the CLI's explicit canonicalModel and
+      rejects conflicting windows; the probe takes --model; Opus, Sonnet and
+      Haiku calibrations are present on all three primary profiles per the
+      fleet evidence shipped in this PR.
+  - seat: claude-fable-5-1
+    objection: >-
+      R1 — reserve() evaluated transcript liveness on active rows regardless of
+      age, so a healthy 4-child parallel dispatch ended needs_attention with
+      "liveness UNKNOWN; slot retained" and polluted the operator's only signal.
+    status: CONFIRMED
+    resolution: >-
+      Delivered in 7fab1715 and cherry-picked here: liveness is evaluated only
+      once time.time() - max(heartbeat, created) >= active_ttl.
+  - seat: claude-fable-5-1
+    objection: >-
+      R2 — native_claude_child_probe.py hardcoded --model claude-fable-5-1
+      --effort xhigh for its parent; Fable is manual-only in this repo and 19
+      fleet runs auto-routed it in one day.
+    status: CONFIRMED
+    resolution: >-
+      Delivered in 7fab1715: the parent defaults to claude-haiku-4-5 with an
+      explicit --parent-model override; the Fable model and its effort override
+      are gone.
+  - seat: claude-fable-5-1
+    objection: >-
+      release() does not refuse while a launch is in flight, although its
+      docstring says cancel first: popping launch_nonce makes the live
+      supervisor raise "launch ownership changed", which rewrites
+      rollover=needs_attention over the released state and re-freezes the
+      source.
+    status: PLAUSIBLE
+    resolution: >-
+      Carried as declared residual, non-blocking per the reviewer. Operator-verb
+      path only, reachable by an explicit release during a starting launch; the
+      state it lands in is needs_attention, which the attention report already
+      surfaces. Fix shape named by the reviewer (refuse when rollover ==
+      "starting" or supervisor_alive()) and left to a follow-up rather than
+      widening a ship-only PR with unreviewed code.
+  - seat: claude-fable-5-1
+    objection: >-
+      TRANSIENT_FAILURES classifies by exception TYPE, so RuntimeError covers
+      "launch ownership changed" and "continuation cancelled" alongside
+      "destination exited without completion" — three different causes retried
+      identically.
+    status: PLAUSIBLE
+    resolution: >-
+      Carried as declared residual, non-blocking per the reviewer. Bounded by
+      MAX_LAUNCH_ATTEMPTS=3 and by launch()'s refusal to retry past
+      cancel_requested. Fix shape named (record a stable failure code in
+      continue_session's except) and left to a follow-up.
+  - seat: kimi-code/k3
+    objection: >-
+      Panel amendment P1 — a bare time-based lease expiry can free the slot of a
+      live child and double-count it; and mandate max_active=3 breaks 4-8 agent
+      fan-outs. (Astra and Gemini 3.1 Pro concurred, 3/3 AMEND.)
+    status: CONFIRMED
+    resolution: >-
+      Adopted as D1: expiry never deletes, it marks suspect_zombie from
+      transcript-mtime/heartbeat silence and stops counting toward max_active,
+      which is 8 under a mandate; the row is retained until a real SubagentStop
+      or the operator reconciles it.
+  - seat: kimi-code/k3
+    objection: >-
+      Panel amendment P2 — an UNKNOWN window must keep some boundary rather than
+      denying nothing at all. (3/3 AMEND.)
+    status: CONFIRMED
+    resolution: >-
+      Adopted as D2: UNKNOWN warns on every tool via additionalContext, keeps
+      the time and tool caps, and applies a 400,000-token emergency ceiling
+      instead of a fabricated percentage. Fable's follow-on note (the per-tool
+      warning is verbose; consider once-per-N) is recorded and not fixed here.
+
+  - seat: kimi-code/k3
+    objection: >-
+      Council finding — mandate_budget.py's unstarted_ttl defaults to 60 s while
+      context_bridge.py's ACKNOWLEDGE_SECONDS is 240 s. Under a shared
+      NUZANTARA_MANDATE_ID any concurrent reserve() sweeps a healthy
+      mid-handshake continuation row to expired_unstarted: it leaves the
+      max_active count (cap drift) and its later accept finds no reserved row to
+      bind, so the accepted continuation records "observed without a dispatch
+      reservation". Same family as R1, on the reserved row instead of the active
+      one; Fable's rounds did not cover it.
+    status: CONFIRMED
+    resolution: >-
+      Declared residual, not fixed in this ship-only PR. Consequence is
+      accounting drift plus a needs_attention row — operator-visible, never
+      silent loss — and the council still returned OK. Fix shape: align
+      unstarted_ttl with ACKNOWLEDGE_SECONDS (or derive one from the other) in a
+      follow-up PR carrying its own test.
+  - seat: kimi-code/k3
+    objection: >-
+      Council finding — install.py's default Codex child_limits has no
+      active_ttl, and mandate_budget.py's suspect_zombie sweep requires it, so
+      the Codex side has no zombie detection at all: a SIGKILLed supervisor pins
+      a slot until max_attempts. The Claude adapter passes active_ttl=1800
+      explicitly; the asymmetry is undeclared.
+    status: CONFIRMED
+    resolution: >-
+      Declared residual, not fixed here. Bounded by max_attempts=24 and visible
+      as a stuck active row in the attention report. Fix shape: give the Codex
+      policy the same explicit active_ttl, or make the sweep fall back to a
+      default instead of skipping when the key is absent.
+  - seat: kimi-code/k3
+    objection: >-
+      Council finding — context_bridge.py's child_hook calls
+      budget_observe(stopped=True) only after the block path returns, so a first
+      BLOCKED SubagentStop skips the release until the harness's second Stop.
+      This is precisely the ordering the Claude side fixed for Blocker 1; the
+      Codex side kept the old order.
+    status: CONFIRMED
+    resolution: >-
+      Declared residual, not fixed here. Self-healing on the next Stop, and the
+      Codex side's caps are advisory outside strict mode. Fix shape: mirror
+      stop_lifecycle()'s "release before judge" ordering in child_hook.
+  - seat: kimi-code/k3
+    objection: >-
+      Council finding — needs_attention latches: nothing clears the status once
+      the condition resolves (a child that later returns cleanly leaves its
+      alarm standing). R1 narrowed the trigger, not the latch, so the attention
+      report accumulates resolved alarms — the same signal-pollution failure R1
+      was written to stop.
+    status: CONFIRMED
+    resolution: >-
+      Declared residual, not fixed here. Fix shape: clear or supersede the status
+      when a later observation contradicts it, with the ledger keeping the
+      history rather than the live flag.
+  - seat: kimi-code/k3
+    objection: >-
+      Council finding — this pack's original "WHY GEAR 3" claimed two of the
+      three proposed cuts exceeded the Gear-3 threshold and implied the split was
+      infeasible. All three exceed it (the first only by 47 lines), and an
+      ORDERED split A -> B -> C is dependency-safe; the reason not to split is
+      cost, not feasibility.
+    status: CONFIRMED
+    resolution: >-
+      Corrected in the brief and in the PR body before opening: the rationale now
+      states that the ordered split is feasible and was rejected because it buys
+      three Gear-3 ceremonies and three merge windows in place of one.
+
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Council finding, FIRST PASS BLOCK — reserve()'s `depth > max_depth` denial
+      is the only cap not gated on `strict`, so read against the file alone an
+      interactive dispatch can be denied while enforcement is off, contradicting
+      "interactive observes, mandate enforces".
+    status: RETRACTED
+    resolution: >-
+      Retracted by the same seat once given the call sites and the written
+      contract it had been denied by construction (the prompt forbade repo
+      exploration). D1 enumerates the caps that stop denying outside a mandate as
+      concurrency, tokens, tool count and time — depth is not among them — and NO
+      shipped caller passes depth: a grep over both adapters returns nothing but
+      max_depth and two message strings, so the branch evaluates 1 > 1 and is
+      unreachable. The grandchild rule it resembles lives outside the ledger, is
+      unconditional by design, and is enforced in child_workflow.py's child branch
+      and context_bridge.py:466. Seat's words: "The BLOCK does not stand ... it
+      does not block the shipped system described here." VERDICT OK.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Council finding, surviving the retraction — the unguarded depth branch is
+      dead code whose ownership overlaps the adapter-level structural guard: a
+      future caller passing depth > 1 would activate ledger behaviour that
+      duplicates a rule already enforced above it.
+    status: CONFIRMED
+    resolution: >-
+      Declared residual, not fixed in this ship-only PR. Unreachable today
+      (receipt: the grep). Fix shape named by the seat — remove it, or gate it on
+      strict like its four siblings and give it a test — in the same follow-up
+      that carries kimi's four findings.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Council finding — observe(): a stop observed before its start binding
+      cannot claim the pending reservation, so the row stays `reserved` while the
+      child is recorded stopped, and the ledger reports attention. A leak under
+      reordered or missing hook delivery.
+    status: CONFIRMED
+    resolution: >-
+      Declared residual, not fixed here; bounded by unstarted_ttl's sweep and
+      operator-visible as needs_attention rather than silent. Same follow-up.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Entity-vs-substring question (superscar #3) put to the seat explicitly.
+    status: RETRACTED
+    resolution: >-
+      No finding: reservation matching is by exact child key or exact SHA-256
+      alias membership; the seat found no guard matching a substring where it
+      should match an entity, and no double-refund path (repeated stops are
+      idempotent).
+
+receipts:
+  - claim: "the deterministic Gear floor for this diff is 3, sourced from SIZE (7,623 churned lines, 28 files)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <staged> --numstat-file <staged numstat>; --print-floor-source (same args)"
+    result: "3 / size"
+    exit: 0
+    ts: "2026-09-09T15:30:00Z"
+    seat: claude-opus-5
+  - claim: "the four suites of the ship set pass on this tree (the count Fable measured at b23fa5c9f5)"
+    cmd: ".venv/bin/python -m pytest infra/claude-hooks/test_child_context.py infra/claude-hooks/test_child_review_regressions.py infra/codex-hooks/test_child_lifecycle.py infra/codex-hooks/test_context_bridge.py -q"
+    result: "76 passed in 17.80s"
+    exit: 0
+    ts: "2026-09-09T15:28:00Z"
+    seat: claude-opus-5
+  - claim: "ruff is clean on every python file of the ship set"
+    cmd: "ruff check infra/claude-hooks/child_context.py infra/claude-hooks/child_workflow.py infra/claude-hooks/test_child_context.py infra/claude-hooks/test_child_review_regressions.py infra/codex-hooks/*.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-09T15:28:00Z"
+    seat: claude-opus-5
+  - claim: "the cherry-pick applied exactly R1+R2 and nothing else (+10/-4, two files)"
+    cmd: "diff <(git diff 7fab171563^ 7fab171563 | grep -v '^index ') <(git diff b23fa5c9f5 8c5e79f99a | grep -v '^index ')"
+    result: "CHERRY-PICK DIFF IDENTICAL (no output)"
+    exit: 0
+    ts: "2026-09-09T14:20:00Z"
+    seat: claude-opus-5
+  - claim: "every ship-set file except declared-pairs.json is byte-identical to the reviewed tip 8c5e79f99a"
+    cmd: "for f in $(git diff --name-only origin/main...8c5e79f99a); do diff -q <(git show 8c5e79f99a:$f) $f; done"
+    result: "no differences on 26 files (declared-pairs.json excluded by design)"
+    exit: 0
+    ts: "2026-09-09T15:20:00Z"
+    seat: claude-opus-5
+  - claim: "the declared-pairs merge preserves main's current entries and adds exactly three"
+    cmd: 'python3 -c "import json;d=json.load(open(''infra/home-fork/declared-pairs.json''));print(len(d[''pairs'']),[x[''live''] for x in d[''pairs''][-3:]])"'
+    result: "174 ['~/.claude/hooks/child_workflow.py', '~/.claude/hooks/child_context.py', '~/.claude/hooks/mandate_budget.py'] (171 on main + 3)"
+    exit: 0
+    ts: "2026-09-09T15:22:00Z"
+    seat: claude-opus-5
+  - claim: "no required check runs the ship set's suites, so a split on the import boundary would break main silently, not redly"
+    cmd: "grep -rn 'infra/codex-hooks' .github/workflows/*.yml"
+    result: "3 files, path filters only (guard-conformance, hook-innocence-gate, kbli-filiera-vault-compilers) — no pytest invocation"
+    exit: 0
+    ts: "2026-09-09T14:35:00Z"
+    seat: claude-opus-5
+  - claim: "the strict 20-minute native gate is closed — a real Sonnet 5 child ran 1,427 s under a mandate with zero denials"
+    cmd: "native run fable-20min-proof-1788958131 (12 x 110 s SHA-256 rounds), parent session probe.jsonl under ~/.claude/state/worktrees/"
+    result: "15 tool calls, active 1,427 s, measurement=calibrated 1,000,000/400,000, used 39,790, denials none, clock paused at Stop, parent returned FABLE_20MIN_PROOF_OK"
+    exit: 0
+    ts: "2026-09-09T13:20:00Z"
+    seat: claude-fable-5-1
+  - claim: "generator is not grader on any commit of this set: Fable reviewed 1e73a58d, 09d79d32, 7fab1715 and b23fa5c9f5 without authoring any of them"
+    cmd: "read infra/codex-hooks/FABLE-MEASUREMENTS-2026-09-09.md sections 'Fable review', 'Fable re-review', 'Fable addendum' (committed in this PR)"
+    result: "NOT-mergeable / mergeable-after-R1-R2 / ACCEPTED + no-blocker, with live M5 state cited for each blocker"
+    exit: 0
+    ts: "2026-09-09T13:50:00Z"
+    seat: claude-fable-5-1
+  - claim: "an independent cross-family council reviewed this exact staged tree and returned OK with four residual RISKs, all recorded in dissent"
+    cmd: "kimi -m kimi-code/k3 -p <council brief> (read-only, run from the PR worktree)"
+    result: "VERDICT: OK — integrity verified by blob hash, PII boundary clean, 4 RISK findings, 0 BUG"
+    exit: 0
+    ts: "2026-09-09T16:05:00Z"
+    seat: kimi-code/k3
+  - claim: "the second council seat returned BLOCK on first pass and OK after being shown the call sites — the retraction is recorded, not the verdict alone"
+    cmd: "codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check (mandate_budget.py inlined, no repo access), then a re-judgement prompt carrying D1's text, both reserve() call sites and the grep that shows no caller passes depth"
+    result: "pass 1 VERDICT: BLOCK (unguarded depth cap); pass 2 'The BLOCK does not stand' -> VERDICT: OK, depth branch downgraded to dead-code inconsistency"
+    exit: 0
+    ts: "2026-09-10T01:05:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "no shipped caller passes depth to reserve(), so the ungated branch is unreachable (the fact that disposed of the BLOCK)"
+    cmd: "grep -rn depth --include=*.py infra/claude-hooks infra/codex-hooks | grep -v 'max_depth|Child delegation depth|coordinator owns'"
+    result: "no match in either adapter; both reserve() call sites omit the argument, so depth == 1 and 1 > 1 is False"
+    exit: 0
+    ts: "2026-09-10T00:55:00Z"
+    seat: claude-opus-5
+  - claim: "guard-conformance is green only because the two new hooks are registered AND their suites are armed in a workflow (C1 + C4)"
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py; actionlint .github/workflows/guard-conformance.yml"
+    result: "25 hook entries, 0 violation(s), every censused guard armed in CI; actionlint silent"
+    exit: 0
+    ts: "2026-09-10T00:20:00Z"
+    seat: claude-opus-5
+
+pii_scan: clean
+pii_scan_note: >-
+  Scanned the whole diff for credentials and client data before staging: no
+  secret pattern, no client email, no phone number, no OSINT. The evidence
+  JSON/markdown carries session ids, model names, token counts and hook paths
+  only — machine state about this repo's own harness. context_bridge.py's own
+  checkpoint() regex-rejects emails and bearer/sk- tokens before writing state,
+  and no state file is committed here.
+
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 3
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD — that value governs; the local staged count is dominated by the ship set, with this pack, its brief and its council journal added on top"

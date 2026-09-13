@@ -1,0 +1,75 @@
+task_id: garuda-voa-step8-staff-backend
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  GARUDA VOA step 8, backend half (mandate: docs/plans/2026-08-24-garuda-voa-live/NEXT-SESSION.md).
+  Ground work found step 7 (the customer tracker) already live-dark on main; the one missing organ
+  was the STAFF transition engine — nothing could move a practice past `Received`. This diff adds:
+  migration 305 (assignment columns, `active_block_id`, staff-only artifact columns, append-only
+  `garuda_practice_evidence`), the staff session verifier that arms the previously inert
+  `garuda_staff_session_verifier` slot, a thin `garuda_staff_router.py` (listStaffPractices,
+  getStaffPractice, assignPractice — new contract ops — and the frozen `transitionPractice`
+  PR-02..PR-11) over a `staff_transitions.py` service, seven outbox handlers for the customer
+  state-change emails, and the contract/parity/manifest updates.
+
+  Floor 3 by hot zone (`migrations_v2/**`) and by size. Cross-family council convened on the FINAL
+  diff, not on the spec only: codex-gpt-5.6-sol (BLOCK, 9 findings) and tp1-qwen3.8-max
+  (PASS-WITH-CONDITIONS, 2 findings — its first attempt, diff inline, was a non-judgment and was
+  discarded, not counted); a third, non-registered seat (gemini via `agy`, inline diff) returned
+  PASS-WITH-CONDITIONS with 4 findings; kimi-code/k3 answered HTTP 403 (weekly quota) before any
+  review ran. Every finding was disposed in writing (pack.yml `dissent:`): 5 cured in round 4 with
+  TDD, 1 (qwen #1, accounting role could still transition assigned practices) cured by the
+  orchestrator with 2 tests, 4 declared as gaps in PENDING-ARMS, 1 (codex #3, semantic verification
+  of evidence content and creator-bound artifact retrieval) disposed as outside the frozen v1
+  contract, which carries opaque ids only.
+constraints:
+  - "Migration 305 must be applicable by the production runner role `backend_rag_v2` (NOT superuser,
+    NOT visa_ledger_owner): no function ownership transfer, table owner preflight, per-column guarded
+    ALTER, `SET LOCAL lock_timeout`."
+  - "Staff routes are NEVER added to PUBLIC_ENDPOINTS / INTENTIONALLY_PUBLIC_MUTATIONS; a customer
+    magic session, an API-key identity, a refresh token or the accounting full-view role must not
+    reach them."
+  - "The customer `PracticeView` never carries `private_staff_note`, evidence, artifact ids or
+    staff emails (PR-F04)."
+  - "No PII in logs (staff emails hashed), journal prose, or commit messages."
+  - "Flat-subscription seats only; no paid per-token API."
+acceptance:
+  - "Gate run by the orchestrator session itself, not the builders: 466 passed (03:24Z re-run) across
+    test_staff_router_transitions.py, test_garuda_staff_public_prefix_guard.py,
+    test_mutating_routes_are_gated.py, test_garuda_voa_openapi_parity.py, test_router_manifest.py,
+    test_manifest_registration_parity.py, test_outbox_job_type_coverage.py,
+    test_garuda_staff_actor_async_verifier.py (2026-09-02T01:15Z)."
+  - "ruff clean on the touched modules; `from backend.app.dependencies import get_current_user`
+    imports; `scripts/docs_sync.py` → DOCSYNC OK."
+  - "Migration 305 applied twice against a real Postgres is a no-op the second time (builder receipt,
+    re-run in round 2 and round 4)."
+  - "PROVE-LIVE after merge (deploy is the merge): `release_command` applies 305 — verified by reading
+    `_schema_versions` for `305_*` via scripts/pg.sh, then the catalog (`garuda_practice_evidence`
+    exists, `active_block_id` column exists); `GET /api/visa/voa/staff/practices` without credential
+    → 401 on the public domain; with an admin session on kita.balizero.com → 200 `{items, next_cursor}`."
+consumer_map:
+  - "kita workspace UI (PR #5577) — the only consumer of the 4 staff operations."
+  - "Customer tracker `getOrderAndPractice` — reads the states this engine now writes."
+  - "Outbox dispatcher — the 7 new job types."
+  - "fly-deploy.yml release_command — applies 305 on merge."
+risks:
+  - "codex #3 (CRITICAL as filed): the engine records opaque evidence/artifact ids; it does not verify
+    evidence content nor serve the artifact. Disposed as out of the frozen v1 contract; a follow-up
+    contract change is ledgered."
+  - "codex #7: `customer_reason_key`/`required_action_key` are regex-shaped, not a closed allowlist —
+    the frontend `messages.ts` deliberately holds no catalog yet. Ledgered; until then a staff user
+    could encode free text in a key. Mitigation in this diff: regex `^garuda_voa\\.(practice|action)\\.
+    [a-z0-9_]+$` only."
+  - "codex #9 / gemini #4: `Idempotency-Key` is enforced at runtime (400) but the live OpenAPI marks it
+    optional — declared parity gap, guarded in the parity test, ledgered."
+  - "Council quorum is codex + tp1-qwen; kimi 403."
+grader: |
+  generator != grader at every level: Sonnet 5 builders (4 rounds) never gated their own diff; the
+  spec was refuted by codex before build; the final diff was reviewed by codex-gpt-5.6-sol and
+  tp1-qwen3.8-max (registered seats) plus gemini/agy; the orchestrator session re-ran the suites and
+  greps itself before authoring this pack.
+budget: |
+  Flat subscriptions only: Claude seat (orchestrator + 4 Sonnet builder lanes), ChatGPT Pro (codex),
+  Google AI Ultra (agy), Alibaba TP1 (qwen). Kimi attempted, 403 before spend. Zero metered spend.
+pii: none

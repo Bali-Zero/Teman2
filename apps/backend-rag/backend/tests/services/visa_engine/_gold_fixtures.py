@@ -630,6 +630,12 @@ _BASELINE_FACTS: dict[str, dict[str, Any]] = {
     "investment.investment_capital_idr": {"status": "KNOWN", "value": 0},
     "investment.paid_up_capital_idr": {"status": "KNOWN", "value": 0},
     "investment.proposed_role": {"status": "KNOWN", "value": "NO_OPERATIONAL_ROLE"},
+    # investment.investment_amount_usd: no default any more (PR-D4c-1's
+    # transitional default was removed once D4c-2's interview question
+    # shipped), so this key is REQUIRED like every field above it — UNKNOWN
+    # is still the right baseline value since no rule in ``_build_rules``
+    # references this path yet.
+    "investment.investment_amount_usd": _UNKNOWN_NOT_ASKED,
     "family.relation_to_sponsor": _UNKNOWN_NOT_ASKED,
     "family.sponsor_nationalities": _UNKNOWN_NOT_ASKED,
     # Gate round 2 (2026-07-20) parziale item 2: KNOWN("NONE"), not UNKNOWN

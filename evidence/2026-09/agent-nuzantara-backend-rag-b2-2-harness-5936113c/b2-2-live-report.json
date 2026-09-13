@@ -1,0 +1,1249 @@
+{
+  "cases": [
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "How long does PT PMA registration take?",
+      "query_domain": "default",
+      "query_key": "EN::How long does PT PMA registration take?",
+      "query_lang": "EN",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:84cfba2e-6608-945d-7768-fd3c710bd20f",
+        "kbli_2025_final:id:889ce675-02cc-0f99-f257-bff9c2d1d630",
+        "legal_unified_hybrid:id:0d98b8e3-8dbf-5bb7-9902-1ffd6b610f27",
+        "legal_unified_hybrid:id:cb3c4023-8738-56a6-801f-718284029605",
+        "kbli_2025_final:id:cc4cfaec-62f6-f626-da2f-5384ba031503",
+        "legal_unified_hybrid:id:118beb81-7080-554e-a44a-5f1daa9672b9"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "visa_oracle": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "visa_oracle",
+          "collection_resolved": "visa_oracle",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.12,
+      "planned_collections": [
+        "visa_oracle",
+        "legal_unified_hybrid"
+      ],
+      "query": "How long does a visa extension processing take?",
+      "query_domain": "visa",
+      "query_key": "EN::How long does a visa extension processing take?",
+      "query_lang": "EN",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:46ed1a53-9ea1-548c-9ed1-bc19b0310751",
+        "legal_unified_hybrid:id:2f352a5a-05d9-5480-aaa0-1823b755665d",
+        "visa_oracle:id:a98209a7-0f72-5b7a-af1f-18de69c04bae",
+        "legal_unified_hybrid:id:19dd9942-ef38-563f-89ee-22342859f427",
+        "visa_oracle:id:72a88512-b1f0-5f64-af93-5515a71a1223",
+        "visa_oracle:id:d5ca7e72-a2d6-594b-97b4-7dcf0b07d98d"
+      ],
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "visa_oracle": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "visa_oracle",
+          "collection_resolved": "visa_oracle",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.12,
+      "planned_collections": [
+        "visa_oracle",
+        "legal_unified_hybrid"
+      ],
+      "query": "How long does an online visa extension take?",
+      "query_domain": "visa",
+      "query_key": "EN::How long does an online visa extension take?",
+      "query_lang": "EN",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:c9521788-cdb7-5e47-bba8-616524065751",
+        "legal_unified_hybrid:id:119682ee-8cdb-555a-8cd7-659a6830a5bb",
+        "visa_oracle:id:a98209a7-0f72-5b7a-af1f-18de69c04bae",
+        "legal_unified_hybrid:id:02fde83d-b1d4-59f0-ae1d-f88643dbd7bf",
+        "visa_oracle:id:72a88512-b1f0-5f64-af93-5515a71a1223",
+        "visa_oracle:id:d5ca7e72-a2d6-594b-97b4-7dcf0b07d98d"
+      ],
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "How much is a PT PMA company, all in?",
+      "query_domain": "default",
+      "query_key": "EN::How much is a PT PMA company, all in?",
+      "query_lang": "EN",
+      "score": 0.8,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:959365f0-d50e-3669-42ba-7624470f544a",
+        "kbli_2025_final:id:366f58f0-5dcd-7796-48a8-9fbdbdbda49d",
+        "legal_unified_hybrid:id:c68e44e2-6821-5f23-ba7b-26c01b9d6818",
+        "legal_unified_hybrid:id:b9100bba-3b40-5769-958d-aafa21936465",
+        "kbli_2025_final:id:4ea150cd-6f16-27d2-5a0b-0b591358ce97",
+        "legal_unified_hybrid:id:5ac7591d-3748-5212-a7cf-e27255c6c729"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "Is NIB required for a PT PMA?",
+      "query_domain": "default",
+      "query_key": "EN::Is NIB required for a PT PMA?",
+      "query_lang": "EN",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:1c8b2e36-f85d-8b99-0b07-476e6afe316c",
+        "kbli_2025_final:id:889ce675-02cc-0f99-f257-bff9c2d1d630",
+        "legal_unified_hybrid:id:b6d8458e-0f00-5624-a142-05631b966408",
+        "legal_unified_hybrid:id:939f42f6-6250-5897-b4d2-aea11a07093c",
+        "kbli_2025_final:id:2db55142-199b-156f-2991-8f0ff228174e",
+        "legal_unified_hybrid:id:5d539cbc-dd94-5a73-b064-aa94021abf59"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "What are the NIB and OSS requirements?",
+      "query_domain": "default",
+      "query_key": "EN::What are the NIB and OSS requirements?",
+      "query_lang": "EN",
+      "score": 0.8,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:762ee45d-481a-a746-6c8a-b0a45ba03db4",
+        "legal_unified_hybrid:id:bfd64eac-e235-49ac-8542-4c892d8d1ac2",
+        "legal_unified_hybrid:id:2b50a6a8-c1eb-5426-814d-643eda6df73f",
+        "kbli_2025_final:id:48bfda63-8d03-9d30-3913-7bbe226374c5",
+        "kbli_2025_final:id:ff732180-7dc2-b018-67f5-ec9d927dde8c",
+        "legal_unified_hybrid:id:707f1bd4-4c2c-469a-8255-07a236453aff"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "What is the minimum paid-up capital for a PT PMA?",
+      "query_domain": "default",
+      "query_key": "EN::What is the minimum paid-up capital for a PT PMA?",
+      "query_lang": "EN",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:47c3790c-6a15-f9af-4e3e-01f2f479313f",
+        "kbli_2025_final:id:959365f0-d50e-3669-42ba-7624470f544a",
+        "legal_unified_hybrid:id:a31a95fc-ebba-592e-8334-6ed7ca53218a",
+        "legal_unified_hybrid:id:939f42f6-6250-5897-b4d2-aea11a07093c",
+        "kbli_2025_final:id:84cfba2e-6608-945d-7768-fd3c710bd20f",
+        "legal_unified_hybrid:id:4110c931-59c8-5565-acec-8ad097cc4836"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "What is the price of new company setup?",
+      "query_domain": "pricing",
+      "query_key": "EN::What is the price of new company setup?",
+      "query_lang": "EN",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:ee698ed9-ba80-b042-424c-973ee88b6641",
+        "kbli_2025_final:id:467c9780-6b85-1464-4d13-d4f1fce8470a",
+        "legal_unified_hybrid:id:befdeb2b-b27b-5ac1-8a4c-6917c9b56c4f",
+        "legal_unified_hybrid:id:5ac7591d-3748-5212-a7cf-e27255c6c729",
+        "kbli_2025_final:id:7c9f4abf-d56d-b8f7-940a-2b0ba7327f3e",
+        "legal_unified_hybrid:id:6e5d36c0-3e6f-58bf-8ac4-e4b19c5d9da5"
+      ],
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "training_conversations_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "training_conversations_hybrid"
+      ],
+      "query": "What time does the ferry to Nusa Penida leave?",
+      "query_domain": "default",
+      "query_key": "EN::What time does the ferry to Nusa Penida leave?",
+      "query_lang": "EN",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:01c97ab5-f24c-46e6-9314-5071636b1a2d",
+        "legal_unified_hybrid:id:4cda8e21-e775-50bd-b9f0-20ca48919f92",
+        "training_conversations_hybrid:id:55b78fc0-1065-49c6-b7fa-64b904da6f1d",
+        "training_conversations_hybrid:id:89d92408-8205-4119-b2a9-fbffd121ecf1",
+        "legal_unified_hybrid:id:4110c931-59c8-5565-acec-8ad097cc4836",
+        "training_conversations_hybrid:id:11396932010051971743"
+      ],
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "training_conversations_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "training_conversations_hybrid"
+      ],
+      "query": "Where can I surf in Bali next weekend?",
+      "query_domain": "default",
+      "query_key": "EN::Where can I surf in Bali next weekend?",
+      "query_lang": "EN",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:795dc043-b4ac-5c17-b5a0-6e8d5f3e5f74",
+        "legal_unified_hybrid:id:3dbc134b-d713-548c-86f7-f157ca5985d2",
+        "training_conversations_hybrid:id:aeeadcda-3fa7-411e-b6d9-627b551132dc",
+        "training_conversations_hybrid:id:dc16ef1d-f61a-4ed4-b890-0de65651d632",
+        "legal_unified_hybrid:id:4bcb7590-7ff5-5179-8f11-5c5558831841",
+        "training_conversations_hybrid:id:15962029553460149789"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "training_conversations_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.12,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "training_conversations_hybrid"
+      ],
+      "query": "xyzabc123",
+      "query_domain": "visa",
+      "query_key": "EN::xyzabc123",
+      "query_lang": "EN",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:09db0b7f-4869-5b98-996e-e9f2b6e99836",
+        "legal_unified_hybrid:id:79b26b12-2b7c-5376-8dec-56ae72d43c66",
+        "training_conversations_hybrid:id:aa9c5352-ee8c-497a-931c-d017a77765db",
+        "training_conversations_hybrid:id:14969602660168176732",
+        "legal_unified_hybrid:id:83760384-7036-5d37-a7f6-da16cfe60e56",
+        "training_conversations_hybrid:id:12309078883124589279"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "training_conversations_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "training_conversations_hybrid"
+      ],
+      "query": "Ada apa saja di Ubud akhir pekan ini?",
+      "query_domain": "default",
+      "query_key": "ID::Ada apa saja di Ubud akhir pekan ini?",
+      "query_lang": "ID",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:b4118aa6-040e-5509-bd86-3509e19b627b",
+        "legal_unified_hybrid:id:399a5caa-ed41-5284-a3c1-6742d3098891",
+        "training_conversations_hybrid:id:b2a00969-02bd-46b1-ac01-f1b0ff435d73",
+        "training_conversations_hybrid:id:6d3ef109-33e3-4f29-9e7b-0675154145b1",
+        "legal_unified_hybrid:id:1215d63c-1f01-5619-bd27-5c1997179dd2",
+        "training_conversations_hybrid:id:16485227470584855710"
+      ],
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "Apa saja syarat NIB dan OSS?",
+      "query_domain": "default",
+      "query_key": "ID::Apa saja syarat NIB dan OSS?",
+      "query_lang": "ID",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:762ee45d-481a-a746-6c8a-b0a45ba03db4",
+        "kbli_2025_final:id:9eb077ca-622e-70a9-080e-b1bb0ec64452",
+        "legal_unified_hybrid:id:bfd64eac-e235-49ac-8542-4c892d8d1ac2",
+        "legal_unified_hybrid:id:5045df51-472b-5e03-a2e9-7acf1e6e7437",
+        "kbli_2025_final:id:a7a630f7-3df7-4f52-aa6c-fde4840a4bac",
+        "legal_unified_hybrid:id:c9521788-cdb7-5e47-bba8-616524065751"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "Apakah NIB wajib untuk PT PMA?",
+      "query_domain": "default",
+      "query_key": "ID::Apakah NIB wajib untuk PT PMA?",
+      "query_lang": "ID",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:091b6eaa-83da-4e46-6b19-f7de6aacb0d5",
+        "kbli_2025_final:id:889ce675-02cc-0f99-f257-bff9c2d1d630",
+        "legal_unified_hybrid:id:c9fe8e85-7006-5f97-b7d1-cf81edd6657e",
+        "legal_unified_hybrid:id:939f42f6-6250-5897-b4d2-aea11a07093c",
+        "kbli_2025_final:id:66c09aa8-8daa-2408-6cd1-289b2eed0859",
+        "legal_unified_hybrid:id:c68e44e2-6821-5f23-ba7b-26c01b9d6818"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "Berapa biaya pendirian PT PMA?",
+      "query_domain": "pricing",
+      "query_key": "ID::Berapa biaya pendirian PT PMA?",
+      "query_lang": "ID",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:c5874814-4019-4b92-df21-a38deb9bbebe",
+        "kbli_2025_final:id:959365f0-d50e-3669-42ba-7624470f544a",
+        "legal_unified_hybrid:id:c68e44e2-6821-5f23-ba7b-26c01b9d6818",
+        "legal_unified_hybrid:id:0d98b8e3-8dbf-5bb7-9902-1ffd6b610f27",
+        "kbli_2025_final:id:3d00332f-3719-8821-66cc-b2071468735b",
+        "legal_unified_hybrid:id:118beb81-7080-554e-a44a-5f1daa9672b9"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "nuzantara_general_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "nuzantara_general_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": true
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "nuzantara_general_hybrid"
+      ],
+      "query": "Berapa harga sewa motor di Canggu?",
+      "query_domain": "pricing",
+      "query_key": "ID::Berapa harga sewa motor di Canggu?",
+      "query_lang": "ID",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 3,
+      "source_refs": [
+        "nuzantara_general_hybrid:id:5b918acb-436c-5630-bbb2-4e5617180dd0",
+        "nuzantara_general_hybrid:id:1a915cdc-49be-50f9-afad-70b844882d1f",
+        "nuzantara_general_hybrid:id:d34c9974-cc35-5a5d-9e35-518393c3deb2"
+      ],
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "visa_oracle": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "visa_oracle",
+          "collection_resolved": "visa_oracle",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.12,
+      "planned_collections": [
+        "visa_oracle",
+        "legal_unified_hybrid"
+      ],
+      "query": "Berapa lama perpanjangan visa online?",
+      "query_domain": "visa",
+      "query_key": "ID::Berapa lama perpanjangan visa online?",
+      "query_lang": "ID",
+      "score": 0.8,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:d82367be-fdee-5585-b5ae-e80cbeb77669",
+        "legal_unified_hybrid:id:8669594e-8fda-5c35-9340-873741c0f29f",
+        "legal_unified_hybrid:id:5ebbe427-51e9-546f-9b42-e542a2e9410c",
+        "visa_oracle:id:a98209a7-0f72-5b7a-af1f-18de69c04bae",
+        "visa_oracle:id:88f67075-b5bd-534b-8795-2c808539812e",
+        "visa_oracle:id:9f2cfc23-98a9-5641-b9c5-19a0cf3a2bc4"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "Berapa lama proses pendirian PT PMA?",
+      "query_domain": "default",
+      "query_key": "ID::Berapa lama proses pendirian PT PMA?",
+      "query_lang": "ID",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:cf148257-564b-d7bb-36b5-e5e294400a7e",
+        "kbli_2025_final:id:959365f0-d50e-3669-42ba-7624470f544a",
+        "legal_unified_hybrid:id:118beb81-7080-554e-a44a-5f1daa9672b9",
+        "legal_unified_hybrid:id:4e0447fb-a15e-5322-921a-23efc1eb43f6",
+        "kbli_2025_final:id:34ee475c-42d1-69b6-2f4a-09b672d0cec1",
+        "legal_unified_hybrid:id:33fda49c-f6f1-5dd3-83f2-faf4e2bff078"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "visa_oracle": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "visa_oracle",
+          "collection_resolved": "visa_oracle",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.12,
+      "planned_collections": [
+        "visa_oracle",
+        "legal_unified_hybrid"
+      ],
+      "query": "Berapa lama proses perpanjangan visa?",
+      "query_domain": "visa",
+      "query_key": "ID::Berapa lama proses perpanjangan visa?",
+      "query_lang": "ID",
+      "score": 0.8,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:8669594e-8fda-5c35-9340-873741c0f29f",
+        "legal_unified_hybrid:id:d82367be-fdee-5585-b5ae-e80cbeb77669",
+        "legal_unified_hybrid:id:571b07c0-5750-5ac5-9c09-9e7221a6f5a0",
+        "visa_oracle:id:a98209a7-0f72-5b7a-af1f-18de69c04bae",
+        "visa_oracle:id:3f40c12e-5dcc-543b-8358-e993df6a81f0",
+        "visa_oracle:id:83861bd2-a2a2-504d-9037-0adcbf777d56"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "Berapa modal disetor minimum PT PMA?",
+      "query_domain": "default",
+      "query_key": "ID::Berapa modal disetor minimum PT PMA?",
+      "query_lang": "ID",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:96a8ac74-62bc-3b9d-312f-49bc5bd58e93",
+        "kbli_2025_final:id:889ce675-02cc-0f99-f257-bff9c2d1d630",
+        "legal_unified_hybrid:id:a392da30-c8ff-5730-b530-2b5dcba342d5",
+        "legal_unified_hybrid:id:c9fe8e85-7006-5f97-b7d1-cf81edd6657e",
+        "kbli_2025_final:id:33ee62eb-64f3-923f-9313-63e69e7d271d",
+        "legal_unified_hybrid:id:c68e44e2-6821-5f23-ba7b-26c01b9d6818"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "kbli_2025_final": 3,
+        "legal_unified_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "kbli_2025_final"
+      ],
+      "query": "Harga PT PMA berapa all in?",
+      "query_domain": "pricing",
+      "query_key": "ID::Harga PT PMA berapa all in?",
+      "query_lang": "ID",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "kbli_2025_final:id:a1182385-b21d-d579-d230-5c55c12c60a5",
+        "kbli_2025_final:id:fcb47e14-2781-0e91-fd0e-66cce63212f9",
+        "legal_unified_hybrid:id:fdaa1d65-e63a-5b58-99f4-37d84117d106",
+        "legal_unified_hybrid:id:2c84b1c9-0184-50b8-84db-59742f487737",
+        "kbli_2025_final:id:1730363d-42fe-36a3-60e4-bd06062b4852",
+        "legal_unified_hybrid:id:153bc8fb-ed34-5154-a494-a2d2b6c68732"
+      ],
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "training_conversations_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "training_conversations_hybrid"
+      ],
+      "query": "Jam berapa kapal ke Nusa Penida berangkat?",
+      "query_domain": "default",
+      "query_key": "ID::Jam berapa kapal ke Nusa Penida berangkat?",
+      "query_lang": "ID",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:6071c417-91a0-5ee6-9be0-407945c17310",
+        "legal_unified_hybrid:id:9c61cbd3-09e5-0d71-2bca-1d180c54bb02",
+        "training_conversations_hybrid:id:1109d929-79d0-4f7c-b6c5-b3a8018b698b",
+        "training_conversations_hybrid:id:c5852a2d-d32b-4941-96c1-d79adb895617",
+        "legal_unified_hybrid:id:7ff93c25-4421-533b-88be-22e0b41ae057",
+        "training_conversations_hybrid:id:663897925694482275"
+      ],
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_hit_counts": {
+        "legal_unified_hybrid": 3,
+        "training_conversations_hybrid": 3
+      },
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "generation_threshold": 0.15,
+      "label_decision": "pass",
+      "label_threshold": 0.15,
+      "planned_collections": [
+        "legal_unified_hybrid",
+        "training_conversations_hybrid"
+      ],
+      "query": "asdkjhasd",
+      "query_domain": "default",
+      "query_key": "ID::asdkjhasd",
+      "query_lang": "ID",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "score_kinds": [
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted",
+        "hybrid_rrf_formatted"
+      ],
+      "source_count": 6,
+      "source_refs": [
+        "legal_unified_hybrid:id:47d7df78-ad95-5604-be1c-cd34fe907106",
+        "legal_unified_hybrid:id:bdd87ca0-b7eb-5bb1-af6c-06c0790d666c",
+        "training_conversations_hybrid:id:928527099654301539",
+        "training_conversations_hybrid:id:ecefaf1d-a101-4c2d-9748-10c46f870141",
+        "legal_unified_hybrid:id:7bcc03f8-442a-5308-88ff-e5c29e777060",
+        "training_conversations_hybrid:id:fa40c3b2-23c8-4fe8-8713-b71ad5727bd7"
+      ],
+      "translation_changes_query": false
+    }
+  ],
+  "run": {
+    "bm25_document_side_constructor_params": {
+      "b": 0.75,
+      "k1": 1.5
+    },
+    "bm25_env_presence": {
+      "BM25_B": false,
+      "BM25_K1": false,
+      "BM25_VOCAB_SIZE": false,
+      "ENABLE_BM25": false
+    },
+    "bm25_sparse_determinant": {
+      "vocab_size": 30000
+    },
+    "chunks_per_collection_limit": 3,
+    "search_user_level": 1
+  }
+}

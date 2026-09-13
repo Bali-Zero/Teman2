@@ -11,25 +11,23 @@ has. It does NOT touch the extension path — extensions require an in-person
 photo/interview (since 29 May 2025) and carry their own published D-7
 Ngurah Rai filing deadline (`safe_clock.py`), untouched by this ruling.
 
-Provenance — every date below is traceable to ONE decree, cross-checked by
-a second, independent sourcing route in the same session with zero
-divergence on any date:
+Provenance — NO date is typed in this module. The decreed dates live in
+`backend.data.id_holidays` (SKB 3 Menteri No. 1497/2025, 2/2025, 5/2025 —
+see that module for the decree text, URLs and the 2026-07-27 corroboration
+route), because a second organ now needs the same dates: the compliance
+obligations register rolls a statutory tax deadline off a hari libur
+(`services.compliance.business_days`, PMK 81/2024). Two readers, one table,
+no hand-copied date.
 
-    KEPUTUSAN BERSAMA MENTERI AGAMA / MENTERI KETENAGAKERJAAN / MENTERI
-    PANRB RI — NOMOR 1497 TAHUN 2025, NOMOR 2 TAHUN 2025, NOMOR 5 TAHUN
-    2025, tentang Hari Libur Nasional dan Cuti Bersama Tahun 2026.
-    Ditetapkan di Jakarta, 19 September 2025.
-    Primary source (PDF): https://www.kemenkopmk.go.id/sites/default/files/
-    pengumuman/2025-09/SKB%20Libur%20Nasional%20dan%20Cuti%20Bersama%20
-    Tahun%202026.pdf
-    Corroborated (2026-07-27 session) by an independent route through
-    Indonesian press — both agreed on every date, zero divergence.
-
-    Full year 2026 per the decree = 17 hari libur nasional + 8 cuti
-    bersama. This module materializes ONLY the closure set needed from
-    2026-07-28 onward. Earlier dates were deliberately omitted when the
-    pilot began, so this dataset cannot certify an open day before that
-    materialization boundary even though the source decree spans the year.
+    This module still publishes only the closure set from 2026-07-28
+    onward: `OPERATING_CALENDAR` is the shared table CLIPPED to
+    [COVERAGE_START, COVERAGE_END], which is byte-for-byte the four days it
+    carried before the table moved out (17 Aug, 25 Aug, 24 Dec, 25 Dec
+    2026). Clipping is not data loss — `is_open` already fails closed
+    outside coverage — it keeps this gate's promise that it cannot certify
+    an open day before its materialization boundary. Widening the VOA
+    pilot's coverage is a separate decision with its own evidence; it is
+    not a side effect of giving the dates a home.
 
 ⚠️ COVERAGE_END = 2026-12-31. The 2027 SKB does not exist yet — this decree
 class is issued around September of the PRECEDING year (this one was
@@ -47,9 +45,9 @@ makes the whole engine deterministic and unit-testable.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date, timedelta
-from enum import Enum
+
+from backend.data.id_holidays import HOLIDAYS, Holiday, HolidayKind
 
 __all__ = [
     "COVERAGE_END",
@@ -62,50 +60,26 @@ __all__ = [
 ]
 
 
-class HolidayKind(str, Enum):
-    """The decree names two distinct kinds of non-working day. Both close
-    Bali Zero's systems for the purpose of this gate (the conservative
-    reading — see `is_open`'s docstring for why), but the tag is kept on
-    the data so a future retune can revisit that reading without having to
-    re-source a single date."""
+# This gate's historical name for one decreed closed day. The type moved to
+# `backend.data.id_holidays` with the dates it describes; the alias keeps the
+# name this module (and `garuda_flow/__init__`) has always exported, with the
+# same frozen `at` / `kind` / `name` fields. `HolidayKind` is re-exported from
+# the same place for the same reason: both kinds close this gate (the
+# conservative reading — see `is_open`), and the tag stays on the data so that
+# reading can be revisited without re-sourcing a single date.
+OperatingCalendarDate = Holiday
 
-    LIBUR_NASIONAL = "libur_nasional"
-    CUTI_BERSAMA = "cuti_bersama"
-
-
-@dataclass(frozen=True)
-class OperatingCalendarDate:
-    """One decreed non-working day."""
-
-    at: date
-    kind: HolidayKind
-    name: str
-
-
-# The one and only place a 2026 non-working day may be added — see the
-# module docstring for provenance and the COVERAGE_END boundary.
-OPERATING_CALENDAR: tuple[OperatingCalendarDate, ...] = (
-    OperatingCalendarDate(date(2026, 8, 17), HolidayKind.LIBUR_NASIONAL, "Proklamasi Kemerdekaan"),
-    OperatingCalendarDate(
-        date(2026, 8, 25), HolidayKind.LIBUR_NASIONAL, "Maulid Nabi Muhammad S.A.W."
-    ),
-    OperatingCalendarDate(
-        date(2026, 12, 24),
-        HolidayKind.CUTI_BERSAMA,
-        "Cuti Bersama Kelahiran Yesus Kristus",
-    ),
-    OperatingCalendarDate(
-        date(2026, 12, 25),
-        HolidayKind.LIBUR_NASIONAL,
-        "Kelahiran Yesus Kristus (Hari Raya Natal)",
-    ),
-)
-
-# The source decree spans 2026, but the checked-in closure subset begins at
-# the pilot's materialization boundary. Coverage describes what THIS dataset
-# can actually certify, not what exists in the omitted part of the decree.
+# The source decree spans 2026, but the closure subset this gate publishes
+# begins at the pilot's materialization boundary. Coverage describes what THIS
+# dataset can actually certify, not what exists in the clipped part.
 COVERAGE_START: date = date(2026, 7, 28)
 COVERAGE_END: date = date(2026, 12, 31)
+
+# Derived, never typed: a new non-working day is added to the shared decree
+# table, and shows up here only if it falls inside the coverage window.
+OPERATING_CALENDAR: tuple[OperatingCalendarDate, ...] = tuple(
+    holiday for holiday in HOLIDAYS if COVERAGE_START <= holiday.at <= COVERAGE_END
+)
 
 _CLOSED_DATES: frozenset[date] = frozenset(d.at for d in OPERATING_CALENDAR)
 

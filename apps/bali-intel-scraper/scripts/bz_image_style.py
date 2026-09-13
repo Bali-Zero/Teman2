@@ -58,6 +58,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -495,6 +496,24 @@ _OAUTH_SCRUB_PREFIXES = (
 )
 
 
+# launchd hands the poller a PATH of /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin,
+# but the `claude` CLI on the fleet lives in ~/.local/bin. Measured on Pro
+# 2026-09-04: 113 × "claude CLI: not found in PATH" and 388 × "Using fallback
+# visual" — every cover came from the canned template, never from the visual
+# director. Same cure as the marketing bridge's _verification_env: a standard
+# PATH that includes the user-local bin, prepended, never replaced.
+_CLI_STANDARD_PATH = (
+    "/opt/homebrew/bin:{home}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+)
+
+
+def _cli_search_path(current: str | None = None) -> str:
+    home = os.environ.get("HOME") or os.path.expanduser("~")
+    standard = _CLI_STANDARD_PATH.format(home=home)
+    current = current if current is not None else os.environ.get("PATH", "")
+    return f"{standard}:{current}" if current else standard
+
+
 def _img_oauth_env(token: str) -> dict[str, str]:
     env = {
         key: value
@@ -502,6 +521,7 @@ def _img_oauth_env(token: str) -> dict[str, str]:
         if key not in _OAUTH_SCRUB_KEYS
         and not key.startswith(_OAUTH_SCRUB_PREFIXES)
     }
+    env["PATH"] = _cli_search_path(env.get("PATH"))
     if token:
         env["CLAUDE_CODE_OAUTH_TOKEN"] = token
     else:
@@ -578,11 +598,16 @@ def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> st
             break
         attempt_timeout = max(0.1, remaining / (len(chain) - position))
 
+        env = _img_oauth_env(token)
+        # Resolve against the child's PATH, not the parent's; a miss falls
+        # through to the bare name so the existing FileNotFoundError branch
+        # keeps reporting "not found in PATH".
+        claude_binary = shutil.which("claude", path=env["PATH"]) or "claude"
         try:
             result = _run_process_group(
-                ["claude", "--print", "--model", "claude-haiku-4-5-20251001", combined],
+                [claude_binary, "--print", "--model", "claude-haiku-4-5-20251001", combined],
                 timeout=attempt_timeout,
-                env=_img_oauth_env(token),
+                env=env,
             )
         except subprocess.TimeoutExpired:
             print(f"  claude CLI: {label} timed out", file=sys.stderr)

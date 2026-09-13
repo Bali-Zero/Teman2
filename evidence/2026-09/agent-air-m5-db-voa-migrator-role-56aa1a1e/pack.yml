@@ -1,0 +1,211 @@
+gear: 3
+l_level: L2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR agent/air-m5/db/voa-migrator-role — GARUDA VOA step 5, option D runner half.
+  Governing ruling: Zero, 2026-09-11, "D — ruolo migrator dedicato" (AskUserQuestion in the
+  M5 session; recorded in ZERO-DECISIONS.md item 1 and mem decision).
+grader: claude-opus-5 (final on-disk gate, fresh session outside this chain — NOT this session)
+lanes:
+  - lane: voa-migrator-role-ground
+    role: read
+    seat: >-
+      claude-fable-5.1 (owner-opened imperator window on M5). Re-measured the funnel
+      (origin/main be45266252, prod DB read-only via scripts/pg.sh: 0 practices, 0 orders, no
+      garuda_documents table, no backend_rag_migrator role, migrations 300-303 and 305-308
+      applied as backend_rag_v2/release_command). Read the three runner connect sites on disk
+      (migration_manager.py:96, migration_base.py:626-655, migrate.py:150), migration 299's
+      provenance helpers, and 304's transfer block on the #5526 branch.
+  - lane: voa-migrator-role-build
+    role: build
+    seat: >-
+      claude-fable-5.1 (same window). config.migration_database_url; migration_base
+      resolve_migration_dsn / migration_dsn_is_dedicated / assume_runtime_role; manager pool
+      init + DSN; migrate.py precheck; 13 unit + 3 real-Postgres tests; 2 config tests.
+  - lane: voa-migrator-role-mutation
+    role: review
+    seat: >-
+      claude-fable-5.1 (same window). Two mutants on the guard: superuser refusal disabled ->
+      3 failed / 10 passed; SET ROLE removed -> 2 failed / 11 passed. Restored, diff re-checked.
+  - lane: voa-migrator-role-refute-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol (cross-family red-team, --sandbox read-only, effort high, the diff
+      attached). Verdict REWORK: 1 blocker + 4 major + 1 minor. Four cured in this diff, one
+      argued down with a test, one recorded as pre-existing. See dissent.
+  - lane: voa-migrator-role-refute-kimi
+    role: review
+    seat: >-
+      kimi-code/k3 (cross-family refuter, the diff attached). Found the asyncpg pool hook
+      lapse: `init` runs once per physical connection while release-time `RESET ALL` undoes
+      `SET ROLE`, so the second acquire would have run as the migrator. Cured: `setup`
+      (per acquire) + idempotent guard + a real-Postgres re-acquire test. See dissent.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Two cross-family review seats (codex gpt-5.6-sol red-team, kimi-code/k3 refuter) read the
+  same diff independently of each other and of the conducting session; the load-bearing
+  convergence is on the pool hook (kimi) and the single-DSN no-op (codex).
+council_run: journal.jsonl
+diff:
+  net_lines: >-
+    measured at commit time with `git diff --numstat origin/main...HEAD` — see receipts.
+  behaviour_change: >-
+    The migration runner gains an optional second DSN and a post-connect role assumption.
+    With the setting unset nothing changes: same DSN, no SET ROLE, same provenance. No
+    migration file, router, service or runtime path changes.
+receipts:
+  - claim: The deterministic gear floor for this diff is 3 (backend/db is a hot zone)
+    cmd: git diff --name-only > /tmp/optd_files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/optd_files.txt
+    result: "3"
+    exit: 0
+    ts: 2026-09-11T05:20Z
+    seat: session (M5)
+  - claim: New tests pass, including the three real-Postgres option-D tests
+    cmd: PYTHONPATH=.:../crm-cell pytest backend/tests/db/test_migration_runner_dedicated_role.py backend/tests/unit/app/test_config.py
+    result: "26 passed (first round); after the council rework: 100 passed in 9.34s across the six suites"
+    exit: 0
+    ts: 2026-09-11T05:15Z
+    seat: session (M5)
+  - claim: Existing runner/provenance/ledger-guard suites are unchanged
+    cmd: PYTHONPATH=.:../crm-cell pytest backend/tests/db/test_migration_114_115_116_roundtrip.py backend/tests/scripts/visa_engine/test_retention_binder_scope_survives_a_non_owner_runner.py backend/tests/db/test_legacy_promotion_migrations.py backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py
+    result: "65 passed in 2.85s"
+    exit: 0
+    ts: 2026-09-11T05:18Z
+    seat: session (M5)
+  - claim: The guard's tests are not vacuous (mutation)
+    cmd: sed superuser-refusal to `if False ...`; pytest -> restore; sed SET ROLE to `pass`; pytest -> restore
+    result: "3 failed, 10 passed / 2 failed, 11 passed; migration_base.py restored byte-identical (cp from backup)"
+    exit: 0
+    ts: 2026-09-11T05:18Z
+    seat: session (M5)
+  - claim: DOCSYNC surfaces unchanged by this diff
+    cmd: python3 scripts/docs_sync.py
+    result: "DOCSYNC OK (no changes)"
+    exit: 0
+    ts: 2026-09-11T05:19Z
+    seat: session (M5)
+  - claim: Production has no migrator role yet — the ruling's operator step is genuinely pending
+    cmd: scripts/pg.sh -Atc "select count(*) from pg_roles where rolname='backend_rag_migrator'"
+    result: "0"
+    exit: 0
+    ts: 2026-09-11T04:55Z
+    seat: session (M5)
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      BLOCKER. MigrationManager(database_url=A) pools/locks/ledgers on A while
+      BaseMigration.apply() re-resolves the global DSN and may execute the SQL on B.
+    status: CONFIRMED
+    resolution: >-
+      apply() takes `database_url`; apply_migration passes the manager's own. Unit test
+      test_manager_hands_its_own_dsn_to_every_apply pins it.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MAJOR. The guard accepted principals that cannot do the choreography: MEMBER is not
+      the PG16+ SET privilege; ledger membership never checked; a dedicated DSN that IS the
+      runtime role passed via the current_user shortcut; a connection-time role setting
+      defeats RESET ROLE undetected.
+    status: CONFIRMED
+    resolution: >-
+      All four refused before any statement (SET privilege on PG>=16, MEMBER on 15 — CI is
+      postgres:15; ledger membership when the role exists; session_user == runtime refused;
+      current_user != session_user refused unless already the runtime role on a re-acquired
+      pool connection). Six parametrised guilt tests + two real-Postgres refusals.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MAJOR. "Unset means zero behaviour change" was false: a single-DSN session that is a
+      member of the runtime role (every superuser is) would now SET ROLE.
+    status: CONFIRMED
+    resolution: >-
+      Single DSN is an unconditional early return with no catalogue read;
+      test_single_dsn_is_an_unconditional_no_op asserts zero fetches and zero statements.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MAJOR. The real-Postgres test created nothing while RESET, never ALTERed a
+      ledger-owned table, never reassigned a reset-created table; runtime ownership is a
+      convention, not a tested invariant.
+    status: CONFIRMED
+    resolution: >-
+      The choreography test now ALTERs a ledger-owned table's CHECK (304's shape), creates
+      a table while reset, proves it migrator-owned, hands it to the runtime role, and reads
+      every owner from pg_class/pg_proc afterwards. Running the real 304 through
+      BaseMigration.apply() is PR #5526's test, where the file lives.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MAJOR. The reconciliation branch (schema_migrations has the row, _schema_versions does
+      not) records applied_as with the CURRENT runner, attributing a historical manual
+      superuser apply to the migrator.
+    status: PLAUSIBLE
+    resolution: >-
+      Out of this PR's scope: the branch and its attribution predate the diff and no row in
+      production is in that state today (every 30x row carries applied_as). Recorded here so
+      the next provenance change sees it; not ledgered as debt because it changes no live
+      behaviour.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MINOR. A non-MigrationError raised by the role assumption leaked the direct connection.
+    status: CONFIRMED
+    resolution: >-
+      Any exception closes the connection and re-raises as MigrationError;
+      test_apply_closes_the_connection_when_the_catalogue_read_fails.
+  - seat: kimi-code/k3
+    objection: >-
+      MINOR. Superuser refusal read only session_user's own rolsuper; a non-superuser member
+      of a superuser role could SET ROLE up to it from inside a migration file.
+    status: CONFIRMED
+    resolution: >-
+      The catalogue probe adds `reaches_super` (member of any rolsuper role) and refuses it;
+      parametrised guilt case "reaches-superuser".
+  - seat: kimi-code/k3
+    objection: >-
+      MAJOR. The documented RESET ROLE / SET ROLE bracket is not CI-portable: a bare
+      `SET ROLE backend_rag_v2` raises 42704 where the role does not exist, so 304 written
+      that way would abort CI.
+    status: CONFIRMED
+    resolution: >-
+      No migration file is in this diff. The convention is now written into the STEP5
+      decision header as a guarded DO block (pg_roles + pg_has_role check before
+      EXECUTE 'SET ROLE'), the shape 268/300/301 already use for the transfer itself; the
+      304 PR's real-Postgres test must apply the file through BaseMigration.apply() in
+      the CI shape (superuser, roles absent) as well as in the option-D shape.
+  - seat: kimi-code/k3
+    objection: >-
+      MINOR/NIT. resolve_migration_dsn docstring overclaimed ("services never read it" —
+      services/misc/migration_runner.py builds a manager); dead `row is None` branch; stale
+      MigrationManager docstring; config tests appended to an unrelated test class.
+    status: CONFIRMED
+    resolution: All four corrected in this diff.
+  - seat: kimi-code/k3
+    objection: >-
+      Test vacuity: no end-to-end apply() wiring test (assume → tx → file SQL → provenance);
+      real-Postgres tests skip silently without a local admin DB; _ADMIN_URL imported from
+      a visa_engine test module.
+    status: PLAUSIBLE
+    resolution: >-
+      The apply() wiring is exercised by the existing 114/115/116 roundtrip and legacy
+      promotion suites (65 tests, unchanged, green) through the SAME apply() path; the
+      option-D end-to-end apply is PR #5526's test with the real 304. The skip/import
+      shapes are the ones every sibling real-Postgres test in this tree already uses.
+  - seat: kimi-code/k3
+    objection: >-
+      asyncpg `init` runs once per physical connection; release-time `RESET ALL` resets the
+      `role` parameter, so every acquire after the first runs as the migrator — ownership
+      drift on _ensure_migration_log / legacy fake-apply, and provenance that flips per
+      acquire.
+    status: CONFIRMED
+    resolution: >-
+      Pool hook moved to `setup` (runs on every acquire); guard made idempotent for an
+      un-reset connection; test_real_pg_pool_setup_survives_release_and_reacquire proves the
+      effective role on a re-acquired max_size=1 connection.
+pii_scan: clean
+pii_scan_note: >-
+  Migration runner and its tests only; no client data, no credential. The DSN strings in
+  tests are synthetic; the real secret is never written anywhere in this diff.
+bites:
+  consumer: >-
+    The Fly release_command (`python -m backend.db.migrate apply-all`) on the first backend
+    deploy after merge, still on the single DATABASE_URL: it must exit 0 with «No pending
+    migrations» and no role error. Then, once Zero sets MIGRATION_DATABASE_URL, the NEXT
+    deploy's `_schema_versions.applied_as` for any new row reads
+    `backend_rag_v2 (session_user=backend_rag_migrator)`.
+  where: fly

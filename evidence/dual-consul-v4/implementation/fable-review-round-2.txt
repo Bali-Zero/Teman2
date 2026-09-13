@@ -1,0 +1,24 @@
+Verdict: **PASS**. The round-1 findings are resolved in source, and the delta introduces no blocking correctness issue.
+
+**Round-1 findings, re-evaluated**
+
+- **Superseded approval revocation** is resolved. `consul_store.revoke_approval` appends the hash regardless of generation, sets `revoked_at` only when the hash is current, and its predicate `NOT ($2 = ANY(...))` makes it idempotent. Both branches satisfy the table CHECK. Lock order stays parent then lease. `bind` and `guard` both consult the array, so the bind-B-then-revoke-A trigger now refuses.
+- **Zero-worker admission** is resolved. `adapter_contracts.admit` now requires an exact int 0, which rejects `None`, `False` and `0.0`. Collectors must now emit `worker_limit=0` for plain TP1 surfaces or admission fails closed, which is the right direction.
+- **Fresh-lease replay** is retained by decision. No duplicate effect is possible; only liveness is affected.
+
+**Delta checks**
+
+- `$n::text::jsonb` is the correct fix for a pool JSON codec applied to string parameters. Reads still tolerate both Mapping and str.
+- Binding `intent.producer.name` to the declared builder closes the gap where builder identity lived only in the packet digest.
+- Extension key rename and worker false-return checks are consistent with fail-closed behaviour. A raised PermissionError after a lost heartbeat falls into the existing failure path, whose owner-filtered update is a harmless no-op.
+- The PG test source exercises the claimed paths, including a genuine lock wait proven through `pg_blocking_pids`. The in-transaction expiry test checks the effect predicate, not an external race, since the row is locked. That is adequate for its stated purpose.
+
+**Remaining limits, none blocking**
+
+- `revoke_approval` needs an existing lease row. Revoking an approval before its first bind returns False and records nothing. The broker must reject withdrawn approvals before calling `bind`, which the contract already requires.
+- The `state_store` cast change touches the existing production transport, and merging deploys it. Any rows already written double-encoded under the codec are jsonb string scalars. On such a row, `metadata || $3::text::jsonb` silently yields an array rather than an error. Check for existing rows and for other writers still passing string parameters as `::jsonb` before merge.
+- Recomputation of `object_hash` during `model_validate_json` is still not shown in the provided validator excerpt. Reported results are consistent with content-bound checks, but I cannot confirm this from source.
+- Migration `SET LOCAL` takes effect only inside a transaction. The test applies it that way; the production runner's behaviour is unverified.
+- Unchanged and declared: per-intent idempotency, unbounded tombstone array, no remote effects, no native invocation, no OS identity separation, no production activation.
+
+END_DUAL_CONSUL_REVIEW

@@ -39,14 +39,14 @@ function handleDoorClick(door: KBLIDoor): void {
 export function KBLIPersonaDoors() {
   return (
     <div className="mt-8 mb-0">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 mb-4">
         Where do you want to begin?
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {DOORS.map(({ id, icon: Icon, label, subtext }) => (
           <a
             key={id}
-            href="#kbli-search"
+            href="#search"
             onClick={() => handleDoorClick(id)}
             className="block p-4 rounded-xl transition-all duration-200 cursor-pointer no-underline bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)]"
           >
@@ -54,7 +54,7 @@ export function KBLIPersonaDoors() {
             <div className="text-[14px] font-semibold text-zinc-100 mb-1">
               {label}
             </div>
-            <div className="text-[12px] leading-relaxed text-zinc-500">
+            <div className="text-[12px] leading-relaxed text-zinc-400">
               {subtext}
             </div>
           </a>

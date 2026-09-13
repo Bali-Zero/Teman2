@@ -1,0 +1,13 @@
+• **PASS**
+
+  Checked the candidate diff against Fable's three rulings, using only the supplied source:
+
+  **Ruling 1 — required `baseUrl`, documented.** `apps/mouth/DOCUMENTATION.md` now states "`ApiClientBase` requires an explicit `baseUrl`; the constructor does not supply a default" and the snippet shows `constructor(baseUrl: string)` with no `|| "/api"` fallback. This matches the grounded actual constructor at `client.ts:43-74` (`constructor(baseUrl: string) { this.baseUrl = baseUrl; ...`). The remaining `localStorage.getItem` line in the snippet is pre-existing abridged material (real code guards on `typeof window` and uses `safeStorage`), explicitly out of scope per the brief.
+
+  **Ruling 2 — reverse-lock removed.** The diff deletes `expect(source).toContain(\`process.env.${FORBIDDEN}\`)` from the server-innocence test in `api-client-same-origin.test.ts`. The final guard source confirms it is gone, while the meaningful assertion (`inspect(file, source)).toEqual({ browser: false, hits: [] })`) is retained, so the three server files are still verified as non-browser with zero hits. `FORBIDDEN` remains used elsewhere in the file, so no dead-constant fallout. Later env cleanup is no longer blocked by the test.
+
+  **Ruling 3 — scope narrowed to `src/app`, scanner unchanged.** The `describe` is renamed to "src/app browser API clients stay on the same-origin proxy", and both doc hunks now say "src/app browser clients". The added doc sentence — "The guard scans `src/app` only; it does not cover browser references in `src/lib`, hooks, or transitive imports" — is demonstrably accurate: `APP_DIR` is `dirname(fileURLToPath(import.meta.url))` of a test located in `src/app/`, and the final scanner source is byte-identical in logic to the pre-correction version (no expansion to lib/hooks/transitives).
+
+  **Scope discipline.** The diff touches only `apps/mouth/DOCUMENTATION.md` and the test file — docs/test, as owned. No runtime files changed; the 9-test suite structure (real-app scan, 4 rejection cases, comment/directive non-flagging, 3 server-innocence cases) is intact.
+
+  No demonstrable correctness or scope defects found. (Per instructions, no tests were executed by me; this is source review only.)

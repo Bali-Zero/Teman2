@@ -1,0 +1,100 @@
+{
+  "ack_envelope": "20260913T053422Z-751e",
+  "artifact_sha256": "0021c3275b7bd9f812f0ce52fc06da1330e89a9d1c40a4c105ca932720083012",
+  "authorization_reference": "RULING I15 (envelope 20260912T013527Z-13d6) under B2 generation authority 20260912T091907Z-435d; imperator orders b2-resume2 item (3)",
+  "base_sha": "bf5bea8360a277d84a686ce9794696928f227f6f",
+  "ceiling": 40,
+  "completion": {
+    "attempts": 5,
+    "cosines": {
+      "bs-17806bb4": {
+        "measured": true,
+        "raw": 0.36974,
+        "raw_3dp": 0.37
+      },
+      "sup-d-4984a0c2": {
+        "measured": true,
+        "raw": 0.585856,
+        "raw_3dp": 0.586
+      },
+      "sup-d-4d058bdc": {
+        "measured": true,
+        "raw": 0.5879,
+        "raw_3dp": 0.588
+      }
+    },
+    "embedding_call": "EmbeddingsGenerator.generate_query_embedding",
+    "end_timestamp_utc": "2026-09-13T06:06:01.737799+00:00",
+    "failures": [],
+    "max_retries": 0,
+    "v1_verdict": "INCOMPATIBLE",
+    "vector_sha256": {
+      "bs-17806bb4/chunk": "81fb9ccebf5129cedbb617294046cc0ea6e115c94d43d62859ce60ebba1822ea",
+      "bs-17806bb4/query": "1b7fc1b8541d4c0e726a42787ac7f6307f9de974c6ce58d1667cabc81b84bac1",
+      "sup-d-4984a0c2/chunk": "6d8c089136c38f7d7b32543ba7136970a591d2b88c267654efae655222213629",
+      "sup-d-4984a0c2/query": "61bf98385f35a141e7a007bbdb49d17da851686d76445314a5fa055009c5830a",
+      "sup-d-4d058bdc/chunk": "031a1ade925ef7061c8e3bb3acf3107520a4b5250b14eaf26c67652959f2cd5b",
+      "sup-d-4d058bdc/query": "759cebccf9cb3e9e29b220544a28726d96c79c829ec72933346a5e5496983f6d"
+    }
+  },
+  "consumed_before": 23,
+  "dimension": 1536,
+  "execution_start_utc": "2026-09-13T06:05:54.572071+00:00",
+  "falsification_v1": {
+    "cure_broken_if": "measured < 0.32",
+    "declared_raw": 0.373,
+    "incompatible_if": "abs(measured - 0.373) >= 0.0005 (stated 3-decimal precision)"
+  },
+  "hard_stop": 5,
+  "host": "Nuzantara",
+  "items": [
+    {
+      "case_id": "bs-17806bb4",
+      "residual": "V1",
+      "role": "query",
+      "source": "artifact",
+      "text_sha256": "8a3784bc230cd72b9291dd833f2dd8b94df079618f6b65b8fc8b3d54b7bf8df7"
+    },
+    {
+      "case_id": "bs-17806bb4",
+      "residual": "V1",
+      "role": "chunk",
+      "source": "provider",
+      "text_sha256": "db9567696acc2cdf301908dc5fbd34a21c77ed745925c863f3cae18025c11263"
+    },
+    {
+      "case_id": "sup-d-4984a0c2",
+      "residual": "V2",
+      "role": "query",
+      "source": "provider",
+      "text_sha256": "22a4a672fcccde763c79ef7b5a93190778ae7dd6dcbef3f873263426a4ffccca"
+    },
+    {
+      "case_id": "sup-d-4984a0c2",
+      "residual": "V2",
+      "role": "chunk",
+      "source": "provider",
+      "text_sha256": "bd5e2bfd4a7aa9ef25b3994e161401c627cf91d74d15ff736332784405efeaed"
+    },
+    {
+      "case_id": "sup-d-4d058bdc",
+      "residual": "V2",
+      "role": "query",
+      "source": "provider",
+      "text_sha256": "db33a25b956d582f6685ae00e05a7cd585200397ae50e4660ff78e005c16186f"
+    },
+    {
+      "case_id": "sup-d-4d058bdc",
+      "residual": "V2",
+      "role": "chunk",
+      "source": "provider",
+      "text_sha256": "33a0b00eaa5c8b1dbab8355e9760ebc52eb9c408a216347efa7bf4a7618d0583"
+    }
+  ],
+  "max_retries": 0,
+  "model": "text-embedding-3-small",
+  "planned_provider_attempts": 5,
+  "remaining_after": 12,
+  "timestamp_utc": "2026-09-13T05:32:53.911749+00:00",
+  "v2_note": "measured values are recorded, no verdict is declared by this tool"
+}

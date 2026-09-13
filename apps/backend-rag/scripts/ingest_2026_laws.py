@@ -77,6 +77,18 @@ LAWS_2026 = [
         "marketing_title_en": "PMK 1/2026 - Coretax: Indonesia Digital Tax Reform",
     },
     {
+        # Declared for the same reason as PMK_1_2026 / PermenImipas_1_2026 above,
+        # generalized 2026-09-04 to every entry in this list: the pattern
+        # extractor's (type, number, year) triple sometimes names a law CITED in
+        # a document's preamble rather than the document itself. Measured live
+        # in production for this exact file, ingested without a declared id:
+        # it landed under `UUD_17_2003` (105 pts) and, on an earlier run,
+        # `UU_17_2026` -- which is not a real law. `ask_legal` on "PP 9/2026"
+        # answered "Sumber: UU No. 17 Tahun 2026" as a direct consequence.
+        # Every remaining entry below gets the same declared-id treatment, so
+        # `classify_identity_source()` (legal_ingestion_service.py) records
+        # "declared" for all of them, never "extracted".
+        "document_id": "PP_9_2026",
         "filename": "PP_9_2026_THR_Gaji_13.pdf",
         "title": "PP 9/2026 - Pemberian Tunjangan Hari Raya dan Gaji Ketiga Belas kepada Aparatur Negara, Pensiunan, Penerima Pensiun, dan Penerima Tunjangan Tahun 2026",
         "category": "ketenagakerjaan_2026",
@@ -84,6 +96,10 @@ LAWS_2026 = [
         "marketing_title_en": "PP 9/2026 - Hari Raya Allowance & 13th Month Salary 2026",
     },
     {
+        # Measured: without this, `Pergub_Bali_14_2023` also surfaced under
+        # `UU_14_2023` (953 pts, marked dicabut) -- a preamble citation, not the
+        # document.
+        "document_id": "Pergub_Bali_14_2023",
         "filename": "Pergub_Bali_14_2023_RPD_2024_2026.pdf",
         "title": "Pergub Bali 14/2023 - Rencana Pembangunan Daerah Provinsi Bali Tahun 2024-2026",
         "category": "perencanaan_bali",
@@ -91,6 +107,11 @@ LAWS_2026 = [
         "marketing_title_en": "Pergub Bali 14/2023 - Bali Regional Development Plan 2024-2026",
     },
     {
+        # Measured: without this, this circular also surfaced under
+        # `SE_18_2008` and `PP_18_2025` -- both preamble citations, not the
+        # document. Abbreviated `SE_Gub_Bali` (not `SE_Gubernur_Bali`) to match
+        # this corpus's convention of short type abbreviations.
+        "document_id": "SE_Gub_Bali_09_2025",
         "filename": "SE_Gubernur_Bali_09_2025_Bali_Bersih_Sampah.pdf",
         "title": "SE Gubernur Bali 09/2025 - Gerakan Bali Bersih Sampah",
         "category": "lingkungan_bali",
@@ -98,6 +119,7 @@ LAWS_2026 = [
         "marketing_title_en": "SE Gubernur Bali 09/2025 - Bali Clean Waste Campaign",
     },
     {
+        "document_id": "UU_1_2023",
         "filename": "UU_1_2023_KUHP_Baru.pdf",
         "title": "UU 1/2023 - Kitab Undang-Undang Hukum Pidana (KUHP Baru)",
         "category": "hukum_pidana",
@@ -147,6 +169,7 @@ LAWS_2026 = [
     # entry list — it would need chunk-level supersession metadata the pipeline
     # does not have today.
     {
+        "document_id": "UU_6_2011",
         "filename": "UU_6_2011_Keimigrasian.pdf",
         "title": "UU 6/2011 - Keimigrasian",
         "category": "keimigrasian",
@@ -154,6 +177,7 @@ LAWS_2026 = [
         "marketing_title_en": "UU 6/2011 - Indonesian Immigration Law (base text)",
     },
     {
+        "document_id": "UU_63_2024",
         "filename": "UU_63_2024_Perubahan_Ketiga_UU_Keimigrasian.pdf",
         "title": "UU 63/2024 - Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 2011 tentang Keimigrasian",
         "category": "keimigrasian",
@@ -161,6 +185,9 @@ LAWS_2026 = [
         "marketing_title_en": "UU 63/2024 - Third Amendment to the Immigration Law",
     },
     {
+        # Measured: without this, Perpres 157/2024 also surfaced under
+        # `Perpres_39_2024` -- a preamble citation, not the document.
+        "document_id": "Perpres_157_2024",
         "filename": "Perpres_157_2024_Kementerian_Imigrasi_dan_Pemasyarakatan.pdf",
         "title": "Perpres 157/2024 - Kementerian Imigrasi dan Pemasyarakatan",
         "category": "keimigrasian",
@@ -168,6 +195,7 @@ LAWS_2026 = [
         "marketing_title_en": "Perpres 157/2024 - Ministry of Immigration and Corrections",
     },
     {
+        "document_id": "Perpres_76_2024",
         "filename": "Perpres_76_2024_Perubahan_Perpres_70_2023_Pengalokasian_Lahan_Investasi.pdf",
         "title": "Perpres 76/2024 - Perubahan atas Peraturan Presiden Nomor 70 Tahun 2023 tentang Pengalokasian Lahan bagi Penataan Investasi",
         "category": "investasi",
@@ -175,6 +203,10 @@ LAWS_2026 = [
         "marketing_title_en": "Perpres 76/2024 - Land Allocation for Investment Restructuring",
     },
     {
+        # Ministry-qualified `Permenkumham_` (not bare `Permen_`): 8 ministries
+        # share the numbering `Permen_1_2026`-style, so the ministry qualifier is
+        # this corpus's deliberate disambiguator, same as `PMK_`/`PermenImipas_`.
+        "document_id": "Permenkumham_22_2023",
         "filename": "Permenkumham_22_2023_Visa_dan_Izin_Tinggal.pdf",
         "title": "Permenkumham 22/2023 - Visa dan Izin Tinggal",
         "category": "keimigrasian",
@@ -182,6 +214,7 @@ LAWS_2026 = [
         "marketing_title_en": "Permenkumham 22/2023 - Visas and Stay Permits",
     },
     {
+        "document_id": "Permenkumham_11_2024",
         "filename": "Permenkumham_11_2024_Perubahan_Visa_dan_Izin_Tinggal.pdf",
         "title": "Permenkumham 11/2024 - Perubahan atas Peraturan Menteri Hukum dan Hak Asasi Manusia Nomor 22 Tahun 2023 tentang Visa dan Izin Tinggal",
         "category": "keimigrasian",
@@ -206,10 +239,12 @@ LAWS_2026 = [
         # literal that must stay `ast.literal_eval`-able. The value is pinned
         # against the real constant at run time, right below the import.
         "retrieval_scope": "historical_only",
+        "document_id": "Permenkumham_34_2021",
         "marketing_title_it": "Permenkumham 34/2021 - Visti e Soggiorni nel Periodo Covid-19 (storico)",
         "marketing_title_en": "Permenkumham 34/2021 - Visas and Stay Permits during Covid-19 (historical)",
     },
     {
+        "document_id": "PermenImipas_2_2025",
         "filename": "PermenImipas_2_2025_Pengawasan_Keimigrasian.pdf",
         "title": "Permen Imipas 2/2025 - Pengawasan Keimigrasian dan Tindakan Administratif Keimigrasian",
         "category": "keimigrasian",
@@ -217,6 +252,7 @@ LAWS_2026 = [
         "marketing_title_en": "Permen Imipas 2/2025 - Immigration Supervision and Administrative Action",
     },
     {
+        "document_id": "PermenImipas_4_2025",
         "filename": "PermenImipas_4_2025_Kartu_Perjalanan_Pebisnis_APEC.pdf",
         "title": "Permen Imipas 4/2025 - Kartu Perjalanan Pebisnis Asia Pacific Economic Cooperation",
         "category": "keimigrasian",
@@ -224,6 +260,7 @@ LAWS_2026 = [
         "marketing_title_en": "Permen Imipas 4/2025 - APEC Business Travel Card (ABTC)",
     },
     {
+        "document_id": "PermenImipas_6_2025",
         "filename": "PermenImipas_6_2025_Pencabutan_Permenkumham_35_2021.pdf",
         "title": "Permen Imipas 6/2025 - Pencabutan Peraturan Menteri Hukum dan Hak Asasi Manusia Nomor 35 Tahun 2021 tentang Konsultan Keimigrasian",
         "category": "keimigrasian",
@@ -250,10 +287,12 @@ LAWS_2026 = [
         # countries are visa-free?" with a stale list competing against the
         # live one — the exact failure historical_only exists to prevent.
         "retrieval_scope": "historical_only",
+        "document_id": "PermenImipas_9_2025",
         "marketing_title_it": "Permen Imipas 9/2025 - Ampliamento dei Paesi Esenti da Visto di Visita (SUPERATO: la lista in vigore è il 10/2026)",
         "marketing_title_en": "Permen Imipas 9/2025 - Expanded Visa-Free Visit Country List (SUPERSEDED: the list in force is 10/2026)",
     },
     {
+        "document_id": "PermenImipas_14_2025",
         "filename": "PermenImipas_14_2025_Tarif_Nol_Rupiah.pdf",
         "title": "Permen Imipas 14/2025 - Persyaratan dan Tata Cara Pengenaan Tarif Nol Rupiah terhadap Pelayanan Keimigrasian dan Biaya Beban",
         "category": "keimigrasian",
@@ -271,6 +310,7 @@ LAWS_2026 = [
         "marketing_title_en": "Permen Imipas 1/2026 - Amendment on Exit and Entry Bans",
     },
     {
+        "document_id": "PermenImipas_7_2026",
         "filename": "PermenImipas_7_2026_Intelijen_Keimigrasian.pdf",
         "title": "Permen Imipas 7/2026 - Intelijen Keimigrasian",
         "category": "keimigrasian",
@@ -278,6 +318,11 @@ LAWS_2026 = [
         "marketing_title_en": "Permen Imipas 7/2026 - Immigration Intelligence",
     },
     {
+        # Measured: without this, Kepmen M.IP-19.GR.01.01/2025 also surfaced
+        # under `UU_28_2025` -- a preamble citation, not the document. Shortened
+        # to `Kepmen_MIP_19_2025` (dropping `.GR.01.01`), matching this corpus's
+        # convention of a terse type_abbrev/number/year triple.
+        "document_id": "Kepmen_MIP_19_2025",
         "filename": "Kepmen_MIP_19_GR0101_2025_Sistem_Kerja_TPI_TRANSKRIPSI.txt",
         "title": "Kepmen M.IP-19.GR.01.01/2025 - Sistem Kerja pada Tempat Pemeriksaan Imigrasi (transkripsi verbatim dari PDF hasil pindai)",
         "category": "keimigrasian",
@@ -285,6 +330,7 @@ LAWS_2026 = [
         "marketing_title_en": "Kepmen M.IP-19/2025 - Border Checkpoint Work System (transcription)",
     },
     {
+        "document_id": "PermenImipas_10_2026",
         "filename": "PermenImipas_10_2026_Daftar_Negara_Bebas_Visa_Kunjungan.pdf",
         "title": "Permen Imipas 10/2026 - Penambahan Daftar Negara, Pemerintah Wilayah Administratif Khusus Suatu Negara, dan Entitas Tertentu yang Diberikan Bebas Visa Kunjungan",
         "category": "keimigrasian",

@@ -1,0 +1,27 @@
+task_id: frontend-live-truth-20260906
+gear: 3
+objective: Make kita.balizero.com/api/health authoritative and alert when production lacks the newest frontend commit after a 30-minute grace window.
+constraints:
+  - Preserve ancestor-or-equal semantics, credentials, deployment behavior and alert deduplication.
+  - Include every apps/mouth path plus existing shared build inputs; the owner follow-up supersedes the historical e2e exclusion.
+  - Report only the observed kita domain; other domains may serve different builds.
+  - Fable owns the independent grade and shipping of T4.
+acceptance:
+  - text: WHEN kita and the apex serve different commits, the sentinel SHALL judge kita and accept a descendant while rejecting an older build.
+    probe: domain-disagreement-corpus
+  - text: WHEN the deployment cure reads the served commit, it SHALL request kita and apply the existing ancestry test to that response.
+    probe: domain-disagreement-corpus
+  - text: WHEN the sentinel, cure or their corpora change, the Vercel organ test workflow SHALL execute both proof corpora.
+    probe: workflow-wiring
+  - text: WHEN a frontend commit is younger than 30 minutes, scheduled checks SHALL defer and push/manual polling SHALL cover the remaining grace window.
+    probe: domain-disagreement-corpus
+  - text: WHEN the sentinel change merges, a main run SHALL log the expected and served commit comparison from kita health.
+    probe: post-merge-sentinel
+consumer_map:
+  - Frontend Live Sentinel production polling step.
+  - scripts/vercel_prod_deploy.py _served_commit used by the existing deployment and promotion flow.
+  - pipeline-ship skill backend and frontend release evidence procedure.
+risks:
+  - The commit health endpoint proves build inclusion; each product task still needs its own behavior probe.
+  - An unreachable or unknown commit remains unverified under the existing policy.
+pii: none

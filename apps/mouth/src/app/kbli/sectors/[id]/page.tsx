@@ -7,6 +7,7 @@ import {
 } from "@/lib/kbli-data";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { KBLICard } from "@/components/kbli/KBLICard";
+import { KBLIBreadcrumbJsonLd } from "@/components/kbli/KBLIStructuredData";
 
 export async function generateStaticParams() {
   return getSections()
@@ -51,6 +52,16 @@ export default async function SectorDetailPage({
 
   return (
     <div className="space-y-8">
+      <KBLIBreadcrumbJsonLd
+        items={[
+          { name: "KBLI Navigator", url: "https://balizero.com/kbli" },
+          { name: "Sectors", url: "https://balizero.com/kbli/sectors" },
+          {
+            name: `Section ${id.toUpperCase()}`,
+            url: `https://balizero.com/kbli/sectors/${id.toUpperCase()}`,
+          },
+        ]}
+      />
       <KBLIBreadcrumb
         items={[
           { label: "KBLI Navigator", href: "/kbli" },

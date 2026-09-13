@@ -11,8 +11,6 @@ import type {
   TaxCompanyPilotMap,
 } from "@/lib/api/crm/crm.types";
 
-const PILOT_FALLBACK_TERMS = ["ocean", "bimala"] as const;
-
 export const clientDetailQueryKey = (clientId: string | number) =>
   ["client", String(clientId)] as const;
 
@@ -25,11 +23,22 @@ export function buildBusinessStorySearchTerms(
     companyLinks
       ?.map((link) => link.company_name.trim())
       .filter((companyName) => companyName.length > 0) ?? [];
-  const rawTerms = [
-    normalizedClientName,
-    ...companyNames,
-    ...(companyNames.length === 0 ? PILOT_FALLBACK_TERMS : []),
-  ].filter((term) => term.length > 0);
+  /* A client with no linked company searches for THEMSELVES and nothing
+     else. This used to append ["ocean", "bimala"] — the two curated pilot
+     keys of the standalone /clients/tax-pilot demo, which are real client
+     companies, not placeholders. So opening any unlinked client's page
+     fired
+       GET /api/crm/intelligence/evidence-dossiers?company=<this client>
+           &company=<real company A>&company=<real company B>
+     naming two unrelated clients' companies in a URL, an access log and
+     whatever analytics observes them (portal audit finding F-06). Nothing
+     was ever displayed from it: BusinessStoryPanel filters the response
+     down to maps matching THIS client's own name or companies, which for
+     an unlinked client is always empty. The fallback bought no UI and
+     leaked two names on every such page view. */
+  const rawTerms = [normalizedClientName, ...companyNames].filter(
+    (term) => term.length > 0,
+  );
 
   const seen = new Set<string>();
   return rawTerms.filter((term) => {

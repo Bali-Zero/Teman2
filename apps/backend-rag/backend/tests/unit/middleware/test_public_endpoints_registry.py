@@ -380,6 +380,14 @@ class TestGarudaVoaAuthAllowlistIsExactNotPrefix:
         assert is_public_path("/api/visa/voa/auth/magic-links")
         assert is_public_path("/api/visa/voa/auth/sessions")
 
+    def test_the_preview_lookup_route_is_public(self):
+        """previewMagicLink (not in the frozen contract, see
+        garuda_portal_auth.py's module docstring) must be reachable by an
+        anonymous caller exactly like its two frozen siblings — it is the
+        route that lets the continue page show the recipient before the
+        customer spends the token."""
+        assert is_public_path("/api/visa/voa/auth/magic-links/preview")
+
     def test_an_unrelated_future_path_under_the_same_root_is_not_public(self):
         """The literal repro from the finding -- this must be False now."""
         assert not is_public_path("/api/visa/voa/auth/anything-future-added-here")
@@ -392,3 +400,31 @@ class TestGarudaVoaAuthAllowlistIsExactNotPrefix:
                     f"entry under this root can leak any future route mounted "
                     f"under it, exactly the finding-E defect this test guards."
                 )
+
+
+@pytest.mark.parametrize(
+    ("path", "template", "expected"),
+    [
+        # Exact, trailing-slash and leading+trailing-slash paths: match.
+        ("/a/b", "/a/b", True),
+        ("/a/b/", "/a/b", True),
+        ("//a/b//", "/a/b", True),
+        # Inner double slash: no match.
+        ("/a//b", "/a/b", False),
+        # One segment too many or too few: no match.
+        ("/a/b/c", "/a/b", False),
+        ("/a", "/a/b", False),
+        # `{param}`: a non-empty segment matches, an empty one does not.
+        ("/a/x", "/a/{p}", True),
+        ("/a//", "/a/{p}", False),
+        ("/a/x/y", "/a/{p}/y", True),
+        ("/a//y", "/a/{p}/y", False),
+    ],
+)
+def test_path_matches_template_trailing_and_inner_slashes(
+    path: str, template: str, expected: bool
+) -> None:
+    """Asserts path_matches_template(path, template) is expected, for each case."""
+    from backend.app.auth.public_endpoints import path_matches_template
+
+    assert path_matches_template(path, template) is expected

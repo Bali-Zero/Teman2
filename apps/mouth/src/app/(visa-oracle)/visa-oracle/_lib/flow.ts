@@ -61,6 +61,16 @@ export interface FlowState {
    * never outlive the screen that produced it.
    */
   blockedAnswer: BlockedAnswer | null;
+  /**
+   * The question id pushed onto the interview by `ASK_FOLLOW_UP` and not
+   * yet answered (2026-09-06). It exists for exactly one reason: once that
+   * question IS answered, the next node must be the verdict — a follow-up
+   * is a detour taken FROM the verdict to satisfy one engine
+   * `missing_facts` entry, not a re-entry into the spine. Without it,
+   * `computeNextNode` would route by id and walk the applicant forward
+   * through questions they already passed. Cleared by every action.
+   */
+  pendingFollowUp: string | null;
 }
 
 /** See `FlowState.blockedAnswer`. */
@@ -111,6 +121,16 @@ export type FlowAction =
   | { type: "ADVANCE" }
   | { type: "BACK" }
   | { type: "EDIT"; questionId: string }
+  /**
+   * The NEEDS_INPUT follow-up (2026-09-06): the engine named a fact whose
+   * question exists in `QUESTIONS` but was never asked on this walk, so the
+   * interview ASKS it — appending the node, keeping every answer already
+   * given. Deliberately NOT routed through `EDIT`: `EDIT` truncates history
+   * back to its target and `pruneFacts` then discards everything after it,
+   * which for a never-asked target means `resetFlow` — the whole interview
+   * thrown away to collect one fact. Append, never truncate.
+   */
+  | { type: "ASK_FOLLOW_UP"; questionId: string }
   /** Finding #15 (adversarial review 2026-07-17): "what instead" is never
    * a dead end — jumps back to the category question and immediately
    * re-answers it with the chosen alternative, re-deriving the forward
@@ -132,6 +152,7 @@ export function initialFlowState(
     language,
     attempt,
     blockedAnswer: null,
+    pendingFollowUp: null,
   };
 }
 
@@ -325,6 +346,13 @@ export function restoreInterviewSnapshot(
     language,
     attempt: value.attempt,
     blockedAnswer: null,
+    // A snapshot is replayed through `computeNextNode`, which stops at the
+    // verdict — so a follow-up node saved AFTER the verdict is never
+    // restored and its fact is pruned with it. That is fail-closed on
+    // purpose: the restored interview re-evaluates, the engine names the
+    // same missing fact again, and the interview asks again. It never
+    // resumes holding an answer whose question it cannot show.
+    pendingFollowUp: null,
   };
 }
 
@@ -335,8 +363,8 @@ export function restoreInterviewSnapshot(
  * evaluation-lease cache key, which now covers every engine mode — SHADOW,
  * internal preview and the rendered REAL verdict — not just SHADOW) can
  * key off `state.attempt` instead of enumerating which actions perform a
- * reset. Called from RESTART and from SELECT_CATEGORY's defensive
- * fallback below — both discard the ENTIRE interview (facts + history),
+ * reset. Called from RESTART and the EDIT / SELECT_CATEGORY defensive
+ * fallbacks below — all discard the ENTIRE interview (facts + history),
  * which is exactly what makes them resets rather than ordinary
  * forward/backward navigation.
  */
@@ -541,7 +569,17 @@ export function computeNextNode(
         ? { kind: "question", questionId: "wants_onshore_conversion" }
         : { kind: "question", questionId: "nationalities" };
     case "wants_onshore_conversion":
-      return { kind: "question", questionId: "application_channel" };
+      // Two call sites since 2026-09-06. ONSHORE it is a spine question
+      // (asked right after `overstay_days`, see that case above) and leads
+      // into `application_channel`. OFFSHORE the spine skips it entirely
+      // and the invest branch asks it as a CATEGORY question
+      // (`getCategoryQuestionIds` below) — routing that occurrence to
+      // `application_channel` would splice the applicant back into the
+      // onshore spine mid-branch and re-ask questions they already passed.
+      // Fall through to the category sequence instead.
+      return facts.in_indonesia === "yes"
+        ? { kind: "question", questionId: "application_channel" }
+        : nextCategoryQuestion(current.questionId, facts);
     case "application_channel":
       return { kind: "question", questionId: "nationalities" };
     case "nationalities":
@@ -556,15 +594,29 @@ export function computeNextNode(
     }
     case "review_gate":
       return { kind: "confirmation" };
-    default: {
-      const sequence = getCategoryQuestionIds(facts);
-      const index = sequence.indexOf(current.questionId);
-      if (index === -1 || index === sequence.length - 1) {
-        return { kind: "question", questionId: "review_gate" };
-      }
-      return { kind: "question", questionId: sequence[index + 1] };
-    }
+    default:
+      return nextCategoryQuestion(current.questionId, facts);
   }
+}
+
+/**
+ * The step after `questionId` inside the current category's own sequence,
+ * or `review_gate` when the sequence is finished (or does not contain the
+ * question at all). Extracted from `computeNextNode`'s `default` arm so the
+ * offshore `wants_onshore_conversion` occurrence — which the switch above
+ * matches by id before ever reaching `default` — can reuse the identical
+ * rule rather than a hand-copied one.
+ */
+function nextCategoryQuestion(
+  questionId: string,
+  facts: OracleFacts,
+): OracleNode {
+  const sequence = getCategoryQuestionIds(facts);
+  const index = sequence.indexOf(questionId);
+  if (index === -1 || index === sequence.length - 1) {
+    return { kind: "question", questionId: "review_gate" };
+  }
+  return { kind: "question", questionId: sequence[index + 1] };
 }
 
 const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
@@ -580,13 +632,24 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
     "work_payer",
     "work_indonesia_compensation",
     "work_sponsor_confirmed",
-    "work_role",
+    // `work_role` removed 2026-09-06 (owner ruling 6) — see the deletion
+    // note where it used to sit in tree.ts.
     "stay_days",
   ],
   remote: [
     "sponsor_category",
     "remote_clients",
     "remote_compensation",
+    // `work_payer` added 2026-09-06. It is the ONLY input to
+    // `work.employer_is_indonesian_entity` (fact-mapper.ts's
+    // `mapEmployerIsIndonesianEntity`), and `hf.e33g.indonesian-employer`
+    // is `on_unknown: NEEDS_INPUT` — so before this, every remote-work
+    // interview dead-ended on a fact it was never offered a way to answer.
+    // NOT derived from `remote_employer_country` (asked next, and read by
+    // no rule in the pack): "the employer's country is not ID" does not
+    // entail "the employer is not an Indonesian entity" — an ID-registered
+    // branch of a foreign group is both.
+    "work_payer",
     "remote_employer_country",
     "remote_pt_pma",
     "stay_days",
@@ -594,6 +657,7 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
   family: [],
   invest: [],
   retirement: [],
+  second_home: [],
   study: [
     "sponsor_category",
     "study_level",
@@ -601,8 +665,18 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
     "study_sponsor_confirmed",
     "stay_days",
   ],
-  diaspora: ["diaspora_connection", "diaspora_documents", "stay_days"],
-  other: ["other_purpose", "other_paid_activity", "stay_days", "entry_pattern"],
+  diaspora: [],
+  // `other`'s real sequence is computed dynamically in
+  // `getCategoryQuestionIds` (D3-2, PR-D3): a declared paid activity
+  // branches to the employment facts instead of this fixed list. Kept here,
+  // unreached, only so this Record stays total over `CategoryKey`.
+  other: [
+    "other_purpose",
+    "other_paid_activity",
+    "family_sponsor_confirmed",
+    "stay_days",
+    "entry_pattern",
+  ],
 };
 
 /**
@@ -616,6 +690,24 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
 
   if (category === "invest") {
     const branch = facts.investment_vehicle;
+    // D3-1 (owner ruling SHWEB-20260911): `property`/`bank_deposit` route to
+    // Second Home (`mapPurposes` emits SECOND_HOME alone), and no E33 rule
+    // reads `sponsor.type` or `family.sponsor_confirmed` — same reasoning as
+    // the `second_home` tile's own branch below. Asking either question here
+    // would only add review volume (an `unsure` answer trips `NOT_CERTAIN`)
+    // for a fact no rule this route reaches ever consults.
+    const isSecondHomeRoute =
+      branch === "property" || branch === "bank_deposit";
+    // PR-D4c-2 (owner ruling SHWEB-20260911): `merit`/`family`/`undecided`
+    // are the three vehicles that ask NOTHING today — no IDR-bound E28A rule
+    // reads any fact this branch collects, unlike `pt_pma` (left untouched,
+    // see that branch below and the doc comment on `investment_currency` in
+    // tree.ts). `investment_currency` always comes first; the amount
+    // question that follows depends on the answer, and `still_unsure` (or no
+    // answer yet) adds none — both `investment.investment_capital_idr` and
+    // `investment.investment_amount_usd` then stay honestly UNKNOWN.
+    const isUndeterminedVehicleRoute =
+      branch === "merit" || branch === "family" || branch === "undecided";
     const branchQuestions =
       branch === "pt_pma"
         ? [
@@ -632,17 +724,102 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
                 "secondhome_state_bank",
                 "secondhome_own_name",
               ]
-            : [];
+            : isUndeterminedVehicleRoute
+              ? [
+                  "investment_currency",
+                  ...(facts.investment_currency === "idr"
+                    ? ["investment_capital_idr"]
+                    : facts.investment_currency === "usd"
+                      ? ["investment_amount_usd"]
+                      : []),
+                ]
+              : [];
     return [
       "sponsor_category",
       "investment_vehicle",
       ...branchQuestions,
+      ...(isSecondHomeRoute
+        ? []
+        : [
+            // `family_sponsor_confirmed` added 2026-09-06: `el.c2.business`
+            // is the rule that covers a declared INVESTMENT purpose and it
+            // requires `family.sponsor_confirmed == true`. Already asked in
+            // the family and retirement branches — same question, same
+            // fact, new branch.
+            "family_sponsor_confirmed",
+            // `wants_onshore_conversion` added 2026-09-06, OFFSHORE ONLY.
+            // Onshore the spine already asks it (`computeNextNode`'s
+            // `overstay_days` case), so adding it here would ask it twice.
+            // Offshore it was structurally unaskable, which is exactly
+            // where `hf.d12-onshore-conversion-excluded`
+            // (`on_unknown: NEEDS_INPUT`, `safety_critical`) bites: D12's
+            // own target population is offshore. Measured 2026-09-06 on
+            // signed seq-19: with the answer supplied,
+            // offshore/invest/PT-PMA returns `SUPPORTED_CANDIDATES [D12]`
+            // on "no" and `NO_SUPPORTED_PATH` on "yes" — decisive both
+            // ways.
+            //
+            // ASKED, never derived. Deriving `false` from "offshore and
+            // holding no permit" was measured as a fail-open on this exact
+            // persona: the fact is forward-looking INTENT ("are you asking
+            // to change status without leaving Indonesia?"), so an investor
+            // planning "enter on D12, then alih status onshore" answers
+            // TRUE, and a derived `false` returns a confident D12
+            // recommendation with zero review reasons for a visa that by
+            // regulation cannot be converted onshore.
+            ...(facts.in_indonesia === "no"
+              ? ["wants_onshore_conversion"]
+              : []),
+          ]),
       "stay_days",
     ];
   }
 
+  // Second Home (owner ruling 3, 2026-09-06; comment corrected PR-D4d —
+  // the prior wording ("no E33 rule reads sponsor.type") was false: the
+  // ACTIVE pack (rulepack-prod-020.signed.json) carries three HARD_FILTERs
+  // on `sponsor.type` — `hf.e33a.sponsor-not-government`, `hf.e33b`/
+  // `hf.e33c.sponsor-not-government-or-none` — all `on_unknown:
+  // NEEDS_INPUT`. They just never reach this tile: E33A/E33B/E33C's own
+  // `covered_purposes` do not include SECOND_HOME (E33A: EMPLOYMENT/
+  // TOURISM/FAMILY; E33B: +BUSINESS_MEETINGS/INVESTMENT; E33C: INVESTMENT/
+  // BUSINESS_MEETINGS/TOURISM/FAMILY), so `hit_policy:
+  // COVER_ALL_DECLARED_PURPOSES` excludes all three as candidates before
+  // their HARD_FILTER is ever evaluated — measured PR-D4d on all three
+  // `second_home` corpus walks (offshore/property, offshore/bank_deposit,
+  // onshore), `sponsor.type` UNKNOWN(NOT_ASKED): every one still resolves
+  // `SUPPORTED_CANDIDATES [E33]` (the separate, plain E33 product), missing
+  // facts empty. Ruling stands regardless (imperator, 2026-09-13):
+  // `second_home` keeps its omission until Zero decides — every extra
+  // question here carries `notSure: { mode: "human-review" }`, so asking
+  // one a rule cannot use would only add review volume.
+  if (category === "second_home") {
+    const branch = facts.secondhome_basis;
+    const branchQuestions =
+      branch === "bank_deposit"
+        ? [
+            "secondhome_deposit_usd",
+            "secondhome_state_bank",
+            "secondhome_own_name",
+          ]
+        : branch === "property"
+          ? ["secondhome_property_value_usd"]
+          : [];
+    return ["secondhome_basis", ...branchQuestions, "stay_days"];
+  }
+
   if (category === "retirement") {
     const branch = facts.retirement_basis;
+    // D3-3 (PR-D3, owner ruling SHWEB-20260911): the funnel census found
+    // `bank_deposit` the LARGEST dead end (30 walks ending NEEDS_INPUT on
+    // `family.sponsor_confirmed` because it was never asked on this branch)
+    // and `property`/`undecided` were allowlisted for the same reason.
+    // `family.sponsor_confirmed` is `el.e33f.retirement`'s fact, independent
+    // of the financial basis chosen — a below-threshold deposit or property
+    // may still have a confirmed family sponsor — so every basis that can
+    // reach E33F now asks it as a fallback, not only the two bases whose
+    // NAME says "sponsor".
+    const undecidedChoice = facts.retirement_undecided_basis;
     const branchQuestions =
       branch === "bank_deposit"
         ? [
@@ -650,14 +827,53 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
             "secondhome_state_bank",
             "secondhome_own_name",
             "secondhome_passive_income_usd",
+            "family_sponsor_confirmed",
           ]
         : branch === "property"
-          ? ["secondhome_property_value_usd"]
+          ? [
+              "secondhome_property_value_usd",
+              // `el.e33f.retirement` needs BOTH `secondhome.
+              // passive_monthly_income_usd >= 3000` AND `family.
+              // sponsor_confirmed == true` (fact-mapper.ts's
+              // ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS comment) — measured
+              // 2026-09-13: without asking passive income too, a `property`
+              // walk that answers `family_sponsor_confirmed = no` still
+              // dead-ends NEEDS_INPUT on the passive-income fact instead of
+              // resolving to NO_SUPPORTED_PATH, because the rule's AND does
+              // not short-circuit on the known-false sponsor conjunct.
+              "secondhome_passive_income_usd",
+              "family_sponsor_confirmed",
+            ]
           : branch === "passive_income"
             ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
             : branch === "family_sponsor"
               ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
-              : [];
+              : branch === "undecided"
+                ? [
+                    "retirement_undecided_basis",
+                    ...(undecidedChoice === "deposit_or_income"
+                      ? [
+                          "secondhome_deposit_usd",
+                          "secondhome_state_bank",
+                          "secondhome_own_name",
+                          "secondhome_passive_income_usd",
+                          "family_sponsor_confirmed",
+                        ]
+                      : undecidedChoice === "family_sponsor"
+                        ? [
+                            "secondhome_passive_income_usd",
+                            "family_sponsor_confirmed",
+                          ]
+                        : // `still_unsure` (or not yet answered): no evidence
+                          // question follows. `family.sponsor_confirmed`
+                          // stays genuinely UNKNOWN, and the applicant is
+                          // never asked for evidence supporting a basis they
+                          // just said they cannot name — that would be
+                          // exactly the dead end this PR cures, worn as a
+                          // false choice.
+                          []),
+                  ]
+                : [];
     return [
       "sponsor_category",
       "retirement_basis",
@@ -667,50 +883,167 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
   }
 
   if (category === "family") {
-    const sponsorCodes = facts.family_sponsor_nationalities?.split(",") ?? [];
-    const needsPermitCode =
-      facts.family_sponsor_nationalities !== undefined &&
-      facts.family_sponsor_nationalities !== "unsure" &&
-      !sponsorCodes.includes("ID");
+    return familyQuestionIds(facts);
+  }
+
+  // Diaspora reuses the FAMILY question set (owner ruling 4, 2026-09-06).
+  // `CATEGORY_TO_PURPOSE` now maps `diaspora → FAMILY` (fact-mapper.ts),
+  // and the products a diaspora applicant actually reaches — E31C/E31F —
+  // are family-reunification products whose rules read
+  // `family.relation_to_sponsor`, `family.sponsor_nationalities` and
+  // `family.sponsor_confirmed`. Asking the diaspora context first keeps the
+  // two questions that make this tile distinct; everything after them is
+  // the identical family branch, so a future family-branch change cannot
+  // silently diverge here.
+  if (category === "diaspora") {
     return [
-      "sponsor_category",
-      "family_relation",
-      "marital_status",
-      "family_sponsor_nationalities",
-      // `family_sponsor_permit_basis` rides the same condition as
-      // `family_sponsor_status_code` (2026-08-23 owner ruling): the
-      // Permenkumham 11/2024 Pasal 33 ayat (7) family-reunification-chaining
-      // exclusion only matters when the sponsor itself is a foreign
-      // ITAS/ITAP holder, not an Indonesian citizen.
-      ...(needsPermitCode
-        ? ["family_sponsor_status_code", "family_sponsor_permit_basis"]
-        : []),
-      // PARENT added 2026-08-19 (seq-10 companion change, Kimi refuter
-      // finding 1): E31C's engine rules require the PARENTS' registered
-      // marriage (`family.marriage_registered`), but this question only
-      // fired for SPOUSE — so every PARENT-relation interview shipped the
-      // fact UNKNOWN by construction and the seq-10 HARD_FILTER would
-      // dead-end those applicants in NEEDS_INPUT with no way to answer.
-      ...(facts.family_relation === "SPOUSE" ||
-      facts.family_relation === "PARENT"
-        ? ["family_marriage_registered"]
-        : []),
-      // STEPCHILD added 2026-08-23 (owner ruling — E31D vocabulary
-      // extension): both evidence facts the ruling named, marriage
-      // certificate of the WNA-WNI parents and birth certificate of the
-      // stepchild, asked together whenever the relation is STEPCHILD.
-      ...(facts.family_relation === "STEPCHILD"
-        ? [
-            "family_stepchild_marriage_certificate_confirmed",
-            "family_stepchild_birth_certificate_confirmed",
-          ]
-        : []),
-      "family_sponsor_confirmed",
+      "diaspora_connection",
+      "diaspora_documents",
+      ...familyQuestionIds(facts),
+    ];
+  }
+
+  // D3-2 (owner ruling SHWEB-20260911): a declared paid activity is
+  // employment, not a generic OTHER purpose — `mapPurposes` emits
+  // EMPLOYMENT for `yes`, so the interview asks the two facts
+  // `el.e23-employment-support` actually reads (`work.
+  // employer_is_indonesian_entity`, `work.indonesian_work_sponsor_confirmed`)
+  // instead of holding on a bare ACTIVITY_BOUNDARY flag. `no` and `unsure`
+  // keep today's `family_sponsor_confirmed` question: `el.c6.social` (the
+  // OTHER-purpose rule) still needs it, and neither branch changes purpose.
+  //
+  // `sponsor_category` joined the `yes` arm only (PR-D4d): an EMPLOYMENT-
+  // purpose walk down THIS branch is the other reachable path (besides
+  // `work`) into `el.e33a/b.government-*`, `el.e23u.diplomatic-household`
+  // and `el.e23v.trade-office` (seq-21, unsigned) — all keyed on
+  // `sponsor.type`, none readable before this. `no`/`unsure` stay OTHER
+  // purpose, which none of those rules cover, so they must NOT gain the
+  // question — asking it there would only add review volume for a fact no
+  // rule on that path reads.
+  if (category === "other") {
+    return [
+      "other_purpose",
+      "other_paid_activity",
+      ...(facts.other_paid_activity === "yes"
+        ? ["sponsor_category", "work_payer", "work_sponsor_confirmed"]
+        : ["family_sponsor_confirmed"]),
       "stay_days",
+      "entry_pattern",
     ];
   }
 
   return FIXED_CATEGORY_QUESTIONS[category];
+}
+
+/** The FAMILY branch sequence, shared verbatim by the `family` and
+ * `diaspora` tiles (owner ruling 4) so the two can never drift apart. */
+function familyQuestionIds(facts: OracleFacts): readonly string[] {
+  const sponsorCodes = facts.family_sponsor_nationalities?.split(",") ?? [];
+  const needsPermitCode =
+    facts.family_sponsor_nationalities !== undefined &&
+    facts.family_sponsor_nationalities !== "unsure" &&
+    !sponsorCodes.includes("ID");
+  return [
+    "sponsor_category",
+    "family_relation",
+    "marital_status",
+    "family_sponsor_nationalities",
+    // `family_sponsor_permit_basis` rides the same condition as
+    // `family_sponsor_status_code` (2026-08-23 owner ruling): the
+    // Permenkumham 11/2024 Pasal 33 ayat (7) family-reunification-chaining
+    // exclusion only matters when the sponsor itself is a foreign
+    // ITAS/ITAP holder, not an Indonesian citizen.
+    ...(needsPermitCode
+      ? ["family_sponsor_status_code", "family_sponsor_permit_basis"]
+      : []),
+    // PARENT added 2026-08-19 (seq-10 companion change, Kimi refuter
+    // finding 1): E31C's engine rules require the PARENTS' registered
+    // marriage (`family.marriage_registered`), but this question only
+    // fired for SPOUSE — so every PARENT-relation interview shipped the
+    // fact UNKNOWN by construction and the seq-10 HARD_FILTER would
+    // dead-end those applicants in NEEDS_INPUT with no way to answer.
+    ...(facts.family_relation === "SPOUSE" || facts.family_relation === "PARENT"
+      ? ["family_marriage_registered"]
+      : []),
+    // STEPCHILD added 2026-08-23 (owner ruling — E31D vocabulary
+    // extension): both evidence facts the ruling named, marriage
+    // certificate of the WNA-WNI parents and birth certificate of the
+    // stepchild, asked together whenever the relation is STEPCHILD.
+    // D3-4's third question, the sponsor's own KITAS/KITAP, was REMOVED
+    // (owner ruling SHWEB-20260911, 2026-09-13) — no pack requirement for
+    // it exists for E31D; see tree.ts and `mapDisclosedReviewFlags`
+    // (fact-mapper.ts).
+    ...(facts.family_relation === "STEPCHILD"
+      ? [
+          "family_stepchild_marriage_certificate_confirmed",
+          "family_stepchild_birth_certificate_confirmed",
+        ]
+      : []),
+    "family_sponsor_confirmed",
+    "stay_days",
+  ];
+}
+
+/**
+ * Hard bound on the replay below. The spine plus the longest branch is far
+ * short of it; the cap exists so that a future routing mistake degrades
+ * into a truncated list instead of a frozen tab.
+ */
+const WALK_REPLAY_LIMIT = 64;
+
+/**
+ * Every question this walk WOULD ask, replayed from the framing screen
+ * against `facts` as they stand — the same `computeNextNode` the interview
+ * itself runs, so the list can never disagree with the routing.
+ */
+export function walkQuestionIds(
+  facts: OracleFacts,
+  today?: Date,
+): readonly string[] {
+  const ids: string[] = [];
+  let node: OracleNode = { kind: "framing" };
+  for (let step = 0; step < WALK_REPLAY_LIMIT; step += 1) {
+    node = computeNextNode(node, facts, today);
+    if (node.kind !== "question") break;
+    // Defensive only: `computeNextNode` is acyclic today, and a cycle
+    // introduced later must not hang the verdict screen.
+    if (ids.includes(node.questionId)) break;
+    ids.push(node.questionId);
+  }
+  return ids;
+}
+
+/**
+ * Whether the NEEDS_INPUT follow-up may append `questionId` to THIS
+ * interview (adversarial review 2026-09-06, finding 1 — accepted,
+ * narrowed).
+ *
+ * Many questions appear in their branch only under a condition on the
+ * facts: `family_marriage_registered` exists for a SPOUSE or PARENT
+ * relation, the Second Home evidence questions for one documented basis,
+ * `renewal_paid` for one permit shape. Splicing such a question in when
+ * its condition is unmet asks the applicant something their own earlier
+ * answer has already ruled out — the tree's prerequisite ordering
+ * bypassed, which is exactly the blocker the review raised.
+ *
+ * The test is structural, not a hand-maintained table of gates, so it
+ * cannot drift from the routing: hold every answer given so far fixed and
+ * replay the walk once per category. If ANY category's walk asks the
+ * question, its prerequisites are satisfied (a question that "declares no
+ * gate" is asked by its own branch for any facts, so choosing that branch
+ * surfaces it). If NO category can reach it, the only thing standing in
+ * the way is a fact the applicant has already answered the other way, and
+ * the interview keeps today's behaviour: the human-handoff row.
+ */
+export function followUpPrerequisitesMet(
+  questionId: string,
+  facts: OracleFacts,
+  today?: Date,
+): boolean {
+  if (walkQuestionIds(facts, today).includes(questionId)) return true;
+  return CATEGORY_KEYS.some((category) =>
+    walkQuestionIds({ ...facts, category }, today).includes(questionId),
+  );
 }
 
 function truncateToNode(
@@ -748,6 +1081,37 @@ function pruneFacts(facts: OracleFacts, history: OracleNode[]): OracleFacts {
   return out;
 }
 
+/**
+ * Where a just-recorded answer leads. `computeNextNode` in every case but
+ * one: when the answered question IS a follow-up (a node appended from the
+ * verdict to satisfy one engine `missing_facts` entry), the answer goes
+ * straight back to the verdict for re-evaluation. Routing it by id instead
+ * would splice the applicant into whatever sequence that question normally
+ * belongs to and re-ask what they have already answered.
+ *
+ * Two ways to recognise it, because `pendingFollowUp` alone is not enough.
+ * It is cleared by BACK, so an applicant who answers the follow-up, steps
+ * BACK onto it and answers again holds no pending id — and would fall
+ * through to `nextCategoryQuestion`, landing on `review_gate` instead of
+ * the verdict they came from. A verdict already sitting EARLIER in history
+ * is the durable signal: `EDIT`, `BACK`, `REVIEW_ANSWERS` and
+ * `SELECT_CATEGORY` all truncate, so no other action can leave a question
+ * node standing after a verdict.
+ */
+function nextAfterAnswer(
+  state: FlowState,
+  questionId: string,
+  facts: OracleFacts,
+  today?: Date,
+): OracleNode {
+  if (state.pendingFollowUp === questionId) return { kind: "verdict" };
+  const precedingNodes = state.history.slice(0, -1);
+  if (precedingNodes.some((node) => node.kind === "verdict")) {
+    return { kind: "verdict" };
+  }
+  return computeNextNode(state.history[state.history.length - 1], facts, today);
+}
+
 export function flowReducer(state: FlowState, action: FlowAction): FlowState {
   switch (action.type) {
     case "ANSWER": {
@@ -776,13 +1140,18 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         { ...state.facts, [action.questionId]: action.value },
         state.history,
       );
-      const current = state.history[state.history.length - 1];
-      const next = computeNextNode(current, facts, action.today);
+      const next = nextAfterAnswer(
+        state,
+        action.questionId,
+        facts,
+        action.today,
+      );
       return {
         ...state,
         facts,
         history: [...state.history, next],
         blockedAnswer: null,
+        pendingFollowUp: null,
       };
     }
     case "SKIP": {
@@ -790,13 +1159,18 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         { ...state.facts, [action.questionId]: "unsure" },
         state.history,
       );
-      const current = state.history[state.history.length - 1];
-      const next = computeNextNode(current, facts, action.today);
+      const next = nextAfterAnswer(
+        state,
+        action.questionId,
+        facts,
+        action.today,
+      );
       return {
         ...state,
         facts,
         history: [...state.history, next],
         blockedAnswer: null,
+        pendingFollowUp: null,
       };
     }
     case "ADVANCE": {
@@ -808,6 +1182,7 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         ...state,
         history: [...state.history, next],
         blockedAnswer: null,
+        pendingFollowUp: null,
       };
     }
     case "BACK": {
@@ -818,6 +1193,7 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         history,
         facts: pruneFacts(state.facts, history),
         blockedAnswer: null,
+        pendingFollowUp: null,
       };
     }
     case "EDIT": {
@@ -825,12 +1201,40 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         kind: "question",
         questionId: action.questionId,
       };
+      if (!state.history.some((node) => sameNode(node, target))) {
+        // An absent target cannot safely reopen this interview's branch.
+        return resetFlow(state);
+      }
       const history = truncateToNode(state.history, target);
       return {
         ...state,
         history,
         facts: pruneFacts(state.facts, history),
         blockedAnswer: null,
+        pendingFollowUp: null,
+      };
+    }
+    case "ASK_FOLLOW_UP": {
+      const question = QUESTIONS[action.questionId];
+      // Two refusals, both no-ops rather than guesses. An unregistered id
+      // could not be rendered. An id ALREADY in history is not a follow-up
+      // at all — reopening it is `EDIT`'s job, and silently redirecting
+      // here would append a duplicate node for a question the user can
+      // already see on the confirmation card.
+      if (!question) return state;
+      const target: OracleNode = {
+        kind: "question",
+        questionId: action.questionId,
+      };
+      if (state.history.some((node) => sameNode(node, target))) return state;
+      return {
+        ...state,
+        // Append. `facts` is untouched — nothing the applicant already
+        // answered is discarded to collect this one fact, which is the
+        // whole difference from `EDIT`.
+        history: [...state.history, target],
+        blockedAnswer: null,
+        pendingFollowUp: action.questionId,
       };
     }
     case "SELECT_CATEGORY": {
@@ -857,6 +1261,7 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         facts,
         history: [...truncated, next],
         blockedAnswer: null,
+        pendingFollowUp: null,
       };
     }
     case "REVIEW_ANSWERS": {
@@ -869,6 +1274,7 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         history,
         facts: pruneFacts(state.facts, history),
         blockedAnswer: null,
+        pendingFollowUp: null,
       };
     }
     case "RESTART":
@@ -915,6 +1321,13 @@ export function useOracleFlow(options: UseOracleFlowOptions = {}) {
   const back = useCallback(() => dispatch({ type: "BACK" }), []);
   const edit = useCallback(
     (questionId: string) => dispatch({ type: "EDIT", questionId }),
+    [],
+  );
+  /** NEEDS_INPUT follow-up — appends a never-asked question, keeps every
+   * answer. See the `ASK_FOLLOW_UP` action's doc comment for why this is
+   * not `edit`. */
+  const askFollowUp = useCallback(
+    (questionId: string) => dispatch({ type: "ASK_FOLLOW_UP", questionId }),
     [],
   );
   // Finding #15: NO_SUPPORTED_PATH's "what instead" alternatives and the
@@ -981,6 +1394,7 @@ export function useOracleFlow(options: UseOracleFlowOptions = {}) {
     advance,
     back,
     edit,
+    askFollowUp,
     selectCategory,
     reviewAnswers,
     restart,
@@ -1126,8 +1540,8 @@ export function getTreeSteps(
     // "category" entirely — yet "category" still sits earlier in `order`
     // than "review_gate", so the old `idx < currentIdx → "done"` rule
     // marked it "done" even though it was never asked, exposing a
-    // tap-to-edit button whose EDIT dispatch was a silent no-op
-    // (`truncateToNode` finds no matching history entry). Ground truth
+    // tap-to-edit button for a question absent from history. EDIT now
+    // resets the flow when its target is absent. Ground truth
     // for any REAL question step is the fact itself — `pruneFacts`
     // already guarantees `facts` only ever holds keys for questions
     // actually answered on the current path, so a question step is
@@ -1172,9 +1586,8 @@ export function getTreeSteps(
  * actual question node. "framing"/"confirmation"/"verdict" can reach
  * "done" status too (they're plain forward moves through the trunk, not
  * questions) and must never render as editable — `flowReducer`'s EDIT
- * action only knows how to truncate history to a `{ kind: "question" }`
- * node, so dispatching EDIT with one of those ids would silently no-op
- * (`truncateToNode` finds no match and returns the history unchanged).
+ * action requires a matching `{ kind: "question" }` history entry and
+ * resets the flow when its target is absent.
  * Current/pending/pruned steps are never editable either — you can't jump
  * forward to an answer that doesn't exist yet. Pure, so `LivingTree` never
  * has to re-derive this rule itself.

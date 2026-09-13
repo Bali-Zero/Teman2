@@ -1,0 +1,68 @@
+{
+  "generated_schema_compatible": true,
+  "inference_calls": 0,
+  "schema_selections": {
+    "InitializeParams": {
+      "path": "schema/v1/InitializeParams.json",
+      "sha256": "6f0094be9a65242ec779a40794cbd4fdfa32fca1e45084a16adfb50501d33ea2",
+      "used_fields_present": ["capabilities", "clientInfo"],
+      "required": ["clientInfo"]
+    },
+    "ConfigReadParams": {
+      "path": "schema/v2/ConfigReadParams.json",
+      "sha256": "257c54a423b47c1d209ff1076765a1564d82322fd5161670fd489a2874de1bac",
+      "used_fields_present": ["cwd", "includeLayers"],
+      "required": []
+    },
+    "AccountReadParams": {
+      "path": "schema/v2/GetAccountParams.json",
+      "sha256": "30b545275f60975b55bd6fbaafd70f15505801d14168ee82d3931b6e93c78aab",
+      "used_fields_present": ["refreshToken"],
+      "required": []
+    },
+    "ModelListParams": {
+      "path": "schema/v2/ModelListParams.json",
+      "sha256": "de29a536c00a5b8f46f34dba417dabd93365305571a8ed200e33bea85db68b5a",
+      "used_fields_present": ["cursor", "includeHidden", "limit"],
+      "required": []
+    },
+    "ThreadStartParams": {
+      "path": "schema/v2/ThreadStartParams.json",
+      "sha256": "18e546303ecfe878b179a50da73e6fb99f634be4bc3f7650d5870f31787079b2",
+      "used_fields_present": [
+        "allowProviderModelFallback",
+        "config",
+        "dynamicTools",
+        "environments",
+        "ephemeral",
+        "sandbox"
+      ],
+      "required": []
+    },
+    "ThreadResumeParams": {
+      "path": "schema/v2/ThreadResumeParams.json",
+      "sha256": "f0ffd32fbe09750f27d1c27d7e815db7389167dba4e4b438c8411095cdff5d92",
+      "used_fields_present": [
+        "approvalPolicy",
+        "config",
+        "cwd",
+        "model",
+        "sandbox",
+        "threadId"
+      ],
+      "required": ["threadId"]
+    },
+    "TurnStartParams": {
+      "path": "schema/v2/TurnStartParams.json",
+      "sha256": "95f35a9f01beea390cc4e478b4030e46ef37e5d769438d50f40b7aeabbf1ad74",
+      "used_fields_present": ["effort", "environments", "input", "threadId"],
+      "required": ["input", "threadId"]
+    },
+    "TurnInterruptParams": {
+      "path": "schema/v2/TurnInterruptParams.json",
+      "sha256": "6dff382dae73d1dbc58406ed045605f647e7a49660e2540fbd2c6c24d60c5f2b",
+      "used_fields_present": ["threadId", "turnId"],
+      "required": ["threadId", "turnId"]
+    }
+  }
+}

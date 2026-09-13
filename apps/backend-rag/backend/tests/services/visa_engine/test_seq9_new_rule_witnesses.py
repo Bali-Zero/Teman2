@@ -35,14 +35,22 @@ FIX-5b — Codex F1/F3/F6, Kimi F1):
   decision #2).
 - E23U/E23V (``review.e23u/v.requested-product``): an explicit
   ``intent.requested_product_code`` fires review for THAT product only,
-  never its sibling; an UNKNOWN requested-product-code resolves to
-  BLOCKED_UNKNOWN, never a manufactured REVIEW
-  (``on_unknown=NEEDS_INPUT``, not ``HUMAN_REVIEW``) — this is the path
-  production actually exercises today, since ``fact-mapper.ts:469``
+  never its sibling; an UNKNOWN requested-product-code never manufactures
+  a REVIEW (``on_unknown=NEEDS_INPUT``, not ``HUMAN_REVIEW``) — this is the
+  path production actually exercises today, since ``fact-mapper.ts:469``
   hard-codes this fact ``NOT_ASKED`` (Kimi refuter finding 2).
-- UNKNOWN ``sponsor.type`` on E33A/E33B/E33C: BLOCKED_UNKNOWN, never
-  EXCLUDED — each HARD_FILTER's own ``on_unknown=NEEDS_INPUT`` must ask,
-  never assume exclusion, on missing sponsor data.
+- UNKNOWN ``sponsor.type`` on E33A/E33B/E33C: never EXCLUDED — a
+  HARD_FILTER may not assume exclusion from missing sponsor data.
+
+Two of those witnesses had their incidental PROOF SHAPE revised on
+2026-09-06 (``BLOCKED_UNKNOWN`` → ``UNSUPPORTED``) by the decisiveness
+reorder — ``evaluate_product`` now tests purpose-feasibility before it
+blocks on an input-tagged gate unknown, and all five products named above
+carry zero SUPPORT rules, so no fact resolution could ever have made them
+candidates. Each test's own stated SAFETY assertion (``is not EXCLUDED`` /
+``is not REVIEW``) is untouched and still the first line of the test; the
+mechanism the shape used to stand for is pinned directly, on a product that
+CAN be recommended, in ``test_evaluator_purpose_feasibility_precedence.py``.
 """
 
 from __future__ import annotations
@@ -163,15 +171,30 @@ def test_e33bc_employer_sponsor_is_excluded(
 
 
 @pytest.mark.parametrize("product_code", ["E33A", "E33B", "E33C"])
-def test_unknown_sponsor_type_is_blocked_unknown_never_excluded(
+def test_unknown_sponsor_type_is_never_excluded(
     seq9: compiler.CompiledRulePack, product_code: str
 ) -> None:
     """An applicant who was never asked ``sponsor.type`` (the fact stays at
-    its baseline UNKNOWN) must never be silently EXCLUDED — the
-    HARD_FILTER's ``on_unknown=NEEDS_INPUT`` must ask, not assume."""
+    its baseline UNKNOWN) must never be silently EXCLUDED — that is this
+    witness's SAFETY assertion and it is unchanged.
+
+    The proof SHAPE moved from ``BLOCKED_UNKNOWN`` to ``UNSUPPORTED`` with
+    the decisiveness reorder (2026-09-06, ``evaluate_product`` now tests
+    purpose-feasibility before blocking on an input-tagged gate unknown —
+    see ``test_evaluator_purpose_feasibility_precedence.py``). E33A/E33B/
+    E33C carry ZERO SUPPORT rules in this pack, so a TOURISM applicant can
+    never be a candidate for them under ANY ``sponsor.type`` value: asking
+    the question was never a step towards an answer, and the honest proof
+    is "this product cannot cover TOURISM", not "tell me your sponsor".
+    The rule's ``on_unknown=NEEDS_INPUT`` still asks wherever the product
+    COULD be recommended — pinned in the sibling file's
+    ``test_a_purpose_feasible_product_still_blocks_on_its_gate_unknown``."""
     proof = _proof(seq9, product_code, {"intent.purposes": _known(["TOURISM"])})
-    assert proof.status is ProductProofStatus.BLOCKED_UNKNOWN
     assert proof.status is not ProductProofStatus.EXCLUDED
+    assert not _reason_codes(proof), "no exclusion reason may be manufactured from an UNKNOWN"
+    assert proof.status is ProductProofStatus.UNSUPPORTED
+    assert proof.missing_purposes == frozenset({"TOURISM"})
+    assert proof.missing_facts == frozenset(), "a product that cannot cover TOURISM asks nothing"
 
 
 # ---------------------------------------------------------------------------
@@ -311,15 +334,25 @@ def test_e23v_requested_product_code_fires_review_for_e23v_only(
 
 
 @pytest.mark.parametrize("product_code", ["E23U", "E23V"])
-def test_unknown_requested_product_code_is_blocked_unknown_never_review(
+def test_unknown_requested_product_code_never_manufactures_a_review(
     seq9: compiler.CompiledRulePack, product_code: str
 ) -> None:
     """``intent.requested_product_code`` stays at its baseline UNKNOWN
-    (never asked) — the rule's ``on_unknown=NEEDS_INPUT`` must ask, never
-    manufacture a REVIEW verdict. This is the path production actually
-    exercises today: ``fact-mapper.ts:469`` hard-codes this fact
-    NOT_ASKED unconditionally (Kimi refuter finding 2) — these two rules
-    are production-inert until that fact is collected."""
+    (never asked) — the rule's ``on_unknown=NEEDS_INPUT`` must never
+    manufacture a REVIEW verdict. That SAFETY assertion is unchanged. This
+    is the path production actually exercises today: ``fact-mapper.ts:469``
+    hard-codes this fact NOT_ASKED unconditionally (Kimi refuter finding 2)
+    — these two rules are production-inert until that fact is collected.
+
+    The proof SHAPE moved from ``BLOCKED_UNKNOWN`` to ``UNSUPPORTED`` with
+    the decisiveness reorder (see the E33A/B/C witness above and
+    ``test_evaluator_purpose_feasibility_precedence.py``): E23U/E23V carry
+    zero SUPPORT rules, so "production-inert" is now what the proof itself
+    says, instead of the product asking every EMPLOYMENT applicant for a
+    product code the browser can never supply."""
     proof = _proof(seq9, product_code, {"intent.purposes": _known(["EMPLOYMENT"])})
-    assert proof.status is ProductProofStatus.BLOCKED_UNKNOWN
     assert proof.status is not ProductProofStatus.REVIEW
+    assert not _reason_codes(proof), "no review reason may be manufactured from an UNKNOWN"
+    assert proof.status is ProductProofStatus.UNSUPPORTED
+    assert proof.missing_purposes == frozenset({"EMPLOYMENT"})
+    assert proof.missing_facts == frozenset()

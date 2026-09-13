@@ -8,6 +8,7 @@ quietly kept its own hand-written `NOT IN ('client')`.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -15,15 +16,20 @@ import pytest
 
 from backend.app.utils.service_accounts import (
     CLIENT_ROLES,
+    EXTERNAL_ROLES,
     NON_HUMAN_ROLES,
     NON_HUMAN_ROLES_SQL,
+    NON_TEAM_ROLES,
     SERVICE_ROLES,
+    TEAM_ROLES,
     _sql_literal_list,
     is_human_team_member,
     non_human_roles_sql_array,
+    normalize_role,
 )
 
 ROUTERS = Path(__file__).resolve().parents[3] / "app" / "routers"
+ROSTER = Path(__file__).resolve().parents[3] / "data" / "team_members.json"
 DEPS = Path(__file__).resolve().parents[3] / "app" / "deps"
 
 
@@ -50,6 +56,119 @@ class TestIsHumanTeamMember:
     def test_the_two_sets_are_disjoint(self) -> None:
         assert not (CLIENT_ROLES & SERVICE_ROLES)
         assert NON_HUMAN_ROLES == CLIENT_ROLES | SERVICE_ROLES
+
+
+class TestExternalPartnersAreNotColleagues:
+    """Ledger row L88 (2026-08-19): ``partner`` is a role the platform itself
+    issues — ``routers/auth.py::_redirect_for_role`` sends it to
+    ``/portal/partner`` and ``routers/partners.py::_is_partner_role`` defines
+    it as "not internal team" — yet the gate admitted it, because the
+    exclusion set only ever modelled machines. A partner is a person, so the
+    cure lives in the ACCESS predicate and stays out of the people-shaped SQL
+    exclusions.
+    """
+
+    @pytest.mark.parametrize("role", ["partner", "Partner", "  PARTNER  "])
+    def test_partners_are_people_but_not_team(self, role: str) -> None:
+        """Guilt: this is the assertion that failed before the fix."""
+        assert is_human_team_member(role) is False
+
+    def test_every_role_in_the_repo_roster_still_counts(self) -> None:
+        """Innocence over the real roster, not a hand-picked list: team roles
+        are free-text job titles, and not one of them may be caught."""
+        roster = json.loads(ROSTER.read_text(encoding="utf-8"))
+        roles = sorted({normalize_role(row.get("role")) for row in roster if row.get("role")})
+        assert len(roles) >= 10, f"roster at {ROSTER} looks empty: {roles}"
+        assert [role for role in roles if not is_human_team_member(role)] == []
+
+    def test_partners_stay_out_of_the_people_shaped_exclusions(self) -> None:
+        """Scope pin: only the access predicate changed. Roster, headcount and
+        dropdown queries still exclude exactly clients and machines."""
+        assert EXTERNAL_ROLES == frozenset({"partner"})
+        assert not (EXTERNAL_ROLES & NON_HUMAN_ROLES)
+        assert NON_TEAM_ROLES == NON_HUMAN_ROLES | EXTERNAL_ROLES
+        assert NON_HUMAN_ROLES == frozenset({"client", "monitoring"})
+        assert "partner" not in non_human_roles_sql_array()
+        assert "partner" not in NON_HUMAN_ROLES_SQL
+
+
+class TestTeamRolesAreAnAllowList:
+    """The gate must fail closed on anything it has not been told is a colleague.
+
+    Row 88 of the PENDING-ARMS ledger: as a denylist, unknown/missing roles and
+    the ``user`` default walked through ``require_team_member``.
+    """
+
+    @pytest.mark.parametrize(
+        "role",
+        [
+            "user",
+            "unknown",
+            "",
+            "   ",
+            None,
+            "staff",
+            "guest",
+            "Partner ",
+            "client",
+            "monitoring",
+            # middleware pseudo-users (hybrid_auth.py): a shared key is not a person
+            "internal",
+            "public",
+        ],
+    )
+    def test_roles_the_census_never_issued_fail_closed(self, role: str | None) -> None:
+        assert is_human_team_member(role) is False
+
+    @pytest.mark.parametrize(
+        "role",
+        [
+            # census 2026-09-06 of the live team_members rows (job titles)
+            "Accounting",
+            "Board Member",
+            "CEO",
+            "Consultant",
+            "Executive Consultant",
+            "Founder",
+            "Junior Consultant",
+            "Reception",
+            "Specialist Advisor",
+            "Supervisor",
+            "Tax Care",
+            "Tax Lead",
+            "Tax Manager",
+            "Team Leader",
+            "member",
+            # legacy tokens still used by fixtures and older code paths
+            "admin",
+            "team",
+        ],
+    )
+    def test_every_role_production_issues_still_passes(self, role: str) -> None:
+        """Innocence: the allow-list is the census, not a guess (scar family #3)."""
+        assert is_human_team_member(role) is True
+
+    def test_matching_is_case_and_padding_insensitive(self) -> None:
+        assert is_human_team_member("  TAX LEAD  ") is True
+        assert is_human_team_member("board member") is True
+
+    def test_the_allow_list_is_stored_normalised(self) -> None:
+        assert TEAM_ROLES == frozenset(normalize_role(r) for r in TEAM_ROLES)
+
+    def test_the_allow_list_and_the_refusals_are_disjoint(self) -> None:
+        assert not (TEAM_ROLES & NON_TEAM_ROLES)
+
+    def test_every_roster_role_is_on_the_allow_list(self) -> None:
+        """Tripwire: a new job title in the roster must be added here too."""
+        roster = {normalize_role(m["role"]) for m in json.loads(ROSTER.read_text())}
+        assert roster, "roster is empty"
+        assert roster <= TEAM_ROLES
+
+    def test_the_partners_service_allow_list_cannot_drift_wider(self) -> None:
+        """CATA-6 keeps its own list; it must never admit a role this one refuses."""
+        from backend.services.crm.partners.service import INTERNAL_ROLES_ALWAYS_ALLOWED
+
+        assert INTERNAL_ROLES_ALWAYS_ALLOWED <= TEAM_ROLES
 
 
 class TestSqlRendering:
@@ -169,7 +288,7 @@ class TestNoCallSiteUsesClientAsAProxyForStaff:
         assert self.HARDCODED.search('if user.get("role") == "client":')
         assert self.HARDCODED.search("if current_user.get('role') == 'client':")
         assert self.HARDCODED.search('current_user["role"] == "client" and x != y')
-        assert not self.HARDCODED.search("is_human_team_member(current_user.get(\"role\"))")
+        assert not self.HARDCODED.search('is_human_team_member(current_user.get("role"))')
         assert not self.HARDCODED.search('user.get("role") == "admin"')
 
     def test_the_deps_directory_was_actually_scanned(self) -> None:

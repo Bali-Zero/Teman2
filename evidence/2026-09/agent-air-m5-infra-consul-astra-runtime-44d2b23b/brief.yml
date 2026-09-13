@@ -1,0 +1,28 @@
+task_id: consul-astra-runtime
+gear: 2
+objective:
+  Make the existing Astra consumer select a current, hash-pinned Codex runtime and verify actual model
+  discovery.
+scope:
+  - One launcher binding and side-by-side path, existing layout tests, versioned selected runtime evidence and documentation.
+constraints:
+  - Preserve strict config, pre-execution binary checks, existing interactive installations and source OAuth files.
+  - No privileged broker activation, grant creation, automatic model substitution, scheduler, or CI-selection change.
+acceptance:
+  - text:
+      WHEN the exact side-by-side 0.153.4 executable is present, the launcher SHALL select it; unknown executable
+      bytes SHALL still fail before authentication is copied.
+    probe: scripts/tests/test_codex_shadow_launch.py
+  - text:
+      WHEN the pinned runtime discovers models on Pro, Mini and M5, the complete catalog SHALL include gpt-6-astra
+      and the isolated process group SHALL stop.
+    probe: evidence/dual-consul-astra/README.md
+  - text:
+      WHEN the M5 synthetic probe invokes Astra, both bounded same-mission turns SHALL complete with the expected
+      marker; the actual consumer SHALL produce an Astra/medium discovery binding without invoking the broker.
+    probe: evidence/dual-consul-astra/m5-invoke.json
+assumptions:
+  - text: Catalog presence on Pro and Mini does not establish inference or broker authorization on those hosts.
+    status: unverified
+    probe: No Pro/Mini inference or operational broker grant was attempted.
+pii: none

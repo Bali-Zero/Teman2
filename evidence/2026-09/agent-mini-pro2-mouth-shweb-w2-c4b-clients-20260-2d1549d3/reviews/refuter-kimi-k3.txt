@@ -1,0 +1,158 @@
+kimi version 0.35.0
+• We need answer only plain text sections, no tools. Need adversarial review based solely on provided text. Need identify defects. Let's carefully analyze.
+
+  Task: review PR that moves constants server-side. Provided diff excerpts. Need find substantiated issues.
+
+  Potential defects:
+
+  1. Server component page.tsx: `export default function ClientDetailPage() { return <ClientDetailClient taxConsultants={taxConsultants()} />; }` In Next.js App Router, page.tsx previously likely took params/searchParams? Client component uses useParams so ok. But issue: server component is not async; taxConsultants() presumably sync. Fine.
+
+  Bigger: In Next.js, props passed from Server Component to Client Component must be serializable. taxConsultants returns array of {value,label} — serializable. Fine.
+
+  2. The RSC payload still contains names — acknowledged.
+
+  3. The build guard scans `.next/static/chunks` for forbidden regex. But the chunk serving issue: moving to server payload means names appear in RSC payload / flight data, possibly also in `__next_f` inline in HTML or in `.next/server` — not in static chunks. Acknowledged residual.
+
+  4. Possible defect: `TaxTab.consultants.test.tsx` mocks `@/lib/api` but TaxTab.tsx imports? It previously imported api presumably. The test asserts label "Tax Consultant" via getByLabelText — not verifiable.
+
+  5. ClientDetailClient.tsx import header includes `import type { TaxConsultantOption } from "@/lib/workspace/roster-directory";` — type-only, erased. Fine.
+
+  6. Verbatim move claim: 1039-line body moved "verbatim" but we can't verify; reviewers can note unverifiable but not a defect.
+
+  7. Real potential defect: In `ClientDetailClient`, `const clientId = params?.id ? Number(params.id) : 0;` — preexisting.
+
+  8. Concurrency: C4 said another team rewrote files concurrently (#6329, #6307). C4b moved the 1039-line body "verbatim from clients/[id]/page.tsx" — but from which version? If the other team's rewrite landed after C4b's branch point, moving the body could clobber/lose their changes. The context says "moved verbatim from clients/[id]/page.tsx" — presumably current main. Can't substantiate loss.
+
+  9. Defect: The guard comment says measured "0 skipped" but with ALLOWED_CHUNK_PREFIXES=[] fine.
+
+  10. Potential real issue: page.tsx no longer exports metadata or dynamic config? Not provided.
+
+  11. `TaxConsultantSelector` memo deps: `consultants` added to useCallback deps — but consultants is a new array each render? It comes from props from server; stable across renders unless parent re-renders... ClientDetailClient re-renders create same prop reference (RSC props stable). Fine.
+
+  12. Test `ClientDetailClient.test.tsx` mocks `./components/TaxTab` entirely, so the forwarding of taxConsultants prop to TaxTab is NOT tested anywhere: TaxTab.consultants.test.tsx tests TaxTab receives prop and renders; ClientDetailClient.test.tsx mocks TaxTab so can't assert forwarding. The claim "one prop forwarded to <TaxTab>" is in the verbatim moved body — not shown. If forwarding were missing, typecheck would fail? TaxTab's taxConsultants is required, so typecheck would catch omission. OK.
+
+  13. Substantive defect candidate: the guard FORBIDDEN regex /faisha|faysha|sahira/i checks names only, not emails. The chunk previously contained "faisha.tax@balizero.com" — matches faisha. Fine. But moving the list server-side, emails like veronika.tax etc are not forbidden — they remain in chunk? No—they're moved too, whole table moved.
+
+  14. Real issue: the five values are pinned by migration 093 CHECK constraint; roster-directory module "stays in sync" — but nothing in this PR tests that taxConsultants() returns exactly the 5 values matching the CHECK constraint. There was previously a comment "kept in sync with backend migration 093". Now there's a new module `@/lib/workspace/roster-directory` whose contents are not shown. We cannot verify it returns the right five, doesn't itself get imported into client... Actually TaxTab imports type from it — import type erased. But client-roster-boundary.test.ts has ROSTER_GRAPH_MODULES presumably checks import graph. Partially covered.
+
+  Possible finding: nothing verifies roster-directory isn't itself imported by a client module somewhere else (value import). The boundary test presumably covers that ("catches the import that would put the roster back into a client module"). Covered per text.
+
+  15. A real, substantiated defect: In `page.tsx`, `taxConsultants()` is called at module request time in a server component. If the page is statically rendered (no dynamic APIs used — the server component doesn't call params/searchParams or headers), Next may prerender it at build time and serve the RSC payload as a static asset (.rsc / prefetch) from CDN without session. Actually important: the previous page was a client component using useParams/useSearchParams. New server page doesn't access request-specific data, so the route could be statically optimized; the Flight data containing the five addresses could end up in a static prerender — served with no session, just like the chunk. The known limitation says "the workspace has no server-side session gate, so this route's RSC server payload is still sent before a client-side gate runs" — acknowledged that RSC payload is sent. But does the acknowledgement cover the payload being in a *statically prerendered* artifact (cached, served from CDN to anyone, no cookies even sent)? The stated residual is about auth gating, which is broader. Hmm. The security improvement: chunk fetchable by anonymous *path on app domain* vs RSC payload requires... The known issue says payload still sent before gate. Is the regression-that-isn't-fixed distinct enough? The instruction says don't report the known issue as new. The static prerender angle might be considered part of the same known issue. But there's a subtle distinct point: with no dynamic data usage, the RSC payload can be cached at the CDN and shared across users (cache poisoning-ish), worse than per-request. But useSearchParams in client component triggers client-side rendering up to Suspense boundary... In Next 15, useSearchParams without Suspense boundary causes client-side rendering bailout — the page may be dynamically rendered? Actually useSearchParams in a Client Component without Suspense will cause the entire page to be client-side rendered (missing suspense boundary error in static build). The moved body uses useSearchParams directly (in ClientDetailClient, now rendered by server component without Suspense). During prerendering, this triggers a build error "useSearchParams() should be wrapped in a suspense boundary" unless the page is dynamic. If the previous page.tsx was a client page, same situation existed, so build already handled (maybe route is dynamic due to config). Can't substantiate a new defect; typecheck/build passed (author says build guard ran on built artifact, 522 chunks — so build succeeded).
+
+  16. Stronger substantiated finding: The `FORBIDDEN` guard only greps for three first names; the fix moves the whole table, fine. But `TaxTab.tsx` comment now includes the full chunk path... fine.
+
+  17. Another: guard script comment hunk says "522 chunks scanned, 0 skipped" — with empty allowlist. Fine.
+
+  18. Candidate MINOR/MAJOR: `ClientDetailClient.test.tsx` "renamed+repointed" test — it mocks TaxTab, so nothing tests that ClientDetailClient actually forwards `taxConsultants` to TaxTab (the one functional change in the moved body). If someone deletes the forwarding, typecheck fails (required prop) — but if someone changes TaxTab's prop to optional or the forwarding passes wrong value (e.g., `teamMemberOptions`)? Typecheck wouldn't catch forwarding `teamMemberOptions` if same shape! `useTeamMemberOptions` returns options — same {value,label} shape presumably. Passing wrong list is plausible and untested. That's a legitimate MINOR/MAJOR test-gap finding, substantiated: the only test touching ClientDetailClient mocks TaxTab; the TaxTab test renders TaxTab directly with its own prop. So end-to-end prop forwarding is unverified.
+
+  19. Another substantiated issue: `getByLabelText("Tax Consultant")` — can't verify label exists; skip.
+
+  20. Substantive security gap: The server module `roster-directory` — nothing shown prevents it from being imported by other client components in future; the boundary test's ROSTER_GRAPH_MODULES presumably includes it. Text: "src/lib/client-roster-boundary.test.ts catches the import that would put the roster back into a client module." Covered.
+
+  21. `params?.id ? Number(params.id) : 0` — preexisting.
+
+  22. MAJOR candidate: `page.tsx` is a server component that calls `taxConsultants()` synchronously — if roster-directory reads from a file/env, fine. Not shown. Can't substantiate.
+
+  23. Another: The FORBIDDEN regex is checked against chunk content, but the fix's effectiveness claim "0 marker hits in route chunk" measured. OK.
+
+  24. The test file TaxTab.consultants.test.tsx: `client={null}` then component renders TaxConsultantSelector with initialValue `client?.tax_consultant` — fine.
+
+  25. Real issue in test mock comment: they say `histRes.value.items` — mock resolves {items: []}, ok.
+
+  26. Potential MAJOR: In TaxConsultantSelector, the success toast lookup `consultants.find(...)` — consultants from prop; if initialValue is a value not in list (e.g., legacy value or one of the two disagreeing staff roster entries), dropdown shows... preexisting behavior.
+
+  27. The "staff roster DISAGREES with two of them" — interesting: `useTeamMemberOptions` hook exists in ClientDetailClient, maybe used elsewhere for assignment. Not relevant.
+
+  28. Missing: `ClientDetailClient` default export changed to named export. Any other importer of the old default? Old page was a page, no importers. Fine.
+
+  29. The guard script hunk shows FORBIDDEN regex and PUBLIC_DIR context — guard also scans public dir. Fine.
+
+  30. One more: the PR claims "Only `import type` crosses the boundary" but ClientDetailClient.tsx also has `import type { TaxConsultantOption }` — fine. But `roster-directory` must export a value `taxConsultants` used by page.tsx (server). If `roster-directory` lacks `"server-only"` import guard, a future client import compiles it in — boundary test catches per text.
+
+  Now the static-prerender point — is it distinct from the known issue? The known issue: "the workspace has no server-side session gate, so this route's RSC server payload is still sent before a client-side gate runs." The static prerender concern: because the new server component uses no request-scoped API, Next can prerender the route at build time, embedding the five addresses into the *statically generated RSC/HTML artifact* served from CDN — i.e., the names could move from one static unauthenticated artifact (chunk) to another static unauthenticated artifact (prerendered flight data), possibly cached and shared. The guard only greps `.next/static/chunks/**/*.js` — does it scan prerendered RSC payloads? CHUNK_DIR = .next/static/chunks only. The author's grep was "over every .js in .next/static/chunks" — .rsc / .html / .meta prerender artifacts live elsewhere (app dir prerender cache or .next/server/app). So the measurement would not detect names embedded in a prerendered RSC payload. This is a real, substantiated gap in verification: the guard and the independent grep cover only .js chunks, not the flight payload artifacts where the data now lives. Whether it's a "new defect" vs the known residual: the known residual acknowledges payload sent before gate; but the guard gap means the claim "no chunk carries an excluded name" doesn't verify the names aren't in another *statically served, unauthenticated* artifact. Actually in Next, RSC payload for a dynamic route is generated per request (server), not under .next/static. For static routes, prerendered flight is in .next/server/app/...html/rsc and served... served by the server, not CDN static path — but still without session if no gate. Known issue covers "payload sent before gate". So the static-prerender nuance is arguably the same residual. But the measurement gap stands: the author's "0/522" verification cannot distinguish "fixed" from "moved to another static artifact". I'd frame as MAJOR: verification gap — guard only scans .js chunks; the data now lives in flight payload; no assertion covers `.next/server/app/**` or prerendered `.rsc`/`.html`, so the PR's core security claim is verified only for the artifact class the data was removed *from*, not the artifact class it moved *to*. However, the known-issue caveat says payload exposure is accepted. Is the verification gap then moot? Partially — but the PR's stated goal was only to remove from public chunk. Given they acknowledge payload exposure, the verification gap may be acceptable but still worth flagging as conditions. I think it's a legitimate MAJOR or at least MINOR, carefully framed as distinct: not "payload is exposed" (known) but "the guard measurement doesn't cover where the data went, so a regression there would be invisible" — hmm, but they've accepted exposure there, so invisibility is moot. Maybe downgrade to MINOR.
+
+  Another distinct point: client component props are serialized into the RSC flight payload AND, importantly, into the *client-side* JS? No — props passed to client components appear in flight data streamed in HTML/RSC, not in the static chunk. Also, Next may inline flight data in the initial HTML as self.__next_f script tags — served by server per request. OK.
+
+  Another finding: `TaxTab.consultants.test.tsx` mocks `@/lib/api` with only `getProfile` and `crm.updateClient`, but TaxTab 465+ line component likely calls other api methods on mount (e.g., fetching tax years data). If the component throws due to incomplete mock, the test would fail — tests pass per author. Can't substantiate.
+
+  Defect: In ClientDetailClient.test.tsx, `useSearchParams` mocked returning stableSearchParams — fine.
+
+  The renamed test: "the test that was renamed+repointed" — old test was page.test.tsx presumably deleted. Only 2 tests shown in new file (220 lines). If old page.test.tsx had more coverage, the new file might have lost tests — can't substantiate.
+
+  MAJOR candidate about `Number(params.id)`: preexisting, skip.
+
+  What about the `consultants` prop type `readonly TaxConsultantOption[]` passed through RSC — fine.
+
+  One more real one: The success toast now falls back to raw value when label not found — same as before.
+
+  Another: `TaxConsultantSelector` is memo'd; consultants array from server prop is referentially stable. OK.
+
+  Potential BLOCKER? The page.tsx server component renders ClientDetailClient without checking... nothing. The whole security model relies on the chunk not containing names — verified. I'd say GO-WITH-CONDITIONS.
+
+  Let me also scrutinize: `import type { TaxConsultantOption } from "@/lib/workspace/roster-directory";` inside TaxTab.tsx — but hunk shows the import placed *after* a big comment, in the middle of file (line ~30 after imports at top?). Hunk @@ -19,14 +19,19 @@ shows the constant replaced by comment + import statement. An `import` statement not at top of file is valid ES (hoisted) — fine, eslint may complain (import/first) but author says eslint 0 errors.
+
+  Test exact-equality assertion includes placeholder label "— not assigned —" — matches component. Fine.
+
+  Another substantiated finding: The guard comment in C4 said `/clients` is in INTERNAL_ROUTES so public domain 301s — protection. Now comment removed that. Fine.
+
+  MINOR: `EXPECTED_CHUNK_EXCEPTIONS` test "fails if the list grows, shrinks to something else, or is quietly reworded" — pinning [] means any future exception requires editing test — good.
+
+  MINOR candidate: `client-roster-boundary.test.ts` hunk shows ROSTER_GRAPH_MODULES context but we can't see whether `roster-directory` is included in the graph modules list. The claim that the boundary test "catches the import that would put the roster back" depends on roster-directory being in ROSTER_GRAPH_MODULES — not visible in excerpt. The excerpt shows the constant array declaration but truncated. So unsubstantiated either way; mention as "what you'd check" rather than finding.
+
+  Also: page.tsx doesn't pass `key` or anything; fine.
+
+  One more: The new server `page.tsx` drops any `generateMetadata`/exports the old page had? Old page was client, no metadata export allowed anyway. Fine.
+
+  Serialization: functions can't be passed — only array. Fine.
+
+  A subtle real defect: `taxConsultants()` is called in the server component body on every request — if it's a sync pure function returning constant, fine.
+
+  Another potentially real MAJOR: In the flight payload, props for client components are serialized — but ALSO, the dev-mode / prefetch: Next Link prefetch of this route downloads the RSC payload... same known issue.
+
+  What about `ClientDetailClient.tsx` still importing `useTeamMemberOptions` — team member options might also contain excluded staff names and come from an API hook (client-side fetch with session). Fine.
+
+  Let me also check the test for placeholder: first test expects `[{value:"",label:"— not assigned —"}, ...]` — component renders placeholder then consultants.map. Matches.
+
+  Now the "two disagreeing roster entries": "the staff roster DISAGREES with two of them, so deriving would change what the form submits" — meaning taxConsultants() returns 5 pinned values not the roster. Nothing to flag except the boundary test must pin these five values against migration 093 — is there a test that roster-directory returns exactly the five? Not shown. Prior code had comment "kept in sync with migration 093" with no test presumably. Status quo. Could raise MINOR: the sync invariant with migration 093 is now in a module not shown; no test pinning the five values is mentioned — if roster-directory drifts (e.g., "fixed" to match staff roster), form submits values the CHECK constraint rejects, or omits valid ones. Actually there might be such test not shown. Frame as MINOR with "what I'd check: a test asserting the five values against migration 093".
+
+  Verdict: GO-WITH-CONDITIONS. Findings:
+
+  MAJOR 1: Prop forwarding from ClientDetailClient to TaxTab is untested — the only test exercising ClientDetailClient mocks TaxTab entirely; the TaxTab test renders TaxTab directly. The one behavior change in the moved body (forwarding) has no assertion; a wrong-but-type-compatible source (e.g., teamMemberOptions from useTeamMemberOptions, same {value,label} shape) would pass typecheck, all tests, and the chunk guard, and would populate the dropdown from a client-fetched roster — reintroducing both wrong data and possibly the disagreement with migration 093. Check: assert in ClientDetailClient.test that TaxTab mock receives taxConsultants prop equal to the passed array.
+
+  MAJOR 2 (verification scope): Guard + grep cover only `.next/static/chunks/**/*.js`; the data now lives in the route's flight payload, and with a server component using no request-scoped API the route is eligible for static prerendering, which writes payload artifacts outside the scanned dir (`.next/server/app/**`, prerender cache). The "0/522" measurement proves removal from the artifact the data left, not that no *statically served* artifact still carries it. Check: build output for whether the route is static (○) vs dynamic (ƒ), and grep prerendered .rsc/.html. Hmm — but is this "the known issue not fixed"? The known issue is payload sent before gate; this is about measurement completeness + static prerender worsening (cached shared artifact). I'll present it as MAJOR but acknowledge the boundary. Actually wait — useSearchParams in ClientDetailClient without Suspense: in Next 15, a page whose client component calls useSearchParams without Suspense boundary will bail out of static prerender for that portion; if no Suspense, the *entire page* becomes client-rendered at request time (dynamic). Previously page.tsx itself was the client component calling useSearchParams — same structure. Build succeeded per author, so either route is dynamic or Suspense exists somewhere in omitted lines. So static prerender risk may be low, but the measurement scope point stands as MINOR/MAJOR. I'll make it MAJOR but framed as verification gap, with check.
+
+  MINOR: five-value sync with migration 093 now lives in unshown roster-directory; no test shown pinning values to the CHECK constraint.
+
+  MINOR: unverifiable "byte-identical" claim — the 1039-line move isn't pasted; reviewers can't confirm zero behavioral drift; mitigated by full test suite green.
+
+  Also maybe MINOR: FORBIDDEN regex covers only 3 names, while the table has 5 — guard would not detect a leak of veronika/kadek etc. Was that preexisting? FORBIDDEN shown in context line unchanged. The guard's purpose is excluded-name detection; the excluded person is one of the three patterns presumably. The other four are "allowed" public? The table includes staff addresses — the guard only guards excluded names by design. Preexisting; skip or minor.
+
+  Also: test uses label "Tax Consultant" — can't verify. Skip.
+
+  Anything BLOCKER? I don't see one substantiated. Verdict GO-WITH-CONDITIONS.
+
+  Format: plain text, sections VERDICT then findings SEVERITY - claim - why - what to check. Keep concise but complete.
+
+• VERDICT: GO-WITH-CONDITIONS
+
+  The core mechanism is sound and the load-bearing claims (type-only import across the boundary, required prop, empty allowlist pinned by test, chunk grep measured on the built artifact) are internally consistent with the hunks shown. Nothing here rises to BLOCKER on the evidence provided. Two conditions below should be closed before or immediately after merge.
+
+  SEVERITY: MAJOR - The one functional change in the moved body — forwarding `taxConsultants` from `ClientDetailClient` to `<TaxTab>` — is tested nowhere.
+  - Why it breaks: `ClientDetailClient.test.tsx` mocks `./components/TaxTab` entirely (`TaxTab: () => <div data-testid="TaxTab" />`), so it cannot observe the prop. `TaxTab.consultants.test.tsx` renders `TaxTab` directly with its own fixture, so it cannot observe the forwarding. The forwarding line lives in the 1039-line "verbatim move" that is explicitly not pasted. A regression that passed a wrong-but-type-compatible source would sail through: `ClientDetailClient` already calls `useTeamMemberOptions()`, which plausibly returns the same `{value, label}` shape, so `consultants={teamMemberOptions}` would typecheck, pass every test shown, and pass the chunk guard (the names would come from an API, not a module literal) — while silently populating the dropdown from the staff roster that, per the PR's own context, DISAGREES with two of the five pinned values and would change what the form submits against migration 093's CHECK constraint. Typecheck catches omission (required prop); it does not catch substitution.
+  - What I'd check: an assertion in `ClientDetailClient.test.tsx` that the mocked `TaxTab` received `taxConsultants` deep-equal to the array passed to `ClientDetailClient` (capture props in the mock). One line of test closes the only behavioral seam this PR actually cuts.
+
+  SEVERITY: MAJOR - The "0/522" verification proves removal from the artifact class the data left, not that no statically served artifact still carries it.
+  - Why it breaks: the guard scans `CHUNK_DIR = .next/static/chunks` and the independent grep covered "every .js in .next/static/chunks". The data now lives in the route's RSC flight payload. The new `page.tsx` uses no request-scoped API (no `params`, `searchParams`, `headers`, `cookies`), so the route is a candidate for static optimization; prerendered flight/HTML artifacts are written outside the scanned directory (`.next/server/app/**`, prerender cache), and `useSearchParams()` inside `ClientDetailClient` without a visible Suspense boundary is the only thing that would bail it out to dynamic — and that depends on lines not shown. If the route prerenders, the five addresses land in a build-time artifact that is cached and shared, which is arguably worse than the per-request payload exposure the PR explicitly punts on — and the measurement as described would not see it. This is distinct from the declared residual ("payload sent before the client-side gate"): that caveat accepts per-request server-rendered exposure; it does not establish that the exposure isn't baked into a static, CDN-cacheable artifact.
+  - What I'd check: `next build` output for whether this route is ○ (static) or ƒ (dynamic); if static, why (there must be a Suspense boundary or dynamic config in the omitted lines); and a one-off grep for the three markers over `.next/server/app/**` and any `.rsc`/`.html` prerender artifacts, not just `.next/static/chunks`.
+
+  SEVERITY: MINOR - The five pinned values now live in `@/lib/workspace/roster-directory`, whose contents and test coverage are not shown.
+  - Why it breaks: the old code carried the invariant "kept in sync with backend migration 093 CHECK constraint" as a comment next to the literal. After the move, nothing in the provided material demonstrates a test pinning `taxConsultants()` to those exact five values. Given the stated fact that the staff roster disagrees with two of them, a future "cleanup" aligning the directory with the roster would change form submissions and fail the backend CHECK at save time — exactly the failure mode the exact-equality test philosophy in this PR is designed to catch, applied one layer too high.
+  - What I'd check: a test asserting `taxConsultants()` returns precisely the five values in migration 093 (or a shared source of truth both sides reference), and confirmation that `roster-directory` is inside `ROSTER_GRAPH_MODULES` in `client-roster-boundary.test.ts` — the excerpt truncates that array, so the claim "the boundary test catches the import that would put the roster back" is not verifiable from what was provided.
+
+  SEVERITY: MINOR - The "byte-identical except the signature" claim for the 1039-line move is unverifiable as presented.
+  - Why it breaks: the diff states the move rather than showing it, and the review explicitly notes the body "is described above, not pasted". Any drift inside those 1039 lines (a dropped prop, a reordered hook, a stale import) would be invisible to this review. Mitigated but not eliminated by the green suite: 475/5104 green proves the tests that exist pass, not that the moved code is identical, and the renamed test file shows only 2 tests — I cannot confirm the old `page.test.tsx` didn't carry more cases that were dropped in the rename.
+  - What I'd check: `git diff` of old `page.tsx` vs new `ClientDetailClient.tsx` filtered to non-signature lines, and a line/test-count comparison between the deleted page test and `ClientDetailClient.test.tsx`.
+
+  Things I checked and could NOT substantiate as findings, so I am not reporting them as defects: the `import type` erasure claim (correct — type-only imports do not reach the chunk); prop serializability across the server/client boundary (plain `{value,label}` objects, fine); the `consultants` addition to the `useCallback` dep array (correct); the non-top-of-file `import` statement in `TaxTab.tsx` (valid ES, hoisted); the exact-equality assertion shape in the new TaxTab test (matches the rendered placeholder-plus-props structure shown); and the pre-existing `Number(params.id)` coercion and the three-name-only `FORBIDDEN` regex (both pre-existing, unchanged by this PR).
+
+To resume this session: kimi -r session_92c70506-7156-422a-ae27-8b02a13f3909

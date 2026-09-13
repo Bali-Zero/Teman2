@@ -1,0 +1,74 @@
+task_id: window-jump-headless
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Ruling Zero 2026-09-09 «tutti i seat»: the window jump (PR #5987, interactive
+  half) must also work where there is no window. In `-p` mode the hook
+  infra/claude-hooks/context_window_guard.py trips exactly as in a Ghostty
+  window: it writes ~/.organism/context-guard/pending-jump-<session>.json with
+  seat=headless and denies every tool, so a cron seat run by
+  infra/launchagents/wrappers/claude-cascade.sh ends its turn early with
+  partial output and nobody re-invokes it — the mandate silently dies at the
+  context ceiling (superscar #2, Esiste≠Armato: the run is "green", the work
+  is not done).
+
+  Fix, in the wrapper only: after a seat returns, if a jump file was raised by
+  THAT run (seat=headless, to_session unset, same cwd, ts >= run start),
+  re-invoke the SAME seat (same bin/token/config dir — zsh dynamic scoping of
+  try_claude's locals) with a fresh session and a short continuation prompt
+  fed through PROMPT_FILE/stdin; context_jump_resume.py (SessionStart, from
+  PR #5987) injects mandate + handoff and stamps to_session, so a file is
+  never consumed twice. Outputs of the hops are concatenated on stdout. Cap
+  JUMP_MAX_HOPS=3 per run (the guard caps the chain too). Kill switch
+  CONTEXT_JUMP_OFF=1, shared with the guard. Ghostty-seat files are ignored.
+
+  Depends on PR #5987 for the guard that WRITES the file; against a main
+  without it the wrapper is inert (no file → zero hops, behaviour identical
+  to before).
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: infra/launchagents/* is a
+  hot zone in scripts/evidence_pack_lint.py's HOTZONE_PATTERNS. Reproduced on
+  this branch's merge-base diff (422609311f366c35b1bd0c106c17b8607ce794e0):
+  see receipts.
+
+acceptance:
+  - text: >-
+      WHEN a fake headless seat writes pending-jump-<sid>.json (seat=headless,
+      cwd=$PWD, to_session unset) during its first invocation, the wrapper
+      SHALL invoke the same seat again with a continuation prompt naming the
+      session and hop, and stdout SHALL carry both outputs concatenated.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k headless_jump_reinvokes
+  - text: >-
+      WHEN every hop raises a new jump file, the wrapper SHALL stop after
+      JUMP_MAX_HOPS=3 re-invocations (4 runs total), never looping further.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k capped_at_three
+  - text: >-
+      WHEN CONTEXT_JUMP_OFF=1, a raised jump file SHALL NOT trigger any
+      re-invocation (one run, one output).
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k kill_switch_runs_once
+  - text: >-
+      WHEN the jump file carries seat=ghostty (written by an interactive
+      session sharing the machine), the wrapper SHALL ignore it.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k ignores_a_ghostty_seat
+  - text: >-
+      WHILE the change is in force, the pre-existing cascade shell suite SHALL
+      stay green and the wrapper SHALL parse under zsh -n.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q; zsh -n infra/launchagents/wrappers/claude-cascade.sh
+
+assumptions:
+  - text: >-
+      run_bounded reads the prompt from $PROMPT_FILE at invocation time
+      (stdin redirect), so re-pointing PROMPT_FILE before the hop is enough
+      to change the prompt without rebuilding CLAUDE_ARGS.
+    status: verified
+    probe: grep -n 'PROMPT_FILE' infra/launchagents/wrappers/claude-cascade.sh # line 296 redirects "$@" <"$PROMPT_FILE"
+  - text: >-
+      The guard on PR #5987's branch writes seat=headless when TERM_PROGRAM
+      is not ghostty, with cwd and ts fields the wrapper filters on.
+    status: verified
+    probe: grep -n '"seat"\|"cwd"\|"ts"' infra/claude-hooks/context_window_guard.py # PR #5987 branch, same md5 as the live M5 copy
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

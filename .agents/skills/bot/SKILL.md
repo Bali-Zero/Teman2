@@ -24,7 +24,91 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-09-01 — keep current)
+## 1. LIVE STATE (last update 2026-09-03 — keep current)
+
+- **🧭 CYCLE 359's FOUR ROOT CAUSES: TWO CURED, ONE DRAFTED FOR ZERO, ONE STILL OPEN — AND THE
+  CORNER'S OWN "GEMINI" BULLETS ARE CONFIRMED STALE (2026-09-03, lane E on Pro).** Re-measured
+  before anything else, exactly as the mandate required: `SELECT generation_route, count(*) FROM
+wa_outbox` returns **`codex` on all 58 rows since 2026-08-27** and NULL only on the older ones.
+  The codex route is the live one; every S4-cutover bullet below describes a state that is gone.
+  - **✅ ROOT CAUSE 4 (greeting) — CURED, PR #5613.** A bare `halo` cost **7m45s** and answered an
+    English error stub. Nothing in the chain was broken: `QueryDomain.GREETING` maps to `[]`
+    collections by design, so `build_context_package` raises `PackageUnbuildable("greeting_domain")`
+    and — with the Gemini leg cut — there is no second generator, so the row takes the full
+    five-attempt ladder. `wa_greeting.match_greeting` (pure, no I/O) now answers it from a script
+    **before the package build**, in the greeting's own language. **The expensive half is
+    innocence**: `halo, berapa harga PT PMA?` is a pricing question wearing a polite hat and must
+    reach the normal route — 24 innocence cases against 30 guilt.
+    - **The cross-family refuter earned its seat.** Codex GPT-5.6 Sol returned **BLOCK** with a real
+      blocker the author had not seen: `"Halo admin?"` matched, so a client asking for a **person**
+      got a capability list — this module's own defect pointed the other way. `admin`/`team`/
+      `everyone` are no longer vocatives. It also found `"Assalamu'alaikum"` (apostrophe → two
+      unknown tokens) and `"Selamat pagi, Kak"` (phrases were keyed on the WHOLE message) still
+      costing 7m45s, and `"Hi kak"` answered in English. All cured; the placement objection was
+      answered in prose, not code — see the module docstring.
+    - **Declared gap:** `generation_route` stays NULL on a scripted greeting (that column is one
+      half of the codex OFFER's CAS fence, and the row is never offered), so a greeting is not yet
+      countable in SQL. `CodexLegResult.served_by` is its only marker. Same ledger family as "an
+      abstain leaves no record".
+  - **✅ ROOT CAUSE 2 (the corpus teaches the split) — GATE SHIPPED (PR #5615), DATA HALF EXECUTED,
+    AND IT IS BIGGER THAN THIS CORNER RECORDED.** The two named orphans are **deleted from prod**
+    (`points_count 808 → 806`, snapshot **with vectors** at
+    `~/.nuzantara-lane-e-backups/curated_qa_2026-09-03_five_points.json`, 0600 — fully restorable),
+    and a re-scan of all 806 finds **zero** Investor-KITAS answers still carrying a PNBP figure.
+    - **⚠️ The second id in this corner was WRONG.** It reads `59da08d9-…-5373-…`; the live point is
+      **`59da08d9-39c5-5373-8928-fbcf6833b319`**. The DB is the authority — retrieve by content,
+      not by a remembered id.
+    - **The gate, measured on all 808 before deletion:** 758 name no government fee (untouched);
+      **27 name one with NO figure and PASS** — and those are the model answers (_"rather than quote
+      a figure that may age, ask our team"_); **26 name one WITH a figure and are refused** unless
+      the row carries an explicit flag **and** a written note. Recall on the known offenders: **9/9**.
+    - **A proximity rule was built and REJECTED on its numbers** — at every window from 40 to 160
+      characters it caught at most 8 of 9 while blocking 11-13 compliant rows. **No lexical rule
+      separates "the government charges X, we charge Y" from "our X already includes it"; that
+      difference is semantic.** Do not re-derive it — the gate is deliberately high-recall and
+      refuse-by-default, and the escape hatch is a human's written note.
+    - **🔴 SEVEN MORE `curated_qa` OFFENDERS ARE STILL LIVE**, snapshotted and ready: the three the
+      mandate asked to review — `8b520434` (E33E#Q13, _"which we quote separately"_), `eacec21f`
+      (FINAL#Q11), `8ebf681f` (FINAL#Q13) — **plus four the FACT-scan found that nobody had named**:
+      `11b7e26d`, `12d804e9`, `1b53de60`, `e407d532`. Deleting them applies a standing ruling, but it
+      more than triples an explicit two-row order on production client-facing data, so it was
+      surfaced rather than taken. **One decision, seven rows.**
+    - **🔴 THE WORSE CARRIER IS IN A DIFFERENT COLLECTION, AND IT IS A WORKED EXAMPLE, NOT A
+      MENTION.** `training_conversations_hybrid` (3,638 points) holds **8** teaching the split, and
+      **6 of them model a consultant giving an ITEMISED PT PMA quote** — _"Jasa Pendirian: IDR
+      20.000.000 / Biaya PNBP (Negara): IDR 5.000.000"_ — in Indonesian, Javanese **and** English,
+      duplicated, on the single most common pricing question. The bot is not merely reading the
+      split; it has been shown how to perform it.
+    - **The training-data file has FOUR occurrences, not the one this corner named.**
+      `visa_011_notebooklm_session2.md:123` is fixed (backed up first); lines **315, 547 and 711**
+      carry it too, and `grep -rc PNBP training-data/` returns **36 lines across 5 files**
+      (`legal_058` 14, `visa_016` 12, `visa_011` 4, `visa_010` 3, `realestate_046` 3). That whole
+      directory is **gitignored** — it is local staging, unreviewable in a PR — and
+      `scripts/reingest_training_data.py` is the ingest path where the same detector belongs.
+  - **📝 ROOT CAUSE 3 (the citation rule) — DRAFTED FOR ZERO, MERGED (PR #5611).** The exact
+    replacement paragraph is in `docs/plans/2026-09-03-relaunch-lanes/ZERO-DECISIONS.md` §Item 3.
+    **Where it bites, verified by grep:** `MANDATORY LAW CITATION` appears in `zantara_core.py` and
+    nowhere else, and `CITATION_RULES` is read by `zantara_core_v4.py:517`, `zantara_core_v5.py:259`
+    **and `wa_package_builder.py:41-45` — the live codex-leg persona**. One bullet governs every
+    prompt version and the WhatsApp product. `zantara_core.py` was not touched.
+  - **🔴 ROOT CAUSE 1 + THE BIGGEST FINDING (the cross-language abstain gate) — NOT STARTED.** Spec
+    `research/operations/2026-09-01-wa-evidence-relevance-cross-language-spec.md` is complete and
+    panel-blocked-into-shape; nothing is built. **Do not tune a third threshold.** The direction is
+    fixed by the spec: retrieval similarity becomes the PRIMARY relevance signal (the embeddings are
+    multilingual by construction), lexical overlap is corroborating at most, the `len(w) > 3` filter
+    goes or becomes vocabulary-aware so `PT`/`PMA`/`NIB`/`OSS` survive, and the golden set reports
+    the abstain rate **separately** for the Indonesian and English subsets — a blended rate hides
+    exactly this defect.
+  - **🟡 PR #5337 (split-fee veto) — STILL SUSPENDED, not reopened.** 11/11 vetoed, nine compliant
+    one-price answers and both genuine splits. **The corpus built for THIS lane is the head start
+    nobody had**: 9 measured offenders and 27 measured compliant rows, verbatim, already in
+    `backend/tests/unit/services/test_curated_qa_government_fee_gate.py`. A detector that scores
+    innocence and guilt should be built from those, not from scratch.
+  - **🟡 CYCLE 360 — NOT RUN.** E1-E2 are merged-or-armed but only the corpus half is proven; the
+    end-to-end proof on WhatsApp thread 30 with Damar has not happened, and until it does **nothing
+    here is proven live**. The two citation-rule cases (bank transfer → no `📜`; passport photo →
+    no `📜`; a substantive immigration answer → `📜` still present, the innocence half) go in the
+    same battery table.
 
 - **🩺 CYCLE 359 — THE FIRST BATTERY EVER MEASURED ON REAL DELIVERY, AND IT DOES NOT PASS.
   22 questions, 21 delivered+read, 8 FAIL / 5 SUSPECT (2026-09-01, WhatsApp thread 30, sender is

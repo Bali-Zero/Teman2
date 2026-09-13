@@ -1,0 +1,74 @@
+task_id: kita-prune-lot6-b
+gear: 2
+l_level: L1
+gate_class: opus
+base_sha: 4de981aebd08840a5be4be46f6da413085037cb7 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 88 insertions / 1123 deletions across 3 files
+# (OverviewTab.tsx, TaxTab.tsx, page.tsx), all inside apps/mouth/src/app/(workspace)/clients/[id].
+# No hot-zone path, no PII path, no ground-truth path touched. Gear 2 declared to match the floor.
+objective: >-
+  Lot 6 PR-B of the kita.balizero.com surface-pruning effort (audit shared with the owner on
+  2026-09-12, sections F/K): remove the dead tax-document-upload UI from TaxTab (it posts to a
+  backend route that has never existed) and the blocks in OverviewTab that are provably
+  duplicated elsewhere on the same clients/[id] page. Deletions and reductions only.
+constraints:
+  - >-
+    Work confined to apps/mouth/src/app/(workspace)/clients/[id]/ (page.tsx + components/
+    subdir). No new feature, no redesign, no backend change. Off-limits files untouched.
+  - >-
+    TaxTab: removed the upload side panel, the 3 TaxCard section selectors, the "Manage" button,
+    and the now-orphaned upload types/state, after grep-verifying
+    POST /api/crm/clients/{id}/tax-documents does not exist anywhere under
+    apps/backend-rag/backend/app (only routers/*.py and modules/crm/*.py were searched; the only
+    match is an unrelated read-only GET /api/crm/companies/{id}/tax). LKPM, OSS receipts and the
+    NPWP/NIB badges kept untouched. TAX_CONSULTANTS hardcoded list kept as-is on purpose: although
+    useTeamMemberOptions is already used nearby (clients/[id]/page.tsx), backend migration 093
+    hard-codes a CHECK constraint restricting tax_consultant to exactly these 5 emails, so
+    swapping to the general team-members hook would let the UI offer values the backend rejects.
+  - >-
+    OverviewTab: only removed blocks confirmed duplicated by reading both places in this same
+    session (Activity Timeline vs TimelineTab's own render of the identical `interactions` prop;
+    the Active/Completed practices list + revenue footer vs ProcessTab's fuller list with its own
+    revenue bar; the Family stat tile vs the identical `stats.family_count` already shown on the
+    Family tab label; the WhatsApp/Email quick-action buttons vs the page header's own WhatsApp/
+    Email buttons). Passport/DOB fields duplicated by PassportCard were removed but Birthplace
+    (not shown anywhere else) was kept; the Call (tel:) quick action was kept (grep-verified as
+    the only `tel:` link on the page). AiSummaryCard was already mounted once in OverviewTab, so
+    no change was needed there.
+  - No client PII in this pack, the PR body, or the commit: no real client data was read or logged.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+  tokens: 400000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file.
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+  - text: >-
+      A4 Bites: WHEN kita.balizero.com is deployed from the merge THEN a tax/CRM staff member
+      opening a client's Tax tab SHALL no longer see an upload widget that always 404s, and the
+      Overview tab SHALL render Quick Actions/stats/timeline/practices exactly once instead of
+      duplicated with the page header, tab labels, TimelineTab and ProcessTab.
+    probe: curl -fsS https://kita.balizero.com/api/health
+assumptions:
+  - text: >-
+      POST /api/crm/clients/{id}/tax-documents does not exist on the backend (grepped
+      apps/backend-rag/backend/app/routers/*.py and app/modules/crm/*.py for "tax-documents" and
+      "tax_documents"; the only hits are the tax_documents DB table/model and an unrelated
+      read-only GET /api/crm/companies/{company_id}/tax).
+    status: verified
+    probe: grep -rn "tax-documents\|tax_documents" apps/backend-rag/backend/app/
+  - text: >-
+      The Bottom Section removed from OverviewTab (Activity Timeline + practices list) was not
+      referenced by any other file, and interactions/router props became unused on OverviewTab
+      once it was removed, so both were dropped from OverviewTab's signature and from the
+      page.tsx call site.
+    status: verified
+    probe: npx tsc --noEmit (clean after removing the props)

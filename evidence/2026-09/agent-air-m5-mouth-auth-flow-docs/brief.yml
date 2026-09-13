@@ -1,0 +1,12 @@
+task_id: auth-flow-docs
+gear: 1
+objective: Describe the actual cookie-primary token flow and existing protected-page session gates in the two affected documentation fragments.
+constraints:
+  - Documentation only; preserve runtime source, tests, the existing server example and unrelated sections.
+  - Reuse useSessionState and the production access guards; no new hook or authentication behavior.
+acceptance:
+  - text: Imports and guards match the existing page; only anonymous redirects and only authenticated permits protected loading; storage fallback matches actual source.
+    probe: apps/mouth/DOCUMENTATION.md
+consumer_map:
+  - A developer reading Token Flow and Protected Routes sees optional bearer storage and the existing cookie-primary session gate.
+pii: none

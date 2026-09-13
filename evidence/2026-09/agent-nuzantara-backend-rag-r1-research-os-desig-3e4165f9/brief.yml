@@ -1,0 +1,476 @@
+task_id: r1-research-os-design
+gear: 3
+gear_note: >-
+  R1 §1 says "Gear: 2 expected (CI's floor wins)". CI's floor wins and it is 3.
+  Measured by g2 on the g2 tree: `scripts/evidence_pack_lint.py --print-floor` prints 3 and
+  --print-floor-source prints `size` — the floor comes from diff churn (a completed 32-row
+  mapping table, four new test/reference modules, a rewritten fixture bundle and two control-
+  room documents), not from a hot-zone path. The window does the Gear-3 work rather than
+  disputing the floor; the pack carries the seat_override explaining why no pre-build
+  multi-seat council was convened for a floor that is a size artefact on a tests+docs diff.
+l_level: L2
+gate_class: opus
+mission:
+  id: R1
+  colour: BLUE
+  organ: >-
+    the Research OS contract surface (Work Packet 04) as tests, fixtures and design
+    records — the core's test suite, the P06 preparation bundle, the control room.
+  host: Pro
+  worktree: .worktrees/backend-rag-r1-research-os-design
+  branch: agent/nuzantara/backend-rag/r1-research-os-design
+  base: 9304392d1a3c1f50dc6be847e8cd16d29a0c738b # pragma: allowlist secret
+  base_equals_origin_main_at: "2026-09-10T21:12:47Z"
+  mandate_ref: research/operations/2026-09-10-fable-max-sessions/R-research-os.md
+  build_spec_ref: evidence/2026-09/agent-nuzantara-backend-rag-r1-research-os-desig-3e4165f9/R1-build-spec.md
+
+objective: |
+  Turn D3 (the bitemporal reader) and D4 (legacy admission) from prose in the
+  staff-room spec into executable rows and canonical fixtures; make the P06
+  preparation bundle's Evidence mapping and fixtures truthful; and make the
+  Research OS control room say what is actually true.
+
+  What success changes: R2 (the ENGINE window) builds against decided semantics
+  and validated fixtures instead of prose, and PENDING-ARMS row 21 — open since
+  2026-08-26 with an owner nobody ever took — finally has one.
+
+  Scope is P06 SLICE COMPLETION, not the Research OS engine. The 23 packets stay
+  a roadmap (D1, ruled Z1 YES by Zero 2026-09-11 ~04:45 WITA).
+
+authority:
+  z1: "RULED 2026-09-11 ~04:45 WITA, YES — one tranche, P06 slice 2; roadmap kept."
+  z2a: >-
+    Not R1's. R2's merge (deploy + additive DDL of research_os_naga_claims) is
+    authorized until 2026-09-25T00:00Z. R1 deploys nothing: tests, fixtures, docs.
+  z2b: >-
+    RULED 2026-09-11 ~15:00 WITA by Zero, YES as recommended in the mandate's §0
+    («confermo Z2b e Z3», recorded by the Fable staff-room session on M5).
+    (a) Cohort: at most 20 public regulatory seed claims prepared by R1 as fully
+    sourced canonical fixtures, plus whatever the legacy admission dry-run admits
+    (expected 0). (b) Maximum: 40 rows in total. (c) Kinds and tables: Claim,
+    Evidence, ObjectSuccessorEdge, IntelEvent in research_os_objects, plus rows in
+    research_os_naga_admission, nothing else. (d) Execution identity: a
+    write-capable PostgreSQL role whose credential Zero hands over at --apply
+    time; until then R2 stays at the dry-run. Expiry 2026-09-25T00:00Z.
+    WHAT IT BINDS FOR R1: R1 still writes nothing to production and reads nothing
+    from it. The ruling is load-bearing here in exactly one way — the seed cohort
+    under fixtures/seed_public_regulatory/ is now a COHORT WITH A CEILING (20
+    claims, four kinds), not an illustrative set, because R2 will back-fill it.
+  z2b_cohort_disposition: >-
+    THE SEED COHORT IS NOT THE Z2b COHORT, and saying so is the point. Raised by the imperator
+    nuzantara-0d at 2026-09-11T10:57Z against g3 checkpoint 2 and accepted without argument:
+    Z2b(a) authorises PUBLIC REGULATORY claims FULLY SOURCED from public documents, while
+    fixtures/seed_public_regulatory/01_z2_seed_cohort.json is synthetic to its identifiers
+    ('permenkumham-synth-*'). A synthetic fixture set is a fine TEST cohort and is exactly what
+    the D4 admitted-path and D3 answer-path tests need; it is not production-eligible, and letting
+    it drift into R2's --apply would put invented figures into production wearing the word
+    'sourced'. DISPOSITION (b) of the two the imperator offered: the Z2b seed cohort is EMPTY
+    until sourced. R2's --apply may write only what the legacy admission dry-run admits (expected
+    0 — legacy rows carry URL hashes, no spans, no IntelEvent identity). Sourcing a real cohort
+    from public instruments is DEFERRED and named below. Option (a), sourcing it now, was NOT
+    taken because this window cannot verify figures against primary public documents, and R1
+    section 6's stop rule says a fixture needing an unsourceable figure stops the window rather
+    than inventing one and presenting it as sourced. Recorded in three places by design: this
+    brief, the fixture file's own z2b_production_eligibility field, and the PR body.
+  z3: "RULED 2026-09-11 ~15:00 WITA by Zero: BLUE for R1 and R2 — confirmed, not defaulted."
+  z4: "no veto received; the window closes when R1 opens."
+
+acceptance:
+  - text: >-
+      NEGATIVE / innocence. WHILE this branch is in force, the frozen contract
+      surface SHALL be byte-identical to origin/main and the core fixture corpus
+      SHALL still validate: `fixtures --check` reports checked 218, failures [],
+      and `git diff --stat origin/main -- packages/research-os-core` is EMPTY.
+    probe: >-
+      PYTHONPATH=packages/research-os-core apps/backend-rag/.venv/bin/python -m
+      research_os.cli fixtures --check; git diff --stat origin/main -- packages/research-os-core
+  - text: >-
+      NEGATIVE / innocence. Consul's persistence consumer — the one existing
+      executable INSERT into research_os_objects — SHALL still pass its unit
+      tests, because R1 must not move the ground under it.
+    probe: >-
+      cd apps/backend-rag/backend && PYTHONPATH=../../../packages/research-os-core
+      ../../../../nuzantara/apps/backend-rag/.venv/bin/python -m pytest tests/unit/services/autonomous_lab
+  - text: >-
+      TEMPORAL. Every case in the mandate's temporal list SHALL be an EXECUTED
+      test over canonical fixtures — both interval boundaries, zero and non-zero
+      microseconds, unknown bounds, a correction recorded before AND after
+      discovery, a scheduled change known in advance, an existing finite expiry,
+      a no-answer result, and a quarantined fork — with no skip and no xfail.
+    probe: >-
+      cd apps/backend-rag/backend && pytest tests/unit/research_os -p no:randomly
+      --collect-only | grep -c temporal ; pytest tests/unit/research_os -rs
+  - text: >-
+      TEMPORAL / shape. bitemporal/03 SHALL answer as TWO families under one
+      subject_key, each with a unique current member and no successor edge
+      between them; supersession/01 SHALL be one atomic correction with ONE
+      exact predecessor hash; a fork SHALL return quarantine and a gap SHALL
+      return abstention, both as explicit return values, never as None.
+    probe: pytest tests/unit/research_os -k "bitemporal or supersession or quarantine or abstain"
+  - text: >-
+      TEMPORAL / extension. The subject_key extension SHALL be defined once, in
+      a namespaced extension, and SHALL validate against the exported Claim
+      schema without any contract change.
+    probe: pytest tests/unit/research_os -k subject_key
+  - text: >-
+      ADMISSION. The D4 predicate SHALL be executable: a legacy-shaped record
+      with a URL hash is EXCLUDED with reason content_hash_is_url; one without a
+      span -> exact_span_missing; one with a fabricated triple ->
+      statement_not_from_source; a fully-sourced seed fixture is ADMITTED; and
+      on the mixed set the three counts (documented_mapping_coverage,
+      available_source_information, admissible_records) SHALL differ from each
+      other.
+    probe: pytest tests/unit/research_os -k admission
+  - text: >-
+      MAPPING. test_naga_evidence_mapping_preconditions.py SHALL no longer
+      assert `len(absent) == 15` nor `named < absent`; the 15 SHALL be gone, and
+      in its place an EXECUTED mapping over a canonical fixture that validates
+      against evidence.schema.json, with §2 documenting 32 of 32 required paths.
+    probe: >-
+      grep -c "absent) == 15" apps/backend-rag/backend/tests/unit/research_os/test_naga_evidence_mapping_preconditions.py;
+      pytest tests/unit/research_os/test_naga_evidence_mapping_preconditions.py
+  - text: >-
+      CONTROL ROOM. README.md:7 SHALL read the real program state and name the
+      mandate file; SESSION-BOARD.md SHALL carry a §13 with the 2026-09-11
+      measurement; §5's head line SHALL read the max+1 rule with the MEASURED
+      head.
+    probe: >-
+      sed -n '7p' research/operations/execution/research-os-v1.0.0/README.md;
+      grep -n "^## 13" research/operations/execution/research-os-v1.0.0/SESSION-BOARD.md
+  - text: >-
+      BITES. The consumer is R2's persistence tests, which import these
+      fixtures. R2 does not exist yet, so the observation made BEFORE reporting
+      done is the schema validation of EVERY fixture in the P06 bundle, run in
+      CI on this branch — not a promise that a future job will run it.
+    probe: pytest tests/unit/research_os -k fixture_bundle
+
+assumptions:
+  - text: >-
+      The mandate's §4 asks SESSION-BOARD §5 to record "308 on 2026-09-11". The
+      measured head on this base sha is 309 — 309_client_obligations.sql landed
+      at 2026-09-10T20:52:33Z as b2b2ceac76, after the staff room measured 308 at
+      01:55 WITA. We record the number we measured and name the deviation rather
+      than write a number we did not measure.
+    status: verified
+    probe: ls apps/backend-rag/backend/db/migrations_v2/ | tail -3
+  - text: >-
+      nuzantara-04, the staff room the opening prompt names, is not reachable
+      from Pro. docs-bot-staff-room-v6-fa accepted the role at 2026-09-10T21:20:13Z
+      and is the named staff room for every checkpoint of this window.
+    status: verified
+    probe: ListAgents on Pro, 2026-09-10T21:18Z
+  - text: >-
+      GENERATION 2 CORRECTION. The g2 opening prompt names `nuzantara-60` as this window's
+      staff room and forbids messaging docs-bot-staff-room-v6-fa. Measured by g2 at
+      2026-09-10T22:2xZ: SendMessage to nuzantara-60 returns "No agent named 'nuzantara-60'
+      is reachable", and ListAgents shows nuzantara-20, nuzantara-61, nuzantara-82,
+      docs-bot-staff-room-v6-fa, desktop-a7, website-b4 — no -60. The durable leg of every
+      g2 checkpoint therefore carries the record (fleet mailbox, key R1-checkpoint), and the
+      SendMessage wake-up leg is undelivered pending the coordinator naming a live staff
+      room. Recorded as an OPEN deviation; not closed by silence, and not guessed at.
+    status: >-
+      CLOSED by the staff room's ruling on g2 checkpoint 1 (R1-ack, envelope
+      20260910T222508Z-1712.md): the staff room IS the parent session, whose peer name
+      rotated across the account re-login (nuzantara-04 -> nuzantara-60 -> a new number).
+      The SendMessage wake-up leg is addressed to `main`, which is always reachable from a
+      subagent; a peer name is never chased. The fleet mailbox stays the durable leg.
+    probe: SendMessage to nuzantara-60 + ListAgents on Pro, 2026-09-10T22:2xZ
+  - text: >-
+      The runtime mandate ledger had NO entry for this mission at open and
+      MANDATE_SECONDS is 3600, so it would have initialised to opening + 1h. The
+      Dux bound it before the first dispatch per R1 §6.
+    status: verified
+    probe: >-
+      infra/codex-hooks/mandate_budget.py renew() — previous_deadline
+      2026-09-10T22:22:47Z, new_deadline 2026-09-11T01:05:00Z, counters untouched.
+
+findings_measured_not_inherited:
+  - text: >-
+      THE FROZEN SURFACE CONTRADICTS ITSELF ON ONE SPELLING — and the first measurement of it
+      was WRONG, which is the part worth keeping. Raised by kimi-code/k3 as a question it could not
+      settle from its bytes ("parse_instant accepts a lowercase 'z'; does the published schema?").
+      The first measurement rewrote time/valid_from inside a real canonical Claim WITHOUT
+      recomputing object_hash, so model_validate was rejecting a HASH MISMATCH and the result was
+      being read as a verdict on the SPELLING. It showed three splits; two were artefacts. Had it
+      been reported as measured, the freeze-change proposal would have asserted that pydantic
+      rejects sub-six-digit fractions, which is false. Re-measured with the two effects separated:
+      EFFECT 1, spelling only, object_hash out of the picture — exactly ONE split, lowercase 'z',
+      which the exported JSON-schema pattern (?:Z|\+00:00)$ REJECTS and the pydantic UtcDateTime
+      validator ADMITS; every other spelling agrees, including .1Z and .1234567Z. EFFECT 2, with
+      object_hash recomputed — five splits, all of them proposal 001's known hash-path axis (the
+      model path re-renders through model_dump(mode="json"), the dict path hashes verbatim), which
+      is 001's to decide and not this window's. It is not theoretical here: the P06 bundle guard
+      this window ships validates every canonical object with jsonschema AND the pydantic model,
+      side by side, on the same bytes. packages/research-os-core/** is frozen, so nothing was
+      edited; filed as evidence/p04/freeze-change-proposal-002.md, the path D9 names. The proposal
+      also reports that proposal 001's own stated expiry condition has arrived: 001 §2.6 rested its
+      "practical cost is zero" conclusion on "nothing outside packages/research-os-core imports
+      research_os today", naming "the day a consumer is written" as its expiry — measured on this
+      base sha, eight files outside the core import it, including consul_executor.py with its
+      executable INSERT INTO research_os_objects, and R2 is building a persistence API against that
+      table right now.
+    status: filed as a proposal, not fixed
+    seat: kimi-code/k3 raised it, R1 Dux measured it
+
+deferred_named:
+  - text: >-
+      SOURCING THE REAL Z2b COHORT. Up to 20 public regulatory claims sourced from primary public
+      documents — real body hash, exact span with a quote hash computed from the real quoted text,
+      real valid time, rights, retention, classification, review state and a resolving IntelEvent
+      identity. Until that exists, Z2b's production effect is bounded to whatever the legacy
+      admission dry-run admits (expected 0). Owner: not R1's to assign; it needs a window with
+      access to the primary instruments and a decision on which instruments are in scope.
+    status: open
+    raised_by: imperator nuzantara-0d, R1-ack 2026-09-11T10:57Z
+
+risks_carried_not_owned:
+  - text: >-
+      PRO'S DISK IS FULL and it is not this window's to clear. R2's g1 checkpoint
+      (envelope 20260911T100629Z-5234.md) measured /System/Volumes/Data at 100% capacity, and its
+      agent_start.py died mid-checkout on "No space left on device". Re-measured by R1 at
+      2026-09-11T10:35Z: 1.7Gi available, and this worktree still takes a write. R1 therefore
+      continues — its writes are JSON and YAML, not images — but the RELEASE leg (push) is the
+      step most likely to fail, and if it does, the cause will be the volume and not the branch.
+      The 47G of Chrome partial .crx3 files in TMPDIR that R2 identified is a Zero call, already
+      escalated by R2; R1 does not duplicate the escalation and does not delete anything.
+    status: open
+    owner: Zero (escalated by R2 g1, not by R1)
+
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+  tokens: 1200000
+
+deadline: "2026-09-11T13:55:42Z"
+deadline_note: >-
+  Generation 3's deadline: g3's opening (2026-09-11T09:55:42Z, measured as the
+  mtime of this window's first command, `git fetch origin main`) + 4 h. The g2
+  instant 2026-09-11T01:05:00Z expired ~9 h before g3 opened. This is the staff
+  room's ONE renewal, recorded by the imperator as IMP-1.
+opening: "2026-09-10T21:05:00Z"
+opening_note: "The mission's first opening (g1). Each generation's own opening is in `generations:`."
+
+descendants:
+  max_attempts: 8
+  concurrency: 2
+  depth: 1
+  continuation_hops: 1
+  adapter_tool_ceiling: 120
+  ship_reserve: 0
+  deviation: >-
+    R1 §6 sets max_attempts 4. The generation-1 Dux reserved all four slots and died on an
+    account session limit at 2026-09-10T21:34Z before any of them returned work to the
+    branch; the slots died with it and no attempt is recoverable. The staff room raised the
+    total to 6 so the generation-2 Dux has 2 usable attempts, concurrency and depth
+    unchanged. Recorded here as the coordinator-owned deviation it is, not as a silent
+    reset: g2 spent exactly 2 (lane FIXTURES, lane DOCS), both at depth 1, both pinned to
+    claude-sonnet-5, and dispatched no third.
+  spent_by_generation_2: 2
+  spent_by_generation_3: 2
+  spent_by_generation_3_note: >-
+    Corrected from 0 by g4: lane INTELEVENT (rule-5 resolution cure) and lane BLOCKERS (the
+    round-1 cure, died with the g3 window before reporting). Generation 4 dispatched none.
+  spent_by_generation_4: 0
+  deviation_generation_3: >-
+    Raised 6 -> 8 by the staff room at the g3 opening, same shape as the g1 -> g2
+    raise and recorded the same way: g2 spent its 2 usable attempts (lanes FIXTURES
+    and DOCS) and died before releasing, so g3 would have had 0. Concurrency 2 and
+    depth 1 are unchanged, and the raise buys attempts, never depth or parallelism.
+    The runtime ledger's own `max_active` reads 8, measured at the g3 binding.
+
+generations:
+  - generation: 1
+    seat: claude-opus-5
+    opened: "2026-09-10T21:05:00Z"
+    died: "2026-09-10T21:34Z"
+    cause: account session limit
+    landed: >-
+      research_os_reader_reference.py, research_os_admission_reference.py,
+      test_research_os_temporal_rows.py, test_research_os_admission_rows.py,
+      02-p04-adapter-mapping.md §2 completed to 32/32 plus §2b. Secured by the staff room as
+      WIP commit 9f2037c9efb21491aae37746c2afe7e2f814941d.
+  - generation: 2
+    seat: claude-opus-5
+    opened: "2026-09-10T22:23Z"
+    note: >-
+      Resumes the SAME mission on the SAME worktree with the SAME deadline. HEAD verified as
+      9f2037c9ef and the tree verified clean before the first edit.
+    died: "2026-09-11T~06:49 WITA"
+    cause: >-
+      unknown (no checkpoint published after g2 checkpoint 1); last file mtime in the
+      worktree 2026-09-11T06:49 WITA, tree left UNCOMMITTED at ~663 insertions over 8 files.
+    landed: >-
+      Uncommitted at death, secured by g3 as afa47f17c8: the mapping-guard rewrite
+      (test_naga_evidence_mapping_preconditions.py + naga_evidence_mapping_reference.py),
+      the fixture-bundle module, the P06 fixture rewrites (bitemporal/03, supersession/01,
+      invalidation/01), _recompute_hashes.py, the seed cohort's first file, §B2-B4
+      dispositions and the control-room edits.
+  - generation: 3
+    seat: claude-opus-5
+    effort: xhigh
+    opened: "2026-09-11T09:55:42Z"
+    deadline: "2026-09-11T13:55:42Z"
+    note: >-
+      Resumes the SAME mission on the SAME worktree. HEAD verified as 9f2037c9ef before the
+      first edit, as instructed. The g2 tree did NOT pass the pre-commit anti-reward-hacking
+      lint (RH005 on test_research_os_p06_fixture_bundle.py:258 — a test whose only checks
+      were raising validators); rather than --no-verify, g3 preserved the pre-cure bytes at
+      refs/keep/r1-research-os-g2-tree-2026-09-11 -> 499fbe0de1, cured the test, and committed
+      as afa47f17c8 (72 passed on the module).
+    ledger_binding: >-
+      The runtime mandate ledger for this mission is keyed by the g1 SESSION ID
+      (e0107805-2cb7-4706-8620-3ad884c210e0), not by the mandate name "R1" — a lookup by
+      "R1" finds nothing and would silently CREATE a second, empty ledger. g3 renewed the
+      existing entry: renew(seconds = opening + 14400 - now = 14196), previous_deadline
+      2026-09-11T01:05:00Z, new_deadline 2026-09-11T13:55:42Z, renewals now 2, reservations
+      and counters untouched. Never renew(14400).
+    ended: "2026-09-11T~11:11Z"
+    cause: >-
+      context guard (window jump, not a death): the session resumed in a fresh window on the
+      same worktree. The implementer child r1-lane-blockers died with the old window mid-cure,
+      leaving an uncommitted partial cure secured as refs/keep/r1-g3-child-partial-cure-2026-09-11
+      -> bf40816b52. Checkpoint 3b, envelope 20260911T111701Z-592c.md.
+  - generation: 4
+    seat: claude-opus-5
+    opened: "2026-09-11T11:12Z"
+    deadline: "2026-09-11T13:55:42Z"
+    note: >-
+      Numbered 4 by the imperator's R1-ack of checkpoint 3b (R1 §6: a fresh window after a jump
+      increments the generation). SAME worktree, SAME clock, NO renewal. With the g3 implementer
+      holds exhausted (2 of 2) and no raise requested, the Dux wrote the remaining round-1 cure
+      itself — as g2 wrote the guard rewrite — and reverted the one part of the child's cure
+      that was wrong by contract (stripping the registered family prefix from the supersession/01
+      edge). Generator is not grader: round 2 stays with the external seats, the final gate with
+      a fresh Opus 5 session.
+
+corrections_to_the_handover:
+  - text: >-
+      The generation-1 team block below claims the Dux "also implemented the mapping-guard
+      rewrite directly". It did not. Measured by g2 at 2026-09-10T22:2xZ:
+      test_naga_evidence_mapping_preconditions.py was byte-unmodified against base
+      9304392d1a, still carrying `assert named < absent` and `assert len(absent) == 15`, and
+      the branch was RED on
+      test_the_bundles_own_correction_undercounts_the_gap (1 failed, 388 passed) precisely
+      because §2 had been completed to 32/32 while the guard still pinned the gap's width.
+      g2 wrote the guard rewrite itself. The claim is left in place rather than deleted, so
+      the record shows what was believed as well as what was true.
+
+team:
+  - role: dux
+    generation: 1
+    seat: claude-opus-5
+    effort: xhigh
+    note: release owner; claimed the mapping-guard rewrite — see corrections_to_the_handover
+  - role: dux
+    generation: 2
+    seat: claude-opus-5
+    effort: xhigh
+    note: >-
+      release owner; implemented build-spec §4 directly — naga_evidence_mapping_reference.py
+      (§2's mapping written out as executable code) and the guard rewrite that runs it
+  - role: implementer
+    seat: claude-sonnet-5
+    note: lane FIXTURES — P06 canonical fixtures and the seed cohort
+  - role: implementer
+    seat: claude-sonnet-5
+    note: lane DOCS — §2 completion to 32 paths, dispositions, control room
+  - role: dux
+    generation: 3
+    seat: claude-opus-5
+    effort: xhigh
+    note: >-
+      release owner; secured the g2 tree (afa47f17c8), bound the ledger, and found the admission
+      defect that lane INTELEVENT was dispatched to cure
+  - role: implementer
+    generation: 3
+    seat: claude-sonnet-5
+    pinned: true
+    note: >-
+      lane INTELEVENT — rule 5 of the D4 predicate cured from PRESENCE to RESOLUTION, seed cohort
+      given real canonical IntelEvent objects, plus the ObjectSuccessorEdge pair Z2b's kind list
+      implies. Attempt 1 of the 2 g3 holds; depth 1, no onward dispatch, tool ceiling 120.
+  - role: adversarial-review
+    seat: codex-gpt-5.6-sol
+    account: >-
+      O2 (CODEX_HOME=/Users/nuzantara/.codex-acct2). NOT the default seat: O1 (~/.codex) answers
+      "ERROR: Your workspace is out of credits" on BOTH codex binaries present on Pro
+      (/Users/nuzantara/.local/bin/codex 0.154.0 native, and /opt/homebrew/bin/codex 0.149.0 node
+      shim), so the failure is the ACCOUNT and not the binary-shadowing trap. Cascade applied per
+      Zero's ruling 2026-09-11 16:40 (a silent seat is not a suspend): retried, checked the
+      invocation, fell back INSIDE the role to the second Codex account, which answered
+      "SEAT ALIVE" in 14.1k tokens. No suspension, colour unchanged.
+    note: read-only, outside the author chain, two rounds maximum
+  - role: final-gate
+    seat: claude-opus-5
+    note: >-
+      a FRESH session outside the contribution chain, commissioned by the staff
+      room, not by this window; it signs and never arms.
+
+checkpoints:
+  - generation: 4
+    state: round-1-cure-green
+    envelope: 20260911T113047Z-27fe.md
+    envelope_sha256: 31505741de08df704f314af196670a2da8f000189aa41a627b5ff29d2de91186 # pragma: allowlist secret
+    sent: "2026-09-11T11:30:47Z"
+    ack: >-
+      R1-ack g4, imperator nuzantara-0d, 2026-09-11T11:36Z, quoting the envelope and its sha256. Mutation
+      proof accepted as the standard the gate re-runs on a sample; N5 deferral accepted as named, to
+      be listed in the PR body under "Deferred, named". Round 2 then returned REWORK from both quorum
+      seats on one converged blocker, corrected at depth 1 in 1bd1319590.
+  - generation: 3
+    state: window-jump
+    envelope: 20260911T111701Z-592c.md
+    envelope_sha256: fdb3527611f824cabfec20e0fef5bd6e607bdfd11e681a489344f4efbde00979 # pragma: allowlist secret
+    sent: "2026-09-11T11:17:01Z"
+    ack: >-
+      R1-ack, imperator nuzantara-0d, 2026-09-11T11:27Z, quoting the envelope and its sha256.
+      Record correction: this window is generation 4. Dispositions accepted — revert of the
+      child's B5 edge strip, no attempt raise, Dux writes the remaining cure, round 2 with codex O2
+      + kimi, freeze at ~12:50Z if not green. "Never commit a rewritten baseline."
+  - generation: 3
+    state: adversarial-round-1
+    envelope: 20260911T110055Z-1772.md
+    envelope_sha256: c593679f1304c752b9b7f11ac5f786a5bbffbdbf700c125041d20f2bb4b9bb7c # pragma: allowlist secret
+    sent: "2026-09-11T11:00:55Z"
+    ack: >-
+      R1-ack, imperator nuzantara-0d, 2026-09-11T11:10Z. Disposition (b) on the Z2b cohort ACCEPTED;
+      the deferred sourcing goes to Zero as a NEW MANDATE and is not reassigned inside this window.
+      Disk cleared (53Gi free, 0 chrome_url_fetcher dirs) — push is no longer at risk on space. The
+      gate will spot-check exactly the blocker family: that the admission rules bind event, span,
+      version and locator to the record's OWN document, and that the reader consumes the SHIPPED
+      fixture edge rather than a private shape. Cap discipline restated: if cure + round 2 + pack +
+      release do not fit before 13:55:42Z, freeze the candidate unpushed, checkpoint the sha and the
+      remaining work, and stop — a truthful cap beats a rushed release.
+  - generation: 3
+    state: build-complete
+    envelope: 20260911T105202Z-2f23.md
+    sent: "2026-09-11T10:52:02Z"
+    ack: pending at the time of writing; the imperator reads the mailbox every 10 minutes
+    note: >-
+      Candidate 3a47abf98a frozen pending the two review seats. Carries the rule-5 cure, the two
+      corrections to the handover, and the seat cascade record.
+  - generation: 3
+    state: resume
+    envelope: 20260911T100036Z-0486.md
+    envelope_sha256: c099065f8b3962817092f174ead32ffdc167b3f32863044150c2d336b6fce9ee # pragma: allowlist secret
+    sent: "2026-09-11T10:00:36Z"
+    ack: >-
+      R1-ack g3, imperator nuzantara-0d, 2026-09-11T10:27Z, quoting envelope
+      20260911T100036Z-0486.md and its sha256: "checkpoint 1 (RESUME g3) acknowledged; IMP-1
+      renewal stands; continue." Delivered inside the 15-minute window (26 min from publish to
+      the ack landing in the Pro mailbox; the ack itself is timestamped 10:27Z). The SendMessage
+      leg was NOT attempted: nuzantara-0d is a Fable window on M5 and SendMessage does not cross
+      machines — the mailbox envelope IS the delivery, per the opening instruction.
+  - generation: 2
+    state: resume
+    envelope: 20260910T222508Z-1712.md
+    sent: "2026-09-10T22:25:08Z"
+    ack: >-
+      R1-ack g2 checkpoint 1, staff room = the parent session addressed as `main`, quoting
+      envelope 20260910T222508Z-1712.md. The undelivered peer-name leg is closed by that
+      ruling, not by silence.
+  - generation: 1
+    state: open
+    envelope: 20260910T211744Z-45a3.md
+    sent: "2026-09-10T21:17:44Z"
+    ack: "R1-ack-1, docs-bot-staff-room-v6-fa, 2026-09-10T21:20:13Z"

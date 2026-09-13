@@ -183,13 +183,37 @@ export function assertDivergenceTraceValid(
 
 /**
  * Populated by E5/E6 as they land claim-backed interview reforms for the Tier-B lanes.
- * Empty today: parity-harness-rescope.md §2 measured zero claims covering interview-branch
- * semantics (as opposed to product-eligibility semantics) for any of these lanes as of
- * 2026-08-17. A test asserting this stays empty is a deliberate tripwire, not a permanent
- * invariant — update it intentionally, in the same PR that adds the first real claim-backed
- * divergence, never as a side effect of an unrelated change.
+ * Empty from 2026-08-17 (parity-harness-rescope.md §2 measured zero claims covering
+ * interview-branch semantics for any of these lanes) until 2026-09-13, when the first real
+ * entry landed below — a test asserting emptiness is a deliberate tripwire, not a permanent
+ * invariant, and this IS the intentional update the module doc above anticipates.
+ *
+ * `family_sponsor_status_code`'s entry does NOT come from the E4/E6 RC-1 reform this file
+ * otherwise tracks — it is D4a (owner ruling SHWEB-20260911, a separate mandate), which
+ * promoted the lane to FACT after verifying, live against the signed pack
+ * (`rulepack-prod-020.source.json`), that the fail-open `question-registry-audit.md` §3.1
+ * gated on (`E31B.md`'s value-blind `op:known`) is already gone, and after reading the later
+ * HELD note (`research/visa/doctrine-factory/e5/inc6-pack-edits/
+ * HELD-fix4-sponsor-status-2026-08-23.json`) that rejected a differently-worded fix attempt.
+ * `ADOPT_LEDGER` stays hard-banned on this lane regardless (see
+ * `assertDivergenceTraceValid`); `ESCALATE` is the correct disposition because this was a
+ * human (Zero) ruling, not an automatic claim-ledger adoption. See `mapFamilySponsorStatus`
+ * (fact-mapper.ts) for the full trust argument.
  */
-export const DIVERGENCE_REGISTRY: readonly DivergenceTrace[] = [];
+export const DIVERGENCE_REGISTRY: readonly DivergenceTrace[] = [
+  {
+    test:
+      "fact-mapper.test.ts::family sponsor status — closed catalogue, " +
+      "trusted only when confirmed (D4a) > innocence: a catalogue code " +
+      "resolves KNOWN once the sponsor is confirmed",
+    lane: FAMILY_SPONSOR_STATUS_LANE_ID,
+    legacyExpected: "HUMAN_CONTEXT — mapFamilySponsorStatus never emits KNOWN",
+    ledgerExpected:
+      "FACT — family.sponsor_status_code, KNOWN only inside the pack-" +
+      "derived 29-code catalogue (STAY_PERMIT_CODES), per D4a",
+    disposition: "ESCALATE",
+  },
+];
 
 /**
  * Validates every entry (shape, claim existence when `knownClaimIds` supplied, mandatory

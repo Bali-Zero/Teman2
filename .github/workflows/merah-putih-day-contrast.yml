@@ -45,21 +45,38 @@ name: Merah Putih DAY contrast guard
 # by a pattern in it. The test file and this workflow are in the filter too, so a
 # change to either re-runs the pair.
 #
-# WHAT THIS BUYS, AND WHAT IT DOES NOT. It buys a check run that STARTS on the
-# right PRs and goes RED on a real regression, where previously nothing ran at all.
-# It does NOT block the merge queue: this context is not in
-# `infra/required.d/contexts.json` and not in branch protection, so a red here is
-# visible, not fatal. A cross-family reviewer called that gap a reason not to ship,
-# and the gap is real — but its prescribed cure is refused, with reason. Making the
-# context REQUIRED would oblige this workflow to carry a `merge_group:` trigger too
-# (a required context that never runs on the queue's ref leaves entries waiting
-# forever — that failure is what jammed this repo's queue on 2026-08-30), and that
-# is precisely the queue cost the 2026-08-27 slim cure exists to prevent. Promotion
-# is therefore a branch-protection decision with its own queue-cost analysis and its
-# own PR — not a line smuggled into the PR that merely turns the guard on.
+# PROMOTION, 2026-09-03 — this is that own PR, and it is HALF of the promotion.
+# The 2026-08-31 note below refused to make the context required, on the ground that
+# doing so obliges a `merge_group:` trigger and that the trigger is a queue cost the
+# 2026-08-27 slim cure exists to prevent. The refusal was right about the mechanism
+# and wrong about the price, and the repo's own required guards say so: BOTH
+# `guard-conformance.yml` and `organ-conformance.yml` are required, both carry
+# `merge_group:`, and both pay for it with a SENTINEL — a bare `pull_request:` with
+# no `paths:`, and one cheap in-job step that answers "did a guarded surface change"
+# and short-circuits the whole job when the answer is no. A queue entry that touches
+# nothing here costs a checkout and a diff, not a test run.
 #
-# NO `merge_group:` TRIGGER, DELIBERATELY. This workflow is advisory — it backs no
-# entry in `infra/required.d/contexts.json` and none in branch protection. Zero's
+# So this file now has that shape. What it does NOT yet have is the branch-protection
+# entry, and the ORDER is the load-bearing part: adding the context to protection
+# BEFORE this shape is on `main` jams the queue on the first entry, because the
+# required context does not exist on the queue's ref yet. Sequence: (1) merge this;
+# (2) observe an actual `merge_group` run of this workflow; (3) then, and only then,
+# add "Merah Putih DAY palette holds its contrast law" to branch protection and
+# re-snapshot `infra/required.d/contexts.json` (that file is a GENERATED snapshot of
+# live protection — `scripts/ci/snapshot_required_contexts.py` — so hand-editing it
+# arms nothing at all; the mandate that described adding a line there as the promotion
+# was naming the mirror, not the lever).
+#
+# The two properties promotion depends on are no longer prose:
+# `test_the_workflow_has_the_shape_a_required_context_must_have` fails if
+# `pull_request` regains a `paths:` filter or if `merge_group:` is removed, and
+# `test_the_sentinel_reads_the_trigger_list_instead_of_restating_it` fails if the
+# sentinel stops reading `push.paths` and starts carrying its own copy.
+#
+# HISTORICAL (2026-08-31), kept because its measurement is still the reason the
+# sentinel exists rather than a bare always-on job — the trigger it argues against
+# was added on 2026-09-03, see PROMOTION above. It read: this workflow is advisory —
+# it backs no entry in `infra/required.d/contexts.json` and none in branch protection. Zero's
 # 2026-08-27 queue-slim cure asks advisory workflows to stay out of the merge queue,
 # because every queue entry used to spawn ~50 runs and the gating contexts starved
 # behind the ~40 that gate nothing. That cure is UNENFORCED in this direction (its
@@ -83,24 +100,52 @@ name: Merah Putih DAY contrast guard
 # never develop the head-green/queue-red asymmetry that jammed the queue that night.
 
 on:
+  # NO top-level `paths:` on pull_request — always trigger, the sentinel below
+  # gates the work. This is the shape a REQUIRED context must have in this repo
+  # (`guard-conformance.yml` and `organ-conformance.yml` are both written this
+  # way): a path-filtered required check simply never starts on the PRs it does
+  # not match, and GitHub then waits for a context that will never report.
   pull_request:
-    paths: &guarded_paths
+  merge_group:
+  push:
+    branches: [main]
+    # The SINGLE guarded-path list. The sentinel reads it out of this file at
+    # run time rather than restating it as a regex, so the filter and the gate
+    # cannot drift apart — the duplication `guard-conformance.yml` carries by
+    # hand is exactly what this avoids.
+    paths:
       - "apps/mouth/src/lib/theme/merahPutihDayVars.ts"
       - "apps/mouth/src/app/visa/second-home/**"
       - "apps/mouth/src/components/**"
       - "packages/core/tokens/semantic.css"
       - "scripts/tests/test_merah_putih_day_contrast.py"
       - ".github/workflows/merah-putih-day-contrast.yml"
-  push:
-    branches: [main]
-    paths: *guarded_paths
 
 permissions:
   contents: read
 
 concurrency:
+  # `cancel-in-progress` is CONDITIONAL on the event — and the reason usually
+  # given for it is WRONG, which is stated here rather than repeated. MEASURED
+  # 2026-09-04: a merge-queue ref is `gh-readonly-queue/main/pr-<N>-<sha>`, one
+  # per entry (ten entries, ten distinct refs), so with `github.ref` in the group
+  # key two entries can never share a group and the queue's next entry cannot
+  # cancel the entry ahead of it. `.github/workflows/security.yml` carries a
+  # 2026-07-27 comment reaching the same conclusion; eleven workflows were
+  # patched against the collision anyway on 2026-09-02, and the Gear-3 gate
+  # asked for it here as a promotion condition on #5614. Both council seats
+  # (codex-gpt-5.6-sol, kimi-code/k3) independently confirmed the measurement.
+  #
+  # So what this line actually buys is DEFENCE IN DEPTH, not a live bug fix: if
+  # the group key ever stops carrying `github.ref`, or GitHub re-dispatches the
+  # same merge_group ref, cancelling would tear a required context out of the
+  # queue rather than delay it — a cancelled check reports nothing at all. It
+  # ships for that, and because it matches the house pattern; it does not ship
+  # for the collision it was said to prevent.
+  # `test_the_concurrency_group_never_cancels_a_merge_group_run` keeps it from
+  # silently reverting to a bare `true`.
   group: merah-putih-day-contrast-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   contrast-guard:
@@ -108,17 +153,162 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the sentinel diffs against the PR base
+          filter: blob:none # every commit and tree, file contents on demand
 
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      - name: The guard's own corpus is green
+      - name: Install the parser the sentinel and the filter test both need
+        run: python3 -m pip install --quiet --disable-pip-version-check pytest pyyaml
+
+      # The sentinel exists because this context is meant to be REQUIRED, and a
+      # required check must report on every PR. It answers one question — did any
+      # guarded path change — and it answers it from THIS FILE'S OWN `paths:`
+      # list, not from a second copy of it. A hand-kept regex is how the sentinel
+      # and the trigger drift into disagreeing, and a sentinel that says "nothing
+      # changed" about a file that did is a green check over a real regression.
+      - name: Did a guarded surface change?
+        id: relevant
         run: |
-          # pyyaml is not decoration: the conformance test below parses THIS
-          # file's own `paths:` block, so without it that test ERRORS instead of
-          # guarding — a green job on an unchecked filter.
-          python3 -m pip install --quiet --disable-pip-version-check pytest pyyaml
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running the full guard"
+            exit 0
+          fi
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          # FAIL-CLOSED, AND IT LIVES IN THE SHELL — the Python snippet below
+          # carries the same branch, but `set -e` made it unreachable: `git diff`
+          # against an unreachable base exits non-zero and kills this step before
+          # python is ever started, so the branch that "runs the whole guard"
+          # could not run in the one case it exists for (Gear-3 council,
+          # codex-gpt-5.6-sol, BLOCK finding #1, 2026-09-04 — the cure for the
+          # gate's condition 2 was itself only half-applied). The probe belongs to
+          # whichever layer touches the base FIRST, and that layer is this one.
+          # The snippet keeps its copy because the tests execute the snippet
+          # directly and because a fail-closed path is cheap to state twice.
+          fail_closed() {
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::sentinel failing closed: $1 — running the full guard"
+            exit 0
+          }
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            fail_closed "base ref ${BASE_SHA} is not reachable in this checkout"
+          fi
+          if ! git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt; then
+            fail_closed "the diff against base ref ${BASE_SHA} could not be taken"
+          fi
+          # Only the `run=` line may reach $GITHUB_OUTPUT. The first cut piped the
+          # whole heredoc there, notice included, and the runner rejects any line
+          # that is not NAME=VALUE — so the "nothing guarded changed" path, the
+          # one this promotion exists to make green, went red instead (found by
+          # the Gear-3 council, 2026-09-04). The snippet prints exactly one word.
+          RUN="$(BASE_SHA="$BASE_SHA" CHANGED_FILE=/tmp/changed.txt python3 - <<'PY'
+          import fnmatch, os, pathlib, subprocess, sys, yaml
+
+          WORKFLOW = ".github/workflows/merah-putih-day-contrast.yml"
+
+          def guarded_paths(text: str) -> list[str]:
+              doc = yaml.safe_load(text)
+              # PyYAML is YAML 1.1: a bare `on:` key parses as the boolean True.
+              trigger = doc.get("on", doc.get(True))
+              return list(trigger["push"]["paths"])
+
+          # The list is read from the BASE ref's copy of this file AND the PR's
+          # own copy, unioned. Reading only the PR's copy is a trust boundary the
+          # PR itself controls: one diff that narrows `push.paths` and regresses a
+          # guarded file would have the sentinel judge itself by its own shortened
+          # list, skip the corpus, and skip the very test that catches a
+          # shrinking list (Gear-3 council finding, 2026-09-04). The base copy is
+          # the one the PR cannot edit.
+          #
+          # And when the base copy cannot be read, the sentinel FAILS CLOSED —
+          # it runs the whole guard rather than quietly falling back to the
+          # head-only list the paragraph above just called a trust boundary the
+          # PR controls. `if base.returncode == 0` alone treated "the base ref is
+          # unreachable" and "the base genuinely has no such file" as the same
+          # event and skipped the protection in both (promotion condition 2 of 2
+          # from the Gear-3 gate's PASS-WITH-CONDITIONS on #5614). Those two are
+          # separated below, because they are not the same fact: a shallow
+          # checkout or an unfetched base sha is a broken measurement and must
+          # not be believed, while a PR that INTRODUCES this workflow has no base
+          # copy by construction and head-only is the correct reading for it.
+          # The two probes are DIFFERENT and the difference is the point: the
+          # commit's reachability is asked of `cat-file -e <sha>^{commit}`, and
+          # the file's existence is asked of `ls-tree` (see the block at that
+          # call for why not `cat-file` there). Neither is `git rev-parse
+          # <sha>:<path>`, which answers with a hash-shaped non-answer either
+          # way. This paragraph used to say `cat-file -e` was "the probe for
+          # both"; it stopped being true when the ls-tree cure landed, and a
+          # comment that describes the code it no longer describes is the same
+          # defect as prose asserting a collision that does not exist.
+          def _git(*args):
+              return subprocess.run(["git", *args], capture_output=True, text=True)
+
+          def _run_everything(why: str):
+              print("true")
+              sys.stderr.write(f"sentinel failing closed: {why}\n")
+              sys.exit(0)
+
+          head_copy = pathlib.Path(os.environ.get("HEAD_WORKFLOW", WORKFLOW)).read_text()
+          patterns = set(guarded_paths(head_copy))
+          base_sha = os.environ["BASE_SHA"]
+          if _git("cat-file", "-e", f"{base_sha}^{{commit}}").returncode != 0:
+              _run_everything(f"base ref {base_sha} is not reachable in this checkout")
+          # EXISTENCE is asked of the TREE, not of the blob. This checkout is
+          # `filter: blob:none` (see the checkout step), so `cat-file -e
+          # <sha>:<path>` reaches for the file CONTENT and can trigger a lazy
+          # fetch — which collapses "the base genuinely has no such file" and
+          # "the promisor fetch failed" into the same non-zero, and the second
+          # one would then take the head-only branch this whole block exists to
+          # refuse (Gear-3 council, codex-gpt-5.6-sol, finding #3, 2026-09-04).
+          # `ls-tree` answers from the tree object, which a blob:none clone
+          # already has: empty stdout means absent, non-zero means the base tree
+          # could not be listed at all, and only the first is innocent.
+          listing = _git("ls-tree", "--name-only", base_sha, "--", WORKFLOW)
+          if listing.returncode != 0:
+              _run_everything(f"the base tree at {base_sha} could not be listed")
+          if listing.stdout.strip():
+              base = _git("show", f"{base_sha}:{WORKFLOW}")
+              if base.returncode != 0:
+                  _run_everything("the base copy of this workflow could not be read")
+              try:
+                  patterns |= set(guarded_paths(base.stdout))
+              except Exception as exc:  # noqa: BLE001 — any parse failure is unreadable base
+                  _run_everything(f"the base copy of this workflow did not parse: {exc}")
+          assert patterns, "no guarded paths parsed — refusing to declare a no-op"
+          changed = [l for l in pathlib.Path(os.environ["CHANGED_FILE"]).read_text().splitlines() if l]
+          # fnmatch has no `**`; `*` already crosses `/` in it, which makes it a
+          # SUPERSET of GitHub's glob here — the sentinel can only ever be more
+          # eager than the trigger, never blinder than it.
+          hit = any(fnmatch.fnmatch(f, p) for f in changed for p in patterns)
+          print("true" if hit else "false")
+          PY
+          )" || fail_closed "the sentinel snippet exited non-zero"
+          # A verdict word or nothing at all: an exit-0 with empty stdout would
+          # write the literal line `run=` and BOTH downstream steps would then
+          # compare it against 'true' and skip — a silently disarmed guard with
+          # no red anywhere (same council, finding #2). Anything that is not one
+          # of the two words is a broken measurement, not a "no".
+          case "$RUN" in
+            true|false) ;;
+            *) fail_closed "the sentinel printed '${RUN}', which is not a verdict word" ;;
+          esac
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+          if [[ "$RUN" == "false" ]]; then
+            echo "::notice::no guarded surface changed — sentinel success"
+          fi
+
+      - name: The guard's own corpus is green
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          # pyyaml is not decoration and it is installed in its own step above:
+          # the conformance test below parses THIS file's own `paths:` block, and
+          # so does the sentinel, so without it both ERROR instead of guarding —
+          # a green job on an unchecked filter.
           python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py -v
 
       # A guard that cannot go red is not a guard. This step proves the job would
@@ -130,6 +320,7 @@ jobs:
       # workflow was created to end, and it would be embarrassing to reproduce it
       # here.
       - name: The guard can still go red (guilt control)
+        if: steps.relevant.outputs.run == 'true'
         run: |
           set -euo pipefail
           TOKENS=apps/mouth/src/lib/theme/merahPutihDayVars.ts

@@ -1,0 +1,325 @@
+task_id: infra-codeql-queue-upload
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-09
+machine: M5
+lanes:
+  - lane: >-
+      upload: never on merge_group for the codeql-action/analyze step, guard
+      test, wired into the antidotes battery + sentinel path
+    role: build
+    seat: >-
+      claude-sonnet-5 (this worktree session on M5, dispatched by the team
+      lead session)
+    note: >-
+      Measured the live failure on all 54 merge_group Security Scanning runs
+      on 2026-09-09 (not the earlier verbal "4 of 14" estimate — 10 actual
+      failures, all confirmed to share the identical "ref ... not found"
+      error), confirmed the PR lane uploads the same commit's findings
+      before the merge_group run (PR #6017), confirmed the daily schedule
+      covers main independently of the queue, fetched the pinned
+      codeql-action analyze action.yml (default upload=always, unchanged for
+      every non-merge_group event) and confirmed the required-check set on
+      main's branch protection names the job conclusion
+      (`CodeQL Analysis (python)`/`(javascript)`), not a code-scanning-alert
+      check. Corrected the shipped comment and test docstring from the
+      stale "4 of 14" to the verified "10 of 54" after both cross-family
+      reviewers independently flagged the discrepancy as a non-blocking
+      accuracy nit.
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol -c
+      model_reasoning_effort=medium --sandbox read-only`, non-Anthropic,
+      fresh context, read-only). Three attempts, recorded in full in
+      council-journal.jsonl.
+    note: >-
+      Attempt 1 (open-ended prompt): hit its own token budget (122,914
+      tokens logged) mid-run and self-continued via a checkpoint/rollover
+      loop the harness's Stop hook cut off before a closing verdict line.
+      What it verified before running out: fetched the pinned
+      analyze/action.yml from GitHub and confirmed "database finalize and
+      query execution happen before the upload choice; any exception on the
+      query path calls setFailed" (a real analysis failure still fails the
+      step regardless of `upload`); independently found and checked the two
+      Snyk `upload-sarif` steps elsewhere in security.yml, confirming both
+      already carry `continue-on-error: true` and were never exposed to
+      this failure mode. No defect surfaced. Attempt 2 (terse, verdict-first
+      prompt): correctly BLOCKed — but on a stale artifact of THIS session,
+      not the diff: the pasted diff snapshot still carried the pre-fix "4 of
+      the 14" comment text because it had been captured before the build
+      lane's own accuracy fix (see build lane) was made, so the reviewer was
+      handed self-contradictory evidence (prompt said "verified: 10 of 54",
+      diff text said "4 of the 14") and correctly refused to pass it. That
+      is the review working as intended, not a defect in the PR — cured by
+      regenerating the diff snapshot against the corrected working tree.
+      Attempt 3 (same terse prompt, corrected diff): VERDICT: OK, listing
+      each premise it checked (event-to-upload mapping, analysis still
+      gating on failure, required-check semantics, guard test entity match,
+      wiring in both immune-enforcement.yml inventories, the now-consistent
+      "10 of the 54" figure, Snyk untouched) and one accepted residual
+      trade-off (merge-group-specific cross-PR findings aren't uploaded;
+      covered by the PR lane + daily schedule instead).
+    verdict: OK (third attempt; see note for why two prior attempts didn't close)
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: >-
+      kimi-code/k3 (`kimi -m kimi-code/k3 -p`, non-Anthropic, agentic file
+      access, fresh context, no shared prompt with the codex lane)
+    note: >-
+      OK, thorough. Verified live against the GitHub API rather than trusting
+      the brief: `gh api .../branches/main/protection` shows required
+      contexts are the 13 job checks including `CodeQL Analysis (python)` /
+      `(javascript)` with `required_code_scanning: null`; the
+      `merge-queue-main` ruleset carries only a `merge_queue` rule, no
+      code-scanning rule — confirms the queue gates on job conclusion only.
+      Fetched the same pinned action.yml independently and confirmed
+      `upload` default is `always`, so the diff's non-merge_group branch is
+      byte-identical to prior behaviour (this also defused a Dependabot
+      read-only-token concern it raised and then resolved itself: whatever
+      Dependabot's CodeQL upload does today, it does identically after this
+      diff). Ran `actionlint -shellcheck=` locally (matching CI's own
+      invocation) clean on both changed workflows, and the guard test (5
+      passed). One non-blocking nit raised: the shipped comment/docstring
+      said "4 of the 14" while the brief said "10 of 54" — cured in this
+      revision (see build lane).
+    verdict: OK
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (Claude) and two review lanes, both non-Anthropic and
+  cross-family from each other, same underlying questions, no sight of each
+  other's answer. Kimi delivered a complete, API-verified OK on its first
+  pass. Codex needed three passes (journal has all three) but landed on the
+  same OK, checking the same four questions independently — its second-pass
+  BLOCK was on a stale diff snapshot inside this review session, not on the
+  PR, and is recorded rather than discarded because it's a real example of
+  the process working. Both seats independently caught the same shipped-
+  comment staleness ("4 of 14" vs the verified "10 of 54"), which is exactly
+  the kind of thing two fresh-context seats reading the same diff are for.
+outcome: >-
+  Under merge_group, the CodeQL analyze step still runs the full python/
+  javascript analysis (a real build/query failure still reds the job and
+  blocks the queue) but never attempts the SARIF upload that was racing
+  against the deleted queue ref. Every other event (pull_request, push,
+  schedule, workflow_dispatch) keeps uploading exactly as before — the
+  expression's else-branch (`always`) is the action's own pre-existing
+  default, so behaviour there is unchanged by construction, not just by
+  intent. The two unrelated Snyk upload-sarif steps in the same workflow
+  were checked and are unaffected (already continue-on-error: true).
+diff:
+  files: 3
+  net_lines: >-
+    Measured via `git diff --numstat origin/main...HEAD` (merge-base
+    a09b4b4ea25b773558166547485e238603ed9796, NOT the two-dot diff against
+    origin/main's current tip, which is polluted by unrelated commits that
+    landed on main after this branch forked): .github/workflows/
+    immune-enforcement.yml +2, .github/workflows/security.yml +9,
+    scripts/tests/test_codeql_queue_upload_never.py +71 new file. The
+    evidence/ directory this pack lives in is committed separately, after
+    this numstat was taken. Floor is `path` (hot-zone
+    .github/workflows/**), not size.
+  measured_at: >-
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` in this
+    worktree at commit 0418396463. Note for reviewers: the two-dot
+    `git diff origin/main..HEAD` briefly appeared to show far more churn
+    because origin/main advanced with an unrelated window_jump.sh rewrite
+    after this branch forked — the merge-base (three-dot-equivalent) numstat
+    above is the correct measure and is what's reported here.
+  shape: >-
+    One `with.upload` line + a 6-line comment on the analyze step, one line
+    each in immune-enforcement.yml's sentinel-path list and pytest battery,
+    one new 71-line test file. No other step's body changes.
+behaviour_change: >-
+  YES, CI-visible, narrow: under merge_group only, the analyze step's SARIF
+  upload sub-step no longer runs (so it can no longer fail on a deleted
+  queue ref); the analysis itself, and every other event's upload, are
+  unchanged. The `antidotes` required check now also runs on a diff that
+  touches only the new guard test (sentinel-path addition).
+pii_scan: clean
+bites:
+  consumer: >-
+    The `CodeQL Analysis (python)` / `(javascript)` required checks on every
+    future merge_group run in this repo — the same job that failed 10 times
+    on 2026-09-09.
+  where: ci
+  observe: >-
+    gh run list --workflow=security.yml --event=merge_group --branch main
+    --limit 10 --json databaseId,conclusion,createdAt; for any failure,
+    gh run view <id> --log-failed | grep -i "ref.*not found"
+  expect: >-
+    Zero merge_group Security Scanning failures with the "ref ... not
+    found" signature going forward; any future failure has a different,
+    real cause.
+bites_note: >-
+  Pre-merge observation on this PR: the guard's 5 pins pass (17 with the
+  trigger-symmetry pin), actionlint is clean on security.yml, and both
+  cross-family reviews found no defect. The live post-merge observation on
+  the next merge_group run through the queue is what closes the loop and is
+  not claimed here — this PR's own merge_group run (once queued) is the
+  first data point.
+receipts:
+  - claim: >-
+      all 10 merge_group Security Scanning failures on 2026-09-09 share the
+      identical "ref ... not found" cause
+    cmd: >-
+      gh run list --workflow=security.yml --event=merge_group --created
+      2026-09-09 --limit 100 --json databaseId,conclusion --jq
+      'group_by(.conclusion) | map({conclusion: .[0].conclusion, count:
+      length})'; then gh run view <id> --log-failed | grep -i "ref.*not
+      found" on each of the 10 failure ids
+    result: >-
+      54 runs total, 10 failure / 43 success / 1 other; all 10 failure ids
+      (34350109008, 34349213583, 34346981848, 34346980655, 34346976803,
+      34339406942, 34338537858, 34336546751, 34316957908, 34316307031)
+      matched the identical
+      "##[error]ref 'refs/heads/gh-readonly-queue/main/pr-N-<sha>' not found
+      in this repository" line inside "Perform CodeQL Analysis (python)"
+    ts: "2026-09-09T13:05:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: the PR lane uploads the same commit's findings before its merge_group run
+    cmd: >-
+      gh run list --workflow=security.yml --branch
+      agent/air-m5/ci/whitelist-queue-flags-0909 --json
+      databaseId,event,conclusion,createdAt
+    result: >-
+      PR-lane run 34342139034 (event pull_request) succeeded at
+      2026-09-09T10:47:52Z; its merge_group run 34346980655 failed on the
+      same ref-not-found error at 11:56:42Z, over an hour later
+    ts: "2026-09-09T13:10:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: >-
+      the required checks on main gate on the CodeQL job's conclusion, not a
+      code-scanning-alert check
+    cmd: >-
+      grep -n "CodeQL Analysis" scripts/tests/fixtures/merge_gate_integrity/*.json
+    result: >-
+      infra/required.d/contexts.json entries name "CodeQL Analysis
+      (python)"/"(javascript)" as job checks (job_id: codeql); kimi
+      independently confirmed the same live via `gh api
+      repos/.../branches/main/protection` (required_code_scanning: null)
+    ts: "2026-09-09T13:15:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: the pinned action's default upload value is "always", unchanged by this diff on non-merge_group events
+    cmd: >-
+      gh api "repos/github/codeql-action/contents/analyze/action.yml?ref=cdf488f595d80d6e07e03d4674febd5ab45fa938"
+      --jq '.content' | base64 -d | grep -A6 "^  upload:"
+    result: >-
+      "Defaults to 'always' which uploads the SARIF file to Code Scanning
+      for successful and failed runs. ... 'never' avoids uploading the
+      SARIF file to Code Scanning, even if the code scanning run fails."
+      default: "always"
+    ts: "2026-09-09T13:20:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: guard test passes and is wired into both the sentinel-path list and the pytest battery
+    cmd: >-
+      python3 -m pytest -q scripts/tests/test_codeql_queue_upload_never.py
+      scripts/tests/test_immune_enforcement_trigger_symmetry.py; grep -n
+      test_codeql_queue_upload_never.py .github/workflows/immune-enforcement.yml
+    result: "17 passed in 0.78s; matches at immune-enforcement.yml:362 (sentinel path) and :595 (pytest battery)"
+    ts: "2026-09-09T13:25:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: actionlint reports no error on the changed workflow
+    cmd: actionlint .github/workflows/security.yml
+    result: "clean, no output, exit 0"
+    ts: "2026-09-09T13:26:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: >-
+      immune-enforcement.yml's pre-existing shellcheck warnings (unrelated
+      to this diff) also exist on origin/main, so this diff introduces no
+      new actionlint finding
+    cmd: >-
+      git show origin/main:.github/workflows/immune-enforcement.yml >
+      /tmp/main-immune.yml; actionlint /tmp/main-immune.yml | grep -c
+      "SC2221\|SC2222"; actionlint .github/workflows/immune-enforcement.yml
+      | grep -c "SC2221\|SC2222"
+    result: "6 on origin/main; 6 on this branch — identical, pre-existing, not introduced here"
+    ts: "2026-09-09T13:27:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: >-
+      the first CI run on this PR went RED on antidotes for the
+      trigger-symmetry pin, cured by the team lead's commit 0418396463 on
+      top of this session's build
+    cmd: >-
+      gh run view 34352201312 --log-failed | grep -A2
+      "test_every_looped_test_is_also_a_trigger_path"
+    result: >-
+      "AssertionError: these tests are RUN by immune-enforcement.yml but no
+      sentinel path triggers the job ... ['scripts/tests/
+      test_codeql_queue_upload_never.py']. Add each to the `case` list." —
+      1 failed, 11 passed in 0.14s. Cured by adding the file to the
+      sentinel-path `case` list (immune-enforcement.yml:362); re-run of both
+      the trigger-symmetry pin and the new guard together now passes 17/17.
+    ts: "2026-09-09T13:30:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 1
+  - claim: the merge-base three-dot diff is the correct/small one; the two-dot diff against origin/main's moving tip is misleading
+    cmd: git diff origin/main..HEAD --stat; git diff origin/main...HEAD --stat; git merge-base origin/main HEAD
+    result: >-
+      two-dot: 6 files, 129 insertions / 343 deletions (includes an
+      unrelated window_jump.sh rewrite that landed on main after this
+      branch forked); three-dot: 3 files, 82 insertions, merge-base
+      a09b4b4ea25b773558166547485e238603ed9796 — used for the review prompt
+      and for diff.net_lines above
+    ts: "2026-09-09T12:50:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: PR #6029 was not in the merge queue before this evidence was pushed
+    cmd: >-
+      gh api graphql -f query='{repository(owner:"Bali-Zero",name:"Teman2"){pullRequest(number:6029){mergeStateStatus
+      isInMergeQueue}}}'
+    result: '{"data":{"repository":{"pullRequest":{"mergeStateStatus":"BLOCKED","isInMergeQueue":false}}}}'
+    ts: "2026-09-09T13:35:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+dissent:
+  - seat: kimi-code/k3 (cross-family)
+    status: CONFIRMED
+    objection: >-
+      OK, no BLOCK. One non-blocking nit: shipped comment/docstring said "4
+      of the 14" while the brief said "10 of 54" — CURED in this revision
+      (security.yml:719-724, test_codeql_queue_upload_never.py:1-9). Also
+      raised and self-resolved a Dependabot read-only-token question:
+      confirmed the diff makes no behavioural change there since the
+      non-merge_group branch equals the action's pre-existing default.
+  - seat: codex-gpt-5.6-sol (cross-family)
+    status: CONFIRMED
+    objection: >-
+      Took three attempts to reach a formal verdict (full transcripts in
+      council-journal.jsonl). Attempt 1 exhausted its token budget before a
+      closing line, surfacing no defect in what it did check. Attempt 2
+      correctly BLOCKed on a real, but self-inflicted, problem: the diff
+      snapshot pasted into that prompt was captured before the build lane's
+      "4 of 14" → "10 of 54" accuracy fix landed, so the reviewer was handed
+      internally contradictory evidence and rightly refused to pass it —
+      confirming the guard reviewers exist to catch exactly this class of
+      staleness, even when the staleness is in the review harness rather
+      than the code. Attempt 3, given a diff snapshot regenerated against
+      the corrected working tree, delivered VERDICT: OK with the same four
+      questions answered as kimi's independent pass. CONFIRMED because a
+      real (process) defect was found and cured, not because the PR's code
+      itself had one.
+  - seat: claude-sonnet-5 (this worktree session — the builder's own standing objection)
+    status: PLAUSIBLE
+    objection: >-
+      The way this cure could be wrong, stated plainly: it assumes every
+      merge_group failure with this signature is this exact cause, and that
+      no other job in the merge-queue path independently needs the SARIF
+      upload from THIS step. Both were checked (10/10 failures matched the
+      literal error line; the required-check set is job-conclusion-only,
+      confirmed live by kimi), so the residual risk is narrow: a future
+      required check added on the code-scanning alert itself (not the job)
+      would silently stop being satisfied under merge_group. Nothing in this
+      repo does that today, and the guard test would need a companion pin if
+      one ever does — out of scope for this PR's budget, noted here so it
+      isn't rediscovered the hard way.
+spend:
+  wall_clock_hours: 2

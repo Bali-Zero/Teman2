@@ -1,0 +1,53 @@
+task_id: kita-prune-lot6-crm-a
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: 5669e34ede8d52e3d65051253b034d49db7cce47 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 569 lines over 8 files (1 added, 568 deleted).
+# No hot-zone path, no PII path, no ground-truth path.
+objective: >-
+  Lot 6 (CRM), PR-A of the kita.balizero.com dead-surface pruning (audit shared with the owner
+  2026-09-12): drop CRM-adjacent API client methods and exports that grep-verified to have zero
+  callers in apps/mouth/src and, where applicable, no matching backend route.
+constraints:
+  - >-
+    Deletions only, one concern, no new feature, no redesign, no backend change.
+  - >-
+    Every deleted crm.api.ts method was grep-verified to have zero callers outside its own
+    definition; the drive-folder methods' routes (/api/clients/{id}/create-drive-folder,
+    drive-folder, drive-folder/structure, drive-folder/{name}/files, drive-folder/{name}/upload,
+    drive-folder/stats) and the interaction mark-read routes were grep-verified absent from
+    apps/backend-rag/backend/app/routers.
+  - >-
+    Kept on purpose: crm.api.ts::getUpcomingRenewals — its backend route (GET
+    /renewals/upcoming in crm_practices.py) exists and it has live callers via
+    useCrmNotifications (mounted in Header.tsx, NotificationBell.tsx) and useCrmPractices.
+  - >-
+    No client PII in this pack, in the PR body or in any log.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+  tokens: 300000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file.
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+assumptions:
+  - text: >-
+      getTimeline in dashboard.api.ts is distinct from api.portal.getTimeline (portal.api.ts):
+      the only external "getTimeline" callers in src resolve to the portal method, not the
+      dashboard one.
+    status: verified
+    probe: 'grep -rn "\bgetTimeline\b" apps/mouth/src --include=*.ts --include=*.tsx | grep -v dashboard.api.ts'
+  - text: >-
+      DocumentsTab's onRefresh prop was destructured and typed but never invoked in the
+      component body.
+    status: verified
+    probe: 'grep -n onRefresh "apps/mouth/src/app/(workspace)/clients/[id]/components/DocumentsTab.tsx"'

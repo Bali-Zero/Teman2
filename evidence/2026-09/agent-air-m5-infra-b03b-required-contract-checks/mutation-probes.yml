@@ -1,0 +1,17 @@
+command: python .agent/b03b/mutate-workflow.py
+note: Actual temporary workflow mutations; equivalent cases are committed in test_required_context_map.py.
+started_at: "2026-09-05T11:42:22.423486+00:00"
+finished_at: "2026-09-05T11:42:26.511500+00:00"
+exit_by_case:
+  remove: 1
+  move-to-advisory: 1
+  after-tests: 1
+  wrong-matrix: 1
+  wrong-condition: 1
+  wrong-cwd: 1
+  step-advisory: 1
+  job-advisory: 1
+  swallow-error: 1
+  missing-needs: 1
+  success-only-job: 1
+  restored: 0

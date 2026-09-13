@@ -3,7 +3,11 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
-import { isNonHumanRole, useTeamMemberOptions } from "./useTeamMembers";
+import {
+  isNonHumanRole,
+  isTeamRole,
+  useTeamMemberOptions,
+} from "./useTeamMembers";
 
 vi.mock("@/lib/api", () => ({
   api: {
@@ -143,5 +147,23 @@ describe("isNonHumanRole", () => {
     ]) {
       expect(isNonHumanRole(role)).toBe(false);
     }
+  });
+});
+
+describe("isTeamRole", () => {
+  it("admits every role the backend allow-list admits (innocence)", () => {
+    expect(isTeamRole("Tax Lead")).toBe(true);
+    expect(isTeamRole("  board member ")).toBe(true);
+    expect(isTeamRole("member")).toBe(true);
+  });
+
+  it("refuses partners, clients, service accounts and the unknown (guilt)", () => {
+    expect(isTeamRole("partner")).toBe(false);
+    expect(isTeamRole("client")).toBe(false);
+    expect(isTeamRole("monitoring")).toBe(false);
+    expect(isTeamRole("user")).toBe(false);
+    expect(isTeamRole("")).toBe(false);
+    expect(isTeamRole(null)).toBe(false);
+    expect(isTeamRole(undefined)).toBe(false);
   });
 });

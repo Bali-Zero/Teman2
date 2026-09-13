@@ -1,0 +1,19 @@
+task_id: hierarchy-workflow-salvage-20260908
+gear: 2
+objective: Salvage the three Astra-authored workflow documents (2026-09-07 operative audit, 2026-09-08 operating contract v1, homepage mission-entry readiness receipt) from untracked agent worktrees into research/operations before they are lost like the pruned 2026-09-06 design worktree.
+constraints:
+  - Verbatim transplant; only absolute worktree paths made repo-relative and three off-repo references labelled.
+  - No doctrine, code, hook or settings change in this PR; the settled hierarchy lands in separate PRs.
+  - Each file declares an explicit adversarial_review exemption because the content is Astra's and is cross-read in the companion study, not re-adjudicated here.
+acceptance:
+  - text: WHEN the R1 gate runs on this PR, it SHALL report PASS with three exempt NOTICE lines for the three transplanted files.
+    probe: adversarial-review-gate
+  - text: WHEN a session opens any of the three files on origin/main, every internal link SHALL be repo-relative and resolve inside the repository.
+    probe: link-check-manual
+consumer_map:
+  - scripts/check_adversarial_review.py via .github/workflows/adversarial-review-gate.yml (R1 gate on this PR).
+  - research/operations/2026-09-08-hierarchy-workflow-sessions-study-it.md (next PR) cites all three by repo path.
+risks:
+  - The transplanted receipt references a local Claude transcript and a local Codex visualization that are not in the repo; labelled as off-repo, not reproduced.
+  - Size floor Gear 2 is reached by line count alone (664 added lines of salvaged text), not by hot-zone paths.
+pii: none

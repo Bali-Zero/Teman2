@@ -1013,7 +1013,7 @@ async def _process_claimed_row(
             elif leg.text is not None:
                 body_text = leg.text
                 logger.info(
-                    "wa_outbox: codex leg served outbox=%s", outbox_id
+                    "wa_outbox: %s served outbox=%s", leg.served_by, outbox_id
                 )
             elif leg.reason in _CODEX_LEG_STANDING_REASONS:
                 # SilentStandingCondition, not the plain BotStandingCondition:

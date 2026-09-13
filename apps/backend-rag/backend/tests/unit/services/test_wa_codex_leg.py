@@ -303,6 +303,46 @@ async def test_window_never_opened_falls_off(
     stubs.offer_job.assert_not_awaited()
 
 
+# ── gate 2b: the scripted greeting turn ─────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_bare_greeting_is_served_from_the_script_before_any_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Cycle 359, measured on real delivery: a bare "halo" reached the package
+    builder, was refused as `greeting_domain` (GREETING maps to zero
+    collections by design), and — with the Gemini leg cut — took the full
+    five-attempt retry ladder, ~7m45s, to arrive at an English error stub.
+
+    The cure returns the scripted turn here, and the assertions that matter
+    are the NEGATIVE ones: no build request, no broker offer, nothing
+    generated. If the short-circuit is removed, `rag_client.post` is awaited
+    and this test fails."""
+    stubs = _wire_stubs(monkeypatch, query="halo")
+    result = await _run()
+
+    assert result.text is not None
+    assert "Zantara" in result.text
+    assert result.reason == "" and not result.stand_down and not result.fail
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_question_that_merely_opens_with_a_greeting_takes_the_normal_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence, and the expensive half: "halo, berapa harga PT PMA?" is a
+    pricing question wearing a polite hat. It must reach the package build
+    exactly as before — a greeting guard that eats real questions is a worse
+    defect than the one it cures (scar family #3)."""
+    stubs = _wire_stubs(monkeypatch, query="halo, berapa harga PT PMA?")
+    await _run()
+
+    stubs.rag_client.post.assert_awaited()
+
+
 # ── gate 3: the package build ───────────────────────────────────────────────
 
 

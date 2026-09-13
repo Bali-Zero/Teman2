@@ -49,15 +49,56 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-09-02 — keep current)
 
-**🔴 2026-09-02 — THE KG LICENSING LANE HAS ITS SPEC, AND THE SPEC IS SUSPENDED (RULE 8): THREE REFUTER
-ROUNDS EACH FALSIFIED PART OF THE PREVIOUS DRAFT; THE MEASUREMENTS BELOW STAND, THE DESIGN DOES NOT YET.**
-`docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md` (Gear 2; Codex sol round 1 BLOCKED(9) →
-round 2 BLOCKED(11) → round 3 BLOCKED(6) ⇒ no fourth round; the six open findings and their minimal
-fixes are tabled in the spec — reopen from THERE: the live state counts the 16 placeholder codes as S3
-(54/99/22) until the placeholder lot runs; canonical `01122` has 8 rows and NO KG node; the S3 relabel
-would assert an unverified legacy licence set; `PHASE_1B_ENABLED` needs `procedure` rendered and
-prove-live on Fly AND Vercel; detectors must run both directions; one exact `node_properties` object.
-Nothing implemented). Measured read-only on PROD
+**🔴 2026-09-03 — THE KG LICENSING SPEC IS REOPENED AT REVISION r4: THE SIX ROUND-3 FINDINGS ARE
+FOLDED, AND RE-MEASURING THEM FOUND A SEVENTH DEFECT NOBODY HAD SEEN — NINE CODES SERVE `KITAS`, A
+PERSONAL RESIDENCE PERMIT, AS THE LICENCE OF A BUSINESS.** `docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md`
+(r4; the 2026-09-02 suspension after Codex sol BLOCKED(9)→BLOCKED(11)→BLOCKED(6) stands as history —
+r4 is a different design, not a fourth round). What changed: **two** state tables, not one (Table A
+live with placeholders admitted, Table B after the placeholder lot — `--census` prints both, and the
+ordering is a `SystemExit(2)` in the script, not a runbook step); `01122` gets a transactional
+`--create-missing-node` path (today `inspect_kbli 01122` is a **404**); an **S3 code is written to at
+all** — no edges, no status, because relabelling it `REGULATED` would assert a legacy licence set that
+differs from the derived one on 6/6; F2 becomes two PRs with `procedure` rendered and the constant
+flipped only after Fly AND Vercel are proven; **five** detector checks, all bidirectional; one exact
+`node_properties` object compared by decoded value, never bytes (`JSONB`). **The r4 refuter round
+(Codex sol, xhigh, fresh context) is PARTIAL — it exhausted its turn budget before writing its
+findings table, so it is NOT a clean gate.** Two findings it did name were verified and folded:
+(a) Lot 0(c) creates `01122`'s node and writes NO licence, so its proof is the honest S2 shape
+(`licenses: []`, 200 instead of 404) and its 3 licences arrive in Phase 1a — `01122` is OSS-issued,
+so the post-Lot-0 figures are **union 176 / Phase 1a 115 (110 built) / 158 target nodes**;
+(b) leaving the 6 S3 codes at `PENDING` means `kg_status_function` can never read 0 unless its
+manifest excludes them as it excludes the 61 Phase-1b codes — manifest = 1,559 − 61 − 6 − 75 =
+**1,417**. §4's derivation rule, §5's transaction/idempotence design and §2.4/F9 remain UNGRADED by
+any refuter; a build PR must carry its own gate. Still nothing implemented —
+**Lot 0** (F5 classifier demotion — which cures all 9 KITAS codes with ZERO edge writes —
+`--placeholders-only` ×17, `--create-missing-node` ×1) is the first build PR and none of it waits on
+Zero.
+**The `KITAS` class (spec §2.3), proven live 2026-09-03:** `permit:kitas` (`entity_type=permit_type`,
+entity type with **four** live nodes — KITAS, KITAP, ITAS, ITAP, ALL of them personal immigration
+permits) is a `REQUIRES` target of **9** KBLI nodes and passes both stages of the router's admission
+predicate. **The cure is a classifier demotion, never a deletion** — `permit_type` moves into
+`_BUCKETS` as `immigration_permits`, the edges stay, and the client sees `KITAS` under
+`related_requirements` where `PT PMA` already sits correctly; deleting a true relational fact is the
+"second defect wearing the shape of a fix" that `kbli_requires_kind.py`'s own docstring warns about. Six are KG-only codes with a `<null>` status — served as
+`REGULATED` by the read-time default — where `KITAS` is the code's ONLY licence: `inspect_kbli 55111`
+("Hotel Bintang Lima", a KBLI-**2020** code KBLI 2025 does not contain) returns
+`licensing_status: REGULATED, licenses: [{"type": "KITAS", …}]`. The other three are canonical,
+`REGULATED`, legacy-served, and hide it beside real licences: **55300** (bumi perkemahan), **68210**
+(intermediasi real estat), **70201** (konsultansi manajemen) — three of the codes a Bali expat client
+is most likely to look up.
+**And the hole is wider than either named class (spec §2.4, F9):** of the **2,447** distinct
+admitted targets, **172** carry no licence-shaped token in their name (221 codes, 356 edges). That
+is a SEARCH SPACE, not a defect count — many are real permits known by acronym (IPP-IRT, SPP-IRT,
+STP Distributor/Agen, PMR, Uji Klinik) — but it provably contains `Lokasi industri berada pada
+Provinsi bersangkutan`, `Layanan keluhan pelanggan`, `Kerja Sama Operasi (KSO)` and `Tidak
+menghasilkan produk senjata kimia` served to clients as permits. Per-target adjudication, own lane,
+deliberately NOT bolted onto the 175-code cure.
+**Two arithmetic corrections to the 2026-09-02 numbers:** the admission triple is `4,722 + 355 + 241
+= 5,318` (that draft's `4,699 + 352 + 241` = 5,292 against its own 5,318 denominator — its census
+intersected KG with canonical and scored no edge of the 10 KG-only codes); and `kewenangan`, the
+field F2's `issuer` would read, carries **three generic role labels and zero named institutions**
+over the 61 non-OSS codes, while `persyaratan` names the issuing body on **61/61** — so `procedure`,
+not `issuer`, is the half that answers the client. Measured read-only on PROD
 2026-09-01 and RE-measured 2026-09-02 with the router's OWN admission predicate —
 `classify_requires_target` AND `permit_name_verdict` (`kbli_notebook.py:674-689`) — because
 "permit-typed" ≠ "rendered": 5,318 permit-typed `REQUIRES` edges, 4,699 admitted, 352 + 241 demoted

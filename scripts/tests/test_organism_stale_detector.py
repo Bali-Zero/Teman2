@@ -1271,67 +1271,81 @@ def test_scan_stale_coverage_branches_exit_code_is_red(tmp_path, monkeypatch):
     assert rc == 1, f"a stale, PR-less coverage branch must exit non-zero: rc={rc}"
 
 
-def test_the_all_clear_sentence_is_the_hooks_only_branch_and_is_a_contract():
-    """CROSS-ARTIFACT PIN: this one string IS an interface, not prose.
+def test_the_empty_json_list_is_the_hooks_only_branch_and_is_a_contract():
+    """CROSS-ARTIFACT PIN: what the hook branches on IS an interface, not prose.
 
-    The distinction matters, because the sibling test above deliberately does
-    NOT pin the report's glyphs or wording — pinning prose makes a corpus fight
-    legitimate rewording (W112). The exception is prose a consumer PARSES, and a
-    second seat's grep found exactly one: `scripts/hooks/organism_alert_sessionstart.sh`
-    captures the whole report and branches on a single literal —
+    Superseded 2026-09-09 (session-start injection diet): until this PR,
+    `scripts/hooks/organism_alert_sessionstart.sh` ran the detector's HUMAN
+    report and branched on a SUBSTRING match against the literal "all organs
+    breathing" — a prose sentence a consumer parsed, and therefore an
+    interface, pinned by this test's prior form (git blame this test for the
+    substring-over-match risk that pin documented: reword the all-clear
+    sentence and the hook goes silent forever; reword the findings HEADER to
+    contain the same words and the hook goes silent on real findings).
 
-        case "$REPORT" in ""|*"all organs breathing"*) exit 0 ;;
+    The hook no longer does that. It now runs the detector with `--json` and
+    branches on an EXACT match against `""` or `"[]"` —
 
-    — then passes everything else through verbatim into every session's context.
-    No glyph is parsed anywhere; this sentence is the entire decision.
+        case "$FINDINGS_JSON" in ""|"[]") exit 0 ;;
 
-    Unpinned it failed in BOTH directions, and both mutations survived all 53
-    tests:
-
-      - reword the all-clear, and the hook stops matching it: an ORGANISM block
-        is injected into every session on every machine forever, saying that
-        everything is fine. Alert fatigue by construction — the failure this
-        detector exists to end.
-
-      - worse, and this is why the assertion is two-sided: the hook's match is a
-        SUBSTRING. Make the findings header read "not all organs breathing" —
-        an entirely natural rewording — and it CONTAINS the all-clear literal, so
-        the hook exits 0 and goes silent on real findings. Simulated against the
-        hook's own case-statement: 5 findings, hook exits 0. Classic over-match
-        (cicatrix family #3), pointing the wrong way.
+    — which structurally closes the substring-over-match class this test used
+    to guard against: `[]` cannot appear as the ENTIRE value of a JSON array
+    that has elements (there is always at least one `{...}` inside), so no
+    findings payload can ever equal the all-clear sentinel by accident. This
+    test pins the new, narrower contract: `--json` on zero findings prints
+    exactly `[]`, and `--json` on any findings never prints exactly `[]`.
     """
     import re
 
-    from organism_stale_detector import StaleFinding, _human_report
+    from organism_stale_detector import StaleFinding, main as detector_main
 
     here = os.path.dirname(__file__)
     hook = os.path.join(here, "..", "hooks", "organism_alert_sessionstart.sh")
     assert os.path.exists(hook), hook
     hook_src = open(hook, encoding="utf-8").read()
 
-    # Read the sentinel out of the CONSUMER, so this test cannot drift from the
-    # thing it protects: if the hook starts branching on different words, this
-    # asserts against those words, not against a copy frozen here.
-    m = re.search(r'\*"([^"]+)"\*\)\s*exit 0', hook_src)
-    assert m, f"the hook no longer branches on a quoted literal:\n{hook_src[-400:]}"
-    sentinel = m.group(1)
+    # The hook must branch on an EXACT match (no `*` wildcard) against "[]" —
+    # an exact case-statement arm, not a substring, is the whole point of the
+    # 2026-09-09 fix. Read the pattern out of the CONSUMER so this test cannot
+    # silently drift from what actually ships.
+    m = re.search(r'case\s+"\$FINDINGS_JSON"\s+in\s+([^)]+)\)\s*exit 0', hook_src)
+    assert m, f"the hook no longer branches on FINDINGS_JSON via a case statement:\n{hook_src[-400:]}"
+    arms = m.group(1)
+    assert "*" not in arms, (
+        f"the hook's empty-findings branch must be an EXACT match, not a substring "
+        f"(the class of bug this test used to guard against) — got arms={arms!r}"
+    )
+    assert '"[]"' in arms, f"the hook must match the literal empty-list JSON, got arms={arms!r}"
 
-    # GUILT direction 1 — the all-clear must carry it, or the hook alarms forever.
-    clear = _human_report([])
-    assert sentinel in clear, (
-        f"the all-clear report no longer contains {sentinel!r}, which is the only "
-        f"thing the SessionStart hook matches — it would inject an ORGANISM block "
-        f"into every session on every machine, forever. Got: {clear!r}"
+    # GUILT direction 1 — zero findings must serialize to exactly "[]", or the
+    # hook alarms forever on an all-clear machine.
+    import io
+    import json as _json
+    import sys as _sys
+
+    def _run_json(dir_path: str) -> str:
+        buf = io.StringIO()
+        old = _sys.stdout
+        _sys.stdout = buf
+        try:
+            detector_main(["--dir", dir_path, "--json", "--no-coverage-branch-scan",
+                           "--no-cross-host-sync"])
+        finally:
+            _sys.stdout = old
+        return buf.getvalue().strip()
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as empty_dir:
+        out = _run_json(empty_dir)
+    assert out == "[]", (
+        f"zero findings must serialize to exactly '[]', which is the only thing "
+        f"the SessionStart hook matches — got {out!r}"
     )
 
-    # GUILT direction 2 — no report WITH findings may contain it, or the hook
-    # goes silent on them. The match is a substring, so this is not paranoia.
+    # GUILT direction 2 — any findings must NEVER serialize to exactly "[]", or
+    # the hook goes silent on them.
     for kind in ("stale", "dead_channel", "corrupt", "unhealthy", "warning"):
-        noisy = _human_report(
-            [StaleFinding(organ_id="o", kind=kind, age_days=9.0, status="failed", detail="d")]
-        )
-        assert sentinel not in noisy, (
-            f"a report carrying a {kind} finding contains {sentinel!r} — the hook "
-            f"matches it as a substring and exits 0, going SILENT on a real "
-            f"finding. Got: {noisy!r}"
-        )
+        finding = StaleFinding(organ_id="o", kind=kind, age_days=9.0, status="failed", detail="d")
+        noisy = _json.dumps([finding.to_dict()])
+        assert noisy != "[]", f"a {kind} finding must never serialize to '[]': {noisy!r}"

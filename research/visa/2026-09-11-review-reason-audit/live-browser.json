@@ -1,0 +1,27 @@
+{
+  "url": "https://balizero.com/visa-oracle",
+  "text": "EN\nID\nTalk to a consultant\nContinue with Bali Zero\n\nWhatsApp handoff is not configured. You can still print or save this result.\n\nStart: answered\nWhere you are: answered\nStay permit: answered\nActive overstay: answered\nPassports: answered\nAge check: answered\nCategory: answered\nTrip purpose: answered\nLength of stay: answered\nEntry pattern: answered\nSafety check: answered\nYour answers: answered\nVerdict: current step\n…\nEntry pattern\nSafety check\nYour answers\nVerdict\nStart\nWhere you are\nStay permit\nActive overstay\nPassports\nAge check\nCategory\nTrip purpose\nLength of stay\nEntry pattern\nSafety check\nYour answers\nVerdict\nTourism & short visit\nThis needs a human, not an algorithm\n\nNothing here is guessed. A Bali Zero advisor reviews cases like yours by hand.\n\nYour case needs a person’s judgment — nothing here was guessed on your behalf.\n\nSome of your answers need a person's judgment before we can confirm a path.\nYour next 3 steps\n1\nReview the verified decision and its assumptions\n2\nPrepare only documents marked as verified\n3\nChoose whether to contact a Bali Zero advisor\nAssumptions & caveats, dated\n\nNo assumptions were needed — every answer was given directly.\n\nEffective 11 September 2026 at 01:29 · observed 11 September 2026 at 01:29 · evaluated 11 September 2026 at 01:29\n\nPrint / save as PDF\nShare summary\nCopy summary\n\nThis is a private decision-support tool, not a government service.\n\nThe result reflects only the facts you entered and the dated sources shown above.\n\nIt is not an approval, a guarantee, or a filing.\n\nComplex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.\n\nEdit answers\nStart over\n\nVisa Oracle is private decision support. It is not a government service, approval, or filing — Ditjen Imigrasi decides. Unknown or complex cases go to human review.\n\nVisa Oracle privacy policy",
+  "captures": [
+    {
+      "status": 200,
+      "mode": "ENGINE",
+      "state": "HUMAN_REVIEW_REQUIRED",
+      "pack": {
+        "rule_pack_id": "ac0a792d-a38d-512e-9ead-54a5d008fb68",
+        "sequence": 20,
+        "version": "2026.9.6",
+        "payload_sha256": "df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d"
+      },
+      "review_reasons": [
+        {
+          "code": "DISCLOSED_UNCERTAINTY_REVIEW",
+          "rule_ids": [
+            "system.disclosed-review.not-certain"
+          ],
+          "source_refs": []
+        }
+      ],
+      "evaluated_at": "2026-09-10T17:29:01.442808Z"
+    }
+  ]
+}

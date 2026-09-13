@@ -1,10 +1,26 @@
 """GARUDA VOA magic-link authentication — L4 (contract-frozen).
 
-Implements exactly the two ``Magic-link authentication`` operations of
+Implements the two ``Magic-link authentication`` operations of
 `products/garuda-voa/contracts/openapi.yaml` this lane owns per
-`products/garuda-voa/LANES.md`: ``requestMagicLink`` and ``exchangeMagicLink``.
-Every other tag (public eligibility, customer intake, payment, staff
-practice) belongs to other lanes and has no route here.
+`products/garuda-voa/LANES.md`: ``requestMagicLink`` and ``exchangeMagicLink``,
+plus one additional operation this file mounts but the frozen contract does
+NOT declare -- ``previewMagicLink`` (see its own docstring below for the
+non-consuming lookup it performs and why it exists). Every other tag
+(public eligibility, customer intake, payment, staff practice) belongs to
+other lanes and has no route here.
+
+``previewMagicLink`` is deliberately NOT added to `openapi.yaml`:
+`LANES.md` states plainly that `products/garuda-voa/contracts/**` is
+"Orchestrator-only, never edited by a lane," and that "business-visible
+changes go through the owner" -- this lane builds against the frozen
+contract, it does not amend it. Leaving the operation out of the frozen
+file costs nothing at the parity gate: `test_garuda_voa_openapi_parity.py`
+only asserts every FROZEN operationId is mounted and status-code-matching,
+never the converse, so an extra live operation the contract does not know
+about is invisible to it by construction. If this lookup is judged worth
+promoting into the stable wire contract, that is the orchestrator's and
+the owner's call to make in a future freeze, not this module's to decide
+unilaterally.
 
 This is a deliberately SEPARATE router file from `garuda_voa_public.py`
 (owned by L2, `garuda_voa*.py` glob) even though both mount under the same
@@ -51,10 +67,12 @@ from backend.services.garuda_portal.magic_link import (
     ExchangeOutcome,
     IdempotencyConflict,
     MagicLinkStore,
+    PeekOutcome,
     PersistencePolicyUnavailable,
     RateLimited,
     UnconfiguredMagicLinkStore,
 )
+from backend.services.garuda_portal.masking import mask_email
 
 logger = get_logger(__name__)
 
@@ -160,6 +178,19 @@ _OPERATION_ERROR_CODES: dict[str, tuple[str, ...]] = {
         "IDEMPOTENCY_CONFLICT",
         "INVALID_REQUEST",
         "RATE_LIMITED",
+        "INTERNAL_ERROR",
+        "PERSISTENCE_POLICY_UNAVAILABLE",
+    ),
+    # Not in the frozen contract (see module docstring) -- no
+    # IDEMPOTENCY_KEY_REQUIRED/IDEMPOTENCY_CONFLICT/RATE_LIMITED here on
+    # purpose: this operation mutates nothing (no Idempotency-Key is even
+    # read) and carries no store-level throttle of its own (see the
+    # handler's docstring on why the generic per-IP middleware bucket is
+    # the considered choice, not an oversight).
+    "previewMagicLink": (
+        "GARUDA_PUBLIC_DISABLED",
+        "INVALID_REQUEST",
+        "MAGIC_LINK_INVALID",
         "INTERNAL_ERROR",
         "PERSISTENCE_POLICY_UNAVAILABLE",
     ),
@@ -311,6 +342,17 @@ class MagicLinkExchange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     token: str = Field(min_length=32, max_length=2048)
+
+
+class MagicLinkPreviewResult(BaseModel):
+    """Response body for ``previewMagicLink`` -- NOT in the frozen contract
+    (see module docstring). `masked_email` is produced by
+    `backend.services.garuda_portal.masking.mask_email`; this model never
+    carries the raw address."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    masked_email: str
 
 
 #: Loopback hostnames a request can genuinely arrive on during local dev.
@@ -582,4 +624,92 @@ async def exchange_magic_link(
     result.headers["Idempotency-Replayed"] = "true" if outcome.idempotency_replayed else "false"
     if not outcome.idempotency_replayed and outcome.account_session_secret is not None:
         _set_account_session_cookie(result, request, outcome.account_session_secret)
+    return result
+
+
+@router.post(
+    "/magic-links/preview",
+    operation_id="previewMagicLink",
+    status_code=200,
+    responses=_error_responses("previewMagicLink"),
+    response_model=MagicLinkPreviewResult,
+)
+async def preview_magic_link(
+    payload: MagicLinkExchange,
+    store: MagicLinkStore = Depends(get_garuda_magic_link_store),
+) -> Response:
+    """Answers "whose application does this link open?" WITHOUT consuming
+    the token -- the residual login-CSRF finding
+    `continue/page.tsx` (`apps/mouth/src/app/visa/voa/auth/`) has carried
+    since 2026-08-28: a generic "Continue" button behind an unbound landing
+    GET lets an attacker mail a victim the attacker's OWN link, and the
+    victim's click plants the attacker's session in the victim's browser.
+    Showing the customer whose application they are about to open, before
+    they commit, is the mitigation; `MagicLinkStore.peek` (never `exchange`)
+    is what makes it safe to call from an unauthenticated GET-adjacent flow
+    without spending the very credential it describes.
+
+    NOT part of the frozen contract (`products/garuda-voa/contracts/
+    openapi.yaml`) -- see this module's own docstring for why a lane does
+    not fold a new operation into that file unilaterally. Takes the exact
+    same request shape as `exchangeMagicLink` (`MagicLinkExchange`, a
+    `token` field) rather than inventing a second one for an operation that
+    asks the identical question of the store, just without consuming the
+    answer.
+
+    Non-enumerating like `exchangeMagicLink`, scoped the same way that
+    handler's own docstring scopes itself: a well-formed but unknown,
+    expired, already-consumed, or foreign token all answer the identical
+    401 `MAGIC_LINK_INVALID` -- `store.peek`'s own docstring is the
+    authority on why those cases collapse into one `PeekOutcome(valid=
+    False)` rather than a router-level distinction being layered back on
+    top of it. An absent or malformed `token` (failing `MagicLinkExchange`'s
+    own `min_length=32`/`max_length=2048`) never reaches `store.peek` at
+    all -- Pydantic rejects it before this function runs, and
+    `_ContractErrorRoute` turns that into a 422 `INVALID_REQUEST`, not a
+    401. That is a DIFFERENT, orthogonal signal (the request didn't parse,
+    a fact the caller already knows about its own input) rather than a
+    second distinguishable outcome about any real token's existence -- the
+    same reason `exchange_magic_link`'s docstring never folds "malformed"
+    into its own non-enumeration claim either (Gear-3 council finding,
+    codex-gpt-5.6-sol, 2026-09-02: an earlier draft of this docstring did
+    make that overclaim).
+
+    No `Idempotency-Key`: unlike `issue`/`exchange`, this mutates nothing
+    (see `PostgresMagicLinkStore.peek`'s docstring), so the contract's
+    "every mutation requires Idempotency-Key" rule (`openapi.yaml`
+    `info.description`) does not apply, and a caller may retry freely.
+
+    Rate limiting: no store-level throttle here, the same considered choice
+    `PostgresMagicLinkStore.exchange` already documents for the identical
+    anonymous-token-guessing shape -- this Protocol carries no client IP to
+    key a per-identity limit on. This path answers under the generic
+    per-IP `/api/` `RateLimitMiddleware` bucket (120 req/min,
+    `backend/middleware/rate_limiter.py`), the SAME bucket `/magic-links`
+    and `/sessions` already answer under today (neither has a more specific
+    entry in `RATE_LIMITS`).
+    """
+    try:
+        outcome: PeekOutcome = await store.peek(token=payload.token)
+    except PersistencePolicyUnavailable:
+        logger.warning("garuda_portal_auth: persistence policy unavailable at preview")
+        return _error("PERSISTENCE_POLICY_UNAVAILABLE")
+    except Exception as exc:
+        # Same rationale as the `issue`/`exchange` handlers above: log the
+        # exception CLASS NAME only, never `.exception()` (frame-locals
+        # capture) and never the message (it can quote the token).
+        logger.error(
+            "garuda_portal_auth: unexpected error at preview (%s)",
+            type(exc).__name__,
+        )
+        return _error("INTERNAL_ERROR")
+
+    if not outcome.valid or outcome.email is None:
+        return _error("MAGIC_LINK_INVALID")
+
+    result = JSONResponse(
+        status_code=200,
+        content=MagicLinkPreviewResult(masked_email=mask_email(outcome.email)).model_dump(),
+    )
+    result.headers.update(_PRIVACY_HEADERS)
     return result

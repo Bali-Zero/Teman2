@@ -1,0 +1,132 @@
+brief_ref: evidence/brief.yml
+recorded_at: "2026-09-05T23:37:18Z"
+timestamp_semantics:
+  Test timestamps come from the clock at invocation or while the final PostgreSQL command
+  was running; no exact PostgreSQL start is claimed. The earlier MIR receipt timestamp is its recording
+  time. Full output is preserved in test-results.json.
+scope_status: prepare-only-synthetic-slice
+gate_status: source-review-passed; release-gate-not-published
+review:
+  native_session: 9db691ab-8167-459b-a921-54857dde0d49
+  expected_model: claude-fable-5-1
+  final_delta_status: PASS
+  note:
+    "Four authentic native text responses: two source rounds plus the new missing-foundation prerequisite
+    and its prescribed schema-pin acknowledgment. Review is scoped to recorded file hashes. No release
+    gate is published."
+  observed_model: claude-fable-5-1
+  evidence: evidence/dual-consul-v4/implementation/manifest.json
+seat_override:
+  The owner's accepted v4 mandate uses one lead and the other consul for narrow frozen-artifact
+  review, with no duplicated routine council. This prepare-only packet uses the independent Fable review
+  on the frozen artifact; historical design consultations are not counted as implementation council quorum.
+  This schema exception confers no gate verdict, merge, or deployment authority.
+lanes:
+  - lane: dual-consul-implementation
+    role: build
+    seat: codex (OpenAI root conductor)
+  - lane: lifecycle-ground
+    role: build
+    seat: codex (OpenAI delegated PostgreSQL lifecycle verification)
+  - lane: spec-artifacts
+    role: build
+    seat: codex (OpenAI selected evidence and documentation)
+  - lane: independent-native-review
+    role: review
+    seat: claude-fable-5-1 (observed native model; bounded tools-empty source reviews)
+diff:
+  scope:
+    Design documents and selected provenance; MIR projection repair; common adapter capability contracts;
+    additive PostgreSQL lease migration and the injected Autonomous Lab synthetic stage with targeted
+    tests.
+  authority_boundary:
+    PostgreSQL checks and the synthetic receipt effect share a transaction. Native launch,
+    remote effects, and distinct service identity are not enabled.
+pii_scan: clean
+pii_scan_scope:
+  This packet contains technical paths, synthetic database identifiers, and selected design
+  provenance. No client rows, credentials, or raw reasoning.
+receipts:
+  - claim: Existing and new Autonomous Lab unit tests passed.
+    cmd: ". /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/activate
+
+      PYTHONPATH=apps/backend-rag python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/
+      --tb=short --color=no"
+    cwd: /Users/balizero/nuzantara/.worktrees/infra-dual-consul-v4
+    exit: 0
+    result: 231 passed in 1.03s
+    ts: 2026-09-05 23:37:54 UTC
+    seat: codex root conductor (actual captured tool output)
+    evidence: evidence/dual-consul-v4/implementation/test-results.json
+  - claim: Registry, host identity, seat mapping, calibration, and adapter tests passed.
+    cmd: ". /Users/balizero/nuzantara/.venv/bin/activate
+
+      python -m pytest scripts/tests/test_conductor_model_registry.py scripts/tests/test_conductor_host_identity.py
+      scripts/tests/test_conductor_host_seat_maps.py scripts/tests/test_conductor_calibration.py scripts/tests/test_conductor_adapter_contracts.py
+      -q --tb=short"
+    cwd: /Users/balizero/nuzantara/.worktrees/infra-dual-consul-v4
+    exit: 0
+    result: 89 passed, 798 subtests passed in 4.41s
+    ts: 2026-09-05 23:37:54 UTC
+    seat: codex root conductor (actual captured tool output)
+    evidence: evidence/dual-consul-v4/implementation/test-results.json
+  - claim: The MIR generator confirms the checked-in capability index matches its cards.
+    cmd: python -m scripts.conductor.build_model_capability_index --check
+    environment: Existing activated repository virtualenv from the prior scripts test run.
+    cwd: /Users/balizero/nuzantara/.worktrees/infra-dual-consul-v4
+    exit: 0
+    result: Silent success
+    ts: "2026-09-05T23:37:18Z"
+    seat: codex root conductor (observed output; recording relayed to spec-artifacts)
+  - claim: Real PostgreSQL synthetic lifecycle and fencing integration tests passed.
+    cmd:
+      ssh pro 'cd /Users/nuzantara/nuzantara/.worktrees/infra-dual-consul-proof/apps/backend-rag && source
+      .venv/bin/activate && PGHOST=/tmp/dual-consul-pg.aoqbxz PGPORT=55487 DUAL_CONSUL_TEST_DSN=postgresql:///dual_consul_test
+      PYTHONPATH=. python -m pytest backend/tests/integration/test_dual_consul_postgres.py --tb=short --color=no'
+    exit: 0
+    result: 18 passed in 1.96s
+    environment:
+      Isolated temporary PostgreSQL 17.8 cluster on Pro using a Unix socket and the current implementation
+      worktree; synthetic records only.
+    ts: 2026-09-05 23:47:46 UTC
+    seat: codex root conductor (actual captured tool output)
+    evidence: evidence/dual-consul-v4/implementation/test-results.json
+  - claim:
+      Final independent source review PASS, bound to current covered source hashes; no release authorization
+      implied.
+    cmd:
+      Read native session 9db691ab-8167-459b-a921-54857dde0d49 assistant text and compare selected input
+      packets and final source SHA-256; no thinking blocks selected.
+    exit: 0
+    ts: "2026-09-05T23:48:16.924Z"
+    seat: claude-fable-5-1
+    evidence: evidence/dual-consul-v4/implementation/manifest.json
+dissent:
+  - seat: claude-fable-5-1 (verified historical v4 design review)
+    status: CONFIRMED
+    objection:
+      Model-side hooks and worktrees cannot establish the required distinct-service identity. This
+      increment proves only the synthetic same-database boundary; native invocation, remote effects, and
+      OS identity separation remain unqualified.
+  - seat: codex lifecycle-ground (real PostgreSQL verification)
+    status: CONFIRMED
+    objection:
+      Unit-test fakes missed JSON double encoding under the real asyncpg codec. The implementation
+      was corrected and the recorded real PostgreSQL run passed. The correction demonstrates why fake-only
+      success was insufficient.
+  - seat: claude-fable-5-1 (first-round native review, reported by root conductor)
+    status: CONFIRMED
+    objection:
+      "Receipt replay still requires fresh live lease authority. This is retained intentionally:
+      old execution evidence cannot restore expired or revoked authority. Final native source review accepted
+      this retained boundary."
+  - seat: claude-fable-5-1 (second source review prompted empirical preflight)
+    status: CONFIRMED
+    objection:
+      Checking historical JSON rows found both Lab foundation tables absent in production. The
+      previous FK-only migration would have failed. Migration306 now backfills the exact legacy124 SQL before
+      the FK; new absence-path and parity tests pass. The prerequisite and exact schema-pin correction both
+      received native PASS.
+remaining:
+  - Independent release session verifies the complete PR and existing required checks before merge/deploy.
+  - Native runtime effects and fleet staging/canary qualification remain separate from this increment.

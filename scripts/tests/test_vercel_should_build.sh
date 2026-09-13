@@ -16,6 +16,12 @@
 #   * dropping vercel.json from the paths    -> 1 fails
 #   * fetch failure treated as SKIP          -> 1 fails
 #   * removing the production guard entirely -> 4 fail  (measured 2026-08-18)
+#   * production arm rewritten 2026-09-10 to diff against what is LIVE. Measured on the
+#     46-case corpus of that day:
+#       - production always builds (the 2026-08-18 interim rule)      -> 4 fail
+#       - production judged against VERCEL_GIT_PREVIOUS_SHA            -> 4 fail (the freeze case among them)
+#       - production judged against HEAD^ (Vercel's documented example) -> 8 fail (batch, freeze, rollback)
+#       - live-probe failure read as SKIP                              -> 4 fail
 #   * keying it on the literal "main" instead of $PROD_BRANCH -> 2 fail, one in each direction
 #   * dropping the VERCEL_ENV arm, leaving the branch test alone -> 1 fail
 #   * making the guard unconditional (`if true`) -> 11 fail. Recorded because it is the shape a
@@ -59,9 +65,24 @@ SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../ci" && pwd)/vercel_should_build.
 # per-case assignments below still win, because the caller's environment beats this default.
 export VERCEL_ENV=
 
+# The production arm asks what is LIVE through a probe URL. The corpus never touches the real
+# endpoint: by default it points at a file that does not exist, so every production case that
+# does not stage its own probe exercises the fail-open path (BUILD). Cases that want a verdict
+# write a health body and point the probe at it — curl reads `file://` URLs like any other.
+PROBE_DIR=$(mktemp -d)
+export SHOULD_BUILD_LIVE_PROBE_URL="file://$PROBE_DIR/does-not-exist.json"
+probe_says() { # probe_says <sha|raw-json> ; sets the probe to a body carrying that commit
+  case "$1" in
+    *"{"*) printf '%s' "$1" > "$PROBE_DIR/health.json" ;;
+    *) printf '{"status":"ok","commit":"%s"}' "$1" > "$PROBE_DIR/health.json" ;;
+  esac
+  export SHOULD_BUILD_LIVE_PROBE_URL="file://$PROBE_DIR/health.json"
+}
+probe_dead() { export SHOULD_BUILD_LIVE_PROBE_URL="file://$PROBE_DIR/does-not-exist.json"; }
+
 PASS=0; FAIL=0
 ROOT=$(mktemp -d)
-trap 'rm -rf "$ROOT"' EXIT
+trap 'rm -rf "$ROOT" "$PROBE_DIR"' EXIT
 
 # --- a repo with a real remote, so `git fetch origin main` works like it does on Vercel ------
 UPSTREAM="$ROOT/upstream.git"
@@ -144,48 +165,131 @@ VERCEL_GIT_COMMIT_REF=ops/cron VERCEL_GIT_PREVIOUS_SHA= \
   run SKIP "first deploy of a multi-commit backend/ops branch"
 
 echo
-echo "=== THE PRODUCTION GUARD: main must never skip, with or without a previous SHA"
-# Comparing main against main gives an empty diff. Without the guard this single case would
-# freeze balizero.com and every subdomain — the 2026-07-27 outage, re-created by an optimisation.
+echo "=== PRODUCTION: judged against what is LIVE, never against a previous attempt"
+# The probe is the only base production trusts. Without it (dead URL, no field, unknown sha)
+# every shape below builds — the 2026-07-27 outage re-created by an optimisation is the one
+# outcome this arm may never produce, so the fail-open cases come first.
 git -C "$WORK" checkout -q main
+probe_dead
 VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
-  run BUILD "main with no previous deployment"
+  run BUILD "main, probe unreachable, no previous SHA -> builds"
 VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$MAIN_TIP" \
-  run BUILD "main against its own tip (base == HEAD)"
+  run BUILD "main, probe unreachable, previous SHA == HEAD -> builds"
+probe_says '{"status":"ok"}'
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
+  run BUILD "main, probe answers without a .commit field -> builds"
+probe_says '{"status":"ok","commit":"abc123"}'
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
+  run BUILD "main, probe .commit is not a 40-hex sha -> builds"
+probe_says "$MAIN_TIP"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
+  run BUILD "main, live == HEAD (a redeploy of the served commit) -> builds"
 
-# The shape that actually froze production on 2026-08-18, and that neither line above can reach.
-# On main `VERCEL_GIT_PREVIOUS_SHA` is normally SET and names an EARLIER commit, so the empty-BASE
-# guard never runs and the base==HEAD guard never fires: the diff decides. The diff is honest and
-# the verdict is still wrong, because that variable holds the last ATTEMPTED deployment — skips
-# and cancellations included — not what is live. A frontend commit whose own build was superseded
-# falls behind the base and no later diff ever spans it again.
-#
-# Both of these were SKIP before the guard moved out of the empty-BASE block. Live consequence:
-# balizero.com served a 2026-08-15 build for three days while main ran 75 commits ahead with 30
-# frontend files among them, and kept publishing `Avg reply: 2 min` after we had measured it false.
-PROD_PREV=$MAIN_TIP
+# The saving: a docs-only commit on top of what is live skips. This is the ~220-builds-a-week
+# case measured 2026-09-09 (301 main commits in 7 days, 79 touching the bundle), and the shape
+# the 2026-08-18 interim rule paid for in full by building every one of them.
 commit "docs/prod-note.md" "a docs-only commit landing on main"
-VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
-  run BUILD "main, docs-only delta vs an EARLIER main commit (the 2026-08-18 freeze)"
+DOCS_ON_MAIN=$(git -C "$WORK" rev-parse HEAD)
+probe_says "$MAIN_TIP"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$MAIN_TIP" \
+  run SKIP "main, docs-only delta vs what is LIVE -> skips"
+VERCEL_ENV=production VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
+  run SKIP "same, VERCEL_ENV=production and no previous SHA -> still skips (the SHA is not consulted)"
+# A body that carries a second commit-shaped field must not be mis-read: the TOP-LEVEL `commit`
+# is the live one. The decoy comes first and names HEAD itself, so picking it reads "redeploy ->
+# BUILD" where the real live commit reads "docs-only -> SKIP" — a wrong pick is visible.
+probe_says "{\"deployments\":[{\"commit\":\"$DOCS_ON_MAIN\"}],\"commit\":\"$MAIN_TIP\"}"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
+  run SKIP "probe with a decoy commit field before the real one -> the top-level key is read"
 
-PROD_PREV=$(git -C "$WORK" rev-parse HEAD)
+# GUILT, the stranded shape (balizero.com frozen 2026-08-15..18): a frontend commit whose own
+# build never shipped, then a docs commit. VERCEL_GIT_PREVIOUS_SHA points at the frontend
+# ATTEMPT, so a diff against it is docs-only; the diff against what is LIVE is not.
+commit "apps/mouth/app/stranded.tsx" "a frontend commit whose build was superseded"
+STRANDED=$(git -C "$WORK" rev-parse HEAD)
 commit ".claude/skills/modus/PENDING-ARMS.md" "a ledger line, also on main"
-VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
-  run BUILD "main, a second docs-only delta in a row (how the freeze persists)"
+probe_says "$MAIN_TIP"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$STRANDED" \
+  run BUILD "main, docs-only vs the previous ATTEMPT but frontend vs LIVE -> builds (the freeze)"
+
+# GUILT, the batch shape: the merge queue lands up to four squash commits in ONE push and Vercel
+# deploys the tip. `git diff HEAD^ HEAD` (Vercel's documented example) sees only the last commit
+# of the batch — here docs-only — and would skip a frontend PR that landed one commit earlier.
+# Against what is LIVE the batch is one diff and the frontend change is in it.
+probe_says "$DOCS_ON_MAIN"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$DOCS_ON_MAIN" \
+  run BUILD "main, batch of [frontend, docs] pushed at once, live = before the batch -> builds"
+
+# INNOCENCE after a build ships: once production serves the frontend commit, the docs commit on
+# top of it is a docs-only delta again.
+probe_says "$STRANDED"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$STRANDED" \
+  run SKIP "main, live has caught up to the frontend commit, docs on top -> skips"
+
+# A rollback: production serves an OLDER commit than the newest frontend change. The diff spans
+# the rolled-back change, so this builds — the same answer the interim rule gave, and the
+# autopromote organ's to make, not this script's.
+probe_says "$MAIN_TIP"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
+  run BUILD "main, production rolled back behind a frontend commit -> builds"
+
+# The frontend commit above must not leak into the branches the rest of the corpus cuts from
+# main: every later merge-base diff would carry it and every docs-only SKIP would turn BUILD.
+git -C "$WORK" checkout -q main
+git -C "$WORK" reset -q --hard "$MAIN_TIP"
+
+# The live sha is not in the clone (Vercel's clone is shallow). It is fetched by sha from the
+# repository URL — the object lives in upstream on a branch this clone never fetched.
+# `-b main` is load-bearing: the bare upstream was `git init`ed with the host's default branch
+# name as HEAD, which is `master` on a stock CI runner, so an unqualified clone checks out an
+# unborn branch, the "live" commit is born without the frontend base file, and the diff against
+# it reads a frontend DELETION -> BUILD. Measured 2026-09-10: green on a Mac with
+# init.defaultBranch=main, red on ubuntu-latest, for exactly that reason.
+SIDE="$ROOT/side"
+git clone -q -b main "$UPSTREAM" "$SIDE"
+[ -f "$SIDE/apps/mouth/app/page.tsx" ] || { FAIL=$((FAIL+1)); printf '  FAIL  %-58s\n' "fixture: side clone must carry the frontend base"; }
+git -C "$SIDE" config user.email t@example.com
+git -C "$SIDE" config user.name t
+git -C "$SIDE" checkout -q -b live-only
+mkdir -p "$SIDE/docs" && echo "served" > "$SIDE/docs/served-elsewhere.md"
+git -C "$SIDE" add -A && git -C "$SIDE" commit -q -m "the commit production serves, unknown to this clone"
+git -C "$SIDE" push -q origin live-only
+LIVE_ELSEWHERE=$(git -C "$SIDE" rev-parse HEAD)
+git -C "$UPSTREAM" config uploadpack.allowAnySHA1InWant true
+if git -C "$WORK" cat-file -e "${LIVE_ELSEWHERE}^{commit}" 2>/dev/null; then
+  FAIL=$((FAIL+1)); printf '  FAIL  %-58s %s\n' "fixture: live sha must be absent from the clone" "present"
+fi
+commit "docs/after-live.md" "docs on main, live commit sits on another branch"
+probe_says "$LIVE_ELSEWHERE"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$UPSTREAM" \
+  run_log_safe SKIP "live sha absent from the clone, fetched by sha from the URL -> docs-only skips" "fetched live commit" "$UPSTREAM"
+# A second unknown live sha — the first one is in the clone now, fetched by the case above.
+echo "served again" > "$SIDE/docs/served-elsewhere-2.md"
+git -C "$SIDE" add -A && git -C "$SIDE" commit -q -m "another commit production serves, unknown to this clone"
+git -C "$SIDE" push -q origin live-only
+probe_says "$(git -C "$SIDE" rev-parse HEAD)"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$ROOT/does-not-exist.git" \
+  run BUILD "live sha absent and the URL is dead -> builds (fail-open)"
+probe_says "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$UPSTREAM" \
+  run BUILD "live sha that no repository has -> builds (fail-open)"
+probe_dead
 
 # INNOCENCE. The guard must key on "is this the production branch", not on the literal string
 # main. Point production elsewhere and main is an ordinary branch again, skipping exactly as
 # before — without this, a hardcoded name would silently disable the whole optimisation on every
 # other branch the day production is renamed, and nothing would say so.
+PROD_PREV=$(git -C "$WORK" rev-parse HEAD)
+commit "docs/renamed-prod.md" "docs only, main no longer production"
 VERCEL_GIT_PROD_BRANCH=release VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
   run SKIP "main is NOT production when VERCEL_GIT_PROD_BRANCH names another branch"
 
-# ...and whichever branch IS production inherits the guard.
+# ...and whichever branch IS production inherits the arm (probe dead -> builds).
 git -C "$WORK" checkout -q -b release main
 PROD_PREV=$(git -C "$WORK" rev-parse HEAD)
 commit "docs/release-note.md" "docs only, on the configured production branch"
 VERCEL_GIT_PROD_BRANCH=release VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
-  run BUILD "the configured production branch gets the guard, whatever it is called"
+  run BUILD "the configured production branch gets the arm, whatever it is called"
 
 # The ref is not the environment. `vercel --prod` promotes whatever branch it is pointed at, and
 # that deployment is production however its ref reads — so a branch test alone can skip a real
@@ -193,13 +297,14 @@ VERCEL_GIT_PROD_BRANCH=release VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS
 # directly. Raised by an adversarial review of the first version of this fix, which keyed on the
 # branch alone; the case below is that review's own repro.
 VERCEL_ENV=production VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
-  run BUILD "VERCEL_ENV=production on a NON-production branch (vercel --prod)"
+  run BUILD "VERCEL_ENV=production on a NON-production branch (vercel --prod), probe dead"
 
 # INNOCENCE for that arm: a preview is still a preview, and a docs-only preview still skips.
 # Without this, keying on the environment could quietly become "always build".
 VERCEL_ENV=preview VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
   run SKIP "VERCEL_ENV=preview, docs-only delta -> still skips"
 git -C "$WORK" checkout -q main
+git -C "$WORK" reset -q --hard "$MAIN_TIP"
 
 echo
 echo "=== OFFLINE BASE RESOLUTION (added 2026-07-30 after the armed guard proved inert)"
@@ -352,6 +457,55 @@ if [ "$PLEN" -le 256 ]; then
   PASS=$((PASS+1)); printf '  ok    %-58s %s chars\n' "pointer fits the 256-char API limit" "$PLEN"
 else
   FAIL=$((FAIL+1)); printf '  FAIL  %-58s %s chars (API rejects >256)\n' "pointer fits the 256-char API limit" "$PLEN"
+fi
+
+# The same line lives in apps/mouth/vercel.json as `ignoreCommand`, where it OVERRIDES the
+# dashboard field. Two copies drift silently unless something compares them, so this does.
+VJSON="$(dirname "$SCRIPT")/../../apps/mouth/vercel.json"
+IGNORE_CMD=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("ignoreCommand",""))' "$VJSON" 2>/dev/null)
+if [ "$IGNORE_CMD" = "$POINTER" ]; then
+  PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "apps/mouth/vercel.json ignoreCommand == pointer" "identical"
+else
+  FAIL=$((FAIL+1)); printf '  FAIL  %-58s\n        vercel.json: %s\n        pointer:     %s\n' "apps/mouth/vercel.json ignoreCommand == pointer" "$IGNORE_CMD" "$POINTER"
+fi
+
+# Three lists say what "bundle-relevant" means — FRONTEND_RE here, BUNDLE_PATHS in
+# scripts/vercel_prod_deploy.py (what the autopromote organ promotes) and the `paths:` of
+# .github/workflows/frontend-live-sentinel.yml (what the sentinel demands be live). A commit the
+# other two call relevant that this script declines to BUILD is a red sentinel for a build that
+# was never made. GUILT direction only: every path they name must match FRONTEND_RE. Skipped,
+# loudly, where the two files are not present (a copy of these four files outside the repo).
+REPO_TOP="$(cd "$(dirname "$SCRIPT")/../.." && pwd)"
+ORGAN="$REPO_TOP/scripts/vercel_prod_deploy.py"
+SENTINEL="$REPO_TOP/.github/workflows/frontend-live-sentinel.yml"
+FRONTEND_RE_LIVE=$(sed -n "s/^FRONTEND_RE='\(.*\)'$/\1/p" "$SCRIPT" | head -1)
+if [ -f "$ORGAN" ] && [ -f "$SENTINEL" ] && [ -n "$FRONTEND_RE_LIVE" ]; then
+  ORGAN_PATHS=$(python3 - "$ORGAN" <<'PY'
+import ast,sys
+src=open(sys.argv[1]).read()
+for node in ast.walk(ast.parse(src)):
+    if isinstance(node,ast.Assign) and any(getattr(t,"id","")=="BUNDLE_PATHS" for t in node.targets):
+        print("\n".join(ast.literal_eval(node.value)))
+PY
+)
+  SENTINEL_PATHS=$(awk '/^on:/{on=1} on&&/^  push:/{p=1} p&&/^    paths:/{q=1;next} q&&/^      - /{gsub(/^      - "?|"?$/,"");print;next} q&&!/^      - /{exit}' "$SENTINEL" | grep -v 'frontend-live-sentinel.yml')
+  MISMATCH=
+  while IFS= read -r pat; do
+    [ -n "$pat" ] || continue
+    # A directory (no extension, or a `/**` glob) is exercised by a file inside it.
+    sample=${pat%/\*\*}; sample=${sample%/}; case "$sample" in *.*) ;; *) sample="$sample/x" ;; esac
+    printf '%s\n' "$sample" | grep -qE "$FRONTEND_RE_LIVE" || MISMATCH="$MISMATCH $pat"
+  done <<EOF_PATHS
+$ORGAN_PATHS
+$SENTINEL_PATHS
+EOF_PATHS
+  if [ -z "$MISMATCH" ]; then
+    PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "FRONTEND_RE covers BUNDLE_PATHS + sentinel paths" "$(printf '%s\n' "$ORGAN_PATHS" "$SENTINEL_PATHS" | grep -c .) paths"
+  else
+    FAIL=$((FAIL+1)); printf '  FAIL  %-58s not matched:%s\n' "FRONTEND_RE covers BUNDLE_PATHS + sentinel paths" "$MISMATCH"
+  fi
+else
+  printf '  skip  %-58s %s\n' "FRONTEND_RE covers BUNDLE_PATHS + sentinel paths" "organ/sentinel not present beside this copy"
 fi
 
 run_pointer() { # run_pointer <expected: BUILD|SKIP> <label> <script-body|MISSING>

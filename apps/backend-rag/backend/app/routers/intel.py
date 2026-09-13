@@ -182,11 +182,24 @@ class RegisterNotificationRequest(BaseModel):
     title: str = Field("", description="Article title for display")
 
 
-class PublishToSiteRequest(BaseModel):
-    """Optional request body for publish with homepage position."""
+HomepagePosition = Literal[
+    "latest",
+    "hero_main",
+    "hero_2",
+    "hero_3",
+    "hero_4",
+    "hero_5",
+    "insight_1",
+    "insight_2",
+    "insight_3",
+]
 
-    position: str = Field(
-        default="latest",
+
+class PublishToSiteRequest(BaseModel):
+    """Explicit homepage position for a publication request."""
+
+    position: HomepagePosition = Field(
+        ...,
         description="Homepage position: hero_main, hero_2-5, insight_1-3, or latest",
     )
 
@@ -195,7 +208,7 @@ class WorkspaceNewsPublishRequest(BaseModel):
     """Explicit authorization carried by the Damar workspace agent."""
 
     confirmation: Literal["DAMAR_CONFIRMED"]
-    position: Literal["latest", "hero_main", "hero_2", "hero_3", "hero_4", "hero_5"] = "latest"
+    position: HomepagePosition
 
 
 class WorkspaceNewsUpdateRequest(BaseModel):
@@ -675,6 +688,7 @@ def _workspace_publish_blockers(item: dict[str, Any]) -> list[str]:
 async def workspace_marketing_publish_news(
     item_id: str,
     body: WorkspaceNewsPublishRequest,
+    request: Request = None,  # type: ignore
 ) -> dict[str, Any]:
     """Publish one ready News Room item after Damar explicitly confirms."""
 
@@ -765,12 +779,14 @@ async def workspace_marketing_publish_news(
     from backend.app.routers.intel_scraper import publish_staging_item_internal
 
     try:
+        # Internal publishing has no request context, so preserve the route pool explicitly.
         result = await publish_staging_item_internal(
             "news",
             item_id,
             actor="workspace-agent:damar",
             allow_generated_cover=False,
             position=body.position,
+            pool=getattr(request.app.state, "db_pool", None) if request else None,
         )
     except Exception:
         staging_service.compare_and_set_status(

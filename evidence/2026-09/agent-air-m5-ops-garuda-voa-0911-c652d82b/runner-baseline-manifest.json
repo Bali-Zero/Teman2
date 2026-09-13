@@ -1,0 +1,13 @@
+{
+  "source_branch": "agent/air-m5/db/voa-migrator-role",
+  "source_head": "be45266252f4e1ccbaf19d2b81c73f03af676e05",
+  "snapshot": "working_tree_2026-09-11",
+  "files": {
+    "apps/backend-rag/backend/app/core/config.py": "1c526d414b74f1cf1e7428ac78737f69b5573bf8516321282c8e1b499e3a47bc",
+    "apps/backend-rag/backend/db/migrate.py": "591522097cfd96155b0c08bd76de5474781766fe5f9d92a14f4c51a250708b7b",
+    "apps/backend-rag/backend/db/migration_base.py": "892a7326ee685a13e99fd1eacbd7d6cacafae69bbec0f76298e05e777ba783b0",
+    "apps/backend-rag/backend/db/migration_manager.py": "57e2bd1a9b887d6b1be59830a1252a7a196f52d40fb27bd356edaf6a2ddceb44",
+    "apps/backend-rag/backend/tests/db/test_migration_runner_dedicated_role.py": "ea26d319be1e71d6f4212ba477c50d875cc7405840c96e62be6c820b9910a9d9",
+    "apps/backend-rag/backend/tests/unit/app/test_config.py": "f2a418e57b2b70cac94011d19dcb8a7ceed15c3bf7cacdebc7d0678888fed390"
+  }
+}

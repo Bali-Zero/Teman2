@@ -1,0 +1,128 @@
+task_id: ops-voa-link-preview-ci-gates
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  PR #5559 (`agent/air-m5/ops/garuda-voa-link-preview`) added `POST /api/visa/voa/auth/magic-links
+  /preview` — a non-consuming lookup so the GARUDA VOA continue page can show whose masked account a
+  magic link opens BEFORE the customer spends it, closing a login-CSRF residual (an attacker mails a
+  victim the attacker's own link; the victim's Continue click would otherwise plant the attacker's
+  session in the victim's browser). Two required CI checks went red on that PR and this dispatch's
+  mandate was to diagnose and fix both properly, without arming or opening a new PR.
+
+  GATE 1 (`test_mutating_routes_are_gated.py::test_every_public_mutating_route_is_accounted_for`):
+  the new route is a POST, registered in `PUBLIC_ENDPOINTS` (needs zero credential) but was NOT yet
+  registered in `INTENTIONALLY_PUBLIC_MUTATIONS` — the second registry this gate also requires for
+  every zero-credential mutating route. Verified from the handler and store source, not asserted:
+  `PostgresMagicLinkStore.peek()` is a single `SELECT`, no UPDATE/INSERT/DELETE, no advisory lock, no
+  counter of its own — genuinely non-mutating, classified MUTATING only by HTTP verb. Added a full
+  reviewed entry to the registry matching the depth of its two frozen siblings (request/exchange).
+
+  GATE 2 (`Harness floor recompute`): this diff's deterministic floor is 3 — `apps/backend-rag/
+  backend/app/auth/*` is a HOTZONE_PATTERNS entry and this PR edits `public_endpoints.py`, which sits
+  under it — but the PR carried no `evidence/brief.yml`/`pack.yml` of its own (the root-level pair on
+  this branch was inherited from a prior unrelated Gear-3 merge, #5400, and CI's own `tracked_file_
+  present_in_diff.sh` correctly refuses to credit an inherited file). This pack + this brief are the
+  fix, authored together per-PR at `evidence/2026-09/agent-air-m5-ops-garuda-voa-link-preview-
+  74a062d7/` (the slug `scripts/ci/evidence_paths.py --ref` computes for this branch). Gear 3 also
+  requires (R9, enforcement date 2026-09-02, today) a `council_run` journal with >=2 distinct
+  cross-family COUNCIL_REVIEW_SEATS review lines — `kimi-code/k3` answered HTTP 403 (weekly Moonshot
+  quota exhausted, verified live, not assumed), so the two seats convened are `codex-gpt-5.6-sol` and
+  `tp1-qwen3.8-max` (Alibaba TP1/DashScope gateway, flat token plan) — both distinct from Anthropic
+  and from each other, satisfying the quorum without either being the seat that wrote this diff.
+
+  COUNCIL FINDING THAT CHANGED THE DIFF. `codex-gpt-5.6-sol`'s independent adversarial review (dissent
+  below) found the preview handler's own docstring, and this dispatch's first draft of the
+  registry entry copying it, overclaimed non-enumeration: "an absent, malformed, expired, already-
+  consumed, or foreign token all answer the identical 401" is FALSE for absent/malformed — those fail
+  `MagicLinkExchange`'s `min_length=32` Pydantic constraint before `store.peek` ever runs and answer
+  422 `INVALID_REQUEST` instead (verified independently by reading `_ContractErrorRoute` and the
+  Pydantic field, not taken on the reviewer's word). Corrected both the router docstring and the
+  registry entry to scope the claim the same way `exchange_magic_link`'s own docstring already scopes
+  itself (well-formed-but-invalid tokens only) — a documentation-accuracy fix, not a behavior change:
+  the 422-vs-401 split was already the router's real behavior before and after this correction.
+
+  COUNCIL FINDING NOT FIXED, REPORTED INSTEAD. The same review surfaced a real, unresolved weakness in
+  the feature this endpoint belongs to: `masking.py` reveals only the local part's first 2 characters
+  (`local[:2]` when `len(local) > 2`, else nothing), a fixed-width mask an attacker can craft a
+  collision against — `jo-attacker@gmail.com` and `john@gmail.com` both mask to `jo***@gmail.com`.
+  Verified directly against `mask_email()`'s source, not taken on the reviewer's claim alone. This
+  does not change GATE 1's verdict (the route is still genuinely non-mutating and needs zero
+  credential regardless of masking strength) but it does mean the masked preview can be spoofed by an
+  attacker who can guess or choose an email colliding on the first two characters + domain — a real
+  gap in how effectively this PR's own stated purpose (defeating the login-CSRF spoof) is achieved.
+  NOT fixed here: redesigning the masking reveal width is a security/UX tradeoff for the feature
+  owner, outside this dispatch's scoped mandate (fix the two named CI gates) and the "smallest correct
+  fix" instruction it carried. Reported to the dispatching session instead, per the same standard that
+  instruction applied to a mutating/broad-registry finding ("say so and STOP, I want to hear it before
+  anything is registered").
+
+  A second reviewer finding (`peek()` not filtering by the `environment` column) was checked and
+  refuted: `exchange()`'s own atomic UPDATE has the identical `WHERE token_hash = $1` shape with no
+  `environment` predicate, so this is a pre-existing property of the whole store `peek()` correctly
+  mirrors (its own docstring says so), not a new defect this PR introduces.
+constraints:
+  - "Do not weaken, skip, or add an exemption to the security test itself — the guard is right, the
+    diff had to answer to it."
+  - "No auto-merge armed, no PR opened by this dispatch — PR #5559 already exists and arming was
+    explicitly out of scope."
+  - "Every claim in the new registry entry and the corrected docstring is verified against the actual
+    handler/store source in THIS diff, not copied from the PR's own commit message."
+  - "No paid per-token API. Council seats: `codex exec -m gpt-5.6-sol` (ChatGPT Pro, flat) and `qwen
+    -m opus` via `scripts/qwen-cloud-code.sh` (Alibaba TP1 token-plan, flat, not per-call metered)."
+acceptance:
+  - "backend/tests/security/test_mutating_routes_are_gated.py -- 11 passed (was 1 failed before the
+    registry entry)."
+  - "Mutation-verify: removing the new INTENTIONALLY_PUBLIC_MUTATIONS entry turns
+    test_every_public_mutating_route_is_accounted_for RED again (1 failed) with the same
+    AssertionError naming the same route; restoring it returns to 11 passed."
+  - "backend/tests/app/routers/test_garuda_portal_auth.py -- 38 passed (docstring-only change in that
+    file, no test depends on the corrected wording, none broke)."
+  - "backend/tests/services/garuda_portal/test_masking.py -- 20 passed, unmodified (documents the
+    masking finding's severity without asserting a fix — the finding is reported, not silently
+    patched into this test suite)."
+  - "backend/tests/unit/middleware/test_public_endpoints_registry.py -- 12 passed."
+  - "`Harness floor recompute` job's `evidence_pack_lint.py` step exits 0 against this pack, run the
+    way CI invokes it (staged synthetic tree, --repo-root /tmp/evidence-check, --changed-files-file,
+    --source-path/--brief-source-path when the local copy supports the flag)."
+consumer_map:
+  - "backend/tests/security/test_mutating_routes_are_gated.py -- the CI gate this pack unblocks;
+    reads INTENTIONALLY_PUBLIC_MUTATIONS at import time on every PR touching a mutating route."
+  - "backend/app/routers/garuda_portal_auth.py -- the corrected docstring is read by any future
+    session auditing this router's non-enumeration claims; no runtime behavior consumes it."
+  - "harness-floor.yml -- reads this pack + brief via scripts/ci/evidence_paths.py's per-PR resolution
+    once this branch's PR re-runs the workflow."
+risks:
+  - "The masking-collision finding is CONFIRMED and NOT fixed in this diff. If PR #5559 merges before
+    it is addressed, the shipped login-CSRF mitigation is weaker than its own docstring implies against
+    an attacker who can guess or choose an email colliding on 2 characters + domain. Flagged to the
+    dispatching session; not this dispatch's call to redesign masking.py unilaterally."
+  - "kimi-code/k3 could not be convened (403, weekly quota) -- the council is two seats, not the
+    fleet's usual three-option roster. Both convened seats are genuinely cross-family and independent
+    of each other and of the diff's author, which is what R9's quorum requires."
+  - "tp1-qwen3.8-max's review returned a clean verdict that MISSED both defects codex-gpt-5.6-sol
+    found (the 422-vs-401 overclaim and the masking collision) when asked the identical question set.
+    Recorded as a dissent (RETRACTED-by-omission is not the right label — it simply did not find them)
+    rather than treated as a second confirming opinion that outweighs the one that looked closer."
+grader: |
+  generator != grader, cross-family, two independent seats on the identical prompt (diff + five named
+  questions) so their answers are directly comparable:
+
+  `codex exec -m gpt-5.6-sol --sandbox read-only` (ChatGPT Pro, ~high effort) returned FAIL with two
+  concrete, file:line-anchored findings, both independently re-verified by this session before acting
+  on either (the 422-vs-401 docstring overclaim; the masking-collision weakness) and one refuted after
+  independent verification (the `environment`-column non-filter, shown to be identical on the frozen
+  `exchange()` sibling, not a new defect).
+
+  `qwen -m opus` (`tp1-qwen3.8-max` via `scripts/qwen-cloud-code.sh`, Alibaba TP1 token-plan) returned
+  OK on the same five questions and the same diff, missing both real findings codex-gpt-5.6-sol
+  surfaced. Both verdicts are kept in `dissent:` below rather than only the one that agreed with the
+  final action — a clean verdict that missed real, independently-confirmed defects is not evidence of
+  nothing, it is evidence the two seats have different blind spots on this shape of diff.
+budget: |
+  Flat-subscription only. This session (Claude Sonnet 5, dispatched sub-task) for diagnosis, both CI-
+  gate fixes, the docstring correction, and verification. `codex exec -m gpt-5.6-sol` (ChatGPT Pro,
+  unmetered) and `qwen -m opus` / tp1-qwen3.8-max (Alibaba TP1 token-plan, flat) for the two council
+  reviews. `kimi -m kimi-code/k3` was attempted and answered 403 (quota) before any tokens were spent
+  against it. Zero metered per-token API spend.
+pii: none

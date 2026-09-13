@@ -67,7 +67,7 @@ if not div:
     else:
         print(f"🧭 propriocezione: fresh ({age_h:.1f}h), all {n} probes reconciled{head_note}")
     sys.exit(0)
-print(f"🧭 PROPRIOCEZIONE: {len(div)} boundary divergence(s) ({len(unp)} unprobeable), report {age_h:.1f}h old{head_note}")
+out_lines = [f"🧭 PROPRIOCEZIONE: {len(div)} boundary divergence(s) ({len(unp)} unprobeable), report {age_h:.1f}h old{head_note}"]
 
 # #44 (2026-07-26): a report's per-item findings are snapshot assertions computed once at
 # {report_time}, not live facts — a home_fork_scripts DIVERGED was TRUE at snapshot time and
@@ -88,7 +88,11 @@ self_finding = next((p for p in div if p.get("id") == "guardian_freshness"), Non
 other_div = [p for p in div if p is not self_finding]
 
 
-def _print_finding(p: dict) -> None:
+FIX_HINT_MAX = 160  # output-cap budget (2026-09-04): a fix_hint this long already
+# eats a large share of the whole receptor byte cap on its own.
+
+
+def _finding_lines(p: dict) -> list[str]:
     # W97 again, one level DOWN from where it was cured. The [:4] probe cap above
     # was fixed on 2026-07-26 so a truncated list of PROBES could not read as
     # complete — but the single line each probe prints still truncated its own
@@ -108,19 +112,51 @@ def _print_finding(p: dict) -> None:
     n = p.get("n_findings")
     ev = p["evidence"][0] if p.get("evidence") else f"{n if n is not None else '?'} findings"
     more = f" [1 of {n}]" if p.get("evidence") and isinstance(n, int) and n > 1 else ""
-    print(f"  !! [{p.get('severity')}] {p.get('id')}{more} (as of {report_time}, {age_h:.1f}h ago — re-verify before acting): {ev}")
-    print(f"     fix: {p.get('fix_hint', '')}")
+    fix_hint = p.get("fix_hint", "") or ""
+    if len(fix_hint) > FIX_HINT_MAX:
+        fix_hint = fix_hint[: FIX_HINT_MAX - 1] + "…"
+    return [
+        f"  !! [{p.get('severity')}] {p.get('id')}{more} (as of {report_time}, {age_h:.1f}h ago — re-verify before acting): {ev}",
+        f"     fix: {fix_hint}",
+    ]
 
 
 if self_finding is not None:
-    _print_finding(self_finding)
-ranked = sorted(other_div, key=lambda x: x.get("severity", "P3"))
+    out_lines.extend(_finding_lines(self_finding))
+
+# P1 first, always in full (up to the top-4 cap); P2+ collapses to a single
+# count line whenever a P1 is present — a P1 is the thing to act on, a P2
+# alongside it is context, not a second thing to read in full at boot.
+p1 = [p for p in other_div if p.get("severity") == "P1"]
+p2plus = [p for p in other_div if p.get("severity") != "P1"]
+ranked = sorted(p1, key=lambda x: x.get("severity", "P3")) if p1 else \
+    sorted(other_div, key=lambda x: x.get("severity", "P3"))
 for p in ranked[:4]:
-    _print_finding(p)
+    out_lines.extend(_finding_lines(p))
 hidden = ranked[4:]
 if hidden:
     hidden_ids = ", ".join(p.get("id", "?") for p in hidden)
-    print(f"  … +{len(hidden)} more ({hidden_ids}) — cat ~/.nuzantara-proprioception/last.md")
+    out_lines.append(f"  … +{len(hidden)} more ({hidden_ids}) — cat ~/.nuzantara-proprioception/last.md")
+if p1 and p2plus:
+    out_lines.append(f"  … +{len(p2plus)} lower-severity finding(s) — cat ~/.nuzantara-proprioception/last.md")
+
+MAX_BYTES = int(os.environ.get("SESSIONSTART_HOOK_MAX_BYTES", "1500"))
+text = "\n".join(out_lines)
+if len(text.encode("utf-8")) > MAX_BYTES:
+    kept: list[str] = []
+    total = 0
+    reserve = 100  # room for the trailer line below
+    for ln in out_lines:
+        b = len((ln + "\n").encode("utf-8"))
+        if total + b > MAX_BYTES - reserve:
+            break
+        kept.append(ln)
+        total += b
+    hidden_lines = len(out_lines) - len(kept)
+    if hidden_lines > 0:
+        kept.append(f"… (+{hidden_lines} lines, run: cat ~/.nuzantara-proprioception/last.md for the full board)")
+    text = "\n".join(kept)
+print(text)
 PYEOF
 )"
 RC=$?

@@ -1,0 +1,54 @@
+task_id: cascade-term-program
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Residual declared in PR #5990's pack (headless half of the window jump):
+  infra/claude-hooks/context_window_guard.py picks its jump seat from
+  TERM_PROGRAM ("ghostty" → spawn a GUI window via window_jump.sh, anything
+  else → headless file for the wrapper). infra/launchagents/wrappers/
+  claude-cascade.sh runs the seat under build_isolated_provider_env(), which
+  scrubs credentials but not TERM_PROGRAM, so a cascade launched BY HAND from
+  a Ghostty terminal (operator smoke run, debugging, the first live proof of
+  #5990) hands the seat TERM_PROGRAM=ghostty: on a context trip the guard
+  opens a window AND the wrapper re-invokes the seat — two continuations of
+  one mandate. Under launchd the variable is absent, so cron runs were never
+  affected; the defect is the manual path.
+
+  Fix, in the wrapper only: build_isolated_provider_env() seeds
+  ISOLATED_PROVIDER_ENV with `env -u TERM_PROGRAM`, so every seat invocation
+  (first run, hops, team wrapper) sees it unset. One hermetic test proves it.
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: infra/launchagents/* is a
+  hot zone in scripts/evidence_pack_lint.py's HOTZONE_PATTERNS. Reproduced on
+  this branch's merge-base diff (aee320c764d1156b1cac2e3229e596d4bb5d298f):
+  see receipts. The diff is 1 shell line + 1 test; the pack is the floor's
+  price, not the change's size.
+
+acceptance:
+  - text: >-
+      WHEN the parent process exports TERM_PROGRAM=ghostty and runs the
+      cascade, the seat SHALL observe TERM_PROGRAM unset (stdout `term=unset`).
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k terminal_program
+  - text: >-
+      WHILE the change is in force, the pre-existing cascade shell suite
+      (including the six headless-jump tests of #5990) SHALL stay green and
+      the wrapper SHALL parse under zsh -n.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q; zsh -n infra/launchagents/wrappers/claude-cascade.sh
+
+assumptions:
+  - text: >-
+      Every seat invocation goes through ISOLATED_PROVIDER_ENV (first run and
+      hops share claude_seat_invoke; the team wrapper path runs under the same
+      array), so one `-u` at the array's head covers all of them.
+    status: verified
+    probe: grep -n 'ISOLATED_PROVIDER_ENV' infra/launchagents/wrappers/claude-cascade.sh
+  - text: >-
+      No consumer inside the seat needs TERM_PROGRAM: the guard reads it only
+      to choose the seat kind, and a `-p` run has no terminal UI.
+    status: verified
+    probe: grep -n 'TERM_PROGRAM' ~/.claude/hooks/context_window_guard.py # the guard that reads it is PR #5987 (armed, in queue); main today has no reader, so the change is inert until #5987 lands — same dependency #5990 declared
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

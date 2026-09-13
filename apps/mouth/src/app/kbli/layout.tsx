@@ -5,6 +5,7 @@ import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 import { MobileNav } from "@/app/v2/_components/MobileNav";
+import { Footer } from "@/app/v2/_components/Footer";
 
 export default function KBLILayout({
   children,
@@ -44,6 +45,7 @@ export default function KBLILayout({
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-8 sm:px-6 lg:px-8">
         {children}
       </div>
+      <Footer />
     </div>
   );
 }

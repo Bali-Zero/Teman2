@@ -111,7 +111,7 @@ def check(path: Path, today: date | None = None) -> int:
         return 1
 
     all_errors: list[str] = []
-    seen_cves: dict[str, int] = {}
+    seen_cves: dict[tuple[str, str], int] = {}
     active = 0
 
     for idx, entry in enumerate(raw, start=1):
@@ -120,12 +120,24 @@ def check(path: Path, today: date | None = None) -> int:
         if not isinstance(entry, dict):
             all_errors.append(f"Entry #{idx}: must be a mapping, got {type(entry).__name__}")
             continue
+        # KEYED ON (cve_id, package), not on cve_id alone. The scanner filters scope a
+        # suppression to the package the exception names, and there is deliberately no
+        # wildcard — so the SAME CVE triaged in two dependencies is the intended shape and
+        # needs two entries. Keying on the id alone forbade exactly that, and would have
+        # failed the build on the first genuine two-package triage. Found by kimi-code/k3
+        # (2026-09-05) and reproduced: two entries, packages foo and bar, exit 1.
         cve = entry.get("cve_id")
-        if isinstance(cve, str):
-            if cve in seen_cves:
-                all_errors.append(f"Entry #{idx}: duplicate cve_id '{cve}' (also at entry #{seen_cves[cve]})")
+        package = entry.get("package")
+        if isinstance(cve, str) and isinstance(package, str):
+            key = (cve, package.strip())
+            if key in seen_cves:
+                all_errors.append(
+                    f"Entry #{idx}: duplicate exception for cve_id '{cve}' in package "
+                    f"'{package.strip()}' (also at entry #{seen_cves[key]}) — the same CVE "
+                    f"in a DIFFERENT package is legitimate and needs its own entry."
+                )
             else:
-                seen_cves[cve] = idx
+                seen_cves[key] = idx
         all_errors.extend(_validate_entry(entry, idx, today))
         active += 1
 

@@ -1,0 +1,183 @@
+# Evidence Pack — SHWEB-20260911 / W2-C3. Authored at the per-task path
+# scripts/ci/evidence_paths.py resolves for this branch, NOT the deprecated root
+# evidence/pack.yml (that path makes any two Gear>=2 PRs mutually exclusive in
+# the merge queue). The detail lives in brief.yml beside this file.
+
+brief_ref: evidence/brief.yml # the STAGING name the validator resolves against, never the per-PR path
+plan_ref: >-
+  PR from agent/mini-pro2/mouth/shweb-w2-c3-bundle-20260912 — the declared partial of PR #6277
+  (merged 7378c87fca, SERVED), closed. Perimeter granted in advance by the SHWEB imperator; the
+  frozen-file touch ruled separately (mailbox shweb-imp-w2-frozen-ruling).
+
+gear: 2
+gear_floor_source: >-
+  size — `evidence_pack_lint.py --print-floor` = 2, `--print-floor-source` = size. No hot-zone path
+  is touched.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5 (the conducting session — code and tests, one seat; the diversity here is on the review side)
+  - lane: review-refuter
+    role: review
+    seat: gemini-3.1-pro (the diff, out of the contribution chain)
+  - lane: review-second-reader
+    role: review
+    seat: kimi-code/k3 (the same, independently)
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's build-lane math does not apply, and it is not being dodged: two
+  non-Anthropic families read this diff. Codex Sol is DEAD on Mini (acct1 answers "workspace out of
+  credits" with exit 0, acct2 times out in the tool router) — recorded during #6277 and unchanged.
+
+diff:
+  net_lines: >-
+    Three new source modules, one new test file, and a small edit at each call site, plus this
+    evidence directory. No specific line count is quoted here on purpose: the linter recomputes it
+    from the real diff, and a number typed into prose goes stale the moment the pack itself grows —
+    which is exactly how it went stale the first time this file was written. Zero backend, zero
+    workflow, zero migration, no lockfile.
+  behaviour_change: >-
+    None that a visitor can see, and that is the point: this moves WHERE the roster is read, not
+    what renders. The observable change is in the shipped JavaScript — the records of the two people
+    the owner excluded from public pages no longer appear in any chunk a public route loads.
+
+pii_scan: clean
+pii_scan_note: >-
+  The only personal data in play is the PUBLIC staff roster already on balizero.com/team. This diff
+  adds no record, no name and no portrait path; it moves the read to the server. The two excluded
+  people are named only in assertions proving their ABSENCE from client modules.
+
+frozen_file_touch: # the imperator's condition 2, in the pack as well as the PR body
+  file: apps/mouth/src/data/team-roster.ts
+  diff_size: "6 insertions, 13 deletions — the initialsOf definition replaced by a re-export"
+  reason: >-
+    The bundler follows the import, not the intent. `initialsOf` is four lines of string handling
+    with no data behind it, but it sat in the module that also holds the 170-line roster array, so a
+    "use client" page importing only the helper shipped every staff record to the browser.
+  sha256_before: 947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e # pragma: allowlist secret - sha256 of a tracked source file, recomputable
+  sha256_after: 1ff1ead1229f784d1d1fe7b644ab1fbda6b5ed8f1debfc9a1154344187326aa1 # pragma: allowlist secret - sha256 of a tracked source file, recomputable
+  no_roster_data_changed: >-
+    TEAM_ROSTER is byte-identical to origin/main (169 lines, `diff -q` clean). PUBLIC_ROSTER,
+    rosterByDept, rosterBySlug and photoForEmail each hash identical to main's. 20 members, same
+    slugs. The `initialsOf` export name is unchanged, so no consumer breaks.
+  ruled_by: "SHWEB imperator 6a02cd16, 2026-09-12 — the freeze protects roster DATA; the module location of a string helper is engineering, and two diverging copies would be the worse debt."
+
+internal_surfaces_not_a_partial: # the imperator's condition 2, second half
+  what: >-
+    Three route chunks still contain the roster after this change: app/(workspace)/clients/[id],
+    app/(workspace)/lkpm and app/(workspace)/team-management.
+  why_it_is_not_a_partial_exclusion: >-
+    They are AUTHENTICATED INTERNAL surfaces, and the roster is what they exist to show. No shared
+    chunk carries it any more and no public route loads any of these three, so the public Bites —
+    zero on all six public routes, HTML and JS — is met in full, not partially. Two of them also
+    hardcode the excluded people's portrait paths; that was raised as Kimi F6 during #6277 and
+    registered then as internal, not public.
+
+dissent:
+  - seat: self (the conducting session, on its own first attempt)
+    objection: >-
+      "SocialProof needs no client features, so the minimal fix is to delete its `use client`
+      directive and let it resolve the roster on the server" — asserted after grepping for
+      useState / useEffect / useRef / onClick / onChange / window. / document. and finding nothing.
+    status: CONFIRMED
+    resolution: >-
+      WRONG, and the build caught it rather than the review. The component hands `next/image` an
+      `onError` fallback in two places, a handler that grep list did not include. As a server
+      component it threw "Event handlers cannot be passed to Client Component props" on every
+      portrait: /v2 rendered its error boundary, fell from ~228 KB to 107 KB, and two e2e
+      assertions went red. Reverted, and rebuilt along the shape the imperator had specified from
+      the start — the component STAYS client and takes server-resolved rows as props. Kept in the
+      record because the claim was a measurement with a hole in it, not a fact: an enumerated
+      blocklist of handler names cannot prove the absence of handlers. The boundary test now
+      asserts the opposite invariant deliberately — SocialProof must REMAIN "use client" and must
+      still contain `onError` — so the same shortcut cannot be retried quietly.
+  - seat: kimi-code/k3 AND gemini-3.1-pro (independently, same finding)
+    objection: >-
+      BLOCKER — the tripwire that is supposed to make this fix non-regressable has all-tests-green
+      bypasses. `isClientModule` tolerated a block comment before the directive but not a LINE
+      comment, and every module in this repo opens with a `// path` header — so a client component
+      in the house style was not seen as a client module at all. `importsRoster` required the
+      literal word `from`, missing side-effect imports, `import()`, `require()` and
+      whitespace-free `import{x}from"y"`. And it watched only the roster module, while the ORIGINAL
+      defect came through `team-public-listing` — book-data never imported the roster directly.
+    status: CONFIRMED
+    resolution: >-
+      All three fixed, and each verified with a probe that fails without the fix. Comments are now
+      stripped BEFORE the directive test; the import matcher accepts every shape; and
+      ROSTER_GRAPH_MODULES covers the transitive edges (team-public-listing, socialProofRoster,
+      book-team) so a client import of any of them is red. `import type` is erased first, because
+      the type-only edge is legitimate and dropping the keyword is the one-word regression Kimi
+      named — that distinction now has its own probe. Nine bypass probes were run against the
+      hardened scanner: line-comment header, four import shapes, three transitive modules and the
+      dropped `type` keyword — all red, and the restored tree green. The detector also has its own
+      guilt probes in the suite, so a future edit that blinds it fails immediately.
+  - seat: kimi-code/k3
+    objection: >-
+      MAJOR — the moved guilt probes prove filtering, not wiring, and the only artifact-level check
+      (the chunk scan) is a manual measurement rather than a test. Probes green plus a bypassed
+      tripwire equals both names in a public chunk with zero red tests.
+    status: CONFIRMED
+    resolution: >-
+      Accepted. `scripts/assert-roster-not-in-public-chunks.mjs` now scans the BUILT output and
+      fails if any chunk reachable from a public route carries an excluded name; a shared chunk
+      counts as public, (workspace) route chunks are skipped by design, and an empty scan REFUSES
+      to report success instead of passing vacuously. Its own guilt probes were run: a planted
+      public chunk exits 1, a planted internal one exits 0, an empty directory exits 1, the real
+      build exits 0. NAMED REMAINDER: wiring it into `npm run build` edits package.json, which this
+      PR may not touch — the script is useless until something runs it, and that is stated here
+      rather than left implicit.
+  - seat: kimi-code/k3
+    objection: MINOR — `stripComments` truncates a line after a string containing `//`, which only ever makes an absence assertion easier to pass.
+    status: CONFIRMED
+    resolution: >-
+      The guard now also excludes a `//` preceded by a quote or backtick, and the identifier
+      assertions were re-pointed at forms a comment cannot fake (`publicRoster(`,
+      `export const TEAM_MEMBERS`) rather than any mention of the name.
+  - seat: gemini-3.1-pro
+    objection: >-
+      BLOCKER — making `founders` and `team` required props is a regression for unmigrated
+      consumers: /team and /v2/company/about load the chunk, so if they render SocialProof they
+      will pass undefined and crash. Fix by defaulting to empty arrays.
+    status: RETRACTED
+    disposition: >-
+      REFUTED, and the proposed fix would be a defect. There are exactly three render sites in the
+      repo — v2/page.tsx, (marketing)/page.tsx and the test — and `/team` and
+      `/v2/company/about` contain ZERO references to SocialProof; they loaded the chunk because it
+      was a SHARED chunk, not because they render the component. More decisively, `tsc --noEmit`
+      exits 0, and a missing required prop is a compile error: an unmigrated consumer cannot exist
+      and still build. Defaulting to `[]` is exactly what the prop's own comment argues against —
+      it would let a caller that forgot the data render a silently empty band, trading a loud
+      compile failure for a quiet content loss.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MAJOR — the book guilt probe now unit-tests the server resolver and is blind to the client
+      boundary: importing the roster into TeamGrid.tsx would keep it green.
+    status: RETRACTED
+    disposition: >-
+      True of that probe in isolation, and answered by division of labour rather than by widening
+      it: the probe tests the FILTER, the tripwire tests the BOUNDARY. Measured on exactly the
+      scenario named — `publicRoster` imported into TeamGrid.tsx, a client module — the boundary
+      test goes red. Rendering a framer-motion client component inside the filter's unit test
+      would couple two concerns and still not see the bundle, which is what the new artifact
+      assertion is for.
+  - seat: gemini-3.1-pro
+    objection: MINOR — `socialProofRoster()` builds new arrays on every call, so identities churn across server navigations.
+    status: CONFIRMED
+    disposition: >-
+      Accepted and simplified: the inputs are static, so the resolution now happens once at module
+      load and the function returns that value. Identity does not survive the RSC boundary anyway —
+      the rows are serialised into the flight payload — so this is about not redoing constant work
+      and about there being one answer rather than one per call. The guilt probe was re-run after
+      the hoist, because module-scope resolution plus module mocking is exactly where a probe can
+      quietly stop working: the mutant still turns it red.
+  - seat: gemini-3.1-pro
+    objection: NIT — the re-export means a SERVER component importing `initialsOf` from the roster module still pulls the whole array into its evaluation graph.
+    status: PLAUSIBLE
+    disposition: >-
+      True and deliberately kept: the imperator's condition 4 binds this PR to leave the
+      `initialsOf` export name stable so no consumer breaks. It costs nothing a visitor can feel —
+      server-side module evaluation, not shipped bytes — and no consumer currently takes the helper
+      from there. Removing the re-export once that is certain would turn a future client import into
+      a build error, which is strictly better; recorded for the owner rather than done here.

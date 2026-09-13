@@ -1,0 +1,174 @@
+brief_ref: evidence/brief.yml
+effort_for_gear: xhigh
+plan_ref: >-
+  PR #6171 (agent/air-m5/infra/automations-generator-source) — the
+  generator becomes the repo-canon source for docs/AUTOMATIONS_REFERENCE.md:
+  matagaruda label prefix, purpose chain through declared-pairs.json,
+  scheduled-workflows table, interpreter-aware fallback, recursive glob
+  coverage parity with automation_coverage(), and `|` escaping.
+lanes:
+  - lane: automations-generator-source
+    role: build
+    seat: "session (Air-M5, Opus 5 — dispatched by team-lead per CLAUDE.md §5 implementer routing)"
+  - lane: automations-generator-source-gate
+    role: review
+    seat: "gate-generator (claude-opus-5, independent on-disk gate)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Exactly ONE build lane, so the D3 floor (>=2 build lanes needing a
+  non-Anthropic seat) does not fire. The review side ran a single
+  independent Opus 5 on-disk gate, not a cross-family council — see
+  `seat_override` below for why R9's council-quorum rule is honestly
+  overridden rather than satisfied with a journal this task never ran.
+seat_override: >-
+  No cross-family council (codex-gpt-5.6-sol / kimi-code/k3 /
+  tp1-qwen3.8-max) was dispatched for this task. The Gear-3 review that
+  actually happened was an independent on-disk gate seat, "gate-generator"
+  (claude-opus-5), whose six findings are recorded in `dissent:` below,
+  four already cured across commits 75b6438142 and 60a8787971. Declared
+  here rather than fabricating a council-journal.jsonl naming seats that
+  never reviewed this diff — anti-hallucination outranks a clean R9 pass
+  on a journal that would be a receipt for a review that did not happen.
+diff:
+  net_lines: >-
+    4 files, +897/-16, measured by `git diff --numstat` against the merge-base
+    with origin/main (re-measured after the fourth commit, which dropped the
+    Desktop/nuzantara path form for the TCC lint — scripts/lint_tcc_desktop_paths.py
+    / superscar #1 W84). CI's countable-claims check reads this against the
+    WHOLE PR diff (code plus this evidence pair itself), so a single
+    measured total is kept here rather than a secondary per-file gloss
+    that would go stale on the next edit to this same file — same lesson
+    as the xendit-quarantine-alarm pack's `diff.net_lines` field. The code
+    itself is two files, well past the small-diff ceiling shape, which is
+    why the deterministic floor for the CODE alone is two via the SIZE
+    term (no hot-zone path is touched) rather than one — declared as such
+    rather than hidden, and measured in this pack's receipts.
+  behaviour_change: >-
+    `scripts/generate_automations_reference.py` renders more of the
+    repo-canon surface than before (matagaruda prefix, scheduled-workflows
+    table, purpose chain through declared-pairs, `|`-escaped cells,
+    recursive glob) and changes nothing about WHEN or by whom it is
+    invoked — that half is the companion PR #6169's nightly wrapper. This
+    diff is read-only against the live system; its only write target is
+    `docs/AUTOMATIONS_REFERENCE.md` itself (or stdout under `--dry-run`).
+receipts:
+  - claim: "The full 65-test suite for the generator passes on this worktree's current HEAD"
+    cmd: "python3 -m pytest tests/scripts/test_generate_automations_reference.py -q"
+    result: "65 passed in 0.14s"
+    exit: 0
+    ts: "2026-09-10T22:21:59Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "ruff reports zero issues on both changed files"
+    cmd: "ruff check scripts/generate_automations_reference.py tests/scripts/test_generate_automations_reference.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-10T22:22:03Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "The deterministic gear floor for this diff is 2, reached via the SIZE term alone (no hot-zone path touched) — matches the actual CI failure this pack answers"
+    cmd: "git diff --numstat $(git merge-base origin/main HEAD) HEAD > numstat-B.txt; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file changed-files-B.txt --numstat-file numstat-B.txt; python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file changed-files-B.txt --numstat-file numstat-B.txt"
+    result: "floor=2, source=size"
+    exit: 0
+    ts: "2026-09-10T22:23:39Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "The generator's dry-run output covers every tracked launchagent plist, matching scripts/docs_sync.py::automation_coverage()'s own labels-in-haystack logic exactly (136/136), and the two new tables render 134 pending-plist rows plus 28 scheduled-workflow rows"
+    cmd: "python3 scripts/generate_automations_reference.py --dry-run > pack_dry.md; then reimplement automation_coverage()'s exact labels/haystack check against pack_dry.md + scripts/automation_catalog.json, and count '| \\`com.' rows in the pending-plist table and '| \\`*.yml\\`' rows in the scheduled-workflows table"
+    result: "{'plists': 136, 'documented': 136}, missing: []; pending-plist table rows: 134; scheduled-workflows table rows: 28 (2 of the 136 tracked plists are already counted live/installed elsewhere in the doc rather than in the pending table, which is why 134+2=136 not 134)"
+    exit: 0
+    ts: "2026-09-10T22:22:17Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+    note: >-
+      No literal unescaped `|` appears in any rendered cell of the dry-run
+      output — e.g. a multi-schedule workflow ('docs-inventory-refresh.yml')
+      renders its two cron times joined by `;`, never a raw `|`, confirming
+      the escaping path is exercised on real repo data, not just the unit
+      fixtures.
+  - claim: "The named tests for the two CURED gate findings (pipe escaping, mini/gemini substring) and two of the CONFIRMED findings (Mini-Pro2 header spelling, bare-interpreter fallback) each pass by name"
+    cmd: "python3 -m pytest tests/scripts/test_generate_automations_reference.py -q -k 'test_pipe_in_purpose_is_escaped or test_pipe_in_name_and_purpose_is_escaped or test_gemini_relay_label_is_not_mini or test_mini_pro2_header_spelling_is_mini or test_real_healer_4h_plist_has_no_mini_marker_of_its_own or test_bare_interpreter_with_nothing_else_falls_back_to_label' --color=no"
+    result: "6 passed, 59 deselected"
+    exit: 0
+    ts: "2026-09-10T22:23:01Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+pii_scan: clean
+dissent:
+  - seat: "gate-generator (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      No `|` escaping in rendered table cells — a real workflow comment or
+      plist purpose containing a literal pipe would break the surrounding
+      markdown table, corrupting every row after it rather than just the
+      one cell.
+    status: CONFIRMED
+    resolution: >-
+      Cured in commit 60a8787971. Verified in this pack's receipts: named
+      tests `test_pipe_in_purpose_is_escaped` and
+      `test_pipe_in_name_and_purpose_is_escaped` both pass, and the real
+      dry-run output over live repo data shows a multi-value cron cell
+      joined with `;` rather than a raw `|`.
+  - seat: "gate-generator (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      The `mini-` substring check over-matches — a label like a Gemini
+      relay (`gemini-...`) contains the literal substring `mini` and would
+      be misclassified as Mini-hosted by a naive `in` check.
+    status: CONFIRMED
+    resolution: >-
+      Cured in commit 60a8787971 (token-aware matching, not bare
+      substring). Verified: `test_gemini_relay_label_is_not_mini` passes.
+  - seat: "gate-generator (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      'Mini-Pro2' was under-matched by the host hint — `healer.4h` still
+      renders as hosted on Pro, because the 'Mini-Pro2' marker lives in
+      the RESOLVED target script's header, and the host hint as originally
+      written only read the plist's own text, never following the chain
+      declared-pairs.json points through.
+    status: CONFIRMED
+    note: >-
+      PARTIALLY cured. The header-spelling case is fixed
+      (`test_mini_pro2_header_spelling_is_mini` passes — the host hint now
+      reads a 'Mini-Pro2' marker when it appears directly in scope), but
+      the specific `healer.4h` case the gate named is a NAMED RESIDUAL:
+      `test_real_healer_4h_plist_has_no_mini_marker_of_its_own` documents,
+      rather than cures, that this one real plist's own text and its
+      resolved script header both lack any Mini marker the host hint can
+      see, so it still renders as Pro. Not ledgered as a new PENDING-ARMS
+      row by this lane — the residual is pinned by a named, currently-
+      passing test (asserting the absence, not silently dropped), which is
+      the honest state to record rather than a false "fully cured".
+  - seat: "gate-generator (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      14 rows render a bare 'runs python' purpose when the interpreter
+      line carries only a bare interpreter with no script/module argument
+      to fall back on — uninformative to a reader trying to learn what the
+      job actually does.
+    status: CONFIRMED
+    resolution: >-
+      Cured — the purpose now falls back to the plist's own label instead
+      of a bare interpreter name. Verified:
+      `test_bare_interpreter_with_nothing_else_falls_back_to_label` passes.
+  - seat: "gate-generator (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      Two plists whose Label does not match their file stem would appear
+      in BOTH the live table and the pending table on Pro, double-counting
+      the same automation.
+    status: PLAUSIBLE
+    note: >-
+      Accepted, not verified either way from M5 — confirming this needs
+      Pro's actual live snapshot (`launchctl list` + `job_registry.json`),
+      which this pack cannot observe from the build worktree. Recorded as
+      a live-environment risk for whoever runs the first nightly regen
+      under PR #6169's wrapper to watch for, not dismissed as
+      hypothetical.
+  - seat: "gate-generator (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      An inline `on: {schedule: [...]}` YAML form is not parsed by the
+      scheduled-workflows table builder, and a `.yaml` (vs `.yml`)
+      extension is not globbed at all — either would silently drop a
+      scheduled workflow from the table with no error.
+    status: PLAUSIBLE
+    note: >-
+      Accepted as a real gap in the parser's coverage. Verified only that
+      it is NOT live today: `git ls-files '.github/workflows/*.yaml'`
+      returns nothing, and every scheduled workflow in this repo currently
+      uses the block `schedule:` form the parser already handles — so the
+      gap exists in the code but has zero observable effect on the
+      generated doc as of this diff. Not cured in this diff (out of scope
+      for a source-of-truth fix already at 629 net lines); a fair follow-up
+      for whoever next touches this parser.

@@ -10,11 +10,20 @@ a artefact that claims to be a thin bridge but is secretly carrying full
 TRAUMA/ANTIBODY/GOTCHA paragraphs in its MEMBRI bullet lists instead of
 `cicatrix-scars.md`, where the full corpus lives).
 
+Second diet (2026-09-04, `scripts/memory/mos_recall_sessionstart.py`): the
+bridge went from an 8,192-byte MEMBRI-list edition down to a 2,560-byte
+NUCLEO — one line per family (name, disease, antidote, executable) — because
+the SessionStart recall hook now ALSO indexes `cicatrix-scars.md` and
+`cicatrix-scars-archive.md` by section, so individual scars are recalled by
+pertinence instead of the whole roster being injected wholesale every turn.
+The MEMBRI lists and the Orfane section were dropped from the bridge; their
+bodies still live in the two scar files, unmoved.
+
 This guard is two things, deliberately kept together because they trade off
 against each other — shrinking the file is only safe if nothing fell off
 the truck on the way down:
 
-1. A byte-budget assertion: `cicatrix-superscar.md` stays <=14000 bytes.
+1. A byte-budget assertion: `cicatrix-superscar.md` stays <=2560 bytes.
 2. A completeness assertion: every `W\\d+[a-z]?` token that appears anywhere
    in `cicatrix-superscar.md` resolves to a real body heading in either
    `cicatrix-scars.md` or `cicatrix-scars-archive.md`.
@@ -50,7 +59,7 @@ SUPERSCAR = RULES_DIR / "cicatrix-superscar.md"
 SCARS = SCARS_DIR / "cicatrix-scars.md"
 ARCHIVE = SCARS_DIR / "cicatrix-scars-archive.md"
 
-BYTE_BUDGET = 14_000
+BYTE_BUDGET = 2_560
 
 _WNUM_TOKEN_RE = re.compile(r"\bW\d+[a-z]?\b")
 _HEADING_RE = re.compile(r"^#{2,4} ")

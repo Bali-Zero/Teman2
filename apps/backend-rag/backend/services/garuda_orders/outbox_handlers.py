@@ -47,6 +47,7 @@ shape and each subclass's docstring for its own paging condition.
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import logging
 import os
@@ -91,6 +92,25 @@ TELEGRAM_OWNER_CHAT_ID_ENV = "TELEGRAM_OWNER_CHAT_ID"
 #: succeeded — see `PaymentPaidEmailHandler.__call__` for why that is a
 #: resolved-not-sent outcome rather than a failure.
 _STATES_WORTH_CONFIRMING = frozenset({"paid"})
+
+
+def _h(value: object) -> str:
+    """Escape one interpolated value for the HTML customer-email bodies below.
+
+    GA-B-1: `case_type` (and any other non-compile-time-constant field) reaches
+    8 HTML `<br>`-joined bodies via 9 separate `*Facts` dataclass constructor
+    sites (`OrderEmailFacts` x6, `LateRefundFacts`, `PracticeTransitionEmailFacts`,
+    `OrderAnomalyFacts`) — there is no single upstream factory all 8 bodies flow
+    through, so escaping happens at render time, at each f-string site, not once
+    at construction. `quote=True` also escapes `"`/`'` (attribute-safe, though
+    none of these sites currently interpolate into an attribute). Do NOT apply
+    this to a URL's `href`/`src` value — that needs validation, not escaping —
+    and never to a value already escaped (double-escaping corrupts it). The five
+    `staff_page_*` Telegram handlers are plain text / Markdown-escaped
+    (`_escape_markdown` below) and are out of scope: this helper is HTML-only.
+    """
+
+    return html.escape(str(value), quote=True)
 
 
 class EmailSendFailed(RuntimeError):
@@ -242,7 +262,7 @@ class PaymentPaidEmailHandler:
         return (
             "Hello,<br><br>"
             "We've received your payment for your Bali Zero Visa on Arrival "
-            f"({facts.case_type}).<br><br>"
+            f"({_h(facts.case_type)}).<br><br>"
             f"<b>Amount paid: {amount}</b><br><br>"
             "Our team is preparing your application now. You can follow its "
             "progress at any time here:<br><br>"
@@ -338,7 +358,7 @@ class CheckoutReadyEmailHandler:
         return (
             "Hello,<br><br>"
             "Your Bali Zero Visa on Arrival application "
-            f"({facts.case_type}) is ready for payment.<br><br>"
+            f"({_h(facts.case_type)}) is ready for payment.<br><br>"
             f"<b>Amount due: {amount}</b><br><br>"
             f'<a href="{checkout_url}">Complete my payment</a><br><br>'
             "You can also follow this order's status here:<br><br>"
@@ -456,7 +476,7 @@ class PaymentFailedEmailHandler:
         return (
             "Hello,<br><br>"
             "We were unable to process your payment for your Bali Zero Visa on "
-            f"Arrival ({facts.case_type}).<br><br>"
+            f"Arrival ({_h(facts.case_type)}).<br><br>"
             f"<b>Amount not charged: {amount}</b><br><br>"
             f"{guidance}<br><br>"
             "You can follow this order's status here:<br><br>"
@@ -545,7 +565,7 @@ class PaymentExpiredEmailHandler:
         return (
             "Hello,<br><br>"
             "The payment session for your Bali Zero Visa on Arrival application "
-            f"({facts.case_type}) expired before it was completed, so no payment "
+            f"({_h(facts.case_type)}) expired before it was completed, so no payment "
             "was taken.<br><br>"
             "If you still need a Visa on Arrival, please start a new "
             "application.<br><br>"
@@ -628,7 +648,7 @@ class RefundEmailHandler:
         return (
             "Hello,<br><br>"
             "We've refunded your payment for your Bali Zero Visa on Arrival "
-            f"({facts.case_type}).<br><br>"
+            f"({_h(facts.case_type)}).<br><br>"
             "The refund goes back to the payment method you used, and follows "
             "your card provider's own timeline to appear on your statement.<br><br>"
             "You can follow this order's status here:<br><br>"
@@ -814,7 +834,7 @@ class LateRefundConfirmationEmailHandler:
         return (
             "Hello,<br><br>"
             "A payment was taken for your Bali Zero Visa on Arrival "
-            f"({facts.case_type}) that should not have been, and we have "
+            f"({_h(facts.case_type)}) that should not have been, and we have "
             "returned it.<br><br>"
             "The money goes back to the payment method you used, and follows "
             "your card provider's own timeline to appear on your "
@@ -1206,13 +1226,172 @@ class PracticeReceivedEmailHandler:
         return (
             "Hello,<br><br>"
             "Your Bali Zero Visa on Arrival application "
-            f"({facts.case_type}) has been received and is now open with our "
+            f"({_h(facts.case_type)}) has been received and is now open with our "
             "team.<br><br>"
             "You can follow its progress at any time here:<br><br>"
             f'<a href="{tracker}">Track my application</a><br><br>'
             "We'll email you again when there is news.<br><br>"
             "— Bali Zero"
         )
+
+
+# ---------------------------------------------------------------------------
+# practice_*_email — the seven staff-transition customer emails (step 8,
+# STATE-MACHINE.md rows PR-02..PR-11, garuda_staff_router.py::
+# transition_practice via staff_transitions.py::apply_transition)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class PracticeTransitionEmailFacts:
+    order_id: str
+    email: str
+    case_type: str
+    state: str
+    customer_reason_key: str | None
+    required_action_key: str | None
+    artifact_available: bool
+
+
+class PracticeTransitionEmailHandler:
+    """One instance per PR-02..PR-11 customer-facing transition email —
+    `practice_in_review_email` / `_blocked_email` / `_submitted_email` /
+    `_approved_email` / `_rejected_email` / `_resumed_email` /
+    `_delivered_email` (`staff_transitions.py::apply_transition`'s own
+    `job_type` if/elif chain). One class, not seven, because the shape is
+    identical: load the practice+order facts by `order_id`, render one
+    subject/body pair for THIS instance's transition, send.
+
+    NO PAYLOAD ON THE OUTBOX ROW, same privacy property `PracticeReceivedEmailHandler`
+    documents above — `apply_transition` enqueues no payload, so this reads
+    `garuda_practices` FRESH at send time rather than trusting anything
+    captured when the job was queued. That also means a later transition
+    overtaking a still-queued earlier one (retry backlog drains out of
+    order) sends the mail matching the practice's CURRENT state, never a
+    stale one describing a state the practice has already moved past.
+
+    NO STATE GUARD, unlike `PaymentPaidEmailHandler`'s `_STATES_WORTH_
+    CONFIRMING`: every state this handler can be asked to announce
+    (`In_review`/`Blocked`/`Submitted`/`Approved`/`Rejected`/`Delivered`) is
+    reached only through a staff-driven CAS transition on an already-`paid`
+    order (`garuda_practices` rows only exist for paid orders — `practice.py`'s
+    own module docstring), so there is no "order refunded out from under
+    this practice" race the way `PracticeReceivedEmailHandler` guards
+    against on intake — nothing in this codebase moves a practice's state
+    on refund.
+    """
+
+    def __init__(
+        self,
+        pool: asyncpg.Pool,
+        sender: BrevoEmailSender,
+        *,
+        job_type: str,
+        subject: str,
+        body: Callable[[PracticeTransitionEmailFacts], str],
+    ) -> None:
+        self._pool = pool
+        self._sender = sender
+        self._job_type = job_type
+        self._subject = subject
+        self._body = body
+
+    async def __call__(self, job: OutboxJob) -> None:
+        facts = await self._load(job.order_id)
+        if facts is None:
+            raise EmailSendFailed(
+                f"order {job.order_id} (or its practice) not found for a queued "
+                f"{self._job_type}"
+            )
+        await self._sender.send(to=facts.email, subject=self._subject, html_body=self._body(facts))
+        # order id only — never the address, the name or the passport number.
+        logger.info("outbox %s sent for order %s", self._job_type, facts.order_id)
+
+    async def _load(self, order_id: str) -> PracticeTransitionEmailFacts | None:
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT o.order_id, o.applicant_email, o.case_type, p.state,
+                       p.customer_reason_key, p.required_action_key, p.artifact_available
+                  FROM garuda_orders o
+                  JOIN garuda_practices p ON p.order_id = o.order_id
+                 WHERE o.order_id = $1
+                """,
+                order_id,
+            )
+        if row is None:
+            return None
+        return PracticeTransitionEmailFacts(
+            order_id=row["order_id"],
+            email=row["applicant_email"],
+            case_type=row["case_type"],
+            state=row["state"],
+            customer_reason_key=row["customer_reason_key"],
+            required_action_key=row["required_action_key"],
+            artifact_available=row["artifact_available"],
+        )
+
+
+def _practice_transition_body(message: str) -> Callable[[PracticeTransitionEmailFacts], str]:
+    """Same tracker-link body shape `PracticeReceivedEmailHandler._body`
+    uses above, parameterized only by the one sentence that differs per
+    transition."""
+
+    def _body(facts: PracticeTransitionEmailFacts) -> str:
+        base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
+        tracker = f"{base}/{facts.order_id}"
+        return (
+            "Hello,<br><br>"
+            f"Your Bali Zero Visa on Arrival application ({_h(facts.case_type)}) {message}<br><br>"
+            "You can follow its progress at any time here:<br><br>"
+            f'<a href="{tracker}">Track my application</a><br><br>'
+            "— Bali Zero"
+        )
+
+    return _body
+
+
+#: (job_type, subject, message) — the message completes "...application
+#: (<case_type>) {message}". Order matches `staff_transitions.py::
+#: apply_transition`'s if/elif chain (PR-02, PR-03/05/08, PR-04, PR-06,
+#: PR-07, PR-09/10, PR-11).
+_PRACTICE_TRANSITION_EMAILS: tuple[tuple[str, str, str], ...] = (
+    (
+        "practice_in_review_email",
+        "Your VOA application is now in review",
+        "is now being reviewed by our team.",
+    ),
+    (
+        "practice_blocked_email",
+        "Action needed on your VOA application",
+        "needs your attention before we can continue — please check your tracker for details.",
+    ),
+    (
+        "practice_submitted_email",
+        "Your VOA application has been submitted",
+        "has been submitted to immigration.",
+    ),
+    (
+        "practice_approved_email",
+        "Your VOA application has been approved",
+        "has been approved.",
+    ),
+    (
+        "practice_rejected_email",
+        "Update on your VOA application",
+        "was not approved — please check your tracker for details.",
+    ),
+    (
+        "practice_resumed_email",
+        "Your VOA application is moving again",
+        "is being processed again.",
+    ),
+    (
+        "practice_delivered_email",
+        "Your VOA document is ready",
+        "is complete — your document is ready.",
+    ),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1839,11 +2018,18 @@ def build_handlers(
 ) -> dict[str, object]:
     """The registry `drain_once` consumes.
 
-    ALL FOURTEEN job types production enqueues are routed. The fourteenth,
-    `late_refund_confirmation_email`, lands here with this change; it is
-    computed at `repository.py:799-805` (`"practice_release" if resolution ==
-    "honoured" else "late_refund_confirmation_email"`) when a staff member
-    resolves a late-payment case by giving the money back.
+    ALL TWENTY-ONE job types production enqueues are routed: the original
+    fourteen (below), plus the SEVEN `practice_*_email` types step 8's
+    `staff_transitions.py::apply_transition` enqueues via its own inline
+    if/elif `job_type` assignment — `practice_in_review_email`,
+    `_blocked_email`, `_submitted_email`, `_approved_email`,
+    `_rejected_email`, `_resumed_email`, `_delivered_email`
+    (`PracticeTransitionEmailHandler`, one class parameterized seven times
+    below, not seven classes). The fourteenth of the original set,
+    `late_refund_confirmation_email`, is computed at `repository.py:799-805`
+    (`"practice_release" if resolution == "honoured" else
+    "late_refund_confirmation_email"`) when a staff member resolves a
+    late-payment case by giving the money back.
 
     THE COUNT IN THIS DOCSTRING WAS WRONG TWICE, and the reason is load-bearing
     for whoever changes it next. Every count of these types was taken by
@@ -1931,6 +2117,14 @@ def build_handlers(
             portal_base_url=settings.frontend_portal_url,
         ),
     }
+    for job_type, subject, message in _PRACTICE_TRANSITION_EMAILS:
+        handlers[job_type] = PracticeTransitionEmailHandler(
+            pool,
+            sender,
+            job_type=job_type,
+            subject=subject,
+            body=_practice_transition_body(message),
+        )
     if staff_page_sender is not None:
         handlers.update(
             {
@@ -1973,6 +2167,8 @@ __all__ = [
     "PracticeNotMinted",
     "PracticeReceivedEmailHandler",
     "PracticeReleaseHandler",
+    "PracticeTransitionEmailFacts",
+    "PracticeTransitionEmailHandler",
     "RefundEmailHandler",
     "StaffPageDuplicateChargeHandler",
     "StaffPageLatePaidAfterRefundHandler",

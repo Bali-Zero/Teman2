@@ -1,0 +1,23 @@
+{
+  "observed_model": "claude-fable-5-1",
+  "native_session": "9db691ab-8167-459b-a921-54857dde0d49",
+  "native_runtime": "Claude Code 2.1.261",
+  "mode": "interactive plan, tools empty",
+  "effort_requested": "medium",
+  "timestamp": "2026-09-06T02:24:52.410Z",
+  "finish_reason": "end_turn",
+  "verdict": "PASS",
+  "input_sha256": "5ee4955d43ba794f74ec0953824d8ae4e0a1848b4cfa4b2efcf8545a160f2834",
+  "input_native_user_text_match": true,
+  "response_sha256": "89ed426bfdf082ff706c061b9a460f4e11832aa0831985b66ff1b094d1d87c02",
+  "source_manifest_file": "source-manifest.json",
+  "source_manifest_file_sha256": "fb326d7083200003189071f9f20f7274c16a91da91cefa406032e3d599c27fd9",
+  "native_usage": {
+    "input_tokens": 2,
+    "output_tokens": 3431,
+    "cache_creation_input_tokens": 189349,
+    "cache_read_input_tokens": 5000
+  },
+  "conditions_closed": [1, 2, 3],
+  "scope": "Corrected native shadow producer source and selected evidence; reviewer did not execute tests/recompute hashes; parent separately verified11 source hashes and3 producer manifests. No operational qualification or deployment."
+}

@@ -1,0 +1,79 @@
+task_id: kbli-kg-licensing-spec-r4
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  Reopen docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md, SUSPENDED under Agent PR
+  Contract §8 after three BLOCKED Codex-sol rounds, by FOLDING its six open round-3 findings —
+  each against a measurement re-taken on 2026-09-03 from a fresh PROD dump, never re-derived from
+  the old census. Docs only; nothing is implemented and no code path changes.
+
+  Gear 2 by the SIZE term alone: ~580 net lines across four markdown files, zero hot-zone paths.
+  The floor is the CI-recomputed one, not a self-assessment.
+constraints:
+  - >-
+    Every number in the spec must reproduce from artefacts a later session can re-run:
+    ~/logs/kbli-conformance/{kbli_nodes_0903.psv,kbli_edges_0903.csv,kg_r4_recompute.py,
+    kg_r4_s3_and_directions.py,kg_r4_states_live.json,kg_r4_states_postph.json}. A claim with no
+    command behind it is a design choice and is labelled as one.
+  - >-
+    The admission predicate is the ROUTER's own function, imported — classify_requires_target AND
+    permit_name_verdict (kbli_notebook.py:674-689) — never a paraphrase. The previous census
+    paraphrased it and its own triple did not close: 4,699+352+241 = 5,292 against a 5,318
+    denominator. The whole-dump triple is 4,722+355+241 = 5,318.
+  - >-
+    No cure deletes a true relational fact. The first draft of this revision proposed removing the
+    nine permit:kitas edges the way the placeholder edges are removed; that is the "second defect
+    wearing the shape of a fix" kbli_requires_kind.py's own docstring warns about. Corrected in
+    place: the KITAS cure is a classifier demotion (permit_type -> _BUCKETS as immigration_permits),
+    the edges stay, and the client sees KITAS under related_requirements where PT PMA already is.
+  - >-
+    PII: none. KBLI codes, PP 28/2025 article text and node ids are public regulatory data; no
+    client identifier, name or document is read or written anywhere in this diff.
+  - >-
+    Scope discipline: §2.4/F9 (172 admitted targets carrying no licence-shaped token) is MEASURED
+    and DECLARED, deliberately not designed or cured here — it is per-target adjudication, a
+    different kind of work from deriving licences from per_skala, and bolting it onto this spec
+    would repeat the scope creep rule 8 exists to stop.
+acceptance:
+  - text: >-
+      WHEN the r4 census is recomputed from the 2026-09-03 dump with the router's own predicate,
+      the permit-typed triple SHALL close exactly — 4,722 admitted + 355 unspecified_permits + 241
+      obligations = 5,318 — and the two state tables SHALL read S1 54 / S2 99 / S3 22 live and
+      S1 70 / S2 99 / S3 6 after the placeholder lot.
+    probe: python3 ~/logs/kbli-conformance/kg_r4_recompute.py <repo> ~/logs/kbli-conformance
+  - text: >-
+      WHEN the six Table-B S3 codes are compared rendered-vs-derived, the sets SHALL differ on 6/6,
+      which is the evidence that relabelling them REGULATED would assert an unadjudicated licence
+      set; and the reverse direction of the row/licence invariant SHALL fail on 91300.
+    probe: python3 ~/logs/kbli-conformance/kg_r4_s3_and_directions.py <repo> ~/logs/kbli-conformance
+  - text: >-
+      WHERE the spec claims a client-facing defect, a LIVE read of the deployed API SHALL show it —
+      inspect_kbli 65121 returns a licence typed PENDING_REGULATION, inspect_kbli 55111 returns
+      licenses [{type KITAS}] with licensing_status REGULATED, and inspect_kbli 01122 returns 404.
+    probe: mcp nuzantara-knowledge inspect_kbli on 65121 / 55111 / 01122 (taken this session)
+  - text: >-
+      WHEN the PENDING-ARMS row is rewritten, scripts/pending_arms_report.py --strict-phantom SHALL
+      exit 0 — it exits 1 on a mis-tagged operator category, which this diff hit and fixed
+      (operator[business-decision] is not a TRUE_OPERATOR_CATEGORY; operator[business] is).
+    probe: python3 scripts/pending_arms_report.py --strict-phantom
+  - text: >-
+      WHILE the four changed files are markdown, prettier --check SHALL pass on all of them and no
+      markdown table SHALL have a row whose column count differs from its header.
+    probe: npx prettier --check <changed files>
+grader: |
+  generator != grader, and the gate is reported as PARTIAL rather than claimed complete.
+  Refuter: codex gpt-5.6-sol at xhigh, fresh context, read-only, handed the dump and the recompute
+  scripts (non-Anthropic family; none of the r4 text is its own). It EXHAUSTED ITS TURN BUDGET
+  before writing its findings table, so this is a partial gate: the two findings it did name were
+  reproduced on this machine and folded (01122's proof demanded licences from a gesture that writes
+  none; the six S3 codes made kg_status_function's manifest unreachable), and §4's derivation rule,
+  §5's transaction/idempotence design and §2.4 are stated in the spec as UNGRADED. A second grader,
+  a Sonnet 5 subagent on fresh context, independently re-derives the eleven numeric claims from the
+  raw dump with its own code rather than the recompute script under test. A build PR out of this
+  spec must carry its own gate; this section does not stand in for one.
+budget: |
+  Flat-subscription seats only: this Opus 5 session, one codex gpt-5.6-sol refuter, one Sonnet 5
+  grader subagent. No metered API spend. PROD Postgres reads are read-only through
+  scripts/pg.sh (nuzantara_readonly) executed on Pro over ssh.
+pii: none

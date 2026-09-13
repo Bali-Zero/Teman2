@@ -173,6 +173,32 @@ if [ -z "$PRIMARY_MACHINE" ]; then
 fi
 log "Primary machine: $PRIMARY_MACHINE"
 
+# Step 0: sweep stale dumps left on the primary's volume by killed runs.
+# Step 1c below removes the remote file after every attempt — but only if the
+# run gets there. Measured 2026-09-10 on the primary: 18 nuz-backup-*.sql.gz
+# (6.6 GB, 2026-06-06 .. 2026-08-29, in 0320/0335/0350 retry triplets) plus
+# their .err twins were still on /data, i.e. 45% volume use against 16% on the
+# replicas, and Fly's disk-capacity check flips the primary read-only at 90%.
+# Every one of those files belongs to a run that was killed (outer cron cap,
+# SFTP hang) before its own cleanup — the local + Tigris copies are the
+# backups; a dump on the database's own disk is never one. Older than one
+# day only, so a concurrent run's fresh file is untouched; the count is
+# logged so the nightly log can prove the sweep bites.
+STALE_PATTERN='/data/nuz-backup-*'
+STALE_LIST=$(timeout 60 "$FLY_BIN" ssh console --app "$FLY_APP" --machine "$PRIMARY_MACHINE" \
+    -C "sh -c 'find /data -maxdepth 1 -name \"nuz-backup-*\" -mtime +0 -print'" 2>/dev/null \
+    | grep -E '^/data/nuz-backup-' || true)
+STALE_COUNT=$(printf '%s\n' "$STALE_LIST" | grep -c . || true)
+if [ "${STALE_COUNT:-0}" -gt 0 ]; then
+    log "Sweeping $STALE_COUNT stale dump artefact(s) older than 1 day under $STALE_PATTERN on the primary..."
+    timeout 120 "$FLY_BIN" ssh console --app "$FLY_APP" --machine "$PRIMARY_MACHINE" \
+        -C "sh -c 'find /data -maxdepth 1 -name \"nuz-backup-*\" -mtime +0 -delete'" >/dev/null 2>&1 \
+        && log "Stale sweep done: $STALE_COUNT removed" \
+        || log "WARN: stale sweep failed — $STALE_COUNT artefact(s) still on the primary volume"
+else
+    log "Stale sweep: nothing older than 1 day under $STALE_PATTERN"
+fi
+
 # Step 1: pg_dump inside the primary → gzip to /data, then SFTP get, with retry
 REMOTE_FILE="/data/nuz-backup-$TIMESTAMP.sql.gz"
 REMOTE_ERR="/data/nuz-backup-$TIMESTAMP.err"

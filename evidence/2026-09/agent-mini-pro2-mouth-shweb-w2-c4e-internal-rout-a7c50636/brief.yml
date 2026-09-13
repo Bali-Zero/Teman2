@@ -1,0 +1,175 @@
+# Brief — SHWEB-20260911 / W2-C4e: close the /lkpm hole as a CLASS, not as eight more instances
+gear: 2 # floor measured WITH --numstat-file over the COMPLETE changed set, after the last commit (source: size)
+task_id: shweb-w2-c4e-internal-routes-20260913
+mandate_id: SHWEB-20260911/W2-C4e
+colour: BLUE
+l_level: L2
+host: Mini-Pro2 (nuzantara)
+worktree: .worktrees/mouth-shweb-w2-c4e-internal-routes-20260913
+branch: agent/mini-pro2/mouth/shweb-w2-c4e-internal-routes-20260913
+base_sha: 9120a228c0 # pragma: allowlist secret - public Git commit ID; the C4d merge, fresh origin/main
+opened_at: "2026-09-13T01:00Z"
+state: CANDIDATO
+
+predecessor: >-
+  C4 added /lkpm to INTERNAL_ROUTES after measuring that a workspace page was answering 200 on the
+  public domain. Proving C4c SERVED, a wider production sweep found EIGHT more with the identical
+  hole, all pre-dating that fix — so adding /lkpm had closed one instance of a class nobody was
+  guarding.
+
+objective: >-
+  Add the eight, each verified before being listed, and add the test that makes the NINTH impossible
+  to introduce silently: derive the workspace routes from the filesystem and require every one of
+  them to be covered.
+
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  No personal data. Eight route literals and a test that reads directory names. The measurements
+  quoted are response sizes, and they were checked to carry 0 staff markers before being recorded.
+
+the_eight:
+  verified_before_listing: >-
+    Per the imperator's condition, each was measured on the PUBLIC domain before being added: the
+    body is BYTE-IDENTICAL to the one the app domain serves (cmp), HTTP 200, and 0 staff-name
+    markers — so each is the workspace shell rather than a public page someone meant to publish.
+    None was excluded. Sizes, measured 2026-09-13: accounting 49,666 B; garuda-voa 49,185;
+    hr 46,166; obligations 45,414; omnichannel 45,922; partners 45,951; review 45,396;
+    terminal 46,299.
+  rejected_candidate: >-
+    A ninth was proposed to me — /notifications — and REJECTED after measurement: it is already in
+    INTERNAL_ROUTES and already answers 301 to kita on the public domain. Deriving both lists rather
+    than reading them gives 17 workspace dirs, 13 listed, 8 missing. Listing it again would have put
+    a duplicate in the array.
+
+scope:
+  - apps/mouth/src/proxy.ts # the eight added with their measurements; INTERNAL_ROUTES exported so the test can read the real array
+  - apps/mouth/src/__tests__/internal-routes-cover-workspace.test.ts # new: the class test
+
+constraints:
+  - One concern: proxy.ts and its test. No guard, no evidence tooling, no unrelated file.
+  - R-A is not resolved here. This closes the SHELL exposure on the public domain; the workspace still has no server-side session gate, which stays with Zero.
+  - apps/mouth/src/data/team-roster.ts FROZEN with no hunk; package.json and package-lock.json untouched.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    what: the eight, and the test that closes the class
+  - lane: review-refuter
+    role: review
+    seat: gemini-3.1-pro
+    what: the diff, out of the contribution chain
+  - lane: council
+    role: review
+    seat: tp1-qwen3.8-max
+    what: the corrected diff and the first seat's resolutions
+
+council_run: journal.jsonl
+
+dissent:
+  - seat: gemini-3.1-pro
+    objection: >-
+      HIGH — the class test's walk reads ONE directory level and only where that level has a page
+      file, so a section with subpages but no index (settings/security with no settings/page.tsx) is
+      never censused and the public domain keeps serving it. MEDIUM — route groups are SKIPPED
+      rather than descended into, so (workspace)/(portal)/tickets, served at /tickets, is invisible.
+    status: CONFIRMED
+    disposition: >-
+      Both true, both fixed with a recursive walk that descends into groups and drops them from the
+      URL. Probed: a section with only a subpage is caught by its first segment, and a page inside a
+      group is caught under the URL it is actually served at.
+      What matters more than the fix: these are the SAME TWO MISTAKES the chunk guard had been
+      corrected for one hour earlier, in a different file, by me. Not a coincidence and not bad
+      luck — see the council seat's diagnosis below, which names the cause better than I did.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MEDIUM — process.cwd() makes the test depend on the directory the runner was started from and
+      throws ENOENT from the repo root. LOW — the INTERNAL_ROUTES regex matches only double quotes,
+      so a formatter switching to single quotes would return an empty list and the coverage test
+      would pass while checking nothing.
+    status: CONFIRMED
+    disposition: >-
+      Paths now resolve from import.meta.url. The quote problem is gone by deletion rather than by
+      patching: see the council finding below — the array is imported, so there is no regex left.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      MEDIUM (condition for GO) — parsing the proxy's SOURCE is the weaker half of a test whose whole
+      value is being derived. A type annotation would break the outer regex; a quoted token inside a
+      comment ("don't ship \"/billing\" yet") would be read as a covered route. MEDIUM (condition) —
+      the walk treats any parenthesised directory as a route group, but (..)photos and @modal are
+      intercepting-route markers and parallel-route slots, neither of which is a group; each would
+      produce a phantom route.
+    status: CONFIRMED
+    disposition: >-
+      Both conditions met. INTERNAL_ROUTES is now EXPORTED from proxy.ts and imported by the test —
+      the regex is deleted, not hardened, which removes the whole class of parsing failure the seat
+      described. And the walk refuses @slot and (..)/(...)-style directories with an error that
+      explains the convention it does not model, rather than silently inventing a route; probed,
+      both fire with that message.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      LOW — PAGE_FILES omits page.mjs/page.cjs; a symlinked directory reports isDirectory() false so
+      pages behind it vanish silently; the "> 10" sentinel is a magic number that will rot. And the
+      probe coverage is thin: nothing exercises a directory with BOTH its own page and children, nor
+      nested groups, nor a page at the group level.
+    status: CONFIRMED
+    disposition: >-
+      All taken. The extension list covers .mjs/.cjs, symlinked directories are followed after a
+      stat, and the sentinel is a named constant. The three missing probes were run: a section with
+      both its own page and a child is caught; nested groups (ga)/(gb) resolve to the right segment;
+      and a page AT the group level is correctly skipped rather than crashing, which was the one
+      behaviour the guard depended on and nothing had checked.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      STRUCTURAL — the same two walk bugs appearing in a sibling guard and in this test within an
+      hour is not a slip. There is no shared, tested walkAppRoutes() utility, so every consumer
+      re-derives the App Router's directory grammar from memory and gets the same edges wrong. A
+      third consumer will repeat it.
+    status: CONFIRMED
+    disposition: >-
+      Accepted as the correct diagnosis, and NOT fixed here: extracting a shared route-walking module
+      is its own concern and this PR is scoped to proxy.ts and its test. Recorded as the follow-up
+      with the seat's reasoning intact, because the prediction is specific and testable — the next
+      person to write a route walker will get route groups or nesting wrong unless the walk lives in
+      one place with its own fixtures. I am the evidence: I wrote it wrong twice in one hour.
+
+receipts:
+  - claim: "each of the eight is the workspace shell, verified BEFORE being listed"
+    cmd: "for each: curl the public and app domains, cmp the bodies, URL-decode and grep for staff markers"
+    result: >-
+      8 of 8 byte-identical between domains, HTTP 200, 0 markers. None excluded. A ninth candidate
+      (/notifications) rejected: already listed, already 301.
+    exit: 0
+    ts: "2026-09-13T01:05:00Z"
+    seat: claude-opus-5
+  - claim: "the class test catches what the eight were instances of — seven probes, both directions"
+    cmd: "create each shape under (workspace), run the test, remove it, re-run"
+    result: >-
+      new top-level page -> RED naming it; section with only a subpage -> RED; page inside a route
+      group -> RED under its served URL; nested groups -> RED with the right segment; section with
+      both its own page and a child -> RED; @slot and (..)marker -> refused with the explanatory
+      error; page AT group level -> correctly skipped, suite green. A PUBLIC route (/team) added to
+      INTERNAL_ROUTES -> RED. Clean tree -> green, 0 stray files.
+    exit: 0
+    ts: "2026-09-13T01:50:00Z"
+    seat: claude-opus-5
+  - claim: "nothing else changed"
+    cmd: "cd apps/mouth && npx vitest run; npx tsc --noEmit; npx eslint; npx prettier --check"
+    result: "479 files / 5149 tests passed; typecheck 0; eslint 0 errors; prettier clean. Diff is two files."
+    exit: 0
+    ts: "2026-09-13T01:55:00Z"
+    seat: claude-opus-5
+
+lesson:
+  what: >-
+    I fixed a shallow directory walk and a route-group blind spot in the chunk guard, and then wrote
+    both bugs again, from scratch, in a new test, about an hour later. A refuter found them in the
+    new file; the council seat named the cause: there is no shared route-walking utility, so each
+    consumer re-derives the App Router's directory grammar from memory.
+  why_it_matters: >-
+    The fix that lands here is correct and probed, but it is the second copy of a correction, and the
+    seat's prediction is that a third consumer will repeat it. That is the argument for extracting
+    the walk rather than for being more careful next time — carefulness already failed, measurably,
+    within the hour. It belongs with the other framing failures of this mandate: what the frame
+    leaves out never appears in the result, and a walk is a frame.

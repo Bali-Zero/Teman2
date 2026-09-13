@@ -1,0 +1,44 @@
+brief_ref: evidence/2026-09/agent-air-m5-mouth-x03-fixture-label/brief.yml
+lanes:
+  - lane: x03-fixture-label
+    role: build
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - lane: x03-label-review
+    role: review
+    seat: kimi-code/k3 via existing OAuth CLI
+pii_scan: clean
+dissent: []
+seat_override: >-
+  R8 applicability only: this Fable-assigned correction renames an existing test title.
+  No article, rule pattern, baseline, eligibility statement or price changes. No legal
+  grounding or NotebookLM query is claimed.
+receipts:
+  - claim: Reverting the single title string recovers the parent source byte for byte; all six inputs and assertions remain identical.
+    cmd: Node assert.equal(candidate.replace(newTitle, oldTitle), gitShowParentSource); assert.equal(candidate.split(newTitle).length, 2).
+    exit: 0
+    ts: "2026-09-05T19:58:13.744Z"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: The existing article-claim suite passes all twelve cases and prints the six corrected titles.
+    cmd: cd apps/mouth && ../../node_modules/.bin/vitest run src/i18n/secondhome-article-claims.test.ts --reporter=verbose
+    result: One test file passed; twelve tests passed; no added or removed tests.
+    exit: 0
+    ts: "2026-09-05T19:58:13Z"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: Independent static review finds the title accurate for the shared rule union and makes no legal finding.
+    cmd: kimi -m kimi-code/k3 -p <candidate test source and one-line correction scope>
+    result: PASS; no execution by the reviewer. Test results and byte-identity proof were not independently replayed by Kimi.
+    exit: 0
+    ts: "2026-09-05T20:00:07.035026+00:00"
+    seat: kimi-code/k3
+source_scope:
+  parent: 2421a3dd053cf9cab97665114bb4f5496d06ab44 # pragma: allowlist secret - verified public Git commit
+  path: apps/mouth/src/i18n/secondhome-article-claims.test.ts
+  changed_lines: One addition and one deletion, solely the shared parametrized title.
+  source_sha256: d506c7d88c2dc96585af0a5b80e6dd04a9266f47a7e8d99cab0324c630cdc28e # pragma: allowlist secret - verified source digest
+review_scope:
+  started_at: "2026-09-05T19:58:31.033761+00:00"
+  finished_at: "2026-09-05T20:00:07.035026+00:00"
+  prompt_sha256: 70ef3ea7664f7fd1420103e90bff697c2eb81c90c0ecb0eaa609c4e8933b1882 # pragma: allowlist secret - verified review prompt digest
+  artifact: evidence/2026-09/agent-air-m5-mouth-x03-fixture-label/kimi-review.txt
+  artifact_sha256: d141a37768e459268a1f1ae2a797334ce2d820bcde1bf4fd861bc31f5d4d6c83 # pragma: allowlist secret - verified review artifact digest
+  limits: Static supplied-source review. The review text trims trailing blank lines only; this evidence pack was assembled after review. Final Fable gate remains independent.
