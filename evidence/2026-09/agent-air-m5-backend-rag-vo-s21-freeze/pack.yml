@@ -15,6 +15,23 @@ lanes:
   - lane: vo-s21-freeze-council-quorum-fallback
     role: review
     seat: agy-gemini-3.1-pro (reserve, rounds 1-5)
+  - lane: vo-s21-freeze-ground-truth
+    role: ground_truth
+    seat: session (M5) - the pack asserts no new regulatory figure; its ground truth is the signed seq-20 pack and the activation code already on origin/main, not a notebook
+    nb: >-
+      origin/main merge-base 52ebe96b62d8e5f076c5f4a33c68e8f34793a8bc, five files read verbatim and all
+      five UNTOUCHED by this diff: contracts/packs/rulepack-prod-020.signed.json (chain anchor, kid,
+      signature verified by the fold), rulepack-prod-020.source.json (products, sponsor_types, source
+      records, the E33 bounds the fold extracts, the dormant review rules it retires),
+      db/migrations_v2/253_visa_activation_writer_hardening.sql (visa_activate_rule_pack step 4 overlap
+      guard, sequence/chain triggers), scripts/visa_engine/activate_pack.py (legal_period from
+      valid_period, trust store before the dry-run return, separation after it) and
+      scripts/visa_engine/sign_pack.py (typed payload canonicalization).
+    query_hash: "1950b20510ec0d3639654d442a05d1e19463f7a720e3d94d03bfaf7e4e1c4c84" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of the five files concatenated in that order via git show 52ebe96b62:<path>.
+      No NotebookLM query exists for this lane and none was invented: no USD minimum is stated anywhere
+      in the pack's source records, which is why the E28 rules turn on a declared boolean.
 council_run: council/journal.jsonl
 seat_fallback_reason: "agy-gemini-3.1-pro replaces kimi-code/k3 (HTTP 403 monthly usage limit on two probes, 2026-09-13T17:22:07Z and ~17:23Z) and stands beside codex-gpt-5.6-sol; tp1-qwen3.8-max is also unavailable (HTTP 429 insufficient_quota on two probes at the same instants, resets 2026-09-18T08:39Z). Probe records council/probe-*.txt."
 pii_scan: clean
@@ -144,6 +161,30 @@ receipts:
     result: "before redaction 49 unaudited (48 transcript lines + fold constant) ; after D-redact 0 ; baseline sha256 restored identical"
     exit: 0
     ts: "2026-09-13T18:02:00Z"
+    seat: Claude Opus 5
+  - claim: Acceptance probes A1-A6 re-run on the final code (after the pragma-only change).
+    cmd: >-
+      pytest test_seq21_pack.py::TestFoldIntegrity::test_the_cli_reproduces_the_bytes_the_owner_signs ;
+      pytest test_seq21_pack.py::TestSponsorTypeAloneIsNotEvidence ;
+      pytest test_seq21_pack.py::TestTheNineProductsAreReachable ;
+      pytest test_seq21_pack.py::TestCensusReplay ;
+      pytest test_seq21_pack.py::TestIdentity::test_the_activation_writer_would_accept_it_over_seq20 ;
+      npx vitest --run engine-adapter.test.ts ; pytest test_seq21_pack.py -k visitor_copy ; npx tsc --noEmit
+    result: "1 passed ; 3 passed ; 3 passed ; 7 passed ; 1 passed ; vitest 55 passed ; visitor_copy 1 passed ; tsc exit 0"
+    exit: 0
+    ts: "2026-09-13T18:07:15Z"
+    seat: Claude Opus 5
+  - claim: "A7 - the table in evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/FACTS-FOR-THE-TREE.md lists the ten facts with EN/ID question, product and rule id, premises updated for E33B NONE / E33C GOVERNMENT and the new payload digest."
+    cmd: the table in evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/FACTS-FOR-THE-TREE.md
+    result: "10 rows (facts 1-10), premise table 9 rows"
+    exit: 0
+    ts: "2026-09-13T17:36:00Z"
+    seat: Claude Opus 5
+  - claim: A8 - the dossier rev.4 exists, in Italian, within 60 lines, with no credential shape.
+    cmd: wc -l and grep on /Users/balizero/Desktop/R3-RENDERS-20260913/vo-s21/SEQ-21-SIGNATURE-DOSSIER.md
+    result: "35 lines ; grep for password=/PGPASSWORD=<literal>/DSN/private-key headers exit 1 (no match). PR number and head sha are filled into the file after the PR opens (file outside the repo)."
+    exit: 0
+    ts: "2026-09-13T18:07:29Z"
     seat: Claude Opus 5
 dissent:
   - seat: codex-gpt-5.6-sol (round 1)
