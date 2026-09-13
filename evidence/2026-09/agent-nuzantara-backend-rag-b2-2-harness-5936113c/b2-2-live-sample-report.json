@@ -1,0 +1,699 @@
+{
+  "canary": "canary overlap: UNVERIFIABLE (baseline absent on this host)",
+  "divergent_count": 15,
+  "inferable_case_count": 8,
+  "inferable_count": 8,
+  "orchestrator_exclusion_reason": "the orchestrator label site (orchestrator_response.py:93) is out of this sample by construction: its collection comes from an LLM tool call or a federation over AVAILABLE_COLLECTIONS (tools.py:159-209) that bypasses QueryPlanner entirely.",
+  "relief_band_cases": [],
+  "rows": [
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "EN::How long does PT PMA registration take?",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "visa_oracle",
+          "collection_resolved": "visa_oracle",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "visa",
+      "query_key": "EN::How long does a visa extension processing take?",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "visa_oracle",
+          "collection_resolved": "visa_oracle",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "visa",
+      "query_key": "EN::How long does an online visa extension take?",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "EN::How much is a PT PMA company, all in?",
+      "score": 0.8,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "EN::Is NIB required for a PT PMA?",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "EN::What are the NIB and OSS requirements?",
+      "score": 0.8,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "EN::What is the minimum paid-up capital for a PT PMA?",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "pass",
+      "manifest_expected_label_gate": "pass",
+      "query_domain": "pricing",
+      "query_key": "EN::What is the price of new company setup?",
+      "score": 0.55,
+      "score_kind_disagreement": {
+        "harness": [
+          "hybrid_rrf_formatted"
+        ],
+        "manifest": "dense_formatted",
+        "verdict": null
+      },
+      "score_kind_divergent": false,
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "EN::What time does the ferry to Nusa Penida leave?",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "EN::Where can I surf in Bali next weekend?",
+      "score": 0.55,
+      "score_kind_disagreement": {
+        "harness": [
+          "hybrid_rrf_formatted"
+        ],
+        "manifest": "unknown",
+        "verdict": null
+      },
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "visa",
+      "query_key": "EN::xyzabc123",
+      "score": 0.55,
+      "score_kind_disagreement": {
+        "harness": [
+          "hybrid_rrf_formatted"
+        ],
+        "manifest": "unknown",
+        "verdict": null
+      },
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "ID::Ada apa saja di Ubud akhir pekan ini?",
+      "score": 0.55,
+      "score_kind_disagreement": {
+        "harness": [
+          "hybrid_rrf_formatted"
+        ],
+        "manifest": "unknown",
+        "verdict": null
+      },
+      "score_kind_divergent": false,
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "ID::Apa saja syarat NIB dan OSS?",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "ID::Apakah NIB wajib untuk PT PMA?",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "pass",
+      "manifest_expected_label_gate": "pass",
+      "query_domain": "pricing",
+      "query_key": "ID::Berapa biaya pendirian PT PMA?",
+      "score": 0.75,
+      "score_kind_disagreement": {
+        "harness": [
+          "hybrid_rrf_formatted"
+        ],
+        "manifest": "unknown",
+        "verdict": null
+      },
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "nuzantara_general_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": true
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "pricing",
+      "query_key": "ID::Berapa harga sewa motor di Canggu?",
+      "score": 0.55,
+      "score_kind_disagreement": {
+        "harness": [
+          "hybrid_rrf_formatted"
+        ],
+        "manifest": "unknown",
+        "verdict": null
+      },
+      "score_kind_divergent": false,
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "visa_oracle",
+          "collection_resolved": "visa_oracle",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "visa",
+      "query_key": "ID::Berapa lama perpanjangan visa online?",
+      "score": 0.8,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "ID::Berapa lama proses pendirian PT PMA?",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "visa_oracle",
+          "collection_resolved": "visa_oracle",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "visa",
+      "query_key": "ID::Berapa lama proses perpanjangan visa?",
+      "score": 0.8,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "ID::Berapa modal disetor minimum PT PMA?",
+      "score": 0.75,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "kbli_2025_final",
+          "collection_resolved": "kbli_2025_final",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": true,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "pricing",
+      "query_key": "ID::Harga PT PMA berapa all in?",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "translation_changes_query": true
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "ID::Jam berapa kapal ke Nusa Penida berangkat?",
+      "score": 0.55,
+      "score_kind_divergent": false,
+      "translation_changes_query": false
+    },
+    {
+      "case": "scored",
+      "collection_resolutions": [
+        {
+          "collection_planned": "legal_unified_hybrid",
+          "collection_resolved": "legal_unified",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        },
+        {
+          "collection_planned": "training_conversations_hybrid",
+          "collection_resolved": "training_conversations_hybrid",
+          "duplicate_after_resolution": false,
+          "substituted": false
+        }
+      ],
+      "embedding_divergent": false,
+      "generation_decision": "pass",
+      "label_decision": "pass",
+      "manifest_expected_generation_gate": "abstain",
+      "manifest_expected_label_gate": "abstain",
+      "query_domain": "default",
+      "query_key": "ID::asdkjhasd",
+      "score": 0.55,
+      "score_kind_disagreement": {
+        "harness": [
+          "hybrid_rrf_formatted"
+        ],
+        "manifest": "unknown",
+        "verdict": null
+      },
+      "score_kind_divergent": false,
+      "translation_changes_query": false
+    }
+  ],
+  "run": {
+    "bm25_document_side_constructor_params": {
+      "b": 0.75,
+      "k1": 1.5
+    },
+    "bm25_env_presence": {
+      "BM25_B": false,
+      "BM25_K1": false,
+      "BM25_VOCAB_SIZE": false,
+      "ENABLE_BM25": false
+    },
+    "bm25_sparse_determinant": {
+      "vocab_size": 30000
+    },
+    "chunks_per_collection_limit": 3,
+    "search_user_level": 1
+  },
+  "substitutions": [
+    {
+      "collection_planned": "nuzantara_general_hybrid",
+      "collection_resolved": "legal_unified",
+      "query_key": "ID::Berapa harga sewa motor di Canggu?"
+    }
+  ],
+  "support_none_sentence": "support=None scores EXACTLY as SUPPORTED under the engine's fail-closed-only rule (reasoning_utils.py: 'None means \"not consulted\" and changes nothing; anything but SUPPORTED zeroes relevance') — every score this harness reports is the UPPER BOUND the support gate allows: a false acceptance seen is real; a pass does not prove support."
+}

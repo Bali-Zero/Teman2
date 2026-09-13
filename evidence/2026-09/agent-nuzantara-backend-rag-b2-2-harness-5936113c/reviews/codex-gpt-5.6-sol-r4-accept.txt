@@ -1,0 +1,33 @@
+VERDICT: ACCEPT
+ok: true
+
+FINDINGS
+
+None.
+
+NON-FINDINGS
+
+HC1/HC2/A55_1 — retrieval_harness.py:583-606,761-887: planner output is priority-deduplicated before canonicalization; each planned collection follows production resolution and `legal_unified` substitution, with absent fallback hard-stopping. Post-resolution duplicates remain separate searches, proven at test_b2_2_retrieval_harness.py:771-797.
+
+HC1/HC2 — retrieval_harness.py:805-864: filter, limit 3, prefetch 9, hybrid/dense branches, named-vector selection, score-kind presence rule, and formatter arguments match search_service.py:1161-1207. Sorting, caps, redaction, and scorer inputs follow builder order at retrieval_harness.py:896-919 and wa_package_builder.py:541-554,562-595,627-640.
+
+HC1 replica pins — retrieval_harness.py:257-287,634-644: named-vector, current-law-guard, and cap replicas retain the reviewed production behavior. The current-law guard has direct production parity coverage at test_b2_2_retrieval_harness.py:954-971.
+
+A55 cure — retrieval_harness.py:865-888: empty-text/non-mapping hits are skipped and chunks retain the planned collection name. The guilt test verifies both properties at test_b2_2_retrieval_harness.py:799-823.
+
+A55_2/HC6 — retrieval_harness.py:789-841,890-919: retrieval exceptions, unusable collections, returned `error` mappings, and zero-result runs stop before scoring or report writing. Secret-shaped returned errors are tested at test_b2_2_retrieval_harness.py:879-911; failed runs leave no report at test_b2_2_retrieval_harness.py:1089-1102.
+
+A55_2 — retrieval_harness.py:843-854,1042-1074: an internal hybrid-to-dense fallback is marked `score_kind_divergent`, remains reportable, and is excluded from inference and relief-band calculations. Covered at test_b2_2_retrieval_harness.py:913-934.
+
+HC8 — retrieval_harness.py:435-444,775-840: exception text, URLs, headers, returned error contents, and chunk text are never interpolated. Only exception class, bounded integer status, synthetic `query_key`, and static planner/collection identifiers appear. That meets HC8’s intent; it is not a finding. Traceback-chain severance is covered at test_b2_2_retrieval_harness.py:1056-1087.
+
+HC5 — retrieval_harness.py:171-220: the real leaf file is executed and cleanup occurs in `finally`, so an import that raises also leaves no inserted stubs behind. A subsequent normal import is proven functional and tied to the same source file at test_b2_2_retrieval_harness.py:1179-1200. The fresh-subprocess test proves config remains absent through import, `build_plan`, and refused execution at test_b2_2_retrieval_harness.py:1140-1176.
+
+HC7 — test_b2_2_retrieval_harness.py:1203-1243: all guards are installed in one fresh subprocess, against existing production dotted paths, before A is imported; the safe and guilty scenarios belong to that same subprocess test.
+
+F3 — retrieval_harness.py:1319-1378: execution recomputes the plan, verifies the exact plan-file byte hash, parses it, requires semantic equality with recomputation, and only then imports `CollectionManager`. Missing, wrong, nonexistent, tampered, and valid cases are covered at test_b2_2_retrieval_harness.py:1347-1494.
+
+Integrity — HEAD remains bf5bea8360 and both candidate SHA-256 values remain exactly as supplied. No pytest was run, as directed.
+
+VERDICT: ACCEPT
+ok: true
