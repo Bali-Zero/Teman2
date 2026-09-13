@@ -179,7 +179,12 @@ SCENARIO OVERRIDES are what break it — ``investment_vehicle`` answered
 WHAT THIS CENSUS STILL DOES NOT SEE:
 
 1. **The enumeration is a chosen sample, not a cover.** Every question is
-   answered with its FIRST option and no walk ever answers ``unsure``, and
+   answered with its FIRST option unless the scenario overrides it, only
+   TWO of the 84 walks ever answer the literal ``unsure`` (the two
+   ``NOT_CERTAIN`` rows of ``EXPECTED_DISCLOSED_REVIEW_FLAGS`` below — this
+   sentence used to say "no walk ever answers ``unsure``", which stopped
+   being true when PR-D3/PR-D4d added them and was caught by council round 2,
+   codex-gpt-5.6-sol), and
    the onshore arm is ONE neutral walk per category — its sub-branches
    (``onshore/second_home/property``, ``onshore/diaspora/STEPCHILD/...``)
    are deliberately not enumerated, as they never were for invest,
