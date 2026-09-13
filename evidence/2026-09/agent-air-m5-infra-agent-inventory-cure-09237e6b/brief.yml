@@ -1,0 +1,180 @@
+task_id: agent-inventory-cure-0904
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Arm the agent-definition directory. Two facts, both measured on origin/main
+  on 2026-09-04 before anything was written:
+
+    1. `scripts/tests/test_agent_defs_model_pins.py` was invoked by NO workflow.
+       `grep -rn test_agent_defs_model_pins .github/workflows/` on origin/main
+       returned nothing. A test file that ships and never runs is scar family
+       #2 in its purest form — it reads as coverage and delivers none.
+
+    2. `.claude/agents/*.md` was absent from the sentinel path list of
+       `.github/workflows/immune-enforcement.yml`. An edit to any of the 20
+       agent definitions triggered no immune battery at all.
+
+  So the directory that decides WHICH MODEL every dispatched subagent runs on
+  had a test nothing ran and a floor nothing checked. The 7 grunt defs were
+  covered by the existing tests in that file; the other 13 were covered by
+  nothing.
+
+  This PR: wires the test into the workflow's test list, adds the directory
+  and the test to the sentinel paths, and extends the file's coverage from
+  the 7 grunt defs to all 20.
+
+  It does NOT touch any agent definition, promote anything from HOME, or
+  change which model any def is pinned to. That is deliberately a separate
+  concern (PR-2/PR-3 of the same mandate) — this one only arms the guard.
+constraints:
+  - "THE FLOOR ASSERTS SHAPE, NEVER A CURRENT VALUE. `maxTurns`,
+    `disallowedTools` and `memory` are deliberately NOT required: only 11, 6
+    and 9 of the 20 defs carry them today. A guard pinned to the value it is
+    supposed to be judging forbids the very normalization it exists to enable
+    — the same shape as the 2026-09-01 lesson `a guard pinned to the current
+    value forbids the change it should check`. Required are only the three
+    properties EVERY def already satisfies, so this lands green and only a
+    REGRESSION reddens it."
+  - "The floor must be reachable by a guilt test on EVERY assert it makes.
+    Measured by mutation, not by reading: an assert whose removal reddens
+    nothing is decorative, and decorative asserts read as protection to the
+    next person. Two were found in the first draft (`name:` presence and
+    `description:`) and both were resolved rather than left standing — one
+    deleted as subsumed, one given a guilt test."
+  - "The `name:`/filename equality check must not OVER-MATCH legal YAML.
+    `name: \"foo\"` is a legal scalar naming `foo`; a bare `(\\S+)` capture
+    compares '\"foo\"' against 'foo' and rejects it (cicatrix-superscar #3).
+    The comparison strips one layer of matching quotes AND a trailing ` # comment`, and does so ONLY for the short routing scalars — never for `description`, whose prose may legitimately contain a `#`."
+  - "No agent definition file is edited by this PR. The inventory work — the
+    HOME-fork dedup, the WR3 archive, the DeepSeek/Fable de-stale — is
+    explicitly out of scope and stays in its own PRs."
+acceptance:
+  - text: >
+      WHEN the immune battery runs on a PR, it SHALL invoke
+      test_agent_defs_model_pins.py — proved by the file appearing in the
+      workflow's pytest argument list, which it did not before.
+    status: verified
+    probe: >-
+      git grep -l test_agent_defs_model_pins origin/main -- .github/workflows/ ;
+      git show origin/main:.github/workflows/immune-enforcement.yml | grep -c '\.claude/agents'
+  - text: >
+      WHEN a PR changes any file under .claude/agents/, the sentinel path
+      filter SHALL evaluate RELEVANT=true, and WHERE a path is outside the
+      list it SHALL evaluate RELEVANT=false — both proved by executing the
+      workflow's OWN case block, extracted from the YAML, not by reading the
+      pattern and agreeing with it.
+    status: verified
+    probe: >-
+      extract `case "$f" in` .. `esac` out of .github/workflows/immune-enforcement.yml into a
+      shell script, run it on real path strings
+  - text: >
+      IF an agent def carries no `model:` pin, no `tools:` value, no
+      `description:`, no `name:` line, or a `name:` that disagrees with its
+      filename, the floor SHALL fail.
+    status: verified
+    probe: >-
+      remove the `model: haiku` line from .claude/agents/log-triage.md, run the suite, restore
+      from a `cp` backup (NOT `git checkout --`, which would have wiped the uncommitted cure)
+  - text: >
+      EVERY assert and every normalization step in the floor SHALL be
+      independently load-bearing — breaking any one of them reddens the suite,
+      and none of them reddens all of it.
+    status: verified
+    probe: >-
+      for each assert: replace it with `assert True` in
+      scripts/tests/test_agent_defs_model_pins.py, then
+      `python3 -m pytest scripts/tests/test_agent_defs_model_pins.py -q`; restore from a `cp`
+      backup after each
+  - text: >
+      WHILE the name check exists, a quoted `name: "x"` and a `name: x # c`
+      whose value matches the filename SHALL pass — the two over-match
+      controls.
+    status: verified
+    probe: >-
+      python3 -c on the pre-cure regex against `name: "foo"` / `name: 'foo'` / `name: foo   ` ;
+      then pytest -k quoted_name after the cure ; then mutate the quote-strip away and re-run
+  - text: >
+      IF a routing key carries a value that only LOOKS like one — `~`, `null`,
+      an empty quoted scalar, or a bare comment — the floor SHALL treat it as
+      absent.
+    status: verified
+    probe: >-
+      floor against `model: ~` / `null` / `""` / `''` for each of name/tools/model; then a
+      frontmatter declaring `name:` twice; then `name: my-agent # dispatcher name`
+  - text: >
+      IF a key is declared TWICE, the floor SHALL refuse the def rather than
+      resolve it in either direction — a line reader takes the first and a YAML
+      parser the last, and this guard has no standing to pick.
+    status: verified
+    probe: >-
+      floor against `model: ~` / `null` / `""` / `''` for each of name/tools/model; then a
+      frontmatter declaring `name:` twice; then `name: my-agent # dispatcher name`
+  - text: >
+      WHERE an empty `tools:` key is followed by another key on the next line,
+      the floor SHALL NOT borrow that line as the value (W119).
+    status: verified
+    probe: >-
+      `TOOLS_LINE_RE.search("...tools:\nmodel: sonnet\n")` and the floor against
+      `tools: # no tools` / `model: # no model`
+  - text: >
+      WHILE this floor exists it SHALL NOT require the frontmatter to be valid
+      YAML, because 7 of the 20 defs are not and are dispatched anyway — a
+      guard stricter than its consumer is a false BLOCK, not a floor.
+    status: verified
+    probe: >-
+      for each .claude/agents/*.md (excluding README): `_frontmatter(...)` then
+      `yaml.safe_load(...)`, reporting the exception type and the parsed key shape
+  - text: >
+      This PR SHALL introduce no new actionlint finding on the workflow it
+      edits.
+    status: verified
+    probe: >-
+      actionlint on the HEAD file, then on `git show origin/main:.github/workflows/immune-enforcement.yml`
+      written to a scratch tree, counting `^path:line:col:` lines in each
+risks:
+  - "The floor is deliberately WEAKER than the fleet's actual doctrine. It
+    does not check that `model:` names a model on the canonical roster, that
+    a def's tools match its declared tier, or that `disallowedTools` is set
+    where it should be. Every one of those would fail today on real defs and
+    would therefore be a guard that blocks the normalization instead of
+    guarding it. Stated as a scope limit, not as a thing this PR solves."
+  - "ASYMMETRY between the two surfaces this PR arms, and it is real and MEASURED.
+    The sentinel's shell `case` glob `.claude/agents/*.md` matches ACROSS `/` (shell case
+    patterns are not filesystem globs), so `.claude/agents/sub/x.md` triggers the battery —
+    while the test's glob does NOT recurse. Both cross-family seats named it. The proposed
+    cure — recurse the test glob — was MEASURED WRONG:
+    `.claude/agents/wr2-design-architect-resources/` really exists and holds 4 `.md` RESOURCE
+    files that are not agent definitions and would redden at once under `rglob`. The two globs
+    answer different questions on purpose. The residual is a future def placed in a
+    subdirectory, which the harness — reading the directory flat — would not dispatch either."
+  - "This arms the guard on the CURRENT 20 defs. The mandate's actual finding
+    — 26 agent definitions that exist ONLY in `~/.claude/agents/` on each
+    machine, 7-11 of them shadowing a repo copy (HOME-fork, family #1) —
+    is untouched. Three of those HOME-only defs are LIVE and are read BY PATH
+    from `~/.claude/agents/<name>.md` by cron wrappers, so promoting them
+    into this directory without moving their wrapper line in the same commit
+    breaks the cron. That is PR-2 and it is the dangerous one; this PR is
+    deliberately the safe half."
+instruction_to_the_grader: |
+  READ THE TEST FILE, NOT THIS BRIEF'S SUMMARY OF IT. The three required
+  properties as stated above are a paraphrase; the contract is
+  `_assert_agent_def_floor` and `_declared_name` in
+  scripts/tests/test_agent_defs_model_pins.py. If they disagree, the code
+  ships and the brief is the defect.
+
+  The specific thing worth attacking: this is a guard that must land GREEN on
+  20 real files while still being able to go red. That combination is exactly
+  where a vacuous test hides. Ask whether `test_every_agent_def_meets_the_floor`
+  can pass without asserting anything — what happens if the glob returns
+  nothing, if `_frontmatter` returns an empty string, if the directory moves.
+  The `assert paths` line was measured as a mutation SURVIVOR (removing it
+  reddens nothing, because the real directory is non-empty) and is retained as
+  a guard against a future empty-directory state, not claimed as tested.
+
+  Second: the sentinel entry. It was verified by executing the workflow's own
+  extracted `case` block, not by reading the pattern and agreeing with it. If
+  you think the extraction is the wrong artifact to test, say so — that is the
+  load-bearing methodological claim here.
+
+pii: none

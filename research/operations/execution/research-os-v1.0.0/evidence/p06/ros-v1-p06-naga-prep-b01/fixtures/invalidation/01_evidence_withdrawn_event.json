@@ -1,6 +1,8 @@
 {
   "synthetic": true,
   "fixture_category": "invalidation",
+  "canonical_status": "deferred",
+  "canonical_status_note": "DEFERRED, per R1-build-spec.md §5b: this fixture is NOT made canonical in this slice (R1, mission R1, base 9304392d1a). It stays a behavior spec (see expected_operational_receipt.note below -- no object_hash/idempotency_key/producer/lineage/retention, not schema-valid against operational_receipt.schema.json) until a later window builds the OperationalReceipt path it describes. No test in this bundle may assert this fixture is canonical.",
   "adversarial_case_ref": "packet 06-naga-claim-ledger.md, Deliverable #7: 'Invalidation events when evidence is withdrawn, a claim expires, is contradicted, or is superseded'",
   "expected_behavior": "Withdrawing evidence_id b2f1a000-...-e2 must emit exactly one invalidation event referencing every claim that cited it (here: one claim), using the OperationalReceipt 'queue-only' profile per 02-p04-adapter-mapping.md §3/§4 (chosen over ApprovalReceipt because ApprovalSubjectKind has no 'claim' member -- see gap G7). Per the packet's Shadow/canary section, this event must create a REVIEW ACTION only -- it must NOT automatically withdraw public content or mutate any draft. A test should assert the event is queued and that no downstream ContentObject/draft state changed as a side effect of this fixture alone.",
   "trigger": {

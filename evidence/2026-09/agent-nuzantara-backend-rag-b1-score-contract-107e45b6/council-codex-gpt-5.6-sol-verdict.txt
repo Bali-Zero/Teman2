@@ -1,0 +1,5 @@
+1. LOW — `test_11_real_package_keeps_provenance` is not real-chain evidence. Its fake retriever creates hits without provenance (`apps/backend-rag/backend/tests/test_wa_package_builder.py:95-121`), while the assertion accepts `UNKNOWN` as valid (`apps/backend-rag/backend/tests/test_score_contract_crossing.py:437-453`). It stays green if retrieved-score provenance is dead. Other tests cover the operative paths, so this is not blocking.
+
+No runtime defect found: `declared_kind` is bound on every formatter-reaching path, all five declarations match their producers, `score_raw` is captured before transformation, and neither field affects scoring or decisions.
+
+COUNCIL: OK

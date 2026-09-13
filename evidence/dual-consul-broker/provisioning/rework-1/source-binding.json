@@ -1,0 +1,12 @@
+{
+  "current_worktree_drift": [],
+  "dependency_lock_matches": true,
+  "input_archive_sha256": "2864b6b87e25955d579e86ee01360778146f05a2d39bde4d571889a72efe29b2",
+  "input_files": 75,
+  "observed_at": "2026-09-06T04:52:52.427569+00:00",
+  "package_files": 10,
+  "revision": "rework-1",
+  "runtime_source_files": 66,
+  "scope": "Unprivileged disposable Pro rebuild, mode-normalization rehearsal and offline checks; no service installation, database authorization or native invocation.",
+  "supersedes_release_sha256": "ad2fc4b24a11d1eda3798044414a105a4459d905bbfc6dbcafe200edfb72807c"
+}

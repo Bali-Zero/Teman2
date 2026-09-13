@@ -472,8 +472,11 @@ async def test_get_tax_overview_shapes_obligations_and_history() -> None:
 
     result = await service.get_tax_overview(1, current_user=_ctx())
 
-    assert result["summary"]["status"] in {"compliant", "attention", "overdue"}
-    assert result["summary"]["totalDue"] == 0
+    assert result["summary"]["status"] in {"none", "upcoming", "attention", "overdue"}
+    assert result["summary"]["status"] != "compliant"
+    # None, not 0: no payment tracking exists, so there is no figure to
+    # assert — the portal prints "Not tracked" rather than "Rp 0" (ux F2).
+    assert result["summary"]["totalDue"] is None
     assert len(result["obligations"]) == 3
     assert result["history"] == [
         {
@@ -484,6 +487,58 @@ async def test_get_tax_overview_shapes_obligations_and_history() -> None:
             "amount": 0,
         },
     ]
+
+
+@pytest.mark.asyncio
+async def test_get_tax_overview_is_empty_for_a_client_with_no_tax_footprint() -> None:
+    """No company, no tax practice, no NPWP -> no obligations at all.
+
+    Portal audit finding F-05: the deadlines are a pure calendar generated
+    from today's date, and a brand-new client with nothing registered was
+    shown three dated obligations marked "Pending" plus a live countdown,
+    reading as real per-client data.
+    """
+    service, conn = _service_with_conn()
+    conn.fetch.return_value = []
+    conn.fetchval.return_value = False  # _has_tax_footprint
+
+    result = await service.get_tax_overview(1, current_user=_ctx())
+
+    assert result["obligations"] == []
+    assert result["summary"]["status"] == "none"
+    assert result["summary"]["nextDeadline"] is None
+    assert result["summary"]["daysToDeadline"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_tax_overview_keeps_the_calendar_when_the_footprint_query_fails() -> None:
+    """The gate fails OPEN: hiding a real deadline is the worse error."""
+    service, conn = _service_with_conn()
+    conn.fetch.return_value = []
+    conn.fetchval.side_effect = RuntimeError("clients table unavailable")
+
+    result = await service.get_tax_overview(1, current_user=_ctx())
+
+    assert len(result["obligations"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_shows_no_tax_countdown_without_a_tax_footprint() -> None:
+    """Same gate on the dashboard widget (F-05): no footprint, no countdown."""
+    service, conn = _service_with_conn()
+    conn.fetchrow.side_effect = [
+        {"id": 1, "full_name": "Client One", "email": "client@example.com"},
+        None,
+        None,
+    ]
+    conn.fetch.return_value = []
+    conn.fetchval.return_value = False
+
+    result = await service.get_dashboard(1, current_user=_ctx())
+
+    assert result["taxes"]["status"] == "none"
+    assert result["taxes"]["nextDeadline"] is None
+    assert result["taxes"]["daysToDeadline"] is None
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,54 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: codex-gpt-6-astra
+  - lane: independent-diff-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: independent-contract-review
+    role: review
+    seat: kimi-code/k3
+spend:
+  wall_clock_hours: 0.3
+  adversarial_rounds: 2
+appetite_exceeded: none
+pii_scan: clean
+receipts:
+  - claim: "domain-disagreement-corpus: sentinel and cure follow kita when the apex disagrees, preserving ancestry and deployment outcome tests."
+    probe: domain-disagreement-corpus
+    cmd: python -m pytest scripts/tests/test_frontend_live_sentinel.py scripts/tests/test_vercel_prod_deploy_target_rule.py scripts/tests/test_vercel_prod_deploy_fetch_retry.py scripts/tests/test_vercel_prod_deploy_promote_only.py -q
+    result: 51 passed in 20.10s; includes commit selection, domain disagreement and 30-minute boundary cases.
+    exit: 0
+    ts: "2026-09-05T22:04:52Z"
+    seat: codex-gpt-6-astra
+  - claim: "workflow-wiring: both proof corpora are wired into the Vercel organ workflow and the sentinel self-triggers on main."
+    probe: workflow-wiring
+    cmd: actionlint .github/workflows/frontend-live-sentinel.yml .github/workflows/vercel-autopromote-tests.yml && git diff --check
+    result: Exit 0 for both commands; self-trigger exercised by the targeted corpus.
+    exit: 0
+    ts: "2026-09-05T22:04:52Z"
+    seat: codex-gpt-6-astra
+  - claim: The existing unattended wrapper still distinguishes promote, no-build, failure and disabled outcomes.
+    cmd: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh
+    result: passed 17, failed 0
+    exit: 0
+    ts: "2026-09-05T22:06:36Z"
+    seat: codex-gpt-6-astra
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: Initial draft still claimed the apex or all domains were current after observing only kita, and sentinel wording confused inclusion with exact equality.
+    status: CONFIRMED
+    disposition: Corrected cure result messages and sentinel inclusion/unproven wording; assertions now verify output truthfulness.
+pending_proofs:
+  - probe: post-merge-sentinel
+    owner: Fable T4 shipper
+    command: gh run view <main-sentinel-run-id> --log
+    expected: Post-merge main run logs expected SHA, kita served SHA and successful ancestry comparison.
+residual_risks:
+  - risk: Other frontend domains may disagree with kita.
+    mitigation: Treat kita as the requested authority; do not infer the state of unprobed domains.
+  - risk: A slow checkout plus worst-case repeated HTTP timeouts can exhaust the job budget before the terminal alert step.
+    mitigation: The job fails rather than claiming healthy; the separately scheduled sentinel retries outside the grace window.

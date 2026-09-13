@@ -1,0 +1,38 @@
+task_id: oracle-edit-routing
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Make Visa Oracle NEEDS_INPUT Edit controls reopen the question visited in
+  the current interview, instead of the first registry question sharing
+  the same fact. Show existing EN/ID question text and a readable contact
+  fallback when the interview has no unambiguous editable question.
+constraints:
+  - No rule, price, dataset, signing, activation, or evaluation-mode changes.
+  - Reuse the existing interview history and question translations.
+  - Draft PR only; independent Fable review is pending. No merge, arm, or deploy.
+acceptance:
+  - text: WHEN compensation is missing in REMOTE, Edit SHALL reopen remote_compensation.
+    status: verified
+    probe: OracleShell.test.tsx
+  - text: WHEN PT PMA is missing in INVEST, Edit SHALL reopen investment_pt_pma, including internal CURATED preview.
+    status: verified
+    probe: OracleShell.test.tsx
+  - text: WHEN the question is absent or ambiguous, the adapter SHALL omit an Edit target and raw fact paths from the display message.
+    status: verified
+    probe: engine-adapter.test.ts
+  - text: WHILE public SHADOW gating applies, existing authority and request-deduplication tests SHALL remain green.
+    status: verified
+    probe: OracleShell.shadow-dedupe-adversarial.test.tsx
+assumptions:
+  - text: The pruning-aware interview history identifies questions that the existing Edit reducer can reopen.
+    status: verified
+    probe: OracleShell.test.tsx
+consumer_map:
+  - OracleShell passes current question IDs to authoritative and internal-preview outcome adapters.
+  - OutcomeSheet renders Edit only when the adapter supplies an unambiguous questionId.
+risks:
+  - Questions not visited in this interview remain available through the existing contact flow; no new interview branch is invented.
+  - Verification uses synthetic component tests, not a live backend or browser deployment.
+grader: Independent Fable review requested through the coordinating session; no verdict recorded yet.
+pii: none

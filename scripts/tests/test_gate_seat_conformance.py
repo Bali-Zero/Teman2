@@ -29,8 +29,22 @@ It does NOT re-point `FABLE_GATE`. Changing which model the v3 protocol would
 invoke is a design decision, not a docstring correction, and folding it into
 this change would be exactly the "fix of a fix" depth the lane forbids.
 
-The retired seat is not hardcoded here: it is read from CLAUDE.md, so a future
-ruling that retires a different model updates this test by updating doctrine.
+The retired seat is not hardcoded here: it is read from the routing ruling
+itself, so a future ruling that retires a different model updates this test by
+updating doctrine.
+
+WHERE THE RULING LIVES (moved 2026-09-04, PR #5631). This file used to read
+the retirement sentence out of the root `CLAUDE.md`. The context diet turned
+that file into an index and moved §5 "Agent/LLM Routing & Bans" verbatim into
+`docs/rules/RULINGS.md` — the location the root file's own INDICE now points
+at. The sentence was not deleted and the ruling did not change, so the cure is
+to read the canonical file rather than to copy the sentence back into an index
+that is deliberately no longer carrying it. Run 33994100645 on main is where
+that showed up: three tests red on a premise check, hours after the merge that
+moved the text, because no CI job ran this guard on the PR that moved it. That
+second half is fixed in `worker-plane-review-tests.yml`, which now triggers on
+the doctrine file too — pinned below by
+`test_workflow_triggers_on_the_doctrine_file_this_guard_reads`.
 """
 
 from __future__ import annotations
@@ -44,9 +58,12 @@ import pytest
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 LAUNCHER = REPO_ROOT / "scripts" / "launch_worker_plane_review_panel.py"
 VALIDATOR = REPO_ROOT / "scripts" / "check_worker_plane_review.py"
-DOCTRINE = REPO_ROOT / "CLAUDE.md"
+# §5 "Agent/LLM Routing & Bans" — moved here from the root CLAUDE.md by the
+# 2026-09-04 context diet (PR #5631). The root file is an index and points
+# here; this is where the ruling text actually lives.
+DOCTRINE = REPO_ROOT / "docs" / "rules" / "RULINGS.md"
 
-# The sentence in CLAUDE.md §5 that retires a model from every automated route.
+# The sentence in RULINGS.md §5 that retires a model from every automated route.
 # Anchored on the ruling's own words, not on a model name, so the name comes
 # from doctrine rather than from this file.
 RETIREMENT_RE = re.compile(
@@ -60,14 +77,16 @@ def _doctrine_text() -> str:
 
 
 def retired_model() -> str:
-    """The model CLAUDE.md says no automated route may reach."""
+    """The model the routing ruling says no automated route may reach."""
     m = RETIREMENT_RE.search(_doctrine_text())
     if not m:
         pytest.fail(
-            "CLAUDE.md no longer carries the retirement sentence this test reads "
-            "('… is simply not routed to by any doctrine …'). Either the ruling "
-            "changed — in which case update this anchor deliberately — or the "
-            "sentence was reworded and this guard has silently stopped guarding."
+            f"{DOCTRINE.relative_to(REPO_ROOT)} no longer carries the retirement "
+            "sentence this test reads ('… is simply not routed to by any doctrine "
+            "…'). Either the ruling changed — in which case update this anchor "
+            "deliberately — or the sentence was moved or reworded and this guard "
+            "has silently stopped guarding. It moved once already, from CLAUDE.md "
+            "to docs/rules/RULINGS.md, in the 2026-09-04 context diet."
         )
     return m.group("model")
 
@@ -127,7 +146,8 @@ def test_launcher_docstring_does_not_name_the_retired_model_as_the_gate() -> Non
     ]
     assert not offenders, (
         f"{LAUNCHER.name}'s docstring asserts {short} is the sequential final "
-        f"gate, but CLAUDE.md retired `{model}` from every automated route "
+        f"gate, but docs/rules/RULINGS.md retired `{model}` from every automated "
+        f"route "
         f"(ruling 2026-08-20). The gate seat is Opus 5. Offending sentence(s): "
         f"{offenders}"
     )
@@ -168,7 +188,7 @@ def test_arming_flag_is_false_while_the_gate_seat_is_the_retired_model() -> None
 
     assert not (gate_seat_is_retired and flag_on), (
         f"V3_FINAL_GATE_READY is True while the sequential gate seat still "
-        f"requests `{model}`, which CLAUDE.md retired from every automated "
+        f"requests `{model}`, which docs/rules/RULINGS.md retired from every automated "
         "route. Re-point the gate seat to the ruled model BEFORE arming the "
         "protocol — arming it as-is would auto-route to a retired seat."
     )
@@ -228,4 +248,66 @@ def test_this_guard_is_actually_executed_by_its_workflow() -> None:
         f"{me}.py is not named in: {missing}. A guard its workflow does not "
         "execute is decorative — it reports nothing, forbids nothing, and its "
         "green is indistinguishable from a real one (superscar #2)."
+    )
+
+
+def test_workflow_triggers_on_the_doctrine_file_this_guard_reads() -> None:
+    """The half of run 33994100645 that was not the anchor.
+
+    This guard reads its retired-model name out of a doctrine file. If the
+    workflow that executes it does not fire when THAT file changes, the PR
+    which edits the ruling is green and main goes red hours later, on some
+    unrelated push that happens to touch a path the workflow does watch. That
+    is exactly what happened when the 2026-09-04 context diet moved §5 out of
+    CLAUDE.md: the diet PR touched no worker-plane surface, the sentinel said
+    success, and the three tests below failed on main afterwards.
+
+    Both trigger surfaces must name the doctrine file, for the same reason
+    the pin above wants all three: `push.paths` catches a direct push to
+    main, the pull_request sentinel regex decides whether the suite runs at
+    all on a PR, and naming it in one but not the other is a guard that fires
+    on some events and not others.
+    """
+    wf = REPO_ROOT / ".github" / "workflows" / "worker-plane-review-tests.yml"
+    assert wf.is_file(), f"{wf} is missing — this pin cannot verify anything"
+    # Comments are stripped before matching. A path named only in a `#` line
+    # documents a trigger, it does not create one, and a pin that cannot tell
+    # the two apart would go green on a diff that deleted the trigger and left
+    # the comment (raised by kimi-code/k3 on this PR). The remaining honest
+    # limit, recorded rather than hidden: this reads TEXT, so re-quoting the
+    # entry with single quotes would go red on a change that is semantically
+    # inert. Every workflow in this repo is prettier-shaped with double quotes,
+    # and a false red here is a five-second fix, whereas the false green this
+    # replaces cost a red main.
+    src = "\n".join(
+        line for line in wf.read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("#")
+    )
+    rel = DOCTRINE.relative_to(REPO_ROOT).as_posix()
+
+    missing = [
+        name
+        for name, present in (
+            ("push.paths", f'"{rel}"' in src),
+            ("pull_request sentinel regex", rel.replace(".", "\\.") in src),
+        )
+        if not present
+    ]
+    assert not missing, (
+        f"{rel} is the file this guard reads its retired-model name from, but "
+        f"worker-plane-review-tests.yml does not trigger on it in: {missing}. "
+        "The PR that moves or rewords the ruling would stay green and main "
+        "would go red later, which is how run 33994100645 happened."
+    )
+
+    # A RENAME is a move too, and it is the one shape the sentinel misses by
+    # default: `git diff --name-only` with rename detection on prints only the
+    # DESTINATION path, so renaming the doctrine file away shows a name this
+    # regex does not know and the suite never runs on that PR. Verified in a
+    # scratch repo: one path printed by default, two with --no-renames.
+    assert "--no-renames" in src, (
+        "the pull_request sentinel's `git diff --name-only` no longer passes "
+        "--no-renames, so a pure RENAME of the doctrine file prints only its "
+        "new path, misses the relevant-paths regex, and the PR that moved the "
+        "ruling runs this guard nowhere."
     )

@@ -1,0 +1,32 @@
+• All verification is done — tests pass (511), fixture hashes independently recompute, and I probed the rule-1 derivation live. Here is the review.
+
+  ---
+
+  SEVERITY | file:line | defect | consequence
+  BLOCKER | apps/backend-rag/backend/tests/unit/research_os/research_os_admission_reference.py:163 | B2's cure derives by DIGIT-GROUP INTERSECTION (`value_digits & _digit_groups(quoted_text)`), not by occurrence of the value: I ran it — `_object_value_occurs_in_span("1,234,000 days of detention", "The processing fee … is IDR 1,234,000")` returns `True`, as does `"a fine of IDR 1,234,000 per MONTH"`; subject_ref and predicate are still presence-checked only | a fabricated triple whose figure coincidentally appears anywhere in the span is ADMITTED as `derived_from_span`, so `statement_not_from_source` still does not derive the statement from the span — the exact fabrication class the module docstring (lines 15–16) claims to exclude; the new negative test (test_research_os_admission_rows.py:368-376) only exercises a value with DISJOINT digits, so a stub doing intersection passes it
+  LOW | apps/backend-rag/backend/tests/unit/research_os/research_os_reader_reference.py:437-440 vs 453-461 | `_group` docstring says "An edge is NEVER silently dropped", but an edge whose refs name no member under THIS subject_key falls through both lookups and is dropped without a trace | docstring overclaims the invariant; a future maintainer relying on "never dropped" for cross-key edges is misled (the in-scope wrong-family case IS handled — tested at test_research_os_temporal_rows.py:569-581)
+  LOW | apps/backend-rag/backend/tests/unit/research_os/test_research_os_admission_rows.py:379-401 | the two-defect ordering pin covers adjacencies (3,4), (4,5), (6,7), and (1,…,2) via the legacy row at :179-189, but (7,8), (8,9), (9,10) remain unpinned | a swap among retention/classification/review/family rules stays green
+  LOW | apps/backend-rag/backend/tests/unit/research_os/research_os_admission_reference.py:158-159 | boolean `object_ref_or_value` falls back to a substring check for "true"/"false" — a span containing the word "true" admits `True` | marginal; no fixture exercises it, but it is an admitted-value path that proves nothing about the span
+
+  Item table (round-1 findings vs CODE):
+
+  | Item | Verdict | Evidence |
+  |---|---|---|
+  | B1 rule-5 binding | CURED | `research_os_admission_reference.py:299-310` (uri == document_id, identity/payload hashes == document_content_hash), stated-hash rejection at :295-297; each gate proven individually by `test_research_os_admission_rows.py:288-333` |
+  | B2 rule-1 derivation | PARTIALLY | `:190-192` no longer trusts the flag alone, but the "derivation" at `:163` is digit-group intersection — fabricated values sharing any figure pass (proven live, BLOCKER above) |
+  | B3 rule-3 version resolution | CURED | `_source_version_resolves` `:315-336` resolves id→registered body hash and compares to the record's hash; fixture `document_versions` verified to carry sha256(body); tests `:336-347` |
+  | B4 rule-4 locator resolution | CURED | `_span_is_exact` `:210-238` requires `body[start:end] == quoted`; I verified all five fixture locator offsets slice exactly to the quoted text; tests `:350-365` cover fictional + relocated locators |
+  | B5 reader consumes shipped edge | CURED | `research_os_reader_reference.py:107-110,452-461` converts uuid→`naga.claim_family.<uuid>` RegisteredName (matches graph.py:118 equality and the edge schema's RegisteredName pattern); `test_research_os_temporal_rows.py:545-566` drives the COMMITTED edge bytes, both directions |
+  | B6 structural non-unique before temporal | CURED | `:241-245` computes `members − outgoing` inside `_integrity_reasons`, called at `read():373-377` before any `known_at` filter — mirrors graph.py:135-139; future-dated fork quarantines (`:584-610`) |
+  | N1 canonical refs carry object_id | CURED | `_ref_id` `:113-124` reads `object_kind`/`object_id`; edge schema ExactObjectRef confirms no `claim_id` key exists |
+  | N2 consequential from statement | CURED | `_is_consequential` `:318-334` derives from numeric value / regulation subject_ref; pinned against a committed canonical claim carrying no flag (`:613-628`) |
+  | N3 families named separately | CURED | `:400-402` per-family quarantine entries; asserted at `test_research_os_temporal_rows.py:491` |
+  | N4 correction pair carries subject_key | CURED | fixture lines 1353-1363 and 1417-1427; hashes independently recomputed OK |
+  | MEDIUM: malformed-event rehashed | CURED | `:271-279` rehashes after deleting `classification`; intel_event.schema.json requires `classification`, so the validation gates are genuinely exercised |
+  | MEDIUM: two-defect ordering | CURED (residual LOW) | three adjacent pairs pinned at `:379-401` + legacy row; tail adjacencies unpinned (LOW above) |
+  | MEDIUM: figures unmistakably invented | CURED | Rp1.234.567 / Rp9.876.543.210 / 23rd-of-seventh-month / USD 4,321 / 13 years — none matches a real rate; rptka-04's internal 1200000-vs-USD-1,200 contradiction is gone; all body/quote/object hashes recompute (verified by execution, not trust) |
+
+  Suite: 511 passed, 0 failed (`tests/unit/research_os`, venv interpreter, worktree HEAD e6754556e1).
+
+  REWORK — rule 1's digit-group intersection (research_os_admission_reference.py:163) still admits a fabricated triple whose figure coincidentally occurs in the quoted span: "1,234,000 days of detention" passes against a span that only states a fee of IDR 1,234,000, so `statement_not_from_source` remains a presence heuristic, not a derivation.
+

@@ -26,6 +26,7 @@ real findings exist.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import sys
@@ -38,18 +39,27 @@ except ImportError:  # pragma: no cover
     sys.stderr.write("PyYAML is required (pip install pyyaml)\n")
     sys.exit(1)
 
+# scripts/lib is not an importable package, so the shared matcher is loaded by path.
+_spec = importlib.util.spec_from_file_location(
+    "nuzantara_cve_exceptions", Path(__file__).resolve().parent / "lib" / "cve_exceptions.py"
+)
+assert _spec is not None and _spec.loader is not None
+cve_exceptions = importlib.util.module_from_spec(_spec)
+sys.modules["nuzantara_cve_exceptions"] = cve_exceptions
+_spec.loader.exec_module(cve_exceptions)
+
 
 BLOCKING_SEVERITIES = {"high", "critical"}
 
 
-def _load_accepted_cves(exceptions_path: Path) -> set[str]:
-    if not exceptions_path.is_file():
-        return set()
-    data = yaml.safe_load(exceptions_path.read_text()) or {}
-    raw = data.get("exceptions") if isinstance(data, dict) else None
-    if not isinstance(raw, list):
-        return set()
-    return {e["cve_id"] for e in raw if isinstance(e, dict) and "cve_id" in e}
+def _load_accepted_cves(exceptions_path: Path) -> set[cve_exceptions.AcceptedKey]:
+    """Thin shim over the shared matcher — see scripts/lib/cve_exceptions.py.
+
+    The two filters used to carry independent copies of this, both keying on the CVE id
+    alone while ignoring the `package` their own schema requires. Two copies of a
+    security-matching rule that must agree is one copy too many (superscar #1).
+    """
+    return cve_exceptions.load_accepted(exceptions_path)
 
 
 def _iter_snyk_findings(report: Any) -> list[dict[str, Any]]:
@@ -120,15 +130,25 @@ def main(argv: list[str]) -> int:
         if severity not in BLOCKING_SEVERITIES:
             continue
         cves = _cve_ids(finding)
-        package = finding.get("packageName") or finding.get("moduleName") or "(unknown)"
+        # The RAW name is what matching sees; "(unknown)" is a DISPLAY placeholder, and an
+        # exception written `package: "(unknown)"` used to match every packageless finding
+        # on both scanners — a wildcard made of a display string, in a gate that refuses
+        # wildcards. Kept apart deliberately (kimi-code/k3, 2026-09-05).
+        raw_package = finding.get("packageName") or finding.get("moduleName")
+        package = raw_package or "(unknown)"
         if not cves:
             # No CVE id → cannot be accepted by exception — fail.
             unaccepted.append(("(no CVE id)", package, severity))
             continue
-        if any(cve in accepted for cve in cves):
-            accepted_hits.append((cves[0], package, severity))
+        # EVERY cve on the finding must be excused, not any of them: a finding carrying an
+        # accepted CVE and an unaccepted one was wholly suppressed, and the printed
+        # "evidence" named cves[0] even when the match was another. Report the first
+        # UNACCEPTED id, which is the one a reader has to act on.
+        unexcused = [c for c in cves if not cve_exceptions.is_accepted(accepted, c, raw_package)]
+        if unexcused:
+            unaccepted.append((unexcused[0], package, severity))
         else:
-            unaccepted.append((cves[0], package, severity))
+            accepted_hits.append((cves[0], package, severity))
 
     if accepted_hits:
         print("Accepted (in .security/exceptions.yaml):")

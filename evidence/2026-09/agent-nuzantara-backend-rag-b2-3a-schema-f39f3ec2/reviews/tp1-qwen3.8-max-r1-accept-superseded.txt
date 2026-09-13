@@ -1,0 +1,28 @@
+tp1-qwen3.8-max r1 on SUPERSEDED bytes 314 sha256 8064d528... (prompt reviews/prompt-r1.txt; scripts/tp1_call.py --model qwen3.8-max --effort high)
+tp1 r1 start 2026-09-13T11:22:12Z
+tp1 r1 exit=0 end 2026-09-13T11:29:11Z
+Note: tp1_call.py's output filter replaced the sha256 in the seat's VERDICT line with <REDACTED>; round 2 asks for the digest in 8-hex groups.
+----- seat output verbatim -----
+Findings:
+
+1. **MINOR — `IF NOT EXISTS` can silently mask schema drift / wrong pre-existing column type.**  
+   Falsifiable test: create `wa_outbox.abstained_at` as `text` before applying 314, then run the forward SQL. Postgres emits a NOTICE and leaves the column as `text`; the migration still records 314 as applied. The required exact `\d wa_outbox` probe would catch the wrong type, but the migration itself would not fail. Worse, the stored rollback would later `DROP COLUMN` a column that 314 did not create. This is not active on the measured production base (no such columns exist), but it weakens the migration’s fail-fast property.
+
+2. **MINOR — `ACCESS EXCLUSIVE` DDL without `lock_timeout` / `statement_timeout`.**  
+   Falsifiable evidence: Squawk without the CI exclude list reports `require-lock-timeout` and `<REDACTED>`. `ALTER TABLE ... ADD COLUMN` takes an `ACCESS EXCLUSIVE` lock even when it is metadata-only. If any long-running transaction is holding a lock on `wa_outbox`, the migration can wait indefinitely and then queue subsequent workers behind the pending DDL. The table is small and no rewrite occurs, so the uncontended case is fast, but the live-worker lock-queue risk is real. CI policy currently accepts this via excludes.
+
+3. **MINOR — Stored rollback is destructive and can conflict with §3 “keep columns” production rollback policy.**  
+   Falsifiable path: `rollback_migration` executes the stored rollback SQL and clears ledgers. If invoked in production after B2.3b has started writing, it will drop `abstained_at` and `evidence_score`, destroying the evidence columns. §3 says routine production rollback should retire the writer and keep the nullable columns; schema down is a separately authorized destructive operation. The file’s comments warn about this, but SQL comments do not enforce the policy. This rollback section is nonetheless required for isolated up/down/up validation.
+
+4. **NOTE — Previous-image/fresh-image application safety is asserted, not proven by this SQL-only evidence pack.**  
+   If any existing code path uses `SELECT *` with positional unpacking, strict row-shape mapping, or `INSERT INTO wa_outbox VALUES (...)` without an explicit column list, adding two trailing columns could break that code even though no `wa_outbox` heap row is touched. The spec/assertion says the running image does not read these columns, but the frozen migration and DB receipts alone cannot prove absence of brittle row-shape consumers.
+
+5. **NOTE — Explicit `NULL` and `NUMERIC` without precision are not spec deviations.**  
+   `NULL` is redundant but valid and does not create a default. `NUMERIC` without precision matches the spec wording `numeric NULL`; it permits arbitrary precision and `NaN`, but the spec does not require precision constraints or value checks in B2.3a.
+
+6. **NOTE — Operational claims in comments are consistent with supplied facts but not independently verifiable from the frozen SQL alone.**  
+   The claims about fly-deploy’s previous-image migration window, no row rewrite on PG ≥ 11, and mixed-version safety align with the runner facts and Dux receipts. No demonstrably false claim is provable from the provided material, but code-level verification of “never reads either column” is outside this file.
+
+No BLOCKER found: on the measured base and production facts, the migration adds exactly two nullable, defaultless columns, does not rewrite or touch `wa_outbox` rows, uses the correct rollback marker, passes the required lints under CI policy, and the rollback order is reverse-safe.
+
+VERDICT {"ok": true, "sha256": "<REDACTED>", "blockers": 0, "majors": 0, "minors": 3}

@@ -27,34 +27,13 @@ import sys
 
 # advisory id -> set of node paths the waiver covers, or None for "any path".
 #
-# Temporary waiver (2026-07-24, owner-approved, REMOVE when patched versions
-# ship): 3 advisories with NO patched release available — every installed
-# version is already the latest published.
-#   GHSA-frvp-7c67-39w9  @hono/node-server path traversal (Windows-only %5C)
-#   GHSA-9mqv-5hh9-4cgg  @hono/node-server WebSocket aborted-handshake mem-leak
-#   GHSA-c96f-x56v-gq3h  find-my-way HTTP2 DDoS
-# Reachability: @hono/node-server enters via @modelcontextprotocol/sdk (used for
-# its optional HTTP transport; our MCP servers run stdio) and find-my-way via
-# @prisma/dev (local dev tooling).
-#
-# GHSA-5p4m-2wfm-xmqj (2026-08-07): js-yaml quadratic CPU on !!omap. Waived for
-# ONE path only. Why it cannot be fixed:
-#   - the 3.x line has no backport (the advisory title says so);
-#   - gray-matter@4.0.3 is the latest published and pins `js-yaml: ^3.13.1`;
-#   - forcing 4.3.1 breaks gray-matter at import — `lib/engines.js:16` does
-#     `yaml.safeLoad.bind(yaml)` and 4.x removed safeLoad/safeDump, so the bind
-#     throws on undefined. gray-matter is a PRODUCTION dep of apps/mouth.
-# Reachability: the only callers are apps/mouth/src/lib/blog/articles.ts and
-# scripts/generate-llms-full.ts, both `fs.readFileSync` over
-# `src/content/articles` — git-tracked markdown we author, parsed at build time.
-# No route feeds user-supplied YAML to it. Re-check that claim before extending
-# this waiver to any other node.
-WAIVE: dict[str, set[str] | None] = {
-    "GHSA-frvp-7c67-39w9": None,
-    "GHSA-9mqv-5hh9-4cgg": None,
-    "GHSA-c96f-x56v-gq3h": None,
-    "GHSA-5p4m-2wfm-xmqj": {"node_modules/gray-matter/node_modules/js-yaml"},
-}
+# Retired the July/August exceptions on 2026-09-11 after checking the lockfile
+# against the upstream advisory ranges: @hono/node-server 2.0.11 contains the
+# frvp/9mqv fixes (2.0.5/2.0.10), find-my-way 9.7.0 fixes c96f, and js-yaml
+# 3.15.1 backports 5p4m without a gray-matter-breaking 4.x override.
+# A future regression must be reported again. New advisories are not covered
+# by the retired approvals. Evidence: research/secondhome/2026-09-11-f7-reverification.md.
+WAIVE: dict[str, set[str] | None] = {}
 
 BLOCKING = ("high", "critical")
 

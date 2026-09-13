@@ -917,7 +917,7 @@ SponsorPermitBasisFact = Annotated[
 
 
 # ---------------------------------------------------------------------------
-# ApplicantFacts (spec §2) — the 45 applicant-collected fact paths, each
+# ApplicantFacts (spec §2) — the 46 applicant-collected fact paths, each
 # typed per its own *Fact union above. Field names use Python-safe
 # identifiers with the dotted wire name as the Pydantic alias (same pattern
 # as ``TimeRange.from_``/``alias="from"``) since a dotted path cannot be a
@@ -1067,6 +1067,9 @@ class ApplicantFactsData(BaseModel):
         MoneyFact, Field(alias="investment.paid_up_capital_idr")
     ]
     investment_proposed_role: Annotated[ProposedRoleFact, Field(alias="investment.proposed_role")]
+    investment_amount_usd: Annotated[
+        MoneyFact, Field(alias="investment.investment_amount_usd")
+    ]
     family_relation_to_sponsor: Annotated[RelationFact, Field(alias="family.relation_to_sponsor")]
     family_sponsor_nationalities: Annotated[
         CountrySetFact, Field(alias="family.sponsor_nationalities")

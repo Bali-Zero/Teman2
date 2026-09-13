@@ -470,8 +470,13 @@ export const COPY = {
     body: "Your saved plan stays on this device unless you copy and share its link.",
     saveButton: "Save on this device",
     savedConfirmation: "Plan saved on this device",
+    saveFailed:
+      "This browser couldn't save your plan. Copy the link below or save a PDF to keep it.",
     copyLinkButton: "Copy plan link",
     copiedConfirmation: "Plan link copied",
+    copyFailed:
+      "Copying is unavailable in this browser. Select and copy the plan link below.",
+    manualLinkLabel: "Plan link",
     printButton: "Print / Save as PDF",
     linkWarning:
       "Anyone who receives the link may be able to view the answers it contains.",

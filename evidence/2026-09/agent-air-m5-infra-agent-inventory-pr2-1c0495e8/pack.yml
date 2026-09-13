@@ -1,0 +1,208 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref:
+  'Handoff mandate from Zero, 2026-09-04: "bonifica completa" of the subagent inventory. PR-1
+  (#5625, merged fcc1d9aedc) armed the guard over `.claude/agents/` and deliberately changed no definition.
+  This is PR-2: the two definitions a LIVE cron actually consumes stop being untracked machine-local files.
+  One concern. The archive of the 12 `wr3-*` and 10 dormant HOME-only defs, and the de-stale pass, remain
+  separate PRs.'
+diff:
+  files: 7
+  net_lines: 504
+  note:
+    "475 of the 504 net lines are the two vendored agent definitions themselves — content that moves
+    into tracking as an atomic unit and cannot be split without vendoring half a spec. The behavioural
+    surface is 29 lines across three files: two wrapper blocks and two `.gitignore` allowlist entries."
+lanes:
+  - lane: pr2-ground
+    role: read
+    seat:
+      'claude-opus-5 (conducting session, M5). Refused the mandate''s own numbers and re-measured every
+      one on `origin/main` and on the live machines. Three of the handoff''s premises did not survive: the
+      "3 live agents" are TWO (`yield-optimizer`''s plist sits in `~/Library/LaunchAgents/_retired/…retired-20260820`
+      and its successor `s7-yield-run.sh` uses no `--agent`); the "26 HOME-only defs" are 25 and the "11
+      orphans" are 10; and `competitor-monitor` runs from `~/scripts/`, a HOME-fork wrapper, not from the
+      repo copy the handoff pointed at. Also measured the root cause the handoff never named: `.gitignore:549`
+      ignores `.claude/agents/*` behind an explicit allowlist, which is WHY these files were never tracked
+      — `git add -A` had been skipping them in silence.'
+  - lane: pr2-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session, M5). Vendored both defs, added the two allowlist lines, wrote
+      the SPEC_PATH block, and cured the two defects the vendoring itself introduces or makes canonical
+      (4 dead `~/Desktop/nuzantara` references; the hardcoded Telegram `chat_id 1125336968`, a mailbox belonging
+      to an account this org no longer controls). Verified Prettier changed only formatting via a whitespace-and-rule-normalised
+      hash on both files — the first, cruder token-set probe returned a FALSE "unchanged" on two EMPTY files
+      because `set -- $p` does not word-split under zsh, and was rerun explicitly.
+  - lane: pr2-refute-codex
+    role: review
+    seat:
+      codex-gpt-5.6-sol, `codex exec --sandbox read-only -c model_reasoning_effort=xhigh`, cross-family,
+      fresh context, given the round-1 diff and instructed to construct defeating inputs. Returned 12 findings
+      (1 BLOCKER, 6 HIGH) and 4 named failed attacks.
+  - lane: pr2-refute-kimi
+    role: review
+    seat:
+      kimi-code/k3, cross-family, same round-1 diff, independently. Returned 6 findings (2 HIGH) and
+      7 named failed attacks, including one it explicitly reported as a failed attack against its own leading
+      hypothesis after reading the hook source.
+seat_diversity: satisfied
+seat_diversity_note:
+  'ONE build lane, so the ">= 2 build lanes" non-Anthropic BUILD-seat rule does not
+  bind by its own terms; no second build lane was invented to satisfy a rule that does not apply. The
+  cross-family pressure sits on REVIEW, and it earned its place here: the two seats CONVERGED from different
+  directions on the same two defects, and their convergence is what killed the round-1 design rather than
+  patching it.'
+residual_risks:
+  - THE HARNESS DEFINITION IS STILL THE HOME COPY. `--agent <name>` resolves frontmatter and system prompt
+    from `~/.claude/agents/`; only the OPERATIVE SPEC — the file the prompt tells the model to read and
+    follow — moves into the repo. Making the harness load the repo copy requires cwd=repo, which is exactly
+    what round 2 removed. Left to its own PR.
+  - AFTER MERGE THE COMPETITOR WRAPPER IS NOT YET LIVE. launchd on Pro runs `~/scripts/competitor-monitor-run.sh`,
+    a DECLARED home-fork pair byte-identical to the repo copy today. Merging makes it DIVERGE; the edit
+    takes effect only when the HOME copy is resynced. `~/scripts/` is outside `~/.claude/`, so `host_boundary`
+    does not block it and the session does this itself — PROVE-LIVE step, not an operator hand-off.
+  - "`nb-curator.daily` IS ALREADY RED AND THIS PR NEITHER CAUSES NOR CURES IT. Baselined on Pro BEFORE
+    the change: last exit 2, `ARTIFACT GATE FAILED (rc=3) despite brain exit=0`, because the agent-worktree-isolation
+    hook refused its report write into the main checkout. Both review seats independently confirmed that
+    hook keys on the TARGET PATH with REPO_ROOT hard-falling-back to `~/nuzantara`, i.e. cwd-independent
+    — kimi recorded this as a FAILED attack against its own leading hypothesis."
+  - "EIGHT INHERITED DEFECTS SHIP UNCURED, DELIBERATELY (regola 8). The review seats found them INSIDE the
+    vendored bodies: a vision pre-filter that never attaches an image, two `nlm` command forms that exit
+    2 against the installed CLI, a Mode A path that hard-fails on M5, three conflicting schedules in one
+    file, stale model names, a 3-post sample behind a '30-day scan', a self-contradictory mandatory-vision
+    rule, and price examples primed as current facts to an agent with no PricingTool. The same bytes ran
+    yesterday untracked; curing them in the PR that moves them would make the diff unreviewable. Ledgered
+    with a proof-of-armed each."
+  - A SECOND nb-curator ENTRY POINT IS NOT REPOINTED. `run-nb-curator-mode-c.sh` invokes `claude -p` with
+    no `--agent` and no spec path in its prompt, relying on HOME autoload. Its fix is a different shape
+    from the one-line repoint and is ledgered separately.
+  - THE 7 SHADOW PAIRS UNDER `~/.claude/agents/` STAY STALE. `host_boundary.py` refuses every write under
+    `~/.claude/` and `agents/` is not in its carve-out, so no session can resync them. Chronic ledger row,
+    owner `operator[control-plane]`. This PR does not widen a security guard to close it.
+pii_scan: clean
+receipts:
+  - claim:
+      "`.claude/agents/*` is gitignored behind an explicit allowlist — the root cause of why these
+      two defs were never tracked, which the mandate never named"
+    cmd:
+      git check-ignore -v .claude/agents/competitor-monitor.md ; then, after the two `!` lines, git status
+      --short
+    result:
+      "BEFORE: `.gitignore:549:.claude/agents/*` for both files — `git add -A` was skipping them in
+      silence. AFTER: both show as `A`."
+    exit: 0
+    ts: "2026-09-04T07:15:00Z"
+    seat: claude-opus-5 (conducting session, M5)
+  - claim:
+      launchd gives these jobs cwd=/ — the leg the brief itself called weakest, closed by measurement
+      rather than by citing documentation
+    cmd:
+      "on Pro: bootstrap a throwaway LaunchAgent with no WorkingDirectory running `pwd > /tmp/cwdprobe.out`,
+      read it, bootout, remove, confirm the label is gone"
+    result:
+      "`pwd` printed `/`. Cleanup confirmed: `launchctl list | grep cwdprobe` empty, both temp files
+      removed."
+    exit: 0
+    ts: "2026-09-04T07:33:00Z"
+    seat: claude-opus-5 subagent (general-purpose, sonnet) executing on Pro over ssh
+  - claim: the cascade script cannot supply the repo as cwd on its own
+    cmd: grep for `cd`, `--add-dir`, `--cwd` and the final claude invocation in ~/scripts/claude-cascade.sh
+    result:
+      none of the three appear; it invokes `"$bin" "${CLAUDE_ARGS[@]}"` inheriting the caller's cwd.
+      Both review seats independently confirmed it is otherwise cwd-agnostic (`${0:A:h}`-resolved libs,
+      mktemp-absolute temp files).
+    exit: 0
+    ts: "2026-09-04T06:58:00Z"
+    seat: claude-opus-5 (conducting session, M5)
+  - claim: which crons are actually live, and yield-optimizer is not among them
+    cmd: "on Pro: launchctl list | grep -Ei 'competitor|yield|nb-curator' ; ls ~/Library/LaunchAgents/"
+    result:
+      com.balizero.competitor-monitor.monthly loaded (last exit 0); com.balizero.nb-curator.daily
+      loaded (last exit 2); com.balizero.s7-yield.weekly loaded but its script uses no --agent; yield-optimizer's
+      own plist is under ~/Library/LaunchAgents/_retired/…retired-20260820. Mini runs none of the three.
+    exit: 0
+    ts: "2026-09-04T07:05:00Z"
+    seat: claude-opus-5 (conducting session, M5)
+  - claim:
+      the two HOME copies differ per machine only in the description line, so vendoring M5's is a choice
+      confined to one line
+    cmd: sha over `tail -n +4` of each def on M5 and on Pro; diff the frontmatter
+    result:
+      "bodies byte-identical (24aba4a86d84 / ee59ff48ccbc on both machines). Pro's descriptions are
+      the pre-diet long form and name `~/Desktop/nuzantara`, a path this repo left on 2026-07-16; M5's
+      carry the #5634 one-sentence trim."
+    exit: 0
+    ts: "2026-09-04T07:10:00Z"
+    seat: claude-opus-5 (conducting session, M5)
+  - claim: the SPEC_PATH block picks the right spec in every state and is never silent about which it picked
+    cmd:
+      extract the block into a scratch script; run with repo present / repo absent / BOTH absent / NUZ_ROOT
+      set to the empty string
+    result:
+      "chose REPO / HOME / none / HOME; WARN emitted 0 / 1 / 1 / 1 times; the `spec: <path>` log line
+      present in all four. Empty NUZ_ROOT collapses to the default under `${NUZ_ROOT:-…}` and does not trip
+      `set -u`."
+    exit: 0
+    ts: "2026-09-04T07:52:00Z"
+    seat: claude-opus-5 (conducting session, M5)
+  - claim: round 2 changes no process cwd anywhere
+    cmd: zsh -n and bash -n on both scripts; git diff origin/main -- '*.sh' | grep -c '^+.*\bcd '
+    result: both parse clean under both shells; the added-`cd` count is 0.
+    exit: 0
+    ts: "2026-09-04T07:50:00Z"
+    seat: claude-opus-5 (conducting session, M5)
+  - claim:
+      "the two vendored defs pass the agent-def floor armed by PR #5625 — the guard gating its own
+      first new files"
+    cmd: python3 -m pytest scripts/tests/test_agent_defs_model_pins.py -q
+    result: 21 passed.
+    exit: 0
+    ts: "2026-09-04T07:20:00Z"
+    seat: claude-opus-5 (conducting session, M5)
+  - claim: Prettier reformatted the vendored bodies without touching substance (W112)
+    cmd: sha over `tr -d '[:space:]' | sed 's/---*/-/g'` before and after --write, both files
+    result:
+      "equal on both. NOTE: the first, cruder token-set probe reported a FALSE 'unchanged' because
+      `set -- $p` does not word-split under zsh and it hashed two EMPTY files; it was rerun with explicit
+      arguments and the file sizes printed alongside."
+    exit: 0
+    ts: "2026-09-04T07:25:00Z"
+    seat: claude-opus-5 (conducting session, M5)
+dissent:
+  - status: RETRACTED
+    seat: codex-gpt-5.6-sol and kimi-code/k3 (cross-family, independently, no shared context)
+    objection:
+      'The round-1 `cd "$NUZ_ROOT"` was a safe way to make the repo definition the one the harness
+      loads. — Codex named the sharp end — `git add`/`git commit` against the main checkout start succeeding
+      inside a job whose prompt carries no no-git prohibition, a failure this repo''s ledger already closed
+      three times. Kimi named the rest: SessionStart hooks injecting into a 3-minute-capped print run, a
+      fail-closed data-plane guard never exercised under launchd''s environment, and a builder contract
+      in system context telling the model reports belong in a worktree while its prompt says write into
+      the main checkout. The design was withdrawn, not patched: round 2 changes no cwd at all.'
+  - status: RETRACTED
+    seat: kimi-code/k3 (cross-family) — corroborated by codex-gpt-5.6-sol's BLOCKER
+    objection:
+      The round-1 fallback was the safe direction — WARN and continue. — It WARNed and continued
+      while the prompt still named the repo path, so the fallback run went spec-less. For nb-curator that
+      is the PRIMARY brain (agy), which does no `--agent` resolution and whose ONLY spec source is that
+      read instruction. Round 2 resolves one SPEC_PATH, falls back to the machine-local copy, and logs the
+      chosen path every run.
+  - status: RETRACTED
+    seat: kimi-code/k3 (cross-family), against its own leading hypothesis
+    objection:
+      "The agent-worktree hooks would newly block the report write once the cron cd'd into the
+      repo. — It read `worktree_file_write_check.py` and reported the attack as FAILED: the hook keys on
+      the Write tool's target path with REPO_ROOT hard-falling-back to `~/nuzantara`, so the block is cwd-independent
+      and fires today at cwd=/ equally. Recorded because a refuter that retracts its own best attack is
+      the evidence that the rest of its findings were not pattern-matched."
+  - status: RETRACTED
+    seat: claude-opus-5 (conducting session), on measurement before writing code
+    objection:
+      "The mandate's three live agents are competitor-monitor, nb-curator and yield-optimizer.
+      — `yield-optimizer`'s plist is retired and its successor uses no `--agent`. Its now-dead repo wrapper
+      is left in place rather than deleted here: removing dead code is a different concern from vendoring
+      live specs."
+spend:
+  adversarial_rounds: 2
+  seats: 4

@@ -1,0 +1,118 @@
+task_id: merge-group-dedup-0905
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Reduce merge_group redundancy across security.yml/tests.yml's non-required scanners, without
+  weakening any required context, and without introducing a NEW correctness gap in the process.
+
+  Item 1 (merge_group dedup for non-required scanners): snyk-python, snyk-node, and detect-secrets
+  gained `github.event_name != 'merge_group'` skip conditions, each rewritten (after adversarial
+  review, see dissent below) to state the real, narrower rationale — advisory-only status plus
+  "a different PR's change to this content is already covered by that PR's own pull_request-
+  triggered scan" — rather than a false "byte-identical tree" claim. snyk-docker was ATTEMPTED and
+  REVERTED: this repo's own file already documents a real incident (run 30302472020) where a
+  merge_group run caught a broken Docker build the PR-head run had missed, so deduping it would
+  silently reintroduce a proven historical blind spot. Immune enforcement was never touched, per
+  explicit instruction.
+
+  Item 2 (CodeQL merge_group carry-over): ATTEMPTED and FULLY REVERTED. The original design queried
+  the GitHub Checks API for a completed, successful "CodeQL Analysis (<lang>)" check-run on the PR
+  head SHA and, if found, skipped re-analysis on the merge_group run. Two independent adversarial
+  review seats found the same BLOCKER: a merge_group's synthetic tree (base tip + any earlier-
+  queued-ahead batchmates + this PR) is not provably identical to what the PR's own `pull_request`
+  run analyzed (that run checks out `refs/pull/N/merge`, a moving-target test-merge against
+  whatever the base was AT THAT RUN'S trigger time) — so carry_over=true could report a fake green
+  without having scanned the merge_group commit, exactly the "fail-open to the full scan, never to
+  a fake green" failure this item's own mandate explicitly forbade. Closing that gap correctly
+  needs a closed-loop mechanism (the pull_request run publishing a tree-hash the merge_group run
+  can independently recompute and compare) that this PR's budget does not cover. CodeQL's actual
+  stated requirement — must still report on merge_group, or the queue waits 90 minutes — is already
+  satisfied by the pre-existing, UNCHANGED code: 3 real merge_group runs on 2026-09-04 show CodeQL's
+  slowest leg (python) completing in ~15 minutes, comfortably inside the 90-minute ceiling. No
+  correctness gap is left open by this decision; only a latency optimization is deferred.
+
+  Item 3 (Visa Oracle fullstack smoke hardening): step-level timeouts (uv install combined budget
+  240s / 4min via an inner POSIX `timeout`, the fullstack smoke step 540s / 9min combined for
+  readiness+the test itself — the script has no separable GH-Actions-step phase for the two), an
+  actions/cache for ~/.cache/uv keyed on requirements.lock.txt (this repo's real lock file — there
+  is no uv.lock anywhere, checked), and a one-shot retry scoped to a NAMED hang signature. The FIRST
+  draft gated the retry on `steps.X.outcome == 'cancelled'`; two independent review seats confirmed
+  a step-level `timeout-minutes` firing actually reports `outcome: failure` (SIGINT/SIGKILL then a
+  Failed task result, not a cancellation-token path) — the SAME value a real, non-hang failure
+  produces — which would have silently defeated the retry for exactly the timeout case it was built
+  for. Reworked to detect hangs via the POSIX `timeout` utility's own exit code 124, captured
+  explicitly inside the step's own run: block (never via GitHub Actions' step outcome), plus a
+  `--kill-after=10` safety net and a log-grep for fullstack_smoke.py's internal TimeoutError string
+  ("did not become ready") for the smoke step specifically. A real dependency-resolution error or a
+  real Playwright assertion failure produces neither signal and is never retried.
+
+  Item 4 (verification battery): same discipline as the prior PR in this mandate — actionlint
+  parity (0 findings, both touched files and full repo, vs an origin/main baseline), the 11-file
+  CI-conformance battery, infra/guard-conformance, evidence-pack-lint reproduced the way
+  harness-floor.yml's Gear-3 validate step runs it, and two live cross-family review seats
+  (codex-gpt-5.6-sol, tp1-qwen3.8-max) — here run across TWO rounds each, because the first round
+  found a real BLOCKER that required a substantive design change, not a cosmetic fix.
+constraints:
+  - "Do not touch Immune enforcement's merge_group gating — explicit instruction, unmodified in
+    this diff."
+  - "Never ship a mechanism that can report a required context green without having actually
+    verified the commit it reports for — the standing instruction for item 2 was fail-open to the
+    full scan, never to a fake green; when the only design found could not meet that bar within
+    budget, the correct response was to drop the optimization, not to ship it with a caveat."
+  - "A retry mechanism must never fire on a real failure (a real dependency conflict, a real
+    Playwright assertion) — only on a named, verifiably-hang-specific signal it does not share with
+    a genuine error."
+  - "Every claim about GitHub Actions runner semantics (step outcome on timeout, checkout ref
+    defaults, merge_group ref construction) must be verified — by direct API/file inspection where
+    possible, by at least two independent cross-family review seats where a live empirical test
+    was judged too costly for a non-required, already-safe-by-fail-closed-design question."
+acceptance:
+  - text: >-
+      WHEN a real merge_group run of security.yml executes after this PR, THEN snyk-python,
+      snyk-node, and detect-secrets SHALL be absent from the run (skipped, not merely fast), WHILE
+      snyk-docker and CodeQL (both legs) SHALL still run and report exactly as before this PR.
+    probe: >-
+      gh run list --workflow security.yml --event merge_group --limit 1 ; gh api
+      repos/.../actions/runs/<id>/jobs --jq '.jobs[].name' — confirm the three absent, the two
+      present.
+  - text: "WHEN the workflow files change, actionlint SHALL report no new findings vs origin/main."
+    probe: "actionlint .github/workflows/security.yml .github/workflows/tests.yml ; actionlint (full repo, diff vs origin/main baseline)"
+  - text: >-
+      WHEN the 11-file CI-conformance battery is run, THEY SHALL all still pass (no regression from
+      this PR's edits).
+    probe: >-
+      python3 -m pytest -q scripts/ci/test_change_map.py scripts/tests/test_classifier_extraction_closure.py
+      scripts/ci/test_ring_gating_override.py scripts/tests/test_required_context_map.py
+      scripts/tests/test_check_required_workflow_conformance.py scripts/tests/test_snapshot_required_contexts.py
+      scripts/tests/test_no_push_main_trigger_on_heavy_suites.py scripts/tests/test_lint_trigger_symmetry.py
+      scripts/tests/test_consumer_map.py scripts/tests/test_ci_service_images_use_mirror.py
+      scripts/tests/test_lint_immune_contracts.py
+consumer_map:
+  - "Every future merge_group run of security.yml/tests.yml — ships in this PR, no future job
+    needed. Item 1's observation happens on the next queued PR after this one merges."
+  - "Any human debugging a hung Visa Oracle fullstack smoke or a hung uv install — the retry is
+    automatic and the guard step's error message names exactly which outcome/signal fired."
+  - "No runtime consumer: this diff ships no code into any deployed artifact."
+risks:
+  - "Item 2 was deliberately NOT shipped as an optimization. A future attempt at CodeQL merge_group
+    carry-over needs a closed-loop tree-verification design (not Checks-API-status-only) to avoid
+    reintroducing the same BLOCKER two independent seats found here."
+  - "Item 1's three surviving skips (snyk-python, snyk-node, detect-secrets) depend on their
+    advisory-only (non-required) status — each comment now says explicitly to remove the skip if
+    that status ever changes. Not machine-enforced; a future PR that flips one of these to required
+    without reading the comment would silently reintroduce the same class of gap."
+  - "The `timeout --kill-after=10` safety net does not eliminate hang risk entirely — a process that
+    ignores SIGTERM AND SIGKILL (extremely rare, e.g. an uninterruptible kernel wait) would still
+    exceed the inner budget; the outer GH Actions step-level timeout-minutes remains the final
+    backstop in that case, at the cost of that specific hang not being retried."
+  - "The `${PIPESTATUS[0]}` capture in the smoke step's tee pipe does not check tee's own exit
+    status — an extremely low-probability write failure to $RUNNER_TEMP (a GitHub-Actions-
+    guaranteed-writable path) could in principle be masked. Flagged by review, not fixed: the
+    marginal risk did not justify the added complexity within this PR's budget."
+grader: |
+  Independent seat, generator != grader: this file's author wrote the workflow diff and cannot gate
+  it. The grader should specifically check that item 2 was actually reverted (no
+  scripts/ci/codeql_merge_group_carryover.py file, no new step/permission in security.yml's codeql
+  job) rather than merely reading the brief's claim, and should independently confirm the
+  snyk-docker revert against the cited incident (run 30302472020) in the file's own comment.

@@ -1,0 +1,140 @@
+{
+  "observed_at": "2026-09-06T04:11:26.587811+00:00",
+  "mode": "catalog",
+  "runtime": {
+    "runtime_version": "codex-cli 0.149.0",
+    "binary_hash": "f4a74117b8142cda581c95ff753abf4508b5636d89682c1ed77e4a9249af8963",
+    "profile_hash": "e20525ea18dfcfa3b9d086543a0e3b6cd609ba1d2f9fadc875c0df89a27f8278"
+  },
+  "host": "Nuzantara",
+  "requested_model": "gpt-6-astra",
+  "config_hash": "e624e1bf4637daaac0de258dbfc591ef3c4997f097461cb181082972869b8a55",
+  "auth_context_hash": "a518462616de4ce29d7455d730e2a412e8cb2a99097ec212d90077c2cb340c23",
+  "catalog": {
+    "include_hidden": true,
+    "pages": [
+      {
+        "page": 1,
+        "models": [
+          {
+            "id": "gpt-reserve",
+            "model": "gpt-reserve",
+            "hidden": true,
+            "isDefault": false,
+            "defaultReasoningEffort": "medium",
+            "supportedReasoningEfforts": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          },
+          {
+            "id": "gpt-5.6-sol",
+            "model": "gpt-5.6-sol",
+            "hidden": false,
+            "isDefault": true,
+            "defaultReasoningEffort": "low",
+            "supportedReasoningEfforts": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max",
+              "ultra"
+            ]
+          },
+          {
+            "id": "gpt-5.6-terra",
+            "model": "gpt-5.6-terra",
+            "hidden": false,
+            "isDefault": false,
+            "defaultReasoningEffort": "medium",
+            "supportedReasoningEfforts": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max",
+              "ultra"
+            ]
+          },
+          {
+            "id": "gpt-5.6-luna",
+            "model": "gpt-5.6-luna",
+            "hidden": false,
+            "isDefault": false,
+            "defaultReasoningEffort": "medium",
+            "supportedReasoningEfforts": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          },
+          {
+            "id": "gpt-5.5",
+            "model": "gpt-5.5",
+            "hidden": false,
+            "isDefault": false,
+            "defaultReasoningEffort": "medium",
+            "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+          },
+          {
+            "id": "gpt-5.4-mini",
+            "model": "gpt-5.4-mini",
+            "hidden": false,
+            "isDefault": false,
+            "defaultReasoningEffort": "medium",
+            "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+          },
+          {
+            "id": "gpt-5.3-codex-spark",
+            "model": "gpt-5.3-codex-spark",
+            "hidden": false,
+            "isDefault": false,
+            "defaultReasoningEffort": "high",
+            "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+          },
+          {
+            "id": "codex-auto-review",
+            "model": "codex-auto-review",
+            "hidden": true,
+            "isDefault": false,
+            "defaultReasoningEffort": "medium",
+            "supportedReasoningEfforts": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        ],
+        "has_more": false
+      }
+    ],
+    "complete": true,
+    "requested_model_available": false
+  },
+  "inference_calls": 0,
+  "effect_authority": "none",
+  "fleet_activation": false,
+  "local_process_group_stopped": true,
+  "source_producer": {
+    "files": {
+      "scripts/conductor/adapter_contracts.py": "a17c922a4d29d7817c3999c600cc4c4084510cb7b81693a7ba96c29ffc05a1ea",
+      "scripts/conductor/contracts.py": "4cab11a9a4a04b63c30a40ef6c0b570394082c49fb222b34397a83e113cf7327",
+      "scripts/conductor/app_server_rpc.py": "46c94e71dc0f8c7dacec011ecc63ff81c27e15072afb2abf6645e30d65c02538",
+      "scripts/conductor/codex_shadow.py": "5cc637895e9b0e412455241063155c1c0355b7c098a02981ab2b99939e1dc350",
+      "scripts/conductor/codex_shadow_launch.py": "1aab128127a894ec0a068ae349440af63f20d0b0ecc4ceeb65557264eebc1f42",
+      "scripts/conductor/codex_shadow_probe.py": "5265de9298d2b09aa467fcb2ac1b7f321774349d66c060a65b1907fea0012f44"
+    },
+    "manifest_sha256": "ff794ee02f7fa194ab960b8b6dd08a2c81038a21bccc6caffe17cc58e9fbc4e0"
+  },
+  "source_verification": "unchanged",
+  "candidate_diagnostic": true,
+  "source_auth_unchanged": true
+}

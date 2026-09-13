@@ -1,0 +1,35 @@
+**VERDICT: GO**
+
+---
+
+### Attacks on the First Seat's Resolutions
+
+**LOW – MED-1 retraction is valid but the probe was narrow – the "corrupted manifest" test only exercised invalid JSON; valid JSON with a missing or null `routes` key still reaches `staleAcceptedRoutes` with an empty array – verify whether that path is reachable in practice**
+
+The retraction correctly shows that missing-file and parse-error paths both `process.exit(1)` before the baseline block. However, the corruption probe produced *"Expected property name…"*, confirming only a JSON-syntax failure was tested. The expression `JSON.parse(…).routes ?? {}` tolerates a manifest that is syntactically valid JSON yet has `routes: null` or no `routes` key. In that case `Object.keys({})` yields `[]`, the code falls through to `staleAcceptedRoutes`, and all 42 accepted entries are reported as stale with a "prune them" warning. This is not a safety hazard (it is a `console.warn`, not `exit(1)`, and the remedy is "re-run the build"), and a Next.js-generated manifest always carries `routes`, so the scenario is contrived. Noting it for completeness; no action required.
+
+**LOW – MED-2 fix is correct; the root-route `""` needs one downstream confirmation – `walkAppRoutes` returns `""` for the root, but prerender-manifest keys use `"/"` – confirm `<REDACTED>` normalises `""` to `"/"` before comparing**
+
+The walk fix itself is sound: the top-of-`visit` guard catches `dir/page.tsx`, and the in-loop `next.join("/")` produces `""` for a page inside a top-level route group; the `Set` deduplicates the overlap. The first seat's write-up says *"the guard compares '/' against the manifest"*, implying the normalisation exists in `<REDACTED>`, but that function body is not in the diff. 5 189 green tests make a silent mismatch unlikely (the root route would appear as a permanent unaccepted entry), so this is a read-through confirmation, not a blocker. Check: open `<REDACTED>` and verify `""` is mapped to `"/"` (or the manifest keys are stripped of their leading slash) before the set comparison.
+
+---
+
+### New Observations (none blocking)
+
+**LOW – `walkAppRoutes` has no cycle guard for directory symlinks that resolve to an ancestor – a symlink `src/app/(workspace)/sub/loop -> src/app/(workspace)` would cause unbounded recursion – what to check: confirm no such links exist in the repo; optionally add a `realpath`-based visited set if the walk is ever pointed at user-controlled trees**
+
+`Dirent.isSymbolicLink()` followed by `statSync` correctly resolves *dangling* and *ELOOP* links (the `catch { continue; }` handles them), but a symlink whose target is a valid ancestor directory resolves successfully every time. Each recursion level appends a real segment to the path, so Node never hits ELOOP; the walk just deepens until the stack overflows. In a CI checkout of this repository the risk is effectively zero (the tree is committed, and the walk root is `src/app/(workspace)`), so this is informational. If the function is ever reused against untrusted or user-mounted directories, add a `Set<string>` of resolved `realpath` values and skip revisits.
+
+**INFO – `PAGE_FILES` lists `page.mjs` and `page.cjs`; Next.js App Router documentation enumerates `.js`, `.jsx`, `.ts`, `.tsx`, `.mdx` – if those two extensions are not actually resolved by the router, the walk would report phantom routes – what to check: confirm against the Next.js source (`resolve-page-path` or equivalent) that `.mjs` / `.cjs` are accepted; if not, remove them or gate them behind a comment explaining the deliberate over-inclusion**
+
+The module's own comment says *"Listed, so an unknown one is a visible omission"*, which is a defensible posture for a guard (a false-positive route that is never prerendered simply does not appear in the manifest and causes no failure). But if a future consumer uses `walkAppRoutes` for a positive-existence assertion rather than a prerender cross-check, the phantom entry would matter. Worth a one-line confirmation.
+
+**INFO – `isRouteGroup` treats `()` (empty parens) as a group – Next.js does accept this, so the behaviour is correct, but it is worth a unit test if one does not already exist, because the name is visually indistinguishable from a typo**
+
+No code change needed; just confirming the edge is intentional and covered.
+
+---
+
+### Summary
+
+The module is well-motivated (three independent derivations, same two bugs, same author, one hour apart is a strong structural signal), the walk logic is correct after the MED-2 root-route fix, the guard's <REDACTED> posture is thorough, and the 482-file / 5 189-test / clean-typecheck / clean-eslint envelope is reassuring. The first seat's MED-1 retraction is valid (with one pedantic edge noted above) and the MED-2 fix is correct. No blocking or conditional issues remain. **GO.**

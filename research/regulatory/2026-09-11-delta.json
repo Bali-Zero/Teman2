@@ -1,0 +1,40 @@
+{
+  "run_at": "2026-09-11T07:05:14+08:00",
+  "today": "2026-09-11",
+  "yesterday_seen_count": 24,
+  "yesterday_file_used": "2026-09-10-delta.json",
+  "new_today_count": 0,
+  "partial": true,
+  "unreachable_sources": [
+    {"url": "https://www.hukumonline.com/berita/", "reason": "http_403", "note": "HTTP 403 on fetch"},
+    {"url": "https://ortax.org/news", "reason": "empty_shell", "note": "Soft-404 \"Artikel tidak ditemukan\", no dated content"},
+    {"url": "https://muc.co.id/article", "reason": "http_403", "note": "HTTP 403 on fetch"},
+    {"url": "https://ikpi.or.id/articles", "reason": "empty_shell", "note": "Nuxt SPA shell, \"Menampilkan 0 berita & artikel\", zero static entries"},
+    {"url": "https://jdih.kemenkeu.go.id/peraturan", "reason": "empty_shell", "note": "Homepage returned nav/institutional content only, no dated regulation entries"}
+  ],
+  "sources_checked_no_delta": [
+    {"url": "https://news.ddtc.co.id/", "reason": "checked_no_new", "note": "Only match is PMK 55/2026, already in seen_citations; commentary articles, not a new act"},
+    {"url": "https://peraturan.go.id", "reason": "outside_window", "note": "Newest entries dated 2026-09-04 (Permen KKP 9/2026, Perban BP Tapera 1/2026, Perka ANRI 3/2026)"},
+    {"url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026", "reason": "checked_no_new", "note": "Content read (2838 results, UU/PP titles shown) but jenis=PMK filter did not surface dated PMK entries, likely JS-paginated"},
+    {"url": "https://www.imigrasi.go.id", "reason": "outside_window", "note": "Newest Siaran Pers dated 2026-09-04, no Permenimigrasi/Permenkumham citation"},
+    {"url": "https://www.pajak.go.id/peraturan", "reason": "outside_window", "note": "Newest entry KEP-185/PJ/2026 dated 2026-09-02, predates 48h window"},
+    {"url": "https://jdih.kemnaker.go.id/peraturan", "reason": "outside_window", "note": "Newest shown entry UU Nomor 2 Tahun 2026 dated 2026-04-30, far outside window"}
+  ],
+  "nb_query_errors": [
+    {"nb": "NB-INTEL-Regulation — Daily Regulatory Intelligence", "reason": "timeout", "note": "nlm notebook list (UUID resolve prerequisite) exit 124, zero output after 25s; consistent with account-wide nlm auth expired since 2026-09-06"},
+    {"nb": "NB-INTEL-Press — Daily Press Intelligence", "reason": "timeout", "note": "Same nlm notebook list failure blocks resolution for all NBs before any per-NB query could run"},
+    {"nb": "NB-INTEL-Immigration — Daily Immigration Intelligence", "reason": "timeout", "note": "Same nlm notebook list failure blocks resolution for all NBs before any per-NB query could run"},
+    {"nb": "NB-INTEL-Tax — Daily Tax/Fiscal Intelligence", "reason": "timeout", "note": "Same nlm notebook list failure blocks resolution for all NBs before any per-NB query could run"}
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "PMK Nomor 28 Tahun 2026","PMK Nomor 40 Tahun 2026","PMK Nomor 41 Tahun 2026","PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026","PMK Nomor 44 Tahun 2026","PMK Nomor 55 Tahun 2026","PMK Nomor 57 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026","PP Nomor 20 Tahun 2026","PP Nomor 24 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026","Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026","Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+    "Permenaker Nomor 7 Tahun 2026","Permenaker Nomor 8 Tahun 2026","Permenaker Nomor 9 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026","Perpres Nomor 26 Tahun 2026","Perpres Nomor 27 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026","UU Nomor 4 Tahun 2026","UU Nomor 5 Tahun 2026"
+  ]
+}

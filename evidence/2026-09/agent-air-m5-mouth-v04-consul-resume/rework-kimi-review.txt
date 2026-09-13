@@ -1,0 +1,22 @@
+• **PASS**
+
+  Ruling-point by ruling-point, against the actual source:
+
+  - **Persists after hydration / withheld before it.** `OracleShell`'s `hydrated === null` branch now renders only the `role="status"` loading line; `ConsultantContact` lives solely inside `OracleShellRuntime`, which mounts only post-hydration. The SSR test pins this: no `#oracle-consultant-toggle`, no panel, no checkbox, no `#oracle-handoff-title`, no fetch. The old behavior (SSR markup containing a CONSULTATION consent checkbox) is gone, which is exactly what "consent not rendered at all before hydration" required.
+
+  - **Default-open at a displayed verdict, collapsed in interview, user can still close.** `useState(props.context === "ASSESSMENT")` plus `key={outcome ? "assessment" : "consultation"}` on `ConsultantContact` (OracleShell.tsx, the render near the topbar) is the correct mechanism: the key flip forces a remount precisely on the consultation↔assessment transition, so the initializer re-runs — open at verdict, collapsed everywhere else — while within a mount the toggle remains fully user-controlled (asserted by the close/reopen test, including that no refetch occurs).
+
+  - **`displayedOutcome` dropped safely.** The invariant `outcome !== null ⟺ a verdict is actually displayed` holds: `outcome` is only ever set inside the evaluation effect guarded by `current.kind === "verdict"`, and every exit path from the verdict (`handleEdit`, `handleSelectCategory`, `handleReviewAnswers`, `handleRestart` via `leaveOutcome`, plus `retryEvaluation` and the effect's own `setOutcome(null)` at start) clears it before any non-verdict render. `setOutcome`/`setEvaluating(false)` are batched, so the old `!evaluating` clause was unreachable. There is no outcome→outcome transition without an intermediate null, so the key always cycles through "consultation". The replacement comment is accurate. The simplification is behavior-preserving, not just cosmetic.
+
+  - **No prior-consent reuse.** Three independent layers agree: (1) the key-remount wipes `ConsentHandoff`'s in-memory `receipt`/`guardianConfirmed`; (2) `loadLocalConsentReceipt` rejects scope mismatches via `sameConsentScope` and deletes the stored receipt fail-closed; (3) the single storage key means an ASSESSMENT receipt overwrites a CONSULTATION one, so the post-Edit return to CONSULTATION finds a mismatching receipt and clears it. The "requires new consent only when an actual verdict replaces generic contact, and clears result context after Edit" test exercises the hardest path — consent granted *during* the pending fetch, then verdict arrival — and asserts unchecked box, no WhatsApp link, and a fact-free message in both directions.
+
+  - **Guardian preserved.** `guardianConsentRequired` logic is unchanged (still `evaluatedAtIso` for ENGINE provenance, `restoreToday` otherwise); the en/id parameterized test confirms the disabled-until-guardian ordering, the enablement, and that the minor's `birthDate` never enters the wa.me text. The `guardianConsentRequired` effect in ConsentHandoff still clears any stored receipt when the guardian gate applies.
+
+  - **Scope freshness / no facts in WhatsApp.** ConsentHandoff and consent-store are untouched; the message remains `state` + validated opaque `publicId` only, with tests asserting absence of `birth_date`/`nationalities`/`stay_days`.
+
+  - **E2E alignment.** Both updated specs now assert `aria-expanded="true"` and panel visibility with no click at verdict, matching the new default.
+
+  No material issues found. Non-blocking observation only: the contact toggle is also reachable during the evaluation spinner (consultation scope), and consent granted there is deliberately discarded when the verdict lands — that is tested and is the correct reading of "new consent at an actual verdict," but it's worth knowing it's an intentional product behavior, not an accident.
+
+  Per instructions, I did not run the tests; the 64-passed claim is taken as reported, but the test bodies shown do assert what their names claim.
+

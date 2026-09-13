@@ -128,6 +128,24 @@ class TestGetHeaders:
 
 
 # ---------------------------------------------------------------------------
+# _get_client
+# ---------------------------------------------------------------------------
+
+
+class TestGetClient:
+    @pytest.mark.asyncio
+    async def test_client_follows_redirects(self):
+        """A renamed/transferred repo answers 301 on its old owner/repo path;
+        without follow_redirects every publish fails as a bare
+        "GitHub publish failed" (2026-08-28, 2026-09-04)."""
+        pub = GitHubPublisher(token="t", owner="o", repo="r")
+        try:
+            assert pub._get_client().follow_redirects is True
+        finally:
+            await pub.close()
+
+
+# ---------------------------------------------------------------------------
 # close()
 # ---------------------------------------------------------------------------
 

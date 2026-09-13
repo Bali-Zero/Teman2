@@ -1,0 +1,89 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5864, agent/nuzantara/cell/learning-pilot-s2. Prepare source/test hardening for the
+  synthetic Cell learning pilot S2 harness; do not merge, arm auto-merge, deploy, or publish.
+
+lanes:
+  - lane: codex-builder
+    role: build
+    seat: Codex-opus-5 via Codex CLI, external builder role, source/test preparation only
+  - lane: spalla-review
+    role: review
+    seat: claude-sonnet-5 spalla review subagent, independent blocker review before this fix pass
+
+seat_diversity: not_applicable_single_build_lane
+seat_override: >-
+  R9 council_run quorum override for this builder handoff only: no qualifying two-seat
+  COUNCIL_REVIEW_SEATS journal is claimed. The available independent review was the spalla review
+  that produced three concrete blockers, all addressed in this patch. A Claude shipping session must
+  still review before merge, per generator-not-grader.
+
+diff:
+  measured: >-
+    Machine-derived by harness-floor from the PR numstat and changed-files inputs; this pack avoids
+    hand-counted file or line claims so the CI value remains authoritative.
+  behaviour_change: >-
+    Source/test hardening for the synthetic learning pilot harness: shard verification is regression
+    tested against hash-rebound content tampering, resume now requires ledger-bound terminal attempts,
+    and the contained Claude adapter receives an explicit OAuth-safe environment allowlist.
+  scope: >-
+    Synthetic Cell learning pilot tests and per-PR evidence only; no production data paths, no runtime
+    deployment, no outbound publication.
+
+pii_scan: clean
+
+receipts:
+  - claim: Learning-pilot unit tests pass after blocker fixes.
+    cmd: >-
+      PYTHONPATH=. /Users/nuzantara/nuzantara/.venv/bin/python -m pytest
+      apps/cell/tests/learning_pilot -q
+    result: "30 passed in 0.35s"
+    exit: 0
+    ts: "2026-09-06T15:08:00Z"
+    seat: codex-builder
+
+  - claim: Evidence path was resolved through the per-PR evidence directory, not the deprecated root path.
+    cmd: >-
+      PYTHONPATH=. /Users/nuzantara/nuzantara/.venv/bin/python
+      scripts/ci/evidence_paths.py --ref agent/nuzantara/cell/learning-pilot-s2
+    result: "suggested_write_path: evidence/2026-09/agent-nuzantara-cell-learning-pilot-s2-5227ac74/"
+    exit: 0
+    ts: "2026-09-06T15:06:00Z"
+    seat: codex-builder
+
+  - claim: The three targeted blocker regressions pass directly.
+    cmd: >-
+      PYTHONPATH=. /Users/nuzantara/nuzantara/.venv/bin/python -m pytest
+      apps/cell/tests/learning_pilot/test_run_experiment.py::test_case_review_shards_reject_tampering
+      apps/cell/tests/learning_pilot/test_run_experiment.py::test_matching_trial_receipt_rejects_orphan_completed_trial
+      apps/cell/tests/learning_pilot/test_harness.py::test_adapter_environment_uses_oauth_allowlist -q
+    result: "3 passed in 0.08s"
+    exit: 0
+    ts: "2026-09-06T15:10:00Z"
+    seat: codex-builder
+
+  - claim: The independent spalla review identified the three blockers this fix pass addresses.
+    cmd: "subagent spalla-review response, session 01a0772f-20ad-7c31-8440-1726b93d5064"
+    result: >-
+      Blockers: shard equivalence test only caught stale hashes; resume accepted orphan receipts
+      without terminal ledger binding; adapter environment copied host credentials too broadly.
+    exit: 0
+    ts: "2026-09-06T15:00:00Z"
+    seat: spalla-review
+
+dissent:
+  - seat: spalla-review
+    objection: >-
+      Resume could reuse fabricated or orphaned receipts because the receipt matcher did not require
+      a matching dispatched and terminal attempt-ledger event with bound prompt and response hashes.
+    status: CONFIRMED
+  - seat: spalla-review
+    objection: >-
+      The case-review shard tamper test only proved stale shard hashes, not equivalence to the full
+      fixture reconstruction after a shard hash was rebound.
+    status: CONFIRMED
+  - seat: spalla-review
+    objection: >-
+      The Claude CLI adapter environment copied the host environment and relied on narrow deletions,
+      leaving provider routing credentials too easy to leak into the subprocess.
+    status: CONFIRMED

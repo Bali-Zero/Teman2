@@ -56,7 +56,34 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # ledger_only reads BOTH events (merge_group first): `relevant` above
+          # deliberately reads pull_request.* only, so the queue lane stays the
+          # full battery — except for a ledger-only diff, which is the same
+          # one-file diff in both lanes and pays the same 6 minutes twice.
+          LEDGER_BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          LEDGER_HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
         run: |
+          # ledger_only — a diet tier for the harness ledger (2026-09-09, measured:
+          # a one-line .claude/skills/modus/PENDING-ARMS.md diff paid 121 s of unit
+          # tests + ~100 s of seat corpora here, ≥9 healer-tick PRs a day, twice
+          # each with the merge-group rerun). Entity match, not substring
+          # (superscar #3): every changed path must EQUAL the ledger path.
+          LEDGER_PATH=".claude/skills/modus/PENDING-ARMS.md"
+          LEDGER_ONLY=false
+          if [ -n "${LEDGER_BASE_SHA:-}" ] && [ -n "${LEDGER_HEAD_SHA:-}" ]; then
+            LMB=$(git merge-base "$LEDGER_BASE_SHA" "$LEDGER_HEAD_SHA" 2>/dev/null || echo "$LEDGER_BASE_SHA")
+            LCHANGED=$(git diff --name-only --no-renames "$LMB" "$LEDGER_HEAD_SHA")
+            n_all=$(printf '%s\n' "$LCHANGED" | grep -c . || true)
+            n_led=$(printf '%s\n' "$LCHANGED" | grep -cxF "$LEDGER_PATH" || true)
+            [ "$n_all" -gt 0 ] && [ "$n_all" -eq "$n_led" ] && LEDGER_ONLY=true
+            # A DELETED ledger also lists exactly one path (kimi-code/k3, review
+            # 2026-09-09): the readers would then pass vacuously (skipif on the
+            # real ledger). Deletion is not a ledger edit — full battery.
+            if [ "$LEDGER_ONLY" = true ] && ! git cat-file -e "$LEDGER_HEAD_SHA:$LEDGER_PATH" 2>/dev/null; then
+              LEDGER_ONLY=false
+            fi
+          fi
+          echo "ledger_only=$LEDGER_ONLY" >> "$GITHUB_OUTPUT"
           if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ]; then
             # workflow_dispatch or missing event context: run the full battery.
             echo "relevant=true" >> "$GITHUB_OUTPUT"
@@ -123,7 +150,20 @@ jobs:
               scripts/lint_test_reward_hacking.py|\
               scripts/test_lint_test_reward_hacking.py|\
               scripts/codex/codex-nightly-autofix-ci.sh|\
+              .claude/agents/*.md|\
+              scripts/tests/test_agent_defs_model_pins.py|\
               scripts/tests/test_lint_home_fork.py|\
+              scripts/lib/yaml_strict.py|\
+              scripts/lib/cve_exceptions.py|\
+              scripts/filter_snyk_findings.py|\
+              scripts/filter_safety_findings.py|\
+              scripts/check_cve_exceptions.py|\
+              .security/exceptions.yaml|\
+              scripts/tests/test_cve_exception_package_scope.py|\
+              scripts/tests/test_check_cve_exceptions.py|\
+              scripts/_redact_pii.py|\
+              agent-library/config/redaction-rules.yaml|\
+              scripts/tests/test_yaml_strict_policy_loader.py|\
               scripts/tests/test_home_fork_stale_side_attribution.py|\
               scripts/tests/test_home_fork_bak_shadows.py|\
               scripts/tests/test_home_fork_skipped_visibility.py|\
@@ -133,6 +173,8 @@ jobs:
               scripts/tests/test_proprioception_executed_code_currency.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
+              scripts/ci/bites_parse.py|\
+              scripts/tests/test_bites_parse.py|\
               .github/dependabot.yml|\
               scripts/tests/test_dependabot_excludes_compiled_locks.py|\
               .github/workflows/auto-merge-whitelist.yml|\
@@ -317,6 +359,7 @@ jobs:
               scripts/tests/test_check_required_workflow_conformance.py|\
               scripts/ci/lint_unreachable_workflow_conditions.py|\
               scripts/tests/test_unreachable_workflow_conditions.py|\
+              scripts/tests/test_codeql_queue_upload_never.py|\
               scripts/ci/lint_trigger_symmetry.py|\
               scripts/tests/test_lint_trigger_symmetry.py|\
               infra/required.d/contexts.json|\
@@ -480,16 +523,33 @@ jobs:
         run: python3 scripts/tests/test_gateway_callers_read_the_verdict.py
 
       - name: Unit tests (guilt + innocence per tool)
-        if: steps.paths.outputs.relevant == 'true'
+        # One pytest invocation under pytest-xdist instead of one interpreter
+        # per file. Measured on M5 2026-09-09 (66 files / 1879 tests at that
+        # moment — the file count grows as new pins land, so a later count
+        # in this loop is expected drift, not staleness): sequential loop
+        # 288s, single `pytest <files>` 258s, `-n 4` 161s, identical
+        # pass/skip set (1879 passed, 1 skipped). The `for t in \`
+        # shell loop below is kept UNCHANGED on purpose — it is the shape
+        # scripts/tests/test_immune_enforcement_trigger_symmetry.py parses
+        # (a `for ... in \` opener through a line closing with `; do`) to pair
+        # every looped test with a sentinel trigger path; only the loop BODY
+        # changed, from "run pytest on $t now" to "collect $t into an array",
+        # with the single pytest call moved after the loop.
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
-          python -m pip install --quiet pytest PyYAML==6.0.3
+          python -m pip install --quiet pytest pytest-xdist==3.8.0 PyYAML==6.0.3
           fail=0
+          tests=()
           for t in \
+            scripts/tests/test_yaml_strict_policy_loader.py \
+            scripts/tests/test_cve_exception_package_scope.py \
+            scripts/tests/test_check_cve_exceptions.py \
             scripts/tests/test_injected_surface_budget.py \
             scripts/tests/test_injected_surface_attest.py \
             scripts/tests/test_agent_start.py \
             scripts/tests/test_lint_doctrine_citations.py \
             scripts/tests/test_lint_home_fork.py \
+            scripts/tests/test_agent_defs_model_pins.py \
             scripts/tests/test_lint_public_asset_refs.py \
             scripts/tests/test_home_fork_bak_shadows.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
@@ -501,6 +561,7 @@ jobs:
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_lane_outcome_report.py \
             scripts/tests/test_pending_arms_report.py \
+            scripts/tests/test_bites_parse.py \
             scripts/tests/test_dependabot_excludes_compiled_locks.py \
             scripts/tests/test_auto_merge_protects_compiled_locks.py \
             scripts/tests/test_lint_decision_registry.py \
@@ -544,18 +605,35 @@ jobs:
             scripts/tests/test_required_context_map.py \
             scripts/tests/test_check_required_workflow_conformance.py \
             scripts/tests/test_unreachable_workflow_conditions.py \
+            scripts/tests/test_codeql_queue_upload_never.py \
             scripts/tests/test_canon_blocks.py \
             scripts/tests/test_lint_trigger_symmetry.py \
             scripts/tests/test_door_canon_parity.py ; do
             if [ -f "$t" ]; then
-              echo "::group::$t"
-              python -m pytest "$t" -q || fail=1
-              echo "::endgroup::"
+              tests+=("$t")
             else
               echo "::notice::skip (absent) $t — expected only in the window before its lane's PR merges"
             fi
           done
+          if [ ${#tests[@]} -gt 0 ]; then
+            echo "::group::pytest -n 4 (${#tests[@]} files)"
+            python -m pytest -q -p no:cacheprovider -n 4 "${tests[@]}" || fail=1
+            echo "::endgroup::"
+          fi
           exit $fail
+
+      - name: "Ledger-only diff: run the ledger's own readers"
+        # The diet tier (2026-09-09): a diff that touches ONLY the harness ledger
+        # cannot break a guard that never reads it. The two organs that parse the
+        # ledger still run; test_antidotes_ledger_tier.py pins that every
+        # scripts/tests/test_pending_arms*.py is named here.
+        if: steps.paths.outputs.ledger_only == 'true'
+        run: |
+          python -m pip install --quiet pytest PyYAML==6.0.3
+          python -m pytest -p no:cacheprovider -q \
+            scripts/tests/test_pending_arms_ref.py \
+            scripts/tests/test_pending_arms_report.py \
+            scripts/tests/test_pending_arms_ratchet.py
 
       - name: Runtime Truth meta-contract (external to runner)
         # Deliberately unconditional inside the required job. This is the
@@ -571,6 +649,8 @@ jobs:
           python -m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q
 
       - name: Runtime Truth CI gauntlet (four incident contracts)
+        # NOT ledger-gated: test_runtime_truth_ci_gauntlet.py pins this step's
+        # `if:` as an EXACT contract (external meta-contract, 2026-09-09 review).
         if: steps.paths.outputs.relevant == 'true'
         env:
           HOME: ${{ runner.temp }}/runtime-truth-home
@@ -578,7 +658,7 @@ jobs:
         run: python scripts/runtime_truth_ci_gauntlet.py
 
       - name: apps/zantara-media suite has a runner (replaces the garuda alert pin)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         # 2026-08-07, GARUDA decommission. This step was born pinning ONE corpus
         # (test_alerts_gateway.py) because nothing else ran apps/zantara-media's
         # tests — "which is how the alert path stayed mute for 141 nights". That
@@ -602,7 +682,7 @@ jobs:
         run: python -m pytest scripts/tests/test_zantara_media_suite_has_a_runner.py -q
 
       - name: Superscar byte-budget + completeness (cicatrix-superscar.md stays a bridge)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         # PENDING-ARMS L747: `test_superscar_budget.py` (born 2026-08-21) has run only inside
         # `scripts-tests-sweep.yml` — nightly, `continue-on-error: true`, report-only by explicit
         # design (Stage 1 of that workflow's own staged plan). A PR that pushed
@@ -621,7 +701,7 @@ jobs:
         run: python -m pytest scripts/tests/test_superscar_budget.py -q
 
       - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Named here at birth, same reason as the shell corpora below: the
           # 2026-07-30 merge-scope fix exists to end exactly the kind of theater
@@ -633,7 +713,7 @@ jobs:
           bash scripts/tests/test_pii_gate_merge_scope.sh
 
       - name: A probe line reports 1 of N as 1 of N (proprioception receptor + CLI)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Both files are shell corpora, so pytest below cannot reach them.
           #
@@ -652,7 +732,7 @@ jobs:
           bash scripts/tests/test_proprioception_finding_count.sh
 
       - name: print() gate guilt+innocence+cannot-verify (.husky/pre-commit, Golden Rule #8)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # The gate stopped re-implementing ruff's T201 with a text scan, so the
           # corpus needs ruff present — it refuses to report a pass without it
@@ -664,7 +744,7 @@ jobs:
           bash scripts/tests/test_precommit_print_gate.sh
 
       - name: The regen warns when it runs mid-merge (advice, never a refusal)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Named explicitly, NOT left to the `scripts/tests/` sweep — that sweep
           # is continue-on-error, so a test parked there is green by construction
@@ -674,7 +754,7 @@ jobs:
           bash scripts/tests/test_docs_inventory_regen_merge_warning.sh
 
       - name: No run-block decapitates its own failure branch (W101, 4th instance)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Running the CORPUS is not running the LINT. The corpus proves the
           # detector still bites; only this step proves the repo is clean. On
@@ -684,7 +764,7 @@ jobs:
           python3 scripts/lint_workflow_errexit_decap.py
 
       - name: Fly credential resolver corpus (shell, guilt + innocence, both historical worlds)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # W106: shipped with #3176 and named by NO workflow until now, so its 24 checks
           # ran nowhere — a test no workflow names is not coverage, it only looks like it.
@@ -731,14 +811,14 @@ jobs:
           python3 scripts/lint_arm_probe.py
 
       - name: Off-site artifact gate corpus (guilt + innocence)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # The gate that makes fly-pg-backup.sh judge the ARTIFACT instead of its own
           # last line. Named here at birth, for the same reason as the corpus above.
           bash scripts/test_offsite_verify.sh
 
       - name: Pre-push fail-closed corpus (W101 shell-semantics + task #60 stranded-clone-DB)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # scripts/tests/test_prepush_failclosed.sh was on main, named by NO
           # workflow (task #92 arm condition: same disease as the two corpora
@@ -753,7 +833,7 @@ jobs:
           bash scripts/tests/test_prepush_failclosed.sh
 
       - name: tip-drift corpus — the branch cannot move under the gate (guilt + innocence + W84)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Same POSIX-sh reasoning as the step above: its own step, exit code
           # read directly, no `if [ -f ]` skip. `prepush-guards.yml` runs this
@@ -763,7 +843,7 @@ jobs:
           bash scripts/tests/test_prepush_tip_drift.sh
 
       - name: cron-state failure alert corpus (guilt + innocence + fail-open)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # cron-state.sh wrote a receipt and never spoke. The 03:00 Postgres backup runs
           # under it, so its failure was silent while the 03:20 twin alerted. Named here at
@@ -771,7 +851,7 @@ jobs:
           bash scripts/test_cron_state_alert.sh
 
       - name: cron-runner failure alert corpus (3 exits + innocence + fail-open)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # The sibling of the step above, and the reason it exists: curing cron-state
           # and stopping there left the BIGGER of five producers mute (cron-runner: 36
@@ -782,7 +862,7 @@ jobs:
           bash scripts/test_cron_runner_alert.sh
 
       - name: login-healthcheck alarm-channel corpus (dead channel must be loud, not routine)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Measured 2026-08-19 on Pro: status=ok 0/2940, "telegram: missing
           # creds" logged 61/61 times an alert was due — every alarm died at
@@ -798,7 +878,7 @@ jobs:
           bash scripts/test_login_healthcheck_alert.sh
 
       - name: WR2 wrapper failure-voice corpora (BOTH wrappers, 9 + 8 launchd jobs)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Two files, one family, and both were unarmed until now.
           #
@@ -820,7 +900,7 @@ jobs:
           bash scripts/test_wr2_script_wrapper_alert.sh
 
       - name: One voice per cron failure (payload + wrapper must not both send)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # The far side of the two steps above. Giving the wrappers a voice closed a
           # real silence and opened a smaller one: the 20 nlm_deep_research payloads
@@ -834,7 +914,7 @@ jobs:
           bash scripts/test_cron_single_voice.sh
 
       - name: Pipeline run-verdict corpora (a deliberate skip is not a failure)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # test_run_verdict.py landed with #3742 and was named in the path filter
           # above but executed by NO workflow — 0 pytest invocations across
@@ -853,7 +933,7 @@ jobs:
             -q
 
       - name: DLQ terminal speaks once (one stuck job, one P0)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # A job going TERMINAL used to offer TWO p0 records at the same second
           # — escalate_to_claude_code()'s "Escalated to Claude Code: <job>" and
@@ -872,7 +952,7 @@ jobs:
           python -m pytest scripts/tests/test_dlq_terminal_speaks_once.py -q
 
       - name: Connectome alert honesty corpus (freshness + truncation + delivery)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # verify-connectome is the guardian of the guardians, and until now NO
           # workflow named it at all — its wrapper had zero CI coverage while
@@ -894,7 +974,7 @@ jobs:
           bash scripts/tests/test_connectome_alert_honesty.sh
 
       - name: Connectome retirement markers (a retirement can be DECLARED in the repo)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # The honesty corpus above proves the alert TELLS THE TRUTH about what it
           # found. This one proves it FINDS the right thing: the only two P0s
@@ -909,7 +989,7 @@ jobs:
           python -m pytest scripts/tests/test_connectome_retirement_markers.py -q
 
       - name: wa-mirror liveness wrapper corpus (a cron armed to nothing must say so)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Two wa-mirror sessions died 8 and 10 days with every probe green: the
           # PID survives a revoked WhatsApp session, so `ps` and the LaunchAgent
@@ -925,7 +1005,7 @@ jobs:
           bash scripts/tests/test_wa_session_liveness_wrapper.sh
 
       - name: wr2-ig-metrics-analyst wrapper corpus (errexit-fatal probe + no voice)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # The weekly analyst died three consecutive runs (2026-07-19, 07-26,
           # 08-02) and no surface anywhere could notice. Two independent causes:
@@ -946,7 +1026,7 @@ jobs:
           bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh
 
       - name: OAuth seat cascade corpus (a dead seat must be skipped, not fatal)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Measured on Pro 2026-08-07: three of four numbered OAuth seats revoked,
           # the fourth alive, and every agent job still died on seat 1. The rotate-or-
@@ -963,7 +1043,7 @@ jobs:
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
 
       - name: apt helper corpus (a bounded install that still fails closed)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # scripts/ci/apt_install.sh is called by SIX workflows, so its corpus
           # belongs in a REQUIRED job (`antidotes`) and not in the scripts/tests
@@ -977,7 +1057,7 @@ jobs:
           bash scripts/ci/test_apt_install.sh
 
       - name: Codex seat corpus (two paid subscriptions, and a 401 default seat)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Measured on all three machines 2026-08-12, by the REPLY and not by
           # the exit code (W104 — `codex --version` returns 0 on a seat that
@@ -1011,7 +1091,7 @@ jobs:
           python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py -q
 
       - name: Claude seat helper corpus (a plain script must reach a live seat)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Measured on Pro 2026-08-08 under `bash -lc` — the shell 27 of its 135
           # crontab lines use: `claude` is not on PATH (the binary is in
@@ -1029,7 +1109,7 @@ jobs:
           bash scripts/tests/test_claude_seat_helper.sh
 
       - name: Cron-agent alert verdict corpus (a lost alert must not buy silence)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # send_telegram() discarded both channels of the notification gateway
           # (`>/dev/null 2>&1 || true`) and then armed its 30-minute cooldown
@@ -1043,7 +1123,7 @@ jobs:
           bash scripts/tests/test_cron_agent_alert_verdict.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # `set -e` + a bare pipeline decapitated the PG_EXIT capture, so a failing
           # Postgres phase silently skipped the Qdrant phase entirely. Measured on the
@@ -1051,7 +1131,7 @@ jobs:
           bash scripts/test_fly_backup_phases.sh
 
       - name: Claude-CLI installer corpus (upstream partial publish must not break the image)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Upstream published @anthropic-ai/claude-code 2.1.237 without publishing
           # its linux-x64 platform build, so every unpinned `npm install -g` failed
@@ -1061,7 +1141,7 @@ jobs:
           bash scripts/tests/test_install_claude_code_version_skew.sh
 
       - name: Merge-queue re-arm corpora (classifier + population, guilt + innocence)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # Both corpora shipped complete and NEITHER was named by any workflow —
           # `test_queue_rearm_classify.sh` had been on main since #3342, executed by
@@ -1080,7 +1160,7 @@ jobs:
           bash scripts/ci/test_queue_rearm_population.sh
 
       - name: Telegram delivery verdict corpus (guilt + innocence + fail-closed)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # W104 on the CI surface: 25 of the 28 `curl .../sendMessage` calls in this
           # repo's workflows judged their own delivery by curl's EXIT CODE, which is 0
@@ -1103,7 +1183,7 @@ jobs:
           bash scripts/ci/test_telegram_verdict.sh
 
       - name: Required-workflow conformance (Merge-OS v2 Wave 0, Codex F12)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # infra/required.d/contexts.json + scripts/ci/check_required_workflow_conformance.py
           # shipped together, docs-sync.yml/migration-lint.yml cured same PR. The
@@ -1114,7 +1194,7 @@ jobs:
           python3 scripts/ci/check_required_workflow_conformance.py
 
       - name: Trigger symmetry — a queue-only path filter is a head-green/queue-red split
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # L06-PR1 follow-through. `merge_group:` does NOT support a `paths:`
           # sub-key in GitHub Actions at all, so a workflow carrying BOTH a
@@ -1140,7 +1220,7 @@ jobs:
           python3 scripts/ci/lint_trigger_symmetry.py
 
       - name: "Unreachable workflow if: conditions (security.yml orphaned-alarm class)"
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # scripts/ci/lint_unreachable_workflow_conditions.py + its corpus
           # (test_unreachable_workflow_conditions.py, in the batch loop above)
@@ -1158,7 +1238,7 @@ jobs:
           python3 scripts/ci/lint_unreachable_workflow_conditions.py
 
       - name: declared-pairs.json is valid JSON with sane shape
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           python - << 'EOF'
           import json, sys
@@ -1237,6 +1317,33 @@ jobs:
             python3 -m pytest scripts/lint/test_lint_claude_headless_limits.py -q
           fi
 
+      # Trusted-classifier extraction closure: the THIRD instance of the same
+      # gap on this page, and the one that had already bitten. tests.yml copies
+      # scripts/ci/ files out of the base ref and runs the change-map corpus
+      # from that isolated dir; #5070 added an import to test_change_map.py
+      # without adding the module, so from 2026-08-26 the corpus died on
+      # ModuleNotFoundError and the workflow's fail-open ran the full six-job
+      # suite on EVERY pull request, reporting green throughout.
+      #
+      # The test shipped with that fix asserts the structural property (an
+      # extraction list must be closed under the imports of the files in it).
+      # It is armed HERE rather than left to scripts-tests-sweep.yml, which is
+      # `schedule:`-only and `continue-on-error: true` by its own design — a
+      # guard against family #2 that is itself unarmed is the joke this repo
+      # has already told twice above. Caught by the Gear-3 council (codex,
+      # 2026-09-04) before merge: the first draft of that PR shipped the test
+      # with no runner at all.
+      #
+      # DELIBERATELY NOT gated on steps.paths.outputs.relevant: the property is
+      # broken by editing EITHER a workflow's extraction list OR any
+      # scripts/ci/*.py it names, and it is a sub-second ast parse.
+      - name: Trusted-classifier extraction lists are import-closed
+        run: |
+          if [ -f scripts/tests/test_classifier_extraction_closure.py ]; then
+            python3 -m pip install --quiet pytest
+            python3 -m pytest scripts/tests/test_classifier_extraction_closure.py -q
+          fi
+
       # Claude-headless-model-pin lint: the SAME class of gap recurring on
       # its own sibling. lint_claude_headless_model_pin.py (introduced
       # #4430, 2026-08-20) reuses the exact engine armed above, but was
@@ -1272,7 +1379,7 @@ jobs:
       # matching case red. Named here because in this repo a scripts/tests/ corpus runs
       # only because a workflow says so.
       - name: Tailnet node verifier keys on DNSName, not HostName or an ssh alias
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: bash scripts/tests/test_verify_tailnet_node.sh
 
       # ------------------------------------------------------------------
@@ -1296,11 +1403,11 @@ jobs:
       # behaviour change, and this surface's whole history is unreviewed
       # behaviour changes that looked like improvements.
       - name: Pro main-puller corpus (the collision resolver)
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: bash scripts/pro/test_pro_git_pull.sh
 
       - name: Pro main-puller collision matrix stays on its reviewed baseline
-        if: steps.paths.outputs.relevant == 'true'
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: bash scripts/pro/spec_collision_matrix.sh
 
       # ------------------------------------------------------------------

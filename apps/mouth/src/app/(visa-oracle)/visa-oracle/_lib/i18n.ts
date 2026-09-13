@@ -119,6 +119,14 @@ const en = {
     "Are you asking to change status without leaving Indonesia?",
   "q.wants_onshore_conversion.hint":
     "Answer about your intended process, not whether it will be approved.",
+  // Offshore wording (adversarial review 2026-09-06, finding 9). The same
+  // question, asked of someone who is not in Indonesia yet: put in the
+  // present tense it reads as a claim about a country they have not
+  // reached. The fact sent to the engine is identical either way.
+  "q.wants_onshore_conversion.offshore":
+    "Once in Indonesia, do you plan to switch to a different permit without leaving the country?",
+  "q.wants_onshore_conversion.offshore.hint":
+    "Answer about the process you intend to follow after you arrive, not whether it will be approved.",
   "why.wants_onshore_conversion":
     "This exact yes/no process fact is sent without choosing a conversion path.",
   "q.application_channel":
@@ -166,7 +174,8 @@ const en = {
   "q.category.opt.invest": "Invest & golden",
   "q.category.opt.remote": "Remote worker",
   "q.category.opt.family": "Family & marriage",
-  "q.category.opt.retirement": "Retirement & second home",
+  "q.category.opt.retirement": "Retirement",
+  "q.category.opt.second_home": "Second Home",
   "q.category.opt.study": "Study",
   "q.category.opt.diaspora": "Diaspora & ex-WNI",
   "q.category.opt.other": "Something else",
@@ -203,14 +212,14 @@ const en = {
 
   "q.business_activity": "What will you mainly do on the business trip?",
   "q.business_activity.hint":
-    "Describe the activity, not a visa name. This is context for a human reviewer only.",
+    "Describe the activity, not a visa name. Meetings, negotiation and conferences are decided here; training or another activity is sent to a human reviewer.",
   "q.business_activity.opt.meetings": "Meetings or site visits",
   "q.business_activity.opt.negotiation": "Negotiation or signing",
   "q.business_activity.opt.conference": "Conference or trade event",
   "q.business_activity.opt.training": "Giving or receiving training",
   "q.business_activity.opt.other": "Another business activity",
   "why.business_activity":
-    "The engine has no matching fact for this activity detail, so it is never used to manufacture a recommendation.",
+    "The engine has no matching fact for this activity detail, so it is never used to manufacture a recommendation. It only decides whether a human reviewer has to look at your trip — training and “another business activity” do, the other three answers do not.",
 
   "q.work_payer":
     "Will an Indonesian-registered company employ and pay you here?",
@@ -233,16 +242,6 @@ const en = {
     "A conversation or possible employer is not a confirmed sponsor.",
   "why.work_sponsor_confirmed":
     "The engine receives only your yes or no answer about sponsor confirmation.",
-  "q.work_role": "Which description is closest to the work you will do?",
-  "q.work_role.hint":
-    "This is human context only; it does not select a product or price.",
-  "q.work_role.opt.executive": "Executive or company leadership",
-  "q.work_role.opt.manager": "Manager or supervisor",
-  "q.work_role.opt.specialist": "Professional or technical specialist",
-  "q.work_role.opt.performer": "Performer, athlete, or creative work",
-  "q.work_role.opt.other": "Another kind of work",
-  "why.work_role":
-    "There is no matching engine fact for this role label, so it stays outside the automated decision.",
 
   "q.remote_clients": "Where do your clients or employer sit?",
   "q.remote_clients.hint":
@@ -285,6 +284,14 @@ const en = {
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
     "This label only chooses which exact facts to ask next. It never chooses a visa path.",
+  "q.investment_currency": "Which currency can you commit an amount in?",
+  "q.investment_currency.hint":
+    "This only decides which amount question comes next. No conversion is ever performed between currencies.",
+  "q.investment_currency.opt.idr": "Indonesian rupiah (IDR)",
+  "q.investment_currency.opt.usd": "US dollars (USD)",
+  "q.investment_currency.opt.still_unsure": "I can't say yet",
+  "why.investment_currency":
+    "This only chooses which amount question follows. It never chooses a visa path, and no figure is converted between currencies.",
   "q.investment_pt_pma": "Is the PT PMA commitment already concrete?",
   "q.investment_pt_pma.hint":
     "Answer no for an idea, early discussion, or uncommitted plan.",
@@ -296,6 +303,13 @@ const en = {
   "q.investment_capital_idr.label": "Committed investment capital",
   "why.investment_capital_idr":
     "The amount is sent as a financial decision fact. No threshold is shown or inferred here.",
+  "q.investment_amount_usd":
+    "What investment amount is committed, in US dollars?",
+  "q.investment_amount_usd.hint":
+    "Enter the exact whole-dollar amount you can support with evidence.",
+  "q.investment_amount_usd.label": "Committed investment amount",
+  "why.investment_amount_usd":
+    "The amount is sent as a financial decision fact, in the currency you chose. No threshold is shown or inferred here, and no conversion is performed.",
   "q.investment_paid_up_capital_idr":
     "How much paid-up capital is already documented?",
   "q.investment_paid_up_capital_idr.hint":
@@ -345,12 +359,11 @@ const en = {
   "why.family_sponsor_nationalities":
     "Sponsor nationality is a separate engine fact and is never copied from your own passports.",
   "q.family_sponsor_status_code":
-    "What status code appears on your sponsor’s current permit?",
+    "Which stay permit does your sponsor currently hold?",
   "q.family_sponsor_status_code.hint":
-    "Enter the printed product code, for example E31. Use Not sure if you cannot verify it.",
-  "q.family_sponsor_status_code.label": "Sponsor permit code",
+    "Choose the option printed on your sponsor’s KITAS/KITAP card — this asks about your sponsor’s permit, not your own status. Choose “I’m not sure” if you cannot confirm it.",
   "why.family_sponsor_status_code":
-    "The code is sent exactly as typed. The interface does not translate a description into a permit code.",
+    "Confirms your sponsor already holds a qualifying stay permit before we name a family visa product for you.",
   "q.family_sponsor_permit_basis":
     "What is the basis of your sponsor's own stay permit?",
   "q.family_sponsor_permit_basis.hint":
@@ -407,6 +420,23 @@ const en = {
   "q.retirement_basis.opt.undecided": "I have not chosen a basis",
   "why.retirement_basis":
     "There is no matching engine fact for this label. It only routes the next exact inputs.",
+  "q.retirement_undecided_basis": "Which of these can you document today?",
+  "q.retirement_undecided_basis.hint":
+    "Pick whichever basis you can support with evidence. If neither applies, say so — a person is not needed to answer that.",
+  "q.retirement_undecided_basis.opt.deposit_or_income":
+    "A bank deposit or documented passive income",
+  "q.retirement_undecided_basis.opt.family_sponsor":
+    "A confirmed family sponsor",
+  "q.retirement_undecided_basis.opt.still_unsure": "I still can't say",
+  "why.retirement_undecided_basis":
+    "There is no matching engine fact for this label either. It only routes the next exact inputs, same as the basis question above.",
+  "q.secondhome_basis": "Which Second Home basis can you document today?",
+  "q.secondhome_basis.hint":
+    "Pick the one you can evidence now. Use Not sure rather than guessing.",
+  "q.secondhome_basis.opt.bank_deposit": "A bank deposit held in my own name",
+  "q.secondhome_basis.opt.property": "A qualifying property",
+  "why.secondhome_basis":
+    "This only decides which evidence questions follow; the engine receives the evidence itself, never this label.",
   "q.secondhome_deposit_usd": "What bank deposit can you document?",
   "q.secondhome_deposit_usd.hint":
     "Enter the exact whole-dollar amount; use Not sure rather than estimating.",
@@ -600,7 +630,6 @@ const en = {
   "tree.work_payer": "Who pays you",
   "tree.work_indonesia_compensation": "Payment source",
   "tree.work_sponsor_confirmed": "Work sponsor",
-  "tree.work_role": "Work context",
   "tree.remote_clients": "Where clients sit",
   "tree.remote_compensation": "Payment source",
   "tree.remote_employer_country": "Employer country",
@@ -622,6 +651,7 @@ const en = {
   "tree.family_stepchild_birth_certificate_confirmed": "Birth certificate",
   "tree.family_sponsor_confirmed": "Family sponsor",
   "tree.retirement_basis": "Long-stay basis",
+  "tree.secondhome_basis": "Second Home basis",
   "tree.secondhome_deposit_usd": "Bank deposit",
   "tree.secondhome_state_bank": "Bank type",
   "tree.secondhome_own_name": "Account holder",
@@ -680,7 +710,7 @@ const en = {
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Nothing here is guessed. A Bali Zero advisor reviews cases like yours by hand.",
   "verdict.state_description.NO_SUPPORTED_PATH":
-    "We won’t force a fit that isn’t there — three alternatives worth a look.",
+    "We won’t force a fit that isn’t there — here is what your answers do open.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "We’d rather say so plainly than fake a result.",
   "verdict.state_description.NEEDS_INPUT":
@@ -760,6 +790,7 @@ const en = {
   "outcome.document_status.UNKNOWN": "To be confirmed",
   "outcome.needs_input_body":
     "The engine abstained because these facts are still missing:",
+  "outcome.answer_missing_input": "Answer this",
   "outcome.retryable": "You can safely try this evaluation again.",
   "outcome.not_retryable": "A person needs to check this before you continue.",
   "outcome.sources_title": "Sources used for this decision",
@@ -793,15 +824,21 @@ const en = {
     "It is not an approval, a guarantee, or a filing.",
   "outcome.disclaimer.complex_to_human":
     "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
-  "outcome.alternatives_title": "Three paths worth a look instead",
+  "outcome.alternatives_title": "The door that is open",
   "outcome.alternatives_intro":
-    "None of these are a downgrade — they’re simply what fits.",
+    "Another route the verified rules can assess for you.",
   "outcome.no_path_body":
     "The combination you described does not match a path supported by the verified decision rules.",
   "outcome.temporarily_unavailable_body":
     "The decision service cannot verify this case right now. No fallback path has been fabricated.",
   "outcome.human_review_body":
     "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+  "outcome.review_group_case.title": "What a person will check about your case",
+  "outcome.review_group_system.title":
+    "Checks on our side, not on your answers",
+  "outcome.review_cause_unsure": "You answered “Not sure” to: {{question}}",
+  "outcome.review_cause_answer": "You answered “{{answer}}” to: {{question}}",
+  "outcome.review_cause_edit_aria": "Edit your answer to: {{question}}",
   "outcome.overstay_reassurance":
     "Overstay is fixable. It is not the end of your story here.",
 
@@ -933,6 +970,10 @@ const id: Record<Keys, string> = {
     "Apakah Anda ingin mengubah status tanpa meninggalkan Indonesia?",
   "q.wants_onshore_conversion.hint":
     "Jawab tentang proses yang Anda inginkan, bukan apakah proses itu akan disetujui.",
+  "q.wants_onshore_conversion.offshore":
+    "Setelah berada di Indonesia, apakah Anda berencana beralih ke izin lain tanpa meninggalkan Indonesia?",
+  "q.wants_onshore_conversion.offshore.hint":
+    "Jawab tentang proses yang Anda rencanakan setelah tiba, bukan apakah proses itu akan disetujui.",
   "why.wants_onshore_conversion":
     "Fakta proses ya atau tidak ini dikirim tanpa memilih jalur konversi.",
   "q.application_channel":
@@ -983,7 +1024,8 @@ const id: Record<Keys, string> = {
   "q.category.opt.invest": "Investasi & golden visa",
   "q.category.opt.remote": "Pekerja remote",
   "q.category.opt.family": "Keluarga & pernikahan",
-  "q.category.opt.retirement": "Pensiun & second home",
+  "q.category.opt.retirement": "Pensiun",
+  "q.category.opt.second_home": "Second Home",
   "q.category.opt.study": "Studi",
   "q.category.opt.diaspora": "Diaspora & eks-WNI",
   "q.category.opt.other": "Lainnya",
@@ -1022,14 +1064,14 @@ const id: Record<Keys, string> = {
 
   "q.business_activity": "Apa kegiatan utama Anda dalam perjalanan bisnis?",
   "q.business_activity.hint":
-    "Jelaskan kegiatannya, bukan nama visa. Ini hanya konteks bagi peninjau manusia.",
+    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, dan konferensi diputuskan di sini; pelatihan atau kegiatan lain dikirim ke peninjau manusia.",
   "q.business_activity.opt.meetings": "Rapat atau kunjungan lokasi",
   "q.business_activity.opt.negotiation": "Negosiasi atau penandatanganan",
   "q.business_activity.opt.conference": "Konferensi atau pameran dagang",
   "q.business_activity.opt.training": "Memberi atau menerima pelatihan",
   "q.business_activity.opt.other": "Kegiatan bisnis lainnya",
   "why.business_activity":
-    "Mesin tidak memiliki fakta yang tepat untuk rincian kegiatan ini, sehingga tidak pernah dipakai untuk membuat rekomendasi.",
+    "Mesin tidak memiliki fakta yang tepat untuk rincian kegiatan ini, sehingga tidak pernah dipakai untuk membuat rekomendasi. Rincian ini hanya menentukan apakah peninjau manusia perlu melihat perjalanan Anda — pelatihan dan “kegiatan bisnis lainnya” perlu, tiga jawaban lainnya tidak.",
 
   "q.work_payer":
     "Apakah perusahaan berbadan hukum Indonesia yang mempekerjakan dan menggaji Anda di sini?",
@@ -1052,16 +1094,6 @@ const id: Record<Keys, string> = {
     "Percakapan atau calon pemberi kerja belum berarti sponsor sudah dikonfirmasi.",
   "why.work_sponsor_confirmed":
     "Mesin hanya menerima jawaban ya atau tidak tentang konfirmasi sponsor.",
-  "q.work_role": "Deskripsi mana yang paling dekat dengan pekerjaan Anda?",
-  "q.work_role.hint":
-    "Ini hanya konteks manusia; tidak memilih produk atau harga.",
-  "q.work_role.opt.executive": "Eksekutif atau pimpinan perusahaan",
-  "q.work_role.opt.manager": "Manajer atau penyelia",
-  "q.work_role.opt.specialist": "Profesional atau spesialis teknis",
-  "q.work_role.opt.performer": "Penampil, atlet, atau pekerjaan kreatif",
-  "q.work_role.opt.other": "Jenis pekerjaan lain",
-  "why.work_role":
-    "Tidak ada fakta mesin yang cocok untuk label peran ini, sehingga tetap di luar keputusan otomatis.",
 
   "q.remote_clients": "Di mana klien atau pemberi kerja Anda berada?",
   "q.remote_clients.hint":
@@ -1105,6 +1137,15 @@ const id: Record<Keys, string> = {
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
     "Label ini hanya menentukan fakta persis yang ditanyakan berikutnya. Label ini tidak pernah memilih jalur visa.",
+  "q.investment_currency":
+    "Dalam mata uang apa Anda dapat mengomitmenkan jumlah investasi?",
+  "q.investment_currency.hint":
+    "Ini hanya menentukan pertanyaan jumlah berikutnya. Tidak ada konversi yang pernah dilakukan antar mata uang.",
+  "q.investment_currency.opt.idr": "Rupiah Indonesia (IDR)",
+  "q.investment_currency.opt.usd": "Dolar AS (USD)",
+  "q.investment_currency.opt.still_unsure": "Saya belum bisa memastikan",
+  "why.investment_currency":
+    "Ini hanya memilih pertanyaan jumlah mana yang mengikuti. Ini tidak pernah memilih jalur visa, dan tidak ada angka yang dikonversi antar mata uang.",
   "q.investment_pt_pma": "Apakah komitmen PT PMA sudah konkret?",
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
@@ -1117,6 +1158,13 @@ const id: Record<Keys, string> = {
   "q.investment_capital_idr.label": "Modal investasi yang dikomitmenkan",
   "why.investment_capital_idr":
     "Jumlah dikirim sebagai fakta keputusan finansial. Tidak ada ambang yang ditampilkan atau disimpulkan di sini.",
+  "q.investment_amount_usd":
+    "Berapa jumlah investasi yang dikomitmenkan, dalam dolar AS?",
+  "q.investment_amount_usd.hint":
+    "Masukkan jumlah dolar utuh yang tepat dan dapat Anda dukung dengan bukti.",
+  "q.investment_amount_usd.label": "Jumlah investasi yang dikomitmenkan",
+  "why.investment_amount_usd":
+    "Jumlah ini dikirim sebagai fakta keputusan finansial, dalam mata uang yang Anda pilih. Tidak ada ambang yang ditampilkan atau disimpulkan di sini, dan tidak ada konversi yang dilakukan.",
   "q.investment_paid_up_capital_idr":
     "Berapa modal disetor yang sudah terdokumentasi?",
   "q.investment_paid_up_capital_idr.hint":
@@ -1166,12 +1214,11 @@ const id: Record<Keys, string> = {
   "why.family_sponsor_nationalities":
     "Kewarganegaraan sponsor adalah fakta mesin terpisah dan tidak pernah disalin dari paspor Anda.",
   "q.family_sponsor_status_code":
-    "Kode status apa yang tercantum pada izin sponsor saat ini?",
+    "Izin tinggal apa yang saat ini dimiliki sponsor Anda?",
   "q.family_sponsor_status_code.hint":
-    "Masukkan kode produk yang tercetak, misalnya E31. Pilih Tidak yakin jika tidak dapat memverifikasinya.",
-  "q.family_sponsor_status_code.label": "Kode izin sponsor",
+    "Pilih opsi yang tertera di kartu KITAS/KITAP sponsor Anda — ini menanyakan izin sponsor Anda, bukan status Anda sendiri. Pilih “Saya tidak yakin” jika tidak dapat memastikannya.",
   "why.family_sponsor_status_code":
-    "Kode dikirim persis seperti yang diketik. Antarmuka tidak menerjemahkan deskripsi menjadi kode izin.",
+    "Memastikan sponsor Anda sudah memiliki izin tinggal yang memenuhi syarat sebelum kami menyebutkan produk visa keluarga untuk Anda.",
   "q.family_sponsor_permit_basis":
     "Apa dasar izin tinggal sponsor Anda sendiri?",
   "q.family_sponsor_permit_basis.hint":
@@ -1227,6 +1274,26 @@ const id: Record<Keys, string> = {
   "q.retirement_basis.opt.undecided": "Saya belum memilih dasar",
   "why.retirement_basis":
     "Tidak ada fakta mesin yang cocok untuk label ini. Label hanya mengarahkan input persis berikutnya.",
+  "q.retirement_undecided_basis":
+    "Yang mana dari berikut yang dapat Anda buktikan saat ini?",
+  "q.retirement_undecided_basis.hint":
+    "Pilih dasar yang dapat Anda dukung dengan bukti. Jika tidak ada yang berlaku, sampaikan saja — tidak diperlukan peninjauan orang untuk itu.",
+  "q.retirement_undecided_basis.opt.deposit_or_income":
+    "Deposito bank atau penghasilan pasif yang terdokumentasi",
+  "q.retirement_undecided_basis.opt.family_sponsor":
+    "Sponsor keluarga yang dikonfirmasi",
+  "q.retirement_undecided_basis.opt.still_unsure":
+    "Saya masih belum bisa memastikan",
+  "why.retirement_undecided_basis":
+    "Tidak ada fakta mesin yang cocok untuk label ini juga. Hanya mengarahkan input persis berikutnya, sama seperti pertanyaan dasar di atas.",
+  "q.secondhome_basis":
+    "Dasar Second Home mana yang dapat Anda buktikan saat ini?",
+  "q.secondhome_basis.hint":
+    "Pilih yang buktinya sudah Anda miliki sekarang. Gunakan Tidak yakin daripada menebak.",
+  "q.secondhome_basis.opt.bank_deposit": "Deposito bank atas nama saya",
+  "q.secondhome_basis.opt.property": "Properti yang memenuhi syarat",
+  "why.secondhome_basis":
+    "Ini hanya menentukan pertanyaan bukti berikutnya; mesin menerima buktinya sendiri, bukan label ini.",
   "q.secondhome_deposit_usd": "Berapa deposito bank yang dapat Anda buktikan?",
   "q.secondhome_deposit_usd.hint":
     "Masukkan jumlah dolar bulat yang tepat; pilih Tidak yakin daripada memperkirakan.",
@@ -1414,7 +1481,6 @@ const id: Record<Keys, string> = {
   "tree.work_payer": "Siapa yang menggaji",
   "tree.work_indonesia_compensation": "Sumber pembayaran",
   "tree.work_sponsor_confirmed": "Sponsor kerja",
-  "tree.work_role": "Konteks kerja",
   "tree.remote_clients": "Lokasi klien",
   "tree.remote_compensation": "Sumber pembayaran",
   "tree.remote_employer_country": "Negara pemberi kerja",
@@ -1436,6 +1502,7 @@ const id: Record<Keys, string> = {
   "tree.family_stepchild_birth_certificate_confirmed": "Akta lahir",
   "tree.family_sponsor_confirmed": "Sponsor keluarga",
   "tree.retirement_basis": "Dasar tinggal panjang",
+  "tree.secondhome_basis": "Dasar Second Home",
   "tree.secondhome_deposit_usd": "Deposito bank",
   "tree.secondhome_state_bank": "Jenis bank",
   "tree.secondhome_own_name": "Pemilik rekening",
@@ -1492,7 +1559,7 @@ const id: Record<Keys, string> = {
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Tidak ada yang ditebak di sini. Konsultan Bali Zero meninjau kasus seperti ini secara langsung.",
   "verdict.state_description.NO_SUPPORTED_PATH":
-    "Kami tidak akan memaksakan jalur yang tidak cocok — tiga alternatif yang layak dilihat.",
+    "Kami tidak akan memaksakan jalur yang tidak cocok — inilah yang dibuka oleh jawaban Anda.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "Kami lebih memilih berterus terang daripada memalsukan hasil.",
   "verdict.state_description.NEEDS_INPUT":
@@ -1573,6 +1640,7 @@ const id: Record<Keys, string> = {
   "outcome.document_status.UNKNOWN": "Perlu dikonfirmasi",
   "outcome.needs_input_body":
     "Mesin tidak mengambil keputusan karena fakta berikut masih belum tersedia:",
+  "outcome.answer_missing_input": "Jawab ini",
   "outcome.retryable": "Anda dapat mencoba evaluasi ini kembali dengan aman.",
   "outcome.not_retryable":
     "Seseorang perlu memeriksa ini sebelum Anda melanjutkan.",
@@ -1608,15 +1676,24 @@ const id: Record<Keys, string> = {
     "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "outcome.disclaimer.complex_to_human":
     "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
-  "outcome.alternatives_title": "Tiga jalur alternatif yang layak dilihat",
+  "outcome.alternatives_title": "Pintu yang terbuka",
   "outcome.alternatives_intro":
-    "Ini bukan penurunan kelas — hanya yang paling sesuai.",
+    "Jalur lain yang dapat dinilai oleh aturan terverifikasi untuk Anda.",
   "outcome.no_path_body":
     "Kombinasi yang Anda jelaskan tidak cocok dengan jalur yang didukung oleh aturan keputusan terverifikasi.",
   "outcome.temporarily_unavailable_body":
     "Layanan keputusan belum dapat memverifikasi kasus ini. Tidak ada jalur cadangan yang dibuat-buat.",
   "outcome.human_review_body":
     "Kasus Anda butuh penilaian manusia — tidak ada yang ditebak atas nama Anda.",
+  "outcome.review_group_case.title":
+    "Yang akan diperiksa seseorang pada kasus Anda",
+  "outcome.review_group_system.title":
+    "Pemeriksaan di pihak kami, bukan pada jawaban Anda",
+  "outcome.review_cause_unsure":
+    "Anda menjawab “Tidak yakin” pada: {{question}}",
+  "outcome.review_cause_answer":
+    "Anda menjawab “{{answer}}” pada: {{question}}",
+  "outcome.review_cause_edit_aria": "Ubah jawaban Anda pada: {{question}}",
   "outcome.overstay_reassurance":
     "Overstay bisa diselesaikan. Ini bukan akhir cerita Anda di sini.",
 

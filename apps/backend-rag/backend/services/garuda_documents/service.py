@@ -81,6 +81,7 @@ class DocumentIntakeService:
         declared_media_type: str,
         document_kind: DocumentKind,
         idempotency_key: str,
+        actor_id: str,
     ) -> DocumentOutcome:
         # Stateless request-shape checks first: deterministic on the payload alone, so
         # replaying them is always safe and they never need idempotency tracking.
@@ -88,7 +89,7 @@ class DocumentIntakeService:
         byte_validation.validate_size(raw_bytes)
 
         payload_hash = _payload_hash(raw_bytes, document_kind)
-        existing = await self._store.get_existing(idempotency_key, payload_hash)
+        existing = await self._store.get_existing(idempotency_key, payload_hash, actor_id=actor_id)
         if existing is not None:
             return existing
 
@@ -99,9 +100,9 @@ class DocumentIntakeService:
         # its own outcome in the meantime. Whoever's commit actually wins is the one
         # outcome of record — the loser discards its own result and adopts the winner's,
         # so two racing requests can never disagree or double-fire the work-item hook.
-        won = await self._store.commit(idempotency_key, payload_hash, outcome)
+        won = await self._store.commit(idempotency_key, payload_hash, outcome, actor_id=actor_id)
         if not won:
-            winning_outcome = await self._store.get_existing(idempotency_key, payload_hash)
+            winning_outcome = await self._store.get_existing(idempotency_key, payload_hash, actor_id=actor_id)
             assert winning_outcome is not None  # commit() just told us a record exists
             return winning_outcome
 

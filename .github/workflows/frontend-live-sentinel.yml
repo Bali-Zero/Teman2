@@ -30,10 +30,7 @@ name: Frontend Live Sentinel
 # when the thing it guards is being changed is blind exactly when the change stops arriving.
 #
 # THE VERDICT IS "DOES PRODUCTION INCLUDE THIS COMMIT", NOT "DOES IT EQUAL THIS SHA". The
-# equality test demanded a deploy for commits that cannot change the built app: at 17:19Z it
-# went red for a commit that touched only apps/mouth/e2e/**. Now the expected commit is the
-# newest one touching a path that actually reaches the bundle (e2e excluded), and the test is
-# ancestry — production may legitimately be AHEAD of it, never behind. Ancestry is the right
+# test is ancestry — production may legitimately be AHEAD of it, never behind. Ancestry is the right
 # semantic here and not a W88-style lying proxy: both shas live on main's linear history, and
 # a served sha that is absent from history fails closed rather than passing.
 #
@@ -72,6 +69,7 @@ on:
       - "package-lock.json"
       - "vercel.json"
       - "apps/mouth/vercel.json"
+      - ".github/workflows/frontend-live-sentinel.yml"
   schedule:
     # DECLARED every 30 minutes. DELIVERED far less often, and the gap is not a detail anyone
     # sizing an incident response should have to discover the hard way.
@@ -105,10 +103,11 @@ jobs:
   is-production-serving-this-commit:
     name: Is production serving this commit?
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0 # full history: the ancestry test needs both shas present
           # blob:none — every commit and tree, file contents fetched on demand. A full clone
           # of this repo moves 2,289 MB and has already eaten an entire job budget elsewhere.
@@ -120,12 +119,8 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           set -uo pipefail
-          # Paths that can change what the browser receives. apps/mouth/e2e is excluded: those
-          # specs run in CI and never reach the bundle, so demanding a deploy for them
-          # manufactures a red with no user-visible referent.
           sha=$(git log -1 --format=%H -- \
-            apps/mouth packages package.json package-lock.json vercel.json \
-            ':(exclude)apps/mouth/e2e')
+            apps/mouth packages package.json package-lock.json vercel.json)
           if [ -z "$sha" ]; then
             echo "::warning::no commit touches the deploy-relevant paths — nothing to assert"
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -140,13 +135,10 @@ jobs:
           # nobody should have to reason about.
           skip=false
           attempts=3
-          if [ "$EVENT" = "push" ]; then
-            # A frontend build plus alias assignment normally lands in 3-6 minutes.
-            # 18 attempts x 60s = 18 minutes of grace before shouting.
-            attempts=18
-          elif [ "$age_s" -lt 2700 ]; then
-            # Younger than 45 min on a scheduled tick: a deploy may still be in flight, and
-            # the push-triggered run is the one that owns that window. Do not double-shout.
+          grace_s=1800
+          if [ "$EVENT" != "schedule" ] && [ "$age_s" -lt "$grace_s" ]; then
+            attempts=$(( (grace_s - age_s + 59) / 60 + 1 ))
+          elif [ "$age_s" -lt "$grace_s" ]; then
             echo "::notice::expected commit is $(( age_s / 60 )) min old — inside the deploy window, deferring to the push run"
             skip=true
           fi
@@ -158,7 +150,7 @@ jobs:
             echo "attempts=$attempts"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Poll balizero.com until it includes that commit
+      - name: Poll kita.balizero.com until it includes that commit
         id: probe
         if: steps.expected.outputs.skip != 'true'
         env:
@@ -166,7 +158,7 @@ jobs:
           ATTEMPTS: ${{ steps.expected.outputs.attempts }}
         run: |
           set -uo pipefail
-          URL="https://balizero.com/api/health"
+          URL="https://kita.balizero.com/api/health"
           seen=""
           for i in $(seq 1 "$ATTEMPTS"); do
             # Capture the exit code directly — never through a pipe, which reports the pipe's.
@@ -175,12 +167,12 @@ jobs:
             # the first failed curl — the retry loop below it could never run. The `|| rc=$?`
             # puts the assignment in a condition context, which errexit ignores.
             rc=0
-            body=$(curl -sS --max-time 25 "$URL" 2>&1) || rc=$?
+            body=$(curl -fsS --max-time 25 "$URL" 2>&1) || rc=$?
             if [ "$rc" -ne 0 ]; then
               echo "attempt $i/$ATTEMPTS - curl rc=$rc: ${body:0:160}"
               sleep 60; continue
             fi
-            live=$(printf '%s' "$body" | jq -r '.commit // empty')
+            live=$(printf '%s' "$body" | jq -er '.commit | select(type == "string") | select(test("^[0-9a-f]{40}$"))') || live=""
             if [ -z "$live" ]; then
               # Field absent: production predates the change that introduces it, or someone
               # removed it. Neither is evidence of health, so this is not a pass.
@@ -189,19 +181,22 @@ jobs:
               sleep 60; continue
             fi
             seen="$live"
+            if ! git cat-file -e "$live^{commit}" 2>/dev/null; then
+              git fetch --quiet origin main || true
+            fi
             # Ancestor-or-equal: production is allowed to be AHEAD of the expected commit
             # (a later e2e-only or CI-only commit deployed with something else), never behind.
             # An unknown sha makes this exit non-zero, which is a fail — deliberately closed.
             if git merge-base --is-ancestor "$SHA" "$live" 2>/dev/null; then
               echo "attempt $i/$ATTEMPTS - production serves ${live:0:8}, which includes ${SHA:0:8}"
-              echo "OK - balizero.com is serving this commit."
+              echo "OK - kita.balizero.com includes this commit."
               exit 0
             fi
             echo "attempt $i/$ATTEMPTS - production serves ${live:0:8}, which does NOT include ${SHA:0:8}"
             sleep 60
           done
-          echo "::error::balizero.com does NOT include $SHA (last seen: ${seen:-no response})."
-          echo "The public frontend is stale: balizero.com AND every subdomain share one Vercel project."
+          echo "::error::kita.balizero.com did not prove inclusion of $SHA (last seen: ${seen:-no response})."
+          echo "The kita frontend did not prove it includes the expected commit."
           echo
           echo "CURE FIRST — one command covers both failure modes below, and diagnoses as it goes:"
           echo "    python3 scripts/vercel_prod_deploy.py             # deploy main HEAD, then promote"
@@ -251,7 +246,7 @@ jobs:
             echo "::warning::Telegram secrets absent - no alert sent"
             exit 0
           fi
-          MSG="[FRONTEND STALE] balizero.com does not include ${SHA:0:8} (${AGE_MIN} min old). Every subdomain (kita/my/prime/visa/tax/zantara) shares that Vercel project, so they are stale too. CURE, not owner-only: run 'python3 scripts/vercel_prod_deploy.py' from a machine where 'vercel whoami' answers (M5 does since 2026-07-30). If it reports no deployment is ever created, the Vercel GitHub App lost its install: github.com/apps/vercel -> Configure -> grant repo access."
+          MSG="[FRONTEND STALE] kita.balizero.com did not prove it includes ${SHA:0:8} (${AGE_MIN} min old). Proof source: https://kita.balizero.com/api/health .commit and git ancestry. CURE, not owner-only: run 'python3 scripts/vercel_prod_deploy.py' from a machine where 'vercel whoami' answers (M5 does since 2026-07-30). If it reports no deployment is ever created, the Vercel GitHub App lost its install: github.com/apps/vercel -> Configure -> grant repo access."
           # Judge the REPLY, not the exit code: curl exits 0 even when Telegram refuses.
           # Capture errexit-immune (W101) — under the default `bash -e` a bare assignment
           # would abort here on a network failure, and this alert exists precisely for the

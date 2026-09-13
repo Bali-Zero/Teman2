@@ -1,0 +1,8 @@
+[Air-M5] **PASS**
+
+- `apps/mouth/../../node_modules/.bin/tsc` resolves correctly to the repository-root installed compiler.
+- The exact-command assertion matches the workflow change.
+- Required context, conditions, ordering, failure behavior, and all existing mutation cases remain intact.
+- The docstring now accurately describes the guard’s role.
+
+Residual condition: include the disclosed three-job routing narrowing in the PR body. Final Anthropic grading remains independent.

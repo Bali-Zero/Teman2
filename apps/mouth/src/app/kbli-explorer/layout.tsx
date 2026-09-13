@@ -13,6 +13,9 @@ export const metadata: Metadata = {
       "Describe your business idea in any language — we find the right Indonesian codes, licenses and requirements.",
     url: `${baseUrl}/kbli-explorer`,
   },
+  alternates: {
+    canonical: `${baseUrl}/kbli-explorer`,
+  },
 };
 
 function KBLIExplorerJsonLd() {

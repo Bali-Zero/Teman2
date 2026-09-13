@@ -88,14 +88,20 @@ async def get_system_metrics() -> Any:
             agent_status = "unknown"
 
         # Calculate metrics
+        # NOTE: this endpoint previously also returned uptime_percentage (a fixed
+        # 99.8 literal), avg_response_time_ms (synthesized from archived-file
+        # content length, not a real latency measurement), next_scheduled_run
+        # (last_approved + a hardcoded interval, not read from any scheduler
+        # config) and qdrant_health (constructing a QdrantClient never contacts
+        # the server, so this was always "healthy" unless the constructor itself
+        # raised). None of the four had a live consumer — the only page that
+        # rendered them (/intelligence/system-pulse) is already deleted from
+        # kita, and `intelligenceApi.getMetrics()` has no other caller — so they
+        # were removed rather than shipped as fake data (kita pruning wave 2d).
         metrics = {
             "agent_status": agent_status,
             "last_run": last_run,
             "items_processed_today": 0,
-            "avg_response_time_ms": 0,
-            "qdrant_health": "healthy",
-            "next_scheduled_run": None,
-            "uptime_percentage": 99.8,
         }
 
         # Count pending items using staging service
@@ -130,51 +136,10 @@ async def get_system_metrics() -> Any:
         if last_approved:
             metrics["last_run"] = last_approved
 
-        # Check Qdrant health
-        try:
-            QdrantClient(collection_name="visa_oracle")
-            metrics["qdrant_health"] = "healthy"
-        except Exception as e:
-            logger.warning("Qdrant health check failed: %s", e, exc_info=True)
-            metrics["qdrant_health"] = "degraded"
-
-        # Calculate next scheduled run
-        if last_approved:
-            try:
-                last_dt = datetime.fromisoformat(last_approved.replace("Z", "+00:00"))
-                next_run = last_dt + timedelta(hours=IntelConstants.SCHEDULER_RUN_INTERVAL_HOURS)
-                metrics["next_scheduled_run"] = next_run.isoformat()
-            except (ValueError, TypeError) as e:
-                logger.debug("Failed to parse last_approved date: %s", e)
-
-        # Calculate average response time based on recent approvals
-        response_times = []
-        for archive_type in ["visa", "news"]:
-            archive_dir = staging_service.get_staging_dir(archive_type) / "archived" / "approved"
-            if archive_dir.exists():
-                for file_path in sorted(
-                    archive_dir.glob("*.json"),
-                    key=lambda p: p.stat().st_mtime,
-                    reverse=True,
-                )[:10]:
-                    try:
-                        with open(file_path) as f:
-                            data = json.load(f)
-                            content_len = len(data.get("content", ""))
-                            response_times.append(1000 + (content_len / 10))
-                    except Exception:
-                        continue
-
-        if response_times:
-            metrics["avg_response_time_ms"] = int(sum(response_times) / len(response_times))
-        else:
-            metrics["avg_response_time_ms"] = IntelConstants.DEFAULT_AVG_RESPONSE_TIME_MS
-
         logger.info(
             "System metrics calculated",
             extra={
                 "agent_status": metrics["agent_status"],
-                "qdrant_health": metrics["qdrant_health"],
                 "items_processed": metrics["items_processed_today"],
             },
         )

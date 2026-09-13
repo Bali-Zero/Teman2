@@ -1,0 +1,24 @@
+task_id: hierarchy-doctrine-20260908
+gear: 2
+objective: Realign the six doctrine surfaces (RULINGS.md, modus SKILL.md, AGENTS.md §17.1, MODEL_ROSTER.md, FLEET_TOPOLOGY.json, and the test that anchors the gate seat) to the two-imperator hierarchy Zero ruled on 2026-09-06 and narrowed on 2026-09-08, replacing the permanent-Opus reviewer title with an independent-verifier assignment on the same Opus 5 xhigh seat.
+constraints:
+  - The Builder Contract block is untouched (door_canon_parity RECONCILED on this tree).
+  - Superseded rulings stay in the files with dated markers; nothing is deleted.
+  - The shipping fence is unchanged; parity between the imperators widens no permission (PR #5821 closed as superseded).
+  - Fable 5.1 is never auto-routed; it enters only as the owner-opened imperator window.
+  - model_routing_gate.py wording is left to a follow-up (PR #5946 landed the Workflow coverage first).
+acceptance:
+  - text: WHEN scripts/tests/test_gate_seat_conformance.py and test_claude_md_budget.py run on this tree, they SHALL pass (retirement sentence preserved byte-identical).
+    probe: gate-seat-conformance
+  - text: WHEN scripts/tests/test_llm_fleet_audit.py reads FLEET_TOPOLOGY.json, it SHALL pass with gear3_final_gate.chain[0].effort == "xhigh" and the new imperators/generals role chains present.
+    probe: fleet-audit
+  - text: WHEN the door_canon_parity probe runs, it SHALL report RECONCILED.
+    probe: door-canon-parity
+consumer_map:
+  - scripts/tests/test_gate_seat_conformance.py (reads RULINGS.md line with the claude-fable-5 retirement sentence).
+  - scripts/tests/test_llm_fleet_audit.py and every reader of FLEET_TOPOLOGY.json role_chains (grep -rn gear3_final_gate scripts/).
+  - Every session booting modus / AGENTS.md §17.1 / MODEL_ROSTER.md from origin/main after merge.
+risks:
+  - scripts/tests/test_conductor_host_seat_maps.py fails at collection on origin/main already (pre-existing, unrelated, not touched here).
+  - Doctrine text is a rule without an executing consumer for the hierarchy itself; enforcement state is tracked in docs/architecture/dual-consul/army-map.md §5.
+pii: none

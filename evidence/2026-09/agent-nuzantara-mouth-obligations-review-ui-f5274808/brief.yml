@@ -1,0 +1,105 @@
+task_id: obligations-review-ui
+gear: 2
+l_level: L2
+gate_class: opus
+gear_note: >-
+  floor 2 by the size term (net lines 860 >= SIZE_GEAR2_THRESHOLD=400, < SIZE_GEAR3_THRESHOLD
+  1828); declared 2. Fleet finding: `evidence_pack_lint.py --print-floor` does NOT read
+  `--net-lines` (that flag is only consumed by the `--print-measured`/pack-check paths) — the
+  size term needs `--numstat-file`. The dispatch's literal command
+  (`--changed-files-file --net-lines`) prints floor 1 (path-only, no hot-zone hit, no size
+  term) because numstat is never supplied; `--changed-files-file /tmp/cf.txt --numstat-file
+  /tmp/ns.txt` on `git diff --numstat origin/main...` correctly returns 2, source "size".
+objective: >-
+  Add a reviewer screen for the compliance obligations register at
+  apps/mouth/src/app/(workspace)/obligations/page.tsx (kita workspace), so the tax team can
+  generate obligation proposals for a client (POST .../generate), filter/paginate the register
+  (GET .../obligations), and approve or reject proposed rows (POST .../{id}/approve|reject) —
+  the backend router (apps/backend-rag/backend/app/routers/compliance_obligations.py, prefix
+  /api/compliance/obligations, admin-gated via is_crm_admin on every route) was already on main
+  with no UI in front of it.
+constraints:
+  - >-
+    Reused the existing `api` client (`@/lib/api`) exactly as (workspace)/review/page.tsx does —
+    no new fetch layer; errors are classified via `ApiError.statusCode` (imported from
+    `@/lib/api/error-handler`, same source review/page.tsx's sibling
+    process/[id]/page.tsx uses for the identical 401/403/404 pattern), not string-sniffed.
+  - >-
+    Contract read from the router BEFORE coding, not assumed from the dispatch: ApproveBody.note
+    is optional but RejectBody.reason is REQUIRED (`Field(..., min_length=1)`) — the dispatch
+    said "Reject (optional note)", which is wrong for this router. The UI enforces the
+    server-side requirement client-side (Reject stays enabled but shows "A reason is required to
+    reject." and never fires the request on an empty field) rather than round-tripping a
+    guaranteed 422.
+  - >-
+    review/page.tsx calls `api.get<T>`/`api.post<T>` with local TS interfaces, not the generated
+    `src/lib/api/schema.d.ts` typed paths (only apps/mouth/src/app/sitemap.test.ts references
+    schema.d.ts in the whole app) — this page follows the same untyped-call convention, so no
+    `npm run generate:openapi && npm run generate:api` regen was run or needed.
+  - >-
+    No PII beyond what the API returns: the table shows ids only (obligation id, client_id,
+    rule_id) — never a client name/email/phone join, matching the router's own
+    ids-only response shape.
+  - >-
+    Design tokens/components match review/page.tsx and GateScreen.tsx's `--bz-*`/`--state-*`
+    CSS custom properties, not the different `var(--border)`/`var(--foreground-muted)` token
+    set used by some settings pages — review/page.tsx was named as the pattern to follow.
+  - >-
+    Nav link added to apps/mouth/src/types/navigation.ts ("Work" section, right after "Review"),
+    which apps/mouth/src/components/workspace/AppSidebar.tsx renders — the "Receipt" lucide icon
+    was already imported/mapped there (used by two portal nav entries), so no new icon import.
+acceptance:
+  - text: >-
+      WHEN the register loads THEN proposed rows from the list response SHALL render (id,
+      client_id, rule_id, period_key, due_date, needs_review_reason, status).
+    probe: >-
+      npx vitest run "src/app/(workspace)/obligations/page.test.tsx" -t "renders proposed rows"
+      — 1 passed.
+  - text: >-
+      WHEN Approve is clicked with a note THEN POST .../{id}/approve SHALL carry {note} and the
+      list SHALL refetch and show the returned alert_id.
+    probe: >-
+      npx vitest run same file -t "approve sends the note" — 1 passed. Bite proven by mutation:
+      changed `body.note = note` to `body.wrong_key = note` in page.tsx -> RED (1 failed, key
+      assertion `toHaveBeenCalledWith(".../101/approve", { note: "looks correct" })` unmet);
+      reverted -> GREEN (5 passed). Full tails below.
+  - text: WHEN Reject is clicked with an empty note THEN it SHALL refuse and never call the API.
+    probe: >-
+      npx vitest run same file -t "reject requires a reason" — 1 passed (asserts
+      apiMock.post not called until a reason is typed, then called with {reason}).
+  - text: >-
+      WHEN generate returns needs_manual_classification=true THEN the warning banner SHALL
+      render with the router's exact message.
+    probe: npx vitest run same file -t "needs_manual_classification" — 1 passed.
+  - text: WHEN the backend 403s (non-admin) THEN the page SHALL show "Admin only." not a raw error.
+    probe: npx vitest run same file -t "admin-only" — 1 passed.
+  - text: Typecheck and lint SHALL be clean; formatting SHALL match prettier.
+    probe: >-
+      npx tsc --noEmit (exit 0, no output); npx eslint page.tsx (0 errors; page.test.tsx is
+      ignored by the project's own eslint glob, verified identical on review/page.test.tsx);
+      npx prettier --check page.tsx page.test.tsx navigation.ts (all pass after one --write
+      pass).
+  - text: The full app SHALL build and /obligations SHALL resolve as its own static route.
+    probe: >-
+      npm run build (apps/mouth), exit 0; route table prints "○ /obligations" as a standalone
+      static entry; "PUBLIC_LOGIN_BUNDLE_OK: inspected 8 assets; no internal API route prefixes
+      found" printed after (chained with &&, so only runs post next-build success).
+consumer_map:
+  - "The tax team, via the kita workspace nav (Work -> Obligations), to clear the proposed-obligation backlog without a direct-DB workaround."
+  - "compliance-deadline-sentinel / obligations register backend (PR A1/A2, already on main): this page is the first UI consumer of GET/POST /api/compliance/obligations."
+risks:
+  - >-
+    The row-level action UI reuses ONE text input for both approve's optional note and reject's
+    required reason (labelled "note (required to reject)") rather than two separate fields, to
+    keep the table row compact — a reviewer who fills it in for Approve and then clicks Reject
+    on the SAME row would send that text as the rejection reason. Judged acceptable: the field
+    is per-row and cleared on refetch, and it is the same simplification review/page.tsx makes
+    for its own reject `window.prompt`.
+  - >-
+    Pagination/filter state is client-only (no URL query params) — a reviewer's page/filter
+    position is lost on reload, same as review/page.tsx's own queue view.
+grader: >-
+  The final on-disk gate is a fresh Opus 5 session commissioned by the imperator; this session
+  does not post harness/fable-gate and did not arm auto-merge.
+budget: Existing subscription only; no paid API calls.
+pii: none (ids only; no client name/email/phone rendered or fetched)

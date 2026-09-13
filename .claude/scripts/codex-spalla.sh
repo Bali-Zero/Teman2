@@ -3,23 +3,35 @@
 #
 # Usage:
 #   .claude/scripts/codex-spalla.sh <mode> <base_branch> [focus_brief]
+#   .claude/scripts/codex-spalla.sh --self-test
 #
 # Args:
 #   mode:        "review" (default) | "exec"
 #   base_branch: base for diff comparison (default: main)
 #   focus_brief: optional free-text focus area passed to Codex
+#   --self-test: liveness probe, no diff needed — dispatches a trivial prompt
+#                through the real `codex exec` path and requires a verdict line
+#                back. Exit 0 proves flags, seat and auth are all live.
 #
 # Behavior contract: see docs/superpowers/specs/2026-05-03-codex-spalla-design.md §4.3.
 # Hard rules: see docs/decisions/2026-05-03-codex-spalla-architecture.md.
 #
+# codex-cli drift: `--full-auto` was removed in codex-cli 0.149.1 and every
+# wrapper run after that judged NOTHING — worse, codex-cli 0.151.0 printed the
+# usage error at exit 0, so callers judging by return code read "never ran" as
+# "clean" (ledger 2026-09-01, PENDING-ARMS). Two rules follow: never pass a
+# removed flag again, and never trust exit 0 without a verdict line (see
+# verdict_present below).
+#
 # Exit codes:
-#   0  = dispatch completed (regardless of Codex verdict)
-#   1  = invalid args or git error
+#   0  = dispatch completed AND a verdict line landed (regardless of verdict)
+#   1  = invalid args, git error, or codex seat lib missing
 #   2  = hard refused (empty diff)
 #   3  = anti-pattern guard cancelled by user (Ctrl-C during countdown)
 #   4  = codex CLI not installed
 #   5  = codex CLI not logged in
-#   >5 = codex non-zero exit propagated
+#   6  = codex returned 0 but produced no verdict line — never judged
+#   >6 = codex non-zero exit propagated (2/6 by value may also be codex's own)
 
 set -euo pipefail
 
@@ -27,8 +39,17 @@ MODE="${1:-review}"
 BASE="${2:-main}"
 FOCUS="${3:-}"
 
-if [[ "$MODE" != "review" && "$MODE" != "exec" ]]; then
-    echo "ERROR: mode must be 'review' or 'exec' (got: '$MODE')" >&2
+SELF_TEST="false"
+if [[ "$MODE" == "--self-test" ]]; then
+    SELF_TEST="true"
+    # MODE flows into the transcript filename and telemetry; the self-test
+    # block below dispatches explicitly with --sandbox read-only regardless.
+    MODE="self-test"
+    FOCUS="self-test"
+fi
+
+if [[ "$MODE" != "review" && "$MODE" != "exec" && "$SELF_TEST" != "true" ]]; then
+    echo "ERROR: mode must be 'review', 'exec' or '--self-test' (got: '$MODE')" >&2
     exit 1
 fi
 
@@ -48,21 +69,37 @@ if ! command -v codex >/dev/null 2>&1; then
     exit 4
 fi
 
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -z "$REPO_ROOT" ]]; then
+    echo "ERROR: not inside a git repo" >&2
+    exit 1
+fi
+cd "$REPO_ROOT"
+
 # Pick a seat that is actually logged in, alternating between the two ChatGPT
 # Pro subscriptions, BEFORE asking codex whether it is logged in — the question
 # is answered per CODEX_HOME. Measured 2026-08-12 on Pro: the default ~/.codex
 # answers 401 while ~/.codex-acct2 is live, so the gate below would have
-# refused with a paid seat one variable away. A `source` of a missing file is a
-# special builtin and would EXIT under this file's set -e, hence [ -f ].
-CODEX_SEAT_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../scripts/lib" 2>/dev/null && pwd)/codex_seat.sh"
-if [ -f "$CODEX_SEAT_LIB" ]; then
-    # shellcheck disable=SC1090
-    . "$CODEX_SEAT_LIB"
-    CODEX_SEAT="$(codex_seat_pick 2>/dev/null || true)"
-    if [ -n "$CODEX_SEAT" ]; then
-        export CODEX_HOME="$CODEX_SEAT"
-        echo "[spalla] codex seat: $CODEX_SEAT" >&2
-    fi
+# refused with a paid seat one variable away.
+#
+# The lib is resolved from the REPO ROOT, not from this script's own path: the
+# old `dirname BASH_SOURCE/../../scripts/lib` resolution silently skipped
+# seat-picking for any copy of the script sitting at a different depth — the
+# [ -f ] guard dodged a `source`-of-missing-file exit under set -e, at the
+# price of dispatching on the default, possibly 401-dead, seat without saying
+# so. A missing lib is now a loud refusal.
+CODEX_SEAT_LIB="$REPO_ROOT/scripts/lib/codex_seat.sh"
+if [[ ! -f "$CODEX_SEAT_LIB" ]]; then
+    echo "ERROR: codex seat lib not found: $CODEX_SEAT_LIB" >&2
+    echo "(resolved from the repo root; refusing to dispatch on an unpicked, possibly dead, default seat)" >&2
+    exit 1
+fi
+# shellcheck disable=SC1090
+. "$CODEX_SEAT_LIB"
+CODEX_SEAT="$(codex_seat_pick 2>/dev/null || true)"
+if [ -n "$CODEX_SEAT" ]; then
+    export CODEX_HOME="$CODEX_SEAT"
+    echo "[spalla] codex seat: $CODEX_SEAT" >&2
 fi
 
 if ! codex login status 2>&1 | grep -qi "Logged in using ChatGPT"; then
@@ -70,13 +107,6 @@ if ! codex login status 2>&1 | grep -qi "Logged in using ChatGPT"; then
     echo "(Hard rule: do NOT set OPENAI_API_KEY — use OAuth only.)" >&2
     exit 5
 fi
-
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-if [[ -z "$REPO_ROOT" ]]; then
-    echo "ERROR: not inside a git repo" >&2
-    exit 1
-fi
-cd "$REPO_ROOT"
 
 HEAD_REF="$(git rev-parse HEAD 2>/dev/null || echo HEAD)"
 
@@ -114,7 +144,7 @@ TOTAL_DIFF_LINES=$((DIFF_LINES + UNCOMMITTED_LINES))
 WARNED="false"
 CANCELLED="false"
 
-if [[ "$TOTAL_DIFF_LINES" -eq 0 ]] && [[ "$UNTRACKED_FILES" -eq 0 ]]; then
+if [[ "$SELF_TEST" != "true" ]] && [[ "$TOTAL_DIFF_LINES" -eq 0 ]] && [[ "$UNTRACKED_FILES" -eq 0 ]]; then
     echo "REFUSED: diff is empty against base '$BASE', no uncommitted changes, no untracked files." >&2
     echo "Nothing to review. Make some changes first." >&2
     exit 2
@@ -154,6 +184,11 @@ while ! ( set -C; : > "$TRANSCRIPT" ) 2>/dev/null; do
 done
 # Empty file now exclusively owned; codex output below appends via >> not >.
 
+# Assistant-only final output, written by codex itself (--output-last-message),
+# derived from the same race-safe base as the transcript. This file — not the
+# combined transcript — is the verdict source (see verdict_present below).
+LAST_MESSAGE="${TRANSCRIPT_BASE}.last.md"
+
 record_telemetry() {
     local exit_code="$1"
     local blocker="${2:-false}"
@@ -166,6 +201,59 @@ record_telemetry() {
         "$WARNED" "$CANCELLED" "$exit_code" "$blocker" \
         "$TRANSCRIPT" >> "$TELEMETRY_FILE"
 }
+
+# A dispatch only counts as a review when a verdict line landed in the
+# assistant's FINAL message. codex-cli has shipped two "never ran" shapes that
+# both looked clean from outside: a clap usage error at exit 2 (0.149.1,
+# honest) and the same error at exit 0 (0.151.0, silent — every caller judging
+# by return code read it as "clean"; ledger 2026-09-01). The exit code alone
+# cannot distinguish "ran and found nothing" from "never ran"; the verdict
+# line can — but only when read from the assistant-only output, not the
+# combined transcript (review loop-20260906-partner-gate-followups, comment
+# 5555186204): the transcript carries diagnostics and an echo of the prompt
+# (which embeds the untrusted diff), so a transcript scan both misses a
+# verdict landing past the first 50 lines (false "never judged") and accepts a
+# verdict-shaped line in the echoed prompt (false "judged" — the
+# never-judged-as-success defect). `--output-last-message` makes codex itself
+# write the final assistant message to $LAST_MESSAGE; that file is the only
+# verdict source. A missing or empty file = never judged, however clean the
+# transcript looks.
+verdict_present() {
+    [[ -s "$1" ]] && grep -qiE '^[[:space:]]*(BLOCKER|MEDIUM|LOW|LGTM)\b' "$1"
+}
+
+# --self-test: liveness probe for the dispatch path itself. The diff guards
+# above are skipped (there is nothing to review); a trivial prompt goes through
+# the real codex exec invocation and a verdict line must come back. Exists so
+# the wrapper's own health is provable on demand, instead of being discovered
+# by the next review that silently never happened.
+if [[ "$SELF_TEST" == "true" ]]; then
+    SELFTEST_PROMPT="[SPALLA-SELFTEST]
+
+Liveness probe for the codex-spalla dispatch path — not a review. Do not
+inspect the repository or run any tool. Reply with exactly one line whose first
+word is one of: BLOCKER, MEDIUM, LOW, LGTM — then one short sentence
+confirming the CLI answered."
+    echo "[spalla] self-test: codex exec --sandbox read-only -c model_reasoning_effort=xhigh (trivial prompt)" >&2
+    CODEX_EXIT=0
+    printf '%s' "$SELFTEST_PROMPT" | codex exec --sandbox read-only \
+        -c model_reasoning_effort=xhigh --output-last-message "$LAST_MESSAGE" \
+        - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+    if [[ "$CODEX_EXIT" -eq 0 ]] && ! verdict_present "$LAST_MESSAGE"; then
+        echo "ERROR: self-test got exit 0 but no verdict line in the assistant-only output — codex never judged." >&2
+        CODEX_EXIT=6
+    fi
+    if [[ "$CODEX_EXIT" -ne 0 ]]; then
+        echo "ERROR: self-test failed (exit $CODEX_EXIT). Transcript: $TRANSCRIPT" >&2
+        record_telemetry "$CODEX_EXIT" false
+        echo "RESULT_PATH=$TRANSCRIPT"
+        exit "$CODEX_EXIT"
+    fi
+    grep -iE -m 1 '^[[:space:]]*(BLOCKER|MEDIUM|LOW|LGTM)\b' "$LAST_MESSAGE" | sed 's/^/[spalla] self-test verdict: /' >&2
+    record_telemetry 0 false
+    echo "RESULT_PATH=$TRANSCRIPT"
+    exit 0
+fi
 
 # Install INT trap BEFORE the small-diff countdown so Ctrl-C during sleep
 # records cancelled=true telemetry and exits cleanly with code 3.
@@ -263,19 +351,36 @@ if [[ "$MODE" == "review" ]]; then
     # "argument '--base <BRANCH>' cannot be used with '[PROMPT]'".
     # Use `codex exec --sandbox read-only` instead — it accepts our
     # custom [SPALLA] prompt while staying read-only on the workspace.
-    printf '%s' "$PROMPT" | codex exec --full-auto --sandbox read-only \
-        -c model_reasoning_effort=xhigh - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+    # NEVER `--full-auto`: removed in codex-cli 0.149.1 (see the header drift
+    # note); exec mode's old full-auto semantics are spelled out below as an
+    # explicit workspace-write sandbox.
+    printf '%s' "$PROMPT" | codex exec --sandbox read-only \
+        -c model_reasoning_effort=xhigh --output-last-message "$LAST_MESSAGE" \
+        - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
 else
-    printf '%s' "$PROMPT" | codex exec --full-auto -c model_reasoning_effort=xhigh - \
-        >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+    printf '%s' "$PROMPT" | codex exec --sandbox workspace-write \
+        -c model_reasoning_effort=xhigh --output-last-message "$LAST_MESSAGE" \
+        - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+fi
+
+# The exit code, not only the transcript, must distinguish "ran and found
+# nothing" from "never ran" (ledger 2026-09-01: codex-cli 0.151.0 printed a
+# clap usage error at exit 0 and every caller read the run as a clean review).
+# The verdict is judged from the assistant-only file only — a verdict-shaped
+# line in the echoed prompt or diff is not a judge (loop
+# 20260906-partner-gate-followups, comment 5555186204).
+if [[ "$CODEX_EXIT" -eq 0 ]] && ! verdict_present "$LAST_MESSAGE"; then
+    echo "ERROR: codex exited 0 but no verdict line (BLOCKER/MEDIUM/LOW/LGTM) in its final assistant message — codex never judged this diff." >&2
+    echo "Transcript: $TRANSCRIPT (assistant-only output: $LAST_MESSAGE)" >&2
+    CODEX_EXIT=6
 fi
 
 BLOCKER="false"
-# Codex spalla self-review #8: BLOCKER detection scans only the first 50
-# lines (the verdict header per output template). Scanning the entire
-# transcript would false-positive on bullets that quote earlier BLOCKER
-# verdicts (verify-after-fix runs cite previous transcripts).
-if head -50 "$TRANSCRIPT" 2>/dev/null | grep -qiE '^[[:space:]]*BLOCKER\b'; then
+# Codex spalla self-review #8: BLOCKER detection scans only the head of the
+# assistant-only final message (the verdict header per output template).
+# Scanning the whole final message would false-positive on bullets that quote
+# earlier BLOCKER verdicts (verify-after-fix runs cite previous transcripts).
+if head -50 "$LAST_MESSAGE" 2>/dev/null | grep -qiE '^[[:space:]]*BLOCKER\b'; then
     BLOCKER="true"
     REVIEWS_DIR="$REPO_ROOT/docs/codex-reviews"
     mkdir -p "$REVIEWS_DIR"

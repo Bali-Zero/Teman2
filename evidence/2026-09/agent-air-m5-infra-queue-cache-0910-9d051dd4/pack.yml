@@ -1,0 +1,321 @@
+task_id: infra-queue-cache-0910
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-10
+machine: M5
+lanes:
+  - lane: cache hygiene in .github/workflows/tests.yml — single shared node-workspace key, restore-only + main-only-save for node and .next/cache, uv cache prune --ci after every uv-cached install
+    role: build
+    seat: claude-sonnet-5 (subagent dispatched by the M5 Fable 5.1 orchestrating session, this worktree)
+    note: >-
+      (a) Frontend Tests matrix "Cache dependencies" step and the standalone
+      npm-audit job's "Cache dependencies" step now share ONE key
+      (`${{ runner.os }}-node-workspace-${{ hashFiles('package-lock.json') }}`,
+      no restore-keys), each split into an `actions/cache/restore@v6` (id
+      `node-cache`) followed by an `actions/cache/save@v6` gated on
+      `github.ref == 'refs/heads/main' && steps.node-cache.outputs.cache-hit
+      != 'true'`, AND-ed with the matrix job's own `steps.decide.outputs.run
+      == 'true'` guard (npm-audit has no such step-level guard to AND).
+      (b) The e2e-tests job's "Cache Next.js build cache (mouth)" step is now
+      `actions/cache/restore@v6` (id `next-cache`), key and both
+      restore-keys byte-identical to before; a new "Save Next.js build cache
+      (mouth, main only)" step runs after "Run E2E tests" and before "Check
+      Playwright report", `actions/cache/save@v6` on
+      `steps.next-cache.outputs.cache-primary-key`, guarded by
+      `!cancelled() && github.ref == 'refs/heads/main' &&
+      steps.next-cache.outputs.cache-hit != 'true'`.
+      (c) `uv cache prune --ci` appended as the last line of the install
+      script in Backend Static (~l.701) and Backend Shard (~l.998) — both
+      single flat run blocks. Visa Oracle fullstack smoke's uv install is
+      NOT one run block as the brief assumed: it has TWO separate
+      `bash -c '...'` install subshells (`uv_install` id, main attempt, and
+      `uv_install_retry` id, timeout-only retry) — pruned inside BOTH nested
+      subshells, after their `-e ../../packages/cell-core` line, so the
+      cache saved by whichever attempt actually succeeds is pruned either
+      way. That is 4 `uv cache prune --ci` invocations total, not the 3 the
+      brief's acceptance text assumed — flagged as a brief/reality
+      contradiction below, not silently resolved by dropping the retry's
+      prune (which would leave an unpruned cache on the retry-succeeds path,
+      the harder-to-notice failure mode).
+      Comment blocks added above every changed cache step and above every
+      inserted `uv cache prune --ci` line, in the file's existing heavy-
+      comment style, citing the brief's measured numbers (10.86 GB / 10 GB
+      cap 2026-09-09 17:45Z; GitHub docs on PR-ref/queue-ref cache
+      restorability; 49s-restore+14s-install vs 39s-cold-install on runs
+      34382424536 / 34354276221). One early defect self-caught before
+      reporting: the visa-oracle retry comment originally read "this job's"
+      inside a single-quoted `bash -c '...'` block — the apostrophe
+      terminated the quoted string early, which actionlint's shellcheck pass
+      caught immediately (SC1011/SC1072/SC1073) on the first run; reworded
+      to avoid the apostrophe, actionlint clean on re-run.
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol -c model_reasoning_effort=medium --sandbox read-only`, non-Anthropic, fresh context, brief + full diff inline, NO tools by instruction)
+    note: >-
+      OK. Confirmed: `if: >-` block scalar keeps `!cancelled()` as expression
+      text; restore@v6 exposes `cache-hit` and `cache-primary-key`;
+      concurrent main-only saves of one immutable key cannot fail CI;
+      main-only writes are an intentional trade-off (lockfile-bump PRs
+      install cold until main seeds), not a silent cache disablement; matrix
+      guard composed correctly; no topology or required-check change; the
+      `.next/cache` save after E2E with `!cancelled()` seeds on completed
+      failures and excludes cancellations. Named two non-blocking nits:
+      A6 count is 4 not 3 (both Visa Oracle install attempts prune) — CURED
+      in the brief; a prune error inside the fail-fast subshells "adds CI
+      fragility for a cache-maintenance optimization" — CURED post-review
+      by `|| echo "::warning::…"` on all four prune lines (receipt below).
+      Two earlier attempts of this seat WITH file access were parked by the
+      Codex context bridge at ~115k tokens (builder threshold 0.4 × 258k)
+      before printing a verdict; their checkpoints in
+      ~/.codex/state/nuzantara-context/ (01a08752…, 01a08767…) already read
+      "no blocking CI defect; A6 mismatch; A7 too broad (uv/Playwright
+      combined caches still write non-main refs)" — the A7 wording was
+      narrowed to the node-workspace and nextjs-mouth keys in the brief.
+    verdict: OK
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p`, non-Anthropic, agentic read-only file access with a read budget, fresh context, no shared prompt state with the codex lane)
+    note: >-
+      OK. Went further than codex on the linchpin: fetched actions/cache's
+      saveImpl.ts and verified that ReserveCacheError (409, "another job may
+      be creating this cache") is caught and logged as a warning, so three
+      main jobs racing on the same node-workspace key cannot fail. Verified
+      `cache-primary-key` is set even on a miss (the .next save key always
+      equals the restore key), that a restore-keys partial hit yields
+      cache-hit != 'true' and therefore a save under the NEW primary key,
+      that prune ordering precedes the post-job save in all three jobs, and
+      that only step-level additions exist (ids unique per job, Playwright
+      blocks untouched). Same non-blocking A6=4 note as codex,
+      convergently. First attempt hit the 600 s alarm while re-running the
+      author's pytest/prettier itself; second attempt with a read budget
+      returned in ~4 min.
+    verdict: OK
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (Claude Sonnet 5 subagent) and two review lanes, both
+  non-Anthropic and cross-family from each other, same diff, no sight of each
+  other's answer; both OK, both converged on the identical A6 count nit, and
+  the codex fragility nit was cured before the gate.
+outcome: >-
+  .github/workflows/tests.yml only. Every ref now restores the shared
+  node-workspace cache and the mouth .next/cache read-only; only pushes to
+  refs/heads/main (schedule/workflow_dispatch/direct push) save a fresh copy,
+  and only on a non-exact-hit. PR refs and gh-readonly-queue/* refs — which
+  could previously only ever read their own dead-end save — no longer pay to
+  write one. The three old node keys (node-mouth, node-admin-dashboard,
+  node-npm-audit) collapse into one shared key, so the identical
+  **/node_modules + ~/.npm bytes are stored once instead of three times. The
+  three uv-cached installs (Backend Static, Backend Shard, and BOTH of Visa
+  Oracle fullstack smoke's install attempts) prune the uv cache post-install
+  so only source-built wheels (packages/cell-core) are kept for saving,
+  instead of ~3 GB of registry wheels that install faster cold than they
+  restore. No job topology, `needs`, job-level `if`, or required-context
+  name changed; the .next/cache restore-keys and the node cache's absence of
+  restore-keys are byte-identical to before. Playwright browser-cache blocks
+  untouched, as constrained.
+diff:
+  files: 1
+  net_lines: "91 insertions, 5 deletions (git diff --numstat, worktree fast-forwarded to origin/main 82c3e67ef0 before the gate)"
+  measured_at: "git diff --numstat origin/main in this worktree, 2026-09-09T17:56Z"
+  shape: >-
+    8 edit sites in one file: 2 uv-install run blocks gain one
+    `uv cache prune --ci` line + a short comment each (Backend Static,
+    Backend Shard); 2 node-cache steps (Frontend Tests matrix, npm-audit)
+    split combined `actions/cache@v6` into restore+save pairs sharing one
+    new key; 1 `.next/cache` step splits into restore (in place) + a new
+    save step inserted after "Run E2E tests"; 2 more uv-install subshells
+    (Visa Oracle main attempt + its timeout-only retry) each gain one
+    `uv cache prune --ci` line + comment. No line outside these 8 sites
+    touched.
+behaviour_change: >-
+  YES, CI-visible. On any non-`refs/heads/main` ref (PRs,
+  `gh-readonly-queue/*`, manual branch pushes): the node-workspace cache and
+  the mouth `.next/cache` are restored exactly as before on a hit, but a
+  miss or partial (restore-keys) hit no longer triggers a post-job save —
+  those refs now write ZERO bytes to either cache, where before every ref
+  wrote its own throwaway copy. On `refs/heads/main` (schedule,
+  `workflow_dispatch`, or a direct push): behaviour is unchanged from before
+  PLUS the save now only fires on a non-exact-hit (previously
+  `actions/cache@v6` already skipped the save on an exact hit internally, so
+  this is not a new skip, just now explicit and readable across two steps).
+  For all three uv-cached installs on every ref: after `uv pip install`
+  succeeds, `uv cache prune --ci` now runs before the step ends, so whatever
+  gets saved to `~/.cache/uv` afterward (main-writer refs only, via that
+  job's own untouched combined `actions/cache@v6` step) contains only
+  source-built wheels, not the full registry download cache. Correctness of
+  every job's actual test/build/audit output is unaffected in every case —
+  only cache write volume and which refs perform writes changes.
+pii_scan: clean
+bites:
+  consumer: >-
+    (i) the first scheduled or workflow_dispatch run of tests.yml on
+    `refs/heads/main` after this PR merges — it is the first run that can
+    exercise the new main-only save gate; (ii) the first PR or merge-queue
+    E2E run after that scheduled run — it is the first run that can observe
+    a warm `.next/cache` and node-workspace-cache restore under the new
+    single-key/restore-only regime.
+  where: ci
+  observe: >-
+    For (i): `gh run view <first main run after merge> --log | grep -E
+    "Cache (restored|saved|not found)"` on the Frontend Tests, npm-audit and
+    E2E jobs. For (ii): same grep on the first subsequent PR/queue run's
+    Frontend Tests / npm-audit / E2E jobs, plus
+    `gh api repos/{owner}/{repo}/actions/jobs/<e2e job id> --jq
+    '.steps[]|select(.name=="Run E2E tests")|((.completed_at|fromdate)-(.started_at|fromdate))'`.
+  expect: >-
+    (i) main's run shows "Cache saved with key: Linux-node-workspace-…" and
+    "Cache saved with key: Linux-nextjs-mouth-…" (or restore-keys hit +
+    save, if not an exact hit). (ii) the following PR/queue run shows "Cache
+    restored from key: Linux-nextjs-mouth-…" and "Cache restored from key:
+    Linux-node-workspace-…", with NO matching "Cache saved" line on that
+    same non-main ref; "Run E2E tests" duration measurably below the
+    pre-cure 244s baseline. This is A7 in the brief — post-merge, not run by
+    this builder lane.
+receipts:
+  - claim: "A1 — grep -c for the shared node-workspace key string, and the old three-key patterns are gone"
+    cmd: >-
+      grep -c "node-workspace-" .github/workflows/tests.yml;
+      ! grep -nE "node-\$\{\{ matrix.app \}\}|node-npm-audit-" .github/workflows/tests.yml
+    result: >-
+      4 (the one shared key string appears in 4 places: restore+save × 2
+      jobs — Frontend Tests matrix and npm-audit — all four occurrences are
+      byte-identical); second command: no lines matched, exit 0. The brief's
+      probe text says "exactly one" but its own literal grep -c necessarily
+      counts occurrences, not distinct strings — reported as measured, not
+      silently rounded to what the prose implied.
+    ts: "2026-09-09T17:52:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: "A2 — every actions/cache/save@v6 step is guarded by refs/heads/main; count matches the number of save steps"
+    cmd: >-
+      grep -c "actions/cache/save@v6" .github/workflows/tests.yml;
+      grep -n "actions/cache/save@v6" -A0 -B3 .github/workflows/tests.yml | grep -c "refs/heads/main"
+    result: "3 save steps; 3 matches for refs/heads/main in the preceding 3 lines of each — equal, as required"
+    ts: "2026-09-09T17:53:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: "A3 — actionlint reports no error on the workflow"
+    cmd: /opt/homebrew/bin/actionlint .github/workflows/tests.yml
+    result: >-
+      First run (before the apostrophe fix) FAILED with 4 shellcheck errors
+      (SC1009/SC1011/SC1072/SC1073) at line 2742 — an apostrophe in
+      "this job's" inside a single-quoted bash -c block terminated the
+      string early. Fixed by rewording. Re-run: no output, exit 0.
+    ts: "2026-09-09T17:56:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: "A4 — prettier reports the workflow file already formatted"
+    cmd: >-
+      npx --no-install prettier --write .github/workflows/tests.yml;
+      npx --no-install prettier --check .github/workflows/tests.yml
+    result: >-
+      "tests.yml 123ms (unchanged)"; "Checking formatting...\nAll matched
+      files use Prettier code style!"
+    ts: "2026-09-09T17:56:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: "A5 — the workflow-shape pin suite still passes unchanged"
+    cmd: >-
+      python3 -m pytest -q -p no:cacheprovider
+      scripts/tests/test_unreachable_workflow_conditions.py
+      scripts/tests/test_immune_enforcement_trigger_symmetry.py
+      scripts/tests/test_required_context_map.py
+    result: "53 passed in 24.22s"
+    ts: "2026-09-09T17:56:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: "A6 — uv cache prune --ci appears once per uv-cached install"
+    cmd: grep -c "uv cache prune --ci" .github/workflows/tests.yml
+    result: >-
+      4, not the 3 the brief's acceptance text stated. Reality: Visa Oracle
+      fullstack smoke's uv install is not a single run block as assumed —
+      it has TWO separate install subshells (main attempt id `uv_install`
+      and its timeout-only retry id `uv_install_retry`), each independently
+      capable of being the one that actually installs and gets its
+      ~/.cache/uv cache saved. Pruned inside both. Contradicts the brief's
+      literal "(3 times)"; matches the team-lead's own dispatch instructions
+      ("Check whether the Visa Oracle job has two install blocks... if so,
+      prune after each" and its own example of a discrepancy to report, "a
+      fourth uv install").
+    ts: "2026-09-09T17:56:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: "floor lint for this diff computes 3 (matches the brief's stated hot-zone floor for tests.yml)"
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --changed-files-file <file: .github/workflows/tests.yml>
+      --numstat-file <file: `91\t5\t.github/workflows/tests.yml`>
+    result: "3"
+    ts: "2026-09-09T17:57:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: "diff shape — 1 file, 91 insertions, 5 deletions, no other file touched"
+    cmd: "git diff --numstat origin/main; git diff --stat origin/main"
+    result: >-
+      "91\t5\t.github/workflows/tests.yml"; "1 file changed, 91
+      insertions(+), 5 deletions(-)"
+    ts: "2026-09-09T17:56:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: both cross-family review seats returned VERDICT OK
+    cmd: >-
+      grep -n VERDICT scratchpad/lane6/codex_review3.txt scratchpad/lane6/kimi_review2.txt
+    result: "codex_review3.txt:16:VERDICT: OK; kimi_review2.txt:28:VERDICT: OK"
+    ts: "2026-09-09T18:32:56Z"
+    seat: claude-fable-5-1 (orchestrating session, gate)
+    exit: 0
+  - claim: post-review cure — every `uv cache prune --ci` is guarded so a prune failure cannot fail a required job; lints and pin suite re-run clean on the final file, worktree at origin/main
+    cmd: >-
+      grep -c 'uv cache prune --ci || echo "::warning::' .github/workflows/tests.yml;
+      /opt/homebrew/bin/actionlint .github/workflows/tests.yml;
+      npx --no-install prettier --check .github/workflows/tests.yml;
+      git merge --ff-only origin/main;
+      python3 -m pytest -q -p no:cacheprovider scripts/tests/test_unreachable_workflow_conditions.py scripts/tests/test_immune_enforcement_trigger_symmetry.py scripts/tests/test_required_context_map.py
+    result: "4; actionlint: no output, exit 0; prettier: All matched files use Prettier code style!; HEAD 82c3e67ef0; 53 passed in 52.13s"
+    ts: "2026-09-09T18:32:56Z"
+    seat: claude-fable-5-1 (orchestrating session, gate)
+    exit: 0
+dissent:
+  - seat: claude-sonnet-5 (this worktree session — the builder's own standing objection)
+    status: PLAUSIBLE
+    objection: >-
+      The honest way this could be wrong, stated plainly: dropping the node
+      cache's restore-keys (unchanged from before, per the brief's own
+      constraint) means a lockfile-bump PR now installs `npm install` fully
+      cold on EVERY push to that PR/queue ref until the next scheduled run
+      on main re-seeds the shared `node-workspace` key — up to roughly the
+      same schedule-cadence window the brief measured for the uv/next
+      caches (its own numbers imply single-digit hours, not confirmed
+      exactly for the node schedule cadence in this pack). That is a
+      behaviour change on the slow-path only (lockfile-bump PRs), not the
+      common path, and is the direct, accepted cost of stopping PR-ref
+      writes from evicting main's copy — but it is a real regression for
+      that one PR shape versus today's per-ref throwaway cache, and nothing
+      in this diff mitigates it beyond what main's own re-seed cadence
+      provides.
+    secondary_objection: >-
+      Putting `uv cache prune --ci` inside the Visa Oracle job's
+      `set -e` `bash -c '...'` subshells means a prune failure (not
+      observed, not expected, but not impossible — e.g. a future uv version
+      dropping the `--ci` flag) would make `rc` non-zero AFTER a successful
+      install, which the surrounding classification code cannot distinguish
+      from a real install failure: it is not `124` so `timed_out` reports
+      `false`, and the "Guard" step downstream would fail the whole job on
+      what was actually a working install. Backend Static and Backend
+      Shard's plain run blocks don't have this risk (no `set -e` subshell
+      wrapping, and a failing last line there fails the step directly and
+      visibly, not via the timeout-classification path). Not fixed here —
+      the team-lead's instruction was explicit ("no new step", "last line
+      of run block", "inside BOTH" subshells) and a defensive `|| true`
+      would silently mask exactly the kind of prune failure this pack's own
+      A6 receipt shows is worth catching, so it was left as specified rather
+      than judgment-called into something not asked for.
+      CURED by the gate after both review seats named the same fragility:
+      each of the four prune lines is now `uv cache prune --ci || echo
+      "::warning::…"` — a prune failure is loud in the log and the
+      annotations, but the unpruned cache is kept and the install's own
+      success still decides the step.
+spend:
+  wall_clock_hours: 0.9

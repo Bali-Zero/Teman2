@@ -2,36 +2,145 @@
   "synthetic": true,
   "fixture_category": "bitemporal",
   "adversarial_case_ref": "packet 06-naga-claim-ledger.md, Deliverable #2: 'Bitemporal fields and queries: \"what was true at date X?\" and \"what did Nuzantara believe at date Y?\"'",
-  "expected_behavior": "This fixture is a worked example distinguishing the two queries the deliverable names. 'What was true at date X' (a valid-time query) filters on time.valid_from <= X < time.valid_to (or valid_to IS NULL). 'What did Nuzantara believe at date Y' (a system-time query) filters on time.recorded_at <= Y, then picks the highest recorded_at among survivors. The two queries below give DIFFERENT answers for the same claim family and the same date, which is the point: a system that only implements one of the two axes cannot answer both questions correctly.",
-  "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f3",
-  "revisions": [
-    {
-      "claim_id": "b2f1a000-0000-4000-8000-000000000020",
-      "time": { "valid_from": "2026-01-01T00:00:00Z", "valid_to": "2026-07-01T00:00:00Z", "recorded_at": "2025-12-15T00:00:00Z" },
-      "status": "supported",
-      "note": "SYNTHETIC — 'the KITAS renewal fee is IDR 2,000,000', valid Jan-Jul 2026 (a scheduled interim rate before a mid-year revision already announced in the same regulation)."
-    },
-    {
-      "claim_id": "b2f1a000-0000-4000-8000-000000000021",
-      "time": { "valid_from": "2026-07-01T00:00:00Z", "valid_to": null, "recorded_at": "2025-12-15T00:00:00Z" },
-      "status": "supported",
-      "supersedes_claim_ref": { "claim_id": "b2f1a000-0000-4000-8000-000000000020", "object_hash": "4444444444444444444444444444444444444444444444444444444444444444" },
-      "note": "SYNTHETIC — 'the KITAS renewal fee is IDR 2,500,000', valid from Jul 2026 onward. BOTH revisions were recorded_at the SAME instant (2025-12-15) because the source regulation announced both rates in one document at once."
-    }
-  ],
+  "expected_behavior": "REWRITTEN under R1 (mission R1, base 9304392d1a, R1-build-spec.md §5b): this is now TWO claim families sharing one subject_key, not one family with two revisions. The scheduled July rate change is not a supersession -- revision 1 is not wrong, it is a separately-planned interval that was already known when it was recorded. CONTRACTS.md:141 requires a UNIQUE terminal (current) member per family, and graph.py's non_unique_current_member check quarantines a family with two edge-less current members without ever consulting valid_from/valid_to -- so modelling two scheduled intervals as one family would quarantine forever instead of answering per instant. They are therefore two distinct claim_family_id values under one subject_key extension value, with NO successor edge between them (an edge would assert a correction, which this is not). The two valid-time queries below keep their original answers (2026-03-15 -> the first interval @ IDR 2,000,000; 2026-08-15 -> the second interval @ IDR 2,500,000) and the system-time query keeps its abstention (both intervals share recorded_at 2025-12-15, so a query as of 2025-11-01 predates either recording).",
+  "objects": {
+    "claims": [
+      {
+        "claim_id": "91489a0b-2c62-502f-b702-f002ea539df4",
+        "claim_family_id": "9f11ec57-1687-55fb-ba25-e9bedc8d5beb",
+        "contract_version": "research-os/v1.0.0",
+        "tenant": "bali-zero",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "permenkumham-synth-14-2025",
+            "object_hash": "e4446dce631bfdf77fa1e55b2f3fbf0154d0dd1b8a6eba2c51a3cf711e3478d6"
+          },
+          "predicate": "naga.fee_schedule.kitas_renewal",
+          "object_ref_or_value": 2000000,
+          "unit": "per_application",
+          "currency": "IDR"
+        },
+        "scope": {
+          "domain": "visa.synthetic",
+          "jurisdiction": "national (synthetic)"
+        },
+        "time": {
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2026-07-01T00:00:00Z",
+          "recorded_at": "2025-12-15T00:00:00Z"
+        },
+        "status": "supported",
+        "evidence_refs": [],
+        "confidence": {
+          "score": 0.9,
+          "method": "naga.claim_scorer.v1"
+        },
+        "classification": {
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "review": {
+          "state": "human_approved"
+        },
+        "lineage": {
+          "run_id": "9a423f77-6e2b-53fd-b9e7-6bb495d0d968",
+          "extractor": "fixture.generator.v1",
+          "input_claim_refs": []
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "extensions": {
+          "com.balizero.research-os.naga": {
+            "extension_version": "1.0.0",
+            "payload": {
+              "subject_key": "id/permenkumham-synth-14-2025/art-9-para-3",
+              "jurisdiction": "id",
+              "instrument": "permenkumham-synth-14-2025",
+              "provision": "art-9-para-3"
+            }
+          }
+        },
+        "object_hash": "e2b8f5d1addd7513bab8cafd579c26324ce6a0828e9e97bd6c84804f43e63476"
+      },
+      {
+        "claim_id": "c4ebe5ba-ecd2-5f65-a009-60160039b5e8",
+        "claim_family_id": "2826faf7-0d76-5fcb-9326-996b54ad2232",
+        "contract_version": "research-os/v1.0.0",
+        "tenant": "bali-zero",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "permenkumham-synth-14-2025",
+            "object_hash": "e4446dce631bfdf77fa1e55b2f3fbf0154d0dd1b8a6eba2c51a3cf711e3478d6"
+          },
+          "predicate": "naga.fee_schedule.kitas_renewal",
+          "object_ref_or_value": 2500000,
+          "unit": "per_application",
+          "currency": "IDR"
+        },
+        "scope": {
+          "domain": "visa.synthetic",
+          "jurisdiction": "national (synthetic)"
+        },
+        "time": {
+          "valid_from": "2026-07-01T00:00:00Z",
+          "valid_to": null,
+          "recorded_at": "2025-12-15T00:00:00Z"
+        },
+        "status": "supported",
+        "evidence_refs": [],
+        "confidence": {
+          "score": 0.9,
+          "method": "naga.claim_scorer.v1"
+        },
+        "classification": {
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "review": {
+          "state": "human_approved"
+        },
+        "lineage": {
+          "run_id": "ed827c60-0aa2-5896-b519-ad4539ca4b27",
+          "extractor": "fixture.generator.v1",
+          "input_claim_refs": []
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "extensions": {
+          "com.balizero.research-os.naga": {
+            "extension_version": "1.0.0",
+            "payload": {
+              "subject_key": "id/permenkumham-synth-14-2025/art-9-para-3",
+              "jurisdiction": "id",
+              "instrument": "permenkumham-synth-14-2025",
+              "provision": "art-9-para-3"
+            }
+          }
+        },
+        "object_hash": "b838511e3d2818f3b9d2bba1c1223201461f77a55fef3b2ab1479239281da1e5"
+      }
+    ],
+    "object_successor_edges": []
+  },
   "queries": [
     {
       "query_type": "valid_time",
       "question": "What was true on 2026-03-15?",
       "as_of": "2026-03-15T00:00:00Z",
-      "expected_answer_claim_id": "b2f1a000-0000-4000-8000-000000000020",
+      "expected_answer_claim_id": "91489a0b-2c62-502f-b702-f002ea539df4",
       "expected_value": "IDR 2,000,000"
     },
     {
       "query_type": "valid_time",
       "question": "What was true on 2026-08-15?",
       "as_of": "2026-08-15T00:00:00Z",
-      "expected_answer_claim_id": "b2f1a000-0000-4000-8000-000000000021",
+      "expected_answer_claim_id": "c4ebe5ba-ecd2-5f65-a009-60160039b5e8",
       "expected_value": "IDR 2,500,000"
     },
     {
@@ -39,7 +148,7 @@
       "question": "What did Nuzantara believe about the Aug-2026 rate, as of 2025-11-01 (before either revision was recorded)?",
       "as_of": "2025-11-01T00:00:00Z",
       "expected_answer_claim_id": null,
-      "expected_value": "no belief — abstain, both revisions recorded_at 2025-12-15 which is after this query instant"
+      "expected_value": "no belief -- abstain, both revisions recorded_at 2025-12-15 which is after this query instant"
     }
   ]
 }

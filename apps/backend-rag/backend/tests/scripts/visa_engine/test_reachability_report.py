@@ -136,18 +136,23 @@ def test_unused_fact_paths_is_registry_minus_used(seq7_report) -> None:
     all_paths = {str(p.value) for p in DEFAULT_FACT_REGISTRY.all_paths()}
     assert set(seq7_report.unused_fact_paths) == all_paths - set(seq7_report.used_fact_paths)
     assert seq7_report.total_fact_paths == len(all_paths)
-    # The exact 13-path headline (was 8; 2026-08-23 vocabulary extension —
+    # The exact 14-path headline (was 8; 2026-08-23 vocabulary extension —
     # PR #4650 — added 4 new registry paths that no rule in
     # rulepack-prod-007.source.json references yet, which is exactly what
     # "vocabulary-only, no rulepack change" means: `derived.has_active_stay_permit`,
     # `family.sponsor_permit_basis`, `family.stepchild_marriage_certificate_confirmed`,
     # `family.stepchild_birth_certificate_confirmed`). Was 12; 2026-08-24 F4
     # (D12 active-stay-permit exclusion) adds the 13th, `immigration.renewal_paid` —
-    # also vocabulary-only against this frozen seq-7 baseline. Unlike the other
-    # four, it stays unused *by design* until seq-14 folds the D12 rule that
-    # reads it: this is a deliberately dormant fact, not an accidentally
-    # orphaned one — do not "fix" it by bumping the number down.
-    assert len(seq7_report.unused_fact_paths) == 13
+    # also vocabulary-only against this frozen seq-7 baseline. Was 13; PR-D4c-1
+    # adds the 14th, `investment.investment_amount_usd` — again vocabulary-only:
+    # this frozen seq-7 pack has no rule that reads it. This is not a counter
+    # update, it is the receipt — the count rising by exactly one is what
+    # "declared but read by no rule" looks like from the reachability report's
+    # side, and it is this PR's central claim. Unlike the other four, it stays
+    # unused *by design* until a future seq folds a rule that reads it: a
+    # deliberately dormant fact, not an accidentally orphaned one — do not
+    # "fix" it by bumping the number down.
+    assert len(seq7_report.unused_fact_paths) == 14
 
 
 def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> None:
@@ -172,8 +177,22 @@ def test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper() -> None:
     # question for it (tree.ts, gated in flow.ts's
     # `computeNextNode`/`shouldAskRenewalPaid`), so fact-mapper.ts:591 now
     # maps it through `booleanFact(facts.renewal_paid)` — a real answered
-    # fact, not an unconditional NOT_ASKED placeholder. It correctly drops
-    # out of this list; this file just hadn't caught up.
+    # fact, not an unconditional NOT_ASKED placeholder. It correctly dropped
+    # out of this list. PR-D4c-1 (2026-09-13) put a NEW sixth entry back in:
+    # `investment.investment_amount_usd` was contract-only (the wire key
+    # existed for a later PR, D4c-2, to send an answer through), so
+    # fact-mapper.ts mapped it through the same unconditional
+    # `unknownFact(NOT_ASKED)` idiom every other not-yet-interviewed fact
+    # uses. PR-D4c-2 (THIS PR, 2026-09-13) is that later PR: the
+    # `merit`/`family`/`undecided` investment-vehicle branches now ask a real
+    # currency-bound question for it (`investment_currency`/
+    # `investment_amount_usd`, tree.ts, gated in flow.ts's
+    # `getCategoryQuestionIds`), so fact-mapper.ts now maps it through
+    # `integerFact(facts.investment_amount_usd, ...)` — a real, conditionally
+    # answered fact (KNOWN when `usd` was chosen and answered, an explicit
+    # UNKNOWN otherwise), never an unconditional NOT_ASKED placeholder. It
+    # correctly drops out of this list, the same way `immigration.
+    # renewal_paid` did before it — six back to five.
     assert found == [
         "commercial.service_fee_budget_idr",
         "commercial.wants_quote",

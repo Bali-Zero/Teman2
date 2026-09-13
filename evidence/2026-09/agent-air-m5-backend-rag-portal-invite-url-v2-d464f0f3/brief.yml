@@ -1,0 +1,83 @@
+task_id: portal-invite-url-v2
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the base URL of every client-portal invitation link name the live portal
+  domain, and normalise it on the setting so both consumers inherit that. When
+  the defect was found, FRONTEND_PORTAL_URL was unset on the production machine,
+  so the field default was what shipped inside the mail — and it named a Vercel
+  alias that answers 404 on every path. An invitation the CRM reported as "sent"
+  handed the client a dead link.
+constraints:
+  - >-
+    Scope is the base URL and the two halves that compose the link: the setting's
+    default and its normalisation, the router's concatenation, and the service's
+    path template. Normalisation belongs to the VALUE, never to a call site — the
+    setting has two consumers and a rule each must repeat is one the next consumer
+    forgets. No change to invitation minting, to RBAC, or to the portal app.
+  - >-
+    The test pins the KIND of host, not one spelling — any `*.vercel.app` default
+    fails, because a deployment alias lives for a deploy and the product's domain
+    lives for the product (superscar #3: a guard on an entity is an entity test).
+  - No client PII in the diff, the tests, the PR body, this brief or the pack.
+acceptance:
+  - text: >-
+      WHEN FRONTEND_PORTAL_URL is unset, the setting SHALL resolve to the live
+      portal domain and SHALL NOT resolve to any `*.vercel.app` host.
+    probe: backend/tests/unit/app/test_config.py::TestPortalInviteUrl
+  - text: >-
+      WHEN the invite router mails a link with the env var unset, the composed URL
+      SHALL be https://my.balizero.com/portal/register?token=<token>, built from the
+      service's own path constant rather than a hand-written string.
+    probe: >-
+      backend/tests/unit/routers/test_portal_invite.py::test_mailed_link_uses_the_live_portal_default_and_the_real_path
+  - text: >-
+      WHEN the configured base carries a trailing slash, the SETTING SHALL strip it,
+      so every consumer of the value — the invite router and the GARUDA outbox
+      handler alike — composes a link with a single separator.
+    probe: backend/tests/unit/app/test_config.py::TestPortalUrlTrailingSlash
+consumer_map:
+  - >-
+    POST /api/portal/invite/send — the endpoint the workspace's "Client Portal
+    Access" panel calls — prefixes settings.frontend_portal_url to the invitation
+    path before mailing it through Brevo. This is the consumer the Subhi/Krisna/Ari
+    portal pilot exercises.
+  - >-
+    backend/services/garuda_orders/outbox_handlers.py passes the same setting as
+    portal_base_url, so it inherits both the corrected host and the normalisation.
+risks:
+  - >-
+    The production hostname is the default in EVERY environment: a dev machine with
+    the env var unset would mail a production link for a token minted in its own
+    database. Named independently by both review seats; declared, not cured.
+  - >-
+    Production was cured ahead of this work by setting FRONTEND_PORTAL_URL on the
+    machine, so this diff is the durable half, not the live fix. If the variable is
+    later cleared, behaviour is unchanged; that is the point.
+assumptions:
+  - text: >-
+      https://my.balizero.com is the production portal domain and serves the
+      registration route.
+    status: verified
+    probe: >-
+      curl on the FULL path 'https://my.balizero.com/portal/register?token=x' -> 200,
+      not on the root. See receipts.
+  - text: >-
+      The field default is what reaches the client when FRONTEND_PORTAL_URL is unset.
+      The variable was unset on the production machine when the defect was found and is
+      SET today, because production was cured ahead of this diff — so its live value no
+      longer demonstrates anything, and this pack measures the DEFAULT instead. That
+      measurement is re-executable today and must move when this PR deploys.
+    status: verified
+    probe: >-
+      on the live machine, pop FRONTEND_PORTAL_URL out of the process environment, then
+      construct Settings and print frontend_portal_url. Prints the dead alias before this
+      merge; must print https://my.balizero.com after it. See receipts.
+grader: >-
+  Two cross-family review seats (codex-gpt-5.6-sol, kimi-code/k3) and an independent
+  Gear-3 gate; generator != grader. This is a re-land: the first attempt (PR #6088) was
+  suspended under the three-reds rule with its product code proven and its evidence
+  repeatedly drifting. The code below is that code, unchanged.
+budget: Existing subscriptions and CLI OAuth only; no paid per-token API calls.
+pii: none

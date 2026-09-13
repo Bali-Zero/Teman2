@@ -103,6 +103,24 @@ VISIBILITY_HELPER_NAME = "document_visibility_clause"
 # `download_document` and `get_documents` stay in the registry — same PR
 # moved their guard from an inline literal to the shared helper call, the
 # runtime SQL is unchanged.
+#
+# One name was ADDED 2026-09-11, ON THE OWNER'S INSTRUCTION, as item 8 of
+# the ordered remediation list for the 2026-09-11 portal audit:
+#   - `get_messages`: the last gap. `send_message` has refused a
+#     soft-deleted client since the BUG C fixes, but READING the thread
+#     filtered nothing — so an archived client's session could still pull
+#     their entire message history while the dashboard and the send path
+#     404'd around them. That is not a policy, it is an inconsistency: the
+#     repo's own BUG C comments state a clean cutoff as the intent, and this
+#     was the one method left out of it. The owner named both this and the
+#     login gate explicitly, so the narrowing is deliberate and visible, as
+#     this module's docstring requires — not absorbed by a routine change.
+#
+# The same PR gates `auth.py`'s login itself on `clients.deleted_at IS NULL`
+# (staff rows, which have no `linked_client_id`, are untouched). That is the
+# structural half of the decision and it is NOT expressible in this
+# registry, which only scans PortalService mixins — recorded here so the
+# next reader of this file knows the front door moved too.
 DELETED_AT_GUARD_REGISTRY = frozenset(
     {
         "_get_profile_data",
@@ -110,6 +128,7 @@ DELETED_AT_GUARD_REGISTRY = frozenset(
         "get_company_detail",
         "get_dashboard",
         "get_documents",
+        "get_messages",
         "get_timeline",
         "get_visa_status",
         "restore_document",

@@ -1,0 +1,108 @@
+task_id: developer-log-access
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Let a named developer read the five read-only team-activity log endpoints
+  under /api/admin/logs/* with an ordinary team JWT, without making him a CRM
+  admin and without handing him ADMIN_API_KEY. Gear 3 because the diff touches
+  backend/app/core/config.py, a hot-zone path, and because it adds an auth gate
+  in front of production logs. The first cut put the allowlist on
+  verify_debug_access and was REJECTED by both council seats; the shipped cut
+  leaves that gate untouched.
+constraints:
+  - >-
+    The grant is consulted only AFTER the existing admin check, which is
+    delegated to verify_debug_access untouched; neither the ADMIN_API_KEY path
+    nor the admin-JWT path may change behaviour. Only that delegate's 401 is
+    swallowed — its 403 (environment kill-switch) is re-raised.
+  - >-
+    The grant reaches the five /api/admin/logs/* endpoints and nothing else.
+    verify_debug_access keeps its admin-only perimeter because debug.py holds
+    POST /api/debug/postgres/query (caller-supplied SQL against production),
+    DELETE /api/debug/traces and POST /api/debug/profile.
+  - >-
+    A signed token is not a live session: the developer branch runs the same
+    is_session_revoked_sync check get_current_user runs, and fails CLOSED with
+    503 when the revocation store cannot answer.
+  - >-
+    The allowlist has no fallback: an unset or blank DEVELOPER_EMAILS grants
+    nobody. A historical default here would silently grant log access in every
+    deployment that never configured the variable.
+  - >-
+    Addresses are compared by EQUALITY on the normalised value, never as a
+    substring or a domain prefix (cicatrix-superscar #3).
+  - >-
+    The grant must not widen any other authority — CRM visibility in
+    particular stays scoped by assigned_to.
+  - >-
+    No client PII anywhere in the diff, the tests or this evidence. The test
+    fixture address is a synthetic one (dev.seat@balizero.com), deliberately
+    not a real colleague's address.
+acceptance:
+  - text: >-
+      WHEN a validated access-token JWT carries role=member and an email that
+      is on DEVELOPER_EMAILS, verify_debug_access SHALL return True; WHEN the
+      list is unset, blank, or does not contain that exact address, it SHALL
+      raise 401.
+    probe: >-
+      backend/tests/unit/app/routers/test_admin_logs_developer_allowlist.py
+  - text: >-
+      The four over-match impostor shapes (longer local part, domain prefix,
+      longer local prefix, one-character-short domain) SHALL each be refused.
+    probe: >-
+      pytest -k test_over_match_impostors_are_rejected
+  - text: >-
+      The SAME token that opens the log summary SHALL be refused by
+      POST /api/debug/postgres/query — the grant reaches the logs and stops.
+    probe: pytest -k test_listed_developer_cannot_run_sql_over_http
+  - text: >-
+      A revoked session SHALL be refused, and a revocation store that cannot
+      answer SHALL fail closed with 503 rather than granting or silently 401ing.
+    probe: >-
+      pytest -k "test_revoked_session_of_a_listed_developer_is_rejected or
+      test_revocation_store_outage_fails_closed_with_503"
+  - text: >-
+      The six pre-existing admin-JWT / API-key cases SHALL stay green.
+    probe: backend/tests/unit/app/routers/test_debug_access_admin_jwt.py
+consumer_map:
+  - >-
+    GET /api/admin/logs/summary/today, exercised over real HTTP through the
+    real admin_logs router with only the database faked: 200 for a role=member
+    JWT whose address is listed, 401 for the identical request with the list
+    unset.
+risks:
+  - >-
+    OWNER DECISION, not a code risk: /api/admin/logs/interactions returns
+    client_email, client_name, subject and message_preview. Granting a
+    developer log access therefore grants him client-identifying interaction
+    content, not only technical telemetry. Verified on disk; surfaced to the
+    owner rather than decided here.
+  - >-
+    The production grant itself cannot be observed by this PR: it takes effect
+    when the owner runs `fly secrets set DEVELOPER_EMAILS=… -a nuzantara-rag`,
+    a credential action that stays with the human. Until then the live
+    behaviour shipped is the innocence half — the list is empty and grants
+    nobody.
+  - >-
+    The grant is per-address but not per-endpoint-set: a future PR adding a
+    mutating route to admin_logs.py would inherit it silently. No test pins the
+    current five endpoints as the whole set.
+  - >-
+    Active team membership is not re-checked against the database on each
+    request. This matches what get_current_user does everywhere else in the
+    app; revocation is the mechanism that removes access, not row state.
+assumptions:
+  - text: >-
+      JWT validation in verify_debug_access is unchanged by this diff — the new
+      branch runs inside the same already-validated payload block, after
+      jwt.decode with require_exp and the access-token type check.
+    status: verified
+    probe: read backend/app/routers/debug.py around the decode block
+grader: >-
+  Two-seat adversarial council (codex-gpt-5.6-sol, kimi-code/k3), two rounds,
+  hostile prompt, journal.jsonl next to this brief. Round 1: REJECT from both,
+  converging independently on the same architectural defect. Round 2: codex
+  REJECT (3 BUG, all cured), kimi MERGE. Generator is not grader.
+budget: Existing subscription seats only; no paid per-token API calls.
+pii: none

@@ -5,7 +5,13 @@ export interface StagingItem {
   id: string;
   type: "visa" | "news";
   title: string;
-  status: "pending" | "approved" | "rejected" | "published";
+  status:
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "publishing"
+    | "publication_pending"
+    | "published";
   detected_at: string;
   source: string;
   detection_type: "NEW" | "UPDATED";
@@ -32,19 +38,30 @@ export interface PublishResponse {
   message: string;
   id: string;
   title: string;
-  published_url: string;
-  published_at: string;
+  status?: StagingItem["status"];
+  published_url: string | null;
+  published_at: string | null;
+  publication_requested_at?: string | null;
   collection: string;
+  pull_request_number?: number | null;
+  auto_merge_enabled?: boolean | null;
 }
+
+export type PublishPosition =
+  | "latest"
+  | "hero_main"
+  | "hero_2"
+  | "hero_3"
+  | "hero_4"
+  | "hero_5"
+  | "insight_1"
+  | "insight_2"
+  | "insight_3";
 
 export interface SystemMetrics {
   agent_status: "active" | "idle" | "error";
   last_run: string | null;
   items_processed_today: number;
-  avg_response_time_ms: number;
-  qdrant_health: "healthy" | "degraded" | "down";
-  next_scheduled_run: string | null;
-  uptime_percentage: number;
 }
 
 export interface EditStagingItemRequest {
@@ -241,8 +258,14 @@ export const intelligenceApi = {
   publishItem: async (
     type: "visa" | "news",
     id: string,
-    position: string = "latest",
+    position?: PublishPosition,
   ): Promise<PublishResponse> => {
+    if (type === "news" && !position) {
+      throw new Error(
+        "News Room publication requires an explicit homepage position",
+      );
+    }
+    const resolvedPosition = position ?? "latest";
     const endpoint = `/api/intel/staging/publish/${type}/${id}`;
     const startTime = performance.now();
 
@@ -250,13 +273,13 @@ export const intelligenceApi = {
       itemType: type,
       itemId: id,
       action: "publish",
-      metadata: { position },
+      metadata: { position: resolvedPosition },
     });
 
     try {
       const response = await api.request<PublishResponse>(endpoint, {
         method: "POST",
-        body: JSON.stringify({ position }),
+        body: JSON.stringify({ position: resolvedPosition }),
       });
       const responseTime = performance.now() - startTime;
 
@@ -301,7 +324,6 @@ export const intelligenceApi = {
         action: "get_metrics",
         metadata: {
           agent_status: response.agent_status,
-          qdrant_health: response.qdrant_health,
           items_processed: response.items_processed_today,
         },
       });

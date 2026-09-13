@@ -52,17 +52,10 @@ const PAGES: Array<{ name: string; path: string; pins: string[] }> = [
     path: join(__dirname, "..", "process", "new", "page.tsx"),
     pins: ["var(--state-danger)", "var(--state-warning)"],
   },
-  {
-    name: "revenue/analytics",
-    path: join(__dirname, "..", "revenue", "analytics", "page.tsx"),
-    pins: ["var(--state-success)", "var(--state-warning)", "var(--bz-chart-2)"],
-  },
-  {
-    name: "team/analytics",
-    path: join(__dirname, "..", "team", "analytics", "page.tsx"),
-    pins: ["var(--bz-chart-1)", "var(--bz-chart-4)"],
-  },
 ];
+// revenue/analytics and team/analytics were deleted (kita pruning lot 4a,
+// 2026-09-12): both were live-but-duplicate surfaces of clients/analytics
+// with no inbound links, so their drain coverage was retired with them.
 
 // token_lint.py HEX_RE — 3/4/6/8 digits, word-boundary aware.
 const HEX_RE =

@@ -1,0 +1,41 @@
+gear: 2
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-R19P window W2 (BLUE) — the authenticated portal shell and the portal-only primitives in the R19 language (concept F, "RAPI")
+objective: >-
+  Dress the my.balizero.com authenticated shell in concept F's chrome without
+  touching a route, a field, a hook, a fetch or an i18n key: the 216px paper
+  sidebar carrying the REAL Bali Zero logo (BZLogo) beside a serif "Bali Zero"
+  and a "Client portal" eyebrow, 9px tracked section titles, 40px items with a
+  2px copper left rule on the active one and a copper unread count; a 64px
+  header on a translucent surface with a hairline and no shadow, a 20px serif
+  page title and a "date · greeting" line with a copper middot; a footer band on
+  the R19 footer wash; a 4-tab bottom nav with a copper active icon and a copper
+  count pip; StatusBadge as an outlined pill with a leading dot and an uppercase
+  10px label; PracticeRecapCard as the serif sentence behind a 3px copper left
+  rule with the disclaimer beneath.
+scope:
+  - apps/mouth/src/components/workspace/AppSidebar.tsx (ONLY inside isPortal branches)
+  - apps/mouth/src/components/portal/PortalHeader.tsx
+  - apps/mouth/src/components/portal/PortalBottomNav.tsx
+  - apps/mouth/src/components/portal/StatusBadge.tsx
+  - apps/mouth/src/components/portal/PracticeRecapCard.tsx
+  - apps/mouth/src/app/portal/(authenticated)/layout.tsx (the <footer> block only)
+constraints:
+  - Presentation only — class names, inline styles, markup order inside a section, copy. No route, field, hook, fetch, API type or i18n key touched; every aria attribute, ref, handler, dynamic import and the auth gate stay as they are.
+  - AppSidebar is shared with the kita/prime workspaces — every changed line must sit inside an isPortal conditional, and the non-portal branch must keep byte-identical class strings and inline styles.
+  - Forbidden — types/navigation.ts, components/ui/*, packages/core/**, every page.tsx, hooks, i18n files, PortalNotificationsPopover, SuperuserImpersonationBar, PENDING-ARMS.md, any ledger file.
+  - No red hex and no --state-danger *fill* authored by this window; no client PII (synthetic names only); no vendor names in code comments.
+  - Colour comes from tokens, never from a literal, except the two documented fallbacks for tokens that do not exist yet (--bz-wash, --bz-footer), which the sibling token window owns.
+  - No ledger PR, no PENDING-ARMS.md edit (SAETTA rule 2).
+acceptance:
+  - A1 git diff origin/main...HEAD --stat lists only the six scope files plus this evidence pair; net lines ≤ 300.
+  - A2 kita/prime safety — every changed line in AppSidebar.tsx sits inside an isPortal conditional, with the diff hunks and a one-line justification each recorded in the pack.
+  - A3 vitest green on src/components/portal, src/components/workspace and "src/app/portal/(authenticated)"; tsc --noEmit green; eslint on the six files with 0 errors.
+  - A4 no shadow- class remains on PortalHeader; no red hex authored; the logo is the BZLogo asset (variant full = /assets/logo/balizero-logo-clean.png) and the string "Client portal" appears in the sidebar brand block.
+  - A5 screenshots of /portal desktop + mobile under /Users/balizero/Desktop/R19-PORTAL-RENDERS-20260912/build/r19p-w2/, else "not rendered" with the reason.
+consumer_map:
+  - The live my.balizero.com authenticated portal surface (sidebar, header, footer, bottom nav, status pills, recap card) served by the apps/mouth Vercel deploy on merge to main.
+  - The kita/prime workspaces, which render the same AppSidebar with isPortal=false and must be unchanged — the innocence side of the same change.
+appetite:
+  budget: 75 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

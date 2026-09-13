@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getSections } from "@/lib/kbli-data";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
+import { KBLIBreadcrumbJsonLd } from "@/components/kbli/KBLIStructuredData";
 
 export const metadata: Metadata = {
   title: "KBLI 2025 Sectors — Browse All Business Categories",
@@ -17,6 +18,12 @@ export default function SectorsPage() {
 
   return (
     <div className="space-y-8">
+      <KBLIBreadcrumbJsonLd
+        items={[
+          { name: "KBLI Navigator", url: "https://balizero.com/kbli" },
+          { name: "Sectors", url: "https://balizero.com/kbli/sectors" },
+        ]}
+      />
       <KBLIBreadcrumb
         items={[
           { label: "KBLI Navigator", href: "/kbli" },

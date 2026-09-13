@@ -1,0 +1,52 @@
+{
+  "observed_model": "claude-fable-5-1",
+  "native_runtime": "Claude Code 2.1.263",
+  "native_session": "e7d18ec8-f085-449a-9516-130a2303db4e",
+  "mode": "interactive plan; Read only; strict empty MCP; no Bash or write tools",
+  "effort_requested": "high",
+  "timestamp": "2026-09-06T04:55:30.875Z",
+  "finish_reason": "end_turn",
+  "verdict": "PASS",
+  "conditions_closed": [1, 2, 3, 4, 5],
+  "prompt_sha256": "81f8c7fd555745053017b2d14032a49be6120fa4c36ba3088eb3f2a650250a46",
+  "input_native_user_text_match": true,
+  "packet_manifest_sha256": "bb6005f54894304bc2ec3eb637916a44150c1d2ceb29692d947fddf60f8cfd02",
+  "response_sha256": "970c09b3ca66f87f7db37c2ae3a00190b89b1d25052ad9ef32cf1147253abca1",
+  "native_usage": {
+    "input_tokens": 32,
+    "cache_creation_input_tokens": 43658,
+    "cache_read_input_tokens": 245257,
+    "output_tokens": 8960,
+    "output_tokens_details": {
+      "thinking_tokens": 7315
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 43658,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 32,
+        "output_tokens": 8960,
+        "cache_read_input_tokens": 245257,
+        "cache_creation_input_tokens": 43658,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 43658
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "source_commit": "c1227fe1ff1ef916ff3902c2ec00bf535dc24ddf",
+  "source_files": 39,
+  "root_source_hash_verification": "all_match",
+  "scope": "Source and prepared privileged installation gate only. Reviewer read the supplied source delta and selected evidence; did not execute tests or compute hashes. No service activation, model availability or operational approval implied."
+}

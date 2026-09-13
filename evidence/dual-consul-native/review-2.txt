@@ -1,0 +1,25 @@
+**Verdict: PASS.** The three conditions from the first native review are closed by the supplied delta, and the non-blocking findings are closed with it. No new blocker.
+
+**Condition 1, reproducible catalog producer.** `codex_shadow_probe.py:_catalog_probe` reads config and account through the same launcher, validates the shadow profile, requests `model/list` with `includeHidden: true`, paginates with cycle and page-limit refusal, and never constructs `CodexShadow` or calls inference. It projects only id, model, hidden, isDefault, default effort and effort names, and refuses malformed entries. `complete: true` is only reachable after a page without a cursor. The regenerated `discovery.json` matches this shape exactly: nine models, Astra absent, requested model `gpt-6-astra`, runtime, host, config and auth-context hashes bound. The test fixture asserts no admission path and no inference call. Closed.
+
+**Condition 2, producer binding in receipts.** `source_producer` hashes the six producer modules before and after collection and refuses a changed set. All three regenerated receipts carry six file hashes that match the SOURCE_MANIFEST entries for those modules, with `source_verification: unchanged`. The failure receipt keeps the initial binding with `not_completed`. This is self-attestation by the producer, which is the right level for a shadow increment, and it is now cross-checkable against the frozen manifest. Closed.
+
+**Condition 3, identity vocabulary.** The checkpoint now emits the contract level `request_observed` and a separate `model_evidence_source: native_thread_configuration`, with `inference_model` null. The receipts and the doc agree. Closed.
+
+**Non-blocking closures verified in source.**
+- Only `final_answer` phase text is collected. Commentary-only or phase-less output yields empty text and `incomplete`. The parametrized test covers all three cases.
+- `networkAccess` is admitted only when omitted or exactly `False`. The test refuses `True`, `None`, `0` and `""`. The schema-default claim for omission is accepted as stated and not verified here.
+- `KeyError` produces the sanitized failure receipt. The CLI test confirms no excluded content on stdout or stderr.
+- The version subprocess now uses `stdin=DEVNULL`.
+
+**Observations, not blockers.**
+- The discovery and invoke receipts have `observed_at` values 20 ms apart, so the two probes ran concurrently. Each has its own temporary home and snapshot, so this is safe, but it is worth noting since both used the same account.
+- `manifest_sha256` inside the receipts and the MANIFEST_FILE_SHA256 below were not recomputed by me.
+- Normalized JSON presentation is declared semantically equal to raw output. I accept the declaration and the retained exact archive as stated.
+- The catalog projection requires `isDefault` and `defaultReasoningEffort` keys. A runtime that omits them fails closed with a sanitized receipt, which is correct under the version pin.
+
+**Declared limits carried unchanged.** Same caller UID, no broker binding, no effect authority, interrupt unacknowledged with remote cancellation unknown, input hash over literal user text only, native history in the temporary home until cleanup.
+
+**Binding.** This verdict binds to the supplied manifest file digest `fb326d7083200003189071f9f20f7274c16a91da91cefa406032e3d599c27fd9`, whose eleven entries include `codex_shadow.py` 5cc63789…, `codex_shadow_launch.py` cdeac644…, `codex_shadow_probe.py` 5265de92…, `test_codex_shadow.py` e9796720… and `test_codex_shadow_probe.py` 471c46b5…, with the six unchanged files as listed. Supporting artifacts read as supplied: `native-shadow.md` 85643f7d…, `discovery.json` 11f7839a…, `native-invoke.json` c1973711…, `native-cancel.json` 358c5b58…, `validation.json` e8b36992…. No digest was recomputed and no test was executed by me.
+
+END_DUAL_CONSUL_REVIEW

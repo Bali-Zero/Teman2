@@ -1,0 +1,71 @@
+### bytes 6b5d3d8b — roundtrip started 2026-09-13T11:52:38Z
+### pg15d (postgres 15.19)
+## dry-run
+2026-09-13 19:52:38,859 - backend.db.migration_manager - INFO - Found 1 pending migrations
+2026-09-13 19:52:38,859 - backend.db.migration_manager - INFO - DRY RUN - Would apply:
+2026-09-13 19:52:38,859 - backend.db.migration_manager - INFO -   - 314: 314_wa_outbox_evidence.sql
+## up #1
+2026-09-13 19:52:39,136 - backend.db.migration_base - INFO - Applying migration 314_wa_outbox_evidence to postgresql://test:***@127.0.0.1:55865/nuzantara_test
+2026-09-13 19:52:39,184 - backend.db.migration_base - INFO - ✅ Migration 314_wa_outbox_evidence applied successfully in 15ms
+## probe: after up #1
+abstained_at|timestamp with time zone|YES|<none>
+evidence_score|numeric|YES|<none>
+column_count=18
+sv_314=1 sm_314=1
+relfilenode=18525
+cohort_sha256=45190630ffaf26a050194fe31a16b252ef15e389e4acba739b5e595c7f452b60
+## down (runner's own rollback_migration)
+rollback_ok= True
+## probe: after down
+column_count=16
+sv_314=0 sm_314=0
+relfilenode=18525
+cohort_sha256=45190630ffaf26a050194fe31a16b252ef15e389e4acba739b5e595c7f452b60
+## up #2
+2026-09-13 19:52:40,467 - backend.db.migration_base - INFO - Applying migration 314_wa_outbox_evidence to postgresql://test:***@127.0.0.1:55865/nuzantara_test
+2026-09-13 19:52:40,524 - backend.db.migration_base - INFO - ✅ Migration 314_wa_outbox_evidence applied successfully in 13ms
+## probe: after up #2
+abstained_at|timestamp with time zone|YES|<none>
+evidence_score|numeric|YES|<none>
+column_count=18
+sv_314=1 sm_314=1
+relfilenode=18525
+cohort_sha256=45190630ffaf26a050194fe31a16b252ef15e389e4acba739b5e595c7f452b60
+## up #3 (idempotent rerun, expect nothing pending)
+2026-09-13 19:52:41,271 - backend.db.migration_manager - INFO - No pending migrations
+rc=0
+### pg17d (postgres 17.11)
+## dry-run
+2026-09-13 19:52:38,859 - backend.db.migration_manager - INFO - Found 1 pending migrations
+2026-09-13 19:52:38,859 - backend.db.migration_manager - INFO - DRY RUN - Would apply:
+2026-09-13 19:52:38,859 - backend.db.migration_manager - INFO -   - 314: 314_wa_outbox_evidence.sql
+## up #1
+2026-09-13 19:52:39,136 - backend.db.migration_base - INFO - Applying migration 314_wa_outbox_evidence to postgresql://test:***@127.0.0.1:55790/nuzantara_test
+2026-09-13 19:52:39,183 - backend.db.migration_base - INFO - ✅ Migration 314_wa_outbox_evidence applied successfully in 16ms
+## probe: after up #1
+abstained_at|timestamp with time zone|YES|<none>
+evidence_score|numeric|YES|<none>
+column_count=18
+sv_314=1 sm_314=1
+relfilenode=18525
+cohort_sha256=7e0375a6e45cd5e888bddd2e311fd4b4d205fcb9c599c02214c2ca7024a84af2
+## down (runner's own rollback_migration)
+rollback_ok= True
+## probe: after down
+column_count=16
+sv_314=0 sm_314=0
+relfilenode=18525
+cohort_sha256=7e0375a6e45cd5e888bddd2e311fd4b4d205fcb9c599c02214c2ca7024a84af2
+## up #2
+2026-09-13 19:52:40,467 - backend.db.migration_base - INFO - Applying migration 314_wa_outbox_evidence to postgresql://test:***@127.0.0.1:55790/nuzantara_test
+2026-09-13 19:52:40,524 - backend.db.migration_base - INFO - ✅ Migration 314_wa_outbox_evidence applied successfully in 13ms
+## probe: after up #2
+abstained_at|timestamp with time zone|YES|<none>
+evidence_score|numeric|YES|<none>
+column_count=18
+sv_314=1 sm_314=1
+relfilenode=18525
+cohort_sha256=7e0375a6e45cd5e888bddd2e311fd4b4d205fcb9c599c02214c2ca7024a84af2
+## up #3 (idempotent rerun, expect nothing pending)
+2026-09-13 19:52:41,281 - backend.db.migration_manager - INFO - No pending migrations
+rc=0

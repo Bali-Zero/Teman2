@@ -10,5 +10,3 @@ export {
   CRMErrorFallback,
   CRMSkeleton,
 } from "./CRMErrorBoundary";
-
-export { QuickSearch, QuickSearchTrigger } from "./QuickSearch";

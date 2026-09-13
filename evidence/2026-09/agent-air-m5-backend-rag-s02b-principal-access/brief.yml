@@ -1,0 +1,22 @@
+task_id: s02b-principal-access
+gear: 2
+l_level: L2
+gate_class: opus
+objective: Require caller access to the principal client before linking an E33 dependent case.
+constraints:
+  - Reuse existing CRM access and configured admin allowlists; different client IDs remain valid.
+  - No family relationship proof, schema changes, client data access or deployment in this patch.
+  - Only router, its synthetic tests and lane evidence change.
+acceptance:
+  - text:
+      WHEN a principal is supplied the route SHALL allow callers with access to both clients and reject unavailable
+      principals with the same 422 before insert.
+    probe: backend/tests/routers/test_e33_cases.py
+  - text:
+      WHEN the principal is omitted no repository load SHALL occur; configured CRM administrators and unexpected
+      errors SHALL preserve existing access semantics.
+    probe: backend/tests/routers/test_e33_cases.py
+  - text: WHEN the principal guard is removed the suite SHALL fail, then pass after exact source restoration.
+    probe: verify_principal_access.py
+consumer_map:
+  - POST /api/e33/cases uses the principal-client access guard before minting and inserting.

@@ -1,0 +1,28 @@
+brief_ref: evidence/2026-09/agent-air-m5-ops-codex-trailer-note/brief.yml
+lanes:
+  - lane: codex-trailer-note
+    role: build
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - lane: codex-trailer-note-review
+    role: review
+    seat: kimi-code/k3 via existing OAuth CLI
+dissent: []
+pii_scan: clean
+receipts:
+  - claim: All five PR-to-merge mappings, main ancestry checks, legacy trailer lines and historical build-seat lines match the note.
+    cmd: For each attribution.md row, run git merge-base --is-ancestor SHA origin/main; git show -s --format=%B SHA; git show SHA:PACK; gh pr view PR --json number,state,mergeCommit,url.
+    result: Five merged PRs, five reachable merge commits, five exact trailer matches and five matching build-seat declarations; main snapshot 2a97d99f610c3c43bae65925ee2978008bc41ec5.
+    exit: 0
+    ts: "2026-09-05T19:51:36.996407+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: A separate Kimi reviewer found the note consistent with the supplied verified records and explicit attribution limits.
+    cmd: kimi -m kimi-code/k3 -p <note and filtered Git/GitHub fact table>
+    result: PASS; static supplied-text review only. The additional uppercase copies in PR5778 were not in the supplied table; the builder separately replayed that Git read and confirmed exactly two copies.
+    exit: 0
+    ts: "2026-09-05T19:52:19.970451+00:00"
+    seat: kimi-code/k3
+review_scope:
+  - The reviewer did not re-execute Git or GitHub queries. Subsequent formatting changed table alignment only; this receipt was added after the review.
+limits:
+  - Git and GitHub prove the text, ancestry and PR mapping; historical pack labels and session attribution do not authenticate a model runtime.
+  - This is a bounded five-commit correction, not an exhaustive repository attribution audit.

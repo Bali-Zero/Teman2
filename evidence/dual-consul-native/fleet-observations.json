@@ -1,0 +1,29 @@
+{
+  "recorded_at": "2026-09-06T02:01:21.305508+00:00",
+  "method": "Read-only SSH native binary --version and SHA256; auth file existence/mode only; narrow service-name search. No model calls.",
+  "hosts": {
+    "Air-M5": {
+      "runtime": "0.147.0",
+      "binary_sha256": "19c4f144c5226a9f17c58e6f0fa854843b0f77a6eb420f40e2745a12f10f5d37",
+      "native_shadow": "qualified by selected M5 receipts only"
+    },
+    "Pro": {
+      "runtime": "0.149.0",
+      "binary_sha256": "f4a74117b8142cda581c95ff753abf4508b5636d89682c1ed77e4a9249af8963",
+      "auth_file_present": true,
+      "auth_valid": null,
+      "native_shadow": "unqualified version",
+      "broker_service": "not observed in narrow search"
+    },
+    "Mini": {
+      "runtime": "0.148.0",
+      "binary_sha256": "b0308517b20543012fa2171aa3d46ce455a7456c4eb2a552ab9468ba4eeb1e50",
+      "auth_file_present": true,
+      "auth_valid": null,
+      "native_shadow": "unqualified version",
+      "broker_service": "not observed in narrow search"
+    }
+  },
+  "distinct_service_uid_verified": false,
+  "activation": false
+}

@@ -59,12 +59,44 @@ preserved: `foo | ssh mini git pull` and
 `scp -q file pro:/tmp/x && ssh pro git pull` still exempt (the mutating
 segment IS the ssh one in both).
 
+7th over-match (2026-09-09, found by an agent whose read-only `git diff
+$(git merge-base origin/main $h) ...` was blocked in the main checkout):
+BLOCKED_SUBCMD_RE's `merge` alternative had no boundary check against a
+TRAILING HYPHEN — `\bmerge\b` is satisfied by the transition from "merge" to
+"-" in `merge-base`, so `git merge-base`/`merge-file`/`merge-tree` (real,
+read-only-or-informational subcommands, not `git merge` with arguments) were
+judged guilty of the entity `git merge` names, on nothing but a shared
+prefix. Fixed the same way W85's `stash` gained its lookahead: `merge(?!-)`.
+Read-only git verbs forced a worktree just to run — the L1 brake exists for
+races on WRITES, and a read cannot race.
+
+Widened the same PR to an explicit read-only allowlist for `diff / log / show
+/ status / rev-parse / merge-base / cat-file / ls-files / ls-tree / blame /
+describe / rev-list / name-rev / branch --list|-a|-r|--show-current|(no args)
+/ remote -v / tag (listing) / shortlog / grep / for-each-ref / config
+--get|--list / fetch / worktree list / stash list / reflog` — none of those
+were ever in BLOCKED_SUBCMD_RE, so before this PR their WRITING siblings
+(`branch -d/-D/-m`, `tag <name>` create/delete, `config <key> <value>` set,
+`git diff --output=<file>`) were ALSO silently allowed: opening the read
+forms without a peer block on their write forms would have widened a hole,
+not closed one. BRANCH_WRITE_RE / TAG_CREATE_OR_DELETE_RE / CONFIG_SET_RE /
+DIFF_OUTPUT_RE below give each of those its own guilt+innocence pair, folded
+into the SAME `blocked_matches` list `_git_verb_verdict` already threads
+through remote-dispatch / worktree-target / ff-only-pull logic — no new
+decision path, no new parser.
+
 Blocked (only when effective target resolves INTO main checkout, NOT a worktree):
 - git checkout / switch / stash / reset / merge / rebase / pull / commit -a / add -A / add .
+- git branch -d/-D/-m/-M/--delete/--move ; git tag <name> create/delete ; git
+  config <key> <value> set ; git diff --output=<file> [7th over-match PR]
 - shell writes: `> file`, `>> file`, `tee file`, `sed -i ... file`, `cp/mv ... dest`, `dd of=`
 
 Allow (defense conservative — a global L1 hook on 3 machines must NOT false-positive):
 - git read-only; git -C <worktree>; git add <file>; git commit -m; git push
+- git diff / log / show / status / rev-parse / merge-base / cat-file / ls-files
+  / ls-tree / blame / describe / rev-list / name-rev / branch (read forms) /
+  remote -v / tag (listing) / shortlog / grep / for-each-ref / config
+  --get|--list / fetch / worktree list / stash list / reflog [7th over-match PR]
 - ANY write whose target is a worktree, /tmp, $HOME outside the repo, or unclassifiable
 - a git op carried by a remote ssh/scp/rsync dispatch IN ITS OWN SEGMENT (runs on another host) [W83, segment-scoped]
 - a shell WRITE carried by a remote ssh/scp/rsync dispatch IN ITS OWN SEGMENT (same reasoning) [W92, segment-scoped]
@@ -136,7 +168,12 @@ REPO_ROOT = _derive_repo_root()
 BLOCKED_SUBCMD_RE = re.compile(
     r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*"  # optional -c key=val flags
     r"(?:-C[ \t]+\S+[ \t]+)?"  # optional -C path
-    r"(checkout|switch|stash(?!\s+(?:list|show)\b)|reset|merge|rebase|pull)\b"
+    # 7th over-match (2026-09-09): `merge` needs the SAME trailing-hyphen guard
+    # `stash` already has for `list|show` — `\bmerge\b` is satisfied by the
+    # word-to-punctuation transition into "-base"/"-file"/"-tree", so those
+    # distinct, read-only-or-informational git subcommands were judged as
+    # `git merge` on a shared prefix alone (family #3).
+    r"(checkout|switch|stash(?!\s+(?:list|show)\b)|reset|merge(?!-)|rebase|pull)\b"
     r"|\bgit\s+commit\s+(?:[^\s]+\s+)*(?:-[A-Za-z]*a|--all\b)"  # commit -a / -am / -a -m / --all
     r"|\bgit\s+add\s+(?:-A|-a|--all|\.)"  # add -A / add -a / add --all / add .
     # W117 class-audit (2026-08-10): the enumeration above never included `clean`
@@ -160,6 +197,65 @@ BLOCKED_SUBCMD_RE = re.compile(
     r"[^;&|\n]*(?:--force\b|\s-[A-Za-z]*f)"  # --force, or -f anywhere in a cluster
     r"|\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?restore\b"  # discards the worktree copy
 )
+
+# --- 7th over-match PR (2026-09-09): writing siblings of the newly-recognized
+# read-only verbs (branch/tag/config/diff) --------------------------------
+# BLOCKED_SUBCMD_RE never mentioned branch/tag/config at all, so BOTH their
+# read and write forms were silently allowed before this PR. Opening the read
+# forms explicitly (branch --list/-a/-r/--show-current, tag listing, config
+# --get/--list) without giving each verb's WRITE form its own block would
+# have widened a hole while documenting it as a feature. These live as
+# separate regexes/helper (not folded into BLOCKED_SUBCMD_RE's single
+# alternation) because `tag` needs stateful token inspection — `-l`/`--list`
+# takes a glob-PATTERN positional argument that looks identical to a
+# create-target positional argument, so a single regex cannot tell
+# `git tag -l 'v1.*'` (read) from `git tag v1.2.3` (write) without also
+# checking for the list flag. Matches feed into the SAME `blocked_matches`
+# list `_git_verb_verdict` builds from BLOCKED_SUBCMD_RE, so every downstream
+# rule (remote-dispatch segment-scoping, worktree-target allow, ff-only-pull
+# exception) applies to these exactly as it does to the pre-existing verbs.
+BRANCH_WRITE_RE = re.compile(
+    r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?branch\b"
+    r"[^;&|\n]*(?:--delete\b|--move\b|\s-[A-Za-z]*[dDmM]\b)"
+)
+CONFIG_SET_RE = re.compile(
+    r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?config\b[ \t]+"
+    r"(?!--get\b|--get-all\b|--list\b|-l\b)\S+[ \t]+\S+"
+)
+DIFF_OUTPUT_RE = re.compile(
+    r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?diff\b"
+    r"[^;&|\n]*--output(?:=|[ \t]+)\S+"
+)
+TAG_INVOCATION_RE = re.compile(
+    r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?tag\b(?P<rest>[^;&|\n]*)"
+)
+
+
+def _tag_is_write(rest: str) -> bool:
+    """True if a `git tag<rest>` invocation mutates (creates or deletes a
+    tag) rather than listing. `-d`/`--delete` always writes. Otherwise, any
+    non-flag positional token names a tag to CREATE — unless `-l`/`--list` is
+    present, in which case a positional token is a glob PATTERN for the
+    listing (`git tag -l 'v1.*'`), not a name to create."""
+    tokens = rest.split()
+    if any(t in ("-d", "--delete") for t in tokens):
+        return True
+    if any(t in ("-l", "--list") for t in tokens):
+        return False
+    return any(t and not t.startswith("-") for t in tokens)
+
+
+def _extra_write_verdicts(cmd_scan: str) -> list[re.Match]:
+    """Additional writing-git matches, appended to BLOCKED_SUBCMD_RE's own
+    matches by `_git_verb_verdict` — see the block comment above."""
+    out = list(BRANCH_WRITE_RE.finditer(cmd_scan))
+    out += list(CONFIG_SET_RE.finditer(cmd_scan))
+    out += list(DIFF_OUTPUT_RE.finditer(cmd_scan))
+    for m in TAG_INVOCATION_RE.finditer(cmd_scan):
+        if _tag_is_write(m.group("rest")):
+            out.append(m)
+    return out
+
 
 # Extract `git -C <path>` target.
 # W119c (2026-08-31): every `\s+` here is SAME-LINE (`[ \t]+`). A bash Tool call is
@@ -965,6 +1061,12 @@ def _only_ffonly_pull(cmd_scan: str) -> bool:
     # group(1) is None for the commit -a / add -A alternation branches → not a pull.
     if not verbs or any(v != "pull" for v in verbs):
         return False
+    # 7th over-match PR (2026-09-09): a compound command can carry a pull PLUS
+    # a branch/tag/config write that BLOCKED_SUBCMD_RE itself never sees (those
+    # live in _extra_write_verdicts) — the exception must not fire just because
+    # THIS regex's own view of the command happens to be pull-only.
+    if _extra_write_verdicts(cmd_scan):
+        return False
     if not FFONLY_PULL_SEGMENT_RE.search(cmd_scan) or "--rebase" in cmd_scan:
         return False
     return True
@@ -1253,7 +1355,12 @@ def _git_verb_verdict(cmd: str, cwd: str) -> GitVerbVerdict:
     # real command. The git scan + target resolution all run on the stripped form.
     cmd_scan = _strip_noise(cmd)
 
-    blocked_matches = list(BLOCKED_SUBCMD_RE.finditer(cmd_scan))
+    # 7th over-match PR (2026-09-09): the writing siblings of the newly-opened
+    # read-only verbs (branch -d/-D/-m, tag create/delete, config set, diff
+    # --output) fold into the SAME match list so every downstream rule below
+    # (remote-dispatch segment-scoping, worktree-target allow, ff-only-pull)
+    # applies to them exactly as it does to the pre-existing blocked verbs.
+    blocked_matches = list(BLOCKED_SUBCMD_RE.finditer(cmd_scan)) + _extra_write_verdicts(cmd_scan)
     if not blocked_matches:
         return GitVerbVerdict("no_blocked_verb", pathlib.Path(REPO_ROOT))
 

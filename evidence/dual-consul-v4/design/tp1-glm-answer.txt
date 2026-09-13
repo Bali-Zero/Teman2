@@ -1,0 +1,19 @@
+I accept the contract, shared governance with Astra and Fable, and the supplied DC-v3 terms. Explicit disagreement: I dispute treating the 180s local wall deadline as proof of provider-side cancellation, and I reject assuming `max_tokens=4096` bounds server-side reasoning budgets.
+
+**(a) Minimal Adapter Surface & Unknowns**
+*Surface:* A stateless text-completion bridge. A Distinct-UID executor checks the scoped grant + live fencing epoch before invoking `scripts/tp1_call.py`. It emits a `pre-action_intent` record, executes the completion, and enforces the local 180s wall clock. It parses only bounded redacted protocol metadata for provider identity, preserving change_map/impact_map for Astra/Fable's frozen diff review.
+*Unknowns:* The provider's native cancellation mechanism, actual server-side reasoning consumption, and whether omitted `reasoning_effort` maps to a native default or silently degrades output.
+
+**(b) Native Strengths/Pitfalls (Hypotheses)**
+1. *Strength:* GLM-5.2 may exhibit high fidelity in zero-shot structural adherence (e.g., emitting strict JSON-like text), potentially minimizing prompt overhead.
+2. *Pitfall:* Because tool-calling is unvalidated, parsing structured delegation protocols from raw text risks silent failures if the 4096 token limit truncates mid-payload, yielding an illusion of a completed action without valid evidence.
+
+**(c) Cheap Smoke/Contract Tests (Outside PR Path)**
+1. *Timeout Reconciliation Contract:* Issue a request with a 1s local deadline. Assert the adapter yields `reconcile_required` and aborts without blind retry.
+2. *Metadata Identity Test:* Submit a prompt instructing the model to self-assert provider identity in text. Assert the adapter sources identity exclusively from response metadata, ignoring the payload text.
+3. *Truncation Boundary Test:* Issue a prompt designed to hit the 4096 `max_tokens` limit. Assert the adapter flags the response as incomplete (intent != completed action) and triggers a fencing check rather than committing a partial state.
+
+**(d) Minimizing Tokens Without Silent Degradation**
+Enforce strict output constraints (e.g., "Return only the final JSON object, no prose") to minimize completion tokens. Cache immutable, provenance-bearing execution state locally so failed delegations do not require resending full history. Do not attempt to extract simulated chain-of-thought into the text surface; rely on native server-side reasoning to avoid exceeding the 4096 output cap silently.
+
+END_ADAPTER_MODEL

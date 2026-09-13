@@ -1,0 +1,35 @@
+---
+
+**VERDICT: ACCEPT**
+**ok: true**
+
+**FINDINGS:** none.
+
+**NON-FINDINGS (verified, cited):**
+
+1. **HC1/HC2/A55_1 — collection resolution replica exact.** A:770-790 replicates search_service.py:525-532 verbatim: `canonicalize_collection_name` → `resolve_client(canonical)` → if None, substitute `"legal_unified"` → if still None, hard stop. Duplicate-after-resolution tracked but NOT deduped (searched twice, matching production — B:784-799 `test_two_planned_collections_resolving_to_the_same_collection_are_both_searched` proves `legal_client.calls == 2`). Parity pin at B:833-843 asserts the literal shape of search_service.py:526-532.
+
+2. **Qdrant request exact.** A:825-850: `hybrid_search(query_embedding, query_sparse, filter, limit=3, prefetch_limit=9)` matches search_service.py:1163-1170. Dense branch at A:840-847 with `vector_name="dense"` for named vectors matches search_service.py:1190-1196. Filter via `_build_search_filter_for` (A:622-634) calls the real `build_search_filter` with `exclude_historical=_requires_current_law_guard(collection)`.
+
+3. **_cap_chunks / _requires_current_law_guard / _uses_named_vectors replicas exact.** A:650-658 matches wa_package_builder.py:404-429 (truncate 4000, cap 8; logging omitted, acceptable — harness doesn't need log lines). A:282-287 matches search_service.py:248-254. A:270-273 matches search_service.py:79-81. NAMED_VECTOR_COLLECTIONS at A:247-261 is element-for-element equal to search_service.py:65-76.
+
+4. **Sort/redaction/scorer exact.** A:892 `(-score, collection, text)` sort. A:895 `redact_package_fields([], chunks, None)`. A:901-910 scorer args match wa_package_builder.py:630-640. Format at A:865-870 matches search_service.py:1200-1205.
+
+5. **A55_2/HC6 — error key and exception hard-stop.** A:860-864 checks `"error" in raw_results` → RetrievalError. A:848-853 catches Exception → RetrievalError. Dense fallback inside hybrid_search (no `"search_type"` key) sets `case_score_kind_divent = True` at A:859-862. Excluded from inference at A:1075-1078 (`not o.score_kind_divergent`). B:893-921 tests error-key hard stop (secret not in message); B:923-933 tests dense-fallback divergence; B:935-941 tests exclusion from relief band and inferable count.
+
+6. **HC8 — no secret-bearing interpolation.** Every RetrievalError message (A:783-788, 795-797, 802-804, 849-852, 861-863, 889-891) interpolates only `query_key` (from `mapping_key(query_entry)` — artifact data), `collection`/`resolved`/`canonical` (from QueryPlanner + `canonicalize_collection_name` — pure functions), and `_safe_exception_summary(exc)` (class name + optional int status in 100..599, never `str(exc)`). All raised `from None`. B:1060-1103 proves a secret-shaped exception message appears in neither the RetrievalError string nor the formatted traceback nor any output file. Meets HC8's intent.
+
+7. **HC5 — _import_pure_leaf.** A:171-218 stubs not-yet-imported ancestors with `types.ModuleType` + correct `__path__`, imports the leaf, then `finally` block at A:215-217 removes every stub and everything cached under it. If the leaf import RAISES, `finally` still runs — stubs cleaned, no residue. B:1135-1167 fresh-subprocess test proves `backend.app.core.config` absent after import, after `build_plan()`, and after a refused `--execute`. B:1170-1189 proves real packages still import correctly after the bypass (AgenticRAGOrchestrator, SearchService present; same file, same plan, distinct class object).
+
+8. **HC7 — all guards in ONE fresh subprocess.** B:1198-1345: one subprocess script imports all 8 production modules, installs `AsyncMock(side_effect=RuntimeError)` guards on each entrypoint, THEN imports the harness. Safe case (fake CM, no guarded entrypoint reached) → green, report written. 8 guilty cases (fake CM whose `hybrid_search` calls a guarded entrypoint) → each raises `RetrievalError`, no report file. All in same subprocess. Dotted paths are production's.
+
+9. **F3 — --execute refuses before importing CollectionManager.** A:1349-1378: refuses (returns 1) if `--plan-file`/`--plan-sha256` absent, file unreadable, hash mismatch, invalid JSON, or plan != recomputed. `CollectionManager` imported only at A:1388-1389, past the gate. B:1347-1496 tests 6 refusal paths (missing flags, wrong sha, nonexistent file, tampered content) with a `_boom` monkeypatch on `CollectionManager.__init__`, plus the matching gate-pass test.
+
+10. **Previous MINORs cured.** (a) Empty-text hits: A:876-879 `if not hit_map.get("text"): continue`. B:812-831 sets one doc to `""`, asserts all captured chunks have text. (b) Chunk carries planned name: A:881 `"collection": collection` (the loop variable from planned collections, not `resolved`). B:828 asserts `{chunk["collection"] for chunk in captured} == {"nuzantara_general_hybrid"}` — the planned name, not `"legal_unified"`.
+
+11. **A55_4 — BM25 vocab_size as sparse determinant.** A:1240-1249 reports `bm25_sparse_determinant: {vocab_size: N}` and `bm25_document_side_constructor_params: {k1, b}` separately. B:990-1003 asserts `vocab_size` is the determinant, k1/b are document-side, and `bm25_k1`/`bm25_vocab_size`/`bm25_b` keys are absent from the run record.
+
+---
+
+**VERDICT: ACCEPT**
+**ok: true**

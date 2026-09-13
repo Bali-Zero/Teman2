@@ -1,0 +1,31 @@
+verified_at: "2026-09-05T11:30:34.833687+00:00"
+historical_browser_run: "2026-09-05T07:17:45.896Z"
+historical_base: 511bf901c64e10a6eb57bcff6a0c7361f8736a44 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+current_base: 58e8b0b027a25f8e213414577f154f16599d7ce6 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+scope:
+  Historical synthetic Pro browser receipt, re-read and hashed now; all seven source hashes equal current files. Browser
+  was not rerun on the new base.
+source_sha256:
+  ConsentHandoff.test.tsx: 72fb080dfde137405ef5af67c52cbfc7cbf0869b1747d73ce089d8097d1dce2d # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  ConsentHandoff.tsx: f103350977d38e7d68ccea4d83029301b4e8270928bca708330b3a446b63453f # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  OracleShell.test.tsx: 3a43898b15916ab0676ddb368e9af53bd6cc2b4ce7891f95ac4c69632f10a48e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  OracleShell.tsx: afb3918500d59832280cf4828591869c648695cae3de48bf2756614918bbc6a4 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  consent-store.test.ts: a4ddc2bfbe39d6ebff523cf64ba8693ac37e1d1a60dea5605f26b8a0f3a3c8da # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  consent-store.ts: d689c6cc3cfc26eee263193ca881e8a2524318905dfd2a1ccfe09c1ec35c0c8e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  oracle.css: c5afd727dcb9fd7b741738bc745451b4bee3bad4dc8f9065267c6dca1ea625cd # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+artifacts:
+  - path: /Users/balizero/nuzantara/.worktrees/mouth-oracle-consultation-context/output/playwright/v04-persistent-contact-aligned-next/receipt.json
+    bytes: 1340
+    sha256: cb5d05a4297c4a9b40ebe34b7892923d4d79770ad36639ab3840ef558c0ff8cb # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  - path: /Users/balizero/nuzantara/.worktrees/mouth-oracle-consultation-context/output/playwright/v04-persistent-contact-aligned-next/environment.json
+    bytes: 898
+    sha256: 4b2b35293a2a74586fcc2e22590790d10bec90cf9e2ce11753f58e5706c4150a # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  - path: /Users/balizero/nuzantara/.worktrees/mouth-oracle-consultation-context/output/playwright/v04-persistent-contact-aligned-next/comparison.json
+    bytes: 1329
+    sha256: 8374676d67289652fddc43f70b5c932209e365c659272dab389d93c189b9a0a6 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  - path: /Users/balizero/nuzantara/.worktrees/mouth-oracle-consultation-context/output/playwright/v04-persistent-contact-aligned-next/source-hashes.sha256
+    bytes: 965
+    sha256: f7de76b07c15ae8d5dd67b00d62272ef294db8e3a4693de5febb2063ce779e57 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  - path: /Users/balizero/nuzantara/.worktrees/mouth-oracle-consultation-context/output/playwright/v04-persistent-contact-aligned-next/qa.cjs
+    bytes: 5035
+    sha256: f3167afac76da1d060804d7e0aaa1143bcb9480b64d106446ac010d579c513e4 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential

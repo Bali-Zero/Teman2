@@ -37,6 +37,8 @@ Usage:
 """
 
 import json
+import re
+import time
 from typing import Any
 
 import asyncpg
@@ -45,6 +47,17 @@ from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
+# log_api_call is called on every request (1.3M+/month) — if its INSERT
+# starts failing, an uncapped warning per failure would flood the app log.
+# Emit the first failure in full, then at most once per interval or once
+# every N suppressed occurrences (whichever comes first).
+_API_LOG_FAILURE_INTERVAL_SECONDS = 60.0
+_API_LOG_FAILURE_EVERY_N = 500
+
+# Matches numeric path segments (client/resource IDs) so a masked endpoint
+# can be logged without leaking which specific client/record was involved.
+_NUMERIC_ID_RE = re.compile(r"\d+")
+
 
 class ActivityLogger:
     """Centralized activity logging service"""
@@ -52,6 +65,13 @@ class ActivityLogger:
     def __init__(self) -> None:
         self.pool: asyncpg.Pool | None = None
         self._initialized = False
+        # State for the log_api_call failure damper — see
+        # _record_api_log_failure. Instance-local, no cross-process/thread
+        # lock: an approximate count under concurrency is acceptable here,
+        # and a lock on this path would add latency to every request.
+        self._api_log_failure_count = 0
+        self._api_log_failure_suppressed = 0
+        self._api_log_failure_last_emit_at = 0.0
 
     async def initialize(self, pool: asyncpg.Pool) -> None:
         """Initialize the logger with a database pool"""
@@ -356,9 +376,59 @@ class ActivityLogger:
                 )
             return True
 
-        except Exception:
-            # Don't log API logging failures to avoid infinite loops
+        except Exception as exc:
+            # Never write to api_audit_trail (or any table) from this branch:
+            # that would put the failure back on the same DB write path that
+            # is already failing, recreating the infinite-loop risk this
+            # bare `except: return False` used to guard against by staying
+            # silent. The app logger (stderr/app-log) doesn't touch the DB,
+            # so it's a safe channel — damped so it can't flood at
+            # log_api_call's request volume.
+            self._record_api_log_failure(exc, method, endpoint, response_status)
             return False
+
+    def _record_api_log_failure(
+        self, exc: Exception, method: str, endpoint: str, response_status: int
+    ) -> None:
+        """
+        Surface an api_audit_trail INSERT failure without leaking PII and
+        without flooding the log at request volume.
+
+        PII boundary (CLAUDE.md Part A §4): only the exception TYPE, HTTP
+        method, response status and a numeric-ID-masked endpoint are
+        logged. query_params/request_body/response_body/ip_address/
+        user_agent/user_email are never referenced here. The exception
+        MESSAGE is deliberately omitted too — asyncpg sometimes embeds the
+        failing row's own values in constraint-violation text (e.g.
+        "Key (user_email)=(x@example.com) already exists"), so including
+        it would risk exactly the leak this function exists to avoid.
+        """
+        self._api_log_failure_count += 1
+        now = time.monotonic()
+        is_first_failure = self._api_log_failure_count == 1
+        due_by_time = (
+            now - self._api_log_failure_last_emit_at
+        ) >= _API_LOG_FAILURE_INTERVAL_SECONDS
+        due_by_count = self._api_log_failure_suppressed >= _API_LOG_FAILURE_EVERY_N
+
+        if not (is_first_failure or due_by_time or due_by_count):
+            self._api_log_failure_suppressed += 1
+            return
+
+        suppressed = self._api_log_failure_suppressed
+        self._api_log_failure_suppressed = 0
+        self._api_log_failure_last_emit_at = now
+
+        logger.warning(
+            "api_audit_trail insert failed: exc_type=%s method=%s status=%s "
+            "endpoint=%s total_failures=%d suppressed_since_last=%d",
+            type(exc).__name__,
+            method,
+            response_status,
+            _NUMERIC_ID_RE.sub(":id", endpoint or ""),
+            self._api_log_failure_count,
+            suppressed,
+        )
 
     async def log_session(
         self,

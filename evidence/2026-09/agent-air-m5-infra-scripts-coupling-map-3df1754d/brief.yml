@@ -1,0 +1,45 @@
+task_id: scripts-coupling-map-0904
+gear: 2
+l_level: L2
+gate_class: opus
+grader: claude-session-nuzantara-b2
+pii: none
+objective: |
+  Zero, 2026-09-04: "tante PR non devono sottomettersi a suite di test … dobbiamo aumentare
+  drasticamente questa cosa, perdiamo troppo tempo". Measured the same day: a PR touching only
+  scripts/memory + scripts/tests (#5674) ran 75 checks, 114 CPU-minutes, 15 min wall; a PR
+  touching scripts/*.sh + scripts/tests (#5677) the same. Both were `run_all=true` in
+  tests.yml's classifier even with #5676's classifier fix applied, because top-level scripts/
+  was deliberately unmapped: ~19 scripts/*.py modules are imported by backend tests through a
+  sys.path shim, with no naming pattern, so a directory rule would under-match (cicatrix #3).
+
+  This PR replaces the guess with a CENSUS: scripts/ci/scripts_coupling_census.py git-greps the
+  trees the six heavy jobs execute for every reference to a repo-root scripts module (dotted
+  import, package form, literal path) and embeds the coupled set (134 paths) as a generated
+  frozenset inside scripts/ci/change_map.py — inside, not beside, because tests.yml extracts the
+  classifier from the base ref by a hand-kept file list and a new data file would not be
+  extracted (the exact disease #5676 documents). Coupled scripts keep backend_python; every
+  other scripts/** path lands on the existing zero-job domain fleet_ops. `--check` keeps the
+  block from going stale.
+
+  Gear 2 by SIZE only: Σ(ins+del) = 503 across three files under scripts/ci/, no hot-zone
+  path, no workflow edit, net +375. The floor recompute reached 2 via the SIZE term alone;
+  this brief declares it.
+constraints:
+  - "No workflow file is touched: .github/workflows/* is a Harness hot zone (floor 3) and the
+    classifier's extraction list stays as it is; the census lives inside change_map.py."
+  - "change_map.py stays stdlib-only and self-contained (the extraction trust boundary);
+    scripts_coupling_census.py may import change_map, never the reverse."
+  - "Under-match guarded both ways: coupled entries are proven by a live git-grep hit; a
+    grader-side spot check of uncoupled top-level modules must find zero references in the
+    six jobs' trees."
+  - "Generator != grader: builder subagent wrote the diff; an independent backend-verifier
+    graded it; the conducting session arms."
+acceptance:
+  - "scripts/ci/test_change_map.py passes (41 cases), including: uncoupled scripts/memory +
+    scripts/tests → run_all=false, suggested_jobs=[]; scripts/sentinel_lib/alerter.py →
+    backend-tests + e2e-tests; scripts/ci/change_map.py itself → run_all=true."
+  - "scripts/ci/scripts_coupling_census.py --check exits 0 on the committed block."
+  - "Bites: the next scripts-only PR's Change-map ::notice:: shows run_all:false with the six
+    jobs in would_skip once #5676's classifier fix is on main; appended to the PR as a comment
+    when observed."

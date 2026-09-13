@@ -1,0 +1,162 @@
+task_id: window-jump-v2b
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Make the window jump reliable enough to need no human (Ruling Zero 2026-09-09
+  19:40, after the jump of session a60e0124 landed only because a live subagent
+  typed `nz-jump <sid>` by hand). Four measured defects, one PR.
+
+  Supersedes #6024, which went CONFLICTING when main took 4e734c9010 — an M5
+  session rewriting the same file so that Ghostty is driven through its NATIVE
+  AppleScript dictionary (window/terminal ids as handles), keystrokes only as
+  fallback. That is the new baseline and it is KEPT: this branch is cut from
+  fresh main and both lineages survive in one script. The native route answers
+  the failure the M5 session measured (Ghostty not the active app, System Events
+  blind, "⌘N did not bring a new window to front"); the v2/v2.1 guarantees below
+  answer the failure THIS lane measured (typing into a window that was already
+  there). They meet on one rule: the snapshot is taken before ANY gesture, and
+  only a window whose exact name was ABSENT from it may be typed into — the
+  native route cross-checks the name of the very window its own API handed back,
+  because an id is a handle and only the name is evidence of a birth.
+
+  (a) the GESTURE bet on a delay — window_jump.sh pressed ⌘N, slept a FIXED 1.2s
+  and read `name of window 1`. Ghostty on Pro was slower, so the script said
+  "front window changed" and typed NOTHING although the window `~/nuzantara` HAD
+  opened. v2 snapshots every window name BEFORE ⌘N and polls every 0.3s up to
+  JUMP_POLL_MAX_S=8 until a name appears that was NOT in the snapshot, then
+  AXRaises THAT window by name. Both window lists go to jump.log so a miss is
+  diagnosable. ONLY a new name authorises the keystroke (fix-first round, F1/F3):
+  an unreadable snapshot would make every polled name look new, and a changed
+  front window is a reorder, not a birth — both would land `nz-jump` in a
+  PRE-EXISTING window of Zero's, so both end in nothing typed.
+
+  (b) titles collide: Claude Code sets the terminal title to the session title,
+  so two sessions are both "Interactive" and only a glyph differs. Matching is on
+  the exact string, and the corpus proves the sibling is never typed into.
+
+  (c) the guard's `_write_pending_jump` returned None whenever the file existed
+  ("già in corso") even when the gesture had FAILED, so every later trip answered
+  "salto non avviato" and the session sat at the guard forever. The file is now
+  the rate limit for the FILE, not for the GESTURE: if to_session is null and
+  jump.log's last line for that session says "nothing typed" (or the file is
+  stale past 60s with no landing), the gesture is made again — capped at 3 per
+  session, and the deny says honestly "gesto ritentato (n/3)" — or, when the file
+  could not be written, that the counter did NOT move (never "(0/3)", which would
+  read as an exhausted cap). The gesture's PID is recorded and a retry is refused
+  while that process is still alive: a hung osascript has logged nothing yet and
+  a second gesture on top of it would open a second window (F4).
+
+  (d) from_pid was os.getppid(), which outside the hook is a SHELL, so
+  window_jump.sh's SIGINT×2 fallback would interrupt the shell and leave the old
+  claude alive. It now walks the parent chain to the nearest `claude` ancestor
+  (path COMPONENT match — the installed CLI is .../share/claude/versions/<ver>,
+  whose basename is a version number), falling back to getppid().
+
+  Plus the two things that make it survive: `.claude/skills/window-jump/SKILL.md`
+  (repo-side, so it reaches every machine with the checkout) and
+  `infra/claude-hooks/install_window_jump.sh`, which #5987 never shipped — the
+  pairs were declared in declared-pairs.json and armed by hand. The installer
+  carries all FOUR declared pairs, context_window_guard.py included: (c) and (d)
+  live in the guard, so a seat installed without it would run v1 behaviour from
+  a v2 checkout (F2).
+
+  Gear is 2 via the SIZE term alone (the two new test corpora are the largest
+  single term; this brief and the merge of the two window_jump.sh lineages
+  account for most of the rest). No hot-zone path is touched.
+constraints:
+  - >-
+    No real Ghostty window is ever opened by a test: Zero's screen is the live
+    one and a stray keystroke lands in a real session. The gesture corpus shims
+    `osascript` on PATH with a scripted fake; the guard corpus runs with
+    CONTEXT_JUMP_NO_SPAWN=1 or plants a fake window_jump.sh that only appends to
+    a log.
+  - >-
+    Nothing is typed into a window that was not identified as the new one. The
+    retry belongs to the guard (capped, counted in the file as
+    gesture_attempts), never to the gesture script — which still never retries
+    blind.
+  - >-
+    This PR PREPARES the seats, it does not arm them: the three declared pairs
+    stay as they are under $HOME until a reviewing session runs
+    install_window_jump.sh (cicatrix #1 — merged is not armed). The installer
+    registers nothing new in settings.json.
+  - >-
+    No PII and no secrets: the jump file carries a session id, a cwd, a model
+    name and the mandate text; jump.log carries window TITLES, which are session
+    titles, never client data.
+acceptance:
+  - >-
+    WHEN the front window is unchanged for two polls and a new window name
+    appears only on the third, THEN `nz-jump <sid>` is typed into the NEW window
+    and jump.log records both window lists. probe:
+    test_window_jump_gesture.sh case [1]; measured 2026-09-09 on the merged
+    script — 30 assertions in 10 cases, 30 passed / 0 failed, while the SAME
+    corpus run with WINDOW_JUMP_SH= against the v1 script (1464875c1e) is
+    17 passed / 13 FAILED and against main's native-API script (4e734c9010)
+    also 17 passed / 13 FAILED. The two ancestors fail different halves: v1 has
+    no native route at all, 4e734c9010 has no snapshot and types into the
+    window its API returned whatever it is named (case [8]).
+  - >-
+    WHEN two windows are already named "Interactive" with only a glyph differing,
+    THEN the keystroke goes to the new window and never to the sibling. probe:
+    test_window_jump_gesture.sh case [2].
+  - >-
+    WHEN the window list is unreadable before the gesture (so every polled name
+    would look new), or the front window merely changed with no new name, THEN
+    nothing is typed and jump.log says which of the two it was. probe:
+    test_window_jump_gesture.sh cases [3] and [3b]; measured — the pre-fix v2
+    script types `nz-jump` into '✳ Interactive di Zero' in case [3b].
+  - >-
+    WHEN Ghostty's native dictionary answers, THEN the window is created and
+    typed into BY ID, System Events is never touched, and the name the API
+    returned is checked against the pre-gesture snapshot first (logged as
+    "name='<n>' (absent from the snapshot)"). probe:
+    test_window_jump_gesture.sh case [7]; scripts/tests/test_window_jump_shell.py
+    pins the call ORDER (window-names, old-id, new-window, name-of-id,
+    type-into) and the ending of the old session (/exit by id, SIGINT×2,
+    close window only once that claude is gone).
+  - >-
+    WHEN the native API hands back a window whose name was ALREADY in the
+    snapshot, THEN not one character is sent and jump.log names the collision —
+    an id proves possession of a handle, not a birth. probe:
+    test_window_jump_gesture.sh case [8]; measured — main's 4e734c9010 script
+    types `nz-jump` into that window.
+  - >-
+    WHEN the dictionary is closed (macos-applescript = false or Ghostty < 1.3),
+    THEN the script falls back to the keystroke route with the same snapshot
+    rule and says so in jump.log. probe:
+    scripts/tests/test_window_jump_shell.py::test_native_disabled_falls_back_to_keystrokes.
+  - >-
+    WHEN the previously spawned gesture PROCESS is still alive, THEN no second
+    gesture is spawned however the log reads; when it has exited, the retry
+    proceeds. probe: test_a_gesture_still_running_is_never_doubled,
+    test_a_dead_gesture_process_is_respawned, test_the_first_gesture_records_its_pid.
+  - >-
+    WHEN the jump file cannot be written, THEN the deny says the counter did not
+    move and never "gesto ritentato (0/3)". probe:
+    test_an_unwritable_jump_file_does_not_claim_a_counted_retry.
+  - >-
+    WHEN ⌘N opens nothing within JUMP_POLL_MAX_S, THEN not one keystroke is sent,
+    jump.log says "nothing typed" and the script exits 1. probe:
+    test_window_jump_gesture.sh case [4].
+  - >-
+    WHEN a session trips the guard again after jump.log recorded "nothing typed",
+    THEN the gesture is spawned a second time and the deny text says "gesto
+    ritentato (2/3)". probe: test_a_missed_gesture_is_retried_on_the_next_trip.
+  - >-
+    WHEN three gestures have already been made, THEN the fourth trip spawns
+    nothing. probe: test_the_retry_stops_at_three_gestures_and_says_so.
+  - >-
+    WHEN jump.log says the keystroke landed, or to_session is stamped, or the
+    seat never gestured at all (headless), THEN no retry is made. probe:
+    test_a_gesture_that_landed_is_never_retried,
+    test_a_reported_new_session_is_never_retried_even_after_a_miss,
+    test_a_headless_jump_is_never_retried.
+  - >-
+    WHEN the hook's parent chain contains a `claude` process above a shell, THEN
+    from_pid is that process; when it does not, from_pid is the direct parent.
+    probe: test_from_pid_walks_up_the_chain_to_the_claude_process,
+    test_from_pid_falls_back_to_the_direct_parent_when_no_claude_on_the_chain,
+    test_from_pid_survives_a_ps_that_says_nothing.
+pii_scan: clean

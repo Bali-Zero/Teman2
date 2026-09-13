@@ -1,0 +1,233 @@
+{
+  "generator": "apps/mouth/scripts/visa-oracle/replay-no-path-doors.py",
+  "pack": {
+    "file": "rulepack-prod-020.signed.json",
+    "sequence": 20,
+    "version": "2026.9.6"
+  },
+  "as_of": "2026-09-06 14:59:27.320080+00:00",
+  "age_55_birth_date": "1971-09-01",
+  "walk_corpus_fingerprint": "297f1413fed06dce539366d28bb685bfbb63ef3f55ab4118df7f7abfeed392f8",
+  "walks": [
+    {
+      "label": "offshore/business",
+      "walk_fixture": "offshore_business.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
+        "AGE_BELOW_55"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/invest/bank_deposit/below_threshold",
+      "walk_fixture": "offshore_invest_bank_deposit_below_threshold.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/invest/property/below_threshold",
+      "walk_fixture": "offshore_invest_property_below_threshold.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/other/no_paid_activity",
+      "walk_fixture": "offshore_other_no_paid_activity.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["BVK_NATIONALITY_ONLY"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/other/paid/employer_no",
+      "walk_fixture": "offshore_other_paid_employer_no.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/other/paid/sponsor_unsure",
+      "walk_fixture": "offshore_other_paid_sponsor_unsure.json",
+      "state": "NEEDS_INPUT",
+      "no_path_reason_codes": [],
+      "missing_facts": ["work.indonesian_work_sponsor_confirmed"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/remote",
+      "walk_fixture": "offshore_remote.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "INDONESIAN_EMPLOYER_NOT_ALLOWED",
+        "INDONESIAN_SOURCE_COMPENSATION_BANNED"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/retirement/bank_deposit",
+      "walk_fixture": "offshore_retirement_bank_deposit.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "missing_facts": [],
+      "doors": {
+        "TOURISM": ["C1"],
+        "SECOND_HOME": ["E33"],
+        "AGE_55": ["E33E", "E33F"]
+      }
+    },
+    {
+      "label": "offshore/retirement/family_sponsor",
+      "walk_fixture": "offshore_retirement_family_sponsor.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": ["E33F"] }
+    },
+    {
+      "label": "offshore/retirement/passive_income",
+      "walk_fixture": "offshore_retirement_passive_income.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": ["E33F"] }
+    },
+    {
+      "label": "offshore/retirement/property",
+      "walk_fixture": "offshore_retirement_property.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": ["E33"], "AGE_55": ["E33F"] }
+    },
+    {
+      "label": "offshore/retirement/property/age64/sponsor_no",
+      "walk_fixture": "offshore_retirement_property_age64_sponsor_no.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["SPONSOR_REQUIRED"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": ["E33"], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/retirement/undecided",
+      "walk_fixture": "offshore_retirement_undecided.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "missing_facts": [],
+      "doors": {
+        "TOURISM": ["C1"],
+        "SECOND_HOME": ["E33"],
+        "AGE_55": ["E33E", "E33F"]
+      }
+    },
+    {
+      "label": "offshore/retirement/undecided/age64/still_unsure",
+      "walk_fixture": "offshore_retirement_undecided_age64_still_unsure.json",
+      "state": "NEEDS_INPUT",
+      "no_path_reason_codes": [],
+      "missing_facts": ["family.sponsor_confirmed"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "onshore/business",
+      "walk_fixture": "onshore_business.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
+        "AGE_BELOW_55"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "onshore/remote",
+      "walk_fixture": "onshore_remote.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "INDONESIAN_EMPLOYER_NOT_ALLOWED",
+        "INDONESIAN_SOURCE_COMPENSATION_BANNED"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "onshore/retirement",
+      "walk_fixture": "onshore_retirement.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "missing_facts": [],
+      "doors": {
+        "TOURISM": ["C1"],
+        "SECOND_HOME": ["E33"],
+        "AGE_55": ["E33E", "E33F"]
+      }
+    }
+  ],
+  "counterexamples": [
+    {
+      "id": "indonesian-nationality",
+      "walk_fixture": "offshore_business.json",
+      "why": "the pack answers APPLICANT_IS_INDONESIAN_CITIZEN under every purpose",
+      "ui": { "nationalities": "ID" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "APPLICANT_IS_INDONESIAN_CITIZEN",
+        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
+        "AGE_BELOW_55"
+      ],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "id": "stay-beyond-tourist-bound",
+      "walk_fixture": "offshore_business.json",
+      "why": "C1 covers the declared stay up to 180 days; 181 already has no path",
+      "ui": { "stay_days": "400" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
+        "AGE_BELOW_55"
+      ],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "id": "deposit-not-at-state-bank",
+      "walk_fixture": "offshore_retirement_bank_deposit.json",
+      "why": "the Second Home deposit basis is conditioned on the bank, not only the amount",
+      "ui": { "secondhome_state_bank": "no" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": ["E33F"] }
+    },
+    {
+      "id": "deposit-not-in-own-name",
+      "walk_fixture": "offshore_retirement_bank_deposit.json",
+      "why": "same basis, conditioned on whose name holds the deposit",
+      "ui": { "secondhome_own_name": "no" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": ["E33F"] }
+    },
+    {
+      "id": "no-passive-income",
+      "walk_fixture": "offshore_retirement_bank_deposit.json",
+      "why": "age is still the only named cause, yet at 55 the pack supports nothing",
+      "ui": { "secondhome_passive_income_usd": "0" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": ["E33"], "AGE_55": [] }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -49,6 +49,41 @@ class FailingStageNode:
 
     async def run(self, _run: LabRunRecord, _context: dict[str, Any]) -> Any:
         raise RuntimeError("token=abcdef1234567890 RAW_PRIVATE_SENTENCE_SHOULD_NOT_APPEAR")
+
+
+@pytest.mark.asyncio
+async def test_lost_heartbeat_prevents_stage_execution() -> None:
+    store = _pro_store()
+    stage = FailingStageNode()
+    with (
+        patch.object(store, "heartbeat_run", new=AsyncMock(return_value=False)),
+        patch.object(stage, "run", new=AsyncMock()) as execute,
+    ):
+        result = await AutonomousLabWorker(state_store=store, stage_nodes=(stage,)).tick(
+            FakeAsyncConnection(fetchrow_results=[_row(), {"updated_count": 0}]),
+            worker_id="old-owner",
+        )
+    assert result.status is LabStageStatus.FAILED
+    execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_lost_completion_cannot_report_success() -> None:
+    store = _pro_store()
+    node = NoopLabStageNode(
+        LabStageName.WATCH,
+        "input",
+        "output",
+        LabStageRiskClass.LOW,
+        LabArtifactKind.FRONTIER_SIGNAL,
+        "synthetic stage complete",
+    )
+    conn = FakeAsyncConnection(fetchrow_results=[_row(), {"event_id": 1}, {"updated_count": 0}])
+    with patch.object(store, "mark_run_succeeded", new=AsyncMock(return_value=False)):
+        result = await AutonomousLabWorker(state_store=store, stage_nodes=(node,)).tick(
+            conn, worker_id="old-owner"
+        )
+    assert result.status is LabStageStatus.FAILED
 
 
 def _row(**overrides: Any) -> dict[str, Any]:

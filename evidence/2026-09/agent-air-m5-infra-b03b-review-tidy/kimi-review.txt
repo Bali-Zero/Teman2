@@ -1,0 +1,18 @@
+• **Verdict: PASS**
+
+  Findings (against supplied source only):
+
+  - **Path correctness holds.** The install step runs `npm install --no-fund` with no `working-directory`, i.e. at repo root, so `node_modules/.bin/tsc` lives at root. The typecheck step declares `working-directory: apps/mouth`, making `../../node_modules/.bin/tsc` resolve to exactly that root binary. This is also consistent with the sibling GARUDA step already invoking `./node_modules/.bin/openapi-typescript` from root. Per the supplied disclosure, root `.bin/tsc` → `../typescript/bin/tsc`; accepted as stated.
+  - **Config discovery unchanged.** `tsc --noEmit` resolves `tsconfig.json` from the cwd (`apps/mouth`) regardless of how the binary is invoked, so dropping `npx` does not alter which project is typechecked. Behavior preserved; only the resolution path (and npx's implicit lookup/download surface) is removed.
+  - **Assertion pin is exact, not shape-only.** `step["run"].strip() == "../../node_modules/.bin/tsc --noEmit"` fails on a revert to `npx tsc`, on `|| true` appends (`swallow-error`), and on any future command drift — the pin strength is unchanged from the first PASS snapshot, now pointing at the new command.
+  - **Mutation matrix intact and still discriminating.** All 11 cases are preserved verbatim; each still trips a distinct assertion (`wrong-cwd` → `working-directory`, `wrong-condition` → `if`, `after-tests` → ordering, etc.). The GARUDA-before-typecheck-before-tests order assertions are untouched and consistent with the supplied workflow context.
+  - **Docstring correction is accurate.** The new text matches what the file actually does: the boolean-stringify regression note is retained (the real bug), the false "not a guard / not registered" claim is gone, and the "guards the required mouth compiler step… required antidotes job runs these checks from the candidate checkout" statement matches both `_assert_required_mouth_typecheck` and the comment in `test_required_mouth_job_compiles_contract_consumers`.
+  - **Context/conditions/order preserved.** `if:`, `working-directory`, `continue-on-error` default, matrix gating, `!cancelled()`, needs, and timeout are all unchanged per the diff — nothing outside the two stated hunks moved. Registry/timeout exclusions respected.
+  - The prior wording nit is corrected as claimed; the diff is otherwise byte-identical in behavior to the first PASS snapshot.
+
+  Residual conditions (non-blocking, for the PR body / future maintainers):
+
+  1. The pin assumes `typescript` stays hoisted to **root** `node_modules/.bin`. A future lockfile/workspace change that un-hoists it (or adds a shadowing `apps/mouth/node_modules/.bin/tsc`) breaks the step in CI, and the test only pins the literal string — it cannot detect hoisting drift. Worth a one-line note in the PR body.
+  2. The disclosed parent-routing narrowing (`run_all:false`, 3 suggested jobs) is out of scope here and unchanged; stated as PR-body content, no action needed in this diff.
+
+  No demonstrable defect found in the supplied snapshot. **PASS.**

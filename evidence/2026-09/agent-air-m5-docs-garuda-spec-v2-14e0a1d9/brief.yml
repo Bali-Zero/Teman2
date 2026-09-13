@@ -1,0 +1,48 @@
+task_id: garuda-spec-v2
+mandate_id: garuda-voa-w1w
+colour: BLUE
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor MEASURED: `Harness floor recompute` (run 34695737108) on head 58ff52dc9e says floor == 2 via
+# the SIZE term alone -- 458 net lines on a path that is not hot-zone. One markdown file, no code,
+# no test, no migration; gear 2 == the floor, not raised above it.
+objective: >-
+  Land SPEC v2 for `PostgresDocumentStore` (GARUDA VOA W1W; ratified by Imperator decision #35)
+  on `main` as its own docs PR, so that PR2a-v2 can cite it by path and by the sha256 of the
+  blob on main instead of carrying a 443-line copy in its evidence pack -- a copy that lifted
+  PR2a-v2's measured floor to gear 3 (churn 2108 >= 1828) for a diff whose code risk is gear 2
+  (Imperator decision #36). One file:
+  `docs/plans/2026-09-12-garuda-voa-spec-v2-postgres-document-store.md` = the ratified source
+  plus a §12 Errata recording the two places the implementing code departs from the letter
+  (`swapcase` is a bijection, so the mutation model uses `casefold`; asyncpg needs
+  `$2::text::interval`), after the repo's pre-commit prettier.
+scope:
+  - docs/plans/2026-09-12-garuda-voa-spec-v2-postgres-document-store.md
+  - evidence/2026-09/agent-air-m5-docs-garuda-spec-v2-14e0a1d9/brief.yml
+constraints:
+  - No code, no test, no migration, no contract, no workflow. Nothing outside `docs/plans/` and this pack.
+  - >-
+    Content parity with the ratified source is a PROPERTY of this PR: `diff -w` between
+    `~/BATTAGLIA-20260911/1-GARUDA-VOA/spec/2026-09-12-SPEC-v2-postgres-document-store.md`
+    (sha256 in `measurements.ratified_source_sha256` below) and the committed
+    file shows ONLY prettier's rewrites (`*emphasis*` -> `_emphasis_`, table/whitespace) plus
+    the §12 Errata section. Verified by gate-6316 (PASS on content, 13:17Z); the gate's BLOCK was
+    this pack's absence, cured here.
+acceptance:
+  - id: A1
+    property: the file on main is the ratified spec, verbatim modulo prettier, plus §12 Errata
+    probe: "diff -w <ratified source> docs/plans/2026-09-12-garuda-voa-spec-v2-postgres-document-store.md | grep '^[<>]' -- only emphasis/table lines and the Errata section"
+  - id: A2
+    property: PR2a-v2 cites this blob, not a copy
+    probe: "grep -c 'docs/plans/2026-09-12-garuda-voa-spec-v2-postgres-document-store.md' evidence/2026-09/agent-air-m5-backend-rag-voa-store-adapter-v2-562162e6/brief.yml on PR2a-v2's head == 1, and the sha256 it records equals `git show origin/main:docs/plans/2026-09-12-garuda-voa-spec-v2-postgres-document-store.md | shasum -a 256`"
+limits:
+  L1: >-
+    The Bites consumer (PR2a-v2's brief) is not observable until PR2a-v2 is pushed; decision
+    #36 step 3 makes it so, and PR2a-v2's body carries the observation.
+measurements:
+  committed_file_sha256: ce2dfb20842b39cbd9dfb1b6fd4cbcb8d640c7bac478d059980688845e97347d # pragma: allowlist secret
+  ratified_source_sha256: f7f3329aff5c7a448581cce989501e95b436cdcf6d445eb699b7a214ced2bf5d # pragma: allowlist secret
+  lines: "458 (443 source + 15 Errata)"
+refuter:
+  seat: none -- docs-only, one file, content parity is the whole property and gate-6316 measured it

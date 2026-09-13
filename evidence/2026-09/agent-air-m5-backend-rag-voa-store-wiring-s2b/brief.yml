@@ -1,0 +1,81 @@
+gear: 2
+task_id: voa-store-wiring-s2b-fail-closed
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/voa-store-wiring-s2b
+gate_class: opus
+l_level: L2
+# Floor measured from this PR's own changed-file set: 1 (source none — no
+# hot-zone path, ~330 net lines). Gear 2 DECLARED above the floor because the
+# block decides whether a store that will serve passport-bearing PDFs is
+# reachable, and on what privacy evidence: security-bearing, so a Sol
+# refutation before the PR and a pack, K3 not required (Imperator decision #44).
+objective: >-
+  S2b of the GARUDA VOA W3A phase-2 split: `initialize_garuda_services`
+  constructs the S2a store (`TigrisArtifactObjectStore`, PR #6334, live
+  since 2026-09-12 15:44Z) FAIL-CLOSED, and a separate probe publishes it
+  only after the bucket was asked about its privacy. While the bucket and
+  its credentials are provisioning (Zero, #G) nothing is published and one
+  log line per process names the missing VARIABLES. No consumer reads the
+  store yet; the reader is S3.
+scope:
+  - apps/backend-rag/backend/app/setup/service_initializer.py — block 5.9 in `initialize_garuda_services` (construct, park under `garuda_artifact_store_pending`), new `probe_garuda_artifact_bucket` (the only writer of `garuda_artifact_store`), one await added on the statement after the wiring in BOTH entry points.
+  - apps/backend-rag/backend/tests/setup/test_service_initializer_garuda_artifacts.py — new, no network.
+  - apps/backend-rag/backend/tests/services/garuda_artifacts/test_tigris_store.py — gate-6334 C1 only.
+constraints:
+  - >-
+    `initialize_garuda_services` contains ZERO awaits — the readiness race
+    `test_no_await_separates_the_pool_from_the_garuda_wiring` closed. This is
+    why construction and probe are two steps; the first draft awaited the
+    probe inside the wiring and that test went red (measured).
+  - >-
+    Decision #43: `assert_private(require_verified=False)` at wiring. Tigris
+    may answer neither probe; an unknown verdict publishes the store and is
+    logged BY NAME ("verified" / "unverified (probes unsupported)"), only a
+    bucket a probe PROVES public — or a probe that fails at all — leaves the
+    store unpublished. Privacy is provisioning, and the verdict is the record.
+  - >-
+    Absent, never None: a future reader resolves `garuda_artifact_store` the
+    way `get_repository()` resolves `garuda_order_repository`. No fallback to
+    `nuzantara-warroom-images`, the public bucket, on any path.
+  - >-
+    No env var is read in this block; the gate is the constructor's (S2a),
+    which names variables and never values. SDK exception messages are not
+    logged from this block (type name only): boto3 may echo an endpoint, a
+    bucket or a key id into one.
+  - Never raises out of startup, on any path, in either entry point.
+  - >-
+    `fly.toml`, `.env*`, `zantara_core.py`, `openapi.yaml` untouched; the env
+    vars arrive via `fly secrets` from Zero (#G).
+acceptance:
+  - text: "A1: WHEN the three scoped env vars are absent SHALL leave `garuda_artifact_store` and `garuda_artifact_store_pending` absent and log INFO naming the three variables, never a value."
+    probe: TestArtifactStoreWiring::test_env_absent_leaves_the_attribute_absent_and_names_the_variables, ::test_a_present_value_is_never_logged_when_another_is_missing
+  - text: "A2: WHEN a probe PROVES the bucket public, or the probe fails at all, SHALL leave the store unpublished (absent) and log ERROR; WHEN the verdict is unknown SHALL publish and log the verdict by name; WHEN verified SHALL publish and say so; `require_verified=False` SHALL be passed exactly once."
+    probe: ::test_a_proven_public_bucket_refuses_and_stays_absent, ::test_a_probe_that_fails_for_any_other_reason_also_unwires, ::test_an_unknown_verdict_wires_and_is_logged_by_name, ::test_a_verified_private_bucket_wires_and_says_so
+  - text: "A3: The store SHALL never be consumer-visible before the probe answers, and a wiring without a probe SHALL publish nothing."
+    probe: ::test_the_store_is_never_visible_before_the_probe_answers
+  - text: "A4: BOTH entry points SHALL await `probe_garuda_artifact_bucket(app)` on the statement right after `initialize_garuda_services`, with the entry point's own `app`; the probe SHALL never raise; a re-wiring SHALL start from nothing."
+    probe: TestBothEntryPointsProbe::test_both_entry_points_await_the_probe_right_after_the_wiring, ::test_the_probe_never_raises, ::test_rewiring_starts_from_nothing
+  - text: "A5: SDK exception messages SHALL not reach the log from this block."
+    probe: ::test_sdk_exception_messages_are_never_logged
+  - text: "A6 (gate-6334 C1): the digest-mismatch LOG RECORD in fetch_and_verify SHALL carry `key_ref` and never the key."
+    probe: TestKeyRedaction::test_digest_mismatch_log_record_carries_key_ref_not_the_key
+  - text: "A7: the readiness guard and the api/rag parity suite SHALL stay green."
+    probe: backend/tests/setup/test_api_process_wires_the_state_its_routers_read.py
+limits:
+  - >-
+    CONSTRAINT FOR S3 (decision #44): the reader that serves artifact bytes
+    must resolve `garuda_artifact_store` AND `garuda_artifact_privacy` and
+    refuse when either is absent. This PR publishes both together; it cannot
+    make a future reader check both — that is S3's acceptance criterion.
+  - >-
+    The good branch (env present, bucket private) is proven through stubs
+    bound in the adapter module's namespace, not against Tigris: the bucket
+    does not exist (#G). In production today both processes log the skip line.
+  - >-
+    The probe is one network round-trip at startup, after readiness may
+    already be declared; a slow Tigris delays publication, not boot.
+pii: none
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 3

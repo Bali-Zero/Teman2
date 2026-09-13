@@ -1,0 +1,48 @@
+GUARD MUTATION RUN — successor round, 2026-09-12
+
+WHY THIS FILE EXISTS
+The POST refuter's finding 11 was that the disposition claimed each cure could turn the probe
+red, and that the claim was false: restoring `verification with BPN records` in all five locales
+left `--claims` at zero. A guard nobody can trip is not a guard. So the guard was rebuilt, and
+then MEASURED by mutation rather than asserted.
+
+METHOD
+The five canonical MDX files were copied into a sandbox outside the repo, the mutation applied to
+the COPY, and the probe run with that sandbox as its working directory. The worktree was never
+mutated. The sandbox was verified green before and after every mutation.
+
+  probe:  research/secondhome/probe-superseded-threshold.py --claims
+
+PROBE MUTATIONS — 10 applied, 10 RED
+  (This header said "9 applied, 9 RED" while the list below it named M1 through M10. The list is
+  the measurement and the header was the slip: ten mutations were applied and ten came back red.
+  Found by the independent gate on 8ba4b4f1ed, F5. The same nine appears in the PR body, the probe
+  docstring and the pack's note; the body and the pack are corrected, the docstring in PR-1b.)
+  RED   M1  restore `14. If property-based: verification with BPN records`   (the refuter's own
+            counter-example, green before this round)      -> PRESENT 'BPN'
+  RED   M2  Duration cell flattened from `Up to 5 years` to `5 years`        -> UNANCHORED
+  RED   M3  own-name condition dropped from `description:`                   -> UNANCHORED
+  RED   M4  `Pasal 113` dropped from the Renewal cell                        -> UNANCHORED
+  RED   M5  `14-30 working days` processing estimate restored                -> PRESENT '14-30'
+  RED   M6  day range restored in a stage heading `(5-10 Days)`              -> PRESENT heading
+  RED   M7  `IDR 5,000,000` Wajib Lapor fine restored                        -> PRESENT fine
+  RED   M8  `E33 no longer requires IDR 2 billion.` inserted into the body   -> THRESHOLD
+  RED   M9  `What counts as proof` restored                                  -> RESTORED literal
+  RED   M10 `60 months` passport rule restored                               -> RESTORED literal
+
+M8 is the session's own finding, not the refuter's: it was GREEN on the first attempt, because
+`--claims` did not scan the amount at all — that lived only under `--sources`, and nobody runs
+both. `--claims` now answers for the whole family, and M8 is red.
+
+GENERATOR MUTATIONS — 4 applied, 4 RED
+  suite:  cd apps/mouth && npx vitest run src/lib/llms-article-exports.test.ts   (6 passed clean)
+  RED   tie-break removed, date only                    -> 3 failed | 3 passed
+  RED   category-only tie-break `url.split("/")[3]`     -> 3 failed | 3 passed
+  RED   sort deleted outright                           -> 6 failed
+  RED   `.getTime()` -> `.setUTCHours(0, 0, 0, 0)`      -> 1 failed | 5 passed
+The last one is POST-refuter round 2 finding 8: every earlier fixture carried a bare date, so
+rounding to the day changed nothing and the mutant survived. The new fixture is the only one in
+the suite with a publication TIME (09:00Z vs 18:00Z on one day, URLs and filesystem order both
+pointing the other way).
+
+The generator was restored from a byte-copy and `cmp -s` confirmed it identical afterwards.

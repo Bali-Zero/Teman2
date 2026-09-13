@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   assignPractice: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  useGarudaAssignmentTargets: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -34,10 +35,11 @@ vi.mock("@/components/ui/toast", () => ({
   }),
 }));
 
-vi.mock("@/hooks/useTeamMembers", () => ({
-  useTeamMemberOptions: () => ({
-    options: [{ value: "zero@balizero.com", label: "Zero" }],
-  }),
+// The picker's source is the assignment gate's own enumeration, not the shared
+// CRM roster hook it replaced. Mocked whole, as that hook was: these tests
+// render the page without a QueryClientProvider.
+vi.mock("../assignment-targets", () => ({
+  useGarudaAssignmentTargets: mocks.useGarudaAssignmentTargets,
 }));
 
 vi.mock("../api-client", async () => {
@@ -70,11 +72,25 @@ const BLOCKED_PRACTICE: StaffPracticeView = {
   active_block_id: "block_abc123",
 };
 
+// Only the six fields required by the frozen StaffPracticeView contract.
+const MINIMUM_PRACTICE: StaffPracticeView = {
+  practice_id: "practice_1",
+  order_id: "order_1",
+  state: "Blocked",
+  assigned_to: null,
+  updated_at: "2026-08-01T10:00:00Z",
+  artifact_available: false,
+};
+
 describe("GarudaVoaStaffDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useParams.mockReturnValue({ practiceId: "practice_1" });
     mocks.getProfile.mockResolvedValue({ email: "zero@balizero.com" });
+    mocks.useGarudaAssignmentTargets.mockReturnValue({
+      data: [{ email: "zero@balizero.com", label: "Zero" }],
+      isError: false,
+    });
   });
 
   it("renders only the transitions valid for the current state (Received)", async () => {
@@ -91,6 +107,23 @@ describe("GarudaVoaStaffDetailPage", () => {
     expect(screen.queryByTestId("transition-PR-04")).toBeNull();
     expect(screen.queryByTestId("transition-PR-06")).toBeNull();
     expect(screen.queryByTestId("transition-PR-11")).toBeNull();
+  });
+
+  it("renders a contract-minimum response without optional notes or a resume target", async () => {
+    mocks.isAdmin.mockReturnValue(false);
+    mocks.getStaffPractice.mockResolvedValue(MINIMUM_PRACTICE);
+
+    render(<GarudaVoaStaffDetailPage />);
+
+    expect(
+      await screen.findByRole("heading", { name: "practice_1" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Private staff note")).toBeNull();
+    expect(
+      screen.getByText("No transitions are available from this state."),
+    ).toBeVisible();
+    expect(screen.queryByTestId("transition-PR-09")).toBeNull();
+    expect(screen.queryByTestId("transition-PR-10")).toBeNull();
   });
 
   it("narrows a Blocked practice to the single resume transition matching resume_target", async () => {
@@ -200,5 +233,70 @@ describe("GarudaVoaStaffDetailPage", () => {
       "Already applied",
       expect.stringContaining("In review"),
     );
+  });
+
+  it("fills the picker from the assignment gate's own enumeration", async () => {
+    mocks.isAdmin.mockReturnValue(true);
+    mocks.getStaffPractice.mockResolvedValue(RECEIVED_PRACTICE);
+
+    render(<GarudaVoaStaffDetailPage />);
+
+    const select = (await screen.findByLabelText(
+      "Assigned to",
+    )) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(
+        select.querySelector('option[value="zero@balizero.com"]'),
+      ).toBeTruthy(),
+    );
+    expect(mocks.useGarudaAssignmentTargets).toHaveBeenCalledWith(true);
+  });
+
+  it("never runs the picker query for a non-admin (the endpoint would 403)", async () => {
+    mocks.isAdmin.mockReturnValue(false);
+    mocks.getStaffPractice.mockResolvedValue(RECEIVED_PRACTICE);
+
+    render(<GarudaVoaStaffDetailPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("transition-PR-02")).toBeTruthy(),
+    );
+    expect(mocks.useGarudaAssignmentTargets).toHaveBeenCalledWith(false);
+  });
+
+  it("shows an assignee the gate refuses as a disabled option rather than pretending the practice is unassigned", async () => {
+    mocks.isAdmin.mockReturnValue(true);
+    mocks.getStaffPractice.mockResolvedValue({
+      ...RECEIVED_PRACTICE,
+      assigned_to: "read-only@example.test",
+    });
+
+    render(<GarudaVoaStaffDetailPage />);
+
+    const select = (await screen.findByLabelText(
+      "Assigned to",
+    )) as HTMLSelectElement;
+    const current = select.querySelector(
+      'option[value="read-only@example.test"]',
+    ) as HTMLOptionElement | null;
+    await waitFor(() => expect(current).toBeTruthy());
+    expect(current?.disabled).toBe(true);
+    expect(current?.textContent).toContain("not assignable");
+    // the control must not fall back to "Unassigned" while a real assignment
+    // exists — that is the lie this option exists to prevent
+    await waitFor(() => expect(select.value).toBe("read-only@example.test"));
+  });
+
+  it("says when the assignee list could not be fetched instead of offering an empty picker", async () => {
+    mocks.isAdmin.mockReturnValue(true);
+    mocks.useGarudaAssignmentTargets.mockReturnValue({
+      data: undefined,
+      isError: true,
+    });
+    mocks.getStaffPractice.mockResolvedValue(RECEIVED_PRACTICE);
+
+    render(<GarudaVoaStaffDetailPage />);
+
+    expect(await screen.findByText(/Assignee list unavailable/)).toBeVisible();
   });
 });

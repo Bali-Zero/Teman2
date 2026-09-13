@@ -1,0 +1,73 @@
+# Council seat record — tp1-qwen3.8-max (TP1 gateway), seat outside the contribution chain
+
+seat: tp1-qwen3.8-max
+cmd: python3 scripts/tp1_call.py --model qwen3.8-max --task-file <focused-task> --timeout 420 --max-tokens 4000
+ok: true
+exit: 0
+verdict: NO-GO (1 BLOCKER, 1 MAJOR, 2 MINOR, 3 NIT)
+scope: >-
+  The security-critical core, delivered inline: src/lib/team-public-listing.ts in full, its
+  test file in full, the grep of every consumer call site, and the roster's PUBLIC_ROSTER /
+  rosterBySlug signatures. NOT the whole diff — a first call carrying the entire 92 KB
+  candidate was still generating after 20 minutes (the wrapper documents that --max-tokens
+  does not bound this model's reasoning stream), so the seat was re-aimed at the piece where
+  a defect is worst. The scope is stated here so the record is not read as a full review.
+
+## Verbatim response
+
+## Adversarial Review
+
+**1 — BLOCKER**
+`"a founder band on the home"` is listed as a public consumer in the context, yet **no file under `app/page.tsx` (or any non-`v2` home component) appears in the grep**. The four files shown are SocialProof (v2), /team, book-data, /v2/company/about. The home-page founder band must be importing `rosterBySlug` or `PUBLIC_ROSTER` directly from `@/data/team-roster`, bypassing the filter entirely.
+**Fix:** Add the home component to the grep; route it through `publicEntries`/`publicRoster`. Add a lint rule or integration test that asserts no file outside `team-public-listing.ts` imports `PUBLIC_ROSTER` or `TEAM_ROSTER` for rendering.
+
+**2 — MAJOR**
+```ts
+if (e.slug) return isPublicSlug(e.slug);
+```
+An entry carrying **both** `slug` and `nameOverride` short-circuits on the slug and never inspects `nameOverride`. `{ slug: "kadek", nameOverride: "Faisha" }` passes the filter; a consumer that renders `nameOverride` when present republishes the excluded person. The type `T extends { slug?: string; nameOverride?: string }` permits this combination.
+**Fix:** When `nameOverride` is present, check it against `EXCLUDED_NAMES` regardless of whether `slug` is set.
+
+**3 — MINOR**
+```ts
+if (EXCLUDED.has(slug)) return false;
+```
+`Set.has` is case-sensitive. `isPublicSlug("Faisha")` → not in `EXCLUDED` → `rosterBySlug("Faisha")` → `undefined` → **returns `true`**. Any call-site that passes a slug without lowercasing it first bypasses the check. Same applies to `EXCLUDED.has(member.slug)` in `isPubliclyListed` if a roster entry ever carries a non-lowercase slug.
+**Fix:** Normalise: `const s = slug.toLowerCase()` before every `EXCLUDED.has` / `rosterBySlug` call, or build the Set from lowercased slugs.
+
+**4 — MINOR**
+```ts
+const name = e.nameOverride?.trim().toLowerCase();
+return !name || !EXCLUDED_NAMES.has(name);
+```
+`trim`+`toLowerCase` does not handle Unicode confusables or diacritics (`"Faïsha"`, fullwidth `"Ｆａｉｓｈａ"`, or `"FAİSHA"` with Turkish İ whose `toLowerCase()` is `"faisha"` in some locales but not others). Unlikely in practice for an internal editorial CMS, but the guard is presented as exhaustive.
+**Fix:** At minimum, add `.normalize("NFKC")` before comparison; document that only the exact roster spelling is caught.
+
+**5 — NIT (drift question answered)**
+```ts
+const EXCLUDED_NAMES: ReadonlySet<string> = new Set(
+  <REDACTED>((slug) => {
+    const member = rosterBySlug(slug);
+    return member ? [slug, member.name.toLowerCase()] : [slug];
+  }),
+);
+```
+This is **derived, not a second list**, so it cannot drift from `PUBLIC_EXCLUDED_SLUGS` at runtime. The fallback `[slug]` when `rosterBySlug` returns `undefined` is the only lossy path, and the "pins" test catches it. No action needed; the design is sound.
+
+**6 — NIT (unknown-slug question answered)**
+`isPublicSlug("<REDACTED>") === true` is a deliberate design decision documented in the JSDoc. It does not open a hole for the two excluded people because their slugs are checked *before* the roster lookup. The only interaction risk is finding #3 (case).
+
+**7 — NIT (self-fulfilling test)**
+```ts
+expect(names).toEqual(
+  PUBLIC_ROSTER.filter(
+    (m) => m.slug !== "faisha" && m.slug !== "sahira",
+  ).map((m) => m.name),
+);
+```
+The expected value re-implements the filter logic inline. If `publicRoster()` had the *same* slug-matching bug, both sides would agree and the test would stay green. The `toHaveLength(PUBLIC_ROSTER.length - 2)` check partially compensates but also hard-codes "2". The test is weakly load-bearing; the "pins" test above it is the real tripwire.
+**Fix:** Assert against a hard-coded expected name list, or at minimum assert the two excluded names are absent (already done) and drop the re-derived `toEqual`.
+
+---
+
+VERDICT: NO-GO

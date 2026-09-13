@@ -1,0 +1,26 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: customer-order-state
+    role: build
+    seat: gpt-6-astra
+dissent: []
+pii_scan: clean
+seat_override: >-
+  R8 applicability only: this visa-route UI change authors no immigration rule or price. It displays
+  the backend order state faithfully and follows existing fulfillment states.
+  Synthetic prices in tests are fixtures, not a catalogue update.
+receipts:
+  - claim: Payment-copy, transition-polling and cleanup regressions pass.
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/orders/OrderTracker.test.tsx
+      src/app/visa/voa/orders/useOrderTracking.test.ts
+      --maxWorkers=1 --reporter=dot
+    result: "2 test files passed; 24 tests passed. Parent rerun: 941 ms."
+    exit: 0
+    ts: "2026-09-05T06:29:54Z"
+    seat: codex-astra-parent
+notes:
+  - Worker observed 12 failing new regressions before the fix; parent reran the final suite.
+  - Independent review, CI and production proof are pending and are not claimed by these receipts.
+  - Fable consul owns the controlled review and shipping path.

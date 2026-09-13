@@ -1,0 +1,332 @@
+task_id: voa-artifact-store-s2a-tigris-object-store
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml # the canonical staged layout CI lints against; the real file lives beside this pack — resolved from the repo root this path reads ANOTHER lane's brief (evidence/brief.yml, kbli), which is why a local lint outside a staging tree reports that lane's floor, not this one's
+council_run: council-journal.jsonl
+successor_of: >-
+  #6287 (migration 313, lane agent-air-m5-backend-rag-voa-migration-313,
+  merged aa9a28b235, live in prod since 2026-09-12 13:08:52Z). S1 gave
+  `garuda_practices.artifact_id` a row to resolve to; this PR (S2a) gives
+  the row somewhere to resolve bytes from, and nothing reads from it yet.
+  The phase-2 split is Imperator decision #37: S2a the store, S2b the
+  fail-closed wiring from fresh main, then S3..S7 one at a time.
+seat_override: >-
+  No ground_truth lane: the diff adds a Python package (a Protocol, two
+  dataclasses, a boto3 adapter, an in-memory double) and its tests. It
+  asserts no regulatory fact -- no visa rule, no fee, no eligibility
+  condition, no KBLI code -- so there is no NotebookLM query a ground_truth
+  lane could hash. The only external fact it leans on, the Tigris endpoint
+  and its S3 semantics, is taken from the pinned spec (§3) and from the
+  boto3/botocore source the adapter is written against.
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    note: >-
+      Dux of window W3A, session 876f6aee (continued after two context jumps
+      as 5d1e7c54). GROUND: the phase-2 branch's four files at 32f846e914,
+      the pinned spec §2-§3, boto3's conditional-write and StreamingBody
+      semantics read from the installed source. BUILD: reapplied the four
+      files onto fresh main (never a branch merge), then every cure listed
+      under `dissent` -- each cure round its own commit, each naming its
+      findings (the count is git's, not this note's: every CI cure adds one). No Sonnet builder seat in W3A (Imperator ruling after two
+      hung Sonnet agents in S1). Authored this pack.
+  - lane: adversarial-refuter
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      Codex CLI, `codex exec -m gpt-5.6-sol -s read-only`, outside the
+      contribution chain, NON-ANTHROPIC seat (OpenAI). Four rounds, each
+      log's `model:` header verified against the explicit flag. O1 BLOCK
+      (14 findings) -> O2 BLOCK (lean rerun after a compacted first attempt
+      that issued no verdict; 2 NEW) -> O3 BLOCK (N3..N8) -> O4 PASS
+      (decision #41: reopen-or-close; nothing new). Three BLOCKs with three
+      different causes -- contract, retry/probe, wire-fault -- which the
+      Imperator ruled do not trigger the same-cause suspension. Static: the
+      seat reads, it does not execute pytest; the executed evidence is the
+      build seat's own runs under `receipts` and `guilt_mutations`.
+  - lane: contract-second-reader
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      Second reader of a DIFFERENT family (Moonshot), read-only, on a
+      snapshot of the package copied into the scratchpad -- never the
+      worktree; flat subscription, no per-token key. Scope: the port's
+      docstrings against both implementations, fake/adapter parity, the
+      env/endpoint/bucket gate, PII in messages and fixtures. not-ok: 2
+      MAJOR + 3 MINOR + 4 NIT, all in docstrings, comments and the fake's
+      message shape; gate and PII questions NOT FOUND. All cured in
+      3933ea4d0e with no behaviour change in the adapter.
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 5
+appetite_exceeded: >-
+  The brief declared 3 adversarial rounds; five ran (four Sol, one Kimi) --
+  the fourth Sol round was ordered by Imperator decision #41 as the
+  condition for opening the PR after three BLOCKs, and the Kimi seat is the
+  second-family reader the gear-3 quorum requires. Wall clock inside
+  appetite.
+cloud_ok: true
+pii_scan: clean
+pii_scan_note: >-
+  The diff is a Python package and its tests. Keys are synthetic
+  (`artifacts/prc_SENTINELPRACTICE/art_SENTINELARTIFACT`), credentials are
+  literal sentinels (`scoped-access-key`, `AKIA-SENTINEL-VALUE`) that the
+  tests assert never appear in any message, bodies are literal byte strings.
+  No production bucket, database or credential was read or written by this
+  session; the real bucket does not exist yet (pending #G). Kimi's question
+  (4) walked every log line, exception message and fixture: NOT FOUND.
+receipts:
+  - probe: A1
+    claim: >-
+      The garuda_artifacts suite passes on the committed head with no
+      network, no moto, the fake client injected through `for_tests()`.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/garuda_artifacts/ -p no:cacheprovider
+    result: "75 passed in 0.41s (head 3933ea4d0e; tigris_store.py md5 5c28f9289ad89b379730e1d8c7373e9d)"
+    exit: 0
+    ts: "2026-09-12T14:50:14Z"
+    seat: claude-opus-5 (build)
+  - probe: A1
+    claim: The package imports on the production path and the default endpoint is the pinned one.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -c "from backend.services.garuda_artifacts import tigris_store, fakes, ports, models; print('OK', tigris_store.DEFAULT_ENDPOINT_URL)"
+    result: "OK https://fly.storage.tigris.dev"
+    exit: 0
+    ts: "2026-09-12T14:50:15Z"
+    seat: claude-opus-5 (build)
+  - probe: A1
+    claim: >-
+      The seam canary: the production constructor takes no injected client
+      (signature `def __init__(self) -> None`), and the tests reach the fake
+      only through the qualified `TigrisArtifactObjectStore.for_tests(`.
+    cmd: grep -n "def __init__(self) -> None" backend/services/garuda_artifacts/tigris_store.py; grep -c "TigrisArtifactObjectStore.for_tests(" backend/tests/services/garuda_artifacts/test_tigris_store.py
+    result: "213:    def __init__(self) -> None; 4 qualified call sites"
+    exit: 0
+    ts: "2026-09-12T14:50:16Z"
+    seat: claude-opus-5 (build)
+  - probe: A8
+    claim: The deterministic floor recomputed from this PR's own changed-file set is 3.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf.txt --numstat-file ns.txt
+    result: "3 (--print-floor-source: size — 7 new files, 1993 net added lines, no hot-zone path)"
+    exit: 0
+    ts: "2026-09-12T14:50:25Z"
+    seat: claude-opus-5 (build)
+  - probe: A2-A7
+    claim: >-
+      Each acceptance criterion A2..A7 is a named test class in
+      test_tigris_store.py, all inside the A1 run above; the five guilt
+      mutations below prove the classes named in A2, A4, A5 and A7 are
+      load-bearing rather than merely present.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/garuda_artifacts/ -p no:cacheprovider -p no:randomly
+      -- covering, per the brief's probes: TestEnvVarGate in test_tigris_store.py;
+      guilt mutation "env gate" below; TestEndpointAndBucketConfinement;
+      TestBucketPrivacy; guilt mutation "ACL" below; TestFetchAndVerify,
+      TestFetchAndVerifyBoundedRead; guilt mutations "unbounded read",
+      "ContentLength" below; TestPut, TestRetry; TestDelete; guilt mutation
+      "delete no-op" below
+    result: "75 passed; classes TestEnvVarGate, TestEndpointAndBucketConfinement, TestBucketPrivacy, TestPut, TestRetry, TestFetchAndVerify, TestKeyRedaction, TestFetchAndVerifyBoundedRead, TestDelete, TestFakeParity"
+    exit: 0
+    ts: "2026-09-12T14:50:14Z"
+    seat: claude-opus-5 (build)
+  - probe: A9
+    claim: >-
+      Bites, observed on the promoted commit and not inferred from "PR
+      merged": the package imports inside the api container, the endpoint
+      and ceiling are the pinned ones, the production constructor takes no
+      client, `key_ref` lives on the port, all four scoped env vars are
+      absent (presence only, no value printed) and construction is REFUSED
+      naming the variables -- the fail-closed branch S2b will wire.
+    cmd: >-
+      fly ssh console -a nuzantara-rag --machine 7817d92c4117d8 -C "sh -c
+      '<base64 read-only script -- import garuda_artifacts, print
+      names/endpoint/ceiling/init signature/key_ref/env presence, try
+      construct>'"
+    result: >-
+      "names ['annotations', 'models', 'ports', 'tigris_store']; endpoint
+      https://fly.storage.tigris.dev ceiling 10485760; init_sig (self) ->
+      'None'; key_ref_on_port 2d711642b726; env_presence {BUCKET: unset,
+      ACCESS_KEY_ID: unset, SECRET_ACCESS_KEY: unset, ENDPOINT_URL: unset};
+      refused: garuda artifacts store: missing env var(s)
+      GARUDA_ARTIFACTS_BUCKET, GARUDA_ARTIFACTS_ACCESS_KEY_ID,
+      GARUDA_ARTIFACTS_SECRET_ACCESS_KEY -- re[fusing to fall back...]" --
+      PR #6334 merged eff08f2394 at 15:24:57Z; /health build_sha
+      c7cc6db48b (contains eff08f2394 by `git merge-base --is-ancestor`)
+      served from 15:44:32Z, machines api 7817d92c4117d8 / rag
+      1781e5eda03438 at v4436; deploy run 34702160669.
+    exit: 0
+    ts: "2026-09-12T15:45:18Z"
+    seat: claude-opus-5 (build)
+guilt_mutations:
+  - target: tigris_store.py — the env gate (A2)
+    mutation: "`if missing:` -> `if False and missing:` so a missing scoped variable no longer refuses construction."
+    observed: >-
+      RED: 6 failed, 69 passed -- test_missing_scoped_credentials_refuses_to_construct
+      DID NOT RAISE; each of the three per-variable load-bearing cases red
+      (two of them as botocore's own PartialCredentialsError, i.e. the SDK
+      was reached with half a credential -- exactly the fallback the gate
+      exists to prevent); test_empty_string_counts_as_absent and
+      test_exception_message_never_carries_a_value DID NOT RAISE. File
+      restored from a cp backup, md5 identical (5c28f9289ad89b379730e1d8c7373e9d).
+    ts: "2026-09-12T14:50:16Z"
+  - target: tigris_store.py — the "public" refusal in assert_private (A4)
+    mutation: "The `policy_status is False or public_access_block is False` refusal -> `if False:`."
+    observed: >-
+      RED: 1 failed, 74 passed -- test_public_policy_status_refuses: the
+      message no longer says PUBLIC; the bucket fell through to the
+      "unverified" refusal instead, which is the wrong reason and the test
+      says so. Restored, md5 identical.
+    ts: "2026-09-12T14:50:19Z"
+  - target: tigris_store.py — the bounded read (A5)
+    mutation: "`stream.read(remaining)` -> `stream.read()`: the loop asks the body for everything."
+    observed: >-
+      RED: 3 failed, 72 passed -- test_read_is_bounded_at_ceiling_plus_one_when_the_header_lies_small
+      (10490760 bytes read), test_missing_or_non_integer_content_length_still_bounds_and_proves_eof
+      (max_amt_requested None, not ceiling+1), test_short_reads_are_accumulated_not_mistaken_for_eof.
+      NOTE, stated because it bounds what the first attempt proved: an
+      earlier mutation `while remaining > 0` -> `while True` stayed GREEN
+      (74 passed) -- not a test gap but a non-mutation: with `remaining`
+      still decremented, `read(0)` returns empty and the loop ends anyway;
+      the bound lives in the `read(remaining)` argument, which is what this
+      mutation removes. Restored, md5 identical.
+    ts: "2026-09-12T14:50:21Z"
+  - target: tigris_store.py — the ContentLength pre-check (A5)
+    mutation: "`if content_length is not None and (...)` -> `if False and ...`: the declared size is never consulted before reading."
+    observed: >-
+      RED: 5 failed, 70 passed -- both before-any-read tests observe bytes
+      read (500 == 0, 10 == 0 assertions), and three more surface
+      IncompleteReadError because the body was read against a lying header
+      instead of refused on it. Restored, md5 identical.
+    ts: "2026-09-12T14:50:22Z"
+  - target: tigris_store.py — delete (A7)
+    mutation: "`self._client.delete_object(...)` -> `return`: a delete that never calls the store."
+    observed: >-
+      RED: 4 failed, 71 passed -- exactly-one-key (no call recorded),
+      delete-then-fetch (the object is still there), absent-key-is-success
+      (0 calls, expected 1), transient-retried-permanent-raised (0 == 2).
+      Restored, md5 identical.
+    ts: "2026-09-12T14:50:23Z"
+dissent:
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O1, BLOCKER F1) Omitting `ACL` on put does not make a bucket private
+      when its policy grants public reads; the spec fixes a private bucket
+      and the adapter took the environment's word for it.
+    status: CONFIRMED
+    disposition: >-
+      CURED as far as an adapter can: `assert_private()` probes
+      PublicAccessBlock and PolicyStatus, refuses a bucket either probe
+      calls public, treats an unimplemented or malformed answer as UNKNOWN
+      (O2 F1, O3 N3), and refuses two unknowns unless the caller passes
+      `require_verified=False` and says why. DECLARED where it is
+      provisioning: the bucket `garuda-voa-artifacts` does not exist yet
+      and its privacy is Zero's to configure (pending #G); the PR body says
+      so. Residual F1 (O3/O4 DECLARED-ACCEPTABLE): one probe True plus one
+      None is accepted -- a store that implements only one probe and calls
+      the bucket private on it is believed.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O1, BLOCKER F2) `GARUDA_ARTIFACTS_ENDPOINT_URL` accepts any host: a
+      misconfigured or attacker-controlled endpoint receives the body and a
+      SigV4 signature made with the dedicated key.
+    status: CONFIRMED
+    disposition: >-
+      CURED: https only, ASCII host ending `.tigris.dev`, no userinfo, port,
+      path, query or fragment; a malformed port is a configuration refusal
+      (O3 N8). Residual (O4 DECLARED-ACCEPTABLE): a trailing `/` is
+      normalised away rather than refused.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O2, F5 PARTIAL; O3/O4 DECLARED) `IfNoneMatch="*"` is sent, but a
+      store that silently ignores the condition overwrites without anyone
+      noticing.
+    status: CONFIRMED
+    disposition: >-
+      CURED for the second layer: HEAD before every PUT refuses an existing
+      key (and a HEAD 200 without an ETag is an existing object, O3 N4).
+      DECLARED: the window between HEAD and PUT on a NON-compliant store is
+      a TOCTOU the adapter cannot close from outside the store; Tigris
+      honours If-None-Match, and the HEAD is the belt for a store that does
+      not.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O2, N1) A PUT that commits but surfaces a retryable 500 gets 412 on
+      the retry and is misreported as ArtifactAlreadyExists.
+    status: CONFIRMED
+    disposition: >-
+      CURED: after a 412 on a retry, HEAD's ETag equal to the MD5 of the
+      body we sent is read as our own committed write; anything else --
+      including an absent or non-MD5 ETag (O3 N1) -- is a collision.
+      DECLARED (O4 DECLARED-ACCEPTABLE): MD5 equality is content equality,
+      not writer identity; another writer committing identical bytes under
+      our key in that window would be read as ours, and the bytes would be
+      identical, so the customer would receive what the row says.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O3, N5 MEDIUM) The chunk list and the joined body coexist, so peak
+      payload memory approaches twice the ceiling plus per-chunk overhead.
+    status: CONFIRMED
+    disposition: >-
+      PARTIALLY CURED: one growing bytearray, no chunk list. The final
+      `bytes(buf)` copy remains, so the peak is the buffer plus its
+      immutable copy -- about twice the ceiling -- and the comment says
+      that figure rather than "the ceiling" (O4 DECLARED-ACCEPTABLE). A
+      zero-copy handoff would need the digest verified on the bytearray
+      and a memoryview returned; declined as a change to the port's return
+      type for 10 MiB of headroom.
+  - seat: gpt-5.6-sol
+    objection: >-
+      (O3, N6 MEDIUM) Transient stream truncation was mapped to a refusal
+      inside `_once`, before the retry layer: a truncated body was never
+      retried.
+    status: CONFIRMED
+    disposition: >-
+      CURED: IncompleteReadError and ResponseStreamingError are transient
+      wire faults; the whole GET restarts through the retry budget and only
+      an exhausted budget lets the error out -- as itself, not as a port
+      exception, which K3 then asked the port to state (below). Measured: a
+      body one byte short of its declaration costs 3 GETs and sleeps
+      [2.0, 4.0] before raising.
+  - seat: kimi-code/k3
+    objection: >-
+      (MAJOR, x2) `ArtifactDigestMismatch` was documented as a hash
+      disagreement but raised for four length refusals; `fetch_and_verify`'s
+      Raises sentence read as the complete vocabulary while the adapter also
+      lets `IncompleteReadError` and permanent `ClientError` escape, and the
+      fake can raise neither -- a service written against the fake would
+      learn the true vocabulary from a stack trace.
+    status: CONFIRMED
+    disposition: >-
+      CURED in 3933ea4d0e: both docstrings now list what both sides raise
+      and say why one exception covers length and hash; `put` gained the
+      docstring it lacked (its `ValueError` for an over-ceiling body named);
+      the port states which two exceptions escape on the adapter only and
+      that the fake has no wire. Not laundered into port exceptions: a
+      consumer that maps "the store is broken" to "the artifact is missing"
+      would lie to the customer.
+  - seat: kimi-code/k3
+    objection: >-
+      (MINOR) The fake's exceptions carried the RAW key while the adapter's
+      carry sha256(key)[:12]; a service test asserting on a message would
+      bake in a shape production never emits, and a realistic key in a
+      fixture would land in failure output.
+    status: CONFIRMED
+    disposition: >-
+      CURED: `key_ref` moved to the port, both sides use it, and
+      test_fake_exceptions_carry_the_key_ref_not_the_key proves the fake's
+      three port exceptions never carry the key and carry exactly the
+      adapter's shape.
+  - seat: kimi-code/k3
+    objection: >-
+      (NIT) `from exc` chains keep the original ClientError as `__cause__`,
+      and a real NoSuchKey response embeds the raw key in
+      `exc.response["Error"]["Key"]` -- `str()` never shows it, but a
+      middleware serialising `exc.response` would.
+    status: CONFIRMED
+    disposition: >-
+      NOT cured, declared: the cause chain is kept because a refusal
+      without its cause is undebuggable; no middleware in this codebase
+      serialises `exc.response`, and Sentry's `include_local_variables=False`
+      plus `_before_send` (backend CLAUDE.md, load-bearing) are the fence
+      for exception payloads. Recorded here so the S2b wiring PR, which is
+      where an exception first meets a handler, checks it.

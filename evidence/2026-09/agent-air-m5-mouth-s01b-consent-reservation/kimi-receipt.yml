@@ -1,0 +1,10 @@
+model_requested: kimi-code/k3
+started_at: "2026-09-05T11:32:22.743948+00:00"
+prompt_sha256: c977a1491b06e1a59089a4b16d8a0b351c02e63355a980a9ea48c52c4c446186 # pragma: allowlist secret - verified artifact SHA-256, not credential
+command: kimi -m kimi-code/k3 -p <supplied test diff and runtime context>
+timeout_seconds: 240
+exit: 0
+finished_at: "2026-09-05T11:33:55.502117+00:00"
+raw_stdout_sha256: c9b7ce7d2ba2204a9cc2373c149c0cbda883446f5fbd61758598ac006c4e0869 # pragma: allowlist secret - verified artifact SHA-256, not credential
+answer_sha256: 21dfe91cdd5aa9ec2a48ed2006ac1321d6d0011c47cd8852637309763d504ffb # pragma: allowlist secret - verified artifact SHA-256, not credential
+artifact_normalization: Trailing blank lines removed from stdout; review content unchanged.

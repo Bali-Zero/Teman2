@@ -12,6 +12,13 @@ export interface NavItem {
 
 export interface NavSection {
   title?: string;
+  // One-line note rendered under the section title (e.g. an explanatory
+  // subtitle). Currently only used by the owner-only "Da fare" section.
+  note?: string;
+  // When true, AppSidebar hides the whole section unless the signed-in
+  // user is the owner (lib/auth/owner.ts::isOwner). Undefined/false means
+  // visible to everyone, same as before this field existed.
+  ownerOnly?: boolean;
   items: NavItem[];
 }
 
@@ -23,8 +30,6 @@ export interface UserProfile {
   team: string;
   avatar?: string;
   isOnline: boolean;
-  clockedInAt?: string;
-  hoursToday?: string;
 }
 
 export interface BreadcrumbItem {
@@ -49,6 +54,7 @@ export const navigation: NavSection[] = [
       { title: "Process", href: "/process", icon: "FolderKanban" },
       { title: "Second Home", href: "/second-home", icon: "Home" },
       { title: "Review", href: "/review", icon: "ClipboardCheck" },
+      { title: "Obligations", href: "/obligations", icon: "Receipt" },
       { title: "HR / Payroll", href: "/hr", icon: "Banknote" },
     ],
   },
@@ -79,6 +85,35 @@ export const navigation: NavSection[] = [
     title: "System",
     // Block 4: Admin
     items: [{ title: "Settings", href: "/settings", icon: "Settings" }],
+  },
+  {
+    title: "Da fare",
+    note: "Pagine vive senza link — da rivedere",
+    // Owner-only per Zero's 2026-09-12 ruling: these pages are live (real
+    // data, no dead endpoints) but had zero inbound links anywhere in the
+    // app before this section existed. Kept off the team sidebar until the
+    // owner decides which stay, get merged elsewhere, or get cut.
+    ownerOnly: true,
+    items: [
+      { title: "Accounting", href: "/accounting", icon: "Banknote" },
+      {
+        title: "Funnel Analytics",
+        href: "/analytics/funnel",
+        icon: "BarChart3",
+      },
+      { title: "GARUDA VOA", href: "/garuda-voa", icon: "ClipboardCheck" },
+      {
+        title: "Team Activity",
+        href: "/admin/team-activity",
+        icon: "Activity",
+      },
+      { title: "Agents", href: "/agents", icon: "BotMessageSquare" },
+      {
+        title: "Intelligence Analytics",
+        href: "/intelligence/analytics",
+        icon: "BarChart3",
+      },
+    ],
   },
 ];
 
@@ -145,36 +180,30 @@ export const routeTitles: Record<string, string> = {
   "/intelligence": "Intelligence Center",
   "/intelligence/visa-oracle": "Visa Oracle",
   "/intelligence/news-room": "News Room",
-  "/intelligence/system-pulse": "System Pulse",
   "/chat": "Zantara AI",
-  "/whatsapp": "WhatsApp",
   "/clients": "Clients",
   "/clients/new": "New Client",
   "/process": "Process",
   "/process/new": "New Process",
-  "/process/deadlines": "Deadlines",
   "/second-home": "Second Home",
   "/second-home/new": "New Second Home Case",
   "/review": "Document Review",
-  "/knowledge": "Knowledge Base",
-  "/team": "Team",
-  "/team/timesheet": "Timesheet",
-  "/team/calendar": "Team Calendar",
+  "/obligations": "Obligations",
   "/partners": "Partners",
   "/partners/new": "New Partner",
-  "/partners/orphaned": "Orphaned Partners",
-  "/partners/finance": "Finance Queue",
   "/hr": "HR / Payroll",
   "/hr/bonuses": "Bonuses",
   "/hr/payroll": "Payroll",
   "/hr/leave": "Leave Management",
   "/hr/leave/request": "Request Leave",
   "/hr/settings": "HR Settings",
-  "/analytics": "Analytics",
   "/analytics/funnel": "Funnel Analytics",
+  "/accounting": "Accounting",
+  "/garuda-voa": "GARUDA VOA",
+  "/admin/team-activity": "Team Activity",
+  "/agents": "Agents",
+  "/intelligence/analytics": "Intelligence Analytics",
   "/settings": "Settings",
-  "/settings/users": "User Management",
-  "/dream": "Dream Room",
   // Portal routes
   "/portal": "Dashboard",
   "/portal/process": "Process",

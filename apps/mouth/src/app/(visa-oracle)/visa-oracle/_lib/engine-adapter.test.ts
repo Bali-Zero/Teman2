@@ -4,10 +4,14 @@ import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import {
   REVIEW_REASON_COPY,
+  SECOND_HOME_DEPOSIT_THRESHOLD_USD,
+  SECOND_HOME_PROPERTY_THRESHOLD_USD,
   SUPPORT_REASON_COPY,
   buildEngineOutcome,
 } from "./engine-adapter";
 import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import { translate, type I18nKey } from "./i18n";
+import { QUESTIONS, type OracleFacts } from "./tree";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
   it("shows each source's own dates, not the decision's evaluation clock", () => {
@@ -262,6 +266,33 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(message.en).not.toContain("Verified reason:");
   });
 
+  it("gives a STEPCHILD walk the same ambiguous-sponsor copy as anyone else — the dead sponsor-permit fact no longer branches it", () => {
+    // D3-4 (PR-D3, owner ruling SHWEB-20260911) had `reviewReason` special-
+    // case a STEPCHILD applicant's `family_stepchild_sponsor_permit_
+    // confirmed` answer here. That question was REMOVED from tree.ts (owner
+    // ruling SHWEB-20260911, 2026-09-13, fresh grader review; no such
+    // requirement exists for E31D) and PR-D3d retired the now-unreachable
+    // branch. `facts` below still carries the fact's old key — nothing in
+    // the current interview can set it any more, but the adapter must not
+    // resurrect the special case if a stale value ever showed up in it.
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW";
+    const facts: OracleFacts = {
+      family_relation: "STEPCHILD",
+      family_stepchild_sponsor_permit_confirmed: "no",
+    };
+
+    const outcome = buildEngineOutcome(response, { facts });
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(outcome.reviewReasons[0].message).toEqual(
+      REVIEW_REASON_COPY.DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW,
+    );
+    expect(outcome.reviewReasons[0].message.en).not.toContain("KITAS/KITAP");
+  });
+
   it("falls back to an honest generic sentence for an unmapped review-reason code", () => {
     const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
     response.decision.review_reasons[0].code = "SOME_FUTURE_RULE_CODE";
@@ -280,7 +311,9 @@ describe("Visa Oracle authoritative outcome adapter", () => {
   });
 
   it("maps missing engine facts back to editable interview questions", () => {
-    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"));
+    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"), {
+      editableQuestionIds: ["stay_days"],
+    });
     expect(outcome.state).toBe("NEEDS_INPUT");
     if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
     expect(outcome.missingInputs[0]).toMatchObject({
@@ -288,6 +321,193 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       questionId: "stay_days",
     });
   });
+
+  it.each([
+    ["work.indonesia_source_compensation", "remote_compensation"],
+    ["work.indonesia_source_compensation", "work_indonesia_compensation"],
+    ["investment.pt_pma_committed", "investment_pt_pma"],
+    ["investment.pt_pma_committed", "remote_pt_pma"],
+    ["immigration.current_status_code", "stay_permit_code"],
+  ] as const)(
+    "routes missing %s to the visited %s question",
+    (factPath, questionId) => {
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = [factPath];
+      const outcome = buildEngineOutcome(response, {
+        editableQuestionIds: ["category", questionId, "stay_days"],
+      });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0]).toMatchObject({
+        code: factPath,
+        questionId,
+        message: {
+          en: translate("en", QUESTIONS[questionId].i18nKey as I18nKey),
+          id: translate("id", QUESTIONS[questionId].i18nKey as I18nKey),
+        },
+      });
+    },
+  );
+
+  it("retains both missing fact codes when neither has a visited question", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = [
+      "work.indonesia_source_compensation",
+      "investment.pt_pma_committed",
+    ];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs.map((input) => input.code)).toEqual(
+      response.decision.missing_facts,
+    );
+    expect(outcome.missingInputs.map((input) => input.questionId)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(outcome.missingInputs[0].message).toEqual(
+      outcome.missingInputs[1].message,
+    );
+  });
+
+  // ── 2026-09-06 decisiveness wave (PR-3): the follow-up loop ──────────
+  // Before this, a NEEDS_INPUT naming a fact whose question exists in
+  // QUESTIONS but was never asked on this walk rendered an unanswerable
+  // row: `questionForFact` only ever looked inside the interview history.
+
+  it("names a modelled-but-unasked question as a FOLLOW-UP, not as an edit", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    const outcome = buildEngineOutcome(response, {
+      facts: { in_indonesia: "no", category: "tourism" },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      code: "process.wants_onshore_conversion",
+      questionId: "wants_onshore_conversion",
+      followUp: true,
+    });
+    // The row carries the question's own copy, never the raw fact path.
+    expect(JSON.stringify(outcome.missingInputs[0].message)).not.toContain(
+      "process.wants_onshore_conversion",
+    );
+  });
+
+  // Adversarial review 2026-09-06, finding 1 (accepted, narrowed): the
+  // follow-up may not bypass the tree's prerequisite ordering. Exactly one
+  // question collects `family.marriage_registered`, and the family branch
+  // asks it only for a SPOUSE or PARENT relation.
+  it("guilt: a prerequisite-bearing fact the answers contradict is NOT pushed", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "CHILD",
+      },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it("innocence: the same fact IS pushed once the relation satisfies it", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "SPOUSE",
+      },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      questionId: "family_marriage_registered",
+      followUp: true,
+    });
+  });
+
+  it("guilt: no facts supplied means no follow-up — fail-closed", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+  });
+
+  it("innocence: an ALREADY-ASKED question stays a plain edit, with no followUp marker", () => {
+    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"), {
+      editableQuestionIds: ["stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBe("stay_days");
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it.each([
+    "work.indonesia_source_compensation",
+    "investment.pt_pma_committed",
+    "immigration.current_status_code",
+  ] as const)(
+    "innocence: %s is collected by two questions, so it is never followed up",
+    (factPath) => {
+      // Splicing in one of two candidate branches' questions would be the
+      // adapter guessing which branch the applicant belongs to.
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = [factPath];
+      const outcome = buildEngineOutcome(response, {
+        editableQuestionIds: ["category", "stay_days"],
+      });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0].questionId).toBeUndefined();
+      expect(outcome.missingInputs[0].followUp).toBeUndefined();
+      expect(outcome.missingInputs[0].message.en).toContain("Bali Zero");
+    },
+  );
+
+  it("innocence: a fact no question collects still falls back to the handoff", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["intent.requested_product_code"];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it.each([
+    { editableQuestionIds: undefined },
+    { editableQuestionIds: [] },
+    { editableQuestionIds: ["stay_days"] },
+    {
+      editableQuestionIds: [
+        "remote_compensation",
+        "work_indonesia_compensation",
+      ],
+    },
+  ])(
+    "offers no arbitrary edit when the target is absent or ambiguous: %j",
+    ({ editableQuestionIds }) => {
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = ["work.indonesia_source_compensation"];
+      const outcome = buildEngineOutcome(response, { editableQuestionIds });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0].questionId).toBeUndefined();
+      expect(outcome.missingInputs[0].message.en).toContain("Bali Zero");
+      expect(outcome.missingInputs[0].message.id).toContain("Bali Zero");
+      expect(JSON.stringify(outcome.missingInputs[0].message)).not.toContain(
+        "work.indonesia_source_compensation",
+      );
+    },
+  );
 });
 
 describe("support reasons are sentences, not machine codes", () => {
@@ -396,6 +616,467 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(codes.length).toBeGreaterThanOrEqual(13);
     expect(codes.filter((code) => !(code in SUPPORT_REASON_COPY))).toEqual([]);
   });
+
+  /**
+   * D3c/C-D2 (2026-09-13): the tests below read the SIGNED pack specifically
+   * — a `.source.json` is a draft that need not have gone through signing at
+   * all, so it is not "the pack" any decision was made under. Globbing
+   * `*.signed.json` and reading rules from the envelope's `payload` (never
+   * top-level, which only exists on the unsigned `.source.json` shape).
+   */
+  function signedProductionPackFiles(): string[] {
+    const files = fs
+      .readdirSync(PACKS_DIR)
+      .filter((name) => /^rulepack-prod-\d+\.signed\.json$/.test(name))
+      .map((name) => path.join(PACKS_DIR, name));
+    if (files.length === 0) {
+      throw new Error(`no signed production packs found under ${PACKS_DIR}`);
+    }
+    return files;
+  }
+
+  /**
+   * The tripwire above walks SUPPORT effects only, but an EXCLUDE code reaches
+   * a reader through the SAME `reasonMessage` fallback: `NO_SUPPORTED_PATH`
+   * maps `no_path_reasons` through `reason()`. So a new hard filter can print
+   * a machine code on the no-path sheet without failing anything above. seq-20
+   * adds exactly one such rule — `hf.d2.indonesia-source-compensation`,
+   * CL-D2-01's local-compensation prohibition — and its code is read OUT of
+   * the highest-sequence SIGNED pack on disk rather than typed here, so a
+   * rename in the fold moves this test with it instead of leaving it quietly
+   * stale.
+   */
+  function highestSequencePack(): { rules?: Array<Record<string, unknown>> } {
+    let best: {
+      payload: { sequence: number; rules?: Array<Record<string, unknown>> };
+      sequence: number;
+    } | null = null;
+    for (const full of signedProductionPackFiles()) {
+      const envelope = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        payload?: {
+          sequence?: unknown;
+          rules?: Array<Record<string, unknown>>;
+        };
+      };
+      const payload = envelope.payload;
+      // A pack without a numeric `sequence` cannot be compared — skip it
+      // rather than let it win via a sentinel default.
+      if (!payload || typeof payload.sequence !== "number") continue;
+      if (best === null || payload.sequence > best.sequence) {
+        best = {
+          payload: payload as {
+            sequence: number;
+            rules?: Array<Record<string, unknown>>;
+          },
+          sequence: payload.sequence,
+        };
+      }
+    }
+    if (best === null) {
+      throw new Error(
+        `no signed pack under ${PACKS_DIR} had a numeric sequence`,
+      );
+    }
+    return best.payload;
+  }
+
+  function excludeReasonCodeOfRule(ruleId: string): string {
+    for (const rule of highestSequencePack().rules ?? []) {
+      if (rule.rule_id !== ruleId) continue;
+      const effect = rule.effect as Record<string, unknown> | undefined;
+      if (
+        effect &&
+        effect.type === "EXCLUDE" &&
+        typeof effect.reason_code === "string"
+      ) {
+        return effect.reason_code;
+      }
+      throw new Error(`${ruleId} is no longer an EXCLUDE rule`);
+    }
+    throw new Error(`${ruleId} is absent from the highest-sequence pack`);
+  }
+
+  /**
+   * Walks a rule's `when` tree (the `all`/`args` structure, never regexed
+   * off the raw JSON text) looking for a `{ op: "gte", fact, value }` node
+   * on the named fact, at any nesting depth — `el.e33e.retirement` nests its
+   * deposit-trio conjuncts inside an inner `all`, so a top-level-only walk
+   * would miss it for that rule even though it happens not to be needed
+   * here.
+   */
+  function findGteValue(node: unknown, fact: string): number | undefined {
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = findGteValue(item, fact);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    }
+    if (node === null || typeof node !== "object") return undefined;
+    const record = node as Record<string, unknown>;
+    if (
+      record.op === "gte" &&
+      record.fact === fact &&
+      typeof record.value === "number"
+    ) {
+      return record.value;
+    }
+    if (Array.isArray(record.args)) {
+      return findGteValue(record.args, fact);
+    }
+    return undefined;
+  }
+
+  function gteThresholdInPack(ruleId: string, fact: string): number {
+    const rule = (highestSequencePack().rules ?? []).find(
+      (r) => r.rule_id === ruleId,
+    );
+    if (!rule) {
+      throw new Error(`${ruleId} is absent from the highest-sequence pack`);
+    }
+    const value = findGteValue(rule.when, fact);
+    if (value === undefined) {
+      throw new Error(
+        `no gte(${fact}) node found in ${ruleId}'s when-tree — the rule's shape changed`,
+      );
+    }
+    return value;
+  }
+
+  // D3-3 gate finding (owner escalation, 2026-09-13): `secondHomeBelow
+  // ThresholdReason` (engine-adapter.ts) quotes these two constants to a
+  // real applicant as a legal requirement, in both languages. They are a
+  // SECOND COPY of a number the signed pack owns, with nothing tying them
+  // together — and a seq-21 pack revision naming Second Home thresholds is
+  // already in preparation. A wrong VERDICT is caught elsewhere (the
+  // interview walks); a stale NUMBER INSIDE A SENTENCE is caught only here.
+  it("SECOND_HOME_PROPERTY_THRESHOLD_USD and SECOND_HOME_DEPOSIT_THRESHOLD_USD track the signed pack's el.e33.property-basis / el.e33.deposit-basis gte thresholds", () => {
+    expect(SECOND_HOME_PROPERTY_THRESHOLD_USD).toBe(
+      gteThresholdInPack(
+        "el.e33.property-basis",
+        "secondhome.qualifying_property_value_usd",
+      ),
+    );
+    expect(SECOND_HOME_DEPOSIT_THRESHOLD_USD).toBe(
+      gteThresholdInPack("el.e33.deposit-basis", "secondhome.bank_deposit_usd"),
+    );
+  });
+
+  // D3c/C-D5 (owner order, 2026-09-13): three more SUPPORT_REASON_COPY
+  // sentences state a literal figure that a signed-pack rule actually backs
+  // (`el.e28a.investment`, `el.e33e.retirement`, `el.e33f.retirement` — the
+  // Second Home basis pair above is already covered by the pinned-constant
+  // test). The figure is extracted from the PROSE STRING (never the pack
+  // JSON — that stays a structural `when`-tree walk via `gteThresholdInPack`)
+  // and compared to the rule's own `gte` threshold, in both languages, with
+  // an explicit copy-key -> rule-id/fact map so a reader can see which rule
+  // is claimed to back which sentence.
+  function usdFromProse(copy: string): number {
+    const match = copy.match(/USD\s+([\d,]+)/);
+    if (!match) {
+      throw new Error(`no "USD <n>" figure found in: ${copy}`);
+    }
+    return Number(match[1].replace(/,/g, ""));
+  }
+
+  function usdFromProseId(copy: string): number {
+    const match = copy.match(/USD\s+([\d.]+)/);
+    if (!match) {
+      throw new Error(`no "USD <n>" figure found in: ${copy}`);
+    }
+    return Number(match[1].replace(/\./g, ""));
+  }
+
+  function idrBillionFromProse(copy: string): number {
+    const match = copy.match(/IDR\s+([\d.]+)\s+billion/i);
+    if (!match) {
+      throw new Error(`no "IDR <n> billion" figure found in: ${copy}`);
+    }
+    return Math.round(Number(match[1]) * 1_000_000_000);
+  }
+
+  function rpMiliarFromProse(copy: string): number {
+    const match = copy.match(/Rp\s+([\d,]+)\s+miliar/i);
+    if (!match) {
+      throw new Error(`no "Rp <n> miliar" figure found in: ${copy}`);
+    }
+    return Math.round(Number(match[1].replace(",", ".")) * 1_000_000_000);
+  }
+
+  const FIGURE_BACKED_BY_RULE: Record<
+    string,
+    {
+      ruleId: string;
+      fact: string;
+      readEn: (copy: string) => number;
+      readId: (copy: string) => number;
+    }
+  > = {
+    E28A_INVESTMENT_ELIGIBLE: {
+      ruleId: "el.e28a.investment",
+      fact: "investment.paid_up_capital_idr",
+      readEn: idrBillionFromProse,
+      readId: rpMiliarFromProse,
+    },
+    E33E_RETIREMENT_ELIGIBLE: {
+      ruleId: "el.e33e.retirement",
+      fact: "secondhome.bank_deposit_usd",
+      readEn: usdFromProse,
+      readId: usdFromProseId,
+    },
+    E33F_RETIREMENT_ELIGIBLE: {
+      ruleId: "el.e33f.retirement",
+      fact: "secondhome.passive_monthly_income_usd",
+      readEn: usdFromProse,
+      readId: usdFromProseId,
+    },
+  };
+
+  it("anchors every remaining SUPPORT-copy figure with a backing rule to that rule's gte threshold, EN and ID", () => {
+    // Guard the guard: an empty map would make the loop below vacuously pass.
+    expect(Object.keys(FIGURE_BACKED_BY_RULE).length).toBeGreaterThan(0);
+    for (const [key, spec] of Object.entries(FIGURE_BACKED_BY_RULE)) {
+      const copy = SUPPORT_REASON_COPY[key];
+      const expected = gteThresholdInPack(spec.ruleId, spec.fact);
+      expect(spec.readEn(copy.en)).toBe(expected);
+      expect(spec.readId(copy.id)).toBe(expected);
+    }
+  });
+
+  // Mirror image: these SUPPORT reasons named a dollar figure on `main` with
+  // NO backing rule anywhere in the signed pack (verified: no fact for
+  // proof-of-funds or living cost exists in ANY rule's `when` tree, and no
+  // fact anywhere holds an ANNUAL income threshold). Narrowed (PR-D3d,
+  // 2026-09-13, fresh grader review): the pack does carry ONE income fact —
+  // `secondhome.passive_monthly_income_usd`, gte 3000 — but it is a MONTHLY
+  // figure backing `el.e33e.retirement`/`el.e33f.retirement` (pinned by
+  // `FIGURE_BACKED_BY_RULE` above), a different quantity from
+  // `E33G_INCOME_60K_ADVISOR_CHECK`'s USD 60,000 PER YEAR below; it backs no
+  // key in this list. Per the same rule as the anchor test above, an
+  // unbacked figure may not be stated — this pins that the fix stays
+  // applied.
+  it("states no figure for SUPPORT reasons the signed pack has no rule to back", () => {
+    const NO_BACKING_KEYS = [
+      "PROOF_OF_FUNDS_D1",
+      "PROOF_OF_FUNDS_D2",
+      "PROOF_OF_FUNDS_D12",
+      "REQ_FUNDS_2000",
+      "LIVING_COST_USD2000",
+      "E33G_INCOME_60K_ADVISOR_CHECK",
+    ] as const;
+    for (const key of NO_BACKING_KEYS) {
+      const copy = SUPPORT_REASON_COPY[key];
+      expect(copy.en).not.toMatch(/\d/);
+      expect(copy.id).not.toMatch(/\d/);
+    }
+  });
+
+  // D3c/C-D1 gate finding (2026-09-13): `fact-mapper.ts`'s
+  // `depositBasisDecisivelyNotChosen`/`propertyBasisDecisivelyNotChosen`
+  // synthesise KNOWN(0)/KNOWN(false) for the sibling Second Home basis's four
+  // facts once the interview has decisively routed to the OTHER basis. That
+  // synthesis is innocent only while every signed-pack rule reading these
+  // facts stays SUPPORT-only: the moment a HARD_FILTER/EXCLUDE rule reads one
+  // of them, or any rule compares one with `eq false`, the synthesised
+  // "known false" stops meaning "not claimed here" and starts actively
+  // EXCLUDING a visitor who never answered the question. Nobody else guards
+  // this premise, so this walks the highest-sequence SIGNED pack's `when`
+  // trees structurally (`all`/`any` via `args`, `not` via its singular `arg`
+  // — never regexed off the JSON text) and must go RED the moment a future
+  // pack rule breaks it.
+  it("never lets a HARD_FILTER/EXCLUDE rule, or an eq-false comparison, read a synthesised Second-Home twin-basis fact", () => {
+    const GUARDED_FACTS = [
+      "secondhome.bank_deposit_usd",
+      "secondhome.bank_deposit_at_state_bank",
+      "secondhome.bank_deposit_in_own_name",
+      "secondhome.qualifying_property_value_usd",
+    ];
+
+    function findGuardedFactNodes(
+      node: unknown,
+      out: Array<Record<string, unknown>>,
+    ): void {
+      if (Array.isArray(node)) {
+        node.forEach((item) => findGuardedFactNodes(item, out));
+        return;
+      }
+      if (node === null || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (
+        typeof record.fact === "string" &&
+        GUARDED_FACTS.includes(record.fact)
+      ) {
+        out.push(record);
+      }
+      if (Array.isArray(record.args)) {
+        findGuardedFactNodes(record.args, out);
+      }
+      if (record.arg !== undefined) {
+        findGuardedFactNodes(record.arg, out);
+      }
+    }
+
+    const rules = highestSequencePack().rules ?? [];
+    let rulesReferencingGuardedFacts = 0;
+    const offendingStageRuleIds: string[] = [];
+    const offendingEqFalseRuleIds: string[] = [];
+
+    for (const rule of rules) {
+      const nodes: Array<Record<string, unknown>> = [];
+      findGuardedFactNodes(rule.when, nodes);
+      if (nodes.length === 0) continue;
+      rulesReferencingGuardedFacts += 1;
+
+      const stage = rule.stage;
+      const effectType = (rule.effect as Record<string, unknown> | undefined)
+        ?.type;
+      if (
+        stage === "HARD_FILTER" ||
+        stage === "EXCLUDE" ||
+        effectType === "EXCLUDE"
+      ) {
+        offendingStageRuleIds.push(String(rule.rule_id));
+      }
+      for (const node of nodes) {
+        if (node.op === "eq" && node.value === false) {
+          offendingEqFalseRuleIds.push(String(rule.rule_id));
+        }
+      }
+    }
+
+    // Guard the guard: a glob/parse that silently found nothing would make
+    // the assertions below vacuously pass.
+    expect(rulesReferencingGuardedFacts).toBeGreaterThan(0);
+    expect(offendingStageRuleIds).toEqual([]);
+    expect(offendingEqFalseRuleIds).toEqual([]);
+  });
+
+  function firstNoPathReason(code: string, facts?: OracleFacts) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons[0].code = code;
+    const outcome = buildEngineOutcome(response, { facts });
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    return outcome.noPathReasons[0].message;
+  }
+
+  it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {
+    const code = excludeReasonCodeOfRule("hf.d2.indonesia-source-compensation");
+    expect(code).toBe("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED");
+    expect(code in SUPPORT_REASON_COPY).toBe(true);
+
+    const message = firstNoPathReason(code);
+    expect(message.en).not.toMatch(/^Verified reason: /);
+    expect(message.en).not.toContain(code);
+    expect(message.en).toMatch(/Indonesian source/i);
+    expect(message.en).toMatch(/work route/i);
+    expect(message.id).not.toContain(code);
+    expect(message.id).toMatch(/sumber di Indonesia/i);
+    expect(message.id).toMatch(/jalur kerja/i);
+  });
+
+  // D3-3 gate finding (owner escalation, 2026-09-13): `el.e33.property-basis`
+  // / `el.e33.deposit-basis` are SUPPORT rules — a below-threshold value
+  // makes them silently not fire, so the ENGINE'S only reason is the generic
+  // `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES` (verified against
+  // rulepack-prod-020.source.json: no EXCLUDE rule names this threshold).
+  // The frontend names it instead, from facts it already has.
+  it("names the property threshold when the interview declared a below-threshold property (D3-1 invest route)", () => {
+    const message = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "invest",
+        investment_vehicle: "property",
+        secondhome_property_value_usd: "500000",
+      },
+    );
+    expect(message.en).not.toMatch(/^Verified reason: /);
+    expect(message.en).toMatch(/500,000/);
+    expect(message.en).toMatch(/1,000,000/);
+    expect(message.id).toMatch(/500\.000/);
+    expect(message.id).toMatch(/1\.000\.000/);
+  });
+
+  it("names the deposit threshold when the interview declared a below-threshold deposit (D3-1 invest route)", () => {
+    const message = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "invest",
+        investment_vehicle: "bank_deposit",
+        secondhome_deposit_usd: "50000",
+      },
+    );
+    expect(message.en).toMatch(/50,000/);
+    expect(message.en).toMatch(/130,000/);
+    expect(message.id).toMatch(/50\.000/);
+    expect(message.id).toMatch(/130\.000/);
+  });
+
+  it("names the same thresholds on the direct second_home tile", () => {
+    const property = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "second_home",
+        secondhome_basis: "property",
+        secondhome_property_value_usd: "1",
+      },
+    );
+    expect(property.en).toMatch(/1,000,000/);
+    const deposit = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "second_home",
+        secondhome_basis: "bank_deposit",
+        secondhome_deposit_usd: "1",
+      },
+    );
+    expect(deposit.en).toMatch(/130,000/);
+  });
+
+  it("innocence: falls back to the generic sentence when the facts do not show a below-threshold Second Home basis", () => {
+    const noFacts = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+    );
+    expect(noFacts.en).toBe(
+      SUPPORT_REASON_COPY.OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.en,
+    );
+    // A property/deposit ABOVE threshold must not be misreported as a hold.
+    const aboveThreshold = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "invest",
+        investment_vehicle: "property",
+        secondhome_property_value_usd: "5000000",
+      },
+    );
+    expect(aboveThreshold.en).toBe(
+      SUPPORT_REASON_COPY.OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.en,
+    );
+    // A DIFFERENT code must never be rewritten, even with matching facts.
+    const otherCode = firstNoPathReason(
+      "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
+      {
+        category: "invest",
+        investment_vehicle: "property",
+        secondhome_property_value_usd: "500000",
+      },
+    );
+    expect(otherCode.en).toBe(
+      SUPPORT_REASON_COPY.BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED.en,
+    );
+  });
+
+  // D3-3 (PR-D3): `hf.e33f.sponsor-required` is now reachable — a retirement
+  // walk whose chosen basis fails AND whose sponsor is denied resolves
+  // decisively to NO_SUPPORTED_PATH with this code (previously unreachable
+  // from any corpus walk, so it fell through the raw-code fallback).
+  it("explains hf.e33f.sponsor-required in prose, not a raw code dump", () => {
+    expect("SPONSOR_REQUIRED" in SUPPORT_REASON_COPY).toBe(true);
+    const message = firstNoPathReason("SPONSOR_REQUIRED");
+    expect(message.en).not.toMatch(/^Verified reason: /);
+    expect(message.en).toMatch(/sponsor/i);
+    expect(message.id).toMatch(/sponsor/i);
+  });
 });
 
 describe("review reasons cover every code the current pack can emit", () => {
@@ -453,10 +1134,21 @@ describe("review reasons cover every code the current pack can emit", () => {
     const codes = new Set<string>();
     for (const rule of payload.rules ?? []) {
       const effect = rule.effect as Record<string, unknown> | undefined;
+      if (!effect || typeof effect.reason_code !== "string") continue;
+      // A HUMAN_REVIEW-stage rule contributes its reason on a definite TRUE
+      // (`evaluator.py::evaluate_product`, `_true_reasons`). A HARD_FILTER
+      // rule ALSO contributes its reason — the SAME `effect.reason_code`,
+      // via `_reason_from_rule` — when its own condition is UNKNOWN and it
+      // declares `on_unknown: "HUMAN_REVIEW"`
+      // (`_partition_unknowns_by_policy` + `_reason_from_rule`,
+      // evaluator.py:355-410, 741-751): a rule author asking for human
+      // judgment on an uncertain exclusion outranks merely asking the
+      // applicant for more facts. Support-stage (ELIGIBILITY) on_unknown
+      // escalation feeds SUPPORT_REASON_COPY instead, not this map, so it is
+      // deliberately not included here.
       if (
-        rule.stage === "HUMAN_REVIEW" &&
-        effect &&
-        typeof effect.reason_code === "string"
+        rule.stage === "HUMAN_REVIEW" ||
+        (rule.stage === "HARD_FILTER" && rule.on_unknown === "HUMAN_REVIEW")
       ) {
         codes.add(effect.reason_code);
       }
@@ -508,40 +1200,14 @@ describe("review reasons cover every code the current pack can emit", () => {
   // entry here stops naming a real code (renamed/retired upstream) — this
   // list is not exempt from going stale the same way REVIEW_REASON_COPY's
   // keys were.
-  const KNOWN_UNMAPPED_REVIEW_REASON_CODES = [
-    // From rulepack-prod-007+ (HUMAN_REVIEW stage):
-    "E28B_USD_THRESHOLD_MANUAL_CHECK",
-    "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
-    "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",
-    "E28F_IKN_THRESHOLD_MANUAL_CHECK",
-    "E33B_EXPERTISE_QUALIFICATION_CHECK",
-    "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
-    // E5 increment 3 seq-9 fold (2026-08-19): review.e33g.income-evidence
-    // (OD-1 pattern — the USD 60,000/year income floor is un-modelable, no
-    // work-income FactPath exists, see cure-e33g.md). QW-4b (copy-deck
-    // approval) still owns writing the actual sentence.
-    "E33G_INCOME_EVIDENCE_REVIEW",
-    "E33_WORK_RANGKAP_KEGIATAN_GATED",
-    "GOVT_INVITATION_REQUIRED",
-    // Pack-independent (evaluate_path.py):
-    "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
-    "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
-    "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
-    "DECISIVE_SOURCE_STALE",
-    "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
-    "DISCLOSED_CRIMINAL_RECORD_REVIEW",
-    "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
-    "DISCLOSED_HEALTH_CONCERN_REVIEW",
-    "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
-    "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
-    "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
-    "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
-    "DISCLOSED_UNCERTAINTY_REVIEW",
-    "MINOR_GUARDIAN_PRIVACY_REVIEW",
-    "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
-    "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
-    "SAFETY_CRITICAL_SOURCE_STALE",
-  ];
+  //
+  // Emptied by PR-O2 (QW-4b, D1, 2026-09-12): all 29 codes below now have
+  // dedicated copy in REVIEW_REASON_COPY. The historical note that used to
+  // sit here about `E33G_INCOME_EVIDENCE_REVIEW`'s seq-20 retirement (a
+  // THIRD, already-removed code, never part of this 29) had no entry left to
+  // attach to once the list emptied, so it went with it rather than sit
+  // orphaned in an empty array.
+  const KNOWN_UNMAPPED_REVIEW_REASON_CODES: string[] = [];
 
   it("names every code the current pack + backend can emit, mapped or in the known gap", () => {
     const allRealCodes = [
@@ -549,8 +1215,13 @@ describe("review reasons cover every code the current pack can emit", () => {
       ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
     ].sort();
     // Guard the guard: a glob/parse that silently found nothing would make
-    // every assertion below vacuously true. 14 pack + 18 pack-independent.
-    expect(allRealCodes.length).toBeGreaterThanOrEqual(32);
+    // every assertion below vacuously true. 20 pack (16 HUMAN_REVIEW-stage +
+    // 4 HARD_FILTER with on_unknown=HUMAN_REVIEW, PR-O2) + 18
+    // pack-independent = 38, all of them mapped as of PR-O2. Floor raised
+    // from 32 to the measured 38 (round-1 refuter finding, Gemini 3.1 Pro +
+    // Kimi K3): 32 would still pass a regression that silently dropped up
+    // to 5 real codes.
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(38);
 
     const unaccounted = allRealCodes.filter(
       (code) =>

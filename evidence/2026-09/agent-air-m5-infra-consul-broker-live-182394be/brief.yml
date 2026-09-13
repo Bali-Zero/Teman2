@@ -1,0 +1,73 @@
+task_id: consul-broker-live
+gear: 3
+gear_reason:
+  Migration 307, PostgreSQL authorization fencing, separate-service provisioning and native admission
+  are the hot-zone floor.
+objective:
+  Prepare a protected Pro broker and fixed synthetic native canary that reuse Autonomous Lab and Research
+  OS; qualify the exact installed runtime/configuration paths without activating the service.
+scope:
+  - Closed admit/check/cancel/checkpoint protocol, protected preissued grants, PostgreSQL ownership and current-authority
+    checks, selected completion receipts, and bounded native cancellation.
+  - Separate immutable Pro helper bundle and narrow metadata-writer role proposal, with unprivileged build and
+    negative-protocol proof.
+  - Pinned per-host native executable/configuration/catalog qualification, deterministic targeted tests, and
+    isolated synthetic PostgreSQL verification.
+constraints:
+  - "External builder prepares only: no own merge, auto-merge, deployment, service installation, or production
+    database mutation."
+  - No inference was performed by the new runtime qualification; Astra is absent from all observed hidden-inclusive
+    catalogs and cannot be silently substituted.
+  - One lead and one independent consul review under the owner's accepted v4 mandate; preserve existing CI selection,
+    change_map, impact_map and advisory merge_group exclusions.
+  - Retain historical evidence hashes and distinguish later source/test deltas; no raw credentials, client records,
+    full configurations or reasoning in shared evidence.
+acceptance:
+  - text:
+      WHEN an owner, approval, review, native binding or completion generation is stale, the broker SHALL
+      refuse the spend or checkpoint and preserve uncertain attempts for reconciliation.
+    probe: evidence/dual-consul-broker/implementation/postgres-pytest.txt
+  - text:
+      WHEN a caller supplies unprotected authority, an unexpected protocol field, or malformed lease, the
+      helper SHALL refuse before the protected effect.
+    probe: scripts/tests/test_protected_grants.py
+  - text:
+      WHEN native group signaling returns EPERM, shutdown SHALL remain unconfirmed until later absence is
+      observed; persistent denial SHALL leave local_stopped false.
+    probe: scripts/tests/test_conductor_app_server_rpc.py
+  - text:
+      WHEN the disposable Pro package is built, isolated import, manifest and sudoers checks SHALL pass without
+      installing its service identity or binding.
+    probe: evidence/dual-consul-broker/provisioning/rework-1/verification-rework-1.json
+  - text:
+      WHEN the reviewed corrections are exercised, unsafe installed modes SHALL be refused, the fixed canary
+      lease SHALL cover the shared 200-second worst-case budget, identities SHALL be namespaced, replay SHALL
+      retain the recorded outcome, and unknown native counters SHALL retain only bounded validated names and
+      an omission marker.
+    probe: evidence/dual-consul-broker/implementation/validation.json
+  - text: WHEN Astra is absent from the actual native catalog, admission SHALL refuse without model substitution.
+    probe: evidence/dual-consul-broker/runtime/qualification.json
+assumptions:
+  - text:
+      The protected Pro service UID, metadata-writer role, configuration and grant must be provisioned before
+      a live broker canary.
+    status: unverified
+    probe:
+      Future privileged installation and separately scoped live canary; current provisioning/rework-1/verification-rework-1.json
+      explicitly records absent service UID and binding.
+risks:
+  - Provider invocation and PostgreSQL receipt cannot be one atomic transaction; a started attempt without confirmation
+    needs reconciliation and is never replayed automatically.
+  - Native checkpoint model identity is request-observed; literal input hashing is not a complete expanded-prompt
+    proof.
+  - Immutable helper preparation does not prove installed ownership, DBA authorization, operational model availability,
+    remote cancellation, or production reliability.
+  - The proposed sudoers control channel is reachable by the entire ordinary caller UID, including its native
+    process; model-channel restrictions depend on the validated no-tools sandbox, not separate kernel UIDs for
+    caller and model.
+pii: none
+instruction_to_the_grader:
+  The corrected frozen source and selected evidence received independent native Fable
+  PASS, closing the five first-review findings. This source/prepared-installation verdict does not authorize
+  activation. A subsequent full 31-case native PostgreSQL file passed on the same corrected source; preserve
+  that execution receipt separately from the reviewer-supplied source verdict.

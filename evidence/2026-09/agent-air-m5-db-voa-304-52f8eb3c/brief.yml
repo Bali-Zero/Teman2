@@ -1,0 +1,76 @@
+task_id: db-voa-304
+mandate_id: garuda-voa-w1s
+colour: BLUE
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor: apps/backend-rag/backend/db/migrations_v2/* is a hot-zone path, so the computed floor is 3.
+objective: >-
+  GARUDA VOA W1S. Carry migration 304 (garuda_documents, garuda_document_review_fields, the
+  GARUDA_DOCUMENT retention binder) from PR #5526 head 6ea6eb9ade onto main, and bracket its
+  ledger-owned blocks, forward and rollback, for option D (RULED 2026-09-11): store current_user in
+  the transaction-local GUC garuda.migration_304_resume_role and RESET ROLE before each, and after
+  each a DO block that runs SET ROLE backend_rag_v2 only when the stored role is backend_rag_v2, the
+  role exists and session_user may assume it (SET on PG>=16, MEMBER on 15), using nested IFs.
+  Spec: docs/plans/2026-09-11-garuda-voa-final-spec.md §3 row W1S and §5; the stored-role condition
+  is the Imperatore's decision #12 (2026-09-12), recorded in pack.yml dissent.
+scope:
+  - apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql
+  - apps/backend-rag/backend/tests/db/test_migration_304_owner_bracket.py
+  - apps/backend-rag/backend/tests/services/visa_engine/conftest.py
+  - evidence/2026-09/agent-air-m5-db-voa-304-52f8eb3c/
+constraints:
+  - >-
+    Perimeter is 304, its tests and this evidence. The store code of #5526 (router, ports,
+    postgres_store, service and their tests) belongs to W1W and is not carried.
+  - The migration runner guard (assume_runtime_role) is not touched in this PR.
+  - No fly.toml, .env*, zantara_core.py. No seed data in production. No PII.
+  - >-
+    ARMING IS BLOCKED until `fly secrets list -a nuzantara-rag` shows MIGRATION_DATABASE_URL (count 1)
+    AND scripts/pg.sh reads backend_rag_migrator as in OPERATOR-D.md (t,f,f,f,f,f and t,t,t,t,f):
+    merging apps/backend-rag is the deploy, and without the secret release_command applies 304 as
+    backend_rag_v2 and fails at the owner transfer.
+acceptance:
+  - text: >-
+      A1 (CI shape): WHEN the actual 304 file is applied through BaseMigration.apply by a superuser
+      session with backend_rag_v2 and visa_ledger_owner absent, THEN it SHALL apply, both ledgers SHALL
+      hold one 304 row, applied_as SHALL be the session user, and the scope CHECK SHALL list GARUDA_DOCUMENT.
+    probe: "pytest backend/tests/db/test_migration_304_owner_bracket.py -k superuser_session (PG15 in CI; PG15 and PG17 disposable locally)"
+  - text: >-
+      A2 (D shape): WHEN it is applied through MigrationManager with MIGRATION_DATABASE_URL naming
+      backend_rag_migrator, THEN applied_as SHALL be 'backend_rag_v2 (session_user=backend_rag_migrator)',
+      both tables SHALL be owned by backend_rag_v2, the binder by visa_ledger_owner, and both ledgers one row,
+      with the scope CHECK pre-widened (production shape) and narrow; and rollback_migration SHALL then
+      remove both tables, the three functions and both ledger rows.
+    probe: "OPTION_D_DISPOSABLE_PG_URL=<disposable cluster> pytest backend/tests/db/test_migration_304_owner_bracket.py -k dedicated_migrator"
+  - text: >-
+      A3 (negative): WHEN the bracket statements are removed, or the migrator carries a connection-time
+      role setting, THEN the apply SHALL fail with no garuda_documents table and zero 304 ledger rows;
+      once the setting is reset the same database SHALL apply; WHEN only the rollback bracket is removed,
+      rollback_migration SHALL fail 42501 and leave the tables, the binder and both ledger rows.
+    probe: "pytest -k 'without_its_role_bracket or connection_time_role'"
+  - text: >-
+      A5 (superuser with production role names present and ungranted): WHEN a superuser session applies
+      and rolls back 304, THEN applied_as SHALL be that superuser (no SET ROLE persisted), the tables SHALL
+      be owned by it, and the rollback SHALL remove every 304 object and ledger row.
+    probe: "pytest -k superuser_session_with_ungranted_production_roles_present"
+  - text: >-
+      A4 (production, after deploy): read-back of OPERATOR-D.md via scripts/pg.sh on the promoted commit:
+      _schema_versions 304 applied_as 'backend_rag_v2 (session_user=backend_rag_migrator)' via release_command,
+      schema_migrations 304 count 1, garuda_documents and garuda_document_review_fields owned by backend_rag_v2,
+      bind_garuda_document_retention_policy() owned by visa_ledger_owner.
+    probe: "ssh pro scripts/pg.sh (SELECT only), after the deploy of the merge commit"
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+risks:
+  - >-
+    connect() retry budget (~330 s: asyncpg connect timeout 60 x 5 + backoff) can outlive Fly's 300 s
+    release_command default. Known from W1R, not cured here.
+  - >-
+    The to_regrole null-check in the resume blocks is implied by the stored-role condition (a stored
+    current_user is an existing role); a mutation removing it turns no test red.
+  - >-
+    assume_runtime_role's connection-time-role guard stays inert (W1R condition 1, not touched here);
+    304 fails atomically in that shape, proven by test.
+pii: none

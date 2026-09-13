@@ -1,0 +1,45 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: x03
+    role: build
+    seat: OpenAI GPT-6 (exact variant not exposed)
+  - lane: x03-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+receipts:
+  - claim: Current baseline and existing dictionary guard pass.
+    cmd:
+      cd apps/mouth && npx vitest run src/i18n/secondhome-article-claims.test.ts
+      src/i18n/secondhome-forbidden-claims.test.ts
+    result:
+      27 passed; baseline covers 134 matches, 133 fingerprints, 71 files within
+      532 selected MDX.
+    exit: 0
+    ts: "2026-09-05T11:12:40+00:00"
+    seat: Codex parent
+  - claim: A new real article hit is rejected.
+    cmd:
+      Create src/content/articles/__x03_guilt.mdx with E33 Second Home requires USD
+      1,500.; run article test; remove fixture in finally.
+    result: 1 failed / 4 passed, names __x03_guilt.mdx; restored two suites 27 passed.
+    exit: 1
+    ts: "2026-09-05T11:12:40+00:00"
+    seat: Codex parent
+  - claim:
+      Independent Kimi inspected the supplied test, shared declarations and baseline
+      shape.
+    cmd: kimi -m kimi-code/k3 -p <supplied source and baseline shape>
+    result: PASS; prompt SHA-256 7ca5c73e827c9faa4ad87cd3c71e0d49ab0364b123fbcba94388a3a5802b74ac
+    exit: 0
+    ts: "2026-09-05T11:16:08.180744+00:00"
+    seat: kimi-code/k3
+dissent: []
+residual_risks:
+  - Rules remain lexical and may match denials; inherited arrays omit 5-10-year and
+    IDR 2B categories.
+  - Matched-line edits require baseline review; no MDX rewrite or legal approval is
+    implied.
+  - Full filename/pattern/hash/count list posted to Consul inbox for editorial review.
+    Required CI and Anthropic gate pending.

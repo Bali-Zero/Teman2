@@ -10,22 +10,43 @@ import { normalizeHostname } from "@/lib/hostname";
  * - kita.balizero.com (internal app)
  */
 
-// Internal app routes that should only be on zantara subdomain
-const INTERNAL_ROUTES = [
+// Internal app routes that should only be on zantara subdomain.
+//
+// EXPORTED so the test that proves every (workspace) page is covered can read the
+// real array instead of parsing this file with a regex. The parsing version worked
+// until it didn't: it matched only double quotes, it would have swallowed any quoted
+// token inside a comment, and a type annotation on this line would have broken it
+// outright — a test whose weaker half was a hand-maintained coupling to source text.
+export const INTERNAL_ROUTES = [
   "/login",
   "/dashboard",
   "/clients",
   "/process",
   "/second-home",
   "/settings",
-  "/team-management", // workspace team management (not /team which is public)
-  "/whatsapp",
+  "/lkpm", // workspace LKPM batch — answered 200 on the public domain until 2026-09-12
   "/admin",
   "/agents",
   "/portal",
   "/analytics",
   "/intelligence",
   "/notifications",
+  // The eight below were workspace pages that answered 200 on the PUBLIC domain —
+  // the same hole /lkpm had, eight times over, and present since long before it was
+  // found. Each was verified before being listed: the public body is BYTE-IDENTICAL
+  // to the one kita serves, HTTP 200, and carries 0 staff markers, so each is the
+  // workspace shell and not a public page someone meant to publish.
+  // Measured 2026-09-13 against the deployment then serving:
+  //   accounting 49,666 B · garuda-voa 49,185 · hr 46,166 · obligations 45,414
+  //   omnichannel 45,922 · partners 45,951 · review 45,396 · terminal 46,299
+  "/accounting",
+  "/garuda-voa",
+  "/hr",
+  "/obligations",
+  "/omnichannel",
+  "/partners",
+  "/review",
+  "/terminal",
 ];
 
 // /knowledge is NOT a route on kita — it maps 1:1 to a standalone app on its
@@ -67,6 +88,7 @@ const MOBILE_DOMAIN = "mo.balizero.com";
 const ZANTARA_DOMAIN = "zantara.balizero.com";
 const VISA_DOMAIN = "visa.balizero.com";
 const TAX_DOMAIN = "tax.balizero.com";
+const NUZANTARA_DOMAIN = "nuzantara.co.id";
 const ASSESSMENT_DOMAIN = "subhi.balizero.com";
 // SSO subdomains: standalone apps on *.balizero.com that share auth via cookie.
 // mouth does not serve these hostnames directly (each is its own Vercel deploy
@@ -235,6 +257,7 @@ export function proxy(request: NextRequest) {
   );
   const isVisaDomain = matchesDomain(hostname, VISA_DOMAIN);
   const isTaxDomain = matchesDomain(hostname, TAX_DOMAIN);
+  const isNuzantaraDomain = matchesDomain(hostname, NUZANTARA_DOMAIN);
   const isPublicDomain = matchesDomain(hostname, PUBLIC_DOMAIN);
   const isAppDomain =
     matchesDomain(hostname, APP_DOMAIN) ||
@@ -351,6 +374,26 @@ export function proxy(request: NextRequest) {
     }
     const rewriteResponse = NextResponse.rewrite(rewriteUrl);
     rewriteResponse.headers.set("x-pathname", pathname);
+    return rewriteResponse;
+  }
+
+  // === NUZANTARA DOMAIN (nuzantara.co.id) ===
+  // Bahasa Indonesia holding page for the domestic brand, same shape as the
+  // TAX DOMAIN block: every path is rewritten under the (nuzantara) route
+  // group at /nuzantara/*. noindex until launch (docs/ops/nuzantara-co-id-dns-setup.md).
+  if (isNuzantaraDomain) {
+    const rewriteUrl = request.nextUrl.clone();
+    if (pathname === "/" || pathname === "") {
+      rewriteUrl.pathname = "/nuzantara";
+    } else if (
+      pathname !== "/nuzantara" &&
+      !pathname.startsWith("/nuzantara/")
+    ) {
+      rewriteUrl.pathname = `/nuzantara${pathname}`;
+    }
+    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
+    rewriteResponse.headers.set("x-pathname", pathname);
+    rewriteResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
     return rewriteResponse;
   }
 

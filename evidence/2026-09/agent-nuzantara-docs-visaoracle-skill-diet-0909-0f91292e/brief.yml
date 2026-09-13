@@ -1,0 +1,52 @@
+gear: 3
+objective: >
+  Split the mandatory Visa Oracle corner skill (.agents/skills/visaoracle/SKILL.md, 1,689
+  lines / 145,262 bytes) into a short index (target <=220 lines / <=20 KB) plus a
+  references/ subdirectory, because loading this mandatory-first-load skill exhausted a
+  Codex session's context before work started on 2026-09-09. The LIVE STATE chronology
+  (66 dated entries) and two superseded snapshots move to references/ verbatim; SKILL.md
+  keeps the canonical sections (ENFORCE-GATE, Established truths, Arsenal, Loop protocol,
+  TRACKS, PENDING) byte-identical and replaces the LIVE STATE log with a short CURRENT
+  POSITION summary plus a pointer to the full log.
+constraints:
+  - No file outside .agents/skills/visaoracle/ may be touched. research/ and docs/
+    references to the old CURRENT_STATE.md / HANDOFF paths are archaeology and stay as-is.
+  - The `## ENFORCE-GATE` section (the canonical 2026-08-08 Zero ruling) must be
+    byte-identical before and after the split — not one word may move.
+  - Every one of the 66 dated LIVE STATE entries must move verbatim (byte-for-byte, no
+    rewording, no dropping) into references/live-state-log.md.
+  - The frontmatter `name`/`description` fields stay unchanged (this is still the skill
+    Claude/Codex/Kimi load at `/visaoracle`).
+  - The `.claude/skills/visaoracle` symlink must keep resolving after the move.
+  - No client PII or OSINT anywhere in the diff (SYMBIOSIS Law 2) — this is a pure
+    internal-documentation reorganization, no client data touched.
+acceptance:
+  - text: >
+      SKILL.md SHALL be at most 220 lines and at most 20,480 bytes (20 KB) after the split.
+    probe: "wc -lc .agents/skills/visaoracle/SKILL.md"
+  - text: >
+      The count of dated LIVE STATE entries in references/live-state-log.md SHALL equal the
+      count of dated entries in the original SKILL.md on origin/main — WHEN compared with
+      the same `grep -c '^- 2026-'` pattern on both sides.
+    probe: >
+      grep -c '^- 2026-' .agents/skills/visaoracle/references/live-state-log.md
+  - text: >
+      The `## ENFORCE-GATE` section SHALL diff empty between origin/main's SKILL.md and the
+      new SKILL.md — byte-identical, no rewording.
+    probe: >
+      git show origin/main:.agents/skills/visaoracle/SKILL.md | sed -n '/^## ENFORCE-GATE/,/^##
+      /p' | sed '$d' > /tmp/eg-orig.md ; sed -n '/^## ENFORCE-GATE/,/^## /p'
+      .agents/skills/visaoracle/SKILL.md | sed '$d' > /tmp/eg-new.md ; diff /tmp/eg-orig.md
+      /tmp/eg-new.md
+  - text: >
+      The `.claude/skills/visaoracle` symlink SHALL resolve to the moved SKILL.md and the
+      new references/ directory after the split.
+    probe: "ls -la .claude/skills/visaoracle/"
+  - text: >
+      The four changed markdown files SHALL pass this repo's Prettier formatting check WHEN
+      no local edits are pending.
+    probe: >
+      npx prettier --check .agents/skills/visaoracle/SKILL.md
+      .agents/skills/visaoracle/references/CURRENT_STATE.md
+      .agents/skills/visaoracle/references/HANDOFF-2026-08-08-voa-conclusive-rate.md
+      .agents/skills/visaoracle/references/live-state-log.md
