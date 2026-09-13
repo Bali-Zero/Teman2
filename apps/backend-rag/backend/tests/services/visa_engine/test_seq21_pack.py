@@ -104,18 +104,20 @@ OBSERVED_AT = datetime(2026, 9, 13, 0, 30, 0, tzinfo=timezone.utc)
 
 #: Pinned instant for every evaluator call, and the discipline the first
 #: seq-21 census got WRONG: at/after the ``valid_period.from`` of every rule
-#: this fold inserts (2026-09-15T00:00:00Z, deliberately AFTER the expected
-#: signature) and inside the pack's shortest freshness window (the
-#: 32-day policy on sources verified 2026-08-30T13:18:00Z expires
-#: 2026-10-01T13:18:00Z). Evaluating a candidate at the INCUMBENT's
-#: ``signed_at`` reports "nothing moved" for rules that are not yet in force.
-AS_OF = datetime(2026, 9, 15, 12, 0, 0, tzinfo=timezone.utc)
+#: this fold inserts (2026-09-13T00:00:00Z, the fold's ``created_at``, owner
+#: order 2026-09-14 «da subito») and inside the pack's shortest freshness
+#: window (the 32-day policy on sources verified 2026-08-30T13:18:00Z expires
+#: 2026-10-01T13:18:00Z). 05:30 WITA on 2026-09-14, the day the owner signs:
+#: the nine products must be SUPPORTED today, not tomorrow. Evaluating a
+#: candidate at the INCUMBENT's ``signed_at`` reports "nothing moved" for
+#: rules that are not yet in force.
+AS_OF = datetime(2026, 9, 13, 21, 30, 0, tzinfo=timezone.utc)
 
 #: The digest of the seq-21 payload this module gates. Measured BEFORE the
 #: prettier pass and re-measured after it, unchanged — the pack's identity is
 #: JCS over the PARSED document, never the file bytes. This is the digest the
 #: owner signs.
-SEQ21_PAYLOAD_SHA256 = "a0c3359c49ca656b625db74422c9d27a5f0af4e6943de3176eb0cddc4a81e4ac"
+SEQ21_PAYLOAD_SHA256 = "fda8c3121bdddb6a8e023cf246c241a34f754acaef44919bb8968b50ee8c98c7"
 
 #: The ten wire facts registered with this fold — the qualification half of
 #: the vocabulary. Declared here so the tests can assert against the SET
@@ -579,13 +581,13 @@ class TestIdentity:
         mutated["valid_period"] = {"to": None, "from": NEW_RULE_VALID_FROM}
         assert self._activation_would_be_refused(mutated, seq20_source)
 
-    def test_every_new_rule_opens_after_the_expected_signature(
+    def test_every_new_rule_opens_no_earlier_than_the_fold(
         self, seq21_source: dict[str, Any]
     ) -> None:
         """No inserted rule claims to have been law before the fold, and the
         census instant sits inside every new rule's window."""
         opens = datetime.fromisoformat(NEW_RULE_VALID_FROM.replace("Z", "+00:00"))
-        assert opens > datetime.fromisoformat(seq21_source["created_at"].replace("Z", "+00:00"))
+        assert opens >= datetime.fromisoformat(seq21_source["created_at"].replace("Z", "+00:00"))
         assert AS_OF >= opens
         new_rules = [r for r in seq21_source["rules"] if r["rule_id"] in NEW_RULE_IDS]
         assert len(new_rules) == len(NEW_RULE_IDS)

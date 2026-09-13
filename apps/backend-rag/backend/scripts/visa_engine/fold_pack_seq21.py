@@ -168,10 +168,20 @@ FOLD_CREATED_AT = "2026-09-13T00:00:00Z"
 FOLD_CREATED_BY = "agent.air-m5.backend-rag.visa-oracle-qualification-seq21.fold-2026-09-13"
 FOLD_VERSION = "2026.9.13"
 
-#: Every rule this fold INSERTS opens AFTER the signature is expected, so no new
-#: rule claims to have been law before it was signed, and a replay of this
+#: Every rule this fold INSERTS opens at the fold's own ``created_at``, so no new
+#: rule claims to have been law before the fold existed, and a replay of this
 #: candidate must pin an instant at or after this ``from`` — the exact
 #: false-negative that made the first seq-21 census report "0 walks moved".
+#:
+#: Owner order 2026-09-14: the new rules are valid «da subito», not from
+#: 2026-09-15 (the first freeze opened them after the expected signature). The
+#: requested 2026-09-14T00:00:00Z (08:00 WITA) was still ~2h20m in the future
+#: when measured (``date -u`` 2026-09-13T21:40Z), so a signature and activation
+#: before then would have served none of them. No engine, loader or migration
+#: constrains a rule's ``valid_period.from`` against ``created_at``,
+#: ``signed_at`` or the activation instant (migration 253 binds only the PACK's
+#: ``valid_period``); the earliest instant that keeps "never before the fold" is
+#: ``FOLD_CREATED_AT`` itself.
 #:
 #: The PACK's own ``valid_period`` is deliberately NOT moved (it stays
 #: seq-20's, like every fold since seq-13). ``activate_pack.py`` binds the
@@ -182,8 +192,8 @@ FOLD_VERSION = "2026.9.13"
 #: would be inserted (immutable) and then refused — burning sequence 21. The
 #: bitemporal split is the design: ``legal_period`` is what the rules cover,
 #: ``system_period`` is when the engine started serving them, and the new
-#: rules' own ``valid_period`` is where "not before the signature" lives.
-NEW_RULE_VALID_FROM = "2026-09-15T00:00:00Z"
+#: rules' own ``valid_period`` is where "not before the fold" lives.
+NEW_RULE_VALID_FROM = FOLD_CREATED_AT
 
 _RULE_PACK_ID_URL_PREFIX = (
     "https://balizero.com/visa-oracle/rule-pack/PRODUCTION/ID/IMMIGRATION_VISA/"

@@ -6002,7 +6002,7 @@
       "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6047,7 +6047,7 @@
       "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6095,7 +6095,7 @@
       ],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6143,7 +6143,7 @@
       ],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6191,7 +6191,7 @@
       ],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6236,7 +6236,7 @@
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6284,7 +6284,7 @@
       ],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6329,7 +6329,7 @@
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6374,7 +6374,7 @@
       "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6421,7 +6421,7 @@
       ],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",
@@ -6464,7 +6464,7 @@
       ],
       "valid_period": {
         "to": null,
-        "from": "2026-09-15T00:00:00Z"
+        "from": "2026-09-13T00:00:00Z"
       },
       "required_facts": [
         "intent.purposes",

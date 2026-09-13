@@ -1,0 +1,18 @@
+Guilt witness, measured 2026-09-13T21:4xZ (05:4x WITA 2026-09-14) on M5.
+The seq-21 pack on origin/main b8162521b5 (new rules valid_period.from 2026-09-15T00:00:00Z,
+payload a0c3359c49ca656b625db74422c9d27a5f0af4e6943de3176eb0cddc4a81e4ac), compiled unsigned and
+decided on the same nine gold fixtures at the same AS_OF as census-replay-seq20-vs-seq21.txt:
+
+AS_OF 2026-09-13 21:30:00+00:00
+OLD pack (09-15 rules) E23U NEEDS_INPUT []
+OLD pack (09-15 rules) E23V NEEDS_INPUT []
+OLD pack (09-15 rules) E33A NEEDS_INPUT []
+OLD pack (09-15 rules) E33B NEEDS_INPUT []
+OLD pack (09-15 rules) E33C NEEDS_INPUT []
+OLD pack (09-15 rules) E28B NEEDS_INPUT []
+OLD pack (09-15 rules) E28C NEEDS_INPUT []
+OLD pack (09-15 rules) E28D NEEDS_INPUT []
+OLD pack (09-15 rules) E28F NEEDS_INPUT []
+
+Innocence (this branch, rules from 2026-09-13T00:00:00Z): all nine SUPPORTED_CANDIDATES, one product
+each — census-replay-seq20-vs-seq21.txt, identical to the #6466 run beyond its as_of line.
