@@ -3,6 +3,7 @@ title: "PT PMA foreign-ownership adjudication for KBLI 2025 residual codes — l
 date: 2026-09-13
 domain: legal
 client_case: false
+adversarial_review: codex
 sources:
   - "Perpres 10/2021 tentang Bidang Usaha Penanaman Modal — full body text PDF, https://peraturan.go.id/files/ps10-2021.pdf (landing: https://peraturan.go.id/id/perpres-no-10-tahun-2021), LN 2021 No. 61, fetched 2026-09-13, machine-readable, 13 pp, NO Lampiran attached"
   - "Perpres 49/2021 tentang Perubahan atas Perpres 10/2021 — full text PDF, https://peraturan.go.id/files/ps49-2021.pdf (landing: https://peraturan.go.id/id/perpres-no-49-tahun-2021), LN 2021 No. 128, fetched 2026-09-13; pp. 1–7 machine-readable, pp. 8–102 = Lampiran I/II/III as rastered scans (no text layer)"
@@ -577,3 +578,44 @@ moratorium claim stays unverified.
 | 8 | §3 row 28 | Residual candidate | Absent from Lampiran III (fact); Lampiran I/II string-search only; Rumah Biliar 67% trap noted |
 | 9 | §1.2 / §2 step 5 | Rp 10 bn / Rp 2.5 bn / 12-month article numbers secondary | Permen BKPM 5/2025 Pasal 26(2), 26(3)(c), 26(10), 27(1) primary; PP 28/2025 Pasal 212 still secondary |
 | 10 | §2 step 0 / §4.1 | "annexes not machine-readable" | Standalone BPK annexes carry a noisy OCR layer; step 0 unblocked, visual double-read still mandatory |
+
+---
+
+## Adversarial review
+
+**Seat:** `codex` (codex-gpt-5.6-sol, Codex CLI, `--sandbox read-only`, live web search enabled
+by default via this machine's `~/.codex/config.toml`, `web_search: "cached"`) — a seat outside
+the Claude family that authored this study, run 2026-09-13/14 as part of workflow
+`wf_28d1924f-b8d`. 18 independent queries were launched, one per numbered legal-chain class
+(§1.2, classes 1–8) and one for 10 of the 30 sample rows; 16 of 18 returned a substantive,
+sourced answer, 2 timed out twice inside the CLI and are recorded as self-reviewed fallbacks
+(rows 7 and 30 below). Full transcripts:
+`/private/tmp/claude-501/-Users-balizero-nuzantara/471c2662-0e19-4a89-bc1d-8c7b29a7cb2c/scratchpad/pma/codex-out/`.
+
+A second, same-family pass (a fresh Claude instance, blind re-derivation of Pasal 3(1)(d) before
+reading this study, then a claim-by-claim cross-check against the primary sources and the
+dataset) contested nothing and is not counted as the R1 adversarial seat — a same-family review
+cannot substitute for generator != grader, and is recorded here only as corroboration, not as
+the review this frontmatter's `adversarial_review:` key names.
+
+**Objections raised by `codex` and their disposition** (full re-derivation in §7; this table is
+the survivable summary):
+
+| # | Objection (codex) | Disposition |
+|---|---|---|
+| 1 | Row 17 (KBLI 52291 Angkutan Multimoda): the "67% often cited" belongs to a *different* activity (Jasa Pengurusan Transportasi) under the same 2020 code number, capped under the now-revoked Perpres 44/2016 — citing it for 2025-52291 is a code-identity error. | **CONFIRMED, cured** — §7.4 struck the 67% hint; row 17 stays PENDING with the correct reasoning (no current Lampiran III row for the activity). |
+| 2 | Class 5 (UMKM-reserved): "Pasal 7(1) makes every foreign investor an Usaha Besar" misattributes the PMA=Usaha Besar classification, which is stated in Permen BKPM 5/2025 Pasal 26(1), not in Pasal 7(1) itself. | **CONFIRMED, cured** — §7.1 corrected the citation chain to Permen BKPM 5/2025 Pasal 26(1); practical conclusion unchanged. |
+| 3 | Class 2 (central-government-only): "not an investment field at all" overstates Pasal 2(3), which still calls the category a *Bidang Usaha*, just one activity-reserved to the Central Government. | **CONFIRMED, cured** — §7.2 corrected the wording; practical result (0% for everyone) unchanged. |
+| 4 | Class 3 (non-commercial illustration): a "Pemerintah/division-84" rule of thumb is unsafe — OSS's own text describes KBLI 59131 (government film distribution) as commercial ("atas dasar balas jasa"), and KBLI 86101 (government hospital) carries a full commercial licensing scope. | **CONFIRMED, cured** — §7.3 withdrew the parenthetical; commercial status is now stated as per-activity, never inferred from a title word or division number. |
+| 5 | Row 7 (KBLI 42101 road construction, 67%/70% BUJK PMA cap): codex could not complete an independent verdict (CLI compact/restart loop, killed twice after ~24 min). | **NOT CONFIRMED, NOT CONTRADICTED** — self-reviewed from this session's own `B-oss.md`, itself not independent; §7.5 found instead a government annex row (Lampiran II row 26) allocating the simple/intermediate-technology scope to UMKM, leaving the percentage claim for the rest of the scope unverified. |
+| 6 | Row 30 (KBLI 93199, 51106 air-transport ancestor, possible 49% cap): codex produced no substantive answer. | **NOT CONFIRMED, NOT CONTRADICTED** — §7.6 found no Lampiran III row names 51106, so no Perpres 49/2021 cap reaches 93199 through that ancestry on the text read so far; row stays PENDING on a full Lampiran I/II row-by-row read and on aviation sector law. |
+
+**Confirmed-without-objection findings from the same pass** (classes 1, 3 structure, 4, 6, 7
+structure, 8, and rows 1, 2, 11, 19, 22, 25, 28) are folded into §7 where they upgraded a
+secondary citation to primary or closed a declared gap (e.g. row 25/KBLI 85202: no ownership cap
+found, but a non-profit license-holder rule surfaced as a more fundamental bar).
+
+**Objections NOT raised by codex that a future review should still check:** the Lampiran I/II
+row-by-row double read (§7.8, both annexes still string-search only), UU 25/2007 Pasal 12
+(closed-list referent, never fetched), and the BPS KBLI 2020 master concordance table (blocking
+gap for the concordance step, §method).
