@@ -1,0 +1,100 @@
+task_id: saetta-merge-handoff
+kind: gear2_cross_family_review
+gear: 2
+colour: BLUE
+builder_family: codex
+reviewer:
+  role: appointed Claude Dux, independent reviewer (did not build the candidate)
+  seat: claude-opus-5 xhigh, native CLI OAuth, Pro
+  final_gate: not this seat; a fresh Opus 5 xhigh session outside the contribution chain
+verdict: ACCEPT
+scope:
+  - infra/workflows/saetta.js
+  - infra/workflows/tests/test-saetta.mjs
+  - docs/runbooks/saetta.md
+  - evidence/2026-09/agent-nuzantara-infra-saetta-merge-handoff-36851f0b/
+frozen_bytes: >-
+  shasum -a 256 over the four builder files matched the commissioned digests
+  and their ordered combined digest before any review action (2026-09-13T17:33Z).
+  This receipt is the only file added by the reviewer; no candidate file changed.
+receipts:
+  - claim: suite passes on the frozen candidate with the Kita pilot manifest
+    cmd: SAETTA_PILOT_MANIFEST=<docs-saetta-kita-pilot worktree>/docs/plans/saetta-kita-pilot/mission.json /opt/homebrew/bin/node --test infra/workflows/tests/test-saetta.mjs
+    exit: 0
+    observed: tests 51, pass 51, fail 0, skipped 0
+    ts: 2026-09-13T17:33Z
+    seat: claude-opus-5
+  - claim: formatting
+    cmd: node node_modules/prettier/bin/prettier.cjs --check <three candidate files> <brief.yml>
+    exit: 0
+    ts: 2026-09-13T17:34Z
+    seat: claude-opus-5
+  - claim: whitespace
+    cmd: git diff --check (with the brief intent-added)
+    exit: 0
+    ts: 2026-09-13T17:34Z
+    seat: claude-opus-5
+  - claim: canonical evidence directory
+    cmd: python3 scripts/ci/evidence_paths.py --ref agent/nuzantara/infra/saetta-merge-handoff
+    exit: 0
+    observed: evidence/2026-09/agent-nuzantara-infra-saetta-merge-handoff-36851f0b/
+    ts: 2026-09-13T17:34Z
+    seat: claude-opus-5
+  - claim: deterministic floor equals declared gear
+    cmd: python3.11 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <4 paths> --numstat-file <git diff --numstat>
+    exit: 0
+    observed: floor 2, source size; brief declares gear 2, so a harness/fable-gate verdict is required and no pack is demanded
+    ts: 2026-09-13T17:36Z
+    seat: claude-opus-5
+  - claim: siblings
+    cmd: gh pr list --state open --json files (filter saetta); scripts/agent_start.py --list; ListAgents
+    exit: 0
+    observed: no open PR touches a saetta path; only this lane's lease is active on it; no peer session on this worktree
+    ts: 2026-09-13T17:36Z
+    seat: claude-opus-5
+mutations:
+  method: candidate saetta.js copied with the frozen test file into a fresh temp dir, one mutation per run, same manifest
+  killed:
+    - release merged guard removed
+    - release merged check made truthy
+    - gate acceptance requires merged again
+    - gate schema requires merged again
+    - sole-cause predicate removed from release prompt
+    - one-rerun cap removed from release prompt
+    - posted-PASS read-back removed from release prompt
+    - gate prompt no longer forbids merge, re-arm and CI rerun
+  survived:
+    - pull_request-only rerun scope removed from release prompt
+    - merge-group rerun prohibition removed
+    - substitute workflow dispatch prohibition removed
+    - manual merge / re-arm prohibition replaced
+    - log-diagnosis instruction removed
+    - consumer-write-before-merge prohibition removed
+review:
+  ordering: >-
+    The gate schema and acceptance no longer require merged; the release owner is
+    dispatched only after verdict PASS, posted true, absolute receipt and exact
+    targets. Dependants start only after release PASS with merged strictly true,
+    exact targets and an absolute live receipt. Close still cannot upgrade BLOCK and
+    independent slices keep running on a sibling BLOCK.
+  recovery: >-
+    The release prompt matches the CASE A doctrine in .github/workflows/harness-floor.yml:
+    rerun the original pull_request run on the same head after the verdict is posted;
+    a dispatch run never enters the rollup and merge_group runs stay forbidden.
+  runbook: >-
+    Separates three-host native smoke (transport) from the pilot (gate, CI recovery,
+    merge, consumer) and states that read-backs are seat attestations.
+notices:
+  - >-
+    Six release-prompt clauses have no regression test (survived list above). The
+    clauses are present on disk and the pull_request scope still excludes merge_group
+    positively, so shipped behaviour is correct; hardening needs a separate test-only
+    PR from fresh main, not an edit to this frozen candidate.
+  - >-
+    Tests model the release seat; the one-rerun cap, sole-cause diagnosis and merge
+    read-back are prompt contracts executed by agents, not deterministic scheduler checks.
+    The Kita pilot is the first live proof of the full path.
+  - >-
+    The inherited context bridge fingerprint points at the deleted B2 lane and cannot
+    validate this worktree; the byte and inventory checks above replace it.
+pii: none

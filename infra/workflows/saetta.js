@@ -101,12 +101,11 @@ const DUX = {
 };
 const GATE = {
   type: "object",
-  required: ["verdict", "targets", "posted", "merged", "receipt", "reasons"],
+  required: ["verdict", "targets", "posted", "receipt", "reasons"],
   properties: {
     verdict: { type: "string", enum: ["PASS", "BLOCK"] },
     targets: { type: "array", items: TARGET },
     posted: { type: "boolean" },
-    merged: { type: "boolean" },
     receipt: { type: "string" },
     reasons: { type: "array", items: { type: "string" } },
   },
@@ -122,10 +121,11 @@ const CLOSE = {
 };
 const RELEASE = {
   type: "object",
-  required: ["verdict", "targets", "live_receipt"],
+  required: ["verdict", "targets", "merged", "live_receipt"],
   properties: {
     verdict: { type: "string", enum: ["PASS", "BLOCK"] },
     targets: { type: "array", items: TARGET },
+    merged: { type: "boolean" },
     live_receipt: { type: "string" },
   },
 };
@@ -184,7 +184,9 @@ Read AUTONOMOUS_OPS.md fully before release. Arm auto-merge when opening the PR,
 then freeze the candidate. Return the exact PR numbers and full head SHAs for the fresh gate.
 Never self-sign the gate. Never deploy an unmerged candidate or bypass required checks.
 State a checkpoint default; no ack in 15 minutes permits that declared default.
-A harness red requires diagnosis and a harness repair, never rebuilding the candidate branch.
+A harness red requires diagnosis, never rebuilding the candidate branch. If the only missing
+precondition is this fresh gate's verdict, return the frozen targets for that gate now;
+the release owner handles its diagnosed recovery after the verdict is posted.
 Keep the root active-time deadline and child caps from the brief; at a cap checkpoint and return.`,
       {
         label: `dux:${task.key}`,
@@ -210,11 +212,10 @@ Post your independent PASS/BLOCK via gh pr comment --body-file and publish harne
 using scripts/harness_fable_gate.py on EACH exact SHA; read back both comment and status.
 Only that prescribed gate receipt is a permitted external write. Save a redacted gate receipt
 under the evidence directory with verified heads, check commands, exit codes and status URLs.
-If PASS, observe merge of those exact frozen candidates within the 20 minute total budget;
-merged=true only when ALL merged and none acquired an unreviewed successor head.
-Do not rerun red checks blindly. A harness blockage or timeout returns merged=false and reasons.
+Do not merge, re-arm, or rerun CI. Do not wait for merge: the authorized release owner
+handles queue admission after your exact-head verdict and receipt are posted.
 posted=true only if every required comment and status was read back on its exact SHA.
-Return binary verdict plus those same targets, posted, merged, receipt path and reasons.`,
+Return binary verdict plus those same targets, posted, receipt path and reasons.`,
       {
         label: `gate:${task.key}`,
         phase: "Run",
@@ -227,7 +228,6 @@ Return binary verdict plus those same targets, posted, merged, receipt path and 
       !gate ||
       gate.verdict !== "PASS" ||
       gate.posted !== true ||
-      gate.merged !== true ||
       !absolute(gate.receipt) ||
       targets(gate.targets) !== expected
     )
@@ -236,13 +236,24 @@ Return binary verdict plus those same targets, posted, merged, receipt path and 
       `${common}
 You are the authorized Claude release owner for slice ${task.key}. Read AUTONOMOUS_OPS.md fully.
 Read brief ${JSON.stringify(task.brief)} and independent gate receipt ${JSON.stringify(gate.receipt)}.
-Re-read GitHub and the receipt to confirm these frozen targets merged after PASS:
+Re-read GitHub, the comment, status and receipt to confirm PASS on these frozen targets:
 ${JSON.stringify(dux.targets)}. If anything differs, BLOCK without mutation.
+You own merge coordination after this signed gate. Diagnose any red check from its actual
+run logs. Allow at most ONE rerun per target, and only for its original pull_request Harness
+run on the same exact frozen head when the only failure was the absent gate verdict:
+first read back the matching posted PASS, verify the original run's event and head SHA,
+and record that diagnosis and run ID. Then use gh run rerun <original-run-id> once.
+Any other cause, changed head, missing proof or failed retry is BLOCK; never blindly rerun,
+rerun a merge-group run, dispatch a substitute workflow or repair the frozen candidate.
+Observe the normal merge queue within the brief's deadline; do not manually merge or re-arm.
+merged=true only after ALL exact frozen targets actually merged after PASS. Record each
+merge commit SHA and observed target head in the live receipt. No merge means BLOCK.
 Run ONLY the release and prove-live steps authorized in the brief. Use the existing deploy
 lease and reviewed installation/deployment path. Do not edit/rebuild the candidate, bypass
 checks, add a new provider or publish customer content. A missing release plan is BLOCK.
+Do not deploy or run a consumer write before verifying every target's merge.
 Verify the actual consumer after release, record commands, exit codes and observed version
-in a redacted receipt under the evidence directory. Return PASS only after reading back
+in a redacted receipt under the evidence directory. Return merged plus PASS only after reading back
 that receipt and proving every target's consumer. No live proof means BLOCK, never inferred success.`,
       {
         label: `release:${task.key}`,
@@ -255,6 +266,7 @@ that receipt and proving every target's consumer. No live proof means BLOCK, nev
     if (
       !release ||
       release.verdict !== "PASS" ||
+      release.merged !== true ||
       !absolute(release.live_receipt) ||
       targets(release.targets) !== expected
     )

@@ -27,6 +27,11 @@ The primary Codex profile must have the installed context hooks and 0.6 threshol
 for imperator, Dux and builder. A native smoke is a real subscription invocation;
 it creates one read-only child and returns `SAETTA_NATIVE_SMOKE`.
 
+Passing smoke on Pro, M5 and Mini proves native Workflow invocation and receipt
+transport on those installed revisions. It does not validate a complete fleet
+mission. The upcoming pilot must prove the full gate → CI recovery → merge →
+consumer path on the released revision.
+
 ## Host seats
 
 Paths are resolved on the launch host. The 2026-09-14 execution checks used:
@@ -60,15 +65,25 @@ may be written only inside the canonical directory emitted by
 
 The Claude Dux prepares, obtains cross-family review, opens/arms the PR and
 freezes its head. A fresh Opus gate commissioned by the imperator independently
-checks that head, signs and reads back its receipts. It cannot edit, arm or
-deploy the candidate. A Claude release seat verifies the merged target and
-executes only the brief's authorized consumer proof. External builder seats
+checks that head, signs and reads back its receipts. It cannot edit, merge, arm,
+rerun CI or deploy the candidate, and returns without waiting for merge. An
+exact signed PASS dispatches the Claude release owner while the PR may still
+be open. That owner diagnoses red checks and observes the normal merge queue.
+Only a proven missing-gate failure on the original `pull_request` Harness run
+permits one rerun per target, after reading back the matching posted PASS and
+verifying the same frozen head. Record the cause and run ID before
+`gh run rerun <original-run-id>`; a different cause, changed head or failed
+retry is BLOCK. Never substitute a workflow dispatch, rerun a merge-group run,
+manually merge or re-arm the candidate. The release owner records every actual
+merge commit and reviewed head, then executes the brief's authorized consumer
+proof. Both `merged: true` and a verified live receipt are required before any
+dependent slice starts. External builder seats
 remain prepare-only. The scheduler checks structured attestations; filesystem
 and GitHub read-back are performed by the independent gate/release seats.
 
 BLOCK keeps dependants closed while unrelated slices continue. A failed or
 missing close cannot turn BLOCK into PASS. If the merge queue completes after
-the gate's observation budget, the mission remains BLOCK until the imperator
+the release owner's deadline, the mission remains BLOCK until the imperator
 reconciles the frozen target and its live proof. Do not blindly relaunch the
 builder or resume a window with a live successor.
 
