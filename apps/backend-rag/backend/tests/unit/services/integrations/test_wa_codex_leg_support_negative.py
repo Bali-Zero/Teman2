@@ -291,6 +291,7 @@ async def test_invisible_query_package_never_offers(monkeypatch: pytest.MonkeyPa
     stubs = _wire_stubs(monkeypatch, wire=invisible_wire, consume_text=_envelope())
     result = await _run()
     stubs.offer_job.assert_not_awaited()
+    assert stubs.offer_job.call_count == 0
     assert result.text == "localized abstention text"
     assert result.served_by == "support_abstain"
     assert result.reason == "support_no_visible_query"
@@ -299,6 +300,47 @@ async def test_invisible_query_package_never_offers(monkeypatch: pytest.MonkeyPa
     assert result.evidence_abstain_label is True
     assert result.evidence_score == 0.02
     assert result.package_ref == _DEFAULT_PACKAGE_HASH
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query",
+    [
+        pytest.param("️", id="variation-selector-16-alone"),
+        pytest.param("́", id="combining-acute-alone"),
+    ],
+)
+async def test_query_made_only_of_a_bare_combining_mark_never_offers(
+    monkeypatch: pytest.MonkeyPatch, query: str
+) -> None:
+    """PR-2 round-1 MAJOR (Codex): U+FE0F/U+0301 are Unicode category `Mn`
+    (mark, nonspacing) — neither `Z` nor `C` — so the OLD `has_visible_character`
+    rule let a query made only of one of these through as "visible". A bare
+    combining mark has no base character to modify and carries no content.
+    Mutation pin: reverting `has_visible_character` to the old
+    `category(c)[0] not in "ZC"` rule lets this wire reach `offer_job` and
+    this test goes red."""
+    wire = _wire(query=query)
+    stubs = _wire_stubs(monkeypatch, wire=wire, consume_text=_envelope())
+    result = await _run()
+    stubs.offer_job.assert_not_awaited()
+    assert result.served_by == "support_abstain"
+    assert result.reason == "support_no_visible_query"
+
+
+@pytest.mark.asyncio
+async def test_visible_query_with_trailing_variation_selector_still_offers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence pair to the bare-mark guilt case above: a real question
+    ending in an emoji + U+FE0F must still reach the offer — the emoji's
+    own base character is category `So`, so the query carries a visible
+    character regardless of the trailing variation selector."""
+    wire = _wire(query="Berapa lama proses PT PMA? \U0001f44d️")
+    stubs = _wire_stubs(monkeypatch, wire=wire, consume_text=_envelope(answer="ok"))
+    result = await _run()
+    stubs.offer_job.assert_awaited_once()
+    assert result.text == "ok"
 
 
 @pytest.mark.asyncio

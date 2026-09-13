@@ -446,14 +446,25 @@ async def evaluate_support(
 
 
 def has_visible_character(text: str) -> bool:
-    """True iff `text` carries at least one character OUTSIDE Unicode
-    categories Z (separator) and C (other/control/format) — a genuinely
-    visible character, not just whitespace or a zero-width/format mark
-    like U+200B (zero-width space) or U+FEFF (BOM). Extracted (B2.4 PR-2,
-    design B2-4-design.md §2 item B "residual V4") so `wa_codex_leg.py`'s
+    """True iff `text` carries at least one character whose Unicode
+    category is a letter, number, punctuation or symbol (`L`/`N`/`P`/`S`) —
+    a genuinely visible character a human reads as content. Marks (`M`,
+    e.g. U+0301 combining acute, U+FE0F variation selector), separators
+    (`Z`) and others/control/format (`C`, e.g. U+200B zero-width space,
+    U+FEFF BOM) never count ON THEIR OWN: a combining mark or variation
+    selector modifies a PRECEDING base character and carries no content by
+    itself, so a query made only of such codepoints (no base character at
+    all) is exactly as blank as one made only of whitespace. Codex PR-2
+    round-1 MAJOR: the original `category(c)[0] not in "ZC"` rule let a
+    lone U+FE0F or U+0301 through, since Mn is not Z or C either — an
+    emoji's variation selector detached from its base, or a bare combining
+    accent, is not a question. A visible base character CARRYING a
+    trailing mark (e.g. an emoji followed by U+FE0F) still passes, because
+    the base character itself is `S`/`L`/etc. Extracted (B2.4 PR-2, design
+    B2-4-design.md §2 item B "residual V4") so `wa_codex_leg.py`'s
     pre-offer check and this module's own `support_inputs_from_wire` apply
     the IDENTICAL rule instead of two copies drifting apart."""
-    return any(unicodedata.category(char)[0] not in "ZC" for char in text)
+    return any(unicodedata.category(char)[0] in "LNPS" for char in text)
 
 
 def support_inputs_from_wire(wire: str) -> tuple[str, str]:
