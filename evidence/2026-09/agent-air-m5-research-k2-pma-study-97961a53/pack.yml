@@ -1,0 +1,169 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #6461 (agent/air-m5/research/k2-pma-study) — PT PMA foreign-ownership adjudication for KBLI
+  2025 residual codes; governing mandate: Zero 2026-09-13 (interactive), "si deve studiare dalle
+  fonti governative per la certezza". Review round ran under workflow wf_28d1924f-b8d,
+  2026-09-13/14.
+lanes:
+  - lane: k2-pma-study
+    role: build
+    seat: >-
+      claude-sonnet-5 (session task-id k2-pma-study) — authored the study (sections 1-6, 30-code
+      sample) and, after the review round below, amended it with section 7 "Contested points"
+      and this pack's required "Adversarial review" section, resolving each of codex's
+      objections against the primary sources fetched 2026-09-14.
+  - lane: verify-codex
+    role: review
+    seat: >-
+      codex (codex-gpt-5.6-sol, Codex CLI, sandboxed read-only, web search enabled by default via
+      this machine's ~/.codex/config.toml). 18 independent queries, one per legal-chain class
+      (1-8) and one per 10 of the 30 sample rows; 16/18 returned a substantive sourced answer.
+      This is the R1 generator-not-equal-grader seat (adversarial_review: codex in the file's
+      frontmatter).
+  - lane: verify-skeptic
+    role: review
+    seat: >-
+      claude-sonnet-5 (fresh instance, blind re-derivation of Pasal 3(1)(d) before opening the
+      study, then a claim-by-claim cross-check). Same family as the author lane, so it does NOT
+      count toward R1 generator-not-equal-grader; recorded here only as corroboration
+      (contested nothing).
+seat_diversity: exempt
+seat_diversity_note: >-
+  Only 1 build lane (k2-pma-study, claude-sonnet-5) — D3's seat-diversity floor binds only packs
+  declaring 2 or more build lanes, so it does not apply here. The R1 generator-not-equal-grader
+  requirement is satisfied independently, by the verify-codex review lane (a non-Anthropic seat)
+  and the file's own adversarial_review: codex key plus its "Adversarial review" section.
+diff:
+  net_lines: >-
+    3 files changed by `git diff --numstat origin/main...HEAD`, all insertions, no deletions: the
+    research file (579 net lines at PR-open, now 621 after adding the adversarial_review
+    frontmatter key and the "Adversarial review" section) plus this pack's own brief.yml and
+    pack.yml. The exact byte total is not restated here, deliberately — editing this pack file
+    changes its own line count, so a hardcoded number here would drift out of sync with itself on
+    the very next edit; run `evidence_pack_lint.py --print-measured` for the live figure. No
+    hot-zone path touched.
+  behaviour_change: >-
+    None. One research/docs markdown file plus this evidence pack. No code, workflow or
+    hot-zone path touched.
+pii_scan: clean
+pii_scan_note: >-
+  The file discusses only Indonesian public regulations (Perpres/Permen/UU), KBLI codes, OSS
+  descriptions and this repo's own dataset/code paths. No client name, case, phone or email
+  appears. Grepped for email- and Indonesian-phone-shaped strings — 0 hits (receipt #3).
+receipts:
+  - claim: >-
+      R1 gate passes on the research file after adding adversarial_review: codex to its
+      frontmatter and an "Adversarial review" section to its body.
+    cmd: >-
+      python3 scripts/check_adversarial_review.py --files
+      research/kbli/2026-09-13-pma-residual-default-legal-basis.md
+    result: "PASS — 1 research file(s) carry a valid adversarial review"
+    exit: 0
+    ts: "2026-09-13T17:22:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Deterministic gear floor for this PR's diff (SIZE term, no hot-zone path hit) is 2,
+      matching the Harness floor recompute FAIL message that demanded this pack; the declared
+      gear: 2 satisfies it.
+    cmd: >-
+      git diff --name-only origin/main...HEAD > cf.txt; git diff --numstat origin/main...HEAD >
+      ns.txt; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf.txt
+      --numstat-file ns.txt
+    result: "2"
+    exit: 0
+    ts: "2026-09-13T17:22:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Zero email- or Indonesian-phone-shaped strings in the research file (PII/OSINT output
+      boundary check).
+    cmd: >-
+      grep -E -c '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\+62[0-9 -]{8,}'
+      research/kbli/2026-09-13-pma-residual-default-legal-basis.md
+    result: "0"
+    exit: 0
+    ts: "2026-09-13T17:22:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The codex adversarial-review transcripts this pack and the research file's section 7 /
+      "Adversarial review" section cite actually exist on disk (20 files: 18 per-query logs plus
+      2 extracted final-answer batches, per the review's own notes).
+    cmd: >-
+      ls
+      /private/tmp/claude-501/-Users-balizero-nuzantara/471c2662-0e19-4a89-bc1d-8c7b29a7cb2c/scratchpad/pma/codex-out/
+      | wc -l
+    result: "20"
+    exit: 0
+    ts: "2026-09-13T17:22:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The committed research file (at the PR's pre-cure HEAD) is byte-identical to the amended
+      scratchpad study that carries section 7 "Contested points" — the PR was opened from the
+      amended version, not an earlier draft.
+    cmd: >-
+      git show HEAD:research/kbli/2026-09-13-pma-residual-default-legal-basis.md >
+      /tmp/committed_pma.md; diff /tmp/committed_pma.md <scratchpad>/pma/STUDY-EN.md
+    result: "no diff output (identical)"
+    exit: 0
+    ts: "2026-09-13T17:22:00Z"
+    seat: claude-sonnet-5
+dissent:
+  - seat: "codex (codex-gpt-5.6-sol, cross-family review)"
+    objection: >-
+      Row 17 (KBLI 2025 52291 Angkutan Multimoda) — the "67% often cited" cap belongs to a
+      different activity (Jasa Pengurusan Transportasi) that shared the same 2020 code number,
+      capped under the now-revoked Perpres 44/2016. Citing it for 2025-52291 is a code-identity
+      error, not a defensible inference.
+    status: CONFIRMED
+    disposition: >-
+      accepted — section 7.4 struck the 67% hint; row 17 stays PENDING with the corrected
+      reasoning (no current Lampiran III row names the activity).
+  - seat: "codex (codex-gpt-5.6-sol, cross-family review)"
+    objection: >-
+      Class 5 (UMKM-reserved) — the study's citation chain attributes the "every foreign
+      investor is an Usaha Besar" rule to Pasal 7(1) alone, but the express PMA-equals-Usaha-Besar
+      classification is stated in Permen BKPM 5/2025 Pasal 26(1).
+    status: CONFIRMED
+    disposition: >-
+      accepted — section 7.1 corrected the citation chain to add Permen BKPM 5/2025 Pasal 26(1);
+      the practical conclusion (UMKM-allocated field unavailable to a new PT PMA) is unchanged.
+  - seat: "codex (codex-gpt-5.6-sol, cross-family review)"
+    objection: >-
+      Class 2 (central-government-only fields) — "not an investment field at all" overstates
+      Pasal 2(3), which still names the category a Bidang Usaha, just one reserved exclusively
+      to the Central Government.
+    status: CONFIRMED
+    disposition: >-
+      accepted — section 7.2 corrected the wording to "activity reservation, not a stated 0%
+      equity cap"; the practical result (0% for every private party) is unchanged.
+  - seat: "codex (codex-gpt-5.6-sol, cross-family review)"
+    objection: >-
+      Class 3 (non-commercial illustration) — a "Pemerintah-titled / division-84" rule of thumb
+      is unsafe: OSS's own description of KBLI 59131 (government film distribution) states the
+      activity is commercial ("atas dasar balas jasa"), and KBLI 86101 (government hospital)
+      carries a full commercial licensing scope.
+    status: CONFIRMED
+    disposition: >-
+      accepted — section 7.3 withdrew the illustrative parenthetical; commercial/non-commercial
+      status is now stated as decided per-activity/scope, never inferred from a title word or
+      division number.
+  - seat: "codex (codex-gpt-5.6-sol, cross-family review)"
+    objection: >-
+      Row 7 (KBLI 42101 road construction, 67%/70% BUJK PMA foreign-ownership cap) — codex could
+      not complete an independent verdict; its CLI entered a compact/restart loop and was killed
+      twice after roughly 24 minutes each.
+    status: PLAUSIBLE
+    disposition: >-
+      survives, unresolved — self-reviewed instead from this session's own B-oss.md (not
+      independent); section 7.5 found a government annex row (Lampiran II row 26) allocating the
+      simple/intermediate-technology scope of 42101 to UMKM, but the percentage claim for the
+      remaining scope is still unverified against a primary source and stays flagged as such.
+  - seat: "codex (codex-gpt-5.6-sol, cross-family review)"
+    objection: >-
+      Row 30 (KBLI 93199, whether the 51106 air-transport BPS-concordance ancestor pulls in a
+      49% foreign-ownership cap) — codex produced no substantive answer within the session.
+    status: PLAUSIBLE
+    disposition: >-
+      survives, unresolved — section 7.6 found no Lampiran III row names 51106 (string search
+      only, not a full row-by-row read), so no Perpres 49/2021 cap is shown to reach 93199
+      through that ancestry on the text read so far; the row stays PENDING pending a full
+      Lampiran I/II read and aviation sector law (UU 1/2009).

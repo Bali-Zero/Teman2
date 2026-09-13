@@ -1,0 +1,50 @@
+task_id: k2-pma-study
+gear: 2
+objective: |
+  PR #6461 (agent/air-m5/research/k2-pma-study, `docs(research): PMA residual default under
+  Perpres 10/2021`) adds one research file — `research/kbli/2026-09-13-pma-residual-default-legal-basis.md`
+  — studying which KBLI 2025 residual codes get a 100%-foreign-ownership default under Perpres
+  10/2021 as amended by Perpres 49/2021, with a worked method and a 30-code sample. Zero's
+  standing ruling on this study (2026-09-13, verbatim): «si deve studiare dalle fonti governative
+  per la certezza» — nothing in it is a client-facing verdict; every fact carries a citation,
+  everything else is labelled INFERENCE.
+
+  Floor is 2 by the SIZE term, deterministically: 1 file, 579 net lines (later 654 after this
+  cure), no hot-zone path touched (research/kbli/* is not in HOTZONE_PATTERNS or
+  GROUND_TRUTH_PATH_PATTERNS — research/regulatory/* is, research/kbli/* is not). This pack, plus
+  the `adversarial_review: codex` frontmatter key and `## Adversarial review` section added to
+  the research file itself, answers both reds the PR drew at merge time: `Harness floor
+  recompute` (no evidence pack existed) and `R1 gate — adversarial review present` (the file had
+  no adversarial_review key/section, even though the review had actually run).
+constraints:
+  - "Research only: the diff is a single `research/kbli/*.md` file plus this evidence pack. No
+    code, workflow or config change rides along."
+  - "PII/OSINT output boundary (SYMBIOSIS Law 2): the file discusses only Indonesian public
+    regulations, KBLI codes and this repo's own dataset/code paths — no client name, case or
+    contact data. Verified by grep, receipt #3."
+  - "Do not weaken any check. The two reds this PR drew (`Harness floor recompute`, `R1 gate`)
+    are answered by supplying this pack and by exposing the adversarial review that already
+    happened, never by touching a gate."
+  - "The adversarial review that counts for R1 (generator != grader) is the cross-family seat
+    (`codex`, i.e. codex-gpt-5.6-sol) — a same-family (Claude) skeptic pass also ran and is
+    recorded as corroboration only, never as the R1 seat."
+acceptance:
+  - "`python3 scripts/check_adversarial_review.py --files research/kbli/2026-09-13-pma-residual-default-legal-basis.md` exits 0."
+  - "`python3 scripts/evidence_pack_lint.py --print-floor` on this PR's diff returns 2, and this
+    brief's declared `gear: 2` satisfies it."
+  - "The research file's §7 (Contested points) and new §Adversarial review section resolve every
+    objection codex raised, each with a disposition (CONFIRMED/cured, or explicitly left
+    PENDING with the reason)."
+consumer_map:
+  - "Human readers (Zero) and future KBLI-navigator/Visa-Oracle sessions doing GROUND on
+    PMA-residual-default questions — this is a study, not yet promoted to
+    `apps/backend-rag/backend/kb/` (research/CLAUDE.md §15: research stays ad-hoc auditable,
+    never auto-promoted)."
+  - "A future PR closing the study's own declared gaps (Lampiran I/II row-by-row double read,
+    UU 25/2007 Pasal 12, BPS KBLI 2020 master concordance) — none exists yet."
+risks:
+  - "A reader could mistake a table row for a client-facing verdict. Mitigation: the file's own
+    banner states Zero's standing ruling and labels every non-cited statement INFERENCE."
+  - "Two of codex's row-level questions (rows 7 and 30) could not be independently verified
+    (CLI timeout) and remain PENDING rather than resolved. Mitigation: §7.5/§7.6 and the
+    Adversarial review section state this explicitly instead of asserting a false resolution."
