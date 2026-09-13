@@ -3,7 +3,7 @@ gear: 2
 gear_reason: >-
   Deterministic floor is 1, measured with
   `python scripts/evidence_pack_lint.py --print-floor --changed-files-file <name-only>
-  --numstat-file <numstat>` over the COMPLETE staged set including this brief: 277 net lines, no
+  --numstat-file <numstat>` over the COMPLETE staged set including this brief: 289 net lines, no
   hot-zone path. Measured twice, as the predecessor's brief learned to: 97 net without this brief
   staged, still floor 1, so here the order does not change the class. Gear 2 is a deliberate RAISE
   above the floor, which CI permits — the floor is a minimum and never a ceiling. The raise is not
@@ -59,7 +59,6 @@ scope:
   - scripts/kbli_bench/score_p2b.py # C1 the net gets its own noun; C3 the comment names the tests that bite
   - scripts/tests/test_score_p2b.py # C1 four fixtures; C2 the dangling path; C3 the growth-pinning test
   - docs/specs/p2b-quoting-a-moratorium-total-v1.md # new 2.4 records the asymmetry; table and criterion 7
-  - evidence/2026-09/agent-air-m5-ops-p2b-total-spec-20260914-55748dd7/brief.yml # C4 and C4b
 
 constraints:
   - "One concern: discharging the #6469 conditions. No other scorer surface touched."
@@ -148,6 +147,21 @@ receipts:
     ts: "2026-09-13T20:38:36Z"
     seat: claude-opus-5
 
+  - claim: "C4 CANNOT ship in this PR at all, and CI is what says so"
+    cmd: "gh run view --log-failed on the Harness floor recompute job, then read scripts/ci/evidence_paths.py"
+    result: >-
+      Harness floor recompute went RED with "2 evidence/brief.yml candidates in this PR's diff
+      (ambiguous, refusing to guess which one is THIS PR's evidence)". `resolve_evidence_path`
+      raises AmbiguousEvidencePathError on two or more matches of `^evidence/.*/brief\.yml$`, and
+      its docstring says the refusal is deliberate: "just take the first match" is the
+      guard-over-match disease, family #3. There is no disambiguation key and there should not be.
+      So a PR that amends a MERGED brief can never also carry its own — which is exactly what the
+      gate's C4 asked for. The amendment was reverted out of this branch, preserved verbatim, and
+      ships as its own PR whose only brief.yml candidate is the one it amends. This PR now resolves
+      to exactly 1 candidate, net 270, floor 1.
+    exit: 0
+    ts: "2026-09-13T20:55:39Z"
+    seat: claude-opus-5
 open_findings_for_the_gate: >-
   (1) The asymmetry is now doctrine, and doctrine has a cost: the net will hand the judge clauses
   that are not totals at all, because `\w*` accepts any tail. `kodenya`, `kodepun` and `kodex`
@@ -163,9 +177,14 @@ open_findings_for_the_gate: >-
   hot-zone concern at a council-quorum class and not a rider on this one. If the gate prefers to
   mark C3 UNDISCHARGED until that lands, that reading is defensible and this brief does not argue
   against it.
-  (3) The predecessor's unmet council quorum is still uncured and still on main. This PR does not
+  (3) C4 is NOT in this diff. It is not abandoned: the amended brief is preserved verbatim and opens
+  as its own PR, because `scripts/ci/evidence_paths.py` fails closed on two brief.yml candidates in
+  one diff and the gate's C4 asked for precisely that shape. The gate should treat C4 as discharged
+  by that PR and not by this one, and may reasonably note that the condition as written was not
+  shippable in the form it named.
+  (4) The predecessor's unmet council quorum is still uncured and still on main. This PR does not
   claim to close it, and no ledger row closes it either.
-  (4) The author of this diff must NOT sign it. A fresh session outside the contribution chain
+  (5) The author of this diff must NOT sign it. A fresh session outside the contribution chain
   signs, per the generator-is-never-grader rule.
 
 lesson:

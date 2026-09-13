@@ -4,7 +4,7 @@ gear_reason: >-
   Deterministic floor is 2, measured with
   `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <name-only>
   --numstat-file <numstat>` over the COMPLETE staged set including this brief (source: size —
-  429 net lines, no hot-zone path). Gear 2 EQUALS the floor, it does not exceed it. Measured
+  419 net lines, no hot-zone path). Gear 2 EQUALS the floor, it does not exceed it. Measured
   twice on purpose: without this brief staged the same command returns 1, so a floor read before
   the evidence exists understates the class of its own PR — the number that governs is the one
   taken over the complete set, which is what the harness recomputes in CI. Independently of the
@@ -97,16 +97,9 @@ receipts:
 open_findings_for_the_gate: >-
   (1) The deferral now hands a third criterion to the judge, which costs judge tokens and covers
   fewer cases deterministically. Zero approved the ternary outcome explicitly on 2026-09-14.
-  (2) FALSE AS WRITTEN — the #6469 gate measured it and was right. The claim below was that a noun
-  form outside the enclitic set lands in `undecidable`. It landed in `clear`, i.e. a MISSED TOTAL,
-  because the coexistence net reused COUNTED_NOUN and therefore inherited the entity's own blind
-  spot: `kode2`, `kodepun`, `kodenyalah`. Corrected in the follow-up by giving the net a
-  deliberately wider noun, which makes the sentence true instead of retracting it. Left here
-  unrewritten, with this annotation, because the record of what was claimed is the point.
-  ORIGINAL CLAIM: "The enclitic set is closed and Indonesian-only: -nya, -ku, -mu, -kah, -lah. A
-  form outside it lands in `undecidable`, not in `clear`, so the failure mode is a judge read
-  rather than a missed total. Widening it means editing the spec first, by its own acceptance
-  criterion 6."
+  (2) The enclitic set is closed and Indonesian-only: -nya, -ku, -mu, -kah, -lah. A form outside it
+  lands in `undecidable`, not in `clear`, so the failure mode is a judge read rather than a missed
+  total. Widening it means editing the spec first, by its own acceptance criterion 6.
   (3) #6428's council quorum was never met and its pack still says so on main. This PR does not
   cure that and does not claim to.
 
