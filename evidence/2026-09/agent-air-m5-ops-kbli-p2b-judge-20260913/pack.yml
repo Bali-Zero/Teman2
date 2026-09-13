@@ -1,0 +1,218 @@
+task_id: kbli-p2b-judge-20260913
+gear: 3
+gate_class: opus
+brief_ref: evidence/2026-09/agent-air-m5-ops-kbli-p2b-judge-20260913/brief.yml
+date: 2026-09-13
+machine: M5
+machine_note: >-
+  worktree /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913, branch
+  agent/air-m5/ops/kbli-p2b-judge-20260913, base bf783e8d2ad5c6c34aab22b8cb5fb3b82b64d1a4
+gear_note: >-
+  Gear 3, as the brief declared and as the work was done: an adversarial council ran four rounds
+  on `git diff <merge-base>...HEAD` of BOTH repos and its transcripts ship in council/. The
+  deterministic floor this diff measures is 2 (`--print-floor` -> 2, source `size`, on 2 files
+  +751/-8 over 5 commits), so gear 3 is above the floor and is claimed for the RISK of the change,
+  not for its size: this script decides the gate that decides whether a BKPM-facing chat may ship.
+council_quorum: NOT_MET
+council_quorum_note: >-
+  R9 asks a gear-3 pack for TWO distinct council seats posting `ok:true`. This council closed with
+  ONE. Seat kimi-code/k3 returned HTTP 403 monthly usage limit in round 1 — declared, never paid
+  for, never substituted outside the sanctioned tuple. Seat codex-gpt-5.6-sol returned DEFECT in
+  round 4, and one of its findings is accepted and unfixed (see dissent[0]), so it would return
+  DEFECT again on the current head: there is no honest fifth round that turns it green. Seat
+  tp1-qwen3.8-max returned OK in round 4.
+  This pack therefore FAILS `evidence_pack_lint` on R9, deliberately and visibly. `seat_override`
+  is NOT used, because an override would say "the review requirement is cleared" and the truthful
+  statement is "the review happened and it did not close". No `ok:true` is journaled that a seat
+  did not return. The consequence is carried where it belongs: the PR opens UNARMED and stays
+  unarmed until a second seat returns a real green or the owner rules on the open finding.
+council_run: council/journal.jsonl
+council_note: >-
+  8 lines, 4 rounds, 3 seats. Read together with the transcripts beside them: every round found a
+  real defect and every deterministic one was fixed at depth 1 with its own regression test. The
+  one cause that recurred across rounds 1-4 — a free-text guard trying to adjudicate a semantic
+  claim — was NOT patched a fourth time; the guard's authority was withdrawn instead.
+lanes:
+  - lane: scorer (build)
+    role: build
+    seat: claude-opus-5 (Dux of SAETTA-KBLI window W-alpha, M5 worktree)
+    note: >-
+      Two defects of METHOD in the P2b harness, both measured on the 2026-08-20 run and neither of
+      them in the product. (1) The judge was fed `expected.codes` while the model had answered from
+      `package_codes`, so a true statement about a code the model was actually served read as
+      invented. Ground truth is now expected.codes UNION the codes served in THAT run, with a
+      `ground_truth_provenance` block naming the rule and a `DERIVED_FIELDS_NOTE` telling the judge
+      which fields of the served package the product DERIVED rather than read. (2) Q23 passed for a
+      reason unrelated to what it measures: the corpus gives it no expected codes and its
+      acceptance was left to the judge's discretion. Its class rule is now written down — the
+      Gubernur letter B.27.000/642/PM/DPMPTSP, the effective date 2026-05-13, both risk classes,
+      and the forbidden quotation of a code total — as four token-decidable criteria that REPORT
+      and never overwrite a verdict. Plus: the four floors emit numerator/denominator/threshold,
+      the runs-per-question is DECLARED (3) and never inferred, and a row is classified into
+      answered / empty_answer / timeout / parse_failed / transport_error / model_refusal /
+      package_not_built instead of collapsing into one "error" string.
+  - lane: council-codex (review)
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: "`codex exec --sandbox read-only`, adversarial, rounds 2/3/4 on both merge-base diffs"
+  - lane: council-tp1 (review)
+    role: review
+    seat: tp1-qwen3.8-max
+    note: "scripts/tp1_call.py, adversarial, rounds 1/2/3/4 on both merge-base diffs"
+outcome: >-
+  The P2b benchmark ran for the first time since 2026-08-20 — twice, 29 questions x 3 runs = 87
+  rows each, scored by this script against the dataset the RUN was anchored on. Both runs report
+  gate=False with machine-readable floors. BEFORE (830683a): (i) 0/87, (ii) 3/8, (iii) 2/8,
+  (iv) 19/21. AFTER (54772e0): (i) 1/87, (ii) 4/8, (iii) 1/8, (iv) 19/21. Q23, which this PR
+  exists to stop grading by discretion, went correct/correct/correct -> wrong/wrong/wrong on an
+  IDENTICAL package. That is the PR working, not the PR failing.
+diff:
+  files: 2
+  net_lines: >-
+    751 insertions, 8 deletions across two files (scripts/kbli_bench/score_p2b.py 340/8;
+    scripts/tests/test_score_p2b.py 411/0), 5 commits — `git diff --numstat
+    $(git merge-base origin/main HEAD)...HEAD`. This is 743 net, past the ~400 soft cap of the
+    builder contract, and it is DECLARED rather than split: 411 of the 751 lines are the test
+    file, and the four council rounds each added guilt+innocence cases to it rather than new
+    surface to the scorer. The scorer itself is 340 lines, of which the judge-union block, the
+    class rule, the row classifier, the run-integrity block and the floors' arithmetic are five
+    named concerns of ONE concern — "the scorer stops guessing" — and splitting them across PRs
+    would have shipped a harness that half-lies for the duration.
+  shape: >-
+    Harness only. No product code, no dataset, no corpus. `scripts/kbli_bench/p2b_corpus.json`
+    is FROZEN at sha256 487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7 and is
+    byte-identical to origin/main — the class rule selects its question from the corpus's own
+    declared expectations, never from a hard-coded qid.
+pii_scan: clean
+pii_scan_note: >-
+  The benchmark corpus is Indonesian regulatory text (KBLI codes, PMA status, a provincial
+  Gubernur letter) and carries no client record. The two test files use synthetic answers. The
+  council transcripts in council/ were scanned before commit and the one email address that
+  appeared in a seat's `git log` trace was replaced with `<redacted-email>` — verified by
+  re-running the scan over the whole evidence directory to an empty result.
+receipts:
+  - claim: "the new scorer test suite is green — 35 tests, guilt AND innocence per criterion"
+    cmd: "python3 -m pytest scripts/tests/test_score_p2b.py -q"
+    result: "35 passed in 2.01s"
+    ts: "2026-09-13T18:14:00+08:00"
+    seat: claude-opus-5 (M5 worktree)
+    exit: 0
+  - claim: "this diff's deterministic floor is 2, source size — 2 files, +751/-8, 5 commits"
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --numstat-file $SCRATCH/mono.numstat
+      --changed-files-file $SCRATCH/mono.changed --commit-count 5 --print-floor
+      (then --print-floor-source, then --print-measured)
+    result: "2 / size / '2 files, +751/-8, 5 commits'"
+    ts: "2026-09-13T18:23:00+08:00"
+    seat: claude-opus-5 (M5 worktree)
+    exit: 0
+  - claim: >-
+      the CONSUMER ran and shipped with this PR — 87 rows scored twice by this exact script,
+      complete, entirely `answered`, zero synthesized and zero duplicated rows
+    cmd: >-
+      python3 scripts/kbli_bench/score_p2b.py score scripts/kbli_bench/p2b_corpus.json
+      <p2b_answers_{baseline,after}.jsonl> <judge_out_{baseline,after}>
+    result: >-
+      both runs rows=87 expected_rows=87 complete=True categories={'answered': 87}
+      synthesized_rows=[] duplicate_rows=[]
+    ts: "2026-09-13T18:09:00+08:00"
+    seat: claude-opus-5 (M5 worktree)
+    exit: 0
+  - claim: "the four floors emit their own numerator, denominator and threshold, and the gate is RED in both runs"
+    cmd: "same as above; read back from the two score JSONs"
+    result: >-
+      BEFORE gate=False (i) 0/87 pass (ii) 3/8 fail (iii) 2/8 fail (iv) 19/21 fail;
+      AFTER gate=False (i) 1/87 fail (ii) 4/8 fail (iii) 1/8 fail (iv) 19/21 fail;
+      denominators structured=8, known_gap_and_out_of_corpus=21, questions=29,
+      runs_per_question=3, answer_rows=87
+    ts: "2026-09-13T18:09:00+08:00"
+    seat: claude-opus-5 (M5 worktree)
+    exit: 0
+  - claim: >-
+      the judge-union cure is real and was measured: before it, three questions were marked
+      `fabricated` on all three runs for repeating the product's own derived verdict back
+    cmd: "hand-check of 100% of the flagged rows (design layer 3), then a full re-judge of BOTH runs with one prompt version"
+    result: >-
+      Q05, Q22 and Q26 carried FALSE `fabricated` verdicts; after DERIVED_FIELDS_NOTE was added
+      and both judge output dirs were deleted and regenerated, Q22 reads correct/correct/correct
+      and Q26 correct/correct/correct. The cure is a provenance note naming the derived fields —
+      NOT a second implementation of the product's rule inside the judge.
+    ts: "2026-09-13T18:09:00+08:00"
+    seat: claude-opus-5 (M5 worktree)
+    exit: 0
+  - claim: "the frozen corpus is byte-identical to origin/main and was not amended"
+    cmd: "shasum -a 256 scripts/kbli_bench/p2b_corpus.json ; git diff --name-only <merge-base>...HEAD"
+    result: >-
+      487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7, and the changed-file list
+      is exactly scripts/kbli_bench/score_p2b.py + scripts/tests/test_score_p2b.py
+    ts: "2026-09-13T18:20:00+08:00"
+    seat: claude-opus-5 (M5 worktree)
+    exit: 0
+  - claim: >-
+      the scorer was run against the dataset the RUN was anchored on (3dafab17), which is what the
+      frozen corpus's own dataset_sha256 names — not the monorepo canonical (c69a260d)
+    cmd: "shasum -a 256 on the benchroot copy, on ~/nuzantara/source_documents/KBLI_2025_FINAL_CLEAN.json, and on the built bundle's copy"
+    result: >-
+      benchroot 3dafab17f6c48477c34ae562d74d5015faeba74a44fee125ee9267c6c45da2e8 (= the corpus's
+      declared anchor); monorepo canonical and the built INTERNAL bundle
+      c69a260dba597d6b172996da7b99460f1498c3bb9d9df6f2ca6c9e4f782b2b40. `score_p2b.py` resolves
+      its dataset by walking up from the working directory, so running it from the monorepo would
+      have tuple-checked answers produced from one corpus against a different one.
+    ts: "2026-09-13T18:19:00+08:00"
+    seat: claude-opus-5 (M5 worktree)
+    exit: 0
+  - claim: "the council ran on the real diffs and one seat was out of quota — declared, not paid for, not substituted"
+    cmd: "codex exec --sandbox read-only / scripts/tp1_call.py on `git diff <merge-base>...HEAD` of both repos"
+    result: >-
+      8 journal lines over 4 rounds in council/journal.jsonl. kimi-code/k3: provider.auth_error
+      403 monthly usage limit. Final round: tp1-qwen3.8-max OK, codex-gpt-5.6-sol DEFECT.
+    ts: "2026-09-13T17:58:08+08:00"
+    seat: claude-opus-5 (M5 worktree)
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Round 4, finding (2), ACCEPTED AND NOT FIXED — confirmed as a real defect and left open. `record_slice` supplies the CANONICAL
+      `per_skala` rows (first six) for every code in `package_codes`, but `package_codes` records
+      code identity only, not which reduced fields the app actually served — it can serve a record
+      with `per_skala.rows = []`, e.g. a session anchor. An answer inventing a requirement from an
+      UNSERVED field can therefore read as supported, which makes floor (i) potentially
+      OVER-permissive. Not fixed here because the only honest cure is for the RUNNER to emit a
+      field map beside `package_codes`; re-deriving the app's field reduction a second time in
+      Python would be the very "two implementations of one rule" defect the product half of this
+      window exists to abolish. Its blast radius on this run is not even measurable from the
+      artifacts — the answer rows carry `package_codes` and `package_bytes` and no field map,
+      confirmed by reading a row's keys in this session.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Round 4, findings (5) and (6): the free-text moratorium guard rejected an en dash in
+      "Medium–Low", and its forbidden-total check missed 518 expressed as "activities" instead of
+      "KBLI". These were the FOURTH round of the same cause — a regex adjudicating a semantic
+      claim (round 1: a negated temporariness phrase; round 2: polarity leaking across a
+      conjunction; round 3: `sementara` as the Indonesian conjunction "while"). Three reds for the
+      same cause suspends, and a fix-of-a-fix stops at depth 1, so the guard was not patched a
+      fourth time: its AUTHORITY was withdrawn. It now emits four token-decidable criteria plus
+      `deferred_to_judge` and a `deferral_reason`, and never overwrites a verdict. The semantic
+      criteria go to the judge verbatim and the gap is declared in the output.
+  - seat: tp1-qwen3.8-max
+    status: CONFIRMED
+    objection: >-
+      Round 4 returned OK at `--effort medium` after `--effort high` exhausted the 880-second
+      budget with the seat still generating. The OK is real and the transcript is beside this
+      file, but it was produced at a lower effort than rounds 1-3 and this pack does not pretend
+      otherwise.
+  - seat: claude-opus-5 (self, generator declaring against its own work)
+    status: CONFIRMED
+    objection: >-
+      This PR's own consumer measured a REGRESSION it did not cause and a floor it did not move.
+      Floor (i) went 0/87 -> 1/87 and Q23 went correct x3 -> wrong x3 on an identical package;
+      floor (iv) is 19/21 in both runs and did not move at all. The scorer is more honest and the
+      product is not yet better on three of four floors. Nothing here was widened to make a number
+      green, and the pack states the red instead of the direction of travel.
+appetite_exceeded: >-
+  Budget was 8 active hours for the whole window (app + monorepo), spent ~9. Cause: four
+  adversarial council rounds instead of one, and a full re-judge of BOTH 87-row runs after the
+  layer-3 hand-check found the judge-harness defect that was inverting three questions. Declared,
+  not hidden.

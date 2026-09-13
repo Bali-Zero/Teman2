@@ -1,0 +1,260 @@
+   122	        guard let raw = try? Data(contentsOf: url),
+   123	              let obj = try? JSONDecoder().decode([String: String].self, from: raw) else { return [:] }
+   124	        return obj
+   125	    }()
+   126	
+   127	    /// Ranked search: exact code (0) > prefix code/title, either language (1-2) > substring
+   128	    /// judul/uraian/EN-title (3) > fuzzy (4).
+   129	    func search(_ query: String) -> Results {
+   130	        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+   131	        guard q.isEmpty == false else {
+   132	            return Results(rows: Array(all.prefix(Self.displayCap)), total: all.count)
+   133	        }
+   134	        var scored: [(KBLI, Int)] = []
+   135	        for r in all {
+   136	            if let rank = Self.rank(r, q) { scored.append((r, rank)) }
+   137	        }
+   138	        scored.sort { a, b in a.1 != b.1 ? a.1 < b.1 : a.0.kode < b.0.kode }
+   139	        return Results(rows: scored.prefix(Self.displayCap).map { $0.0 }, total: scored.count)
+   140	    }
+   141	
+   142	    /// WHERE a query matched a record, not just how well it ranked. `rank` collapses "the term is
+   143	    /// in the record's TITLE" and "the term appears somewhere in its prose description" into one
+   144	    /// tier (3), which is fine for ordering a search list but wrong for weighting a chat retrieval:
+   145	    /// a title match names the activity, a prose match is often incidental vocabulary. Measured
+   146	    /// 2026-09-11 on the P2b Q11 miss — "kafe" matching 56303's judul "Aktivitas Rumah Minum/Kafe"
+   147	    /// scored identically to "tepat" ("on time") matching an unrelated record's uraian.
+   148	    enum MatchField { case code, codePrefix, titlePrefix, title, prose, fuzzy }
+   149	
+   150	    static func matchField(_ r: KBLI, _ q: String) -> MatchField? {
+   151	        let code = r.kode.lowercased()
+   152	        let judul = r.judul.lowercased()
+   153	        let judulEn = judulEN[r.judul]?.lowercased()
+   154	        if code == q { return .code }
+   155	        if code.hasPrefix(q) { return .codePrefix }
+   156	        if judul.hasPrefix(q) || (judulEn?.hasPrefix(q) ?? false) { return .titlePrefix }
+   157	        if judul.contains(q) || (judulEn?.contains(q) ?? false) { return .title }
+   158	        if r.uraian.lowercased().contains(q) { return .prose }
+   159	        let nq = normalize(q)
+   160	        if normalize(judul).contains(nq) || normalize(r.uraian).contains(nq) { return .fuzzy }
+   161	        if let en = judulEn, normalize(en).contains(nq) { return .fuzzy }
+   162	        return nil
+   163	    }
+   164	
+   165	    /// Rank one record against a lowercased query; nil = no match.
+   166	    /// Text matching is accent/double-consonant tolerant so an Italian/English speaker
+   167	    /// searching "villa" still finds the Indonesian "vila" (and "cafè" → "cafe", etc.). D3a.1:
+   168	    /// the EN title (when translated) is checked at the SAME tiers as the Indonesian judul, so
+   169	    /// "football" (English) and "sepak bola" (Indonesian) both find 93121 regardless of which
+   170	    /// language the UI is currently showing — the app-wide language toggle is a display choice,
+   171	    /// not a search-scope restriction.
+   172	    static func rank(_ r: KBLI, _ q: String) -> Int? {
+   173	        let code = r.kode.lowercased()
+   174	        let judul = r.judul.lowercased()
+   175	        let judulEn = judulEN[r.judul]?.lowercased()
+   176	        if code == q { return 0 }
+   177	        if code.hasPrefix(q) { return 1 }
+   178	        if judul.hasPrefix(q) || (judulEn?.hasPrefix(q) ?? false) { return 2 }
+   179	        if judul.contains(q) || r.uraian.lowercased().contains(q) || (judulEn?.contains(q) ?? false) { return 3 }
+   180	        // fuzzy fallback: normalize BOTH sides unconditionally so it works in either direction —
+   181	        // "villa"→"vila" AND "vila"→"villa" (DeepSeek review: the `nq != q` guard skipped the
+   182	        // second case). normalize() is idempotent, so a no-op query just re-checks the same text.
+   183	        let nq = normalize(q)
+   184	        let nj = normalize(judul)
+   185	        if nj.contains(nq) || normalize(r.uraian).contains(nq) { return 4 }
+   186	        if let en = judulEn, normalize(en).contains(nq) { return 4 }
+   187	        return nil
+   188	    }
+   189	
+   190	    /// Fold accents and collapse doubled consonants ("villa"→"vila", "caffè"→"cafe").
+   191	    static func normalize(_ s: String) -> String {
+   192	        let folded = s.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+   193	        var out = ""; out.reserveCapacity(folded.count)
+   194	        var prev: Character = "\u{0}"
+   195	        for ch in folded {
+   196	            if ch == prev && ch.isLetter { continue }   // drop the 2nd of a doubled letter
+   197	            out.append(ch); prev = ch
+   198	        }
+   199	        return out
+   200	    }
+   201	}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+La parte Swift conferma due casi di divergenza fuori dal corpus corrente: il ramo “status sconosciuto + cap 0%” perde una chiusura stabilita, e l’adapter raw accetta una forma scalare di `skala_usaha` che il decoder typed scarta. Nel corpus attuale non ci sono righe scalari, ma l’input è esplicitamente accettato da uno dei due adapter, quindi la promessa “una sola regola” non regge.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "nl -ba scripts/kbli_bench/score_p2b.py | sed -n '120,138p'
+PYTHONDONTWRITEBYTECODE=1 python3 -c 'import importlib.util,json; p=\"scripts/kbli_bench/score_p2b.py\"; s=importlib.util.spec_from_file_location(\"score\",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); wrong=\"Since 13 May 2026, the Bali PMA moratorium applies only to KBLI in the Medium-Low risk class. The restriction is permanent. Source: B.27.000/642/PM/DPMPTSP.\"; print(json.dumps(m.moratorium_scope_check(wrong),sort_keys=True))'" in /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913
+ succeeded in 3526ms:
+   120	#
+   121	# DECLARED GAP — and it is why the criteria below check the RULE STATEMENT rather than a code
+   122	# list. There is no deterministic filter over this dataset that yields "the KBLI under the Bali
+   123	# moratorium". `l4_bali.blocked` is true on 518 records, but that number conflates five
+   124	# distinct causes (measured 2026-09-13 on sha 3dafab17…: 372 BLOCCATO_CLASSE_RISCHIO + 68
+   125	# TERTUTUP, which are closed for a NATIONAL reason + 48 CHIUSO_MORATORIA_BALI + 17
+   126	# NON_CLASSIFICABILE + 13 others), and 48 is only the codes whose status literally names the
+   127	# moratorium. Neither 518 nor 48 answers the question, and quoting either as "the total" is
+   128	# itself a defect — checked as a forbidden pattern below.
+   129	MORATORIUM_SOURCE = "B.27.000/642/PM/DPMPTSP"
+   130	MORATORIUM_EFFECTIVE_PATTERNS = [
+   131	    r"2026-05-13", r"13[\s/.-]+0?5[\s/.-]+2026", r"13\s+mei\s+2026", r"13\s+may\s+2026",
+   132	    r"may\s+13,?\s+2026", r"mei\s+13,?\s+2026",
+   133	]
+   134	MORATORIUM_RISK_SCOPE = r"(menengah\s+rendah|medium[\s-]*low)"
+   135	
+   136	# PERMANENCE AND ITS NEGATION — the part this rule got wrong twice, both times caught by the
+   137	# council, and the reason it is now written as POLARITY rather than as substring presence.
+   138	#
+{"forbidden": {"claims_every_kbli_banned": [], "claims_temporary": false, "quotes_a_moratorium_total": []}, "pass": true, "polarity": {"permanence": {"asserted": ["permanent"], "negated": []}, "temporariness": {"asserted": [], "negated": []}}, "required": {"cites_effective_date": true, "cites_source_letter": true, "states_permanence": true, "states_risk_class_scope": true}}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "nl -ba /Users/balizero/.codex/memories/MEMORY.md | sed -n '160,192p'" in /Users/balizero/nuzantara
+ succeeded in 3186ms:
+   160	- The note also says the checkpoint includes baseline `b740b2cc3e94b1a46c9e9811bb369289fc21ea3d` plus an uncommitted overlay, so do not infer readiness from HEAD alone. [Task 1] [ad-hoc note]
+   161	
+   162	## Failures and how to do differently
+   163	
+   164	- Do not treat the website report as a live UI proof when it explicitly says `Workspace access required`. [Task 1] [skysight memory]
+   165	- Do not skip the Pro transfer verification; check the manifests and package before calling the R19 handoff done. [Task 1] [ad-hoc note]
+   166	
+   167	# Task Group: /Users/balizero/Desktop/logo/kbli-navigator-app 2026-09-06 KBLI Navigator audit / save-and-close
+   168	scope: native macOS KBLI Navigator audit and live-verification handoff; use when the current binary, bundle census, or Accessibility/AppleScript capture needs to be resumed.
+   169	applies_to: cwd=/Users/balizero/Desktop/logo/kbli-navigator-app; reuse_rule=use for follow-up KBLI Navigator audits on the audited snapshot, but refresh counts after any code or bundle change.
+   170	
+   171	## Task 1: KBLI Navigator audit handoff and native verification blocker, partial
+   172	
+   173	### rollout_summary_files
+   174	
+   175	- /Users/balizero/.codex/memories/extensions/ad_hoc/notes/2026-09-06T233024-kbli-audit-handoff.md (cwd=/Users/balizero/Desktop/logo/kbli-navigator-app, rollout_path=/Users/balizero/.codex/memories/extensions/ad_hoc/notes/2026-09-06T233024-kbli-audit-handoff.md, updated_at=2026-09-06T23:30:54+08:00, thread_id=None, [ad-hoc note])
+   176	
+   177	### keywords
+   178	
+   179	- KBLI Navigator, BKPM, INTERNAL/BKPM bundle inventory, distribution ZIP, 1,559 bundled records, 1,560 groups, 21-category map, official 22 categories, category-letter mismatches, eight-item limit, 20111, AppleScript, System Events, Accessibility, `osascript`, `-1728`, `100% national`, `NATIONAL CAP`, `blocked in Bali`, `salva e chiudi`
+   180	
+   181	## User preferences
+   182	
+   183	- when the user says `salva e chiudi`, save the durable note, freeze the lane, and do not keep exploring after the handoff is captured. [Task 1] [ad-hoc note]
+   184	
+   185	## Reusable knowledge
+   186	
+   187	- The audit covered native macOS KBLI Navigator, the INTERNAL/BKPM bundle inventory, the distribution ZIP, all 1,559 bundled records, selected live public Navigator journeys, live OSS catalogue examples, and official OSS mobile documentation. [Task 1] [ad-hoc note]
+   188	- Measured snapshot findings: native 21-category map vs official 22, 479 category-letter mismatches, 213 codes with at least one normalized requirement/obligation list over the UI's eight-item limit, and eight unknown verdicts entering the affirmative UI branch, with `20111` reproduced in the current executable. [Task 1] [ad-hoc note]
+   189	- Official BPS release says 1,560 groups while the bundle and local crosswalk contain 1,559, so the denominator discrepancy remains unresolved and is not itself a missing code. [Task 1] [ad-hoc note]
+   190	- `declared_gap` means provenance not established, not proven incorrect. [Task 1] [ad-hoc note]
+   191	- On resumption, preserve the prior authorization, check whether Accessibility now works, then complete native click/keyboard/scrolling/navigation checks if available. Use the already authorized AppleScript route where available. [Task 1] [ad-hoc note]
+   192	
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+Ho trovato quattro difetti di correttezza:
+
+1. [KBLIVerdict.swift:170](/Users/balizero/Desktop/logo/kbli-navigator-app/Sources/KBLIVerdict.swift:170) perde una chiusura nazionale stabilita quando `pma_status` è assente o sconosciuto. Input: `pma_status = nil`, `pma_max_asing = 0`, `pma_cap_special = false`, Bali presente e non bloccato. Il risultato è `NATIONAL_UNDETERMINED`; il cap 0% dovrebbe produrre `NATIONALLY_CLOSED`, indipendentemente dallo status, come afferma anche il commento a riga 148.
+
+2. Gli adapter possono divergere. [KBLIVerdict.swift:335](/Users/balizero/Desktop/logo/kbli-navigator-app/Sources/KBLIVerdict.swift:335) accetta `skala_usaha` scalare, mentre [Models.swift:252](/Users/balizero/Desktop/logo/kbli-navigator-app/Sources/Models.swift:252) accetta soltanto `[String]`. Con:
+   `per_skala = [{"skala_usaha":"Besar","kategori_risiko":"Rendah"},{"skala_usaha":["Mikro"],"kategori_risiko":"Tinggi"}]`
+   l’adapter raw sceglie `Rendah` perché riconosce la riga Besar; quello typed scarta la scala della prima riga e sceglie `Tinggi`. Il corpus corrente non contiene questa forma scalare, ma è un input esplicitamente accettato dall’adapter raw.
+
+3. [score_p2b.py:134](/Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913/scripts/kbli_bench/score_p2b.py:134) considera sufficiente citare solo la classe Medium-Low e non richiede anche Low. Questa risposta errata passa:
+   “Since 13 May 2026, the Bali PMA moratorium applies only to KBLI in the Medium-Low risk class. The restriction is permanent. Source: B.27.000/642/PM/DPMPTSP.”
+
+4. [score_p2b.py:195](/Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913/scripts/kbli_bench/score_p2b.py:195) esenta un’affermazione universale se la stessa clausola menziona Medium-Low in qualunque posizione. Questa risposta vietata restituisce `pass: true`:
+   “Since 13 May 2026 all KBLI are banned, including KBLI in the Medium-Low risk class. The restriction is permanent. Source: B.27.000/642/PM/DPMPTSP.”
+
+5. [score_p2b.py:280](/Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913/scripts/kbli_bench/score_p2b.py:280) non verifica che il numero del run rientri in `1...expected_runs`; [riga 286](/Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913/scripts/kbli_bench/score_p2b.py:286) controlla soltanto il numero totale di righe. Con `expected_runs=3`, Q01 nei run `1,2,4` e Q02 nei run `1,2,3`, `run_integrity` restituisce erroneamente `complete: true`, nonostante manchi `(Q01,3)` e `(Q01,4)` sia sintetizzato.
+
+Non ho trovato un difetto concreto nella promozione retrieval, nel tie-break, nel limite di cinque hit, nella verifica Ed25519/machine binding o nella nuova provenienza per-run del judge.
+
+VERDICT: DEFECT
+
+hook: Stop
+hook: Stop Completed
+tokens used
+203.636
+Ho trovato quattro difetti di correttezza:
+
+1. [KBLIVerdict.swift:170](/Users/balizero/Desktop/logo/kbli-navigator-app/Sources/KBLIVerdict.swift:170) perde una chiusura nazionale stabilita quando `pma_status` è assente o sconosciuto. Input: `pma_status = nil`, `pma_max_asing = 0`, `pma_cap_special = false`, Bali presente e non bloccato. Il risultato è `NATIONAL_UNDETERMINED`; il cap 0% dovrebbe produrre `NATIONALLY_CLOSED`, indipendentemente dallo status, come afferma anche il commento a riga 148.
+
+2. Gli adapter possono divergere. [KBLIVerdict.swift:335](/Users/balizero/Desktop/logo/kbli-navigator-app/Sources/KBLIVerdict.swift:335) accetta `skala_usaha` scalare, mentre [Models.swift:252](/Users/balizero/Desktop/logo/kbli-navigator-app/Sources/Models.swift:252) accetta soltanto `[String]`. Con:
+   `per_skala = [{"skala_usaha":"Besar","kategori_risiko":"Rendah"},{"skala_usaha":["Mikro"],"kategori_risiko":"Tinggi"}]`
+   l’adapter raw sceglie `Rendah` perché riconosce la riga Besar; quello typed scarta la scala della prima riga e sceglie `Tinggi`. Il corpus corrente non contiene questa forma scalare, ma è un input esplicitamente accettato dall’adapter raw.
+
+3. [score_p2b.py:134](/Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913/scripts/kbli_bench/score_p2b.py:134) considera sufficiente citare solo la classe Medium-Low e non richiede anche Low. Questa risposta errata passa:
+   “Since 13 May 2026, the Bali PMA moratorium applies only to KBLI in the Medium-Low risk class. The restriction is permanent. Source: B.27.000/642/PM/DPMPTSP.”
+
+4. [score_p2b.py:195](/Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913/scripts/kbli_bench/score_p2b.py:195) esenta un’affermazione universale se la stessa clausola menziona Medium-Low in qualunque posizione. Questa risposta vietata restituisce `pass: true`:
+   “Since 13 May 2026 all KBLI are banned, including KBLI in the Medium-Low risk class. The restriction is permanent. Source: B.27.000/642/PM/DPMPTSP.”
+
+5. [score_p2b.py:280](/Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913/scripts/kbli_bench/score_p2b.py:280) non verifica che il numero del run rientri in `1...expected_runs`; [riga 286](/Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913/scripts/kbli_bench/score_p2b.py:286) controlla soltanto il numero totale di righe. Con `expected_runs=3`, Q01 nei run `1,2,4` e Q02 nei run `1,2,3`, `run_integrity` restituisce erroneamente `complete: true`, nonostante manchi `(Q01,3)` e `(Q01,4)` sia sintetizzato.
+
+Non ho trovato un difetto concreto nella promozione retrieval, nel tie-break, nel limite di cinque hit, nella verifica Ed25519/machine binding o nella nuova provenienza per-run del judge.
+
+VERDICT: DEFECT
+

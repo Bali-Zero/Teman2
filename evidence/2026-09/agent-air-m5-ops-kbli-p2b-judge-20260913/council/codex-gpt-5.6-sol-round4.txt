@@ -1,0 +1,405 @@
+# codex-gpt-5.6-sol — council round 4, tail of the transcript.
+# Full transcript: 8941 lines, 1183733 bytes, sha256 65924ef47bfa972e81192902d2d55ab1a3f1677213c4c1dfedabb7b7a0eb8075
+# Kept here: the last 400 lines, which carry the seat's own condensed findings and its VERDICT.
+# The elided part is the seat's tool trace (file reads and python probes inside the worktree).
+# ---
+   244	        // divergence is now a diff in one function, not an argument between two files.
+   245	        dict["pma_bali_verdict"] = KBLIVerdict.of(rawRecord: raw, code: code).packageDictionary()
+   246	
+   247	        let mandatoryDict = dict   // snapshot BEFORE per_skala is added
+   248	        let mandatoryBytes = kbliJSONByteCount(mandatoryDict)
+   249	
+   250	        let rawRows = raw["per_skala"] as? [[String: Any]] ?? []
+   251	        let (rows, includedCount) = selectPerSkalaRows(rawRows, questionTerms: questionTerms,
+   252	                                                         maxBytes: max(0, perSkalaByteBudget))
+   253	        dict["per_skala"] = [
+   254	            "rows_included": includedCount,
+   255	            "rows_total": rawRows.count,
+   256	            "note": "full table on the code page",
+   257	            "rows": rows,
+   258	        ] as [String: Any]
+   259	
+   260	        let totalBytes = kbliJSONByteCount(dict)
+   261	        return Result(code: code, dict: dict, bytes: totalBytes, mandatoryBytes: mandatoryBytes,
+   262	                      isConflict: isConflict, capIfKnown: isConflict ? nil : capAsing,
+   263	                      rowsIncluded: includedCount, rowsTotal: rawRows.count)
+   264	    }
+   265	
+   266	    /// Question-matched rows first, then physical order; rows accumulate in that priority order
+   267	    /// UNTIL the byte budget is reached (design §3, R3-2 — NOT a row-count cap: the 46710 case,
+   268	    /// 4 rows matching "bahan bakar gas cair" at ~20.8 KiB each, is exactly why a count cap alone
+   269	    /// breaks the package cap).
+   270	    private static func selectPerSkalaRows(_ rawRows: [[String: Any]], questionTerms: [String], maxBytes: Int) -> ([[String: Any]], Int) {
+   271	        guard maxBytes > 0, rawRows.isEmpty == false else { return ([], 0) }
+   272	        let terms = questionTerms.map { $0.lowercased() }.filter { $0.isEmpty == false }
+   273	        func matches(_ row: [String: Any]) -> Bool {
+   274	            guard terms.isEmpty == false else { return false }
+   275	            let usaha = (row["skala_usaha"] as? [String] ?? []).joined(separator: " ").lowercased()
+   276	            let scope = (row["scope_uraian"] as? String ?? "").lowercased()
+   277	            let hay = usaha + " " + scope
+   278	            return terms.contains { hay.contains($0) }
+   279	        }
+   280	        let ordered = rawRows.filter(matches) + rawRows.filter { matches($0) == false }
+   281	
+   282	        var out: [[String: Any]] = []
+   283	        var used = 0
+   284	        for row in ordered {
+   285	            let reducedRow = reduceRow(row)
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "git show d602355522:scripts/kbli_bench/score_p2b.py | nl -ba | sed -n '380,430p'" in /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913
+ succeeded in 0ms:
+   380	        # expected it to see. Measured on the W100 run: 22 of 30 fabrication flags were false,
+   381	        # every one of them a code that was in the served package and absent from
+   382	        # `expected.codes`, so the judge had no record to check it against and called an
+   383	        # accurate statement invented. The ground truth is therefore the UNION: expected.codes
+   384	        # (so a code the model failed to retrieve can still be judged missing) and every code
+   385	        # actually served in any run (so nothing the model was given is judged blind).
+   386	        expected_codes = list(q.get("expected", {}).get("codes", []))
+   387	        served_codes = []
+   388	        for r in runs:
+   389	            for c in (r.get("package_codes") or []):
+   390	                if c not in served_codes:
+   391	                    served_codes.append(c)
+   392	        gt_codes = [c for c in expected_codes if c in by_code]
+   393	        gt_codes += [c for c in served_codes if c in by_code and c not in gt_codes]
+   394	        recs = {c: record_slice(by_code[c]) for c in gt_codes}
+   395	        payload = {
+   396	            "qid": qid, "class": q["class"], "question": q["text"],
+   397	            "expected": q.get("expected", {}),
+   398	            "ground_truth_records": recs,
+   399	            "ground_truth_provenance": {
+   400	                "expected_codes": expected_codes,
+   401	                "served_package_codes": served_codes,
+   402	                "rule": "records supplied = expected.codes UNION the package codes served to the model",
+   403	            },
+   404	            "answers": [{"run": r["run"], "text": served_text(r),
+   405	                         "package_codes": r.get("package_codes") or []} for r in runs],
+   406	        }
+   407	        if is_moratorium_scope_question(q):
+   408	            # The criteria a regex cannot decide, stated to the judge verbatim rather than
+   409	            # guessed at in code (see moratorium_scope_check's docstring).
+   410	            payload["class_rule_expectations"] = CLASS_RULE_EXPECTATIONS["bali_moratorium_scope"]
+   411	        (out / f"{qid}.txt").write_text(JUDGE_RUBRIC + "\n\nINPUT:\n" + json.dumps(payload, ensure_ascii=False, indent=1))
+   412	    print(f"wrote {len(list(out.glob('*.txt')))} judge prompts to {out}")
+   413	
+   414	
+   415	def cmd_score(corpus_p, answers_p, judgedir):
+   416	    root = find_root()
+   417	    by_code = load_dataset(root)
+   418	    corpus = json.loads(Path(corpus_p).read_text())
+   419	    rows = [json.loads(l) for l in Path(answers_p).read_text().splitlines() if l.strip()]
+   420	    byq = defaultdict(list)
+   421	    for r in rows:
+   422	        byq[r["qid"]].append(r)
+   423	
+   424	    judge = {}
+   425	    for f in Path(judgedir).glob("*.json"):
+   426	        j = json.loads(f.read_text())
+   427	        judge[j["qid"]] = {v["run"]: v for v in j["verdicts"]}
+   428	
+   429	    fabrications, gate_saves, flagged = [], [], []
+   430	    class_rule_results = {}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "git show --format=fuller --stat 03cf7204ab
+git show --format= -- scripts/kbli_bench/score_p2b.py scripts/tests/test_score_p2b.py | sed -n '1,220p'" in /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913
+ succeeded in 0ms:
+commit 03cf7204aba7259a4943ae45ec35ed4c9c288061
+Author:     Balizero (Air-M5) <redacted-email>
+AuthorDate: Sun Sep 13 17:48:35 2026 +0800
+Commit:     Balizero (Air-M5) <redacted-email>
+CommitDate: Sun Sep 13 17:48:35 2026 +0800
+
+    fix(kbli-bench): tell the judge which served fields the product DERIVED
+    
+    The same defect class this PR opened with, one layer down, measured on the 2026-09-13 run
+    before the note existed. The context package now serves each record with a `pma_bali_verdict`
+    block the product derives from that record's own fields. The model quoted it. The judge, holding
+    only the raw record, could not find the string "OPEN_IN_BALI" anywhere and called it invented:
+    Q05 and Q22 came back "fabricated" on all three runs for repeating the product's own
+    adjudication back, and a floor went red on a harness blind spot rather than on the product.
+    
+    The cure is not to re-implement the derivation in the scorer — that would be a second rule, the
+    exact thing the product half of this window exists to abolish. It is provenance: the judge is
+    told that the block exists, which fields it comes from, and what the derivation is, so it checks
+    whether the verdict FOLLOWS from the record instead of whether the string appears in it.
+    
+    33 tests.
+
+ scripts/kbli_bench/score_p2b.py | 28 ++++++++++++++++++++++++++++
+ scripts/tests/test_score_p2b.py | 24 ++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+)
+diff --git a/scripts/kbli_bench/score_p2b.py b/scripts/kbli_bench/score_p2b.py
+index 873f83ca0a..c576cdb42c 100644
+--- a/scripts/kbli_bench/score_p2b.py
++++ b/scripts/kbli_bench/score_p2b.py
+@@ -330,6 +330,33 @@ def record_slice(rec: dict) -> dict:
+     return out
+ 
+ 
++# WHAT THE MODEL SAW THAT THE RAW RECORD DOES NOT SHOW.
++#
++# The same defect class as the expected.codes/package_codes one, one layer down, and it was
++# measured on the 2026-09-13 run before this note existed: the context package serves each
++# record with a `pma_bali_verdict` block the product DERIVES from that record's own fields, the
++# model quoted it, and the judge — holding only the raw record — called it invented. Three
++# questions were marked "fabricated" for repeating the product's own adjudication back.
++#
++# The cure is NOT to re-implement the derivation here (that would be a second rule, which is
++# exactly what the product side of this window exists to abolish). It is to tell the judge the
++# provenance, so it checks whether the verdict FOLLOWS from the fields instead of whether the
++# string appears in them.
++DERIVED_FIELDS_NOTE = (
++    "Each served record ALSO carried a `pma_bali_verdict` block, which the product derives "
++    "deterministically from the very fields supplied below (l4_bali.blocked, l4_bali.status, "
++    "pma_status, pma_max_asing, per_skala.kategori_risiko). Its `headline` is one of "
++    "NATIONALLY_CLOSED, BALI_BLOCKED, NATIONAL_UNDETERMINED, BALI_UNDETERMINED, OPEN_IN_BALI, "
++    "with a `reason`, a `national_cap_percent` and a `risk_category` that may be null. An answer "
++    "that quotes that verdict is NOT inventing a regulatory fact: judge whether the verdict "
++    "FOLLOWS from the fields below, and call it wrong only if it does not. The derivation is: an "
++    "established national closure (pma_status TERTUTUP, or a 0% cap) dominates; then "
++    "l4_bali.blocked == true; then l4_bali.status == NON_CLASSIFICABILE with blocked == false, "
++    "which is BALI_UNDETERMINED; otherwise OPEN_IN_BALI. A provisional or proposed Bali status "
++    "with blocked == false is NOT a closure."
++)
++
++
+ JUDGE_RUBRIC = """You are an adversarial benchmark judge. You receive: a benchmark question, its
+ classification, the ground-truth structured record(s) (the ONLY admissible source of regulatory
+ facts), the expected behavior, and N candidate answers (independent runs of the same system).
+@@ -400,6 +427,7 @@ def cmd_prompts(corpus_p, answers_p, outdir):
+                 "expected_codes": expected_codes,
+                 "served_package_codes": served_codes,
+                 "rule": "records supplied = expected.codes UNION the package codes served to the model",
++                "derived_fields_in_the_served_package": DERIVED_FIELDS_NOTE,
+             },
+             "answers": [{"run": r["run"], "text": served_text(r),
+                          "package_codes": r.get("package_codes") or []} for r in runs],
+diff --git a/scripts/tests/test_score_p2b.py b/scripts/tests/test_score_p2b.py
+index c022452b62..a03f757bd1 100644
+--- a/scripts/tests/test_score_p2b.py
++++ b/scripts/tests/test_score_p2b.py
+@@ -341,3 +341,27 @@ def test_run_integrity_innocence_a_complete_run_is_complete(score_mod):
+     assert r["complete"] is True
+     assert r["categories"] == {"answered": 6}
+     assert r["duplicate_rows"] == [] and r["synthesized_rows"] == []
++
++
++def test_judge_is_told_about_the_derived_verdict_block(score_mod, tmp_path, monkeypatch):
++    """Measured on the 2026-09-13 run: the served package carries a `pma_bali_verdict` block the
++    product derives from the record's own fields, the model quoted it, and the judge — holding
++    only the raw record — called it invented. Three questions were marked "fabricated" for
++    repeating the product's own adjudication back. The cure is provenance, not a second
++    implementation of the derivation."""
++    corpus = {"questions": [{"id": "T04", "class": "structured", "text": "68111",
++                             "expected": {"codes": ["68111"]}}]}
++    cp = tmp_path / "corpus.json"
++    cp.write_text(json.dumps(corpus))
++    ap = tmp_path / "answers.jsonl"
++    ap.write_text(json.dumps({"qid": "T04", "run": 1, "raw_answer": "68111 is OPEN_IN_BALI.",
++                              "gate_ok": True, "package_codes": ["68111"]}))
++    outdir = tmp_path / "prompts"
++    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
++    score_mod.cmd_prompts(str(cp), str(ap), str(outdir))
++    payload = json.loads((outdir / "T04.txt").read_text().split("INPUT:\n", 1)[1])
++    note = payload["ground_truth_provenance"]["derived_fields_in_the_served_package"]
++    assert "pma_bali_verdict" in note
++    assert "is NOT inventing a regulatory fact" in note
++    # the derivation is stated, so the judge can check it FOLLOWS instead of hunting the string
++    assert "NON_CLASSIFICABILE" in note and "dominates" in note
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "find build -type f -maxdepth 5 -perm -111 -print 2>/dev/null | head -50
+find /Users/balizero/Library/Developer/Xcode/DerivedData -type f -name '*verdicttest*' -o -name 'KBLINavigator' 2>/dev/null | head -20" in /Users/balizero/Desktop/logo/kbli-navigator-app
+ succeeded in 173ms:
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "git show d602355522:scripts/kbli_bench/score_p2b.py | nl -ba | sed -n '440,466p'" in /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913
+ succeeded in 0ms:
+   440	            raw_viol = tuple_check(r.get("raw_answer", ""), by_code) if not r.get("gate_ok") else []
+   441	            if raw_viol and not viol:
+   442	                gate_saves.append({"qid": qid, "run": r["run"], "raw_violations": raw_viol})
+   443	            jv = judge.get(qid, {}).get(r["run"], {}).get("verdict")
+   444	            if viol:
+   445	                fabrications.append({"qid": qid, "run": r["run"], "violations": viol})
+   446	                verdict = "fabricated"
+   447	            elif class_rule:
+   448	                # The class rule can only FAIL a question, never pass one: its criteria are the
+   449	                # decidable half, and the two semantic ones are deferred to the judge with the
+   450	                # expectations stated verbatim in the payload.
+   451	                chk = moratorium_scope_check(text)
+   452	                class_rule_results.setdefault(qid, {})[r["run"]] = chk
+   453	                if not chk["decidable_pass"]:
+   454	                    verdict = "abstained" if looks_abstained(text) else "wrong"
+   455	                elif jv:
+   456	                    verdict = jv
+   457	                else:
+   458	                    verdict = "abstained" if looks_abstained(text) else "unjudged"
+   459	            elif jv:
+   460	                verdict = jv
+   461	            else:
+   462	                verdict = "abstained" if looks_abstained(text) else "unjudged"
+   463	            if verdict in ("fabricated", "wrong", "unjudged"):
+   464	                flagged.append({"qid": qid, "run": r["run"], "verdict": verdict})
+   465	            rverd.append(verdict)
+   466	        per_q[qid] = {"class": qclass, "runs": rverd}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+I controlli mirati hanno riprodotto due falsi esiti nel scorer e un difetto d’integrità del run; inoltre il dataset corrente espone un caso concreto in cui il nuovo asse rischio sceglie la prima riga “Besar” e sottostima una seconda attività dello stesso codice. Sto condensando solo i difetti dimostrabili.
+codex
+- **Diff A — `Sources/KBLIVerdict.swift:192-193`: the risk verdict can understate the applicable risk class.** `riskVerdict` returns the first nonempty `Besar` row instead of considering all `Besar` rows. The committed record `01140` has a `Besar / Menengah Tinggi` row for scope 0 and a later `Besar / Tinggi` row for scope 1. For a question about scope 1 (“Kegiatan pengolahan lahan…”), the packaged `risk_category` is nevertheless `Menengah Tinggi`, not `Tinggi`.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:394`: the union can let an unserved-field fabrication pass.** The scorer supplies `record_slice(by_code[c])` for every served code, but `package_codes` records only code identity, not which reduced fields were actually served. For example, when `01140` is included as a session anchor, the app serves it with `per_skala.rows=[]`; the judge nevertheless receives the canonical record’s first six `per_skala` rows. An answer inventing the unserved “Surat Keterangan kelayakan…” requirement can therefore be marked supported merely because `01140` appears in that run’s `package_codes`.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:480`: a uniformly missing run is declared complete.** `n_runs` is inferred from the largest observed row count. Give the scorer runs 1 and 2—but no run 3—for all 29 questions: it infers `n_runs == 2`, computes `expected_rows == 58`, and reports `run_integrity.complete == true`, despite the frozen corpus requiring three runs.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:514`: failed run integrity does not fail the gate.** `gate` depends only on the four floors. Starting from a passing 87-row result and adding `{"qid":"Q99","run":1,...}` makes `run_integrity.complete` false because the row is synthesized, but Q99 is ignored by per-question scoring and `gate` can remain true.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:137`: a correct Q23 answer using normal Unicode punctuation is rejected.** The correct phrase `Low and Medium–Low risk classes` uses an en dash. `medium[\s-]*low` does not recognize it, so `names_medium_low_risk_class` becomes false and lines 453-454 overwrite even a correct judge verdict with `wrong`.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:187-188`: the forbidden-total guard misses explicit totals without one of three nouns.** An otherwise conforming answer ending with `Total affected activities: 518.` returns `decidable_pass == true`, because the number is only detected near `KBLI`, `kode`, or `code(s)`. This is precisely the forbidden 518 total expressed with “activities.”
+
+VERDICT: DEFECT
+hook: Stop
+hook: Stop Completed
+tokens used
+264.282
+- **Diff A — `Sources/KBLIVerdict.swift:192-193`: the risk verdict can understate the applicable risk class.** `riskVerdict` returns the first nonempty `Besar` row instead of considering all `Besar` rows. The committed record `01140` has a `Besar / Menengah Tinggi` row for scope 0 and a later `Besar / Tinggi` row for scope 1. For a question about scope 1 (“Kegiatan pengolahan lahan…”), the packaged `risk_category` is nevertheless `Menengah Tinggi`, not `Tinggi`.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:394`: the union can let an unserved-field fabrication pass.** The scorer supplies `record_slice(by_code[c])` for every served code, but `package_codes` records only code identity, not which reduced fields were actually served. For example, when `01140` is included as a session anchor, the app serves it with `per_skala.rows=[]`; the judge nevertheless receives the canonical record’s first six `per_skala` rows. An answer inventing the unserved “Surat Keterangan kelayakan…” requirement can therefore be marked supported merely because `01140` appears in that run’s `package_codes`.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:480`: a uniformly missing run is declared complete.** `n_runs` is inferred from the largest observed row count. Give the scorer runs 1 and 2—but no run 3—for all 29 questions: it infers `n_runs == 2`, computes `expected_rows == 58`, and reports `run_integrity.complete == true`, despite the frozen corpus requiring three runs.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:514`: failed run integrity does not fail the gate.** `gate` depends only on the four floors. Starting from a passing 87-row result and adding `{"qid":"Q99","run":1,...}` makes `run_integrity.complete` false because the row is synthesized, but Q99 is ignored by per-question scoring and `gate` can remain true.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:137`: a correct Q23 answer using normal Unicode punctuation is rejected.** The correct phrase `Low and Medium–Low risk classes` uses an en dash. `medium[\s-]*low` does not recognize it, so `names_medium_low_risk_class` becomes false and lines 453-454 overwrite even a correct judge verdict with `wrong`.
+
+- **Diff B — `scripts/kbli_bench/score_p2b.py:187-188`: the forbidden-total guard misses explicit totals without one of three nouns.** An otherwise conforming answer ending with `Total affected activities: 518.` returns `decidable_pass == true`, because the number is only detected near `KBLI`, `kode`, or `code(s)`. This is precisely the forbidden 518 total expressed with “activities.”
+
+VERDICT: DEFECT
