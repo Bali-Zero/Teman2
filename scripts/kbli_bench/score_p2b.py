@@ -106,6 +106,75 @@ ABSTAIN_MARKERS = [
 ]
 
 
+# ── the Bali moratorium scope rule (design §8 / spec §A.4.6) ──────────────────────────
+#
+# Q23 passed the 2026-08-20 run by accident: 64330 entered its package only because its
+# `uraian` happens to contain the literal word "KBLI", which the user had typed. Nothing about
+# that retrieval had anything to do with the moratorium, and a judge with no ground-truth
+# records (the corpus gives Q23 no `expected.codes`) had nothing to check against. A question
+# that passes for a reason unrelated to the thing it measures is not a pass.
+#
+# So the acceptance for this class is written HERE, deterministically, instead of left to a
+# judge's discretion: the answer must carry the source, the effective date, the risk-class
+# scope and the permanence, and must not claim the ban covers every KBLI.
+#
+# DECLARED GAP — and it is why the criteria below check the RULE STATEMENT rather than a code
+# list. There is no deterministic filter over this dataset that yields "the KBLI under the Bali
+# moratorium". `l4_bali.blocked` is true on 518 records, but that number conflates five
+# distinct causes (measured 2026-09-13 on sha 3dafab17…: 372 BLOCCATO_CLASSE_RISCHIO + 68
+# TERTUTUP, which are closed for a NATIONAL reason + 48 CHIUSO_MORATORIA_BALI + 17
+# NON_CLASSIFICABILE + 13 others), and 48 is only the codes whose status literally names the
+# moratorium. Neither 518 nor 48 answers the question, and quoting either as "the total" is
+# itself a defect — checked as a forbidden pattern below.
+MORATORIUM_SOURCE = "B.27.000/642/PM/DPMPTSP"
+MORATORIUM_EFFECTIVE_PATTERNS = [
+    r"2026-05-13", r"13[\s/.-]+0?5[\s/.-]+2026", r"13\s+mei\s+2026", r"13\s+may\s+2026",
+    r"may\s+13,?\s+2026", r"mei\s+13,?\s+2026",
+]
+MORATORIUM_RISK_SCOPE = r"(menengah\s+rendah|medium[\s-]*low)"
+MORATORIUM_PERMANENCE = r"(permanen|permanent|tidak\s+sementara|bukan\s+sementara|not\s+temporary|no\s+end\s+date)"
+MORATORIUM_TEMPORARY_CLAIM = r"((hanya|bersifat|only|merely)\s+(bersifat\s+)?(sementara|temporary)|is\s+temporary)"
+BAN_WORDS = r"(dilarang|diblokir|terkena|ditutup|banned|blocked|moratorium|moratoria)"
+UNIVERSAL_WORDS = r"((semua|seluruh)\s+kbli|all\s+kbli|every\s+kbli|setiap\s+kbli)"
+
+
+def is_moratorium_scope_question(q: dict) -> bool:
+    """True for the corpus question whose own expected behaviour names the Gubernur letter.
+    Derived from the FROZEN corpus, never by hard-coding a qid and never by amending it."""
+    return MORATORIUM_SOURCE in json.dumps(q.get("expected", {}), ensure_ascii=False)
+
+
+def moratorium_scope_check(text: str) -> dict:
+    """Deterministic acceptance for the moratorium-scope class. Returns every criterion with
+    its own boolean so the report shows WHICH one failed, never a bare verdict."""
+    t = re.sub(r"\s+", " ", (text or "")).lower()
+    clauses = re.split(r"[.;\n]", t)
+    universal_unqualified = []
+    for cl in clauses:
+        if re.search(UNIVERSAL_WORDS, cl) and re.search(BAN_WORDS, cl):
+            if not re.search(MORATORIUM_RISK_SCOPE, cl):
+                universal_unqualified.append(cl.strip()[:120])
+    totals = []
+    for cl in clauses:
+        if re.search(r"\b(518|48)\b[^.;]{0,40}(kbli|kode|codes?)", cl) or \
+           re.search(r"(kbli|kode|codes?)[^.;]{0,40}\b(518|48)\b", cl):
+            totals.append(cl.strip()[:120])
+    required = {
+        "cites_source_letter": MORATORIUM_SOURCE.lower() in t,
+        "cites_effective_date": any(re.search(p, t) for p in MORATORIUM_EFFECTIVE_PATTERNS),
+        "states_risk_class_scope": bool(re.search(MORATORIUM_RISK_SCOPE, t)),
+        "states_permanence": bool(re.search(MORATORIUM_PERMANENCE, t)),
+    }
+    forbidden = {
+        "claims_temporary": bool(re.search(MORATORIUM_TEMPORARY_CLAIM, t)),
+        "claims_every_kbli_banned": universal_unqualified,
+        "quotes_a_moratorium_total": totals,
+    }
+    ok = all(required.values()) and not forbidden["claims_temporary"] \
+        and not universal_unqualified and not totals
+    return {"pass": ok, "required": required, "forbidden": forbidden}
+
+
 def looks_abstained(text: str) -> bool:
     t = text.lower()
     return any(m.lower() in t for m in ABSTAIN_MARKERS)
@@ -178,11 +247,33 @@ def cmd_prompts(corpus_p, answers_p, outdir):
         runs = sorted(byq.get(qid, []), key=lambda r: r["run"])
         if not runs:
             continue
-        recs = {c: record_slice(by_code[c]) for c in q.get("expected", {}).get("codes", []) if c in by_code}
+        # The judge must see the records the MODEL saw, not the records the corpus author
+        # expected it to see. Measured on the W100 run: 22 of 30 fabrication flags were false,
+        # every one of them a code that was in the served package and absent from
+        # `expected.codes`, so the judge had no record to check it against and called an
+        # accurate statement invented. The ground truth is therefore the UNION: expected.codes
+        # (so a code the model failed to retrieve can still be judged missing) and every code
+        # actually served in any run (so nothing the model was given is judged blind).
+        expected_codes = list(q.get("expected", {}).get("codes", []))
+        served_codes = []
+        for r in runs:
+            for c in (r.get("package_codes") or []):
+                if c not in served_codes:
+                    served_codes.append(c)
+        gt_codes = [c for c in expected_codes if c in by_code]
+        gt_codes += [c for c in served_codes if c in by_code and c not in gt_codes]
+        recs = {c: record_slice(by_code[c]) for c in gt_codes}
         payload = {
             "qid": qid, "class": q["class"], "question": q["text"],
-            "expected": q.get("expected", {}), "ground_truth_records": recs,
-            "answers": [{"run": r["run"], "text": served_text(r)} for r in runs],
+            "expected": q.get("expected", {}),
+            "ground_truth_records": recs,
+            "ground_truth_provenance": {
+                "expected_codes": expected_codes,
+                "served_package_codes": served_codes,
+                "rule": "records supplied = expected.codes UNION the package codes served to the model",
+            },
+            "answers": [{"run": r["run"], "text": served_text(r),
+                         "package_codes": r.get("package_codes") or []} for r in runs],
         }
         (out / f"{qid}.txt").write_text(JUDGE_RUBRIC + "\n\nINPUT:\n" + json.dumps(payload, ensure_ascii=False, indent=1))
     print(f"wrote {len(list(out.glob('*.txt')))} judge prompts to {out}")
@@ -203,9 +294,11 @@ def cmd_score(corpus_p, answers_p, judgedir):
         judge[j["qid"]] = {v["run"]: v for v in j["verdicts"]}
 
     fabrications, gate_saves, flagged = [], [], []
+    class_rule_results = {}
     per_q = {}
     for q in corpus["questions"]:
         qid, qclass = q["id"], q["class"]
+        class_rule = is_moratorium_scope_question(q)
         runs = sorted(byq.get(qid, []), key=lambda r: r["run"])
         rverd = []
         for r in runs:
@@ -218,6 +311,17 @@ def cmd_score(corpus_p, answers_p, judgedir):
             if viol:
                 fabrications.append({"qid": qid, "run": r["run"], "violations": viol})
                 verdict = "fabricated"
+            elif class_rule:
+                # The class rule OVERRIDES the judge for this question: the criteria are written
+                # down, so "correct" here means "met them", not "a model thought so".
+                chk = moratorium_scope_check(text)
+                class_rule_results.setdefault(qid, {})[r["run"]] = chk
+                if chk["pass"]:
+                    verdict = "correct"
+                elif looks_abstained(text):
+                    verdict = "abstained"
+                else:
+                    verdict = "wrong"
             elif jv:
                 verdict = jv
             else:
@@ -239,11 +343,34 @@ def cmd_score(corpus_p, answers_p, judgedir):
     gap_ok = sum(1 for qid in gaps if per_q[qid]["runs"] and all(v in ("abstained", "correct") for v in per_q[qid]["runs"]))
 
     n_s, n_g = len(structured), len(gaps)
+    n_runs = max((len(v) for v in byq.values()), default=0)
+    # Machine-readable floors: every one carries its numerator, its denominator and the
+    # threshold it is judged against. "I counted them" is not a measurement.
     floors = {
-        "i_zero_fabrications": {"pass": not fabrications, "count": len(fabrications)},
-        "ii_accuracy": {"pass": n_s > 0 and acc / n_s >= 0.80, "value": f"{acc}/{n_s}"},
-        "iii_wrongful_abstention": {"pass": n_s > 0 and wrongful_abst / n_s <= 0.10, "value": f"{wrongful_abst}/{n_s}"},
-        "iv_gap_abstention": {"pass": gap_ok == n_g, "value": f"{gap_ok}/{n_g}"},
+        "i_zero_fabrications": {
+            "pass": not fabrications, "numerator": len(fabrications),
+            "denominator": sum(len(v) for v in byq.values()),
+            "threshold": "== 0 fabrications in ANY run (served text)",
+            "value": f"{len(fabrications)}/{sum(len(v) for v in byq.values())}",
+        },
+        "ii_accuracy": {
+            "pass": n_s > 0 and acc / n_s >= 0.80, "numerator": acc, "denominator": n_s,
+            "threshold": ">= 0.80 of the structured set by per-question majority over runs",
+            "required_numerator": -(-8 * n_s // 10) if n_s else 0,
+            "value": f"{acc}/{n_s}",
+        },
+        "iii_wrongful_abstention": {
+            "pass": n_s > 0 and wrongful_abst / n_s <= 0.10,
+            "numerator": wrongful_abst, "denominator": n_s,
+            "threshold": "<= 0.10 of the structured set",
+            "max_allowed_numerator": int(0.10 * n_s),
+            "value": f"{wrongful_abst}/{n_s}",
+        },
+        "iv_gap_abstention": {
+            "pass": gap_ok == n_g, "numerator": gap_ok, "denominator": n_g,
+            "threshold": "== 100% declared abstention on known-gap + out-of-corpus",
+            "value": f"{gap_ok}/{n_g}",
+        },
     }
     sample = random.Random(20260820).sample(
         [(q["id"], r["run"]) for q in corpus["questions"] for r in byq.get(q["id"], [])],
@@ -251,6 +378,35 @@ def cmd_score(corpus_p, answers_p, judgedir):
     )
     report = {
         "floors": floors, "gate": all(f["pass"] for f in floors.values()),
+        "denominators": {
+            "structured": n_s, "known_gap_and_out_of_corpus": n_g,
+            "questions": len(corpus["questions"]), "runs_per_question": n_runs,
+            "answer_rows": sum(len(v) for v in byq.values()),
+        },
+        "question_classification": {q["id"]: q["class"] for q in corpus["questions"]},
+        "canonical_command": (
+            "python3 scripts/kbli_bench/score_p2b.py score "
+            "scripts/kbli_bench/p2b_corpus.json <answers.jsonl> <judgedir>"
+        ),
+        "judge_ground_truth_rule": "expected.codes UNION the package codes served to the model",
+        "class_rules": {
+            "bali_moratorium_scope": {
+                "applies_to": [q["id"] for q in corpus["questions"] if is_moratorium_scope_question(q)],
+                "source": MORATORIUM_SOURCE,
+                "effective": "2026-05-13",
+                "criteria": ["cites_source_letter", "cites_effective_date",
+                             "states_risk_class_scope", "states_permanence"],
+                "forbidden": ["claims_temporary", "claims_every_kbli_banned",
+                              "quotes_a_moratorium_total"],
+                "declared_gap": (
+                    "no deterministic filter over this dataset yields the moratorium code set: "
+                    "l4_bali.blocked is true on 518 records and conflates five causes (372 risk-class "
+                    "+ 68 nationally TERTUTUP + 48 named-moratorium + 17 non-classifiable + 13 other); "
+                    "neither 518 nor 48 answers the question, so the rule statement is checked, not a list"
+                ),
+                "results": class_rule_results,
+            },
+        },
         "per_question": per_q, "fabrications": fabrications, "gate_saves": gate_saves,
         "flagged_for_handcheck": flagged, "random_handcheck_sample": sample,
         "corpus_sha256": hashlib.sha256(Path(corpus_p).read_bytes()).hexdigest(),
