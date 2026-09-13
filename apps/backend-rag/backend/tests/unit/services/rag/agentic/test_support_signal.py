@@ -22,7 +22,7 @@ Covers:
 
 from __future__ import annotations
 
-import importlib
+import importlib.util
 import itertools
 import json
 import socket
@@ -38,6 +38,7 @@ import backend.services.rag.agentic._support_signal as support_signal_module
 from backend.llm.codex_exec_client import (
     MODEL_TERRA,
     CodexExecAuthError,
+    CodexExecClient,
     CodexExecCommunicationError,
     CodexExecOutputShapeError,
     CodexExecProcessError,
@@ -45,6 +46,7 @@ from backend.llm.codex_exec_client import (
     CodexExecTimeoutError,
     CodexExecUnavailableError,
 )
+from backend.services.rag.agentic import wa_package_builder
 from backend.services.rag.agentic._support_signal import (
     OLLAMA_MODEL,
     RUBRIC,
@@ -55,6 +57,7 @@ from backend.services.rag.agentic._support_signal import (
     _strict_parse,
     evaluate_support,
     majority,
+    support_inputs_from_wire,
 )
 
 ALL_VERDICTS = (
@@ -413,4 +416,202 @@ class TestImportIsFree:
         monkeypatch.setattr(socket.socket, "connect", _blocked_connect)
         module_name = "backend.services.rag.agentic._support_signal"
         assert module_name in sys.modules
-        importlib.reload(sys.modules[module_name])
+        # Execute a FRESH copy under a private name instead of
+        # `importlib.reload`: a reload rebinds `SupportVerdict` in the shared
+        # module, so every later test holding the old enum (the B2.4
+        # completion envelope's `isinstance` check) fails by run order alone.
+        # `@dataclass` resolves its module through `sys.modules`, so the probe
+        # is registered for the test's lifetime only.
+        probe_name = "_support_signal_import_probe"
+        spec = importlib.util.spec_from_file_location(probe_name, sys.modules[module_name].__file__)
+        assert spec is not None and spec.loader is not None
+        probe = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, probe_name, probe)
+        spec.loader.exec_module(probe)
+
+
+# ---------------------------------------------------------------------------
+# B2.4 — client injection (the daemon hands its OWN CodexExecClient to the
+# judge instead of letting it construct a fresh one).
+# ---------------------------------------------------------------------------
+
+
+class TestClientInjection:
+    def test_injected_client_is_the_client_used(self) -> None:
+        fake_client = object()
+        judge = CodexSupportJudge(client=fake_client)  # type: ignore[arg-type]
+        assert judge._client is fake_client  # noqa: SLF001
+
+    async def test_injected_client_is_actually_called_on_every_vote(self) -> None:
+        fake_client = AsyncMock()
+        fake_client.generate = AsyncMock(
+            return_value=type("FakeResult", (), {"text": "SUPPORTED"})()
+        )
+        judge = CodexSupportJudge(client=fake_client)
+
+        votes = await judge.vote_repetitions("query", "context")
+
+        assert votes == (SupportVerdict.SUPPORTED,) * 3
+        assert fake_client.generate.await_count == 3
+
+    def test_no_client_given_constructs_its_own(self) -> None:
+        judge = CodexSupportJudge()
+        assert isinstance(judge._client, CodexExecClient)  # noqa: SLF001
+
+
+# ---------------------------------------------------------------------------
+# B2.4 — `support_inputs_from_wire`: the daemon-side re-derivation of the
+# builder's own judge-input formula (L623-624).
+# ---------------------------------------------------------------------------
+
+
+class TestSupportInputsFromWire:
+    def test_matches_the_builder_formula_normal_history_and_chunks(self) -> None:
+        history = [
+            {"role": "user", "content": "first turn"},
+            {"role": "assistant", "content": "second turn"},
+            {"role": "user", "content": "what is the fee?"},
+        ]
+        chunks = [
+            {"collection": "c1", "text": "chunk one text", "score": 0.9},
+            {"collection": "c2", "text": "chunk two text", "score": 0.5},
+        ]
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": history,
+                "chunks": chunks,
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 1,
+            }
+        )
+
+        query, context = support_inputs_from_wire(wire)
+
+        assert query == history[-1]["content"]
+        assert context == "\n\n".join(chunk["text"] for chunk in chunks)
+
+    def test_empty_history_raises(self) -> None:
+        """Dux review round 2 (MAJOR, Codex red-team): the real builder
+        (`wa_package_builder._sanitize_history`) always appends the current
+        query as the final user turn, so an empty history is never a
+        legitimate "nothing to ask" — it is a malformed claimed package
+        that must not be judged against context alone."""
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": [],
+                "chunks": [{"collection": "c", "text": "only chunk", "score": 1.0}],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        with pytest.raises(ValueError, match="'history' is empty"):
+            support_inputs_from_wire(wire)
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            pytest.param("   ", id="spaces"),
+            pytest.param("​", id="zero-width-space"),
+            pytest.param("﻿​ \t\n", id="bom-zero-width-whitespace"),
+        ],
+    )
+    def test_query_without_a_visible_character_raises(self, query: str) -> None:
+        """Codex round 3 (MAJOR): `str.strip()` keeps U+200B/U+FEFF, and the
+        REAL builder emits such a query unchanged — built here through
+        `_sanitize_history`, not a hand-written history."""
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001
+                "chunks": [{"collection": "c", "text": "only chunk", "score": 1.0}],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        with pytest.raises(ValueError, match="content is blank"):
+            support_inputs_from_wire(wire)
+
+    def test_last_turn_not_from_user_raises(self) -> None:
+        """Codex round 3 (MAJOR, UNSURE): the builder always ends on a user
+        turn, so an assistant last turn is a broken producer, never a question."""
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": [{"role": "assistant", "content": "a statement drawn from context"}],
+                "chunks": [{"collection": "c", "text": "only chunk", "score": 1.0}],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        with pytest.raises(ValueError, match="not a user turn"):
+            support_inputs_from_wire(wire)
+
+    def test_visible_query_keeps_its_format_characters(self) -> None:
+        query = "​Berapa lama proses PT PMA?﻿"
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001
+                "chunks": [],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        assert support_inputs_from_wire(wire) == (query, "")
+
+    def test_matches_the_builder_formula_zero_chunks(self) -> None:
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": [{"role": "user", "content": "hello"}],
+                "chunks": [],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 2,
+            }
+        )
+
+        query, context = support_inputs_from_wire(wire)
+
+        assert query == "hello"
+        assert context == ""
+
+    @pytest.mark.parametrize(
+        "wire",
+        [
+            "not json",
+            "[]",
+            json.dumps({"chunks": []}),  # missing 'history' entirely
+            json.dumps({"history": "not-a-list", "chunks": []}),
+            json.dumps({"history": [1, 2], "chunks": []}),  # last item not a dict
+            json.dumps({"history": [{"role": "user"}], "chunks": []}),  # no 'content'
+            json.dumps(
+                {"history": [{"role": "user", "content": 5}], "chunks": []}
+            ),  # content not str
+            json.dumps({"history": [], "chunks": "not-a-list"}),
+            json.dumps({"history": [], "chunks": [1]}),  # chunk not a dict
+            json.dumps({"history": [], "chunks": [{"collection": "c"}]}),  # no 'text'
+            json.dumps({"history": [], "chunks": [{"text": 5}]}),  # text not str
+        ],
+    )
+    def test_malformed_wires_raise(self, wire: str) -> None:
+        with pytest.raises(ValueError):
+            support_inputs_from_wire(wire)
+
+    def test_error_message_carries_no_wire_content(self) -> None:
+        with pytest.raises(ValueError) as excinfo:
+            support_inputs_from_wire(
+                json.dumps({"history": "SYNTHETIC-CLIENT-SECRET", "chunks": []})
+            )
+        assert "SYNTHETIC-CLIENT-SECRET" not in str(excinfo.value)

@@ -274,6 +274,21 @@ def test_complete_accepts_quota_exhausted_error_class(
     assert resp.status_code == 200
 
 
+def test_complete_accepts_support_judge_unavailable_error_class(
+    client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B2.4: the daemon reports `support_judge_unavailable` when its support
+    judge could not rule (malformed wire or a majority-UNAVAILABLE vote) —
+    the router must accept it, not 422 it, or the typed report never
+    reaches a terminal row."""
+    monkeypatch.setattr(
+        wa_broker_router.wa_broker, "complete_job", AsyncMock(return_value=CompleteStatus.ACCEPTED)
+    )
+    body = _complete_body(result_text=None, error_class="support_judge_unavailable")
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
+    assert resp.status_code == 200
+
+
 # ── complete: exec_ms Postgres int ceiling (finding 10) ─────────────────────
 
 

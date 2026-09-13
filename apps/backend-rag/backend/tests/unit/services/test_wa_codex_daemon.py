@@ -5,6 +5,16 @@ HTTP via `httpx.MockTransport` — so the daemon's OWN client construction,
 header attachment and JSON encoding all run for real — and the codex CLI
 via a stub with `generate()`'s exact signature. No network, no subprocess,
 no broker required.
+
+B2.4: the daemon now judges support on the claimed package BEFORE
+generating, reusing its OWN codex client for both the judge's 3 votes and
+the eventual generation — `_StubCodex` therefore answers BOTH kinds of call
+through the same object, telling them apart by the PROMPT shape (a judge
+call is always `RUBRIC`-formatted; the generation call always carries the
+raw package verbatim, per `wa-codex-daemon`'s own PII-boundary comment). A
+`SUPPORTED` judge_text default keeps every PRE-B2.4 test's generation path
+reachable unchanged; tests that need a different verdict pass their own
+`judge_text`/`judge_raises`.
 """
 
 from __future__ import annotations
@@ -19,6 +29,8 @@ import httpx
 import pytest
 
 from backend.llm.codex_exec_client import (
+    MODEL_LUNA,
+    MODEL_TERRA,
     CodexExecAuthError,
     CodexExecCommunicationError,
     CodexExecOutputShapeError,
@@ -33,10 +45,75 @@ from backend.services.integrations.wa_codex_daemon import (
     WaCodexDaemon,
     compute_budget_s,
 )
+from backend.services.integrations.wa_completion_envelope import (
+    decode_completion,
+    encode_completion,
+)
+from backend.services.rag.agentic._support_signal import RUBRIC, SupportVerdict
 
 _PIN = "0.147.0"
-_PACKAGE_WIRE = json.dumps({"question": "SYNTHETIC-CLIENT-TEXT-a8f3", "chunks": []})
+# A readable wire (design B2-4-design.md §1.1 step 3): 'history'/'chunks'
+# are exactly what `support_inputs_from_wire` parses. The markers stay
+# distinctive so TestPiiBoundary can prove neither ever reaches a log line.
+_SYNTHETIC_QUERY = "SYNTHETIC-CLIENT-TEXT-a8f3"
+_SYNTHETIC_CONTEXT = "SYNTHETIC-CONTEXT-CHUNK-9c21"
+_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [{"role": "user", "content": _SYNTHETIC_QUERY}],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
+_MALFORMED_PACKAGE_WIRE = json.dumps({"nothing": "readable here"})
+# Dux review round 2 (MAJOR, Codex red-team): an empty history, or a history
+# whose last turn carries no question, is likewise a malformed CLAIMED
+# package — `wa_package_builder._sanitize_history` always appends the query
+# as the final user turn, so the real builder never produces either shape.
+_EMPTY_HISTORY_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
+_BLANK_CONTENT_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [{"role": "user", "content": "   "}],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
+_ZERO_WIDTH_QUERY_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [{"role": "user", "content": "​﻿"}],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
+_ASSISTANT_LAST_TURN_PACKAGE_WIRE = json.dumps(
+    {
+        "history": [{"role": "assistant", "content": _SYNTHETIC_QUERY}],
+        "chunks": [{"collection": "c", "text": _SYNTHETIC_CONTEXT, "score": 0.9}],
+        "pricing_block": None,
+        "persona_digest": "digest",
+        "evidence_inputs": {},
+        "thread_epoch": 0,
+    }
+)
 _RESULT_TEXT = "SYNTHETIC-MODEL-ANSWER-c71e"
+_JUDGE_PROMPT = RUBRIC.format(query=_SYNTHETIC_QUERY, context=_SYNTHETIC_CONTEXT)
 
 # Sentinel for _Broker.claim_results: answer this claim with a 200 whose body
 # is NOT JSON (an LB error page under a misconfigured proxy).
@@ -72,17 +149,56 @@ def _claim_payload(**overrides: Any) -> dict[str, Any]:
 
 
 class _StubCodex:
-    """`CodexExecClient.generate`-shaped stub; records calls."""
+    """`CodexExecClient.generate`-shaped stub; records ALL calls.
 
-    def __init__(self, *, text: str = _RESULT_TEXT, raises: BaseException | None = None) -> None:
+    B2.4: the daemon hands this SAME object to `CodexSupportJudge` (3 votes)
+    AND uses it directly for the final generation, exactly like the real
+    daemon reusing its own `self._codex`. A call is a judge vote iff its
+    prompt is `RUBRIC`-formatted (`_vote_once` always builds it that way);
+    the generation call always carries the raw package verbatim — the two
+    shapes never collide because the package wire is JSON, never English
+    prose starting with the rubric's fixed sentence.
+
+    `judge_text` is either a single verdict word (every vote answers it) or
+    a list consumed one-per-call (in call order — safe here because none of
+    these stub calls actually suspend on real I/O, so `asyncio.gather`
+    runs them start-to-finish in scheduling order) for split-vote tests.
+    """
+
+    def __init__(
+        self,
+        *,
+        text: str = _RESULT_TEXT,
+        raises: BaseException | None = None,
+        judge_text: str | list[str] = "SUPPORTED",
+        judge_raises: BaseException | None = None,
+        judge_delay_s: float = 0.0,
+    ) -> None:
         self.calls: list[dict[str, Any]] = []
         self._text = text
         self._raises = raises
+        self._judge_text = judge_text
+        self._judge_raises = judge_raises
+        self._judge_delay_s = judge_delay_s
 
     async def generate(
         self, prompt: str, *, model: str | None = None, timeout_s: float | None = None
     ) -> Any:
         self.calls.append({"prompt": prompt, "model": model, "timeout_s": timeout_s})
+        if prompt.startswith("You judge evidence sufficiency."):
+            if self._judge_delay_s:
+                await asyncio.sleep(self._judge_delay_s)
+            if self._judge_raises is not None:
+                raise self._judge_raises
+            verdict_word = (
+                self._judge_text.pop(0) if isinstance(self._judge_text, list) else self._judge_text
+            )
+
+            class _JudgeResult:
+                text = verdict_word
+
+            return _JudgeResult()
+
         if self._raises is not None:
             raise self._raises
 
@@ -276,6 +392,10 @@ class TestBudget:
 
     @pytest.mark.asyncio
     async def test_generate_receives_the_server_derived_budget(self) -> None:
+        """B2.4: the judge stage runs first (3 votes) inside the SAME
+        client, so the generation call's timeout is the REMAINING budget —
+        strictly less than the full (15s window) - (1s margin) = 14.0s, but
+        still positive."""
         broker = _Broker(claim_results=[_claim_payload()])
         codex = _StubCodex()
         daemon = _daemon(broker, codex)
@@ -284,9 +404,10 @@ class TestBudget:
         claim = await daemon._claim()
         await daemon._execute_and_complete(claim)
 
-        [call] = codex.calls
-        assert call["timeout_s"] == 14.0  # (15s window) - (1s margin)
-        assert call["prompt"] == _PACKAGE_WIRE  # wire passed verbatim as prompt
+        assert len(codex.calls) == 4  # 3 judge votes + 1 generation
+        generate_call = codex.calls[-1]
+        assert 0 < generate_call["timeout_s"] <= 14.0
+        assert generate_call["prompt"] == _PACKAGE_WIRE  # wire passed verbatim as prompt
 
 
 # ---------------------------------------------------------------------------
@@ -305,8 +426,15 @@ class TestHappyPath:
         await daemon._execute_and_complete(claim)
 
         [body] = _complete_bodies(broker)
-        assert body["result_text"] == _RESULT_TEXT
         assert body["error_class"] is None
+        # B2.4: result_text is the HMAC-sealed envelope, not the raw text —
+        # decode it exactly as the routing leg would.
+        decoded = decode_completion(
+            body["result_text"], key=daemon._config.broker_key, package_hash=claim.package_hash
+        )
+        assert decoded is not None
+        assert decoded.verdict == SupportVerdict.SUPPORTED
+        assert decoded.answer == _RESULT_TEXT
         assert body["job_id"] == claim.job_id
         assert body["fence_token"] == claim.fence_token
         assert 8 <= len(body["completion_key"]) <= 128
@@ -510,8 +638,24 @@ class TestErrorMapping:
 
     @pytest.mark.asyncio
     async def test_innocence_result_at_exactly_the_cap_is_sent(self) -> None:
-        broker = _Broker(claim_results=[_claim_payload()])
-        daemon = _daemon(broker, _StubCodex(text="x" * 65536))
+        """B2.4: the cap binds the ENVELOPE (bytes actually sent), not the
+        raw model text — compute the exact answer length that puts the
+        envelope AT `_RESULT_TEXT_MAX`, rather than assuming raw text length
+        equals envelope length (the envelope's fixed fields add overhead)."""
+        claim_payload = _claim_payload()
+        probe_envelope = encode_completion(
+            key=_config().broker_key,
+            package_hash=claim_payload["package_hash"],
+            verdict=SupportVerdict.SUPPORTED,
+            votes=(SupportVerdict.SUPPORTED,) * 3,
+            judge=f"codex:{MODEL_TERRA}",
+            answer="A",
+        )
+        overhead = len(probe_envelope) - 1
+        text = "x" * (daemon_module._RESULT_TEXT_MAX - overhead)  # noqa: SLF001
+
+        broker = _Broker(claim_results=[claim_payload])
+        daemon = _daemon(broker, _StubCodex(text=text))
         daemon._version_ok = True
 
         claim = await daemon._claim()
@@ -519,7 +663,7 @@ class TestErrorMapping:
 
         [body] = _complete_bodies(broker)
         assert body["error_class"] is None
-        assert len(body["result_text"]) == 65536
+        assert len(body["result_text"]) == daemon_module._RESULT_TEXT_MAX  # noqa: SLF001
 
     @pytest.mark.asyncio
     async def test_guilt_nul_in_result_is_cli_failure(self) -> None:
@@ -539,10 +683,13 @@ class TestErrorMapping:
 
     @pytest.mark.asyncio
     async def test_guilt_multibyte_result_under_char_cap_over_byte_cap(self) -> None:
-        """50k 3-byte chars pass the 65,536-CHAR cap but encode to ~150KB —
-        over the router's 128KiB stream cap. Posting would 413 and the
-        4xx-never-retry branch would abandon the job untyped (Kimi round-1
-        F1, verified by execution); the byte pre-check must fail it TYPED."""
+        """50k 3-byte chars pass the raw 65,536-CHAR cap, and B2.4's ENVELOPE
+        wrapping (the bytes actually measured/sent) only adds to that — it
+        still encodes to well over the router's 128KiB stream cap. Posting
+        would 413 and the 4xx-never-retry branch would abandon the job
+        untyped (Kimi round-1 F1, verified by execution); the byte pre-check
+        must fail it TYPED — this test doubles as the ENVELOPE-exceeds-the-
+        byte-cap case (B2.4 build spec §Tests)."""
         text = "€" * 50_000  # € = 3 bytes in UTF-8
         assert len(text) <= daemon_module._RESULT_TEXT_MAX  # passes the char cap
         broker = _Broker(claim_results=[_claim_payload()])
@@ -560,10 +707,11 @@ class TestErrorMapping:
     async def test_innocence_multibyte_under_both_caps_is_sent_and_measured_as_wired(
         self,
     ) -> None:
-        """40k 3-byte chars ≈ 120,018 encoded bytes — under _RESULT_BYTES_MAX,
-        so it must be SENT. And the wire bytes must equal `_encode_body` of
-        the parsed body: the measuring stick and the wire share one encoder,
-        so the byte pre-check can never drift from what actually ships."""
+        """40k 3-byte chars, once sealed in the envelope, still measure
+        ~120,320 encoded bytes (measured) — under _RESULT_BYTES_MAX, so it
+        must be SENT. And the wire bytes must equal `_encode_body` of the
+        parsed body: the measuring stick and the wire share one encoder, so
+        the byte pre-check can never drift from what actually ships."""
         text = "€" * 40_000
         broker = _Broker(claim_results=[_claim_payload()])
         daemon = _daemon(broker, _StubCodex(text=text))
@@ -575,9 +723,200 @@ class TestErrorMapping:
         [request] = broker.complete_requests
         body = json.loads(request.content)
         assert body["error_class"] is None
-        assert body["result_text"] == text
+        decoded = decode_completion(
+            body["result_text"], key=daemon._config.broker_key, package_hash=claim.package_hash
+        )
+        assert decoded is not None
+        assert decoded.answer == text
         assert request.headers["Content-Type"] == "application/json"
         assert request.content == daemon_module._encode_body(body)
+
+
+# ---------------------------------------------------------------------------
+# B2.4 — the support-judge stage inserted before generation
+# ---------------------------------------------------------------------------
+
+
+class TestSupportJudgeStage:
+    @pytest.mark.asyncio
+    async def test_supported_majority_runs_exactly_three_judge_calls_then_one_generate(
+        self,
+    ) -> None:
+        broker = _Broker(claim_results=[_claim_payload()])
+        codex = _StubCodex()  # judge_text="SUPPORTED" default
+        daemon = _daemon(broker, codex)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        judge_calls = [c for c in codex.calls if c["prompt"] == _JUDGE_PROMPT]
+        generate_calls = [c for c in codex.calls if c["prompt"] == _PACKAGE_WIRE]
+        assert len(judge_calls) == 3
+        assert len(generate_calls) == 1
+        assert 0 < generate_calls[0]["timeout_s"] <= 14.0
+
+        [body] = _complete_bodies(broker)
+        decoded = decode_completion(
+            body["result_text"], key=daemon._config.broker_key, package_hash=claim.package_hash
+        )
+        assert decoded is not None
+        assert decoded.verdict == SupportVerdict.SUPPORTED
+        assert decoded.answer == _RESULT_TEXT
+
+    @pytest.mark.asyncio
+    async def test_judge_prompt_equals_rubric_format_of_the_wire(self) -> None:
+        broker = _Broker(claim_results=[_claim_payload()])
+        codex = _StubCodex()
+        daemon = _daemon(broker, codex)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        judge_calls = [c for c in codex.calls if c["model"] == MODEL_TERRA]
+        assert len(judge_calls) == 3
+        for call in judge_calls:
+            assert call["prompt"] == _JUDGE_PROMPT
+
+    @pytest.mark.asyncio
+    async def test_judge_model_is_pinned_to_terra_even_when_config_model_differs(self) -> None:
+        broker = _Broker(claim_results=[_claim_payload()])
+        codex = _StubCodex()
+        config = _config(model=MODEL_LUNA)  # any allowed model other than MODEL_TERRA
+        daemon = _daemon(broker, codex, config=config)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        judge_calls = [c for c in codex.calls if c["prompt"] == _JUDGE_PROMPT]
+        assert len(judge_calls) == 3
+        assert all(call["model"] == MODEL_TERRA for call in judge_calls)
+
+    @pytest.mark.asyncio
+    async def test_not_supported_majority_skips_generation(self) -> None:
+        broker = _Broker(claim_results=[_claim_payload()])
+        codex = _StubCodex(judge_text="NOT_SUPPORTED")
+        daemon = _daemon(broker, codex)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        assert len(codex.calls) == 3  # judge only — generate never called
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] is None
+        decoded = decode_completion(
+            body["result_text"], key=daemon._config.broker_key, package_hash=claim.package_hash
+        )
+        assert decoded is not None
+        assert decoded.verdict == SupportVerdict.NOT_SUPPORTED
+        assert decoded.answer is None
+
+    @pytest.mark.asyncio
+    async def test_unknown_majority_skips_generation(self) -> None:
+        broker = _Broker(claim_results=[_claim_payload()])
+        codex = _StubCodex(judge_text="UNKNOWN")
+        daemon = _daemon(broker, codex)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        assert len(codex.calls) == 3
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] is None
+        decoded = decode_completion(
+            body["result_text"], key=daemon._config.broker_key, package_hash=claim.package_hash
+        )
+        assert decoded is not None
+        assert decoded.verdict == SupportVerdict.UNKNOWN
+        assert decoded.answer is None
+
+    @pytest.mark.asyncio
+    async def test_split_vote_fails_closed_to_not_supported_without_generating(self) -> None:
+        broker = _Broker(claim_results=[_claim_payload()])
+        codex = _StubCodex(judge_text=["SUPPORTED", "NOT_SUPPORTED", "UNKNOWN"])
+        daemon = _daemon(broker, codex)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        assert len(codex.calls) == 3
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] is None
+        decoded = decode_completion(
+            body["result_text"], key=daemon._config.broker_key, package_hash=claim.package_hash
+        )
+        assert decoded is not None
+        assert decoded.verdict == SupportVerdict.NOT_SUPPORTED
+        assert decoded.answer is None
+
+    @pytest.mark.asyncio
+    async def test_unavailable_majority_reports_support_judge_unavailable(self) -> None:
+        broker = _Broker(claim_results=[_claim_payload()])
+        codex = _StubCodex(judge_raises=CodexExecUnavailableError("dead seat"))
+        daemon = _daemon(broker, codex)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        assert len(codex.calls) == 3  # 3 judge attempts, all raised; generate never called
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] == "support_judge_unavailable"
+        assert body["result_text"] is None
+
+    @pytest.mark.parametrize(
+        "wire",
+        [
+            pytest.param(_MALFORMED_PACKAGE_WIRE, id="unreadable"),
+            pytest.param(_EMPTY_HISTORY_PACKAGE_WIRE, id="empty-history"),
+            pytest.param(_BLANK_CONTENT_PACKAGE_WIRE, id="blank-content"),
+            pytest.param(_ZERO_WIDTH_QUERY_PACKAGE_WIRE, id="zero-width-query"),
+            pytest.param(_ASSISTANT_LAST_TURN_PACKAGE_WIRE, id="assistant-last-turn"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_malformed_package_reports_support_judge_unavailable(self, wire: str) -> None:
+        payload = _claim_payload(package=wire)
+        broker = _Broker(claim_results=[payload])
+        codex = _StubCodex()
+        daemon = _daemon(broker, codex)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        assert codex.calls == []  # never reaches the judge or the generation
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] == "support_judge_unavailable"
+        assert body["result_text"] is None
+
+    @pytest.mark.asyncio
+    async def test_judge_consuming_the_whole_budget_reports_exec_timeout_without_generating(
+        self,
+    ) -> None:
+        payload = _claim_payload(
+            server_now="2020-01-01T00:00:00+00:00",
+            deadline_at="2020-01-01T00:00:00.050000+00:00",  # 50ms budget window
+        )
+        broker = _Broker(claim_results=[payload])
+        codex = _StubCodex(judge_delay_s=0.2)  # outlasts the 50ms budget
+        config = _config(net_margin_s=0.0)
+        daemon = _daemon(broker, codex, config=config)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        generate_calls = [c for c in codex.calls if c["prompt"] == _PACKAGE_WIRE]
+        assert generate_calls == []
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] == "exec_timeout"
+        assert body["result_text"] is None
 
 
 # ---------------------------------------------------------------------------
