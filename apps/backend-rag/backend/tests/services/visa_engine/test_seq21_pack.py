@@ -1002,7 +1002,7 @@ class TestSponsorTypeAloneIsNotEvidence:
 
 
 # ---------------------------------------------------------------------------
-# Behaviour — the 84-walk census
+# Behaviour — the walk-corpus census (84 walks when written, 94 since W-VO-E)
 # ---------------------------------------------------------------------------
 
 
@@ -1029,16 +1029,28 @@ class TestCensusReplay:
         ]
         assert drift == []
 
-    def test_the_census_is_still_67_answers_15_no_paths_2_questions(
+    def test_the_census_is_76_answers_15_no_paths_2_questions_1_privacy_hold(
         self,
         seq21_compiled: compiler.CompiledRulePack,
         walks: dict[str, dict[str, Any]],
     ) -> None:
-        census = Counter(actual["state"] for actual in _replay(seq21_compiled, walks).values())
-        assert census["SUPPORTED_CANDIDATES"] == 67
+        """Measured on the 94-walk corpus (W-VO-E added ten walks; this pin
+        read 67 / 15 / 2 / 0 over the 84-walk corpus it was written against).
+        Nine of the ten answer; the tenth is a minor, which
+        ``_apply_minor_privacy_hold`` holds at the public level on any pack —
+        so the one hold is pinned by walk, not only by count."""
+        replayed = _replay(seq21_compiled, walks)
+        census = Counter(actual["state"] for actual in replayed.values())
+        assert census["SUPPORTED_CANDIDATES"] == 76
         assert census["NO_SUPPORTED_PATH"] == 15
         assert census["NEEDS_INPUT"] == 2
-        assert census["HUMAN_REVIEW_REQUIRED"] == 0
+        assert census["HUMAN_REVIEW_REQUIRED"] == 1
+        held = [
+            label
+            for label, actual in replayed.items()
+            if actual["state"] == "HUMAN_REVIEW_REQUIRED"
+        ]
+        assert held == ["offshore/family/PARENT/spNat=IT/minor"]
 
     def test_no_walk_regresses_onto_requested_product_code(
         self,
