@@ -7,7 +7,7 @@ lanes:
     seat: Claude Opus 5 (Dux of window W-VO-E, implements directly)
   - lane: VO-E-council-codex
     role: review
-    seat: codex-gpt-5.6-sol (OpenAI, codex exec --sandbox read-only, six rounds on the merge-base diff)
+    seat: codex-gpt-5.6-sol (OpenAI, codex exec --sandbox read-only, eight rounds on the merge-base diff)
   - lane: VO-E-council-gemini
     role: review
     seat: agy-gemini-3.1-pro (Google, agy --model gemini-3.1-pro-high -p, text-only, RESERVE seat — see seat_fallback_reason)
@@ -162,6 +162,25 @@ decisions:
       before/after rows). Both seats re-ran narrowly on the fix: codex round 6
       OK (derived 67/15/2/0 and 60/15/1/8 from the merge-base file), agy round
       7 OK.
+  - id: D-sibling-race-6466
+    decision: >-
+      The first push (8687693deb, PR #6470) went red in CI for ONE cause.
+      #6466 (seq-21 freeze) merged into main at 2026-09-13T18:45:17Z, after
+      this branch's merge-base and while this window was mid-council. It
+      registered ten new wire facts and regenerated the 84 existing fixtures,
+      but not this branch's ten, so walk-corpus-determinism failed 10/96. It
+      also added test_seq21_pack.py, whose census pin read 67 over the corpus
+      ("assert 76 == 67"). Neither check could fail locally before the push:
+      the pin did not exist at the merge-base, and the fixtures were
+      byte-reproducible against the merge-base generator. Cure: auto-merge
+      disarmed first (the armed branch is frozen), then origin/main MERGED in
+      (de2836423d). It was a merge, not a rebase, because the branch was
+      already pushed and force-push is banned. The generator was re-run:
+      exactly the ten W-VO-E fixtures changed, +340/-0. The seq-21 pin moved
+      to the measured 76 / 15 / 2 / 1, with the hold pinned by walk
+      (8caa54f99c). Two docstrings the council then found stale were fixed in
+      02fd13a804. This is a second push on a window told to push once,
+      recorded here rather than hidden.
   - id: D-rebase
     decision: >-
       Mid-window, origin/main gained a SIBLING PR (#6442) that added a
@@ -318,17 +337,29 @@ receipts:
     exit: 0
     ts: "2026-09-13T23:40:00+08:00"
     seat: Claude Opus 5
-  - claim: The council actually sat — codex-gpt-5.6-sol six rounds, reserve agy-gemini-3.1-pro two rounds on the final state — and every transcript in this pack is the run that produced the verdict it records.
-    cmd: codex exec --sandbox read-only -m gpt-5.6-sol (rounds 1-6) ; agy --model gemini-3.1-pro-high -p (rounds 6-7, text-only, patch inlined) ; kimi -p / qwen -p liveness probes
-    result: "codex DEFECT / DEFECT / DEFECT / DEFECT / OK (45c863326b) / OK (e7e1034edf); agy-gemini-3.1-pro DEFECT (45c863326b, one MEDIUM docstring finding, fixed in e7e1034edf) / OK (e7e1034edf). Last line of council/codex-round6.txt and council/agy-gemini-3.1-pro-round7.txt is `VERDICT: OK`. kimi-code/k3 exit 1 (403 monthly limit) and tp1-qwen3.8-max exit 1 (429 weekly quota) at 2026-09-13T17:11:04Z, journaled unavailable. The unpinned round-3 `agy-gemini` row is journaled NOT COUNTED."
+  - claim: The council actually sat — codex-gpt-5.6-sol eight rounds, reserve agy-gemini-3.1-pro four rounds on the final states — and every transcript in this pack is the run that produced the verdict it records.
+    cmd: codex exec --sandbox read-only -m gpt-5.6-sol (rounds 1-8) ; agy --model gemini-3.1-pro-high -p (rounds 6-9, text-only, patch inlined) ; kimi -p / qwen -p liveness probes
+    result: "codex DEFECT x4 / OK (45c863326b) / OK (e7e1034edf) / DEFECT (8caa54f99c, two stale docstrings, fixed in 02fd13a804) / OK (02fd13a804). agy-gemini-3.1-pro DEFECT (45c863326b, fixed in e7e1034edf) / OK (e7e1034edf) / OK (8caa54f99c) / OK (02fd13a804). The last line of council/codex-round8.txt and council/agy-gemini-3.1-pro-round9.txt is `VERDICT: OK`. kimi-code/k3 answered 403 and tp1-qwen3.8-max answered 429 at 2026-09-13T17:11:04Z; both are journaled unavailable."
     exit: 0
-    ts: "2026-09-13T19:30:18Z"
+    ts: "2026-09-13T20:21:38Z"
+    seat: Claude Opus 5
+  - claim: SIBLING RACE — the first push's CI reds are named from their logs, and cured.
+    cmd: gh run view 34778815938 --job 103782067378 --log-failed ; --job 103782067405 --log-failed ; gh run view 34778816011 --job 103781919496 --log-failed
+    result: "Backend Shard 3: 'FAILED backend/tests/services/visa_engine/test_seq21_pack.py::TestCensusReplay::test_the_census_is_still_67_answers_15_no_paths_2_questions - assert 76 == 67' (1 failed, 3412 passed). Frontend Tests: 'walk-corpus-determinism.test.ts (96 tests | 10 failed)', 'Test Files 1 failed | 483 passed'. Harness floor recompute: 'harness_gate_read: PENDING — no harness/fable-gate verdict has been posted yet on this commit' (expected, not a defect). Backend Tests (Python) and Test Summary are aggregators of the two."
+    exit: 1
+    ts: "2026-09-13T19:58:00Z"
+    seat: Claude Opus 5
+  - claim: SIBLING RACE — after the merge and regeneration, the corpus readers are green on the final head.
+    cmd: gh pr merge --disable-auto 6470 ; git merge origin/main ; tsx generate-walk-corpus.ts ; pytest test_interview_walk_census.py test_seq21_pack.py ; vitest run "src/app/(visa-oracle)" ; prettier --check ; ruff ; scratchpad seq21_census.py (the module's own _replay over 94 walks)
+    result: "wrote 94 walks, git status shows exactly the ten W-VO-E fixtures modified (+340/-0). seq-20 and seq-21 replay both {HUMAN_REVIEW_REQUIRED 1, NEEDS_INPUT 2, NO_SUPPORTED_PATH 15, SUPPORTED_CANDIDATES 76}, drift [], held ['offshore/family/PARENT/spNat=IT/minor'], 27 distinct public products on both packs. pytest census+seq21: 84 passed (129.21s); seq21 alone after 02fd13a804: 51 passed. vitest Oracle surface: Test Files 40 passed, Tests 856 passed. prettier: All matched files use Prettier code style! ruff check/format: clean."
+    exit: 0
+    ts: "2026-09-13T20:14:00Z"
     seat: Claude Opus 5
   - claim: RESUMED SESSION — the floor on the COMPLETE change set, evidence staged, is 3, so gear 3 is also the floor and not only judgement.
     cmd: git add evidence/... ; git diff --cached --name-only 137204768c ; git diff --cached --numstat 137204768c ; python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <cf> --numstat-file <ns>
-    result: "floor 3 on 26 files, +3742/-37 (measured with this pack staged, just before this receipt was added, so the committed count is a few lines higher). Without the evidence, 13 files +2322/-37, the same command printed 2."
+    result: "First push (merge-base 137204768c): floor 3 on 26 files, +3742/-37 with the pack staged; without the evidence, 13 files +2322/-37, the same command printed 2. Final head (merge-base 77af6c7ada after merging origin/main): floor 3 on 31 files, +4470/-47, measured with this pack staged just before this sentence was written, so the committed count is a few lines higher."
     exit: 0
-    ts: "2026-09-13T19:45:00Z"
+    ts: "2026-09-13T20:23:00Z"
     seat: Claude Opus 5
   - claim: RESUMED SESSION — the census suite is green on the final head.
     cmd: cd apps/backend-rag && JWT_SECRET_KEY=<throwaway, 48 chars> API_KEYS=<throwaway> .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/visa_engine/test_interview_walk_census.py
@@ -413,6 +444,28 @@ dissent:
       and credited to the round that caught them, rather than quietly deleted;
       the counts are 69/15/1/9 and 86 (= 94 - 8), each carrying the superseded
       figure so the next reader can tell a correction from a typo.
+  - seat: codex-gpt-5.6-sol (council round 7, on the sibling-race cure)
+    objection: >-
+      The cure is correct, but two sentences in test_seq21_pack.py are now
+      false: a docstring said the corpus "does not yet carry the ten new facts"
+      (it carries them as UNKNOWN/NOT_ASKED), and the no-path copy guard said
+      it measures "the 84 walks" (94 now).
+    status: CONFIRMED
+    cure: >-
+      Fixed at depth 1 in 02fd13a804, docstrings only; codex round 8 OK (940/940
+      fact cells UNKNOWN/NOT_ASKED measured), agy round 9 OK.
+  - seat: Claude Opus 5 (self-refutation, on "push once, complete")
+    objection: >-
+      The window was told to push once, complete. It pushed twice, and the
+      first push was red.
+    status: CONFIRMED
+    cure: >-
+      Not curable after the fact, only explained (decision D-sibling-race-6466).
+      Both reds came from a sibling merged mid-window, after the merge-base.
+      Neither red was reproducible against the merge-base the first push was
+      tested on. The branch was disarmed before any further commit, merged
+      rather than rebased, and re-armed only after the council re-sat on the
+      final head.
   - seat: agy-gemini-3.1-pro (council round 6, reserve seat)
     objection: >-
       The census module docstring said W-VO-E "moved both columns by the same
