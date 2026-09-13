@@ -7,18 +7,26 @@
  * and token reads as apps/mouth/src/app/portal/(authenticated)/page.tsx
  * (concept-F) and apps/mouth/src/app/(workspace)/garuda-voa/r19.tsx (PR
  * #6411), page-local so nothing shared is restyled. See garuda-voa/r19.tsx
- * for the fuller doc block this one intentionally does not repeat.
+ * for the fuller doc block this one intentionally does not repeat. Only the
+ * primitives this widget actually uses are kept here (no Masthead/
+ * ProgressBar/SECTION_H2 — the hero band and the position scale need
+ * custom markup PortalChallengeWidget.tsx owns directly).
  *
- * FOUR COLOUR MEANINGS, one vocabulary, read from the theme layer:
- *   done / healthy  -> --state-success
- *   ours / moving   -> --state-info
- *   needs you       -> --bz-copper / --bz-copper-text
- *   waiting         -> --tx-secondary
+ * COLOUR MEANINGS actually used on THIS widget, read from the theme layer:
+ *   needs you / mine -> --bz-copper / --bz-copper-text
+ *   waiting          -> --tx-secondary
+ *   solid ink chip   -> --tx-pure (fill) / --bz-surface (text) — for the
+ *                       "Tax" badge, which the shared idiom would otherwise
+ *                       give --state-info (a BLUE, #1d4ed8 on kita's
+ *                       [data-theme="operative-light"] block) — forbidden by
+ *                       brand. `ok`/`ours` stay declared for idiom parity
+ *                       with garuda-voa/r19.tsx but are never applied here:
+ *                       --state-success is GREEN (#147a3a) and --state-info
+ *                       is BLUE (#1d4ed8) on kita.
  *
- * NO RED ON THIS WIDGET. --state-danger is never read here — the challenge
- * has no failure state worth alarming over, only "not yet" (wait) and "you're
- * close" (you, copper). r19.test.tsx fails if a danger read or a hardcoded
- * hex comes back in this widget's own files.
+ * NO RED ON THIS WIDGET. --state-danger is never read here. r19.test.tsx
+ * fails if a danger read or a hardcoded hex comes back in this widget's own
+ * files.
  */
 
 import React from "react";
@@ -32,22 +40,24 @@ export const SERIF: React.CSSProperties = {
 
 export const EYEBROW =
   "text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--tx-secondary)]";
-export const SECTION_H2 = "text-[24px] leading-[1.14] tracking-[-0.02em]";
 export const HAIRLINE = "border border-[var(--bz-border)]";
 export const CARD = `rounded-lg bg-[var(--bz-surface)] ${HAIRLINE}`;
 export const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]";
 
-export type PillTone = "ok" | "ours" | "you" | "wait";
+export type PillTone = "ok" | "ours" | "you" | "wait" | "ink";
 
 export const PILL_TONE: Record<PillTone, string> = {
   ok: "text-[var(--state-success)] border-[var(--state-success)]",
   ours: "text-[var(--state-info)] border-[var(--state-info)]",
   you: "text-[var(--bz-copper-text)] border-[var(--bz-copper)]",
   wait: "text-[var(--tx-secondary)] border-[var(--bz-border-hover)]",
+  // Solid ink chip (dark fill, paper text) — the brand-safe stand-in for a
+  // second pill colour on kita, see the doc block above.
+  ink: "text-[var(--bz-surface)] bg-[var(--tx-pure)] border-[var(--tx-pure)]",
 };
 
-/** Outlined status pill — one vocabulary, four meanings, never a filled state. */
+/** Outlined status pill — one vocabulary, never a filled state except `ink`. */
 export function StatePill({
   tone,
   label,
@@ -71,77 +81,5 @@ export function StatePill({
       />
       {label}
     </span>
-  );
-}
-
-/** Copper rule + Fraunces headline, the R19 masthead idiom. */
-export function Masthead({
-  eyebrow,
-  title,
-  subtitle,
-}: {
-  eyebrow?: string;
-  title: React.ReactNode;
-  subtitle?: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div
-        aria-hidden="true"
-        className="mb-3 h-[3px] w-14 rounded-sm bg-[var(--bz-copper)]"
-      />
-      {eyebrow && <p className={cn(EYEBROW, "mb-2")}>{eyebrow}</p>}
-      <h2 className={cn(SECTION_H2, "text-[var(--tx-pure)]")} style={SERIF}>
-        {title}
-      </h2>
-      {subtitle && (
-        <p className="mt-1.5 text-[13px] text-[var(--tx-secondary)]">
-          {subtitle}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/** Copper progress bar with threshold markers — used for "to next tier". */
-export function ProgressBar({
-  value,
-  max,
-  markers,
-  toneClassName,
-}: {
-  value: number;
-  max: number;
-  markers?: number[];
-  toneClassName?: string;
-}) {
-  const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
-  return (
-    <div
-      role="progressbar"
-      aria-valuenow={Math.round(pct)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      className="relative h-2 w-full overflow-hidden rounded-full bg-[var(--bz-border)]"
-    >
-      <div
-        className={cn(
-          "h-full rounded-full bg-[var(--bz-copper)] transition-[width] duration-700 ease-out motion-reduce:transition-none",
-          toneClassName,
-        )}
-        style={{ width: `${pct}%` }}
-      />
-      {markers?.map((m) => {
-        const markerPct = max > 0 ? Math.min(100, (m / max) * 100) : 0;
-        return (
-          <span
-            key={m}
-            aria-hidden="true"
-            className="absolute top-0 h-full w-px bg-[var(--bz-base)]/60"
-            style={{ left: `${markerPct}%` }}
-          />
-        );
-      })}
-    </div>
   );
 }

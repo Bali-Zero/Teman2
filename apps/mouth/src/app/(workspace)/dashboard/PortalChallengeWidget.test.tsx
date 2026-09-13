@@ -125,7 +125,7 @@ describe("PodiumCard", () => {
     expect(screen.getByText("22")).toBeInTheDocument();
   });
 
-  it("shows 'belum ada' and the gap to the leading contender", () => {
+  it("shows 'Belum ada' and the gap to the leading contender", () => {
     render(
       <PodiumCard
         tier={1}
@@ -134,8 +134,22 @@ describe("PodiumCard", () => {
         entries={[entry({ award_tier: null, activations: 14 })]}
       />,
     );
-    expect(screen.getByText("belum ada")).toBeInTheDocument();
-    expect(screen.getByText("kurang 6")).toBeInTheDocument();
+    expect(screen.getByText("Belum ada")).toBeInTheDocument();
+    expect(screen.getByText("butuh 6 lagi")).toBeInTheDocument();
+  });
+
+  it("shows the inviting zero-state copy instead of a gap count", () => {
+    render(
+      <PodiumCard
+        tier={3}
+        threshold={10}
+        prizeIdr={700_000}
+        entries={[entry({ award_tier: null, activations: 0 })]}
+        isZeroState
+      />,
+    );
+    expect(screen.getByText("Ayo jadi yang pertama!")).toBeInTheDocument();
+    expect(screen.queryByText(/butuh/)).not.toBeInTheDocument();
   });
 });
 
@@ -161,7 +175,7 @@ describe("PortalChallengeWidget", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the empty/zero state when no one has activated yet", () => {
+  it("renders the empty/zero-activation state with inviting copy, not a wall of zeros", () => {
     mockQuery(
       response({
         team_total_activations: 0,
@@ -171,11 +185,43 @@ describe("PortalChallengeWidget", () => {
     );
     render(<PortalChallengeWidget identity="ari@balizero.com" />);
     expect(screen.getByTestId("portal-challenge-widget")).toBeInTheDocument();
+    expect(screen.getByText(/jadilah yang pertama/i)).toBeInTheDocument();
     expect(screen.getByText("Belum ada aktivasi tercatat")).toBeInTheDocument();
-    expect(screen.getByText(/0 klien aktivasi/)).toBeInTheDocument();
+    expect(screen.getAllByText("Ayo jadi yang pertama!")).toHaveLength(3);
   });
 
-  it("renders the is_me card with rank, activations and progress", () => {
+  it("ranks alphabetically with a '–' rank marker in the zero-activation state", () => {
+    mockQuery(
+      response({
+        team_total_activations: 0,
+        entries: [
+          entry({
+            member: "b@x.com",
+            display_name: "Budi",
+            rank: 1,
+            activations: 0,
+            award_tier: null,
+          }),
+          entry({
+            member: "a@x.com",
+            display_name: "Ari",
+            rank: 2,
+            activations: 0,
+            award_tier: null,
+          }),
+        ],
+        recent_activations: [],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const rankMarkers = screen.getAllByText("–");
+    expect(rankMarkers).toHaveLength(2);
+    // Alphabetical: Ari before Budi, regardless of the backend-given rank.
+    const names = screen.getAllByText(/^(Ari|Budi)$/).map((n) => n.textContent);
+    expect(names).toEqual(["Ari", "Budi"]);
+  });
+
+  it("renders the is_me card with rank, activations and the next-tier line", () => {
     mockQuery(
       response({
         entries: [
@@ -185,7 +231,7 @@ describe("PortalChallengeWidget", () => {
             activations: 12,
             next_tier_threshold: 15,
             to_next_tier: 3,
-            total_prize_idr: 700_000,
+            total_prize_idr: 0,
           }),
         ],
       }),
@@ -193,8 +239,33 @@ describe("PortalChallengeWidget", () => {
     render(<PortalChallengeWidget identity="ari@balizero.com" />);
     const card = within(screen.getByTestId("my-position-card"));
     expect(card.getByText("Rank #4")).toBeInTheDocument();
-    expect(card.getByText("3 lagi menuju 15 aktivasi")).toBeInTheDocument();
-    expect(card.getByText("Rp 700.000")).toBeInTheDocument();
+    expect(card.getByText("12")).toBeInTheDocument();
+    expect(
+      card.getByText("3 lagi untuk Juara 2 — Rp 1.500.000"),
+    ).toBeInTheDocument();
+    // The fixed 0..20 scale always shows all three tier labels.
+    expect(card.getByText("Juara 1")).toBeInTheDocument();
+    expect(card.getByText("Juara 2")).toBeInTheDocument();
+    expect(card.getByText("Juara 3")).toBeInTheDocument();
+  });
+
+  it("mentions the super bonus for a tax member chasing a tier", () => {
+    mockQuery(
+      response({
+        entries: [
+          entry({
+            is_me: true,
+            is_tax: true,
+            activations: 6,
+            next_tier_threshold: 10,
+            to_next_tier: 4,
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const card = within(screen.getByTestId("my-position-card"));
+    expect(card.getByText(/SUPER BONUS/)).toBeInTheDocument();
   });
 
   it("shows the placeholder position card when the viewer has no entry", () => {
@@ -205,7 +276,7 @@ describe("PortalChallengeWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("tax strip: shows the super bonus branch when a tax member is on the podium", () => {
+  it("tax strip: shows the super bonus branch and the tax mini-ranking", () => {
     mockQuery(
       response({
         entries: [
@@ -222,6 +293,8 @@ describe("PortalChallengeWidget", () => {
     const strip = within(screen.getByTestId("tax-strip"));
     expect(strip.getByText(/SUPER BONUS/)).toBeInTheDocument();
     expect(strip.getByText("Rp 1.500.000")).toBeInTheDocument();
+    expect(strip.getAllByText("Rina").length).toBeGreaterThan(0);
+    expect(strip.getByText("16")).toBeInTheDocument();
   });
 
   it("tax strip: shows the best-tax fallback branch below the podium threshold", () => {
@@ -238,8 +311,9 @@ describe("PortalChallengeWidget", () => {
       }),
     );
     render(<PortalChallengeWidget identity="ari@balizero.com" />);
-    expect(screen.getByText(/memimpin/)).toBeInTheDocument();
-    expect(screen.getByText("Rp 1.000.000")).toBeInTheDocument();
+    const strip = within(screen.getByTestId("tax-strip"));
+    expect(strip.getByText(/memimpin/)).toBeInTheDocument();
+    expect(strip.getByText("Rp 1.000.000")).toBeInTheDocument();
   });
 
   it("tax strip: shows the not-yet-eligible branch under the fallback threshold", () => {
@@ -256,7 +330,19 @@ describe("PortalChallengeWidget", () => {
       }),
     );
     render(<PortalChallengeWidget identity="ari@balizero.com" />);
-    expect(screen.getByText(/Belum ada anggota Tim Tax/)).toBeInTheDocument();
+    const strip = within(screen.getByTestId("tax-strip"));
+    expect(strip.getByText(/Belum ada anggota Tim Tax/)).toBeInTheDocument();
+  });
+
+  it("tax pill never carries the shared idiom's blue --state-info tone", () => {
+    mockQuery(
+      response({
+        entries: [entry({ is_tax: true, display_name: "Rina" })],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const pill = screen.getByText("Tax");
+    expect(pill.closest("span")?.className).not.toContain("--state-info");
   });
 
   it("ranking list expands beyond the first five rows on demand", () => {
@@ -276,6 +362,32 @@ describe("PortalChallengeWidget", () => {
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Member 6")).toBeInTheDocument();
+  });
+
+  it("feed marks activity from the last hour with a copper dot", () => {
+    // The widget reads the real wall clock (useNow), not `generated_at` —
+    // pin it so "5 min ago" / "8h ago" are stable relative to the fixture.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-20T04:00:00Z"));
+    try {
+      mockQuery(
+        response({
+          recent_activations: [
+            { display_name: "Ari", at: "2026-09-20T03:55:00Z" }, // 5 min ago
+            { display_name: "Rina", at: "2026-09-19T20:00:00Z" }, // 8h ago
+          ],
+        }),
+      );
+      render(<PortalChallengeWidget identity="ari@balizero.com" />);
+      const feed = within(screen.getByTestId("live-feed"));
+      const items = feed
+        .getAllByText(/^(Ari|Rina)$/)
+        .map((el) => el.closest("li"));
+      expect(items[0]?.querySelector("span[aria-hidden]")).not.toBeNull();
+      expect(items[1]?.querySelector("span[aria-hidden]")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("opens and closes the rules drawer", () => {
