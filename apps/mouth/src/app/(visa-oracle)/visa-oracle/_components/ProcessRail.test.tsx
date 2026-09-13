@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import { render, within } from "@testing-library/react";
 import {
   ProcessBranches,
@@ -10,6 +11,7 @@ import {
   getProcessModel,
   initialFlowState,
   QUESTIONS,
+  shouldAskRenewalPaid,
   type OracleNode,
 } from "../_lib/flow";
 
@@ -889,5 +891,76 @@ describe("council round 10", () => {
       expect(text).not.toMatch(/the fact it sets|fakta yang ditetapkannya/);
       unmount();
     }
+  });
+});
+
+describe("a path that crossed a date boundary (council round 13)", () => {
+  // `renewal_paid` is asked only once the permit has expired, read against
+  // the clock. An interview that passed the permit questions BEFORE the
+  // expiry date and is rendered AFTER it must not gain an unasked step.
+  const BEFORE = new Date("2026-09-01T00:00:00Z");
+  const AFTER = new Date("2026-09-20T00:00:00Z");
+  const ANSWERS: Record<string, string> = {
+    in_indonesia: "yes",
+    permit_expiry: "2026-09-10",
+    holds_stay_permit: "yes",
+    overstay_days: "0",
+  };
+
+  function onshoreWalk() {
+    let state = flowReducer(initialFlowState("en"), { type: "ADVANCE" });
+    for (let guard = 0; guard < 12; guard += 1) {
+      const node = state.history[state.history.length - 1];
+      if (node.kind !== "question" || node.questionId === "application_channel")
+        return state;
+      const value =
+        ANSWERS[node.questionId] ?? QUESTIONS[node.questionId].options[0]?.key;
+      state = flowReducer(state, {
+        type: "ANSWER",
+        questionId: node.questionId,
+        value,
+        today: BEFORE,
+      });
+    }
+    throw new Error("the walk did not reach application_channel");
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not count a question the path never asked as a pending step behind the visitor", () => {
+    const state = onshoreWalk();
+    expect(
+      state.history.some(
+        (n) => n.kind === "question" && n.questionId === "renewal_paid",
+      ),
+    ).toBe(false);
+    expect(shouldAskRenewalPaid(state.facts, BEFORE)).toBe(false);
+    expect(shouldAskRenewalPaid(state.facts, AFTER)).toBe(true);
+    const current = state.history[state.history.length - 1];
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(BEFORE);
+    const then = m(current, state.facts);
+    vi.setSystemTime(AFTER);
+    const later = m(current, state.facts);
+
+    expect(later.trunk.some((step) => step.id === "renewal_paid")).toBe(false);
+    expect(later.totalQuestions).toBe(then.totalQuestions);
+    expect(later.answeredQuestions).toBe(then.answeredQuestions);
+  });
+
+  it("does not either at the engine's follow-up, where the whole spine is behind", () => {
+    const state = onshoreWalk();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(AFTER);
+    const model = m(
+      { kind: "question", questionId: "family_sponsor_confirmed" },
+      state.facts,
+      true,
+    );
+    expect(model.trunk.some((step) => step.id === "renewal_paid")).toBe(false);
+    expect(model.totalQuestions).toBe(model.answeredQuestions + 1);
   });
 });

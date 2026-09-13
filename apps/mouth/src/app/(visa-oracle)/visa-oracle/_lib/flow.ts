@@ -1803,7 +1803,31 @@ export function getProcessModel(
   // verdict: the outcome stays the LAST node of the tree, so an answered
   // question never ends the breadcrumb while the visitor is looking at the
   // verdict (council round 7).
-  const trunk: TreeStep[] = [...remapped];
+  // A question behind the frontier with no answer was never asked on this
+  // path. `getTreeSteps` rebuilds `order` from the facts and TODAY's clock
+  // (`shouldAskRenewalPaid`), so an interview resumed across the day its
+  // permit expires gains `renewal_paid` as "pending" behind a question the
+  // visitor already passed — and the rail turned that into "6 of 13
+  // answered" on a path that holds 12 (council round 13). Behind the
+  // frontier means before the current spine step or, at the engine's
+  // follow-up, anywhere on the spine: the verdict was reached, so every
+  // spine question it needed was answered. Ahead of the frontier, and on
+  // an off-spine question that is not a follow-up, unanswered steps are
+  // the path still to come and stay.
+  const frontier = offSpine
+    ? atFollowUp
+      ? remapped.length
+      : -1
+    : remapped.findIndex((step) => step.status === "current");
+  const onPath = remapped.filter(
+    (step, index) =>
+      !(
+        index < frontier &&
+        Object.prototype.hasOwnProperty.call(QUESTIONS, step.id) &&
+        facts[step.id] === undefined
+      ),
+  );
+  const trunk: TreeStep[] = [...onPath];
   for (const extra of extras) {
     const phase = phaseOfStep(extra.id);
     const sameStage = trunk
