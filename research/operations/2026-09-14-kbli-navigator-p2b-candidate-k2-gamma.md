@@ -20,10 +20,16 @@
 Run integrity, both: 87 rows = 29 x 3, `complete=True`, categories `{answered: 87}`, no
 synthesized row, no duplicate, 0 runner errors, one dataset sha on every row.
 
-The two scorers disagree on exactly one question, and not because of their code: **Q20** is
-`correct/correct/correct` from the main-scorer judge prompts and `wrong/wrong/correct` from the
-row-identity judge prompts, on the SAME answers. Floor (ii) therefore reads 4/8 or 3/8 depending
-on which judge prompt saw Q20 — a measured judge instability, declared, not resolved by picking.
+The two score files disagree on exactly one question, **Q20**, on the SAME answers:
+`correct/correct/correct` in the main-scorer judging, `wrong/wrong/correct` in the row-identity
+judging. The two judge prompts differ (sha256 `a4c5f0b1…` and `0f4d792c…`), so a single pair
+cannot separate judge variance from prompt sensitivity. Measured afterwards by re-judging Q20
+twice more with EACH byte-identical prompt (`q20_repeat_judgings/`): main prompt `wrong/wrong/correct`
+twice, row-identity prompt `wrong/wrong/correct` once and `correct/correct/correct` once. The same
+prompt yields both outcomes, so the flip is judge variance, and across the six judgings Q20's
+majority is `wrong` in four. Only Q20 was re-judged: holding the other seven structured verdicts
+(identical in both full judgings), floor (ii) reads 3/8 in four of the six Q20 judgings and 4/8 in
+two, and the committed main score (4/8) is one of those two. No outcome turns the gate green.
 
 **Why two scorers.** The window brief asked for scoring "under the row-identity contract". That
 contract (`scripts/kbli_bench/ROW_IDENTITY_CONTRACT.md` on branch `agent/air-m5/ops/k2-row-identity`,
@@ -83,7 +89,7 @@ one of them, and none to the allow-list, which changes nothing about serving whe
 | Q05 | wrong x3 | wrong x3 / wrong x3 | 68111 supported; the answer never states 68200 is absent from the KBLI 2025 catalogue |
 | Q11 | wrong x3 | wrong x3 / wrong x3 | package holds 56101 and 56303; the answer never presents 56101 as the unblocked option |
 | Q13 | abstained x3 | abstained/correct/abstained (both) | runs 1 and 3 rejected by the app's answer gate: `percentCodeMismatch` on the user's own 51% |
-| Q20 | wrong/correct/correct | correct x3 / wrong/wrong/correct | judge-sensitive (section 0) |
+| Q20 | wrong/correct/correct | correct x3 / wrong/wrong/correct | judge variance on identical prompts; majority `wrong` in 4 of 6 judgings (section 0) |
 | Q21 | correct x3 | correct x3 (both) | |
 | Q22 | correct x3 | correct/correct/abstained (both) | run 3 rejected by the gate: `percentCodeMismatch(25200, claimed 100, actual 49)` on a negated 100% |
 | Q23 | wrong x3 | wrong x3 (both) | names only 64330; never states the Low + Medium-Low class scope |
@@ -104,7 +110,7 @@ answer. Question it would address: **Q23**. No lexical re-weight was made.
 
 - The app answer gate over-matches a user's own figure and a negated figure: Q13 runs 1/3, Q22 run 3.
 - Answer framing against the served verdict: Q11, Q23, Q26 run 1; Q05's absent-code statement.
-- Q20's judge instability: the floor moves by one question with the judge prompt.
+- Q20's judge variance: one sol judging per question cannot hold floor (ii) still; a judging protocol with repeats is the harness lane's to decide.
 - The row-identity contract rewrite and its re-gate; then re-score `p2b_answers.jsonl` (kept for that).
 - Hand-check: the judge reason of every structured row and the raw answers of Q05 r1, Q13 r1/r3,
   Q20 r1, Q22 r3, Q23 r1-3, Q26 r1 were read; the seeded random sample was not hand-read.

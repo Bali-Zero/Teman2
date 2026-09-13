@@ -21,7 +21,7 @@ constraints:
 acceptance:
   - A1 the canonical command on this branch reproduces main_scorer/p2b_score.json (JSON-equal; the committed copy is prettier-formatted).
   - A2 87 rows = 29 x 3, complete, one dataset sha (c69a260d) on every row, 0 runner errors.
-  - A3 every floor stated with numerator and denominator under both scorers, gate False stated, the Q20 judge disagreement named.
+  - A3 every floor stated with numerator and denominator under both scorers, gate False stated, the Q20 disagreement named and its cause measured (repeat judgings), not asserted.
   - A4 manifest carries commit, variant, bundle sha256, dataset sha256, runtime path and version, marker, built_on/built_at, run timestamps — generated, not typed.
   - A5 Q23 recorded as a leftover with its question id and the measured reason; no lexical re-weight.
 consumer_map:

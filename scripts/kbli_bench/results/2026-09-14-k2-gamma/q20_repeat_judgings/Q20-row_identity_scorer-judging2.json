@@ -1,0 +1,25 @@
+{
+  "qid": "Q20",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Batas 49% dan mayoritas tunggal benar, tetapi tidak menyatakan bahwa moratorium Bali tidak memblokir kode ini."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Batas 49% dan mayoritas tunggal benar, tetapi tidak menyatakan bahwa moratorium Bali tidak memblokir kode ini."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Batas 49%, syarat mayoritas tunggal nasional, dan OPEN_IN_BALI seluruhnya didukung oleh rekaman 51101."
+    }
+  ],
+  "_judging": {
+    "prompt": "row_identity_scorer",
+    "repeat": 2,
+    "prompt_sha256": "0f4d792c9f689a2297f809e045b4e33158917430cea9e825210f4587ea971a55"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "qid": "Q20",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Cap and national-majority condition are supported, but required Bali moratorium non-blocking status is omitted."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Cap and national-majority condition are supported, but required Bali moratorium non-blocking status is omitted."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Correctly states 49% cap, single national majority, and OPEN_IN_BALI, which follows from the supplied record."
+    }
+  ],
+  "_judging": {
+    "prompt": "main_scorer",
+    "repeat": 3,
+    "prompt_sha256": "a4c5f0b113d0bbeb0054f46c668b76bbce907601751c085021312dafaffd88be"
+  }
+}
