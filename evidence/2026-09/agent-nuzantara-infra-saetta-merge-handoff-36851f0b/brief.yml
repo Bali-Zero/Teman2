@@ -1,0 +1,37 @@
+task_id: saetta-merge-handoff
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Hand an exact signed PASS from the independent SAETTA gate to the authorized
+  release owner before merge, then require observed merge and consumer proof
+  before dependent slices start.
+constraints:
+  - BLUE mission; external builder prepares only. A Claude Dux reviews and releases.
+  - Keep PR 6456 frozen; this successor changes only scheduler, tests and runbook.
+  - The independent gate signs only; it never merges, re-arms or reruns CI.
+  - >-
+    The release owner may rerun an original pull_request Harness run once per
+    target only after proving its sole failure was the now-resolved absent
+    gate verdict on the same frozen head. Every other cause remains BLOCK.
+  - No manual merge, workflow dispatch substitution, candidate repair or guard bypass.
+acceptance:
+  - text: >-
+      A signed unmerged gate SHALL reach the release owner; invalid signatures,
+      targets or receipts SHALL prevent that dispatch. A release without true
+      merged status, exact targets and live receipt SHALL keep dependants closed.
+    probe: /opt/homebrew/bin/node --test infra/workflows/tests/test-saetta.mjs
+  - text: >-
+      A modeled missing-gate failure SHALL progress through signing, one diagnosed
+      release-owned rerun, normal merge and live proof before consumer dispatch.
+      Unrelated slices SHALL continue on BLOCK and close SHALL never upgrade BLOCK.
+    probe: /opt/homebrew/bin/node --test infra/workflows/tests/test-saetta.mjs
+consumer_map:
+  - scripts/saetta.py run consumes infra/workflows/saetta.js for new BLUE missions.
+  - The frozen Kita pilot manifest exercises dependency ordering in the scheduler suite.
+risks:
+  - Merge and retry read-backs remain agent attestations, not native DSL GitHub queries.
+  - Tests model the external release seat; live mission coordination still needs a pilot.
+grader: Fresh independent Opus 5 xhigh on the frozen remote head.
+budget: Existing subscription seats only; no provider invocation during preparation.
+pii: none
