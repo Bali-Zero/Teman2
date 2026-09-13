@@ -264,12 +264,17 @@ def test_floors_carry_denominators_and_the_canonical_command(score_mod, tmp_path
     assert report["judge_ground_truth_rule"].startswith("expected.codes UNION")
     assert report["class_rules"]["bali_moratorium_scope"]["applies_to"] == ["Q23"]
     assert report["class_rules"]["bali_moratorium_scope"]["declared_gap"]
-    # with no judge output, a decidably-good Q23 answer is UNJUDGED, never silently correct
+    # with no judge output, Q23 is UNJUDGED — the class rule reports, it does not decide
     assert set(report["per_question"]["Q23"]["runs"]) == {"unjudged"}
+    assert report["class_rules"]["bali_moratorium_scope"]["results"]["Q23"]["1"]["decidable_pass"] is True
 
 
-def test_a_decidably_bad_answer_is_wrong_without_any_judge(score_mod, tmp_path, monkeypatch, capsys):
-    """The class rule can still FAIL a question on its own — that half is decidable."""
+def test_the_class_rule_reports_and_never_overwrites_a_verdict(score_mod, tmp_path, monkeypatch, capsys):
+    """Fourth and final position of this rule. Four adversarial rounds produced a new free-text
+    defect every time — a negated phrase, polarity, `sementara` as "while", an en dash inside
+    "Medium-Low", the word "activities" instead of "KBLI". A classifier that keeps being wrong
+    about sentences must not be the thing that decides a floor, so it records its criteria and
+    the verdict stays with the judge."""
     corpus = json.loads(CORPUS_PATH.read_text())
     rows = [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
              "raw_answer": "Moratorium Bali berlaku untuk semua KBLI." if q["id"] == "Q23"
@@ -280,7 +285,46 @@ def test_a_decidably_bad_answer_is_wrong_without_any_judge(score_mod, tmp_path, 
     monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
     score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(tmp_path / "nojudge"))
     report = json.loads(capsys.readouterr().out)
-    assert set(report["per_question"]["Q23"]["runs"]) == {"wrong"}
+    res = report["class_rules"]["bali_moratorium_scope"]["results"]["Q23"]["1"]
+    assert res["decidable_pass"] is False, "the criteria still SAY the answer is short"
+    # …and the verdict is the judge's absence, not the rule's opinion
+    assert set(report["per_question"]["Q23"]["runs"]) == {"unjudged"}
+
+
+def test_council_r4_a_uniformly_missing_run_is_not_complete(score_mod, tmp_path, monkeypatch, capsys):
+    """Council round 4, codex-gpt-5.6-sol: inferring the run count from the largest observed row
+    count means dropping run 3 from EVERY question reports itself complete."""
+    corpus = json.loads(CORPUS_PATH.read_text())
+    rows = [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
+             "raw_answer": "The navigator does not carry that fact."}
+            for q in corpus["questions"] for run in (1, 2)]
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in rows))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(tmp_path / "nojudge"))
+    report = json.loads(capsys.readouterr().out)
+    assert report["denominators"]["runs_per_question"] == 3
+    assert report["run_integrity"]["expected_rows"] == 87
+    assert report["run_integrity"]["complete"] is False
+    assert report["gate"] is False, "a run that is not intact can never produce a green gate"
+
+
+def test_council_r4_a_synthesized_row_fails_the_gate(score_mod, tmp_path, monkeypatch, capsys):
+    """Council round 4, codex-gpt-5.6-sol: `gate` used to depend only on the four floors, so a
+    row for a question the corpus does not contain left it true."""
+    corpus = json.loads(CORPUS_PATH.read_text())
+    rows = [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
+             "raw_answer": "The navigator does not carry that fact."}
+            for q in corpus["questions"] for run in (1, 2, 3)]
+    rows.append({"qid": "Q99", "run": 1, "gate_ok": True, "package_codes": [], "raw_answer": "x"})
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in rows))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(tmp_path / "nojudge"))
+    report = json.loads(capsys.readouterr().out)
+    assert report["run_integrity"]["synthesized_rows"], report["run_integrity"]
+    assert report["run_integrity"]["complete"] is False
+    assert report["gate"] is False
 
 
 # ── run integrity: four distinct failure categories ───────────────────────────────────────

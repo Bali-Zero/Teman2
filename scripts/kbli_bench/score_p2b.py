@@ -126,6 +126,9 @@ ABSTAIN_MARKERS = [
 # NON_CLASSIFICABILE + 13 others), and 48 is only the codes whose status literally names the
 # moratorium. Neither 518 nor 48 answers the question, and quoting either as "the total" is
 # itself a defect — checked as a forbidden pattern below.
+# design §8: three independent runs per question. Declared here, never inferred.
+DESIGN_RUNS_PER_QUESTION = 3
+
 MORATORIUM_SOURCE = "B.27.000/642/PM/DPMPTSP"
 MORATORIUM_EFFECTIVE_PATTERNS = [
     r"2026-05-13", r"13[\s/.-]+0?5[\s/.-]+2026", r"13\s+mei\s+2026", r"13\s+may\s+2026",
@@ -472,22 +475,22 @@ def cmd_score(corpus_p, answers_p, judgedir):
             if viol:
                 fabrications.append({"qid": qid, "run": r["run"], "violations": viol})
                 verdict = "fabricated"
-            elif class_rule:
-                # The class rule can only FAIL a question, never pass one: its criteria are the
-                # decidable half, and the two semantic ones are deferred to the judge with the
-                # expectations stated verbatim in the payload.
-                chk = moratorium_scope_check(text)
-                class_rule_results.setdefault(qid, {})[r["run"]] = chk
-                if not chk["decidable_pass"]:
-                    verdict = "abstained" if looks_abstained(text) else "wrong"
-                elif jv:
-                    verdict = jv
-                else:
-                    verdict = "abstained" if looks_abstained(text) else "unjudged"
+            elif jv:
+                verdict = jv
             elif jv:
                 verdict = jv
             else:
                 verdict = "abstained" if looks_abstained(text) else "unjudged"
+            if class_rule:
+                # REPORT-ONLY, and this is the fourth and final position the rule takes. It
+                # records its token-level criteria next to the answer so the mandatory hand-check
+                # has something to read; it does NOT overwrite the verdict. Four adversarial
+                # rounds produced a new free-text defect every time (a negated phrase, polarity,
+                # `sementara` as the conjunction "while", an en dash inside "Medium-Low", the word
+                # "activities" instead of "KBLI"), and a classifier that keeps being wrong about
+                # sentences must not be the thing that decides a floor. The criteria stay explicit
+                # and in code; the VERDICT stays with the judge, which is given them verbatim.
+                class_rule_results.setdefault(qid, {})[r["run"]] = moratorium_scope_check(text)
             if verdict in ("fabricated", "wrong", "unjudged"):
                 flagged.append({"qid": qid, "run": r["run"], "verdict": verdict})
             rverd.append(verdict)
@@ -505,7 +508,11 @@ def cmd_score(corpus_p, answers_p, judgedir):
     gap_ok = sum(1 for qid in gaps if per_q[qid]["runs"] and all(v in ("abstained", "correct") for v in per_q[qid]["runs"]))
 
     n_s, n_g = len(structured), len(gaps)
-    n_runs = max((len(v) for v in byq.values()), default=0)
+    # DECLARED, never inferred from the rows. Inferring it from the largest observed row count
+    # means a run that is uniformly missing everywhere reports itself complete: drop run 3 from
+    # all 29 questions and the scorer concludes the design was 2 runs (council round 4,
+    # codex-gpt-5.6-sol). The design is 3 (§8), and the corpus may override it explicitly.
+    n_runs = int(corpus.get("meta", {}).get("runs_per_question") or DESIGN_RUNS_PER_QUESTION)
     # Machine-readable floors: every one carries its numerator, its denominator and the
     # threshold it is judged against. "I counted them" is not a measurement.
     floors = {
@@ -538,9 +545,15 @@ def cmd_score(corpus_p, answers_p, judgedir):
         [(q["id"], r["run"]) for q in corpus["questions"] for r in byq.get(q["id"], [])],
         k=max(1, int(0.2 * sum(len(v) for v in byq.values()))),
     )
+    integrity = run_integrity(rows, corpus, n_runs)
     report = {
-        "floors": floors, "gate": all(f["pass"] for f in floors.values()),
-        "run_integrity": run_integrity(rows, corpus, n_runs),
+        "floors": floors,
+        # A run that is not intact cannot produce a green gate, whatever the floors say: a
+        # synthesized or missing row is not a scoring detail, it is the measurement failing
+        # (council round 4, codex-gpt-5.6-sol — adding one row for a question the corpus does not
+        # contain used to leave `gate` true).
+        "gate": all(f["pass"] for f in floors.values()) and integrity["complete"],
+        "run_integrity": integrity,
         "denominators": {
             "structured": n_s, "known_gap_and_out_of_corpus": n_g,
             "questions": len(corpus["questions"]), "runs_per_question": n_runs,
