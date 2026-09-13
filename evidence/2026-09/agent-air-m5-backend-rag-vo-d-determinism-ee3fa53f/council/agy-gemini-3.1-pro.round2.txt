@@ -1,0 +1,11 @@
+# agy-gemini-3.1-pro council round2, judged head 382afea9af, full stdout (text-only run, diff embedded in the prompt; no preamble to cut)
+
+Here is the correctness review for the determinism/W-VO-D implementation.
+
+### Findings
+
+- **`apps/backend-rag/backend/services/visa_engine/evaluate_path.py`:1448**  
+  **Severity:** HIGH  
+  **Why:** **Lost pack rule holds on offline/engine-mode evaluations.** If an offline caller (using `review_as_conditions=False`) processes a persona that hits a pack rule hold (e.g. `ACTIVE_OVERSTAY`) and ALSO discloses a `CRIMINAL_RECORD`, the pack rule hold is silently and completely dropped. The list comprehension at line 1448 filters `review_reasons` to only keep `SOURCE_INTEGRITY_HOLD_CODES` alongside the new `criminal_cause`. Because it was evaluated in engine mode, the pack rule hold is not in `decision.conditions` yet, and because it wasn't a disclosure flag, it's not in `other_reasons` either. The engine-level hold vanishes from the payload entirely rather than being preserved or converted to a condition.
+
+VERDICT: DEFECT

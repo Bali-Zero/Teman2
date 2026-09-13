@@ -1,0 +1,277 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: VO3-W-VO-D-build
+    role: build
+    seat: Claude Opus 5 (Dux of window vo-d-determinism, implements directly, backend-rag + mouth)
+  - lane: VO3-W-VO-D-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (codex exec --sandbox read-only on the merge-base diff; rounds 1-2 ended in the seat's own context checkpoint with no verdict, rounds 3-5 VERDICT OK, round 5 on the shipped head 0c38b8fab6)
+  - lane: VO3-W-VO-D-council-agy
+    role: review
+    seat: agy-gemini-3.1-pro (agy --mode plan -p, text-only, the merge-base diff embedded in the prompt; reserve seat, see seat_fallback_reason)
+  - lane: vo-d-ground-truth
+    role: ground_truth
+    seat: session (M5) - this PR asserts no regulatory fact; its ground truth is Zero's ruling text, the imperator decision in the window brief, and code plus a signed pack already on the merge base
+    nb: >-
+      merge base 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e, three files read verbatim:
+      contracts/packs/rulepack-prod-020.signed.json (the highest signed production pack,
+      UNTOUCHED by this diff - `git diff --quiet <base> HEAD -- .../contracts/packs/` exits
+      0 - whose HUMAN_REVIEW-stage rules and hard filters the conversion reads),
+      services/visa_engine/evaluate_path.py (the five public adapters that emitted
+      HUMAN_REVIEW_REQUIRED, the "before" column of the PR's emitter table) and
+      services/visa_engine/evaluator.py (the GLOBAL pre-pass and per-product review stage,
+      and STAGE_EFFECT_TYPE's REQUIRE_REVIEW pin that makes the conversion unable to fail
+      open). The ruling sentences are quoted from the window brief into docs/rules/RULINGS.md.
+    query_hash: "6001f1d93c6363466f46ed8abd7221553551d48e830d04a0b2849ddbacc58765"
+    note: >-
+      query_hash = sha256 of the three files concatenated in that order, taken with
+      `for f in <the three>; do git show 8664b1ba30:"$f"; done | shasum -a 256`. Per-file:
+      rulepack-prod-020.signed.json
+      9cdf2c3151003c6b9ebfd0f403bea37dd92f1af32eb6f37c585980f73e769cbb ; evaluate_path.py
+      32fc622b57295f8a2a0e06fd9046f84536419585397a962327372ef7706e22eb ; evaluator.py
+      a26525b655ee1bee1e5f6900bd0f38e7323851bca655c1c914a30c10bcc26c0e. No NotebookLM
+      query exists for this lane and none was invented.
+council_run: council/journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve) replaced BOTH unavailable titolari, each observed by a
+  probe run in this session, never assumed: tp1-qwen3.8-max failed twice (`qwen -p
+  "Reply OK"` at ~2026-09-13T17:42Z and at 2026-09-13T19:28:20Z, both "429 Your
+  token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00
+  UTC"), so it is DEAD for this window; kimi-code/k3 answered `kimi -p "Reply OK"` at
+  2026-09-13T19:29:20Z with "403 You've reached your monthly usage limit for this
+  billing cycle". The third titolare, codex-gpt-5.6-sol, answered "OK" to its probe at
+  2026-09-13T19:28:06Z and sat the council.
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear DECLARED 3; the deterministic floor computed by evidence_pack_lint.py
+      --print-floor on the merge-base diff is 3, source "size" (36 files, +2372/-272 at
+      head 0c38b8fab6, before this evidence directory). The brief also declares it: the
+      diff lands under apps/backend-rag/**, where merging IS the deploy, and it changes
+      what the engine tells a visitor.
+  - id: D-one-pr
+    decision: >-
+      One PR for backend-rag and mouth. `Decision.conditions` is a wire-contract field:
+      contract.schema.json, schema.d.ts (regenerated, sha pin moved by the generator), the
+      mouth parser and view model must land together, or the deployed mouth rejects every
+      conditioned response as RESPONSE_INVARIANT and the visitor sees the error page.
+  - id: D-net-lines
+    decision: >-
+      Net +2100 before evidence, far above the contract's ~400 "where the work allows".
+      Declared rather than split, for D-one-pr's reason. The bulk is regenerated contract
+      (contract.schema.json +74, schema.d.ts +60), the EN/ID copy tables, the moved pins
+      with their reasons, and the new guard file; the runtime logic is the evaluator
+      review_as_conditions branch and five adapters.
+  - id: D-allowlist
+    decision: >-
+      The floor is an allowlist on reason-code IDENTITY (frozenset), not a substring test,
+      holding exactly {CRIMINAL_MATTER_DISCLOSED, DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE,
+      SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE} per the imperator decision; the brief's
+      earlier "exactly ONE emitter" sentence is superseded by that decision and the floor
+      test pins the three.
+  - id: D-engine-default
+    decision: >-
+      The engine default stays review_as_conditions=False so no offline caller changes
+      meaning silently; the endpoint, the census driver and the replay driver pass True.
+      The floor adapter still converts a default-mode review, as a net.
+  - id: D-seal-compat
+    decision: >-
+      An empty conditions tuple is omitted from the sealed core in both seal and verify,
+      so idempotency envelopes sealed before this deploy still verify on replay; a
+      non-empty tuple is inside the HMAC, and the tamper test mutates it.
+  - id: D-codes-kept
+    decision: >-
+      The brief suggested new condition names (SOURCE_REFRESH_PENDING, ASSISTED_PRODUCT).
+      The conditions reuse the codes the gates and the signed pack already emit
+      (*_SOURCE_STALE, *_SOURCE_FRESHNESS_UNKNOWN, pack review codes), carrying the
+      difference in next_step (AWAIT_SOURCE_REFRESH, ASSISTED_APPLICATION): a pack is
+      immutable here, and renaming at the adapter would make one fact two codes.
+  - id: D-replay-floor
+    decision: >-
+      PRODUCTION_REPLAY_EXPECTATIONS is a legal reading whose header forbids regenerating
+      it from engine runs, so it was not rewritten. The offline floor instead counts a
+      divergence as ruling-converted only when the legal row expected a non-allowlisted
+      hold, the engine no longer holds, and every expected cause is still NAMED (one pinned
+      rename, one pinned asked-first persona). Measured 10 literal + 7 converted = 17,
+      unexplained {1, 9, 10} unchanged.
+  - id: D-council-rounds
+    decision: >-
+      codex-gpt-5.6-sol rounds 1 and 2 ended in the seat's own harness context checkpoint
+      with no verdict (recorded ok:false, never counted); round 3 got a hard command budget
+      and returned OK, round 4 covered what round 3 had not read, round 5 judged the last
+      fix commit. agy-gemini-3.1-pro found real defects in rounds 1b, 2 and 3, each cured at
+      depth 1 with a guilt test that fails under mutation, and returned OK on the shipped
+      head in round 4. Both counted seats returned VERDICT OK on 0c38b8fab6; the only later
+      commit adds this evidence directory.
+receipts:
+  - claim: Council seats probed before the council (COMMON-ADD section D).
+    cmd: 'perl -e ''alarm 120; exec @ARGV'' -- codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check "Reply OK" ; qwen -p "Reply OK" ; agy --model gemini-3.1-pro --effort high --mode plan -p "Reply OK" ; kimi -p "Reply OK"'
+    result: "codex OK (exit 0) ; qwen 429 1-week quota exhausted, reset 09-18 08:39 UTC (exit 1, second failure) ; agy OK (exit 0) ; kimi 403 monthly usage limit"
+    exit: 0
+    ts: "2026-09-13T19:29:20Z"
+    seat: Claude Opus 5
+  - claim: D-1 - the visitor floor and the census guards pass on the shipped head.
+    cmd: .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/visa_engine/test_visitor_determinism_floor.py backend/tests/scripts/visa_engine/test_gold_replay_driver.py backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "58 passed at fe7d9d79c4 ; floor file 19 passed at 0c38b8fab6. Census printed ENGINE = FUNNEL: 67 SUPPORTED_CANDIDATES / 15 NO_SUPPORTED_PATH / 2 NEEDS_INPUT (0 HUMAN_REVIEW_REQUIRED asserted) ; ACTIVITY_BOUNDARY 6 walks conditioned, NOT_CERTAIN 2, outcomes moved 0"
+    exit: 0
+    ts: "2026-09-13T19:50:00Z"
+    seat: Claude Opus 5
+  - claim: The new guards have guilt - each fails when its fix is removed, then the file is restored byte-identical from a cp backup.
+    cmd: "remove `*_conditions_from_reasons(displaced_reasons)` ; remove the `condition_rule_ids = ...` rebinding ; drop ACTIVE_OVERSTAY in conditions_from_reasons ; cmp against the backup after each"
+    result: "criminal-displaced test 1 failed ; trace test 1 failed ; replay floor failed with converted {2,3,5,6,12,20} != {2,3,4,5,6,12,20} ; all three files restored (cmp exit 0)"
+    exit: 0
+    ts: "2026-09-13T19:47:40Z"
+    seat: Claude Opus 5
+  - claim: D-2..D-4 - the whole visa_engine backend suite has no NEW red on the shipped head; the reds equal the origin/main baseline set.
+    cmd: .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/visa_engine backend/tests/scripts/visa_engine backend/tests/unit/scripts/test_generate_openapi_schema_pin.py ; comm -13 <baseline failset> <branch failset>
+    result: "1 failed, 2525 passed, 1 skipped, 39 errors at 0c38b8fab6. 40 red ids, 0 not in the origin/main baseline run (which had 9 failed, 2310 passed, 39 errors). The reds are local-Postgres state (asyncpg DependentObjectsStillExistError, migration 264 already applied) in test_evaluate_endpoint.py / test_shadow_evidence.py / test_shadow_match.py and test_visa_engine_retention_fk_registry.py."
+    exit: 1
+    ts: "2026-09-13T20:02:00Z"
+    seat: Claude Opus 5
+  - claim: D-4 - contract drift and the openapi sha pin pass against the regenerated files.
+    cmd: .venv/bin/python -m pytest -p no:cacheprovider backend/tests/unit/scripts/test_generate_openapi_schema_pin.py backend/tests/services/visa_engine/test_schema_contracts.py
+    result: "150 passed"
+    exit: 0
+    ts: "2026-09-13T19:31:30Z"
+    seat: Claude Opus 5
+  - claim: D-5 - the mouth Visa Oracle suites and typecheck pass.
+    cmd: 'apps/mouth: node_modules/.bin/vitest run "src/app/(visa-oracle)" ; tsc --noEmit (pre-commit hook)'
+    result: "Test Files 40 passed (40) ; Tests 855 passed (855) ; tsc clean in the pre-commit of 0e189a884d"
+    exit: 0
+    ts: "2026-09-13T19:32:56Z"
+    seat: Claude Opus 5
+  - claim: D-5 - renders of the real interview, 1440 and 390, EN and ID, answered with the engine outcome computed for the same walk and flags.
+    cmd: "tsx vo-d-shots.mts against next dev on the worktree (synthetic walks: flagged-health, multi-purpose, minor, criminal)"
+    result: "16 PNGs under /Users/balizero/Desktop/R3-RENDERS-20260913/vo-d/ plus render-log.json; the flags the mouth sent matched the expected flags on every render; flagged-health shows C1 SUPPORTED with the health condition (EN and ID), minor shows NO_SUPPORTED_PATH with the guardian next step and no product, criminal shows the hold with its cause once and CONSULTANT_REVIEW as the only condition line"
+    exit: 0
+    ts: "2026-09-13T19:20:00Z"
+    seat: Claude Opus 5
+  - claim: D-6 baseline - production before this merge still holds a flagged synthetic walk.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.probe_evaluate --url https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate --payload <synthetic offshore/tourism walk + HEALTH_CONCERN>
+    result: "HTTP 200 ; mode='ENGINE' state='HUMAN_REVIEW_REQUIRED' ; conditions: none ; rule_pack sequence=20 version 2026.9.6 (traffic_source=synthetic_driver)"
+    exit: 0
+    ts: "2026-09-13T19:44:09Z"
+    seat: Claude Opus 5
+  - claim: D-gear - the deterministic floor on the merge-base diff.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <cf> --numstat-file <ns>
+    result: "floor 3 ; floor source size ; 36 files, +2372/-272"
+    exit: 0
+    ts: "2026-09-13T19:41:00Z"
+    seat: Claude Opus 5
+  - claim: Council seat codex-gpt-5.6-sol, five rounds on the merge-base diff, stdout excerpted under council/.
+    cmd: 'perl -e ''alarm 2400; exec @ARGV'' -- codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check -C <wt> -o <last> "<prompt>" < /dev/null'
+    result: "r1 NONE (checkpoint) ; r2 NONE (checkpoint, three risks named) ; r3 OK ; r4 OK (complementary scope) ; r5 OK on 0c38b8fab6. Transcripts are excerpts: raw 734 KB / 762 KB / 170 KB / 195 KB / r5 raw, each file header records raw bytes, lines and sha256."
+    exit: 0
+    ts: "2026-09-13T19:49:57Z"
+    seat: codex-gpt-5.6-sol
+  - claim: Council seat agy-gemini-3.1-pro (reserve), text-only with the diff embedded.
+    cmd: 'perl -e ''alarm 1800; exec @ARGV'' -- agy --model gemini-3.1-pro --effort high --mode plan -p "<prompt + diff>" < /dev/null'
+    result: "r1 no output (command tool auto-denied, not a review) ; r1b DEFECT ; r2 DEFECT ; r3 DEFECT ; r4 OK on 0c38b8fab6. Full stdout filed."
+    exit: 0
+    ts: "2026-09-13T19:53:10Z"
+    seat: agy-gemini-3.1-pro
+dissent:
+  - seat: agy-gemini-3.1-pro (council round 1b)
+    objection: >-
+      F1 the minor adapter dropped conditions already on a held decision; F3 a criminal
+      disclosure replaced a standing source-integrity hold; F4 the floor converted a review
+      carrying an allowlisted cause beside a non-allowlisted one wholesale, losing the hold.
+    status: CONFIRMED
+    cure: >-
+      0e189a884d - minor keeps conditions and returns early beside an integrity hold;
+      criminal keeps standing integrity holds before its own cause; the floor keeps the
+      hold on the allowlisted causes and names the rest. Guilt tests
+      test_minor_privacy_hold_keeps_conditions_and_an_integrity_hold and
+      test_an_allowlisted_hold_survives_a_non_allowlisted_cause_beside_it, both failing
+      under mutation.
+  - seat: agy-gemini-3.1-pro (council round 1b)
+    objection: >-
+      F2 the source gate overwrites an earlier hold; F5 the mouth cannot render a criminal
+      hold with empty source refs.
+    status: RETRACTED
+    cure: >-
+      Rejected with evidence, not re-raised in rounds 2-4: the gates return early unless the
+      state is SUPPORTED_CANDIDATES or NO_SUPPORTED_PATH; HUMAN_REVIEW_REQUIRED uses
+      requireReviewHoldRefs, which accepts an empty list, and the criminal render
+      succeeded at 1440/390 EN and ID.
+  - seat: agy-gemini-3.1-pro (council round 2) and codex-gpt-5.6-sol (round 2 checkpoint)
+    objection: >-
+      On an engine-mode HUMAN_REVIEW_REQUIRED decision the criminal adapter kept only
+      integrity holds and silently dropped every other review cause (e.g. ACTIVE_OVERSTAY).
+    status: CONFIRMED
+    cure: >-
+      fe7d9d79c4 - those causes ride as conditions (displaced_reasons); guilt test
+      test_a_criminal_hold_keeps_the_review_causes_it_replaces_as_conditions fails when the
+      line is removed.
+  - seat: codex-gpt-5.6-sol (round 2 checkpoint)
+    objection: >-
+      The replay floor's ruling_converted accepted any condition, no-path cause or missing
+      fact, so a converted persona could lose its cause and still count.
+    status: CONFIRMED
+    cure: >-
+      fe7d9d79c4 - every expected review code must stay named, with one pinned rename
+      (MINOR_GUARDIAN_PRIVACY_REVIEW -> GUARDIAN_MUST_APPLY) and one pinned asked-first
+      persona (20: exactly immigration.overstay_days).
+  - seat: codex-gpt-5.6-sol (round 2 checkpoint)
+    objection: >-
+      The mouth rejects a *_PRIMARY_SOURCE_NOT_APPLICABLE hold that cites a non-primary or
+      bad-URL source (reviewHoldSource), so that allowlisted hold renders as an error.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured here: reviewHoldSource and the gate's source_refs=invalid_refs are identical
+      on origin/main (git show origin/main), so this diff neither introduces nor worsens it;
+      recorded as a leftover. Codex round 3 and agy round 4 read the claim and did not
+      block on it.
+  - seat: agy-gemini-3.1-pro (council round 3)
+    objection: >-
+      F1 HIGH `proof.purpose_feasible` in the NO_SUPPORTED_PATH condition filter raises
+      AttributeError.
+    status: RETRACTED
+    cure: >-
+      Rejected with evidence (purpose_feasible is a field of the proof dataclass,
+      evaluator.py:308, set by finish() on every proof; persona 12 reaches NO_SUPPORTED_PATH
+      with a condition in passing tests); codex round 5 confirmed the claim false and agy
+      accepted the rejection in round 4.
+  - seat: agy-gemini-3.1-pro (council round 3)
+    objection: >-
+      F2 HIGH under review_as_conditions a per-product review rule named as a condition left
+      its trace node with applied_effect None, so trace_sha256 digested a rule that fired
+      and did nothing.
+    status: CONFIRMED
+    cure: >-
+      0c38b8fab6 - condition_rule_ids marks those nodes applied, EXCLUDED proofs unchanged;
+      guilt test test_a_review_rule_named_as_a_condition_is_an_applied_effect_in_the_trace
+      fails when the rebinding is removed; codex round 5 and agy round 4 verified.
+  - seat: Claude Opus 5 (self-refutation, on what the ruling does to real cases)
+    objection: >-
+      "Never a human" can read as the engine now recommending products to people it used to
+      stop: gold persona 4 (active overstay) becomes SUPPORTED_CANDIDATES with a condition,
+      persona 3 gets its calling-visa product with a condition.
+    status: PLAUSIBLE
+    cure: >-
+      Bounded, not dismissed: only rules whose stage is HUMAN_REVIEW convert, and
+      STAGE_EFFECT_TYPE pins that stage to REQUIRE_REVIEW, an effect that can only add a
+      human step; the hard filters (hf.citizen, hf.overstay-exceeds-60-days in
+      rulepack-prod-020) are a different list and still exclude. The PR body lists these
+      personas so the reader sees them; the legal expectations table was not rewritten and
+      its re-read is a leftover for an independent reviewer.
+  - seat: Claude Opus 5 (self-refutation, on NEEDS_INPUT)
+    objection: >-
+      Asking an UNKNOWN hard-filter fact instead of holding is only deterministic if the
+      interview can ask it; persona 20 now waits on immigration.overstay_days.
+    status: PLAUSIBLE
+    cure: >-
+      Pinned explicitly in the replay floor so it cannot drift silently; whether the tree
+      asks that fact on that path needs tree.ts, outside this perimeter - leftover.
+leftovers:
+  - "The disclaimer line and footer still say complex or flagged cases go to a human, and outcome.human_review_body says the case needs a person's judgment; copy owned outside this diff."
+  - "MULTI_PURPOSE_TRIP per-purpose union and the NOT_CERTAIN decidable re-ask need tree.ts branching (forbidden here); both render as conditions for now."
+  - "Condition copy exists for 20 codes; any other pack review code renders the generic condition sentence with its next step."
+  - "Pre-existing on origin/main: the mouth reviewHoldSource rejects a *_PRIMARY_SOURCE_NOT_APPLICABLE hold citing a non-primary or bad-URL source, so that hold shows the error page instead of its explanation."
+  - "Persona 20's immigration.overstay_days may not be askable by the current tree on that path."
+  - "PRODUCTION_REPLAY_EXPECTATIONS still expects review holds for personas 2 3 4 5 6 12 20; an independent legal reviewer should re-read those rows under the ruling."
+  - "Vendor names in comments on untouched lines of test_interview_walk_census.py pre-date this diff."
+  - "Prove-live (D-6) runs only after the merge deploys; the baseline probe above is the before."

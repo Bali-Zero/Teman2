@@ -1,0 +1,45 @@
+# EXCERPT of codex exec stdout (council seat codex-gpt-5.6-sol), judged head fe7d9d79c4
+# raw: 195264 bytes, 3961 lines, sha256 7e4acb7e97bb70c9b1ccb67e590173daa4528843f9dfbb18584bf4310e451e80
+# kept: the seat's own narrative blocks, the command line of every tool call, and the final answer;
+# cut: harness preamble (repo AGENTS/skills injected by the seat's hooks), hook status lines, and each command's stdout.
+
+codex:
+  [M5] Round 4 review in sola lettura. Mi concentro esclusivamente sulle superfici non coperte dal round 3 e chiudo con un verdetto entro 25 comandi, senza checkpoint né modifiche.
+exec: /bin/zsh -lc "hostname; git status --short --branch; git diff --name-status 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/decision_seal.py apps/backend-rag/backend/services/visa_engine/models.py apps/backend-rag/backend/services/visa_engine/api_models.py apps/backend-rag/backend/services/visa_engine/evaluator.py 'apps/mouth/src/app/(visa-oracle)/v
+exec: /bin/zsh -lc "git diff --unified=50 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/decision_seal.py | sed -n '1,120p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=35 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/decision_seal.py | sed -n '95,170p'; nl -ba apps/backend-rag/backend/services/visa_engine/decision_seal.py | sed -n '20,125p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=45 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/models.py | sed -n '1,120p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=40 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/models.py | sed -n '121,260p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=45 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/models.py | sed -n '250,390p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/visa_engine/models.py | sed -n '1410,1515p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=45 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/api_models.py | sed -n '1,120p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc 'rg -n "conditions|source_refs|project" apps/backend-rag/backend/services/visa_engine/api_models.py apps/backend-rag/backend/services/visa_engine/evaluate_path.py | head -120' in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=25 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/evaluator.py | nl -ba | sed -n '361,480p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=25 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/evaluator.py | nl -ba | sed -n '481,600p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=25 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/evaluator.py | nl -ba | sed -n '601,720p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=25 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/evaluator.py | nl -ba | sed -n '721,840p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=25 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/services/visa_engine/evaluator.py | nl -ba | sed -n '841,960p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=25 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | nl -ba | sed -n '1,120p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=25 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | nl -ba | sed -n '121,240p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=25 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | nl -ba | sed -n '241,360p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=8 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | rg -n '"'^@@|''^'"\\+.*(freshnessPending|decisiveSource|conditions|GUARDIAN|conditionReason|buildConditions)|"'^-.*decisiveSource'"' | head -120" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=30 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | nl -ba | sed -n '520,670p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=30 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | nl -ba | sed -n '470,540p'; git diff --unified=30 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | nl -ba | sed -n '670,760p'" in /Users/balizero/nuzantara/.worktrees/
+exec: /bin/zsh -lc "rg -n \"function outcomeCondition|const CONDITION_GENERIC_COPY|SOURCE_FRESHNESS_CONDITION_CODES|function decisiveSource|freshnessPendingIds|GUARDIAN_MUST_APPLY_CODE\" 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts'; nl -ba 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' | sed -n '1210,1335p'" in /Users/balizero/nuzantara/.worktrees/backend-
+exec: /bin/zsh -lc "git diff --unified=35 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts' | sed -n '1,120p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=30 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts' | sed -n '121,260p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=35 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx' | sed -n '1,160p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+exec: /bin/zsh -lc "git diff --unified=35 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx' | sed -n '160,320p'" in /Users/balizero/nuzantara/.worktrees/backend-rag-vo-d-determinism
+codex:
+  Le invarianti principali risultano coerenti fin qui: le condizioni non vuote entrano nello stesso core HMAC in seal e verify; il modello vieta duplicati e condizioni sugli outage; il frontend limita la deroga di freshness agli ID esplicitamente citati. Chiudo ora il controllo sui pin spostati e sulle loro motivazioni.
+exec: /bin/zsh -lc "git diff --unified=6 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/tests/services/visa_engine/test_seq19_pack.py apps/backend-rag/backend/tests/services/visa_engine/test_seq20_pack.py apps/backend-rag/backend/tests/services/visa_engine/test_gold_replay_artifact.py apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/option_matrix.js
+exec: /bin/zsh -lc "git diff --unified=3 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e...HEAD -- apps/backend-rag/backend/tests/services/visa_engine/test_seq19_pack.py apps/backend-rag/backend/tests/services/visa_engine/test_seq20_pack.py apps/backend-rag/backend/tests/services/visa_engine/test_gold_replay_artifact.py apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/option_matrix.js
+codex:
+  No correctness findings in the reviewed Round 4 scope.
+  
+  VERDICT: OK
+codex:
+  No changes were made by this read-only review; verification receipt and checkpoint are not applicable.
+  
+  VERDICT: OK
+tokens used: 72.697

@@ -1,0 +1,18 @@
+# agy-gemini-3.1-pro council round3, judged head fe7d9d79c4, full stdout (text-only run, diff embedded in the prompt; no preamble to cut)
+
+CRITICAL INSTRUCTION 1: Prioritize using the most specific tool available for the task. (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing.
+CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand.
+
+Here is the review of the provided diff. I found two HIGH severity defects that must block the merge.
+
+1. **Crash on `NO_SUPPORTED_PATH` due to `AttributeError`**
+   - **File:** `apps/backend-rag/backend/services/visa_engine/evaluator.py`, line ~1695 (in `evaluate_with_trace`)
+   - **Severity:** HIGH
+   - **Why:** The author defines a local tuple variable `purpose_feasible` containing the filtered subset of `excluded` proofs. A few lines later, inside a generator expression, the code attempts to access this as a property on the `ProductProof` object: `if proof.purpose_feasible`. Since `ProductProof` has no such attribute, this will immediately raise an `AttributeError` and crash the evaluation whenever the engine reaches `NO_SUPPORTED_PATH` with conditions. The condition should have been `if proof in purpose_feasible`.
+
+2. **Incomplete Evaluation Trace for Review Rules (Fail-Open on Auditability)**
+   - **File:** `apps/backend-rag/backend/services/visa_engine/evaluator.py`, lines ~753-950 (inside `evaluate_product`)
+   - **Severity:** HIGH
+   - **Why:** When `review_as_conditions=True`, rules that evaluate to TRUE in the `HUMAN_REVIEW` stage (`true_review`) are correctly captured into the `conditions` tuple and the evaluation continues. However, when the function later returns a final product status (e.g., `SUPPORTED`, `UNSUPPORTED`, `BLOCKED_UNKNOWN`), it passes only `true_hard + true_support` to the `applied_rule_ids` argument of `finish()`. The `true_review` rules are completely omitted from `applied_rule_ids`. As a result, the cryptographic trace (`trace_sha256`) is signed without recording that these review rules fired, masking their execution and breaking offline auditability of the conditions they produced. 
+
+VERDICT: DEFECT
