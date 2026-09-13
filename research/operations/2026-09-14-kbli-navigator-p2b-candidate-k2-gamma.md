@@ -1,3 +1,15 @@
+---
+date: 2026-09-14
+domain: operations
+client_case: none — internal product benchmark (KBLI Navigator P2b, candidate k2-gamma)
+sources:
+  - scripts/kbli_bench/p2b_corpus.json (frozen corpus, sha256 487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7)
+  - scripts/kbli_bench/results/2026-09-14-k2-gamma/p2b_answers.jsonl (87 rows, this run)
+  - data/source_documents/KBLI_2025_FINAL_CLEAN.json (canonical, sha256 c69a260dba597d6b172996da7b99460f1498c3bb9d9df6f2ca6c9e4f782b2b40)
+  - scripts/kbli_bench/score_p2b.py (origin/main 8664b1ba30, PR 6428)
+adversarial_review: codex
+---
+
 # KBLI Navigator P2b — the k2-gamma candidate: one build, one 87-row run, gate RED
 
 > Mission SAETTA-K2 (BLUE, host M5), window W-K-GAMMA, task-id `k2-gamma`. Every number here
@@ -124,3 +136,20 @@ re-measure (section 4).
 - The row-identity contract rewrite and its re-gate; then re-score `p2b_answers.jsonl` (kept for that).
 - Hand-check: the judge reason of every structured row and the raw answers of Q05 r1, Q13 r1/r3,
   Q20 r1, Q22 r3, Q23 r1-3, Q26 r1 were read; the seeded random sample was not hand-read.
+
+
+## Adversarial review
+
+Two seats reviewed this report and its data files on the merge-base diff; the journal and
+transcripts are in `evidence/2026-09/agent-air-m5-ops-k2-gamma/council/`.
+
+- **codex-gpt-5.6-sol**, round 1 — DEFECT: the Q20 disagreement was called a judge instability
+  although the two judgings used different prompts. Survived by measurement, not by rewording:
+  two repeat judgings per byte-identical prompt, and section 0 now states what they show.
+- **codex-gpt-5.6-sol**, round 2 — DEFECT: both score files print the scorer's 518 census while the
+  anchored dataset counts 519. Survived by declaration (section 3), the score files left as printed.
+- **codex-gpt-5.6-sol**, round 3 — `VERDICT: OK`: canonical scoring re-run JSON-equal, every floor,
+  verdict, package, manifest field and the 519 census checked against the files.
+- **agy-gemini-3.1-pro** (reserve seat; tp1-qwen3.8-max probed dead, kimi-code/k3 unavailable),
+  rounds 2 and 3 — `VERDICT: OK` against a mechanical digest of the data files (round 1 produced no
+  output: the headless seat could not run commands).

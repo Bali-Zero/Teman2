@@ -53,6 +53,17 @@ decisions:
       Measured instead: all 1,559 records of c69a260d carry the identical l4_bali.moratorium block
       and Q23's package is identical on all three runs, so the rule is already served; the failure
       is the answer framing. Recorded as a leftover naming Q23; no lexical re-weight.
+  - id: D-ci-reds
+    decision: >-
+      The first CI run on 2ded1a046f had three reds, each read before any gesture. (1) Harness floor
+      recompute — `harness_gate_read: PENDING`, expected until the fresh gate posts; the pack
+      validation step before it passed. (2) R1 gate — the research report had no YAML frontmatter
+      (`adversarial_review:` and an "Adversarial review" section): added, `check_adversarial_review.py
+      --files` PASS. (3) Detect Secrets — 14 unaudited "Hex High Entropy String" findings, every one a
+      sha256 or git sha on its line (corpus, dataset, bundle, benchrunner, prompt, commit): added to
+      .secrets.baseline as is_secret:false by textual insertion (+128 lines, no other entry touched);
+      the CI sequence replayed locally ends `All findings audited (14 total)`. Auto-merge was disabled
+      before the fix commit and re-armed after, so the armed branch was never mutated.
 receipts:
   - claim: The monorepo worktree was created by the broker for this task id.
     cmd: python3 scripts/agent_start.py --lane ops --task-id k2-gamma
