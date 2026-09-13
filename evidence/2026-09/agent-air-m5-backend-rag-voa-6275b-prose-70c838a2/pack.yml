@@ -1,0 +1,160 @@
+task_id: voa-6275b-prose
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-12
+machine: air-m5 (M5)
+lanes:
+  - lane: voa-6275b-prose-build
+    role: build
+    seat: claude-opus-5
+    note: >-
+      Single build lane. The sentences being cured were written by this same
+      chain one PR earlier, which is exactly why the refuter below is a
+      different family and outside it.
+  - lane: voa-6275b-prose-refute-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol (`codex exec -m gpt-5.6-sol --sandbox read-only`), OUT of the
+      contribution chain. One round, ~12 minutes, rc 0: VERDICT BLOCK with 10 numbered
+      findings — 8 PASS, 1 BLOCK, 1 narrowing. Cured at depth 1; see journal.jsonl and
+      dissent below.
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane, so D3's seat-diversity requirement does not attach.
+seat_override:
+  kimi-code/k3: >-
+    NOT INVOKED. The two-reader rule binds contract and data diffs; this PR
+    modifies neither products/garuda-voa/contracts/openapi.yaml nor any data
+    file. Recorded so the absence is a decision, not a silence.
+council_run: journal.jsonl
+outcome:
+  summary: >-
+    Two false sentences in the docstring of path_matches_template are replaced
+    by what was measured. The claim "the contracts suite never imports the app"
+    becomes "never imports FastAPI and never builds the live schema", with the
+    one import it DOES perform named inline. The claim that the parity suite
+    "runs on every PR inside the required backend shards" becomes a description
+    of the measured pipeline: enumerated by shard_tests.py, gated by the
+    change-map, fanning into the single required context.
+  behaviour_change: none
+diff:
+  files: 1
+  added: 28
+  removed: 7
+  note: >-
+    Docstring text only. The docstring-stripped AST is identical to origin/main,
+    so no executable line changed.
+pii_scan: clean
+pii_scan_note: >-
+  Docstring prose and file paths only; no identifiers of any person.
+receipts:
+  - claim: >-
+      The change is prose-only: no executable behaviour can differ.
+    cmd: >-
+      python: ast.parse both versions, delete every docstring node, compare
+      ast.dump; plus a raw text comparison to prove the file did change
+    result: >-
+      docstring-stripped AST identical = True; raw text identical = False.
+    ts: "2026-09-12T05:53:19Z"
+    seat: claude-opus-5 (M5, build lane)
+    exit: 0
+  - claim: >-
+      Condition 1 of gate-6275b: the shipped sentence is false and the
+      replacement is true.
+    cmd: >-
+      grep -rn 'from backend\.|import backend' products/garuda-voa/contracts/tests/;
+      grep -rn 'fastapi|main_api|app_factory' products/garuda-voa/contracts/tests/;
+      grep -n 'pip install' .github/workflows/garuda-contract-parity.yml
+    result: >-
+      exactly one app import, test_contract_invariants.py:53, a function-local
+      'from backend.services.garuda_flow.eligibility import DeclineCode' after a
+      sys.path insert -- so "never imports the app" is FALSE. Zero hits for
+      fastapi, main_api and app_factory, so "never imports FastAPI and never
+      builds the live schema" is TRUE and the original conclusion survives. The
+      workflow installs pytest and pyyaml only, at line 50.
+    ts: "2026-09-12T05:53:19Z"
+    seat: claude-opus-5 (M5, build lane)
+    exit: 0
+  - claim: >-
+      Condition 2 of gate-6275b: where the parity suite runs, stated as measured.
+    cmd: >-
+      python3 scripts/ci/shard_tests.py enumerate (run from apps/backend-rag);
+      the same tool with chunk --shards 3 --shard N; grep -n EXCLUDED_DIRS
+      scripts/ci/shard_tests.py; grep -n for the backend-shard job, its
+      change-map predicate and the fan-in job in .github/workflows/tests.yml;
+      gh api repos/:owner/:repo/branches/main/protection for the required contexts
+    result: >-
+      enumerate emits 1607 paths and lists
+      backend/tests/app/routers/test_garuda_voa_openapi_parity.py as entry 26;
+      chunk --shards 3 --shard 2 contains it. EXCLUDED_DIRS at :82 is
+      ("backend/tests/e2e",) and is the only exclusion. tests.yml:875 opens
+      backend-shard, whose predicate at :907 is
+      needs.changes.outputs.run_backend_tests != 'false' (fail-open);
+      tests.yml:1197-1198 is the job backend-tests named "Backend Tests
+      (Python)". The branch-protection API reports exactly ONE required context
+      on main: "Backend Tests (Python)" -- so the shards are not themselves
+      required, and the cured sentence says so.
+    ts: "2026-09-12T05:53:19Z"
+    seat: claude-opus-5 (M5, build lane)
+    exit: 0
+  - claim: >-
+      Affected suites green and lint reproduced as CI runs it.
+    cmd: >-
+      PYTHONPATH=. pytest backend/tests/unit/middleware/
+      backend/tests/app/routers/test_garuda_voa_openapi_parity.py; ruff check and
+      ruff format --check on the changed file
+    result: >-
+      233 passed; ruff: All checks passed; 1 file already formatted.
+    ts: "2026-09-12T05:53:19Z"
+    seat: claude-opus-5 (M5, build lane)
+    exit: 0
+  - claim: >-
+      The refuter's BLOCK is cured at depth 1, and the cure is re-measured rather
+      than assumed.
+    cmd: >-
+      grep -n for the engine-enum parity test and for the workflow's pip install
+      line; grep -n for the shard tool's filename filter; then the AST, ruff and
+      pytest probes re-run on the cured file
+    result: >-
+      test_reason_codes_match_the_engine_enum_exactly confirmed at
+      test_contract_invariants.py:380, so "checks the frozen document against
+      itself" is false and the docstring now says it cannot compare the frozen
+      OpenAPI document against the live generated one, naming the engine-enum
+      parity it DOES perform. shard_tests.py:124 keeps only test_*.py /
+      *_test.py and selects by target root, so "only exclusion" is narrowed.
+      After the cure: docstring-stripped AST still identical to origin/main, raw
+      text still different, ruff clean, 233 passed.
+    ts: "2026-09-12T06:06:09Z"
+    seat: claude-opus-5 (M5, build lane)
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Finding 6 (BLOCK): "so it checks the frozen document against itself" is
+      false for the contracts suite as a whole —
+      test_reason_codes_match_the_engine_enum_exactly compares reason-codes.yaml
+      against the engine's DeclineCode enum.
+    resolution: >-
+      ACCEPTED and cured at depth 1. The sentence was INHERITED from #6275 and
+      kept unexamined by the first draft of this PR — the same failure this PR
+      exists to cure, committed while curing it. The docstring now states the
+      narrow true claim and names the engine-enum parity the suite does perform.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Finding on "its only exclusion is EXCLUDED_DIRS": the shard enumerator also
+      selects by target root and filters by test filename.
+    resolution: >-
+      ACCEPTED. Narrowed to "the only directory it excludes outright", with the
+      filename filter named at scripts/ci/shard_tests.py:124.
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: >-
+      The refuter cites the workflow's pip install at garuda-contract-parity.yml:49.
+    resolution: >-
+      RETRACTED against the measurement: `grep -n "pip install"` returns :50 in this
+      worktree, measured twice. The docstring keeps :50. Recorded rather than
+      dropped, because this row is the only place the disagreement survives.
+appetite_exceeded: ""
