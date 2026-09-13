@@ -1,0 +1,256 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: SAETTA-VOA-V3
+    role: build
+    seat: Claude Opus 5 (Dux of window V3, implements directly)
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 2, matching the deterministic floor. compute_floor() on the merge-base diff
+      returns 2 with source "size" (added 731, deleted 217, net 514, churn 948 — under
+      the 1828 churn term, and no hot-zone path in the five changed files). No council
+      seat is required at gear 2 and none was run; nothing in this pack claims one.
+  - id: D-guard-not-rebuilt
+    decision: >-
+      PR 1 of the window (the public domain must stop serving /garuda-voa) was NOT
+      rebuilt. `gh pr diff 6400` shows "/garuda-voa" added to INTERNAL_ROUTES in
+      apps/mouth/src/proxy.ts plus a test that DERIVES the route list from the
+      filesystem, and its only red is "Harness floor recompute" failing with
+      `harness_gate_read: PENDING — no harness/fable-gate verdict has been posted yet
+      on this commit`. That is gate mechanics, which the window brief says to report
+      rather than rewrite. Reported to the imperator under `needs input:`.
+  - id: D-tokens-not-hexes
+    decision: >-
+      The four R19 meanings read EXISTING tokens (--state-success, --state-info,
+      --bz-copper/--bz-copper-text, --tx-secondary) — the same reads the shipped portal
+      page and StatusBadge.tsx make — instead of page-local R19 hexes. Reason: the R19
+      values (forest #253E33, slate #233D52, copper #A44B36, paper #F7F4EE) are declared
+      in globals.css under [data-product="my"], and grep over packages/core/tokens/ and
+      apps/mouth/src/styles/ returns none of them, so there is no R19 token to alias on
+      kita. Re-declaring the hexes here would duplicate a palette outside its SSOT and
+      trip token-lint; declaring them for [data-product="kita"] would restyle the whole
+      workspace, which is outside this window's perimeter. Consequence, measured and
+      recorded as a leftover, not hidden - on kita those tokens resolve to the daylight
+      AA steps (green #147a3a, blue #1d4ed8), so the console reads copper/green/blue/
+      muted rather than copper/forest/slate/muted.
+  - id: D-no-red
+    decision: >-
+      --state-danger is #b91c1c on [data-theme="operative-light"] (globals.css reads it
+      from packages/core/tokens/semantic.css:191). Concept F §3 re-aliases danger to
+      copper, so on this console Blocked and Rejected take the copper "needs you" step
+      and keep their WORD; the load-error alert and the "no active block id" line are
+      copper text on a copper hairline, never a filled row. r19.test.tsx enforces it.
+  - id: D-token-lint
+    decision: >-
+      The first `python3 -I scripts/token_lint.py --base origin/main` on the committed
+      branch came back RED with 4 violations, before any push. Two causes, both cured at
+      depth 1. (1) r19.tsx:24 — a block-comment CONTINUATION line naming the R19 hues
+      carried a colon, and token_lint's documented exemption-1 hardening judges a
+      continuation line carrying `{`, `:` or `;` as code; the colon became a full stop.
+      (2) r19.test.tsx — three hexes are the scanner's own fixtures. They now live in a
+      FIXTURE object whose three hex-bearing lines each carry `// token-lint-ok:` with a
+      reason, which is exemption 3 used as designed. A marker on the line ABOVE does not
+      exempt: the first attempt did that and stayed red, which is how the same-line rule
+      was measured rather than assumed.
+  - id: D-table-kept
+    decision: >-
+      The list stays a <table>, dressed, rather than becoming concept F's numbered index
+      of <li> rows. Staff scan five columns and the column semantics (plus a sr-only
+      caption) are worth more here than the mock's shape; the window brief enumerates
+      the R19 language as "the same tokens, Fraunces/Manrope, four colour meanings,
+      outlined pills, hairlines", none of which requires dropping the table. The copper
+      numeral column — the concept's signature — is added.
+  - id: D-mobile-columns
+    decision: >-
+      At 390 the first render pushed STATE, ASSIGNED TO and UPDATED off the edge behind
+      an overflow scroll — the state pill, the one fact a staffer opens the list for,
+      was invisible. Below md those three columns are hidden and the assignee + time
+      move under the practice id as a second line. Presentation only; the same <td>s,
+      the same data.
+  - id: D-fonts
+    decision: >-
+      A thin layout.tsx re-points --font-serif and font-family on this subtree's root
+      element only, and IMPORTS app/portal/r19-fonts.css rather than re-declaring the
+      two @font-face rules. Copying them would be the "documented cure never reaches the
+      twin file" drift class. kita's theme block is untouched, so no other workspace
+      page changes typeface.
+  - id: D-net-lines
+    decision: >-
+      Net +514 exceeds the ~400 guidance. 169 of those lines are the new guard test and
+      176 are the shared primitives module the two pages both consume; the two pages
+      themselves are net +134 together. Splitting the guard into its own PR would ship a
+      test for code that is not there yet, so the concern stayed whole.
+receipts:
+  - claim: The worktree was created by the broker on the mouth lane for this task id.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id voa-v3-console
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-voa-v3-console ; branch agent/air-m5/mouth/voa-v3-console"
+    exit: 0
+    ts: "2026-09-13T09:34:00+08:00"
+    seat: Claude Opus 5
+  - claim: D-guard-not-rebuilt — #6400 carries the guard and its only red is the pending gate verdict.
+    cmd: gh pr view 6400 --json title,files,mergeStateStatus,statusCheckRollup ; gh pr diff 6400 ; gh run view 34730095990 --log-failed
+    result: >-
+      OPEN, BLOCKED, head 537424b7971de4bf3b0d85642d3f4bf2e9200ffe; proxy.ts adds
+      "/garuda-voa" (and seven siblings) to an EXPORTED INTERNAL_ROUTES; the new
+      internal-routes-cover-workspace.test.ts derives the route list from the
+      filesystem. One FAILURE in the rollup - "Harness floor recompute" - whose log
+      reads "harness_gate_read: PENDING - no harness/fable-gate verdict has been posted
+      yet on this commit. This is NOT a defect". Every other check SUCCESS or SKIPPED.
+    exit: 0
+    ts: "2026-09-13T09:35:00+08:00"
+    seat: Claude Opus 5
+  - claim: The R19 hues exist only under [data-product="my"] — there is no R19 token for kita to read (D-tokens-not-hexes).
+    cmd: grep -rn -i -e 253e33 -e 233d52 -e a44b36 -e f7f4ee packages/core/tokens/ apps/mouth/src/styles/ ; grep -n "state-danger" packages/core/tokens/semantic.css
+    result: "token SSOT grep: no match (exit 1). semantic.css:191 --state-danger: #b91c1c under :root[data-theme='operative-light'] — the value the kita console would have inherited."
+    exit: 1
+    ts: "2026-09-13T09:52:00+08:00"
+    seat: Claude Opus 5
+  - claim: A1 — the diff touches five files, all under (workspace)/garuda-voa/.
+    cmd: git -C <wt> diff --numstat $(git merge-base HEAD origin/main)...HEAD
+    result: "[practiceId]/page.tsx 199/120 ; layout.tsx 35/0 ; page.tsx 152/97 ; r19.test.tsx 169/0 ; r19.tsx 176/0. added 731, deleted 217, net 514, churn 948."
+    exit: 0
+    ts: "2026-09-13T11:45:00+08:00"
+    seat: Claude Opus 5
+  - claim: D-gear — the deterministic floor is 2, source size.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file /tmp/cf.txt --numstat-file /tmp/ns.txt
+    result: "floor 2 ; floor source: size"
+    exit: 0
+    ts: "2026-09-13T11:46:00+08:00"
+    seat: Claude Opus 5
+  - claim: A3/CI — token-lint is clean on the pushed commit, after a red that was cured at depth 1.
+    cmd: cd <wt> && python3 -I scripts/token_lint.py --base origin/main
+    result: >-
+      First run (committed branch, before the cure) - "4 violation(s) in 2 file(s)":
+      r19.tsx:24 and r19.test.tsx:98,108,111. After the cure - "token-lint: clean - no
+      new hardcoded hex colors in scoped surfaces (5 scoped file(s) with added lines
+      scanned)." The scanner diffs REF...HEAD, so it has to be re-run after each amend;
+      a working-tree-only fix reports the stale line numbers.
+    exit: 0
+    ts: "2026-09-13T12:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: A2 — the console's colocated vitest suite is green, including the six pre-existing files whose selectors the reskin had to preserve.
+    cmd: cd apps/mouth && npx vitest run "src/app/(workspace)/garuda-voa"
+    result: "Test Files 6 passed (6) ; Tests 32 passed (32). The pre-existing 25 still select by data-testid, by label (State / Assigned / Assigned to / Resolved block id) and by text (No practices, No transitions are available from this state., Apply, Assignee list unavailable)."
+    exit: 0
+    ts: "2026-09-13T11:20:00+08:00"
+    seat: Claude Opus 5
+  - claim: A3 GUILT — planting a --state-danger read in r19.tsx turns the guard red and names the line.
+    cmd: sed the wait tone to text-[var(--state-danger)] ; npx vitest run r19.test.tsx ; restore from a cp backup
+    result: >-
+      2 failed | 5 passed. "expected [ 'r19.tsx:57 - reads --state-danger' ] to deeply
+      equal []" and "expected 'text-[var(--state-danger)] border-[va...' not to contain
+      '--state-danger'". After restoring the file from its cp backup: 7 passed (7). Re-run
+      unchanged after the fixtures were refactored for token-lint.
+    exit: 1
+    ts: "2026-09-13T10:02:00+08:00"
+    seat: Claude Opus 5
+  - claim: A3 INNOCENCE — the scanner does not fire on the copper idiom, on --state-success, or on prose that merely names red.
+    cmd: the four assertions in describe("the console's no-red scanner") > "is INNOCENT ..."
+    result: "green inside the 32-passing run; the console's own sources carry #b91c1c, #253E33, #233D52 and #A44B36 in r19.tsx's doc block and are not flagged, because comment lines are exempt."
+    exit: 0
+    ts: "2026-09-13T11:20:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4 — typecheck green.
+    cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+    result: "no diagnostics, exit 0. (pnpm -F mouth typecheck refuses on this checkout with ERR_PNPM_UNSAFE_MODULES_DIR because node_modules resolves outside the worktree, so the underlying script was run directly; the pre-commit hook also ran npm run typecheck -w apps/mouth and passed.)"
+    exit: 0
+    ts: "2026-09-13T11:44:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4 — eslint and prettier green on every touched file.
+    cmd: cd apps/mouth && npx eslint <the five files> ; npx prettier --check <the five files>
+    result: "eslint 0 errors (r19.test.tsx is matched by an ignore pattern, reported as 1 warning) ; prettier: All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-13T11:44:30+08:00"
+    seat: Claude Opus 5
+  - claim: A4 — the full mouth suite shows no NEW failure; the five red files are red on the same tree WITHOUT this change.
+    cmd: npx vitest run (whole suite) ; then git stash push -u and re-run only those five files ; then git stash pop
+    result: >-
+      With the change: Test Files 5 failed | 474 passed (479), Tests 65 failed | 5088
+      passed (5153). The five are (workspace)/process/__tests__/page.test.tsx,
+      (workspace)/settings/appearance/page.test.tsx, visa/match/page.test.tsx,
+      visa/voa/[hash]/page.test.tsx, visa/voa/page.test.tsx — none touched here. On the
+      STASHED tree those same five files give Tests 65 failed | 1 passed (66): identical
+      count, pre-existing on origin/main content. Backed the working tree up with tar
+      before stashing.
+    exit: 1
+    ts: "2026-09-13T10:12:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 — four route-intercepted screenshots of the real routes, rendered from a production build, 0 console errors.
+    cmd: npx next build --webpack && npx next start -p 3210 ; playwright chromium channel=chrome, context.route(/.*\/api\/.*/) serving synthetic practices, viewports 1440x900 and 390x844, fullPage
+    result: >-
+      list-1440.png, detail-1440.png, list-390.png, detail-390.png under
+      /Users/balizero/Desktop/R3-RENDERS-20260913/voa-v3/ (build EXIT=0, local
+      /garuda-voa HTTP 200). The render script logs every console.error and printed
+      none on any of the four. Synthetic data only - prc_01HZX9SYNTHETIC01..07 and
+      staff.one/two/three@example.test.
+    exit: 0
+    ts: "2026-09-13T11:41:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 — what the renders show against concept F, including where they differ.
+    cmd: read the four PNGs
+    result: >-
+      Present - copper 56x3 rule, Fraunces masthead ("Practices" / the practice id),
+      10px tracked eyebrows, copper serif numerals 01..07, outlined pills with a 6px
+      leading dot, hairline table on paper, tabular numerals, copper left rule on the
+      private staff note, copper back link, outlined transition pill. Differs - the
+      "ours/moving" and "done" pills read the kita daylight blue/green, not R19 slate
+      and forest (D-tokens-not-hexes); the primary buttons use --state-success, which is
+      that same green rather than forest.
+    exit: 0
+    ts: "2026-09-13T11:43:00+08:00"
+    seat: Claude Opus 5
+  - claim: No client PII anywhere in the diff or the renders.
+    cmd: read the changed files and the render fixture
+    result: "the only identities are prc_/ord_01HZX9SYNTHETIC01..07, blk_01HZX9SYNTHETIC01, staff.one/two/three@example.test and console.render@example.test — synthetic, reserved-TLD addresses."
+    exit: 0
+    ts: "2026-09-13T11:44:00+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: Claude Opus 5 (self-refutation, on the palette)
+    objection: >-
+      Calling this "R19" while two of the four meanings render in the kita daylight
+      blue and green overstates it. A staffer looking at concept F's renders and at
+      this console side by side sees two different colour stories for "in progress"
+      and "done".
+    status: CONFIRMED
+    cure: >-
+      Not cured, deliberately, and stated in the code: r19.tsx's doc block carries the
+      caveat, and it is the first leftover below. Curing it means declaring the R19
+      values for [data-product="kita"] in globals.css, which restyles every workspace
+      page - a theme-layer window, not this one. What IS delivered without it: the
+      typography, the hairlines, the outlined pill vocabulary, the copper law and the
+      no-red rule, all of which follow the token seam the day kita gets R19 values.
+  - seat: Claude Opus 5 (self-refutation, on the visual proof)
+    objection: >-
+      The screenshots are rendered against an intercepted API, not against a real staff
+      session on kita.balizero.com. They prove the markup and the CSS, not that the
+      live console answers with this data.
+    status: CONFIRMED
+    cure: >-
+      Accepted as the window brief's own fallback ("use the e2e mock approach of the
+      repo"). The live half that CAN be observed without a staff session - that
+      kita.balizero.com/garuda-voa still answers 200 after the deploy - is the PR's
+      Bites observation. Production carries zero practices today (grounding report
+      §B.3), so no real-data render exists to take.
+  - seat: Claude Opus 5 (self-refutation, on the guard test)
+    objection: >-
+      r19.test.tsx scans source TEXT, which is the over/under-match family: it exempts
+      comment lines by prefix, so a hex on a block-comment continuation line that does
+      not start with "*" would be judged as code, and a hex built by string
+      concatenation would pass.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured. The same per-line contract and the same known limit are what
+      scripts/token_lint.py documents for the CI gate this mirrors, and the guilt case
+      is filed beside the innocence case so the limit is visible rather than assumed.
+      The guard's job is to catch the regression that actually happens - someone
+      reaching for --state-danger - and it does, by name and line number.
+leftovers:
+  - 'On [data-product="kita"] the four meanings resolve to the daylight AA steps (--state-success #147a3a, --state-info #1d4ed8), not R19 forest/slate. A theme-layer window that adds an R19 block for kita, as globals.css already has for "my", would make this console read the real concept-F palette with no change to these files.'
+  - PR 1 of this window is open PR #6400 and is not ours to gate. It carries the INTERNAL_ROUTES entry for /garuda-voa and a filesystem-derived coverage test; it needs a fresh gate session to post harness/fable-gate on 537424b7 so its floor recompute can be re-run.
+  - The staff console's remaining pre-R19 surfaces — error.tsx and loading.tsx — were left untouched (neutral spinner and message, no colour to correct); they would follow a shared primitive if one is ever extracted.
+  - The list keeps a table rather than concept F's numbered index of hairline rows; if a later window wants the mock's shape exactly, the copper numeral column and the pill vocabulary are already in place to lift.
+  - Five mouth test files are red on origin/main content and stayed red — (workspace)/process, (workspace)/settings/appearance, visa/match, visa/voa/[hash], visa/voa. 65 tests. Outside this perimeter, reported not touched.

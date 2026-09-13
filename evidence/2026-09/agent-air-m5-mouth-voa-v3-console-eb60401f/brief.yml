@@ -1,0 +1,40 @@
+gear: 2
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VOA window V3 (BLUE, host M5) — the GARUDA VOA staff console reads R19, and the public domain stops serving it
+objective: >-
+  G0.4 (docs/plans/2026-09-03-relaunch-lanes/ZERO-DECISIONS.md:19) ruled R19 for the
+  GARUDA VOA staff console on 2026-09-03 and nothing implemented it: the grounding
+  report's `grep -rln "R19"` over both VOA UI trees returned nothing, and the surface
+  still carried the pre-R19 kita dressing — filled state chips, a red danger alert,
+  `--bz-accent` spinners, a bold sans masthead. Dress the list and the detail in the
+  concept-F "RAPI" language exactly as it shipped on the client portal: copper rule +
+  Fraunces masthead, eyebrow labels, hairlines instead of filled cards, copper numerals,
+  and the seven contract states as OUTLINED pills in four colour meanings. The guard
+  half of the window (the public domain serving /garuda-voa) is NOT rebuilt — open PR
+  #6400 already carries it and is reported to the imperator instead.
+scope:
+  - apps/mouth/src/app/(workspace)/garuda-voa/page.tsx
+  - apps/mouth/src/app/(workspace)/garuda-voa/[practiceId]/page.tsx
+  - apps/mouth/src/app/(workspace)/garuda-voa/r19.tsx
+  - apps/mouth/src/app/(workspace)/garuda-voa/r19.test.tsx
+  - apps/mouth/src/app/(workspace)/garuda-voa/layout.tsx
+constraints:
+  - PRESENTATION ONLY — no route, no field, no hook, no fetch, no API type, no behavioural change; the staff API contract (401 envelope, Idempotency-Key) is untouched.
+  - Forbidden — the customer funnel apps/mouth/src/app/visa/voa/**, the backend, migrations, the Tigris store, any auth change, globals.css and every shared primitive.
+  - No red on this surface. --state-danger resolves to #b91c1c on the kita daylight theme, so concept F's re-alias applies - copper plus a WORD.
+  - No new hardcoded brand hex in a scoped surface (token-lint); the four meanings read existing tokens.
+  - No client PII — synthetic ids and example.test addresses only.
+  - No ledger PR, no PENDING-ARMS.md edit, no gate status posted by this window.
+acceptance:
+  - A1 the diff touches only files under (workspace)/garuda-voa/.
+  - A2 the colocated vitest suite for the console is green and the pre-existing test-case contracts (testids, labels, "No practices", "No transitions are available from this state.") still select.
+  - A3 a guard exists that turns RED on a --state-danger read or a hardcoded hex anywhere in the console's rendered sources, with its own guilt AND innocence cases.
+  - A4 typecheck, eslint and prettier green on every touched file; the full mouth vitest suite shows no NEW failure against the same tree without the change.
+  - A5 route-intercepted screenshots of list + detail at 1440 and 390 under /Users/balizero/Desktop/R3-RENDERS-20260913/voa-v3/, rendered from a production build, 0 console errors.
+  - A6 PR 1 (the public-domain guard) is REPORTED, not rewritten, if #6400 already carries it and is only blocked by gate mechanics.
+consumer_map:
+  - The Bali Zero staff who work VOA practices on https://kita.balizero.com/garuda-voa — the list and detail served by the apps/mouth Vercel deploy on merge to main.
+  - The required GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs r19.test.tsx on every future PR touching this console.
+appetite:
+  budget: 5 hours active, 1 PR (the second PR of the window is reported, not built)
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch
