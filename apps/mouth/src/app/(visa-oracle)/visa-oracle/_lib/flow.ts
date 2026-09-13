@@ -698,6 +698,16 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
     // for a fact no rule this route reaches ever consults.
     const isSecondHomeRoute =
       branch === "property" || branch === "bank_deposit";
+    // PR-D4c-2 (owner ruling SHWEB-20260911): `merit`/`family`/`undecided`
+    // are the three vehicles that ask NOTHING today — no IDR-bound E28A rule
+    // reads any fact this branch collects, unlike `pt_pma` (left untouched,
+    // see that branch below and the doc comment on `investment_currency` in
+    // tree.ts). `investment_currency` always comes first; the amount
+    // question that follows depends on the answer, and `still_unsure` (or no
+    // answer yet) adds none — both `investment.investment_capital_idr` and
+    // `investment.investment_amount_usd` then stay honestly UNKNOWN.
+    const isUndeterminedVehicleRoute =
+      branch === "merit" || branch === "family" || branch === "undecided";
     const branchQuestions =
       branch === "pt_pma"
         ? [
@@ -714,7 +724,16 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
                 "secondhome_state_bank",
                 "secondhome_own_name",
               ]
-            : [];
+            : isUndeterminedVehicleRoute
+              ? [
+                  "investment_currency",
+                  ...(facts.investment_currency === "idr"
+                    ? ["investment_capital_idr"]
+                    : facts.investment_currency === "usd"
+                      ? ["investment_amount_usd"]
+                      : []),
+                ]
+              : [];
     return [
       "sponsor_category",
       "investment_vehicle",

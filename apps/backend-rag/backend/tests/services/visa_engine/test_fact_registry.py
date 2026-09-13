@@ -301,7 +301,7 @@ _UNKNOWN_WIRE = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
 
 
 def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | None = None) -> ApplicantFacts:
-    """Build an ``ApplicantFacts`` with every one of the 45 required
+    """Build an ``ApplicantFacts`` with every one of the 46 required
     applicant paths defaulted to UNKNOWN, then override the given wire keys
     with KNOWN wire values —
     the minimal builder ``derive()``'s tests need (distinct from
@@ -332,6 +332,7 @@ def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | No
         "investment.investment_capital_idr": _UNKNOWN_WIRE,
         "investment.paid_up_capital_idr": _UNKNOWN_WIRE,
         "investment.proposed_role": _UNKNOWN_WIRE,
+        "investment.investment_amount_usd": _UNKNOWN_WIRE,
         "family.relation_to_sponsor": _UNKNOWN_WIRE,
         "family.sponsor_nationalities": _UNKNOWN_WIRE,
         "family.sponsor_status_code": _UNKNOWN_WIRE,

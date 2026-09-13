@@ -1,0 +1,16 @@
+codex-gpt-5.6-sol r3 on SUPERSEDED bytes 314 sha256 groups df347c3b df398ab8 3ccebce4 14af7d77 300668a4 9e78ae59 154c91bf 6ff38488 (prompt reviews/prompt-r3.txt)
+codex r3 start 2026-09-13T11:43:31Z
+codex r3 exit=0 end 2026-09-13T11:50:06Z
+tree unchanged (shasum -c after the run: OK)
+----- seat final answer verbatim (Italian in the original) -----
+- **MAJOR — Il postcondition resta aggirabile tramite `search_path`.** La tabella applicativa è qualificata, ma [`pg_attribute`, `pg_attrdef` e `format_type`](/Users/nuzantara/nuzantara/.worktrees/backend-rag-b2-3a-schema/apps/backend-rag/backend/db/migrations_v2/314_wa_outbox_evidence.sql:70) non lo sono. Caso falsificabile: con `search_path = public, shadow, pg_catalog`, oggetti contraffatti `shadow.pg_attribute` e `shadow.pg_attrdef` possono dichiarare forme corrette mentre `public.wa_outbox` contiene colonne incompatibili. Gli `ALTER ... IF NOT EXISTS` saltano le colonne, `drifted` resta `NULL` e 314 viene registrata. Il runner continua a usare i ledger in `public`, quindi questo percorso non incontra il precedente errore osservato con `shadow,public`. Va usato `pg_catalog.pg_attribute`, `pg_catalog.pg_attrdef`, `pg_catalog.format_type` e `::pg_catalog.regclass`, oppure un `search_path` sicuro esplicito.
+
+- **NOTE — Lock e timeout.** Su PG15/17 gli `ADD COLUMN` nullable senza default non riscrivono né scandiscono l’heap; il `DO` legge soltanto cataloghi. L’`ACCESS EXCLUSIVE` in attesa può comunque accodare traffico fino a 5 secondi, quindi “instead of stalling the outbox” significa soltanto “senza stallo illimitato”. Un deploy corretto può fallire per timeout, ma la transazione annulla DDL e ledger; il job diventa rosso e il rerun può applicare nuovamente.
+
+- **NOTE — Transazionalità.** Nei due percorsi supportati, apply e rollback, `SET LOCAL` è dentro una transazione e vincola realmente gli `ALTER`. Non emerge alcun percorso deploy/CLI che esegua il file fuori transazione. Un’esecuzione manuale autocommit produrrebbe WARNING e timeout inefficaci, ma non è un percorso supportato.
+
+- **NOTE — Altri controlli.** `format_type` distingue correttamente timezone e typmod; default e colonne generated producono `pg_attrdef`, identity implica `NOT NULL`, e `atthasmissing` è falso sulle nuove colonne senza default. Il rollback è distruttivo e protetto solo dalla policy, ma è transazionale, non è invocato dal deploy ed è richiesto dalla prova up/down/up. La finestra previous-image/fresh-image rimane sicura perché questa PR non introduce il writer.
+
+Hash congelato verificato: corrisponde ai byte esaminati.
+
+VERDICT {"ok": false, "sha256_groups": "df347c3b df398ab8 3ccebce4 14af7d77 300668a4 9e78ae59 154c91bf 6ff38488", "blockers": 0, "majors": 1, "minors": 0}

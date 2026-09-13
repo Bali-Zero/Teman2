@@ -10,6 +10,8 @@
     "trip_scope",
     "sponsor_category",
     "investment_vehicle",
+    "investment_currency",
+    "investment_capital_idr",
     "family_sponsor_confirmed",
     "wants_onshore_conversion",
     "stay_days",
@@ -68,8 +70,8 @@
       "reason": "NOT_ASKED"
     },
     "investment.investment_capital_idr": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": 1000000000
     },
     "investment.paid_up_capital_idr": {
       "status": "UNKNOWN",

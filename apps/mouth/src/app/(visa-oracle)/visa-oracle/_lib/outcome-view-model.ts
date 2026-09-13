@@ -194,8 +194,25 @@ export type HumanReviewOutcome = OutcomeBase &
   };
 
 export interface NoSupportedPathAlternative {
+  /** The interview tile this door belongs to. */
   category: CategoryKey;
+  /**
+   * The product the signed pack supports behind this door, by code, plus the
+   * pack's own name for it. NEVER an adapter's opinion: every code rendered
+   * here is one a replay of the signed pack returned for this applicant's own
+   * stated facts (`_lib/fixtures/no-path-doors.replay.json`). Optional
+   * because a door may still name a category alone.
+   */
+  productCode?: string;
+  productName?: LocalizedText;
   message?: LocalizedText;
+  /**
+   * `false` when nothing the visitor can answer today opens this door — a
+   * fact about the world has to change first (turning 55). Rendered as a
+   * sentence and never as a button, because the button would restart an
+   * interview that ends in exactly the same place.
+   */
+  actionable?: boolean;
 }
 
 export type NoSupportedPathOutcome = OutcomeBase &

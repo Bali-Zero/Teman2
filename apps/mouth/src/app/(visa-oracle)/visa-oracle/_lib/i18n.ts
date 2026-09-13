@@ -284,6 +284,14 @@ const en = {
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
     "This label only chooses which exact facts to ask next. It never chooses a visa path.",
+  "q.investment_currency": "Which currency can you commit an amount in?",
+  "q.investment_currency.hint":
+    "This only decides which amount question comes next. No conversion is ever performed between currencies.",
+  "q.investment_currency.opt.idr": "Indonesian rupiah (IDR)",
+  "q.investment_currency.opt.usd": "US dollars (USD)",
+  "q.investment_currency.opt.still_unsure": "I can't say yet",
+  "why.investment_currency":
+    "This only chooses which amount question follows. It never chooses a visa path, and no figure is converted between currencies.",
   "q.investment_pt_pma": "Is the PT PMA commitment already concrete?",
   "q.investment_pt_pma.hint":
     "Answer no for an idea, early discussion, or uncommitted plan.",
@@ -295,6 +303,13 @@ const en = {
   "q.investment_capital_idr.label": "Committed investment capital",
   "why.investment_capital_idr":
     "The amount is sent as a financial decision fact. No threshold is shown or inferred here.",
+  "q.investment_amount_usd":
+    "What investment amount is committed, in US dollars?",
+  "q.investment_amount_usd.hint":
+    "Enter the exact whole-dollar amount you can support with evidence.",
+  "q.investment_amount_usd.label": "Committed investment amount",
+  "why.investment_amount_usd":
+    "The amount is sent as a financial decision fact, in the currency you chose. No threshold is shown or inferred here, and no conversion is performed.",
   "q.investment_paid_up_capital_idr":
     "How much paid-up capital is already documented?",
   "q.investment_paid_up_capital_idr.hint":
@@ -695,7 +710,7 @@ const en = {
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Nothing here is guessed. A Bali Zero advisor reviews cases like yours by hand.",
   "verdict.state_description.NO_SUPPORTED_PATH":
-    "We won’t force a fit that isn’t there — three alternatives worth a look.",
+    "We won’t force a fit that isn’t there — here is what your answers do open.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "We’d rather say so plainly than fake a result.",
   "verdict.state_description.NEEDS_INPUT":
@@ -809,9 +824,9 @@ const en = {
     "It is not an approval, a guarantee, or a filing.",
   "outcome.disclaimer.complex_to_human":
     "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
-  "outcome.alternatives_title": "Three paths worth a look instead",
+  "outcome.alternatives_title": "The door that is open",
   "outcome.alternatives_intro":
-    "None of these are a downgrade — they’re simply what fits.",
+    "Another route the verified rules can assess for you.",
   "outcome.no_path_body":
     "The combination you described does not match a path supported by the verified decision rules.",
   "outcome.temporarily_unavailable_body":
@@ -1122,6 +1137,15 @@ const id: Record<Keys, string> = {
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
     "Label ini hanya menentukan fakta persis yang ditanyakan berikutnya. Label ini tidak pernah memilih jalur visa.",
+  "q.investment_currency":
+    "Dalam mata uang apa Anda dapat mengomitmenkan jumlah investasi?",
+  "q.investment_currency.hint":
+    "Ini hanya menentukan pertanyaan jumlah berikutnya. Tidak ada konversi yang pernah dilakukan antar mata uang.",
+  "q.investment_currency.opt.idr": "Rupiah Indonesia (IDR)",
+  "q.investment_currency.opt.usd": "Dolar AS (USD)",
+  "q.investment_currency.opt.still_unsure": "Saya belum bisa memastikan",
+  "why.investment_currency":
+    "Ini hanya memilih pertanyaan jumlah mana yang mengikuti. Ini tidak pernah memilih jalur visa, dan tidak ada angka yang dikonversi antar mata uang.",
   "q.investment_pt_pma": "Apakah komitmen PT PMA sudah konkret?",
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
@@ -1134,6 +1158,13 @@ const id: Record<Keys, string> = {
   "q.investment_capital_idr.label": "Modal investasi yang dikomitmenkan",
   "why.investment_capital_idr":
     "Jumlah dikirim sebagai fakta keputusan finansial. Tidak ada ambang yang ditampilkan atau disimpulkan di sini.",
+  "q.investment_amount_usd":
+    "Berapa jumlah investasi yang dikomitmenkan, dalam dolar AS?",
+  "q.investment_amount_usd.hint":
+    "Masukkan jumlah dolar utuh yang tepat dan dapat Anda dukung dengan bukti.",
+  "q.investment_amount_usd.label": "Jumlah investasi yang dikomitmenkan",
+  "why.investment_amount_usd":
+    "Jumlah ini dikirim sebagai fakta keputusan finansial, dalam mata uang yang Anda pilih. Tidak ada ambang yang ditampilkan atau disimpulkan di sini, dan tidak ada konversi yang dilakukan.",
   "q.investment_paid_up_capital_idr":
     "Berapa modal disetor yang sudah terdokumentasi?",
   "q.investment_paid_up_capital_idr.hint":
@@ -1528,7 +1559,7 @@ const id: Record<Keys, string> = {
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Tidak ada yang ditebak di sini. Konsultan Bali Zero meninjau kasus seperti ini secara langsung.",
   "verdict.state_description.NO_SUPPORTED_PATH":
-    "Kami tidak akan memaksakan jalur yang tidak cocok — tiga alternatif yang layak dilihat.",
+    "Kami tidak akan memaksakan jalur yang tidak cocok — inilah yang dibuka oleh jawaban Anda.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "Kami lebih memilih berterus terang daripada memalsukan hasil.",
   "verdict.state_description.NEEDS_INPUT":
@@ -1645,9 +1676,9 @@ const id: Record<Keys, string> = {
     "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "outcome.disclaimer.complex_to_human":
     "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
-  "outcome.alternatives_title": "Tiga jalur alternatif yang layak dilihat",
+  "outcome.alternatives_title": "Pintu yang terbuka",
   "outcome.alternatives_intro":
-    "Ini bukan penurunan kelas — hanya yang paling sesuai.",
+    "Jalur lain yang dapat dinilai oleh aturan terverifikasi untuk Anda.",
   "outcome.no_path_body":
     "Kombinasi yang Anda jelaskan tidak cocok dengan jalur yang didukung oleh aturan keputusan terverifikasi.",
   "outcome.temporarily_unavailable_body":

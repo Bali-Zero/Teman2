@@ -81,15 +81,44 @@ def path_matches_template(path: str, template: str) -> bool:
         has an external reference:
         `backend/tests/app/routers/test_garuda_voa_openapi_parity.py`, which
         builds the schema from the deployed `main_api` singleton and compares
-        it operation by operation against the frozen `openapi.yaml`. It runs
-        on every PR inside the required backend shards (`tests.yml` ->
-        `scripts/ci/shard_tests.py`, which globs `backend/tests/**` with no
-        allowlist). Named here as the anchor, not re-proved here.
+        it operation by operation against the frozen `openapi.yaml`. Where it
+        runs, stated as what is measured rather than as a promise:
+        `scripts/ci/shard_tests.py enumerate` lists it (the only directory it
+        excludes outright is `EXCLUDED_DIRS = ("backend/tests/e2e",)`, `:82`; it
+        also selects by target root and keeps only `test_*.py` / `*_test.py`,
+        `:124`), so it is partitioned
+        into the `Backend Shard N` matrix; those shards are gated by the
+        change-map (`tests.yml:875-907`, fail-OPEN to running) and fan into
+        `Backend Tests (Python)` (`tests.yml:1197-1198`). Whether that job is
+        REQUIRED on `main` is branch-protection CONFIGURATION: no test in this
+        repo pins it, and it can change without a line of code changing, so this
+        docstring cannot assert it as a property. What was measured, via the
+        branch-protection API: `Backend Tests (Python)` is AMONG `main`'s
+        required contexts — one of 13 when the full set was re-read on
+        2026-09-13, first observed 2026-09-12. A dated observation about
+        membership, not a guarantee this file can keep. The first version of
+        this sentence said the set was EXACTLY that one context, which was
+        false: it came from reading a `grep`-filtered view of the API output as
+        if the surviving line were the whole set. Either way "on every PR" would overstate a job the
+        change-map can skip. Named here as the anchor, not re-proved here.
 
         NOT `.github/workflows/garuda-contract-parity.yml`, whose NAME invites
-        exactly that mistake: it installs only pytest and pyyaml and its suite
-        (`products/garuda-voa/contracts/tests/`) never imports the app, so it
-        checks the frozen document against itself. That distinction is
+        exactly that mistake: it installs only pytest and pyyaml (`:50`) and its
+        suite (`products/garuda-voa/contracts/tests/`) never imports FastAPI and
+        never builds the live schema, so it cannot compare the frozen OpenAPI
+        document against the live generated one. It is NOT, however, a suite
+        that only checks a document against itself — that wording shipped in
+        #6275 and an adversarial round refuted it:
+        `test_reason_codes_match_the_engine_enum_exactly`
+        (`test_contract_invariants.py:380`) compares `reason-codes.yaml` against
+        the engine's `DeclineCode` enum, which is real parity — just not the
+        frozen-vs-live parity claimed here. Note the narrower verb: that suite
+        DOES import one engine module
+        (`test_contract_invariants.py:53`, a function-local
+        `from backend.services.garuda_flow.eligibility import DeclineCode` after
+        a `sys.path` insert), so "never imports the app" — the wording shipped in
+        #6275 — is false, and was caught by the gate on that PR. What it never
+        does is construct the running application. That distinction is
         measured, not assumed -- the parity file's own header records the
         drift the misreading allowed (2026-08-24/25), and this paragraph named
         the workflow before the gate on #6275 caught it. Registry-wide

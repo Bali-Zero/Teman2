@@ -56,8 +56,19 @@ import {
  * (`offshore/other/paid/sponsor_government`), one proving an unresolved
  * answer is silence not a hold (`offshore/work/sponsor_unsure`), and the
  * C6 regression walk (`offshore/other/no_paid_activity/medical`) — see
- * generate-walk-corpus.ts. */
-const EXPECTED_WALK_COUNT = 82;
+ * generate-walk-corpus.ts. 82 → 84 on PR-D4c-2 (2026-09-13): 2 new walks —
+ * `offshore/invest/merit/currency_usd` (an explicit USD answer) and
+ * `offshore/invest/undecided/currency_still_unsure` (the "I can't say yet"
+ * option, measured in the PR body to cost zero review holds). The three
+ * unmodified `offshore/invest/merit`/`family`/`undecided` walks change BYTES
+ * only, not count or state: `investment_currency` is now the branch's first
+ * question and its first option is `idr` (tree.ts), so the untouched
+ * defaults now also answer the now-reachable `investment_capital_idr` —
+ * `investment.investment_capital_idr` moves UNKNOWN(NOT_ASKED) ->
+ * KNOWN(1000000000) on all three, `pt_pma`/`property`/`bank_deposit` stay
+ * byte-identical (that branch, and the E28A rules that read it, are
+ * deliberately untouched). See generate-walk-corpus.ts. */
+const EXPECTED_WALK_COUNT = 84;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

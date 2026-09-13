@@ -209,7 +209,7 @@
     },
     "ApplicantFactsData": {
       "additionalProperties": false,
-      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the six transitional fields documented on\n``sponsor_type``, the three ``family.stepchild_*``/\n``family.sponsor_permit_basis`` fields (2026-08-23),\n``immigration_renewal_paid`` (2026-08-24), and ``investment_amount_usd``\n(2026-09-13, PR-D4c-1) below \u2014 all the same rollout mechanism. Field\norder mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the five transitional fields documented on\n``sponsor_type``, the three ``family.stepchild_*``/\n``family.sponsor_permit_basis`` fields (2026-08-23), and\n``immigration_renewal_paid`` (2026-08-24) below \u2014 all the same rollout\nmechanism. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
       "properties": {
         "commercial.service_fee_budget_idr": {
           "discriminator": {
@@ -624,10 +624,6 @@
           "title": "Intent.Stay Days"
         },
         "investment.investment_amount_usd": {
-          "default": {
-            "reason": "NOT_ASKED",
-            "status": "UNKNOWN"
-          },
           "discriminator": {
             "mapping": {
               "KNOWN": "#/$defs/KnownMoney",
@@ -1088,6 +1084,7 @@
         "investment.investment_capital_idr",
         "investment.paid_up_capital_idr",
         "investment.proposed_role",
+        "investment.investment_amount_usd",
         "family.relation_to_sponsor",
         "family.sponsor_nationalities",
         "family.sponsor_status_code",

@@ -528,6 +528,40 @@ export function enumerateScenarios(): Scenario[] {
     },
   });
 
+  // PR-D4c-2 (owner ruling SHWEB-20260911): the currency-bound
+  // `investment.investment_amount_usd` fact, asked only on the
+  // `merit`/`family`/`undecided` investment-vehicle branches — `pt_pma` is
+  // deliberately untouched (E28A's IDR-bound rules, see tree.ts's
+  // `investment_currency` doc comment). The three unmodified vehicle walks
+  // above (`offshore/invest/merit`/`family`/`undecided`) now also exercise
+  // the IDR side for free: `investment_currency` is the branch's new first
+  // question, its first OPTION is `idr` (tree.ts), so `answerFor`'s
+  // untouched default takes it, then answers the now-reachable
+  // `investment_capital_idr` with the generic number default. These two new
+  // walks cover the other two cells this PR must prove: an explicit USD
+  // answer, and the explicit "I can't say yet" — the one measured (PR body)
+  // to cost zero review holds, since its value is the literal
+  // `still_unsure`, never the `"unsure"` string
+  // `mapDisclosedReviewFlags`'s NOT_CERTAIN scan matches.
+  scenarios.push({
+    label: "offshore/invest/merit/currency_usd",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "merit",
+      investment_currency: "usd",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/undecided/currency_still_unsure",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "undecided",
+      investment_currency: "still_unsure",
+    },
+  });
+
   return scenarios;
 }
 
