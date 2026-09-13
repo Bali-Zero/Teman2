@@ -1,0 +1,62 @@
+task_id: wa-price-split-fee-veto-0830
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Stop the WhatsApp bot presenting a government levy to a client as a separately
+  payable amount beside the Bali Zero price.
+
+  Measured, not argued. `wa_outbox` row 379 (2026-08-30T17:54:35Z, route=codex,
+  done at attempt 1) answered an Investor-KITAS price question with
+  "biaya layanan kami: offshore Rp17.000.000 [...] PNBP pemerintah Rp9.500.000
+  untuk 2 tahun". Zero's ruling of 2026-07-17 is ONE all-inclusive client-facing
+  price, never a PNBP-vs-fee split, and the PricingTool rows say so in their own
+  notes. The existing anchoring veto cannot catch this: it proves every amount is
+  CONSISTENT with the frozen package's sources, never that the answer is COMPLIANT
+  with the single-price rule — and the 9.5M figure was laundered in from a
+  retrieved chunk, which that veto accepts by design.
+
+  This adds a second, independent veto on the codex leg's finalize path, plus the
+  reason code and the CHECK-constraint widening that let the fall-off be recorded.
+constraints: |
+  - Client-facing surface. A false positive costs a retry, then an apology to a
+    client whose answer was correct; a false negative costs a client budgeting a
+    levy twice. Both directions must be tested.
+  - `migrations_v2/**` is hot-zone by path, hence gear 3 by construction.
+  - The migration must CONVERGE (DROP IF EXISTS + ADD), mirroring 290/291/297,
+    with a full ROLLBACK section restoring the 297 vocabulary.
+  - No PII in any log line: the veto returns marker NAMES only, never the matched
+    text or the amount, and the DB stores one code regardless.
+acceptance: |
+  - The reproduced row-379 text fires the veto (guilt) and the real PricingTool
+    all-inclusive wording does not (innocence).
+  - Every finding a cross-family refuter can demonstrate against the function is
+    either fixed and pinned as a test, or refuted with evidence and pinned so it
+    is not "fixed" again.
+  - The stored reason code is accepted by the live CHECK constraint.
+  - With this veto AND the anchoring veto both live, a correct answer still has a
+    shape that passes. This was NOT true when the PR was first opened.
+consumer_map: |
+  - `wa_finalize.finalize_wa_answer` — the only caller; runs on the codex leg for
+    every generated answer, unconditionally (not gated on price_sources).
+  - `wa_codex_leg._FINALIZE_SUB_REASON_MAP` — maps the veto's reason to the stored
+    `generation_fall_off_reason`.
+  - `wa_outbox.generation_fall_off_reason` CHECK constraint — rejects any code not
+    in its vocabulary, so the migration is not optional.
+  - Grafana/ledger consumers read the reason code; no new PII surface.
+risks: |
+  - DECLARED RESIDUAL, deliberately open: an amount written in WORDS ("sembilan
+    juta lima ratus ribu rupiah") is invisible, because `_CURRENCY_AMOUNT_RE`
+    requires a currency marker. Pinned by a test so it is a known gap, not a
+    surprise.
+  - DECLARED COST of proximity windows: a levy named definitionally within 140
+    characters of an unrelated total fires. That costs one retry; the reverse
+    error costs a client budgeting a levy twice.
+  - SEQUENCING RISK, and the reason this PR was disarmed for six hours: merged
+    alone it would have converted a wrong answer into NO answer. See the pack's
+    lane rows.
+grader: |
+  Opus 5 at xhigh, on the diff, against the acceptance list above — with the
+  standing instruction that the guilt case (row 379 verbatim) going green is the
+  single non-negotiable condition, because that case is the whole reason the
+  veto exists.

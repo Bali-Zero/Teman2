@@ -655,6 +655,212 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
     return offenders
 
 
+# ---------------------------------------------------------------------------
+# THE SPLIT-PRICE VETO (added 2026-08-30)
+#
+# THE DEFECT, measured on the live bot, not argued: cycle 357 case q1 (outbox
+# row 379, 2026-08-30T17:54Z, route=codex, done at attempt 1) answered an
+# Investor-KITAS price question with
+#
+#   "biaya layanan kami: offshore Rp17.000.000, onshore Rp19.000.000 [...]
+#    PNBP pemerintah Rp9.500.000 untuk 2 tahun"
+#
+# — a government levy presented to a CLIENT as a separate payable item beside
+# the Bali Zero price. Zero's ruling of 2026-07-17 is one all-inclusive
+# client-facing price, never a PNBP-vs-fee split, and the PricingTool rows say
+# so in their own notes ("All-inclusive price - the government fee is included;
+# nothing further is payable on arrival"). A client reading row 379 would
+# reasonably budget Rp9.500.000 that is already inside the Rp17.000.000.
+#
+# WHY THE EXISTING PRICING VETO CANNOT SEE IT: `price_tokens_outside_sources`
+# asks whether every amount is PRESENT in the frozen package's sources. It
+# proves CONSISTENCY, never COMPLIANCE. Measured the same day: the pricing
+# block returned for that exact question contains no "PNBP" and no
+# "pemerintah" at all, yet the answer passed the veto — so the figure was
+# laundered in from a retrieved chunk, which the veto accepts by design (see
+# the "declared residual" in that function's docstring). Two different
+# questions, two different guards.
+#
+# THE SHAPE, and why it is not a bare substring scan (cicatrix family #3): the
+# forbidden thing is a government-fee marker carrying its OWN amount in the
+# same sentence. A sentence that says the government fee is INCLUDED is the
+# behaviour we want and must survive untouched - it is the literal text of the
+# PricingTool notes. So: fire on (marker AND currency amount) within one
+# sentence, UNLESS that sentence also carries an inclusion marker. "mencakup"
+# / "covers" is deliberately NOT an inclusion marker: in row 379 it said the
+# PNBP covers visa+ITAS, which is a statement about what the levy buys, not
+# about it being inside our price.
+# Levy vocabulary. Widened after the cross-family refuter (codex gpt-5.6-sol,
+# xhigh, dispatched on the diff WITHOUT the brief) returned BLOCK with 15
+# findings, 14 of which reproduced verbatim against this function; the one that
+# did NOT is pinned in the innocence tests so it is not "fixed" again. The
+# first cut knew only four spellings, so `Penerimaan Negara Bukan Pajak`
+# (PNBP's own official expansion), `biaya imigrasi`, `tarif resmi` and
+# `official fee` — all natural ways to bill a client for a levy — walked past
+# it. Several markers deliberately share ONE name: the stored reason code is
+# the single value `finalize_price_split_fee` either way, and a name here only
+# ever reaches a log line.
+_PRICE_SPLIT_MARKERS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("pnbp", re.compile(r"(?i)\bPNBP\b")),
+    ("pnbp", re.compile(r"(?i)\bPenerimaan\s+Negara\s+Bukan\s+Pajak\b")),
+    (
+        "government_fee",
+        re.compile(r"(?i)\bgovernment(?:al)?\s+(?:fee|charge|levy|tax)s?\b"),
+    ),
+    (
+        "government_fee",
+        re.compile(r"(?i)\b(?:official|statutory)\s+(?:fee|charge)s?\b"),
+    ),
+    ("biaya_pemerintah", re.compile(r"(?i)\bbiaya\s+(?:pemerintah|negara)\b")),
+    (
+        "biaya_imigrasi",
+        re.compile(
+            r"(?i)\b(?:biaya\s+(?:imigrasi|keimigrasian)|immigration\s+fees?)\b"
+        ),
+    ),
+    ("tarif_resmi", re.compile(r"(?i)\b(?:tarif|biaya)\s+resmi\b")),
+    ("state_fee", re.compile(r"(?i)\bstate\s+(?:fee|levy)s?\b")),
+)
+
+# SEPARATION beats INCLUSION, and that ordering is the heart of this guard.
+#
+# The first cut exempted a whole sentence the moment it contained any inclusion
+# wording, and the refuter broke it four different ways with that one lever:
+# `tidak termasuk dalam` (a NEGATED inclusion) read as an inclusion; `not
+# all-inclusive` likewise; and an inclusion phrase about something ELSE
+# ("sudah termasuk konsultasi, tetapi PNBP ... dibayar terpisah") exempted a
+# levy it never referred to. Binding an exemption to its grammatical subject
+# with a regex is a clause-parsing problem and would have been the wrong shape.
+#
+# The cure inverts the burden instead: an explicit statement that the levy is
+# paid SEPARATELY is decisive evidence of a split and is checked FIRST, so a
+# text carrying both signals fires. The negated inclusion forms are listed HERE
+# rather than derived by a generic negation window, because a generic one would
+# misread the inclusion phrase `tidak ada biaya tambahan` ("no additional
+# charges") — which opens with a negator and MEANS inclusion.
+# Split into two lists because they behave OPPOSITELY under negation, and a
+# single list made the guard veto the single most natural compliant sentence in
+# the bot's register. `tidak termasuk` / `not included` ALREADY CONTAIN their
+# negator and mean separation, so a negation test must never touch them. The
+# forms below assert separation POSITIVELY, so negating one reverses its meaning:
+# "tidak perlu membayar PNBP secara terpisah — total Rp15.000.000 sudah mencakup
+# semua biaya pemerintah" is a perfectly compliant reassurance, and the bare
+# `terpisah` inside "secara terpisah" vetoed it. Measured on the shipped code
+# before this fix: that sentence returned ['pnbp', 'biaya_pemerintah'], and its
+# English twin ("you will not be billed separately … already included") returned
+# ['pnbp']. Since separation is checked FIRST and beats any inclusion wording,
+# the client's reassurance was the one shape guaranteed to fail.
+_PRICE_SEPARATION_NEGATIVE_FORMS = re.compile(
+    r"(?i)\b(?:tidak\s+termasuk|belum\s+termasuk|not\s+included"
+    r"|not\s+all[\s-]?inclusive)\b"
+)
+_PRICE_SEPARATION_POSITIVE_FORMS = re.compile(
+    r"(?i)\b(?:di ?bayar\s+terpisah|bayar\s+terpisah|terpisah"
+    r"|(?:payable|paid|charged|billed)\s+separately|separately"
+    r"|di\s+luar\s+(?:harga|biaya)|on\s+top\s+of|excluded\s+from)\b"
+)
+
+# A negator only reverses a separation claim it is actually attached to. Two
+# bounds, both deliberate: a 40-character reach, and a hard stop at the nearest
+# sentence boundary BEFORE the marker. The boundary is what keeps "Kami tidak
+# bisa memberikan diskon. PNBP Rp9.500.000 dibayar terpisah." guilty — the
+# `tidak` there negates the discount, not the levy. Note this is a lookBEHIND
+# only, and narrow on purpose: the 140-char association window elsewhere in this
+# function is wide because association wants reach, whereas negation wants
+# adjacency. Widening this one would start reading a negator out of a previous
+# clause and silently disarm the guard.
+_PRICE_NEGATOR = re.compile(
+    r"(?i)\b(?:tidak|bukan|belum|tanpa|jangan|not|never|no)\b"
+)
+_PRICE_NEGATOR_REACH = 40
+
+
+def _separation_asserted(window: str) -> bool:
+    """True when the window claims the levy is paid SEPARATELY, negation-aware.
+
+    An already-negative form counts unconditionally; a positive form counts only
+    if it is not itself negated within reach and within the same sentence.
+    """
+    if _PRICE_SEPARATION_NEGATIVE_FORMS.search(window):
+        return True
+    for match in _PRICE_SEPARATION_POSITIVE_FORMS.finditer(window):
+        lead = window[max(0, match.start() - _PRICE_NEGATOR_REACH) : match.start()]
+        cut = max(lead.rfind("."), lead.rfind("!"), lead.rfind("?"), lead.rfind("\n"))
+        if cut != -1:
+            lead = lead[cut + 1 :]
+        if not _PRICE_NEGATOR.search(lead):
+            return True
+    return False
+
+# An inclusion marker EXEMPTS the levy: it asserts the levy sits INSIDE the
+# quoted price. Only consulted when no separation marker fired.
+_PRICE_INCLUSION_MARKERS = re.compile(
+    r"(?i)\b(?:sudah\s+(?:termasuk|include)|telah\s+termasuk|termasuk\s+dalam"
+    r"|already\s+included|is\s+included|are\s+included|included\s+in"
+    r"|all[\s-]?inclusive|all[\s-]?in\b|nothing\s+further\s+is\s+payable"
+    r"|tidak\s+ada\s+biaya\s+tambahan|tidak\s+perlu|no\s+additional"
+    r"|total\s+yang\s+anda\s+bayar|total\s+you\s+pay"
+    r"|(?:this|that|it|which)\s+includes?|includes?\s+(?:our|the|your)"
+    # BARE `mencakup` WAS HERE AND WAS WRONG — it exempted the very defect
+    # this guard exists for. Row 379 reads "PNBP pemerintah Rp9.500.000 untuk
+    # 2 tahun, mencakup visa, ITAS, izin masuk kembali" — there `mencakup`
+    # says what the LEVY BUYS, not that the levy sits inside the client
+    # price. Only the bound form `sudah mencakup` ("already comprises")
+    # makes the inclusion claim. Caught by
+    # test_price_split_veto_catches_the_reproduced_client_defect going red.
+    r"|sudah\s+mencakup)\b"
+)
+
+# Association is by PROXIMITY, not by sentence, and that is a deliberate
+# reversal. Sentence segmentation was the single largest source of defects in
+# the first cut: an Indonesian abbreviation (`PP No. 28`) split a marker away
+# from its amount, a full-width `。` failed to split at all and let one
+# sentence's inclusion wording exempt another sentence's split levy, and a
+# WhatsApp bullet with the label and the amount on separate LINES was severed
+# by the newline rule. All five of those findings are ONE defect — the
+# segmenter — so the segmenter is gone rather than patched. Cost, declared
+# rather than hidden: a marker mentioned definitionally within 140 characters
+# of an unrelated total now fires where a sentence-scoped rule would not. That
+# costs a retry (the ladder rephrases); the reverse error costs a client
+# budgeting a levy twice.
+_PRICE_SPLIT_WINDOW = 140
+
+# WhatsApp text copied from a price list routinely carries U+00A0 between the
+# currency marker and the digits, and `_CURRENCY_AMOUNT_RE` accepts only ASCII
+# blanks — so "Rp 9.500.000" was invisible to this veto. Normalized HERE, on
+# this function's own input only: widening the shared regex would change the
+# OTHER veto's behaviour too, and that belongs in its own change.
+_NBSP = "\xa0"
+
+
+def price_split_offenders(text: str) -> list[str]:
+    """Names of levy markers that carry their own amount, uncontradicted.
+
+    Returns marker NAMES only, never the matched text or the amount — this
+    value is logged, and the DB stores the single code
+    `finalize_price_split_fee` regardless (same discipline as
+    `scan_text_for_secret_egress`).
+    """
+    haystack = text.replace(_NBSP, " ")
+    offenders: list[str] = []
+    for name, pattern in _PRICE_SPLIT_MARKERS:
+        if name in offenders:
+            continue
+        for match in pattern.finditer(haystack):
+            lo = max(0, match.start() - _PRICE_SPLIT_WINDOW)
+            hi = min(len(haystack), match.end() + _PRICE_SPLIT_WINDOW)
+            window = haystack[lo:hi]
+            if not _CURRENCY_AMOUNT_RE.search(window):
+                continue
+            if not _separation_asserted(window) and _PRICE_INCLUSION_MARKERS.search(
+                window
+            ):
+                continue
+            offenders.append(name)
+            break
+    return offenders
+
+
 _SECRET_EGRESS_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     ("ssh_pubkey", re.compile(r"\bssh-(?:rsa|ed25519|dss)\s+[A-Za-z0-9+/=]{20,}")),
@@ -733,6 +939,22 @@ def _codex_egress_veto(
                 f"wa-finalize: answer for thread {thread_id} asserts prices "
                 "outside the frozen package",
             )
+    # Runs unconditionally, NOT under `price_sources is not None`: splitting a
+    # government levy out of a client-facing price is forbidden by the ruling
+    # whether or not this leg was handed price sources to anchor against.
+    split = price_split_offenders(text)
+    if split:
+        logger.warning(
+            "wa-finalize: split-price veto for thread %s — %s presented as a "
+            "separately payable amount beside a client price",
+            thread_id,
+            ",".join(split),
+        )
+        return (
+            "price_split_fee",
+            f"wa-finalize: answer for thread {thread_id} splits a government "
+            "levy out of the client-facing price",
+        )
     if secret_scan:
         hit = scan_text_for_secret_egress(text, canary_tokens)
         if hit is not None:
