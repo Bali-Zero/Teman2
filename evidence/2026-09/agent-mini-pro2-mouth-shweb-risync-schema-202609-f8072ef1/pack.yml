@@ -32,24 +32,40 @@ lanes:
 
 diff:
   files: 5
-  churn: 3185
-  measured_at: 150c8d36e4
+  churn: 3252
+  measured_at: caa5df48bc
   note: >-
-    Churn (added+deleted) summed across the 5 changed files at the single
-    commit named above, against merge-base
+    Churn (added+deleted) summed across the 5 CODE files (evidence/*.yml
+    excluded, same convention as this repo's other Gear-3 packs) at the
+    last code commit named above, against merge-base
     88ef221d632a3e463b80cc439fbe39f473f37a12 (== origin/main, unchanged
     since fork): apps/mouth/src/lib/api/schema.d.ts (2854+40),
     apps/mouth/src/app/sitemap.test.ts (166+19),
     apps/backend-rag/backend/tests/unit/scripts/
-    test_generate_openapi_schema_pin.py (60+0),
-    apps/backend-rag/scripts/generate_openapi.py (41+4),
-    apps/mouth/src/lib/api/schema.d.ts.openapi-sha256 (1+0) = 3185. Floor
-    computed via `scripts/evidence_pack_lint.py --print-floor`, re-run
-    after this LAST commit — 3, source `size`.
+    test_generate_openapi_schema_pin.py (121+0, up from 60+0 after the
+    round-2 cures' docstrings + sanity assert),
+    apps/backend-rag/scripts/generate_openapi.py (47+4, up from 41+4),
+    apps/mouth/src/lib/api/schema.d.ts.openapi-sha256 (1+0) = 3252. Floor
+    re-computed via `scripts/evidence_pack_lint.py --print-floor
+    --changed-files-file <5 code files> --numstat-file <their numstat>`
+    after this LAST code commit — 3, source `size` (unchanged from the
+    prior round's measurement; still above SIZE_GEAR3_THRESHOLD 1828).
 
 pii_scan: clean
 
 council_run: council-journal.jsonl
+
+seat_override: >-
+  Only one of the three canonical COUNCIL_REVIEW_SEATS was reachable this
+  session, not zero — one real seat plus an override, not zero seats plus
+  an override. `kimi-code/k3`: "403 You've reached your monthly usage
+  limit for this billing cycle", attempted 2026-09-13 (Mini). `codex-gpt-5.6-sol`:
+  BALANCE_DEAD per this session's arsenal probe. `tp1-qwen3.8-max`: the one
+  live seat — reviewed both rounds, REWORK then PASS
+  (council-journal.jsonl). `gemini-3.1-pro` reviewed round 1 alongside it
+  but is not one of the three canonical seats this quorum check counts.
+  authorized by imperator 6a02cd16 on 2026-09-13, key
+  shweb-imp-oracle-risync-seat-override-authorized.
 
 spec: |
   PART A — the first ruling, after attempt 1's stop-and-report on
@@ -211,10 +227,19 @@ receipts:
     cmd: cd apps/mouth && npx vitest run --reporter=verbose
     result: >-
       Test Files 476 passed (476); Tests 5132 passed (5132).
-      fact-mapper.test.ts: 141/141 passed (grep -c on the log, zero
-      non-passing lines). sitemap.test.ts: 18/18 passed (grep -c, zero
-      non-passing lines) — was 17 before this round's fifth new test
-      (the extractor's loud-failure guilt test).
+      fact-mapper.test.ts: 140/140 passed, verified by running that file
+      alone (`npx vitest run ".../fact-mapper.test.ts" --reporter=verbose`)
+      — CORRECTED 2026-09-13 by the round-2 gate: the earlier "141/141" in
+      this pack was a `grep -c "fact-mapper.test.ts"` measurement bug, the
+      exact guard-over-match class (cicatrix #3) this PR is about — one of
+      the 141 matched lines was e4-tier-fence.test.ts's own test
+      description, which quotes the string "fact-mapper.test.ts" in its
+      prose. The gate re-ran the file alone at HEAD (140) and at the fork
+      point 88ef221d63 (also 140): nothing regressed, the number was simply
+      never true. sitemap.test.ts: 18/18 passed (grep -c, zero non-passing
+      lines — safe here since no OTHER file's test description contains the
+      substring "sitemap.test.ts") — was 17 before this round's fifth new
+      test (the extractor's loud-failure guilt test).
     exit: 0
     ts: 2026-09-13T09:23Z
     seat: session (Mini, implementer lane)
@@ -297,8 +322,9 @@ receipts:
     seat: session (Mini, implementer lane)
 
   - claim: >-
-      Gear-3 floor re-measured after the LAST commit (150c8d36e4), by
-      command, not assumed.
+      Gear-3 floor re-measured twice: after commit 150c8d36e4 (3, size) and
+      again after the round-2 code cures' commit caa5df48bc — the true
+      LAST code commit — by command, not assumed either time.
     cmd: >-
       git diff --name-only 88ef221d632a3e463b80cc439fbe39f473f37a12 HEAD >
       changed.txt && git diff --numstat
@@ -306,9 +332,14 @@ receipts:
       apps/backend-rag/.venv/bin/python3 scripts/evidence_pack_lint.py
       --print-floor --changed-files-file changed.txt --numstat-file
       numstat.txt
-    result: "3 (and --print-floor-source on the same inputs: size)."
+    result: >-
+      3 both times (and --print-floor-source on the same inputs: size both
+      times) — churn rose from 3185 (5 files) to 3252 (same 5 files; the
+      pytest and generate_openapi.py grew from the round-2 docstrings and
+      sanity assert) without crossing back below SIZE_GEAR3_THRESHOLD in
+      either direction.
     exit: 0
-    ts: 2026-09-13T09:26Z
+    ts: 2026-09-13T09:53Z
     seat: session (Mini, implementer lane)
 
   - claim: >-
@@ -322,18 +353,144 @@ receipts:
     ts: 2026-09-13T08:41Z
     seat: session (Mini, implementer lane)
 
-dissent: []
-# The second council round (qwen on the cured diff) is convened by the
-# orchestrator, outside this session's contribution chain, per the same
-# explicit instruction as the previous round: "I fill it once the second
-# round closes." Round 1's REWORK verdicts are recorded in full in
-# council-journal.jsonl (this pack's council_run:), not fabricated as
-# dissent entries here.
+dissent:
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Round-1 MAJOR — commit order. The two-commit split (guard commit, then
+      regeneration commit) leaves the GUARD commit red when checked out
+      alone: at that commit `schema.d.ts` is still the pre-regeneration
+      blob, so the corrected `PublicLeadSource` assertion fails against it.
+      Reversing the order only moves the redness to the other commit.
+    status: CONFIRMED
+    note: >-
+      Cured by squashing guard + regeneration into the single commit
+      `150c8d36e4`. `gemini-3.1-pro` converged on this same finding
+      independently, without either seat being primed with the other's
+      result. The coordinator verified empirically before accepting:
+      checked out the prior round's guard-only commit (`9eaeb53dab`) alone
+      and measured `sitemap.test.ts` at 1 failed | 16 passed (17); at
+      `150c8d36e4` (guard + regen together), 18/18.
+
+  - seat: gemini-3.1-pro
+    objection: >-
+      Round-1 MAJOR — the drift guard shipped as a named PENDING-ARMS debt
+      row instead of real, working code, leaving the 20-day-drift failure
+      mode this PR exists to fix structurally unguarded in CI.
+    status: CONFIRMED
+    note: >-
+      Cured by `apps/backend-rag/backend/tests/unit/scripts/
+      test_generate_openapi_schema_pin.py` + `generate_openapi.py`'s
+      `compute_schema_sha256`/pin-writer, built inside a 30-minute
+      time-box. Determinism proved (two fresh-process regenerations,
+      identical hash both times) and guilt proved (a corrupted pin turned
+      the test RED with the exact intended message; restoring it turned it
+      GREEN) before this was committed. The PENDING-ARMS row from the prior
+      round was removed as superseded.
+
+  - seat: tp1-qwen3.8-max + gemini-3.1-pro
+    objection: >-
+      Round-1 MINOR — brittle `PublicLeadSource` extraction regex
+      (`/PublicLeadSource:[\s\S]*?;\n\s+\/\*\*/`) assumed the next schema
+      declaration always opens with a JSDoc comment; a parse miss would
+      silently return `undefined`, reading as a contract violation instead
+      of a broken extractor. Both seats raised this independently.
+    status: CONFIRMED
+    note: >-
+      Cured: `extractPublicLeadSourceBlock()` now matches
+      `/PublicLeadSource:[\s\S]*?;/` (no TS union member can contain a
+      semicolon, so the first one is unambiguously the terminator,
+      independent of whatever follows) and throws
+      `"PublicLeadSource block not found in schema.d.ts"` on a miss. A
+      dedicated test proves the throw.
+
+  - seat: tp1-qwen3.8-max + gemini-3.1-pro
+    objection: >-
+      Round-1 MINOR — tautological guilt fixture
+      (`` `export interface components {}\n${marker}\n` ``) only proved
+      `filter`+`includes` finds a string that was just concatenated, not
+      that the check survives a realistic schema shape.
+    status: CONFIRMED
+    note: >-
+      Cured: the fixture is now a realistic schema fragment (a `paths`
+      entry referencing `operations[...]` by the retired operationIds, an
+      `operations`-shaped block, two component schema names) modelled on
+      the generator's real output, plus per-marker redaction proving
+      precision. The near-miss scope (`/api/visa/voa-v2` is NOT caught) is
+      stated plainly in both the code comment and the commit body.
+
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Round-2 MINOR — the drift pin guards one layer upstream of what its
+      name implies: it covers OpenAPI JSON ↔ backend, not `schema.d.ts` ↔
+      OpenAPI JSON, because the `openapi-typescript` rendering step is
+      never hashed or re-run. A tool version bump or output-format change
+      could diverge `schema.d.ts` from a fresh render while the pin stays
+      green. (The coordinator reached the same conclusion independently,
+      reading the docstring before the seat raised it.)
+    status: CONFIRMED
+    note: >-
+      Cured by stating the scope honestly rather than closing the gap with
+      a decorative fix: both `generate_openapi.py`'s module docstring and
+      `test_generate_openapi_schema_pin.py`'s docstring now say precisely
+      what the pin catches (the backend moving ahead of a regeneration —
+      the exact 20-day failure) and what it does not (a `schema.d.ts` that
+      is wrong for any other reason). A second pin over `schema.d.ts`'s own
+      bytes was considered and deliberately NOT added: nothing in this
+      backend-only Python CI job can re-derive `schema.d.ts` via a fresh
+      `openapi-typescript` render to check it against — that needs Node in
+      a job that currently has none — so an unchecked second pin would be
+      exactly cicatrix family #2 (esiste≠armato), a file nothing arms.
+      Closing that gap for real is named as a follow-up, not hidden.
+
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Round-2 MINOR — `Path(__file__).resolve().parents[6]` is a magic
+      depth constant; a future file move/restructure would break the pin
+      path with an opaque `FileNotFoundError` deep inside the test body.
+    status: CONFIRMED
+    note: >-
+      Cured: a one-line sanity assert now checks
+      `(_REPO_ROOT / "apps" / "mouth" / "package.json").is_file()`
+      immediately after computing `_REPO_ROOT`, with a message naming
+      exactly what moved and which constant to fix.
+
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Round-2 MINOR — `create_app()` is constructed inside the test
+      function with no fixture; if construction acquires a DB handle or a
+      socket, this repo's real CI parallelism
+      (`-n auto --dist loadfile`, `.github/workflows/tests.yml`) could
+      make the test flaky. Needs verification, not assumption.
+    status: PLAUSIBLE
+    note: >-
+      Verified, not assumed: `create_app()` → `register_middleware()` →
+      importing `backend.middleware.rate_limiter` instantiates the
+      module-level singleton `rate_limiter = RateLimiter()`, whose
+      constructor calls `RedisManager.get_instance().get_sync_client()` —
+      but `RedisManager.__init__` is a no-op (attributes only); the actual
+      blocking `redis.from_url(...).ping()` call lives in the SEPARATE
+      `RedisManager.initialize()` method, invoked only from the app's
+      `lifespan` startup handler, which `create_app()` + `.openapi()` never
+      triggers. `get_sync_client()` therefore returns `None` immediately —
+      confirmed by the "no Redis available" log line appearing instantly on
+      every run in this PR (never a 5-second stall) and by the consistent
+      ~1-2s total runtime across every regeneration in the determinism
+      proof. `PricingService`'s eager load is a local JSON file read, not
+      network I/O. `create_app()` is already called this same way, no
+      fixture, by 5 other files in this suite
+      (`test_app_factory.py`, `test_endpoints_reachable.py`,
+      `test_evaluate_endpoint.py`, `test_intake_review.py`,
+      `test_garuda_voa_openapi_parity.py`), already running under this
+      exact parallel regime with no recorded flake for this pattern.
+      Status left PLAUSIBLE rather than CONFIRMED per the coordinator's own
+      instruction ("let the evidence decide, not the tidiness") — no
+      gating fixture was needed, so this is a verified-harmless finding,
+      not a cured defect.
 
 tests:
   - "apps/mouth vitest — 476 test files passed (476), 5132 tests passed (5132)."
   - "sitemap.test.ts — 18/18 passed, including the realistic guilt fixture, the loud-failure extractor test, and the corrected PublicLeadSource assertion."
-  - "fact-mapper.test.ts — 141/141 passed, unaffected throughout every round of this PR."
+  - "fact-mapper.test.ts — 140/140 passed (corrected from a prior '141/141' grep-substring miscount; see the receipt above), unaffected throughout every round of this PR."
   - "backend/tests/unit/scripts/test_generate_openapi_schema_pin.py — 1 passed; separately proven RED on a corrupted pin and GREEN again once restored."
 
 static:
