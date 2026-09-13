@@ -1,0 +1,61 @@
+gear: 1
+objective: >-
+  Tax-department team members can send/resend the client portal invitation for ANY
+  client, not only clients assigned to them (Zero mandate, 2026-09-14). Today
+  `verify_client_access(write=True)` in `portal_invite.py`'s send/resend paths admits
+  only an admin or the assigned/created-by team member; measured in prod that day, every
+  tax role (`tax@`, `angel.tax@`, `kadek.tax@`, `dewaayu.tax@`, `faysha.tax@`) has 0
+  assigned clients and so gets 403 on every client.
+constraints:
+  - Change only the two portal-invite WRITE paths (`send`, `resend`) in
+    `backend/app/routers/portal_invite.py`; leave `get_client_invitations` (a read) and
+    `verify_client_access` itself untouched, so no other router's RBAC is widened.
+  - The judgment is the `team_members.department` COLUMN for the caller's row, looked up
+    fresh by email, exact-match on the normalised value — never a substring of the
+    email address (never a `.tax@` test) and never the free-text `role` job title.
+  - The row must be ACTIVE; an inactive tax-department row must still 403.
+  - The client row must still exist — a tax caller for a missing/deleted client still
+    gets 404, not a silent pass.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+acceptance:
+  A1: >-
+    An active tax-department member (not assigned, not the creator) calling
+    `POST /api/portal/invite/send` or `POST /api/portal/invite/resend/{client_id}` for
+    an existing client receives 200, not 403.
+    probe: >-
+      PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/routers/test_portal_invite.py -k tax_department
+  A2: >-
+    The same caller targeting a client_id that does not exist receives 404.
+    probe: >-
+      PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/routers/test_portal_invite.py -k missing_client
+  A3: >-
+    A non-tax, non-admin, non-assigned team member calling the same endpoints still
+    receives 403, and an inactive tax-department row still receives 403.
+    probe: >-
+      PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/routers/test_portal_invite.py backend/tests/unit/test_crm_utils.py
+  A4: >-
+    A department value spelled differently (e.g. "Tax Team") or on a different
+    department does not pass — exact match, not substring.
+    probe: >-
+      PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/test_crm_utils.py::TestIsActiveTaxDepartmentMember
+consumer_map:
+  - A tax-department team member pressing "Invite to portal" (or "Send again", which
+    calls the same `send` endpoint) on the kita client-detail page
+    (`PortalAccess.tsx`) for a client not assigned to them — `POST
+    /api/portal/invite/send` returns 200 instead of 403 in prod.
+out_of_scope: >-
+  `get_client_invitations` (GET invitation history) stays admin/assigned-only — it is a
+  read, not a write, and the frontend does not call it today (only `send`/`status`
+  are wired). No revoke endpoint exists in this router. The separate
+  `GET /api/crm/portal/clients/{id}/status` route (different router,
+  `crm_portal_integration.py`) already grants read access to every team member
+  regardless of assignment (`allow_assigned=True, write` defaults False) — unaffected,
+  out of scope. Frontend `PortalAccess.tsx` has no client-side assignment gate to lift;
+  its only assignment-specific text is an error-toast string shown on a 403, which stops
+  firing for tax members once this PR is live.

@@ -19,7 +19,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.internal_email import send_internal_email
-from backend.app.utils.crm_utils import verify_client_access
+from backend.app.utils.crm_utils import is_active_tax_department_member, verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.portal import InviteService
@@ -223,6 +223,33 @@ def _invitation_public_view(result: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in result.items() if key not in {"token", "invite_url"}}
 
 
+async def _verify_invite_write_access(client_id: int, current_user: dict, conn) -> None:
+    """Client-level write gate for the two portal-invite MUTATIONS (send/resend).
+
+    Standard rule: admin, or the team member assigned to (or who created)
+    this client (`verify_client_access(write=True)`). Widened 2026-09-14
+    (Zero mandate): a caller whose ACTIVE `team_members` row has
+    `department = 'tax'` may invite/resend for ANY client — measured that
+    day, every tax role (`tax@`, `angel.tax@`, `kadek.tax@`, `dewaayu.tax@`,
+    `faysha.tax@`) has 0 assigned clients, so the standard rule locked all of
+    them out of inviting anyone. The client row must still exist: a tax
+    caller for a nonexistent/deleted client still gets 404, same as the
+    admin/assigned path, so this never becomes a silent no-op write.
+
+    Deliberately NOT applied to `get_client_invitations` (a read, not a
+    write) or to any revoke path — this router has none; see PR description.
+    """
+    if await is_active_tax_department_member(current_user, conn):
+        row = await conn.fetchrow(
+            "SELECT id FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Client not found")
+        return
+
+    await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
+
+
 # ================================================
 # TEAM-SIDE ENDPOINTS (Require team auth)
 # ================================================
@@ -249,15 +276,14 @@ async def send_invitation(
         )
 
     # Client-level access check: a human team role alone is not enough — the
-    # caller must be assigned to (or admin over) THIS client. write=True also
-    # denies machine principals by construction (a service-account email
-    # matches neither assigned_to nor created_by). Runs before the try block
-    # below so verify_client_access's HTTPException(403/404) is never
-    # swallowed by the generic `except Exception` inside it.
+    # caller must be assigned to (or admin over) THIS client, OR be an active
+    # tax-department member (see `_verify_invite_write_access`). write=True
+    # (inside the fallback) also denies machine principals by construction (a
+    # service-account email matches neither assigned_to nor created_by). Runs
+    # before the try block below so the HTTPException(403/404) raised here is
+    # never swallowed by the generic `except Exception` inside it.
     async with db_pool.acquire() as conn:
-        await verify_client_access(
-            request.client_id, current_user, conn, allow_assigned=True, write=True
-        )
+        await _verify_invite_write_access(request.client_id, current_user, conn)
 
     try:
         result = await invite_service.create_invitation(
@@ -372,7 +398,7 @@ async def resend_invitation(
     # See send_invitation for the rationale — same client-level gate, run
     # before the try block so its HTTPException is never rewritten to a 500.
     async with db_pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
+        await _verify_invite_write_access(client_id, current_user, conn)
 
     try:
         result = await invite_service.resend_invitation(
