@@ -133,9 +133,11 @@ log "home skeleton: DONE"
 # --- merge alone never updates a live copy — superscar #1)             ---
 PKG="${RUNTIME_DIR}/backend"
 install -d -o root -g wheel -m 0755 /usr/local/libexec "${RUNTIME_DIR}" \
-    "${PKG}" "${PKG}/llm" "${PKG}/services" "${PKG}/services/integrations"
+    "${PKG}" "${PKG}/llm" "${PKG}/services" "${PKG}/services/integrations" \
+    "${PKG}/services/rag" "${PKG}/services/rag/agentic"
 for init in "${PKG}/__init__.py" "${PKG}/llm/__init__.py" \
-    "${PKG}/services/__init__.py" "${PKG}/services/integrations/__init__.py"; do
+    "${PKG}/services/__init__.py" "${PKG}/services/integrations/__init__.py" \
+    "${PKG}/services/rag/__init__.py" "${PKG}/services/rag/agentic/__init__.py"; do
     [ -f "$init" ] || { touch "$init"; chown root:wheel "$init"; chmod 0644 "$init"; }
 done
 install -o root -g wheel -m 0644 \
@@ -143,6 +145,12 @@ install -o root -g wheel -m 0644 \
 install -o root -g wheel -m 0644 \
     "${BACKEND_SRC}/services/integrations/wa_codex_daemon.py" \
     "${PKG}/services/integrations/wa_codex_daemon.py"
+install -o root -g wheel -m 0644 \
+    "${BACKEND_SRC}/services/rag/agentic/_support_signal.py" \
+    "${PKG}/services/rag/agentic/_support_signal.py"
+install -o root -g wheel -m 0644 \
+    "${BACKEND_SRC}/services/integrations/wa_completion_envelope.py" \
+    "${PKG}/services/integrations/wa_completion_envelope.py"
 install -o root -g wheel -m 0755 "${WRAPPER_SRC}" "${WRAPPER_DST}"
 log "runtime code + wrapper: DONE (root-owned, from repo @ $(cd "${REPO_ROOT}" && git rev-parse --short HEAD 2>/dev/null || echo 'no-git'))"
 

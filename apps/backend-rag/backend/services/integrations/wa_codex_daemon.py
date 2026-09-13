@@ -43,6 +43,15 @@ Binding invariants:
     retry); ``410`` means the lease expired server-side and the job's fold
     already happened there (move on).
 
+Since B2.4 (PR-1), before generating the loop judges support on the CLAIMED
+package with the unchanged I26 judge (``CodexSupportJudge``, three
+repetitions, strict ``majority()``), reusing THIS daemon's own
+``CodexExecClient`` for both the judge's votes and the eventual generation.
+The verdict — and, on ``SUPPORTED``, the generated text — travels back
+inside an HMAC-sealed ``wa_completion_envelope``, never as raw model text,
+so a prompt-injected reply cannot forge a verdict the routing leg would
+trust.
+
 Deliberately NOT here (declared non-goals, PR-6): ``policy_refusal``
 production (S1.5 classifier lane), the seat-sentinel cron's full
 implementation, and any execution of the provisioning steps themselves —
@@ -78,6 +87,13 @@ from backend.llm.codex_exec_client import (
     CodexExecQuotaError,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
+)
+from backend.services.integrations.wa_completion_envelope import encode_completion
+from backend.services.rag.agentic._support_signal import (
+    CodexSupportJudge,
+    SupportVerdict,
+    majority,
+    support_inputs_from_wire,
 )
 
 logger = logging.getLogger(__name__)
@@ -123,6 +139,12 @@ _COMPLETE_BACKOFF_S = (0.5, 1.0)
 # First semver-looking token in `codex --version` output. The pin is the
 # bare semver (e.g. "0.147.0"); no token found = mismatch (fail-closed).
 _SEMVER_RE = re.compile(r"(\d+\.\d+\.\d+)")
+
+# B2.4 support-judge wall-clock budget: min(cap, fraction * budget_s). The
+# Dux may retune these after the C1 measurement — this pair is the ONLY
+# place the two numbers live.
+_JUDGE_BUDGET_CAP_S = 20.0  # hard ceiling regardless of how large budget_s is
+_JUDGE_BUDGET_FRACTION = 0.45  # leaves the rest of budget_s for generation
 
 
 @dataclass(frozen=True)
@@ -484,7 +506,109 @@ class WaCodexDaemon:
             )
             return
 
-        started = time.monotonic()
+        started = time.monotonic()  # covers judge + generation (B2.4)
+
+        try:
+            query, context = support_inputs_from_wire(claim.package)
+        except ValueError:
+            logger.error(
+                "wa-codex-daemon: package for job %s is not a readable wire — "
+                "support judge cannot rule",
+                claim.job_id,
+            )
+            exec_ms = int((time.monotonic() - started) * 1000)
+            self._last_exec_ms = exec_ms
+            await self._complete(
+                claim,
+                completion_key,
+                result_text=None,
+                error_class="support_judge_unavailable",
+                exec_ms=exec_ms,
+            )
+            return
+
+        # The judge reuses THIS daemon's own codex client (its binary,
+        # CODEX_HOME) — the measured I26 seat — pinned to MODEL_TERRA
+        # regardless of `config.model` (the judge is not the generation
+        # model knob).
+        judge_budget = min(_JUDGE_BUDGET_CAP_S, budget_s * _JUDGE_BUDGET_FRACTION)
+        judge = CodexSupportJudge(timeout_s=judge_budget, client=self._codex)
+        try:
+            votes = await judge.vote_repetitions(query, context)
+        except Exception as exc:
+            votes = (SupportVerdict.UNAVAILABLE,) * 3
+            logger.error(
+                "wa-codex-daemon: support judge vote_repetitions failed for job %s: %s",
+                claim.job_id,
+                type(exc).__name__,
+            )
+        verdict = majority(votes)
+        votes_repr = ",".join(vote.value for vote in votes)
+
+        if verdict is SupportVerdict.UNAVAILABLE:
+            logger.error(
+                "wa-codex-daemon: support judge ABSENT for job %s (judge=%s votes=%s) — "
+                "reported as support_judge_unavailable, nothing generated",
+                claim.job_id,
+                judge.name,
+                votes_repr,
+            )
+            exec_ms = int((time.monotonic() - started) * 1000)
+            self._last_exec_ms = exec_ms
+            await self._complete(
+                claim,
+                completion_key,
+                result_text=None,
+                error_class="support_judge_unavailable",
+                exec_ms=exec_ms,
+            )
+            return
+
+        if verdict in (SupportVerdict.NOT_SUPPORTED, SupportVerdict.UNKNOWN):
+            envelope = encode_completion(
+                key=self._config.broker_key,
+                package_hash=claim.package_hash,
+                verdict=verdict,
+                votes=votes,
+                judge=judge.name,
+                answer=None,
+            )
+            logger.info(
+                "wa-codex-daemon: support verdict %s for job %s (judge=%s votes=%s) — "
+                "nothing generated",
+                verdict.value,
+                claim.job_id,
+                judge.name,
+                votes_repr,
+            )
+            exec_ms = int((time.monotonic() - started) * 1000)
+            self._last_exec_ms = exec_ms
+            await self._complete(
+                claim,
+                completion_key,
+                result_text=envelope,
+                error_class=None,
+                exec_ms=exec_ms,
+            )
+            return
+
+        # verdict is SUPPORTED — generate, then seal the answer in the envelope.
+        logger.info(
+            "wa-codex-daemon: support verdict %s for job %s (judge=%s votes=%s)",
+            verdict.value,
+            claim.job_id,
+            judge.name,
+            votes_repr,
+        )
+        remaining = budget_s - (time.monotonic() - started)
+        if remaining <= 0:
+            exec_ms = int((time.monotonic() - started) * 1000)
+            self._last_exec_ms = exec_ms
+            await self._complete(
+                claim, completion_key, result_text=None, error_class="exec_timeout", exec_ms=exec_ms
+            )
+            return
+
         error_class: str | None = None
         result_text: str | None = None
         # `result` non-None ⟺ generate returned ⟺ no except ran ⟺ error_class
@@ -492,7 +616,7 @@ class WaCodexDaemon:
         # initialized (CodeQL cannot track the error_class correlation).
         result = None
         try:
-            result = await self._codex.generate(claim.package, timeout_s=budget_s)
+            result = await self._codex.generate(claim.package, timeout_s=remaining)
         except CodexExecTimeoutError:
             error_class = "exec_timeout"
         except CodexExecUnavailableError:
@@ -548,29 +672,44 @@ class WaCodexDaemon:
                     claim.job_id,
                 )
                 error_class = "cli_failure"
-            elif len(text) > _RESULT_TEXT_MAX:
-                # Char cap (router Pydantic max_length). BEFORE posting;
-                # never truncate-and-send.
-                logger.warning(
-                    "wa-codex-daemon: result for job %s exceeds %d chars — oversized_output",
-                    claim.job_id,
-                    _RESULT_TEXT_MAX,
-                )
-                error_class = "oversized_output"
-            elif len(_encode_body({"result_text": text})) > _RESULT_BYTES_MAX:
-                # Byte cap (router stream cap) measured with the SAME
-                # encoder `_complete` sends with — a multibyte-heavy answer
-                # can pass the char cap and still 413 at the router, where
-                # the 4xx-never-retry branch would abandon it untyped
-                # (Kimi round-1 F1, measured: 60k chars -> ~180KB).
-                logger.warning(
-                    "wa-codex-daemon: result for job %s exceeds %d encoded bytes — oversized_output",
-                    claim.job_id,
-                    _RESULT_BYTES_MAX,
-                )
-                error_class = "oversized_output"
             else:
-                result_text = text
+                # B2.4: the size caps below measure the ENVELOPE — the
+                # bytes actually sent — not the raw model text, so a
+                # forge-proof wrapper can never silently sneak an
+                # otherwise-legal answer over either bound.
+                envelope = encode_completion(
+                    key=self._config.broker_key,
+                    package_hash=claim.package_hash,
+                    verdict=SupportVerdict.SUPPORTED,
+                    votes=votes,
+                    judge=judge.name,
+                    answer=text,
+                )
+                if len(envelope) > _RESULT_TEXT_MAX:
+                    # Char cap (router Pydantic max_length). BEFORE posting;
+                    # never truncate-and-send.
+                    logger.warning(
+                        "wa-codex-daemon: envelope for job %s exceeds %d chars — oversized_output",
+                        claim.job_id,
+                        _RESULT_TEXT_MAX,
+                    )
+                    error_class = "oversized_output"
+                elif len(_encode_body({"result_text": envelope})) > _RESULT_BYTES_MAX:
+                    # Byte cap (router stream cap) measured with the SAME
+                    # encoder `_complete` sends with — a multibyte-heavy
+                    # envelope can pass the char cap and still 413 at the
+                    # router, where the 4xx-never-retry branch would
+                    # abandon it untyped (Kimi round-1 F1, measured: 60k
+                    # chars -> ~180KB).
+                    logger.warning(
+                        "wa-codex-daemon: envelope for job %s exceeds %d encoded bytes — "
+                        "oversized_output",
+                        claim.job_id,
+                        _RESULT_BYTES_MAX,
+                    )
+                    error_class = "oversized_output"
+                else:
+                    result_text = envelope
 
         await self._complete(
             claim,

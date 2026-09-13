@@ -165,6 +165,7 @@ ALLOWED_ERROR_CLASSES = frozenset(
         "oversized_output",  # result exceeded the transport bound (chaos row 7)
         "empty_output",  # CLI exited 0 with nothing usable
         "policy_refusal",  # CLI-level refusal, no usable text
+        "support_judge_unavailable",  # daemon's support judge could not rule (B2.4) — nothing generated
     }
 )
 

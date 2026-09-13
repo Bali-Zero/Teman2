@@ -63,6 +63,7 @@ __all__ = [
     "SupportVerdict",
     "evaluate_support",
     "majority",
+    "support_inputs_from_wire",
 ]
 
 
@@ -169,10 +170,23 @@ class CodexSupportJudge:
     Model pinned to `MODEL_TERRA` (`gpt-5.6-terra`), the same constant
     `wa_codex_daemon.py` falls back to when `WA_CODEX_MODEL` is unset."""
 
-    def __init__(self, *, model: str = MODEL_TERRA, timeout_s: float = _CODEX_TIMEOUT_S) -> None:
+    def __init__(
+        self,
+        *,
+        model: str = MODEL_TERRA,
+        timeout_s: float = _CODEX_TIMEOUT_S,
+        client: CodexExecClient | None = None,
+    ) -> None:
         self._model = model
         self._timeout_s = timeout_s
-        self._client = CodexExecClient(model=model, timeout_s=timeout_s)
+        # B2.4: a caller that already holds a CodexExecClient (the WA codex
+        # daemon, reusing its OWN seat for both the judge and the
+        # generation) hands it in here instead of a fresh construction —
+        # the daemon's client carries its own binary/CODEX_HOME resolution,
+        # which a freshly built client would not.
+        self._client = (
+            client if client is not None else CodexExecClient(model=model, timeout_s=timeout_s)
+        )
         self.last_run_details: tuple[str, ...] = ()
 
     @property
@@ -416,3 +430,62 @@ async def evaluate_support(
         latency_s=time.monotonic() - t0,
         detail="",
     )
+
+
+# ---------------------------------------------------------------------------
+# B2.4 — deriving the judge's input from the broker wire (design B2-4-design
+# md §1.1 step 3). The daemon claims a job whose ``package`` is the SAME
+# canonical wire text `wa_package_builder.build_context_package` offered
+# (``ContextPackage.wire_text()``); this is the ONE place that re-derives
+# the judge's (query, context) pair from that text on the daemon side,
+# EXACTLY the formula the builder already used at L623-624 so the judge
+# rules on the identical input regardless of which side computed it.
+# ---------------------------------------------------------------------------
+
+
+def support_inputs_from_wire(wire: str) -> tuple[str, str]:
+    """Parse a sealed broker wire into the judge's ``(query, context)`` pair.
+
+    ``wire`` is canonical JSON (``_canonical_wire``) with (among others) the
+    ``history``/``chunks`` keys: ``query`` is the last history turn's
+    content, ``context`` is every chunk's text joined with a blank line —
+    byte-for-byte the same derivation `wa_package_builder.build_context_package`
+    already performs before calling `evaluate_support` (L623-624), so a
+    daemon-side judge rules on the identical input a Fly-side judge would
+    have seen.
+
+    Raises ``ValueError`` — with a message that names WHAT is wrong, never
+    any wire content — when the wire is not a readable package: not JSON,
+    not a JSON object, ``history``/``chunks`` not lists, the last history
+    entry not a ``{"content": str, ...}`` dict, or any chunk not a
+    ``{"text": str, ...}`` dict.
+    """
+    try:
+        payload = json.loads(wire)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise ValueError("support_inputs_from_wire: wire is not valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("support_inputs_from_wire: wire is not a JSON object")
+
+    history = payload.get("history")
+    if not isinstance(history, list):
+        raise ValueError("support_inputs_from_wire: 'history' is not a list")
+    if history:
+        last_turn = history[-1]
+        if not isinstance(last_turn, dict) or not isinstance(last_turn.get("content"), str):
+            raise ValueError("support_inputs_from_wire: last history entry is malformed")
+        query = last_turn["content"]
+    else:
+        query = ""
+
+    chunks = payload.get("chunks")
+    if not isinstance(chunks, list):
+        raise ValueError("support_inputs_from_wire: 'chunks' is not a list")
+    texts: list[str] = []
+    for chunk in chunks:
+        if not isinstance(chunk, dict) or not isinstance(chunk.get("text"), str):
+            raise ValueError("support_inputs_from_wire: a chunk is malformed")
+        texts.append(chunk["text"])
+    context = "\n\n".join(texts)
+
+    return query, context

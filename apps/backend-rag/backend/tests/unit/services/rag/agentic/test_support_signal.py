@@ -38,6 +38,7 @@ import backend.services.rag.agentic._support_signal as support_signal_module
 from backend.llm.codex_exec_client import (
     MODEL_TERRA,
     CodexExecAuthError,
+    CodexExecClient,
     CodexExecCommunicationError,
     CodexExecOutputShapeError,
     CodexExecProcessError,
@@ -45,6 +46,7 @@ from backend.llm.codex_exec_client import (
     CodexExecTimeoutError,
     CodexExecUnavailableError,
 )
+from backend.services.rag.agentic import wa_package_builder
 from backend.services.rag.agentic._support_signal import (
     OLLAMA_MODEL,
     RUBRIC,
@@ -55,6 +57,7 @@ from backend.services.rag.agentic._support_signal import (
     _strict_parse,
     evaluate_support,
     majority,
+    support_inputs_from_wire,
 )
 
 ALL_VERDICTS = (
@@ -414,3 +417,129 @@ class TestImportIsFree:
         module_name = "backend.services.rag.agentic._support_signal"
         assert module_name in sys.modules
         importlib.reload(sys.modules[module_name])
+
+
+# ---------------------------------------------------------------------------
+# B2.4 — client injection (the daemon hands its OWN CodexExecClient to the
+# judge instead of letting it construct a fresh one).
+# ---------------------------------------------------------------------------
+
+
+class TestClientInjection:
+    def test_injected_client_is_the_client_used(self) -> None:
+        fake_client = object()
+        judge = CodexSupportJudge(client=fake_client)  # type: ignore[arg-type]
+        assert judge._client is fake_client  # noqa: SLF001
+
+    async def test_injected_client_is_actually_called_on_every_vote(self) -> None:
+        fake_client = AsyncMock()
+        fake_client.generate = AsyncMock(
+            return_value=type("FakeResult", (), {"text": "SUPPORTED"})()
+        )
+        judge = CodexSupportJudge(client=fake_client)
+
+        votes = await judge.vote_repetitions("query", "context")
+
+        assert votes == (SupportVerdict.SUPPORTED,) * 3
+        assert fake_client.generate.await_count == 3
+
+    def test_no_client_given_constructs_its_own(self) -> None:
+        judge = CodexSupportJudge()
+        assert isinstance(judge._client, CodexExecClient)  # noqa: SLF001
+
+
+# ---------------------------------------------------------------------------
+# B2.4 — `support_inputs_from_wire`: the daemon-side re-derivation of the
+# builder's own judge-input formula (L623-624).
+# ---------------------------------------------------------------------------
+
+
+class TestSupportInputsFromWire:
+    def test_matches_the_builder_formula_normal_history_and_chunks(self) -> None:
+        history = [
+            {"role": "user", "content": "first turn"},
+            {"role": "assistant", "content": "second turn"},
+            {"role": "user", "content": "what is the fee?"},
+        ]
+        chunks = [
+            {"collection": "c1", "text": "chunk one text", "score": 0.9},
+            {"collection": "c2", "text": "chunk two text", "score": 0.5},
+        ]
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": history,
+                "chunks": chunks,
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 1,
+            }
+        )
+
+        query, context = support_inputs_from_wire(wire)
+
+        assert query == history[-1]["content"]
+        assert context == "\n\n".join(chunk["text"] for chunk in chunks)
+
+    def test_matches_the_builder_formula_empty_history(self) -> None:
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": [],
+                "chunks": [{"collection": "c", "text": "only chunk", "score": 1.0}],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        query, context = support_inputs_from_wire(wire)
+
+        assert query == ""
+        assert context == "only chunk"
+
+    def test_matches_the_builder_formula_zero_chunks(self) -> None:
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": [{"role": "user", "content": "hello"}],
+                "chunks": [],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 2,
+            }
+        )
+
+        query, context = support_inputs_from_wire(wire)
+
+        assert query == "hello"
+        assert context == ""
+
+    @pytest.mark.parametrize(
+        "wire",
+        [
+            "not json",
+            "[]",
+            json.dumps({"chunks": []}),  # missing 'history' entirely
+            json.dumps({"history": "not-a-list", "chunks": []}),
+            json.dumps({"history": [1, 2], "chunks": []}),  # last item not a dict
+            json.dumps({"history": [{"role": "user"}], "chunks": []}),  # no 'content'
+            json.dumps(
+                {"history": [{"role": "user", "content": 5}], "chunks": []}
+            ),  # content not str
+            json.dumps({"history": [], "chunks": "not-a-list"}),
+            json.dumps({"history": [], "chunks": [1]}),  # chunk not a dict
+            json.dumps({"history": [], "chunks": [{"collection": "c"}]}),  # no 'text'
+            json.dumps({"history": [], "chunks": [{"text": 5}]}),  # text not str
+        ],
+    )
+    def test_malformed_wires_raise(self, wire: str) -> None:
+        with pytest.raises(ValueError):
+            support_inputs_from_wire(wire)
+
+    def test_error_message_carries_no_wire_content(self) -> None:
+        with pytest.raises(ValueError) as excinfo:
+            support_inputs_from_wire(
+                json.dumps({"history": "SYNTHETIC-CLIENT-SECRET", "chunks": []})
+            )
+        assert "SYNTHETIC-CLIENT-SECRET" not in str(excinfo.value)

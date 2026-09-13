@@ -862,6 +862,18 @@
       "_note": "Sibling payload to wa_codex_daemon.py (declared above) — the Codex-exec wrapper module the daemon imports for every LLM round-trip (also the module seat_probe.py imports _AUTH_DEATH_RE from, per that pair's own note). Same gap, same cause, same fix: undeclared until now although two OTHER files in this exact RUNTIME_DIR were already declared. Installed by scripts/provision_zantara_codex.sh (`install -o root -g wheel -m 0644` from ${BACKEND_SRC}/llm/codex_exec_client.py); re-run provisioning after changing the repo twin (W107). Verified sha256-identical at declaration time (2026-08-25): a972ac1b7e802fe4b4326e297a13c5e05be4fefa22e422a41859090fcf3918ea both sides. DELIBERATELY NOT declared alongside these two: the 4 `__init__.py` files in this same RUNTIME_DIR/backend tree (backend/__init__.py, backend/llm/__init__.py, backend/services/__init__.py, backend/services/integrations/__init__.py). provision_zantara_codex.sh creates them with a bare `touch` (its own comment: `[ -f \"$init\" ] || { touch \"$init\"; ... }`) as empty namespace-package markers, NOT as copies of the repo's __init__.py — the repo counterparts are real files with content (3/56/12/17 lines respectively, package-level imports and docstrings). A sha256 pair declared against those would report DIVERGED on every future --check run forever, a permanent false breach the provisioning script's own design guarantees, not a drift anyone could fix by realigning either side. Left undeclared on purpose; if a future provisioning change starts copying real __init__.py content into this tree, these four become a legitimate pair and should be added then."
     },
     {
+      "live": "/usr/local/lib/wa-codex-broker/backend/services/rag/agentic/_support_signal.py",
+      "repo": "apps/backend-rag/backend/services/rag/agentic/_support_signal.py",
+      "machines": ["pro"],
+      "_note": "B2.4 PR-1: the daemon's support-judge input parser, installed into the SAME /usr/local/lib/wa-codex-broker RUNTIME_DIR as the sibling wa_codex_daemon.py/codex_exec_client.py pairs above, by scripts/provision_zantara_codex.sh section 3 (`install -o root -g wheel -m 0644` from ${BACKEND_SRC}/services/rag/agentic/_support_signal.py) since B2.4. Re-run provisioning after changing the repo twin — a merge alone never updates the live copy (W107). The two new empty namespace-package markers this same provisioning change adds (backend/services/rag/__init__.py, backend/services/rag/agentic/__init__.py) are deliberately UNDECLARED — same reason as the existing four next to codex_exec_client.py above: provisioning `touch`es them as empty markers, never copies the repo's own (non-empty) __init__.py content, so a sha256 pair against those would report a permanent false DIVERGED."
+    },
+    {
+      "live": "/usr/local/lib/wa-codex-broker/backend/services/integrations/wa_completion_envelope.py",
+      "repo": "apps/backend-rag/backend/services/integrations/wa_completion_envelope.py",
+      "machines": ["pro"],
+      "_note": "B2.4 PR-1: the HMAC-sealed completion envelope `wa_codex_daemon.py` wraps its verdict/answer in before completing — sibling payload to `_support_signal.py` above, installed into the SAME RUNTIME_DIR by the SAME provisioning section 3 (`install -o root -g wheel -m 0644` from ${BACKEND_SRC}/services/integrations/wa_completion_envelope.py) since B2.4. Re-run provisioning after changing the repo twin (W107). The two new empty namespace-package markers are declared once, on the sibling pair above, rather than duplicated here."
+    },
+    {
       "live": "~/scripts/mini-secrets-perms-sweep.sh",
       "repo": "infra/launchagents/wrappers/mini-secrets-perms-sweep.sh",
       "machines": ["mini"]
