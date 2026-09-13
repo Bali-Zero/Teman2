@@ -160,7 +160,7 @@ DASH_FOLD = {ord(c): "-" for c in "­‐‑‒–—―−﹘﹣－"}
 # patched a second time: the criterion goes back to the narrow form the ruling left standing, the
 # under-match is DECLARED here and carried as an open finding, and nothing pretends to decide it.
 # The spec this needs is "what counts as quoting a total", written down — not another alternation.
-COUNTED_NOUN = r"(kbli|kode|codes?)"
+COUNTED_NOUN = r"\b(kbli|kode|codes?)\b"
 BAN_WORDS = r"(dilarang|diblokir|terkena|ditutup|banned|blocked|moratorium|moratoria)"
 UNIVERSAL_WORDS = r"((semua|seluruh)\s+kbli|all\s+kbli|every\s+kbli|setiap\s+kbli)"
 
@@ -383,7 +383,7 @@ def served_per_skala_map(row: dict) -> dict | None:
         return None
     out = {}
     for code, spec in fields.items():
-        if isinstance(spec, dict) and isinstance(spec.get("per_skala_rows_included"), int):
+        if isinstance(spec, dict) and type(spec.get("per_skala_rows_included")) is int:
             out[code] = spec["per_skala_rows_included"]
     return out or None
 

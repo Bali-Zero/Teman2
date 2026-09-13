@@ -477,7 +477,10 @@ def test_council_r5_the_forbidden_total_under_match_is_DECLARED_not_cured(score_
      "Biaya notaris sekitar 48 juta rupiah.",
      "Foreign ownership is allowed in 48% of sectors.",
      "See page 518 for affected activities.",
-     "Form 48 applies to these activities."],
+     "Form 48 applies to these activities.",
+     # round 6, gate agy-gemini-3.1-pro (fallback seat, RULING I80): COUNTED_NOUN had no word
+     # boundary, so "barcodes" OVER-matched on the "codes" it contains as a substring.
+     "There are 48 new barcodes affected."],
 )
 def test_council_r5_innocence_a_number_near_a_noun_is_not_a_total(score_mod, tail):
     """INNOCENCE, and the last three cases are council round 5's own counter-examples to the
@@ -582,3 +585,19 @@ def test_council_r5_a_partial_count_is_never_trimmed_because_it_names_no_set(sco
     note = payload2["ground_truth_provenance"]["per_skala_extent"]
     assert "persyaratan" in note and "kewajiban" in note, \
         "the within-row item cap is a reduction the judge is not shown — it must be declared"
+
+
+def test_round6_a_boolean_is_not_an_int_for_per_skala_rows_included(score_mod):
+    """Round 6, gate agy-gemini-3.1-pro (fallback seat, RULING I80): in Python
+    `isinstance(False, int)` is True, so `per_skala_rows_included: false` used to pass the type
+    check and be read as 0 — silently zeroing out the served rows for a run that never declared
+    a count at all. `false` must be read the same as any other undeclared value: None."""
+    row = {"package_fields": {"01140": {"per_skala_rows_included": False, "per_skala_rows_total": 8}}}
+    assert score_mod.served_per_skala_map(row) is None
+
+    row_true = {"package_fields": {"01140": {"per_skala_rows_included": True, "per_skala_rows_total": 8}}}
+    assert score_mod.served_per_skala_map(row_true) is None
+
+    # INNOCENCE: a real 0 (the round 5 case) is still read as a real 0, not swept up by the fix.
+    row_zero = {"package_fields": {"01140": {"per_skala_rows_included": 0, "per_skala_rows_total": 8}}}
+    assert score_mod.served_per_skala_map(row_zero) == {"01140": 0}
