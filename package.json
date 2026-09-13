@@ -150,8 +150,8 @@
     "qs": ">=6.16.0",
     "brace-expansion": ">=5.0.9",
     "valibot": ">=1.4.2",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "sharp": ">=0.35.3"
   },
   "overrides": {
@@ -179,8 +179,8 @@
     "fast-uri": ">=3.1.2",
     "ip-address": ">=10.2.0",
     "qs": ">=6.16.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "sharp": ">=0.35.3",
     "@redocly/openapi-core": {
       "js-yaml": "4.3.1"
