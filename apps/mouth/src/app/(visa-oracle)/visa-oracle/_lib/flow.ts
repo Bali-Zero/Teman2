@@ -1650,9 +1650,15 @@ export const PROCESS_PHASES = [
 ] as const;
 export type ProcessPhaseKey = (typeof PROCESS_PHASES)[number];
 
+/** A stage carries one value a STEP cannot: "started, not finished". A
+ * stage with three of its four answers is not "not started", and calling it
+ * that was the same class of false statement this rail exists to remove
+ * (council round 8: offshore + `invest` leaves `location` at 3 of 4). */
+export type ProcessPhaseStatus = TreeStepStatus | "partial";
+
 export interface ProcessPhase {
   key: ProcessPhaseKey;
-  status: TreeStepStatus;
+  status: ProcessPhaseStatus;
   /** Question steps of this phase already answered, and how many the
    * CURRENT path holds — both move as the path narrows. */
   answered: number;
@@ -1781,14 +1787,24 @@ export function getProcessModel(
   if (openId !== null && !spineIds.has(openId) && QUESTIONS[openId]) {
     extraIds.push(openId);
   }
-  const trunk: TreeStep[] = [
-    ...remapped,
-    ...extraIds.map((id) => ({
-      id,
-      labelI18nKey: `tree.${id}`,
-      status: (id === openId ? "current" : "done") as TreeStepStatus,
-    })),
-  ];
+  const extras: TreeStep[] = extraIds.map((id) => ({
+    id,
+    labelI18nKey: `tree.${id}`,
+    status: (id === openId ? "current" : "done") as TreeStepStatus,
+  }));
+  // The outcome stays the LAST node of the tree, which is the whole framing
+  // of this rail. Appending a follow-up after it put an ANSWERED question at
+  // the end of the trunk, so once that answer was given the breadcrumb ended
+  // on it while the visitor was looking at the verdict (council round 7).
+  const verdictIdx = remapped.findIndex((step) => step.id === "verdict");
+  const trunk: TreeStep[] =
+    verdictIdx === -1
+      ? [...remapped, ...extras]
+      : [
+          ...remapped.slice(0, verdictIdx),
+          ...extras,
+          ...remapped.slice(verdictIdx),
+        ];
   const questionSteps = trunk.filter((step) =>
     Object.prototype.hasOwnProperty.call(QUESTIONS, step.id),
   );
@@ -1801,17 +1817,28 @@ export function getProcessModel(
       ? (QUESTIONS[current.questionId]?.group ?? null)
       : null;
 
+  // An answer is a FACT, never a navigation state: re-opening a question
+  // through `EDIT` makes its step "current" while `pruneFacts` keeps the
+  // answer, and counting statuses made the total fall by one the moment a
+  // visitor clicked edit (council round 8).
+  const isAnswered = (step: TreeStep): boolean =>
+    Object.prototype.hasOwnProperty.call(QUESTIONS, step.id)
+      ? facts[step.id] !== undefined
+      : step.status === "done";
+
   const phases: ProcessPhase[] = PROCESS_PHASES.map((key) => {
     const steps = trunk.filter((step) => phaseOfStep(step.id) === key);
-    const answered = steps.filter((step) => step.status === "done").length;
-    const status: TreeStepStatus =
+    const answered = steps.filter(isAnswered).length;
+    const status: ProcessPhaseStatus =
       key === openOffSpinePhase || (atFollowUp && key === "outcome")
         ? "current"
         : steps.some((step) => step.status === "current")
           ? "current"
           : steps.length > 0 && steps.every((step) => step.status === "done")
             ? "done"
-            : "pending";
+            : answered > 0
+              ? "partial"
+              : "pending";
     return { key, status, answered, total: steps.length };
   });
 
@@ -1871,8 +1898,7 @@ export function getProcessModel(
     categories,
     chosenCategory,
     prunedCount: categories.filter((c) => c.status === "pruned").length,
-    answeredQuestions: questionSteps.filter((step) => step.status === "done")
-      .length,
+    answeredQuestions: questionSteps.filter(isAnswered).length,
     totalQuestions: questionSteps.length,
     currentPhase:
       phases.find((phase) => phase.status === "current")?.key ?? null,

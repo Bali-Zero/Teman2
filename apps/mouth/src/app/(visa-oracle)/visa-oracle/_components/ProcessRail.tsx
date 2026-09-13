@@ -108,7 +108,8 @@ const S = {
 
 function phaseTone(status: string): string {
   if (status === "current") return "var(--oracle-ink)";
-  if (status === "done") return "var(--oracle-ink-muted)";
+  if (status === "done" || status === "partial")
+    return "var(--oracle-ink-muted)";
   return "var(--oracle-ink-faint)";
 }
 

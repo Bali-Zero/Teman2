@@ -684,6 +684,7 @@ const en = {
   "process.phase.outcome": "The engine’s answer",
   "process.phase_status.done": "complete",
   "process.phase_status.current": "open now",
+  "process.phase_status.partial": "in progress",
   "process.phase_status.pending": "not started",
   "process.phase_status.pruned": "not on this branch",
   "process.decides_title": "What this question decides",
@@ -700,7 +701,7 @@ const en = {
   "process.decides_framing":
     "Nothing is answered yet. Every question states the fact it sets before you answer it.",
   "process.decides_confirmation":
-    "No question is open. Nothing has been sent yet — confirming your answers is what asks the engine.",
+    "No question is open. Confirming these answers is what asks the engine — and asks it again if you have already been here.",
   "process.categories_title": "Purpose branches",
   "process.category_status.current": "open — being asked now",
   "process.category_status.done": "answered",
@@ -1590,6 +1591,7 @@ const id: Record<Keys, string> = {
   "process.phase.outcome": "Jawaban mesin",
   "process.phase_status.done": "selesai",
   "process.phase_status.current": "sedang berjalan",
+  "process.phase_status.partial": "sedang berlangsung",
   "process.phase_status.pending": "belum dimulai",
   "process.phase_status.pruned": "bukan cabang ini",
   "process.decides_title": "Yang ditentukan pertanyaan ini",
@@ -1606,7 +1608,7 @@ const id: Record<Keys, string> = {
   "process.decides_framing":
     "Belum ada yang dijawab. Setiap pertanyaan menyebutkan fakta yang ditetapkannya sebelum Anda menjawab.",
   "process.decides_confirmation":
-    "Tidak ada pertanyaan yang terbuka. Belum ada yang dikirim — mengonfirmasi jawaban Anda itulah yang menanyakan mesin.",
+    "Tidak ada pertanyaan yang terbuka. Mengonfirmasi jawaban inilah yang menanyakan mesin — dan menanyakannya lagi jika Anda pernah ke sini.",
   "process.categories_title": "Cabang tujuan",
   "process.category_status.current": "terbuka — sedang ditanyakan",
   "process.category_status.done": "sudah dijawab",

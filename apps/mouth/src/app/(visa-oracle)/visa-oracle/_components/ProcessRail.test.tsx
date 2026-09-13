@@ -142,7 +142,7 @@ describe("ProcessProgress — where the visitor is", () => {
       "confirmation",
       { kind: "confirmation" as const },
       WORK_BRANCH,
-      "Nothing has been sent yet",
+      "Confirming these answers is what asks the engine",
     ],
     [
       "verdict",
@@ -599,5 +599,102 @@ describe("an off-spine question that is NOT the engine's follow-up (council roun
     expect(
       rail("progress").querySelector('[data-process-phase="location"]'),
     ).toHaveAttribute("data-status", "current");
+  });
+});
+
+describe("the outcome stays the last node of the tree (council round 7)", () => {
+  const ANSWERED_FOLLOW_UP: OracleFacts = {
+    in_indonesia: "no",
+    holds_stay_permit: "no",
+    overstay_days: "0",
+    nationalities: "IT",
+    birth_date: "1985-04-12",
+    category: "tourism",
+    trip_scope: "single",
+    stay_days: "30",
+    entry_pattern: "SINGLE",
+    review_gate: "none",
+    family_sponsor_confirmed: "yes",
+  };
+
+  it("puts the answered follow-up BEFORE the verdict, not after it", () => {
+    const model = m({ kind: "verdict" }, ANSWERED_FOLLOW_UP, true);
+    const ids = model.trunk.map((step) => step.id);
+    expect(ids[ids.length - 1]).toBe("verdict");
+    expect(ids.indexOf("family_sponsor_confirmed")).toBeGreaterThan(-1);
+    expect(ids.indexOf("family_sponsor_confirmed")).toBeLessThan(
+      ids.indexOf("verdict"),
+    );
+  });
+});
+
+describe("the confirmation node's copy (council round 7)", () => {
+  // `REVIEW_ANSWERS` returns to the confirmation screen FROM the verdict, so
+  // "nothing has been sent yet" was false for every visitor who had already
+  // seen an answer and gone back to change one.
+  it("does not deny a submission that already happened", () => {
+    render(
+      <ProcessProgress
+        language="en"
+        model={m({ kind: "confirmation" }, WORK_BRANCH)}
+        variant="desktop"
+      />,
+    );
+    const text = rail("progress").textContent ?? "";
+    expect(text).not.toContain("Nothing has been sent yet");
+    expect(text).toContain("asks it again if you have already been here");
+  });
+});
+
+describe("a stage started but not finished (council round 8)", () => {
+  /** Replays the real reducer: any refused answer throws instead of
+   * silently leaving the walk where it was. */
+  function offshoreInvest() {
+    let state = initialFlowState();
+    state = flowReducer(state, { type: "ADVANCE" });
+    const pairs: Array<[string, string]> = [
+      ["in_indonesia", "no"],
+      ["holds_stay_permit", "no"],
+      ["overstay_days", "0"],
+      ["nationalities", "IT"],
+      ["birth_date", "1990-02-03"],
+      ["category", "invest"],
+    ];
+    for (const [questionId, value] of pairs) {
+      const before = Object.keys(state.facts).length;
+      state = flowReducer(state, { type: "ANSWER", questionId, value });
+      if (Object.keys(state.facts).length !== before + 1) {
+        throw new Error(`the reducer refused ${questionId}=${value}`);
+      }
+    }
+    return state;
+  }
+
+  it("does not call a stage with three of its four answers 'not started'", () => {
+    const state = offshoreInvest();
+    const current = state.history[state.history.length - 1];
+    const model = m(current, state.facts);
+    const location = model.phases.find((phase) => phase.key === "location");
+    expect(location?.answered).toBe(3);
+    expect(location?.total).toBe(4);
+    expect(location?.status).toBe("partial");
+
+    render(<ProcessProgress language="en" model={model} variant="desktop" />);
+    const row = rail("progress").querySelector(
+      '[data-process-phase="location"]',
+    );
+    expect(row).toHaveAttribute("data-status", "partial");
+    expect(row?.textContent ?? "").toContain("in progress");
+    expect(row?.textContent ?? "").not.toContain("not started");
+  });
+
+  it("keeps an edited answer counted — an answer is a fact, not a cursor", () => {
+    const walked = offshoreInvest();
+    const state = flowReducer(walked, { type: "EDIT", questionId: "category" });
+    const current = state.history[state.history.length - 1];
+    expect(current.kind).toBe("question");
+    const answeredFacts = Object.keys(state.facts).length;
+    expect(answeredFacts).toBe(6);
+    expect(m(current, state.facts).answeredQuestions).toBe(answeredFacts);
   });
 });
