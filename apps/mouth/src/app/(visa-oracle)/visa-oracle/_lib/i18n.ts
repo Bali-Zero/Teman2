@@ -818,6 +818,12 @@ const en = {
     "The decision service cannot verify this case right now. No fallback path has been fabricated.",
   "outcome.human_review_body":
     "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+  "outcome.review_group_case.title": "What a person will check about your case",
+  "outcome.review_group_system.title":
+    "Checks on our side, not on your answers",
+  "outcome.review_cause_unsure": "You answered “Not sure” to: {{question}}",
+  "outcome.review_cause_answer": "You answered “{{answer}}” to: {{question}}",
+  "outcome.review_cause_edit_aria": "Edit your answer to: {{question}}",
   "outcome.overstay_reassurance":
     "Overstay is fixable. It is not the end of your story here.",
 
@@ -1648,6 +1654,15 @@ const id: Record<Keys, string> = {
     "Layanan keputusan belum dapat memverifikasi kasus ini. Tidak ada jalur cadangan yang dibuat-buat.",
   "outcome.human_review_body":
     "Kasus Anda butuh penilaian manusia — tidak ada yang ditebak atas nama Anda.",
+  "outcome.review_group_case.title":
+    "Yang akan diperiksa seseorang pada kasus Anda",
+  "outcome.review_group_system.title":
+    "Pemeriksaan di pihak kami, bukan pada jawaban Anda",
+  "outcome.review_cause_unsure":
+    "Anda menjawab “Tidak yakin” pada: {{question}}",
+  "outcome.review_cause_answer":
+    "Anda menjawab “{{answer}}” pada: {{question}}",
+  "outcome.review_cause_edit_aria": "Ubah jawaban Anda pada: {{question}}",
   "outcome.overstay_reassurance":
     "Overstay bisa diselesaikan. Ini bukan akhir cerita Anda di sini.",
 
