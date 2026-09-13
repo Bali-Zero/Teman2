@@ -312,28 +312,41 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
       test(`renders ${language.toUpperCase()} at ${viewport.width} — step 3, step 12, outcome`, async ({
         page,
       }) => {
-        await page.setViewportSize(viewport);
-        await mockEngine(page);
         const shots: [string, FlowState][] = [
           ["step03", walk(3)],
           ["step12", walk(12, { category: "work" })],
           ["outcome", walkToVerdict()],
         ];
         for (const [name, state] of shots) {
-          await seed(page, state);
-          await page.goto("/visa-oracle");
-          if (language === "id") await switchToIndonesian(page);
-          if (viewportName === "mobile") await openMobileSheet(page);
-          await expect(
-            rail(page, "progress", viewportName === "mobile"),
-          ).toBeVisible();
-          await page.screenshot({
+          // One page per state: init scripts accumulate on a page and their
+          // evaluation order is undefined, so reusing `page` could restore an
+          // earlier snapshot under a later file name (council round 10).
+          const shot = await page.context().newPage();
+          await shot.setViewportSize(viewport);
+          await mockEngine(shot);
+          await seed(shot, state);
+          await shot.goto("/visa-oracle");
+          if (language === "id") await switchToIndonesian(shot);
+          const mobile = viewportName === "mobile";
+          if (mobile) await openMobileSheet(shot);
+          // The render must show the state its file name claims.
+          if (name === "outcome") {
+            await expect(rail(shot, "outcome", mobile)).toContainText("C1");
+          } else {
+            await expect(rail(shot, "progress", mobile)).toContainText(
+              new RegExp(
+                `\\b${Object.keys(state.facts).length} (of|dari) \\d+`,
+              ),
+            );
+          }
+          await shot.screenshot({
             path: path.join(
               RENDER_DIR,
               `vo-t-${name}-${language}-${viewport.width}.png`,
             ),
             fullPage: true,
           });
+          await shot.close();
         }
       });
     }

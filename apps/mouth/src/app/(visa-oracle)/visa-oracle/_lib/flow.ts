@@ -1884,13 +1884,16 @@ export function getProcessModel(
     trunk,
     node: current.kind,
     // The fan is shown while the purpose question is OPEN (choosing one
-    // closes the others) and once it has an answer — never in between.
+    // closes the others) and once a real branch is chosen — never in between.
     // `categoryLeaves` alone says "at or past the category step in `order`",
     // which on the onshore urgent lane is true for a question the interview
     // jumped over: the rail would then promise eleven open branches on a
-    // path that will never ask for one.
+    // path that will never ask for one. The same holds for a purpose
+    // answered "unsure" (SKIP): no branch was chosen and none will be asked,
+    // so eleven "still open" chips would describe a choice that is behind
+    // the visitor (council round 10). The answer stays on the trunk.
     showCategories:
-      chosen !== undefined ||
+      chosenCategory !== null ||
       (categoryLeaves !== null &&
         current.kind === "question" &&
         current.questionId === "category"),

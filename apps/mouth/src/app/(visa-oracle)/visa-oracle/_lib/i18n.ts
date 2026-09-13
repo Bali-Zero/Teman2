@@ -699,7 +699,7 @@ const en = {
   "process.decides_awaiting":
     "No question is open. Your answers are confirmed; the engine’s reply is not on screen yet.",
   "process.decides_framing":
-    "Nothing is answered yet. Every question states the fact it sets before you answer it.",
+    "Nothing is answered yet. Every question says what its answer decides before you answer it.",
   "process.decides_confirmation":
     "No question is open. Confirming these answers is what asks the engine — and asks it again if you have already been here.",
   "process.categories_title": "Purpose branches",
@@ -717,7 +717,7 @@ const en = {
   "process.candidates_none":
     "The engine named no product for these answers. The outcome below says why.",
   "process.candidates_undecided":
-    "The engine did not name a product for these answers. The outcome below says what it is waiting for.",
+    "The engine did not name a product for these answers. The outcome below says why.",
   "process.candidates_follow_up":
     "The engine has your answers and asked for one more fact before it can decide. This question is that fact.",
   "process.outcome_node":
@@ -1606,7 +1606,7 @@ const id: Record<Keys, string> = {
   "process.decides_awaiting":
     "Tidak ada pertanyaan yang terbuka. Jawaban Anda sudah dikonfirmasi; balasan mesin belum tampil di layar.",
   "process.decides_framing":
-    "Belum ada yang dijawab. Setiap pertanyaan menyebutkan fakta yang ditetapkannya sebelum Anda menjawab.",
+    "Belum ada yang dijawab. Setiap pertanyaan menjelaskan apa yang ditentukan jawabannya sebelum Anda menjawab.",
   "process.decides_confirmation":
     "Tidak ada pertanyaan yang terbuka. Mengonfirmasi jawaban inilah yang menanyakan mesin — dan menanyakannya lagi jika Anda pernah ke sini.",
   "process.categories_title": "Cabang tujuan",
@@ -1624,7 +1624,7 @@ const id: Record<Keys, string> = {
   "process.candidates_none":
     "Mesin tidak menyebut produk apa pun untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
   "process.candidates_undecided":
-    "Mesin belum menyebut produk untuk jawaban ini. Hasil di bawah menjelaskan apa yang masih ditunggu.",
+    "Mesin tidak menyebut produk untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
   "process.candidates_follow_up":
     "Mesin sudah menerima jawaban Anda dan meminta satu fakta lagi sebelum dapat memutuskan. Pertanyaan ini adalah fakta tersebut.",
   "process.outcome_node":

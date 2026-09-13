@@ -9,6 +9,7 @@ import {
   flowReducer,
   getProcessModel,
   initialFlowState,
+  QUESTIONS,
   type OracleNode,
 } from "../_lib/flow";
 
@@ -696,5 +697,135 @@ describe("a stage started but not finished (council round 8)", () => {
     const answeredFacts = Object.keys(state.facts).length;
     expect(answeredFacts).toBe(6);
     expect(m(current, state.facts).answeredQuestions).toBe(answeredFacts);
+  });
+});
+
+describe("council round 10", () => {
+  /** Replays the real reducer from the framing node, answering each open
+   * question from `answers` (or its first option), until a non-question
+   * node is reached. A refused answer throws. */
+  function replay(answers: Record<string, string>) {
+    let state = flowReducer(initialFlowState("en"), { type: "ADVANCE" });
+    for (let guard = 0; guard < 80; guard += 1) {
+      const node = state.history[state.history.length - 1];
+      if (node.kind !== "question") return state;
+      const question = QUESTIONS[node.questionId];
+      const value =
+        answers[node.questionId] ?? question.options[0]?.key ?? "none";
+      const before = state.history.length;
+      state = flowReducer(state, {
+        type: "ANSWER",
+        questionId: node.questionId,
+        value,
+      });
+      if (state.history.length === before) {
+        throw new Error(`the reducer refused ${node.questionId}=${value}`);
+      }
+    }
+    throw new Error("the walk did not leave the question spine");
+  }
+
+  const TOURIST = {
+    in_indonesia: "no",
+    holds_stay_permit: "no",
+    overstay_days: "0",
+    nationalities: "IT",
+    birth_date: "1985-04-12",
+    category: "tourism",
+    trip_scope: "single",
+    stay_days: "30",
+    review_gate: "none",
+  };
+
+  it("a purpose answered 'unsure' shows no branch fan that calls eleven branches open", () => {
+    // Walk to the purpose question by hand: `replay` would answer it.
+    let state = flowReducer(initialFlowState("en"), { type: "ADVANCE" });
+    for (const id of [
+      "in_indonesia",
+      "holds_stay_permit",
+      "overstay_days",
+      "nationalities",
+      "birth_date",
+    ] as const) {
+      state = flowReducer(state, {
+        type: "ANSWER",
+        questionId: id,
+        value: TOURIST[id],
+      });
+    }
+    const atCategory = state.history[state.history.length - 1];
+    expect(atCategory).toEqual({ kind: "question", questionId: "category" });
+    state = flowReducer(state, { type: "SKIP", questionId: "category" });
+    expect(state.facts.category).toBe("unsure");
+    const current = state.history[state.history.length - 1];
+    expect(current).not.toEqual({ kind: "question", questionId: "category" });
+
+    const model = m(current, state.facts);
+    expect(model.showCategories).toBe(false);
+    render(<ProcessBranches language="en" model={model} variant="desktop" />);
+    expect(document.querySelector('[data-process-part="branches"]')).toBeNull();
+    expect(model.trunk.find((step) => step.id === "category")?.status).toBe(
+      "done",
+    );
+  });
+
+  it("jumping back from the verdict drops it from history, so an off-spine question is not called the engine's follow-up", () => {
+    const atVerdictOrConfirmation = replay(TOURIST);
+    let state = atVerdictOrConfirmation;
+    if (state.history[state.history.length - 1].kind === "confirmation") {
+      state = flowReducer(state, { type: "ADVANCE" });
+    }
+    expect(state.history[state.history.length - 1].kind).toBe("verdict");
+
+    state = flowReducer(state, { type: "EDIT", questionId: "in_indonesia" });
+    state = flowReducer(state, { type: "SKIP", questionId: "in_indonesia" });
+    const current = state.history[state.history.length - 1];
+    expect(current).toEqual({
+      kind: "question",
+      questionId: "holds_stay_permit",
+    });
+    // What OracleShell passes, computed the same way.
+    const visitedVerdict = state.history.some(
+      (node) => node.kind === "verdict",
+    );
+    expect(visitedVerdict).toBe(false);
+    expect(m(current, state.facts, visitedVerdict).atFollowUp).toBe(false);
+  });
+
+  it.each([["HUMAN_REVIEW_REQUIRED"], ["TEMPORARILY_UNAVAILABLE"]] as const)(
+    "does not say the engine is waiting for something on %s, in EN or ID",
+    (state) => {
+      for (const language of ["en", "id"] as const) {
+        const { unmount } = render(
+          <ProcessOutcome
+            language={language}
+            model={m({ kind: "verdict" }, WORK_BRANCH)}
+            variant="desktop"
+            outcome={{ state, provenance: "ENGINE", candidates: [] }}
+          />,
+        );
+        const text = rail("outcome").textContent ?? "";
+        expect(text).not.toMatch(/waiting for|masih ditunggu/);
+        expect(text).toContain(
+          language === "en" ? "says why" : "menjelaskan alasannya",
+        );
+        unmount();
+      }
+    },
+  );
+
+  it("the framing copy does not promise a fact for questions that attach none", () => {
+    for (const language of ["en", "id"] as const) {
+      const { unmount } = render(
+        <ProcessProgress
+          language={language}
+          model={m({ kind: "framing" }, {})}
+          variant="desktop"
+        />,
+      );
+      const text = rail("progress").textContent ?? "";
+      expect(text).not.toMatch(/the fact it sets|fakta yang ditetapkannya/);
+      unmount();
+    }
   });
 });
