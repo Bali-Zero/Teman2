@@ -156,7 +156,7 @@ describe("LivingTree jump sheet (W-VO-T)", () => {
     );
     const trigger = screen.getByRole("button", { expanded: false });
     expect(trigger.textContent).toContain("Your path so far");
-    expect(trigger.textContent).toMatch(/Step \d+ of \d+/);
+    expect(trigger.textContent).toMatch(/\d+ of \d+ answered/);
     expect(trigger.textContent).toContain("Work & employment");
   });
 
@@ -174,5 +174,46 @@ describe("LivingTree jump sheet (W-VO-T)", () => {
     expect(announcers[0].textContent).toBe(
       "You chose Work & employment. 10 of the other purpose branches closed.",
     );
+  });
+});
+
+describe("LivingTree at a follow-up question (W-VO-T, council round 2)", () => {
+  // codex-gpt-5.6-sol: the corrected trunk lived only inside the progress
+  // line, so at an appended follow-up the trunk beside it still painted
+  // every step "pending" — and every jump target disappeared, exactly when
+  // a visitor most wants to correct an answer.
+  const FACTS = {
+    in_indonesia: "no",
+    holds_stay_permit: "no",
+    overstay_days: "0",
+    nationalities: "IT",
+    birth_date: "1985-04-12",
+    category: "tourism",
+    trip_scope: "single",
+    stay_days: "30",
+    entry_pattern: "SINGLE",
+    review_gate: "none",
+  };
+
+  it("keeps every answered question reachable", () => {
+    const { container } = render(
+      <LivingTree
+        language="en"
+        current={{ kind: "question", questionId: "family_sponsor_confirmed" }}
+        facts={FACTS}
+        onEditQuestion={vi.fn()}
+        visitedVerdict
+      />,
+    );
+    const desktop = container.querySelector<HTMLElement>(
+      '[data-process-part="progress"][data-process-rail="desktop"]',
+    )?.parentElement;
+    if (!desktop) throw new Error("no desktop tree panel");
+    expect(
+      desktop.querySelectorAll("[data-process-jump]").length,
+    ).toBeGreaterThanOrEqual(Object.keys(FACTS).length);
+    expect(
+      desktop.querySelector('[data-process-jump="category"]'),
+    ).not.toBeNull();
   });
 });

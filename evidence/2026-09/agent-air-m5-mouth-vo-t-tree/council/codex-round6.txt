@@ -1,0 +1,510 @@
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b3b-ff04-7691-8ba6-3223c3c3d7d8
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds).
+- `getProcessModel` disagreeing with `getTreeSteps` in any reachable state —
+  including: category answered with the reserved value "unsure" (not a real
+  category key), the onshore `permit_expiry` lane that jumps straight to
+  `review_gate` skipping `category`, a follow-up question appended after the
+  verdict, and the framing node.
+- The duplicated rail (mobile + desktop) producing duplicated ids, duplicated
+  live-region announcements, or two elements that a strict-mode Playwright
+  locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+
+## Round 6 — what changed since your round-5 verdict
+
+You reviewed this diff five times. Round 5 you returned VERDICT: DEFECT on ONE
+finding: `_lib/i18n.ts` `process.candidates_follow_up` promised, in EN and ID,
+that the extra fact precedes the naming of a product, which `NEEDS_INPUT` does
+not guarantee.
+
+The cure applied (depth 1, no second cure on top):
+- EN now reads "...asked for one more fact before it can decide."
+- ID now reads "...meminta satu fakta lagi sebelum dapat memutuskan."
+- `_components/ProcessRail.test.tsx` now asserts BOTH that the copy contains
+  "asked for one more fact" AND that it does NOT contain "before it names a
+  product".
+
+Read the files in the worktree at
+`apps/mouth/src/app/(visa-oracle)/visa-oracle/` and judge the CURRENT state of
+the whole diff (`git diff origin/main -- apps/mouth` in this worktree), not
+only the cure. Do not re-report anything you already reported and I already
+cured unless it is still present on disk. Same output format, same last line.
+
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+[Air-M5] Leggo il diff completo e verifico il modello di processo, il rail duplicato e la correzione EN/ID nello stato attuale.
+
+[… 472 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Applico `modus` al solo incarico di revisione: Gear 3, BLUE per default, revisore senza ruolo Dux; mandato round 6 nel worktree `mouth-vo-t-tree`. Il diff include anche adapter, pagine `/visa` e test: controllo anche queste modifiche.
+
+[… 4782 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+La correzione del round 5 è presente in entrambe le lingue. Sto verificando i follow-up attraverso il reducer e confrontando le promesse dell’esito con i dati che l’adapter restituisce davvero.
+
+[… 2654 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1713` — An appended `ASK_FOLLOW_UP` question can be absent from `getTreeSteps`; that function then marks the whole trunk pending. The rail consequently shows step 0, no open phase, and hides the already-decided purpose branches. Project off-spine follow-ups explicitly, preserving answered counts, the current phase, and category state.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1773` — On the direct onshore `permit_expiry → review_gate` path, `categoryLeaves` is non-null although `category` was never asked. The rail therefore says all eleven branches remain open and includes skipped questions in its totals after the flow has already reached review. Suppress the category fan and exclude unanswered pre-current nodes that were skipped.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:166` — Framing, confirmation, and verdict all receive the same “engine reads the answers you confirmed” copy. At framing there are no confirmed answers; at confirmation the endpoint has not been called yet. Select state-specific EN/ID copy for each non-question node.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:709` — EN promises the engine is asked “once,” and ID repeats “satu kali,” but the existing follow-up loop explicitly re-evaluates after a missing-fact answer, while retries can also issue another request. Remove the one-call claim; state only that evaluation starts after confirmation.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:69` — New styling hardcodes `gap: "0.15rem"` instead of an existing spacing custom property, violating the read-only CSS/token rule. Replace it with the appropriate `var(--space-*)` token.
+
+VERDICT: DEFECT
+codex
+[Air-M5] Non ho modificato codice: la sessione era esclusivamente di review read-only e il worktree era già sporco per modifiche altrui. Registro comunque il checkpoint richiesto dall’hook, senza attribuirmi quei cambiamenti.
+[… 17 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Checkpoint attempted but blocked by the read-only sandbox (`PermissionError`). No code was modified during this review.
+tokens used
+215.918
+Checkpoint attempted but blocked by the read-only sandbox (`PermissionError`). No code was modified during this review.
+CODEX_EXIT=0
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09ac1-b809-7a12-958f-ec56357357e9
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+
+[...tool-output log trimmed: the codex CLI echoes every file it reads; the full stdout for this round was 10896 lines / 949217 bytes and is not committed...]
+
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/LivingTree.tsx:70` — The corrected follow-up trunk from `getProcessModel` is not used by the breadcrumb, screen-reader path, or either `TreePanel`. A reachable `ASK_FOLLOW_UP` therefore leaves the raw `getTreeSteps` trunk entirely `pending`, removing every answered-question jump target. The new guilt test renders only `ProcessProgress`, so it misses this behavior. Minimal fix: feed `model.trunk` to all rail views and add a reducer-produced follow-up test against `LivingTree`.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:110` — “Step {{current}}” receives `answeredQuestions`, not the current question’s ordinal; `LivingTree.tsx:179` repeats it. Thus the fourth question displays “Step 3,” and an appended follow-up displays “Step N of N+1” while the open question is N+1. The tests encode the fixture’s answer count rather than the reducer’s current position. Minimal fix: expose the current ordinal or relabel both EN and ID copy as “N of M answered,” then test against the reducer’s current node.
+
+VERDICT: DEFECT
+codex
+Registro il checkpoint richiesto dall’hook. Questa sessione non ha modificato file: ha soltanto letto il diff ed eseguito verifiche in modalità read-only.
+[… 17 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Checkpoint non registrato: `context_bridge.py` ha restituito `PermissionError` perché la sessione è read-only. Nessun file è stato modificato da questo reviewer; le modifiche rilevate erano già presenti nel worktree.
+tokens used
+212.433
+Checkpoint non registrato: `context_bridge.py` ha restituito `PermissionError` perché la sessione è read-only. Nessun file è stato modificato da questo reviewer; le modifiche rilevate erano già presenti nel worktree.
+CODEX_EXIT=0
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b06-a95b-72e1-8fe3-8753ffcce2f4
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+
+[...tool-output log trimmed: the codex CLI echoes every file it reads; the full stdout for this round was 10754 lines / 916192 bytes and is not committed...]
+
+codex
+Le correzioni del Round 2 risultano presenti; restano due difetti:
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:694` — Il rail afferma che ogni risposta `HUMAN_CONTEXT` “is never sent to the engine”. È falso: il percorso raggiungibile offshore `holds_stay_permit=no` genera `immigration.current_status_code=NO_STAY_PERMIT` (`fact-mapper.ts:680`), comportamento confermato da `fact-mapper.test.ts:714`. Inoltre `other_purpose=transit` genera `intent.purposes=TRANSIT`. Il test `ProcessRail.test.tsx:71` verifica soltanto la frase derivata dal metadato, non il payload effettivo. Correzione minima: usare copy neutrale e veritiera sui valori derivati/routing, e aggiungere un’asserzione cross-layer sul mapper.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:696` — Sul nodo `verdict` il rail dichiara immediatamente che il motore “has the answers”, ma la chiamata parte soltanto nel successivo `useEffect` (`OracleShell.tsx:580`) e può essere disabilitata, ancora in corso o fallire. La UI quindi promette una consegna non avvenuta. Correzione minima: dire soltanto che l’utente ha confermato le risposte, oppure selezionare il copy usando lo stato reale della valutazione.
+
+VERDICT: DEFECT
+codex
+[M5] Nessuna modifica è stata fatta da questa sessione; registro comunque il receipt dei controlli realmente eseguiti e il checkpoint del verdetto Gear‑3, così il passaggio resta verificabile.
+[… 50 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Il primo receipt ha rieseguito il typecheck con successo, ma i due comandi Vitest sono partiti dal cwd gestito dal bridge e non hanno trovato correttamente il package. Li ripeto con `--prefix` assoluto; è un problema del wrapper di verifica, non dei test già verdi.
+[… 92 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Il receipt di verifica è ora valido e verde. Il checkpoint è stato rifiutato dal profilo filesystem read-only (`PermissionError`); tento una sola volta dalla directory del package, senza modificare il contenuto del passaggio.
+[… 17 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+[M5] Verification receipt registered successfully: 30 component tests, 259 flow/mapper tests, and TypeScript check all passed. No code was modified. Checkpoint creation was attempted twice but blocked by the read-only filesystem (`PermissionError`).
+tokens used
+227.390
+[M5] Verification receipt registered successfully: 30 component tests, 259 flow/mapper tests, and TypeScript check all passed. No code was modified. Checkpoint creation was attempted twice but blocked by the read-only filesystem (`PermissionError`).
+CODEX_EXIT=0
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b10-5312-7873-9851-39252d2fa7c6
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds).
+- `getProcessModel` disagreeing with `getTreeSteps` in any reachable state —
+  including: category answered with the reserved value "unsure" (not a real
+  category key), the onshore `permit_expiry` lane that jumps straight to
+  `review_gate` skipping `category`, a follow-up question appended after the
+  verdict, and the framing node.
+- The duplicated rail (mobile + desktop) producing duplicated ids, duplicated
+  live-region announcements, or two elements that a strict-mode Playwright
+  locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+
+ROUND 4, final round. Your round-3 findings were cured; verify in the CURRENT files:
+- HUMAN_CONTEXT copy no longer claims the answer is never sent: it now says no engine fact is attached to the question, that it steers what comes next, and that it can still feed a DERIVED fact (the holds_stay_permit -> immigration.current_status_code=NO_STAY_PERMIT path you named). A test asserts the refuted sentence is absent.
+- the verdict node no longer claims the engine 'has the answers' unless the engine's own reply is on screen: ProcessProgress now takes the outcome and falls back to 'your answers are confirmed; the engine's reply is not on screen yet' while the request is in flight, disabled or failed. A test pins both directions.
+
+The corrected diff is at evidence/2026-09/agent-air-m5-mouth-vo-t-tree/council/diff.patch. This is the last round: report only a defect that is DEMONSTRABLE under the rules, and say VERDICT: OK if the remaining items are style or preference. Start now.
+codex
+[Air-M5] Missione BLUE; ruolo: reviewer Gear‑3 indipendente, non Dux; mandato `mouth-vo-t-tree-round-4`; worktree `/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree`. Uso `stadio-zero` per fissare prove e criteri, poi `differential-review` per l’esame avversariale del diff corrente. Non modificherò nulla.
+[… 1312 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+GEAR 3: verifica finale di correttezza su logica di processo e accessibilità — il diff tocca proiezione dello stato, rendering duplicato e test E2E, quindi serve tracciare ogni stato raggiungibile, non una lettura cosmetica.
+
+STADIO‑0: nessun hit di memoria specifico a questa implementazione; i file citati esistono nel worktree; nessun dato cliente è in scope; criteri binari: (1) proiezione coerente con `getTreeSteps`/`computeNextNode` negli edge case elencati, (2) nessuna decisione prodotto client-side, (3) nessun ID/live-region duplicato, (4) test non tautologici e suite mirata verde.
+[… 6275 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Ho isolato due possibili regressioni reali: la persistenza del follow-up dopo la risposta e la distinzione tra risposta motore e fallback locale. Ora le sto confermando contro reducer, wiring e test correnti; controllo anche il caso responsive della rail duplicata prima del verdetto finale.
+[… 2290 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Conferma eseguita sul codice, non solo per ispezione: dopo `ASK_FOLLOW_UP → ANSWER → verdict`, il fatto resta nel reducer ma sparisce dal modello (`11` domande torna a `10`, senza jump target). Inoltre un outcome `TEMPORARILY_UNAVAILABLE` riproduce ancora la frase “The engine has the answers”. Verifico ora che la suite verde non copra questi wiring reali e chiudo con sole evidenze dimostrabili.
+[… 1006 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1730` — `offSpine` only recognizes a follow-up while it is the current question. After `ASK_FOLLOW_UP → ANSWER`, the reducer retains the answer and returns to `verdict`, but the projection drops that question: reproduced progress changes from `10/11` to `10/10`, and the answered follow-up has no jump target. Minimal fix: project completed off-spine questions from reducer history at the verdict and add a reducer-driven regression test through the full sequence.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx:894` — every non-null outcome is passed as evidence that the engine replied, including `CLIENT_GUARD`, `NETWORK_FAILURE`, `SHADOW`, and `PREVIEW`. `ProcessRail.tsx:188` consequently says “The engine has the answers” after disabled or failed evaluation; this was reproduced with a non-engine `TEMPORARILY_UNAVAILABLE` outcome. The test at `ProcessRail.test.tsx:119` only omits the outcome prop, unlike the real wiring. Minimal fix: propagate provenance and use the engine-replied copy only for an on-screen `ENGINE` outcome; test actual fallback wiring.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/LivingTree.tsx:212` — opening the mobile sheet mounts a second `TreePanel` while the desktop panel at line 233 remains mounted. The rendered component then contains two matches for `[data-process-jump="category"]`; after resizing past 1024px, both panels also become visible because only the trigger is hidden. This creates duplicate accessible controls and strict Playwright locator failures. Minimal fix: mount only the panel appropriate to the active breakpoint, and test mobile-open → desktop-resize with exactly one jump target.
+
+VERDICT: DEFECT
+codex
+Nessuna modifica è stata effettuata: la sessione era esclusivamente di review read-only. Registro comunque il checkpoint operativo richiesto dall’hook, senza una receipt di verifica artificiale.
+[… 17 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Checkpoint non registrato: il filesystem read-only ha restituito `PermissionError`. Nessun file è stato modificato in questa sessione di review.
+tokens used
+204.747
+Checkpoint non registrato: il filesystem read-only ha restituito `PermissionError`. Nessun file è stato modificato in questa sessione di review.
+CODEX_EXIT=0
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b1b-d8b5-7702-8054-1b8564de2798
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds).
+- `getProcessModel` disagreeing with `getTreeSteps` in any reachable state —
+  including: category answered with the reserved value "unsure" (not a real
+  category key), the onshore `permit_expiry` lane that jumps straight to
+  `review_gate` skipping `category`, a follow-up question appended after the
+  verdict, and the framing node.
+- The duplicated rail (mobile + desktop) producing duplicated ids, duplicated
+  live-region announcements, or two elements that a strict-mode Playwright
+  locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+
+ROUND 5, the last. Round 4's findings were answered:
+- ANSWERED off-spine follow-ups now stay on the trunk: getProcessModel appends every answered question that the spine does not contain, plus the open one, so the count and the jump target survive the return to the verdict. Two model-level tests, red under mutation.
+- provenance is threaded: ProcessOutcomeSummary carries OutcomeViewModel.provenance and only 'ENGINE' counts as a reply — CLIENT_GUARD / NETWORK_FAILURE / SHADOW / PREVIEW now render 'the engine's reply is not on screen yet' and 'no product is named yet', never a no-product claim. Four-case test.
+- the dual TreePanel mount (mobile sheet + desktop column) is REFUTED as this window's defect: it is the component's pre-existing structure on origin/main (git show origin/main:...LivingTree.tsx has the same two render sites); this window changed neither. It is recorded as a leftover.
+
+The corrected diff is at evidence/2026-09/agent-air-m5-mouth-vo-t-tree/council/diff.patch. Report ONLY a demonstrable defect introduced by this diff under the rules; say VERDICT: OK if what remains is pre-existing, style or preference. Start now.
+codex
+[Air-M5] Missione BLUE, ruolo council reviewer indipendente (non Dux), mandato Gear-3 Round 5, worktree `/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree`. Carico `modus`, il gate di studio e il protocollo di differential review; poi giudico esclusivamente il patch indicato, senza modificare file.
+[… 647 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+GEAR 3: review avversariale di logica decisionale e accessibilità — il difetto deve essere falsificato su stati raggiungibili, non dedotto dalla forma del codice. La memoria contiene solo contesto storico generico su Visa Oracle, nessun precedente specifico per questo patch; il terreno autoritativo sarà quindi patch + baseline + test presenti nel worktree.
+[… 636 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+STADIO-0 STUDY — review Round 5
+
+1. Memory-hits: nessuna decisione task-specifica; i riferimenti storici Visa Oracle sono estranei a questo patch.
+2. Hot-files verificati: `diff.patch`, `brief.yml`, `ProcessRail.tsx`, `LivingTree.tsx`, `OracleShell.tsx`, `flow.ts`, `i18n.ts` e i quattro test indicati esistono; `oracle.css`, `tree.ts` e `fact-mapper.ts` restano baseline di confronto.
+3. PII-risk: nessun dato cliente nel perimetro; controllerò comunque che fixture e output siano sintetici.
+4. Criteri: ogni finding deve avere uno stato raggiungibile e una linea esatta; equivalenza `getProcessModel`/`getTreeSteps` sugli edge case espliciti; zero violazioni introdotte di branching, product provenance, DOM id/live-region, copy o test tautologici.
+[… 7570 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Continuo sull’unico punto ancora da chiudere: distinguere un difetto reale del modello/process rail da un problema del solo harness. Verifico ora configurazione Playwright e stati raggiungibili del reducer, così il verdetto non si appoggia a ipotesi.
+[… 3764 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+I test mirati sono verdi (149/149), ma il passaggio decisivo resta il testo del follow-up: sto confrontando quella promessa con il contratto `NEEDS_INPUT` e con il secondo giro di valutazione. Se il motore può ancora restituire nessun prodotto o chiedere altro, la frase del rail è una decisione anticipata, non solo copy.
+[… 963 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:720,1626` — EN e ID affermano che il fatto aggiuntivo precede la nomina di un prodotto. `NEEDS_INPUT` non garantisce questo esito: la nuova valutazione può restituire un altro `NEEDS_INPUT`, revisione umana o nessun percorso supportato. Il rail anticipa quindi un risultato che il client non conosce. Fix minimo: dire “prima che il motore possa decidere se nominare un prodotto” in entrambe le lingue e aggiornare l’assert a `ProcessRail.test.tsx:382`.
+
+VERDICT: DEFECT
+codex
+[Air-M5] Nessuna modifica è stata fatta: la sessione era review-only. Registro comunque il checkpoint richiesto dal controllo di sessione, includendo la verifica già completata.
+[… 17 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Checkpoint non salvato: il workspace gestito ha restituito `PermissionError`. Nessun file di codice è stato modificato; la review resta read-only.
+tokens used
+202.381
+Checkpoint non salvato: il workspace gestito ha restituito `PermissionError`. Nessun file di codice è stato modificato; la review resta read-only.
+CODEX_EXIT=0
+
+codex
+Ho riprodotto un difetto nuovo: scegliendo “Not sure” alla prima domanda, il modello dichiara già un follow-up del motore e segna il verdetto come completato, benché non sia avvenuta alcuna valutazione. Nel diff completo sto verificando anche la promessa di “tre alternative” nell’esito negativo.
+
+[… 503 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+- [flow.ts:1730](/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1730) — `offSpine` non prova che sia avvenuta una valutazione. Riprodotto con `ADVANCE → SKIP(in_indonesia)`: `holds_stay_permit` viene classificato come follow-up, conferma e verdetto risultano completati e il rail afferma che il motore ha chiesto un fatto. Nessun verdetto esiste nella history. **Fix minimo:** riconoscere i follow-up dalla history effettiva, distinguendoli dalle domande ordinarie assenti dalla proiezione.
+
+- [i18n.ts:768](/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:768) — EN e ID promettono tre alternative per `NO_SUPPORTED_PATH`, mentre `engine-adapter.ts:1272` restituisce sempre `alternatives: []`. Verificato renderizzando adapter e componenti reali: promessa presente, elenco assente. **Fix minimo:** eliminare la promessa in entrambe le lingue.
+
+- [visa/page.tsx:131](/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree/apps/mouth/src/app/visa/page.tsx:131) — Il diff richiesto contro `origin/main` ripristina `/visa` con “Second Home Visa (E33)” hardcoded, senza risposta del motore, e riapre il vecchio wizard `/visa/match`. Viola il vincolo sulla provenienza dei prodotti e devia gli ingressi dal funnel Oracle. **Fix minimo:** conservare i redirect verso `/visa-oracle` presenti nella baseline.
+
+VERDICT: DEFECT
+codex
+La sessione ha svolto solo una revisione, senza modificare codice. Tento il checkpoint richiesto dall’hook, indicando le verifiche eseguite e questa distinzione.
+
+[… 17 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Checkpoint salvato. Nessuna modifica al codice da questa sessione; restano i tre difetti documentati nella review.
+
+VERDICT: DEFECT
+tokens used
+139.855
+Checkpoint salvato. Nessuna modifica al codice da questa sessione; restano i tre difetti documentati nella review.
+
+VERDICT: DEFECT
+CODEX_EXIT=0

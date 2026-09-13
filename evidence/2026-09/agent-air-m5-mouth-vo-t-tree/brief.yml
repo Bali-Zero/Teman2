@@ -1,0 +1,48 @@
+gear: 3
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO2 window W-VO-T (BLUE, host M5) — the decision tree is a visible, navigable process
+objective: >-
+  The Visa Oracle already had the tree: `getTreeSteps` projects a trunk plus
+  eleven category leaves, `LivingTree` renders it with a prune animation and
+  tap-to-edit, and the "ask one more fact" loop works. What a visitor could
+  NOT see is the PROCESS: which stage is open and which are finished, what the
+  question on screen actually decides, which purpose branches their own answer
+  closed and why — the rail deleted every pruned leaf the moment one was
+  chosen — and, at the end, that the outcome is the last node of the same tree
+  rather than a separate page. Add a process rail that states all of it from
+  data the flow already holds, keep every answered question as a jump target
+  and put the ANSWER on it, and name product codes only when the engine has
+  already answered.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/LivingTree.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/LivingTree.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/e2e/visa-oracle-process.spec.ts
+  - apps/mouth/e2e/visa-oracle-v2.spec.ts
+constraints:
+  - flow.ts for step METADATA only — no branching change. tree.ts, fact-mapper.ts, the engine, the packs and the corpus are forbidden ground (W-VO-E owns branching).
+  - oracle.css is READ-ONLY by ruling — new styling is inline and uses the existing --oracle-* / --space-* / --text-* scale. No new colour value, no R19 token.
+  - The interface never decides eligibility. A product code may be rendered only from an engine response already on screen.
+  - OutcomeSheet.tsx untouched — W-VO-G owns its copy maps in parallel.
+  - No client PII; synthetic answers only. EN + ID both shipped.
+acceptance:
+  - text: A1 WHILE a question is on screen, the rail SHALL name the open stage, the answered-of-total count, and the fact that question decides, read from QUESTIONS' own decisionMapping — FACT, REVIEW_ONLY and HUMAN_CONTEXT each stated differently.
+    probe: npx vitest run "src/app/(visa-oracle)/visa-oracle"
+  - text: A2 WHEN a purpose is chosen, all eleven branches SHALL stay visible with ten marked closed and a sentence naming the answer that closed them, in EN and in ID.
+    probe: npx vitest run "src/app/(visa-oracle)/visa-oracle"
+  - text: A3 WHEN the visitor jumps back to an answered question, every prerequisite answer SHALL survive and choosing a different branch from there SHALL re-state the prune; every answered question SHALL carry its own answer on its jump target.
+    probe: npx playwright test --project=chromium e2e/visa-oracle-process.spec.ts
+  - text: A4 WHERE the engine has not answered, no product code SHALL appear; WHEN the engine has answered, the rail SHALL name the codes it returned and SHALL say this is the last node of the same tree.
+    probe: npx vitest run "src/app/(visa-oracle)/visa-oracle"
+  - text: A5 the whole visa-oracle suite, typecheck, eslint and both Playwright projects SHALL be green, axe (wcag2a/2aa/21a/21aa) SHALL report no violation at 1440 and at 390, and twelve screenshots (EN+ID, both viewports, step 3 / step 12 / outcome) SHALL exist on disk.
+    probe: npx tsc --noEmit
+consumer_map:
+  - The live balizero.com/visa-oracle funnel served by the apps/mouth Vercel deploy on merge to main — every visitor of the Oracle interview sees the rail.
+  - The GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs ProcessRail.test.tsx and LivingTree.test.tsx on every future PR touching this route.
+appetite:
+  budget: 6 hours active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is named, never cured by rebuilding the branch

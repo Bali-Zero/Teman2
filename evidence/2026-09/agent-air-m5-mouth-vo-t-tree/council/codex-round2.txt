@@ -1,0 +1,92 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09ac1-b809-7a12-958f-ec56357357e9
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+
+[...tool-output log trimmed: the codex CLI echoes every file it reads; the full stdout for this round was 10896 lines / 949217 bytes and is not committed...]
+
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/LivingTree.tsx:70` — The corrected follow-up trunk from `getProcessModel` is not used by the breadcrumb, screen-reader path, or either `TreePanel`. A reachable `ASK_FOLLOW_UP` therefore leaves the raw `getTreeSteps` trunk entirely `pending`, removing every answered-question jump target. The new guilt test renders only `ProcessProgress`, so it misses this behavior. Minimal fix: feed `model.trunk` to all rail views and add a reducer-produced follow-up test against `LivingTree`.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:110` — “Step {{current}}” receives `answeredQuestions`, not the current question’s ordinal; `LivingTree.tsx:179` repeats it. Thus the fourth question displays “Step 3,” and an appended follow-up displays “Step N of N+1” while the open question is N+1. The tests encode the fixture’s answer count rather than the reducer’s current position. Minimal fix: expose the current ordinal or relabel both EN and ID copy as “N of M answered,” then test against the reducer’s current node.
+
+VERDICT: DEFECT
+hook: Stop
+hook: Stop Blocked
+codex
+Registro il checkpoint richiesto dall’hook. Questa sessione non ha modificato file: ha soltanto letto il diff ed eseguito verifiche in modalità read-only.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "/Users/balizero/.local/share/mise/installs/python/3.11/bin/python3 /Users/balizero/.codex/hooks/nuzantara-context/context_bridge.py checkpoint 01a09ac1-b809-7a12-958f-ec56357357e9 '{\"objective\":\"Adversarial Gear-3 correctness review of the corrected Visa Oracle visible-process diff; review completed with two demonstrated defects and no file edits.\",\"next_action\":\"No implementation action in this reviewer session; hand findings to the author for correction and fresh independent verification.\",\"remaining\":[],\"risks\":[\"The hook observed an existing changed worktree, but this reviewer did not author or modify those changes.\"]}'" in /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+ exited 1 in 231ms:
+{"error": "PermissionError"}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+Checkpoint non registrato: `context_bridge.py` ha restituito `PermissionError` perché la sessione è read-only. Nessun file è stato modificato da questo reviewer; le modifiche rilevate erano già presenti nel worktree.
+hook: Stop
+hook: Stop Completed
+tokens used
+212.433
+Checkpoint non registrato: `context_bridge.py` ha restituito `PermissionError` perché la sessione è read-only. Nessun file è stato modificato da questo reviewer; le modifiche rilevate erano già presenti nel worktree.
+CODEX_EXIT=0

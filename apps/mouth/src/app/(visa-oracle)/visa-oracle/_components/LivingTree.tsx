@@ -5,9 +5,9 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, TreePine } from "lucide-react";
 import {
   getProcessModel,
-  getTreeSteps,
   isEditableTreeStep,
   type OracleNode,
+  type ProcessModel,
 } from "../_lib/flow";
 import type { Language } from "../_lib/flow";
 import type { OracleFacts } from "../_lib/tree";
@@ -15,6 +15,7 @@ import { translate, type I18nKey } from "../_lib/i18n";
 import { formatFactDisplay } from "./ConfirmationCard";
 import {
   ProcessBranches,
+  ProcessOutcome,
   ProcessProgress,
   type ProcessOutcomeSummary,
 } from "./ProcessRail";
@@ -33,6 +34,10 @@ export interface LivingTreeProps {
    * answered: the rail names the products the ENGINE returned and never
    * derives one of its own. */
   outcome?: ProcessOutcomeSummary | null;
+  /** True once a verdict node exists in this attempt's history. The rail
+   * may call a question "the fact the engine asked for" only on that
+   * evidence — see `getProcessModel`'s own parameter doc. */
+  visitedVerdict?: boolean;
 }
 
 /** The answer already on record for a completed step, rendered next to its
@@ -64,11 +69,18 @@ export function LivingTree({
   facts,
   onEditQuestion,
   outcome = null,
+  visitedVerdict = false,
 }: LivingTreeProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const reducedMotion = useReducedMotion();
-  const { trunk } = getTreeSteps(current, facts);
-  const model = getProcessModel(current, facts);
+  // ONE projection for the whole rail — the breadcrumb, the screen-reader
+  // path, both panels and the two `ProcessRail` parts read the same trunk.
+  // `getProcessModel` corrects the one state `getTreeSteps` cannot resolve
+  // on its own (the appended follow-up question, where its `currentIdx`
+  // comes back -1 and every step reads "pending"); projecting it here means
+  // the correction reaches every view instead of the progress line alone.
+  const model = getProcessModel(current, facts, visitedVerdict);
+  const trunk = model.trunk;
   const visitedSteps = trunk.filter((step) => step.status !== "pending");
   const breadcrumbSteps = visitedSteps.slice(-4);
   const hasEarlierSteps = visitedSteps.length > breadcrumbSteps.length;
@@ -212,9 +224,8 @@ export function LivingTree({
           >
             <TreePanel
               language={language}
-              current={current}
+              model={model}
               facts={facts}
-              trunk={trunk}
               variant="mobile"
               outcome={outcome}
               reducedMotion={!!reducedMotion}
@@ -227,9 +238,8 @@ export function LivingTree({
       <div className="oracle-tree--desktop">
         <TreePanel
           language={language}
-          current={current}
+          model={model}
           facts={facts}
-          trunk={trunk}
           variant="desktop"
           outcome={outcome}
           reducedMotion={!!reducedMotion}
@@ -242,18 +252,16 @@ export function LivingTree({
 
 function TreePanel({
   language,
-  current,
+  model,
   facts,
-  trunk,
   variant,
   outcome,
   reducedMotion,
   onEditQuestion,
 }: {
   language: Language;
-  current: OracleNode;
+  model: ProcessModel;
   facts: OracleFacts;
-  trunk: ReturnType<typeof getTreeSteps>["trunk"];
   variant: "mobile" | "desktop";
   outcome: ProcessOutcomeSummary | null;
   reducedMotion: boolean;
@@ -263,13 +271,13 @@ function TreePanel({
     <div className="oracle-tree">
       <ProcessProgress
         language={language}
-        current={current}
-        facts={facts}
+        model={model}
         variant={variant}
+        outcome={outcome}
       />
 
       <div className="oracle-tree__trunk">
-        {trunk.map((step) => {
+        {model.trunk.map((step) => {
           const label = translate(language, step.labelI18nKey as I18nKey);
           if (isEditableTreeStep(step)) {
             const answer = answerFor(language, step.id, facts);
@@ -328,11 +336,16 @@ function TreePanel({
 
       <ProcessBranches
         language={language}
-        current={current}
-        facts={facts}
+        model={model}
+        variant={variant}
+        reducedMotion={reducedMotion}
+      />
+
+      <ProcessOutcome
+        language={language}
+        model={model}
         variant={variant}
         outcome={outcome}
-        reducedMotion={reducedMotion}
       />
     </div>
   );

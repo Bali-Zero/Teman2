@@ -1676,6 +1676,9 @@ export interface ProcessCategory {
 
 export interface ProcessModel {
   trunk: readonly TreeStep[];
+  /** The kind of node the interview is on, so a renderer never has to be
+   * handed `current` a second time to tell framing from a verdict. */
+  node: OracleNode["kind"];
   /** The category fan only exists once the interview has reached the
    * purpose question — before that there is nothing to show as open. */
   showCategories: boolean;
@@ -1691,6 +1694,10 @@ export interface ProcessModel {
   /** True at the terminal node — the outcome is the last node of this
    * same tree, never a separate page. */
   atOutcome: boolean;
+  /** True on a question the engine itself asked for after a verdict
+   * (`ASK_FOLLOW_UP`): the answers are in, the engine has spoken once and
+   * wants one more fact. Neither "still interviewing" nor "answered". */
+  atFollowUp: boolean;
 }
 
 function phaseOfStep(stepId: string): ProcessPhaseKey | null {
@@ -1709,22 +1716,102 @@ function phaseOfStep(stepId: string): ProcessPhaseKey | null {
 export function getProcessModel(
   current: OracleNode,
   facts: OracleFacts,
+  /**
+   * Whether a verdict node is already in `FlowState.history` on this
+   * attempt — read from the state by the caller, never guessed here. It is
+   * the ONLY evidence that an off-spine question is the engine's follow-up:
+   * `ASK_FOLLOW_UP` is the one action that appends such a question, and it
+   * is reachable only FROM the verdict. Without it the projection inferred
+   * "follow-up" from "not on the spine", and that inference was false on a
+   * reachable state (council round 6): SKIP on the first location question
+   * records `in_indonesia: "unsure"` and routes to `holds_stay_permit`,
+   * which the spine's `order` does not contain — so four clicks in, with no
+   * verdict anywhere in history, the rail marked confirmation and verdict
+   * "done" and told the visitor the engine had answered and asked for one
+   * more fact. Defaults to false: a caller that cannot prove a verdict
+   * happened must never claim one.
+   */
+  visitedVerdict = false,
 ): ProcessModel {
-  const { trunk, categoryLeaves } = getTreeSteps(current, facts);
+  const { trunk: spine, categoryLeaves } = getTreeSteps(current, facts);
+  // THE FOLLOW-UP CASE. `ASK_FOLLOW_UP` (flow's NEEDS_INPUT loop) appends a
+  // question that the current path's `order` does not contain, so
+  // `getTreeSteps`'s `currentIdx` comes back -1 and it marks EVERY trunk
+  // entry "pending" — correct for a trunk that has no current step, and a
+  // visible lie for a progress line ("step 0 of 13" to someone who has
+  // answered thirteen). Ground truth for a question step is its own fact,
+  // which `pruneFacts` already guarantees belongs to the current path; the
+  // non-question nodes are all behind a follow-up by construction, since a
+  // follow-up is only ever reached FROM the verdict.
+  const offSpine =
+    current.kind === "question" &&
+    !spine.some((step) => step.id === current.questionId);
+  // Off the spine is not the same thing as after the verdict — see
+  // `visitedVerdict` above. A question step's own fact is ground truth
+  // either way; the NON-question steps (framing, confirmation, verdict) are
+  // behind the visitor only when a verdict really happened, so without that
+  // proof they keep whatever `getTreeSteps` said and the projection
+  // under-claims rather than inventing a verdict.
+  const atFollowUp = offSpine && visitedVerdict;
+  const remapped: TreeStep[] = offSpine
+    ? spine.map((step) => ({
+        ...step,
+        status: Object.prototype.hasOwnProperty.call(QUESTIONS, step.id)
+          ? facts[step.id] === undefined
+            ? ("pending" as const)
+            : ("done" as const)
+          : atFollowUp
+            ? ("done" as const)
+            : step.status,
+      }))
+    : spine;
+  // ...and the follow-up itself belongs ON the trunk, open or answered.
+  // Answered, it leaves a fact the spine has no step for: the count fell
+  // from 10/11 back to 10/10 the moment it was answered, and the answer
+  // lost its jump target — the one answer a visitor is most likely to want
+  // to correct, since the engine asked for it by name.
+  const spineIds = new Set(spine.map((step) => step.id));
+  const openId = current.kind === "question" ? current.questionId : null;
+  const extraIds = Object.keys(facts).filter(
+    (id) =>
+      Object.prototype.hasOwnProperty.call(QUESTIONS, id) &&
+      !spineIds.has(id) &&
+      id !== openId,
+  );
+  if (openId !== null && !spineIds.has(openId) && QUESTIONS[openId]) {
+    extraIds.push(openId);
+  }
+  const trunk: TreeStep[] = [
+    ...remapped,
+    ...extraIds.map((id) => ({
+      id,
+      labelI18nKey: `tree.${id}`,
+      status: (id === openId ? "current" : "done") as TreeStepStatus,
+    })),
+  ];
   const questionSteps = trunk.filter((step) =>
     Object.prototype.hasOwnProperty.call(QUESTIONS, step.id),
   );
+  // The stage the open question belongs to, when that question is not on
+  // the spine. True of a follow-up AND of an ordinary off-spine question:
+  // in both cases the stage IS open, and saying so claims nothing about
+  // the engine.
+  const openOffSpinePhase =
+    offSpine && current.kind === "question"
+      ? (QUESTIONS[current.questionId]?.group ?? null)
+      : null;
 
   const phases: ProcessPhase[] = PROCESS_PHASES.map((key) => {
     const steps = trunk.filter((step) => phaseOfStep(step.id) === key);
     const answered = steps.filter((step) => step.status === "done").length;
-    const status: TreeStepStatus = steps.some(
-      (step) => step.status === "current",
-    )
-      ? "current"
-      : steps.length > 0 && steps.every((step) => step.status === "done")
-        ? "done"
-        : "pending";
+    const status: TreeStepStatus =
+      key === openOffSpinePhase || (atFollowUp && key === "outcome")
+        ? "current"
+        : steps.some((step) => step.status === "current")
+          ? "current"
+          : steps.length > 0 && steps.every((step) => step.status === "done")
+            ? "done"
+            : "pending";
     return { key, status, answered, total: steps.length };
   });
 
@@ -1751,26 +1838,35 @@ export function getProcessModel(
           : ("pruned" as const),
   }));
 
+  // Narrowed on the discriminant, never cast: `HUMAN_CONTEXT` is the one
+  // arm of `QuestionDecisionMapping` without `factPaths`, and a cast would
+  // survive a future arm that also lacks them.
+  const openQuestion =
+    current.kind === "question" ? QUESTIONS[current.questionId] : undefined;
+  const mapping = openQuestion?.decisionMapping;
   const decision: ProcessDecision | null =
-    current.kind === "question" && QUESTIONS[current.questionId]
+    openQuestion && mapping
       ? {
-          questionId: current.questionId,
-          mapping: QUESTIONS[current.questionId].decisionMapping.kind,
-          factPaths:
-            QUESTIONS[current.questionId].decisionMapping.kind ===
-            "HUMAN_CONTEXT"
-              ? []
-              : (
-                  QUESTIONS[current.questionId].decisionMapping as {
-                    factPaths: readonly string[];
-                  }
-                ).factPaths,
+          questionId: openQuestion.id,
+          mapping: mapping.kind,
+          factPaths: mapping.kind === "HUMAN_CONTEXT" ? [] : mapping.factPaths,
         }
       : null;
 
   return {
     trunk,
-    showCategories: categoryLeaves !== null,
+    node: current.kind,
+    // The fan is shown while the purpose question is OPEN (choosing one
+    // closes the others) and once it has an answer — never in between.
+    // `categoryLeaves` alone says "at or past the category step in `order`",
+    // which on the onshore urgent lane is true for a question the interview
+    // jumped over: the rail would then promise eleven open branches on a
+    // path that will never ask for one.
+    showCategories:
+      chosen !== undefined ||
+      (categoryLeaves !== null &&
+        current.kind === "question" &&
+        current.questionId === "category"),
     phases,
     categories,
     chosenCategory,
@@ -1782,5 +1878,6 @@ export function getProcessModel(
       phases.find((phase) => phase.status === "current")?.key ?? null,
     decision,
     atOutcome: current.kind === "verdict",
+    atFollowUp,
   };
 }

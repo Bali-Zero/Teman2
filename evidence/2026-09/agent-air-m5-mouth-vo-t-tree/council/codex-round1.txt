@@ -1,0 +1,98 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09aaf-d557-7f21-8cd5-862c0e78641c
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+
+[...tool-output log trimmed: the codex CLI echoes every file it reads; the full stdout for this round was 12192 lines / 1412103 bytes and is not committed...]
+
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1713` — An appended `ASK_FOLLOW_UP` question can be absent from `getTreeSteps`; that function then marks the whole trunk pending. The rail consequently shows step 0, no open phase, and hides the already-decided purpose branches. Project off-spine follow-ups explicitly, preserving answered counts, the current phase, and category state.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:1773` — On the direct onshore `permit_expiry → review_gate` path, `categoryLeaves` is non-null although `category` was never asked. The rail therefore says all eleven branches remain open and includes skipped questions in its totals after the flow has already reached review. Suppress the category fan and exclude unanswered pre-current nodes that were skipped.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:166` — Framing, confirmation, and verdict all receive the same “engine reads the answers you confirmed” copy. At framing there are no confirmed answers; at confirmation the endpoint has not been called yet. Select state-specific EN/ID copy for each non-question node.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:709` — EN promises the engine is asked “once,” and ID repeats “satu kali,” but the existing follow-up loop explicitly re-evaluates after a missing-fact answer, while retries can also issue another request. Remove the one-call claim; state only that evaluation starts after confirmation.
+
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.tsx:69` — New styling hardcodes `gap: "0.15rem"` instead of an existing spacing custom property, violating the read-only CSS/token rule. Replace it with the appropriate `var(--space-*)` token.
+
+VERDICT: DEFECT
+hook: Stop
+hook: Stop Blocked
+codex
+[Air-M5] Non ho modificato codice: la sessione era esclusivamente di review read-only e il worktree era già sporco per modifiche altrui. Registro comunque il checkpoint richiesto dall’hook, senza attribuirmi quei cambiamenti.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "/Users/balizero/.local/share/mise/installs/python/3.11/bin/python3 /Users/balizero/.codex/hooks/nuzantara-context/context_bridge.py checkpoint 01a09aaf-d557-7f21-8cd5-862c0e78641c '{\"objective\":\"Adversarial read-only Gear-3 review of the frozen Visa Oracle diff.patch for correctness.\",\"next_action\":\"Review is complete; no code changes were made by this session.\",\"remaining\":[],\"risks\":[\"The shared worktree contained pre-existing or concurrent changes not authored by this reviewer; no verification receipt is applicable to a read-only review.\"]}'" in /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+ exited 1 in 665ms:
+{"error": "PermissionError"}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+Checkpoint attempted but blocked by the read-only sandbox (`PermissionError`). No code was modified during this review.
+hook: Stop
+hook: Stop Completed
+tokens used
+215.918
+Checkpoint attempted but blocked by the read-only sandbox (`PermissionError`). No code was modified during this review.
+CODEX_EXIT=0

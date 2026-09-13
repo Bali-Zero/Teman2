@@ -47,25 +47,37 @@ function answerValue(question: OracleQuestion): string {
   return question.options[0]?.key ?? "unsure";
 }
 
-/** Replay the interview until `answers` questions have been answered, or
- * until the interview leaves the question spine. `overrides` forces a
- * specific answer (the purpose branch, here) without touching the rest. */
+/** Offshore, no stay permit — the shape the existing Oracle e2e walks, and
+ * the one that avoids the onshore channel/conversion conflict the reducer
+ * legitimately refuses to record. */
+const OFFSHORE: Record<string, string> = {
+  in_indonesia: "no",
+  holds_stay_permit: "no",
+};
+
+/** Replay the interview until `answers` facts are on record, or until the
+ * interview leaves the question spine. `overrides` forces a specific answer
+ * (the purpose branch, here) without touching the rest. A refused answer
+ * throws rather than silently stalling: a walk the reducer will not record
+ * is not a walk a visitor can take. */
 function walk(
   answers: number,
   overrides: Record<string, string> = {},
 ): FlowState {
+  const chosen = { ...OFFSHORE, ...overrides };
   let state = flowReducer(initialFlowState("en"), { type: "ADVANCE" });
-  let answered = 0;
-  while (answered < answers) {
+  while (Object.keys(state.facts).length < answers) {
     const node = state.history[state.history.length - 1];
     if (node.kind !== "question") break;
-    const question = QUESTIONS[node.questionId];
+    const before = Object.keys(state.facts).length;
     state = flowReducer(state, {
       type: "ANSWER",
       questionId: node.questionId,
-      value: overrides[node.questionId] ?? answerValue(question),
+      value: chosen[node.questionId] ?? answerValue(QUESTIONS[node.questionId]),
     });
-    answered += 1;
+    if (Object.keys(state.facts).length === before) {
+      throw new Error(`the reducer refused an answer to ${node.questionId}`);
+    }
   }
   return state;
 }
@@ -126,9 +138,17 @@ async function openMobileSheet(page: Page): Promise<void> {
   await expect(
     page.locator('[data-process-part="progress"][data-process-rail="mobile"]'),
   ).toBeVisible();
+  // The sheet expands with a height animation; capturing mid-animation
+  // clips the panel at whatever height it had reached (the container is
+  // overflow:hidden by design).
+  await page.waitForTimeout(600);
 }
 
-function rail(page: Page, part: "progress" | "branches", mobile: boolean) {
+function rail(
+  page: Page,
+  part: "progress" | "branches" | "outcome",
+  mobile: boolean,
+) {
   return page.locator(
     `[data-process-part="${part}"][data-process-rail="${
       mobile ? "mobile" : "desktop"
@@ -164,7 +184,7 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
     await page.goto("/visa-oracle");
 
     const progress = rail(page, "progress", false);
-    await expect(progress).toContainText("Step 12 of");
+    await expect(progress).toContainText(/12 of \d+ answered/);
     await expect(progress).toContainText("What this question decides");
     // The purpose branch is chosen: ten of the eleven are closed, and the
     // rail says WHY — the visitor's own answer, named.
@@ -174,7 +194,9 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
     ).toHaveCount(10);
     await expect(branches).toContainText("closed when you chose");
     // Nothing on screen may name a product before the engine has answered.
-    await expect(branches).toContainText("No product is named yet");
+    await expect(rail(page, "outcome", false)).toContainText(
+      "No product is named yet",
+    );
     await expect(page.locator("[data-process-announce]")).toHaveText(
       /10 of the other purpose branches closed\.$/,
     );
@@ -212,11 +234,28 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
         desktopTree.locator(`[data-process-jump="${questionId}"]`),
       ).toHaveCount(1);
     }
-    // And the branches the old answer had closed are open again.
+    // Choosing a DIFFERENT branch from here keeps every prerequisite: the
+    // rail re-states the prune with the new answer, and nothing earlier is
+    // lost.
+    await page
+      .getByRole("button", {
+        name: translate("en", "q.category.opt.study"),
+        exact: true,
+      })
+      .click();
     await expect(rail(page, "branches", false)).toContainText(
-      "Every purpose branch is still open",
+      "closed when you chose “Study”",
     );
-    await expect(page.locator("[data-process-announce]")).toHaveText("");
+    for (const questionId of [
+      "in_indonesia",
+      "overstay_days",
+      "nationalities",
+      "birth_date",
+    ]) {
+      await expect(
+        desktopTree.locator(`[data-process-jump="${questionId}"]`),
+      ).toHaveCount(1);
+    }
   });
 
   test("the outcome is the last node of the same tree and names the engine's own product", async ({
@@ -227,11 +266,11 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
     await mockEngine(page);
     await page.goto("/visa-oracle");
 
-    const branches = rail(page, "branches", false);
+    const outcome = rail(page, "outcome", false);
     await expect(
-      branches.locator('[data-process-candidate="C1"]'),
+      outcome.locator('[data-process-candidate="C1"]'),
     ).toBeVisible();
-    await expect(branches).toContainText("last node of this tree");
+    await expect(outcome).toContainText("last node of this tree");
     await expect(rail(page, "progress", false)).toContainText(
       "No question is open",
     );
@@ -248,7 +287,7 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
 
     const trigger = page.locator(".oracle-tree-minimap-trigger");
     await expect(trigger).toBeVisible();
-    await expect(trigger).toContainText(/Step 12 of \d+/);
+    await expect(trigger).toContainText(/12 of \d+ answered/);
     await expect(trigger).toContainText("Work & employment");
     await expect(rail(page, "progress", true)).toHaveCount(0);
 

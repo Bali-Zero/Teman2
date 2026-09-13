@@ -1,14 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  getProcessModel,
-  PROCESS_PHASES,
-  type Language,
-  type OracleNode,
-  type ProcessModel,
-} from "../_lib/flow";
-import type { OracleFacts } from "../_lib/tree";
+import { PROCESS_PHASES, type Language, type ProcessModel } from "../_lib/flow";
 import type { LocalizedText, OutcomeState } from "../_lib/outcome-view-model";
 import { localized } from "../_lib/outcome-view-model";
 import { translate, type I18nKey } from "../_lib/i18n";
@@ -18,15 +11,24 @@ import { translate, type I18nKey } from "../_lib/i18n";
  * returned, or says plainly that the engine has not been asked yet. */
 export interface ProcessOutcomeSummary {
   state: OutcomeState;
+  /** `OutcomeViewModel.provenance`. Only "ENGINE" is an engine reply: a
+   * client guard, a network failure, a shadow comparison and a developer
+   * preview all produce a non-null outcome with zero candidates, and
+   * reading any of them as "the engine answered" would be the interface
+   * speaking for an engine it never reached. */
+  provenance:
+    "ENGINE" | "CLIENT_GUARD" | "NETWORK_FAILURE" | "SHADOW" | "PREVIEW";
   candidates: readonly { code: string; name: LocalizedText }[];
 }
 
 export interface ProcessRailProps {
   language: Language;
-  current: OracleNode;
-  facts: OracleFacts;
-  /** Rendered twice (mobile sheet + desktop column); the marker lets a test
-   * address one copy without ambiguity. */
+  /** Projected ONCE by `LivingTree` and passed down, so the two rendered
+   * copies (mobile sheet + desktop column) and the trunk between them can
+   * never disagree about the same interview. */
+  model: ProcessModel;
+  /** Rendered twice; the marker lets a test address one copy without
+   * ambiguity. */
   variant: "mobile" | "desktop";
   outcome?: ProcessOutcomeSummary | null;
   reducedMotion?: boolean;
@@ -66,7 +68,7 @@ const S = {
     padding: 0,
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.15rem",
+    gap: "var(--space-1)",
   },
   phaseRow: {
     display: "flex",
@@ -76,7 +78,7 @@ const S = {
     lineHeight: 1.5,
   },
   fact: {
-    fontFamily: "var(--font-mono, ui-monospace, monospace)",
+    fontFamily: "ui-monospace, monospace",
     fontSize: "var(--text-xs)",
     color: "var(--oracle-ink-muted)",
     overflowWrap: "anywhere" as const,
@@ -85,6 +87,22 @@ const S = {
     marginTop: "var(--space-3)",
     paddingTop: "var(--space-3)",
     borderTop: "1px dashed var(--oracle-border)",
+  },
+  /** `oracle.css` styles `.oracle-tree__leaf[data-status="done"]` but has no
+   * rule for a chosen-and-still-open branch, and the file is READ-ONLY by
+   * ruling. Painting "current" as "done" in the attribute would make the
+   * chip say one thing to the eye and another to a screen reader, so the
+   * open state is expressed here instead, in the same values the done rule
+   * uses. */
+  openLeaf: {
+    color: "var(--oracle-bg-elevated)",
+    background: "var(--oracle-leaf-active)",
+    borderColor: "var(--oracle-leaf-active)",
+    fontWeight: 600,
+  },
+  prunedLeaf: {
+    textDecoration: "line-through" as const,
+    borderStyle: "dashed" as const,
   },
 } as const;
 
@@ -102,16 +120,10 @@ function phaseTone(status: string): string {
  */
 export function ProcessProgress({
   language,
-  current,
-  facts,
+  model,
   variant,
+  outcome,
 }: ProcessRailProps) {
-  const model = getProcessModel(current, facts);
-  const stepOf = translate(language, "process.step_of", {
-    current: model.answeredQuestions,
-    total: model.totalQuestions,
-  });
-
   return (
     <div
       data-process-rail={variant}
@@ -119,7 +131,10 @@ export function ProcessProgress({
       style={S.block}
     >
       <p style={S.headline} className="oracle-tabular-nums">
-        {stepOf}
+        {translate(language, "process.step_of", {
+          current: model.answeredQuestions,
+          total: model.totalQuestions,
+        })}
         {model.currentPhase !== null && (
           <>
             {" · "}
@@ -134,7 +149,7 @@ export function ProcessProgress({
       </p>
 
       <p style={S.label}>{translate(language, "process.phases_label")}</p>
-      <ol style={S.list}>
+      <ol style={S.list} role="list">
         {PROCESS_PHASES.map((key) => {
           const phase = model.phases.find((entry) => entry.key === key);
           if (!phase || phase.total === 0) return null;
@@ -164,7 +179,24 @@ export function ProcessProgress({
       <div style={S.divider}>
         <p style={S.label}>{translate(language, "process.decides_title")}</p>
         {model.decision === null ? (
-          <p style={S.body}>{translate(language, "process.decides_none")}</p>
+          // Four truths, not one sentence: at the door nothing is
+          // answered; at the confirmation card the request has NOT been
+          // made; at the verdict node the reply may still be in flight,
+          // failed or disabled — `outcome` is the only evidence the engine
+          // actually answered, so the "the engine has your answers" line is
+          // spoken only when that evidence is on screen.
+          <p style={S.body}>
+            {translate(
+              language,
+              model.node === "framing"
+                ? "process.decides_framing"
+                : model.node === "confirmation"
+                  ? "process.decides_confirmation"
+                  : outcome?.provenance === "ENGINE"
+                    ? "process.decides_none"
+                    : "process.decides_awaiting",
+            )}
+          </p>
         ) : model.decision.mapping === "HUMAN_CONTEXT" ? (
           <p style={S.body}>{translate(language, "process.decides_context")}</p>
         ) : (
@@ -178,7 +210,7 @@ export function ProcessProgress({
                 { count: model.decision.factPaths.length },
               )}
             </p>
-            <ul style={{ ...S.list, marginTop: "var(--space-1)" }}>
+            <ul style={{ ...S.list, marginTop: "var(--space-1)" }} role="list">
               {model.decision.factPaths.map((path) => (
                 <li key={path} style={S.fact}>
                   <code>{path}</code>
@@ -193,20 +225,17 @@ export function ProcessProgress({
 }
 
 /**
- * The bottom of the rail: the eleven purpose branches with the one that is
- * open, the ones the visitor's own answer closed and the sentence that says
- * WHY they closed — and, at the terminal node, the product codes the engine
- * named. Before that node it states plainly that no product is named yet.
+ * The eleven purpose branches: the one that is open, the ones the visitor's
+ * own answer closed, and the sentence that says WHY they closed. Rendered
+ * only while the purpose question is on screen or already answered — past
+ * that, and before it, there is no branch state to state.
  */
 export function ProcessBranches({
   language,
-  current,
-  facts,
+  model,
   variant,
-  outcome,
   reducedMotion = false,
 }: ProcessRailProps) {
-  const model: ProcessModel = getProcessModel(current, facts);
   if (!model.showCategories) return null;
 
   const chosenLabel =
@@ -235,13 +264,15 @@ export function ProcessBranches({
               <motion.span
                 key={leaf.key}
                 className="oracle-tree__leaf"
-                data-status={leaf.status === "current" ? "done" : leaf.status}
+                data-status={leaf.status}
                 data-process-category={leaf.key}
                 layout={!reducedMotion}
+                // A closed branch is marked by a line through it and a
+                // dashed edge, never by fading it: dimming the text is what
+                // took these chips below the 4.5:1 contrast floor (axe,
+                // measured on this rail before the fix).
                 animate={
-                  reducedMotion
-                    ? undefined
-                    : { opacity: pruned ? 0.55 : 1, scale: pruned ? 0.94 : 1 }
+                  reducedMotion ? undefined : { scale: pruned ? 0.96 : 1 }
                 }
                 transition={{
                   duration: reducedMotion ? 0 : 0.3,
@@ -249,8 +280,10 @@ export function ProcessBranches({
                 }}
                 style={
                   pruned
-                    ? { textDecoration: "line-through", opacity: 0.55 }
-                    : undefined
+                    ? S.prunedLeaf
+                    : leaf.status === "current"
+                      ? S.openLeaf
+                      : undefined
                 }
               >
                 {translate(language, `q.category.opt.${leaf.key}` as I18nKey)}
@@ -275,38 +308,74 @@ export function ProcessBranches({
               category: chosenLabel,
             })}
       </p>
+    </div>
+  );
+}
 
-      <div style={S.divider}>
-        <p style={S.label}>{translate(language, "process.candidates_title")}</p>
-        {!model.atOutcome || !outcome ? (
-          <p style={S.body}>
-            {translate(language, "process.candidates_pending")}
-          </p>
-        ) : outcome.candidates.length === 0 ? (
-          <p style={S.body}>{translate(language, "process.candidates_none")}</p>
-        ) : (
-          <ul style={{ ...S.list, marginTop: "var(--space-1)" }}>
-            {outcome.candidates.map((candidate) => (
-              <li
-                key={candidate.code}
-                data-process-candidate={candidate.code}
-                style={S.body}
-              >
-                <strong className="oracle-tabular-nums">
-                  {candidate.code}
-                </strong>
-                {" — "}
-                {localized(candidate.name, language)}
-              </li>
-            ))}
-          </ul>
-        )}
-        {model.atOutcome && (
-          <p style={{ ...S.body, marginTop: "var(--space-2)" }}>
-            {translate(language, "process.outcome_node")}
-          </p>
-        )}
-      </div>
+/**
+ * The end of the rail: what the ENGINE named. Deliberately NOT behind the
+ * branch fan's guard — the terminal node must state its products on every
+ * lane, including one that never answered a purpose question. The state is
+ * read, not inferred: only a NO_SUPPORTED_PATH decision may be rendered as
+ * "no product", because every other empty candidate list means the engine
+ * did not decide, which is a different sentence.
+ */
+export function ProcessOutcome({
+  language,
+  model,
+  variant,
+  outcome,
+}: ProcessRailProps) {
+  // Only an ENGINE outcome is a decision. Every other provenance carries
+  // zero candidates by contract, and rendering it as "the engine named no
+  // product" would put an eligibility claim in the engine's mouth.
+  const decided = model.atOutcome && outcome?.provenance === "ENGINE";
+
+  return (
+    <div
+      data-process-rail={variant}
+      data-process-part="outcome"
+      style={S.divider}
+    >
+      <p style={S.label}>{translate(language, "process.candidates_title")}</p>
+      {!decided ? (
+        <p style={S.body}>
+          {translate(
+            language,
+            model.atFollowUp
+              ? "process.candidates_follow_up"
+              : "process.candidates_pending",
+          )}
+        </p>
+      ) : outcome.candidates.length > 0 ? (
+        <ul style={{ ...S.list, marginTop: "var(--space-1)" }} role="list">
+          {outcome.candidates.map((candidate) => (
+            <li
+              key={candidate.code}
+              data-process-candidate={candidate.code}
+              style={S.body}
+            >
+              <strong className="oracle-tabular-nums">{candidate.code}</strong>
+              {" — "}
+              {localized(candidate.name, language)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p style={S.body} data-process-outcome-state={outcome.state}>
+          {translate(
+            language,
+            outcome.state === "NO_SUPPORTED_PATH"
+              ? "process.candidates_none"
+              : "process.candidates_undecided",
+          )}
+        </p>
+      )}
+      {model.atOutcome && (
+        <p style={{ ...S.body, marginTop: "var(--space-2)" }}>
+          {translate(language, "process.outcome_node")}
+        </p>
+      )}
     </div>
   );
 }

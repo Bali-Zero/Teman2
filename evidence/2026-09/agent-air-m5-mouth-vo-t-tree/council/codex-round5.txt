@@ -1,0 +1,116 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b1b-d8b5-7702-8054-1b8564de2798
+--------
+user
+You are an adversarial reviewer on a Gear-3 council. Review ONE diff for
+correctness. You are NOT the author and you do not fix anything: you find
+defects or you state there are none.
+
+## What the change is
+
+Repo: Nuzantara monorepo, app `apps/mouth` (Next.js 16, React, TypeScript,
+vitest + playwright). Surface: the Visa Oracle public funnel at
+`/visa-oracle` — a deterministic immigration interview whose verdict comes
+from ONE backend endpoint (`POST /api/visa-oracle/evaluate`), called once,
+after the applicant confirms their answers.
+
+The window's objective: a visitor must SEE where they are in the decision
+process — which stage is open, what the current question decides, which of
+the eleven purpose branches their own answer closed and why — and be able to
+jump back to any answered question. The outcome must read as the last node
+of the same tree.
+
+## The rules the diff must obey (these are the review criteria)
+
+1. The interface must NEVER decide eligibility. No product may be named,
+   ranked or filtered client-side. A product code may appear ONLY when it
+   came from an engine response already on screen.
+2. No branching change. `getTreeSteps`, `computeNextNode`,
+   `getCategoryQuestionIds`, `fact-mapper.ts` and `tree.ts` semantics must be
+   untouched; the new `getProcessModel` may only PROJECT what already exists.
+3. `oracle.css` is READ-ONLY by ruling. New styling must be inline and must
+   use the existing `--oracle-*` / `--space-*` / `--text-*` custom
+   properties. No new colour values.
+4. Accessibility: keyboard reachable, reduced motion honoured, axe-clean at
+   WCAG 2.0/2.1 A+AA, EN and ID copy both present and correct, no duplicate
+   DOM ids (the rail renders TWICE — once in the mobile sheet, once in the
+   desktop column).
+5. No client PII anywhere. Synthetic values only.
+6. React correctness: keys, hook rules, no state derived wrongly, no
+   render-time side effects, no O(n^2) blowups on every keystroke.
+
+## What to look for, concretely
+
+- A place where the rail states something it cannot know (a product, an
+  eligibility, a count that does not match what the reducer holds).
+- `getProcessModel` disagreeing with `getTreeSteps` in any reachable state —
+  including: category answered with the reserved value "unsure" (not a real
+  category key), the onshore `permit_expiry` lane that jumps straight to
+  `review_gate` skipping `category`, a follow-up question appended after the
+  verdict, and the framing node.
+- The duplicated rail (mobile + desktop) producing duplicated ids, duplicated
+  live-region announcements, or two elements that a strict-mode Playwright
+  locator would match.
+- Copy that promises something the code does not do, in EN or in ID.
+- A test that asserts its own fixture instead of the behaviour.
+
+## Output format — MANDATORY
+
+Write your findings as a short list. Each finding: FILE:LINE, what is wrong,
+why it matters, and the minimal fix. Speculation must be labelled
+"unverified". Then, as the LAST LINE of your answer, exactly one of:
+
+VERDICT: OK
+VERDICT: DEFECT
+
+Use DEFECT only for a real, demonstrable defect under the rules above — not
+for style, not for "could be nicer".
+
+ROUND 5, the last. Round 4's findings were answered:
+- ANSWERED off-spine follow-ups now stay on the trunk: getProcessModel appends every answered question that the spine does not contain, plus the open one, so the count and the jump target survive the return to the verdict. Two model-level tests, red under mutation.
+- provenance is threaded: ProcessOutcomeSummary carries OutcomeViewModel.provenance and only 'ENGINE' counts as a reply — CLIENT_GUARD / NETWORK_FAILURE / SHADOW / PREVIEW now render 'the engine's reply is not on screen yet' and 'no product is named yet', never a no-product claim. Four-case test.
+- the dual TreePanel mount (mobile sheet + desktop column) is REFUTED as this window's defect: it is the component's pre-existing structure on origin/main (git show origin/main:...LivingTree.tsx has the same two render sites); this window changed neither. It is recorded as a leftover.
+
+The corrected diff is at evidence/2026-09/agent-air-m5-mouth-vo-t-tree/council/diff.patch. Report ONLY a demonstrable defect introduced by this diff under the rules; say VERDICT: OK if what remains is pre-existing, style or preference. Start now.
+codex
+[Air-M5] Missione BLUE, ruolo council reviewer indipendente (non Dux), mandato Gear-3 Round 5, worktree `/Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree`. Carico `modus`, il gate di studio e il protocollo di differential review; poi giudico esclusivamente il patch indicato, senza modificare file.
+[… 647 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+GEAR 3: review avversariale di logica decisionale e accessibilità — il difetto deve essere falsificato su stati raggiungibili, non dedotto dalla forma del codice. La memoria contiene solo contesto storico generico su Visa Oracle, nessun precedente specifico per questo patch; il terreno autoritativo sarà quindi patch + baseline + test presenti nel worktree.
+[… 636 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+STADIO-0 STUDY — review Round 5
+
+1. Memory-hits: nessuna decisione task-specifica; i riferimenti storici Visa Oracle sono estranei a questo patch.
+2. Hot-files verificati: `diff.patch`, `brief.yml`, `ProcessRail.tsx`, `LivingTree.tsx`, `OracleShell.tsx`, `flow.ts`, `i18n.ts` e i quattro test indicati esistono; `oracle.css`, `tree.ts` e `fact-mapper.ts` restano baseline di confronto.
+3. PII-risk: nessun dato cliente nel perimetro; controllerò comunque che fixture e output siano sintetici.
+4. Criteri: ogni finding deve avere uno stato raggiungibile e una linea esatta; equivalenza `getProcessModel`/`getTreeSteps` sugli edge case espliciti; zero violazioni introdotte di branching, product provenance, DOM id/live-region, copy o test tautologici.
+[… 7570 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Continuo sull’unico punto ancora da chiudere: distinguere un difetto reale del modello/process rail da un problema del solo harness. Verifico ora configurazione Playwright e stati raggiungibili del reducer, così il verdetto non si appoggia a ipotesi.
+[… 3764 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+I test mirati sono verdi (149/149), ma il passaggio decisivo resta il testo del follow-up: sto confrontando quella promessa con il contratto `NEEDS_INPUT` e con il secondo giro di valutazione. Se il motore può ancora restituire nessun prodotto o chiedere altro, la frase del rail è una decisione anticipata, non solo copy.
+[… 963 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:720,1626` — EN e ID affermano che il fatto aggiuntivo precede la nomina di un prodotto. `NEEDS_INPUT` non garantisce questo esito: la nuova valutazione può restituire un altro `NEEDS_INPUT`, revisione umana o nessun percorso supportato. Il rail anticipa quindi un risultato che il client non conosce. Fix minimo: dire “prima che il motore possa decidere se nominare un prodotto” in entrambe le lingue e aggiornare l’assert a `ProcessRail.test.tsx:382`.
+
+VERDICT: DEFECT
+codex
+[Air-M5] Nessuna modifica è stata fatta: la sessione era review-only. Registro comunque il checkpoint richiesto dal controllo di sessione, includendo la verifica già completata.
+[… 17 lines of read-only tool output elided by the author; full run kept out of the repo …]
+codex
+Checkpoint non salvato: il workspace gestito ha restituito `PermissionError`. Nessun file di codice è stato modificato; la review resta read-only.
+tokens used
+202.381
+Checkpoint non salvato: il workspace gestito ha restituito `PermissionError`. Nessun file di codice è stato modificato; la review resta read-only.
+CODEX_EXIT=0

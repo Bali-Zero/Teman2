@@ -674,7 +674,7 @@ const en = {
   "tree.sr_status.pruned": "different interview branch",
 
   "process.label": "Where you are in this process",
-  "process.step_of": "Step {{current}} of {{total}}",
+  "process.step_of": "{{current}} of {{total}} answered",
   "process.phases_label": "Stages",
   "process.phase.location": "Where you are",
   "process.phase.identity": "Who you are",
@@ -692,9 +692,15 @@ const en = {
   "process.decides_review":
     "Your answer is a safety signal: it can send this case to a person, and the engine never reads it as eligibility.",
   "process.decides_context":
-    "Context for a human reader only — this answer is never sent to the engine.",
+    "No engine fact is attached to this question. It steers what you are asked next, and can still feed a fact the engine derives from your answers together.",
   "process.decides_none":
-    "No question is open. The engine reads the answers you confirmed.",
+    "No question is open. The engine has the answers you confirmed.",
+  "process.decides_awaiting":
+    "No question is open. Your answers are confirmed; the engine’s reply is not on screen yet.",
+  "process.decides_framing":
+    "Nothing is answered yet. Every question states the fact it sets before you answer it.",
+  "process.decides_confirmation":
+    "No question is open. Nothing has been sent yet — confirming your answers is what asks the engine.",
   "process.categories_title": "Purpose branches",
   "process.category_status.current": "open — being asked now",
   "process.category_status.done": "answered",
@@ -706,9 +712,13 @@ const en = {
     "Every purpose branch is still open. Choosing one closes the others.",
   "process.candidates_title": "Products the engine named",
   "process.candidates_pending":
-    "No product is named yet. The engine is asked once, after you confirm your answers — this interface never decides eligibility on its own.",
+    "No product is named yet. The engine is asked only after you confirm your answers — this interface never decides eligibility on its own.",
   "process.candidates_none":
     "The engine named no product for these answers. The outcome below says why.",
+  "process.candidates_undecided":
+    "The engine did not name a product for these answers. The outcome below says what it is waiting for.",
+  "process.candidates_follow_up":
+    "The engine has your answers and asked for one more fact before it can decide. This question is that fact.",
   "process.outcome_node":
     "You are at the last node of this tree: the outcome below is that node, not a separate page.",
   "process.jump_title": "Jump back to an answer",
@@ -1570,7 +1580,7 @@ const id: Record<Keys, string> = {
   "tree.sr_status.pruned": "cabang wawancara berbeda",
 
   "process.label": "Posisi Anda dalam proses ini",
-  "process.step_of": "Langkah {{current}} dari {{total}}",
+  "process.step_of": "{{current}} dari {{total}} terjawab",
   "process.phases_label": "Tahapan",
   "process.phase.location": "Posisi Anda",
   "process.phase.identity": "Identitas Anda",
@@ -1588,9 +1598,15 @@ const id: Record<Keys, string> = {
   "process.decides_review":
     "Jawaban Anda adalah sinyal keamanan: kasus ini dapat diteruskan ke petugas, dan mesin tidak pernah membacanya sebagai kelayakan.",
   "process.decides_context":
-    "Konteks untuk pembaca manusia saja — jawaban ini tidak pernah dikirim ke mesin.",
+    "Tidak ada fakta mesin yang melekat pada pertanyaan ini. Pertanyaan ini mengarahkan pertanyaan berikutnya, dan masih dapat menjadi bagian dari fakta yang diturunkan mesin dari jawaban Anda secara keseluruhan.",
   "process.decides_none":
-    "Tidak ada pertanyaan yang terbuka. Mesin membaca jawaban yang Anda konfirmasi.",
+    "Tidak ada pertanyaan yang terbuka. Mesin sudah menerima jawaban yang Anda konfirmasi.",
+  "process.decides_awaiting":
+    "Tidak ada pertanyaan yang terbuka. Jawaban Anda sudah dikonfirmasi; balasan mesin belum tampil di layar.",
+  "process.decides_framing":
+    "Belum ada yang dijawab. Setiap pertanyaan menyebutkan fakta yang ditetapkannya sebelum Anda menjawab.",
+  "process.decides_confirmation":
+    "Tidak ada pertanyaan yang terbuka. Belum ada yang dikirim — mengonfirmasi jawaban Anda itulah yang menanyakan mesin.",
   "process.categories_title": "Cabang tujuan",
   "process.category_status.current": "terbuka — sedang ditanyakan",
   "process.category_status.done": "sudah dijawab",
@@ -1602,9 +1618,13 @@ const id: Record<Keys, string> = {
     "Semua cabang tujuan masih terbuka. Memilih satu akan menutup yang lain.",
   "process.candidates_title": "Produk yang disebut mesin",
   "process.candidates_pending":
-    "Belum ada produk yang disebut. Mesin baru ditanya satu kali, setelah Anda mengonfirmasi jawaban — antarmuka ini tidak pernah memutuskan kelayakan sendiri.",
+    "Belum ada produk yang disebut. Mesin baru ditanya setelah Anda mengonfirmasi jawaban — antarmuka ini tidak pernah memutuskan kelayakan sendiri.",
   "process.candidates_none":
     "Mesin tidak menyebut produk apa pun untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
+  "process.candidates_undecided":
+    "Mesin belum menyebut produk untuk jawaban ini. Hasil di bawah menjelaskan apa yang masih ditunggu.",
+  "process.candidates_follow_up":
+    "Mesin sudah menerima jawaban Anda dan meminta satu fakta lagi sebelum dapat memutuskan. Pertanyaan ini adalah fakta tersebut.",
   "process.outcome_node":
     "Anda berada di simpul terakhir pohon ini: hasil di bawah adalah simpul tersebut, bukan halaman terpisah.",
   "process.jump_title": "Kembali ke sebuah jawaban",

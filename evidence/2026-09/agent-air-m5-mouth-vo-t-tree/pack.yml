@@ -1,0 +1,235 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: SAETTA-VO2-W-VO-T
+    role: build
+    seat: Claude Opus 5 (Dux of window vo-t-tree, implements directly)
+  - lane: SAETTA-VO2-W-VO-T-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (OpenAI, codex exec --sandbox read-only, five rounds on the merge-base diff)
+  - lane: SAETTA-VO2-W-VO-T-council-qwen
+    role: review
+    seat: tp1-qwen3.8-max (qwen -p, text-only, one answered round before its weekly quota ran out)
+  - lane: SAETTA-VO2-W-VO-T-ground-truth
+    role: ground_truth
+    seat: nuzantara-rag-knowledge-api
+    nb: nuzantara-rag.fly.dev/api/knowledge/visa
+    query_hash: "3828901b20979e7f8e60e551d4aa6217ab086c9823f91cf7b152b15aba633949"
+council_run: council/journal.jsonl
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3 = the measured floor, not a judgement. compute_floor on the
+      merge-base diff answers 3 and compute_floor_source answers "size": churn
+      over non-excluded files is 3378 (apps 2286, evidence 1092), past
+      SIZE_GEAR3_THRESHOLD = 1828. No hot-zone path is touched, so the path
+      term is 1 — the size term alone sets the floor. Declaring gear 2 would
+      declare BELOW the floor, which Step 6 of harness-floor.yml fails by
+      design; getting under 1828 would mean deleting real tests to dodge a
+      threshold. So the gear is 3 and its consequence is stated plainly in
+      D-council-quorum-unreachable rather than engineered away.
+  - id: D-council-not-clean
+    decision: >-
+      The council was run for real, six rounds, and every finding it raised
+      was cured at depth 1 and pinned by a test that goes red under mutation.
+      What holds the cures is the tests, not a seat line — that is the claim
+      this pack makes, and it is checkable by mutating the files.
+  - id: D-council-quorum-unreachable
+    decision: >-
+      R9 (check_council_run_gear3) wants >=2 DISTINCT seats from
+      (codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max) posting ok:true. Only
+      one of the three is reachable this week, and that is measured, not
+      assumed: kimi answers 403 "monthly usage limit" and qwen answers "token-
+      plan 1-week quota has been exhausted ... resets 09-18 08:39 UTC", both
+      re-probed in this session (receipts below). The linter's escape hatch,
+      seat_override, is banned for this mission by COMMON-R3 — "never fabricate
+      a seat line, never seat_override" — and inventing the second line is the
+      one thing an evidence pack may not do. So "Harness floor recompute" goes
+      RED on exactly one rule, council_run, and the cause is named here BEFORE
+      the push instead of being discovered by a rerun. No other pack-lint rule
+      is red: ground_truth now carries a real lane, backed by a real query.
+  - id: D-no-partial-candidates
+    decision: >-
+      The window asked for the candidate set "from the engine's partial
+      evaluation". There is none: the only engine endpoint is
+      POST /api/visa-oracle/evaluate (evaluation-client.ts), called from
+      exactly one place (OracleShell's evaluation effect) at the verdict.
+      Rather than compute eligibility client-side — forbidden — the rail
+      states plainly that no product is named yet and names product codes
+      only from an outcome already on screen. A mid-interview "candidates so
+      far" endpoint is recorded as a leftover, not faked.
+  - id: D-css-inline
+    decision: >-
+      oracle.css is READ-ONLY by ruling and no second stylesheet was added:
+      the rail is styled with inline properties drawn from the existing
+      --oracle-* / --space-* / --text-* scale, and reuses .oracle-tree__leaf,
+      .oracle-tree__step, .oracle-tabular-nums and .oracle-sr-only. The one
+      colour decision — closed branches — is a line-through plus a dashed
+      edge, NOT a dimmed opacity: dimming took the chips under 4.5:1 and axe
+      named all ten (measured, then fixed, then re-measured clean).
+  - id: D-outcome-in-place
+    decision: >-
+      "The outcome is the last node of the same tree" is rendered as the
+      terminal node of the rail — the verdict step, the engine's own product
+      codes, and a sentence saying this is that node. OutcomeSheet.tsx is
+      NOT touched: W-VO-G owns its copy maps in parallel, and the framing
+      needed no edit there.
+  - id: D-existing-spec-locator
+    decision: >-
+      e2e/visa-oracle-v2.spec.ts (outside the brief's file list) is edited in
+      the same PR: the rail now also names "Visit Visa C1", so five unscoped
+      page.getByText("Visit Visa C1") assertions resolved to two elements and
+      tripped Playwright strict mode. They are scoped to
+      .oracle-main__content through one named helper, which is what each of
+      them was written to check. A consumer of my change, fixed with it.
+  - id: D-skipped-lane-refuted
+    decision: >-
+      Council round 1 finding #2 (the onshore urgent permit lane skips the
+      purpose question, so the fan claims eleven open branches) is REFUTED,
+      not cured: it quotes a STALE comment inside getTreeSteps.
+      computeNextNode's permit_expiry case routes onshore to
+      holds_stay_permit today, reproduced by a reducer-driven test in
+      ProcessRail.test.tsx. The fan rule was still tightened — it shows only
+      while the purpose question is on screen or already answered.
+receipts:
+  - claim: The worktree was created by the broker on the mouth lane for this task id.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id vo-t-tree
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-vo-t-tree ; branch agent/air-m5/mouth/vo-t-tree ; merge-base eecd7f06098b6d81cca61460b1f729f8d10c6f54 = origin/main, 0 behind"
+    exit: 0
+    ts: "2026-09-13T19:47:00+08:00"
+    seat: Claude Opus 5
+  - claim: Gear declaration — the floor is 3 and its source is size, not a hot zone.
+    cmd: "compute_floor / compute_floor_source / _size_term_net_lines from scripts/evidence_pack_lint.py, over the merged numstat of origin/main...HEAD plus the staged increment"
+    result: "churn 3378 (apps/ 2286, evidence/ 1092) ; floor 3 ; source: size. SIZE_GEAR3_THRESHOLD is 1828 and the path term is 1 — GROUND_TRUTH_PATH_PATTERNS hits apps/mouth/src/app/(visa-oracle)/*, HOTZONE_PATTERNS does not."
+    exit: 0
+    ts: "2026-09-13T22:42:00+08:00"
+    seat: Claude Opus 5
+  - claim: R8 ground-truth lane — the only immigration code this window puts on screen outside an engine reply is the one its e2e fixture names, and that code is real in the live corpus.
+    cmd: curl -s -m 90 https://nuzantara-rag.fly.dev/api/knowledge/visa/code/C1
+    result: 'HTTP 200 — {"code":"C1","name":"C1 - Tourism","category":"Visit Visa","duration":"60 days (extendable to 180)",...}. The rail asserts no immigration fact of its own: it prints product codes only from an OutcomeViewModel already on screen, and says "No product is named yet" everywhere else. query_hash is sha256 of the request line above.'
+    exit: 0
+    ts: "2026-09-13T22:47:38Z"
+    seat: nuzantara-rag-knowledge-api
+  - claim: The two missing council seats are out of quota now, not merely reported so by the mission brief.
+    cmd: "perl -e 'alarm 120; exec @ARGV' -- kimi -m kimi-code/k3 -p 'Reply with exactly: PROBE OK' ; perl -e 'alarm 120; exec @ARGV' -- qwen -p 'Reply with exactly: PROBE OK'"
+    result: "kimi: provider.auth_error 403 'You have reached your monthly usage limit for this billing cycle'. qwen: 'Quota exhausted: Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC' (insufficient_quota 429). Neither produced a review line; both are journalled ok:false with the measured reason."
+    exit: 1
+    ts: "2026-09-13T22:46:00+08:00"
+    seat: Claude Opus 5
+  - claim: A1/A2/A3/A4 — the whole colocated Visa Oracle suite is green, including 30 new cases across ProcessRail.test.tsx and LivingTree.test.tsx.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle"
+    result: "Test Files 40 passed (40) ; Tests 803 passed (803). Baseline before this window: 40 files / 769 tests."
+    exit: 0
+    ts: "2026-09-13T22:20:00+08:00"
+    seat: Claude Opus 5
+  - claim: The follow-up cure is not decorative — the guard bites when the projection is reverted.
+    cmd: "mutation: offSpine forced false, then the extras list emptied; npx vitest run ProcessRail.test.tsx / LivingTree.test.tsx each time (file backed up with cp, restored with cp)"
+    result: "offSpine disabled -> 2 failed ('expected +0 to be 10'); extras removed -> 3 failed ('expected 10 to be 11', 'expected undefined to be current'); raw getTreeSteps trunk restored in LivingTree -> 2 failed ('expected 0 to be greater than or equal to 7'). All green again after restore."
+    exit: 1
+    ts: "2026-09-13T22:12:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4/A5 — typecheck and eslint are clean on every touched file.
+    cmd: cd apps/mouth && npx tsc --noEmit ; npx eslint <the five touched source files>
+    result: "tsc exit 0, no diagnostics. eslint 0 errors (two pre-existing @next/next/no-html-link-for-pages warnings on OracleShell's footer link, untouched by this window)."
+    exit: 0
+    ts: "2026-09-13T22:19:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 — both Playwright suites are green against a production build of this branch, axe included.
+    cmd: "npx next build --webpack ; npx next start --port 3111 ; PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3111 npx playwright test --project=chromium e2e/visa-oracle-process.spec.ts e2e/visa-oracle-v2.spec.ts"
+    result: "27 passed (43.8s) — 8 new process cases + the 19 pre-existing visa-oracle-v2 cases. expectNoWcagViolations (wcag2a/2aa/21a/21aa) runs at 1440 and at 390 and returns an empty violation list."
+    exit: 0
+    ts: "2026-09-13T22:14:00+08:00"
+    seat: Claude Opus 5
+  - claim: The axe pass is earned, not assumed — the first run named a real contrast failure.
+    cmd: same playwright run, before the pruned-chip fix
+    result: "color-contrast, impact serious, 10 nodes: span[data-process-category='tourism'] … 'other' — the 0.55 opacity on a closed chip. Cured by line-through + dashed border with no opacity change; the same run is clean after."
+    exit: 1
+    ts: "2026-09-13T20:07:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 — twelve renders of the real route, EN and ID, 1440 and 390, at step 3, step 12 and the outcome node.
+    cmd: "the screenshot cases in e2e/visa-oracle-process.spec.ts, driven by states replayed through the real flowReducer"
+    result: "/Users/balizero/Desktop/R3-RENDERS-20260913/vo-t/vo-t-{step03,step12,outcome}-{en,id}-{1440,390}.png, 12 files, written 22:13-22:14. Read back: the 1440 EN step-12 render shows '12 of 13 answered · Safety check and your answers', the five stages with their statuses, immigration.violation_history under WHAT THIS QUESTION DECIDES, ten struck-through branches with 'Work & employment' open, and 'No product is named yet'; the 390 EN outcome render shows 'C1 — Visit Visa C1' under PRODUCTS THE ENGINE NAMED with the last-node sentence."
+    exit: 0
+    ts: "2026-09-13T22:14:00+08:00"
+    seat: Claude Opus 5
+  - claim: The two WhatsApp reds seen mid-run were the harness, not the code, and are named rather than rerun blindly.
+    cmd: "grep -rl 628123456789 .next/static after a build without the env var ; then a rebuild with NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER set (what playwright.config.ts's webServer sets) and the same two tests"
+    result: "the visa-oracle chunk did not carry the number (ConsentHandoff reads process.env.NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER, inlined at BUILD time). With the variable set at build: both tests pass, 27/27."
+    exit: 0
+    ts: "2026-09-13T21:18:00+08:00"
+    seat: Claude Opus 5
+  - claim: The 65 unit failures in the WHOLE mouth suite are the known M5 environment condition, not this window.
+    cmd: cd apps/mouth && npx vitest run
+    result: "Test Files 5 failed | 479 passed (484) ; Tests 65 failed | 5158 passed (5223). The five files are (workspace)/process, (workspace)/settings/appearance, visa/match, visa/voa and one sibling — all failing on 'Cannot read properties of null (reading useState/useRef)' inside packages/core components, the shared-node_modules condition recorded on the #6419 gate row (5 files / 65 tests red identically at origin/main). No visa-oracle file is among them."
+    exit: 1
+    ts: "2026-09-13T21:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: The council was run for real, on the merge-base diff, and its raw answers are filed.
+    cmd: "codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only --skip-git-repo-check -C <wt> ... ; qwen -p ... ; each under perl -e 'alarm 900; exec @ARGV' --"
+    result: "codex rounds 1-5 and qwen rounds 1-3 under council/ with journal.jsonl. Codex: DEFECT, DEFECT, DEFECT, DEFECT (13 findings, 11 cured, 2 refuted with evidence). Qwen: no output at round 1 (alarm, exit 142), 6 findings at round 2, quota-exhausted at round 3. The codex stdout is a tool log that echoes every file it reads (1.2 MB for round 1); each transcript is trimmed to its header plus the final message carrying the findings and the verdict, and says so in place."
+    exit: 0
+    ts: "2026-09-13T22:07:20+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: Claude Opus 5 (self-refutation, on the count in the progress line)
+    objection: >-
+      The line first read "Step 12 of 13". codex-gpt-5.6-sol (round 2) showed it
+      was an answer COUNT dressed as an ordinal: on the fourth question it said
+      "Step 3", and at a follow-up it said "Step N of N+1" while the open
+      question was N+1. A progress line that miscounts is worse than no
+      progress line, because it is believed.
+    status: CONFIRMED
+    cure: >-
+      The copy is now "{{current}} of {{total}} answered" in EN and ID, and the
+      unit test asserts the exact sentence rather than a regex that would have
+      swallowed either reading.
+  - seat: Claude Opus 5 (self-refutation, on what "never sent to the engine" meant)
+    objection: >-
+      The HUMAN_CONTEXT sentence promised the answer is never sent to the
+      engine. tree.ts's own doc says HUMAN_CONTEXT values must never be mapped
+      into a FactPath, so the copy read as true — but codex round 3 produced a
+      reachable counter-example: holds_stay_permit = "no" resolves
+      immigration.current_status_code to NO_STAY_PERMIT through fact-mapper,
+      and fact-mapper.test.ts pins it. The rail was making a promise about a
+      layer it does not own.
+    status: CONFIRMED
+    cure: >-
+      The copy now says what is verifiable: no engine fact is attached to this
+      question, it steers what comes next, and it can still feed a fact derived
+      from the answers together. A test asserts the refuted sentence is gone.
+  - seat: Claude Opus 5 (self-refutation, on the dual panel)
+    objection: >-
+      codex round 4 is right that a visitor with the mobile sheet open has two
+      live copies of every jump target, and that resizing past 1024px leaves
+      both visible.
+    status: PLAUSIBLE
+    cure: >-
+      NOT cured, and deliberately: `git show origin/main:…/LivingTree.tsx`
+      shows the same two TreePanel render sites, so the duplication is the
+      component's pre-existing structure, not something this window
+      introduced. Mounting one panel per breakpoint means reading the viewport
+      in JS, which is a hydration decision for the whole route, not a rail
+      change. Recorded as a leftover.
+  - seat: Claude Opus 5 (self-refutation, on the council's own standing)
+    objection: >-
+      Four rounds each found something, which is evidence the rail's claims are
+      easy to overstate — and the record ends on DEFECT with no seat signing
+      the shipped state, because two of the three seats are out of quota.
+    status: CONFIRMED
+    cure: >-
+      Not hidden and not claimed away. The gear is the measured floor (3), so
+      a council IS required and its quorum rule will fail — see
+      D-council-quorum-unreachable. What stands in its place is not a promise:
+      every cure carries a test proven red under mutation, and the last round
+      re-read the shipped state. A fresh gate should weigh that, and should
+      not read the red council_run as an unnamed failure.
+leftovers:
+  - No mid-interview candidate set exists to show. The engine has exactly one endpoint and one caller, at the verdict; a "candidates so far" response (or a NEEDS_INPUT-style partial evaluation exposed to the client) is the endpoint this rail would consume the day it exists. Until then the rail says no product is named yet — which is also the honest statement of the product's own design.
+  - engine-adapter.ts::questionForFact still returns undefined when more than one question collects a fact path (immigration.current_status_code, work.indonesia_source_compensation, investment.pt_pma_committed — the three paths §D of the coverage report names). It is NOT a UI dedup: the adapter is forbidden from guessing which of two asked questions the engine meant, and engine-adapter.ts belongs to W-VO-G's perimeter. Untouched here.
+  - The mobile sheet and the desktop column mount the same TreePanel at the same time (pre-existing on origin/main); after a resize past 1024px with the sheet open, both are visible and every jump target exists twice. A breakpoint-aware mount is a route-level hydration decision.
+  - formatFactDisplay renders a number answer as "1 days" (the unit i18n key carries no plural marker). Visible in the step-12 render's "Length of stay · 1 days"; it is ConfirmationCard's formatter, shared with the print recap, and pre-dates this window.
+  - The rail names engine fact paths verbatim (person.nationalities, immigration.violation_history). That is deliberate honesty for a decision-support tool, but it has never been put to Zero as a copy decision; a plain-language gloss per path would need ~50 new EN+ID strings.
+  - The screenshot cases wait 600ms for the mobile sheet's height animation before capturing. A deterministic hook (animation-complete promise) would be better than a timeout.
+needs_input: []
