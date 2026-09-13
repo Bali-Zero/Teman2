@@ -163,7 +163,7 @@ def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> Non
     assert seq7_report.required_facts_ast_mismatches == ()
 
 
-def test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper() -> None:
+def test_not_asked_facts_are_exactly_the_six_hardcoded_in_the_mapper() -> None:
     assert DEFAULT_FACT_MAPPER_PATH.exists(), (
         "the default fact-mapper path is stale — the live interview moved "
         "and this script's default needs updating"
@@ -177,14 +177,21 @@ def test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper() -> None:
     # question for it (tree.ts, gated in flow.ts's
     # `computeNextNode`/`shouldAskRenewalPaid`), so fact-mapper.ts:591 now
     # maps it through `booleanFact(facts.renewal_paid)` — a real answered
-    # fact, not an unconditional NOT_ASKED placeholder. It correctly drops
-    # out of this list; this file just hadn't caught up.
+    # fact, not an unconditional NOT_ASKED placeholder. It correctly dropped
+    # out of this list. PR-D4c-1 (2026-09-13) put a NEW sixth entry back in:
+    # `investment.investment_amount_usd` is contract-only (the wire key
+    # exists for a later PR, D4c-2, to send an answer through), so
+    # fact-mapper.ts maps it through the same unconditional
+    # `unknownFact(NOT_ASKED)` idiom every other not-yet-interviewed fact
+    # uses — this is the mapper-side twin of that PR's vocabulary addition,
+    # not an independent change.
     assert found == [
         "commercial.service_fee_budget_idr",
         "commercial.wants_quote",
         "immigration.last_entry_date",
         "intent.desired_entry_date",
         "intent.requested_product_code",
+        "investment.investment_amount_usd",
     ]
 
     report = build_report(SEQ7_PACK)

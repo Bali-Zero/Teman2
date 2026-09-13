@@ -78,6 +78,10 @@
       "reason": "NOT_ASKED"
     },
     "investment.proposed_role": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "investment.investment_amount_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "family.relation_to_sponsor": { "status": "KNOWN", "value": "SPOUSE" },
     "family.sponsor_nationalities": { "status": "KNOWN", "value": ["ID"] },
     "family.sponsor_status_code": {

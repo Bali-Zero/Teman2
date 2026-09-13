@@ -19090,11 +19090,12 @@ export interface components {
     /**
      * ApplicantFactsData
      * @description ``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-     *     with all keys required except the five transitional fields documented on
+     *     with all keys required except the six transitional fields documented on
      *     ``sponsor_type``, the three ``family.stepchild_*``/
-     *     ``family.sponsor_permit_basis`` fields (2026-08-23), and
-     *     ``immigration_renewal_paid`` (2026-08-24) below — all the same rollout
-     *     mechanism. Field order mirrors ``enums.FactPath``'s
+     *     ``family.sponsor_permit_basis`` fields (2026-08-23),
+     *     ``immigration_renewal_paid`` (2026-08-24), and ``investment_amount_usd``
+     *     (2026-09-13, PR-D4c-1) below — all the same rollout mechanism. Field
+     *     order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
      *     grouping.
@@ -19222,6 +19223,16 @@ export interface components {
       "intent.stay_days":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownNonNegativeInteger"];
+      /**
+       * Investment.Investment Amount Usd
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "investment.investment_amount_usd":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownMoney"];
       /** Investment.Investment Capital Idr */
       "investment.investment_capital_idr":
         | components["schemas"]["UnknownFact"]
@@ -21633,14 +21644,17 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 45 applicant-collected
+     * @description Every fact path the engine may ever reference — 46 applicant-collected
      *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
      *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
      *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
      *     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
      *     and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
-     *     and by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
-     *     comment for the grounding).
+     *     by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
+     *     comment for the grounding), and by ``investment.investment_amount_usd``
+     *     (2026-09-13, PR-D4c-1 — contract-only: a later PR, D4c-2, asks an
+     *     investment applicant for a USD amount; this PR only declares the wire
+     *     key so that question can exist, and no rule reads it yet).
      *
      *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
      *     ``required_facts`` array are both typed against this enum, so a rule
@@ -21675,6 +21689,7 @@ export interface components {
       | "investment.investment_capital_idr"
       | "investment.paid_up_capital_idr"
       | "investment.proposed_role"
+      | "investment.investment_amount_usd"
       | "family.relation_to_sponsor"
       | "family.sponsor_nationalities"
       | "family.sponsor_status_code"
