@@ -168,6 +168,30 @@ describe("no-path doors — the evidence behind every named alternative", () => 
   // an OVER-match — cicatrix family #3 — no matter how green the 15 walks
   // above are.
   for (const row of replay.counterexamples) {
+    it(`states its cause in words too: ${row.id}`, () => {
+      const walk = replay.walks.find(
+        (candidate) => candidate.walk_fixture === row.walk_fixture,
+      );
+      if (!walk) throw new Error(`${row.walk_fixture} is not a recorded walk`);
+      const outcome = buildEngineOutcome(
+        responseFor({
+          ...walk,
+          no_path_reason_codes: row.no_path_reason_codes,
+        } as ReplayWalk),
+        { facts: factsFor(walk, row.ui as unknown as Record<string, string>) },
+      );
+      if (outcome.state !== "NO_SUPPORTED_PATH") {
+        throw new Error(`expected NO_SUPPORTED_PATH, got ${outcome.state}`);
+      }
+      for (const reason of outcome.noPathReasons) {
+        expect(
+          reason.message.en,
+          `${reason.code} has no copy: the raw code reaches the reader`,
+        ).not.toContain("Verified reason:");
+        expect(reason.message.id).not.toContain("Alasan terverifikasi:");
+      }
+    });
+
     it(`abstains where the pack shuts the door: ${row.id}`, () => {
       const walk = replay.walks.find(
         (candidate) => candidate.walk_fixture === row.walk_fixture,

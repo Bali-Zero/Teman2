@@ -418,6 +418,13 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // by name; `hf.a1.not-bvk-nationality` tests membership of the visa-free
   // nationality list. The numbers and the lists belong to the signed pack —
   // none is restated here beyond the bound the code itself names.
+  // Measured 2026-09-13 while probing the door rules: a declared Indonesian
+  // nationality makes the pack answer this on every purpose. No corpus walk
+  // carries it (every walk is IT), so it reached the reader as a raw code.
+  APPLICANT_IS_INDONESIAN_CITIZEN: text(
+    "You told us one of your nationalities is Indonesian. An Indonesian citizen does not apply for a visa to enter Indonesia.",
+    "Anda menyampaikan bahwa salah satu kewarganegaraan Anda adalah Indonesia. Warga negara Indonesia tidak mengajukan visa untuk masuk ke Indonesia.",
+  ),
   AGE_BELOW_55: text(
     "The retirement routes in our verified catalogue start at age 55, and the date of birth you gave is below that.",
     "Jalur pensiun dalam katalog terverifikasi kami dimulai pada usia 55 tahun, dan tanggal lahir yang Anda berikan berada di bawah usia tersebut.",
@@ -524,10 +531,6 @@ function secondHomeBelowThresholdReason(
 const DOOR_PRODUCT_NAMES: Record<string, LocalizedText> = {
   C1: text("Tourist Visit Visa (C1)", "Visa Kunjungan Wisata (C1)"),
   E33: text("Second Home Visa (E33)", "Visa Rumah Kedua (E33)"),
-  E33F: text(
-    "Second Home Visa — Elderly 1-Year (E33F)",
-    "Visa Rumah Kedua Lansia untuk 1 Tahun (E33F)",
-  ),
 };
 
 /**
@@ -648,32 +651,16 @@ export function buildNoPathDoors(
     });
   }
 
-  // 3. AGE — the one door nothing answerable opens, so it carries no button
-  //    and no promise: it names what the rules said (age, and nothing else)
-  //    and what happens at 55. Fires only when age is the SOLE named cause on
-  //    a retirement interview that also declared an income the over-55 route
-  //    reads — with that income at zero the pack supports nothing at 55
-  //    either (counterexample `no-passive-income`), and on the two `business`
-  //    walks the same code rides along with another one.
-  const passiveIncome = Number(facts.secondhome_passive_income_usd);
-  if (
-    category === "retirement" &&
-    noPathReasonCodes.length === 1 &&
-    noPathReasonCodes[0] === "AGE_BELOW_55" &&
-    Number.isFinite(passiveIncome) &&
-    passiveIncome > 0
-  ) {
-    doors.push({
-      category: "retirement",
-      productCode: "E33F",
-      productName: DOOR_PRODUCT_NAMES.E33F,
-      message: text(
-        "Age is the only cause the verified rules gave. From 55 the same answers are assessed against the over-55 retirement route, and the rest of your answers decide it.",
-        "Usia adalah satu-satunya penyebab yang diberikan aturan terverifikasi. Mulai usia 55 tahun, jawaban yang sama dinilai terhadap jalur pensiun untuk usia di atas 55, dan sisa jawaban Anda yang menentukan.",
-      ),
-      actionable: false,
-    });
-  }
+  // 3. AGE — WITHDRAWN, not forgotten. The first draft named the over-55
+  //    retirement route on an AGE_BELOW_55 dead end, and two council rounds
+  //    killed it: at 55 the pack supports that route only above a passive
+  //    income bound the interview never states, so any predicate this file
+  //    can write is either a copy of a pack rule or an over-claim. A door
+  //    that needs the engine's own answer belongs to an engine round trip
+  //    (one more `evaluate` call with the alternative purpose), which is
+  //    outside this window's perimeter. Recorded as a leftover; the replay
+  //    fixture keeps its AGE_55 column so the next window starts from
+  //    evidence, not from this comment.
   return doors;
 }
 
