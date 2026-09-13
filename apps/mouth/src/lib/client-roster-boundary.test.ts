@@ -318,6 +318,16 @@ describe("the roster does not cross the client boundary", () => {
       guard,
       "the guard no longer consults the exception contract — the closing-PR rule is unenforced",
     ).toContain("chunkExceptionViolations(");
+
+    // And that it still uses the SHARED walk. The reason this assertion exists is a
+    // measured one: the guard once carried its own recursive walk, the route-coverage
+    // test carried a second, and the two disagreed on five rules while agreeing on the
+    // tree of the day. A local copy reappearing here would pass every other test in
+    // this suite, because every other test asks what the walk RETURNS today.
+    expect(
+      guard,
+      "the guard no longer imports the shared route walk — a private copy has come back",
+    ).toContain('from "./lib/app-routes.mjs"');
   });
 
   it("the initials helper carries no roster data of its own", () => {

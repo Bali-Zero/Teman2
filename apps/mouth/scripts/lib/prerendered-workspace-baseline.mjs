@@ -1,3 +1,5 @@
+import { urlRoute } from "./app-routes.mjs";
+
 // Which `(workspace)` routes are allowed to be STATIC, and the decision that says so.
 //
 // WHY THIS EXISTS. The chunk guard next door scans built JS chunks. It does NOT scan
@@ -82,24 +84,9 @@ export const ACCEPTED_PRERENDERED_WORKSPACE_ROUTES = [
   "terminal",
 ];
 
-/**
- * A directory wrapped in parentheses is a ROUTE GROUP: it organises files and does not
- * appear in the URL. So `(workspace)/(admin)/settings/page.tsx` is served at
- * `/settings`, and a walk that reported `(admin)/settings` would never match the
- * manifest key — the route would be prerendered, unscanned, and invisible to this
- * check. There are no nested groups under `(workspace)` today; a seat pointed out that
- * the guard's job is to catch the NEXT change, not today's.
- *
- * @param {string} route
- * @returns {string} the route as it appears in a URL
- */
-export function urlRoute(route) {
-  return route
-    .split("/")
-    .filter((seg) => !(seg.startsWith("(") && seg.endsWith(")")))
-    .join("/");
-}
-
+// urlRoute is IMPORTED, not redefined. It was a local copy here and a second local
+// copy in the guard's walk, and the copies disagreed on five rules while happening to
+// agree on today's tree. One definition, in scripts/lib/app-routes.mjs.
 /**
  * @param {{ workspaceRoutes: string[], prerenderedPaths: string[], accepted?: string[] }} input
  * @returns {string[]} routes that are prerendered but not accepted
@@ -116,5 +103,31 @@ export function unacceptedPrerenderedWorkspaceRoutes({
   return workspaceRoutes
     .filter((r) => prerendered.has(`/${urlRoute(r)}`))
     .filter((r) => !ok.has(urlRoute(r)))
+    .sort();
+}
+
+/**
+ * Accepted entries that are NOT prerendered any more — a promise the list is still
+ * making about a route that no longer keeps it.
+ *
+ * The exception contract next door checks its pairing in BOTH directions and this one
+ * did not, which a seat called an asymmetry with this file's own philosophy. It is
+ * reported rather than fatal, and the distinction is the point: a stale accepted entry
+ * cannot HIDE anything — it can only fail to flag a route that stopped being static —
+ * so failing the build over it would punish the good direction of travel. What it does
+ * do is rot, and a list nobody prunes is how an exposure baseline turns into config.
+ *
+ * @returns {string[]} accepted routes that are no longer prerendered
+ */
+export function staleAcceptedRoutes({
+  workspaceRoutes,
+  prerenderedPaths,
+  accepted = ACCEPTED_PRERENDERED_WORKSPACE_ROUTES,
+}) {
+  const prerendered = new Set(prerenderedPaths);
+  const known = new Set(workspaceRoutes.map(urlRoute));
+  return accepted
+    .filter((r) => known.has(r))
+    .filter((r) => !prerendered.has(`/${r}`))
     .sort();
 }
